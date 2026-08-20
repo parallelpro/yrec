@@ -1,0 +1,180 @@
+!----------------------------------------------------------------------
+! setscal
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original setscal.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! Sets up the run-list to evolve a model to a target point on the
+! HR diagram (target luminosity plus either target Teff or target
+! R/Rsun, per common/calstar/'s specify_teff_flag): expands the two
+! seed runs into 50 runs by copying their rescaling/mixing-length
+! parameters forward (odd runs from 3 rerun the seed rescaling; even
+! runs from 4 reuse run 2's age/timestep stop criteria), mirroring
+! setcal.f90's solar-calibration run-list expansion.
+subroutine setscal
+
+      implicit none
+
+! common/ckind/: rescale_params/num_models/rescale_kind/first_call_flag/
+! num_runs, all used here. Naming matches chkcal.f90.
+      double precision :: rescale_params(4,50)
+      integer :: num_models(50), rescale_kind(50)
+      logical :: first_call_flag(50)
+      integer :: num_runs
+      common /ckind/ rescale_params, num_models, rescale_kind, &
+           first_call_flag, num_runs
+
+! common/luout/: only itrack (the .track log unit) is used here.
+! Naming matches getopac.f90.
+      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
+           istor, iowr
+      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
+           imodpt, istor, iowr
+
+! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
+! common/sett/: target_end_age/timestep_override are used here; the
+! remaining members are unused placeholders. Naming matches chkcal.f90.
+      double precision :: target_end_age(50), timestep_override(50)
+      logical :: end_age_stop_active(50), timestep_override_active(50)
+      double precision :: central_deuterium_stop(50), &
+           central_hydrogen_stop(50), central_helium_stop(50)
+      common/sett/ target_end_age, timestep_override, &
+           end_age_stop_active, timestep_override_active, &
+           central_deuterium_stop, central_hydrogen_stop, &
+           central_helium_stop
+
+! common/newxym/: initial_x_array/initial_z_array/mixing_length_array/
+! has_senv0_array/senv0_array, all used here. Naming matches
+! chkcal.f90.
+      double precision :: initial_x_array(50), initial_z_array(50), &
+           mixing_length_array(50)
+      logical :: has_senv0_array(50)
+      double precision :: senv0_array(50)
+      common /newxym/ initial_x_array, initial_z_array, &
+           mixing_length_array, has_senv0_array, senv0_array
+
+! MHP 8/25 Removed character file names from common block
+! common/zramp/: rsclzc/rsclzm1/rsclzm2 are used here; the remaining
+! members are unused placeholders. Naming matches gtlaol2.f90.
+      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
+      integer :: iolaol2, ioopal2, nk
+      logical :: use_z_ramp
+      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
+           use_z_ramp
+
+! common/const1/: only c4pi is used here. Naming matches chkscal.f90/
+! eqstat.f90/hpoint.f90.
+      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+
+! common/const/: only solar_luminosity_cgs/solar_radius_cgs are used
+! here. Naming matches chkscal.f90/amcalc.f90/getw.f90.
+      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
+           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
+           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
+      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
+           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
+           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
+
+! common/const2/: only csig is used here. Naming matches chkscal.f90/
+! eqstat.f90/hpoint.f90.
+      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
+           csig, csigl, cgl, cmkh, cmkhn
+      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
+           csigl, cgl, cmkh, cmkhn
+
+! common/calstar/: target-star calibration state; all members used
+! here. Naming matches chkscal.f90.
+      double precision :: target_luminosity_lsun, luminosity_tolerance, &
+           target_teff, target_radius_rsun, log_l_prev_model, &
+           log_r_prev_model, age_at_target_radius, &
+           log_l_at_target_radius, log_l_at_target_radius_prev_run, &
+           age_prev_model
+      logical :: star_found_flag, specify_teff_flag, &
+           just_passed_target_radius_flag, calibrate_star_flag
+      common/calstar/ target_luminosity_lsun, luminosity_tolerance, &
+           target_teff, target_radius_rsun, &
+           log_l_prev_model, log_r_prev_model, age_at_target_radius, &
+           log_l_at_target_radius, log_l_at_target_radius_prev_run, &
+           age_prev_model, star_found_flag, specify_teff_flag, &
+           just_passed_target_radius_flag, calibrate_star_flag
+
+      save
+!     LSTAR     T - have got a star at Teff and L
+!     LPASSR    T - on run have just passed Teff
+!     XLS       Luminosity (L/Lsun) wanted by adjusting Y
+!     XLSTOL    tolerance wanted for luminosity
+!     LTEFF     T - specify Teff for star
+!               F - specify R/Rsun for star
+!     STEFF     Effective temperature of star (K) or...
+!     SR        Radius of star (R/Rsun)
+!     TEFF      Teff of current model
+!     ALR       log(R/Rsun) of current model
+!     ALRI      log(R/Rsun) of previous model
+!     DAGE      age of current model (Gyr)
+!     AGEI      age of previous model (Gyr)
+!     AGER      age of model at R*
+!     BL        luminosity of current model
+!     BLI       luminosity of previous model
+!     BLR       luminosity of model at R
+!     BLRP      luminosity of model at R* of previous run
+!     XP        X of previous run = RESCAL(2, NK-1)
+! mhp 10/02 linct not used, commented out
+!      LINCT = .TRUE.
+
+! --- locals ---
+      integer :: i, j
+
+      star_found_flag = .false.
+      just_passed_target_radius_flag = .false.
+      if (specify_teff_flag) then
+         target_radius_rsun = sqrt(target_luminosity_lsun* &
+              solar_luminosity_cgs/(c4pi*csig))/(target_teff*target_teff* &
+              solar_radius_cgs)
+      else
+         target_teff = ((target_luminosity_lsun*solar_luminosity_cgs)/ &
+              (c4pi*csig*target_radius_rsun*target_radius_rsun* &
+              solar_radius_cgs*solar_radius_cgs))**0.25d0
+      end if
+      log_r_prev_model = 0
+!     SET UP RUN TO EVOLVE TO L, Teff IN HR-DIAGRM.
+!     THIS CONSISTS OF SETTING THE NUMBER OF RUNS TO THE MAXIMUM (50),
+!     AND COPYING THE RELEVANT PARAMETERS FROM THE FIRST TWO RUNS TO
+!     THE NEXT SERIES OF 24 CALIBRATING RUNS.
+      num_runs = 50
+      do i = 2,50
+         initial_x_array(i) = initial_x_array(1)
+         initial_z_array(i) = initial_z_array(1)
+         mixing_length_array(i) = mixing_length_array(1)
+         has_senv0_array(i) = has_senv0_array(1)
+         senv0_array(i) = senv0_array(1)
+      end do
+      do i = 3,49,2
+         rescale_kind(i) = rescale_kind(1)
+         first_call_flag(i) = .true.
+         num_models(i) = num_models(1)
+         rsclzc(i) = rsclzc(1)
+         rsclzm1(i) = rsclzm1(1)
+         rsclzm2(i) = rsclzm2(1)
+         do j = 1,4
+            rescale_params(j,i) = rescale_params(j,1)
+         end do
+      end do
+      do i = 4,50,2
+         rescale_kind(i) = 1
+         first_call_flag(i) = .false.
+         num_models(i) = num_models(2)
+         target_end_age(i) = target_end_age(2)
+         end_age_stop_active(i) = end_age_stop_active(2)
+         timestep_override(i) = timestep_override(2)
+         timestep_override_active(i) = timestep_override_active(2)
+      end do
+      write(*,*) ' Evolve to R*, L* = ', target_radius_rsun, &
+           target_luminosity_lsun
+      write(itrack,*) '#Evolve to R*, L* = ', target_radius_rsun, &
+           target_luminosity_lsun
+      return
+end subroutine setscal
