@@ -1,0 +1,148 @@
+!----------------------------------------------------------------------
+! setkrz
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original setkrz.f; only variable names, source form, and comment
+! style were updated.
+!
+! Reads the Kurucz opacity table (and, if a second Z table is
+! requested, a second Kurucz table) and builds the spline
+! interpolation coefficients used later by kurucz.f90/kurucz2.f90.
+subroutine setkrz(kurucz_table_path, kurucz_table2_path)
+
+      implicit none
+      integer, parameter :: max_num_temps = 60
+      integer, parameter :: max_num_densities = 50
+      integer, parameter :: num_x_tables = 1
+      integer, parameter :: num_x_temp_entries = max_num_temps*num_x_tables
+
+! MHP 8/25 Remove unused variables
+      character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
+
+! MHP 10/02 missing comma after IDYN
+! common/lunum/: only kurucz_table_unit (IKUR) is used here; remaining
+! members are unused placeholders preserving the shared storage layout.
+! Shared with setllo.f90, which uses laol_table_unit (ILLDAT) from the
+! same block.
+      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
+           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
+           dynamics_unit, laol_table_unit, neutrino_unit, &
+           composition_unit, kurucz_table_unit
+      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
+           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
+           dynamics_unit, laol_table_unit, neutrino_unit, &
+           composition_unit, kurucz_table_unit
+
+! GRID ENTRIES FOR TEMPERATURE, AND ABUNDANCE (X)
+      double precision :: kurucz_grid_logt(max_num_temps)
+      common /gkrz/ kurucz_grid_logt
+      double precision :: kurucz2_grid_logt(max_num_temps)
+      common /gkrz2/ kurucz2_grid_logt
+
+! LOS ALAMOS OPACITY
+      double precision :: kurucz_log10_opacity(num_x_temp_entries, max_num_densities), &
+           kurucz_log10_rho(num_x_temp_entries, max_num_densities)
+      integer :: kurucz_num_temps
+      common /krz/ kurucz_log10_opacity, kurucz_log10_rho, kurucz_num_temps
+      double precision :: kurucz2_log10_opacity(num_x_temp_entries, max_num_densities), &
+           kurucz2_log10_rho(num_x_temp_entries, max_num_densities)
+      integer :: kurucz2_num_temps
+      common /krz2/ kurucz2_log10_opacity, kurucz2_log10_rho, kurucz2_num_temps
+
+! common/newopac/: only use_two_z_tables is used here.
+      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
+           opal_table_z2, opal95_single_table_z, alex_table_z1, &
+           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
+           molecular_opacity_logt_max
+      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
+           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
+           use_two_z_tables
+      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
+           opal_table_z2, opal95_single_table_z, alex_table_z1, &
+           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
+           molecular_opacity_logt_max, use_alex06_tables, &
+           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
+           use_kurucz90_tables, use_alex95_tables, use_two_z_tables
+
+! MHP 8/25 Removed character file names from common block
+      integer :: ikur2, icondopacp
+      logical :: use_conductive_opacity
+      common /miscopac/ ikur2, icondopacp, use_conductive_opacity
+
+      save
+
+      integer :: x_table_count, num_read, density_index
+      double precision :: prev_grid_temp, grid_temp, pressure, &
+           log10_opacity0, log10_opacity1, log10_opacity2, &
+           log10_opacity4, log10_opacity8, electron_density, &
+           atom_density, density, unused_col
+
+      x_table_count = num_x_tables
+    1 format(2f5.2,5f7.3,3f9.5,f8.3)
+!     OPEN TABLE
+      open(kurucz_table_unit, file=kurucz_table_path, status='OLD')
+      read(kurucz_table_unit,'(/)')
+
+      num_read = 0
+      prev_grid_temp = 0.0d0
+  110 continue
+      read(kurucz_table_unit,1,err=110,end=120) grid_temp, pressure, &
+           log10_opacity0, log10_opacity1, log10_opacity2, &
+           log10_opacity4, log10_opacity8, electron_density, &
+           atom_density, density, unused_col
+      if (prev_grid_temp.ne.grid_temp) then
+         num_read = num_read+1
+         if (num_read.gt.max_num_temps) stop ' KURUCZ INPUT ERROR'
+         kurucz_grid_logt(num_read) = grid_temp
+         prev_grid_temp = grid_temp
+         density_index = 1
+      endif
+      if (num_read.lt.1) stop ' KURUCZ INPUT ERROR'
+      kurucz_log10_rho(num_read, density_index) = density
+      kurucz_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
+      density_index = density_index+1
+      goto 110
+
+  120 continue
+      kurucz_num_temps = num_read
+!     CLOSE THE TABLE WE HAVE READ
+      close(kurucz_table_unit,err=99)
+
+! DBG 12/95 read in second Z table if requested
+      if (use_two_z_tables) then
+!        OPEN TABLE
+         open(ikur2, file=kurucz_table2_path, status='OLD')
+         read(ikur2,'(/)')
+
+         num_read = 0
+         prev_grid_temp = 0.0d0
+  210    continue
+         read(ikur2,1,err=210,end=220) grid_temp, pressure, &
+              log10_opacity0, log10_opacity1, log10_opacity2, &
+              log10_opacity4, log10_opacity8, electron_density, &
+              atom_density, density, unused_col
+         if (prev_grid_temp.ne.grid_temp) then
+            num_read = num_read+1
+            if (num_read.gt.max_num_temps) stop ' KURUCZ INPUT ERROR'
+            kurucz2_grid_logt(num_read) = grid_temp
+            prev_grid_temp = grid_temp
+            density_index = 1
+         endif
+         if (num_read.lt.1) stop ' KURUCZ INPUT ERROR'
+         kurucz2_log10_rho(num_read, density_index) = density
+         kurucz2_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
+         density_index = density_index+1
+         goto 210
+
+  220    continue
+         kurucz2_num_temps = num_read
+!        CLOSE THE TABLE WE HAVE READ
+         close(ikur2,err=99)
+      end if
+
+      call ykoeff
+
+      return
+   99 stop 'ERROR IN FILE CLOSING'
+end subroutine setkrz

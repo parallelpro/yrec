@@ -1,0 +1,232 @@
+!----------------------------------------------------------------------
+! yalo3d
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original yalo3d.f; only variable names, source form, and comment
+! style were updated.
+!
+! MHP 4/98 Computes Alexander 1994 low-temperature opacities by
+! 4-point Lagrangian interpolation in log T and log R = rho/T6**3,
+! and (away from the envelope X, Z) also in X.
+subroutine yalo3d(log10_density, log10_temperature, hydrogen_fraction, &
+     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+
+      implicit none
+      integer, parameter :: num_x = 7
+      integer, parameter :: num_z = 15
+      integer, parameter :: num_t = 23
+      integer, parameter :: num_d = 17
+      integer, parameter :: num_xt = 8
+
+      double precision, intent(in) :: log10_density, log10_temperature, &
+           hydrogen_fraction, metal_fraction
+      double precision, intent(out) :: opacity, log10_opacity, &
+           dlnkap_dlnrho, dlnkap_dlnt
+
+! common/const1/: only ln10 is used here. Naming matches eqstat2.f90.
+      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+
+! common/newopac/: not used directly here (ALXZTAB/ALX8TH read it).
+      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
+           opal_table_z2, opal95_single_table_z, alex_table_z1, &
+           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
+           molecular_opacity_logt_max
+      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
+           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
+           use_two_z_tables
+      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
+           opal_table_z2, opal95_single_table_z, alex_table_z1, &
+           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
+           molecular_opacity_logt_max, use_alex06_tables, &
+           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
+           use_kurucz90_tables, use_alex95_tables, use_two_z_tables
+
+! common/galot/: ALEX95 low-T opacity table grids.
+      double precision :: alex95_grid_logt(num_t), alex95_grid_x(num_x), &
+           alex95_grid_logr(num_d), alex95_grid_z(num_z)
+      common /galot/ alex95_grid_logt, alex95_grid_x, alex95_grid_logr, &
+           alex95_grid_z
+
+! common/alot/: ALEX95 low-T opacity table and cached-index state.
+      double precision :: alex95_opacity(num_xt, num_t, num_d), &
+           alex95_cached_x, alex95_cached_z
+      integer :: alex95_index_x, alex95_index_t, alex95_index_r
+      common /alot/ alex95_opacity, alex95_cached_x, alex95_cached_z, &
+           alex95_index_x, alex95_index_t, alex95_index_r
+
+      double precision :: interp_nodes(4), weight_t(4), dweight_t(4), &
+           weight_r(4), dweight_r(4), weight_x(4), opacity_row(4), &
+           dlnkap_dlnr_row(4), opacity_x(4), dlnkap_dlnt_x(4), &
+           dlnkap_dlnr_x(4)
+      save
+
+      double precision :: delta_z, logr, saved_r
+      logical :: extrapolate_linear
+      integer :: i, j, jj, ii
+
+      delta_z = abs(metal_fraction-alex95_cached_z)
+!     ENSURE THAT OPACITY TABLE HAS THE SAME Z VALUE AS THE ENVELOPE.
+      if (delta_z.gt.1.0d-8) then
+         call alxztab(metal_fraction)
+         call alx8th(hydrogen_fraction)
+      endif
+!     COMPUTE R FOR GRID POINT
+      logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
+!     FIND NEAREST GRID POINTS IN T.
+!     Insure that index IT is within the required array bounds  llp  8/19/08
+      if (alex95_index_t .lt. 1) alex95_index_t=1
+      if ((alex95_index_t+2) .gt. num_t) alex95_index_t=num_t-2
+      if (log10_temperature.lt.alex95_grid_logt(alex95_index_t+2)) then
+         do i = alex95_index_t+1,2,-1
+            if (log10_temperature.gt.alex95_grid_logt(i)) then
+               alex95_index_t = i - 1
+               goto 10
+            endif
+         end do
+         alex95_index_t = 1
+   10    continue
+      else
+         do i = alex95_index_t+3,num_t
+            if (log10_temperature.lt.alex95_grid_logt(i)) then
+               alex95_index_t = i - 2
+               alex95_index_t = min(num_t-3,alex95_index_t)
+               goto 20
+            endif
+         end do
+         alex95_index_t = num_t - 3
+   20    continue
+      endif
+!     INTERPOLATION FACTORS IN LOG T
+      do i = 1,4
+         interp_nodes(i) = alex95_grid_logt(alex95_index_t+i-1)
+      end do
+      call interp(interp_nodes, weight_t, dweight_t, log10_temperature)
+!     FIND NEAREST GRID POINTS IN R = RHO/T6**3
+      if (logr.lt.alex95_grid_logr(alex95_index_r+2)) then
+         do i = alex95_index_r+1,2,-1
+            if (logr.gt.alex95_grid_logr(i)) then
+               alex95_index_r = i - 1
+               goto 30
+            endif
+         end do
+         alex95_index_r = 1
+   30    continue
+      else
+         do i = alex95_index_r+3,num_d
+            if (logr.lt.alex95_grid_logr(i)) then
+               alex95_index_r = i - 2
+               alex95_index_r = min(num_d-3,alex95_index_r)
+               goto 40
+            endif
+         end do
+         alex95_index_r = num_d - 3
+   40    continue
+      endif
+!     INTERPOLATION FACTORS IN LOG R
+      if (logr.gt.alex95_grid_logr(num_d).and. &
+           abs(hydrogen_fraction-alex95_cached_x).lt.1.0d-8) then
+         extrapolate_linear = .true.
+         saved_r = logr
+         logr = alex95_grid_logr(num_d)
+      else
+         extrapolate_linear = .false.
+      endif
+      do i = 1,4
+         interp_nodes(i) = alex95_grid_logr(alex95_index_r+i-1)
+      end do
+      call interp(interp_nodes, weight_r, dweight_r, logr)
+!     NOW EITHER INTERPOLATE IN SURFACE X TABLE OR CALCULATE OPACITY AT
+!     4 DIFFERENT VALUES OF X AND INTERPOLATE IN X.
+      if (abs(hydrogen_fraction-alex95_cached_x).lt.1.0d-8) then
+!        SURFACE ABUNDANCE TABLE
+!        INTERPOLATE IN LOG R AT FIXED T
+         do i = 1,4
+            ii = alex95_index_t+i - 1
+            opacity_row(i) = weight_r(1)*alex95_opacity(8,ii,alex95_index_r) + &
+                 weight_r(2)*alex95_opacity(8,ii,alex95_index_r+1) + &
+                 weight_r(3)*alex95_opacity(8,ii,alex95_index_r+2) + &
+                 weight_r(4)*alex95_opacity(8,ii,alex95_index_r+3)
+            dlnkap_dlnr_row(i) = dweight_r(1)*alex95_opacity(8,ii,alex95_index_r) + &
+                 dweight_r(2)*alex95_opacity(8,ii,alex95_index_r+1) + &
+                 dweight_r(3)*alex95_opacity(8,ii,alex95_index_r+2) + &
+                 dweight_r(4)*alex95_opacity(8,ii,alex95_index_r+3)
+         end do
+         if (extrapolate_linear) then
+            do i = 1,4
+               ii = alex95_index_t+i-1
+               opacity_row(i) = opacity_row(i)+(saved_r-logr)* &
+                    (alex95_opacity(8,ii,num_d)-alex95_opacity(8,ii,num_d-1))/ &
+                    (alex95_grid_logr(num_d)-alex95_grid_logr(num_d-1))
+            end do
+            logr = saved_r
+         endif
+!        INTERPOLATE IN T
+         log10_opacity = weight_t(1)*opacity_row(1)+weight_t(2)*opacity_row(2)+ &
+              weight_t(3)*opacity_row(3)+weight_t(4)*opacity_row(4)
+!        D LN CAPPA/D LN T AT FIXED R
+         dlnkap_dlnt = dweight_t(1)*opacity_row(1)+dweight_t(2)*opacity_row(2)+ &
+              dweight_t(3)*opacity_row(3)+dweight_t(4)*opacity_row(4)
+!        INTERPOLATE IN D LN CAPPA/ D LN R AT FIXED T
+         dlnkap_dlnrho = weight_t(1)*dlnkap_dlnr_row(1) + weight_t(2)*dlnkap_dlnr_row(2) + &
+              weight_t(3)*dlnkap_dlnr_row(3) + weight_t(4)*dlnkap_dlnr_row(4)
+!        CORRECT FROM DERIVATIVE AT FIXED R TO DERIVATIVE AT FIXED RHO
+         dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
+         opacity = exp(ln10*log10_opacity)
+      else
+!        FIND 4 NEAREST TABLES IN X.
+         if (hydrogen_fraction.lt.alex95_grid_x(4)) then
+            if (hydrogen_fraction.gt.alex95_grid_x(3)) then
+               alex95_index_x = 2
+            else
+               alex95_index_x = 1
+            endif
+         else
+            if (hydrogen_fraction.gt.alex95_grid_x(5)) then
+               alex95_index_x = 4
+            else
+               alex95_index_x = 3
+            endif
+         endif
+         do i = 1,4
+            interp_nodes(i) = alex95_grid_x(alex95_index_x+i-1)
+         end do
+         call intrp2(interp_nodes, weight_x, hydrogen_fraction)
+!        INTERPOLATE IN LOG R AT FIXED T
+         do j = 1,4
+            jj = alex95_index_x+j-1
+            do i = 1,4
+               ii = alex95_index_t+i - 1
+               opacity_row(i) = weight_r(1)*alex95_opacity(jj,ii,alex95_index_r) + &
+                    weight_r(2)*alex95_opacity(jj,ii,alex95_index_r+1) + &
+                    weight_r(3)*alex95_opacity(jj,ii,alex95_index_r+2) + &
+                    weight_r(4)*alex95_opacity(jj,ii,alex95_index_r+3)
+               dlnkap_dlnr_row(i) = dweight_r(1)*alex95_opacity(jj,ii,alex95_index_r) + &
+                    dweight_r(2)*alex95_opacity(jj,ii,alex95_index_r+1) + &
+                    dweight_r(3)*alex95_opacity(jj,ii,alex95_index_r+2) + &
+                    dweight_r(4)*alex95_opacity(jj,ii,alex95_index_r+3)
+            end do
+!           INTERPOLATE IN T
+            opacity_x(j) = weight_t(1)*opacity_row(1)+weight_t(2)*opacity_row(2)+ &
+                 weight_t(3)*opacity_row(3)+weight_t(4)*opacity_row(4)
+!           D LN CAPPA/D LN T AT FIXED R
+            dlnkap_dlnt_x(j) = dweight_t(1)*opacity_row(1) + dweight_t(2)*opacity_row(2) + &
+                 dweight_t(3)*opacity_row(3) + dweight_t(4)*opacity_row(4)
+!           INTERPOLATE IN D LN CAPPA/ D LN R AT FIXED T
+            dlnkap_dlnr_x(j) = weight_t(1)*dlnkap_dlnr_row(1) + weight_t(2)*dlnkap_dlnr_row(2) + &
+                 weight_t(3)*dlnkap_dlnr_row(3) + weight_t(4)*dlnkap_dlnr_row(4)
+         end do
+!        INTERPOLATE IN X
+         log10_opacity = weight_x(1)*opacity_x(1) + weight_x(2)*opacity_x(2) + &
+              weight_x(3)*opacity_x(3) + weight_x(4)*opacity_x(4)
+         dlnkap_dlnt = weight_x(1)*dlnkap_dlnt_x(1) + weight_x(2)*dlnkap_dlnt_x(2) + &
+              weight_x(3)*dlnkap_dlnt_x(3) + weight_x(4)*dlnkap_dlnt_x(4)
+         dlnkap_dlnrho = weight_x(1)*dlnkap_dlnr_x(1) + weight_x(2)*dlnkap_dlnr_x(2) + &
+              weight_x(3)*dlnkap_dlnr_x(3) + weight_x(4)*dlnkap_dlnr_x(4)
+!        CORRECT FROM DERIVATIVE AT FIXED R TO DERIVATIVE AT FIXED RHO
+         dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
+         opacity = exp(ln10*log10_opacity)
+      endif
+      return
+end subroutine yalo3d
