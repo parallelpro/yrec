@@ -1,0 +1,334 @@
+!----------------------------------------------------------------------
+! getopac
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original getopac.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! Computes the opacity for a given composition (X, Z), blending
+! between molecular/atmosphere tables, interior tables (OPAL/LAOL/
+! Kurucz families, optionally interpolated between two Z values or a
+! pure-Z table), and a conductive-opacity correction.
+subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
+     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
+     ion_fraction)
+      implicit none
+
+      double precision, intent(in) :: log10_density, log10_temperature, &
+           hydrogen_fraction, metal_fraction
+      double precision, intent(out) :: opacity, log10_opacity, &
+           dlnkap_dlnrho, dlnkap_dlnt
+      double precision, intent(inout) :: ion_fraction(3)
+
+! --- opacity common blocks - modified 3/09 ---
+      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
+           opal_table_z2, opal95_single_table_z, alex_table_z1, &
+           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
+           molecular_opacity_logt_max
+      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
+           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
+           use_two_z_tables
+      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
+           opal_table_z2, opal95_single_table_z, alex_table_z1, &
+           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
+           molecular_opacity_logt_max, use_alex06_tables, &
+           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
+           use_kurucz90_tables, use_alex95_tables, use_two_z_tables
+
+! common/comp/: only envelope_hydrogen_fraction/envelope_metal_fraction
+! are used here. The remaining members are declared only to preserve
+! the storage layout shared with every other file that references
+! common/comp/ (Fortran COMMON is positional, not name-matched, so this
+! file's names don't need to match theirs -- but the order/types must).
+      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
+           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
+      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
+           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
+
+! common/luout/: only short_file_unit (the .short log unit) is used here.
+      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
+           istor, iowr
+      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
+           imodpt, istor, iowr
+
+! common/nwlaol/: only use_pure_z_table is used here; remaining members
+! (the LAOL pure-Z table data itself) are placeholders for layout.
+      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
+           tollaol
+      integer :: iolaol, numofxyz, numrho, numt, iopurez
+      logical :: llaol, use_pure_z_table
+      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
+           numrho, numt, llaol, use_pure_z_table, iopurez
+
+! common/optab/: only metal_fraction_match_tolerance is used here.
+      double precision :: metal_fraction_match_tolerance, zsi
+      integer :: idt, idd(4)
+      common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
+
+! common/miscopac/: only use_conductive_opacity is used here.
+      integer :: ikur2, icondopacp
+      logical :: use_conductive_opacity
+      common /miscopac/ ikur2, icondopacp, use_conductive_opacity
+
+      save
+
+! --- locals ---
+      logical :: got_atmosphere_opacity, got_conductive_opacity
+      double precision :: atm_opacity, atm_log10_opacity, &
+           atm_dlnkap_dlnrho, atm_dlnkap_dlnt
+      double precision :: atm_opacity_2, atm_log10_opacity_2, &
+           atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2
+      double precision :: slope
+      double precision :: purez_opacity, purez_log10_opacity, &
+           purez_dlnkap_dlnrho, purez_dlnkap_dlnt
+      double precision :: table_metal_fraction
+      double precision :: opacity_2, log10_opacity_2, dlnkap_dlnrho_2, &
+           dlnkap_dlnt_2
+      double precision :: ramp_weight
+      double precision :: conductive_opacity, conductive_log10_opacity, &
+           conductive_dlnkap_dlnrho, conductive_dlnkap_dlnt
+      double precision :: log10_conductive_opacity
+      double precision :: radiative_opacity, radiative_dlnkap_dlnrho, &
+           radiative_dlnkap_dlnt
+
+!     THIS SUBROUTINE CALCULATES THE OPACITY FOR A GIVEN X AND Z.
+!     IF LDIFZ=T OR LZRAMP=T THEN INTERPOLATE BETWEEN TWO Z TABLES.
+!     IN A SMALL T RANGE THE ATMOSPHERE AND INTERIOR OPACITY ARE
+!     RAMPED FROM ONE TO THE OTHER.
+
+!     GET ATMOSPHERE OPACITY
+
+      got_atmosphere_opacity = .false.
+      if (log10_temperature.le.molecular_opacity_logt_max) then
+         if (use_alex06_tables) then
+            call getalex06(log10_density, log10_temperature, &
+                 hydrogen_fraction, metal_fraction, atm_opacity, &
+                 atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt)
+            got_atmosphere_opacity = .true.
+         else if (use_alex95_tables) then
+            call yalo3d(log10_density, log10_temperature, &
+                 hydrogen_fraction, metal_fraction, atm_opacity, &
+                 atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt)
+            got_atmosphere_opacity = .true.
+         else if (use_kurucz90_tables) then
+            call kurucz(log10_density, log10_temperature, atm_opacity, &
+                 atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt, *100)
+            if (use_two_z_tables) then
+               call kurucz2(log10_density, log10_temperature, &
+                    atm_opacity_2, atm_log10_opacity_2, &
+                    atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2, *100)
+               slope = (atm_log10_opacity - atm_log10_opacity_2) / &
+                    (kurucz_table_z1 - kurucz_table_z2)
+               atm_log10_opacity = atm_log10_opacity_2 + &
+                    (metal_fraction - kurucz_table_z2)*slope
+               atm_opacity = 10.0d0**atm_log10_opacity
+               slope = (atm_dlnkap_dlnrho - atm_dlnkap_dlnrho_2) / &
+                    (kurucz_table_z1 - kurucz_table_z2)
+               atm_dlnkap_dlnrho = atm_dlnkap_dlnrho_2 + &
+                    (metal_fraction - kurucz_table_z2)*slope
+               slope = (atm_dlnkap_dlnt - atm_dlnkap_dlnt_2) / &
+                    (kurucz_table_z1 - kurucz_table_z2)
+               atm_dlnkap_dlnt = atm_dlnkap_dlnt_2 + &
+                    (metal_fraction - kurucz_table_z2)*slope
+            end if
+            got_atmosphere_opacity = .true.
+         end if
+      end if
+  100 continue
+
+!     GET INTERIOR OPACITY IF NEEDED
+
+      if (log10_temperature.lt.molecular_opacity_logt_min .and. &
+           got_atmosphere_opacity) goto 1000
+
+!     HELIUM BURNING REGION (HB EVOLUTION) USE PURE Z TABLE
+!     mhp 7/12 Altered logic of the opacities in the He burnng
+!     regime.  Switched to exclusive usage of OPAL below 50 million K
+!     and switched the ramp to above Z = 0.1.
+!     JCZ 211125 changing temperature limit to 7.0 to accommodate
+!     semiconvection+overshoot HB models, which can reach lower core
+!     temperatures
+      if ((metal_fraction.gt.0.1d0) .and. (log10_temperature.gt.7.0d0)) then
+         if (.not.use_pure_z_table) then
+            write(short_file_unit, *) ' ERROR: Z>0.10 T > 5 X 10^7 K', &
+                 ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=', &
+                 metal_fraction, log10_temperature
+            stop
+         end if
+         call gtpurz(log10_density, log10_temperature, purez_opacity, &
+              purez_log10_opacity, purez_dlnkap_dlnrho, purez_dlnkap_dlnt)
+         if (use_opal95_tables) then
+!           mhp 7/12 interpolate to maximum z in table
+            table_metal_fraction = 0.1d0
+            call getopal95(log10_density, log10_temperature, &
+                 hydrogen_fraction, table_metal_fraction, opacity, &
+                 log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+         else if (use_opal92_tables) then
+            call yllo3d(log10_density, log10_temperature, &
+                 hydrogen_fraction, opacity, log10_opacity, &
+                 dlnkap_dlnrho, dlnkap_dlnt)
+            table_metal_fraction = opal_table_z1
+         else if (use_laol89_tables) then
+            call gtlaol(log10_density, log10_temperature, &
+                 hydrogen_fraction, opacity, log10_opacity, &
+                 dlnkap_dlnrho, dlnkap_dlnt)
+            table_metal_fraction = laol_table_z1
+         end if
+         slope = (log10_opacity - purez_log10_opacity) / &
+              (table_metal_fraction - 1.0d0)
+         log10_opacity = purez_log10_opacity + (metal_fraction - 1.0d0)*slope
+         opacity = 10.0d0**log10_opacity
+         slope = (dlnkap_dlnrho - purez_dlnkap_dlnrho) / &
+              (table_metal_fraction - 1.0d0)
+         dlnkap_dlnrho = purez_dlnkap_dlnrho + &
+              (metal_fraction - 1.0d0)*slope
+         slope = (dlnkap_dlnt - purez_dlnkap_dlnt) / &
+              (table_metal_fraction - 1.0d0)
+         dlnkap_dlnt = purez_dlnkap_dlnt + (metal_fraction - 1.0d0)*slope
+
+      else if ((metal_fraction.gt.0.12d0) .or. &
+           ((abs(metal_fraction - envelope_metal_fraction).gt. &
+           metal_fraction_match_tolerance) .and. .not.use_two_z_tables &
+           .and. .not.use_opal95_tables)) then
+!        JCZ 211125 changed to 10^7 K in message to reflect above
+!        change in logic.
+         write(short_file_unit,*) ' Z>0.12 T < 10^7 K', &
+              ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z', &
+              ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=', &
+              metal_fraction, envelope_metal_fraction, log10_temperature
+         stop
+
+!     NOT HELIUM BURNING REGION (HB EVOLUTION) OR L2Z=T AND
+!     Z STILL NOT TOO LARGE IN CORE (<.15) SO CAN USE
+!     SECOND Z TABLE RATHER THAN PURE Z TABLE
+
+      else if (use_opal95_tables) then
+         call getopal95(log10_density, log10_temperature, &
+              hydrogen_fraction, metal_fraction, opacity, log10_opacity, &
+              dlnkap_dlnrho, dlnkap_dlnt)
+      else if (use_opal92_tables) then
+         call yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
+              opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+         if (use_two_z_tables) then
+            call yllo3d2(log10_density, log10_temperature, &
+                 hydrogen_fraction, opacity_2, log10_opacity_2, &
+                 dlnkap_dlnrho_2, dlnkap_dlnt_2)
+            slope = (log10_opacity - log10_opacity_2) / &
+                 (opal_table_z1 - opal_table_z2)
+            log10_opacity = log10_opacity_2 + &
+                 (metal_fraction - opal_table_z2)*slope
+            opacity = 10.0d0**log10_opacity
+            slope = (dlnkap_dlnrho - dlnkap_dlnrho_2) / &
+                 (opal_table_z1 - opal_table_z2)
+            dlnkap_dlnrho = dlnkap_dlnrho_2 + &
+                 (metal_fraction - opal_table_z2)*slope
+            slope = (dlnkap_dlnt - dlnkap_dlnt_2) / &
+                 (opal_table_z1 - opal_table_z2)
+            dlnkap_dlnt = dlnkap_dlnt_2 + &
+                 (metal_fraction - opal_table_z2)*slope
+         end if
+      else if (use_laol89_tables) then
+         call gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
+              opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+         if (use_two_z_tables) then
+            call gtlaol2(log10_density, log10_temperature, &
+                 hydrogen_fraction, opacity_2, log10_opacity_2, &
+                 dlnkap_dlnrho_2, dlnkap_dlnt_2)
+            slope = (log10_opacity - log10_opacity_2) / &
+                 (laol_table_z1 - laol_table_z2)
+            log10_opacity = log10_opacity_2 + &
+                 (metal_fraction - laol_table_z2)*slope
+            opacity = 10.0d0**log10_opacity
+            slope = (dlnkap_dlnrho - dlnkap_dlnrho_2) / &
+                 (laol_table_z1 - laol_table_z2)
+            dlnkap_dlnrho = dlnkap_dlnrho_2 + &
+                 (metal_fraction - laol_table_z2)*slope
+            slope = (dlnkap_dlnt - dlnkap_dlnt_2) / &
+                 (laol_table_z1 - laol_table_z2)
+            dlnkap_dlnt = dlnkap_dlnt_2 + &
+                 (metal_fraction - laol_table_z2)*slope
+         end if
+!     mhp 7/12 insert final trap - no opacity computed
+!     should not be able to get here.
+      else
+         write(short_file_unit,*) 'NO OPACITY TABLE CHOSEN', &
+              ' RUN STOPPED. X Z TL=', hydrogen_fraction, metal_fraction, &
+              log10_temperature
+         stop
+      end if
+
+ 1000 continue
+!     DO A RAMP BETWEEN SURFACE AND INTERIOR OPACITY
+
+      if (got_atmosphere_opacity .and. &
+           log10_temperature.le.molecular_opacity_logt_max) then
+         if (log10_temperature.ge.molecular_opacity_logt_min) then
+            ramp_weight = (log10_temperature - molecular_opacity_logt_min) / &
+                 (molecular_opacity_logt_max - molecular_opacity_logt_min)
+            opacity = ramp_weight*opacity + (1.0d0 - ramp_weight)*atm_opacity
+            log10_opacity = dlog10(opacity)
+            dlnkap_dlnrho = ramp_weight*dlnkap_dlnrho + &
+                 (1.0d0 - ramp_weight)*atm_dlnkap_dlnrho
+            dlnkap_dlnt = ramp_weight*dlnkap_dlnt + &
+                 (1.0d0 - ramp_weight)*atm_dlnkap_dlnt
+         else
+            opacity = atm_opacity
+            log10_opacity = atm_log10_opacity
+            dlnkap_dlnrho = atm_dlnkap_dlnrho
+            dlnkap_dlnt = atm_dlnkap_dlnt
+         end if
+      end if
+
+!     DO CONDUCTIVE OPACITY CORRECTION
+      if (use_conductive_opacity) then
+!        Get Potekhin conductive opacity
+         call condopacpint(log10_density, log10_temperature, &
+              hydrogen_fraction, metal_fraction, conductive_opacity, &
+              conductive_log10_opacity, conductive_dlnkap_dlnrho, &
+              conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity)
+      else
+         got_conductive_opacity = .false.
+      end if
+
+      if (.not.got_conductive_opacity) then
+!        If we get here we have no Potekhin opacity, so we
+!        try for Hubbard Lampe
+         if (log10_temperature.lt.4.2d0) then
+            return
+         else if (log10_density.lt.(2.0d0*log10_temperature - 13.0d0)) then
+            return
+         else
+!           Do Hubbard Lampe conductive opacity calculation
+            log10_conductive_opacity = &
+                 dlog10(1.0d0 - 0.6d0*hydrogen_fraction) - 14.6196d0 - &
+                 (3.5853d0 + 0.1386d0*log10_density)*log10_density + &
+                 (5.1324d0 - 0.3219d0*log10_temperature)*log10_temperature + &
+                 0.3901d0*log10_density*log10_temperature
+            conductive_opacity = 10.0d0**log10_conductive_opacity
+            conductive_dlnkap_dlnrho = 0.3901d0*log10_temperature - &
+                 0.2772d0*log10_density - 3.5853d0
+            conductive_dlnkap_dlnt = 0.3901d0*log10_density - &
+                 0.6438d0*log10_temperature + 5.1324d0
+         end if
+      end if
+
+      radiative_opacity = opacity   ! Save the radiative opacity stuff
+      radiative_dlnkap_dlnrho = dlnkap_dlnrho
+      radiative_dlnkap_dlnt = dlnkap_dlnt
+!     Add the opacities appropriately
+      opacity = radiative_opacity*conductive_opacity / &
+           (radiative_opacity + conductive_opacity)  ! e.g. 1/O = 1/OX + 1/OC
+      log10_opacity = dlog10(opacity)
+      dlnkap_dlnrho = (radiative_dlnkap_dlnrho + conductive_dlnkap_dlnrho - &
+           (radiative_opacity*radiative_dlnkap_dlnrho + &
+           conductive_opacity*conductive_dlnkap_dlnrho) / &
+           (radiative_opacity + conductive_opacity))
+      dlnkap_dlnt = (radiative_dlnkap_dlnt + conductive_dlnkap_dlnt - &
+           (radiative_opacity*radiative_dlnkap_dlnt + &
+           conductive_opacity*conductive_dlnkap_dlnt) / &
+           (radiative_opacity + conductive_opacity))
+
+      return
+end subroutine getopac

@@ -37,7 +37,10 @@ NAME = yrec
 PREFIX ?= /usr/local/bin
 
 # Compose list of all object files to produce.
-OBJS := $(patsubst %.f,%.o,$(wildcard *.f))
+# Free-form modern Fortran files (.f90) are being introduced incrementally
+# as part of the readability refactor, alongside the original fixed-form
+# .f files.
+OBJS := $(patsubst %.f,%.o,$(wildcard *.f)) $(patsubst %.f90,%.o,$(wildcard *.f90))
 
 # Flags for GNU Fortran (gfortran)
 GNU_BASE_FFLAGS = -ffixed-line-length-132 -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'"
@@ -97,6 +100,10 @@ else
   REPO_HASH=unknown
 endif
 
+# Explicit rule for free-form modern Fortran sources (.f90); GNU Make's
+# built-in implicit rules don't reliably cover this suffix.
+%.o: %.f90
+	$(FC) $(FFLAGS) -c $< -o $@
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
