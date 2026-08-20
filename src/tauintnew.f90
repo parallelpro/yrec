@@ -1,0 +1,347 @@
+!----------------------------------------------------------------------
+! tauintnew
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original tauintnew.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! G Somers 3/17, IMPLEMENTING NEW TAUCZ METHOD.
+! THE METHOD WORKS AS FOLLOWS. SEARCH FROM THE CENTER OF THE STAR UP UNTIL YOU
+! FIND THE BASE OF THE SURFACE CONVECTION ZONE. THEN SEARCH FROM THE SURFACE
+! DOWN UNTIL YOU FIND THE SAME. IF BOTH DIRECTIONS GIVE SAME ANSWER, THEN
+! SURFACE CONVECTION ZONE IS UNIQUE, AND THE OLD TOP-DOWN SINKLINE METHOD CAN
+! BE EMPLOYED. IF THEY ARE DIFFERENT, THEN MULTIPLE SURFACE CONVECTION CELLS
+! EXIST. IN THIS CASE, DETERMINE THE CROSSING TIME OF THE LOWEST CONVECTION
+! CELL IN THE ENVELOPE.
+!
+! IMAX: BASE OF THE MAIN INTERNAL CONVECTION ZONE.
+! JMAX: BASE OF THE UPPER-MOST CONVECTION ZONE.
+! RBCZ: RADIUS AT WHICH THE BCZ EXISTS
+! TAUCZ: OVERTURN TIMESCALE
+subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
+     log10_pressure, log10_density, local_gravity, num_points, &
+     num_interior_points, convective_velocity, radiative_gradient, &
+     adiabatic_gradient, radius_at_bcz)
+      implicit none
+      integer, parameter :: json=5000
+
+      double precision, intent(in) :: shell_mass(json)
+      logical, intent(in) :: convective_flag(json)
+      double precision, intent(inout) :: log10_radius(json), &
+           log10_pressure(json), log10_density(json), local_gravity(json)
+      integer, intent(in) :: num_points, num_interior_points
+      double precision, intent(in) :: convective_velocity(json)
+      double precision, intent(in) :: radiative_gradient(json), &
+           adiabatic_gradient(json)
+      double precision, intent(out) :: radius_at_bcz
+
+! common/comp/: not used in this file. Naming matches getopac.f90.
+      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
+           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
+      common/comp/envelope_hydrogen_fraction, envelope_metal_fraction, &
+           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
+! common/deuter/: not used in this file. Naming matches mix.f90.
+      double precision :: deuterium_burning_rate(json), &
+           deuterium_burning_rate_start(json), accreted_mass_fraction
+      integer :: jcz
+      common/deuter/deuterium_burning_rate, deuterium_burning_rate_start, &
+           accreted_mass_fraction, jcz
+! common/ovrtrn/: only convective_turnover_timescale is set here.
+! Naming matches mixcz.f90.
+      logical :: use_new_turnover_timescale, calc_envelope_flag
+      double precision :: convective_turnover_timescale, &
+           convective_turnover_timescale_old, pphot, pphot0, fracstep
+      common/ovrtrn/use_new_turnover_timescale, calc_envelope_flag, &
+           convective_turnover_timescale, convective_turnover_timescale_old, &
+           pphot, pphot0, fracstep
+! common/rot/: not used in this file. Naming matches mixcz.f90.
+      double precision :: wnew, walpcz, acfpft
+      integer :: itfp1, itfp2
+      logical :: rotation_active, instability_transport_active, lwnew
+      common/rot/wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
+           instability_transport_active, lwnew
+! common/const2/: only cgl is used here (implicitly, via already-
+! computed local_gravity -- HG is never recomputed in this file).
+! Naming matches eqstat2.f90.
+      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
+           csig, csigl, cgl, cmkh, cmkhn
+      common/const2/gas_constant, radiation_constant_over_3, ca3l, csig, &
+           csigl, cgl, cmkh, cmkhn
+! common/const/: only solar_radius_cgs is used here. Naming matches
+! wrtout.f90.
+      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
+           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
+           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
+      common/const/solar_luminosity_cgs, log10_solar_luminosity, &
+           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
+           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
+! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
+      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+      common/const1/ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+! common/jtest/: not used in this file. Naming is local to this batch.
+      integer :: imax1_placeholder, imax2_placeholder
+      logical :: ljvs_placeholder
+      common/jtest/imax1_placeholder, imax2_placeholder, ljvs_placeholder
+! Needs access to this common block: grants knowledge of envellope
+! KC 2025-05-30 reordered common block elements
+! JvS 08/25 Updated with new elements
+! common/envstruct/: not used in this file. Naming is local to this
+! batch (matches tauint.f90).
+      double precision :: env_log10_pressure(json), env_log10_temperature(json), &
+           env_log10_mass(json), env_log10_density(json), env_log10_radius(json), &
+           env_hydrogen_fraction(json), env_metal_fraction(json)
+      logical :: env_convective_flag(json)
+      double precision :: env_gradients(3,json), env_convective_velocity(json), &
+           env_beta(json)
+      double precision :: env_gamma1(json), env_specific_heat_cp(json), &
+           env_ion_fraction(3,json)
+      double precision :: env_opacity(json), env_luminosity(json), &
+           env_dlnrho_dlnt(json)
+      integer :: num_env_points
+      common/envstruct/env_log10_pressure, env_log10_temperature, &
+           env_log10_mass, env_log10_density, env_log10_radius, &
+           env_hydrogen_fraction, env_metal_fraction, env_convective_flag, &
+           env_gradients, env_convective_velocity, env_beta, &
+           env_gamma1, env_specific_heat_cp, env_ion_fraction, &
+           env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
+
+      save
+
+! --- locals ---
+! G Somers; Adding vectors for cubic spline int.
+      double precision :: spline_x_delta(4), spline_x_radius(4), &
+           spline_y_radius(4), spline_y_velocity(4), spline_y_pscale(4), &
+           spline_deriv(4)
+      logical :: fully_convective_flag, surface_cz_deep_enough
+      integer :: i, j, k, kk, search_start_index
+      logical :: in_radiative_zone
+      integer :: core_cz_top_index, cz_base_index, upper_cz_base_index, &
+           index_gap, cz_top_index
+      double precision :: mass_at_cz_top, mass_at_cz_bottom
+      double precision :: dd2, dd1, interp_fraction
+      double precision :: pressure_scale_height2, radius_test2, val_test
+      double precision :: pressure_scale_height1, radius_test1
+      double precision :: pressure_scale_height, convective_velocity_bcz
+      double precision :: log10_radius_interp, radius_top_cz, cz_width, &
+           radius_test
+
+! DETERMINE EXTENT OF SURFACE CONVECTION ZONE.
+      fully_convective_flag = .false.
+! FIND THE TOP OF THE MAIN INTERNAL CONVECTION ZONE.
+      search_start_index = 1
+   50 in_radiative_zone = .true.
+      if (convective_flag(search_start_index)) in_radiative_zone = .false.
+      do 60 i = search_start_index,num_points,1
+         if (.not.in_radiative_zone.and..not.convective_flag(i)) then
+            core_cz_top_index = i-1
+            in_radiative_zone = .true.
+         endif
+         if (in_radiative_zone.and.convective_flag(i)) goto 70
+   60 continue
+! IF THE CODE GETS HERE, EITHER THE STAR IS FULLY CONVECTIVE, OR
+! HAS A COMPLETELY RADIATIVE ENVLOPE, MAYBE WITH A CONVECTIVE CORE.
+      if (in_radiative_zone) then ! RADIATIVE ENVELOPE
+         fully_convective_flag = .false.
+         surface_cz_deep_enough = .false.
+         cz_base_index = num_points
+         upper_cz_base_index = num_points
+         core_cz_top_index = num_points
+         goto 100
+      else ! FULLY CONVECTIVE
+         fully_convective_flag = .true.
+         surface_cz_deep_enough = .true.
+         i = 1
+         j = 0
+         core_cz_top_index = 1
+       goto 90
+      endif
+   70 continue
+! FIND THE BASE OF THE UPPER-MOST CONVECTION ZONE
+! JvS 02/2026: ADDED LCZ(J+1) TO TRAP OUT CASES WHERE THE LAST (FEW) POINT(S) IN
+! THE MODEL IS(ARE) ALREADY RADIATIVE
+      do 80 j = num_points-1,1,-1
+         if (convective_flag(j+1) .and. .not.convective_flag(j)) goto 90
+   80 continue
+   90 cz_base_index = i
+      upper_cz_base_index = j + 1
+      index_gap = upper_cz_base_index-cz_base_index
+! LOCATING THE CORRECT CZ INCURES VARIOUS PATHOLOGIES. TRAP THEM OUT.
+!
+! ENSURE THIS CZ IS SUFFICIENTLY FAR FROM THE CONVECTIVE CORE. IN SOME CASES
+! THERE ARE A FEW SHELLS RIGHT ABOVE THE CORE THAT ARE CONVECTIVE. SKIP THESE.
+! KC 2025-05-30 ADDED IF CHECK TO AVOID RUNTIME ERROR.
+      if (cz_base_index .gt. 0 .and. core_cz_top_index .gt. 0) then
+         if (num_points.ne.num_interior_points .and. &
+              log10_pressure(core_cz_top_index)-log10_pressure(cz_base_index).lt.1) then
+            search_start_index = cz_base_index+1
+            goto 50
+         endif
+      endif
+! ENSURE THIS CZ IS AT LEAST 3 SHELLS THICK. IF NOT, WE ARE LIKELY SNAGGED
+! ON A SINGLE SHELL CONV ZONE DEEP IN THE INTERIOR. RECOMMENSE SEARCH FROM
+! ABOVE THIS SHELL.
+      if (.not.(convective_flag(cz_base_index).and.convective_flag(cz_base_index+1) &
+           .and.convective_flag(cz_base_index+2))) then
+         if (.not.convective_flag(cz_base_index+1)) then
+            search_start_index = cz_base_index+1
+         else
+            search_start_index = cz_base_index+2
+         endif
+         goto 50
+      endif
+! IN THE CASE WHERE ONLY THE INTERIOR MODEL IS CONSIDERED, USE JMAX.
+      if (index_gap.ne.0.and.num_points.eq.num_interior_points) then
+         cz_base_index = upper_cz_base_index
+         index_gap = 0
+      endif
+!  HSTOP IS THE MASS AT THE TOP OF THE C.Z.
+!  HSBOT IS THE MASS AT THE BOTTOM OF THE C.Z.
+      mass_at_cz_top = shell_mass(num_points)
+      if (upper_cz_base_index.gt.1) then
+         mass_at_cz_bottom = 0.5d0*(shell_mass(upper_cz_base_index)+shell_mass(upper_cz_base_index-1))
+      else
+         mass_at_cz_bottom = 0.0d0
+      endif
+!  LCZSUR=T IF A SURFACE C.Z.DEEP ENOUGH FOR ANGULAR MOMENTUM LOSS EXISTS
+      if ((mass_at_cz_top-mass_at_cz_bottom)/solar_mass_cgs.gt.0.0d0) then
+         surface_cz_deep_enough = .true.
+      else
+         surface_cz_deep_enough= .false.
+      endif
+  100 continue
+
+! CALCULATE TAUCZ TOP DOWN FOR FULLY AND PARTIALLY CONVECTIVE. FOR A FULLY
+! RADIATIVE ENVELOPE, SET TAUCZ = 0.0.
+      if (surface_cz_deep_enough) then
+! INFER RBCZ, THE RADIUS AT THE BASE OF THE SURFACE CZ.
+         if (fully_convective_flag) then
+!           SET TO CENTER OF STAR, I.E. A VERY SMALL NUMBER
+!           IN CGS UNITS, RELATIVE TO THE RADII OF STARS.
+            radius_at_bcz = 1.
+         else
+!           PINPOINT RCZ LINEARLY
+            dd2 = radiative_gradient(cz_base_index-1)-adiabatic_gradient(cz_base_index-1)
+            dd1 = radiative_gradient(cz_base_index)-adiabatic_gradient(cz_base_index)
+            interp_fraction = dd2/(dd2-dd1)
+            radius_at_bcz = log10_radius(cz_base_index-1)+interp_fraction* &
+                 (log10_radius(cz_base_index)-log10_radius(cz_base_index-1))
+         endif
+         radius_at_bcz = exp(ln10*radius_at_bcz)
+!        IF THERE ARE MULTIPLE CONVECTION CELLS IN THE PREDOMINATELY
+!        RADIATIVE ENVELOPE, USE AVERAGING METHOD.
+         if (index_gap.ne.0) goto 110
+! CALCULATE HP
+         pressure_scale_height2 = exp(ln10*(log10_pressure(cz_base_index)- &
+              log10_density(cz_base_index)))/local_gravity(cz_base_index)
+         radius_test2 = exp(ln10*log10_radius(cz_base_index))-radius_at_bcz
+         val_test = radius_test2 - pressure_scale_height2
+         if (val_test.gt.0.0) then
+! INNER MOST POINT PSCA IS BELOW BCZ
+            k = cz_base_index
+            convective_velocity_bcz = convective_velocity(cz_base_index)
+            pressure_scale_height = pressure_scale_height2
+            convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
+         else
+            do k = cz_base_index+1,num_points-1,1
+               pressure_scale_height1 = pressure_scale_height2
+               radius_test1 = radius_test2
+               pressure_scale_height2 = exp(ln10*(log10_pressure(k)-log10_density(k)))/local_gravity(k)
+               radius_test2 = exp(ln10*log10_radius(k))-radius_at_bcz
+               val_test = radius_test2 - pressure_scale_height2
+!              FIND LOCATION WHERE HP = R
+               if (val_test.gt.0.0) then
+!                 IF K = IMAX+1, MOVE AWAY FROM EDGE CASE.
+                  kk = k
+                  if (k.eq.cz_base_index+1) kk = k+1
+!                 FIND V WITH CUBIC SPLINE
+                  spline_x_delta(1) = exp(ln10*log10_radius(kk-2))-radius_at_bcz- &
+                            exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
+                  spline_x_delta(2) = exp(ln10*log10_radius(kk-1))-radius_at_bcz- &
+                            exp(ln10*(log10_pressure(kk-1)-log10_density(kk-1)))/local_gravity(kk-1)
+                  spline_x_delta(3) = exp(ln10*log10_radius(kk))-radius_at_bcz- &
+                            exp(ln10*(log10_pressure(kk)-log10_density(kk)))/local_gravity(kk)
+                  spline_x_delta(4) = exp(ln10*log10_radius(kk+1))-radius_at_bcz- &
+                            exp(ln10*(log10_pressure(kk+1)-log10_density(kk+1)))/local_gravity(kk+1)
+                  spline_y_velocity(1) = convective_velocity(kk-2)
+                  spline_y_velocity(2) = convective_velocity(kk-1)
+                  spline_y_velocity(3) = convective_velocity(kk)
+                  spline_y_velocity(4) = convective_velocity(kk+1)
+                  call kspline(spline_x_delta,spline_y_velocity,spline_deriv)
+                  call ksplint(spline_x_delta,spline_y_velocity,spline_deriv,0.0d0,convective_velocity_bcz)
+                  spline_y_pscale(1) = exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
+                  spline_y_pscale(2) = exp(ln10*(log10_pressure(kk-1)-log10_density(kk-1)))/local_gravity(kk-1)
+                  spline_y_pscale(3) = exp(ln10*(log10_pressure(kk)-log10_density(kk)))/local_gravity(kk)
+                  spline_y_pscale(4) = exp(ln10*(log10_pressure(kk+1)-log10_density(kk+1)))/local_gravity(kk+1)
+                  call kspline(spline_x_delta,spline_y_pscale,spline_deriv)
+                  call ksplint(spline_x_delta,spline_y_pscale,spline_deriv,0.0d0,pressure_scale_height)
+                  spline_y_radius(1) = log10_radius(kk-2)
+                  spline_y_radius(2) = log10_radius(kk-1)
+                  spline_y_radius(3) = log10_radius(kk)
+                  spline_y_radius(4) = log10_radius(kk+1)
+                  call kspline(spline_x_delta,spline_y_radius,spline_deriv)
+                  call ksplint(spline_x_delta,spline_y_radius,spline_deriv,0.0d0,log10_radius_interp)
+! DEFINE TAUCZ
+                  convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
+                  goto 140
+               endif
+            end do
+! KC 2025-05-31 MOVED ENDIF HERE TO AVOID BLOCK MISMATCH.
+         endif
+  110       continue
+! IF CODE GETS HERE, THEN 1 PSCA ABOVE THE BCZ IS OUTSIDE OF THE STAR,
+! OR MULTIPLE CONVECTION CELLS RESIDE WITHIN THE RADIATIVE ENVELOPE.
+! IN THIS CASE, EVALUATE CVEL AT CENTER OF BOTTOM CZ. FIRST, FIND UPPER EDGE.
+            do k = cz_base_index,num_points-1,1
+               if (.not.convective_flag(k))goto 120
+            enddo
+  120       cz_top_index = k-1
+! PINPOINT TOP OF CZ LINEARLY
+            dd2 = radiative_gradient(cz_top_index)-adiabatic_gradient(cz_top_index)
+            dd1 = radiative_gradient(cz_top_index+1)-adiabatic_gradient(cz_top_index+1)
+            interp_fraction = dd2/(dd2-dd1)
+            radius_top_cz = log10_radius(cz_top_index)+interp_fraction*(log10_radius(cz_top_index+1)-log10_radius(cz_top_index))
+            radius_top_cz = exp(ln10*radius_top_cz)
+! CALCULATE WIDTH OF THE CONVECTION CELL
+            cz_width = radius_top_cz - radius_at_bcz
+! FIND INDICES SURROUNDING LINEAR CENTER OF CZ
+            radius_test = log10(radius_at_bcz + 0.5*cz_width)
+            do k = cz_base_index,cz_top_index+1,1
+               if (log10_radius(k).gt.radius_test) goto 130
+            enddo
+  130       continue
+            radius_test = exp(ln10*radius_test)
+!           IF K = IMAX+1, MOVE AWAY FROM EDGE CASE.
+            kk = k
+            if (k.eq.cz_base_index+1) kk = k+1
+! CALCULATE CVEL AT THAT CENTRAL LOCATION
+            spline_x_radius(1) = exp(ln10*log10_radius(kk-2))
+            spline_x_radius(2) = exp(ln10*log10_radius(kk-1))
+            spline_x_radius(3) = exp(ln10*log10_radius(kk))
+            spline_x_radius(4) = exp(ln10*log10_radius(kk+1))
+            spline_y_velocity(1) = convective_velocity(kk-2)
+            spline_y_velocity(2) = convective_velocity(kk-1)
+            spline_y_velocity(3) = convective_velocity(kk)
+            spline_y_velocity(4) = convective_velocity(kk+1)
+            call kspline(spline_x_radius,spline_y_velocity,spline_deriv)
+            call ksplint(spline_x_radius,spline_y_velocity,spline_deriv,radius_test,convective_velocity_bcz)
+! DEFINE TAUCZ
+            convective_turnover_timescale = cz_width/convective_velocity_bcz
+  140       continue
+! KC 2025-05-31 MOVED ENDIF ABOVE TO AVOID BLOCK MISMATCH.
+!          ENDIF
+!        CONVERT CORE RADIUS INTO SOLAR UNITS
+         radius_at_bcz = radius_at_bcz/solar_radius_cgs
+      else
+         convective_turnover_timescale = 0.0d0
+         radius_at_bcz = 0.0
+      endif
+!     ENSURE THAT TAUCZ WAS NOT ACCIDENTALLY CALCULATED
+!     DEEP IN THE STELLAR INTERIOR. IF YES, REDO CALCULATION.
+      if (convective_turnover_timescale.gt.1.0e20) then
+         search_start_index = cz_base_index + 1
+       goto 50
+      endif
+      return
+end subroutine tauintnew
