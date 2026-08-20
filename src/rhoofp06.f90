@@ -1,0 +1,195 @@
+!----------------------------------------------------------------------
+! rhoofp06
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original rhoofp06.f; only variable names, source form, and comment
+! style were updated.
+!
+! OPAL 2006 EOS analogue of rhoofp01.f90 (see there and rhoofp.f90
+! for the general description), with three preserved differences:
+! (1) pressure_max/pressure_min here do NOT add a radiation term
+! (rhoofp.f90/rhoofp01.f90 both add rad_flag*4/3*rat*t6**4); (2) the
+! trial esac06.f90 calls below pass a hardcoded 0 for the radiation
+! flag (not rad_flag) -- only the very first, table-priming call
+! passes rad_flag through; (3) the convergence tolerance was loosened
+! from 0.5d-7 to 1.0d-5 (see the dated comment below) to stop
+! eos_output(5) from growing without bound and crashing some model
+! runs.
+double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
+     pressure_e12, rad_flag)
+
+      implicit none
+
+      double precision, intent(in) :: hydrogen_fraction, t6_temperature, &
+           pressure_e12
+      integer, intent(in) :: rad_flag
+
+      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
+
+! common/lreadco/: shared (by COMMON block name) with esac.f90/
+! esac01.f90/esac06.f90/rhoofp.f90/rhoofp01.f90 -- see esac.f90.
+      integer :: table_loaded_flag
+      common/lreadco/ table_loaded_flag
+
+! common/aeos06/: see esac06.f90 for the full description.
+      double precision :: eos_table(mx,mv,nt,nr), t6_list(nr,nt), &
+           density_grid(nr), t6_grid(nt), x_interp_result(nt,nr), &
+           x_interp_result_alt(nt,nr), x_grid_spacing_inv(mx), &
+           t6_grid_spacing_inv(nt), density_grid_spacing_inv(nr)
+      integer :: x_loop_index, x_index_lo
+      double precision :: x_grid(mx)
+      common/aeos06/ eos_table, t6_list, density_grid, t6_grid, &
+           x_interp_result, x_interp_result_alt, x_grid_spacing_inv, &
+           t6_grid_spacing_inv, density_grid_spacing_inv, x_loop_index, &
+           x_index_lo, x_grid
+
+! common/beos06/: density_index_edge (original nra) is used here; the
+! rest are placeholders.
+      double precision :: z_table(mx)
+      integer :: eos_index_inverse(10), eos_var_order(10), &
+           t6_index_lo(nr), density_index_edge(nt)
+      common/beos06/ z_table, eos_index_inverse, eos_var_order, &
+           t6_index_lo, density_index_edge
+
+! common/eeos06/: only eos_output(1) is used here.
+      double precision :: esact, eos_output(mv)
+      common/eeos06/ esact, eos_output
+
+      double precision :: rad_const_over_c
+! NOTE: no D-suffix in the original (rhoofp06.f) -- preserved
+! verbatim: parsed as a single-precision constant and then widened to
+! double precision, which is NOT bit-identical to the correctly-
+! rounded double value.
+      data rad_const_over_c/1.8914785e-3/
+!--------------------------------------------------------------------
+
+      save
+
+! --- locals ---
+      double precision :: rat, radiation_pressure, pressure_no_rad
+      double precision :: hydrogen_fraction_dbg, t6_dbg, density_dbg
+      integer :: ideriv_dbg
+      integer :: lo_idx, hi_idx, mid_idx
+      integer :: x_bisect_idx, t6_bisect_idx
+      double precision :: pressure_max, pressure_min
+      double precision :: density_trial1, density_trial2, density_trial3
+      double precision :: pressure_trial1, pressure_trial2, pressure_trial3
+      integer :: refine_count
+
+      rat = rad_const_over_c
+      radiation_pressure = 0.0d0
+      if (rad_flag.eq.1) radiation_pressure = 4.0d0/3.0d0*rat*t6_temperature**4   ! Mb
+      pressure_no_rad = pressure_e12 - radiation_pressure
+
+      if (table_loaded_flag.ne.12345678) then
+         hydrogen_fraction_dbg = 0.5d0
+         t6_dbg = 1.0d0
+         density_dbg = 0.001d0
+         ideriv_dbg = 1
+         call esac06(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
+              rad_flag, *999)
+      end if
+
+      lo_idx = 2
+      hi_idx = mx
+    8 if (hi_idx-lo_idx.gt.1) then
+         mid_idx = (hi_idx+lo_idx)/2
+         if (hydrogen_fraction.le.x_grid(mid_idx)+1.0d-7) then
+            hi_idx = mid_idx
+         else
+            lo_idx = mid_idx
+         end if
+         go to 8
+      end if
+      x_bisect_idx = lo_idx
+
+      lo_idx = nt
+      hi_idx = 2
+   11 if (lo_idx-hi_idx.gt.1) then
+         mid_idx = (hi_idx+lo_idx)/2
+         if (t6_temperature.eq.t6_list(1,mid_idx)) then
+            lo_idx = mid_idx
+            go to 14
+         end if
+         if (t6_temperature.le.t6_list(1,mid_idx)) then
+            hi_idx = mid_idx
+         else
+            lo_idx = mid_idx
+         end if
+         go to 11
+      end if
+   14 t6_bisect_idx = lo_idx
+
+      pressure_max = eos_table(x_bisect_idx,1,t6_bisect_idx, &
+           density_index_edge(t6_bisect_idx))*t6_temperature* &
+           density_grid(density_index_edge(t6_bisect_idx))
+      pressure_min = eos_table(x_bisect_idx,1,t6_bisect_idx,1)*t6_temperature* &
+           density_grid(1)
+      if ((pressure_no_rad.gt.1.25d0*pressure_max) .or. &
+           (pressure_no_rad.lt.pressure_min)) then
+!      write (ISHORT,'(" The requested pressure-temperature not in",
+!     x   " the OPAL 2006 EOS table")')
+!     stop
+!      write (ISHORT,'("pnr, pmax,pmin=",3e14.4)') pnr,pmax,pmin
+         go to 999     !RHOOFP06 error exit
+      end if
+
+      density_trial1 = density_grid(density_index_edge(t6_bisect_idx))* &
+           pressure_no_rad/pressure_max
+      call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, *999)
+      pressure_trial1 = eos_output(1)
+      if (pressure_trial1.gt.pressure_no_rad) then
+         pressure_trial2 = pressure_trial1
+         density_trial2 = density_trial1
+         density_trial1 = 0.2d0*density_trial1
+         if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
+         call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, *999)
+         pressure_trial1 = eos_output(1)
+      else
+         density_trial2 = 5.0d0*density_trial1
+!          if(rhog2 .gt. rho(klo)) rhog2=rho(klo)  ! Corrected below   llp  8/19/08
+         if (density_trial2.gt.density_grid(density_index_edge(t6_bisect_idx))) &
+              density_trial2 = density_grid(density_index_edge(t6_bisect_idx)) ! Had wrong pointer, see rhog1= ten lines up
+         call esac06(hydrogen_fraction, t6_temperature, density_trial2, 1, 0, *999)
+         pressure_trial2 = eos_output(1)
+      end if
+
+      refine_count = 0
+    1 continue
+      refine_count = refine_count + 1
+      density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
+           (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)  ! KC 2025-05-31
+      call esac06(hydrogen_fraction, t6_temperature, density_trial3, 1, 0, *999)
+      pressure_trial3 = eos_output(1)
+! Changed the comparison below to use the commented-out value 1.D-5
+! found here to prevent array value eos(5) from growing without bound
+! and crashing the program during certain model runs. - MR 2025-10-10
+      if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.1.0d-5) then
+!      IF (DABS((P3-PNR)/PNR) .LT. 0.5D-7) THEN
+         rhoofp06 = density_trial3
+         return
+      end if
+      if (pressure_trial3.gt.pressure_no_rad) then
+         density_trial2 = density_trial3
+         pressure_trial2 = pressure_trial3
+         if (refine_count.lt.11) go to 1
+!        write (ISHORT,'("Rhoofp06: No convergence after 10 tries")')
+         go to 999     !RHOOFP06 error exit
+!        stop
+      else
+         density_trial1 = density_trial3
+         pressure_trial1 = pressure_trial3
+         if (refine_count.lt.11) go to 1
+!        write (ISHORT,'("RHOOFP06: No convergence after 10 tries")')
+         go to 999   ! RHOOFP06 error exit
+!        stop
+      end if
+
+  999 continue
+      rhoofp06 = -999.0d0
+!      WRITE(ISHORT,'("RHOOFP06: FAILED TO FIND RHO")')
+      return
+
+
+end function rhoofp06
