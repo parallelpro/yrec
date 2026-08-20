@@ -36,11 +36,11 @@ NAME = yrec
 # The default path into which the 'install' target will try to copy the executable.
 PREFIX ?= /usr/local/bin
 
-# Compose list of all object files to produce.
-# Free-form modern Fortran files (.f90) are being introduced incrementally
-# as part of the readability refactor, alongside the original fixed-form
-# .f files.
-OBJS := $(patsubst %.f,%.o,$(wildcard *.f)) $(patsubst %.f90,%.o,$(wildcard *.f90))
+# Compose list of all object files to produce. Sources are organized into
+# subdirectories by physics domain (eos/, kap/, rotation/, etc.) -- find
+# every .f90 file recursively and keep each .o alongside its source.
+SRCS := $(shell find . -name '*.f90' | sed 's|^\./||')
+OBJS := $(patsubst %.f90,%.o,$(SRCS))
 
 # Flags for GNU Fortran (gfortran)
 GNU_BASE_FFLAGS = -ffixed-line-length-132 -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'"
