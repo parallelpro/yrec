@@ -1,0 +1,998 @@
+!----------------------------------------------------------------------
+! wrtout
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original wrtout.f; only variable names, source form, and comment
+! style were updated.
+!
+! Writes the per-model summary block to the .short log file (global
+! properties, central conditions, energy generation, neutrino fluxes,
+! H-shell diagnostics), writes the one-line .track record, stores the
+! last converged model, and (every nprtmod models or when a store is
+! otherwise due) dispatches to putstore/wrtmod/wrtmil for the verbose
+! .store/.pmod/.penv/.patm output.
+subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
+     log_radius, log_mass, mass_coordinate, log_temperature, convective_flag, &
+     num_shells, model_number, age_gyr, timestep_yr, total_mass_msun, log_teff, &
+     log_luminosity_lsun, log_gravity, h_shell_present_flag, h_shell_begin_index, &
+     h_shell_mid_index, h_shell_end_index, core_cz_top_index, &
+     envelope_cz_bottom_index, luminosity_breakdown, trial_log_temperature, &
+     trial_log_luminosity, fit_point_pressure, fit_point_temperature, &
+     fit_point_radius, envelope_fit_coeffs, trial_sign_flag, log_total_mass, &
+     omega, punch_pending_flag, &
+!      * FP,FT,ETA2,R0,HJM,HI,SJTOT,SKEROT,HS2,NKK)  ! KC 2025-05-31
+     shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
+     specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
+     total_rotational_kinetic_energy, shell_mass_increment)
+      implicit none
+      integer, parameter :: json = 5000
+
+      double precision, intent(inout) :: composition(15,json), log_density(json), &
+           log_luminosity(json), log_pressure(json), log_radius(json), &
+           log_mass(json), mass_coordinate(json), log_temperature(json)
+      logical, intent(in) :: convective_flag(json)
+      integer, intent(in) :: num_shells, model_number
+      double precision, intent(in) :: age_gyr, timestep_yr, total_mass_msun, &
+           log_teff
+      double precision, intent(inout) :: log_luminosity_lsun
+      double precision, intent(out) :: log_gravity
+      logical, intent(in) :: h_shell_present_flag
+      integer, intent(in) :: h_shell_begin_index, h_shell_mid_index, &
+           h_shell_end_index, core_cz_top_index, envelope_cz_bottom_index
+      double precision, intent(inout) :: luminosity_breakdown(8)
+      double precision, intent(in) :: trial_log_temperature(3), &
+           trial_log_luminosity(3), fit_point_pressure(3), &
+           fit_point_temperature(3), fit_point_radius(3), &
+           envelope_fit_coeffs(9), trial_sign_flag, log_total_mass
+      double precision, intent(inout) :: omega(json)
+      logical, intent(inout) :: punch_pending_flag
+      double precision, intent(inout) :: shape_factor_fp(json), &
+           shape_factor_ft(json), rotation_eta2(json), radius_ratio_r0(json), &
+           specific_angular_momentum(json), shell_moment_of_inertia(json)
+      double precision, intent(in) :: total_angular_momentum, &
+           total_rotational_kinetic_energy, shell_mass_increment(json)
+
+! MHP 8/25 Fscomp file depreciated,unused variables removed
+!      CHARACTER*256 FLAST, FFIRST, FRUN, FSTAND, FFERMI,
+!     1    FDEBUG, FTRACK, FSHORT, FMILNE, FMODPT,
+!     2    FSTOR, FPMOD, FPENV, FPATM, FDYN, FISO,
+!     3    FLLDAT, FSNU, FSCOMP, FKUR,
+!     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
+! JVS 0712 for call to envint:
+!       REAL*8 DUM1(4),DUM2(3),DUM3(3),DUM4(3)
+! JVS 10/13 for recalculation of taucz
+!       REAL*8 DEL1(JSON), DEL2(JSON)
+! end JVS
+! common/luout/: only itrack/ishort/ilast are used here. Naming
+! matches getopac.f90.
+      integer :: ilast, idebug, itrack, ishort, imilne, imodpt, &
+           istor, iowr
+      common/luout/ ilast, idebug, itrack, ishort, imilne, &
+           imodpt, istor, iowr
+! common/lunum/: not used in this file; declared only to preserve
+! layout. Naming matches setkrz.f90.
+      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
+           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
+           dynamics_unit, laol_table_unit, neutrino_unit, &
+           composition_unit, kurucz_table_unit
+      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
+           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
+           dynamics_unit, laol_table_unit, neutrino_unit, &
+           composition_unit, kurucz_table_unit
+!      COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,
+!     1    FDEBUG, FTRACK, FSHORT, FMILNE, FMODPT,
+!     2    FSTOR, FPMOD, FPENV, FPATM, FDYN,
+!     3    FLLDAT, FSNU, FSCOMP, FKUR,
+!     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
+! common/cent/: central_log10_temperature/central_log10_pressure/
+! central_log10_density/envelope_mass/envelope_radius, all used here.
+! Naming matches wrtmonte.f90.
+      double precision :: central_log10_temperature, central_log10_pressure, &
+           central_log10_density, envelope_mass, envelope_radius
+      common/cent/ central_log10_temperature, central_log10_pressure, &
+           central_log10_density, envelope_mass, envelope_radius
+! common/track/: track_file_version (ITRVER), used here. Naming
+! matches wrthead.f90.
+      integer :: track_file_version
+      common/track/ track_file_version
+! common/ccout/: only lstore is used here. Naming matches ccoeft.f90.
+      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
+           lstch, lphhd
+      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
+           lscrib, lstch, lphhd
+! common/ccout1/: only nprtmod is used here. Naming matches wrtmil.f90.
+      integer :: npenv, nprtmod, print_point_interval, npoint
+      common/ccout1/ npenv, nprtmod, print_point_interval, npoint
+! common/ccout2/: only ltrack is used here. Naming matches meqos.f90.
+      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
+      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
+! common/comp/: only xnew/znew/stotal are used here. Naming matches
+! getopac.f90.
+      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
+           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
+      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
+           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
+! common/const/: only clsunl/crsunl are used here. Naming matches
+! vcirc.f90.
+      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
+           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
+           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
+      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
+           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
+           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
+! common/const1/: only ln10/c4pil/c4pi3l/cc13/cc23 are used here.
+! Naming matches eqburn.f90.
+      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+! common/const2/: only csigl/cgl are used here. Naming matches
+! meqos.f90.
+      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
+           csig, csigl, cgl, cmkh, cmkhn
+      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
+           csigl, cgl, cmkh, cmkhn
+! common/flag/: not used in this file. Naming matches mixcz.f90.
+      logical :: use_extended_composition
+      common/flag/ use_extended_composition
+! common/heflsh/: helium_flash_active (originally LKUTHE), used here.
+! Naming matches wrtlst.f90.
+      logical :: helium_flash_active
+      common/heflsh/ helium_flash_active
+! common/label/: not used in this file. Naming matches wrthead.f90.
+      double precision :: initial_envelope_x, initial_envelope_z
+      common/label/ initial_envelope_x, initial_envelope_z
+! common/rot/: only rotation_active is used here. Naming matches
+! momi.f90.
+      double precision :: wnew, walpcz, acfpft
+      integer :: itfp1, itfp2
+      logical :: rotation_active, instability_transport_active, lwnew
+      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
+           instability_transport_active, lwnew
+! common/scrtch/: only so/sdel(del_grad) are used here. Naming matches
+! microdiff_setup.f90.
+      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
+      logical :: locons(json)
+      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
+           svel(json), scp(json)
+      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
+           sfxion, svel, scp
+! DBG PULSE
+! common/pulse/: only pulsation_output_active is used here. Naming
+! matches wrtmod.f90.
+      double precision :: pulsation_mass_msun
+      logical :: pulsation_output_active
+      integer :: pulsation_file_version
+      common/pulse/ pulsation_mass_msun, pulsation_output_active, &
+           pulsation_file_version
+! common/mhd/: only use_mhd_eos is used here. Naming matches
+! mhdtbl.f90.
+      logical :: use_mhd_eos
+      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
+           unit_centre2, unit_centre3, unit_centre4, unit_centre5
+      common/mhd/use_mhd_eos,unit_zams_a,unit_zams_b,unit_zams_c,unit_centre1, &
+                 unit_centre2, unit_centre3, unit_centre4, unit_centre5
+! MHP 5/90 ADD COMMON BLOCK FOR GRAVITATIONAL SETTLING.
+! common/gravst/: not used in this file. Naming matches microdiff.f90.
+      double precision :: settling_tolerance
+      integer :: coulomb_log_choice, settling_num_iterations
+      logical :: diffuse_helium_active
+      common/gravst/ settling_tolerance, coulomb_log_choice, &
+           settling_num_iterations, diffuse_helium_active
+! MHP 7/91 ADD COMMON BLOCKS FOR SOLAR NEUTRINO I/O.
+! common/fluxes/: only neutrino_flux_total/cl37_snu_rate/ga71_snu_rate
+! are used here; neutrino_flux is an unused placeholder. Naming
+! matches wrtmonte.f90.
+      double precision :: neutrino_flux(10), neutrino_flux_total(10), &
+           cl37_snu_rate, ga71_snu_rate
+      common/fluxes/ neutrino_flux, neutrino_flux_total, cl37_snu_rate, &
+           ga71_snu_rate
+      integer :: niter4
+      logical :: lnews, lsnu
+      common/neweng/ niter4, lnews, lsnu
+! MHP 8/25 Removed character file names from common block
+! DBG 11/11/91
+! common/chrone/: only isochrone_output_active/isochrone_file_unit are
+! used here. Naming matches wrthead.f90.
+      logical :: lrwsh_placeholder, isochrone_output_active
+      integer :: isochrone_file_unit
+      common/chrone/ lrwsh_placeholder, isochrone_output_active, &
+           isochrone_file_unit
+! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
+! common/debhu/: only xxdy(=XXDH)/yydh/zzdh/zdh/ldh are used here.
+! Naming matches eqstat.f90/wrtlst.f90.
+      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
+           dhnue(18)
+      logical :: ldh
+      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
+! common/rotprt/: not used in this file. Naming is local to this
+! batch.
+      logical :: lprt0_placeholder
+      common/rotprt/ lprt0_placeholder
+! MHP 4/09 ADDED OPTION TO SCALE THE SATURATION RATE BY THE OVERTURN TIMESCALE
+! common/deuter/: not used in this file. Naming matches dburn.f90.
+      double precision :: deuterium_burning_rate(json), &
+           deuterium_burning_rate_start(json), accreted_mass_fraction
+      integer :: jcz
+      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
+           accreted_mass_fraction, jcz
+! JVS 01/11 ACOUSTIC DEPTH
+! KC 2025-05-30 reordered common block elements
+! COMMON/ACDPTH/TAUCZN,DELADJ(JSON),TAUHE, TNORM, TCZ, WHE, ICLCD,
+! common/acdpth/: normalized_acoustic_depth/acoustic_depth_to_cz/
+! acoustic_crossing_time/helium_zone_acoustic_depth/helium_zone_weight/
+! atmosphere_acoustic_depth/extra_last_model_unit/extra_last_model_active/
+! compute_acoustic_depth/acoustic_depth_output are used here (the
+! first six unlike in getopal95.f90, which leaves this whole block as
+! unused placeholders -- here they are actually written out in the
+! .track 1800 format, so real names are given instead; their precise
+! physical definitions are not confidently known beyond "acoustic
+! depth family of diagnostics", flagged accordingly). The remaining
+! members are unused placeholders preserving the shared storage
+! layout, matching getopal95.f90's naming for those slots.
+      double precision :: normalized_acoustic_depth, deladj_placeholder(json), &
+           helium_zone_acoustic_depth, acoustic_crossing_time, &
+           acoustic_depth_to_cz, helium_zone_weight
+      double precision :: acatmr_placeholder(json), acatmd_placeholder(json), &
+           acatmp_placeholder(json), acatmt_placeholder(json), &
+           atmosphere_acoustic_depth
+      double precision :: ageout_placeholder(5)
+      logical :: lclcd_placeholder
+      integer :: iclcd_placeholder, iacat_placeholder, extra_last_model_unit
+      logical :: extra_last_model_active, ljwrt_placeholder, &
+           compute_acoustic_depth, laoly_placeholder
+      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
+      logical :: acoustic_depth_output
+      common/acdpth/normalized_acoustic_depth,deladj_placeholder, &
+           helium_zone_acoustic_depth, acoustic_crossing_time, &
+           acoustic_depth_to_cz, helium_zone_weight, &
+           acatmr_placeholder, acatmd_placeholder, acatmp_placeholder, &
+           acatmt_placeholder, atmosphere_acoustic_depth, &
+           ageout_placeholder, lclcd_placeholder, iclcd_placeholder, &
+           iacat_placeholder, extra_last_model_unit, extra_last_model_active, &
+           ljwrt_placeholder, compute_acoustic_depth, laoly_placeholder, &
+           ijvs_placeholder, ijent_placeholder, ijdel_placeholder, &
+           acoustic_depth_output
+! JVS 08/13 IF THE CZ IS BEYOND THE FITTING POINT, STORE ITS LOCATION
+! common/envcz/: not used in this file. Naming is local to this batch.
+      double precision :: convection_zone_radius_placeholder, rint_placeholder
+      common/envcz/ convection_zone_radius_placeholder, rint_placeholder
+      double precision :: adiabatic_index_gamma1(json)
+      logical :: sound_speed_output_active
+      common/sound/ adiabatic_index_gamma1, sound_speed_output_active
+! G Somers 10/14, Add spot common block
+! common/spots/: not used in this file. Naming matches tpgrad.f90.
+      double precision :: spot_filling_factor, spot_temp_contrast
+      logical :: spot_depth_varies
+      common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
+      double precision :: es_circulation_velocity(json), &
+           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
+           secular_shear_velocity_prev(json), hle(json), &
+           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
+           mu_gradient_velocity(json)
+      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
+           secular_shear_velocity, secular_shear_velocity_prev, hle, &
+           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
+           mu_gradient_velocity
+      double precision :: rotational_energy_term(json)
+      common/roten/ rotational_energy_term
+! G Somers END
+
+! JVS END
+! JVS 10/11 Common block for He3+He3 luminosity
+! common/grab/: not used in this file. Naming is local to this batch.
+      double precision :: he3_luminosity_placeholder, he3_total_placeholder, &
+           he3_he3_rate_placeholder(json), he3_he4_rate_placeholder(json)
+      common/grab/ he3_luminosity_placeholder, he3_total_placeholder, &
+           he3_he3_rate_placeholder, he3_he4_rate_placeholder
+! JVS end
+! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
+! common/ovrtrn/: convective_turnover_timescale/
+! convective_turnover_timescale_old/pphot/pphot0 are used here. Naming
+! matches mixcz.f90.
+      logical :: use_new_turnover_timescale, calc_envelope_flag
+      double precision :: convective_turnover_timescale, &
+           convective_turnover_timescale_old, pphot, pphot0, fracstep
+      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
+           convective_turnover_timescale, convective_turnover_timescale_old, &
+           pphot, pphot0, fracstep
+
+      double precision :: fxion(3)
+      double precision :: clsnuf(8), gasnuf(8)
+! MHP 8/96 CROSS SECTIONS OF DIFFERENT NEUTRINOS TO THE CHLORINE
+! AND GALLIUM EXPERIMENTS; TAKEN FROM NEUTRINO ASTROPHYSICS,P.207.
+! note changes in cl37 cross sections (see bahcall and pinsonneault,
+! REV.MOD.PHYS., P.895)
+      data gasnuf/1.18D1,2.15D2,7.14D4,7.17D1,2.40D4,6.04D1, &
+                  1.137D2,1.139D2/
+      data clsnuf/0.0D0,1.6D1,4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0/
+
+      integer :: icheck
+      data icheck/0/
+      save
+
+! --- locals ---
+      logical :: time_scaling_disabled
+      double precision :: total_luminosity_sum, temp_value
+      integer :: i
+      double precision :: core_boundary_fx2, envelope_boundary_fx
+! core_boundary_log_radius/core_boundary_radius (CORERL/CORER) are
+! computed below but never read afterward anywhere in the original
+! wrtout.f -- dead code, preserved as such (not removed).
+      double precision :: core_boundary_log_radius, core_boundary_radius
+      double precision :: envelope_cz_log_radius, envelope_cz_radius
+      double precision :: core_mass, bolometric_magnitude, radius_log_surface
+      double precision :: pressure_linear, log_pressure_center, &
+           log_temperature_center, log_density_center, hydrogen_fraction_center, &
+           metal_fraction_center
+! temperature_linear_center/density_linear_center (T/D) are separate
+! eqstat/meqos output slots, distinct from temp_value (TEMP, used to
+! build log_pressure_center/log_temperature_center above) and from
+! log_density_center (DL, the input log-density estimate) -- they are
+! never read again after the call in the original wrtout.f (dead
+! output), but must not be aliased with those other variables or the
+! DL slot gets overwritten with a linear value. Preserved as distinct
+! locals to match the original's argument list exactly.
+      double precision :: temperature_linear_center, density_linear_center
+      logical :: is_atmosphere_point, compute_derivatives
+      double precision :: beta_center, beta_inverse_center, beta14_center, &
+           mean_molecular_weight_center, amu_center, &
+           electron_mean_molecular_weight_center, degeneracy_eta_center
+! Second-derivative / opacity-related eqstat outputs; exact physical
+! definitions not confidently known from this file alone (they mirror
+! the QDT/QDP/QCP/DELA/QDTT/QDTP/QAT/QAP/QCPT/QCPP argument slots of
+! EQSTAT/MEQOS), kept as conservative names.
+      double precision :: qdt_center, qdp_center, qcp_center, dela_center, &
+           qdtt_center, qdtp_center, qat_center, qap_center, qcpt_center, &
+           qcpp_center
+      integer :: ksaha_center
+      double precision :: dd1, dd2, cz_base_mass
+      double precision :: envelope_cz_log_temperature, envelope_cz_log_density, &
+           envelope_cz_log_pressure, envelope_cz_temperature, &
+           envelope_cz_density, envelope_cz_pressure, envelope_cz_o16
+      double precision :: h_shell_mid_mass, h_shell_total_mass, he_core_mass, &
+           max_log_temperature
+      integer :: max_temp_index
+      double precision :: max_temp_log_radius
+      logical :: max_temp_convective_flag
+      double precision :: fl7li, fl37cl, fl71ga, fl81br, fl98mo, fl115in
+      double precision :: fit_point_mass
+      double precision :: total_moment_of_inertia, cz_moment_of_inertia
+      double precision :: rotation_period_days, equatorial_velocity_kms
+      integer :: k
+      double precision :: h_shell_begin_mass, h_shell_mid_mass2, &
+           h_shell_end_mass, h_shell_begin_radius, h_shell_mid_radius, &
+           h_shell_end_radius
+      integer :: iwrite
+      double precision :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
+           gravity_cgs, ycenter_local, he_core_mass_grams
+
+! JVS 0712 for call to envint:
+!       REAL*8 DUM1(4),DUM2(3),DUM3(3),DUM4(3)
+! JVS 10/13 for recalculation of taucz
+!       REAL*8 DEL1(JSON), DEL2(JSON)
+! end JVS
+
+      time_scaling_disabled=.false.
+!  RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH
+      if(.not.helium_flash_active) then
+       total_luminosity_sum = luminosity_breakdown(1)+luminosity_breakdown(2)+ &
+            luminosity_breakdown(3)+luminosity_breakdown(4)+luminosity_breakdown(5)+ &
+            luminosity_breakdown(6)+luminosity_breakdown(7)+luminosity_breakdown(8)
+       temp_value = log_luminosity(num_shells)/total_luminosity_sum
+       do 10 i = 1,8
+          luminosity_breakdown(i) = luminosity_breakdown(i)*temp_value
+   10    continue
+      endif
+!  WRITE HEADER FILE DESCRIBING THE GLOBAL PROPERTIES OF THE STAR
+!  AND THE CENTRAL CONDITIONS TO THE SHORT OUTPUT FILE
+!  THIS INFORMATION IS ALSO WRITTEN TO THE MODEL OUTPUT FILE IF
+!  A DETAILED BREAKDOWN OF THE STELLAR STRUCTURE IS TO BE PRINTED
+!  FOR THIS MODEL.
+!
+      write(ishort,21)
+   20 format(1X,127('*'))
+   21 format(/,1X,127('*'))
+      if(.not.helium_flash_active) then
+       write(ishort,30)model_number,total_mass_msun,xnew,znew,age_gyr,timestep_yr
+   30    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
+          ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',F12.0)
+      else
+       write(ishort,40)model_number,total_mass_msun,xnew,znew,age_gyr,timestep_yr
+   40    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
+          ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',1PE12.4)
+      endif
+!  CALCULATE MASS OF CENTRAL AND SURFACE CONVECTION ZONES
+!  THESE MASSES ARE IN SOLAR UNITS
+      if(core_cz_top_index.gt.1) then
+       core_mass = mass_coordinate(core_cz_top_index)/solar_mass_cgs
+      else
+       core_mass = 0.0D0
+      endif
+
+! JVS 10/11 Be more care about the true boundary of the convective core
+      if (core_cz_top_index.gt.1) then
+! JVS 10/11 note: this formula reads envelope_boundary_fx (FX), which
+! at this point has not yet been assigned in this call (it is set
+! further below, in the JENV block) -- with SAVE it carries over
+! whatever value it held at the end of the previous call to this
+! subroutine. core_boundary_fx2 (FX2) is computed just above but is
+! NOT what is used here -- this looks like a bug (FX2 vs FX typo) in
+! the original wrtout.f, preserved exactly, not fixed.
+       core_boundary_fx2 = (del_grad(3,core_cz_top_index+1)-del_grad(1,core_cz_top_index))/ &
+             (del_grad(3,core_cz_top_index+1)-del_grad(1,core_cz_top_index))
+       core_boundary_log_radius = log_radius(core_cz_top_index)+envelope_boundary_fx* &
+            (log_radius(core_cz_top_index+1)-log_radius(core_cz_top_index))-log10_solar_radius
+       core_boundary_radius = dexp(ln10*core_boundary_log_radius)
+      else
+       core_boundary_radius = 0.0D0
+      endif
+! JVS end
+
+      bolometric_magnitude = solar_bolometric_magnitude-2.5D0*log_luminosity_lsun
+      radius_log_surface = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity - c4pil - csigl - 4.0D0*log_teff)
+      log_gravity = cgl + stotal - radius_log_surface - radius_log_surface
+! MHP 02/12 MOVED ABOVE SECTION WHERE THESE ARE USED
+!  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
+!  CENTRAL ETA AND BETA ARE ALSO CALCULATED.
+!  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
+      temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+log_density(1)-log_mass(1))+log_density(1)+cgl+log_mass(1)))
+      pressure_linear = dexp(ln10*log_pressure(1))
+      log_pressure_center = dlog10(pressure_linear + temp_value)
+!  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
+      log_temperature_center = log_temperature(1) + dlog10(1.0D0+ temp_value*del_grad(2,1)/pressure_linear)
+      log_density_center = log_density(1)
+      hydrogen_fraction_center = composition(1,1)
+      metal_fraction_center = composition(3,1)
+      is_atmosphere_point = .true.
+      compute_derivatives = .false.
+!  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
+! YC  If LMHD then use MHD equation of state.
+      if (use_mhd_eos) then
+         call meqos(log_temperature_center,temperature_linear_center,log_pressure_center,pressure_linear, &
+              log_density_center,density_linear_center,hydrogen_fraction_center,metal_fraction_center, &
+              beta_center,beta_inverse_center,beta14_center,fxion,mean_molecular_weight_center, &
+!      *   AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,
+!      *   LDERIV,LATMO,KSAHA)  ! KC 2025-05-31
+         amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
+         qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center)
+      else
+         if (ldh) then
+            xxdy = composition(1,1)
+            yydh = composition(2,1)+composition(4,1)
+            zzdh = composition(3,1)
+            zdh(1) = composition(5,1)+composition(6,1)
+            zdh(2) = composition(7,1)+composition(8,1)
+            zdh(3) = composition(9,1)+composition(10,1)+composition(11,1)
+         end if
+         call eqstat(log_temperature_center,temperature_linear_center,log_pressure_center,pressure_linear, &
+              log_density_center,density_linear_center,hydrogen_fraction_center,metal_fraction_center, &
+              beta_center,beta_inverse_center,beta14_center,fxion,mean_molecular_weight_center, &
+              amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
+              qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center, &
+              compute_derivatives,is_atmosphere_point,ksaha_center)
+      end if
+! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
+! STORE CENTRAL RHO,P,T FOR LATER USE
+      central_log10_pressure = log_pressure_center
+      central_log10_temperature = log_temperature_center
+      central_log10_density = log_density_center
+! MHP 02/12 FIXED MINOR GLITCH ON BASE OF THE CONVECTION ZONE
+! PROPERTIES FOR FULLY CONVECTIVE STARS; TCENTER PCENTER RHOCENTER
+! WERE BEING DEFINED AFTER THIS CODE SECTION
+      if(envelope_cz_bottom_index.lt.num_shells) then
+       if(envelope_cz_bottom_index.gt.1) then
+!  FIND MASS FRACTION OF THE ZONE EDGE AT BASE OF SURFACE C.Z.
+! JVS 10/11/13 SDEL(1,JENV) IN DENOMINATOR WAS A TYPO. CHANGED TO SDEL(3,JENV)
+!            FX = (SDEL(3,JENV)-SDEL(1,JENV-1))/
+!     *           (SDEL(3,JENV)-SDEL(1,JENV-1))
+            dd2 = del_grad(1,envelope_cz_bottom_index-1)-del_grad(3,envelope_cz_bottom_index-1)
+            dd1 = del_grad(1,envelope_cz_bottom_index)-del_grad(3,envelope_cz_bottom_index)
+            envelope_boundary_fx = dd2/(dd2-dd1)
+!            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
+            cz_base_mass = mass_coordinate(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (mass_coordinate(envelope_cz_bottom_index)-mass_coordinate(envelope_cz_bottom_index-1))
+            envelope_mass = (exp(ln10*log_total_mass) - cz_base_mass)/solar_mass_cgs
+!           ENVLM = SMASS-HS1(JENV-1)/CMSUN
+!          HSR = 0.5D0*(10.0D0**HR(JENV)+10.0D0**HR(JENV-1))
+!          ENVX = HSR/(10.0D0**RL)
+! MHP 2/98 FIND RADIUS OF CZ BASE
+            envelope_cz_log_radius = log_radius(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (log_radius(envelope_cz_bottom_index)-log_radius(envelope_cz_bottom_index-1))-log10_solar_radius
+            envelope_radius = exp(ln10*envelope_cz_log_radius)
+            envelope_cz_o16 = so(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (so(envelope_cz_bottom_index)-so(envelope_cz_bottom_index-1))
+            envelope_cz_log_temperature = log_temperature(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (log_temperature(envelope_cz_bottom_index)-log_temperature(envelope_cz_bottom_index-1))
+            envelope_cz_log_density = log_density(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (log_density(envelope_cz_bottom_index)-log_density(envelope_cz_bottom_index-1))
+            envelope_cz_log_pressure = log_pressure(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (log_pressure(envelope_cz_bottom_index)-log_pressure(envelope_cz_bottom_index-1))
+            envelope_cz_temperature = exp(ln10*envelope_cz_log_temperature)
+            envelope_cz_density = exp(ln10*envelope_cz_log_density)
+            envelope_cz_pressure = exp(ln10*envelope_cz_log_pressure)
+       else
+          envelope_mass = total_mass_msun
+          envelope_radius = 0.0D0
+            envelope_cz_temperature = 10.0D0**central_log10_temperature
+            envelope_cz_density = 10.0D0**central_log10_density
+            envelope_cz_pressure = 10.0D0**central_log10_pressure
+            envelope_cz_o16 = so(1)
+       endif
+      else
+       envelope_mass = 0.0D0
+       envelope_radius = 0.0D0
+         envelope_cz_temperature = 0.0D0
+         envelope_cz_density = 0.0D0
+         envelope_cz_pressure = 0.0D0
+         envelope_cz_o16 = 0.0D0
+      endif
+      write(ishort,50)num_shells,initial_envelope_x,initial_envelope_z,core_mass,envelope_mass, envelope_radius
+   50 format(1X,'SHELLS=',I5,2X,'(X0,Z0)=(',F9.7,',',F9.7,')',2X, &
+       'CONV. ZONE MASSES(MSUN): CORE',F10.7,' ENV.',F10.7, &
+       ' RAD. FRAC.',F10.7)
+      radius_log_surface = radius_log_surface - log10_solar_radius
+      write(ishort,60)log_teff,bolometric_magnitude,log_luminosity_lsun,radius_log_surface,log_gravity
+   60 format(1X,'LOG(TEFF)=',F11.8,'  M(BOL)=',F11.7,'  LOG(L/LSUN)=' &
+       ,F12.8,'  LOG(R/RSUN)=',F12.8,'  LOG(G) =',F12.8)
+! MHP 02/12 MOVED ABOVE SECTION WHERE THESE ARE USED
+!  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
+!  CENTRAL ETA AND BETA ARE ALSO CALCULATED.
+!  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
+!      TEMP =0.5D0*DEXP(CLN*(CC13*(C4PI3L+HD(1)-HS(1))+HD(1)+CGL+HS(1)))
+!      P = DEXP(CLN*HP(1))
+!      PL = DLOG10(P + TEMP)
+!  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
+!      TL = HT(1) + DLOG10(1.0D0+ TEMP*SDEL(2,1)/P)
+!      DL = HD(1)
+!      X = HCOMP(1,1)
+!      Z = HCOMP(3,1)
+!      LATMO = .TRUE.
+!      LDERIV = .FALSE.
+!  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
+! YC  If LMHD then use MHD equation of state.
+!      IF (LMHD) THEN
+!         CALL MEQOS(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
+!     *   AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,
+!     *   LDERIV,LATMO,KSAHA)
+!      ELSE
+!      IF (LDH) THEN
+!         XXDH = HCOMP(1,1)
+!         YYDH = HCOMP(2,1)+HCOMP(4,1)
+!         ZZDH = HCOMP(3,1)
+!         ZDH(1) = HCOMP(5,1)+HCOMP(6,1)
+!         ZDH(2) = HCOMP(7,1)+HCOMP(8,1)
+!         ZDH(3) = HCOMP(9,1)+HCOMP(10,1)+HCOMP(11,1)
+!      END IF
+!      CALL EQSTAT(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
+!     *AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,LDERIV,
+!     *LATMO,KSAHA)
+!      END IF
+      write(ishort,70)log_pressure_center,log_temperature_center,log_density_center,beta_center, &
+           degeneracy_eta_center,hydrogen_fraction_center,metal_fraction_center,composition(9,1)
+   70 format(1X,'CENTER: LOG P=',F10.7,' LOG T=',F10.8,' LOG D=', &
+       F10.6,' BETA=',F9.7,' ETA=',0PF10.5,'  X=',0PF9.7,' Z=',F9.7, &
+       ' O16=',F9.7)
+      write(ishort,80)(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(6),luminosity_breakdown(7)
+   80 format(1X,'ENERGY: PPI',1PE13.6,'  PPII',E13.6,'  PPIII',E13.6, &
+       '  CNO',E13.6,/,9X,'TRIPLE ALPHA',E13.6,'  HE-C',E13.6, &
+       '  NEUTRINOS',E13.6,'  GRAV',E13.6)
+      h_shell_mid_mass = 0.0D0
+      h_shell_total_mass = 0.0D0
+      if(h_shell_present_flag) then
+! H-SHELL VALUES PRINTED OUT - MASSES IN SOLAR UNITS
+! SS1 - MASS INTERIOR TO CENTER OF H SHELL; SS2 = MASS OF H SHELL;
+! SS3 = HE CORE MASS; SS4 = MASS INTERIOR TO SHELL WITH MAXIMUM T
+       fit_point_mass = mass_coordinate(h_shell_mid_index)/solar_mass_cgs
+       h_shell_total_mass = (mass_coordinate(h_shell_end_index) - mass_coordinate(h_shell_begin_index-1))/solar_mass_cgs
+       he_core_mass = mass_coordinate(h_shell_begin_index-1)/solar_mass_cgs
+       max_log_temperature = log_temperature_center
+! LOCATE MAXIMUM T - NOTE DIFFERENT METHOD USED FOR HE FLASH
+       if(.not.helium_flash_active) then
+          do 100 i = 2,num_shells
+             if(log_temperature(i).lt.log_temperature(i-1))goto 110
+  100       continue
+          i = num_shells + 1
+  110       max_temp_index = i - 1
+          if(max_temp_index.gt.1) then
+             h_shell_mid_mass = mass_coordinate(max_temp_index)/solar_mass_cgs
+             max_log_temperature = log_temperature(max_temp_index)
+          else
+             h_shell_mid_mass = 0.0D0
+             max_log_temperature = log_temperature(1)
+          endif
+          write(ishort,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
+  120       format(1X,'H-SHELL MID-PT=',F10.7,' MASS TOTAL=', &
+                F10.7,2X,'HE-CORE MASS=',F10.7,1X,'MAX-T=',F10.7, &
+                ' (MASS=',F9.7,')')
+       else
+!  HE FLASH
+          do 130 i = 2,num_shells
+             if(log_temperature(i).lt.log_temperature(i-1) .and. log_temperature(i-1).gt.7.98D0) goto 140
+  130       continue
+          i = num_shells + 1
+  140       max_temp_index = i - 1
+          if(max_temp_index.gt.1) then
+             h_shell_mid_mass = mass_coordinate(max_temp_index)/solar_mass_cgs
+             max_log_temperature = log_temperature(max_temp_index)
+!  ADDITIONAL OUTPUT FOR HE FLASH
+             max_temp_log_radius = log_radius(max_temp_index)
+             max_temp_convective_flag = convective_flag(max_temp_index)
+             write(ishort,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
+             write(ishort,150)max_temp_convective_flag,max_temp_log_radius
+  150          format(1X,'CONVECTION = ',L1,5X,'LOG(R) MAX-T =',F8.5)
+          endif
+       endif
+!  END H-SHELL SECTION
+      endif
+!     PRINT OUT NEUTRINO RATES FROM ENGEB CALCULATION
+      write(ishort,160) (neutrino_flux_total(i),i=1,8)
+  160 format(1X,'NEUTRINOS 1E10ERG/CM^2 PP,PEP,HEP,BE7,', &
+         'B8,N13,O15,F17:', 1P8E9.2)
+! DBG 7/93 from Bahcall's book p 207 table 8.2
+      fl7li = 0.0D0*neutrino_flux_total(1)+665.0D0*neutrino_flux_total(2)+8.4D4*neutrino_flux_total(3)+ &
+              9.6D0*neutrino_flux_total(4)+3.9D4*neutrino_flux_total(5)+42.4D0*neutrino_flux_total(6)+ &
+              246.0D0*neutrino_flux_total(7)+249.0D0*neutrino_flux_total(8)
+      fl37cl = 0.0D0*neutrino_flux_total(1)+16.0D0*neutrino_flux_total(2)+4.26D4*neutrino_flux_total(3)+ &
+              2.4D0*neutrino_flux_total(4)+1.09D4*neutrino_flux_total(5)+1.7D0*neutrino_flux_total(6)+ &
+              6.8D0*neutrino_flux_total(7)+6.9D0*neutrino_flux_total(8)
+      fl71ga = 11.8D0*neutrino_flux_total(1)+215.0D0*neutrino_flux_total(2)+7.3D4*neutrino_flux_total(3)+ &
+              73.2D0*neutrino_flux_total(4)+2.43D4*neutrino_flux_total(5)+61.8D0*neutrino_flux_total(6)+ &
+              116.0D0*neutrino_flux_total(7)+117.0D0*neutrino_flux_total(8)
+      fl81br = 0.0D0*neutrino_flux_total(1)+75.0D0*neutrino_flux_total(2)+9.0D4*neutrino_flux_total(3)+ &
+              18.3D0*neutrino_flux_total(4)+2.7D4*neutrino_flux_total(5)+14.5D0*neutrino_flux_total(6)+ &
+              36.7D0*neutrino_flux_total(7)+37.0D0*neutrino_flux_total(8)
+      fl98mo = 0.0D0*neutrino_flux_total(1)+0.0D0*neutrino_flux_total(2)+10.0D4*neutrino_flux_total(3)+ &
+              0.0D0*neutrino_flux_total(4)+3.0D4*neutrino_flux_total(5)+0.0D0*neutrino_flux_total(6)+ &
+              0.0D0*neutrino_flux_total(7)+0.0D0*neutrino_flux_total(8)
+      fl115in = 78.0D0*neutrino_flux_total(1)+576.0D0*neutrino_flux_total(2)+6.1D4*neutrino_flux_total(3)+ &
+              248.0D0*neutrino_flux_total(4)+2.5D4*neutrino_flux_total(5)+224.0D0*neutrino_flux_total(6)+ &
+              355.0D0*neutrino_flux_total(7)+356.0D0*neutrino_flux_total(8)
+      write(ishort,2160) fl7li,fl37cl,fl71ga,fl81br,fl98mo,fl115in
+ 2160 format(1X,'NEUTRINO ENERGIES (1.E-36ERG): 7Li=', 1PE9.2, &
+       ' 37Cl=',1PE9.2,' 71Ga=',1PE9.2,' 81Br=',1PE9.2,' 98Mo=', &
+       1PE9.2, ' 115In=', 1PE9.2)
+      fit_point_mass = mass_coordinate(num_shells)/solar_mass_cgs
+      write(ishort,170)fit_point_mass,log_pressure(num_shells),log_temperature(num_shells),log_radius(num_shells)
+  170 format(1X,'FIT-POINT    M/MSUN=',F16.12,5X,'(P,T,R) =',3F12.7)
+      write(ishort,20)
+      if(ltrack) then
+! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
+! MHP 8/96
+! STORE CENTRAL RHO,P,T FOR LATER USE
+!         PCENTER = PL
+!         TCENTER = TL
+!         DCENTER = DL
+!  Total moment of inertia
+         total_moment_of_inertia = 0.0D0
+         if(.not.rotation_active)then
+            do i = 1,num_shells
+               total_moment_of_inertia = total_moment_of_inertia + cc23*shell_mass_increment(i)*exp(2.0D0*ln10*log_radius(i))
+            end do
+         else
+            do i = 1,num_shells
+               total_moment_of_inertia = total_moment_of_inertia + shell_moment_of_inertia(i)
+            end do
+         endif
+! MHP 12/09 NEW OPTION TO OUTPUT TRACK INFORMATION IN ONE LINE PER MODEL FORMAT.
+         if(track_file_version .eq. 0) then
+! MHP 8/96 ADD LINE TO COMPUTE SNU's for Cl37 and Ga71.
+            cl37_snu_rate = 0.0D0
+            ga71_snu_rate = 0.0D0
+            if(lsnu) then
+               do i = 1,8
+                  cl37_snu_rate = cl37_snu_rate + clsnuf(i)*neutrino_flux_total(i)
+                  ga71_snu_rate = ga71_snu_rate + gasnuf(i)*neutrino_flux_total(i)
+               end do
+            else
+               do i = 1,10
+                  neutrino_flux_total(i) = 0.0D0
+               end do
+            endif
+! MHP 02/12
+! ADDED SURFACE CZ MOMENT OF INERTIA CALCULATION TO NON-ROTATING
+! MODELS, AND CORRECTLY ZERO OUT TERMS NOT COMPUTED IN SPHERICAL MODELS
+! ROTATION I/O
+            cz_moment_of_inertia = 0.0D0
+            if(rotation_active) then
+               rotation_period_days = min(9999.0D0,0.5D0*c4pi/omega(num_shells)/8.64D4)
+               equatorial_velocity_kms = omega(num_shells)*exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
+               if(envelope_cz_bottom_index.lt.num_shells)then
+                  do k = envelope_cz_bottom_index,num_shells
+                     cz_moment_of_inertia = cz_moment_of_inertia + shell_moment_of_inertia(k)
+                  end do
+               endif
+            else
+               rotation_period_days = 0.0D0
+               equatorial_velocity_kms = 0.0D0
+               if(envelope_cz_bottom_index.lt.num_shells)then
+                  do k = envelope_cz_bottom_index,num_shells
+                     cz_moment_of_inertia = cz_moment_of_inertia + cc23*shell_mass_increment(k)*exp(2.0D0*ln10*log_radius(k))
+                  end do
+               endif
+            endif
+! END CHANGED SECTION
+!        Get location of bottom, middle, top of B burning shell.
+            if(h_shell_present_flag) then
+             h_shell_begin_mass = mass_coordinate(h_shell_begin_index)/solar_mass_cgs
+             h_shell_mid_mass2 = mass_coordinate(h_shell_mid_index)/solar_mass_cgs
+             h_shell_end_mass = mass_coordinate(h_shell_end_index)/solar_mass_cgs
+             h_shell_begin_radius = exp(ln10*(log_radius(h_shell_begin_index)-radius_log_surface-log10_solar_radius))
+             h_shell_mid_radius = exp(ln10*(log_radius(h_shell_mid_index)-radius_log_surface-log10_solar_radius))
+             h_shell_end_radius = exp(ln10*(log_radius(h_shell_end_index)-radius_log_surface-log10_solar_radius))
+          else
+             h_shell_begin_mass = 0.0D0
+             h_shell_mid_mass2 = h_shell_begin_mass
+             h_shell_end_mass = h_shell_begin_mass
+             h_shell_begin_radius = h_shell_begin_mass
+             h_shell_mid_radius = h_shell_begin_mass
+             h_shell_end_radius = h_shell_begin_mass
+             endif
+! JVS 0712 Drop sinkline to get pressure at photosphere (updates PPHOT)
+!             ABEG0 = ATMBEG
+!            AMIN0 = ATMMIN
+!            AMAX0 = ATMMAX
+!            EBEG0 = ENVBEG
+!            EMIN0 = ENVMIN
+!            EMAX0 = ENVMAX
+!            ATMBEG = ATMSTP
+!            ATMMIN = ATMSTP
+!            ATMMAX = ATMSTP
+!            ENVBEG = ENVSTP
+!            ENVMIN = ENVSTP
+!            ENVMAX = ENVSTP
+!            IDUM = 0
+!            B = DEXP(CLN*BL)
+!            FPL = FP(M)
+!             FTL = FT(M)
+!            KATM = 0
+!             KENV = 0
+!             KSAHA = 0
+!CCCC            LPULPT=.FALSE.
+!            IXX=0
+!            LPRT=.FALSE.
+!            LSBC0 = .FALSE.
+!            X = HCOMP(1,M)
+!             Z = HCOMP(3,M)
+!            RLL = 0.5D0*(BL + CLSUNL - 4.0D0*TEFFL - C4PIL - CSIGL)
+!            GL = CGL + HSTOT - RLL - RLL
+!            PLIM = HP(M)
+!! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
+!! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
+!            IF(JENV.EQ.M.AND.SPOTF.NE.0.0.AND.SPOTX.NE.1.0)THEN
+!                   ATEFFL = TEFFL - 0.25*LOG10(SPOTF*SPOTX**4.0+1.0-SPOTF)
+!            ELSE
+!               ATEFFL = TEFFL
+!            ENDIF
+!            CALL ENVINT(B,FPL,FTL,GL,HSTOT,IXX,LPRT,LSBC0,
+!     *            PLIM,RLL,ATEFFL,X,Z,DUM1,IDUM,KATM,KENV,KSAHA,
+!     *            DUM2,DUM3,DUM4,LPULPT)
+!! G Somers END
+!
+!! JVS 08/13 TRACKS CZ EVEN WHEN OUTSIDE THE ENVELOPE FITTING POINT
+!      IF(JENV.GE.M .AND. .NOT. LC(M)) THEN
+!            ENVR = ENVRCZ
+!      ELSE IF(JENV.GE.M .AND. LC(M)) THEN
+!            DO I=1,M
+!                  DEL1(I) = SDEL(1,I)
+!                  DEL2(I) = SDEL(3,I)
+!            ENDDO
+!                  LJVS = .TRUE.
+!                  CALL TAUINT(HCOMP,HS2,HS1,LC,HR,HP,HD,HG,M,SVEL,DEL1,DEL2)
+!                  LJVS = .FALSE.
+!                  DD2 = DEL1(JENV-1)-DEL2(JENV-1)
+!                  DD1 = DEL1(JENV)-DEL2(JENV)
+!                  FX = DD2/(DD2-DD1)
+!                  ENVCZL = HR(JENV-1)+FX*(HR(JENV)-HR(JENV-1))
+!                  ENVR = EXP(CLN*ENVCZL)/CRSUN
+!      ELSE
+!            DO I=1,M
+!                  DEL1(I) = SDEL(1,I)
+!                  DEL2(I) = SDEL(3,I)
+!            ENDDO
+!                  LJVS = .TRUE.
+!                  CALL TAUINT(HCOMP,HS2,HS1,LC,HR,HP,HD,HG,M,SVEL,DEL1,DEL2)
+!                  LJVS = .FALSE.
+!      ENDIF
+!
+! G Somers 3/17, ADDED CALL TO NEW TAUCZ AND PPHOT CALCULATION ROUTINE.
+
+!       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
+      call gettau(composition,log_radius,log_pressure,log_density,mass_coordinate,log_temperature,shape_factor_fp,shape_factor_ft,log_teff, &
+                  log_total_mass,log_luminosity_lsun,num_shells,convective_flag,envelope_radius)
+      convective_turnover_timescale_old = convective_turnover_timescale
+      pphot0 = pphot
+
+! JVS 02/12 Added PPHOT and SMASS to the output
+            write(itrack, 1499) model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,envelope_mass, &
+            envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16,log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,composition(1,1),composition(2,1), &
+            composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
+            cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
+            (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
+            total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,omega(num_shells),omega(1),rotation_period_days,equatorial_velocity_kms,convective_turnover_timescale, &
+            h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius,pphot,total_mass_msun
+! MHP 9/25 added more columns to cz depth to avoid overflow
+!     1499       FORMAT(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3,41E16.8)
+! MCR 12/25 Preserve precision and 'E' for values w/ 3-digit exponents
+ 1499       format(1X,2I8,1P7E17.8E3,1P5E12.4,16E17.8E3,12E10.3,41E17.8E3)
+         else if(track_file_version .eq.1 .or. track_file_version .eq.2) then
+            write(itrack,1500)model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,envelope_mass, &
+                           envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16
+ 1500       format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4)
+            write(itrack,1509)log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,composition(1,1),composition(2,1), &
+                           composition(3,1),total_moment_of_inertia
+ 1509       format(1X,1P9E16.8)
+ 1510       format(1X,1P8E16.8)
+            write(itrack,1510)(luminosity_breakdown(i),i = 1,5), &
+                           luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6)
+
+! MHP 8/96 ADD LINE TO COMPUTE SNU's for Cl37 and Ga71.
+            cl37_snu_rate = 0.0D0
+            ga71_snu_rate = 0.0D0
+            do i = 1,8
+               cl37_snu_rate = cl37_snu_rate + clsnuf(i)*neutrino_flux_total(i)
+               ga71_snu_rate = ga71_snu_rate + gasnuf(i)*neutrino_flux_total(i)
+            end do
+          write(itrack, 1515) cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10)
+ 1515       format(1X,2F8.3,1P10E10.3)
+            write(itrack,1510)(composition(i,1),i=4,11)
+! ADD SURFACE X,Y,Z,Z/X.
+            write(itrack,1520)(composition(i,num_shells),i=4,15), &
+              (composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells)
+ 1520       format(1X,1P8E16.8,/,1X,1P8E16.8)
+! ROTATION I/O
+            if(rotation_active) then
+! MHP 8/25 removed limit on rotation period output
+!     ROTP = MIN(9999.0D0,0.5D0*C4PI/OMEGA(M)/8.64D4)
+               rotation_period_days = 0.5D0*c4pi/omega(num_shells)/8.64D4
+               equatorial_velocity_kms = omega(num_shells)*exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
+               cz_moment_of_inertia = 0.0D0
+               if(convective_flag(num_shells))then
+                  do k = envelope_cz_bottom_index,num_shells
+                     cz_moment_of_inertia = cz_moment_of_inertia + shell_moment_of_inertia(k)
+                  end do
+               else
+                  cz_moment_of_inertia = 0.0D0
+               endif
+            endif
+!        Get location of bottom, middle, top of B burning shell.
+            if(h_shell_present_flag) then
+             h_shell_begin_mass = mass_coordinate(h_shell_begin_index)/solar_mass_cgs
+             h_shell_mid_mass2 = mass_coordinate(h_shell_mid_index)/solar_mass_cgs
+             h_shell_end_mass = mass_coordinate(h_shell_end_index)/solar_mass_cgs
+             h_shell_begin_radius = exp(ln10*(log_radius(h_shell_begin_index)-radius_log_surface-log10_solar_radius))
+             h_shell_mid_radius = exp(ln10*(log_radius(h_shell_mid_index)-radius_log_surface-log10_solar_radius))
+             h_shell_end_radius = exp(ln10*(log_radius(h_shell_end_index)-radius_log_surface-log10_solar_radius))
+             else
+             h_shell_begin_mass = 0.0D0
+             h_shell_mid_mass2 = h_shell_begin_mass
+             h_shell_end_mass = h_shell_begin_mass
+             h_shell_begin_radius = h_shell_begin_mass
+             h_shell_mid_radius = h_shell_begin_mass
+             h_shell_end_radius = h_shell_begin_mass
+          endif
+            write(itrack,1530)h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius
+ 1530       format(1X, 1P6E16.8)
+         endif
+!        ROTATION STUFF
+! 4/09 ADDED TAUCZ TO ROTATION INFORMATION
+         if (track_file_version .eq. 2) then
+
+            write(itrack,1540)total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,omega(num_shells), &
+                           omega(1),rotation_period_days,equatorial_velocity_kms,convective_turnover_timescale
+ 1540       format(1X, 1P6E13.5,0P,2F11.5,1E13.5)
+         end if
+         if (track_file_version .eq. 3) then
+!        RATIO OF GRAV TO TOTAL ENERGY
+!       GROTOT = 100.0*TLUMX(7)/HL(M)
+            write(itrack,1501)model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,envelope_mass, &
+            envelope_radius, xnew
+ 1501       format(1X,2I8,1P5E13.5, 1P2E11.3, 0PF8.4, 1PE13.5)
+
+         end if
+      endif
+
+! April 1992, DBG ISOCHRONE OUTPUT
+      if(isochrone_output_active) then
+! Write out model no., age (yr), L (erg/s), R (cm), Teff (K),
+! g (cm/s**2), Ycenter, Mass He core (gm)
+        age_yr = age_gyr*1.0D9
+        luminosity_erg_s = 10.0D0**log_luminosity_lsun
+          luminosity_erg_s = luminosity_erg_s*solar_luminosity_cgs
+        radius_cm = 10.0D0**radius_log_surface
+          radius_cm = radius_cm*solar_radius_cgs
+        teff_k = 10.0D0**log_teff
+        gravity_cgs = 10.0D0**log_gravity
+        ycenter_local = composition(2,1)
+        if (h_shell_present_flag) then
+           he_core_mass_grams = mass_coordinate(h_shell_begin_index-1)
+        else
+           he_core_mass_grams = 0.0D0
+        end if
+          write(isochrone_file_unit,1005)model_number,age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs,ycenter_local, &
+            he_core_mass_grams
+ 1005     format(1X, I5, 1P7E17.8)
+      end if
+! MHP 8/25 Fscomp depreciated, call commented out
+!     WRITE OUT SURFACE COMPOSITIONS TO FILE ISCOMP IF extended comp MODEL.
+!      IF(LEXCOM) THEN
+!       OPEN(UNIT=ISCOMP,FILE=FSCOMP, FORM='FORMATTED',
+!     *        STATUS='UNKNOWN',ACCESS='APPEND')
+!       WRITE(ISCOMP,235)MODEL,DAGE,HCOMP(4,M),HCOMP(5,M),HCOMP(6,M),
+!     *                HCOMP(7,M),HCOMP(14,M),HCOMP(15,M)
+!  235    FORMAT(I4,F13.9,1P6E10.3)
+!       CLOSE(ISCOMP)
+!      ENDIF
+!
+! G Somers 11/14, WRITE THE LAST MODEL TO .LAST, AND IF LSTORE=T AND WE'RE ON
+! A STORING TIMESTEP, WRITE THE EXTENDED INFORMATION TO LSTORE. IF NOT, GRAB
+! THE PULSATION INFO IF LPULSE=TRUE.
+!
+!  STORE LAST CONVERGED MODEL IN LOGICAL UNIT ILAST
+!  IF LSTORE = T, STORE EVERY NPUNCH MODELS IN LOGICAL UNIT ISTOR
+!  IF LSTPCH = T, STORE THE LAST MODEL CALCULATED IN A RUN
+      iwrite = ilast
+      call wrtlst(iwrite,composition,log_density,log_luminosity,log_pressure,log_radius,log_mass,log_temperature,convective_flag,trial_log_temperature,trial_log_luminosity,fit_point_pressure, &
+           fit_point_temperature,fit_point_radius,envelope_fit_coeffs,trial_sign_flag,luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun,log_total_mass, &
+           age_gyr,timestep_yr,omega)
+!
+!  PRINT OUT MODEL DETAILS IF REQUESTED FOR THIS MODEL. THIS IS ALL DONE
+!  IN THE SR PUTSTORE.
+!
+      if(lstore.and.mod(model_number,nprtmod).eq.0) then
+       call putstore(composition,log_density,log_luminosity,log_pressure,log_radius,log_mass,log_temperature,convective_flag,trial_log_temperature,trial_log_luminosity,fit_point_pressure, &
+         fit_point_temperature,fit_point_radius,envelope_fit_coeffs,trial_sign_flag,luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun, &
+         log_total_mass,age_gyr,timestep_yr,omega,mass_coordinate,rotation_eta2,radius_ratio_r0,shape_factor_fp,shape_factor_ft,specific_angular_momentum,shell_moment_of_inertia)
+       punch_pending_flag = .false.
+      endif
+! the call to putstore above creates the necessary pulsation output for LPULSE.
+! however, in the event that the above block is not executed and pulsation
+! output is desired, call wrtmod.
+      if(.not.(lstore.and.mod(model_number,nprtmod).eq.0) .and. pulsation_output_active) then
+       if(lmilne) call wrtmil(composition,log_density,log_luminosity,log_pressure,log_radius,mass_coordinate,num_shells,model_number)
+!        CALL WRTMOD(M,LSHELL,JXBEG,JXEND,JCORE,JENV,HCOMP,HS1,HD,HL,
+!      *   HP,HR,HT,LC,MODEL,BL,TEFFL,OMEGA,FP,FT,ETA2,R0,HJM,HI,HS,
+!      *   DAGE)  ! KC 2025-05-31
+       call wrtmod(num_shells,envelope_cz_bottom_index,composition,mass_coordinate,log_density,log_luminosity, &
+         log_pressure,log_radius,log_temperature,model_number,log_luminosity_lsun,log_teff,shape_factor_fp,shape_factor_ft,log_mass,age_gyr)
+      endif
+! G Somers END
+
+! JVS 01/11 Added new track file output format, +manipulations for stitching
+! together the interior and envelope pieces. Columns 68,69,70 are normalized
+! acoustic depth, depth to CZ and acoustic crossing time, respectively.
+        if (acoustic_depth_output) then
+            if(envelope_cz_bottom_index.gt.1 .and. compute_acoustic_depth) then
+                  call calcad(log_radius, envelope_cz_log_radius, num_shells, log_density, log_pressure,log_temperature,log_luminosity_lsun, shape_factor_fp, shape_factor_ft, log_total_mass, &
+!      *            LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
+                  log_teff, composition, age_gyr, envelope_cz_bottom_index)
+            else if (envelope_cz_bottom_index.eq.1) then
+                  normalized_acoustic_depth=0.0D0
+            endif
+            if (convective_flag(num_shells)) then
+                  icheck=1
+            else if (.not. convective_flag(num_shells)) then
+                  icheck = 0
+            endif
+
+        if (extra_last_model_active) then
+         iwrite = extra_last_model_unit
+         call wrtlst(iwrite,composition,log_density,log_luminosity,log_pressure,log_radius,log_mass,log_temperature,convective_flag,trial_log_temperature,trial_log_luminosity,fit_point_pressure, &
+         fit_point_temperature,fit_point_radius,envelope_fit_coeffs,trial_sign_flag,luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun,log_total_mass, &
+         age_gyr,timestep_yr,omega)
+        endif
+
+            write(itrack, 1800) model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,envelope_mass, &
+            envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16,log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,composition(1,1),composition(2,1), &
+            composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
+            cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
+            (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
+            total_angular_momentum,normalized_acoustic_depth,acoustic_depth_to_cz,acoustic_crossing_time,helium_zone_acoustic_depth,helium_zone_weight,atmosphere_acoustic_depth,equatorial_velocity_kms,convective_turnover_timescale, &
+            h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck
+ 1800      format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3, &
+                  39E16.8, I8)
+
+! JVS END
+       endif
+
+      return
+end subroutine wrtout
