@@ -14,9 +14,7 @@
 ! gravity.
 subroutine surfp(log10_teff, log10_gravity, print_flag)
 
-      use inter3_mod
-      use kspline_mod
-      use ksplint_mod
+      use numerics_lib
       implicit none
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES.
       integer, parameter :: nt = 57, ng = 11

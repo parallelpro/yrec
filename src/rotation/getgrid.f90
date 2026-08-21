@@ -15,7 +15,7 @@
 ! set of equally spaced chi values and their location in mass.
 subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
-      use osplin_mod
+      use numerics_lib
       implicit none
       integer, parameter :: json = 5000
 

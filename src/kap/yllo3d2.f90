@@ -12,7 +12,7 @@
 ! yllo3d but reads the "2" common blocks and calls yllo2d2.
 subroutine yllo3d2(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-      use findex_mod
+      use numerics_lib
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17

@@ -11,7 +11,7 @@
 ! interpolation in X, storing it in table slot 8 of common/alot/.
 subroutine alx8th(hydrogen_fraction)
 
-      use intrp2_mod
+      use numerics_lib
       implicit none
       integer, parameter :: num_x = 7
       integer, parameter :: num_z = 15

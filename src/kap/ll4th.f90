@@ -11,8 +11,7 @@
 ! IS USED TO AVOID MANY INTERPOLATIONS TO THE SAME X.
 subroutine ll4th(hydrogen_fraction)
 
-      use findex_mod
-      use ysplin_mod
+      use numerics_lib
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17

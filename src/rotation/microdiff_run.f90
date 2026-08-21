@@ -26,7 +26,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      eq_del_grad_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col)
 
-      use tridiag_gs_mod
+      use numerics_lib
       implicit none
       integer, parameter :: json = 5000
 

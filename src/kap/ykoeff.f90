@@ -13,7 +13,7 @@
 ! names established in setkrz.f90/kurucz.f90/kurucz2.f90.
 subroutine ykoeff
 
-      use ysplin_mod
+      use numerics_lib
       implicit none
       integer, parameter :: num_t = 60
       integer, parameter :: num_d = 50

@@ -10,7 +10,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, temperature, num_zones, &
      total_mass)
-      use intrp2_mod
+      use numerics_lib
       implicit none
       integer, parameter :: json = 5000
 

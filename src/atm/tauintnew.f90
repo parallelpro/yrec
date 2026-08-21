@@ -24,8 +24,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      num_interior_points, convective_velocity, radiative_gradient, &
      adiabatic_gradient, radius_at_bcz)
-      use kspline_mod
-      use ksplint_mod
+      use numerics_lib
       implicit none
       integer, parameter :: json=5000
 

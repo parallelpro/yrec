@@ -12,9 +12,7 @@
 ! rather than the original Kurucz table (ATMOS2, sized NT x NG).
 subroutine kcsurfp(log10_teff, log10_gravity, print_flag)
 
-      use inter3_mod
-      use kspline_mod
-      use ksplint_mod
+      use numerics_lib
       implicit none
 ! PARAMETERS NTC AND NGC FOR TABULATED SURFACE PRESSURES.
       integer, parameter :: nt = 57, ng = 11

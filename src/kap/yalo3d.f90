@@ -12,8 +12,7 @@
 subroutine yalo3d(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
-      use interp_mod
-      use intrp2_mod
+      use numerics_lib
       implicit none
       integer, parameter :: num_x = 7
       integer, parameter :: num_z = 15

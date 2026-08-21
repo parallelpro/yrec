@@ -12,7 +12,7 @@
 ! (common/llot95a/, filled by ll95tbl).
 subroutine op95ztab(metal_fraction)
 
-      use intrp2_mod
+      use numerics_lib
       implicit none
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19

@@ -55,8 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
-      use boole_mod
-      use splinj_mod
+      use numerics_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts = 63, nps = 76

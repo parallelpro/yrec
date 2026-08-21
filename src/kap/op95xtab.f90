@@ -13,7 +13,7 @@
 ! by op95ztab).
 subroutine op95xtab(hydrogen_fraction)
 
-      use intrp2_mod
+      use numerics_lib
       implicit none
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19

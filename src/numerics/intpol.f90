@@ -27,7 +27,7 @@
 ! y_eval  ; the value we want
 ! dy_eval ; the derivative value at x_eval
 subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval)
-      use ysplin_mod
+      use numerics_lib
       implicit none
       integer, parameter :: np=100
 

@@ -85,8 +85,7 @@
 !       If LPRT  is .TRUE. print Log(P) at the associated Log(Teff) to ISHORT and IMODPT.
 subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
 
-      use locate_mod
-      use polint_mod
+      use numerics_lib
       implicit none
       integer, parameter :: nta = 250
       integer, parameter :: nga = 25

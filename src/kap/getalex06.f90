@@ -13,7 +13,7 @@
 subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
-      use interp_mod
+      use numerics_lib
       implicit none
       integer, parameter :: num_x = 9
       integer, parameter :: num_z = 16

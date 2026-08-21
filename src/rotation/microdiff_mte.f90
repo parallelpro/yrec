@@ -24,7 +24,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
      eq_density_mid, eq_temperature_mid, eq_dlnp_dr_mid, eq_del_grad_mid, &
      eq_hydrogen_mid, eq_helium_mid, eq_metal_mid, eq_light_mid)
 
-      use interp_mod
+      use numerics_lib
       implicit none
       integer, parameter :: json = 5000
 

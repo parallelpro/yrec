@@ -22,7 +22,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      want_derivatives, conductive_opacity_flag, print_flag, log10_radius, &
      log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
      step_err)
-      use mmid_mod
+      use numerics_lib
       implicit none
 
       double precision, parameter :: one = 1.0d0, shrink_factor = 0.95d0, &

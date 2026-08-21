@@ -55,8 +55,7 @@
 subroutine thdiff(num_species, atomic_weight, charge, mass_fraction, &
      coulomb_log, pressure_coeff, temp_coeff, conc_coeff)
 
-      use lubksb_mod
-      use ludcmp_mod
+      use numerics_lib
       implicit none
       integer, parameter :: mmax=20, nmax=42
 
