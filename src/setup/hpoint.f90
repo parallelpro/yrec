@@ -78,19 +78,8 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       double precision :: reaction_rate_by_zone(15,json)
       common/burn/ reaction_rate_by_zone
 
-! common/ccout/: not used in this file. Naming matches ccoeft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
-! common/ccout1/: only npoint is used here. Naming matches wrtmil.f90.
-      integer :: npenv, nprtmod, print_point_interval, npoint
-      common/ccout1/ npenv, nprtmod, print_point_interval, npoint
 
-! common/ccout2/: only ldebug is used here. Naming matches meqos.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
 
 

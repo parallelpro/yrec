@@ -159,16 +159,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       double precision, intent(in) :: kinetic_energy_rot_old(json)
 
 
-! common/ccout/: not used in this file. Naming matches coefft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
-! common/ccout2/: lcorr is used here (LDEBUG/LMILNE/LTRACK/LSTPCH are
-! unused placeholders). Naming matches hpoint.f90/meqos.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
 ! common/cenv/: not used in this file. Naming matches surfbc.f90.
       double precision :: tri_delta_teffl, tri_delta_logl, senv0_placeholder

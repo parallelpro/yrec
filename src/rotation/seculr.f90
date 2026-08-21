@@ -99,18 +99,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       double precision, intent(inout) :: diffusion_velocity(json)
       logical, intent(inout) :: diffusion_solve_ok
 
-! common/ccout/: not used in this file (LSTORE etc. appear only in the
-! comment for CHI below). Naming matches crrect.f90/coefft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
-! common/ccout1/: not used in this file (only appears in the
-! historical, permanently disabled LPRT computation below). Naming
-! matches coefft.f90.
-      integer :: npenv, nprtmod, nprtpt, npoint
-      common/ccout1/ npenv, nprtmod, nprtpt, npoint
 
 
 

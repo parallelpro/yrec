@@ -29,13 +29,6 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
       double precision, intent(in) :: omega(json), mean_radius(json)
       double precision, intent(out) :: moment_of_inertia(json), di_domega(json)
 
-! common/ccout/: not used in this file. Naming inferred from context
-! (print/store control flags); not referenced in any already-converted
-! file, so kept as lowercase originals pending a confirmed source.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
 
 

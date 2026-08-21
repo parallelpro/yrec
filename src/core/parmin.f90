@@ -117,11 +117,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       common /vnewcb/ vnew
 
 
-! common /lunum/
-      integer :: ifirst, irun, istand, ifermi, iopmod, iopenv, iopatm, idyn, illdat, isnu, iscomp, &
-           ikur
-      common /lunum/ ifirst, irun, istand, ifermi, iopmod, iopenv, iopatm, idyn, illdat, isnu, &
-           iscomp, ikur
+! former common/lunum/: none of these 12 members are namelist values
+! (they're hardcoded unit numbers this file assigns unconditionally
+! further down), so they're simply renamed in place to their canonical
+! const_lib names (first_unit/run_unit/standard_unit/fermi_unit/
+! opal_model_unit/opal_envelope_unit/opal_atm_unit/dynamics_unit/
+! laol_table_unit/neutrino_unit/composition_unit/kurucz_table_unit),
+! now use-associated rather than locally declared.
 
 ! common /iomonte/
       character(len=256) :: fmonte1, fmonte2
@@ -132,13 +134,22 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       character(len=256) :: descrip(2)
       common /desc/ descrip
 
-! common /ccout/
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, lstch, lphhd
-      common /ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, lstch, lphhd
+! former common/ccout/: lstore/lstatm/lstenv/lstmod/lstphys/lstrot/
+! lscrib/lstch are NAMELIST /physics/ values, spelled identically to
+! their const_lib canonical names, so they're use-associated directly
+! (no separate local copy or rename needed -- the NAMELIST statement
+! below can bind straight to the use-associated module variable, since
+! its spelling matches the .nml2 files exactly). lphhd (former
+! common/ccout/'s remaining member) is not a namelist value -- this
+! file sets it directly further down -- also now use-associated.
 
-! common /ccout1/
-      integer :: npenv, nprtmod, nprtpt, npoint
-      common /ccout1/ npenv, nprtmod, nprtpt, npoint
+! npenv/nprtmod/npoint: NAMELIST /physics/ members, spelled identically
+! to their const_lib canonical names -- use-associated directly, same
+! reasoning as lstore etc above. nprtpt is also a NAMELIST member but
+! needs a different canonical spelling (print_point_interval), so it
+! keeps its local NAMELIST-spelled name here and is copy-assigned
+! after the namelist read below, per this file's usual pattern.
+      integer :: nprtpt
 
 ! common /pulsegyre/: new (2026) dedicated block for the GYRE-format
 ! periodic pulsation-structure output feature (io/write_gyre_pulse.f90,
@@ -148,9 +159,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: pulse_gyre_interval
       common /pulsegyre/ pulse_gyre_interval
 
-! common /ccout2/
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common /ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
+! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are
+! NAMELIST /physics/ values, spelled identically to their const_lib
+! canonical names -- use-associated directly, same reasoning as
+! lstore etc above.
 
 ! common /cenv/
       double precision :: tridt, tridl, senv0
@@ -739,13 +751,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data zalex/0.02e0/
       data lsenv0a, senv0a /50*.false.,50*1.26d-4/
       data xenv0, zenv0/0.7,0.02/
-      data ldebug, lcorr, npoint, lmilne, ltrack, lstore, &
-           &  lstpch &
-           &   /.false., .true., 1, .false., .true., .false.,.false./
-      data lscrib/.true./
-      data lstch/.false./
+! ldebug/lcorr/npoint/lmilne/ltrack/lstore/lstpch/lscrib/lstch/nprtmod
+! defaults moved to const_lib.f90 (see its own header note): DATA can
+! no longer target them here now that they're use-associated from
+! const_lib.
       data lenvg, atmstp, envstp/.false.,0.5,0.5/
-      data nprtmod, nprtpt/1,1/
+      data nprtpt/1/
       data pulse_gyre_interval/0/
       data numrun, kindrn, lfirst, nmodls &
            &      /1,50*1,50*.true.,50*0/
@@ -1009,13 +1020,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! OUTPUT: LAST MODEL (TEXT)
       ilast = 11
 ! INPUT: FIRST MODEL (TEXT)
-      ifirst = 12
+      first_unit = 12
 ! INPUT: PHYSICS NAMELIST
-      irun = 13
+      run_unit = 13
 ! INPUT: CONTROL NAMELIST
-      istand = 14
+      standard_unit = 14
 ! INPUT: FERMI TABLES
-      ifermi = 15
+      fermi_unit = 15
 ! OUTPUT: RESERVED for DEBUGGING
       idebug = 18
 ! OUTPUT: TRACK
@@ -1029,11 +1040,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! OUTPUT: SAVED MODELS, CAN BE USED AS STARTING MODEL
       istor = 23
 ! OUTPUT: FOR PULSATION CODE, INTERIOR
-      iopmod = 24
+      opal_model_unit = 24
 ! OUTPUT: FOR PULSATION CODE, ENVELOPE
-      iopenv = 25
+      opal_envelope_unit = 25
 ! OUTPUT: FOR PULSATION CODE, ATMOSPHERE
-      iopatm = 26
+      opal_atm_unit = 26
 ! OUTPUT: BINARY OUTPUT OF LAST MODEL
       last_model_binary_lu = 27
 ! OUTPUT: BINARY OUTPUT OF STORED MODELS
@@ -1041,17 +1052,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! INPUT: BINARY STARTING MODEL
       first_model_binary_lu = 29
 ! OUTPUT: INFO RELAVENT TO DYNAMO
-      idyn = 30
+      dynamics_unit = 30
 ! YCK INPUT: OPAL92 OPACITY TABLES
-      illdat = 32
+      laol_table_unit = 32
 ! YCK INPUT: OPAL95 OPACITY TABLE
       iliv95 = 48
 ! OUTPUT: SNU FLUXES
-      isnu = 33
+      neutrino_unit = 33
 ! OUTPUT: EXTENDED COMPOSITION INFO
-      iscomp = 34
+      composition_unit = 34
 ! YCK INPUT: KURUCZ LOW T OPACITIES
-      ikur = 36
+      kurucz_table_unit = 36
 ! OUPUT: ISOCHRONE INFORMATION
       iiso = 37
 ! INPUT: KURUCZ ATMOSPHER TABLE
@@ -1125,12 +1136,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       if (physics_nml_file(1:2) .eq. ' ') physics_nml_file = 'yrec8.nml2'
       write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
 
-      open(unit=istand, file=control_nml_file, status='OLD')
-      open(unit=irun, file=physics_nml_file, status='OLD')
-      read(unit=istand, nml=control)
-      read(unit=irun, nml=physics)
-      close(istand)
-      close(irun)
+      open(unit=standard_unit, file=control_nml_file, status='OLD')
+      open(unit=run_unit, file=physics_nml_file, status='OLD')
+      read(unit=standard_unit, nml=control)
+      read(unit=run_unit, nml=physics)
+      close(standard_unit)
+      close(run_unit)
 ! stolr0/imax/nuse must keep their exact NAMELIST /physics/ spelling
 ! (see this file's naming note at the top), so intpar_lib's
 ! canonically-named variables are set by copying from them here,
@@ -1188,6 +1199,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       central_helium_stop = end_ycen
       use_mhd_eos = lmhd
       metal_fraction_match_tolerance = optol
+      print_point_interval = nprtpt
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
@@ -1383,9 +1395,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
 ! SNU OUTPUT
       if(lsnu) then
-          open(unit=isnu,file=fsnu, form='FORMATTED', &
+          open(unit=neutrino_unit,file=fsnu, form='FORMATTED', &
            &         status='UNKNOWN')
-          rewind(isnu)
+          rewind(neutrino_unit)
       endif
       if(ldebug) then
             open(idebug,file=fdebug,form='FORMATTED', &
@@ -1398,20 +1410,20 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       endif
 !     MHP 10/02 LBNIN never set, ignore loop
 !      IF (.NOT.LBNIN) THEN
-         open(unit=ifirst,file=ffirst,form='FORMATTED',status='OLD')
+         open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD')
 !      END IF
       open(unit=ilast,file=flast,form='FORMATTED',status='UNKNOWN')
       open(unit=imodpt,file=fmodpt,form='FORMATTED',status='UNKNOWN')
 !     OPEN ALL PULSE FILES
       if(lpulse) then
-      open(iopmod, file=fpmod,status='UNKNOWN',form='FORMATTED')
-      open(iopenv, file=fpenv,status='UNKNOWN',form='FORMATTED')
-      open(iopatm, file=fpatm,status='UNKNOWN',form='FORMATTED')
+      open(opal_model_unit, file=fpmod,status='UNKNOWN',form='FORMATTED')
+      open(opal_envelope_unit, file=fpenv,status='UNKNOWN',form='FORMATTED')
+      open(opal_atm_unit, file=fpatm,status='UNKNOWN',form='FORMATTED')
       end if
 ! MHP 6/98
-! MHP 8/25 Moved call from main to here for opening idyn
+! MHP 8/25 Moved call from main to here for opening dynamics_unit
       if(lmonte)then
-         open(unit=idyn,file=fdyn,form='FORMATTED',status='OLD')
+         open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD')
          open(imonte1, file=fmonte1,status='UNKNOWN',form='FORMATTED')
          open(imonte2, file=fmonte2,status='UNKNOWN',form='FORMATTED')
       endif

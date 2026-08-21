@@ -47,16 +47,6 @@ subroutine wrthead(total_mass_msun)
 
 
 
-! common/lunum/: not used in this file; declared only to preserve
-! layout. Naming matches setkrz.f90.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
 
 ! common/chrone/: only isochrone_output_active/isochrone_file_unit
 ! (LISO/IISO) are used here; lrwsh_placeholder is an unused
@@ -66,9 +56,6 @@ subroutine wrthead(total_mass_msun)
       common/chrone/ lrwsh_placeholder, isochrone_output_active, &
            isochrone_file_unit
 
-! common/ccout2/: only ltrack is used here. Naming matches meqos.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
       save
 

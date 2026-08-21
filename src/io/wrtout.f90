@@ -61,16 +61,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       double precision, intent(in) :: total_angular_momentum, &
            total_rotational_kinetic_energy, shell_mass_increment(json)
 
-! common/lunum/: not used in this file; declared only to preserve
-! layout. Naming matches setkrz.f90.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
 !      COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,
 !     1    FDEBUG, FTRACK, FSHORT, FMILNE, FMODPT,
 !     2    FSTOR, FPMOD, FPENV, FPATM, FDYN,
@@ -87,21 +77,10 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! matches wrthead.f90.
       integer :: track_file_version
       common/track/ track_file_version
-! common/ccout/: only lstore is used here. Naming matches ccoeft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
-! common/ccout1/: only nprtmod is used here. Naming matches wrtmil.f90.
-      integer :: npenv, nprtmod, print_point_interval, npoint
-      common/ccout1/ npenv, nprtmod, print_point_interval, npoint
 ! common/pulsegyre/: pulse_gyre_interval, used here to trigger
 ! io/write_gyre_pulse.f90. Naming matches core/parmin.f90.
       integer :: pulse_gyre_interval
       common/pulsegyre/ pulse_gyre_interval
-! common/ccout2/: only ltrack is used here. Naming matches meqos.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 ! common/heflsh/: helium_flash_active (originally LKUTHE), used here.
 ! Naming matches wrtlst.f90.
       logical :: helium_flash_active

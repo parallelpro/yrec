@@ -172,15 +172,6 @@ program main
 ! setups.f90's/pdist.f90's own descriptive dummy-argument spelling).
 
 
-! common/lunum/: all used here.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
 
 ! common/lufnm/ is commented out in the original (superseded by
 ! passing file names directly, per the MHP 8/25 note below) and is not
@@ -207,17 +198,7 @@ program main
       double precision :: initial_envelope_x, initial_envelope_z
       common/label/ initial_envelope_x, initial_envelope_z
 
-! common/ccout/: lstore used here (checked before storing the last
-! model); the rest are unused placeholders. Naming matches coefft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
-! common/ccout2/: lstpch used here; the rest are unused placeholders.
-! Naming matches crrect.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
 ! common/cenv/: requested_envelope_mass/change_envelope_mass_flag are
 ! used here, matching starin.f90's own active naming for the same two

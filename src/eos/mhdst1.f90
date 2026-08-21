@@ -23,6 +23,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
                   log10t_down,log10t_up,table_vars_centroid,table_vars_down,table_vars_up, &
                   atomic_weight_down,atomic_weight_up, &
                   number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+      use const_lib
       implicit none
       integer, intent(in) :: table_unit, table_kind, nt1m, nr1m, ivar1, &
            nt2m, nr2m, ivar2, nchem0
@@ -42,8 +43,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
            mass_fraction_down(nchem0)
       double precision :: atomic_weight_up(nchem0), number_abundance_up(nchem0), &
            mass_fraction_up(nchem0)
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
       save
 
       integer :: num_composition_reads, composition_pass, num_vars_read, &

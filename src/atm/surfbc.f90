@@ -54,14 +54,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       integer, intent(in) :: zone_index
 
       logical :: tri_vertex_valid(3)
-! common/ccout/: not used in this file (referenced only for layout).
-! Naming matches ccoeft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/lstore,lstatm,lstenv,lstmod,lstphys,lstrot,lscrib,lstch,lphhd
-! common/ccout1/: not used in this file. Naming matches wrtmil.f90.
-      integer :: npenv, nprtmod, print_point_interval, npoint
-      common/ccout1/npenv,nprtmod,print_point_interval,npoint
 ! common/cenv/: tri_delta_teffl/tri_delta_logl are used here;
 ! senv0/lsenv0/lnew0 are unused placeholders. Naming is local to this
 ! batch.

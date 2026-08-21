@@ -101,10 +101,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !     ECOD(JSON),ECOD2(JSON)
       logical, intent(in) :: already_converged_flag
 
-! common/ccout1/: only print_point_interval is used here. Naming
-! matches hpoint.f90.
-      integer :: npenv, nprtmod, print_point_interval, npoint
-      common/ccout1/ npenv, nprtmod, print_point_interval, npoint
 
 ! common/difus/: convergence_tolerance/max_iterations are used here.
 ! Naming matches getw.f90/dadcoeft.f90/checkc.f90.

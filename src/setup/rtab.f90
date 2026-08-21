@@ -16,6 +16,7 @@
 ! num_vars variables at each of its density points.
 subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
      num_t_points,num_rho_points,log_t,table_data)
+      use const_lib
       implicit none
 
       integer, intent(in) :: file_unit, max_t_points, max_rho_points, &
@@ -26,10 +27,6 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
       double precision, intent(out) :: log_t(max_t_points), &
            table_data(max_t_points,max_rho_points,num_vars)
 
-! common/ccout2/: not used in this file; declared only to preserve
-! layout. Naming matches mhdtbl.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
       save
 
 ! --- locals ---

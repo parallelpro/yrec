@@ -50,6 +50,7 @@
 ! per-call data flow, not global configuration.
 subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
      eq_mass, num_eq_points, sub_diag, diag, super_diag, rhs)
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -61,12 +62,6 @@ subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
       double precision, intent(out) :: sub_diag(json), diag(json), &
            super_diag(json), rhs(json)
 
-! common/ccout/: not used in this file. Naming matches vcirc.f90/
-! momi.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
       save
 

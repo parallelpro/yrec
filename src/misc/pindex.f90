@@ -12,6 +12,7 @@
 ! set, plus every print_point_interval-th point elsewhere.
 subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -21,17 +22,7 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
       integer, intent(out) :: id(json)
       integer, intent(out) :: idm
 
-! common/ccout/: not used in this file's logic; layout placeholder.
-! Naming matches ccoeft.f90/wrtout.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
-! common/ccout1/: only print_point_interval (originally NPRTPT) is
-! used here. Naming matches wrtmil.f90/hpoint.f90.
-      integer :: npenv, nprtmod, print_point_interval, npoint
-      common/ccout1/ npenv, nprtmod, print_point_interval, npoint
 
       save
 

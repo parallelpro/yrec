@@ -30,9 +30,6 @@ subroutine mhdtbl(zams_a_table_path, zams_b_table_path, zams_c_table_path, &
            zams_c_table_path, centre1_table_path, centre2_table_path, &
            centre3_table_path, centre4_table_path, centre5_table_path
 
-!       DATA UMOD /2.302585092994046 D0/
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
       save
 
 !     SET MHD EQUATION OF STATE

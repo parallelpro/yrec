@@ -55,12 +55,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       double precision :: dum1(4), dum2(3), dum3(3), dum4(3)
       double precision :: envs1(json)
 
-! common/ccout/: only lstenv/lstatm are used here. Naming matches
-! ccoeft.f90/wrtout.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
 
 ! common/envgen/: all used here. Naming matches calcad.f90/wrtmod.f90.

@@ -38,36 +38,14 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       double precision, intent(in) :: age_gyr
 
 
-! common/lunum/: only opal_model_unit (IOPMOD) is used here. Naming
-! matches setkrz.f90.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
 
 ! common/label/: initial_envelope_x/initial_envelope_z, used here.
 ! Naming matches wrthead.f90.
       double precision :: initial_envelope_x, initial_envelope_z
       common/label/ initial_envelope_x, initial_envelope_z
 
-! common/ccout/: only lstore/lstatm/lstenv are used here. Naming
-! matches ccoeft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
-! common/ccout1/: not used in this file. Naming matches wrtmil.f90.
-      integer :: npenv, nprtmod, print_point_interval, npoint
-      common/ccout1/ npenv, nprtmod, print_point_interval, npoint
 
-! common/ccout2/: not used in this file. Naming matches meqos.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
 
 

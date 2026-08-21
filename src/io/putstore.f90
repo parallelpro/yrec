@@ -161,15 +161,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
            envelope_table, num_pressure_points, use_scv_eos, &
            scv_temp_index, scv_pressure_index
 
-! INCLUDE COMMON BLOCKS WITH REQUIRED PHYSICS AND OUTPUT FLAGS
-! common/ccout/: all members used here. Naming matches ccoeft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
-! common/ccout1/: only nprtmod is used here. Naming matches wrtmil.f90.
-      integer :: npenv, nprtmod, print_point_interval, npoint
-      common/ccout1/ npenv, nprtmod, print_point_interval, npoint
 ! common/sound/: adiabatic_index_gamma1 is used here. Naming is local
 ! to this batch.
       double precision :: adiabatic_index_gamma1(json)
@@ -210,10 +201,12 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! LMILNE is likewise never declared in any COMMON block of the
 ! original putstore.f (unlike wrtout.f/wrtlst.f, which get it from
 ! common/ccout2/) -- it is an implicitly-typed, SAVE'd, always-default
-! (.FALSE. in practice) local here, shell_diag%so "IF(LMILNE) CALL WRTMIL(...)"
+! (.FALSE. in practice) local here, so "IF(LMILNE) CALL WRTMIL(...)"
 ! below is effectively dead code. Preserved exactly as in the
-! original; not "fixed" here.
-      logical :: lmilne
+! original; not "fixed" here. Renamed to lmilne_local (2026) since it
+! would otherwise collide with the unrelated const_lib lmilne added
+! for former common/ccout2/.
+      logical :: lmilne_local
 
 ! physics flags:
 ! Determine atmosphere flag, ATM
@@ -441,7 +434,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! now call wrtmod, with the goal of outputting the envelope and atmosphere, or
 ! if required by LPULSE.
       if(lstatm.or.lstenv)then
-       if(lmilne) call wrtmil(composition,log_density,log_luminosity, &
+       if(lmilne_local) call wrtmil(composition,log_density,log_luminosity, &
             log_pressure,log_radius,mass_coordinate,num_shells,model_number)
          call wrtmod(num_shells,envelope_cz_bottom_index,composition, &
               mass_coordinate,log_density,log_luminosity,log_pressure, &

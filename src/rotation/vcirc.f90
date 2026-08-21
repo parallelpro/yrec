@@ -50,11 +50,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 
 
 
-! common/ccout/: not used in this file. Naming matches momi.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
 ! common/intfac/: lagrange_interp_weights (originally FACI), the 4-point
 ! Lagrangian interpolation weights used to interpolate viscosity/

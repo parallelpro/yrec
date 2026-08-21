@@ -20,6 +20,10 @@
 ! commons used by mhdpx1.
 subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
      unit_centre2, unit_centre3, unit_centre4, unit_centre5)
+! `use const_lib` removed (2026): unused (nothing in this file's body
+! reaches a const_lib symbol), and its dummy arguments above now share
+! names with the const_lib lunum members, which would otherwise be an
+! ambiguous reference.
       implicit none
 
       integer, parameter :: ivarc = 20
@@ -36,9 +40,6 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
            unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
            unit_centre5
 
-!     ZAMS TABLES (LABELLED BY A,B,C)
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
       double precision :: zams_lower_a_table(nt1m,nr1m,ivarc), &
            zams_lower_log10t(nt1m)
       integer :: zams_lower_num_t, zams_lower_num_r

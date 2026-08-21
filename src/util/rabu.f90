@@ -12,6 +12,7 @@
 subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
      number_abundance, mass_fraction, mean_molecular_weight)
 
+      use const_lib
       implicit none
 
       integer, intent(in) :: table_unit, nchem0
@@ -20,10 +21,6 @@ subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
            number_abundance(nchem0), mass_fraction(nchem0)
       double precision, intent(out) :: mean_molecular_weight
 
-! common/ccout2/: not used in this file's logic; layout placeholder.
-! Naming matches meqos.f90/mhdtbl.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
       save
 

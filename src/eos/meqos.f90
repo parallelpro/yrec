@@ -22,6 +22,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp_dt, specific_heat_cp_dp)
 
 ! LATMO,KSAHA NEEDED FOR EQSAHA
+      use const_lib
       use envelope_comp_lib
       use luout_lib
       implicit none
@@ -48,10 +49,6 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
 
 
 
-! common/ccout2/: no member is used anywhere in this batch of files;
-! all are unrenamed placeholders preserving the storage layout.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
 ! common/mhdout/: raw output vector from the MHD table interpolator
 ! (mhdpx), indexed as documented inline below where each element is

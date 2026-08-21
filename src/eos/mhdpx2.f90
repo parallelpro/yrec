@@ -16,6 +16,7 @@
 ! mhdst.f90.
 subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
      table_vars, table_hfrac, ndimt)
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: ivarc = 20
@@ -33,8 +34,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
       double precision, intent(inout) :: table_vars(ndimt,ivarx), &
            table_hfrac(ndimt)
 
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
       double precision :: zams_lower_a_table(nt1m,nr1m,ivarc), &
            zams_lower_log10t(nt1m)
       integer :: zams_lower_num_t, zams_lower_num_r

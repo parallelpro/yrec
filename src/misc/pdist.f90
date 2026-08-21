@@ -19,6 +19,7 @@
 subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
      log_luminosity, log_teff, model_number, pulse_atm_path, &
      pulse_env_path, pulse_mod_path)
+      use const_lib
       use luout_lib
       implicit none
 
@@ -49,14 +50,6 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
       logical :: use_z_ramp
       common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
            use_z_ramp
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
       save
 
       double precision :: delta_log_l, delta_log_teff, delta_age

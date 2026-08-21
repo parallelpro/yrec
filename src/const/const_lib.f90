@@ -240,4 +240,39 @@ module const_lib
       double precision :: zsi = 0.0d0
       integer :: idt, idd(4)
 
+! former common/ccout/: lstore/lstatm/lstenv/lstmod/lstphys/lstrot/
+! lscrib/lstch/lphhd are all NAMELIST /physics/ values in
+! core/parmin.f90 (lphhd is set directly there, not namelist-read, but
+! still lives in this same former block) -- all 9 keep their original
+! COMMON member spelling as their canonical const_lib name (no
+! separate readable rename ever established for this block), so
+! core/parmin.f90 use-associates them directly rather than keeping
+! separate locals.
+      logical :: lstore = .false., lstatm, lstenv, lstmod, lstphys
+      logical :: lstrot, lscrib = .true., lstch = .false., lphhd
+
+! former common/ccout1/: npenv/nprtmod/npoint are NAMELIST /physics/
+! values, spelled identically to their canonical names (use-associated
+! directly in core/parmin.f90). print_point_interval (originally
+! nprtpt) is also a NAMELIST value but needed a different, more
+! readable name established elsewhere, so core/parmin.f90 keeps a
+! local nprtpt and copy-assigns.
+      integer :: npenv, nprtmod = 1, npoint = 1
+      integer :: print_point_interval
+
+! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are all
+! NAMELIST /physics/ values, spelled identically to their canonical
+! names -- same treatment as common/ccout/ above.
+      logical :: ldebug = .false., lcorr = .true., lmilne = .false.
+      logical :: ltrack = .true., lstpch = .false.
+
+! former common/lunum/: logical unit numbers for the various input/
+! output files, none of them NAMELIST values -- core/parmin.f90
+! assigns them all unconditionally at startup (fixed unit numbers),
+! so no declaration-time defaults are needed here.
+      integer :: first_unit, run_unit, standard_unit, fermi_unit
+      integer :: opal_model_unit, opal_envelope_unit, opal_atm_unit
+      integer :: dynamics_unit, laol_table_unit, neutrino_unit
+      integer :: composition_unit, kurucz_table_unit
+
 end module const_lib

@@ -11,6 +11,7 @@
 ! interpolation coefficients used later by kurucz.f90/kurucz2.f90.
 subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 
+      use const_lib
       implicit none
       integer, parameter :: max_num_temps = 60
       integer, parameter :: max_num_densities = 50
@@ -20,19 +21,6 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 ! MHP 8/25 Remove unused variables
       character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
 
-! MHP 10/02 missing comma after IDYN
-! common/lunum/: only kurucz_table_unit (IKUR) is used here; remaining
-! members are unused placeholders preserving the shared storage layout.
-! Shared with setllo.f90, which uses laol_table_unit (ILLDAT) from the
-! same block.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
 
 ! GRID ENTRIES FOR TEMPERATURE, AND ABUNDANCE (X)
       double precision :: kurucz_grid_logt(max_num_temps)

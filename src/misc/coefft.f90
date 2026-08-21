@@ -83,11 +83,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       integer, intent(in) :: envelope_zone_index
       double precision, intent(in) :: log_teff
 
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/lstore,lstatm,lstenv,lstmod,lstphys,lstrot,lscrib,lstch,lphhd
-      integer :: npenv, nprtmod, nprtpt, npoint
-      common/ccout1/npenv,nprtmod,nprtpt,npoint
 ! DBG PULSE
       double precision :: pulsation_mass_msun
       logical :: pulsation_output_active

@@ -40,10 +40,6 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
 
 
 
-! common/ccout2/: no member is used anywhere in this batch of files;
-! all are unrenamed placeholders preserving the storage layout.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
 
       integer, parameter :: ivarx = 25

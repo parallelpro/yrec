@@ -23,9 +23,6 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       integer, intent(in) :: m, model
 
 
-! common/ccout1/: only print_point_interval (NPRTPT) is used here.
-      integer :: npenv, nprtmod, print_point_interval, npoint
-      common/ccout1/ npenv, nprtmod, print_point_interval, npoint
 
 
 

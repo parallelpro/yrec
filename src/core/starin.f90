@@ -180,23 +180,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       character(len=4) :: format_tag
       character(len=6) :: eos_code
       character(len=4) :: atm_code, alok_code, hik_code, compmix_code
-! MHP 8/25 Removed unused character strings
-!      CHARACTER*256 FLAOL, FPUREZ
-!      CHARACTER*256 FLAST, FFIRST, FRUN, FSTAND, FFERMI,
-!     1    FDEBUG, FTRACK, FSHORT, FMILNE, FMODPT,
-!     2    FSTOR, FPMOD, FPENV, FPATM, FDYN,
-!     3    FLLDAT, FSNU, FSCOMP, FKUR,
-!     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
-! common/lunum/: only first_unit is used here. Naming matches
-! envint.f90/wrthead.f90.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
 ! DBGLAOL
 ! MHP 8/25 Removed all character strings from common blocks
 ! common/cenv/: requested_envelope_mass/change_envelope_mass_flag are

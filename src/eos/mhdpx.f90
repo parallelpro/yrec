@@ -30,6 +30,7 @@
 ! variable-X interpolation in mhdpx1, then returns log10(density).
 subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
      log10_density)
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: ivarx = 25
@@ -43,8 +44,6 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
 !     CALLS VARIABLE-X VERSION
       double precision :: mhd_output(ivarx)
       common/mhdout/ mhd_output
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
       save
 
       call mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)

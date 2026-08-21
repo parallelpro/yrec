@@ -53,14 +53,9 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
            scv_he_table_path, scv_z_table_path
       character(len=256), intent(in) :: alex95_table_paths(7)
 
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
+! former common/lunum/: all 12 members now use-associated from
+! const_lib (see that file's header note) rather than locally
+! declared/common'd here.
 ! MHP 8/25 Removed file names from common block
 !      COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,
 !     1    FDEBUG, FTRACK, FSHORT, FMILNE,  FMODPT,

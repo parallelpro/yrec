@@ -31,10 +31,6 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
 
 
 
-! common/ccout2/: not used in this file; declared only to preserve
-! layout. Naming matches meqos.f90.
-      logical :: ldebug, lcorr, lmilne, ltrack, lstpch
-      common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
 ! DATA NZP1/12/
       double precision :: atomic_weights(4)

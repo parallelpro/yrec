@@ -73,16 +73,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       double precision, intent(inout) :: vtx_logp(3), vtx_logr(3), vtx_logt(3)
       logical, intent(in) :: pulse_print_flag
 
-! common/lunum/: only opal_envelope_unit/opal_atm_unit are used here.
-! Naming matches wrthead.f90.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
 ! DBG CHANGED MAXSTEP FROM 200 TO 2000 TO GIVE ATMOSPHERE INTEGRATER A CHANCE.
       integer, parameter :: maxstp = 2000
       double precision, parameter :: tiny = 1.0d-30
@@ -274,13 +264,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            ijvs_placeholder, ijent_placeholder, ijdel_placeholder, &
            acoustic_depth_output
 
-! G Somers 11/14, ADD I/O COMMON BLOCK
-! common/ccout/: only lstatm/lstenv/lstch are used here. Naming
-! matches wrtout.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
 ! G Somers END
 
 

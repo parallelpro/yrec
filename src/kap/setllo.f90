@@ -14,6 +14,7 @@
 ! the OPAL92 lookup routines (yllo3d/yllo3d2, not part of this batch).
 subroutine setllo(opal92_table_path, opal92_table2_path)
 
+      use const_lib
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17
@@ -26,18 +27,6 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
 ! MHP 8/25 removed variables not used in subroutine
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
 
-! common/lunum/: only laol_table_unit (ILLDAT) is used here; remaining
-! members are unused placeholders preserving the shared storage
-! layout. Naming matches setkrz.f90, which uses kurucz_table_unit
-! (IKUR) from the same block.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
-      common/lunum/ first_unit, run_unit, standard_unit, fermi_unit, &
-           opal_model_unit, opal_envelope_unit, opal_atm_unit, &
-           dynamics_unit, laol_table_unit, neutrino_unit, &
-           composition_unit, kurucz_table_unit
 
 ! MHP 8/25 removed common block with file names
 !     COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,

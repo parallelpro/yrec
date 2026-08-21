@@ -36,12 +36,6 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
       double precision, intent(out) :: pressure_rotation_factor(json), &
            temperature_rotation_factor(json), mean_gravity(json)
 
-! common/ccout/: not used in this file; declared only to preserve
-! layout. Naming matches ccoeft.f90.
-      logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
-           lstch, lphhd
-      common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
-           lscrib, lstch, lphhd
 
 
 
