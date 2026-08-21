@@ -30,7 +30,7 @@
 ! this file is the first to actually USE those three slots, as the
 ! live temperature/pressure Henyey-equation scratch terms (they also
 ! double as the eq_t_val/eq_p_val/dqt_dl arguments passed to reduce),
-! shell_diag%so per the project's COMMON-block-reuse rule they keep the
+! so per the project's COMMON-block-reuse rule they keep the
 ! wrtmod.f90 names (qt/qp/qtl) here too, despite those names no
 ! longer being very descriptive of their role in this file.
 !
@@ -83,12 +83,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       integer, intent(in) :: envelope_zone_index
       double precision, intent(in) :: log_teff
 
-! DBG PULSE
-      double precision :: pulsation_mass_msun
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
-      common/pulse/pulsation_mass_msun,pulsation_output_active, &
-           pulsation_file_version
       double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &
            pulse_dlneps_dlnt(json), pulse_dlnkap_dlnrho(json), &
            pulse_dlnkap_dlnt(json), pulse_specific_heat(json), &
@@ -596,7 +590,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! wrtout.f90) and needs these populated for every converged model, not
 ! just ones flagged by the older mechanism. All source locals here
 ! (dlnrho_dlnp, dlnkap_dlnrho/dlnt, zone_dlnepsilon_dlnrho/dlnt, etc.)
-! are already computed unconditionally above, shell_diag%so this is just always
+! are already computed unconditionally above, so this is just always
 ! copying them into the pulse1/mixing-length output arrays -- no
 ! change to any existing output (.short/.track/.store/.pmod/.penv/
 ! .patm) values, since none of those read from these arrays.

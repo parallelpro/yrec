@@ -21,7 +21,7 @@
 ! without the iterative sub-step refinement used by liburn.f90.
 !
 ! The degree of lithium burning in a surface CZ depends sensitively
-! on the temperature at its base -- shell_diag%so accurately locating it is
+! on the temperature at its base -- so accurately locating it is
 ! important. Determine the true location (cz_base_frac) of the base
 ! of the CZ at the end of the timestep, and the location of the edge
 ! of overshoot regions if applicable.

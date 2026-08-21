@@ -59,30 +59,10 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       common/envgen/ atm_step_size, envelope_step_size, envelope_generation_flag
 
 
-! common/intatm/: atmosphere integration control, all used here.
-! Naming is local to this batch.
-      double precision :: atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
-      common/intatm/ atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
-
-! common/intenv/: envelope integration control, all used here. Naming
-! is local to this batch.
-      double precision :: env_error_tol, env_step_begin, env_step_min, &
-           env_step_max
-      common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
 
 
-! DBG PULSE
-! common/pulse/: pulsation_mass_msun/pulsation_output_active/
-! pulsation_file_version, all used here. Naming is local to this
-! batch.
-      double precision :: pulsation_mass_msun
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
-      common/pulse/ pulsation_mass_msun, pulsation_output_active, &
-           pulsation_file_version
+
 
 ! common/pulse1/: per-shell partial derivatives used to build the
 ! pulsation model output. The exact physical definition of each is not
@@ -158,7 +138,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 ! anywhere in this subroutine (no CALL PINDEX or equivalent here,
 ! unlike putstore.f90/wrtlst.f90). With the implicit SAVE below they
 ! keep their static-storage default (in practice 0 on essentially all
-! platforms), shell_diag%so "DO 220 J = 1,IDM" never executes and the WRITE(
+! platforms), so "DO 220 J = 1,IDM" never executes and the WRITE(
 ! IOPMOD,5001) statement always reports IDM=0. This looks like a
 ! latent bug (perhaps a lost CALL PINDEX from an earlier refactor),
 ! but it is preserved exactly as in the original wrtmod.f; not "fixed"

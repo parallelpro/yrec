@@ -39,11 +39,6 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
       logical :: po_output_enabled
       common /po/ po_weight_l, po_weight_teff, po_weight_age, &
            po_max_len_sq, po_output_enabled
-      double precision :: pulsation_mass_msun
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
-      common/pulse/ pulsation_mass_msun, pulsation_output_active, &
-           pulsation_file_version
 ! MHP 8/25 Removed character file names from common block
       double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
       integer :: iolaol2, ioopal2, nk

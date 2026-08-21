@@ -96,13 +96,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
            fermi_table_x_lookup
 
 
-! common/atmos/: atm_hras/atm_choice are used here; atm_choice_initial/
-! use_ttau_relation are unused placeholders. Naming matches
-! surfbc.f90/qatm.f90.
-      double precision :: atm_hras
-      integer :: atm_choice, atm_choice_initial
-      logical :: use_ttau_relation
-      common/atmos/atm_hras, atm_choice, atm_choice_initial, use_ttau_relation
       double precision :: kurucz_log10_pressure_table(nt,ng), &
            kurucz_teff_table(nt), kurucz_logg_table(ng), kurucz_table_z
       integer :: atm_table_file_unit

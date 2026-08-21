@@ -340,4 +340,46 @@ module const_lib
       logical :: use_new_diffusion_routines
       logical :: ldifli = .false.
 
+! former common/intatm/: all 5 members are NAMELIST /physics/ values
+! with different canonical spellings than core/parmin.f90's terse
+! names (atmerr/atmd0/atmbeg/atmmin/atmmax -> atm_error_tol/
+! atm_step_initial/atm_step_begin/atm_step_min/atm_step_max), all kept
+! local there and copy-assigned.
+      double precision :: atm_error_tol, atm_step_initial, atm_step_begin
+      double precision :: atm_step_min, atm_step_max
+
+! former common/intenv/: all 4 members are NAMELIST /physics/ values
+! with different canonical spellings than core/parmin.f90's terse
+! names (enverr/envbeg/envmin/envmax -> env_error_tol/env_step_begin/
+! env_step_min/env_step_max), all kept local there and copy-assigned.
+      double precision :: env_error_tol, env_step_begin, env_step_min
+      double precision :: env_step_max
+
+! former common/pulse/: pulsation_output_active/pulsation_file_version
+! (originally lpulse/ipver) are NAMELIST values with different
+! canonical spellings, kept local in core/parmin.f90 and copy-assigned.
+! pulsation_mass_msun (originally xmsol) is not a namelist value --
+! core/main.f90 sets it at runtime (from total_mass_msun) -- so it has
+! no declaration-time default; it was unused in core/parmin.f90 itself
+! and dropped there.
+      logical :: pulsation_output_active
+      integer :: pulsation_file_version
+      double precision :: pulsation_mass_msun
+
+! former common/atmos/: atm_choice (originally kttau) is a NAMELIST
+! value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned. atm_choice_initial/
+! use_ttau_relation (originally kttau0/lttau) are not namelist values
+! -- core/parmin.f90 computes them from kttau right after the
+! namelist read (atm_choice_initial = kttau; use_ttau_relation =
+! .false.) -- so no declaration-time defaults are needed for them.
+! atm_hras (former common/atmos/'s remaining member, originally hras)
+! is not a namelist value -- setup/setups.f90 computes it at runtime
+! -- so it has no declaration-time default; it was unused in
+! core/parmin.f90 itself and dropped there.
+      integer :: atm_choice
+      integer :: atm_choice_initial
+      logical :: use_ttau_relation
+      double precision :: atm_hras
+
 end module const_lib

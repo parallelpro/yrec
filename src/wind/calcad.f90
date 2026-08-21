@@ -85,7 +85,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 ! actively computed/written here -- unlike in wrtout.f90/getopal95.f90,
 ! where this whole block is left as unused-placeholder "*_placeholder"
 ! names, DELADJ genuinely carries the adiabatic gradient per this
-! file's own header, shell_diag%so it (and calcad_output_active/calcad_output_unit,
+! file's own header, so it (and calcad_output_active/calcad_output_unit,
 ! which genuinely gate/target output here) are given real names
 ! instead of wrtout.f90's inherited "deladj_placeholder"/
 ! "lclcd_placeholder"/"iclcd_placeholder"; all other members are unused
@@ -133,18 +133,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
            env_gamma1, env_specific_heat_cp, env_ion_fraction, &
            env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
 
-! common/intatm/: atmosphere integration control, saved/restored here.
-! Naming matches envint.f90.
-      double precision :: atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
-      common/intatm/ atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
 
-! common/intenv/: envelope integration control, saved/restored here.
-! Naming matches envint.f90.
-      double precision :: env_error_tol, env_step_begin, env_step_min, &
-           env_step_max
-      common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
 
 
@@ -180,11 +169,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 
-! common/atmos/: all used here. Naming matches envint.f90.
-      double precision :: atm_hras
-      integer :: atm_choice, atm_choice_initial
-      logical :: use_ttau_relation
-      common/atmos/ atm_hras, atm_choice, atm_choice_initial, use_ttau_relation
 
 ! common/scveos/: all used here (SCV EOS table + control, backing the
 ! non-OPAL2006 branch below via eqstat2). Naming matches eqstat2.f90,
@@ -268,7 +252,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 !      KTSAV = 3
 
 ! Need to calculate the sound speed in the envelope: first, stitch
-! envelope and interior together (shell_diag%so that T, P, R all agree at fitting
+! envelope and interior together (so that T, P, R all agree at fitting
 ! point. Then calculate sound speed in the envelope and interior
 ! and integrate.
 

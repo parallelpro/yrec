@@ -64,15 +64,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       double precision :: allard_al_teffl_min, allard_al_teffl_max
       common /alatm05/ allard_al_teffl_min, allard_al_teffl_max
 
-! MHP 9/01 ADDED COMMON BLOCK
-! NEEDED TO SWITCH TO GRAY ATMOSPHERE FROM KURUCZ/AH ABOVE LOG
-! TEFF = 3.95
-! common/atmos/: atmosphere-choice flags, all used here. Naming
-! matches wrtlst.f90.
-      double precision :: atm_hras
-      integer :: atm_choice, atm_choice_initial
-      logical :: use_ttau_relation
-      common/atmos/atm_hras, atm_choice, atm_choice_initial, use_ttau_relation
       integer :: numenv
       data numenv/0/
 

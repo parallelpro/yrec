@@ -69,12 +69,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       logical :: ldh
       common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
-! TOLERANCES FOR THE ENVELOPE INTEGRATION; TEMPORARILY ASSIGN NEW
-! VALUES FOR THE INTEGRATION TO FIND THE NEW POINTS AND THEN RESET.
-! common/intenv/: all used here. Naming matches envint.f90.
-      double precision :: env_error_tol, env_step_begin, env_step_min, &
-           env_step_max
-      common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
 ! STORED CONTENTS OF THE ENVELOPE INTEGRATION.
 ! KC 2025-05-30 reordered common block elements

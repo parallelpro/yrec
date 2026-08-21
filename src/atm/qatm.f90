@@ -44,13 +44,6 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       common/nwlaol/olaol, oxa, ot, orho, tollaol, &
            iolaol, numofxyz, numrho, numt, llaol, use_pure_z_table, iopurez
       double precision :: fxion(3)
-! common/pulse/: only pulsation_file_version is used here. Naming
-! matches wrtmod.f90.
-      double precision :: pulsation_mass_msun
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
-      common/pulse/pulsation_mass_msun, pulsation_output_active, &
-           pulsation_file_version
 ! common/pulse1/: only lpumod is used here; remaining members are
 ! unused placeholders. Naming matches wrtmod.f90.
       double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &
@@ -76,12 +69,6 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
            atm_ion_fraction(3)
       common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
            atm_log10_density, atm_opacity, atm_ion_fraction
-! common/atmos/: atm_choice/atm_hras are used here. Naming matches
-! putstore.f90.
-      double precision :: atm_hras
-      integer :: atm_choice, atm_choice_initial
-      logical :: use_ttau_relation
-      common/atmos/atm_hras, atm_choice, atm_choice_initial, use_ttau_relation
 
       save
 

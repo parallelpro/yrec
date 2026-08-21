@@ -240,13 +240,18 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lkuthe
       common /heflsh/ lkuthe
 
-! common /intatm/
+! atmerr/atmd0/atmbeg/atmmin/atmmax: NAMELIST /physics/ members, each
+! with a different canonical const_lib spelling (atm_error_tol/
+! atm_step_initial/atm_step_begin/atm_step_min/atm_step_max), so kept
+! local under their NAMELIST spelling here and copy-assigned after the
+! namelist read below.
       double precision :: atmerr, atmd0, atmbeg, atmmin, atmmax
-      common /intatm/ atmerr, atmd0, atmbeg, atmmin, atmmax
 
-! common /intenv/
+! enverr/envbeg/envmin/envmax: NAMELIST /physics/ members, each with a
+! different canonical const_lib spelling (env_error_tol/env_step_begin/
+! env_step_min/env_step_max), so kept local under their NAMELIST
+! spelling here and copy-assigned after the namelist read below.
       double precision :: enverr, envbeg, envmin, envmax
-      common /intenv/ enverr, envbeg, envmin, envmax
 
 ! stolr0/imax/nuse: NAMELIST /physics/ members (must keep this exact
 ! spelling, see this file's naming note at the top). Former common
@@ -366,11 +371,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! const_lib canonical name -- use-associated directly.
       logical :: lnewdif
 
-! common /pulse/
-      double precision :: xmsol
+! lpulse/ipver: NAMELIST /physics/ members, each with a different
+! canonical const_lib spelling (pulsation_output_active/
+! pulsation_file_version), so kept local under their NAMELIST spelling
+! here and copy-assigned after the namelist read below. xmsol (former
+! common/pulse/'s remaining member) is unused in this file, so it's
+! dropped entirely.
       logical :: lpulse
       integer :: ipver
-      common /pulse/ xmsol, lpulse, ipver
 
 ! common /po/
       double precision :: poa, pob, poc, pomax
@@ -381,11 +389,16 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: itrver
       common /track/ itrver
 
-! common /atmos/
-      double precision :: hras
-      integer :: kttau, kttau0
-      logical :: lttau
-      common /atmos/ hras, kttau, kttau0, lttau
+! kttau: NAMELIST /physics/ member with a different canonical const_lib
+! spelling (atm_choice), so kept local under its NAMELIST spelling
+! here and copy-assigned after the namelist read below. kttau0/lttau
+! (former common/atmos/'s remaining members) are not namelist values
+! -- both computed from kttau right after the namelist read (kttau0 =
+! kttau; lttau = .false.) -- so they're simply renamed in place to
+! their canonical const_lib names (atm_choice_initial/
+! use_ttau_relation), now use-associated rather than locally declared.
+! hras is unused in this file, so it's dropped entirely.
+      integer :: kttau
 
 ! lmhd: NAMELIST /physics/ member (must keep this exact spelling);
 ! copied into const_lib's use_mhd_eos after the namelist read below.
@@ -1241,13 +1254,25 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use_thoul_fit = lthoulfit
       use_diffusion_z = ldifz
       use_new_diffusion_routines = lnewdif
+      atm_error_tol = atmerr
+      atm_step_initial = atmd0
+      atm_step_begin = atmbeg
+      atm_step_min = atmmin
+      atm_step_max = atmmax
+      env_error_tol = enverr
+      env_step_begin = envbeg
+      env_step_min = envmin
+      env_step_max = envmax
+      pulsation_output_active = lpulse
+      pulsation_file_version = ipver
+      atm_choice = kttau
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
 ! MHP 06/13 Added memory of whether the choice of atmospheres has
 ! been changed during the run, and what the original setting was
-      kttau0 = kttau
-      lttau = .false.
+      atm_choice_initial = kttau
+      use_ttau_relation = .false.
 ! DBG WRITE OUT ENTIRE NAMELIST TO ISHORT
       write(short_file_unit,nml=physics)
       write(short_file_unit,nml=control)

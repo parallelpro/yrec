@@ -45,13 +45,6 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       integer, intent(inout) :: env_call_count, saha_state
 
       double precision :: ion_fraction(3)
-! common/pulse/: only pulsation_file_version is used here. Naming
-! matches wrtmod.f90.
-      double precision :: pulsation_mass_msun
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
-      common/pulse/pulsation_mass_msun, pulsation_output_active, &
-           pulsation_file_version
 ! common/pulse1/: only lpumod is used here; remaining members are
 ! unused placeholders. Naming matches wrtmod.f90.
       double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &

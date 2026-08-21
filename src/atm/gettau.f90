@@ -51,16 +51,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       logical :: envelope_generation_flag
       common/envgen/ atm_step_size, envelope_step_size, envelope_generation_flag
 
-! common/intatm/: not used in this file. Naming matches envint.f90.
-      double precision :: atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
-      common/intatm/ atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
 
-! common/intenv/: not used in this file. Naming matches envint.f90.
-      double precision :: env_error_tol, env_step_begin, env_step_min, &
-           env_step_max
-      common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
 
 
@@ -119,7 +110,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       turnover%convective_turnover_timescale = 0.0
       turnover%pphot = 0.0
 
-! Check if 1 PSCA above BCZ is within envelope. If shell_diag%so, only the interior
+! Check if 1 PSCA above BCZ is within envelope. If so, only the interior
 ! model should be considered for TAUCZ. Set LCALCENV = .FALSE.. If not,
 ! have ENVINT calculate the full structure, and stitch the envelope
 ! and interior together.

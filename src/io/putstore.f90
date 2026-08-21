@@ -74,14 +74,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 !      compostion (COMPMIX)
       common /i2o/ initial_composition_code
 
-! llp 3/19/03 Add required COMMON blocks such that header flags
-!     ATM, EOS, HIK and LOK can be determined.
-! common/atmos/: atmosphere-choice flags, all used here. Naming
-! matches wrtlst.f90.
-      double precision :: atm_hras
-      integer :: atm_choice, atm_choice_initial
-      logical :: use_ttau_relation
-      common/atmos/ atm_hras, atm_choice, atm_choice_initial, use_ttau_relation
 ! MHP 8/17 ADDED EXCEN, C_2 TO COMMON BLOCK FOR MATT ET AL. 2012 CENT. TERM
 ! common/cwind/: only ljdot0 is used here. Naming matches dadcoeft.f90.
       double precision :: wind_saturation_omega, exmd, &

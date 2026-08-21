@@ -88,14 +88,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! common/label/: not used in this file. Naming matches wrthead.f90.
       double precision :: initial_envelope_x, initial_envelope_z
       common/label/ initial_envelope_x, initial_envelope_z
-! DBG PULSE
-! common/pulse/: only pulsation_output_active is used here. Naming
-! matches wrtmod.f90.
-      double precision :: pulsation_mass_msun
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
-      common/pulse/ pulsation_mass_msun, pulsation_output_active, &
-           pulsation_file_version
 ! MHP 8/25 Removed character file names from common block
 ! DBG 11/11/91
 ! common/chrone/: only isochrone_output_active/isochrone_file_unit are
@@ -124,7 +116,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! compute_acoustic_depth/acoustic_depth_output are used here (the
 ! first six unlike in getopal95.f90, which leaves this whole block as
 ! unused placeholders -- here they are actually written out in the
-! .track 1800 format, shell_diag%so real names are given instead; their precise
+! .track 1800 format, so real names are given instead; their precise
 ! physical definitions are not confidently known beyond "acoustic
 ! depth family of diagnostics", flagged accordingly). The remaining
 ! members are unused placeholders preserving the shared storage

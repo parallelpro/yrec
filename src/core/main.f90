@@ -264,22 +264,7 @@ program main
       common/rotprt/ lprt0_placeholder
 
 
-! common/pulse/: pulsation_mass_msun/pulsation_output_active used
-! here; pulsation_file_version unused placeholder. Naming matches
-! pdist.f90.
-      double precision :: pulsation_mass_msun
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
-      common/pulse/ pulsation_mass_msun, pulsation_output_active, &
-           pulsation_file_version
 
-! common/atmos/: only atm_choice used here; the rest unused
-! placeholders. Naming matches envint.f90.
-      double precision :: atm_hras
-      integer :: atm_choice, atm_choice_initial
-      logical :: use_ttau_relation
-      common/atmos/ atm_hras, atm_choice, atm_choice_initial, &
-           use_ttau_relation
 
 ! MHP 8/25 Removed character file names from common block
 ! common/chrone/: lrwsh_placeholder actively used here (see the header

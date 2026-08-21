@@ -80,7 +80,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 
 ! MHP 8/94 ADDED I/O FOR DIFFUSION
 ! common/gscof/: not used in this file; declared only to preserve
-! layout. Not referenced in any already-converted file, shell_diag%so kept as
+! layout. Not referenced in any already-converted file, so kept as
 ! lowercased originals. Naming matches microdiff_setup.f90.
       double precision :: app(json), atp(json), apzp(json), atzp(json)
       common/gscof/ app, atp, apzp, atzp
@@ -88,7 +88,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !CFD 10/09 ADDED COMMON BLOCK FOR EXTRA MIXING. IT MIMIC SOME MIXING BY
 ! AFFECTING THE SETTLING COEFFICIENT DIRECTLY (in setup_grsett.f)
 ! common/cmixing/: cstmixing/cstdiffmix, both used here. Not referenced
-! in any already-converted file, shell_diag%so kept as lowercased originals.
+! in any already-converted file, so kept as lowercased originals.
 ! Naming matches microdiff_setup.f90.
       double precision :: cstmixing, cstdiffmix
       common/cmixing/ cstmixing, cstdiffmix

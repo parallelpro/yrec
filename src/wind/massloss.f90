@@ -38,7 +38,7 @@
 ! is positional, this means the two files disagree about which
 ! physical quantity occupies which storage slot. Neither variable is
 ! actually read or set in this file's body (they are unused layout
-! placeholders here), shell_diag%so the mismatch has no effect on this file's own
+! placeholders here), so the mismatch has no effect on this file's own
 ! behavior; reproduced exactly rather than silently reconciled.
 subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      log_density, specific_angular_momentum, log_pressure, log_radius, &

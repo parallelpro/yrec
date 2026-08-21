@@ -103,28 +103,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            current_log10_radius, current_log10_mass, current_log10_density, &
            current_opacity, current_beta, current_gradients, &
            current_ion_fraction, current_velocity
-! common/intatm/: atmosphere integration control, all used here.
-! Naming matches wrtmod.f90. NOTE: despite the inherited name
-! atm_step_initial (chosen in wrtmod.f90, where this member is an
-! unused layout placeholder), this slot (ATMD0) is actually the
-! starting atmosphere DENSITY guess, not a step size -- see its use
-! below (atm_density_guess = atm_step_initial).
-      double precision :: atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
-      common/intatm/atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
-! common/intenv/: envelope integration control, all used here. Naming
-! matches wrtmod.f90.
-      double precision :: env_error_tol, env_step_begin, env_step_min, &
-           env_step_max
-      common/intenv/env_error_tol, env_step_begin, env_step_min, env_step_max
-! DBG PULSE
-! common/pulse/: all used here. Naming matches wrtmod.f90.
-      double precision :: pulsation_mass_msun
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
-      common/pulse/pulsation_mass_msun, pulsation_output_active, &
-           pulsation_file_version
 ! common/pulse1/: only lpumod is used here; remaining members are
 ! unused placeholders. Naming matches wrtmod.f90.
       double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &
@@ -144,11 +122,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            qrmu, qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
       common/pulse2/qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, qrmu, &
            qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
-! common/atmos/: all used here. Naming matches putstore.f90.
-      double precision :: atm_hras
-      integer :: atm_choice, atm_choice_initial
-      logical :: use_ttau_relation
-      common/atmos/atm_hras, atm_choice, atm_choice_initial, use_ttau_relation
 ! common/atmos2/: not used in this file (SURFP's own common). Naming
 ! matches surfp.f90.
       double precision :: kurucz_log10_pressure_table(nt,ng), &

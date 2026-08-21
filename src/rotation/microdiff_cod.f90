@@ -105,7 +105,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          if(species_col.eq.1) hydrogen_concen(i) = concen(1)
 !        now check whether the Thoul routine must be run. if not,
 !        write COD1 = COD2 = 0. If its the first shell in the depleted
-!        zone, permit the calculations shell_diag%so that AD is correct.
+!        zone, permit the calculations so that AD is correct.
          if(species_fraction(species_col,i).eq.0.0.and.i.ne.num_eq_points)then
             if(species_fraction(species_col,i+1).eq.0.0)then
                diffusion_term(i) = 0.0
@@ -168,7 +168,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          at = -temp_coeff(species_col)*eq_del_grad(i)
          ah = -conc_coeff(species_col,1)
          ad = -conc_coeff(species_col,species_col)
-!        store the numbers shell_diag%so the hydrogen gradient can finish
+!        store the numbers so the hydrogen gradient can finish
 !        being calculated; then use them later.
          coeff_scale(i) = fac
          pressure_term(i) = ap

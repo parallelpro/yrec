@@ -63,19 +63,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       common/envgen/ atm_step_size, envelope_step_size, &
            envelope_generation_flag
 
-! common/intatm/: atmosphere integration control; atm_step_begin/
-! atm_step_min/atm_step_max are saved/restored here. Naming matches
-! calcad.f90/envint.f90.
-      double precision :: atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
-      common/intatm/ atm_error_tol, atm_step_initial, atm_step_begin, &
-           atm_step_min, atm_step_max
 
-! common/intenv/: envelope integration control; all used here. Naming
-! matches calcad.f90/envint.f90.
-      double precision :: env_error_tol, env_step_begin, env_step_min, &
-           env_step_max
-      common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
 
 
@@ -212,7 +200,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
 ! **************************   WRITE OUT ENVELOPE INFORMATION   **********************
 
-      if(lstenv)then ! only provide an envelope if asked to do shell_diag%so
+      if(lstenv)then ! only provide an envelope if asked to do so
 ! Begin by "dropping a sinkline" with the envelope integrator
       abeg0 = atm_step_begin
       amin0 = atm_step_min

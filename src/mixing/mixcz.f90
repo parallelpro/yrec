@@ -128,7 +128,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !
 ! JVS 02/12 calculate the local convective overturn timescale at the
 ! base of the CZ. In older versions this was only done for rotating
-! models; this makes it shell_diag%so taucz is calculated for all models.
+! models; this makes it so taucz is calculated for all models.
 ! This code snagged from midmod
 !
 !  determine extent of surface convection zone.
