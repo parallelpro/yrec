@@ -9,11 +9,12 @@
 ! Generates the fixed-(X,Z) table for the Alexander 2006 low-
 ! temperature opacities by 4-point Lagrangian interpolation, first in
 ! Z then in X, from the full set of tables read by readalex06.f90.
-! The target X, Z are taken from alex06_cached_x/alex06_cached_z
+! The target X, Z are taken from opacity_table%alex06_cached_x/opacity_table%alex06_cached_z
 ! (common/alot06/), which the caller (getalex06.f90) sets before
 ! calling this routine.
 subroutine alex06tab
 
+      use opacity_table_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_x = 9
@@ -22,19 +23,8 @@ subroutine alex06tab
       integer, parameter :: num_t = 85
       integer, parameter :: num_d = 19
 
-      double precision :: alex06_grid_logt(num_t), alex06_grid_x(num_x), &
-           alex06_grid_logr(num_d), alex06_grid_z(num_z)
-      common /galot06/ alex06_grid_logt, alex06_grid_x, alex06_grid_logr, &
-           alex06_grid_z
 
-      double precision :: alex06_opacity(num_t, num_d), alex06_cached_x, &
-           alex06_cached_z
-      integer :: alex06_index_x, alex06_index_t, alex06_index_r
-      common /alot06/ alex06_opacity, alex06_cached_x, alex06_cached_z, &
-           alex06_index_x, alex06_index_t, alex06_index_r
 
-      double precision :: alex06_full_opacity(num_xz, num_t, num_d)
-      common /alot06all/ alex06_full_opacity
 
       double precision :: interp_nodes(4), weight_z(4)
       double precision :: opacity_by_x(4,num_t,num_d)
@@ -44,22 +34,22 @@ subroutine alex06tab
       integer :: i, j, iz, k, kk, kk2, kk3, kk4
 
 !     XE = DESIRED X; ZE = DESIRED Z
-      x_max = 1.0d0 - alex06_cached_z
+      x_max = 1.0d0 - opacity_table%alex06_cached_z
 !     CHECK THAT THE REQUESTED COMPOSITION IS INSIDE TABLE BOUNDS
-      if (alex06_cached_x.lt.0.0d0 .or. alex06_cached_x .gt. x_max) then
-         write(*,5) alex06_cached_x, alex06_cached_z
+      if (opacity_table%alex06_cached_x.lt.0.0d0 .or. opacity_table%alex06_cached_x .gt. x_max) then
+         write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
     5    format('ILLEGAL COMPOSITION (X,Z) = ',2f6.2,' IN ALEX06.RUN STOPPED')
          stop
       endif
 !     PERMIT EXTRAPOLATION IN Z BY UP TO 1 TABLE ELEMENT
-      z_max = alex06_grid_z(num_z)+(alex06_grid_z(num_z)-alex06_grid_z(num_z-1))
-      if (alex06_cached_z.lt.0.0d0 .or. alex06_cached_z .gt. z_max) then
-         write(*,5) alex06_cached_x, alex06_cached_z
+      z_max = opacity_table%alex06_grid_z(num_z)+(opacity_table%alex06_grid_z(num_z)-opacity_table%alex06_grid_z(num_z-1))
+      if (opacity_table%alex06_cached_z.lt.0.0d0 .or. opacity_table%alex06_cached_z .gt. z_max) then
+         write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
          stop
       endif
 !     FIND 4 NEAREST TABLES IN Z.
       do i = 3,num_z-2
-         if (alex06_cached_z.le.alex06_grid_z(i)) then
+         if (opacity_table%alex06_cached_z.le.opacity_table%alex06_grid_z(i)) then
             iz = i - 2
             goto 7
          endif
@@ -68,77 +58,77 @@ subroutine alex06tab
     7 continue
 !     FIND 4 NEAREST TABLES IN X.
       do i = 3,num_x-2
-         if (alex06_cached_x.le.alex06_grid_x(i)) then
-            alex06_index_x = i - 2
+         if (opacity_table%alex06_cached_x.le.opacity_table%alex06_grid_x(i)) then
+            opacity_table%alex06_index_x = i - 2
             goto 10
          endif
       end do
 !     NO TABLE FOR X > 0.9 IF Z =0.10 OR MORE
-      if (alex06_cached_z.ge.0.1d0) then
-         alex06_index_x = num_x - 4
+      if (opacity_table%alex06_cached_z.ge.0.1d0) then
+         opacity_table%alex06_index_x = num_x - 4
       else
-         alex06_index_x = num_x - 3
+         opacity_table%alex06_index_x = num_x - 3
       endif
    10 continue
 !     INTERPOLATION FACTORS FOR Z
       do i = 1,4
-         interp_nodes(i) = alex06_grid_z(iz+i-1)
+         interp_nodes(i) = opacity_table%alex06_grid_z(iz+i-1)
       end do
-      interp_target = alex06_cached_z
+      interp_target = opacity_table%alex06_cached_z
       call intrp2(interp_nodes, weight_z, interp_target)
 !     THE DIFFERENCE IN THE NUMBER OF TABLES FOR THE Z=0.1 CASE REQUIRES SOME
 !     CARE IN X INTERPOLATION.  FIRST 3 X CASES CAN BE TREATED NORMALLY.
       do k = 1,3
-         kk = num_z*(alex06_index_x+k-2)+iz
+         kk = num_z*(opacity_table%alex06_index_x+k-2)+iz
          kk2 = kk + 1
          kk3 = kk2 + 1
          kk4 = kk3 + 1
          do i = 1,num_t
             do j = 1,num_d
-               opacity_by_x(k,i,j) = weight_z(1)*alex06_full_opacity(kk,i,j)+ &
-                    weight_z(2)*alex06_full_opacity(kk2,i,j) + &
-                    weight_z(3)*alex06_full_opacity(kk3,i,j) + &
-                    weight_z(4)*alex06_full_opacity(kk4,i,j)
+               opacity_by_x(k,i,j) = weight_z(1)*opacity_table%alex06_full_opacity(kk,i,j)+ &
+                    weight_z(2)*opacity_table%alex06_full_opacity(kk2,i,j) + &
+                    weight_z(3)*opacity_table%alex06_full_opacity(kk3,i,j) + &
+                    weight_z(4)*opacity_table%alex06_full_opacity(kk4,i,j)
             end do
          end do
       end do
 !     IF IN THE HIGH Z AND HIGH X DOMAIN THE TOP TABLE IS X = 1-Z (ENTRY NUMX) EXCEPT
 !     FOR THE Z=0.10 CASE (WHERE THE X=0.9 CASE DOUBLES AS THE X=1-Z CASE).
-      if (alex06_index_x.eq.num_x-3.and.iz.eq.num_z-3) then
+      if (opacity_table%alex06_index_x.eq.num_x-3.and.iz.eq.num_z-3) then
 !        USE DIFFERENT INDEXING FOR THE LAST TABLE
-         kk = num_z*(alex06_index_x+2)+iz
+         kk = num_z*(opacity_table%alex06_index_x+2)+iz
          kk2 = kk + 1
          kk3 = kk2 + 1
-         kk4 = num_z*(alex06_index_x+2)
+         kk4 = num_z*(opacity_table%alex06_index_x+2)
       else
-         kk = num_z*(alex06_index_x+2)+iz
+         kk = num_z*(opacity_table%alex06_index_x+2)+iz
          kk2 = kk + 1
          kk3 = kk2 + 1
          kk4 = kk3 + 1
       endif
       do i = 1,num_t
          do j = 1,num_d
-            opacity_by_x(4,i,j) = weight_z(1)*alex06_full_opacity(kk,i,j)+ &
-                 weight_z(2)*alex06_full_opacity(kk2,i,j) + &
-                 weight_z(3)*alex06_full_opacity(kk3,i,j) + &
-                 weight_z(4)*alex06_full_opacity(kk4,i,j)
+            opacity_by_x(4,i,j) = weight_z(1)*opacity_table%alex06_full_opacity(kk,i,j)+ &
+                 weight_z(2)*opacity_table%alex06_full_opacity(kk2,i,j) + &
+                 weight_z(3)*opacity_table%alex06_full_opacity(kk3,i,j) + &
+                 weight_z(4)*opacity_table%alex06_full_opacity(kk4,i,j)
          end do
       end do
 !     NOW DO X INTERPOLATION
 !     INTERPOLATION FACTORS FOR X
       do i = 1,3
-         interp_nodes(i) = alex06_grid_x(alex06_index_x+i-1)
+         interp_nodes(i) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+i-1)
       end do
       if (iz.eq.num_z-3) then
-         interp_nodes(4) = 1.0d0-alex06_cached_z
+         interp_nodes(4) = 1.0d0-opacity_table%alex06_cached_z
       else
-         interp_nodes(4) = alex06_grid_x(alex06_index_x+3)
+         interp_nodes(4) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+3)
       endif
-      interp_target = alex06_cached_x
+      interp_target = opacity_table%alex06_cached_x
       call intrp2(interp_nodes, weight_z, interp_target)
       do i = 1,num_t
          do j = 1,num_d
-            alex06_opacity(i,j) = weight_z(1)*opacity_by_x(1,i,j)+ &
+            opacity_table%alex06_opacity(i,j) = weight_z(1)*opacity_by_x(1,i,j)+ &
                  weight_z(2)*opacity_by_x(2,i,j) + weight_z(3)*opacity_by_x(3,i,j) + &
                  weight_z(4)*opacity_by_x(4,i,j)
          end do

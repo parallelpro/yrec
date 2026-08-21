@@ -12,18 +12,13 @@
 ! MHP 10/02 vector v not used
 subroutine rdzlaol(pure_z_table_path)
 
+      use opacity_table_lib
       use const_lib
       use luout_lib
       implicit none
       character(len=256), intent(in) :: pure_z_table_path
 
 
-! DBG 12/95 ARRAYS FOR PURE Z TABLE
-      double precision :: zlaol_opacity(104,52), zlaol_logt_grid(52), &
-           zlaol_logrho_grid(104)
-      integer :: zlaol_num_rho, zlaol_num_t
-      common/zlaol/ zlaol_opacity, zlaol_logt_grid, zlaol_logrho_grid, &
-           zlaol_num_rho, zlaol_num_t
 
 
 
@@ -35,9 +30,9 @@ subroutine rdzlaol(pure_z_table_path)
       open(unit=iopurez, file=pure_z_table_path,form='FORMATTED', &
               status='OLD')
 !     READ IN ARRAY SIZES
-      read(iopurez,100) n,zlaol_num_rho,zlaol_num_t
+      read(iopurez,100) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
-      if (n.ne.1.or.zlaol_num_rho.gt.104.or.zlaol_num_t.gt.52) then
+      if (n.ne.1.or.opacity_table%zlaol_num_rho.gt.104.or.opacity_table%zlaol_num_t.gt.52) then
          write(short_file_unit,*)' Z OPACITY INPUT ERROR.'
          stop
       end if
@@ -49,18 +44,18 @@ subroutine rdzlaol(pure_z_table_path)
       read(iopurez,140) dummy(1)
   140 format(/,(1p6e12.5))
 !     READ IN DENSITY GRID OF TABLE
-      read(iopurez,150) (zlaol_logrho_grid(ii),ii=1,zlaol_num_rho)
+      read(iopurez,150) (opacity_table%zlaol_logrho_grid(ii),ii=1,opacity_table%zlaol_num_rho)
   150 format(/,(1p6e12.5))
 !     READ IN TEMPERATURE GRID OF TABLE
-      read(iopurez,160) (zlaol_logt_grid(ii),ii=1,zlaol_num_t)
+      read(iopurez,160) (opacity_table%zlaol_logt_grid(ii),ii=1,opacity_table%zlaol_num_t)
   160 format(/,(1p6e12.5))
 !     READ IN PURE Z OPACITIES
       read(iopurez,170)
   170 format(1x)
-      do ir=1,zlaol_num_rho
+      do ir=1,opacity_table%zlaol_num_rho
          read(iopurez,200)
   200    format(1x)
-         read(iopurez,210) (zlaol_opacity(ir,it),it=1,zlaol_num_t)
+         read(iopurez,210) (opacity_table%zlaol_opacity(ir,it),it=1,opacity_table%zlaol_num_t)
   210    format(1p6e12.5)
          end do
       close(iopurez)

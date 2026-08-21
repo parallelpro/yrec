@@ -25,6 +25,7 @@
 ! MHP 8/25 Added file name to subroutine call
 subroutine alxtbl(alex95_table_paths)
 
+      use opacity_table_lib
       use const_lib
       use luout_lib
       implicit none
@@ -39,51 +40,16 @@ subroutine alxtbl(alex95_table_paths)
 
 
 
-! common/galot/: ALEX95 low-T opacity table grids.
-      double precision :: alex95_grid_logt(num_t), alex95_grid_x(num_x), &
-           alex95_grid_logr(num_d), alex95_grid_z(num_z)
-      common /galot/ alex95_grid_logt, alex95_grid_x, alex95_grid_logr, &
-           alex95_grid_z
 
-! common/alot/: ALEX95 low-T opacity table and cached-index state.
-! NOTE: the file-read loop below reads directly into alex95_index_t
-! (the common's cached T-grid index), matching the original ALXTBL,
-! which reads its per-record row-index field from the table file into
-! the variable named IT -- the SAME "IT" as common/ALOT/'s T-grid
-! index cache (an accidental name collision in the original F77, not
-! something introduced by this conversion). This leaves
-! alex95_index_t holding whatever value was in the last-read record's
-! row-index field, not a valid T-grid index, when this routine
-! returns; downstream callers (yalo3d.f90/getalex... path) clamp IT
-! into range before using it, so the collision is preserved exactly
-! but is understood to be harmless in practice.
-      double precision :: alex95_opacity(num_xt, num_t, num_d), &
-           alex95_cached_x, alex95_cached_z
-      integer :: alex95_index_x, alex95_index_t, alex95_index_r
-      common /alot/ alex95_opacity, alex95_cached_x, alex95_cached_z, &
-           alex95_index_x, alex95_index_t, alex95_index_r
 
-! common/alotall/: full (X,Z) grid of ALEX95 low-T opacity tables.
-      double precision :: alex95_full_opacity(num_xz, num_t, num_d)
-      common /alotall/ alex95_full_opacity
 
 
 ! --- local arrays ---
       double precision :: row_opacity_temp(num_d)
-      data alex95_grid_x/0.0d0,0.1d0,0.2d0,0.35d0,0.5d0,0.7d0,0.8d0/
-      data alex95_grid_z/0.0d0, 0.00001d0, 0.00003d0, 0.0001d0, 0.0003d0, &
-           0.001d0, 0.002d0, 0.004d0, 0.01d0, 0.02d0, 0.03d0, &
-           0.04d0, 0.06d0, 0.08d0, 0.10d0/
-      data alex95_grid_logt/3.00d0,3.05d0,3.10d0,3.15d0,3.20d0,3.25d0,3.30d0, &
-           3.35d0,3.40d0,3.45d0,3.50d0,3.55d0,3.60d0,3.65d0, &
-           3.70d0,3.75d0,3.80d0,3.85d0,3.90d0,3.95d0,4.00d0, &
-           4.05d0,4.10d0/
-      data alex95_grid_logr/-7.0d0,-6.5d0,-6.0d0,-5.5d0,-5.0d0,-4.5d0,-4.0d0, &
-           -3.5d0,-3.0d0,-2.5d0,-2.0d0,-1.5d0,-1.0d0,-0.5d0, &
-           0.0d0, 0.5d0, 1.0d0/
-! INITIALIZE INDEX OF PREVIOUS CLOSEST POINTS AND ENVELOPE ABUNDANCES
-      data alex95_cached_x,alex95_cached_z,alex95_index_x,alex95_index_t, &
-           alex95_index_r/0.0d0,0.0d0,4,12,9/
+! alex95_grid_x/alex95_grid_z/alex95_grid_logt/alex95_grid_logr/
+! alex95_cached_x/alex95_cached_z/alex95_index_x/alex95_index_t/
+! alex95_index_r defaults moved to opacity_table_lib.f90: DATA can no
+! longer target them here now that they're use-associated.
       save
 
       integer :: table_index, i, ii, j, k, row_density_count
@@ -103,10 +69,10 @@ subroutine alxtbl(alex95_table_paths)
 !           HEADER INFORMATION: X AND Z
             read(alex95_table_unit,10) header_x, header_z
    10       format(18x,f6.2,2x,f7.2)
-            if (header_x.ne.alex95_grid_x(table_index) .or. &
-                 header_z.ne.alex95_grid_z(i)) then
-               write(short_file_unit,20) header_x, alex95_grid_x(table_index), &
-                    header_z, alex95_grid_z(i)
+            if (header_x.ne.opacity_table%alex95_grid_x(table_index) .or. &
+                 header_z.ne.opacity_table%alex95_grid_z(i)) then
+               write(short_file_unit,20) header_x, opacity_table%alex95_grid_x(table_index), &
+                    header_z, opacity_table%alex95_grid_z(i)
    20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
                stop
@@ -114,16 +80,16 @@ subroutine alxtbl(alex95_table_paths)
 !           OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T,
 !           STARTING R.  STORE IN A NUMZ*NUMT*NUMR ARRAY.
             do j = num_t,1,-1
-               read(alex95_table_unit,30) alex95_index_t, row_density_count, &
+               read(alex95_table_unit,30) opacity_table%alex95_index_t, row_density_count, &
                     row_temp, row_logr0, (row_opacity_temp(k),k=1,num_d)
                do k = 1, num_d
-                  alex95_full_opacity(ii,j,k) = row_opacity_temp(k)
+                  opacity_table%alex95_full_opacity(ii,j,k) = row_opacity_temp(k)
                end do
    30          format(i2,i3,f6.3,f5.1,8f8.3/9f8.3)
-               if (row_density_count.ne.17 .or. row_temp.ne.alex95_grid_logt(j) &
-                    .or. row_logr0.ne.alex95_grid_logr(1)) then
+               if (row_density_count.ne.17 .or. row_temp.ne.opacity_table%alex95_grid_logt(j) &
+                    .or. row_logr0.ne.opacity_table%alex95_grid_logr(1)) then
                   write(short_file_unit,40) row_density_count, row_temp, &
-                       alex95_grid_logt(j), row_logr0, alex95_grid_logr(1)
+                       opacity_table%alex95_grid_logt(j), row_logr0, opacity_table%alex95_grid_logr(1)
    40             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T,RHO',i3,4f7.2, &
                        ' RUN STOPPED')

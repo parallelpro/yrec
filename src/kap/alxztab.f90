@@ -11,6 +11,7 @@
 ! by 4-point Lagrangian interpolation in Z.
 subroutine alxztab(metal_fraction)
 
+      use opacity_table_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_x = 7
@@ -22,22 +23,8 @@ subroutine alxztab(metal_fraction)
 
       double precision, intent(in) :: metal_fraction
 
-! common/galot/: ALEX95 low-T opacity table grids.
-      double precision :: alex95_grid_logt(num_t), alex95_grid_x(num_x), &
-           alex95_grid_logr(num_d), alex95_grid_z(num_z)
-      common /galot/ alex95_grid_logt, alex95_grid_x, alex95_grid_logr, &
-           alex95_grid_z
 
-! common/alot/: ALEX95 low-T opacity table and cached-index state.
-      double precision :: alex95_opacity(num_xt, num_t, num_d), &
-           alex95_cached_x, alex95_cached_z
-      integer :: alex95_index_x, alex95_index_t, alex95_index_r
-      common /alot/ alex95_opacity, alex95_cached_x, alex95_cached_z, &
-           alex95_index_x, alex95_index_t, alex95_index_r
 
-! common/alotall/: full (X,Z) grid of ALEX95 low-T opacity tables.
-      double precision :: alex95_full_opacity(num_xz, num_t, num_d)
-      common /alotall/ alex95_full_opacity
 
       double precision :: interp_z(4), weight_z(4)
       save
@@ -46,7 +33,7 @@ subroutine alxztab(metal_fraction)
 
 !     LOCATE FOUR NEAREST TABLES IN Z
       do i=3,num_z-1
-         if (metal_fraction.lt.alex95_grid_z(i)) then
+         if (metal_fraction.lt.opacity_table%alex95_grid_z(i)) then
             idz = i - 2
             goto 10
          endif
@@ -54,7 +41,7 @@ subroutine alxztab(metal_fraction)
       idz = num_z - 3
    10 continue
       do i = 1,4
-         interp_z(i) = alex95_grid_z(idz+i-1)
+         interp_z(i) = opacity_table%alex95_grid_z(idz+i-1)
       end do
 !     GET INTERPOLATION FACTORS FOR Z.
       call intrp2(interp_z, weight_z, metal_fraction)
@@ -68,13 +55,13 @@ subroutine alxztab(metal_fraction)
          ii4 = ii3 + num_x
          do jj = 1,num_t
             do kk = 1,num_d
-               alex95_opacity(i,jj,kk) = weight_z(1)*alex95_full_opacity(ii1,jj,kk)+ &
-                    weight_z(2)*alex95_full_opacity(ii2,jj,kk) + &
-                    weight_z(3)*alex95_full_opacity(ii3,jj,kk) + &
-                    weight_z(4)*alex95_full_opacity(ii4,jj,kk)
+               opacity_table%alex95_opacity(i,jj,kk) = weight_z(1)*opacity_table%alex95_full_opacity(ii1,jj,kk)+ &
+                    weight_z(2)*opacity_table%alex95_full_opacity(ii2,jj,kk) + &
+                    weight_z(3)*opacity_table%alex95_full_opacity(ii3,jj,kk) + &
+                    weight_z(4)*opacity_table%alex95_full_opacity(ii4,jj,kk)
             end do
          end do
       end do
-      alex95_cached_z = metal_fraction
+      opacity_table%alex95_cached_z = metal_fraction
       return
 end subroutine alxztab

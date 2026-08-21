@@ -12,6 +12,7 @@
 ! yllo3d but reads the "2" common blocks and calls yllo2d2.
 subroutine yllo3d2(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+      use opacity_table_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_t = 50
@@ -25,19 +26,9 @@ subroutine yllo3d2(log10_density, log10_temperature, hydrogen_fraction, &
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
 
-      double precision :: opal92_grid_logt_z2(num_t), opal92_grid_x_z2(num_x), &
-           opal92_grid_logr_z2(num_d)
-      common /gllot2/ opal92_grid_logt_z2, opal92_grid_x_z2, opal92_grid_logr_z2
-      double precision :: opal92_log10_opacity_z2(num_xt, num_d)
-      integer :: opal92_num_x_z2, opal92_num_temps_z2
-      common /llot2/ opal92_log10_opacity_z2, opal92_num_x_z2, opal92_num_temps_z2
-      double precision :: opal92_surface_x_z2, opal92_surface_z_z2, &
-           opal92_surface_spline_coeffs_z2(num_t,num_4d)
-      integer :: opal92_surface_x_index_z2
-      common /llot42/opal92_surface_x_z2, opal92_surface_z_z2, &
-           opal92_surface_spline_coeffs_z2, opal92_surface_x_index_z2
-      integer :: abund_index, temp_index, dens_index
-      common /kipmll2/abund_index, temp_index, dens_index
+! former common/kipmll2/: abund_index/temp_index/dens_index now
+! use-associated from opacity_table_lib as abund_index_z2/
+! temp_index_z2/dens_index_z2.
       save
 
       logical :: single_x_table
@@ -53,28 +44,28 @@ subroutine yllo3d2(log10_density, log10_temperature, hydrogen_fraction, &
 ! RHOT3 = LN(RHO/(T/10E6)**3)
       rhot3 = log10_density - 3.0d0*t6
 
-      if (dabs(opal92_surface_x_z2-hydrogen_fraction).le.1.0d-5) then
-         abund_index = 4
+      if (dabs(opacity_table%opal92_surface_x_z2-hydrogen_fraction).le.1.0d-5) then
+         opacity_table%abund_index_z2 = 4
          single_x_table = .true.
          go to 131
       endif
       do 130 im1 = 1,num_x
-         if (dabs(opal92_grid_x_z2(im1)-hydrogen_fraction).le.1.0d-5) then
-            abund_index = im1
+         if (dabs(opacity_table%opal92_grid_x_z2(im1)-hydrogen_fraction).le.1.0d-5) then
+            opacity_table%abund_index_z2 = im1
             single_x_table = .true.
             go to 131
          endif
  130  continue
-      call findex(opal92_grid_x_z2, num_x, hydrogen_fraction, abund_index)
-      if (abund_index.lt.0) abund_index = -abund_index
-      if (abund_index.le.1.and.rhot3.gt.-1.0d0) abund_index = 2
-      if (abund_index.ge.3) abund_index = 2
-      if (abund_index.le.0) stop ' ERROR IN X2 GRID'
+      call findex(opacity_table%opal92_grid_x_z2, num_x, hydrogen_fraction, opacity_table%abund_index_z2)
+      if (opacity_table%abund_index_z2.lt.0) opacity_table%abund_index_z2 = -opacity_table%abund_index_z2
+      if (opacity_table%abund_index_z2.le.1.and.rhot3.gt.-1.0d0) opacity_table%abund_index_z2 = 2
+      if (opacity_table%abund_index_z2.ge.3) opacity_table%abund_index_z2 = 2
+      if (opacity_table%abund_index_z2.le.0) stop ' ERROR IN X2 GRID'
  131  continue
-      call findex(opal92_grid_logt_z2, opal92_num_temps_z2, t6, temp_index)
-      if (temp_index.lt.0.and.opal92_grid_logt_z2(opal92_num_temps_z2).eq.t6) temp_index = -temp_index
-      if (temp_index.lt.0) stop ' T OUT OF TABLE '
-      call yllo2d2(t6, rhot3, abund_index, temp_index, dens_index, o0, ol0, qod0, qot0)
+      call findex(opacity_table%opal92_grid_logt_z2, opacity_table%opal92_num_temps_z2, t6, opacity_table%temp_index_z2)
+      if (opacity_table%temp_index_z2.lt.0.and.opacity_table%opal92_grid_logt_z2(opacity_table%opal92_num_temps_z2).eq.t6) opacity_table%temp_index_z2 = -opacity_table%temp_index_z2
+      if (opacity_table%temp_index_z2.lt.0) stop ' T OUT OF TABLE '
+      call yllo2d2(t6, rhot3, opacity_table%abund_index_z2, opacity_table%temp_index_z2, opacity_table%dens_index_z2, o0, ol0, qod0, qot0)
       if (single_x_table) then
 !>>> USE ONLY ONE X TABLE
          log10_opacity = ol0
@@ -83,9 +74,9 @@ subroutine yllo3d2(log10_density, log10_temperature, hydrogen_fraction, &
          qoti = qot0
       else
 !>>> LINEAR EXTRAPOLATION IN X
-         call yllo2d2(t6, rhot3, abund_index+1, temp_index, dens_index, o1, ol1, qod1, qot1)
-         grdnt = (hydrogen_fraction-opal92_grid_x_z2(abund_index))/ &
-              (opal92_grid_x_z2(abund_index+1)-opal92_grid_x_z2(abund_index))
+         call yllo2d2(t6, rhot3, opacity_table%abund_index_z2+1, opacity_table%temp_index_z2, opacity_table%dens_index_z2, o1, ol1, qod1, qot1)
+         grdnt = (hydrogen_fraction-opacity_table%opal92_grid_x_z2(opacity_table%abund_index_z2))/ &
+              (opacity_table%opal92_grid_x_z2(opacity_table%abund_index_z2+1)-opacity_table%opal92_grid_x_z2(opacity_table%abund_index_z2))
          log10_opacity = (ol1-ol0)*grdnt + ol0
          qodi = (qod1-qod0)*grdnt + qod0
          qoti = (qot1-qot0)*grdnt + qot0

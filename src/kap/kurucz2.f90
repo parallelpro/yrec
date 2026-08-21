@@ -32,6 +32,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
 !     THE VARIABLES WHICH HAVE 'F'-TAIL ARE WHAT WILL BE RETURNED.
 !     THIS VALUES IS ESTIMATED BY NUMERICAL DIFFERENTIATION.
 
+      use opacity_table_lib
       use luout_lib
       use numerics_lib
       implicit none
@@ -52,25 +53,14 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
            temp_index_end
       logical :: search_full_range
 
-      double precision :: kurucz2_grid_logt(max_num_temps)
-      common /gkrz2/ kurucz2_grid_logt
-
-      double precision :: kurucz2_log10_opacity(num_x_temp_entries, max_num_densities), &
-           kurucz2_log10_rho(num_x_temp_entries, max_num_densities)
-      integer :: kurucz2_num_temps
-      common /krz2/ kurucz2_log10_opacity, kurucz2_log10_rho, kurucz2_num_temps
 
 
-      integer :: kurucz2_ix_x, kurucz2_ix_t, kurucz2_ix_rho
-      common /kipm2/ kurucz2_ix_x, kurucz2_ix_t, kurucz2_ix_rho
 
-      double precision :: kurucz2_spline_coeffs(num_x_temp_entries, num_spline_coeffs)
-      integer :: kurucz2_density_start_index(num_x_temp_entries), &
-           kurucz2_density_count(num_x_temp_entries)
-      common /intpl22/ kurucz2_spline_coeffs, kurucz2_density_start_index, &
-           kurucz2_density_count
 
-      data kurucz2_ix_x, kurucz2_ix_t, kurucz2_ix_rho /1, 1, 1/
+
+! kurucz2_ix_x/kurucz2_ix_t/kurucz2_ix_rho defaults moved to
+! opacity_table_lib.f90: DATA can no longer target them here now that
+! they're use-associated.
       save
 
 ! --- locals ---
@@ -82,31 +72,31 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       double precision :: log10_opacity_at_rho, dlnkap_dlnrho_at_rho
       double precision :: log10_opacity_interp, dlnkap_dlnrho_unused
 
-      call findex(kurucz2_grid_logt, kurucz2_num_temps, log10_temperature, &
-           kurucz2_ix_t)
+      call findex(opacity_table%kurucz2_grid_logt, opacity_table%kurucz2_num_temps, log10_temperature, &
+           opacity_table%kurucz2_ix_t)
 
       local_logt = log10_temperature
       local_logrho = log10_density
       search_full_range = .true.
 !     FOR SIX GRID POINTS OF TEMPERATURE
-      temp_index_start = kurucz2_ix_t-2
+      temp_index_start = opacity_table%kurucz2_ix_t-2
       if (temp_index_start.le.0) temp_index_start = 1
-      temp_index_end = kurucz2_ix_t+3
-      if (temp_index_end.gt.kurucz2_num_temps) temp_index_end = kurucz2_num_temps
+      temp_index_end = opacity_table%kurucz2_ix_t+3
+      if (temp_index_end.gt.opacity_table%kurucz2_num_temps) temp_index_end = opacity_table%kurucz2_num_temps
   333 continue
       num_valid_temps = 0
       do 300 temp_index = temp_index_start, temp_index_end
          t_row_index = temp_index
-         row_density_start = kurucz2_density_start_index(t_row_index)
+         row_density_start = opacity_table%kurucz2_density_start_index(t_row_index)
          row_density_end = row_density_start + &
-              kurucz2_density_count(t_row_index) - 1
+              opacity_table%kurucz2_density_count(t_row_index) - 1
 !        FIND THE 'M3'
-         if (kurucz2_ix_rho.lt.row_density_start .or. &
-              kurucz2_ix_rho.gt.row_density_end) kurucz2_ix_rho = row_density_end
-         density_pointer = kurucz2_ix_rho
-         if (local_logrho.lt.kurucz2_log10_rho(temp_index, density_pointer)) then
+         if (opacity_table%kurucz2_ix_rho.lt.row_density_start .or. &
+              opacity_table%kurucz2_ix_rho.gt.row_density_end) opacity_table%kurucz2_ix_rho = row_density_end
+         density_pointer = opacity_table%kurucz2_ix_rho
+         if (local_logrho.lt.opacity_table%kurucz2_log10_rho(temp_index, density_pointer)) then
             do 211 density_scan_index = density_pointer-1, row_density_start, -1
-               if (kurucz2_log10_rho(temp_index, density_scan_index).le. &
+               if (opacity_table%kurucz2_log10_rho(temp_index, density_scan_index).le. &
                     local_logrho) then
                   density_pointer = density_scan_index
                   goto 213
@@ -115,28 +105,28 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
             go to 300
          else
             do 212 density_scan_index = density_pointer, row_density_end-1
-               if (kurucz2_log10_rho(temp_index, density_scan_index+1).gt. &
+               if (opacity_table%kurucz2_log10_rho(temp_index, density_scan_index+1).gt. &
                     local_logrho) then
                   density_pointer = density_scan_index
                   goto 213
                endif
   212       continue
-            if (kurucz2_log10_rho(temp_index, row_density_end).ge. &
+            if (opacity_table%kurucz2_log10_rho(temp_index, row_density_end).ge. &
                  local_logrho) then
                density_pointer = row_density_end
                goto 213
             endif
             go to 300
          endif
-  213    kurucz2_ix_rho = density_pointer
-         knot_index = kurucz2_ix_rho - row_density_start + 1
+  213    opacity_table%kurucz2_ix_rho = density_pointer
+         knot_index = opacity_table%kurucz2_ix_rho - row_density_start + 1
          coeff_base_index = 4*(knot_index-1)
 !        NOW, (KNOT,KNOT+1) IS SUB-RANGE OF RHO WHICH CONTAINS D.
-         delta_logrho = local_logrho - kurucz2_log10_rho(temp_index, kurucz2_ix_rho)
-         c1 = kurucz2_spline_coeffs(t_row_index, coeff_base_index+1)
-         c2 = kurucz2_spline_coeffs(t_row_index, coeff_base_index+2)
-         c3 = kurucz2_spline_coeffs(t_row_index, coeff_base_index+3)
-         c4 = kurucz2_spline_coeffs(t_row_index, coeff_base_index+4)
+         delta_logrho = local_logrho - opacity_table%kurucz2_log10_rho(temp_index, opacity_table%kurucz2_ix_rho)
+         c1 = opacity_table%kurucz2_spline_coeffs(t_row_index, coeff_base_index+1)
+         c2 = opacity_table%kurucz2_spline_coeffs(t_row_index, coeff_base_index+2)
+         c3 = opacity_table%kurucz2_spline_coeffs(t_row_index, coeff_base_index+3)
+         c4 = opacity_table%kurucz2_spline_coeffs(t_row_index, coeff_base_index+4)
 !        INTERPOLATION FOR OPACITY(OL) IN THE ENTRY D AND THE EACH T-GRID
 !        ESTIMATES THE PARTIAL DERIVATIVE OF OL WRT D
 !        EVALUATES THE INTERPOLATION VALUE IN THE SUB-RANGE WE DETERMINED.
@@ -144,14 +134,14 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
               delta_logrho+c1
          dlnkap_dlnrho_at_rho = (3.0d0*c4*delta_logrho+2.0d0*c3)*delta_logrho+c2
          num_valid_temps = num_valid_temps+1
-         temp_subset_logt(num_valid_temps) = kurucz2_grid_logt(temp_index)
+         temp_subset_logt(num_valid_temps) = opacity_table%kurucz2_grid_logt(temp_index)
          temp_subset_log10_opacity(num_valid_temps) = log10_opacity_at_rho
          temp_subset_dlnkap_dlnrho(num_valid_temps) = dlnkap_dlnrho_at_rho
   300 continue
       if (num_valid_temps.le.3) then
          if (search_full_range) then
             temp_index_start = 1
-            temp_index_end = kurucz2_num_temps
+            temp_index_end = opacity_table%kurucz2_num_temps
             search_full_range = .false.
             go to 333
          endif

@@ -11,6 +11,7 @@
 ! interpolation in X, storing it in table slot 8 of common/alot/.
 subroutine alx8th(hydrogen_fraction)
 
+      use opacity_table_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_x = 7
@@ -21,49 +22,38 @@ subroutine alx8th(hydrogen_fraction)
 
       double precision, intent(in) :: hydrogen_fraction
 
-! common/galot/: ALEX95 low-T opacity table grids.
-      double precision :: alex95_grid_logt(num_t), alex95_grid_x(num_x), &
-           alex95_grid_logr(num_d), alex95_grid_z(num_z)
-      common /galot/ alex95_grid_logt, alex95_grid_x, alex95_grid_logr, &
-           alex95_grid_z
 
-! common/alot/: ALEX95 low-T opacity table and cached-index state.
-      double precision :: alex95_opacity(num_xt, num_t, num_d), &
-           alex95_cached_x, alex95_cached_z
-      integer :: alex95_index_x, alex95_index_t, alex95_index_r
-      common /alot/ alex95_opacity, alex95_cached_x, alex95_cached_z, &
-           alex95_index_x, alex95_index_t, alex95_index_r
 
       double precision :: interp_x(4), weight_x(4)
       save
 
       integer :: i, j
 
-      alex95_cached_x = hydrogen_fraction
+      opacity_table%alex95_cached_x = hydrogen_fraction
 !     FIND 4 NEAREST TABLES IN X.
-      if (hydrogen_fraction.lt.alex95_grid_x(4)) then
-         if (hydrogen_fraction.gt.alex95_grid_x(3)) then
-            alex95_index_x = 2
+      if (hydrogen_fraction.lt.opacity_table%alex95_grid_x(4)) then
+         if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(3)) then
+            opacity_table%alex95_index_x = 2
          else
-            alex95_index_x = 1
+            opacity_table%alex95_index_x = 1
          endif
       else
-         if (hydrogen_fraction.gt.alex95_grid_x(5)) then
-            alex95_index_x = 4
+         if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(5)) then
+            opacity_table%alex95_index_x = 4
          else
-            alex95_index_x = 3
+            opacity_table%alex95_index_x = 3
          endif
       endif
       do i = 1,4
-         interp_x(i) = alex95_grid_x(alex95_index_x+i-1)
+         interp_x(i) = opacity_table%alex95_grid_x(opacity_table%alex95_index_x+i-1)
       end do
       call intrp2(interp_x, weight_x, hydrogen_fraction)
       do i = 1,num_t
          do j = 1,num_d
-            alex95_opacity(8,i,j) = weight_x(1)*alex95_opacity(alex95_index_x,i,j)+ &
-                 weight_x(2)*alex95_opacity(alex95_index_x+1,i,j) + &
-                 weight_x(3)*alex95_opacity(alex95_index_x+2,i,j) + &
-                 weight_x(4)*alex95_opacity(alex95_index_x+3,i,j)
+            opacity_table%alex95_opacity(8,i,j) = weight_x(1)*opacity_table%alex95_opacity(opacity_table%alex95_index_x,i,j)+ &
+                 weight_x(2)*opacity_table%alex95_opacity(opacity_table%alex95_index_x+1,i,j) + &
+                 weight_x(3)*opacity_table%alex95_opacity(opacity_table%alex95_index_x+2,i,j) + &
+                 weight_x(4)*opacity_table%alex95_opacity(opacity_table%alex95_index_x+3,i,j)
          end do
       end do
       return

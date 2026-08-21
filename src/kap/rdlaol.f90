@@ -13,6 +13,7 @@
 ! requested, a second LAOL89 table).
 subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
 
+      use opacity_table_lib
       use const_lib
       use luout_lib
       implicit none
@@ -20,10 +21,6 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
 
 
-! DBG 4/94 New common block for second opacity table
-      double precision :: olaol2(12,104,52), oxa2(12), ot2(52), orho2(104)
-      integer :: nxyz2, nrho2, nt2
-      common/nwlaol2/ olaol2, oxa2, ot2, orho2, nxyz2, nrho2, nt2
 
 
 
@@ -88,8 +85,8 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
          open(unit=iolaol2,file=laol_table2_path, form='FORMATTED', &
               status='OLD')
 !        READ IN ARRAY SIZES
-         read(iolaol2,100) nxyz2,nrho2,nt2
-         if (nxyz2.gt.11.or.nrho2.gt.104.or.nt2.gt.52) then
+         read(iolaol2,100) opacity_table%nxyz2,opacity_table%nrho2,opacity_table%nt2
+         if (opacity_table%nxyz2.gt.11.or.opacity_table%nrho2.gt.104.or.opacity_table%nt2.gt.52) then
             write(short_file_unit,*)' SECOND OPACITY ARRAY TOO LARGE.'
             stop
          end if
@@ -107,17 +104,17 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
 !        S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni scaled to sum to ZHIT
          read(iolaol2,130) zhit2, zdh2
 !        READ IN H MASS FRACTIONS OF TABLE
-         read(iolaol2,140) (oxa2(ii),ii=1,nxyz2)
+         read(iolaol2,140) (opacity_table%oxa2(ii),ii=1,opacity_table%nxyz2)
 !        READ IN DENSITY GRID OF TABLE
-         read(iolaol2,150) (orho2(ii),ii=1,nrho2)
+         read(iolaol2,150) (opacity_table%orho2(ii),ii=1,opacity_table%nrho2)
 !        READ IN TEMPERATURE GRID OF TABLE
-         read(iolaol2,160) (ot2(ii),ii=1,nt2)
+         read(iolaol2,160) (opacity_table%ot2(ii),ii=1,opacity_table%nt2)
 !        READ IN OPACITIES
          read(iolaol2,170)
-         do ix=1,nxyz2
-            do ir=1,nrho2
+         do ix=1,opacity_table%nxyz2
+            do ir=1,opacity_table%nrho2
                read(iolaol2,200)
-               read(iolaol2,210) (olaol2(ix,ir,it),it=1,nt2)
+               read(iolaol2,210) (opacity_table%olaol2(ix,ir,it),it=1,opacity_table%nt2)
             end do
          end do
          close(iolaol2)

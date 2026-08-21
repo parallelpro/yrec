@@ -12,6 +12,7 @@
 subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use opacity_table_lib
       use const_lib
       use luout_lib
       use numerics_lib
@@ -30,11 +31,6 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
 
 
 
-      double precision :: slaol_opacity(12,104,52), slaol_log_rho(12,104,52), &
-           slaol_d2opacity(12,104,52)
-      integer :: slaol_num_points(12,52)
-      common/slaol/ slaol_opacity, slaol_log_rho, slaol_d2opacity, &
-           slaol_num_points
 
       save
 
@@ -70,15 +66,15 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
 !        GET RANGE OF FOUR TT SURROUNDING T
          call xrng4(t_locate_guess, numt, t_range_lo, t_range_hi)
          do t_index=t_range_lo, t_range_hi
-            num_valid_rho = slaol_num_points(x_loop_index,t_index)
+            num_valid_rho = opacity_table%slaol_num_points(x_loop_index,t_index)
             if (num_valid_rho .ge. 4) then
                do rho_loop_index=1, num_valid_rho
                   row_log10_opacity(rho_loop_index) = &
-                       slaol_opacity(x_loop_index,rho_loop_index,t_index)
+                       opacity_table%slaol_opacity(x_loop_index,rho_loop_index,t_index)
                   row_log_rho(rho_loop_index) = &
-                       slaol_log_rho(x_loop_index,rho_loop_index,t_index)
+                       opacity_table%slaol_log_rho(x_loop_index,rho_loop_index,t_index)
                   row_d2opacity(rho_loop_index) = &
-                       slaol_d2opacity(x_loop_index,rho_loop_index,t_index)
+                       opacity_table%slaol_d2opacity(x_loop_index,rho_loop_index,t_index)
                end do
                if (local_logrho.gt.row_log_rho(1) .and. &
                     local_logrho.lt.row_log_rho(num_valid_rho)) then

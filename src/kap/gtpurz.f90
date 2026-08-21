@@ -12,6 +12,7 @@
 subroutine gtpurz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use opacity_table_lib
       use const_lib
       use luout_lib
       use numerics_lib
@@ -28,26 +29,8 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
 
 
 
-! common/slaol/: not used here; declared only to preserve the shared
-! storage layout (see gtlaol.f90 for these names).
-      double precision :: slaol_opacity(12,104,52), slaol_log_rho(12,104,52), &
-           slaol_d2opacity(12,104,52)
-      integer :: slaol_num_points(12,52)
-      common/slaol/ slaol_opacity, slaol_log_rho, slaol_d2opacity, &
-           slaol_num_points
 
-! DBG 12/95 ARRAYS FOR PURE Z TABLE
-      double precision :: zlaol_opacity(104,52), zlaol_logt_grid(52), &
-           zlaol_logrho_grid(104)
-      integer :: zlaol_num_rho, zlaol_num_t
-      common/zlaol/ zlaol_opacity, zlaol_logt_grid, zlaol_logrho_grid, &
-           zlaol_num_rho, zlaol_num_t
 
-      double precision :: zslaol_opacity(104,52), zslaol_log_rho(104,52), &
-           zslaol_d2opacity(104,52)
-      integer :: zslaol_num_points(52)
-      common/zslaol/ zslaol_opacity, zslaol_log_rho, zslaol_d2opacity, &
-           zslaol_num_points
 
       save
 
@@ -65,17 +48,17 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
       log_extrap_tolerance = log(tollaol)
       local_logt = log10_temperature
       local_logrho = log10_density
-      call locate(zlaol_logt_grid, zlaol_num_t, local_logt, t_locate_guess)
+      call locate(opacity_table%zlaol_logt_grid, opacity_table%zlaol_num_t, local_logt, t_locate_guess)
       num_valid_t = 0
 !     GET RANGE OF FOUR TT SURROUNDING T
-      call xrng4(t_locate_guess, zlaol_num_t, t_range_lo, t_range_hi)
+      call xrng4(t_locate_guess, opacity_table%zlaol_num_t, t_range_lo, t_range_hi)
       do t_index=t_range_lo, t_range_hi
-         num_valid_rho = zslaol_num_points(t_index)
+         num_valid_rho = opacity_table%zslaol_num_points(t_index)
          if (num_valid_rho .ge. 4) then
             do rho_loop_index=1, num_valid_rho
-               row_log10_opacity(rho_loop_index) = zslaol_opacity(rho_loop_index,t_index)
-               row_log_rho(rho_loop_index) = zslaol_log_rho(rho_loop_index,t_index)
-               row_d2opacity(rho_loop_index) = zslaol_d2opacity(rho_loop_index,t_index)
+               row_log10_opacity(rho_loop_index) = opacity_table%zslaol_opacity(rho_loop_index,t_index)
+               row_log_rho(rho_loop_index) = opacity_table%zslaol_log_rho(rho_loop_index,t_index)
+               row_d2opacity(rho_loop_index) = opacity_table%zslaol_d2opacity(rho_loop_index,t_index)
             end do
             if (local_logrho.gt.row_log_rho(1) .and. &
                  local_logrho.lt.row_log_rho(num_valid_rho)) then
@@ -84,7 +67,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
                     spline_index_lo, spline_index_hi)
                num_valid_t = num_valid_t+1
                logt_interp_opacity(num_valid_t) = log10_opacity_value
-               logt_values(num_valid_t) = zlaol_logt_grid(t_index)
+               logt_values(num_valid_t) = opacity_table%zlaol_logt_grid(t_index)
                dlnkap_dlnrho_by_t(num_valid_t) = &
                     (row_log10_opacity(spline_index_hi)-row_log10_opacity(spline_index_lo))/ &
                     (row_log_rho(spline_index_hi)-row_log_rho(spline_index_lo))
@@ -96,7 +79,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
                log10_opacity_value = row_log10_opacity(1)+slope*(local_logrho-row_log_rho(1))
                num_valid_t = num_valid_t+1
                logt_interp_opacity(num_valid_t) = log10_opacity_value
-               logt_values(num_valid_t) = zlaol_logt_grid(t_index)
+               logt_values(num_valid_t) = opacity_table%zlaol_logt_grid(t_index)
                dlnkap_dlnrho_by_t(num_valid_t) = slope
             else if (local_logrho.ge.row_log_rho(num_valid_rho) .and. &
                  local_logrho.lt.row_log_rho(num_valid_rho)+log_extrap_tolerance) then
@@ -107,7 +90,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
                     slope*(local_logrho-row_log_rho(num_valid_rho))
                num_valid_t = num_valid_t+1
                logt_interp_opacity(num_valid_t) = log10_opacity_value
-               logt_values(num_valid_t) = zlaol_logt_grid(t_index)
+               logt_values(num_valid_t) = opacity_table%zlaol_logt_grid(t_index)
                dlnkap_dlnrho_by_t(num_valid_t) = slope
             end if
          else

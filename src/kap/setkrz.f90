@@ -11,6 +11,7 @@
 ! interpolation coefficients used later by kurucz.f90/kurucz2.f90.
 subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 
+      use opacity_table_lib
       use const_lib
       implicit none
       integer, parameter :: max_num_temps = 60
@@ -22,21 +23,7 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
       character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
 
 
-! GRID ENTRIES FOR TEMPERATURE, AND ABUNDANCE (X)
-      double precision :: kurucz_grid_logt(max_num_temps)
-      common /gkrz/ kurucz_grid_logt
-      double precision :: kurucz2_grid_logt(max_num_temps)
-      common /gkrz2/ kurucz2_grid_logt
 
-! LOS ALAMOS OPACITY
-      double precision :: kurucz_log10_opacity(num_x_temp_entries, max_num_densities), &
-           kurucz_log10_rho(num_x_temp_entries, max_num_densities)
-      integer :: kurucz_num_temps
-      common /krz/ kurucz_log10_opacity, kurucz_log10_rho, kurucz_num_temps
-      double precision :: kurucz2_log10_opacity(num_x_temp_entries, max_num_densities), &
-           kurucz2_log10_rho(num_x_temp_entries, max_num_densities)
-      integer :: kurucz2_num_temps
-      common /krz2/ kurucz2_log10_opacity, kurucz2_log10_rho, kurucz2_num_temps
 
 
 
@@ -64,18 +51,18 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
       if (prev_grid_temp.ne.grid_temp) then
          num_read = num_read+1
          if (num_read.gt.max_num_temps) stop ' KURUCZ INPUT ERROR'
-         kurucz_grid_logt(num_read) = grid_temp
+         opacity_table%kurucz_grid_logt(num_read) = grid_temp
          prev_grid_temp = grid_temp
          density_index = 1
       endif
       if (num_read.lt.1) stop ' KURUCZ INPUT ERROR'
-      kurucz_log10_rho(num_read, density_index) = density
-      kurucz_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
+      opacity_table%kurucz_log10_rho(num_read, density_index) = density
+      opacity_table%kurucz_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
       density_index = density_index+1
       goto 110
 
   120 continue
-      kurucz_num_temps = num_read
+      opacity_table%kurucz_num_temps = num_read
 !     CLOSE THE TABLE WE HAVE READ
       close(kurucz_table_unit,err=99)
 
@@ -95,18 +82,18 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
          if (prev_grid_temp.ne.grid_temp) then
             num_read = num_read+1
             if (num_read.gt.max_num_temps) stop ' KURUCZ INPUT ERROR'
-            kurucz2_grid_logt(num_read) = grid_temp
+            opacity_table%kurucz2_grid_logt(num_read) = grid_temp
             prev_grid_temp = grid_temp
             density_index = 1
          endif
          if (num_read.lt.1) stop ' KURUCZ INPUT ERROR'
-         kurucz2_log10_rho(num_read, density_index) = density
-         kurucz2_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
+         opacity_table%kurucz2_log10_rho(num_read, density_index) = density
+         opacity_table%kurucz2_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
          density_index = density_index+1
          goto 210
 
   220    continue
-         kurucz2_num_temps = num_read
+         opacity_table%kurucz2_num_temps = num_read
 !        CLOSE THE TABLE WE HAVE READ
          close(ikur2,err=99)
       end if
