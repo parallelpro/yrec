@@ -353,6 +353,48 @@ saves re-deriving the fix from scratch:
   (check for siblings with the same signature pattern before deciding
   a fix is file-local).
 
+## Two correctness traps specific to the "keep local + copy-assign" pattern
+
+The `stolr0`/`tscut`/`lovste`-style pattern (local NAMELIST-spelled
+variable, copy-assigned into a differently-spelled const_lib canonical
+name right after the namelist read) is safe in the common case, but
+two real bugs have come from it -- both silent (wrong numbers, not
+build failures), both only surfacing in test cases that actually
+exercise the affected code path:
+
+- **The namelist member isn't really the source of truth.** Some
+  NAMELIST-spelled locals are themselves overwritten later by other
+  logic before their "real" value is used elsewhere -- most commonly
+  `setup/remap.f90` recomputing a value from other, more-user-friendly
+  namelist inputs (`common/ctol/`'s `hpttol` -> `chi_grid_scale`: once
+  `lnewvars` is set, remap.f90 derives `chi_grid_scale` from
+  `tol_dm_min`/`tol_dm_max`/etc, not from `hpttol` at all). Copying the
+  raw namelist-read local into const_lib right after the namelist read
+  captures the *wrong* value if anything downstream (especially
+  `call remap`) recomputes it under the canonical name directly.
+  Before wiring the copy-assignment, check whether the local name is
+  read anywhere *else* in core/parmin.f90 after the namelist read (not
+  just written) -- if the only remaining readers are core/parmin.f90's
+  own diagnostic writes, point those writes at the canonical
+  const_lib name instead of the stale local, rather than copying.
+- **Local values can be overridden after the first copy-assignment.**
+  core/parmin.f90 has several post-namelist-read consistency-
+  enforcement blocks (e.g. "DBG 12/95 ENSURE CORRECT PARAMETERS FOR Z
+  DIFFUSION": `if (ldifz) ldify=.true.`) that mutate a NAMELIST-spelled
+  local *after* it may have already been copy-assigned into its
+  const_lib canonical name elsewhere in the same subroutine. The
+  const_lib copy silently keeps the pre-override value unless a second
+  copy-assignment runs after the override block too. After adding any
+  copy-assignment, grep the rest of core/parmin.f90 for further plain
+  `name = ...` assignments to that same local (not just its
+  declaration and namelist appearance) and re-copy-assign after each
+  one found. This is easy to miss in Stage 0 testing specifically
+  because Stage 0's own namelist value for the affected flag may
+  already match the override's forced value (masking the bug) --
+  another reason the extra `run_from_dbl_to_zams` case, or any test
+  case exercising the *opposite* namelist setting, earns its place in
+  the verification set.
+
 ## Git hygiene when interleaving sub-tasks in one session
 
 `git mv`/`git add` stage changes that persist across unrelated later
