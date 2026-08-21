@@ -350,6 +350,27 @@ Verification: full clean build + Stage-0 byte-identical regression,
 each step (facade rename, misplaced-file moves, subfolder split)
 checked independently before combining into the commit.
 
+**Deferred: unneeded blanket `SAVE` statements.** Most F77-era
+routines in this codebase open with a bare `save` (saves every local
+in that scoping unit), inherited caution from the original source
+rather than a real cross-call dependency in most cases -- distinct
+from genuine caches like `eos/opal/quad.f90`'s `cache_slot`-indexed
+coefficient arrays or `kap/opal92/yllo3d.f90`'s `abund_index`/
+`temp_index`/`dens_index`, which really do need a value written on
+one call to survive and be read on the next. `kap/kap_lib.f90`'s
+`kap_get` was traced by hand (2026-08-21) and found to have no such
+dependency -- every local is written before it's ever read, on every
+path through the routine, within a single call -- so its `save` looks
+safe to drop. Decided to hold off on doing this (or auditing any other
+file for the same thing) until the rest of the phase-two domain sweep
+(`nuclear`, `atm`, `wind`, `mixing`, `rotation`) is finished, so this
+kind of cleanup doesn't get interleaved with the facade/reorg work.
+When it's picked back up: trace each candidate file's locals by hand
+(read-before-write on every path, including early returns) before
+removing its `save`, same rigor as the `metal_fraction` intent fix
+above, and verify with the standard full-build + Stage-0 byte-diff
+per file or small batch.
+
 ## Build mechanics
 
 - Any file introducing `module ... contains` must be added to the
