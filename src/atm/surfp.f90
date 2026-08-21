@@ -14,6 +14,7 @@
 ! gravity.
 subroutine surfp(log10_teff, log10_gravity, print_flag)
 
+      use atm_table_lib
       use const_lib
       use luout_lib
       use numerics_lib
@@ -25,23 +26,6 @@ subroutine surfp(log10_teff, log10_gravity, print_flag)
       double precision, intent(in) :: log10_teff, log10_gravity
       logical, intent(in) :: print_flag
 
-! common/atmprt/: only atm_log10_pressure/atm_log10_temperature (AP,
-! AT) are set here. Naming matches alsurfp.f90.
-      double precision :: atm_tau, atm_log10_pressure, &
-           atm_log10_temperature, atm_log10_density, atm_opacity, &
-           atm_ion_fraction(3)
-      common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
-           atm_log10_density, atm_opacity, atm_ion_fraction
-! common/fac/: kurucz_gmin_index/kurucz_gmax_index/teff_interp_start_index/
-! gravity_interp_indices are used here; castelli_gmin_index/
-! castelli_gmax_index are unused placeholders (KCSURFP's table sizes).
-! Naming is local to this batch.
-      integer :: kurucz_gmin_index(nt), kurucz_gmax_index(nt), &
-           teff_interp_start_index, gravity_interp_indices(4), &
-           castelli_gmin_index(ntc), castelli_gmax_index(ntc)
-      common/fac/kurucz_gmin_index, kurucz_gmax_index, &
-           teff_interp_start_index, gravity_interp_indices, &
-           castelli_gmin_index, castelli_gmax_index
 
       save
 
@@ -77,7 +61,7 @@ subroutine surfp(log10_teff, log10_gravity, print_flag)
       do k = 1,4
          teff_nodes(k) = kurucz_teff_table(row_base+k-1)
       end do
-      teff_interp_start_index = row_base
+      atm_table%teff_interp_start_index = row_base
 ! GRAVITY INTERPOLATION FACTORS.
       do 20 row = row_base,row_base+3
          node = row-row_base+1
@@ -92,7 +76,7 @@ subroutine surfp(log10_teff, log10_gravity, print_flag)
                     kurucz_log10_pressure_table(row,ng-1) + &
                     fx*(kurucz_log10_pressure_table(row,ng) - &
                     kurucz_log10_pressure_table(row,ng-1))
-               gravity_interp_indices(node) = ng-1
+               atm_table%gravity_interp_indices(node) = ng-1
             else
 ! 3-POINT LAGRANGIAN INTERPOLATION.
                do k = 1,3
@@ -104,7 +88,7 @@ subroutine surfp(log10_teff, log10_gravity, print_flag)
                     kurucz_log10_pressure_table(row,ng-2)*gravity_weights(1) + &
                     kurucz_log10_pressure_table(row,ng-1)*gravity_weights(2) + &
                     kurucz_log10_pressure_table(row,ng)*gravity_weights(3)
-               gravity_interp_indices(node) = ng-2
+               atm_table%gravity_interp_indices(node) = ng-2
             endif
             goto 20
          endif
@@ -120,16 +104,16 @@ subroutine surfp(log10_teff, log10_gravity, print_flag)
             call ksplint(gravity_nodes, pressure_table_vals, &
                  gravity_spline_deriv, log10_gravity, interpolated_value)
             pressure_at_nodes(node) = interpolated_value
-            gravity_interp_indices(node) = ng-3
+            atm_table%gravity_interp_indices(node) = ng-3
             goto 20
          endif
 ! GENERAL CASE - FIND 4 NEAREST POINTS IN GRAVITY THAT ARE IN THE TABLE.
 ! G Somers, I changed NG to IMINMAX in the next line. This prevents the
 ! code from using -999 to interpolate in some instances.
-         do k = kurucz_gmax_index(row)-3,kurucz_gmin_index(row),-1
+         do k = atm_table%kurucz_gmax_index(row)-3,atm_table%kurucz_gmin_index(row),-1
             if (log10_gravity.lt.kurucz_logg_table(k+2) .and. &
                  log10_gravity.ge.kurucz_logg_table(k+1)) then
-               kk = max(kurucz_gmin_index(row),k)
+               kk = max(atm_table%kurucz_gmin_index(row),k)
                kk = min(ng-3,kk)
                do kkk = 1,4
                   gravity_nodes(kkk) = kurucz_logg_table(kk+kkk-1)
@@ -141,36 +125,36 @@ subroutine surfp(log10_teff, log10_gravity, print_flag)
                call ksplint(gravity_nodes, pressure_table_vals, &
                     gravity_spline_deriv, log10_gravity, interpolated_value)
                pressure_at_nodes(node) = interpolated_value
-               gravity_interp_indices(node) = kk
+               atm_table%gravity_interp_indices(node) = kk
                goto 20
             endif
          end do
 ! DESIRED LOG G BELOW 2ND TABLE ENTRY -USE FIRST 4 POINTS.
          do k = 1,4
-            gravity_nodes(k) = kurucz_logg_table(k+kurucz_gmin_index(row)-1)
+            gravity_nodes(k) = kurucz_logg_table(k+atm_table%kurucz_gmin_index(row)-1)
             pressure_table_vals(k) = &
-                 kurucz_log10_pressure_table(row,k+kurucz_gmin_index(row)-1)
+                 kurucz_log10_pressure_table(row,k+atm_table%kurucz_gmin_index(row)-1)
          end do
          call kspline(gravity_nodes, pressure_table_vals, gravity_spline_deriv)
          call ksplint(gravity_nodes, pressure_table_vals, &
               gravity_spline_deriv, log10_gravity, interpolated_value)
          pressure_at_nodes(node) = interpolated_value
-         gravity_interp_indices(node) = kurucz_gmin_index(row)
+         atm_table%gravity_interp_indices(node) = atm_table%kurucz_gmin_index(row)
    20 continue
 ! INTERPOLATE IN TEMPERATURE TO FIND CORRECT LOG P.
       call kspline(teff_nodes, pressure_at_nodes, teff_spline_deriv)
       call ksplint(teff_nodes, pressure_at_nodes, teff_spline_deriv, &
            log10_teff, interpolated_value)
-      atm_log10_pressure = interpolated_value
-      atm_log10_temperature = log10_teff
+      atm_table%atm_log10_pressure = interpolated_value
+      atm_table%atm_log10_temperature = log10_teff
 ! WRITE OUT INFORMATION TO THE MODEL FILE.
       if (print_flag) then
         write(short_file_unit,70)
         write(istor,70)
 70      format('********PRESSURE AT T=TEFF INTERPOLATED FROM TABULATED' &
               ,  ' VALUES********')
-        write(short_file_unit,71) log10_teff, atm_log10_pressure
-        write(istor,71) log10_teff, atm_log10_pressure
+        write(short_file_unit,71) log10_teff, atm_table%atm_log10_pressure
+        write(istor,71) log10_teff, atm_table%atm_log10_pressure
 71      format(' ',20X,'LOG (Teff) =',F10.5,' LOG P =',F10.5)
       endif
       return

@@ -29,23 +29,25 @@
 ! for the full description of this pre-existing mismatch, reproduced
 ! exactly here.
 !
-! PRESERVED CROSS-FILE COMMON LAYOUT MISMATCH (not fixed): this file's
-! common/masschg2/ declares its 4th/5th members as
-! (delta_log_temperature, delta_log_pressure) -- i.e. DLOGT before
-! DLOGP -- while mdot.f90's declaration of the very same block has
-! them in the opposite order, (delta_log_pressure,
-! delta_log_temperature) i.e. DLOGP before DLOGT. Since COMMON storage
-! is positional, this means the two files disagree about which
-! physical quantity occupies which storage slot. Neither variable is
-! actually read or set in this file's body (they are unused layout
-! placeholders here), so the mismatch has no effect on this file's own
-! behavior; reproduced exactly rather than silently reconciled.
+! FORMER CROSS-FILE COMMON LAYOUT MISMATCH (now resolved by the
+! rotdiff_lib module conversion): this file's own former common/
+! masschg2/ declared its 4th/5th members as (DLOGT, DLOGP) -- i.e.
+! DLOGT before DLOGP -- while mdot.f90's declaration of the very same
+! block had them in the opposite order (DLOGP, DLOGT). Since COMMON
+! storage is positional, this meant the two files disagreed about
+! which physical quantity occupied which storage slot -- harmless only
+! because neither variable was actually read or set in this file's
+! body (unused layout placeholders here). Name-based module access
+! makes the position irrelevant, so the historical swap is moot now;
+! documented here for the record rather than silently dropped.
 subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      log_density, specific_angular_momentum, log_pressure, log_radius, &
      log_mass, zone_mass_grams, shell_mass, log_total_mass, log_temperature, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed)
+      use atm_table_lib
+      use rotdiff_lib
       use light_burn_lib
       use turnover_lib
       use scrtch_lib
@@ -74,27 +76,12 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       double precision, intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: new_atmosphere_fit_needed
 
-! common/atmprt/: only atm_log10_pressure/atm_log10_temperature (set
-! by alsurfp, read here) are used. Naming matches alsurfp.f90.
-      double precision :: atm_tau, atm_log10_pressure, atm_log10_temperature, &
-           atm_log10_density, atm_opacity, atm_ion_fraction(3)
-      common/atmprt/ atm_tau, atm_log10_pressure, atm_log10_temperature, &
-           atm_log10_density, atm_opacity, atm_ion_fraction
 
 
 
 
 
 
-! common/masschg2/: only envelope_specific_entropy (SCEN, set here and
-! consumed by mdot.f90) is used. sacc/smass0 are unused placeholders
-! here (sacc is set by massloss's own accretion-entropy solve below
-! but under a purely local name, not stored to this common member; see
-! also the header note on the dlogt/dlogp order mismatch vs mdot.f90).
-      double precision :: accretion_specific_entropy, envelope_specific_entropy, &
-           updated_mass_msun, delta_log_temperature, delta_log_pressure
-      common/masschg2/ accretion_specific_entropy, envelope_specific_entropy, &
-           updated_mass_msun, delta_log_temperature, delta_log_pressure
 
 
 
@@ -214,7 +201,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          sum_thermal_energy = 0.0d0
 !         SUMDM = 0.0D0
          thermal_energy_accreted_bar = 0.0d0
-         envelope_specific_entropy = 0.0d0
+         rot_diff%envelope_specific_entropy = 0.0d0
          do zone_idx = envelope_boundary_zone, num_zones
             local_temperature = 10.0d0**log_temperature(zone_idx)
             local_pressure = 10.0d0**log_pressure(zone_idx)
@@ -232,7 +219,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  (local_density*local_temperature)
             local_entropy = mean_molecular_weight_local* &
                  (1.5d0*log(local_temperature)-log(local_density))
-            envelope_specific_entropy = envelope_specific_entropy+ &
+            rot_diff%envelope_specific_entropy = rot_diff%envelope_specific_entropy+ &
                  local_entropy*shell_mass(zone_idx)
 ! THE THERMAL ENERGY PER GM IN THE JTH SHELL IS
             thermal_energy_per_gram = local_pressure*local_beta/local_density
@@ -248,17 +235,17 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          mean_thermal_energy = sum_thermal_energy/cz_total_mass_below_fitting
          accretion_specific_energy = thermal_energy_accreted_bar/ &
               cz_total_mass_below_fitting
-         envelope_specific_entropy = envelope_specific_entropy/ &
+         rot_diff%envelope_specific_entropy = rot_diff%envelope_specific_entropy/ &
               cz_total_mass_below_fitting
          print_flag = .false.
          log10_gravity = cgl+log_total_mass-2.0d0*log10_radius
 ! This is experimental code and valid for Allard atmospheres only.
 !   llp  06/15/2009
          call alsurfp(log_teff,log10_gravity,print_flag,allard_surface_failed)
-         temperature_local = 10.0d0**atm_log10_temperature
-         pressure_local = 10.0d0**atm_log10_pressure
-         log10_temperature_local = atm_log10_temperature
-         log10_pressure_local = atm_log10_pressure
+         temperature_local = 10.0d0**atm_table%atm_log10_temperature
+         pressure_local = 10.0d0**atm_table%atm_log10_pressure
+         log10_temperature_local = atm_table%atm_log10_temperature
+         log10_pressure_local = atm_table%atm_log10_pressure
          hydrogen_fraction_local = composition(1,num_zones)
          metal_fraction_local = composition(3,num_zones)
          eos_deriv_flag = .false.
@@ -275,7 +262,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
               pressure_local)
          mean_molecular_weight_local = pressure_local*beta_local/ &
               (density_local*temperature_local)
-         accretion_specific_entropy = mean_molecular_weight_local* &
+         rot_diff%accretion_specific_entropy = mean_molecular_weight_local* &
               (1.5d0*log(temperature_local)-log(density_local))
 !         WRITE(*,911)TL,PL,SACC,SCEN
 !  911     FORMAT(' TSUR,PSUR ',2F8.5,' SACC ',1PE12.3,' SCORE ',E12.3)
@@ -306,10 +293,10 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  (1.5d0*log(temperature_from_wind)-log(density_local))
 !            WRITE(*,911)TL,PL,SACC2,SCEN
 !            SACC = MAX(SACC,SACC2)
-            envelope_specific_entropy = 0.0d0
+            rot_diff%envelope_specific_entropy = 0.0d0
 !            SCEN = SACC2 - SACC
          else
-            envelope_specific_entropy = 0.0d0
+            rot_diff%envelope_specific_entropy = 0.0d0
          endif
       endif
 ! CALL MASS LOSS OR ACCRETION ROUTINE

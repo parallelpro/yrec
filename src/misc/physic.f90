@@ -22,6 +22,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff)
 
+      use rotdiff_lib
       use run_diag_lib
       use temp_lib
       use envelope_comp_lib
@@ -49,10 +50,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 
 
 
-! common/dwmax/: max shear (domega/dr) magnitude; only max_domega_dr
-! is set here. Naming matches hpoint.f90.
-      double precision :: max_domega_dr(json), max_domega_dr_old(json)
-      common/dwmax/ max_domega_dr, max_domega_dr_old
 
 
 
@@ -198,7 +195,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       do 100 im = 2,num_zones
 !  SKIP CONVECTIVE REGIONS
          if (convective_flag(im).and.convective_flag(im-1)) then
-            max_domega_dr(im) = 0.0d0
+            rot_diff%max_domega_dr(im) = 0.0d0
             goto 100
          end if
 !  NOW CHECK FOR SHEAR INSTABILITY -REF.ENDAL&SOFIA APJ 220:279(1978)
@@ -239,9 +236,9 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
          temp_scratch = dexp(ln10*(density_mid - pressure_mid))* &
               (adiabatic_grad_mid - actual_grad_mid)*gravity_mid**2
          if (temp_scratch.gt.0.0d0) then
-            max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)
+            rot_diff%max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)
          else
-            max_domega_dr(im) = 0.0d0
+            rot_diff%max_domega_dr(im) = 0.0d0
          end if
   100 continue
 

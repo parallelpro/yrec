@@ -85,11 +85,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 
 
 
-! common/dwmax/: max shear (domega/dr) magnitude, current and from the
-! previous timestep; only max_domega_dr is set here. Not referenced in
-! any already-converted file.
-      double precision :: max_domega_dr(json), max_domega_dr_old(json)
-      common/dwmax/ max_domega_dr, max_domega_dr_old
 
 
 
@@ -920,7 +915,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
                  rot_diff%old_del_adiabatic_mix(zone_index) - rot_diff%old_delm(zone_index)
 ! MHP 6/00 CALCULATED EARLIER
 !            ESUMO(IM) = SESUM(IM)
-            max_domega_dr_old(zone_index) = max_domega_dr(zone_index)
+            rot_diff%max_domega_dr_old(zone_index) = rot_diff%max_domega_dr(zone_index)
  1040    continue
 ! MHP 06/02 ADDED TERM FOR THE TIME EVOLUTION
 ! OF THE ANGULAR VELOCITY DISTRIBUTION

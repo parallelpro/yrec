@@ -27,6 +27,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
      centre5_table_path, opal92_table2_path, pure_z_table_path, &
      scv_h_table_path, scv_he_table_path, scv_z_table_path, &
      alex95_table_paths)
+      use atm_table_lib
       use envelope_comp_lib
       use luout_lib
       use const_lib
@@ -69,24 +70,8 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 
 
 
-! common/ccr/: this batch's own block (see eqrelv.f90 for the full
-! member-by-member discussion); all read in here from the Fermi table
-! file. Naming matches eqrelv.f90.
-      double precision :: fermi_table_x_grid(43), fermi_table_eta(43), &
-           fermi_table_data(5,43,20)
-      integer :: fermi_table_x_lookup(261)
-      common/ccr/ fermi_table_x_grid, fermi_table_eta, fermi_table_data, &
-           fermi_table_x_lookup
 
 
-! MHP 8/92 COMMON BLOCK ADDED FOR LOWER EDGE OF TABLE IN LOG G.
-! common/fac/: all members assigned here. Naming matches surfp.f90.
-      integer :: kurucz_gmin_index(nt), kurucz_gmax_index(nt), &
-           teff_interp_start_index, gravity_interp_indices(4), &
-           castelli_gmin_index(ntc), castelli_gmax_index(ntc)
-      common/fac/kurucz_gmin_index, kurucz_gmax_index, &
-           teff_interp_start_index, gravity_interp_indices, &
-           castelli_gmin_index, castelli_gmax_index
 
       save
 
@@ -206,9 +191,9 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  OPEN DATA FILES
       open(unit=fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
-      read(fermi_unit,150)  (fermi_table_x_grid(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,150)  (fermi_table_eta(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,160) (grid_idx,iden_idx,(fermi_table_data(col_idx,grid_idx,iden_idx), &
+      read(fermi_unit,150)  (atm_table%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,150)  (atm_table%fermi_table_eta(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,160) (grid_idx,iden_idx,(atm_table%fermi_table_data(col_idx,grid_idx,iden_idx), &
            col_idx=1,5),card_idx=1,860)
   150 format(8x,9f8.4)
   160 format(2i5,5f12.7)
@@ -216,18 +201,18 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       bin_start = 1
       do 180 grid_idx=1,41
 ! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
-       if (fermi_table_x_grid(grid_idx+1).le.fermi_table_x_grid(grid_idx)) then
+       if (atm_table%fermi_table_x_grid(grid_idx+1).le.atm_table%fermi_table_x_grid(grid_idx)) then
 !       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
           write(short_file_unit,1000) grid_idx
  1000       format(1x,39('>'),40('<')/1x,'ERROR IN SUBROUTINE SETUPS'/ &
            1x,'GLITCH IN FERMI TABLE ELEMENT',i4/1x,'RUN STOPPED')
           stop
        endif
-       bin_width = int((fermi_table_x_grid(grid_idx+1) - fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
+       bin_width = int((atm_table%fermi_table_x_grid(grid_idx+1) - atm_table%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
        bin_end = bin_start + bin_width - 1
        if (grid_idx.eq.41)  bin_end = 261
        do 170 iden_idx=bin_start,bin_end
-          fermi_table_x_lookup(iden_idx) = grid_idx
+          atm_table%fermi_table_x_lookup(iden_idx) = grid_idx
   170    continue
        bin_start = bin_end + 1
   180 continue
@@ -269,23 +254,23 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !                 check if the first non-999 value has been reached.
 !                 if so, set IMIN.
                   if(found_valid_pressure)then
-                     kurucz_gmin_index(teff_idx) = logg_idx + 1
+                     atm_table%kurucz_gmin_index(teff_idx) = logg_idx + 1
                      goto 5
                   endif
                else
 !                 if we have reached a non-negative pressure value,
 !                 turn off the catch so IMIN can be set. also record
 !                 the highest gravity with a pressure for later int.
-                  if(.not.found_valid_pressure) kurucz_gmax_index(teff_idx) = logg_idx
+                  if(.not.found_valid_pressure) atm_table%kurucz_gmax_index(teff_idx) = logg_idx
                   found_valid_pressure = .true.
                endif
             end do
-            kurucz_gmin_index(teff_idx) = 1
+            atm_table%kurucz_gmin_index(teff_idx) = 1
     5       continue
 !           if all of the P values at a given T are -999, set IMIN
 !           to the number of gravity terms. in responce, the code
 !           should break when trying to find surface P.
-            if(.not.found_valid_pressure) kurucz_gmin_index(teff_idx) = ng
+            if(.not.found_valid_pressure) atm_table%kurucz_gmin_index(teff_idx) = ng
          end do
 !        G Somers 5/15 END
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES; USED INSTEAD OF
@@ -326,23 +311,23 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !                check if the first non-999 value has been reached.
 !                if so, set IMIN2.
                  if(found_valid_pressure)then
-                    castelli_gmin_index(teff_idx) = logg_idx + 1
+                    atm_table%castelli_gmin_index(teff_idx) = logg_idx + 1
                     goto 6
                  endif
               else
 !                if we have reached a non-negative pressure value,
 !                turn off the catch so IMIN2 can be set. also record
 !                the highest gravity with a pressure for later int.
-                 if(.not.found_valid_pressure) castelli_gmax_index(teff_idx) = logg_idx
+                 if(.not.found_valid_pressure) atm_table%castelli_gmax_index(teff_idx) = logg_idx
                  found_valid_pressure = .true.
               endif
            end do
-           castelli_gmin_index(teff_idx) = 1
+           atm_table%castelli_gmin_index(teff_idx) = 1
     6      continue
 !          if all of the P values at a given T are -999, set IMIN
 !          to the number of gravity terms. in responce, the code
 !          should break when trying to find surface P.
-           if(.not.found_valid_pressure) castelli_gmin_index(teff_idx) = ng
+           if(.not.found_valid_pressure) atm_table%castelli_gmin_index(teff_idx) = ng
         end do
 ! END JNT 6/14
       endif

@@ -12,6 +12,7 @@
 ! recurses.
 recursive subroutine t6rinteos06(slr, slt)
 
+      use atm_table_lib
       use luout_lib
       implicit none
 
@@ -50,9 +51,6 @@ recursive subroutine t6rinteos06(slr, slt)
            density_index_4, t6_index_1, t6_index_2, t6_index_3, &
            t6_index_4, t6_interp_order, density_interp_order
 
-! common/eeos06/: esact, eos_output(mv).
-      double precision :: esact, eos_output(mv)
-      common/eeos06/ esact, eos_output
 
 
 ! --- locals ---
@@ -89,7 +87,7 @@ recursive subroutine t6rinteos06(slr, slt)
       recompute_flag = 0
       cache_slot = 1
 ! ..... eos(i) in lower-right 3x3(i=i1,i1+2 j=j1,j1+2)
-      esact = quadeos06(recompute_flag, cache_slot, slt, rho_interp_lo(1), &
+      atm_table%esact = quadeos06(recompute_flag, cache_slot, slt, rho_interp_lo(1), &
            rho_interp_lo(2), rho_interp_lo(3), t6_grid(t6_index_1), &
            t6_grid(t6_index_2), t6_grid(t6_index_3))
       if (density_interp_order.eq.3) then
@@ -105,7 +103,7 @@ recursive subroutine t6rinteos06(slr, slt)
               t6_grid(t6_index_3), t6_grid(t6_index_4))
 ! .....    eos(i) smoothed in left 3x4
          dix = (t6_grid(t6_index_3) - slt)*t6_grid_spacing_inv(t6_index_3)
-         esact = esact*dix + esact2*(1.0d0 - dix)
+         atm_table%esact = atm_table%esact*dix + esact2*(1.0d0 - dix)
 ! endif   ! moved to loc a
          if (density_interp_order.eq.3) then
 
@@ -123,10 +121,10 @@ recursive subroutine t6rinteos06(slr, slt)
               density_grid_spacing_inv(density_index_3)
          if (t6_interp_order.eq.3) then
 ! .....        eos(i) smoothed in both log(T6) and log(R)
-            esact = esact*dix2 + esactq*(1.0d0 - dix2)
+            atm_table%esact = atm_table%esact*dix2 + esactq*(1.0d0 - dix2)
          end if
       end if
-      if (esact.gt.1.0d+15) then
+      if (atm_table%esact.gt.1.0d+15) then
          write(short_file_unit,'("T6RINTEOS06: Interpolation indices out", &
               &" of range;please report conditions.")')
          stop

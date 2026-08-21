@@ -25,6 +25,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use rotdiff_lib
       use run_diag_lib
       use temp2_lib
       use envelope_comp_lib
@@ -63,8 +64,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       double precision, intent(in) :: total_angular_momentum, &
            total_rotational_kinetic_energy, shell_mass_increment(json)
 
-      double precision :: rotational_energy_term(json)
-      common/roten/ rotational_energy_term
 ! G Somers END
 
 

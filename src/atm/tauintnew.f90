@@ -24,6 +24,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      num_interior_points, convective_velocity, radiative_gradient, &
      adiabatic_gradient, radius_at_bcz)
+      use atm_table_lib
       use envstruct_lib
       use const_lib
       use envelope_comp_lib
@@ -43,10 +44,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
            adiabatic_gradient(json)
       double precision, intent(out) :: radius_at_bcz
 
-! common/jtest/: not used in this file. Naming is local to this batch.
-      integer :: imax1_placeholder, imax2_placeholder
-      logical :: ljvs_placeholder
-      common/jtest/imax1_placeholder, imax2_placeholder, ljvs_placeholder
 
       save
 

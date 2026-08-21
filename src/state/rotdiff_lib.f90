@@ -148,6 +148,36 @@ module rotdiff_lib
                 fact3(rotdiff_json), fact4(rotdiff_json), &
                 mu_gradient_richardson_coeff(rotdiff_json), &
                 difad_shear_coeff1(rotdiff_json), difad_shear_coeff2(rotdiff_json)
+! former common/dwmax/
+           double precision :: max_domega_dr(rotdiff_json), &
+                max_domega_dr_old(rotdiff_json)
+! former common/gravsz/
+           double precision :: src_grid_metal_diffusion_coeff1(rotdiff_json), &
+                src_grid_metal_diffusion_coeff2(rotdiff_json), &
+                src_grid_metal_diffusion_coeff1_dz(rotdiff_json), &
+                src_grid_metal_diffusion_coeff2_dz(rotdiff_json)
+! former common/prevmid/
+           double precision :: del_grad_diff_prev(rotdiff_json), &
+                del_grad_diff_new(rotdiff_json), radius_prev(rotdiff_json)
+           logical :: convective_flag_prev(rotdiff_json)
+! former common/rotder/
+           double precision :: dlnkappa_dlnrho(rotdiff_json), &
+                dlnkappa_dlnt(rotdiff_json), dlnepsilon_dlnrho(rotdiff_json), &
+                dlnepsilon_dlnt(rotdiff_json), neutrino_loss_fraction(rotdiff_json)
+! former common/roten/
+           double precision :: rotational_energy_term(rotdiff_json)
+! former common/masschg2/: massloss.f90 declared delta_log_pressure/
+! delta_log_temperature in swapped order relative to coefft.f90/
+! mdot.f90 (a self-documented, harmless pre-existing bug there since
+! both are unused placeholders in massloss.f90) -- uses the majority
+! (coefft.f90/mdot.f90) order here.
+           double precision :: accretion_specific_entropy, &
+                envelope_specific_entropy, updated_mass_msun, &
+                delta_log_pressure, delta_log_temperature
+! former common/masschg3/
+           double precision :: solar_wind_mass_loss_rate_msun_yr, &
+                wind_reference_omega, wind_max_omega
+           logical :: use_rotation_scaled_solar_wind
       end type rotation_diffusion_state
 
       type(rotation_diffusion_state), public :: rot_diff

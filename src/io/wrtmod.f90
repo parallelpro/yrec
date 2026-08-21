@@ -61,9 +61,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 
 
 
-! common/roten/: not used in this file. Naming matches putstore.f90.
-      double precision :: rotational_energy_term(json)
-      common/roten/ rotational_energy_term
 
 ! G Somers END
 

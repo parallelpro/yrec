@@ -13,7 +13,7 @@
 !
 ! NOTE: preserved verbatim from the original -- var_idx (the "j" loop
 ! variable used to zero eos_table's variable dimension and to reset
-! eos_output to 1.0 during the one-time init block below) is reused,
+! atm_table%eos_output to 1.0 during the one-time init block below) is reused,
 ! stale, as the column index into log10_ne_grid in the per-row READ
 ! statement further down. Since var_idx is SAVE'd and the init block
 ! only runs once, var_idx is left sitting at mv+1 (its value just
@@ -26,6 +26,7 @@
 ! transliterated exactly rather than "fixed".
 subroutine readcoeos06
 
+      use atm_table_lib
       use const_lib
       use luout_lib
       implicit none
@@ -60,10 +61,6 @@ subroutine readcoeos06
       common/beos06/ z_table, eos_index_inverse, eos_var_order, &
            t6_index_lo, density_index_edge
 
-! common/eeos06/: eos_output is zeroed (to 1.0) during the one-time
-! init block below.
-      double precision :: esact, eos_output(mv)
-      common/eeos06/ esact, eos_output
 
 ! common/eeeos06/: x_grid_copy used below (see readco.f90's note on
 ! why the dfsx-equivalent computation reads the copy, not x_grid
@@ -109,7 +106,7 @@ subroutine readcoeos06
             end do
          end do
          do var_idx = 1, mv
-            eos_output(var_idx) = 1.0d0
+            atm_table%eos_output(var_idx) = 1.0d0
          end do
          table_init_flag = 12345678
       end if

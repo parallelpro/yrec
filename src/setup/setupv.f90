@@ -45,19 +45,6 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 
 
 
-! CAPPA AND EPSILON DERIVATIVES
-! common/rotder/: this batch's own block (no reuse precedent found
-! elsewhere in the already-converted sources). dlnkappa_dlnrho/
-! dlnkappa_dlnt are the opacity's logarithmic derivatives w.r.t.
-! density/temperature; dlnepsilon_dlnrho/dlnepsilon_dlnt are the
-! energy-generation rate's logarithmic derivatives; neutrino_loss_
-! fraction is the fraction of energy generation lost to neutrinos.
-! All used here.
-      double precision :: dlnkappa_dlnrho(json), dlnkappa_dlnt(json), &
-           dlnepsilon_dlnrho(json), dlnepsilon_dlnt(json), &
-           neutrino_loss_fraction(json)
-      common/rotder/ dlnkappa_dlnrho, dlnkappa_dlnt, dlnepsilon_dlnrho, &
-           dlnepsilon_dlnt, neutrino_loss_fraction
 
 
 
@@ -485,16 +472,16 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
          (1.0d0-cc13*cpi*ff_factor*(1.0d1*rot_diff%dm(zone_idx)-rot_diff%interface_radius(zone_idx)*qdr_local) &
           + cc13*8.0d0*(cpi*rot_diff%dm(zone_idx)*ff_factor)**2)
 ! D LN CHI/D LN T = 3 - D LN CAPPA/D LN T
-         qchit = 3.0d0 - 0.5d0*(dlnkappa_dlnt(zone_idx)+dlnkappa_dlnt(zone_idx-1))
-         qqchitr = (dlnkappa_dlnt(zone_idx-1)-dlnkappa_dlnt(zone_idx))/dr_local
+         qchit = 3.0d0 - 0.5d0*(rot_diff%dlnkappa_dlnt(zone_idx)+rot_diff%dlnkappa_dlnt(zone_idx-1))
+         qqchitr = (rot_diff%dlnkappa_dlnt(zone_idx-1)-rot_diff%dlnkappa_dlnt(zone_idx))/dr_local
          ht_temp_scale = exp(ln10*(log_pressure(zone_idx)+2.0d0*log_radius(zone_idx)-log_density(zone_idx)))/ &
               mass_unlogged(zone_idx)/grav_const/mix_phys%delm(zone_idx)
          rot_diff%third_deriv_geom_factor(zone_idx) = ht_temp_scale
          ht_temp_scale2 = dr_local/ln10/(log_temperature(zone_idx-1)-log_temperature(zone_idx))
          dhtscale_dr = (abs(ht_temp_scale)-abs(ht_temp_scale_prev))/dr_local
          ht_temp_scale_prev = ht_temp_scale
-         mean_dlneps_dlnt = 0.5d0*(dlnepsilon_dlnt(zone_idx)+dlnepsilon_dlnt(zone_idx-1))
-         mean_neutrino_fraction = 0.5d0*(neutrino_loss_fraction(zone_idx)+neutrino_loss_fraction(zone_idx-1))
+         mean_dlneps_dlnt = 0.5d0*(rot_diff%dlnepsilon_dlnt(zone_idx)+rot_diff%dlnepsilon_dlnt(zone_idx-1))
+         mean_neutrino_fraction = 0.5d0*(rot_diff%neutrino_loss_fraction(zone_idx)+rot_diff%neutrino_loss_fraction(zone_idx-1))
 !         FACT7(I)= -V0*(QQCHITR*C1+QCHIT*QC1R)
 !         FACT7(I)= -V0*(QQCHITR*C1)
          rot_diff%difad_shear_coeff1(zone_idx)= &

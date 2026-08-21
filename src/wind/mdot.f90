@@ -25,6 +25,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
+      use rotdiff_lib
       use envelope_comp_lib
       use light_burn_lib
       use const_lib
@@ -65,31 +66,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 
 
 
-! common/masschg2/: accretion_specific_entropy/updated_mass_msun/
-! delta_log_pressure/delta_log_temperature (order local to this file --
-! see massloss.f90, which declares the same block with dlogt and
-! dlogp SWAPPED in position, a pre-existing cross-file COMMON layout
-! mismatch preserved exactly, see massloss.f90's header) are used or
-! set here; accretion_specific_entropy is unused in this file (its
-! value is supplied by massloss.f90's own use of the block).
-      double precision :: accretion_specific_entropy, envelope_specific_entropy, &
-           updated_mass_msun, delta_log_pressure, delta_log_temperature
-      common/masschg2/ accretion_specific_entropy, envelope_specific_entropy, &
-           updated_mass_msun, delta_log_pressure, delta_log_temperature
 
-! common/masschg3/: mhp 8/10 added option to scale mass loss rate by
-! rotation; requires rotating model. First converted here.
-! solar_wind_mass_loss_rate_msun_yr is the baseline/normalization mass-
-! loss rate for the rotation-scaled solar-type wind; wind_reference_omega
-! and wind_max_omega are the reference and capping angular velocities
-! used to scale it (exact physical roles beyond their use below are not
-! confidently known from this file alone); use_rotation_scaled_solar_wind
-! (LSOLWIND) enables this scaling.
-      double precision :: solar_wind_mass_loss_rate_msun_yr, &
-           wind_reference_omega, wind_max_omega
-      logical :: use_rotation_scaled_solar_wind
-      common/masschg3/ solar_wind_mass_loss_rate_msun_yr, &
-           wind_reference_omega, wind_max_omega, use_rotation_scaled_solar_wind
 
       save
 
@@ -121,10 +98,10 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 
       old_log_envelope_mass_fraction = log_mass(num_zones) - log_total_mass
 ! MHP 8/10- CHECK FOR SCALED SOLAR WIND MASS LOSS
-      if(use_rotation_scaled_solar_wind .and. rotation_active) then
-         omega_ratio_sq = (omega(num_zones)/wind_reference_omega)**2
-         omega_max_ratio_sq = (wind_max_omega/wind_reference_omega)**2
-         mass_loss_rate_msun_yr = solar_wind_mass_loss_rate_msun_yr* &
+      if(rot_diff%use_rotation_scaled_solar_wind .and. rotation_active) then
+         omega_ratio_sq = (omega(num_zones)/rot_diff%wind_reference_omega)**2
+         omega_max_ratio_sq = (rot_diff%wind_max_omega/rot_diff%wind_reference_omega)**2
+         mass_loss_rate_msun_yr = rot_diff%solar_wind_mass_loss_rate_msun_yr* &
               min(omega_ratio_sq,omega_max_ratio_sq)
          write(*,*)omega(num_zones),mass_loss_rate_msun_yr
       endif
@@ -201,26 +178,26 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
               (local_density*local_temperature)
 !         DLOGEN = (DELM/DMCZ)*(SACC-SCEN)/RMU
          delta_log_specific_entropy = (delta_mass_cgs/cz_mass_grams)* &
-              envelope_specific_entropy/mean_molecular_weight_local
+              rot_diff%envelope_specific_entropy/mean_molecular_weight_local
 !         DLNM = LOG(DMCZ+DELM)-LOG(DMCZ)
          delta_ln_mass = 0.0d0
          delta_log_radius = (cc23*delta_log_specific_entropy- &
               cc13*delta_ln_mass)/ln10
-         delta_log_temperature = delta_ln_mass/ln10 - delta_log_radius
-         delta_log_pressure = 2.0d0*delta_ln_mass/ln10 - 4.0d0*delta_log_radius
+         rot_diff%delta_log_temperature = delta_ln_mass/ln10 - delta_log_radius
+         rot_diff%delta_log_pressure = 2.0d0*delta_ln_mass/ln10 - 4.0d0*delta_log_radius
 !         WRITE(*,*)DLOGR,DLOGP,DLOGT
          if(envelope_boundary_zone.eq.1)then
             do zone_idx = envelope_boundary_zone,num_zones
                log_radius(zone_idx) = log_radius(zone_idx)+delta_log_radius
-               log_pressure(zone_idx) = log_pressure(zone_idx)+delta_log_pressure
+               log_pressure(zone_idx) = log_pressure(zone_idx)+rot_diff%delta_log_pressure
                log_temperature(zone_idx) = &
-                    log_temperature(zone_idx)+delta_log_temperature
+                    log_temperature(zone_idx)+rot_diff%delta_log_temperature
             end do
          else
             log_pressure(envelope_boundary_zone) = &
-                 log_pressure(envelope_boundary_zone)+delta_log_pressure
+                 log_pressure(envelope_boundary_zone)+rot_diff%delta_log_pressure
             log_temperature(envelope_boundary_zone) = &
-                 log_temperature(envelope_boundary_zone)+delta_log_temperature
+                 log_temperature(envelope_boundary_zone)+rot_diff%delta_log_temperature
             boundary_radius_cm = 10.0d0**log_radius(envelope_boundary_zone)
             radius_scale_factor = 10.0d0**delta_log_radius
             do zone_idx = envelope_boundary_zone+1,num_zones
@@ -289,7 +266,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 ! CORRECT TOTAL MASS IN SOLAR UNITS (SMASS) AND
 ! LOG OF TOTAL MASS IN GRAMS (HSTOT,STOTAL)
       total_mass_msun = total_mass_msun + delta_mass_cgs/solar_mass_cgs
-      updated_mass_msun = total_mass_msun
+      rot_diff%updated_mass_msun = total_mass_msun
       delta_mass_msun = delta_mass_cgs/solar_mass_cgs
       write(*,20)total_mass_msun,delta_mass_msun
  20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)

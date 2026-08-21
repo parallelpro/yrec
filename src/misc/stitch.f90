@@ -30,6 +30,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
 
+      use rotdiff_lib
       use run_diag_lib
       use temp2_lib
       use atmstruct_lib
@@ -74,10 +75,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
 
 
-! common/roten/: rotational_energy_term (DEROT), used here. Naming
-! matches coefft.f90/putstore.f90.
-      double precision :: rotational_energy_term(json)
-      common/roten/ rotational_energy_term
 
 
 
@@ -128,7 +125,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
                    circ_vel%secular_shear_velocity(i)
               write(istor,64) a_val,rpoleq,shape_factor_fp(i), &
                    shape_factor_ft(i),specific_angular_momentum(i), &
-                   shell_moment_of_inertia(i),rotational_energy_term(i), &
+                   shell_moment_of_inertia(i),rot_diff%rotational_energy_term(i), &
                    circ_vel%es_circulation_velocity(i),circ_vel%gsf_circulation_velocity(i), &
                    circ_vel%secular_shear_velocity(i),vtot
             else

@@ -11,18 +11,19 @@
 ! structure is otherwise identical to esac01.f90 (same iorder cap of
 ! 9, same iqu/ipu pre-checks, same l3==nr .or. k3==nt boundary reset).
 !
-!   eos_output(1) pressure, in megabars (1e12 dyne/cm**2)
-!   eos_output(2) energy, in 1e12 erg/gm (zero at T6=0)
-!   eos_output(3) entropy, in units of energy/T6
-!   eos_output(4) dE/dRho at constant T6
-!   eos_output(5) specific heat, dE/dT6 at constant volume
-!   eos_output(6) dlogP/dlogRho at constant T6 (Cox & Guili eq 9.82)
-!   eos_output(7) dlogP/dlogT6 at constant Rho (Cox & Guili eq 9.81)
-!   eos_output(8) gamma1 (Cox & Guili eq 9.88)
-!   eos_output(9) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
+!   atm_table%eos_output(1) pressure, in megabars (1e12 dyne/cm**2)
+!   atm_table%eos_output(2) energy, in 1e12 erg/gm (zero at T6=0)
+!   atm_table%eos_output(3) entropy, in units of energy/T6
+!   atm_table%eos_output(4) dE/dRho at constant T6
+!   atm_table%eos_output(5) specific heat, dE/dT6 at constant volume
+!   atm_table%eos_output(6) dlogP/dlogRho at constant T6 (Cox & Guili eq 9.82)
+!   atm_table%eos_output(7) dlogP/dlogT6 at constant Rho (Cox & Guili eq 9.81)
+!   atm_table%eos_output(8) gamma1 (Cox & Guili eq 9.88)
+!   atm_table%eos_output(9) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
 subroutine esac06(hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, *)
 
+      use atm_table_lib
       use luout_lib
       implicit none
 
@@ -79,9 +80,6 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
            density_index_4, t6_index_1, t6_index_2, t6_index_3, &
            t6_index_4, t6_interp_order, density_interp_order
 
-! common/eeos06/: eos_output is the caller-facing interpolated result.
-      double precision :: esact, eos_output(mv)
-      common/eeos06/ esact, eos_output
 
 
       double precision :: species_mass_fraction(7)
@@ -414,12 +412,12 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
 !
 !
       call t6rinteos06(density_value, t6_value)
-      eos_output(eos_var_idx) = esact
+      atm_table%eos_output(eos_var_idx) = atm_table%esact
   124 continue
       pressure_scale = t6_temperature*density
-      eos_output(eos_index_inverse(1)) = eos_output(eos_index_inverse(1))* &
+      atm_table%eos_output(eos_index_inverse(1)) = atm_table%eos_output(eos_index_inverse(1))* &
            pressure_scale   ! interpolated in p/po
-      eos_output(eos_index_inverse(2)) = eos_output(eos_index_inverse(2))* &
+      atm_table%eos_output(eos_index_inverse(2)) = atm_table%eos_output(eos_index_inverse(2))* &
            t6_temperature   ! interpolated in E/T6
       mean_molecular_weight = gmass06(hydrogen_fraction, table_metal_fraction, &
            total_moles, ground_state_energy, metal_mole_fraction, &
@@ -428,7 +426,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
          call radsub06(rad_flag, t6_temperature, density, total_moles, &
               mean_molecular_weight)
       else
-         eos_output(eos_index_inverse(5)) = eos_output(eos_index_inverse(5))* &
+         atm_table%eos_output(eos_index_inverse(5)) = atm_table%eos_output(eos_index_inverse(5))* &
               total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return

@@ -57,20 +57,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 
 
 
-! MHP 3/94 ADDED METAL DIFFUSION
-! common/gravsz/: src_grid_metal_diffusion_coeff1/coeff2/coeff1_dz/
-! coeff2_dz, all used here (originally COD1Z/COD2Z/QCOD1Z/QCOD2Z, the
-! iron-settling analogs of diffusion_coeff1/diffusion_coeff2 on the
-! original, non-equally-spaced model grid). Naming matches
-! model_to_equal.f90.
-      double precision :: src_grid_metal_diffusion_coeff1(json), &
-           src_grid_metal_diffusion_coeff2(json), &
-           src_grid_metal_diffusion_coeff1_dz(json), &
-           src_grid_metal_diffusion_coeff2_dz(json)
-      common/gravsz/ src_grid_metal_diffusion_coeff1, &
-           src_grid_metal_diffusion_coeff2, &
-           src_grid_metal_diffusion_coeff1_dz, &
-           src_grid_metal_diffusion_coeff2_dz
 
 
 
@@ -344,15 +330,15 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !         and add the uncertainties of differential mixing (cstdiffmix).
 !
 ! old ver      COD1Z(I) = FAC*HQPR(I)*ZZ*(AP+AT)
-               src_grid_metal_diffusion_coeff1(zone_idx) = cstdiffmix*cstmixing* &
+               rot_diff%src_grid_metal_diffusion_coeff1(zone_idx) = cstdiffmix*cstmixing* &
                     settling_prefactor*dlnp_dr(zone_idx)*iron_fraction*(settling_coeff_p+settling_coeff_t)
 !              POSITIVE DIFFUSION COEFFICIENTS NEEDED!
 ! old ver.     COD2Z(I) = ABS(FAC*AH)
 ! old ver.     QCOD1Z(I) = FAC*HQPR(I)*(AP+AT)
-               src_grid_metal_diffusion_coeff2(zone_idx) = cstmixing*abs(settling_prefactor*iron_settling_ah)
-               src_grid_metal_diffusion_coeff1_dz(zone_idx) = cstmixing*settling_prefactor* &
+               rot_diff%src_grid_metal_diffusion_coeff2(zone_idx) = cstmixing*abs(settling_prefactor*iron_settling_ah)
+               rot_diff%src_grid_metal_diffusion_coeff1_dz(zone_idx) = cstmixing*settling_prefactor* &
                     dlnp_dr(zone_idx)*(settling_coeff_p+settling_coeff_t)
-               src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
+               rot_diff%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
             endif
          endif
 !

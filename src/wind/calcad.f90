@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use atm_table_lib
       use run_diag_lib
       use envstruct_lib
       use envelope_comp_lib
@@ -90,12 +91,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 
-! common/eeos06/: both used here (OPAL 2006 EOS interpolator result).
-! Naming matches esac06.f90; eos_output here is dimensioned (10)
-! matching this file's own usage (esac06.f90 dimensions it (mv), a
-! parameter equal to 10).
-      double precision :: esact, eos_output(10)
-      common/eeos06/ esact, eos_output
 
 ! common/llot95/: this file declares only a single unused scalar for a
 ! block whose canonical layout (established in getopal95.f90) is a
@@ -263,9 +258,9 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                        eos_interp_order,eos_rad_flag,*999)
 999                  continue
                   star_inverse_sound_speed(zone_idx)=1.0d0/ &
-                       sqrt(eos_output(8)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
-                  deladj_placeholder(zone_idx)=1.0d0/eos_output(9)
-                  local_gamma1(zone_idx) = eos_output(8)
+                       sqrt(atm_table%eos_output(8)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
+                  deladj_placeholder(zone_idx)=1.0d0/atm_table%eos_output(9)
+                  local_gamma1(zone_idx) = atm_table%eos_output(8)
 36            continue
       endif
 ! For SCV EOS: (when OPAL06 is turned off, SCV on for backup, Yale if SCV is off)

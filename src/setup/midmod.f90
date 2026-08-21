@@ -64,7 +64,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       double precision, intent(out) :: log_luminosity_mid(json), &
            log_pressure_mid(json)
 ! log_radius_mid (HRM) is read here before being (re)computed in this
-! call, in the LFIRST=.false. branch below that seeds radius_prev from
+! call, in the LFIRST=.false. branch below that seeds rot_diff%radius_prev from
 ! the previous MIDMOD call's log_radius_mid -- hence intent(inout)
 ! rather than intent(out).
       double precision, intent(inout) :: log_radius_mid(json)
@@ -96,21 +96,10 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 
 
 
-! common/dwmax/: not used in this file. Naming matches hpoint.f90.
-      double precision :: max_domega_dr(json), max_domega_dr_old(json)
-      common/dwmax/ max_domega_dr, max_domega_dr_old
 
 
 
 
-! MHP 06/02
-! common/prevmid/: state saved from the previous MIDMOD call, all used
-! here. Naming is local to this batch.
-      double precision :: del_grad_diff_prev(json), del_grad_diff_new(json), &
-           radius_prev(json)
-      logical :: convective_flag_prev(json)
-      common/prevmid/ del_grad_diff_prev, del_grad_diff_new, radius_prev, &
-           convective_flag_prev
 
 
 
@@ -158,9 +147,9 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 ! PRIOR STEP.
       if (first_call) then
          do 20 j = 1,num_zones
-            convective_flag_prev(j) = prev_model%old_convective_flag(j)
-            radius_prev(j) = prev_model%old_radius(j)
-            del_grad_diff_prev(j) = rot_diff%old_del_adiabatic_mix(j)-rot_diff%old_del_radiative_mix(j)
+            rot_diff%convective_flag_prev(j) = prev_model%old_convective_flag(j)
+            rot_diff%radius_prev(j) = prev_model%old_radius(j)
+            rot_diff%del_grad_diff_prev(j) = rot_diff%old_del_adiabatic_mix(j)-rot_diff%old_del_radiative_mix(j)
             mix_phys%amum(j) = rot_diff%old_amu(j)
             do 10 i = 1,num_species_tracked
                composition(i,j) = prev_model%old_composition(i,j)
@@ -168,9 +157,9 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
    20    continue
       else
          do j = 1,num_zones
-            radius_prev(j) = log_radius_mid(j)
-            del_grad_diff_prev(j) = del_grad_diff_new(j)
-            convective_flag_prev(j) = convective_flag_mid(j)
+            rot_diff%radius_prev(j) = log_radius_mid(j)
+            rot_diff%del_grad_diff_prev(j) = rot_diff%del_grad_diff_new(j)
+            rot_diff%convective_flag_prev(j) = convective_flag_mid(j)
          end do
       endif
       new_cz_detected = .false.
@@ -213,8 +202,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 !  OR NOT A ZONE IS CONVECTIVE IF IT CHANGES STATE OVER THE COURSE OF A
 !  TIMESTEP.
       do 50 i = 1,num_zones
-         del_grad_diff_new(i) = mix_phys%del_adiabatic_mix(i)-mix_phys%del_radiative_mix(i)
-         if (convective_flag(i).eqv.convective_flag_prev(i)) then
+         rot_diff%del_grad_diff_new(i) = mix_phys%del_adiabatic_mix(i)-mix_phys%del_radiative_mix(i)
+         if (convective_flag(i).eqv.rot_diff%convective_flag_prev(i)) then
             convective_flag_mid(i) = convective_flag(i)
             mix_phys%velm(i) = rot_diff%old_vel(i) + time_fraction*(shell_diag%svel(i)-rot_diff%old_vel(i))
             convective_state_changed(i) = .false.
@@ -253,17 +242,17 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
                cz_change_active = .false.
                redistribute_j_flag = .true.
                write(*,*)change_region_start,change_region_end, &
-                    del_grad_diff_new(change_region_start), &
-                    del_grad_diff_new(change_region_start-1), &
-                    del_grad_diff_new(change_region_end+1)
+                    rot_diff%del_grad_diff_new(change_region_start), &
+                    rot_diff%del_grad_diff_new(change_region_start-1), &
+                    rot_diff%del_grad_diff_new(change_region_end+1)
 ! ONLY CHANGE IF THERE IS A RECEDING CONVECTION ZONE;
 ! WE CAN ASSUME LOCAL CONSERVATION OF J PRIOR TO HAVING
 ! A SHELL INCORPORATED INTO A CZ.
-               if (del_grad_diff_new(change_region_start).gt.0.0D0) then
-                  if (del_grad_diff_new(change_region_start-1).lt.0.0D0) then
+               if (rot_diff%del_grad_diff_new(change_region_start).gt.0.0D0) then
+                  if (rot_diff%del_grad_diff_new(change_region_start-1).lt.0.0D0) then
 ! SUBTRACTED FROM A CORE CZ
                      cz_direction_flag = -1
-                  else if (del_grad_diff_new(change_region_end+1).lt.0.0D0) then
+                  else if (rot_diff%del_grad_diff_new(change_region_end+1).lt.0.0D0) then
 ! SUBTRACTED FROM AN ENVELOPE CZ
                      cz_direction_flag = 1
                   else
@@ -289,16 +278,16 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
                   cz_zone_bottom = 1
  11               continue
                   do j = change_region_end,change_region_start,-1
-                     if (del_grad_diff_new(j).lt.0.0D0) goto 13
+                     if (rot_diff%del_grad_diff_new(j).lt.0.0D0) goto 13
                      cz_moment_of_inertia = 0.0D0
                      cz_angular_momentum = 0.0D0
 ! FRACTION OF THE TIMESTEP SHELL WAS RADIATIVE
-                     time_fraction = del_grad_diff_new(j)/ &
-                          (del_grad_diff_new(j)-del_grad_diff_prev(j))
+                     time_fraction = rot_diff%del_grad_diff_new(j)/ &
+                          (rot_diff%del_grad_diff_new(j)-rot_diff%del_grad_diff_prev(j))
 ! FRACTION OF THE TIMESTEP THAT THE SHELL WAS CONVECTIVE
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = cz_zone_bottom,j-1
-                        radius_interp = radius_prev(ii)+ &
+                        radius_interp = rot_diff%radius_prev(ii)+ &
                              convective_fraction*(log_radius(ii)-prev_model%old_radius(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
@@ -308,8 +297,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 ! GET THE CZ MOMENT OF INERTIA AND TOTAL J AT THE TIME THE
 ! SHELL WAS RELEASED; THIS GIVES A CORRECTED VALUE FOR
 ! J/M.  REDISTRIBUTE THE DIFFERENCE IN J BACK INTO THE CZ.
-                     radius_shell_factor = 2.0D0*(radius_prev(j)+ &
-                          convective_fraction*(log_radius(j)-radius_prev(j)))
+                     radius_shell_factor = 2.0D0*(rot_diff%radius_prev(j)+ &
+                          convective_fraction*(log_radius(j)-rot_diff%radius_prev(j)))
                      specific_angular_momentum_corrected = &
                           cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
                           10.0D0**radius_shell_factor
@@ -343,16 +332,16 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
                   cz_zone_top = num_zones
  12               continue
                   do j = change_region_start,change_region_end
-                     if (del_grad_diff_new(j).lt.0.0D0) goto 13
+                     if (rot_diff%del_grad_diff_new(j).lt.0.0D0) goto 13
                      cz_moment_of_inertia = 0.0D0
                      cz_angular_momentum = 0.0D0
 ! FRACTION OF THE TIMESTEP SHELL WAS RADIATIVE
-                     time_fraction = del_grad_diff_new(j)/ &
-                          (del_grad_diff_new(j)-del_grad_diff_prev(j))
+                     time_fraction = rot_diff%del_grad_diff_new(j)/ &
+                          (rot_diff%del_grad_diff_new(j)-rot_diff%del_grad_diff_prev(j))
 ! FRACTION OF THE TIMESTEP THAT THE SHELL WAS CONVECTIVE
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = j+1,cz_zone_top
-                        radius_interp = radius_prev(ii)+ &
+                        radius_interp = rot_diff%radius_prev(ii)+ &
                              convective_fraction*(log_radius(ii)-prev_model%old_radius(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
@@ -362,8 +351,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 ! GET THE CZ MOMENT OF INERTIA AND TOTAL J AT THE TIME THE
 ! SHELL WAS RELEASED; THIS GIVES A CORRECTED VALUE FOR
 ! J/M.  REDISTRIBUTE THE DIFFERENCE IN J BACK INTO THE CZ.
-                     radius_shell_factor = 2.0D0*(radius_prev(j)+ &
-                          convective_fraction*(log_radius(j)-radius_prev(j)))
+                     radius_shell_factor = 2.0D0*(rot_diff%radius_prev(j)+ &
+                          convective_fraction*(log_radius(j)-rot_diff%radius_prev(j)))
                      specific_angular_momentum_corrected = &
                           cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
                           10.0D0**radius_shell_factor

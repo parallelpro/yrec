@@ -29,6 +29,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
+      use atm_table_lib
       use envelope_comp_lib
       use luout_lib
       use const_lib
@@ -54,8 +55,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       integer, intent(in) :: zone_index
 
       logical :: tri_vertex_valid(3)
-      double precision :: allard_al_teffl_min, allard_al_teffl_max
-      common /alatm05/ allard_al_teffl_min, allard_al_teffl_max
 
       integer :: numenv
       data numenv/0/
@@ -86,9 +85,9 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
          endif
       endif
       if (atm_choice.eq.4) then
-         if (log10_teff.ge.allard_al_teffl_max) then
+         if (log10_teff.ge.atm_table%allard_al_teffl_max) then
             write(*,*)
-            write(*,7) log10_teff, allard_al_teffl_max
+            write(*,7) log10_teff, atm_table%allard_al_teffl_max
  7          format('LOG TEFF OF ',F7.3,' ABOVE Allard Table max ',F7.3 &
                    ,'  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
@@ -105,10 +104,10 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
-         else if (atm_choice_initial.eq.4.and.log10_teff.lt.allard_al_teffl_max) then
+         else if (atm_choice_initial.eq.4.and.log10_teff.lt.atm_table%allard_al_teffl_max) then
             atm_choice = atm_choice_initial
             use_ttau_relation = .false.
-            write(*,11) log10_teff, allard_al_teffl_max
+            write(*,11) log10_teff, atm_table%allard_al_teffl_max
  11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &
            ,'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')
          endif

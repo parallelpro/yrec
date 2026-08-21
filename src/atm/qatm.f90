@@ -17,6 +17,7 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      atm_call_count, saha_state)
 
+      use atm_table_lib
       use pulse_diag_lib
       use const_lib
       implicit none
@@ -39,12 +40,6 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
 !      CHARACTER*256 FLAOL, FPUREZ
 ! MHP 8/25 Removed character file names from common block
       double precision :: fxion(3)
-! common/atmprt/: all used/set here. Naming matches alsurfp.f90.
-      double precision :: atm_tau, atm_log10_pressure, &
-           atm_log10_temperature, atm_log10_density, atm_opacity, &
-           atm_ion_fraction(3)
-      common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
-           atm_log10_density, atm_opacity, atm_ion_fraction
 
       save
 
@@ -73,8 +68,8 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
           1.39d0 - 0.815d0*exp(-2.54d0*yy) - 0.025d0*exp(-30.0d0*yy))
 
       effective_gravity = dexp(ln10*log10_gravity)*pressure_rotation_factor
-      atm_tau = log10_optical_depth
-      optical_depth = dexp(ln10*atm_tau)
+      atm_table%atm_tau = log10_optical_depth
+      optical_depth = dexp(ln10*atm_table%atm_tau)
 ! USE KTTAU TO IMPLIMENT FUTURE T TAU RELATIONS
       if (atm_choice .eq. 0) then
             log10_temperature = ttaul0(optical_depth)
@@ -110,14 +105,14 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
            dlnkap_dlnt, fxion)
       dydx(1) = effective_gravity*optical_depth/(pressure*opacity)
       atm_call_count = atm_call_count + 1
-      atm_log10_pressure = log10_pressure
-      atm_log10_temperature = log10_temperature
+      atm_table%atm_log10_pressure = log10_pressure
+      atm_table%atm_log10_temperature = log10_temperature
       if (print_flag .or. pulse_diag%lpumod) then
-       atm_log10_density = log10_density
-       atm_opacity = opacity
-       atm_ion_fraction(1) = fxion(1)
-       atm_ion_fraction(2) = fxion(2)
-       atm_ion_fraction(3) = fxion(3)
+       atm_table%atm_log10_density = log10_density
+       atm_table%atm_opacity = opacity
+       atm_table%atm_ion_fraction(1) = fxion(1)
+       atm_table%atm_ion_fraction(2) = fxion(2)
+       atm_table%atm_ion_fraction(3) = fxion(3)
        pulse_diag%qtl = log10_temperature
        pulse_diag%qt = dexp(ln10*log10_temperature)
        pulse_diag%qpl = log10_pressure

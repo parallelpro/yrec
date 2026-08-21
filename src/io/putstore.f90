@@ -27,6 +27,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+      use rotdiff_lib
       use run_diag_lib
       use temp2_lib
       use scrtch_lib
@@ -66,10 +67,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! run_diag_lib.
 
 
-! common/roten/: rotational_energy_term, used here. Naming is local to
-! this batch.
-      double precision :: rotational_energy_term(json)
-      common/roten/ rotational_energy_term
 
       save
 
@@ -303,7 +300,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
                vtot = circ_vel%es_circulation_velocity(i)+circ_vel%gsf_circulation_velocity(i)+circ_vel%secular_shear_velocity(i)
                write(istor,64) oblateness_a,pole_to_equator_ratio,shape_factor_fp(i), &
                   shape_factor_ft(i),specific_angular_momentum(i),shell_moment_of_inertia(i), &
-                  rotational_energy_term(i),circ_vel%es_circulation_velocity(i), &
+                  rot_diff%rotational_energy_term(i),circ_vel%es_circulation_velocity(i), &
                   circ_vel%gsf_circulation_velocity(i),circ_vel%secular_shear_velocity(i),vtot
             else
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

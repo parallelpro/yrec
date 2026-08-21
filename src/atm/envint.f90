@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use atm_table_lib
       use rotdiff_lib
       use run_diag_lib
       use atmstruct_lib
@@ -84,12 +85,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       external qatm, qenv
       double precision :: hra
       external hra
-! common/atmprt/: all used/set here. Naming matches alsurfp.f90.
-      double precision :: atm_tau, atm_log10_pressure, &
-           atm_log10_temperature, atm_log10_density, atm_opacity, &
-           atm_ion_fraction(3)
-      common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
-           atm_log10_density, atm_opacity, atm_ion_fraction
 
       double precision :: ion_fraction(3)
       double precision :: taucal_delta_mass(json), taucal_shell_mass(json), &
@@ -372,27 +367,27 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state)
 ! G Somers 11/14 ADDED I/O FLAG AND CHANGED WRITE OUTS TO .STORE.
        if(print_flag.and.lstatm) then
-            beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_log10_temperature-atm_log10_pressure))
+            beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_table%atm_log10_temperature-atm_table%atm_log10_pressure))
             chi_rho = 1.0d0/pulse_diag%qqdp
             chi_t = -chi_rho*pulse_diag%qqdt
-            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(atm_log10_pressure-atm_log10_density-atm_log10_temperature))*chi_t**2/chi_rho
+            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(atm_table%atm_log10_pressure-atm_table%atm_log10_density-atm_table%atm_log10_temperature))*chi_t**2/chi_rho
             gamma1 = chi_rho*pulse_diag%qqcp/specific_heat_cv
           if(.not.lstch)then
-            write(istor,20)atm_tau,atm_log10_pressure,atm_log10_temperature,atm_log10_density,atm_opacity, &
-                     (atm_ion_fraction(i),i=1,3), &
+            write(istor,20)atm_table%atm_tau,atm_table%atm_log10_pressure,atm_table%atm_log10_temperature,atm_table%atm_log10_density,atm_table%atm_opacity, &
+                     (atm_table%atm_ion_fraction(i),i=1,3), &
                      saha_state,atm_call_count,gamma1,pulse_diag%qqdp,pulse_diag%qqdt,beta,pulse_diag%qqcp,specific_heat_cv
           endif
 ! JvS: SAVE STRUCTURE TO COMMON BLOCK
-          atmo_struct%atmo_log10_pressure(step_index) = atm_log10_pressure
-          atmo_struct%atmo_log10_temperature(step_index) = atm_log10_temperature
-          atmo_struct%atmo_log10_density(step_index) = atm_log10_density
+          atmo_struct%atmo_log10_pressure(step_index) = atm_table%atm_log10_pressure
+          atmo_struct%atmo_log10_temperature(step_index) = atm_table%atm_log10_temperature
+          atmo_struct%atmo_log10_density(step_index) = atm_table%atm_log10_density
           atmo_struct%atmo_beta(step_index) = beta
           atmo_struct%atmo_gamma1(step_index) = gamma1
           atmo_struct%atmo_dlnrho_dlnt(step_index) = pulse_diag%qqdt
-          atmo_struct%atmo_ion_fraction(1,step_index) = atm_ion_fraction(1)
-          atmo_struct%atmo_ion_fraction(2,step_index) = atm_ion_fraction(2)
-          atmo_struct%atmo_ion_fraction(3,step_index) = atm_ion_fraction(3)
-          atmo_struct%atmo_opacity(step_index) = atm_opacity
+          atmo_struct%atmo_ion_fraction(1,step_index) = atm_table%atm_ion_fraction(1)
+          atmo_struct%atmo_ion_fraction(2,step_index) = atm_table%atm_ion_fraction(2)
+          atmo_struct%atmo_ion_fraction(3,step_index) = atm_table%atm_ion_fraction(3)
+          atmo_struct%atmo_opacity(step_index) = atm_table%atm_opacity
           atmo_struct%atmo_specific_heat_cp(step_index) = pulse_diag%qqcp
        endif
        if(h_did.eq.h_step) then
@@ -409,7 +404,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
           pulse_diag%qfs = 1.0d0
           opacity_now = pulse_diag%qo
           density_now = dexp(ln10*pulse_diag%qdl)
-          tau_now = dexp(ln10*atm_tau)
+          tau_now = dexp(ln10*atm_table%atm_tau)
 ! SEE J.P. COX PRINC. OF STELL. STRUC. P590
           delta_tau_step =  (tau_now - prev_tau)/(((density_now*opacity_now)+(prev_density*prev_opacity))/2)
           electron_pressure = gas_constant * pulse_diag%qt * pulse_diag%qd * pulse_diag%qemu
@@ -475,7 +470,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
   200 continue   ! Kurucz and Allard (KTTAU=3 and 4) bypass atmosphere
                  !  integration and come here
 ! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
-      turnover%pphot = atm_log10_pressure
+      turnover%pphot = atm_table%atm_log10_pressure
       if(.not.calc_envelope_flag) goto 555
 
 ! G Somers 11/14 WRITE ENVELOPE HEADER
@@ -500,9 +495,9 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
 ! DBG 2/92 CHANGED FROM 1.0D-10 to 1.0D-12
       if(env_comp%senv.gt.-1.0d-12) then
        if(save_boundary_flag) then
-          vtx_logp(vertex_index) = atm_log10_pressure
+          vtx_logp(vertex_index) = atm_table%atm_log10_pressure
           vtx_logr(vertex_index) = log10_radius
-          vtx_logt(vertex_index) = atm_log10_temperature
+          vtx_logt(vertex_index) = atm_table%atm_log10_temperature
           if(print_flag)then
             if(.not.lstch)write(istor,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),env_comp%senv
           endif
@@ -517,10 +512,10 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
  235  continue
       num_ok = 0
       num_bad = 0
-      indep_var = atm_log10_pressure
+      indep_var = atm_table%atm_log10_pressure
       initial_mass_coord = 0.0d0
       y(1) = initial_mass_coord
-      y(2) = atm_log10_temperature
+      y(2) = atm_table%atm_log10_temperature
       y(3) = log10_radius
       num_eqs = 3
       tolerance = env_error_tol

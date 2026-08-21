@@ -86,20 +86,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       integer, intent(in) :: envelope_zone_index
       double precision, intent(in) :: log_teff
 
-      double precision :: rotational_energy_term(json)
-      common/roten/rotational_energy_term
-! MHP 06/02 COMMON BLOCK ADDED FOR DERIVATIVES OF
-! CAPPA AND EPSILON
-      double precision :: dlnkappa_dlnrho(json), dlnkappa_dlnt(json), &
-           dlnepsilon_dlnrho(json), dlnepsilon_dlnt(json), &
-           neutrino_loss_fraction(json)
-      common/rotder/dlnkappa_dlnrho,dlnkappa_dlnt,dlnepsilon_dlnrho, &
-           dlnepsilon_dlnt,neutrino_loss_fraction
-      double precision :: accretion_specific_entropy, &
-           envelope_specific_entropy, updated_mass_msun, delta_log_pressure, &
-           delta_log_temperature
-      common/masschg2/accretion_specific_entropy,envelope_specific_entropy, &
-           updated_mass_msun,delta_log_pressure,delta_log_temperature
 
 ! JVS end
 
@@ -376,9 +362,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             if (use_mass_accretion.and.mass_accretion_rate.gt.0.0d0) then
                if (im.ge.envelope_zone_index) then
                   zone_log_temperature_delta = log_temperature_delta(im)+ &
-                       delta_log_temperature
+                       rot_diff%delta_log_temperature
                   zone_log_pressure_delta = log_pressure_delta(im)+ &
-                       delta_log_pressure
+                       rot_diff%delta_log_pressure
                else
                   zone_log_temperature_delta = log_temperature_delta(im)
                   zone_log_pressure_delta = log_pressure_delta(im)
@@ -409,9 +395,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                  adiabatic_gradient_dt)
 ! 7/92 INCLUDE CHANGE IN ROTATIONAL KINETIC ENERGY IN ENERGY EQUATION.
             if (rotation_active) then
-               rotational_energy_term(im) = zone_dt*(kinetic_energy_rot(im)- &
+               rot_diff%rotational_energy_term(im) = zone_dt*(kinetic_energy_rot(im)- &
                     kinetic_energy_rot_old(im))/shell_mass(im)
-               eq_l_val = eq_l_val - rotational_energy_term(im)
+               eq_l_val = eq_l_val - rot_diff%rotational_energy_term(im)
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
 !            IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
@@ -536,8 +522,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 
 
          if (rotation_active) then
-            dlnkappa_dlnrho(im) = dlnkap_dlnrho
-            dlnkappa_dlnt(im) = dlnkap_dlnt
+            rot_diff%dlnkappa_dlnrho(im) = dlnkap_dlnrho
+            rot_diff%dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error
             if (shell_diag%sesum(im).gt.0.0d0) then
 !            IF(SESUM(I).GT.0.0D0)THEN
@@ -545,13 +531,13 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !               EGNEUT = SEG(6,I)+SEG(7,I)
                total_energy_sum = shell_diag%sesum(im)
                neutrino_and_grav_sum = shell_diag%seg(6,im)+shell_diag%seg(7,im)
-               neutrino_loss_fraction(im) = (total_energy_sum - &
+               rot_diff%neutrino_loss_fraction(im) = (total_energy_sum - &
                     neutrino_and_grav_sum)/total_energy_sum
             else
-               neutrino_loss_fraction(im) = 0.0d0
+               rot_diff%neutrino_loss_fraction(im) = 0.0d0
             end if
-            dlnepsilon_dlnrho(im) = zone_dlnepsilon_dlnrho
-            dlnepsilon_dlnt(im) = zone_dlnepsilon_dlnt
+            rot_diff%dlnepsilon_dlnrho(im) = zone_dlnepsilon_dlnrho
+            rot_diff%dlnepsilon_dlnt(im) = zone_dlnepsilon_dlnt
          end if
 ! DBG PULSE
 ! MHP 8/25 unconditional: previously gated on pulsation_output_active
