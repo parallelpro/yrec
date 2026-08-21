@@ -161,11 +161,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 
 
 
-! common/cenv/: not used in this file. Naming matches surfbc.f90.
-      double precision :: tri_delta_teffl, tri_delta_logl, senv0_placeholder
-      logical :: lsenv0_placeholder, lnew0_placeholder
-      common/cenv/ tri_delta_teffl, tri_delta_logl, senv0_placeholder, &
-           lsenv0_placeholder, lnew0_placeholder
 
 
 

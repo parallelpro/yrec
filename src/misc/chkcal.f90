@@ -25,15 +25,6 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
       integer, intent(in) :: run_index
       double precision, intent(in) :: current_zx
 
-! common/ckind/: rescale_params is used here (RESCAL); num_models/
-! rescale_kind/first_call_flag/num_runs are unused placeholders. Naming
-! matches wrthead.f90/wrtmonte.f90.
-      double precision :: rescale_params(4,50)
-      integer :: num_models(50), rescale_kind(50)
-      logical :: first_call_flag(50)
-      integer :: num_runs
-      common /ckind/ rescale_params, num_models, rescale_kind, &
-           first_call_flag, num_runs
 
 !      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
 

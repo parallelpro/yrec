@@ -15,16 +15,6 @@ subroutine wrthead(total_mass_msun)
 
       double precision, intent(in) :: total_mass_msun
 
-! common/ckind/: only num_models/rescale_kind/first_call_flag are used
-! here (via the module-level run index NK from common/zramp/); the
-! rescale-parameter array itself is not used in this file. Naming
-! matches wrtmonte.f90.
-      double precision :: rescale_params(4,50)
-      integer :: num_models(50), rescale_kind(50)
-      logical :: first_call_flag(50)
-      integer :: num_runs
-      common/ckind/ rescale_params, num_models, rescale_kind, first_call_flag, &
-           num_runs
 
 ! common/zramp/: only nk (the current run index) is used here. Naming
 ! matches setllo.f90.

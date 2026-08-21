@@ -20,14 +20,6 @@ subroutine setscal
       use const_lib
       implicit none
 
-! common/ckind/: rescale_params/num_models/rescale_kind/first_call_flag/
-! num_runs, all used here. Naming matches chkcal.f90.
-      double precision :: rescale_params(4,50)
-      integer :: num_models(50), rescale_kind(50)
-      logical :: first_call_flag(50)
-      integer :: num_runs
-      common /ckind/ rescale_params, num_models, rescale_kind, &
-           first_call_flag, num_runs
 
 
 

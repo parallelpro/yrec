@@ -181,26 +181,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       character(len=4) :: format_tag
       character(len=6) :: eos_code
       character(len=4) :: atm_code, alok_code, hik_code, compmix_code
-! DBGLAOL
-! MHP 8/25 Removed all character strings from common blocks
-! common/cenv/: requested_envelope_mass/change_envelope_mass_flag are
-! used here; the rest are unused placeholders. Naming matches
-! crrect.f90/surfbc.f90 for the placeholders; requested_envelope_mass/
-! change_envelope_mass_flag are given descriptive active names since
-! this file (unlike crrect.f90/surfbc.f90) actually reads/writes them.
-      double precision :: tri_delta_teffl, tri_delta_logl, &
-           requested_envelope_mass
-      logical :: change_envelope_mass_flag, lnew0_placeholder
-      common/cenv/ tri_delta_teffl, tri_delta_logl, requested_envelope_mass, &
-           change_envelope_mass_flag, lnew0_placeholder
-! common/ckind/: first_call_flag/rescale_kind are used here. Naming
-! matches rscale.f90/chkcal.f90/wrthead.f90.
-      double precision :: rescale_params(4,50)
-      integer :: num_models(50), rescale_kind(50)
-      logical :: first_call_flag(50)
-      integer :: num_runs
-      common/ckind/ rescale_params, num_models, rescale_kind, &
-           first_call_flag, num_runs
 ! common/comp2/: both used here. Naming matches checkc.f90/physic.f90.
       double precision :: envelope_helium_fraction, envelope_he3_fraction
       common/comp2/ envelope_helium_fraction, envelope_he3_fraction
@@ -261,12 +241,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! is not bound by that and uses descriptive names instead.
       double precision :: alex_mixture_x, alex_mixture_z
       common /alexmix/ alex_mixture_x, alex_mixture_z
-! DBG 1/96 VNEW REPLACES V
-! common/vnewcb/: used here (copied into species_mix_weights when
-! .not.llaol). Naming matches parmin.f90 (and this file's own
-! pre-existing comments, which already refer to it as VNEW).
-      double precision :: vnew(12)
-      common/vnewcb/ vnew
 ! MHP  5/97 ADDED COMMON BLOCK FOR SCV EOS TABLES
 ! common/scveos/: only use_scv_eos is used here (the rest are unused
 ! placeholders). Naming matches setscv.f90/eqstat2.f90, except idtt:

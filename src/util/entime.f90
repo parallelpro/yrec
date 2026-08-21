@@ -38,13 +38,6 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 
 
 
-! common/cenv/: tri_delta_teffl/tri_delta_logl (the envelope triangle
-! half-widths in Teff and log L) are used here. Naming matches
-! surfbc.f90.
-      double precision :: tri_delta_teffl, tri_delta_logl, senv0_placeholder
-      logical :: lsenv0_placeholder, lnew0_placeholder
-      common/cenv/tri_delta_teffl, tri_delta_logl, senv0_placeholder, &
-           lsenv0_placeholder, lnew0_placeholder
 
       save
 

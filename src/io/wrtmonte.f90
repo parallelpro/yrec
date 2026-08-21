@@ -19,6 +19,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
      monte_carlo_run_number)
 
       use fluxes_lib
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -42,16 +43,6 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
       integer, intent(in) :: convergence_iterations, run_index, &
            monte_carlo_run_number
 
-      character(len=256) :: monte_carlo_file1_path, monte_carlo_file2_path
-
-! common/ckind/: only rescale_params is used here (RESCAL). Naming is
-! local to this batch.
-      double precision :: rescale_params(4,50)
-      integer :: num_models(50), rescale_kind(50)
-      logical :: first_call_flag(50)
-      integer :: num_runs
-      common/ckind/ rescale_params, num_models, rescale_kind, first_call_flag, &
-           num_runs
 
 ! common/newxym/: only mixing_length_array is used here (CMIXLA).
 ! Naming is local to this batch.
@@ -89,12 +80,10 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
       common/cent/ central_log10_temperature, central_log10_pressure, &
            central_log10_density, envelope_mass, envelope_radius
 
-! common/iomonte/: only monte_carlo_unit1/monte_carlo_unit2 are used
-! here; the file-path members are unused placeholders. Naming is local
-! to this batch.
-      integer :: monte_carlo_unit1, monte_carlo_unit2
-      common/iomonte/ monte_carlo_file1_path, monte_carlo_file2_path, &
-           monte_carlo_unit1, monte_carlo_unit2
+! former common/iomonte/: only monte_carlo_unit1/monte_carlo_unit2 are
+! used here; the file-path members (monte_carlo_file1_path/
+! monte_carlo_file2_path) are unused placeholders here, now
+! use-associated from const_lib along with the two used members.
 
       save
 

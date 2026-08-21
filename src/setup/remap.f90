@@ -24,17 +24,7 @@ subroutine remap
 
 
 
-! common/ct2/: max permitted change in omega per global timestep. Not
-! referenced in any already-converted file.
-      double precision :: max_domega_global
-      common/ct2/ max_domega_global
 
-! common/ct3/: master flag for whether the ATIME(8)-(11) structure-change
-! timestep limits are applied (only used in the pre-MS; disabled
-! automatically for MS stars). Not referenced in any already-converted
-! file.
-      logical :: use_structure_dt_limits
-      common/ct3/ use_structure_dt_limits
 
 
 ! common/newcross/: user-supplied nuclear reaction S-factors (and

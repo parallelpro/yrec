@@ -112,10 +112,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: first_model_binary_lu, last_model_binary_lu, &
            stored_models_binary_lu
 
-! common /vnewcb/
-      double precision :: vnew(12)
-      common /vnewcb/ vnew
-
+! former common/vnewcb/: vnew is a NAMELIST /physics/ value spelled
+! identically to its const_lib canonical name -- use-associated
+! directly rather than locally declared.
 
 ! former common/lunum/: none of these 12 members are namelist values
 ! (they're hardcoded unit numbers this file assigns unconditionally
@@ -125,14 +124,21 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! laol_table_unit/neutrino_unit/composition_unit/kurucz_table_unit),
 ! now use-associated rather than locally declared.
 
-! common /iomonte/
+! fmonte1/fmonte2: NAMELIST /physics/ members, each with a different
+! canonical const_lib spelling (monte_carlo_file1_path/
+! monte_carlo_file2_path), so kept local under their NAMELIST spelling
+! here and copy-assigned after the namelist read below. imonte1/imonte2
+! (former common/iomonte/'s remaining members) are not namelist values
+! -- this file assigns them fixed unit numbers unconditionally further
+! down -- so they're simply renamed in place to their canonical
+! const_lib names (monte_carlo_unit1/monte_carlo_unit2), now
+! use-associated rather than locally declared.
       character(len=256) :: fmonte1, fmonte2
-      integer :: imonte1, imonte2
-      common /iomonte/ fmonte1, fmonte2, imonte1, imonte2
 
-! common /desc/
+! descrip is declared only in this file (no other file shares
+! common/desc/), so it's simply a plain local rather than needing any
+! module treatment.
       character(len=256) :: descrip(2)
-      common /desc/ descrip
 
 ! former common/ccout/: lstore/lstatm/lstenv/lstmod/lstphys/lstrot/
 ! lscrib/lstch are NAMELIST /physics/ values, spelled identically to
@@ -151,29 +157,40 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! after the namelist read below, per this file's usual pattern.
       integer :: nprtpt
 
-! common /pulsegyre/: new (2026) dedicated block for the GYRE-format
-! periodic pulsation-structure output feature (io/write_gyre_pulse.f90,
-! triggered from io/wrtout.f90 every pulse_gyre_interval converged
-! models). Deliberately a separate block from the existing common
-! /pulse/ (shared by 9 files already) to keep this purely additive.
-      integer :: pulse_gyre_interval
-      common /pulsegyre/ pulse_gyre_interval
+! former common/pulsegyre/: new (2026) dedicated block for the
+! GYRE-format periodic pulsation-structure output feature
+! (io/write_gyre_pulse.f90, triggered from io/wrtout.f90 every
+! pulse_gyre_interval converged models). pulse_gyre_interval is a
+! NAMELIST /control/ value spelled identically to its const_lib
+! canonical name -- use-associated directly.
 
 ! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are
 ! NAMELIST /physics/ values, spelled identically to their const_lib
 ! canonical names -- use-associated directly, same reasoning as
 ! lstore etc above.
 
-! common /cenv/
-      double precision :: tridt, tridl, senv0
-      logical :: lsenv0, lnew0
-      common /cenv/ tridt, tridl, senv0, lsenv0, lnew0
+! lnew0: NAMELIST /physics/ member spelled identically to its
+! const_lib canonical name -- use-associated directly. tridt/tridl are
+! also NAMELIST members but need different canonical spellings
+! (tri_delta_teffl/tri_delta_logl), so they keep their local
+! NAMELIST-spelled names here and are copy-assigned after the
+! namelist read below. senv0/lsenv0 (former common/cenv/'s remaining
+! members, renamed to requested_envelope_mass/
+! change_envelope_mass_flag) are not namelist values and unused in
+! this file -- core/starin.f90 computes them -- so they're dropped
+! entirely.
+      double precision :: tridt, tridl
 
-! common /ckind/
-      double precision :: rescal(4,50)
-      integer :: nmodls(50), iresca(50), numrun
+! rescal/iresca are not namelist values -- computed elsewhere in this
+! file (rescal from rsclm/rsclx/rsclz/rsclcm, iresca from kindrn), so
+! renamed in place to their canonical const_lib names (rescale_params/
+! rescale_kind), now use-associated. nmodls/lfirst/numrun (former
+! common/ckind/'s remaining members) are NAMELIST values with
+! different canonical spellings (num_models/first_call_flag/
+! num_runs), kept local under their NAMELIST spelling here and
+! copy-assigned after the namelist read below.
+      integer :: nmodls(50), numrun
       logical :: lfirst(50)
-      common /ckind/ rescal, nmodls, iresca, lfirst, numrun
 
 
 ! clsun/crsun: NAMELIST /physics/ members (must keep this exact
@@ -187,13 +204,16 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
 
 
-! common /ct2/
+! dtwind: NAMELIST /physics/ member with a different canonical
+! spelling (max_domega_global), so kept local under its NAMELIST
+! spelling here and copy-assigned after the namelist read below.
       double precision :: dtwind
-      common /ct2/ dtwind
 
-! common /ct3/
+! lptime: NAMELIST /physics/ member with a different canonical
+! spelling (use_structure_dt_limits), so kept local under its
+! NAMELIST spelling here and copy-assigned after the namelist read
+! below.
       logical :: lptime
-      common /ct3/ lptime
 
 ! htoler/fcorr0/fcorri/niter1/niter2/niter3: NAMELIST /physics/ members
 ! spelled identically to their const_lib canonical names -- use-
@@ -804,7 +824,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! const_lib.
       data lenvg, atmstp, envstp/.false.,0.5,0.5/
       data nprtpt/1/
-      data pulse_gyre_interval/0/
+! pulse_gyre_interval default moved to const_lib.f90 (former
+! common/pulsegyre/).
       data numrun, kindrn, lfirst, nmodls &
            &      /1,50*1,50*.true.,50*0/
 ! MHP 10/24 ADDED NEW DEFAULTS FOR END CONDITIONS ON CENTRAL D,X,Y
@@ -881,7 +902,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! common/dpmix/).
 ! JVS 07/13
 ! END JVS
-      data lnew0,lexcom/.false.,.false./
+! lnew0 default moved to const_lib.f90 (former common/cenv/).
+      data lexcom/.false./
 ! walpcz/lwnew/wnew defaults moved to const_lib.f90 (former
 ! common/rot/); lrot/linstb stay local (NAMELIST spelling).
       data lrot,linstb/.false.,.false./
@@ -961,9 +983,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !            Na          Al          Mg          Fe
 !            Si          C           H           O
 !            N           Ar          Ne          He
-      data vnew/0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, &
-           &           0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, &
-           &           0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/
+! vnew default moved to const_lib.f90 (former common/vnewcb/).
 ! MHP 5/97 OPTION FOR SAUMON, CHABRIER, AND VAN HORN EOS ADDED
       data lscv/.false./
 ! MHP 3/99 OPTION FOR SB ROTATION ENFORCED IN THE ENTIRE STAR AT
@@ -1145,8 +1165,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES
       ioatma = 66
 ! MHP 6/98 MONTE CARLO FOR SNUs
-      imonte1 = 70
-      imonte2 = 71
+      monte_carlo_unit1 = 70
+      monte_carlo_unit2 = 71
 ! INPUT FILES FOR THE SCV EOS
       iscvh=72
       iscvhe=73
@@ -1278,6 +1298,15 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       debye_huckel_eta_min = etadh0
       debye_huckel_eta_max = etadh1
       use_debye_huckel_correction = ldh
+      monte_carlo_file1_path = fmonte1
+      monte_carlo_file2_path = fmonte2
+      num_models = nmodls
+      first_call_flag = lfirst
+      num_runs = numrun
+      max_domega_global = dtwind
+      use_structure_dt_limits = lptime
+      tri_delta_teffl = tridt
+      tri_delta_logl = tridl
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
@@ -1502,8 +1531,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! MHP 8/25 Moved call from main to here for opening dynamics_unit
       if(lmonte)then
          open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD')
-         open(imonte1, file=fmonte1,status='UNKNOWN',form='FORMATTED')
-         open(imonte2, file=fmonte2,status='UNKNOWN',form='FORMATTED')
+         open(monte_carlo_unit1, file=fmonte1,status='UNKNOWN',form='FORMATTED')
+         open(monte_carlo_unit2, file=fmonte2,status='UNKNOWN',form='FORMATTED')
       endif
 !     MHP 8/25 Moved opening of conductive opacity and EoS tables here, to avoid complicated passages of declared variables.
       if(lcondopacp)then
@@ -1928,7 +1957,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !     RUN LOOP
       do 1000 nkind=1, numrun
 ! READ IN NMODLS AND MODEL SOURCE(MEMORY OR FIRST MODEL)-SAME FOR ALL
-       iresca(nkind) = kindrn(nkind)
+       rescale_kind(nkind) = kindrn(nkind)
        if(kindrn(nkind).eq.1) then
 ! EVOLVE CARD
 ! MHP 10/24 GENERALIZE STOP CONDITIONS
@@ -1971,10 +2000,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! RESCALE CARD:  RESCALE STARTING MODEL
 ! QUANTITIES TO BE RESCALED STORED IN ARRAY RESCALE(4,50)
 ! WHERE THE ELEMENTS MASS,X,Z,CORE MASS ARE STORED IN ORDER
-          rescal(1,nkind) = rsclm(nkind)
-          rescal(2,nkind) = rsclx(nkind)
-          rescal(3,nkind) = rsclz(nkind)
-          rescal(4,nkind) = rsclcm(nkind)
+          rescale_params(1,nkind) = rsclm(nkind)
+          rescale_params(2,nkind) = rsclx(nkind)
+          rescale_params(3,nkind) = rsclz(nkind)
+          rescale_params(4,nkind) = rsclcm(nkind)
             if (nmodls(nkind) .gt. 0) then
           if (lfirst(nkind)) then
              write(iowr,450) nkind
@@ -1987,9 +2016,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       451          format(/1x,'RUN #',i3, &
            &          '   RESCALE THE PREVIOUS RUN''S LAST MODEL.')
           end if
-          write(iowr,452) nmodls(nkind),(rescal(i,nkind),i = 1,4)
+          write(iowr,452) nmodls(nkind),(rescale_params(i,nkind),i = 1,4)
           write(short_file_unit,452) nmodls(nkind), &
-           &       (rescal(i,nkind),i = 1,4)
+           &       (rescale_params(i,nkind),i = 1,4)
       452       format(1x,'RELAX RESCALED MODEL',i3, &
            &       ' TIMES. RESCALE THE FOLLOW', &
            &       'ING(0=USE CURRENT VALUE):'/1x,'MASS ', &
@@ -2000,10 +2029,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! RESCALE AND EVOLVE CARD:  RESCALE STARTING MODEL
 ! QUANTITIES TO BE RESCALED STORED IN ARRAY RESCALE(4,50)
 ! WHERE THE ELEMENTS MASS,X,Z,CORE MASS ARE STORED IN ORDER
-            rescal(1,nkind) = rsclm(nkind)
-            rescal(2,nkind) = rsclx(nkind)
-            rescal(3,nkind) = rsclz(nkind)
-            rescal(4,nkind) = rsclcm(nkind)
+            rescale_params(1,nkind) = rsclm(nkind)
+            rescale_params(2,nkind) = rsclx(nkind)
+            rescale_params(3,nkind) = rsclz(nkind)
+            rescale_params(4,nkind) = rsclcm(nkind)
             if (lfirst(nkind)) then
                write(iowr,550) nkind
                write(short_file_unit,550) nkind
@@ -2015,11 +2044,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !   551          FORMAT(/1X,'RUN #',I3,
 !      1         '   RESCALE & EVOLVE THE PREVIOUS RUN''S LAST MODEL.')
             end if
-            write(iowr,452) nmodls(nkind),(rescal(i,nkind),i = 1,4)
+            write(iowr,452) nmodls(nkind),(rescale_params(i,nkind),i = 1,4)
             write(short_file_unit,452) nmodls(nkind), &
-           &       (rescal(i,nkind),i = 1,4)
+           &       (rescale_params(i,nkind),i = 1,4)
        end if
-         if(rescal(3,nkind).ge.0.0d0)  env_comp%envelope_metal_fraction=rescal(3,nkind)
+         if(rescale_params(3,nkind).ge.0.0d0)  env_comp%envelope_metal_fraction=rescale_params(3,nkind)
       1000 continue
       return
 

@@ -68,11 +68,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 
 
 
-! common/ct3/: use_structure_dt_limits (originally LPTIME) is used
-! here, both read and (conditionally) cleared. Naming matches
-! remap.f90.
-      logical :: use_structure_dt_limits
-      common/ct3/ use_structure_dt_limits
 
 
 ! common/govs/: use_envelope_triangle_dt (originally LTRIST) governs

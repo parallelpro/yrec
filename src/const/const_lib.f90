@@ -405,4 +405,63 @@ module const_lib
       double precision :: debye_huckel_nu(18)
       logical :: use_debye_huckel_correction
 
+! former common/vnewcb/: vnew (initial abundances for a 12-species
+! set, Na/Al/Mg/Fe/Si/C/H/O/N/Ar/Ne/He for a G&N93 solar mixture) is a
+! NAMELIST /physics/ value spelled identically to its canonical name.
+      double precision :: vnew(12) = (/0.001999d0, 0.003238d0, &
+           0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, &
+           0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
+
+! former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path
+! (originally fmonte1/fmonte2) are NAMELIST values with different
+! canonical spellings, kept local in core/parmin.f90 and copy-assigned
+! -- no declaration-time default (character strings, no DATA default
+! in the original either). monte_carlo_unit1/monte_carlo_unit2
+! (originally imonte1/imonte2) are not namelist values -- core/parmin.f90
+! assigns them fixed unit numbers (70/71) unconditionally at startup
+! -- so no declaration-time default is needed for them either.
+      character(len=256) :: monte_carlo_file1_path, monte_carlo_file2_path
+      integer :: monte_carlo_unit1, monte_carlo_unit2
+
+! former common/pulsegyre/: pulse_gyre_interval is a NAMELIST
+! /control/ value spelled identically to its canonical name.
+      integer :: pulse_gyre_interval = 0
+
+! former common/cenv/: lnew0 is a NAMELIST /physics/ value spelled
+! identically to its canonical name. tri_delta_teffl/tri_delta_logl
+! (originally tridt/tridl) are also NAMELIST values but need different
+! canonical spellings, so core/parmin.f90 keeps tridt/tridl local
+! (with their own DATA defaults there) and copy-assigns -- no
+! declaration-time default needed here. requested_envelope_mass/
+! change_envelope_mass_flag (originally senv0/lsenv0) are not namelist
+! values and unused in core/parmin.f90 -- core/starin.f90 computes
+! them -- so no declaration-time default here either.
+      double precision :: tri_delta_teffl, tri_delta_logl
+      logical :: lnew0 = .false.
+      double precision :: requested_envelope_mass
+      logical :: change_envelope_mass_flag
+
+! former common/ckind/: rescale_params/rescale_kind (originally rescal/
+! iresca) are not namelist values -- core/parmin.f90 computes them at
+! runtime (rescale_params from rsclm/rsclx/rsclz/rsclcm, rescale_kind
+! from kindrn) -- so no declaration-time default. num_models/
+! first_call_flag/num_runs (originally nmodls/lfirst/numrun) are
+! NAMELIST values with different canonical spellings, kept local in
+! core/parmin.f90 (with their own DATA defaults there) and
+! copy-assigned, so likewise no default needed here.
+      double precision :: rescale_params(4,50)
+      integer :: rescale_kind(50)
+      integer :: num_models(50), num_runs
+      logical :: first_call_flag(50)
+
+! former common/ct2/: max_domega_global (originally dtwind) is a
+! NAMELIST value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned.
+      double precision :: max_domega_global
+
+! former common/ct3/: use_structure_dt_limits (originally lptime) is a
+! NAMELIST value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned.
+      logical :: use_structure_dt_limits
+
 end module const_lib

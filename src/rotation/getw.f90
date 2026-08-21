@@ -92,8 +92,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 
 
 
-      double precision :: max_domega_global
-      common/ct2/ max_domega_global
 
 
 ! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent. term

@@ -78,10 +78,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! matches wrthead.f90.
       integer :: track_file_version
       common/track/ track_file_version
-! common/pulsegyre/: pulse_gyre_interval, used here to trigger
-! io/write_gyre_pulse.f90. Naming matches core/parmin.f90.
-      integer :: pulse_gyre_interval
-      common/pulsegyre/ pulse_gyre_interval
 ! common/heflsh/: helium_flash_active (originally LKUTHE), used here.
 ! Naming matches wrtlst.f90.
       logical :: helium_flash_active

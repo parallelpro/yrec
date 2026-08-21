@@ -54,13 +54,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       integer, intent(in) :: zone_index
 
       logical :: tri_vertex_valid(3)
-! common/cenv/: tri_delta_teffl/tri_delta_logl are used here;
-! senv0/lsenv0/lnew0 are unused placeholders. Naming is local to this
-! batch.
-      double precision :: tri_delta_teffl, tri_delta_logl, senv0_placeholder
-      logical :: lsenv0_placeholder, lnew0_placeholder
-      common/cenv/tri_delta_teffl, tri_delta_logl, senv0_placeholder, &
-           lsenv0_placeholder, lnew0_placeholder
       double precision :: allard_al_teffl_min, allard_al_teffl_max
       common /alatm05/ allard_al_teffl_min, allard_al_teffl_max
 

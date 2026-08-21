@@ -27,10 +27,6 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       double precision, intent(out) :: rotation_dt
       double precision, intent(out) :: max_domega_frac
 
-! common/ct2/: max_domega_global (originally DTWIND) is used here.
-! Naming matches getw.f90/remap.f90.
-      double precision :: max_domega_global
-      common/ct2/ max_domega_global
 
 ! common/oldrot/: only old_omega (WOLD) is used here. Naming matches
 ! hpoint.f90/getw.f90.

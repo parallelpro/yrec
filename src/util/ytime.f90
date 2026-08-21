@@ -47,10 +47,6 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
 
 
 
-! common/ct3/: not used in this file's logic; layout placeholder.
-! Naming matches remap.f90.
-      logical :: use_structure_dt_limits
-      common/ct3/ use_structure_dt_limits
 
 
 

@@ -138,7 +138,7 @@
 !     ageout_placeholder/lclcd_placeholder/ljlast_placeholder/
 !     ljwrt_placeholder; common/rotprt/'s lprt0_placeholder;
 !     common/chrone/'s lrwsh_placeholder; common/cenv/'s
-!     lnew0_placeholder). Per the precedent set by envint.f90 (keeps
+!     lnew0). Per the precedent set by envint.f90 (keeps
 !     lclcd_placeholder despite noting its own active use) and
 !     getw.f90 (keeps lprt0_placeholder despite noting its own active
 !     use), these established names are reused verbatim here too
@@ -200,27 +200,7 @@ program main
 
 
 
-! common/cenv/: requested_envelope_mass/change_envelope_mass_flag are
-! used here, matching starin.f90's own active naming for the same two
-! slots (that file explains why they were given descriptive names
-! rather than kept as placeholders). lnew0_placeholder (5th member) is
-! also actively used in this file (see the header COMMON BLOCK NOTE
-! above for why it nonetheless keeps its established placeholder
-! name); tri_delta_teffl/tri_delta_logl are unused placeholders here.
-      double precision :: tri_delta_teffl, tri_delta_logl, &
-           requested_envelope_mass
-      logical :: change_envelope_mass_flag, lnew0_placeholder
-      common/cenv/ tri_delta_teffl, tri_delta_logl, requested_envelope_mass, &
-           change_envelope_mass_flag, lnew0_placeholder
 
-! common/ckind/: all used here. Naming matches chkcal.f90/rscale.f90/
-! wrthead.f90/starin.f90.
-      double precision :: rescale_params(4,50)
-      integer :: num_models(50), rescale_kind(50)
-      logical :: first_call_flag(50)
-      integer :: num_runs
-      common/ckind/ rescale_params, num_models, rescale_kind, &
-           first_call_flag, num_runs
 
 
 
@@ -473,14 +453,6 @@ program main
       common/origstart/ orig_specific_angular_momentum, orig_composition
 
 
-!***MHP 1/04 inserted for test
-! common/optab/ is commented out in the original and is not declared.
-!*** end test
-! LLP 8/07 Make LPTIME available for calibration
-! common/ct3/: use_structure_dt_limits used here. Naming matches
-! htimer.f90.
-      logical :: use_structure_dt_limits
-      common/ct3/ use_structure_dt_limits
 
 
 ! JVS 02/11
@@ -1156,7 +1128,7 @@ program main
 ! (i.e. old triangle ignored)
 ! LFINI = T if model has converged
 ! LARGE = T if model has diverged
-          if (lnew0_placeholder) recompute_envelope_triangle = .true.
+          if (lnew0) recompute_envelope_triangle = .true.
             if (.not.evolve_model_flag) delta_time = -dabs(delta_time)
             fcorr = dabs(fcorr0) - fcorri
             iterations_done = 0
