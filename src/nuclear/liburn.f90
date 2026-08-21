@@ -29,7 +29,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       use oldmod_lib
       use luout_lib
       use const_lib
-      use nuclear_lib
+      use numerics_lib
       implicit none
       integer, parameter :: json=5000
 

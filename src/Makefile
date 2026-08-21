@@ -64,11 +64,9 @@ MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 
-# numerics_lib.f90's bsstep/intpt routines `use nuclear_lib`, and
 # nuclear_lib.f90's rates/eqburn routines `use` const_lib/oldmod_lib --
 # the block rule above only orders non-module objects after the full
 # set of module objects, not module objects relative to each other.
-numerics/numerics_lib.o: | nuclear/nuclear_lib.o
 nuclear/nuclear_lib.o: | const/const_lib.o state/oldmod_lib.o
 
 # Flags for GNU Fortran (gfortran)
