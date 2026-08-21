@@ -24,6 +24,7 @@
 ! 11/91 HR added to call.
 subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use oldmod_lib
       use luout_lib
       use const_lib
       use nuclear_lib
@@ -45,16 +46,6 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       double precision :: rate_li6(json), rate_li7(json), rate_be9(json)
       common/newrat/ rate_li6, rate_li7, rate_be9
 
-! common/oldmod/: previous-timestep model snapshot; only old_radius and
-! old_composition are used here. Naming matches dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! common/oldrat/: lithium/beryllium burning rates at the start of the
 ! timestep.
@@ -207,11 +198,11 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          else
 ! STARTING CZ DEPTH
             if(cz_base_radius_prev.eq.0.0d0)then
-               cz_base_radius_prev = 0.5d0*(exp(ln10*old_radius(env_cz_zone_old)) &
-                        +exp(ln10*old_radius(env_cz_zone_old-1)))
+               cz_base_radius_prev = 0.5d0*(exp(ln10*prev_model%old_radius(env_cz_zone_old)) &
+                        +exp(ln10*prev_model%old_radius(env_cz_zone_old-1)))
                search_radius = cz_base_radius_prev - pressure_scale_height_start
                do zone_idx = env_cz_zone_old-1,1,-1
-                  shell_radius = exp(ln10*old_radius(zone_idx))
+                  shell_radius = exp(ln10*prev_model%old_radius(zone_idx))
                   if(shell_radius.lt.search_radius)then
                      cz_base_zone_old = zone_idx + 1
                      goto 11
@@ -232,7 +223,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
                shell_radius = exp(ln10*radius(zone_idx))
                if(shell_radius.lt.search_radius)then
                   cz_base_zone = zone_idx + 1
-                  delta_radius = exp(ln10*old_radius(zone_idx+1))-shell_radius
+                  delta_radius = exp(ln10*prev_model%old_radius(zone_idx+1))-shell_radius
                   cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                   cz_base_frac = max(-0.5d0,cz_base_frac)
                   cz_base_frac = min(0.5d0,cz_base_frac)

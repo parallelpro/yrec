@@ -99,6 +99,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
      specific_angular_momentum, iteration_level, am_transport_convective_flag, &
      mixed_zone_bounds, qiw, kinetic_energy_rot, kinetic_energy_rot_old)
 
+      use oldmod_lib
       use luout_lib
       use const_lib
       implicit none
@@ -229,17 +230,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       logical :: lnews, lsnu
       common/neweng/ niter4, lnews, lsnu
 
-! common/oldmod/: old_composition (originally HCOMPP) is used here to
-! restore the pre-Henyey composition ahead of calling mix. Naming
-! matches mix.f90/hpoint.f90/dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! common/flag/: use_extended_composition (originally LEXCOM) is used
 ! here to pick the number of mixed species. Naming matches mix.f90/
@@ -327,7 +317,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
          if (use_extended_composition) num_species = 15
          do 2 i = 1,num_points
             do 1 j = 1,num_species
-               composition(j,i) = old_composition(j,i)
+               composition(j,i) = prev_model%old_composition(j,i)
     1       continue
     2    continue
          call mix(delta_time,composition,log_density,luminosity_lsun, &

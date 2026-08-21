@@ -150,6 +150,7 @@ program main
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
+      use oldmod_lib
       use luout_lib
       use const_lib
       implicit none
@@ -334,17 +335,6 @@ program main
       common/entrop/ temperature_entropy_term, pressure_entropy_term, &
            luminosity_entropy_term, radius_entropy_term
 
-! 7/91 FLAG TO TOGGLE BETWEEN NEW/OLD RATES ADDED.
-! common/oldmod/: hss/old_convective_flag/old_cz_flag unused
-! placeholders; the rest used here. Naming matches crrect.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! MHP 9/94
 ! common/rotprt/: lprt0_placeholder actively used here (see the header
@@ -1223,7 +1213,7 @@ program main
                if (use_extended_composition) num_species=15
                do 33 i = 1,num_zones
                   do 32 j = 1,num_species
-                     old_composition(j,i) = composition(j,i)
+                     prev_model%old_composition(j,i) = composition(j,i)
    32             continue
    33          continue
                iteration_level=1
@@ -1270,16 +1260,16 @@ program main
             else
 ! save old model for PTIME
                do i=1, num_zones
-                  old_pressure(i) = log_pressure(i)
-                  old_temperature(i) = log_temperature(i)
-                  old_radius(i) = log_radius(i)
-                  old_luminosity(i) = luminosity_lsun(i)
-                  old_density(i) = log_density(i)
+                  prev_model%old_pressure(i) = log_pressure(i)
+                  prev_model%old_temperature(i) = log_temperature(i)
+                  prev_model%old_radius(i) = log_radius(i)
+                  prev_model%old_luminosity(i) = luminosity_lsun(i)
+                  prev_model%old_density(i) = log_density(i)
                end do
 ! JVS 04/14 Save Teff as well
-               old_teff = log_teff
+               prev_model%old_teff = log_teff
 !  JVS 05/25 Added model number to list of saved values
-           old_num_zones = num_zones
+           prev_model%old_num_zones = num_zones
 
           endif
 ! store starting distribution of rotational kinetic energy.
@@ -1382,8 +1372,8 @@ program main
                do 27 ii = 1,num_zones
                   temperature_entropy_term(ii)=log_temperature_delta(ii)/delta_time
                   pressure_entropy_term(ii)=log_pressure_delta(ii)/delta_time
-                  luminosity_entropy_term(ii)=2.0D0*(luminosity_lsun(ii)-old_luminosity(ii))/(luminosity_lsun(ii)+old_luminosity(ii))/delta_time
-                  radius_entropy_term(ii)=(log_radius(ii)-old_radius(ii))/delta_time
+                  luminosity_entropy_term(ii)=2.0D0*(luminosity_lsun(ii)-prev_model%old_luminosity(ii))/(luminosity_lsun(ii)+prev_model%old_luminosity(ii))/delta_time
+                  radius_entropy_term(ii)=(log_radius(ii)-prev_model%old_radius(ii))/delta_time
  27            continue
             endif
 ! THIRD LEVEL OF ITERATIONS
@@ -1411,7 +1401,7 @@ program main
                do i = 1,num_zones
                   orig_specific_angular_momentum(i) = specific_angular_momentum(i)
                   do j = 1,15
-                     orig_composition(j,i) = old_composition(j,i)
+                     orig_composition(j,i) = prev_model%old_composition(j,i)
                   end do
                end do
             endif
@@ -1421,7 +1411,7 @@ program main
                if (itrot.gt.1) then
                   do i = 1,num_zones
                      do j = 1,15
-                        old_composition(j,i) = orig_composition(j,i)
+                        prev_model%old_composition(j,i) = orig_composition(j,i)
                      end do
                   end do
                endif

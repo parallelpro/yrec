@@ -14,6 +14,7 @@
 subroutine entime(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
+      use oldmod_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -45,16 +46,6 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 
 
 
-! common/oldmod/: only old_luminosity/old_teff/old_num_zones are used
-! here. Naming matches eqburn.f90/dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! common/cenv/: tri_delta_teffl/tri_delta_logl (the envelope triangle
 ! half-widths in Teff and log L) are used here. Naming matches
@@ -80,8 +71,8 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 ! luminosity
       dt_scale(2) = tri_delta_logl
 
-      teffl_change = abs(old_teff - log_teff)
-      logl_change = abs(dlog10(old_luminosity(old_num_zones)) - &
+      teffl_change = abs(prev_model%old_teff - log_teff)
+      logl_change = abs(dlog10(prev_model%old_luminosity(prev_model%old_num_zones)) - &
            dlog10(luminosity(num_points)))
 
 ! now actually limit the timestep by a factor that reduces the

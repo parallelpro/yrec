@@ -34,6 +34,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
      num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
      mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff)
 
+      use oldmod_lib
       use luout_lib
       use const_lib
       use nuclear_lib
@@ -134,15 +135,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       logical :: use_new_diffusion_routines, ldifli
       common/gravs4/ use_new_diffusion_routines, ldifli
 
-! common/oldmod/: not used in this file. Naming matches dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 !*** MHP 6/91 COMMON BLOCK FOR NEW MIXING AND SEMI-CONVECTION.
 ! THESE ARE PARMIN PARAMETERS IN MARK6.

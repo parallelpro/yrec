@@ -21,6 +21,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
      zone_end, dc_dt, do_dt, dx_dt, dy_dt, equilibrium_xc12, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
+      use oldmod_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -37,16 +38,6 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
            metal_fraction
 
 
-! common/oldmod/: previous-timestep model snapshot; only
-! old_composition is used here. Naming matches dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
       double precision :: zone_avg_abundance(11)
       save
@@ -88,7 +79,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
             do species_idx = 1, 11
                zone_avg_abundance(species_idx) = &
                     zone_avg_abundance(species_idx) + &
-                    old_composition(species_idx,zone_idx)*shell_mass(zone_idx)
+                    prev_model%old_composition(species_idx,zone_idx)*shell_mass(zone_idx)
             end do
          end do
          do species_idx = 1, 11
@@ -98,7 +89,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       else
          do species_idx = 1, 11
             zone_avg_abundance(species_idx) = &
-                 old_composition(species_idx,zone_begin)
+                 prev_model%old_composition(species_idx,zone_begin)
          end do
       end if
       if (zone_begin.eq.zone_end) then

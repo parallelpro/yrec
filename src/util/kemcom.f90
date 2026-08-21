@@ -17,7 +17,7 @@
 !  species. composition(1,..)=H; 2=He4; 3=Z; 4=He3; 5=C12; 6=C13;
 !  7=N14; 9=O16; 11=O18. Elements 8(N15) and 10(O17) not currently
 !  used; 12-15 are light elements whose burning is treated elsewhere.
-! old_composition (common/oldmod/) - the array of abundances at the
+! prev_model%old_composition (common/oldmod/) - the array of abundances at the
 !  start of the timestep.
 ! shell_mass - run of mass contained in each shell.
 ! log_temperature - run of model temperature.
@@ -43,6 +43,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
      rate_triple_alpha, frac_c12_alpha, shell_mass, composition, &
      timestep_years)
 
+      use oldmod_lib
       use const_lib
       use luout_lib
       implicit none
@@ -70,16 +71,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
 
 
 
-! common/oldmod/: only old_composition is used here. Naming matches
-! eqburn.f90/dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! system_matrix(56): flattened 7-row x 8-column augmented matrix
 ! passed to simeqc -- columns 1-7 are the Jacobian of the 7 implicit
@@ -123,7 +114,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             total_shell_mass = total_shell_mass + shell_mass(zone_idx)
             do 3 species_idx = 1,11
                avg_abundance(species_idx) = avg_abundance(species_idx)+ &
-                    old_composition(species_idx,zone_idx)*shell_mass(zone_idx)
+                    prev_model%old_composition(species_idx,zone_idx)*shell_mass(zone_idx)
     3       continue
     5    continue
          do 7 species_idx = 1,11
@@ -132,7 +123,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
       else
          do 9 species_idx = 1,11
             avg_abundance(species_idx) = &
-                 old_composition(species_idx,zone_begin)
+                 prev_model%old_composition(species_idx,zone_begin)
     9    continue
       endif
 !  skip burning calculations if starting shell below t cutoff for reactions.
@@ -423,7 +414,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
 !  update o18.
       o18_new = avg_abundance(11)+18.0d0*timestep_gyr*gr_n14_alpha*abundance(3)*abundance(6)
 !  change metal abundance if x<5.0d-7.
-      if(old_composition(1,zone_end).lt.5.0d-7) then
+      if(prev_model%old_composition(1,zone_end).lt.5.0d-7) then
          new_metal_fraction = 1.0d0-abundance(1)-abundance(2)-abundance(3)
       else
          new_metal_fraction = avg_abundance(3)

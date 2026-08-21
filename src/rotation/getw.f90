@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use oldmod_lib
       use luout_lib
       use const_lib
       implicit none
@@ -152,16 +153,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
            old_cp, old_qdt, old_vel, old_visc, old_thdif, old_esum, &
            old_del_radiative_mix, old_eps
 
-! common/oldmod/: only old_composition (HCOMPP) is used here. Naming
-! matches hpoint.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! common/oldrot/: only old_omega (WOLD) is used here. Naming matches
 ! hpoint.f90.
@@ -560,7 +551,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
                specific_angular_momentum(zone_index) = specific_angular_momentum_saved(zone_index)
                amum(zone_index) = amum(zone_index) - fx*(mean_molecular_weight(zone_index)-old_amu(zone_index))
                do 70 species_index = 1,num_species_tracked
-                  composition(species_index,zone_index) = old_composition(species_index,zone_index)
+                  composition(species_index,zone_index) = prev_model%old_composition(species_index,zone_index)
    70          continue
    80       continue
             goto 40
@@ -574,7 +565,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       if(.not.burs_extrapolation_active)then
          do zone_index = 1,num_zones
             do species_index = 1,11
-                  old_composition(species_index,zone_index) = composition(species_index,zone_index)
+                  prev_model%old_composition(species_index,zone_index) = composition(species_index,zone_index)
             end do
          end do
       endif
@@ -648,13 +639,13 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
          if(.not.instability_transport_active.or.fully_convective_flag)then
             do zone_index = 1,num_zones
                do species_index = 12,15
-                  old_composition(species_index,zone_index) = composition(species_index,zone_index)
+                  prev_model%old_composition(species_index,zone_index) = composition(species_index,zone_index)
                end do
             end do
          else if(.not.burs_extrapolation_active)then
             do zone_index = 1,num_zones
                do species_index = 12,15
-                  old_composition(species_index,zone_index) = composition(species_index,zone_index)
+                  prev_model%old_composition(species_index,zone_index) = composition(species_index,zone_index)
                end do
             end do
          endif

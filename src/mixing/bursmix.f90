@@ -23,6 +23,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
      zone_min, env_cz_zone_old, env_cz_zone, final_iteration_flag, &
      convective_flag, num_zones, radiative_zone_bounds, mixed_zone_bounds, &
      num_radiative_zones, num_zones_mixed)
+      use oldmod_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -49,18 +50,6 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
            rate_be9_start(json)
       common/oldrat/ rate_li6_start, rate_li7_start, rate_be9_start
 
-! common/oldmod/: previous-timestep model snapshot; old_composition is
-! temporarily overwritten and restored during the Richardson
-! extrapolation below since it is used as the start-of-timestep
-! variable in kemcom. Naming matches dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! INPUT VARIABLES
       double precision, intent(in) :: diffusion_coeff(json)
@@ -117,7 +106,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       do zone_idx = 1, num_zones
          do species_idx = 1, num_species
             composition_saved(species_idx,zone_idx) = &
-                 old_composition(species_idx,zone_idx)
+                 prev_model%old_composition(species_idx,zone_idx)
          end do
          do species_idx = 1, 3
             composition_kept(species_idx,zone_idx) = &
@@ -135,7 +124,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
             do species_idx = 1, num_species
                composition(species_idx,zone_idx) = &
                     composition_saved(species_idx,zone_idx)
-               old_composition(species_idx,zone_idx) = &
+               prev_model%old_composition(species_idx,zone_idx) = &
                     composition_saved(species_idx,zone_idx)
             end do
          end do
@@ -163,7 +152,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
             end if
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species
-                  old_composition(species_idx,zone_idx) = &
+                  prev_model%old_composition(species_idx,zone_idx) = &
                        composition(species_idx,zone_idx)
                end do
             end do
@@ -173,7 +162,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
          if (converged) then
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species
-                  old_composition(species_idx,zone_idx) = &
+                  prev_model%old_composition(species_idx,zone_idx) = &
                        composition(species_idx,zone_idx)
                end do
             end do

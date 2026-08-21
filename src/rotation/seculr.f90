@@ -56,6 +56,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok)
 
+      use oldmod_lib
       use luout_lib
       use const_lib
       use numerics_lib
@@ -149,16 +150,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       common/intvar/ interface_luminosity, delami, delmi, dm, epsilm, &
            interface_gravity_factor, hs3, pm, qdtmi, interface_radius, tm
 
-! common/oldmod/: not used in this file. Naming matches getw.f90/
-! hpoint.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
       double precision :: es_circulation_velocity(json), &
            es_circulation_velocity_prev(json), secular_shear_velocity(json), &

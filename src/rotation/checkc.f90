@@ -34,6 +34,7 @@
 subroutine checkc(composition, iteration_number, print_flag, num_zones, &
      dt, cut_count, converged_flag, redo_flag)
 
+      use oldmod_lib
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -82,16 +83,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
            esumm, om, qdtm, thdifm, velm, viscm, epsm
 
-! common/oldmod/: only old_composition (originally HCOMPP) is used
-! here. Naming matches hpoint.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
       double precision :: atomic_weight(4)
       data atomic_weight/1.007825d0,4.002603d0,12.0d0,3.01603d0/
@@ -179,12 +170,12 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
             min_comp_for_check = max(1.0d-6* &
                  composition(species_index,num_zones),1.0d-20)
             do 30 zone_index = 1,num_zones
-               if(old_composition(species_index,zone_index).lt. &
+               if(prev_model%old_composition(species_index,zone_index).lt. &
                     min_comp_for_check)goto 30
                fractional_comp_change = &
                     (composition(species_index,zone_index)- &
-                    old_composition(species_index,zone_index))/ &
-                    old_composition(species_index,zone_index)
+                    prev_model%old_composition(species_index,zone_index))/ &
+                    prev_model%old_composition(species_index,zone_index)
                if(abs(fractional_comp_change).gt. &
                     abs(max_fractional_comp_change)) then
                   max_fractional_comp_change = fractional_comp_change
@@ -198,7 +189,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
    50 format(' MAX FRAC.COMP.CHANGE',1pe12.3,' SPECIES',i2, &
               ' AT PT.',i5)
          if(use_extended_composition)write(*,60) &
-              composition(14,num_zones),old_composition(14,num_zones)
+              composition(14,num_zones),prev_model%old_composition(14,num_zones)
    60 format(5x,'NEW SURFACE LI',1pe14.4,'OLD VALUE',e14.4)
       endif
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.

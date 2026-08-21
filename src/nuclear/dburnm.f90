@@ -19,6 +19,7 @@
 subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep, deuterium_rate_end, deuterium_rate_start, &
      step_fraction)
+      use oldmod_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -50,16 +51,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
       common/masschg/ mass_accretion_rate, fczdmdt, ftotdmdt, &
            accreted_composition, creim, lreimer, use_mass_accretion
 
-! common/oldmod/: previous-timestep model snapshot; only
-! old_composition is used here. Naming matches dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
       save
 
@@ -82,9 +73,9 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
 ! the units used elsewhere for the burning rates.
       timestep_gyr = timestep*1.0d-9/seconds_per_year
       if(zone_begin.eq.zone_end)then
-         hydrogen_fraction = old_composition(1,zone_begin)
-         deuterium_fraction = old_composition(12,zone_begin)
-         helium3_fraction = old_composition(4,zone_begin)
+         hydrogen_fraction = prev_model%old_composition(1,zone_begin)
+         deuterium_fraction = prev_model%old_composition(12,zone_begin)
+         helium3_fraction = prev_model%old_composition(4,zone_begin)
          rate_start = deuterium_rate_start(zone_begin)
          rate_end = deuterium_rate_end(zone_begin)
       else
@@ -101,11 +92,11 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
             rate_end_sum = rate_end_sum + &
                  shell_mass(zone_idx)*deuterium_rate_end(zone_idx)
             hydrogen_fraction = hydrogen_fraction + &
-                 old_composition(1,zone_idx)*shell_mass(zone_idx)
+                 prev_model%old_composition(1,zone_idx)*shell_mass(zone_idx)
             deuterium_fraction = deuterium_fraction + &
-                 old_composition(12,zone_idx)*shell_mass(zone_idx)
+                 prev_model%old_composition(12,zone_idx)*shell_mass(zone_idx)
             helium3_fraction = helium3_fraction + &
-                 old_composition(4,zone_idx)*shell_mass(zone_idx)
+                 prev_model%old_composition(4,zone_idx)*shell_mass(zone_idx)
          end do
          rate_start = rate_start_sum/total_shell_mass
          rate_end = rate_end_sum/total_shell_mass

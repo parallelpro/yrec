@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use oldmod_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -115,17 +116,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
            esumm, om, qdtm, thdifm, velm, viscm, epsm
 
-! common/oldmod/: previous-timestep model snapshot; pressure/
-! temperature/radius/luminosity/density/composition/convective flags
-! are used here. Naming matches eqburn.f90/dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! common/oldrot/: not used in this file. Naming matches hpoint.f90.
       double precision :: old_omega(json), old_specific_angular_momentum(json), &
@@ -249,12 +239,12 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 ! PRIOR STEP.
       if (first_call) then
          do 20 j = 1,num_zones
-            convective_flag_prev(j) = old_convective_flag(j)
-            radius_prev(j) = old_radius(j)
+            convective_flag_prev(j) = prev_model%old_convective_flag(j)
+            radius_prev(j) = prev_model%old_radius(j)
             del_grad_diff_prev(j) = old_del_adiabatic_mix(j)-old_del_radiative_mix(j)
             amum(j) = old_amu(j)
             do 10 i = 1,num_species_tracked
-               composition(i,j) = old_composition(i,j)
+               composition(i,j) = prev_model%old_composition(i,j)
    10       continue
    20    continue
       else
@@ -268,16 +258,16 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 !  INTERPOLATE IN THE MODEL VARIABLES AND AUXILLARY PHYSICS.
       step_fraction_ratio = sub_timestep/full_timestep
       do 40 j = 1,num_zones
-         log_density_mid(j) = old_density(j) + &
-              time_fraction*(log_density(j)-old_density(j))
-         log_luminosity_mid(j) = old_luminosity(j) + &
-              time_fraction*(log_luminosity(j)-old_luminosity(j))
-         log_pressure_mid(j) = old_pressure(j) + &
-              time_fraction*(log_pressure(j)-old_pressure(j))
-         log_radius_mid(j) = old_radius(j) + &
-              time_fraction*(log_radius(j)-old_radius(j))
-         log_temperature_mid(j) = old_temperature(j) + &
-              time_fraction*(log_temperature(j)-old_temperature(j))
+         log_density_mid(j) = prev_model%old_density(j) + &
+              time_fraction*(log_density(j)-prev_model%old_density(j))
+         log_luminosity_mid(j) = prev_model%old_luminosity(j) + &
+              time_fraction*(log_luminosity(j)-prev_model%old_luminosity(j))
+         log_pressure_mid(j) = prev_model%old_pressure(j) + &
+              time_fraction*(log_pressure(j)-prev_model%old_pressure(j))
+         log_radius_mid(j) = prev_model%old_radius(j) + &
+              time_fraction*(log_radius(j)-prev_model%old_radius(j))
+         log_temperature_mid(j) = prev_model%old_temperature(j) + &
+              time_fraction*(log_temperature(j)-prev_model%old_temperature(j))
 !        DO 30 I = 1,IEND
 !           HCOMP(I,J)=HCOMP(I,J)+FAC2*HCOMPM(I,J)
 !           HCOMPP(I,J) = HCOMP(I,J)
@@ -390,7 +380,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = cz_zone_bottom,j-1
                         radius_interp = radius_prev(ii)+ &
-                             convective_fraction*(log_radius(ii)-old_radius(ii))
+                             convective_fraction*(log_radius(ii)-prev_model%old_radius(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
@@ -444,7 +434,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = j+1,cz_zone_top
                         radius_interp = radius_prev(ii)+ &
-                             convective_fraction*(log_radius(ii)-old_radius(ii))
+                             convective_fraction*(log_radius(ii)-prev_model%old_radius(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
@@ -500,7 +490,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
          end do
       end do
 ! MHP 05/02 ADDED DEUTERIUM BURNING
-      if (old_composition(12,num_zones).gt.1.0D-14) then
+      if (prev_model%old_composition(12,num_zones).gt.1.0D-14) then
 ! INCREMENT THE TIMESTEP
          if (first_call) then
             do i = 1,num_zones

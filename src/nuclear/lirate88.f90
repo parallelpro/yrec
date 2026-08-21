@@ -14,6 +14,7 @@
 ! Burning rates from Caughlin and Fowler (1988).
 subroutine lirate88(composition, log_density, log_temperature, num_zones, &
      use_current_model)
+      use oldmod_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -29,17 +30,6 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
       double precision :: rate_li6(json), rate_li7(json), rate_be9(json)
       common/newrat/ rate_li6, rate_li7, rate_be9
 
-! common/oldmod/: previous-timestep model snapshot; only
-! old_composition, old_density, and old_temperature are used here.
-! Naming matches dburn.f90.
-      double precision :: old_pressure(json), old_temperature(json), &
-           old_radius(json), old_luminosity(json), old_density(json), &
-           old_composition(15,json), old_shell_mass(json), old_teff
-      logical :: old_convective_flag(json), old_cz_flag(json)
-      integer :: old_num_zones
-      common/oldmod/ old_pressure, old_temperature, old_radius, &
-           old_luminosity, old_density, old_composition, old_shell_mass, &
-           old_convective_flag, old_cz_flag, old_teff, old_num_zones
 
 ! common/oldrat/: lithium/beryllium burning rates at the start of the
 ! timestep. Naming matches liburn.f90.
@@ -66,13 +56,13 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
       double precision :: t9a, c56
 
       do 100 zone_idx = 1,num_zones
-         if(log_temperature(zone_idx).lt.tlim.and.old_temperature(zone_idx).lt.tlim)goto 110
+         if(log_temperature(zone_idx).lt.tlim.and.prev_model%old_temperature(zone_idx).lt.tlim)goto 110
          if(use_current_model.eq.1)then
             rhox = exp(ln10*log_density(zone_idx))*composition(1,zone_idx)
             t9=exp(ln10*(log_temperature(zone_idx)-9.0d0))
          else
-            rhox = exp(ln10*old_density(zone_idx))*old_composition(1,zone_idx)
-            t9=exp(ln10*(old_temperature(zone_idx)-9.0d0))
+            rhox = exp(ln10*prev_model%old_density(zone_idx))*prev_model%old_composition(1,zone_idx)
+            t9=exp(ln10*(prev_model%old_temperature(zone_idx)-9.0d0))
          endif
          t913=t9**cc13
          t923=t913*t913
