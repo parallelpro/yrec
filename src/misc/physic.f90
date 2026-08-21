@@ -22,6 +22,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff)
 
+      use run_diag_lib
       use temp_lib
       use envelope_comp_lib
       use scrtch_lib
@@ -41,10 +42,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       double precision, intent(in) :: log_teff
 
 
-! common/comp2/: envelope_helium_fraction/envelope_he3_fraction, both
-! used here. Naming matches checkc.f90.
-      double precision :: envelope_helium_fraction, envelope_he3_fraction
-      common/comp2/ envelope_helium_fraction, envelope_he3_fraction
 
 
 
@@ -167,9 +164,9 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
          dfx1 = composition(1,im) - env_comp%envelope_hydrogen_fraction
-         dfx2 = composition(2,im) - envelope_helium_fraction
+         dfx2 = composition(2,im) - run_diag%envelope_helium_fraction
          dfx3 = composition(3,im) - env_comp%envelope_metal_fraction
-         dfx4 = composition(4,im) - envelope_he3_fraction
+         dfx4 = composition(4,im) - run_diag%envelope_he3_fraction
          temp_scratch = env_comp%amuenv + dfx1/atomic_weight(1) + &
               dfx2/atomic_weight(2) + dfx3/atomic_weight(3) + &
               dfx4/atomic_weight(4)

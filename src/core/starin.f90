@@ -110,6 +110,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
      trial_log_luminosity, trial_log_temperature, fit_point_temperature, &
      convective_velocity, mean_gravity, species_mix_weights)
 
+      use run_diag_lib
       use envstruct_lib
       use envelope_comp_lib
       use turnover_lib
@@ -171,34 +172,15 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 !      CHARACTER*256 OPECALEX(7)
       character(len=4) :: format_tag
       character(len=6) :: eos_code
-      character(len=4) :: atm_code, alok_code, hik_code, compmix_code
-! common/comp2/: both used here. Naming matches checkc.f90/physic.f90.
-      double precision :: envelope_helium_fraction, envelope_he3_fraction
-      common/comp2/ envelope_helium_fraction, envelope_he3_fraction
-! common/envprt/: not used in this file's logic; layout placeholder.
-! Naming matches envint.f90/getnewenv.f90/qenv.f90.
-      double precision :: current_log10_pressure, current_log10_temperature, &
-           current_log10_radius, current_log10_mass, current_log10_density, &
-           current_opacity, current_beta, current_gradients(3), &
-           current_ion_fraction(3), current_velocity
-      common/envprt/ current_log10_pressure, current_log10_temperature, &
-           current_log10_radius, current_log10_mass, current_log10_density, &
-           current_opacity, current_beta, current_gradients, &
-           current_ion_fraction, current_velocity
-! common/oldrot/: only old_omega is used here (the rest are unused
-! placeholders). Naming matches hpoint.f90/midmod.f90.
-      double precision :: old_omega(json), old_specific_angular_momentum(json), &
-           old_moment_of_inertia(json), old_hg(json), old_mean_radius(json), &
-           old_eta_squared(json)
-      common/oldrot/ old_omega, old_specific_angular_momentum, &
-           old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
+      character(len=4) :: atm_code, alok_code, hik_code
 ! LLP  3/19/03 Add COMMON block /I2O/ for info directly transferred from
 !      input to output model - starting with a code for th initial model
 !      compostion (COMPMIX)
-! common/i2o/: used here (compmix_code is passed to getyrec7/
-! getmodel2). Naming matches this file's own atm_code/eos_code/
-! hik_code/alok_code convention.
-      common /i2o/ compmix_code
+! former common/i2o/: compmix_code (passed to getyrec7/getmodel2) is
+! now use-associated from run_diag_lib as
+! run_diag%initial_composition_code (io/wrtlst.f90's/io/putstore.f90's
+! established name -- majority spelling wins over this file's own
+! atm_code/eos_code/hik_code/alok_code-matching compmix_code).
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
@@ -349,7 +331,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
               disk_locking_active0,instability_transport_active0,ljdot00, &
               alok_code, &
               lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,compmix_code,disk_pressure0, &
+              lsemic0,run_diag%initial_composition_code,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0)
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons
@@ -371,7 +353,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
               disk_locking_active0,instability_transport_active0,ljdot00, &
               alok_code, &
               lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,compmix_code,disk_pressure0, &
+              lsemic0,run_diag%initial_composition_code,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0)
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons
@@ -1109,9 +1091,9 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! FXENV = NUMBER DENSITY OF SPECIES .
       env_comp%envelope_hydrogen_fraction = env_comp%xnew
       env_comp%envelope_metal_fraction = env_comp%znew
-      envelope_helium_fraction = 1.0d0 - env_comp%envelope_hydrogen_fraction - &
+      run_diag%envelope_helium_fraction = 1.0d0 - env_comp%envelope_hydrogen_fraction - &
            env_comp%envelope_metal_fraction - composition(4,num_shells)
-      envelope_he3_fraction = composition(4,num_shells)
+      run_diag%envelope_he3_fraction = composition(4,num_shells)
 ! EVERYTHING BUT V(7)=H, AND V(12)=HE
       mixture_weight_sum = species_mix_weights(1)+species_mix_weights(2)+ &
            species_mix_weights(3)+species_mix_weights(4)+ &
@@ -1163,7 +1145,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
  710  continue
       if (rotation_active) then
          do 720 i = 1,num_shells
-          old_omega(i) = omega(i)
+          run_diag%old_omega(i) = omega(i)
  720     continue
       endif
 

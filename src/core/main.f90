@@ -136,11 +136,11 @@
 !     for members that are unused in the file(s) that first declared
 !     them, but that this file actually reads/writes (common/acdpth/'s
 !     ageout_placeholder/lclcd_placeholder/ljlast_placeholder/
-!     ljwrt_placeholder; common/rotprt/'s lprt0_placeholder;
+!     ljwrt_placeholder; common/rotprt/'s run_diag%lprt0_placeholder;
 !     common/chrone/'s lrwsh_placeholder; common/cenv/'s
 !     lnew0). Per the precedent set by envint.f90 (keeps
 !     lclcd_placeholder despite noting its own active use) and
-!     getw.f90 (keeps lprt0_placeholder despite noting its own active
+!     getw.f90 (keeps run_diag%lprt0_placeholder despite noting its own active
 !     use), these established names are reused verbatim here too
 !     rather than renamed, even though this file actively assigns/
 !     reads them; each active use is called out in a comment at its
@@ -150,6 +150,7 @@ program main
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
+      use run_diag_lib
       use fluxes_lib
       use engeb_diag_lib
       use light_burn_lib
@@ -194,20 +195,6 @@ program main
 
 
 
-! 7/91 ENTROPY TERM COMMON BLOCK ADDED.
-      double precision :: temperature_entropy_term(json), &
-           pressure_entropy_term(json), luminosity_entropy_term(json), &
-           radius_entropy_term(json)
-      common/entrop/ temperature_entropy_term, pressure_entropy_term, &
-           luminosity_entropy_term, radius_entropy_term
-
-
-! MHP 9/94
-! common/rotprt/: lprt0_placeholder actively used here (see the header
-! COMMON BLOCK NOTE for why the established placeholder name is kept).
-! Naming matches wrtout.f90/getw.f90.
-      logical :: lprt0_placeholder
-      common/rotprt/ lprt0_placeholder
 
 
 
@@ -215,12 +202,8 @@ program main
 
 
 
-! DBG 4/26/94 Tired of not have access to current age of model so...
-! common/theage/: dage used here. Naming matches pdist.f90/mix.f90/
-! microdiff_cod.f90/microdiff_run.f90 (established there as an unused
-! placeholder; actively used here).
-      double precision :: dage
-      common/theage/ dage
+
+
 
       double precision :: luminosity_breakdown(8), trial_log_luminosity(3), &
            trial_log_temperature(3), fit_point_pressure(3), &
@@ -248,58 +231,18 @@ program main
 !     MHP 10/24 FLAG FOR END OF RUN
       logical :: end_kind_flag
 
-! JVS 02/12
-! common/stch/: not used in this file's logic; declared only to
-! preserve layout. First appearance of this common block in the
-! converted sources.
-      double precision :: composition_final(15,json), log_radius_final(json), &
-           log_pressure_final(json), log_density_final(json), &
-           log_mass_final(json), log_temperature_final(json)
-      common/stch/ composition_final, log_radius_final, log_pressure_final, &
-           log_density_final, log_mass_final, log_temperature_final
-
-
-
-! common/calsun/: dlum_dx/drad_dx/dlum_dalpha/drad_dalpha/
-! solar_calibration_active used here; log_l_prev/log_r_prev/delta_x/
-! delta_alpha unused placeholders. Naming matches chkcal.f90.
-      double precision :: dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
-           log_l_prev, log_r_prev, delta_x, delta_alpha
-      logical :: solar_calibration_active
-      common/calsun/ dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
-           log_l_prev, log_r_prev, delta_x, delta_alpha, &
-           solar_calibration_active
 
 
 
 
-! MHP 7/96 common block added for sound speed
-! common/sound/: only sound_speed_output_active used here; gam1
-! unused placeholder. Naming matches coefft.f90.
-      double precision :: adiabatic_index_gamma1(json)
-      logical :: sound_speed_output_active
-      common/sound/ adiabatic_index_gamma1, sound_speed_output_active
 
 
 
 
-! MHP 8/96
-! added monte carlo parameters for metal diffusion, solar L, solar age.
-! common/monte2/: all used here. Naming matches wrtmonte.f90.
-      double precision :: s11_rate(1000), s33_rate(1000), s34_rate(1000), &
-           s17_rate(1000), metal_to_h_ratio(1000), &
-           helium_fraction_param(1000), diffusion_factor(1000), &
-           luminosity_target(1000), age_target(1000)
-      common/monte2/ s11_rate, s33_rate, s34_rate, s17_rate, &
-           metal_to_h_ratio, helium_fraction_param, diffusion_factor, &
-           luminosity_target, age_target
 
-! MHP 3/96 central T,P,RHO added
-! common/cent/: all used here. Naming matches wrtmonte.f90.
-      double precision :: central_log10_temperature, central_log10_pressure, &
-           central_log10_density, envelope_mass, envelope_radius
-      common/cent/ central_log10_temperature, central_log10_pressure, &
-           central_log10_density, envelope_mass, envelope_radius
+
+
+
 
 ! common/llot95a/: not used in this file's logic; declared only to
 ! preserve layout. Naming matches op95ztab.f90.
@@ -342,12 +285,6 @@ program main
       common/op95fact/ opal95_weight_z, opal95_weight_x, opal95_weight_t, &
            opal95_dweight_t, opal95_weight_rho, opal95_dweight_rho
 
-! MHP 05/02 ADDED FOR ITERATION BETWEEN ROTATION AND STRUCTURE CALCULATION
-! common/origstart/: both used here. First appearance of this common
-! block in the converted sources.
-      double precision :: orig_specific_angular_momentum(json), &
-           orig_composition(15,json)
-      common/origstart/ orig_specific_angular_momentum, orig_composition
 
 
 
@@ -356,11 +293,6 @@ program main
       data nao/1/
 
 
-! JVS 08/13 IF THE CZ IS BEYOND THE FITTING POINT, STORE ITS LOCATION
-! common/envcz/: not used in this file's logic; declared only to
-! preserve layout. Naming matches wrtout.f90/envint.f90.
-      double precision :: convection_zone_radius_placeholder, rint_placeholder
-      common/envcz/ convection_zone_radius_placeholder, rint_placeholder
 
 
 ! MHP 10/24 NEW VARIABLES FOR STOP CRITERIA ON CENTRAL ABUNDANCE are
@@ -493,14 +425,14 @@ program main
          mc_run_end = imend
 ! read in monte carlo data
          do i = 1,imend
-            read(dynamics_unit,1511)s11_rate(i),s33_rate(i),s34_rate(i), &
-                 s17_rate(i),metal_to_h_ratio(i),helium_fraction_param(i), &
-                 luminosity_target(i),age_target(i)
+            read(dynamics_unit,1511)run_diag%s11_rate(i),run_diag%s33_rate(i),run_diag%s34_rate(i), &
+                 run_diag%s17_rate(i),run_diag%metal_to_h_ratio(i),run_diag%helium_fraction_param(i), &
+                 run_diag%luminosity_target(i),run_diag%age_target(i)
  1511       format(7X,1P7E10.3/E9.3)
-            write(iowr,*)i,s11_rate(i),s33_rate(i),s34_rate(i),s17_rate(i), &
-                 metal_to_h_ratio(i),helium_fraction_param(i), &
-                 luminosity_target(i),age_target(i)
-            diffusion_factor(i) = helium_fraction_param(i)
+            write(iowr,*)i,run_diag%s11_rate(i),run_diag%s33_rate(i),run_diag%s34_rate(i),run_diag%s17_rate(i), &
+                 run_diag%metal_to_h_ratio(i),run_diag%helium_fraction_param(i), &
+                 run_diag%luminosity_target(i),run_diag%age_target(i)
+            run_diag%diffusion_factor(i) = run_diag%helium_fraction_param(i)
          end do
       else
          mc_run_start = 1
@@ -509,16 +441,16 @@ program main
       do 500 monte_carlo_run_number = mc_run_start,mc_run_end
 ! for monte carlo run, input values of parameters being changed.
       if (lmonte) then
-         cross_section_scale(1) = s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
-         cross_section_scale(2) = s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
-         cross_section_scale(3) = s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
-         cross_section_scale(16) = s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
-         monte_helium_diffusion_fraction = helium_fraction_param(monte_carlo_run_number)
-         fgrz = diffusion_factor(monte_carlo_run_number)
-         solar_luminosity_cgs = reference_solar_luminosity*luminosity_target(monte_carlo_run_number)
+         cross_section_scale(1) = run_diag%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
+         cross_section_scale(2) = run_diag%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
+         cross_section_scale(3) = run_diag%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
+         cross_section_scale(16) = run_diag%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
+         monte_helium_diffusion_fraction = run_diag%helium_fraction_param(monte_carlo_run_number)
+         fgrz = run_diag%diffusion_factor(monte_carlo_run_number)
+         solar_luminosity_cgs = reference_solar_luminosity*run_diag%luminosity_target(monte_carlo_run_number)
          log10_solar_luminosity = dlog10(solar_luminosity_cgs)
          ln_solar_luminosity = ln10/solar_luminosity_cgs
-         age_scale_factor = age_target(monte_carlo_run_number)
+         age_scale_factor = run_diag%age_target(monte_carlo_run_number)
 ! timestep and final age are altered in SR SETCAL; input #s should be
 ! scaled for a solar age of 4.57 Gyr
          target_end_age(2)=1.0D8
@@ -554,7 +486,7 @@ program main
 !     RUN THROUGH THE KIND CARDS IN ORDER
 !**********
       do 200 nk = 1, num_runs
-         sound_speed_output_active = .false.
+         run_diag%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
          initial_envelope_x = initial_x_array(nk)
          initial_envelope_z = initial_z_array(nk)
@@ -569,7 +501,7 @@ program main
 ! read in the initial model here
 ! STARIN also calls RSCALE to perform rescaling if requested
 !        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-       call starin(log10_luminosity,envelope_fit_coeffs,dage,timestep_yr, &
+       call starin(log10_luminosity,envelope_fit_coeffs,run_diag%dage,timestep_yr, &
             delta_time,hydrogen_dt,eta_squared, &
             pressure_rotation_factor,temperature_rotation_factor,trial_sign_flag, &
             composition,log_density,moment_of_inertia,specific_angular_momentum, &
@@ -731,7 +663,7 @@ program main
 ! initialize variables for calculating when to dump pulse output
          prev_log_l = log10_luminosity
          prev_log_teff = log_teff
-         prev_age = dage
+         prev_age = run_diag%dage
          path_length_sq = 0.0D0
 
        if (helium_flash_active) then
@@ -745,7 +677,7 @@ program main
                   fit_point_temperature,fit_point_radius,envelope_fit_coeffs, &
                   trial_sign_flag,luminosity_breakdown,core_cz_top_index, &
                   envelope_cz_bottom_index,model_number,num_zones, &
-                  total_mass_msun,log_teff,log10_luminosity,log_total_mass,dage, &
+                  total_mass_msun,log_teff,log10_luminosity,log_total_mass,run_diag%dage, &
                   timestep_yr,omega)
           endif
        endif
@@ -761,17 +693,17 @@ program main
 !      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
        call htimer(delta_time,hydrogen_dt,num_zones,log_density,luminosity_lsun, &
             enclosed_mass,shell_mass,log_temperature,composition,core_cz_top_index, &
-            h_shell_midpoint_zone,luminosity_breakdown,dage,timestep_yr,nk, &
+            h_shell_midpoint_zone,luminosity_breakdown,run_diag%dage,timestep_yr,nk, &
             log_pressure,log_radius,omega,max_domega_frac,h_shell_zone_begin, &
             log_teff)
 
        delta_time_saved = delta_time
 ! zero out entropy terms.
          do 99 i = 1,num_zones
-            temperature_entropy_term(i) = 0.0D0
-            pressure_entropy_term(i) = 0.0D0
-            luminosity_entropy_term(i) = 0.0D0
-            radius_entropy_term(i) = 0.0D0
+            run_diag%temperature_entropy_term(i) = 0.0D0
+            run_diag%pressure_entropy_term(i) = 0.0D0
+            run_diag%luminosity_entropy_term(i) = 0.0D0
+            run_diag%radius_entropy_term(i) = 0.0D0
    99    continue
 
 ! zero out light element burning rates in the surface CZ.
@@ -822,8 +754,8 @@ program main
 ! If this is the step before one of the ages of interest, print everything out.
 ! Also, save model structure.
             if (nao.lt.6) then
-                  if (dage+timestep_yr/1.0D9-ageout_placeholder(nao) .le. 0.0D0 .and. &
-                  dage+2.0D0*timestep_yr/1.0D9-ageout_placeholder(nao) .ge. 0.0D0 .and. .not. ljwrt_placeholder) then
+                  if (run_diag%dage+timestep_yr/1.0D9-ageout_placeholder(nao) .le. 0.0D0 .and. &
+                  run_diag%dage+2.0D0*timestep_yr/1.0D9-ageout_placeholder(nao) .ge. 0.0D0 .and. .not. ljwrt_placeholder) then
                         print*, 'AGEOUT reached'
                         pulsation_output_active = saved_pulse_output_flag
                         lclcd_placeholder = .true.
@@ -839,10 +771,10 @@ program main
 ! DBG PULSE:  if endage reached then set LPULSE to LSAVPU
 ! MHP 10/24 GENERALIZE CHECK
          if (end_age_stop_active(nk).and.target_end_age(nk).gt.0.0D0 .and. &
-         (abs(target_end_age(nk)-dage*1.0D9-timestep_yr) .le. 1.0D0)) then
+         (abs(target_end_age(nk)-run_diag%dage*1.0D9-timestep_yr) .le. 1.0D0)) then
                  pulsation_output_active = saved_pulse_output_flag
 ! MHP 7/96 compute sound speed for solar model
-                 sound_speed_output_active = .true.
+                 run_diag%sound_speed_output_active = .true.
             end if
 
 
@@ -858,7 +790,7 @@ program main
 ! STARIN called here for timestep cutting
    15       if (model_diverged_flag) then
 !              CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-             call starin(log10_luminosity,envelope_fit_coeffs,dage,timestep_yr, &
+             call starin(log10_luminosity,envelope_fit_coeffs,run_diag%dage,timestep_yr, &
                   delta_time,hydrogen_dt,eta_squared, &
                   pressure_rotation_factor,temperature_rotation_factor,trial_sign_flag, &
                   composition,log_density,moment_of_inertia,specific_angular_momentum, &
@@ -896,7 +828,7 @@ program main
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! ADD MASS LOSS CALCULATION
-               call massloss(log10_luminosity,dage,delta_time,composition,log_density,specific_angular_momentum,log_pressure,log_radius, &
+               call massloss(log10_luminosity,run_diag%dage,delta_time,composition,log_density,specific_angular_momentum,log_pressure,log_radius, &
                              log_mass,enclosed_mass,shell_mass,log_total_mass,log_temperature,envelope_cz_bottom_index,recompute_envelope_triangle, &
                              num_zones,omega,total_mass_msun,log_teff,target_envelope_mass,new_atmosphere_fit_needed)
 ! STORE COMPOSITION MATRIX AT THE BEGINNING OF THE TIMESTEP.
@@ -913,7 +845,7 @@ program main
                             log_temperature,iteration_level,convective_flag,num_zones,timestep_yr,core_cz_top_index,envelope_cz_bottom_index, &
                             mixed_zone_bounds,mixed_zone_bounds_no_overshoot,log_teff)
              timestep_yr = delta_time/seconds_per_year
-             dage = dage + 1.0D-9*timestep_yr
+             run_diag%dage = run_diag%dage + 1.0D-9*timestep_yr
             endif
 !***MHP 1/04 OPACITY TEST
 !      IDT = 15
@@ -1001,10 +933,10 @@ program main
 ! zero entropy terms
                   log_temperature_delta(i) = 0.0D0
                   log_pressure_delta(i) = 0.0D0
-                  temperature_entropy_term(i) = 0.0D0
-                  pressure_entropy_term(i) = 0.0D0
-                  luminosity_entropy_term(i) = 0.0D0
-                  radius_entropy_term(i) = 0.0D0
+                  run_diag%temperature_entropy_term(i) = 0.0D0
+                  run_diag%pressure_entropy_term(i) = 0.0D0
+                  run_diag%luminosity_entropy_term(i) = 0.0D0
+                  run_diag%radius_entropy_term(i) = 0.0D0
 ! zero gravitational energy terms.
                   gravitational_luminosity(i) = 0.0D0
  20            continue
@@ -1012,10 +944,10 @@ program main
 ! use the rate of change in the previous model to estimate the new
 ! run of structure variables.
                do 30 i = 1,num_zones
-                  delta_temp_step = temperature_entropy_term(i)*delta_time
-                  delta_pressure_step = pressure_entropy_term(i)*delta_time
-                  delta_lum_step = luminosity_lsun(i)*luminosity_entropy_term(i)*delta_time
-                  delta_radius_step = radius_entropy_term(i)*delta_time
+                  delta_temp_step = run_diag%temperature_entropy_term(i)*delta_time
+                  delta_pressure_step = run_diag%pressure_entropy_term(i)*delta_time
+                  delta_lum_step = luminosity_lsun(i)*run_diag%luminosity_entropy_term(i)*delta_time
+                  delta_radius_step = run_diag%radius_entropy_term(i)*delta_time
                   log_temperature_delta(i) = delta_temp_step
                   log_pressure_delta(i) = delta_pressure_step
                   log_temperature(i) = log_temperature(i) + delta_temp_step
@@ -1061,10 +993,10 @@ program main
 ! IMPROVED FIRST GUESS AT THE STRUCTURE FOR THE NEXT MODEL IF LNEWS=T.
             if (delta_time.gt.0.0D0) then
                do 27 ii = 1,num_zones
-                  temperature_entropy_term(ii)=log_temperature_delta(ii)/delta_time
-                  pressure_entropy_term(ii)=log_pressure_delta(ii)/delta_time
-                  luminosity_entropy_term(ii)=2.0D0*(luminosity_lsun(ii)-prev_model%old_luminosity(ii))/(luminosity_lsun(ii)+prev_model%old_luminosity(ii))/delta_time
-                  radius_entropy_term(ii)=(log_radius(ii)-prev_model%old_radius(ii))/delta_time
+                  run_diag%temperature_entropy_term(ii)=log_temperature_delta(ii)/delta_time
+                  run_diag%pressure_entropy_term(ii)=log_pressure_delta(ii)/delta_time
+                  run_diag%luminosity_entropy_term(ii)=2.0D0*(luminosity_lsun(ii)-prev_model%old_luminosity(ii))/(luminosity_lsun(ii)+prev_model%old_luminosity(ii))/delta_time
+                  run_diag%radius_entropy_term(ii)=(log_radius(ii)-prev_model%old_radius(ii))/delta_time
  27            continue
             endif
 ! THIRD LEVEL OF ITERATIONS
@@ -1090,9 +1022,9 @@ program main
 ! OVERWRITTEN ON THE LAST RUN THROUGH.
             if (itdif1.gt.1) then
                do i = 1,num_zones
-                  orig_specific_angular_momentum(i) = specific_angular_momentum(i)
+                  run_diag%orig_specific_angular_momentum(i) = specific_angular_momentum(i)
                   do j = 1,15
-                     orig_composition(j,i) = prev_model%old_composition(j,i)
+                     run_diag%orig_composition(j,i) = prev_model%old_composition(j,i)
                   end do
                end do
             endif
@@ -1102,7 +1034,7 @@ program main
                if (itrot.gt.1) then
                   do i = 1,num_zones
                      do j = 1,15
-                        prev_model%old_composition(j,i) = orig_composition(j,i)
+                        prev_model%old_composition(j,i) = run_diag%orig_composition(j,i)
                      end do
                   end do
                endif
@@ -1147,24 +1079,24 @@ program main
 ! G Somers END
 
 ! MHP 9/94 STORE TOTAL AGE IN SAGE
-            disk_lifetime = dage
+            disk_lifetime = run_diag%dage
             if (rotation_active) then
 ! RESTORE ORIGINAL START OF TIMESTEP VALUES
 ! TO THE ANGULAR MOMENTUM DISTRIBUTION
                if (itrot.gt.1) then
                   do i = 1,num_zones
-                     specific_angular_momentum(i) = orig_specific_angular_momentum(i)
+                     specific_angular_momentum(i) = run_diag%orig_specific_angular_momentum(i)
                   end do
                endif
 ! MHP 9/94 ADDED FLAG TO TURN ON ROTATION OUTPUT WHEN END OF KIND
 ! CARD REACHED.
 ! MHP 10/24 GENERALIZE CHECK
          if (end_age_stop_active(nk).and.target_end_age(nk).gt.0.0D0 .and. &
-         (abs(target_end_age(nk)-dage*1.0D9-timestep_yr) .le. 1.0D0)) then
+         (abs(target_end_age(nk)-run_diag%dage*1.0D9-timestep_yr) .le. 1.0D0)) then
 !               IF(LENDAG(NK).AND.ENDAGE(NK)-DAGE*1.0D9.LE.1.0D0)THEN
-                  lprt0_placeholder = .true.
+                  run_diag%lprt0_placeholder = .true.
                else
-                  lprt0_placeholder = .false.
+                  run_diag%lprt0_placeholder = .false.
                endif
 ! FIND THE NEW RUN OF OMEGA
 ! JENV0 ADDED TO SR CALL.
@@ -1222,15 +1154,15 @@ program main
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *        JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
        call htimer(delta_time,hydrogen_dt,num_zones,log_density,luminosity_lsun,enclosed_mass,shell_mass,log_temperature,composition,core_cz_top_index, &
-              h_shell_midpoint_zone,luminosity_breakdown,dage,timestep_yr,nk,log_pressure,log_radius,omega, &
+              h_shell_midpoint_zone,luminosity_breakdown,run_diag%dage,timestep_yr,nk,log_pressure,log_radius,omega, &
               max_domega_frac,h_shell_zone_begin,log_teff)
 ! IF EVOLVING TO A GIVEN AGE AND KIND CARD IS DONE, AVOID ZEROING OUT
 ! TIMESTEP WRITTEN TO MODEL (AS THIS MAKES CONTINUING A SEQUENCE AWKWARD.)
 !     INSTEAD WRITE THE PREVIOUS MODEL TIMESTEP TO MODEL.
 ! ONLY IF A FIXED END AGE IS USED, NOT FOR OTHER STOPS
        if (end_age_stop_active(nk) .and. target_end_age(nk).gt.0.0D0) then
-          if (target_end_age(nk)-dage*1.0D9.le.1.0D0) then
-             delta_time = max(delta_time_saved,1.0D-3*dage*seconds_per_year)
+          if (target_end_age(nk)-run_diag%dage*1.0D9.le.1.0D0) then
+             delta_time = max(delta_time_saved,1.0D-3*run_diag%dage*seconds_per_year)
              timestep_yr = delta_time/seconds_per_year
           else
              delta_time_saved = delta_time
@@ -1240,7 +1172,7 @@ program main
        endif
        if (rescale_kind(nk).ne.2) model_number = model_number+1
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
-       call wrtout(composition,log_density,luminosity_lsun,log_pressure,log_radius,log_mass,enclosed_mass,log_temperature,convective_flag,num_zones,model_number,dage, &
+       call wrtout(composition,log_density,luminosity_lsun,log_pressure,log_radius,log_mass,enclosed_mass,log_temperature,convective_flag,num_zones,model_number,run_diag%dage, &
               timestep_yr,total_mass_msun,log_teff,log10_luminosity,log_gravity,has_h_shell,h_shell_zone_begin,h_shell_midpoint_zone,h_shell_end_index,core_cz_top_index, &
               envelope_cz_bottom_index,luminosity_breakdown,trial_log_temperature,trial_log_luminosity,fit_point_pressure,fit_point_temperature,fit_point_radius,envelope_fit_coeffs,trial_sign_flag,log_total_mass,omega, &
 !      *        LPUNCH,FP,FT,ETA2,R0,HJM,HI,SJTOT,SKEROT,HS2,NK)  ! KC 2025-05-31
@@ -1250,7 +1182,7 @@ program main
 !     IF EVOLVING TO A GIVEN AGE AND AGE IS REACHED, KIND CARD IS DONE
 !       IF(LENDAG(NK).AND.ENDAGE(NK)-DAGE*1.0D9.LE.1.0D0)GOTO 110
        if (end_age_stop_active(nk).and.target_end_age(nk).gt.0.0D0 .and. &
-         (target_end_age(nk)-dage*1.0D9).le.1.0D0) goto 110
+         (target_end_age(nk)-run_diag%dage*1.0D9).le.1.0D0) goto 110
 ! MHP 10/24 CHECK ALL STOP CONDITIONS, EXIT IF ANY SATISFIED
          end_kind_flag = .false.
          if (end_age_stop_active(nk).and.central_deuterium_stop(nk).gt.0.0D0 .and. &
@@ -1274,8 +1206,8 @@ program main
 ! IF EXITING, SET I/O FLAGS PROPERLY AND EXIT LOOP
          if (end_kind_flag) then
             pulsation_output_active = saved_pulse_output_flag
-            sound_speed_output_active = .true.
-            lprt0_placeholder = .true.
+            run_diag%sound_speed_output_active = .true.
+            run_diag%lprt0_placeholder = .true.
             goto 110
          endif
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
@@ -1284,7 +1216,7 @@ program main
              if (model_iteration.eq.1) then
                 teff_kelvin_unused = 10.0D0**log_teff
              else
-                call chkscal(log10_luminosity, log_teff, dage, nk)
+                call chkscal(log10_luminosity, log_teff, run_diag%dage, nk)
                 if (just_passed_target_radius_flag) goto 200
              end if
           endif
@@ -1298,7 +1230,7 @@ program main
   110    if (lstore.and.lstpch.and.punch_pending_flag) then
           call putstore(composition,log_density,luminosity_lsun,log_pressure,log_radius,log_mass,log_temperature,convective_flag,trial_log_temperature,trial_log_luminosity,fit_point_pressure,fit_point_temperature,fit_point_radius, &
                  envelope_fit_coeffs,trial_sign_flag,luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_zones,total_mass_msun,log_teff,log10_luminosity,log_total_mass, &
-                 dage,timestep_yr,omega,enclosed_mass,eta_squared,mean_radius,pressure_rotation_factor,temperature_rotation_factor,specific_angular_momentum,moment_of_inertia)
+                 run_diag%dage,timestep_yr,omega,enclosed_mass,eta_squared,mean_radius,pressure_rotation_factor,temperature_rotation_factor,specific_angular_momentum,moment_of_inertia)
             punch_pending_flag = .false.
        endif
 ! 110  CONTINUE
@@ -1317,7 +1249,7 @@ program main
 !               CALL CHKCAL(BL,RLL,NK)
                use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
-               if (solar_calibration_active) then
+               if (run_diag%solar_calibration_active) then
                   go to 250
                else
 !c MHP 8/96 added counter for # of runs needed for calibration
@@ -1357,7 +1289,7 @@ program main
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
 ! MODEL PARAMTERS TO AN OUTPUT FILE.
 ! RUN FAILED TO CONVERGE.  WRITE FINAL INFO WITH WARNING NOTE.
-      if (lmonte .and. convergence_iterations.ge.11 .and. .not.solar_calibration_active) then
+      if (lmonte .and. convergence_iterations.ge.11 .and. .not.run_diag%solar_calibration_active) then
          rewind(ilast)
          rewind(first_unit)
          rewind(idebug)
@@ -1374,9 +1306,9 @@ program main
  1519    format(1X,I5,3F10.6,4E10.3)
 ! NUMERICAL DATA : #OF RUNS NEEDED FOR A CONVERGED MODEL, INITIAL X
 ! AND ALPHA, FINAL DL/DX,DR/DX,DL/D ALPHA, DR/D ALPHA
-         write(neutrino_unit,1518)convergence_iterations,initial_x_guess,initial_alpha_guess,dlum_dx,drad_dx,dlum_dalpha,drad_dalpha
+         write(neutrino_unit,1518)convergence_iterations,initial_x_guess,initial_alpha_guess,run_diag%dlum_dx,run_diag%drad_dx,run_diag%dlum_dalpha,run_diag%drad_dalpha
 ! SUMMARY OF STRUCTURE : TC, RHOC, PC
-         write(neutrino_unit, 1517)central_log10_temperature,central_log10_pressure,central_log10_density, &
+         write(neutrino_unit, 1517)run_diag%central_log10_temperature,run_diag%central_log10_pressure,run_diag%central_log10_density, &
               composition(1,1),composition(3,1)
 ! NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
          write(neutrino_unit, 1516) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,8)
@@ -1384,11 +1316,11 @@ program main
 !      *        DDAGE,SMASS,TEFFL,BL,GL,LSHELL,JXBEG,JXMID,
 !      *        JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
 !      *        CFENV,FTRI,HSTOT,OMEGA,RLL,ICONV,NK,NN)  ! KC 2025-05-31
-         call wrtmonte(composition,log_density,luminosity_lsun,log_pressure,log_radius,log_mass,log_temperature,convective_flag,num_zones,dage, &
+         call wrtmonte(composition,log_density,luminosity_lsun,log_pressure,log_radius,log_mass,log_temperature,convective_flag,num_zones,run_diag%dage, &
               timestep_yr,total_mass_msun,log_teff,log10_luminosity, &
               core_cz_top_index,envelope_cz_bottom_index,luminosity_breakdown,trial_log_temperature,trial_log_luminosity,fit_point_pressure,fit_point_temperature,fit_point_radius, &
               envelope_fit_coeffs,trial_sign_flag,log_total_mass,omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
-      else if (calibrate_solar_model .and. lsnu .and. solar_calibration_active) then
+      else if (calibrate_solar_model .and. lsnu .and. run_diag%solar_calibration_active) then
          rewind(ilast)
          rewind(first_unit)
          rewind(idebug)
@@ -1400,21 +1332,21 @@ program main
          surface_z_over_x = composition(3,num_zones)/composition(1,num_zones)
 ! HEADER FILE:  MONTE CARLO PARAMETERS
          if (lmonte) then
-            write(neutrino_unit,1520)monte_carlo_run_number,s11_rate(monte_carlo_run_number),s33_rate(monte_carlo_run_number),s34_rate(monte_carlo_run_number),s17_rate(monte_carlo_run_number), &
-                 metal_to_h_ratio(monte_carlo_run_number),helium_fraction_param(monte_carlo_run_number),diffusion_factor(monte_carlo_run_number),luminosity_target(monte_carlo_run_number),age_target(monte_carlo_run_number)
+            write(neutrino_unit,1520)monte_carlo_run_number,run_diag%s11_rate(monte_carlo_run_number),run_diag%s33_rate(monte_carlo_run_number),run_diag%s34_rate(monte_carlo_run_number),run_diag%s17_rate(monte_carlo_run_number), &
+                 run_diag%metal_to_h_ratio(monte_carlo_run_number),run_diag%helium_fraction_param(monte_carlo_run_number),run_diag%diffusion_factor(monte_carlo_run_number),run_diag%luminosity_target(monte_carlo_run_number),run_diag%age_target(monte_carlo_run_number)
          endif
  1520    format(I7,1P9E10.3)
 ! NUMERICAL DATA : #OF RUNS NEEDED FOR A CONVERGED MODEL, INITIAL X
 ! AND ALPHA, FINAL DL/DX,DR/DX,DL/D ALPHA, DR/D ALPHA
-         write(neutrino_unit,1518)convergence_iterations,initial_x_guess,initial_alpha_guess,dlum_dx,drad_dx,dlum_dalpha,drad_dalpha
+         write(neutrino_unit,1518)convergence_iterations,initial_x_guess,initial_alpha_guess,run_diag%dlum_dx,run_diag%drad_dx,run_diag%dlum_dalpha,run_diag%drad_dalpha
  1518    format(1X,I2,2F10.6,1P4E11.4)
 ! NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
          write(neutrino_unit, 1516) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10)
  1516    format(1X,2F8.3,1P10E10.3)
 ! SUMMARY OF STRUCTURE : TC, RHOC, PC, XC, ZC (ADD MU C)
-         central_temperature_mk = 10.0D0**(central_log10_temperature-6.0D0)
-         central_pressure_scaled = 10.0D0**(central_log10_pressure-17.0D0)
-         central_density_linear = 10.0D0**central_log10_density
+         central_temperature_mk = 10.0D0**(run_diag%central_log10_temperature-6.0D0)
+         central_pressure_scaled = 10.0D0**(run_diag%central_log10_pressure-17.0D0)
+         central_density_linear = 10.0D0**run_diag%central_log10_density
          write(neutrino_unit, 1517)central_temperature_mk,central_density_linear,central_pressure_scaled,composition(1,1),composition(3,1)
  1517    format(1X,F7.3,F7.2,F6.3,2F8.5)
 ! INITIAL ALPHA,Y,Z,ALPHA; FINAL R, L
@@ -1423,7 +1355,7 @@ program main
          write(neutrino_unit,1521)mixing_length_array(nk),initial_helium_fraction,initial_metal_fraction,log10_luminosity,log_r_rsun
  1521    format(F7.4,2F8.5,1P2E10.3)
 ! CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)
-         write(neutrino_unit,1522)envelope_radius,envelope_mass,composition(2,num_zones),composition(3,num_zones),surface_z_over_x
+         write(neutrino_unit,1522)run_diag%envelope_radius,run_diag%envelope_mass,composition(2,num_zones),composition(3,num_zones),surface_z_over_x
  1522    format(F8.5,F9.6,2F8.5,F9.6)
 ! ENERGY GENERATION FRACTIONS PP I,II,III,CNO,EGRAV
          write(neutrino_unit,1523)(luminosity_breakdown(j),j=1,4),luminosity_breakdown(7)
@@ -1433,7 +1365,7 @@ program main
 !      *           DDAGE,SMASS,TEFFL,BL,GL,LSHELL,JXBEG,JXMID,
 !      *           JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
 !      *           CFENV,FTRI,HSTOT,OMEGA,RLL,ICONV,NK,NN)  ! KC 2025-05-31
-            call wrtmonte(composition,log_density,luminosity_lsun,log_pressure,log_radius,log_mass,log_temperature,convective_flag,num_zones,dage, &
+            call wrtmonte(composition,log_density,luminosity_lsun,log_pressure,log_radius,log_mass,log_temperature,convective_flag,num_zones,run_diag%dage, &
                  timestep_yr,total_mass_msun,log_teff,log10_luminosity, &
                  core_cz_top_index,envelope_cz_bottom_index,luminosity_breakdown,trial_log_temperature,trial_log_luminosity,fit_point_pressure,fit_point_temperature,fit_point_radius, &
                  envelope_fit_coeffs,trial_sign_flag,log_total_mass,omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)

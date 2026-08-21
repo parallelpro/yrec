@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use run_diag_lib
       use atmstruct_lib
       use pulse_diag_lib
       use envstruct_lib
@@ -88,29 +89,12 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            atm_ion_fraction(3)
       common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
            atm_log10_density, atm_opacity, atm_ion_fraction
-! common/envprt/: all used/set here. Naming is local to this batch
-! (shared with qenv.f90's usage of this block).
-      double precision :: current_log10_pressure, current_log10_temperature, &
-           current_log10_radius, current_log10_mass, current_log10_density, &
-           current_opacity, current_beta, current_gradients(3), &
-           current_ion_fraction(3), current_velocity
-      common/envprt/current_log10_pressure, current_log10_temperature, &
-           current_log10_radius, current_log10_mass, current_log10_density, &
-           current_opacity, current_beta, current_gradients, &
-           current_ion_fraction, current_velocity
 ! DBG 7/95 To store variables for pulse output
 ! common/pualpha/: alfmlt/phmlt/cmxmlt are used (read) here for the
 ! pulsation mixing-length diagnostic output. Naming matches tpgrad.f90.
       double precision :: alfmlt, phmlt, cmxmlt
       double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
       common/pualpha/alfmlt, phmlt, cmxmlt, valfmlt, vphmlt, vcmxmlt
-! JVS 08/13 IF THE CZ IS BEYOND THE FITTING POINT, STORE ITS LOCATION
-! common/envcz/: convection_zone_radius_placeholder (ENVRCZ) is
-! actually set here despite the inherited "_placeholder" name (from
-! wrtout.f90, where this block is unused); rint_placeholder is unused
-! in this file too. Naming matches wrtout.f90.
-      double precision :: convection_zone_radius_placeholder, rint_placeholder
-      common/envcz/convection_zone_radius_placeholder, rint_placeholder
 
       double precision :: ion_fraction(3)
       double precision :: taucal_delta_mass(json), taucal_shell_mass(json), &
@@ -609,50 +593,50 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
        local_gravity_linear = dexp(ln10*local_log10_gravity)
          chi_rho = 1.0d0/pulse_diag%qqdp
          chi_t = -chi_rho*pulse_diag%qqdt
-         specific_heat_cv = pulse_diag%qqcp - exp(ln10*(current_log10_pressure-current_log10_density- &
-              current_log10_temperature))*chi_t**2/chi_rho
+         specific_heat_cv = pulse_diag%qqcp - exp(ln10*(run_diag%current_log10_pressure-run_diag%current_log10_density- &
+              run_diag%current_log10_temperature))*chi_t**2/chi_rho
          gamma1 = chi_rho*pulse_diag%qqcp/specific_heat_cv
-       if(.not.lstch) write(istor,260)local_gravity_linear,current_log10_pressure, &
-            current_log10_temperature,depth_fraction,current_log10_mass, &
-              current_log10_density,current_opacity,current_beta,(current_gradients(i),i=1,3), &
-                   (current_ion_fraction(i),i=1,3),current_velocity, &
+       if(.not.lstch) write(istor,260)local_gravity_linear,run_diag%current_log10_pressure, &
+            run_diag%current_log10_temperature,depth_fraction,run_diag%current_log10_mass, &
+              run_diag%current_log10_density,run_diag%current_opacity,run_diag%current_beta,(run_diag%current_gradients(i),i=1,3), &
+                   (run_diag%current_ion_fraction(i),i=1,3),run_diag%current_velocity, &
               gamma1,pulse_diag%qqdp
       endif
 ! STORE STARTING VALUES OF THE INTEGRATION
 ! 07/02 INITIALIZE NUMBER OF STORED ENVELOPE POINTS TO 1
       cz_in_envelope = .false.
       taucz_env_accum = 0.0d0
-      env_struct%env_log10_density(1) = current_log10_density
-      env_struct%env_log10_pressure(1) = current_log10_pressure
-      env_struct%env_log10_radius(1) = current_log10_radius
-      env_struct%env_log10_mass(1) = current_log10_mass
-      env_struct%env_log10_temperature(1) = current_log10_temperature
+      env_struct%env_log10_density(1) = run_diag%current_log10_density
+      env_struct%env_log10_pressure(1) = run_diag%current_log10_pressure
+      env_struct%env_log10_radius(1) = run_diag%current_log10_radius
+      env_struct%env_log10_mass(1) = run_diag%current_log10_mass
+      env_struct%env_log10_temperature(1) = run_diag%current_log10_temperature
       env_struct%env_hydrogen_fraction(1) = hydrogen_fraction
       env_struct%env_metal_fraction(1) = metal_fraction
-      env_struct%env_convective_flag(1) = current_velocity.gt.0.0d0
+      env_struct%env_convective_flag(1) = run_diag%current_velocity.gt.0.0d0
 ! JVS 03/28
-      env_struct%env_gradients(1,1) = current_gradients(1)
-      env_struct%env_gradients(2,1) = current_gradients(2)
-      env_struct%env_gradients(3,1) = current_gradients(3)
-      env_struct%env_convective_velocity(1) = current_velocity
-      env_struct%env_beta(1) = current_beta
+      env_struct%env_gradients(1,1) = run_diag%current_gradients(1)
+      env_struct%env_gradients(2,1) = run_diag%current_gradients(2)
+      env_struct%env_gradients(3,1) = run_diag%current_gradients(3)
+      env_struct%env_convective_velocity(1) = run_diag%current_velocity
+      env_struct%env_beta(1) = run_diag%current_beta
 ! JVS end
 ! JVS 08/25
 ! Always save these
       chi_rho = 1.0d0/pulse_diag%qqdp
       chi_t = -chi_rho*pulse_diag%qqdt
-      specific_heat_cv = pulse_diag%qqcp - exp(ln10*(current_log10_pressure-current_log10_density- &
-           current_log10_temperature))*chi_t**2/chi_rho
+      specific_heat_cv = pulse_diag%qqcp - exp(ln10*(run_diag%current_log10_pressure-run_diag%current_log10_density- &
+           run_diag%current_log10_temperature))*chi_t**2/chi_rho
       env_struct%env_gamma1(1) = chi_rho*pulse_diag%qqcp/specific_heat_cv
       env_struct%env_specific_heat_cp(1) = pulse_diag%qqcp
-      env_struct%env_ion_fraction(1,1) = current_ion_fraction(1)
-      env_struct%env_ion_fraction(2,1) = current_ion_fraction(2)
-      env_struct%env_ion_fraction(3,1) = current_ion_fraction(3)
-      env_struct%env_opacity(1) = current_opacity
+      env_struct%env_ion_fraction(1,1) = run_diag%current_ion_fraction(1)
+      env_struct%env_ion_fraction(2,1) = run_diag%current_ion_fraction(2)
+      env_struct%env_ion_fraction(3,1) = run_diag%current_ion_fraction(3)
+      env_struct%env_opacity(1) = run_diag%current_opacity
       env_struct%env_luminosity(1) = luminosity_linear
       env_struct%env_dlnrho_dlnt(1) = pulse_diag%qqdt
 ! JVS 10/10
-      unused_chdelj = current_gradients(2)
+      unused_chdelj = run_diag%current_gradients(2)
       unused_chdeld = pulse_diag%qdela
       if(env_struct%env_convective_flag(1))cz_in_envelope = .true.
       env_struct%num_env_points = 1
@@ -734,13 +718,13 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
           local_gravity_linear = dexp(ln10*local_log10_gravity)
             chi_rho = 1.0d0/pulse_diag%qqdp
             chi_t = -chi_rho*pulse_diag%qqdt
-            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(current_log10_pressure-current_log10_density- &
-                 current_log10_temperature))*chi_t**2/chi_rho
+            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(run_diag%current_log10_pressure-run_diag%current_log10_density- &
+                 run_diag%current_log10_temperature))*chi_t**2/chi_rho
             gamma1 = chi_rho*pulse_diag%qqcp/specific_heat_cv
-          if(.not.lstch) write(istor,260)local_gravity_linear,current_log10_pressure, &
-               current_log10_temperature,depth_fraction,current_log10_mass, &
-                 current_log10_density,current_opacity,current_beta,(current_gradients(i),i=1,3), &
-                      (current_ion_fraction(i),i=1,3),current_velocity, &
+          if(.not.lstch) write(istor,260)local_gravity_linear,run_diag%current_log10_pressure, &
+               run_diag%current_log10_temperature,depth_fraction,run_diag%current_log10_mass, &
+                 run_diag%current_log10_density,run_diag%current_opacity,run_diag%current_beta,(run_diag%current_gradients(i),i=1,3), &
+                      (run_diag%current_ion_fraction(i),i=1,3),run_diag%current_velocity, &
                  gamma1,pulse_diag%qqdp
  260        format(1X,1PE10.3,0P2F10.7,1P2E14.7,0P1F10.7, &
                  1PE10.2,0PF7.3,1PE9.2,0P3F6.3,2F6.3,1PE9.2, &
@@ -757,32 +741,32 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
 ! HAS NOT OVERSHOT THE FITTING POINT.
          if(mass_diff_remaining.le.step_tolerance)then
             env_struct%num_env_points = env_struct%num_env_points + 1
-            env_struct%env_log10_density(env_struct%num_env_points) = current_log10_density
-            env_struct%env_log10_pressure(env_struct%num_env_points) = current_log10_pressure
-            env_struct%env_log10_radius(env_struct%num_env_points) = current_log10_radius
-            env_struct%env_log10_mass(env_struct%num_env_points) = current_log10_mass
-            env_struct%env_log10_temperature(env_struct%num_env_points) = current_log10_temperature
+            env_struct%env_log10_density(env_struct%num_env_points) = run_diag%current_log10_density
+            env_struct%env_log10_pressure(env_struct%num_env_points) = run_diag%current_log10_pressure
+            env_struct%env_log10_radius(env_struct%num_env_points) = run_diag%current_log10_radius
+            env_struct%env_log10_mass(env_struct%num_env_points) = run_diag%current_log10_mass
+            env_struct%env_log10_temperature(env_struct%num_env_points) = run_diag%current_log10_temperature
             env_struct%env_hydrogen_fraction(env_struct%num_env_points) = hydrogen_fraction
             env_struct%env_metal_fraction(env_struct%num_env_points) = metal_fraction
-            env_struct%env_convective_flag(env_struct%num_env_points) = current_velocity.gt.0.0d0
+            env_struct%env_convective_flag(env_struct%num_env_points) = run_diag%current_velocity.gt.0.0d0
 ! JVS 08/13 ADD RUN FOR CZ CALCULATION
-            env_struct%env_gradients(1,env_struct%num_env_points) = current_gradients(1)
-            env_struct%env_gradients(2,env_struct%num_env_points) = current_gradients(2)
-            env_struct%env_gradients(3,env_struct%num_env_points) = current_gradients(3)
-            env_struct%env_convective_velocity(env_struct%num_env_points) = current_velocity
-            env_struct%env_beta(env_struct%num_env_points) = current_beta
+            env_struct%env_gradients(1,env_struct%num_env_points) = run_diag%current_gradients(1)
+            env_struct%env_gradients(2,env_struct%num_env_points) = run_diag%current_gradients(2)
+            env_struct%env_gradients(3,env_struct%num_env_points) = run_diag%current_gradients(3)
+            env_struct%env_convective_velocity(env_struct%num_env_points) = run_diag%current_velocity
+            env_struct%env_beta(env_struct%num_env_points) = run_diag%current_beta
 ! JVS 08/25
 ! Always save these
             chi_rho = 1.0d0/pulse_diag%qqdp
             chi_t = -chi_rho*pulse_diag%qqdt
-            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(current_log10_pressure-current_log10_density- &
-                 current_log10_temperature))*chi_t**2/chi_rho
+            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(run_diag%current_log10_pressure-run_diag%current_log10_density- &
+                 run_diag%current_log10_temperature))*chi_t**2/chi_rho
             env_struct%env_gamma1(env_struct%num_env_points) = chi_rho*pulse_diag%qqcp/specific_heat_cv
             env_struct%env_specific_heat_cp(env_struct%num_env_points) = pulse_diag%qqcp
-            env_struct%env_ion_fraction(1,env_struct%num_env_points) = current_ion_fraction(1)
-            env_struct%env_ion_fraction(2,env_struct%num_env_points) = current_ion_fraction(2)
-            env_struct%env_ion_fraction(3,env_struct%num_env_points) = current_ion_fraction(3)
-            env_struct%env_opacity(env_struct%num_env_points) = current_opacity
+            env_struct%env_ion_fraction(1,env_struct%num_env_points) = run_diag%current_ion_fraction(1)
+            env_struct%env_ion_fraction(2,env_struct%num_env_points) = run_diag%current_ion_fraction(2)
+            env_struct%env_ion_fraction(3,env_struct%num_env_points) = run_diag%current_ion_fraction(3)
+            env_struct%env_opacity(env_struct%num_env_points) = run_diag%current_opacity
             env_struct%env_luminosity(env_struct%num_env_points) = luminosity_linear
             env_struct%env_dlnrho_dlnt(env_struct%num_env_points) = pulse_diag%qqdt
 
@@ -790,10 +774,10 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
                if(env_struct%env_convective_flag(env_struct%num_env_points))then
                   cz_in_envelope = .true.
                endif
-            else if(current_velocity.gt.0.0d0)then
+            else if(run_diag%current_velocity.gt.0.0d0)then
                delta_radius_cz = 10.0d0**env_struct%env_log10_radius(env_struct%num_env_points-1) - &
                     10.0d0**env_struct%env_log10_radius(env_struct%num_env_points)
-               taucz_env_accum = taucz_env_accum + delta_radius_cz/current_velocity
+               taucz_env_accum = taucz_env_accum + delta_radius_cz/run_diag%current_velocity
             endif
          endif
        if(dabs(mass_diff_remaining).le.step_tolerance)then
@@ -943,7 +927,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
 
             log10_cz_radius = env_struct%env_log10_radius(cz_start_index-1)+interp_fraction* &
                  (env_struct%env_log10_radius(cz_start_index)-env_struct%env_log10_radius(cz_start_index-1))-log10_solar_radius
-            convection_zone_radius_placeholder = exp(ln10*log10_cz_radius)
+            run_diag%convection_zone_radius_placeholder = exp(ln10*log10_cz_radius)
 
             do i=1,env_struct%num_env_points
                   taucal_shell_mass(i) = dexp(ln10*(env_struct%env_log10_mass(i)+log10_star_mass))

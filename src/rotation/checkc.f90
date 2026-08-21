@@ -34,6 +34,7 @@
 subroutine checkc(composition, iteration_number, print_flag, num_zones, &
      dt, cut_count, converged_flag, redo_flag)
 
+      use run_diag_lib
       use const_lib
       use envelope_comp_lib
       use mdphy_lib
@@ -52,11 +53,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       logical, intent(out) :: redo_flag
 
 
-! common/comp2/: envelope_helium_fraction/envelope_he3_fraction
-! (originally YENV/Y3ENV), both used here. Not referenced in any
-! already-converted file.
-      double precision :: envelope_helium_fraction, envelope_he3_fraction
-      common/comp2/ envelope_helium_fraction, envelope_he3_fraction
 
 
 
@@ -179,11 +175,11 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
             delta_hydrogen = composition(1,zone_index)- &
                  env_comp%envelope_hydrogen_fraction
             delta_helium = composition(2,zone_index)- &
-                 envelope_helium_fraction
+                 run_diag%envelope_helium_fraction
             delta_metal = composition(3,zone_index)- &
                  env_comp%envelope_metal_fraction
             delta_helium3 = composition(4,zone_index)- &
-                 envelope_he3_fraction
+                 run_diag%envelope_he3_fraction
             amu_calc_temp = env_comp%amuenv + delta_hydrogen/atomic_weight(1) + &
                  delta_helium/atomic_weight(2) + &
                  delta_metal/atomic_weight(3) + &

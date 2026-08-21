@@ -28,6 +28,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      env_call_count, saha_state)
 
+      use run_diag_lib
       use pulse_diag_lib
       use envelope_comp_lib
       use const_lib
@@ -46,16 +47,6 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       integer, intent(inout) :: env_call_count, saha_state
 
       double precision :: ion_fraction(3)
-! common/envprt/: all used/set here. Naming is local to this batch
-! (shared with envint.f90's usage of this block).
-      double precision :: current_log10_pressure, current_log10_temperature, &
-           current_log10_radius, current_log10_mass, current_log10_density, &
-           current_opacity, current_beta, current_gradients(3), &
-           current_ion_fraction(3), current_velocity
-      common/envprt/current_log10_pressure, current_log10_temperature, &
-           current_log10_radius, current_log10_mass, current_log10_density, &
-           current_opacity, current_beta, current_gradients, &
-           current_ion_fraction, current_velocity
 
       save
 
@@ -120,30 +111,30 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
            log10_density))*pressure_rotation_factor
       env_call_count = env_call_count + 1
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
-      current_log10_pressure = log10_pressure
-      current_log10_temperature = log10_temperature
-      current_log10_mass = log10_mass - env_comp%stotal
-      current_log10_radius = log10_radius
-      current_log10_density = log10_density
-      current_velocity = convective_velocity
+      run_diag%current_log10_pressure = log10_pressure
+      run_diag%current_log10_temperature = log10_temperature
+      run_diag%current_log10_mass = log10_mass - env_comp%stotal
+      run_diag%current_log10_radius = log10_radius
+      run_diag%current_log10_density = log10_density
+      run_diag%current_velocity = convective_velocity
 ! JVS 08/13 ALWAYS STORE GRADIENTS (FOR TRACKING CZ)
-       current_gradients(1) = radiative_gradient
-       current_gradients(2) = adiabatic_gradient
-       current_gradients(3) = actual_gradient
-       current_beta = beta ! added 03/14
+       run_diag%current_gradients(1) = radiative_gradient
+       run_diag%current_gradients(2) = adiabatic_gradient
+       run_diag%current_gradients(3) = actual_gradient
+       run_diag%current_beta = beta ! added 03/14
 ! JVS 08/25 ALSO ALWAYS SAVE ADDITIONAL INFO FOR PROFILE
-      current_ion_fraction(1) = ion_fraction(1)
-      current_ion_fraction(2) = ion_fraction(2)
-      current_ion_fraction(3) = ion_fraction(3)
+      run_diag%current_ion_fraction(1) = ion_fraction(1)
+      run_diag%current_ion_fraction(2) = ion_fraction(2)
+      run_diag%current_ion_fraction(3) = ion_fraction(3)
       pulse_diag%qqdp = dlnrho_dlnp
       pulse_diag%qqdt = dlnrho_dlnt
       pulse_diag%qqcp = specific_heat_cp
 
       if(print_flag .or. pulse_diag%lpumod) then
-       current_opacity = opacity
-       current_ion_fraction(1) = ion_fraction(1)
-       current_ion_fraction(2) = ion_fraction(2)
-       current_ion_fraction(3) = ion_fraction(3)
+       run_diag%current_opacity = opacity
+       run_diag%current_ion_fraction(1) = ion_fraction(1)
+       run_diag%current_ion_fraction(2) = ion_fraction(2)
+       run_diag%current_ion_fraction(3) = ion_fraction(3)
        pulse_diag%qtl = log10_temperature
        pulse_diag%qt = dexp(ln10*log10_temperature)
        pulse_diag%qpl = log10_pressure

@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use run_diag_lib
       use temp_lib
       use envelope_comp_lib
       use light_burn_lib
@@ -96,13 +97,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 
 
 
-! common/oldrot/: previous-timestep rotation-state snapshot, all used
-! here. Naming is local to this batch (matches midmod.f90).
-      double precision :: old_omega(json), old_specific_angular_momentum(json), &
-           old_moment_of_inertia(json), old_hg(json), old_mean_radius(json), &
-           old_eta_squared(json)
-      common/oldrot/ old_omega, old_specific_angular_momentum, &
-           old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
 ! common/oldphy/: previous-timestep auxiliary physics quantities,
 ! stored here for use by the diffusion/mixing routines at the start of
@@ -133,15 +127,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 
 
 
-! 7/91 entropy term common block added.
-! common/entrop/: entropy-correction terms for T/P/L/R, all used here
-! (interpolated onto the new mesh like the other physical variables).
-! Not referenced in any already-converted file.
-      double precision :: temperature_entropy_term(json), &
-           pressure_entropy_term(json), luminosity_entropy_term(json), &
-           radius_entropy_term(json)
-      common/entrop/ temperature_entropy_term, pressure_entropy_term, &
-           luminosity_entropy_term, radius_entropy_term
 
 
       integer :: reaction_rate_species_index(7)
@@ -671,40 +656,40 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 !  DO EACH COMPOSITION IN ORDER USING HPO AND HTO AS DUMMY ARRAYS.
 ! 7/91 ADD ENTROPY TERM INTERPOLATION.
       do 904 j = 1,num_zones
-         prev_model%old_pressure(j) = temperature_entropy_term(j)
+         prev_model%old_pressure(j) = run_diag%temperature_entropy_term(j)
   904 continue
       call osplin(prev_model%old_shell_mass,prev_model%old_temperature,log_mass,prev_model%old_pressure, &
            old_point_count,new_point_count)
       do 905 j = 1,new_num_zones
-         temperature_entropy_term(j) = prev_model%old_temperature(j)
+         run_diag%temperature_entropy_term(j) = prev_model%old_temperature(j)
   905 continue
 
 !
 
 
       do 906 j = 1,num_zones
-         prev_model%old_pressure(j) = pressure_entropy_term(j)
+         prev_model%old_pressure(j) = run_diag%pressure_entropy_term(j)
   906 continue
       call osplin(prev_model%old_shell_mass,prev_model%old_temperature,log_mass,prev_model%old_pressure, &
            old_point_count,new_point_count)
       do 907 j = 1,new_num_zones
-         pressure_entropy_term(j) = prev_model%old_temperature(j)
+         run_diag%pressure_entropy_term(j) = prev_model%old_temperature(j)
   907 continue
       do 911 j = 1,num_zones
-         prev_model%old_pressure(j) = luminosity_entropy_term(j)
+         prev_model%old_pressure(j) = run_diag%luminosity_entropy_term(j)
   911 continue
       call osplin(prev_model%old_shell_mass,prev_model%old_temperature,log_mass,prev_model%old_pressure, &
            old_point_count,new_point_count)
       do 912 j = 1,new_num_zones
-         luminosity_entropy_term(j) = prev_model%old_temperature(j)
+         run_diag%luminosity_entropy_term(j) = prev_model%old_temperature(j)
   912 continue
       do 913 j = 1,num_zones
-         prev_model%old_pressure(j) = radius_entropy_term(j)
+         prev_model%old_pressure(j) = run_diag%radius_entropy_term(j)
   913 continue
       call osplin(prev_model%old_shell_mass,prev_model%old_temperature,log_mass,prev_model%old_pressure, &
            old_point_count,new_point_count)
       do 914 j = 1,new_num_zones
-         radius_entropy_term(j) = prev_model%old_temperature(j)
+         run_diag%radius_entropy_term(j) = prev_model%old_temperature(j)
   914 continue
 
 
@@ -772,17 +757,17 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 
 ! FOR ROTATING MODELS FIND THE NEW RUN OF OMEGA,J/M,FP,FT,R0,AND ETA2.
       if (rotation_active) then
-         call osplin(prev_model%old_shell_mass,old_omega,log_mass,omega, &
+         call osplin(prev_model%old_shell_mass,run_diag%old_omega,log_mass,omega, &
               old_point_count,new_point_count)
-         call osplin(prev_model%old_shell_mass,old_specific_angular_momentum,log_mass, &
+         call osplin(prev_model%old_shell_mass,run_diag%old_specific_angular_momentum,log_mass, &
               specific_angular_momentum,old_point_count,new_point_count)
          call osplin(prev_model%old_shell_mass,fp_old,log_mass,fp, &
               old_point_count,new_point_count)
          call osplin(prev_model%old_shell_mass,ft_old,log_mass,ft, &
               old_point_count,new_point_count)
-         call osplin(prev_model%old_shell_mass,old_mean_radius,log_mass,mean_radius, &
+         call osplin(prev_model%old_shell_mass,run_diag%old_mean_radius,log_mass,mean_radius, &
               old_point_count,new_point_count)
-         call osplin(prev_model%old_shell_mass,old_eta_squared,log_mass,eta_squared, &
+         call osplin(prev_model%old_shell_mass,run_diag%old_eta_squared,log_mass,eta_squared, &
               old_point_count,new_point_count)
       endif
 !
@@ -832,12 +817,12 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
  1000 continue
       if (rotation_active) then
        do 1005 j = 1, new_num_zones
-          specific_angular_momentum(j) = old_specific_angular_momentum(j)
-          omega(j) = old_omega(j)
+          specific_angular_momentum(j) = run_diag%old_specific_angular_momentum(j)
+          omega(j) = run_diag%old_omega(j)
           fp(j) = fp_old(j)
           ft(j) = ft_old(j)
-          eta_squared(j) = old_eta_squared(j)
-          mean_radius(j) = old_mean_radius(j)
+          eta_squared(j) = run_diag%old_eta_squared(j)
+          mean_radius(j) = run_diag%old_mean_radius(j)
  1005    continue
       endif
 ! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
@@ -917,15 +902,15 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
        total_rotational_ke = sum_rotational_ke
 !  STORE THE OLD MODEL STRUCTURE FOR USE IN DIFFUSION.
        do 1130 i = 1,num_zones
-          old_omega(i) = omega(i)
-          old_hg(i) = hg(i)
-          old_moment_of_inertia(i) = moment_of_inertia(i)
-          old_eta_squared(i) = eta_squared(i)
-          old_mean_radius(i) = mean_radius(i)
+          run_diag%old_omega(i) = omega(i)
+          run_diag%old_hg(i) = hg(i)
+          run_diag%old_moment_of_inertia(i) = moment_of_inertia(i)
+          run_diag%old_eta_squared(i) = eta_squared(i)
+          run_diag%old_mean_radius(i) = mean_radius(i)
           prev_model%old_convective_flag(i) = convective_flag(i)
           prev_model%old_cz_flag(i) = am_transport_convective_flag(i)
 ! MHP 10/91 J/M STORED IN HJX FOR I/O USE.
-            old_specific_angular_momentum(i) = specific_angular_momentum(i)
+            run_diag%old_specific_angular_momentum(i) = specific_angular_momentum(i)
  1130    continue
 ! MHP 9/91 CHANGE : T GRADIENTS STORED IF LEXCOM=T AND LOVSTE=T; OR FOR
 ! ROTATION; THIS IS NEEDED SO THAT THE BASE OF THE OVERSHOOT REGION FOR

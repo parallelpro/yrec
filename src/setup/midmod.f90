@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use run_diag_lib
       use temp_lib
       use mdphy_lib
       use light_burn_lib
@@ -94,12 +95,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 
 
 
-! common/oldrot/: not used in this file. Naming matches hpoint.f90.
-      double precision :: old_omega(json), old_specific_angular_momentum(json), &
-           old_moment_of_inertia(json), old_hg(json), old_mean_radius(json), &
-           old_eta_squared(json)
-      common/oldrot/ old_omega, old_specific_angular_momentum, &
-           old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
 ! common/oldphy/: previous-timestep auxiliary physics quantities, all
 ! used here. Naming matches hpoint.f90.
@@ -213,7 +208,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 !           HCOMP(I,J)=HCOMP(I,J)+FAC2*HCOMPM(I,J)
 !           HCOMPP(I,J) = HCOMP(I,J)
 !  30    CONTINUE
-         hg_mid(j) = old_hg(j) + time_fraction*(hg(j) - old_hg(j))
+         hg_mid(j) = run_diag%old_hg(j) + time_fraction*(hg(j) - run_diag%old_hg(j))
          mix_phys%del_adiabatic_mix(j) = old_del_adiabatic_mix(j) + &
               time_fraction*(shell_diag%del_grad(3,j)-old_del_adiabatic_mix(j))
          mix_phys%delm(j) = old_delm(j) + time_fraction*(shell_diag%del_grad(2,j) - old_delm(j))

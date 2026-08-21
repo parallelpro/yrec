@@ -50,6 +50,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use run_diag_lib
       use pulse_diag_lib
       use fluxes_lib
       use engeb_diag_lib
@@ -88,10 +89,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       double precision :: alfmlt, phmlt, cmxmlt
       double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
       common/pualpha/alfmlt,phmlt,cmxmlt,valfmlt,vphmlt,vcmxmlt
-! MHP 7/96 COMMON BLOCK ADDED FOR SOUND SPEED
-      double precision :: adiabatic_index_gamma1(json)
-      logical :: sound_speed_output_active
-      common/sound/adiabatic_index_gamma1,sound_speed_output_active
       double precision :: rotational_energy_term(json)
       common/roten/rotational_energy_term
 ! MHP 06/02 COMMON BLOCK ADDED FOR DERIVATIVES OF
@@ -534,7 +531,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             chi_t = -chi_rho*dlnrho_dlnt
             specific_heat_cv = specific_heat_cp - exp(ln10*(log_pressure(im)- &
                  log10_density(im)-log_temperature(im)))*chi_t**2/chi_rho
-            adiabatic_index_gamma1(im) = chi_rho*specific_heat_cp/ &
+            run_diag%adiabatic_index_gamma1(im) = chi_rho*specific_heat_cp/ &
                  specific_heat_cv
             pulse_diag%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
             pulse_diag%pulse_dlnrho_dlnt(im) = dlnrho_dlnt

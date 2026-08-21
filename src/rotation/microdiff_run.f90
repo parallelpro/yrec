@@ -26,6 +26,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      eq_del_grad_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col)
 
+      use run_diag_lib
       use luout_lib
       use const_lib
       use numerics_lib
@@ -51,9 +52,6 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       integer, intent(in) :: species_col
 
 
-! common/theage/: not used in this file. Naming matches mix.f90.
-      double precision :: dage
-      common/theage/ dage
 
 
 

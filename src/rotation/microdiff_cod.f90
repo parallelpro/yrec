@@ -28,6 +28,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col)
 
+      use run_diag_lib
       use scrtch_lib
       use const_lib
       implicit none
@@ -47,9 +48,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
 
 
 
-! common/theage/: not used in this file. Naming matches mix.f90.
-      double precision :: dage
-      common/theage/ dage
 
       double precision :: atomic_weight(4), atomic_charge(4), mass_frac(4), &
            coulomb_log(4,4), pressure_coeff(4), temp_coeff(4), &

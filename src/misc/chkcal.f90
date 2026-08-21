@@ -12,11 +12,12 @@
 ! solar values) and, if not, applies a fixed 2x2 Newton correction to
 ! the envelope hydrogen fraction (X) and mixing-length alpha using
 ! pre-determined empirical partial derivatives of log L and log R with
-! respect to X and alpha (dlum_dx/drad_dx/dlum_dalpha/drad_dalpha).
+! respect to X and alpha (run_diag%dlum_dx/run_diag%drad_dx/run_diag%dlum_dalpha/run_diag%drad_dalpha).
 ! ONLY CALLED FOR EVEN NK, ASSUMES RESCALING ON ODD NK AND EVOLVING
 ! ON EVEN NK
 subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
+      use run_diag_lib
       use const_lib
       use luout_lib
       implicit none
@@ -29,15 +30,6 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 !      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
 
 
-! common/calsun/: dlum_dx/drad_dx/dlum_dalpha/drad_dalpha/log_l_prev/
-! log_r_prev/delta_x/delta_alpha/solar_calibration_active, all used
-! here. Naming matches wrtmonte.f90.
-      double precision :: dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
-           log_l_prev, log_r_prev, delta_x, delta_alpha
-      logical :: solar_calibration_active
-      common/calsun/ dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
-           log_l_prev, log_r_prev, delta_x, delta_alpha, &
-           solar_calibration_active
 
 !      COMMON/CALS2/TOLL,TOLR,LCALS
 
@@ -59,21 +51,21 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
          if(calibrate_solar_zx .and.target_solar_zx.gt.0.0d0)then
             log_zx_mismatch = log10(current_zx)-log10(target_solar_zx)
             if(abs(log_zx_mismatch).lt.zx_tolerance)then
-               solar_calibration_active = .true.
+               run_diag%solar_calibration_active = .true.
                goto 9999
             endif
          else
 ! CALIBRATED SOLAR MODEL.  SET UP OUTPUT FLAGS AND EXIT
-            solar_calibration_active = .true.
+            run_diag%solar_calibration_active = .true.
             goto 9999
          endif
       endif
 
 ! Added code to use pre-determined partial derivatives    LLP  6/28/09
-      dlum_dx = -3.78d0            ! empirical result:  -3.783    RMS error .070
-      drad_dx = -0.89d0             ! empirical result:  -0.890    RMS error .048
-      dlum_dalpha = 0.0139d0            ! empirical result:  +0.139    RMS error .0022
-      drad_dalpha = -0.050d0            ! empirical result:  -0.0504   RMS error .0059
+      run_diag%dlum_dx = -3.78d0            ! empirical result:  -3.783    RMS error .070
+      run_diag%drad_dx = -0.89d0             ! empirical result:  -0.890    RMS error .048
+      run_diag%dlum_dalpha = 0.0139d0            ! empirical result:  +0.139    RMS error .0022
+      run_diag%drad_dalpha = -0.050d0            ! empirical result:  -0.0504   RMS error .0059
       goto 1234            ! Bypass partial derivative code
 ! mhp 5/96 added change to compute solar calibration for 3 kind cards
       if(run_index.eq.3)then
@@ -82,13 +74,13 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 !     3.7 is empirical average dL/dX, so trial DX is BL / (dL/dX)   ! llp 6/18/09
 !         DX = BL/3.7D0
 !         DX = +.01
-         rescale_params(2,run_index+1) = rescale_params(2,1)+delta_x
+         rescale_params(2,run_index+1) = rescale_params(2,1)+run_diag%delta_x
 ! STORE PREVIOUS L AND R.
          initial_x_array(run_index+1) = rescale_params(2,run_index+1)
          initial_x_array(run_index+2)=initial_x_array(run_index+1)
          initial_x_array(run_index+3)=initial_x_array(run_index+1)
-         log_l_prev = log_l_lsun
-         log_r_prev = log_r_rsun
+         run_diag%log_l_prev = log_l_lsun
+         run_diag%log_r_prev = log_r_rsun
          goto 9999
       else if(run_index.eq.6)then
 !     EVALUATE DERIVATIVE OF L AND R WITH RESPECT TO X.
@@ -100,42 +92,42 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
 !     .042 is typical average dR/dA, so trial DA is RL / (dR/dA)   ! llp 6/18/09
 !         DA = RL/0.042D0
-         mixing_length_array(run_index+1) = mixing_length_array(1)+delta_alpha
+         mixing_length_array(run_index+1) = mixing_length_array(1)+run_diag%delta_alpha
          mixing_length_array(run_index+2) = mixing_length_array(run_index+1)
          mixing_length_array(run_index+3) = mixing_length_array(run_index+1)
          rescale_params(2,run_index+1) = rescale_params(2,1)
          initial_x_array(run_index+1)=initial_x_array(1)
          initial_x_array(run_index+2)=initial_x_array(run_index+1)
          initial_x_array(run_index+3)=initial_x_array(run_index+1)
-         log_l_prev = log_l_lsun
-         log_r_prev = log_r_rsun
+         run_diag%log_l_prev = log_l_lsun
+         run_diag%log_r_prev = log_r_rsun
          goto 9999
       else if(run_index.eq.9)then
 !     EVALUATE DERIVATIVE OF L AND R WITH RESPECT TO ALPHA.
-         dlum_dalpha = (log_l_lsun - log_l_prev)/delta_alpha
-         drad_dalpha = (log_r_rsun - log_r_prev)/delta_alpha
+         run_diag%dlum_dalpha = (log_l_lsun - run_diag%log_l_prev)/run_diag%delta_alpha
+         run_diag%drad_dalpha = (log_r_rsun - run_diag%log_r_prev)/run_diag%delta_alpha
          write(iowr,*) "DA,DLDA,BL,BLP,DRDA,RL,RLP: ", &
-             delta_alpha,dlum_dalpha,log_l_lsun,log_l_prev,drad_dalpha, &
-             log_r_rsun,log_r_prev
+             run_diag%delta_alpha,run_diag%dlum_dalpha,log_l_lsun,run_diag%log_l_prev,run_diag%drad_dalpha, &
+             log_r_rsun,run_diag%log_r_prev
 !     USE DERIVATIVES OF L AND R WITH RESPECT TO X AND ALPHA TO
 !     GET IMPROVED GUESSES FOR ALPHA AND X.
-         delta_alpha = ((log_l_lsun*drad_dx/dlum_dx-log_r_rsun)/ &
-              (drad_dalpha-dlum_dalpha*drad_dx/dlum_dx))
-         delta_x = -(log_l_lsun + dlum_dalpha*delta_alpha)/dlum_dx
-         mixing_length_array(run_index+1) = mixing_length_array(1)+delta_alpha
+         run_diag%delta_alpha = ((log_l_lsun*run_diag%drad_dx/run_diag%dlum_dx-log_r_rsun)/ &
+              (run_diag%drad_dalpha-run_diag%dlum_dalpha*run_diag%drad_dx/run_diag%dlum_dx))
+         run_diag%delta_x = -(log_l_lsun + run_diag%dlum_dalpha*run_diag%delta_alpha)/run_diag%dlum_dx
+         mixing_length_array(run_index+1) = mixing_length_array(1)+run_diag%delta_alpha
          mixing_length_array(run_index+2) = mixing_length_array(run_index+1)
          mixing_length_array(run_index+3) = mixing_length_array(run_index+1)
-         rescale_params(2,run_index+1) = rescale_params(2,1)+delta_x
+         rescale_params(2,run_index+1) = rescale_params(2,1)+run_diag%delta_x
          initial_x_array(run_index+1) = rescale_params(2,run_index+1)
          initial_x_array(run_index+2) = rescale_params(2,run_index+1)
          initial_x_array(run_index+3) = rescale_params(2,run_index+1)
-         log_l_prev = log_l_lsun
-         log_r_prev = log_r_rsun
+         run_diag%log_l_prev = log_l_lsun
+         run_diag%log_r_prev = log_r_rsun
          write(iowr,*) "New X, Old X, Calc DX: ", &
-             rescale_params(2,run_index+1), rescale_params(2,1), delta_x
+             rescale_params(2,run_index+1), rescale_params(2,1), run_diag%delta_x
          write(iowr,*) "New A, Old A, Calc DA: ", &
              mixing_length_array(run_index+1), mixing_length_array(1), &
-             delta_alpha
+             run_diag%delta_alpha
          goto 9999
 !      ELSE
       endif   ! terrminate old partial derivative code
@@ -143,11 +135,11 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
  1234 continue
 !     USE DERIVATIVES OF L AND R WITH RESPECT TO X AND ALPHA TO
 !     GET IMPROVED GUESSES FOR ALPHA AND X.
-         delta_alpha = ((log_l_lsun*drad_dx/dlum_dx-log_r_rsun)/ &
-              (drad_dalpha-dlum_dalpha*drad_dx/dlum_dx))
-         delta_x = -(log_l_lsun + dlum_dalpha*delta_alpha)/dlum_dx
+         run_diag%delta_alpha = ((log_l_lsun*run_diag%drad_dx/run_diag%dlum_dx-log_r_rsun)/ &
+              (run_diag%drad_dalpha-run_diag%dlum_dalpha*run_diag%drad_dx/run_diag%dlum_dx))
+         run_diag%delta_x = -(log_l_lsun + run_diag%dlum_dalpha*run_diag%delta_alpha)/run_diag%dlum_dx
          mixing_length_array(run_index+1) = &
-              mixing_length_array(run_index-2)+delta_alpha
+              mixing_length_array(run_index-2)+run_diag%delta_alpha
          mixing_length_array(run_index+2) = mixing_length_array(run_index+1)
          mixing_length_array(run_index+3) = mixing_length_array(run_index+1)
          if(calibrate_solar_zx)then
@@ -159,27 +151,27 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
             initial_z_array(run_index+2) = rescale_params(3,run_index+1)
             initial_z_array(run_index+3) = rescale_params(3,run_index+1)
          endif
-         rescale_params(2,run_index+1) = rescale_params(2,run_index-2)+delta_x
+         rescale_params(2,run_index+1) = rescale_params(2,run_index-2)+run_diag%delta_x
          initial_x_array(run_index+1) = rescale_params(2,run_index+1)
          initial_x_array(run_index+2) = rescale_params(2,run_index+1)
          initial_x_array(run_index+3) = rescale_params(2,run_index+1)
          write(iowr,*) "New BL, Old BL, Delta BL: ", &
-             log_l_lsun, log_l_prev, log_l_lsun-log_l_prev
+             log_l_lsun, run_diag%log_l_prev, log_l_lsun-run_diag%log_l_prev
          write(iowr,*) "New RL, Old RL, Delta RL: ", &
-             log_r_rsun, log_r_prev, log_r_rsun-log_r_prev
+             log_r_rsun, run_diag%log_r_prev, log_r_rsun-run_diag%log_r_prev
          write(iowr,*) "New X, Old X, DX: ", &
              rescale_params(2,run_index+1), rescale_params(2,run_index-2), &
-             delta_x
+             run_diag%delta_x
          write(iowr,*) "New A, Old A, DA: ", &
              mixing_length_array(run_index+1), &
-             mixing_length_array(run_index-2), delta_alpha
+             mixing_length_array(run_index-2), run_diag%delta_alpha
          if(calibrate_solar_zx)then
             write(iowr,*) "New Z, Old Z, DZ: ", &
              rescale_params(3,run_index+1), rescale_params(3,run_index-2), &
              delta_z
          endif
-         log_l_prev = log_l_lsun
-         log_r_prev = log_r_rsun
+         run_diag%log_l_prev = log_l_lsun
+         run_diag%log_r_prev = log_r_rsun
          log_zx_mismatch_prev = log_zx_mismatch
          goto 9999
 !      ENDIF

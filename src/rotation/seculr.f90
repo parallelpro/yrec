@@ -56,6 +56,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok)
 
+      use run_diag_lib
       use temp2_lib
       use oldmod_lib
       use luout_lib
@@ -126,11 +127,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 
 
 
-! common/rotprt/: not used in this file (LPRT is hardcoded .false.
-! below rather than computed from lprt0_placeholder). Naming matches
-! getw.f90/wrtout.f90.
-      logical :: lprt0_placeholder
-      common/rotprt/ lprt0_placeholder
 
 
 ! common/egrid/: only ntot is used here (as the equally-spaced point

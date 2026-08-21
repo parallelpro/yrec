@@ -30,6 +30,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
 
+      use run_diag_lib
       use temp2_lib
       use atmstruct_lib
       use pulse_diag_lib
@@ -78,11 +79,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       double precision :: rotational_energy_term(json)
       common/roten/ rotational_energy_term
 
-! common/sound/: adiabatic_index_gamma1 (GAM1), used here. Naming
-! matches calcad.f90/coefft.f90.
-      double precision :: adiabatic_index_gamma1(json)
-      logical :: sound_speed_output_active
-      common/sound/ adiabatic_index_gamma1, sound_speed_output_active
 
 
       save
@@ -118,7 +114,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
                  .false.,(composition(j,i),j=1,15)
 ! write out additional physics if desired
             write(istor,63,advance='no') shell_diag%so(i),sg,shell_diag%del_grad(1,i),shell_diag%del_grad(2,i), &
-                 shell_diag%del_grad(3,i),shell_diag%svel(i),adiabatic_index_gamma1(i), &
+                 shell_diag%del_grad(3,i),shell_diag%svel(i),run_diag%adiabatic_index_gamma1(i), &
                  shell_diag%sfxion(1,i),shell_diag%sfxion(2,i),shell_diag%sfxion(3,i), &
                  shell_diag%sbeta(i),shell_diag%seta(i),(shell_diag%seg(k,i),k=1,5),shell_diag%sesum(i),shell_diag%seg(6,i),shell_diag%seg(7,i), &
                  shell_diag%scp(i),pulse_diag%pulse_dlnrho_dlnt(i)

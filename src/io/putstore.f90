@@ -27,6 +27,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+      use run_diag_lib
       use temp2_lib
       use scrtch_lib
       use luout_lib
@@ -57,27 +58,14 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 !     CHARACTER*4 ATM, LOK, HIK, COMPMIX
 ! MHP 4/25 changed LOK name to make it unique, used elsewhere
       character(len=4) :: atmosphere_flag, low_temp_opacity_flag, &
-           high_temp_opacity_flag, initial_composition_code
+           high_temp_opacity_flag
 ! MHP 8/25 Removed unused variables
 !      CHARACTER*256 FLAOL, FPUREZ
 !      CHARACTER*256 FOPALE,FOPALE01,FOPALE06  ! FcondOpacP
+! former common/i2o/: initial_composition_code now use-associated from
+! run_diag_lib.
 
 
-
-
-
-
-! llp  3/19/03 Add COMMON block /I2O/ for info directly transferred from
-!      input to output model - starting with a code for th initial model
-!      compostion (COMPMIX)
-      common /i2o/ initial_composition_code
-
-
-! common/sound/: adiabatic_index_gamma1 is used here. Naming is local
-! to this batch.
-      double precision :: adiabatic_index_gamma1(json)
-      logical :: sound_speed_output_active
-      common/sound/ adiabatic_index_gamma1, sound_speed_output_active
 ! common/roten/: rotational_energy_term, used here. Naming is local to
 ! this batch.
       double precision :: rotational_energy_term(json)
@@ -175,7 +163,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
           ! write physics flags:
             write(istor,29) core_cz_top_index,envelope_cz_bottom_index,cmixl, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
-           use_pure_z_table,initial_composition_code,use_extended_composition, &
+           use_pure_z_table,run_diag%initial_composition_code,use_extended_composition, &
            diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
            envelope_overshoot_active,lovstm,rotation_active, &
            instability_transport_active,ljdot0,disk_locking_active, &
@@ -230,7 +218,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! write physics flags:
       write(istor,30) core_cz_top_index,envelope_cz_bottom_index,cmixl, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
-           use_pure_z_table,initial_composition_code,use_extended_composition, &
+           use_pure_z_table,run_diag%initial_composition_code,use_extended_composition, &
            diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
            envelope_overshoot_active,lovstm,rotation_active, &
            instability_transport_active,ljdot0,disk_locking_active, &
@@ -297,7 +285,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
             if(lstphys)then
              sg = dexp(ln10*(cgl - 2.0D0*log_radius(i)))*mass_coordinate(i)
                write(istor,63,advance='no') shell_diag%so(i),sg,shell_diag%del_grad(1,i),shell_diag%del_grad(2,i), &
-                 shell_diag%del_grad(3,i),shell_diag%svel(i),adiabatic_index_gamma1(i),0.0,0.0,0.0,shell_diag%sbeta(i),shell_diag%seta(i), &
+                 shell_diag%del_grad(3,i),shell_diag%svel(i),run_diag%adiabatic_index_gamma1(i),0.0,0.0,0.0,shell_diag%sbeta(i),shell_diag%seta(i), &
                  (shell_diag%seg(k,i),k=1,5),shell_diag%sesum(i),shell_diag%seg(6,i),shell_diag%seg(7,i)
 !               WRITE(ISTOR,63,ADVANCE='no') SO(I),SG,SDEL(1,I),SDEL(2,I),
 !     *           SDEL(3,I),SVEL(I),GAM1(I),SFXION(1,I),SFXION(2,I),SFXION(3,I),

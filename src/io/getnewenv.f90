@@ -18,6 +18,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag)
+      use run_diag_lib
       use envstruct_lib
       use envelope_comp_lib
       use const_lib
@@ -48,16 +49,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 
 
 
-! common/envprt/: not used in this file. Naming matches envint.f90/
-! qenv.f90.
-      double precision :: current_log10_pressure, current_log10_temperature, &
-           current_log10_radius, current_log10_mass, current_log10_density, &
-           current_opacity, current_beta, current_gradients(3), &
-           current_ion_fraction(3), current_velocity
-      common/envprt/ current_log10_pressure, current_log10_temperature, &
-           current_log10_radius, current_log10_mass, current_log10_density, &
-           current_opacity, current_beta, current_gradients, &
-           current_ion_fraction, current_velocity
 
 
 

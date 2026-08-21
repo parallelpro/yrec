@@ -72,6 +72,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
      already_converged_flag)
 
+      use run_diag_lib
       use temp2_lib
       use const_lib
       use luout_lib
@@ -111,14 +112,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       common/errmom/ moment_of_inertia_tolerance
 
 
-! common/oldrot/: old_omega (WOLD), used here to detect a genuine sign
-! change in the omega gradient vs. simply an existing negative
-! gradient. Naming matches hpoint.f90.
-      double precision :: old_omega(json), old_specific_angular_momentum(json), &
-           old_moment_of_inertia(json), old_hg(json), old_mean_radius(json), &
-           old_eta_squared(json)
-      common/oldrot/ old_omega, old_specific_angular_momentum, &
-           old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
 
 
@@ -250,7 +243,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  POSITIVE OMEGA GRADIENT ENCOUNTERED.
       if(omega(zone_index)-omega(zone_index-1).gt.1.0d0)then
 !  IF PREVIOUS GRADIENT WAS POSITIVE, LEAVE ALONE.
-         if(old_omega(zone_index)-old_omega(zone_index-1).gt.1.0d-15)then
+         if(run_diag%old_omega(zone_index)-run_diag%old_omega(zone_index-1).gt.1.0d-15)then
             zone_index = zone_bottom-1
             zone_bottom = zone_index
             if(zone_index.gt.1)then
@@ -288,7 +281,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  CHECK FOR GRADIENT REVERSALS BELOW ZONE IBOT.
          if(zone_bottom.gt.1) then
             if(omega(zone_bottom)-omega(zone_bottom-1).gt.1.0d-15)then
-               if(old_omega(zone_bottom)-old_omega(zone_bottom-1).lt.1.0d-15)then
+               if(run_diag%old_omega(zone_bottom)-run_diag%old_omega(zone_bottom-1).lt.1.0d-15)then
                   redo_flag = .true.
                   zone_bottom = zone_bottom - 1
                   if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
@@ -303,7 +296,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  CHECK FOR GRADIENT REVERSALS ABOVE ZONE ITOP.
          if(zone_top.lt.num_zones) then
             if(omega(zone_top+1)-omega(zone_top).gt.1.0d-15)then
-               if(old_omega(zone_top+1)-old_omega(zone_top).lt.1.0d-15)then
+               if(run_diag%old_omega(zone_top+1)-run_diag%old_omega(zone_top).lt.1.0d-15)then
                   redo_flag = .true.
                   zone_top = zone_top+1
                   if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then

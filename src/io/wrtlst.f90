@@ -27,6 +27,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 !     WRITE MODEL OUT IN ASCII FORMAT
       use const_lib
       use luout_lib
+      use run_diag_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts=63, nps=76
@@ -51,20 +52,12 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 !     CHARACTER*4 ATM, LOK, HIK, COMPMIX
 ! MHP 4/25 changed LOK name to make it unique, used elsewhere
       character(len=4) :: atmosphere_flag, low_temp_opacity_flag, &
-           high_temp_opacity_flag, initial_composition_code
+           high_temp_opacity_flag
 ! MHP 8/25 Removed unused variables
 !      CHARACTER*256 FLAOL, FPUREZ
 !      CHARACTER*256 FOPALE,FOPALE01,FOPALE06  ! FcondOpacP
-
-
-
-
-
-
-! llp  3/19/03 Add COMMON block /I2O/ for info directly transferred from
-!      input to output model - starting with a code for th initial model
-!      compostion (COMPMIX)
-      common /i2o/ initial_composition_code
+! former common/i2o/: initial_composition_code now use-associated from
+! run_diag_lib.
 
 
       save
@@ -135,7 +128,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
            diffuse_helium_active,use_diffusion_z,disk_locking_active, &
            instability_transport_active,ljdot0,low_temp_opacity_flag,lovstc, &
            envelope_overshoot_active,lovstm,use_pure_z_table,lsemic, &
-           initial_composition_code,disk_pressure,disk_temperature, &
+           run_diag%initial_composition_code,disk_pressure,disk_temperature, &
            wind_saturation_omega)
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons

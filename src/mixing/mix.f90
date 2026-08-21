@@ -34,6 +34,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
      num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
      mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff)
 
+      use run_diag_lib
       use envelope_comp_lib
       use light_burn_lib
       use oldmod_lib
@@ -84,10 +85,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 
 
 
-! common/theage/: not used in this file. Not referenced in any
-! already-converted file.
-      double precision :: dage
-      common/theage/ dage
 
 
 ! rate_pp..frac_be7_electron: per-zone reaction rates/branching

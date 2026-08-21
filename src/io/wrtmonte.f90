@@ -18,6 +18,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
      omega, local_log_radius, convergence_iterations, run_index, &
      monte_carlo_run_number)
 
+      use run_diag_lib
       use fluxes_lib
       use const_lib
       implicit none
@@ -45,32 +46,9 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
 
 
 
-! common/calsun/: dlum_dx/drad_dx/dlum_dalpha/drad_dalpha are used
-! here; log_l_prev/log_r_prev/delta_x/delta_alpha/solar_calibration_active
-! are unused placeholders. Naming is local to this batch.
-      double precision :: dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
-           log_l_prev, log_r_prev, delta_x, delta_alpha
-      logical :: solar_calibration_active
-      common/calsun/ dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, log_l_prev, &
-           log_r_prev, delta_x, delta_alpha, solar_calibration_active
 
 
-! common/monte2/: Monte Carlo nuclear S-factor and parameter grids for
-! the current run, indexed by monte_carlo_run_number. Naming is local
-! to this batch.
-      double precision :: s11_rate(1000), s33_rate(1000), s34_rate(1000), &
-           s17_rate(1000), metal_to_h_ratio(1000), helium_fraction_param(1000), &
-           diffusion_factor(1000), luminosity_target(1000), age_target(1000)
-      common/monte2/ s11_rate, s33_rate, s34_rate, s17_rate, metal_to_h_ratio, &
-           helium_fraction_param, diffusion_factor, luminosity_target, age_target
 
-! common/cent/: central_log10_temperature/central_log10_pressure/
-! central_log10_density/envelope_mass/envelope_radius, all used here.
-! Naming is local to this batch.
-      double precision :: central_log10_temperature, central_log10_pressure, &
-           central_log10_density, envelope_mass, envelope_radius
-      common/cent/ central_log10_temperature, central_log10_pressure, &
-           central_log10_density, envelope_mass, envelope_radius
 
 ! former common/iomonte/: only monte_carlo_unit1/monte_carlo_unit2 are
 ! used here; the file-path members (monte_carlo_file1_path/
@@ -95,17 +73,17 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
 !  SURFACE Z/X
       surface_z_over_x = hcomp(3,m)/hcomp(1,m)
 !  HEADER FILE:  MONTE CARLO PARAMETERS
-      write(monte_carlo_unit1,10)monte_carlo_run_number,s11_rate(monte_carlo_run_number), &
-              s33_rate(monte_carlo_run_number),s34_rate(monte_carlo_run_number), &
-              s17_rate(monte_carlo_run_number), &
-              metal_to_h_ratio(monte_carlo_run_number),helium_fraction_param(monte_carlo_run_number), &
-              diffusion_factor(monte_carlo_run_number),luminosity_target(monte_carlo_run_number), &
-              age_target(monte_carlo_run_number)
+      write(monte_carlo_unit1,10)monte_carlo_run_number,run_diag%s11_rate(monte_carlo_run_number), &
+              run_diag%s33_rate(monte_carlo_run_number),run_diag%s34_rate(monte_carlo_run_number), &
+              run_diag%s17_rate(monte_carlo_run_number), &
+              run_diag%metal_to_h_ratio(monte_carlo_run_number),run_diag%helium_fraction_param(monte_carlo_run_number), &
+              run_diag%diffusion_factor(monte_carlo_run_number),run_diag%luminosity_target(monte_carlo_run_number), &
+              run_diag%age_target(monte_carlo_run_number)
    10 format(I7,1P9E10.3)
 !  #OF RUNS NEEDED FOR A CONVERGED MODEL, INITIAL X
 !  AND ALPHA, FINAL DL/DX,DR/DX,DL/D ALPHA, DR/D ALPHA
-      write(monte_carlo_unit1,20)convergence_iterations,dlum_dx,drad_dx, &
-           dlum_dalpha,drad_dalpha
+      write(monte_carlo_unit1,20)convergence_iterations,run_diag%dlum_dx,run_diag%drad_dx, &
+           run_diag%dlum_dalpha,run_diag%drad_dalpha
 !      WRITE(IMONTE1,20)ICONV,XGUESS,AGUESS,DLDX,DRDX,DLDA,DRDA
 ! 20   FORMAT(1X,I2,2F10.6,1P4E11.4)
  20   format(1X,I2,1P4E11.4)
@@ -113,9 +91,9 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
       write(monte_carlo_unit1,30) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(j),j=1,8)
  30   format(1X,2F8.3,1P8E10.3)
 !  SUMMARY OF STRUCTURE : TC, RHOC, PC, XC, ZC (ADD MU C)
-      tcen = 10.0d0**(central_log10_temperature-6.0d0)
-      pcen = 10.0d0**(central_log10_pressure-17.0d0)
-      dcen = 10.0d0**central_log10_density
+      tcen = 10.0d0**(run_diag%central_log10_temperature-6.0d0)
+      pcen = 10.0d0**(run_diag%central_log10_pressure-17.0d0)
+      dcen = 10.0d0**run_diag%central_log10_density
       write(monte_carlo_unit1,40)tcen,dcen,pcen,hcomp(1,1),hcomp(3,1)
  40   format(1X,F7.3,F7.2,F6.3,2F8.5)
 !  #SHELLS, INITIAL ALPHA, Y, Z; FINAL R, L
@@ -125,7 +103,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
            log_luminosity,local_log_radius
  50   format(I5,F7.4,2F8.5,1P2E10.3)
 !  CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)
-      write(monte_carlo_unit1,60)envelope_radius,envelope_mass,hcomp(2,m), &
+      write(monte_carlo_unit1,60)run_diag%envelope_radius,run_diag%envelope_mass,hcomp(2,m), &
            hcomp(3,m),surface_z_over_x
  60   format(F8.5,F9.6,2F8.5,F9.6)
 !  ENERGY GENERATION FRACTIONS PP I,II,III,CNO,EGRAV

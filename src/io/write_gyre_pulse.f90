@@ -24,6 +24,7 @@
 subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
      log_temperature, omega)
+      use run_diag_lib
       use pulse_diag_lib
       use scrtch_lib
       use const_lib
@@ -35,11 +36,6 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
            log_density(json), log_luminosity(json), log_pressure(json), &
            log_radius(json), log_temperature(json), omega(json)
 
-! common/sound/: adiabatic_index_gamma1 (Gamma_1), used here. Naming
-! matches wrtout.f90.
-      double precision :: adiabatic_index_gamma1(json)
-      logical :: sound_speed_output_active
-      common/sound/ adiabatic_index_gamma1, sound_speed_output_active
 
       integer :: gyre_unit, i
       integer, parameter :: gyre_schema = 101
@@ -78,7 +74,7 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
          end if
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
               pressure_cgs,temperature_k,density_cgs,shell_diag%del_grad(2,i), &
-              brunt_n2,adiabatic_index_gamma1(i),shell_diag%del_grad(3,i),delta, &
+              brunt_n2,run_diag%adiabatic_index_gamma1(i),shell_diag%del_grad(3,i),delta, &
               shell_diag%so(i),pulse_diag%pulse_dlnkap_dlnt(i),pulse_diag%pulse_dlnkap_dlnrho(i),shell_diag%sesum(i), &
               pulse_diag%pulse_dlneps_dlnt(i),pulse_diag%pulse_dlneps_dlnrho(i),omega(i)
  110     format(I6,99(1X,1PE26.16))

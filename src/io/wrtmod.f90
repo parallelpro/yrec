@@ -19,6 +19,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      log_temperature, model_number, log_luminosity_lsun, log_teff, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
+      use run_diag_lib
       use temp2_lib
       use pulse_diag_lib
       use envelope_comp_lib
@@ -59,12 +60,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 
 
 
-! MHP 7/96 COMMON BLOCK INSERTED FOR SOUND SPEED
-! common/sound/: adiabatic_index_gamma1/sound_speed_output_active,
-! both used here. Naming matches putstore.f90.
-      double precision :: adiabatic_index_gamma1(json)
-      logical :: sound_speed_output_active
-      common/sound/ adiabatic_index_gamma1, sound_speed_output_active
 ! DBG 7/95 To store variables for pulse output
 ! common/pualpha/: valfmlt/vphmlt/vcmxmlt are used here. Naming
 ! matches tpgrad.f90.
@@ -118,11 +113,11 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       integer :: j
       double precision :: fs, pelpf
 
-         print*,'wrtmod LSOUND 1: ',sound_speed_output_active
+         print*,'wrtmod LSOUND 1: ',run_diag%sound_speed_output_active
 
-      if(sound_speed_output_active)then
+      if(run_diag%sound_speed_output_active)then
 
-         print*,'wrtmod LSOUND 2: ',sound_speed_output_active
+         print*,'wrtmod LSOUND 2: ',run_diag%sound_speed_output_active
 
 !CFD 10/09 Add an extra output to plot the sound speed profile easyly
          open(unit=500,file='Csound.dat',status='unknown')
@@ -135,11 +130,11 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             fm = exp(ln10*log_mass(i))/solar_mass_cgs
             xx1 = fm/fr**3
             xxx = -exp(ln10*(cgl+log_mass(i)+log_density(i)-log_pressure(i)-log_radius(i)))
-            xx2 = -xxx/adiabatic_index_gamma1(i)
-            xx3 = adiabatic_index_gamma1(i)
+            xx2 = -xxx/run_diag%adiabatic_index_gamma1(i)
+            xx3 = run_diag%adiabatic_index_gamma1(i)
             xx4 = -xx2-xxx*(pulse_diag%pulse_dlnrho_dlnp(i)+shell_diag%del_grad(2,i)*pulse_diag%pulse_dlnrho_dlnt(i))
             xx5 = exp(ln10*(c4pil+log_density(i)+3.0D0*log_radius(i)-log_mass(i)))
-            sound_velocity = 1.0D-5*sqrt(adiabatic_index_gamma1(i)*exp(ln10*(log_pressure(i)-log_density(i))))
+            sound_velocity = 1.0D-5*sqrt(run_diag%adiabatic_index_gamma1(i)*exp(ln10*(log_pressure(i)-log_density(i))))
             write(imodpt,123)fr,fm,xx1,xx2,xx3,xx4,xx5,sound_velocity
  123        format(1X,2F12.8,1P6E16.8)
 !CFD 10/09 Add an extra output to plot the sound speed profile easyly
@@ -150,8 +145,8 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             if(i.lt.num_shells) then
               rmid = 0.5D0*(exp(ln10*log_radius(i))+exp(ln10*log_radius(i+1)))
               dr = exp(ln10*log_radius(i+1)) - exp(ln10*log_radius(i))
-              divp = 0.5D0*(adiabatic_index_gamma1(i)*exp(ln10*log_pressure(i))+ &
-                    adiabatic_index_gamma1(i+1)*exp(ln10*log_pressure(i+1)))*dr
+              divp = 0.5D0*(run_diag%adiabatic_index_gamma1(i)*exp(ln10*log_pressure(i))+ &
+                    run_diag%adiabatic_index_gamma1(i+1)*exp(ln10*log_pressure(i+1)))*dr
               divr = 0.5D0*(exp(ln10*log_density(i))+exp(ln10*log_density(i+1)))*dr
               qpr1 = exp(ln10*(cgl+log_mass(i)+log_density(i)-2.0D0*log_radius(i)))
               qdr1 = exp(ln10*(log_density(i)-log_pressure(i)))*pulse_diag%pulse_dlnrho_dlnp(i)*qpr1

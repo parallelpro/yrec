@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use run_diag_lib
       use envstruct_lib
       use envelope_comp_lib
       use scrtch_lib
@@ -88,12 +89,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 
-! common/sound/: adiabatic_index_gamma1 (GAM1) is set here; the local
-! array gm1(json) below is a distinct per-call scratch copy of Gamma1,
-! not this common member. Naming matches wrtmod.f90.
-      double precision :: adiabatic_index_gamma1(json)
-      logical :: sound_speed_output_active
-      common/sound/ adiabatic_index_gamma1, sound_speed_output_active
 
 ! common/eeos06/: both used here (OPAL 2006 EOS interpolator result).
 ! Naming matches esac06.f90; eos_output here is dimensioned (10)

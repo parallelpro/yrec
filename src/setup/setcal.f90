@@ -19,6 +19,7 @@
 ! points to iterate against.
 subroutine setcal(age_scale_factor)
 
+      use run_diag_lib
       use const_lib
       implicit none
 
@@ -28,14 +29,6 @@ subroutine setcal(age_scale_factor)
 
 
 
-! common/calsun/: only solar_calibration_active is used here. Naming
-! matches chkcal.f90.
-      double precision :: dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
-           log_l_prev, log_r_prev, delta_x, delta_alpha
-      logical :: solar_calibration_active
-      common/calsun/ dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
-           log_l_prev, log_r_prev, delta_x, delta_alpha, &
-           solar_calibration_active
 
 
       save
@@ -90,6 +83,6 @@ subroutine setcal(age_scale_factor)
          timestep_override(i) = timestep_override(3)
          timestep_override_active(i) = timestep_override_active(3)
       end do
-      solar_calibration_active = .false.
+      run_diag%solar_calibration_active = .false.
       return
 end subroutine setcal

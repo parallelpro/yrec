@@ -12,6 +12,7 @@
 subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
      max_domega_frac)
 
+      use run_diag_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -28,13 +29,6 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       double precision, intent(out) :: max_domega_frac
 
 
-! common/oldrot/: only old_omega (WOLD) is used here. Naming matches
-! hpoint.f90/getw.f90.
-      double precision :: old_omega(json), old_specific_angular_momentum(json), &
-           old_moment_of_inertia(json), old_hg(json), old_mean_radius(json), &
-           old_eta_squared(json)
-      common/oldrot/ old_omega, old_specific_angular_momentum, &
-           old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
 
       save
@@ -43,11 +37,11 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       double precision :: test_domega, dt_factor, dt_factor_limit
 
       start_index = 1
-      max_domega_frac = 2.0d0*abs(omega(start_index)-old_omega(start_index))/ &
-           (omega(start_index)+old_omega(start_index))
+      max_domega_frac = 2.0d0*abs(omega(start_index)-run_diag%old_omega(start_index))/ &
+           (omega(start_index)+run_diag%old_omega(start_index))
       max_index = start_index
       do 50 i = start_index+1,num_points
-         test_domega=2.0d0*abs(omega(i)-old_omega(i))/(omega(i)+old_omega(i))
+         test_domega=2.0d0*abs(omega(i)-run_diag%old_omega(i))/(omega(i)+run_diag%old_omega(i))
          if(test_domega.gt.max_domega_frac) then
             max_domega_frac = test_domega
             max_index = i

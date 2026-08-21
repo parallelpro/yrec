@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use run_diag_lib
       use temp2_lib
       use temp_lib
       use mdphy_lib
@@ -109,13 +110,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
            old_del_radiative_mix, old_eps
 
 
-! common/oldrot/: only old_omega (WOLD) is used here. Naming matches
-! hpoint.f90.
-      double precision :: old_omega(json), old_specific_angular_momentum(json), &
-           old_moment_of_inertia(json), old_hg(json), old_mean_radius(json), &
-           old_eta_squared(json)
-      common/oldrot/ old_omega, old_specific_angular_momentum, &
-           old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
 
 
@@ -132,12 +126,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       double precision :: quadrupole_moment(json), local_gravity(json)
       common/quadru/ quadrupole_moment, local_gravity
 
-! common/rotprt/: lprt0_placeholder is actually used here (gating the
-! final diagnostic print), despite the "_placeholder" name inherited
-! from wrtout.f90 (where this block is unused). Naming matches
-! wrtout.f90.
-      logical :: lprt0_placeholder
-      common/rotprt/ lprt0_placeholder
 
 
 
@@ -342,11 +330,11 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 ! FOR USE IN THE ADVECTION/DIFFUSION TREATMENT OF MAEDER&ZAHN 1998
       if(first_call)then
          theta_prev(1) = tho(1)
-         wmst(1) = old_omega(1)
+         wmst(1) = run_diag%old_omega(1)
          do zone_index = 2,num_zones
             qwrmst(zone_index) = qwrst(zone_index)
             theta_prev(zone_index) = tho(zone_index)
-            wmst(zone_index) = old_omega(zone_index)
+            wmst(zone_index) = run_diag%old_omega(zone_index)
          end do
 ! RECOMPUTE THETA
       else
@@ -566,7 +554,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius)
  9999 continue
-      if(lprt0_placeholder)then
+      if(run_diag%lprt0_placeholder)then
          log_luminosity_lsun = log10(log_luminosity(num_zones))
          log_radius_surface = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity &
               - 4.0D0*log_teff - c4pil - csigl)
