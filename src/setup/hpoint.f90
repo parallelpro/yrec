@@ -116,10 +116,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       double precision :: max_domega_dr(json), max_domega_dr_old(json)
       common/dwmax/ max_domega_dr, max_domega_dr_old
 
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 
 ! common/oldrot/: previous-timestep rotation-state snapshot, all used

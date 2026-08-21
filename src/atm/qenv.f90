@@ -85,10 +85,6 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
            current_log10_radius, current_log10_mass, current_log10_density, &
            current_opacity, current_beta, current_gradients, &
            current_ion_fraction, current_velocity
-! common/flag/: use_extended_composition (originally LEXCOM); not used
-! in this file. Naming matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/use_extended_composition
 ! common/mhd/: only use_mhd_eos is used here. Naming matches mhdtbl.f90.
       logical :: use_mhd_eos
       integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &

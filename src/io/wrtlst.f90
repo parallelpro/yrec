@@ -58,10 +58,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 
 
 
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 ! common/heflsh/: helium_flash_active (originally LKUTHE); not used in
 ! this file. Naming is local to this batch.

@@ -83,14 +83,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       double precision :: reaction_rate_by_zone(15,json)
       common/burn/ reaction_rate_by_zone
 
-! common/const/: only solar_mass_cgs is used here. Naming matches
-! mixgrid.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 ! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent. term
@@ -106,10 +98,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
            extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
 
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 
 

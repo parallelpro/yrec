@@ -36,12 +36,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       logical, intent(inout) :: convective_flag(json)
       integer, intent(in) :: num_zones
 
-! common/flag/: use_extended_composition (originally LEXCOM) selects
-! whether the light-element species (Li6/Li7/Be9) are tracked in
-! addition to the standard 11, i.e. whether composition has 15 or 11
-! meaningful species. Not referenced in any already-converted file.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 ! common/comp/: only zenvm is used here. Naming matches
 ! getopac.f90/meqos.f90.

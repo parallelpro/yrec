@@ -183,13 +183,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
-! common/const/: not used in this file. Naming matches wrtout.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 
@@ -218,11 +211,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 
 
 
-! common/flag/: use_extended_composition (originally LEXCOM) is used
-! here to pick the number of mixed species. Naming matches mix.f90/
-! mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 ! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
 ! common/debhu/: cdh/ldh gate and select the correction; xxdy (H

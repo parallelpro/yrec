@@ -50,10 +50,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
            eq_mass(json), eq_omega(json)
       logical, intent(out) :: single_interface_flag
 
-! common/const/: only clsun is used here. Naming matches mixgrid.f90.
-      double precision :: clsun, clsunl, clnsun, cmsun, cmsunl, crsun, &
-           crsunl, cmbol
-      common/const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
 
 
 
@@ -313,7 +309,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
 ! PRODUCT OF RHO R^2 BY D CHI/DR
       mass_scale_factor = chi_grid_scale(2)
       luminosity_scale_factor = chi_grid_scale(9)*log_luminosity(num_zones)* &
-           clsun
+           solar_luminosity_cgs
       pressure_scale_factor = chi_grid_scale(11)
       do i = 1, ntab
          ii = zone_begin + i - 1

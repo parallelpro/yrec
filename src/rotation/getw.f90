@@ -84,14 +84,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
            convective_zone_bounds_burn(12,2), radiative_zone_bounds(13,2)
       double precision :: cz_mass_bottom, cz_mass_top
 
-! common/const/: only log10_solar_luminosity is used here. Naming
-! matches vcirc.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 
@@ -117,10 +109,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       integer :: itdif1, max_iterations
       common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 
 

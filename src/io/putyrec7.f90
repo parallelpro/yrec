@@ -23,6 +23,12 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 ! Last two lines are MODEL2 add-ons
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+! Several of this subroutine's own dummy arguments below (rotation_active
+! etc, values being written out to the model file) happen to share
+! names with unrelated const_lib runtime-config module variables, so
+! `use, only:` the one member actually needed here rather than a
+! blanket `use const_lib`. Same treatment as io/getyrec7.f90.
+      use const_lib, only: solar_luminosity_cgs
       implicit none
       integer, parameter :: json = 5000
 
@@ -47,14 +53,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
       double precision, intent(in) :: trial_log_luminosity(3), &
            trial_log_temperature(3), fit_point_temperature(3)
 
-! common/const/: only solar_luminosity_cgs is used here. Naming
-! matches vcirc.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 ! CHARACTER*4 ATM, LOK, HIK, COMPMIX
 ! MHP 4/25 changed LOK name to make it unique, used elsewhere

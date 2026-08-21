@@ -37,14 +37,6 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
       integer, intent(in) :: num_points
       double precision, intent(out) :: struct_dt
 
-! common/const/: not used in this file's logic; layout placeholder.
-! Naming matches wrtout.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 

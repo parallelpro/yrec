@@ -107,15 +107,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
       common/comp/envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
-! DBG PULSE: CONSTANTS NEEDED FOR DEL AND DELA CALCULATION
-! common/const/: only log10_solar_luminosity/log10_solar_radius are
-! used here. Naming matches wrtout.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 ! common/envprt/: all used/set here. Naming is local to this batch
 ! (shared with qenv.f90's usage of this block).
       double precision :: current_log10_pressure, current_log10_temperature, &
@@ -126,10 +117,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            current_log10_radius, current_log10_mass, current_log10_density, &
            current_opacity, current_beta, current_gradients, &
            current_ion_fraction, current_velocity
-! common/flag/: use_extended_composition (originally LEXCOM); not used
-! in this file. Naming matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/use_extended_composition
 ! common/intatm/: atmosphere integration control, all used here.
 ! Naming matches wrtmod.f90. NOTE: despite the inherited name
 ! atm_step_initial (chosen in wrtmod.f90, where this member is an

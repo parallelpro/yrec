@@ -23,15 +23,12 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
      zone_min, env_cz_zone_old, env_cz_zone, final_iteration_flag, &
      convective_flag, num_zones, radiative_zone_bounds, mixed_zone_bounds, &
      num_radiative_zones, num_zones_mixed)
+      use const_lib
       use light_burn_lib
       use oldmod_lib
       implicit none
       integer, parameter :: json = 5000
 
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 
 

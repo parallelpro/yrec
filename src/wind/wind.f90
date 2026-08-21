@@ -34,14 +34,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
            cz_moment_of_inertia
       double precision, intent(inout) :: specific_angular_momentum(json)
 
-! common/const/: only solar_luminosity_cgs/solar_radius_cgs are used
-! here. Naming matches getw.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 

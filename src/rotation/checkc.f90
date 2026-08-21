@@ -34,6 +34,7 @@
 subroutine checkc(composition, iteration_number, print_flag, num_zones, &
      dt, cut_count, converged_flag, redo_flag)
 
+      use const_lib
       use mdphy_lib
       use oldmod_lib
       use luout_lib
@@ -69,10 +70,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       integer :: itdif1, max_iterations
       common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
-! common/flag/: use_extended_composition (originally LEXCOM), used
-! here. Naming matches hpoint.f90/mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 
 

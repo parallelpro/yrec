@@ -51,15 +51,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
-! PHYSICAL CONSTANTS.
-! common/const/: only log10_solar_luminosity is used here. Naming
-! matches vcirc.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 
@@ -75,11 +66,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
            current_opacity, current_beta, current_gradients, &
            current_ion_fraction, current_velocity
 
-! EXTENDED COMPOSITION FLAG
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 
 ! HPTTOL USED TO SET THE SPATIAL RESOLUTION OF THE ENVELOPE INTEGRATION

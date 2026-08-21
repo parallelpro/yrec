@@ -48,14 +48,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
            diffusion_coeff2_dx(json)
 
 
-! common/const/: not used in this file; declared only to preserve
-! layout. Naming matches chkscal.f90/wrthead.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 

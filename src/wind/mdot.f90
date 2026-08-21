@@ -61,14 +61,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
-! common/const/: only solar_mass_cgs is used here. Naming matches
-! getw.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 
@@ -81,9 +73,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
            disk_locking_active
 
-! common/flag/: not used here. Naming matches getw.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 
 

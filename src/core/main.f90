@@ -256,14 +256,6 @@ program main
 
 
 
-! common/const/: several members used here (LMONTE block/RLL calc);
-! others unused placeholders. Naming matches wrtout.f90/crrect.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 ! common/ctol/: fcorr0/fcorri/fcorr/niter1/niter2/niter3 used here; the
@@ -285,8 +277,6 @@ program main
            extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
 
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
       logical :: helium_flash_active
       common/heflsh/ helium_flash_active

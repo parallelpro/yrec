@@ -66,14 +66,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
       double precision, intent(in) :: log_teff
 
 
-! common/const/: not used in this file's logic; layout placeholder.
-! Naming matches wrtout.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 ! common/ct3/: use_structure_dt_limits (originally LPTIME) is used
@@ -82,10 +74,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
       logical :: use_structure_dt_limits
       common/ct3/ use_structure_dt_limits
 
-! common/flag/: not used in this file's logic; layout placeholder.
-! Naming matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 ! common/govs/: use_envelope_triangle_dt (originally LTRIST) governs
 ! whether the entime() envelope-triangle timestep limiter is applied.

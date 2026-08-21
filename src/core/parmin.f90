@@ -166,9 +166,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: xenv, zenv, zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
       common /comp/ xenv, zenv, zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
-! common /const/
-      double precision :: clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
-      common /const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
+! clsun/crsun: NAMELIST /physics/ members (must keep this exact
+! spelling); copied into const_lib's solar_luminosity_cgs/
+! solar_radius_cgs after the namelist read below. The other six former
+! common/const/ members (clsunl/clnsun/cmsun/cmsunl/crsunl/cmbol) are
+! unused in this file -- setup/setups.f90 computes them from
+! solar_luminosity_cgs/solar_radius_cgs at startup -- so they're
+! dropped entirely rather than carried forward.
+      double precision :: clsun, crsun
 
 
 
@@ -202,9 +207,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lenvg
       common /envgen/ atmstp, envstp, lenvg
 
-! common /flag/
+! lexcom: NAMELIST /physics/ member (must keep this exact spelling);
+! copied into const_lib's use_extended_composition after the namelist
+! read below.
       logical :: lexcom
-      common /flag/ lexcom
 
 ! common /heflsh/
       logical :: lkuthe
@@ -1138,6 +1144,15 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use_itoh_neutrino_loss = lnulos1
       use_new_turnover_timescale = lnewtcz
       calc_envelope_flag = lcalcenv
+! clsun/crsun must likewise keep their NAMELIST spelling; copy into
+! const_lib's solar_luminosity_cgs/solar_radius_cgs here (before
+! setup/setups.f90 computes the rest of former common/const/ from
+! these two).
+      solar_luminosity_cgs = clsun
+      solar_radius_cgs = crsun
+! lexcom must likewise keep its NAMELIST spelling; copy into
+! const_lib's use_extended_composition here.
+      use_extended_composition = lexcom
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap

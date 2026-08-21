@@ -38,16 +38,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
            equally_spaced_mass(json)
       logical, intent(out) :: single_interface_flag
 
-! common/const/: only solar_luminosity_cgs is used here (to convert
-! log_luminosity(M), which is in solar units, to cgs). Remaining
-! members are placeholders (uncertain interpretation) preserving
-! layout; not referenced in any already-converted file.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 

@@ -88,14 +88,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       common/ccout/lstore,lstatm,lstenv,lstmod,lstphys,lstrot,lscrib,lstch,lphhd
       integer :: npenv, nprtmod, nprtpt, npoint
       common/ccout1/npenv,nprtmod,nprtpt,npoint
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/solar_luminosity_cgs,log10_solar_luminosity, &
-           ln_solar_luminosity,solar_mass_cgs,log10_solar_mass, &
-           solar_radius_cgs,log10_solar_radius,solar_bolometric_magnitude
-      logical :: use_extended_composition
-      common/flag/use_extended_composition
       double precision :: metal_fraction_match_tolerance, zsi
       integer :: idt, idd(4)
       common/optab/metal_fraction_match_tolerance,zsi,idt,idd

@@ -46,14 +46,6 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
            frac_be7_electron(json)
 
 
-! common/const/: only solar_luminosity_cgs (CLSUN) is used here.
-! Naming matches wrtout.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 ! common/ct3/: not used in this file's logic; layout placeholder.
@@ -61,10 +53,6 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
       logical :: use_structure_dt_limits
       common/ct3/ use_structure_dt_limits
 
-! common/flag/: not used in this file's logic; layout placeholder.
-! Naming matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
       save
 

@@ -47,13 +47,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
       double precision, intent(in) :: total_luminosity, timestep, &
            log_pressure(json)
 
-! common/const/: not used in this file. Naming matches mixgrid.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 

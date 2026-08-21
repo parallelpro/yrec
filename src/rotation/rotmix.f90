@@ -51,11 +51,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 
 
 
-! common/flag/: use_extended_composition (originally LEXCOM) selects
-! whether the light-element species (Li6/Li7/Be9) are tracked in
-! addition to the standard 11. Naming matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 
 

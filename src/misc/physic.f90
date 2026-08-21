@@ -54,10 +54,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 
 
 
-! common/flag/: use_extended_composition (originally LEXCOM); not used
-! in this file's logic. Naming matches getw.f90/mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 ! common/optab/: only idt/idd are set here. Naming matches getopac.f90.
       double precision :: metal_fraction_match_tolerance, zsi

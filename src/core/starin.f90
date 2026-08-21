@@ -225,14 +225,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! common/comp2/: both used here. Naming matches checkc.f90/physic.f90.
       double precision :: envelope_helium_fraction, envelope_he3_fraction
       common/comp2/ envelope_helium_fraction, envelope_he3_fraction
-! common/const/: not used in this file's logic; layout placeholder.
-! Naming matches crrect.f90/wrtout.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 ! common/envprt/: not used in this file's logic; layout placeholder.
 ! Naming matches envint.f90/getnewenv.f90/qenv.f90.
       double precision :: current_log10_pressure, current_log10_temperature, &
@@ -243,10 +235,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            current_log10_radius, current_log10_mass, current_log10_density, &
            current_opacity, current_beta, current_gradients, &
            current_ion_fraction, current_velocity
-! common/flag/: use_extended_composition (originally LEXCOM) is used
-! here. Naming matches crrect.f90/mix.f90/mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 ! common/heflsh/: not used in this file's logic; layout placeholder.
 ! Naming matches crrect.f90/wrtlst.f90/wrtout.f90.
       logical :: helium_flash_active

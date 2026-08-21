@@ -85,10 +85,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 
 
 
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 !*** MHP 5/90 ADD COMMON BLOCK FOR GRAVITATIONAL SETTLING.
 ! common/gravst/: only diffuse_helium_active (originally LDIFY) is

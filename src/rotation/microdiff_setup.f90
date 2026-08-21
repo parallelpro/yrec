@@ -62,11 +62,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
            temperature_orig(json)
 
 
-! common/const/: not used in this file. Naming matches rotgrid.f90/
-! vcirc.f90.
-      double precision :: clsun, clsunl, clnsun, cmsun, cmsunl, crsun, &
-           crsunl, cmbol
-      common/const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
 
 
 

@@ -92,14 +92,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
-! common/const/: all members assigned here. Naming matches
-! chkscal.f90/wrthead.f90/vcirc.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 

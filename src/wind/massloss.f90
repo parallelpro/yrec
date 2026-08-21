@@ -81,14 +81,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       common/atmprt/ atm_tau, atm_log10_pressure, atm_log10_temperature, &
            atm_log10_density, atm_opacity, atm_ion_fraction
 
-! common/const/: only solar_luminosity_cgs/solar_radius_cgs/
-! solar_mass_cgs are used here. Naming matches getw.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 

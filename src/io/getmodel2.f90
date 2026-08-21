@@ -32,6 +32,15 @@ subroutine getmodel2(log_luminosity_lsun, envelope_fit_coeffs, &
 ! Last two lines are MODEL2 add-ons
 ! MHP 4/25 chanted LOK to ALOK to avoid variable name conflicts
 
+! Several of this subroutine's own dummy arguments below (values read
+! from the model file -- rotation_active, envelope_overshoot_active,
+! instability_transport_active, lovstc, lovstm, lsemic, etc.) happen
+! to share names with unrelated const_lib runtime-config module
+! variables, so `use, only:` the one member actually needed here
+! rather than a blanket `use const_lib` (which would conflict with the
+! dummy-argument declarations below). Same treatment as
+! io/getyrec7.f90, this file's sibling reader.
+      use const_lib, only: solar_luminosity_cgs
       implicit none
       integer, parameter :: json = 5000
 
@@ -71,14 +80,6 @@ subroutine getmodel2(log_luminosity_lsun, envelope_fit_coeffs, &
       double precision, intent(out) :: disk_pressure, disk_temperature, &
            wind_saturation_omega
 
-! common/const/: only solar_luminosity_cgs is used here. Naming
-! matches vcirc.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
       character*5 :: header_keyword
 

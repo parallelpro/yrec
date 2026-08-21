@@ -35,14 +35,6 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
       double precision, intent(out) :: radius_unlogged(json)
       double precision, intent(out) :: dynamical_shear_omega_limit(json)
 
-! common/const/: only solar_luminosity_cgs is used here. Naming
-! matches chkscal.f90/wrthead.f90/vcirc.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
 

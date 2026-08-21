@@ -159,4 +159,27 @@ module const_lib
       logical :: use_new_turnover_timescale = .true.
       logical :: calc_envelope_flag = .true.
 
+! former common/const/: solar physical constants (luminosity, mass,
+! radius in cgs, plus their log10/ln/bolometric-magnitude
+! derivatives), all computed once at startup in setup/setups.f90 --
+! same "set once, read broadly" character as const1-3. Two of the
+! eight (solar_luminosity_cgs, solar_radius_cgs) start from
+! core/parmin.f90's NAMELIST /physics/ values (clsun/crsun, which
+! can't be renamed -- see that file's naming note -- so parmin.f90
+! copies them into these canonical names right after the namelist
+! read, before setups.f90 runs); the rest are pure derived quantities
+! computed by setups.f90 from those two. No declaration-time
+! initializers here since every member is set at runtime before first
+! use.
+      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
+           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
+           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
+
+! former common/flag/: single NAMELIST /physics/ member selecting the
+! extended (15-species) vs. default composition array. Same
+! namelist-can't-rename treatment as use_itoh_neutrino_loss etc above
+! -- core/parmin.f90 keeps its local lexcom and copies into this
+! canonical name.
+      logical :: use_extended_composition = .false.
+
 end module const_lib

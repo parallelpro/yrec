@@ -53,16 +53,6 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
            pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, pulse_specific_heat, &
            pulse_mean_molecular_weight, pulse_dlnrho_dlnt, &
            pulse_electron_mean_molecular_weight, lpumod
-! common/const/: solar_luminosity_cgs, used to convert the per-shell
-! linear L/Lsun array (log_luminosity here, despite its name -- see
-! core/main.f90's cross-callee naming note on HL/luminosity_lsun) to
-! erg/s. Naming matches wrtout.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
       integer :: gyre_unit, i
       integer, parameter :: gyre_schema = 101

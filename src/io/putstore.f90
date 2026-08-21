@@ -63,10 +63,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 
 
 
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 ! common/heflsh/: not used in this file. Naming is local to this batch.
       logical :: helium_flash_active
@@ -180,14 +176,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! common/ccout1/: only nprtmod is used here. Naming matches wrtmil.f90.
       integer :: npenv, nprtmod, print_point_interval, npoint
       common/ccout1/ npenv, nprtmod, print_point_interval, npoint
-! common/const/: only solar_luminosity_cgs is used here. Naming
-! matches vcirc.f90.
-      double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-      common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
-           ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
-           solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 ! common/sound/: adiabatic_index_gamma1 is used here. Naming is local
 ! to this batch.
       double precision :: adiabatic_index_gamma1(json)

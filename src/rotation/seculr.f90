@@ -112,11 +112,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       integer :: npenv, nprtmod, nprtpt, npoint
       common/ccout1/ npenv, nprtmod, nprtpt, npoint
 
-! common/const/: clsun/cln (via const1) are used here. Naming matches
-! vcirc.f90/getw.f90.
-      double precision :: clsun, clsunl, clnsun, cmsun, cmsunl, crsun, &
-           crsunl, cmbol
-      common/const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
 
 
 ! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent.
@@ -135,11 +130,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       integer :: itdif1, max_iterations
       common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
-! MHP 6/00 added flag for call to ndifcom.
-! common/flag/: use_extended_composition (originally LEXCOM). Naming
-! matches getw.f90/mixcz.f90.
-      logical :: use_extended_composition
-      common/flag/ use_extended_composition
 
 ! 3/92 common block added for centered dw/dlnr.
 ! common/intvar/: only interface_radius (RM) is used here. Naming
@@ -321,7 +311,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       call setupv(log_density,local_gravity,luminosity,log_pressure, &
            log_radius,enclosed_mass,log_temperature,zone_min,zone_max, &
            num_zones,radius_unlogged,dynamical_shear_omega_limit)
-      total_luminosity = clsun*luminosity(num_zones)
+      total_luminosity = solar_luminosity_cgs*luminosity(num_zones)
 !  COMPUTE ANGULAR VELOCITY GRADIENTS
       do 10 i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
