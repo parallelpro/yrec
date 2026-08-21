@@ -22,8 +22,9 @@
 subroutine rscale(luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag)
 ! DBG 5/94 Added rescaling of Z in core ZRAMP stuff.
-      use luout_lib
       use const_lib
+      use envelope_comp_lib
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -45,12 +46,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       common /ckind/ rescale_params, num_models, rescale_kind, &
            first_call_flag, num_runs
 
-! common/comp/: only envelope_metal_fraction/xnew/znew/stotal are
-! used here. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 
 
@@ -111,12 +106,12 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 !  WHERE XOLD = OLD SURFACE X VALUE
 !  THIS METHOD OK FOR BOTH HORIZONTAL BRANCH AND MAIN SEQUENCE STARS
          if(rescale_params(2,run_index).le.1.0d0) then
-            x_rescale_factor = rescale_params(2,run_index)/dmax1(xnew,1.0d-20)
+            x_rescale_factor = rescale_params(2,run_index)/dmax1(env_comp%xnew,1.0d-20)
             do 10 zone_idx = 1,num_zones
                composition(1,zone_idx) = dmin1(rescale_params(2,run_index), &
                     composition(1,zone_idx)*x_rescale_factor)
    10       continue
-            xnew = rescale_params(2,run_index)
+            env_comp%xnew = rescale_params(2,run_index)
             initial_envelope_x = rescale_params(2,run_index)
 ! DBG 4/95 BUG FIX XENV IS USED IN SOME ROUTINES AND NOT XENV0 SO CHANGE
 !     XENV WHENEVER X IS CHANGED.
@@ -139,7 +134,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 !  THE CNO CYCLE ELEMENTS AND HE3 ARE MULTIPLIED BY THE RATIO OF THE
 !  DESIRED NEW Z TO THE OLD Z - LIGHT ELEMENT ABUNDANCES ARE LEFT ALONE
          if(rescale_params(3,run_index).le.1.0d0) then
-            delta_z = rescale_params(3,run_index) - znew
+            delta_z = rescale_params(3,run_index) - env_comp%znew
             do 30 species_idx = 1,num_zones
                z_rescale_factor=dmax1(0.d0,composition(3,species_idx)+delta_z)/ &
                     (composition(3,species_idx)+1.d-30)
@@ -148,11 +143,11 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
                   composition(zone_idx,species_idx) = composition(zone_idx,species_idx)*z_rescale_factor
    20          continue
    30       continue
-            znew = rescale_params(3,run_index)
+            env_comp%znew = rescale_params(3,run_index)
             initial_envelope_z = rescale_params(3,run_index)
 ! DBG 4/95 BUG FIX ZENV IS USED IN MANY ROUTINES AND NOT ZENV0 SO CHANGE
 !     ZENV WHENEVER Z IS CHANGED.
-            envelope_metal_fraction = initial_envelope_z
+            env_comp%envelope_metal_fraction = initial_envelope_z
          else
 !  DESIRED Z >100%; Z NOT CHANGED
 !            ACOMP = ' Z '
@@ -197,7 +192,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             log_mass_shift = dlog10(rescale_params(1,run_index)/star_mass)
             total_mass_log = total_mass_log + log_mass_shift
             star_mass = rescale_params(1,run_index)
-            stotal = total_mass_log
+            env_comp%stotal = total_mass_log
             do 40 zone_idx = 1,num_zones
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
    40       continue
@@ -281,7 +276,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
         total_mass_log=dlog10(10**shell_mass_log(shell_end)+mass_scale_factor*(10**total_mass_log-10**shell_mass_log(shell_end)))
 
             star_mass = rescale_params(1,run_index)
-            stotal = total_mass_log
+            env_comp%stotal = total_mass_log
             do 70 zone_idx = shell_end+1,num_zones
         shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_end)+ &
              mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_end)))
@@ -329,7 +324,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             mass_scale_factor*(10**total_mass_log-10**shell_mass_log(shell_begin-1)))
 
             star_mass = rescale_params(1,run_index)
-            stotal = total_mass_log
+            env_comp%stotal = total_mass_log
             do 78 zone_idx = shell_begin,num_zones
       shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_begin-1)+ &
            mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_begin-1)))
@@ -413,7 +408,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 ! mass fraction RSCLZM.  Compensate changing Z with X.
       if(use_z_ramp.and.(rsclzc(run_index).gt.0d0).and.(rsclzm1(run_index).gt.0d0) &
            .and.(rsclzm2(run_index).gt.0d0))then
-            z_ramp_slope = (znew - rsclzc(run_index))/(rsclzm2(run_index)-rsclzm1(run_index))
+            z_ramp_slope = (env_comp%znew - rsclzc(run_index))/(rsclzm2(run_index)-rsclzm1(run_index))
             do zone_idx = 1,num_zones
                mass_fraction_local = 10.0d0**shell_mass_log(zone_idx)/(star_mass*solar_mass_cgs)
                if (mass_fraction_local .lt. rsclzm1(run_index)) then

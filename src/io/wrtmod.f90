@@ -19,6 +19,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      log_temperature, model_number, log_luminosity_lsun, log_teff, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
+      use envelope_comp_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -68,11 +69,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       logical :: ldebug, lcorr, lmilne, ltrack, lstpch
       common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
-! common/comp/: only stotal is used here. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 
 
@@ -295,13 +291,13 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
        env_step_max = envelope_step_size
        b = dexp(ln10*log_luminosity_lsun)
        rl = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity - 4.0D0*log_teff - c4pil - csigl)
-       gl = cgl + stotal - rl - rl
+       gl = cgl + env_comp%stotal - rl - rl
        x = composition(1,num_shells)
        z = composition(3,num_shells)
        fpl = shape_factor_fp(num_shells)
        ftl = shape_factor_ft(num_shells)
        ixx=0
-       hstot = stotal
+       hstot = env_comp%stotal
        plim = log_pressure(num_shells)
 ! DBG PULSE: ADDED ARGUEMENT TO ENVINT TO TURN ON/OFF PULSE OUTPUT
          lpulpt = pulsation_output_active
@@ -338,7 +334,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !
 ! G Somers 11/14 LJOUT (rotation info) block deleted.
 !
-      fsi = dexp(-ln10*stotal)
+      fsi = dexp(-ln10*env_comp%stotal)
 ! DBG PULSE: WRITE HEADER INFORMATION FOR PULSE MODEL
       if(pulsation_output_active) then
          rsurfl = 0.5D0*(log_luminosity_lsun - c4pil - csigl - 4.0D0*log_teff + log10_solar_luminosity)

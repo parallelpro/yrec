@@ -14,6 +14,7 @@
 subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction)
+      use envelope_comp_lib
       use luout_lib
       implicit none
 
@@ -38,15 +39,6 @@ subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
            use_laol89_tables, use_opal92_tables, use_opal95_tables, &
            use_kurucz90_tables, use_alex95_tables, use_two_z_tables
 
-! common/comp/: only envelope_hydrogen_fraction/envelope_metal_fraction
-! are used here. The remaining members are declared only to preserve
-! the storage layout shared with every other file that references
-! common/comp/ (Fortran COMMON is positional, not name-matched, so this
-! file's names don't need to match theirs -- but the order/types must).
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 
 ! common/nwlaol/: only use_pure_z_table is used here; remaining members
@@ -185,7 +177,7 @@ subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
          dlnkap_dlnt = purez_dlnkap_dlnt + (metal_fraction - 1.0d0)*slope
 
       else if ((metal_fraction.gt.0.12d0) .or. &
-           ((abs(metal_fraction - envelope_metal_fraction).gt. &
+           ((abs(metal_fraction - env_comp%envelope_metal_fraction).gt. &
            metal_fraction_match_tolerance) .and. .not.use_two_z_tables &
            .and. .not.use_opal95_tables)) then
 !        JCZ 211125 changed to 10^7 K in message to reflect above
@@ -193,7 +185,7 @@ subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
          write(short_file_unit,*) ' Z>0.12 T < 10^7 K', &
               ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z', &
               ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=', &
-              metal_fraction, envelope_metal_fraction, log10_temperature
+              metal_fraction, env_comp%envelope_metal_fraction, log10_temperature
          stop
 
 !     NOT HELIUM BURNING REGION (HB EVOLUTION) OR L2Z=T AND

@@ -110,6 +110,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
      trial_log_luminosity, trial_log_temperature, fit_point_temperature, &
      convective_velocity, mean_gravity, species_mix_weights)
 
+      use envelope_comp_lib
       use turnover_lib
       use scrtch_lib
       use oldmod_lib
@@ -216,12 +217,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       integer :: num_runs
       common/ckind/ rescale_params, num_models, rescale_kind, &
            first_call_flag, num_runs
-! common/comp/: all used here. Naming matches crrect.f90/getopac.f90.
-      double precision :: envelope_hydrogen_fraction, &
-           envelope_metal_fraction, zenvm, amuenv, fxenv(12), xnew, znew, &
-           stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 ! common/comp2/: both used here. Naming matches checkc.f90/physic.f90.
       double precision :: envelope_helium_fraction, envelope_he3_fraction
       common/comp2/ envelope_helium_fraction, envelope_he3_fraction
@@ -603,7 +598,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 
       delta_time = seconds_per_year*timestep_yr
       delta_time_abs = dabs(delta_time)
-      stotal = log_total_mass
+      env_comp%stotal = log_total_mass
 
 ! CHECK TO ENSURE THAT MIX LENGTH, SURFACE B.C. AND CONVECTION ZONE
 ! THEORY OF THE MODEL ARE THE SAME AS USER PARAMETERS
@@ -653,8 +648,8 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 
 ! GET XNEW AND ZNEW FROM HENYEY POINTS
 
-      xnew = composition(1,num_shells)
-      znew = composition(3,num_shells)
+      env_comp%xnew = composition(1,num_shells)
+      env_comp%znew = composition(3,num_shells)
 
 ! FOURTH PART:  - LOG J/M STORED
 
@@ -910,12 +905,12 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! FOR THIS PURPOSE(BASE OF ATMOSPHERE).
        if (requested_envelope_mass.gt.-1.0d-12) requested_envelope_mass = &
             -1.d-12
-       senv = log_mass(num_shells) - log_total_mass
-       old_senv = senv
-       if (senv.eq.requested_envelope_mass) goto 599
+       env_comp%senv = log_mass(num_shells) - log_total_mass
+       old_senv = env_comp%senv
+       if (env_comp%senv.eq.requested_envelope_mass) goto 599
        num_species = 11
        if (use_extended_composition) num_species = 15
-       if (requested_envelope_mass.lt.senv) then
+       if (requested_envelope_mass.lt.env_comp%senv) then
 ! NEW ENVELOPE DEEPER THAN THE OLD ONE
           target_log_mass_at_fit = log_total_mass+requested_envelope_mass
           do 575 i = num_shells-1,1,-1
@@ -929,7 +924,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
               ' MASS NOT CHANGED')
           goto 599
  580        num_shells = i + 1
-          senv = requested_envelope_mass
+          env_comp%senv = requested_envelope_mass
           interior_interp_fraction = (target_log_mass_at_fit-log_mass(i))/ &
                (log_mass(i+1) - log_mass(i))
           log_mass(num_shells) = target_log_mass_at_fit
@@ -948,8 +943,8 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
           do 585 j = 1,num_species
              composition(j,num_shells) = composition(j,i)
  585        continue
-          xnew = composition(1,num_shells)
-          znew = composition(3,num_shells)
+          env_comp%xnew = composition(1,num_shells)
+          env_comp%znew = composition(3,num_shells)
           if (rotation_active) omega(num_shells) = omega(i) + &
                interior_interp_fraction*(omega(i+1)-omega(i))
           if (convective_flag(i).and.convective_flag(i+1)) then
@@ -1048,7 +1043,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
           shell_luminosity_lsun = dexp(ln10*log10_luminosity)
           log10_radius = 0.5d0*(log10_luminosity + solar_luminosity_cgs - &
                4.0d0*log_teff - c4pil - csigl)
-          log10_gravity = cgl + stotal - log10_radius - log10_radius
+          log10_gravity = cgl + env_comp%stotal - log10_radius - log10_radius
           hydrogen_fraction = composition(1,num_shells)
           metal_fraction = composition(3,num_shells)
           point_pressure_rotation_factor = 1.0d0
@@ -1079,7 +1074,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
              spot_adjusted_log_teff = log_teff
           endif
           call envint(shell_luminosity_lsun,point_pressure_rotation_factor, &
-                 point_temperature_rotation_factor,log10_gravity,stotal, &
+                 point_temperature_rotation_factor,log10_gravity,env_comp%stotal, &
                  vertex_index,print_flag,save_boundary_flag, &
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
                  hydrogen_fraction,metal_fraction,envint_dummy1, &
@@ -1089,7 +1084,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
             env_step_max = saved_env_step_max
             env_step_min = saved_env_step_min
             env_step_begin = saved_env_step_begin
-          senv = requested_envelope_mass
+          env_comp%senv = requested_envelope_mass
             if (num_shells+num_env_points.ge.json) stop 9999
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
 ! ADJUST THE (P, RHO, T, R) POINTS TO BE CONSISTENT
@@ -1115,11 +1110,11 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! LUMINOSITY ASSUMED CONSTANT
                luminosity_lsun(j) = luminosity_lsun(num_shells)
 ! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
-               if (env_log10_mass(env_point_index).le.senv) then
+               if (env_log10_mass(env_point_index).le.env_comp%senv) then
                   log_density(j) = env_log10_density(env_point_index)
                   log_pressure(j) = env_log10_pressure(env_point_index)
                   log_radius(j) = env_log10_radius(env_point_index)
-                  log_mass(j) = env_log10_mass(env_point_index) + stotal
+                  log_mass(j) = env_log10_mass(env_point_index) + env_comp%stotal
                   log_temperature(j) = env_log10_temperature(env_point_index)
                   composition(1,j) = env_hydrogen_fraction(env_point_index)
                   composition(3,j) = env_metal_fraction(env_point_index)
@@ -1135,9 +1130,9 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                   if (env_point_index.eq.1) then
 ! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
                      lower_mass_coord = log_mass(num_shells)
-                     target_mass_coord = stotal + senv
+                     target_mass_coord = env_comp%stotal + env_comp%senv
                      upper_mass_coord = env_log10_mass(env_point_index) + &
-                          stotal
+                          env_comp%stotal
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) &
                           stop 9998
                      envelope_interp_fraction = (target_mass_coord- &
@@ -1176,10 +1171,10 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                   else
 ! INTERPOLATE BETWEEN THE LAST 2 ENVELOPE POINTS
                      lower_mass_coord = env_log10_mass(env_point_index-1) + &
-                          stotal
-                     target_mass_coord = stotal + senv
+                          env_comp%stotal
+                     target_mass_coord = env_comp%stotal + env_comp%senv
                      upper_mass_coord = env_log10_mass(env_point_index) + &
-                          stotal
+                          env_comp%stotal
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) &
                           stop 9998
                      envelope_interp_fraction = (target_mass_coord- &
@@ -1237,7 +1232,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
  910  format(1x,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
             ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
       write(*,911)(j,log_density(j),luminosity_lsun(j),log_pressure(j), &
-                   log_radius(j),log_mass(j)-stotal, &
+                   log_radius(j),log_mass(j)-env_comp%stotal, &
                    log_temperature(j),convective_flag(j), j = old_last_shell,num_shells)
  911  format(i5,1p6e16.8,l2)
 !          M = M + 1
@@ -1256,7 +1251,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 !          IF(LROT) OMEGA(M) = OMEGA(I) + FS*(OMEGA(I+1)-OMEGA(I))
        endif
        envelope_recomputed_flag = .true.
-       write(short_file_unit,597)old_senv,senv
+       write(short_file_unit,597)old_senv,env_comp%senv
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
  599     continue
@@ -1323,10 +1318,10 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! ZENVM = Z OTHER THAN CNO CYCLE ELEMENTS;
 ! AMUENV = MEAN ATOMIC WEIGHT OF SURFACE Z;
 ! FXENV = NUMBER DENSITY OF SPECIES .
-      envelope_hydrogen_fraction = xnew
-      envelope_metal_fraction = znew
-      envelope_helium_fraction = 1.0d0 - envelope_hydrogen_fraction - &
-           envelope_metal_fraction - composition(4,num_shells)
+      env_comp%envelope_hydrogen_fraction = env_comp%xnew
+      env_comp%envelope_metal_fraction = env_comp%znew
+      envelope_helium_fraction = 1.0d0 - env_comp%envelope_hydrogen_fraction - &
+           env_comp%envelope_metal_fraction - composition(4,num_shells)
       envelope_he3_fraction = composition(4,num_shells)
 ! EVERYTHING BUT V(7)=H, AND V(12)=HE
       mixture_weight_sum = species_mix_weights(1)+species_mix_weights(2)+ &
@@ -1334,32 +1329,32 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            species_mix_weights(5)+species_mix_weights(6)+ &
            species_mix_weights(8)+species_mix_weights(9)+ &
            species_mix_weights(10)+species_mix_weights(11)
-      zenvm = envelope_metal_fraction*(mixture_weight_sum - &
+      env_comp%zenvm = env_comp%envelope_metal_fraction*(mixture_weight_sum - &
            species_mix_weights(6)-species_mix_weights(8)- &
            species_mix_weights(9))/mixture_weight_sum
-      mixture_scale_factor = envelope_metal_fraction/mixture_weight_sum
-      species_mix_weights(7) = envelope_hydrogen_fraction/ &
+      mixture_scale_factor = env_comp%envelope_metal_fraction/mixture_weight_sum
+      species_mix_weights(7) = env_comp%envelope_hydrogen_fraction/ &
            mixture_scale_factor
-      species_mix_weights(12) = (1.0d0-envelope_hydrogen_fraction- &
-           envelope_metal_fraction)/mixture_scale_factor
+      species_mix_weights(12) = (1.0d0-env_comp%envelope_hydrogen_fraction- &
+           env_comp%envelope_metal_fraction)/mixture_scale_factor
       mixture_weight_sum = 0.0d0
       do 610 i = 1,12
        species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
             atomic_weight(i)
        mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
  610  continue
-      amuenv = mixture_weight_sum
-      mixture_scale_factor = 1.0d0/amuenv
+      env_comp%amuenv = mixture_weight_sum
+      mixture_scale_factor = 1.0d0/env_comp%amuenv
 ! DBG 1/96 FXENV ARE NUMBER FRACTIONS OF ELEMENTS REQURIED
 ! BY EOS ROUTINES (SEE EQSTAT AND EQSAHA)
       do 620 i = 1,12
-       fxenv(i) = species_mix_weights(i)*mixture_scale_factor
+       env_comp%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
  620  continue
 !     FIND SURFACE COMPOSITION OPACITY TABLE
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
  630  continue
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
-      call surfopac(envelope_hydrogen_fraction)
+      call surfopac(env_comp%envelope_hydrogen_fraction)
       if (use_scv_eos) then
          call setscv
       endif

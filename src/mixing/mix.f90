@@ -34,6 +34,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
      num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
      mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff)
 
+      use envelope_comp_lib
       use light_burn_lib
       use oldmod_lib
       use luout_lib
@@ -70,14 +71,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       double precision :: reaction_rate_by_zone(15,json)
       common/burn/ reaction_rate_by_zone
 
-! common/comp/: not used in this file. Naming matches
-! getopac.f90/meqos.f90.
-      double precision :: envelope_hydrogen_fraction, &
-           envelope_metal_fraction, zenvm, envelope_amu, &
-           envelope_species_fractions(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, envelope_amu, envelope_species_fractions, xnew, znew, &
-           stotal, senv
 
 
 

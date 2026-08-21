@@ -29,6 +29,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
+      use envelope_comp_lib
       use luout_lib
       use const_lib
       implicit none
@@ -68,11 +69,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       logical :: lsenv0_placeholder, lnew0_placeholder
       common/cenv/tri_delta_teffl, tri_delta_logl, senv0_placeholder, &
            lsenv0_placeholder, lnew0_placeholder
-! common/comp/: only stotal is used here. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
       double precision :: allard_al_teffl_min, allard_al_teffl_max
       common /alatm05/ allard_al_teffl_min, allard_al_teffl_max
 

@@ -35,6 +35,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
      dt, cut_count, converged_flag, redo_flag)
 
       use const_lib
+      use envelope_comp_lib
       use mdphy_lib
       use oldmod_lib
       use luout_lib
@@ -50,13 +51,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       logical, intent(inout) :: converged_flag
       logical, intent(out) :: redo_flag
 
-! common/comp/: envelope_hydrogen_fraction/amuenv are used here. Naming
-! matches getopac.f90/hpoint.f90.
-      double precision :: envelope_hydrogen_fraction, &
-           envelope_metal_fraction, zenvm, amuenv, fxenv(12), xnew, &
-           znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 ! common/comp2/: envelope_helium_fraction/envelope_he3_fraction
 ! (originally YENV/Y3ENV), both used here. Not referenced in any
@@ -188,14 +182,14 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       if(iteration_number.gt.1)then
          do 90 zone_index = 1,num_zones
             delta_hydrogen = composition(1,zone_index)- &
-                 envelope_hydrogen_fraction
+                 env_comp%envelope_hydrogen_fraction
             delta_helium = composition(2,zone_index)- &
                  envelope_helium_fraction
             delta_metal = composition(3,zone_index)- &
-                 envelope_metal_fraction
+                 env_comp%envelope_metal_fraction
             delta_helium3 = composition(4,zone_index)- &
                  envelope_he3_fraction
-            amu_calc_temp = amuenv + delta_hydrogen/atomic_weight(1) + &
+            amu_calc_temp = env_comp%amuenv + delta_hydrogen/atomic_weight(1) + &
                  delta_helium/atomic_weight(2) + &
                  delta_metal/atomic_weight(3) + &
                  delta_helium3/atomic_weight(4)

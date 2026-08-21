@@ -27,6 +27,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
      centre5_table_path, opal92_table2_path, pure_z_table_path, &
      scv_h_table_path, scv_he_table_path, scv_z_table_path, &
      alex95_table_paths)
+      use envelope_comp_lib
       use luout_lib
       use const_lib
       implicit none
@@ -85,12 +86,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       logical :: ldh
       common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
-! common/comp/: only envelope_hydrogen_fraction is used here. Naming
-! matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 
 
@@ -260,7 +255,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      call setupopac(envelope_hydrogen_fraction, laol_work_array, &
+      call setupopac(env_comp%envelope_hydrogen_fraction, laol_work_array, &
            alex06_table_path,kurucz_table_path,kurucz_table2_path, &
            laol_table_path,laol_table2_path, &
            opal95_table_path,opal92_table_path,opal92_table2_path, &

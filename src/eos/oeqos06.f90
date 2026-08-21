@@ -23,8 +23,9 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
      dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, *)
 
-      use luout_lib
       use const_lib
+      use envelope_comp_lib
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: log10_temperature, log10_pressure
@@ -41,17 +42,6 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       double precision, parameter :: cnvs = 0.434294481d0
       double precision, parameter :: zero = 0.0d0
 
-! common/comp/: none of these members are used in this file; declared
-! only to preserve the storage layout shared with every other file
-! that references common/comp/ (see getopac.f90 for why renaming here
-! doesn't require touching other files). Names are chosen to match
-! their usage in eqstat2.f90, where they are read.
-      double precision :: envelope_hydrogen_fraction, &
-           envelope_metal_fraction, zenvm, envelope_amu, &
-           envelope_species_fractions(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, envelope_amu, envelope_species_fractions, xnew, znew, &
-           stotal, senv
 
 
 

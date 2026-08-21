@@ -28,6 +28,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      env_call_count, saha_state)
 
+      use envelope_comp_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -70,11 +71,6 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
            qrmu, qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
       common/pulse2/qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, qrmu, &
            qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
-! common/comp/: only stotal is used here. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 ! common/envprt/: all used/set here. Naming is local to this batch
 ! (shared with envint.f90's usage of this block).
       double precision :: current_log10_pressure, current_log10_temperature, &
@@ -112,7 +108,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       logical :: is_convective
 
       log10_pressure = log10_pressure_indep
-      log10_mass = y(1) + stotal
+      log10_mass = y(1) + env_comp%stotal
       log10_temperature = y(2)
       log10_radius = y(3)
       if(use_mhd_eos)then
@@ -158,7 +154,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
       current_log10_pressure = log10_pressure
       current_log10_temperature = log10_temperature
-      current_log10_mass = log10_mass - stotal
+      current_log10_mass = log10_mass - env_comp%stotal
       current_log10_radius = log10_radius
       current_log10_density = log10_density
       current_velocity = convective_velocity
@@ -188,7 +184,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
        qd = dexp(ln10*log10_density)
        qo = opacity
        qol = log10_opacity
-       qfs = dexp(ln10*(log10_mass-stotal))
+       qfs = dexp(ln10*(log10_mass-env_comp%stotal))
        qqdp = dlnrho_dlnp
        qqed = 0.0d0
        qqod = dlnkap_dlnrho

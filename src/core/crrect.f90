@@ -99,6 +99,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
      specific_angular_momentum, iteration_level, am_transport_convective_flag, &
      mixed_zone_bounds, qiw, kinetic_energy_rot, kinetic_energy_rot_old)
 
+      use envelope_comp_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -175,13 +176,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       common/cenv/ tri_delta_teffl, tri_delta_logl, senv0_placeholder, &
            lsenv0_placeholder, lnew0_placeholder
 
-! common/comp/: xnew/znew/senv are used here (the rest are unused
-! placeholders). Naming matches hpoint.f90/getopac.f90.
-      double precision :: envelope_hydrogen_fraction, &
-           envelope_metal_fraction, zenvm, amuenv, fxenv(12), xnew, znew, &
-           stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 
 
@@ -247,7 +241,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       kenv = 0
       katm = 0
       ksaha = 0
-      senv = log_mass(num_points) - log_total_mass
+      env_comp%senv = log_mass(num_points) - log_total_mass
       if (start_new_triangle.or.reset_triangle .and.iteration_level.eq.2) &
            recompute_surface_bc = .true.
 !  FIND NEW FP AND FT IF MODEL IS ROTATING
@@ -262,8 +256,8 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 ! SET UP SURFACE BOUNDARY CONDITIONS-2ND AND 3RD LEVELS OF ITER ONLY
 ! FIND ENVELOPE MASS AND SET X AND Z TO ENVELOPE VALUES
       if (recompute_surface_bc) then
-       hydrogen_fraction = xnew
-       metal_fraction = znew
+       hydrogen_fraction = env_comp%xnew
+       metal_fraction = env_comp%znew
        log10_pressure_limit = log_pressure(num_points)
        if (ldh) then
           xxdy = composition(1,num_points)

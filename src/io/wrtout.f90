@@ -25,6 +25,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use envelope_comp_lib
       use fluxes_lib
       use engeb_diag_lib
       use light_burn_lib
@@ -101,12 +102,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! common/ccout2/: only ltrack is used here. Naming matches meqos.f90.
       logical :: ldebug, lcorr, lmilne, ltrack, lstpch
       common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
-! common/comp/: only xnew/znew/stotal are used here. Naming matches
-! getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 ! common/heflsh/: helium_flash_active (originally LKUTHE), used here.
 ! Naming matches wrtlst.f90.
       logical :: helium_flash_active
@@ -315,11 +310,11 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
    20 format(1X,127('*'))
    21 format(/,1X,127('*'))
       if(.not.helium_flash_active) then
-       write(short_file_unit,30)model_number,total_mass_msun,xnew,znew,age_gyr,timestep_yr
+       write(short_file_unit,30)model_number,total_mass_msun,env_comp%xnew,env_comp%znew,age_gyr,timestep_yr
    30    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
           ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',F12.0)
       else
-       write(short_file_unit,40)model_number,total_mass_msun,xnew,znew,age_gyr,timestep_yr
+       write(short_file_unit,40)model_number,total_mass_msun,env_comp%xnew,env_comp%znew,age_gyr,timestep_yr
    40    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
           ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',1PE12.4)
       endif
@@ -352,7 +347,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 
       bolometric_magnitude = solar_bolometric_magnitude-2.5D0*log_luminosity_lsun
       radius_log_surface = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity - c4pil - csigl - 4.0D0*log_teff)
-      log_gravity = cgl + stotal - radius_log_surface - radius_log_surface
+      log_gravity = cgl + env_comp%stotal - radius_log_surface - radius_log_surface
 ! MHP 02/12 MOVED ABOVE SECTION WHERE THESE ARE USED
 !  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
 !  CENTRAL ETA AND BETA ARE ALSO CALCULATED.
@@ -807,7 +802,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !        RATIO OF GRAV TO TOTAL ENERGY
 !       GROTOT = 100.0*TLUMX(7)/HL(M)
             write(itrack,1501)model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,envelope_mass, &
-            envelope_radius, xnew
+            envelope_radius, env_comp%xnew
  1501       format(1X,2I8,1P5E13.5, 1P2E11.3, 0PF8.4, 1PE13.5)
 
          end if

@@ -19,6 +19,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
      adiabatic_gradient, valid_table_point)
 
       use const_lib
+      use envelope_comp_lib
       use numerics_lib
       implicit none
 
@@ -41,16 +42,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
            envelope_table, num_pressure_points, use_scv_eos, &
            scv_temp_index, scv_pressure_index
 
-! common/comp/: none of these members are used in this file; declared
-! only to preserve the storage layout shared with every other file
-! that references common/comp/. Names are chosen to match their usage
-! in eqstat2.f90, where they are read.
-      double precision :: envelope_hydrogen_fraction, &
-           envelope_metal_fraction, zenvm, envelope_amu, &
-           envelope_species_fractions(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, envelope_amu, envelope_species_fractions, xnew, znew, &
-           stotal, senv
 
       double precision, intent(in) :: log10_temperature, temperature
       double precision, intent(in) :: pressure

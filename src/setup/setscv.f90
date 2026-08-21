@@ -16,11 +16,12 @@
 ! completes du/dt and the entropy-of-mixing correction (smix) on the
 ! native H/He table grid, then combines the three species by the
 ! additive-volume rule at the envelope composition (X=envelope_hydrogen_
-! fraction, Z=envelope_metal_fraction) to fill tablenv columns 1-6,
+! fraction, Z=env_comp%envelope_metal_fraction) to fill tablenv columns 1-6,
 ! then numerically differentiates those columns (in log T and log P)
 ! to fill tablenv columns 7-12.
 subroutine setscv
 
+      use envelope_comp_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -39,12 +40,6 @@ subroutine setscv
       common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
            use_scv_eos, idt, idp
 
-! common/comp/: only envelope_hydrogen_fraction/envelope_metal_fraction
-! are used here. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
       double precision :: interp_x(3), t_interp_weight(3), &
            t_interp_dweight(3), p_interp_weight(3), p_interp_dweight(3)
@@ -94,7 +89,7 @@ subroutine setscv
                  tlogx(t_idx)))*tabley(t_idx,p_idx,7)**2/tabley(t_idx,p_idx,8)
 ! COMPUTE THE ENTROPY OF MIXING.
 ! NUMBER DENSITY OF HYDROGEN AND HELIUM
-            helium_fraction_local = 1.0d0-envelope_hydrogen_fraction
+            helium_fraction_local = 1.0d0-env_comp%envelope_hydrogen_fraction
             one_minus_y_local = 1.0d0 - helium_fraction_local
             density_h = exp(ln10*tablex(t_idx,p_idx,4))
             density_he = exp(ln10*tabley(t_idx,p_idx,4))
@@ -172,8 +167,8 @@ subroutine setscv
          do p_idx=1,nptsx(t_idx)
             log_p_work = tablex(t_idx,p_idx,1)
             log_rho_mix = tablex(t_idx,p_idx,4)
-            hydrogen_fraction_local = envelope_hydrogen_fraction
-            metal_fraction_local = envelope_metal_fraction
+            hydrogen_fraction_local = env_comp%envelope_hydrogen_fraction
+            metal_fraction_local = env_comp%envelope_metal_fraction
             helium_fraction_local = 1.0d0 - hydrogen_fraction_local - &
                  metal_fraction_local
             pressure_value = (10.0d0**log_p_work)

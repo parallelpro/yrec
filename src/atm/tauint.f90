@@ -16,9 +16,10 @@
 subroutine tauint(shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
+      use const_lib
+      use envelope_comp_lib
       use light_burn_lib
       use turnover_lib
-      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -31,11 +32,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
       double precision, intent(in) :: radiative_gradient(json), &
            adiabatic_gradient(json)
 
-! common/comp/: not used in this file. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 ! common/jtest/: not used in this file. Naming is local to this batch.
       integer :: imax1_placeholder, imax2_placeholder
       logical :: ljvs_placeholder

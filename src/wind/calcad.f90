@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use envelope_comp_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -149,13 +150,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 
-! common/comp/: envelope_hydrogen_fraction(unused here)/stotal(unused
-! here) -- only used member is none actually read/set directly by
-! name; retained for layout. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 ! common/sound/: adiabatic_index_gamma1 (GAM1) is set here; the local
 ! array gm1(json) below is a distinct per-call scratch copy of Gamma1,
@@ -325,7 +319,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       metal_fraction = composition(3,num_shells)
       log10_radius_local = 0.5d0*(log_luminosity_lsun+log10_solar_luminosity- &
            4.0d0*log_teff-c4pil-csigl)
-      log10_gravity = cgl+stotal-log10_radius_local-log10_radius_local
+      log10_gravity = cgl+env_comp%stotal-log10_radius_local-log10_radius_local
       log10_pressure_limit = log_pressure(num_shells)
 !      IF (KTTAU .EQ. 0) LAOLY = .TRUE.
 !      IF (KTTAU .EQ. 3) LAOLY = .FALSE.      ! for grey atm intergration: stores values in common block

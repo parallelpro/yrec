@@ -22,6 +22,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff)
 
+      use envelope_comp_lib
       use scrtch_lib
       use const_lib
       use numerics_lib
@@ -38,14 +39,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       integer, intent(in) :: num_zones
       double precision, intent(in) :: log_teff
 
-! common/comp/: only envelope_hydrogen_fraction/envelope_metal_fraction
-! are used here. The remaining members are declared only to preserve
-! the storage layout shared with every other file that references
-! common/comp/. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 ! common/comp2/: envelope_helium_fraction/envelope_he3_fraction, both
 ! used here. Naming matches checkc.f90.
@@ -195,11 +188,11 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
          shell_diag%del_grad(3,im) = adiabatic_gradient
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
-         dfx1 = composition(1,im) - envelope_hydrogen_fraction
+         dfx1 = composition(1,im) - env_comp%envelope_hydrogen_fraction
          dfx2 = composition(2,im) - envelope_helium_fraction
-         dfx3 = composition(3,im) - envelope_metal_fraction
+         dfx3 = composition(3,im) - env_comp%envelope_metal_fraction
          dfx4 = composition(4,im) - envelope_he3_fraction
-         temp_scratch = amuenv + dfx1/atomic_weight(1) + &
+         temp_scratch = env_comp%amuenv + dfx1/atomic_weight(1) + &
               dfx2/atomic_weight(2) + dfx3/atomic_weight(3) + &
               dfx4/atomic_weight(4)
          amu2 = 1.0d0/temp_scratch

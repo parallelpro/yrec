@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use envelope_comp_lib
       use light_burn_lib
       use scrtch_lib
       use oldmod_lib
@@ -91,12 +92,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       logical :: ldebug, lcorr, lmilne, ltrack, lstpch
       common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
-! common/comp/: senv/xnew/znew are used here. Naming matches
-! getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 
 
@@ -238,7 +233,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
              write(short_file_unit,10) num_zones,i
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              num_zones = i
-             senv = log_mass(num_zones) - log_total_mass
+             env_comp%senv = log_mass(num_zones) - log_total_mass
              point_reset_flag = .true.
              goto 40
           endif
@@ -254,8 +249,8 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       else if (log_temperature(num_zones).gt.tenv1.and. &
            envelope_store_index.ne.0) then
        num_zones = num_zones + 1
-       senv = stored_envelope_values(4)
-       log_mass(num_zones) = log_total_mass + senv
+       env_comp%senv = stored_envelope_values(4)
+       log_mass(num_zones) = log_total_mass + env_comp%senv
        log_pressure(num_zones) = log_pressure(num_zones-1) + &
             (stored_envelope_values(1) - stored_log_pressure(envelope_store_index))
        log_temperature(num_zones) = log_temperature(num_zones-1) + &
@@ -1008,10 +1003,10 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
          end do
       endif
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.
-      if (dabs(xnew-composition(1,num_zones)).gt.1.0D-8) then
-               xnew = composition(1,num_zones)
-               znew = composition(3,num_zones)
-               call surfopac(xnew)
+      if (dabs(env_comp%xnew-composition(1,num_zones)).gt.1.0D-8) then
+               env_comp%xnew = composition(1,num_zones)
+               env_comp%znew = composition(3,num_zones)
+               call surfopac(env_comp%xnew)
 
       end if
 

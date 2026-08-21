@@ -11,6 +11,7 @@
 ! unit, printed every nprtpt points (plus the first and last points).
 subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 
+      use envelope_comp_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -26,12 +27,6 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       integer :: npenv, nprtmod, print_point_interval, npoint
       common/ccout1/ npenv, nprtmod, print_point_interval, npoint
 
-! common/comp/: only envelope_hydrogen_fraction/envelope_metal_fraction
-! are used here. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 
 
@@ -47,9 +42,9 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 !  FIND THE MILNE INVARIANTS U AND V, ALONG WITH THE INDEX N+1.
 !  WRITE THEM OUT TO LOGICAL UNIT IMILNE.
 !  HEADER
-      smtot = dexp(ln10*stotal)/solar_mass_cgs
-      write(imilne,5) model,envelope_hydrogen_fraction, &
-           envelope_metal_fraction,smtot
+      smtot = dexp(ln10*env_comp%stotal)/solar_mass_cgs
+      write(imilne,5) model,env_comp%envelope_hydrogen_fraction, &
+           env_comp%envelope_metal_fraction,smtot
     5 format(10X,'MODEL',I5,'  XENV =',1PD10.3,'  ZENV =',D10.3, &
            '  MASS(SOLAR UNITS) =',D10.3)
 !  CALCULATE FOR FIRST POINT(ALWAYS DONE)

@@ -25,6 +25,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state)
 
+      use envelope_comp_lib
       use luout_lib
       use const_lib
       implicit none
@@ -55,15 +56,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       integer, intent(inout) :: saha_state
 
 
-! common/comp/: envelope_hydrogen_fraction, envelope_metal_fraction,
-! envelope_amu, and envelope_species_fractions are used here. Naming
-! matches getopac.f90/meqos.f90/oeqos.f90.
-      double precision :: envelope_hydrogen_fraction, &
-           envelope_metal_fraction, zenvm, envelope_amu, &
-           envelope_species_fractions(12), xnew, znew, stotal, senv
-      common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, envelope_amu, envelope_species_fractions, xnew, znew, &
-           stotal, senv
 
 
 
@@ -158,71 +150,71 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !     MHP 3/94 METAL DIFFUSION ADDED.  ASSUME ALL METALS SCALE EQUALLY.
       original_metal_fraction = metal_fraction
       if (use_diffusion_z) then
-!        THE VECTOR envelope_species_fractions IS DEFINED IN STARIN AS
+!        THE VECTOR env_comp%fxenv IS DEFINED IN STARIN AS
 !        (MASS FRACTION OF SPECIES/ATOMIC WT/AMUENV) FOR THE COMPOSITION
 !        XENV,ZENV.
 !        AND AMU IS DEFINED AS THE SUM OF THE MASS FRACTIONS DIVIDED BY
 !        THEIR ATOMIC WEIGHTS.  FOR METAL DIFFUSION, ALL THE METALS ARE
 !        ASSUMED TO CHANGE EQUALLY.
-         metal_ratio = metal_fraction/envelope_metal_fraction
-         amu_correction = (metal_ratio - 1.0d0)*envelope_amu
-         ion_mean_weight_inverse = envelope_amu
+         metal_ratio = metal_fraction/env_comp%envelope_metal_fraction
+         amu_correction = (metal_ratio - 1.0d0)*env_comp%amuenv
+         ion_mean_weight_inverse = env_comp%amuenv
          do species_idx = 1, 6
             ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 amu_correction*envelope_species_fractions(species_idx)
+                 amu_correction*env_comp%fxenv(species_idx)
          end do
-         h_excess = (hydrogen_fraction - envelope_hydrogen_fraction)/ &
+         h_excess = (hydrogen_fraction - env_comp%envelope_hydrogen_fraction)/ &
               atomic_weights_full(7)
          ion_mean_weight_inverse = ion_mean_weight_inverse + h_excess
          do species_idx = 8, 11
             ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 amu_correction*envelope_species_fractions(species_idx)
+                 amu_correction*env_comp%fxenv(species_idx)
          end do
-         y_excess = (envelope_hydrogen_fraction + envelope_metal_fraction - &
+         y_excess = (env_comp%envelope_hydrogen_fraction + env_comp%envelope_metal_fraction - &
               hydrogen_fraction - metal_fraction)/atomic_weights_full(12)
          ion_mean_weight_inverse = ion_mean_weight_inverse + y_excess
-         envelope_amu_over_amu = metal_ratio*envelope_amu/ &
+         envelope_amu_over_amu = metal_ratio*env_comp%amuenv/ &
               ion_mean_weight_inverse
          if (need_saha_solution) then
             do species_idx = 1, 6
                saha_mass_fractions(species_idx) = envelope_amu_over_amu* &
-                    envelope_species_fractions(species_idx)
+                    env_comp%fxenv(species_idx)
             end do
-            saha_mass_fractions(7) = (envelope_species_fractions(7)* &
-                 envelope_amu + h_excess)/ion_mean_weight_inverse
+            saha_mass_fractions(7) = (env_comp%fxenv(7)* &
+                 env_comp%amuenv + h_excess)/ion_mean_weight_inverse
             do species_idx = 8, 11
                saha_mass_fractions(species_idx) = envelope_amu_over_amu* &
-                    envelope_species_fractions(species_idx)
+                    env_comp%fxenv(species_idx)
             end do
-            saha_mass_fractions(12) = (envelope_species_fractions(12)* &
-                 envelope_amu + y_excess)/ion_mean_weight_inverse
+            saha_mass_fractions(12) = (env_comp%fxenv(12)* &
+                 env_comp%amuenv + y_excess)/ion_mean_weight_inverse
          end if
       else
 !        SET UP FRACTIONAL ABUNDANCES
-         dfx1 = (hydrogen_fraction - envelope_hydrogen_fraction)
-         dfx12 = (metal_fraction - envelope_metal_fraction)
+         dfx1 = (hydrogen_fraction - env_comp%envelope_hydrogen_fraction)
+         dfx12 = (metal_fraction - env_comp%envelope_metal_fraction)
          if (dabs(dfx1) + dabs(dfx12).lt.1.0d-5) then
 !           USE ENVELOPE ABUNDANCES
-            ion_mean_weight_inverse = envelope_amu
+            ion_mean_weight_inverse = env_comp%amuenv
             if (need_saha_solution) then
                do species_idx = 1, num_species
                   saha_mass_fractions(species_idx) = &
-                       envelope_species_fractions(species_idx)
+                       env_comp%fxenv(species_idx)
                end do
             end if
          else
             dfx1 = dfx1*atomic_weights(1)
             dfx12 = dfx12*atomic_weights(3)
-            dfx4 = (envelope_hydrogen_fraction + envelope_metal_fraction - &
+            dfx4 = (env_comp%envelope_hydrogen_fraction + env_comp%envelope_metal_fraction - &
                  hydrogen_fraction - metal_fraction)*atomic_weights(2)
 !           ASSUME EXCESS Z(METALS) IS IN THE FORM OF CARBON(12)
-            ion_mean_weight_inverse = envelope_amu + dfx1 + dfx4 + dfx12
+            ion_mean_weight_inverse = env_comp%amuenv + dfx1 + dfx4 + dfx12
             amu_inverse = 1.0d0/ion_mean_weight_inverse
             if (need_saha_solution) then
-               envelope_amu_frac = envelope_amu*amu_inverse
+               envelope_amu_frac = env_comp%amuenv*amu_inverse
                do species_idx = 1, num_species
                   saha_mass_fractions(species_idx) = envelope_amu_frac* &
-                       envelope_species_fractions(species_idx)
+                       env_comp%fxenv(species_idx)
                end do
                saha_mass_fractions(6) = saha_mass_fractions(6) + &
                     dfx12*amu_inverse

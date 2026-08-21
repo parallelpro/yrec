@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use envelope_comp_lib
       use light_burn_lib
       use turnover_lib
       use luout_lib
@@ -102,11 +103,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            atm_ion_fraction(3)
       common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
            atm_log10_density, atm_opacity, atm_ion_fraction
-! common/comp/: only senv is used here. Naming matches getopac.f90.
-      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common/comp/envelope_hydrogen_fraction, envelope_metal_fraction, &
-           zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 ! common/envprt/: all used/set here. Naming is local to this batch
 ! (shared with qenv.f90's usage of this block).
       double precision :: current_log10_pressure, current_log10_temperature, &
@@ -698,13 +694,13 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
 ! DBG
 !  IF ENVELOPE MASS(SENV) SMALL ENOUGH,SKIP ENVELOPE INTEGRATION.
 ! DBG 2/92 CHANGED FROM 1.0D-10 to 1.0D-12
-      if(senv.gt.-1.0d-12) then
+      if(env_comp%senv.gt.-1.0d-12) then
        if(save_boundary_flag) then
           vtx_logp(vertex_index) = atm_log10_pressure
           vtx_logr(vertex_index) = log10_radius
           vtx_logt(vertex_index) = atm_log10_temperature
           if(print_flag)then
-            if(.not.lstch)write(istor,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),senv
+            if(.not.lstch)write(istor,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),env_comp%senv
           endif
        endif
  230     format(4X,3F16.12,8X,F16.12)
@@ -727,7 +723,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       h_max = env_step_max
       h_min = env_step_min
       h_step = env_step_begin
-      step_tolerance = dabs(tolerance_fraction*senv)
+      step_tolerance = dabs(tolerance_fraction*env_comp%senv)
       surface_radius_linear = dexp(ln10*log10_radius)
       if(stored_vertex_index.eq.vertex_index) stored_vertex_index = 0
       store_flag_set = .false.
@@ -842,11 +838,11 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
  210     continue
        swap_temp = y(1) + h_step*dydx(1)
-       if(senv - y(1).gt.0.0d0 .or. senv - swap_temp.gt.0.0d0) then
+       if(env_comp%senv - y(1).gt.0.0d0 .or. env_comp%senv - swap_temp.gt.0.0d0) then
 !  IF THE INTEGRATION HAS OVERSHOT THE FITTING POINT, OR THE NEXT
 !  STEP WILL DO SO,LIMIT STEP SIZE OR INTEGRATE BACKWARDS TO THE
 !  CORRECT MASS.
-          h_step = (senv - y(1))/dydx(1)
+          h_step = (env_comp%senv - y(1))/dydx(1)
        endif
 !  ENSURE THAT STEP DOESN'T EXCEED MAXIMUM STEP SIZE
        if(h_step.lt.0.0d0) then
@@ -931,7 +927,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
           num_bad = num_bad + 1
        endif
 !  CHECK IF INTEGRATION COMPLETE
-       mass_diff_remaining = senv - y(1)
+       mass_diff_remaining = env_comp%senv - y(1)
 ! 07/02 STORE ENVELOPE TERMS IF THE INTEGRATION
 ! HAS NOT OVERSHOT THE FITTING POINT.
          if(mass_diff_remaining.le.step_tolerance)then
@@ -982,7 +978,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
              vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)
              vtx_logr(vertex_index) = y(3) + interp_weight*(y_start(3) - y(3))
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
-             if(print_flag)write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),senv
+             if(print_flag)write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),env_comp%senv
           endif
           goto 300
        else if(.not.store_flag_set) then
@@ -1007,7 +1003,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       stop
  300  continue
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR.
-      if(senv.lt.-1.0d-12)then
+      if(env_comp%senv.lt.-1.0d-12)then
          do i = 1,num_env_points
             inversion_index1 = i
             inversion_index2 = num_env_points - i + 1

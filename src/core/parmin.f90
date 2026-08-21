@@ -36,6 +36,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
      fscvz, opecalex)
 
+      use envelope_comp_lib
       use const_lib
       use luout_lib
       use intpar_lib
@@ -162,9 +163,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lfirst(50)
       common /ckind/ rescal, nmodls, iresca, lfirst, numrun
 
-! common /comp/
-      double precision :: xenv, zenv, zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
-      common /comp/ xenv, zenv, zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 ! clsun/crsun: NAMELIST /physics/ members (must keep this exact
 ! spelling); copied into const_lib's solar_luminosity_cgs/
@@ -1883,7 +1881,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             write(short_file_unit,452) nmodls(nkind), &
            &       (rescal(i,nkind),i = 1,4)
        end if
-         if(rescal(3,nkind).ge.0.0d0)  zenv=rescal(3,nkind)
+         if(rescal(3,nkind).ge.0.0d0)  env_comp%envelope_metal_fraction=rescal(3,nkind)
       1000 continue
       return
 
