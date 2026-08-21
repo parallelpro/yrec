@@ -104,6 +104,10 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! common/ccout1/: only nprtmod is used here. Naming matches wrtmil.f90.
       integer :: npenv, nprtmod, print_point_interval, npoint
       common/ccout1/ npenv, nprtmod, print_point_interval, npoint
+! common/pulsegyre/: pulse_gyre_interval, used here to trigger
+! io/write_gyre_pulse.f90. Naming matches core/parmin.f90.
+      integer :: pulse_gyre_interval
+      common/pulsegyre/ pulse_gyre_interval
 ! common/ccout2/: only ltrack is used here. Naming matches meqos.f90.
       logical :: ldebug, lcorr, lmilne, ltrack, lstpch
       common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
@@ -956,6 +960,13 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
          log_pressure,log_radius,log_temperature,model_number,log_luminosity_lsun,log_teff,shape_factor_fp,shape_factor_ft,log_mass,age_gyr)
       endif
 ! G Somers END
+! new (2026): GYRE-format periodic pulsation output, independent of
+! the LPULSE/pulsation_output_active mechanism above -- see
+! core/parmin.f90 and io/write_gyre_pulse.f90.
+      if (pulse_gyre_interval.gt.0 .and. mod(model_number,pulse_gyre_interval).eq.0) then
+         call write_gyre_pulse(num_shells,model_number,mass_coordinate,log_density,log_luminosity, &
+              log_pressure,log_radius,log_temperature,omega)
+      endif
 
 ! JVS 01/11 Added new track file output format, +manipulations for stitching
 ! together the interior and envelope pieces. Columns 68,69,70 are normalized

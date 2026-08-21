@@ -134,6 +134,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: npenv, nprtmod, nprtpt, npoint
       common /ccout1/ npenv, nprtmod, nprtpt, npoint
 
+! common /pulsegyre/: new (2026) dedicated block for the GYRE-format
+! periodic pulsation-structure output feature (io/write_gyre_pulse.f90,
+! triggered from io/wrtout.f90 every pulse_gyre_interval converged
+! models). Deliberately a separate block from the existing common
+! /pulse/ (shared by 9 files already) to keep this purely additive.
+      integer :: pulse_gyre_interval
+      common /pulsegyre/ pulse_gyre_interval
+
 ! common /ccout2/
       logical :: ldebug, lcorr, lmilne, ltrack, lstpch
       common /ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
@@ -594,7 +602,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! MHP 10/24 ADDED HEAVY ELEMENT MIXTURE CONTROLS TO NML1,USED IN STARIN
            &  end_dcen,end_xcen,end_ycen,isetmix,isetiso, &
            &  amix,aiso,frac_c,frac_n,frac_o,r12_13,r14_15,r16_17,r16_18,zxmix, &
-           &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini
+           &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini, &
+! new (2026): GYRE-format periodic pulsation output interval, additive
+! only -- absent from every existing *.nml1 file, so it simply keeps
+! its default (off) there.
+           &  pulse_gyre_interval
 !
       namelist /physics/ &
            &    atmmin, atmbeg, atmerr, atmmax, atmd0, anewcp, atmp, acfpft, &
@@ -681,6 +693,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data lstch/.false./
       data lenvg, atmstp, envstp/.false.,0.5,0.5/
       data nprtmod, nprtpt/1,1/
+      data pulse_gyre_interval/0/
       data numrun, kindrn, lfirst, nmodls &
            &      /1,50*1,50*.true.,50*0/
 ! MHP 10/24 ADDED NEW DEFAULTS FOR END CONDITIONS ON CENTRAL D,X,Y
@@ -1555,6 +1568,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &        'N/A',6x,'0.50',6x,'0.50'/3x,'CURRENT',9x,l1,2(4x,f6.3))
       if(nprtmod.le.0) nprtmod = 9999
       if(nprtpt.le.0) nprtpt = 9999
+      if(pulse_gyre_interval.lt.0) pulse_gyre_interval = 0
       write(ishort,130) nprtmod,nprtpt
       130 format(3x,'LINE  4  NPRTMOD    NPRTPT'/2x,'STANDARD', &
            & 1(7x,'N/A'),9x,'5'/3x,'CURRENT',2(6x,i4))

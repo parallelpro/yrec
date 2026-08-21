@@ -665,21 +665,30 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             dlnepsilon_dlnt(im) = zone_dlnepsilon_dlnt
          end if
 ! DBG PULSE
-         if (pulsation_output_active) then
-            pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-            pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
-            pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
-            pulse_dlnkap_dlnrho(im) = dlnkap_dlnrho
-            pulse_dlnkap_dlnt(im) = dlnkap_dlnt
-            pulse_specific_heat(im) = specific_heat_cp
-            pulse_mean_molecular_weight(im) = specific_gas_constant
-            pulse_electron_mean_molecular_weight(im) = &
-                 electron_mean_weight_inverse
-            pulse_dlnrho_dlnt(im) = dlnrho_dlnt
-            valfmlt(im) = alfmlt
-            vphmlt(im) = phmlt
-            vcmxmlt(im) = cmxmlt
-         end if
+! MHP 8/25 unconditional: previously gated on pulsation_output_active
+! (the legacy path-length-triggered OPAL pulsation writer's flag), but
+! the GYRE-format pulsation writer (io/write_gyre_pulse.f90) is
+! triggered independently (by model-number interval, checked in
+! wrtout.f90) and needs these populated for every converged model, not
+! just ones flagged by the older mechanism. All source locals here
+! (dlnrho_dlnp, dlnkap_dlnrho/dlnt, zone_dlnepsilon_dlnrho/dlnt, etc.)
+! are already computed unconditionally above, so this is just always
+! copying them into the pulse1/mixing-length output arrays -- no
+! change to any existing output (.short/.track/.store/.pmod/.penv/
+! .patm) values, since none of those read from these arrays.
+         pulse_dlnrho_dlnp(im) = dlnrho_dlnp
+         pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
+         pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
+         pulse_dlnkap_dlnrho(im) = dlnkap_dlnrho
+         pulse_dlnkap_dlnt(im) = dlnkap_dlnt
+         pulse_specific_heat(im) = specific_heat_cp
+         pulse_mean_molecular_weight(im) = specific_gas_constant
+         pulse_electron_mean_molecular_weight(im) = &
+              electron_mean_weight_inverse
+         pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+         valfmlt(im) = alfmlt
+         vphmlt(im) = phmlt
+         vcmxmlt(im) = cmxmlt
  30   continue
 
       return
