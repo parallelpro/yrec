@@ -50,6 +50,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use fluxes_lib
       use engeb_diag_lib
       use scrtch_lib
       use luout_lib
@@ -129,11 +130,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
            unit_centre2, unit_centre3, unit_centre4, unit_centre5
       common/mhd/use_mhd_eos,unit_zams_a,unit_zams_b,unit_zams_c, &
            unit_centre1,unit_centre2,unit_centre3,unit_centre4,unit_centre5
-! MHP 5/90 ADD COMMON BLOCK FOR SOLAR NEUTRINO I/O
-      double precision :: neutrino_flux(10), neutrino_flux_total(10), &
-           cl37_snu_rate, ga71_snu_rate
-      common/fluxes/neutrino_flux,neutrino_flux_total,cl37_snu_rate, &
-           ga71_snu_rate
 ! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
       double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
            dhnue(18)
@@ -222,7 +218,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! FLUXTOT = TOTAL FLUX OF EACH OF THE NEUTRINOS PRODUCED IN THE SUN
       if (lsnu) then
          do 5 j = 1,10
-            neutrino_flux_total(j) = 0.0d0
+            flux_diag%neutrino_flux_total(j) = 0.0d0
    5     continue
       end if
 ! MHP 10/02 QFPR,QFTR NOT USED - OMIT
@@ -403,8 +399,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
             if (lsnu) then
                do 17 j = 1,10
-                  neutrino_flux_total(j) = neutrino_flux_total(j) + &
-                       neutrino_flux(j)*shell_mass(im)
+                  flux_diag%neutrino_flux_total(j) = flux_diag%neutrino_flux_total(j) + &
+                       flux_diag%neutrino_flux(j)*shell_mass(im)
  17            continue
             end if
             do 20 j = 1,6

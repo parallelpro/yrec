@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use mdphy_lib
       use light_burn_lib
       use turnover_lib
       use oldmod_lib
@@ -122,14 +123,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       common/flag/ use_extended_composition
 
 
-! common/mdphy/: only amum is used here. Naming matches liburn.f90/
-! mixgrid.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 ! common/oldphy/: only old_amu is used here. Naming matches hpoint.f90.
       double precision :: old_delm(json), old_del_adiabatic_mix(json), &
@@ -511,7 +504,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
             do 80 zone_index = 1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum_saved(zone_index)
-               amum(zone_index) = amum(zone_index) - fx*(mean_molecular_weight(zone_index)-old_amu(zone_index))
+               mix_phys%amum(zone_index) = mix_phys%amum(zone_index) - fx*(mean_molecular_weight(zone_index)-old_amu(zone_index))
                do 70 species_index = 1,num_species_tracked
                   composition(species_index,zone_index) = prev_model%old_composition(species_index,zone_index)
    70          continue

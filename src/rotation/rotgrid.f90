@@ -26,6 +26,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
      num_zones, omega, grid_spacing, eq_am_diffusion_coeff, &
      eq_mixing_diffusion_coeff, eq_moment_of_inertia, eq_angular_momentum, &
      eq_mass, eq_omega, single_interface_flag)
+      use mdphy_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -72,13 +73,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
       integer :: ntot
       common/egrid/ chi, echi, es1, dchi, ntot
 
-! common/mdphy/: only epsm is used here. Naming matches liburn.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 ! common/splin/: scratch spline in/out arrays, used as work space here
 ! by the calls to osplin. Naming matches mixgrid.f90.
@@ -330,7 +324,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
 ! STORED IN YVAL
          scale_factor = c4pi*exp(ln10*(log_density(ii)+2.0d0*log_radius(ii)))
          dchi_dr = scale_factor/(ln10*mass_scale_factor*enclosed_mass(ii))+ &
-              scale_factor*epsm(ii)/luminosity_scale_factor+ &
+              scale_factor*mix_phys%epsm(ii)/luminosity_scale_factor+ &
               exp(ln10*(cgl+log_density(ii)+log_mass(ii)-log_pressure(ii)- &
               2.0d0*log_radius(ii)))/(ln10*pressure_scale_factor)
          ytab(i) = log_density(ii) + log10(dchi_dr) + 2.0d0*log_radius(ii)

@@ -20,6 +20,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
+      use mdphy_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -68,15 +69,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
       integer :: ntot
       common/egrid/ chi, echi, es1, dchi, ntot
 
-! common/mdphy/: only epsm (nuclear energy generation rate per unit
-! mass, used in the luminosity term of the chi Jacobian) is used here.
-! Naming matches liburn.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 ! common/splin/: scratch spline in/out arrays, used as work space here
 ! by the calls to osplin. Not referenced in any already-converted
@@ -200,7 +192,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          four_pi_rho_r2 = c4pi*exp(ln10*(log_density(search_idx) + &
               2.0d0*log_radius(search_idx)))
          dchidr = four_pi_rho_r2/(ln10*mass_scale*enclosed_mass(search_idx)) &
-              + four_pi_rho_r2*epsm(search_idx)/luminosity_scale + &
+              + four_pi_rho_r2*mix_phys%epsm(search_idx)/luminosity_scale + &
               exp(ln10*(cgl + log_density(search_idx) + log_mass(search_idx) &
               - log_pressure(search_idx) - &
               2.0d0*log_radius(search_idx)))/(ln10*pressure_scale)

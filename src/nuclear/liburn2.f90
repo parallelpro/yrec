@@ -29,6 +29,7 @@
 ! 11/91 HR added to call.
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use mdphy_lib
       use light_burn_lib
       use scrtch_lib
       use oldmod_lib
@@ -54,14 +55,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 
 
 
-! common/mdphy/: only del_adiabatic_mix and del_radiative_mix are used
-! here. Naming matches liburn.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 
       double precision :: li6_substep_depletion(json), &
@@ -94,10 +87,10 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 ! IF APPLICABLE.
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
          if(rotation_active.and.instability_transport_active)then
-            del_diff = del_adiabatic_mix(env_cz_zone) - &
-                 del_radiative_mix(env_cz_zone)
-            del_diff_below = del_adiabatic_mix(env_cz_zone-1) - &
-                 del_radiative_mix(env_cz_zone-1)
+            del_diff = mix_phys%del_adiabatic_mix(env_cz_zone) - &
+                 mix_phys%del_radiative_mix(env_cz_zone)
+            del_diff_below = mix_phys%del_adiabatic_mix(env_cz_zone-1) - &
+                 mix_phys%del_radiative_mix(env_cz_zone-1)
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.

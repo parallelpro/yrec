@@ -18,6 +18,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
      omega, local_log_radius, convergence_iterations, run_index, &
      monte_carlo_run_number)
 
+      use fluxes_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -70,13 +71,6 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
       common/calsun/ dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, log_l_prev, &
            log_r_prev, delta_x, delta_alpha, solar_calibration_active
 
-! common/fluxes/: only neutrino_flux_total/cl37_snu_rate/ga71_snu_rate
-! are used here; neutrino_flux is an unused placeholder. Naming is
-! local to this batch.
-      double precision :: neutrino_flux(10), neutrino_flux_total(10), &
-           cl37_snu_rate, ga71_snu_rate
-      common/fluxes/ neutrino_flux, neutrino_flux_total, cl37_snu_rate, &
-           ga71_snu_rate
 
 ! common/monte2/: Monte Carlo nuclear S-factor and parameter grids for
 ! the current run, indexed by monte_carlo_run_number. Naming is local
@@ -135,7 +129,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
 ! 20   FORMAT(1X,I2,2F10.6,1P4E11.4)
  20   format(1X,I2,1P4E11.4)
 !  NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
-      write(monte_carlo_unit1,30) cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(j),j=1,8)
+      write(monte_carlo_unit1,30) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(j),j=1,8)
  30   format(1X,2F8.3,1P8E10.3)
 !  SUMMARY OF STRUCTURE : TC, RHOC, PC, XC, ZC (ADD MU C)
       tcen = 10.0d0**(central_log10_temperature-6.0d0)

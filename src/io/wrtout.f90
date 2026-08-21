@@ -25,6 +25,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use fluxes_lib
       use engeb_diag_lib
       use light_burn_lib
       use turnover_lib
@@ -146,14 +147,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       logical :: diffuse_helium_active
       common/gravst/ settling_tolerance, coulomb_log_choice, &
            settling_num_iterations, diffuse_helium_active
-! MHP 7/91 ADD COMMON BLOCKS FOR SOLAR NEUTRINO I/O.
-! common/fluxes/: only neutrino_flux_total/cl37_snu_rate/ga71_snu_rate
-! are used here; neutrino_flux is an unused placeholder. Naming
-! matches wrtmonte.f90.
-      double precision :: neutrino_flux(10), neutrino_flux_total(10), &
-           cl37_snu_rate, ga71_snu_rate
-      common/fluxes/ neutrino_flux, neutrino_flux_total, cl37_snu_rate, &
-           ga71_snu_rate
 ! MHP 8/25 Removed character file names from common block
 ! DBG 11/11/91
 ! common/chrone/: only isochrone_output_active/isochrone_file_unit are
@@ -565,28 +558,28 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !  END H-SHELL SECTION
       endif
 !     PRINT OUT NEUTRINO RATES FROM ENGEB CALCULATION
-      write(short_file_unit,160) (neutrino_flux_total(i),i=1,8)
+      write(short_file_unit,160) (flux_diag%neutrino_flux_total(i),i=1,8)
   160 format(1X,'NEUTRINOS 1E10ERG/CM^2 PP,PEP,HEP,BE7,', &
          'B8,N13,O15,F17:', 1P8E9.2)
 ! DBG 7/93 from Bahcall's book p 207 table 8.2
-      fl7li = 0.0D0*neutrino_flux_total(1)+665.0D0*neutrino_flux_total(2)+8.4D4*neutrino_flux_total(3)+ &
-              9.6D0*neutrino_flux_total(4)+3.9D4*neutrino_flux_total(5)+42.4D0*neutrino_flux_total(6)+ &
-              246.0D0*neutrino_flux_total(7)+249.0D0*neutrino_flux_total(8)
-      fl37cl = 0.0D0*neutrino_flux_total(1)+16.0D0*neutrino_flux_total(2)+4.26D4*neutrino_flux_total(3)+ &
-              2.4D0*neutrino_flux_total(4)+1.09D4*neutrino_flux_total(5)+1.7D0*neutrino_flux_total(6)+ &
-              6.8D0*neutrino_flux_total(7)+6.9D0*neutrino_flux_total(8)
-      fl71ga = 11.8D0*neutrino_flux_total(1)+215.0D0*neutrino_flux_total(2)+7.3D4*neutrino_flux_total(3)+ &
-              73.2D0*neutrino_flux_total(4)+2.43D4*neutrino_flux_total(5)+61.8D0*neutrino_flux_total(6)+ &
-              116.0D0*neutrino_flux_total(7)+117.0D0*neutrino_flux_total(8)
-      fl81br = 0.0D0*neutrino_flux_total(1)+75.0D0*neutrino_flux_total(2)+9.0D4*neutrino_flux_total(3)+ &
-              18.3D0*neutrino_flux_total(4)+2.7D4*neutrino_flux_total(5)+14.5D0*neutrino_flux_total(6)+ &
-              36.7D0*neutrino_flux_total(7)+37.0D0*neutrino_flux_total(8)
-      fl98mo = 0.0D0*neutrino_flux_total(1)+0.0D0*neutrino_flux_total(2)+10.0D4*neutrino_flux_total(3)+ &
-              0.0D0*neutrino_flux_total(4)+3.0D4*neutrino_flux_total(5)+0.0D0*neutrino_flux_total(6)+ &
-              0.0D0*neutrino_flux_total(7)+0.0D0*neutrino_flux_total(8)
-      fl115in = 78.0D0*neutrino_flux_total(1)+576.0D0*neutrino_flux_total(2)+6.1D4*neutrino_flux_total(3)+ &
-              248.0D0*neutrino_flux_total(4)+2.5D4*neutrino_flux_total(5)+224.0D0*neutrino_flux_total(6)+ &
-              355.0D0*neutrino_flux_total(7)+356.0D0*neutrino_flux_total(8)
+      fl7li = 0.0D0*flux_diag%neutrino_flux_total(1)+665.0D0*flux_diag%neutrino_flux_total(2)+8.4D4*flux_diag%neutrino_flux_total(3)+ &
+              9.6D0*flux_diag%neutrino_flux_total(4)+3.9D4*flux_diag%neutrino_flux_total(5)+42.4D0*flux_diag%neutrino_flux_total(6)+ &
+              246.0D0*flux_diag%neutrino_flux_total(7)+249.0D0*flux_diag%neutrino_flux_total(8)
+      fl37cl = 0.0D0*flux_diag%neutrino_flux_total(1)+16.0D0*flux_diag%neutrino_flux_total(2)+4.26D4*flux_diag%neutrino_flux_total(3)+ &
+              2.4D0*flux_diag%neutrino_flux_total(4)+1.09D4*flux_diag%neutrino_flux_total(5)+1.7D0*flux_diag%neutrino_flux_total(6)+ &
+              6.8D0*flux_diag%neutrino_flux_total(7)+6.9D0*flux_diag%neutrino_flux_total(8)
+      fl71ga = 11.8D0*flux_diag%neutrino_flux_total(1)+215.0D0*flux_diag%neutrino_flux_total(2)+7.3D4*flux_diag%neutrino_flux_total(3)+ &
+              73.2D0*flux_diag%neutrino_flux_total(4)+2.43D4*flux_diag%neutrino_flux_total(5)+61.8D0*flux_diag%neutrino_flux_total(6)+ &
+              116.0D0*flux_diag%neutrino_flux_total(7)+117.0D0*flux_diag%neutrino_flux_total(8)
+      fl81br = 0.0D0*flux_diag%neutrino_flux_total(1)+75.0D0*flux_diag%neutrino_flux_total(2)+9.0D4*flux_diag%neutrino_flux_total(3)+ &
+              18.3D0*flux_diag%neutrino_flux_total(4)+2.7D4*flux_diag%neutrino_flux_total(5)+14.5D0*flux_diag%neutrino_flux_total(6)+ &
+              36.7D0*flux_diag%neutrino_flux_total(7)+37.0D0*flux_diag%neutrino_flux_total(8)
+      fl98mo = 0.0D0*flux_diag%neutrino_flux_total(1)+0.0D0*flux_diag%neutrino_flux_total(2)+10.0D4*flux_diag%neutrino_flux_total(3)+ &
+              0.0D0*flux_diag%neutrino_flux_total(4)+3.0D4*flux_diag%neutrino_flux_total(5)+0.0D0*flux_diag%neutrino_flux_total(6)+ &
+              0.0D0*flux_diag%neutrino_flux_total(7)+0.0D0*flux_diag%neutrino_flux_total(8)
+      fl115in = 78.0D0*flux_diag%neutrino_flux_total(1)+576.0D0*flux_diag%neutrino_flux_total(2)+6.1D4*flux_diag%neutrino_flux_total(3)+ &
+              248.0D0*flux_diag%neutrino_flux_total(4)+2.5D4*flux_diag%neutrino_flux_total(5)+224.0D0*flux_diag%neutrino_flux_total(6)+ &
+              355.0D0*flux_diag%neutrino_flux_total(7)+356.0D0*flux_diag%neutrino_flux_total(8)
       write(short_file_unit,2160) fl7li,fl37cl,fl71ga,fl81br,fl98mo,fl115in
  2160 format(1X,'NEUTRINO ENERGIES (1.E-36ERG): 7Li=', 1PE9.2, &
        ' 37Cl=',1PE9.2,' 71Ga=',1PE9.2,' 81Br=',1PE9.2,' 98Mo=', &
@@ -616,16 +609,16 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! MHP 12/09 NEW OPTION TO OUTPUT TRACK INFORMATION IN ONE LINE PER MODEL FORMAT.
          if(track_file_version .eq. 0) then
 ! MHP 8/96 ADD LINE TO COMPUTE SNU's for Cl37 and Ga71.
-            cl37_snu_rate = 0.0D0
-            ga71_snu_rate = 0.0D0
+            flux_diag%cl37_snu_rate = 0.0D0
+            flux_diag%ga71_snu_rate = 0.0D0
             if(lsnu) then
                do i = 1,8
-                  cl37_snu_rate = cl37_snu_rate + clsnuf(i)*neutrino_flux_total(i)
-                  ga71_snu_rate = ga71_snu_rate + gasnuf(i)*neutrino_flux_total(i)
+                  flux_diag%cl37_snu_rate = flux_diag%cl37_snu_rate + clsnuf(i)*flux_diag%neutrino_flux_total(i)
+                  flux_diag%ga71_snu_rate = flux_diag%ga71_snu_rate + gasnuf(i)*flux_diag%neutrino_flux_total(i)
                end do
             else
                do i = 1,10
-                  neutrino_flux_total(i) = 0.0D0
+                  flux_diag%neutrino_flux_total(i) = 0.0D0
                end do
             endif
 ! MHP 02/12
@@ -746,7 +739,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             write(itrack, 1499) model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,envelope_mass, &
             envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16,log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,composition(1,1),composition(2,1), &
             composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
-            cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
+            flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
             (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
             total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,omega(num_shells),omega(1),rotation_period_days,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius,turnover%pphot,total_mass_msun
@@ -766,13 +759,13 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
                            luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6)
 
 ! MHP 8/96 ADD LINE TO COMPUTE SNU's for Cl37 and Ga71.
-            cl37_snu_rate = 0.0D0
-            ga71_snu_rate = 0.0D0
+            flux_diag%cl37_snu_rate = 0.0D0
+            flux_diag%ga71_snu_rate = 0.0D0
             do i = 1,8
-               cl37_snu_rate = cl37_snu_rate + clsnuf(i)*neutrino_flux_total(i)
-               ga71_snu_rate = ga71_snu_rate + gasnuf(i)*neutrino_flux_total(i)
+               flux_diag%cl37_snu_rate = flux_diag%cl37_snu_rate + clsnuf(i)*flux_diag%neutrino_flux_total(i)
+               flux_diag%ga71_snu_rate = flux_diag%ga71_snu_rate + gasnuf(i)*flux_diag%neutrino_flux_total(i)
             end do
-          write(itrack, 1515) cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10)
+          write(itrack, 1515) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10)
  1515       format(1X,2F8.3,1P10E10.3)
             write(itrack,1510)(composition(i,1),i=4,11)
 ! ADD SURFACE X,Y,Z,Z/X.
@@ -931,7 +924,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             write(itrack, 1800) model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,envelope_mass, &
             envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16,log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,composition(1,1),composition(2,1), &
             composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
-            cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
+            flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
             (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
             total_angular_momentum,normalized_acoustic_depth,acoustic_depth_to_cz,acoustic_crossing_time,helium_zone_acoustic_depth,helium_zone_weight,atmosphere_acoustic_depth,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck

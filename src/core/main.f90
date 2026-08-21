@@ -150,6 +150,7 @@ program main
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
+      use fluxes_lib
       use engeb_diag_lib
       use light_burn_lib
       use turnover_lib
@@ -494,10 +495,6 @@ program main
       integer :: imbeg, imend
       common/monte/ lmonte, imbeg, imend
 
-      double precision :: neutrino_flux(10), neutrino_flux_total(10), &
-           cl37_snu_rate, ga71_snu_rate
-      common/fluxes/ neutrino_flux, neutrino_flux_total, cl37_snu_rate, &
-           ga71_snu_rate
 
 
 ! MHP 8/96
@@ -900,7 +897,7 @@ program main
       dlnrho_dlnt_unused = -1.0D0
       dlnrho_dlnp_unused = 1.0D0
       do j = 1,10
-         neutrino_flux_total(j) = 0.0D0
+         flux_diag%neutrino_flux_total(j) = 0.0D0
          do k = 1,num_zones
             neutrino_flux_zone(j,k) = 0.0D0
          end do
@@ -941,8 +938,8 @@ program main
 ! CONVERT FROM ERG/GM/S TO ERG/S FOR EACH SHELL BY MULTIPLYING
 ! BY THE MASS OF EACH SHELL IN GM (HS2).
          do j = 1,10
-            neutrino_flux_zone(j,i) = neutrino_flux(j)*shell_mass(i)
-            neutrino_flux_total(j) = neutrino_flux_total(j) + neutrino_flux_zone(j,i)
+            neutrino_flux_zone(j,i) = flux_diag%neutrino_flux(j)*shell_mass(i)
+            flux_diag%neutrino_flux_total(j) = flux_diag%neutrino_flux_total(j) + neutrino_flux_zone(j,i)
          end do
          write(*,911)i,shell_mass(i),(neutrino_flux_zone(j,i),j=1,10)
  911     format(I5,1P11E10.3)
@@ -950,11 +947,11 @@ program main
   666 continue
 ! WRITE OUT TOTAL NEUTRINO FLUXES.
 ! ***NOTE THAT THESE ARE IN UNITS OF 10**10. ***
-      write(76,222)(neutrino_flux_total(i),i=1,10)
+      write(76,222)(flux_diag%neutrino_flux_total(i),i=1,10)
 ! NORMALIZE FLUXES.
       do j = 1,10
          do i = 1,num_zones
-            neutrino_flux_zone(j,i) = neutrino_flux_zone(j,i)/neutrino_flux_total(j)
+            neutrino_flux_zone(j,i) = neutrino_flux_zone(j,i)/flux_diag%neutrino_flux_total(j)
          end do
       end do
       do i = 1,num_zones
@@ -1639,7 +1636,7 @@ program main
          write(neutrino_unit, 1517)central_log10_temperature,central_log10_pressure,central_log10_density, &
               composition(1,1),composition(3,1)
 ! NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
-         write(neutrino_unit, 1516) cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,8)
+         write(neutrino_unit, 1516) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,8)
 !          CALL WRTMONTE(HCOMP,HD,HL,HP,HR,HS,HT,LC,M,MODEL,DAGE,
 !      *        DDAGE,SMASS,TEFFL,BL,GL,LSHELL,JXBEG,JXMID,
 !      *        JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
@@ -1669,7 +1666,7 @@ program main
          write(neutrino_unit,1518)convergence_iterations,initial_x_guess,initial_alpha_guess,dlum_dx,drad_dx,dlum_dalpha,drad_dalpha
  1518    format(1X,I2,2F10.6,1P4E11.4)
 ! NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
-         write(neutrino_unit, 1516) cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10)
+         write(neutrino_unit, 1516) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10)
  1516    format(1X,2F8.3,1P10E10.3)
 ! SUMMARY OF STRUCTURE : TC, RHOC, PC, XC, ZC (ADD MU C)
          central_temperature_mk = 10.0D0**(central_log10_temperature-6.0D0)

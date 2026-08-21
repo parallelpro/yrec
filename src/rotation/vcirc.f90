@@ -29,6 +29,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
      dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
      total_luminosity, timestep, log_pressure)
 
+      use mdphy_lib
       use luout_lib
       use const_lib
       implicit none
@@ -103,8 +104,9 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! common/intvr2/: mean_molecular_weight_interface/
 ! thermal_diffusivity_interface/kinematic_viscosity_interface/
 ! omega_interface (originally AMUMI/THDIFMI/VISCMI/WM), all used here
-! -- interface-averaged counterparts of common/mdphy/'s amum/thdifm/
-! viscm and of the omega dummy argument. Naming is local to this batch.
+! -- interface-averaged counterparts of mix_phys%amum/mix_phys%thdifm/
+! mix_phys%viscm (former common/mdphy/) and of the omega dummy
+! argument. Naming is local to this batch.
       double precision :: mean_molecular_weight_interface(json), &
            thermal_diffusivity_interface(json), &
            kinematic_viscosity_interface(json), omega_interface(json)
@@ -113,18 +115,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
            omega_interface
 
 
-!      JvS 09/25 CHANGED VARIABLE NAMES TO BE CONSISTENT ACROSS ALL SUBROUTINES
-!      COMMON/MDPHY/HAMU(JSON),CP(JSON),DELM(JSON),DELAM(JSON),
-!     *     DELRM(JSON),SESUM(JSON),OM(JSON),SQDT(JSON),
-!     *     THDIF(JSON),SVEL(JSON),VISC(JSON),EPSM(JSON)
-! common/mdphy/: only amum/thdifm/viscm are used here. Naming matches
-! liburn.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 ! common/temp2/: es_circulation_velocity/secular_shear_velocity/
 ! gsf_circulation_velocity/mu_gradient_velocity (VES/VSS/VGSF/VMU) and
@@ -319,15 +309,15 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  FOR THE KINEMATIC VISCOSITY AND THERMAL DIFFUSIVITY.
 !  TREATMENT OF FIRST INTERFACE.
       if (zone_min.lt.3) then
-         kinematic_viscosity_interface(2)=exp(log(viscm(1))* &
-              lagrange_interp_weights(1,2)+log(viscm(2))* &
+         kinematic_viscosity_interface(2)=exp(log(mix_phys%viscm(1))* &
+              lagrange_interp_weights(1,2)+log(mix_phys%viscm(2))* &
               lagrange_interp_weights(2,2)+ &
-              log(viscm(3))*lagrange_interp_weights(3,2)+log(viscm(4))* &
+              log(mix_phys%viscm(3))*lagrange_interp_weights(3,2)+log(mix_phys%viscm(4))* &
               lagrange_interp_weights(4,2))
-         thermal_diffusivity_interface(2)=exp(log(thdifm(1))* &
-              lagrange_interp_weights(1,2)+log(thdifm(2))* &
+         thermal_diffusivity_interface(2)=exp(log(mix_phys%thdifm(1))* &
+              lagrange_interp_weights(1,2)+log(mix_phys%thdifm(2))* &
               lagrange_interp_weights(2,2) &
-              +log(thdifm(3))*lagrange_interp_weights(3,2)+log(thdifm(4))* &
+              +log(mix_phys%thdifm(3))*lagrange_interp_weights(3,2)+log(mix_phys%thdifm(4))* &
               lagrange_interp_weights(4,2))
          i0=3
       else
@@ -336,36 +326,36 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  TREATMENT OF LAST INTERFACE.
       if (zone_max.eq.num_zones) then
          kinematic_viscosity_interface(num_zones)= &
-              exp(log(viscm(num_zones-3))*lagrange_interp_weights(1,num_zones)+ &
-              log(viscm(num_zones-2))*lagrange_interp_weights(2,num_zones) &
-              +log(viscm(num_zones-1))*lagrange_interp_weights(3,num_zones)+ &
-              log(viscm(num_zones))*lagrange_interp_weights(4,num_zones))
+              exp(log(mix_phys%viscm(num_zones-3))*lagrange_interp_weights(1,num_zones)+ &
+              log(mix_phys%viscm(num_zones-2))*lagrange_interp_weights(2,num_zones) &
+              +log(mix_phys%viscm(num_zones-1))*lagrange_interp_weights(3,num_zones)+ &
+              log(mix_phys%viscm(num_zones))*lagrange_interp_weights(4,num_zones))
          thermal_diffusivity_interface(num_zones)= &
-              exp(log(thdifm(num_zones-3))* &
-              lagrange_interp_weights(1,num_zones)+log(thdifm(num_zones-2))* &
-              lagrange_interp_weights(2,num_zones)+log(thdifm(num_zones-1))* &
+              exp(log(mix_phys%thdifm(num_zones-3))* &
+              lagrange_interp_weights(1,num_zones)+log(mix_phys%thdifm(num_zones-2))* &
+              lagrange_interp_weights(2,num_zones)+log(mix_phys%thdifm(num_zones-1))* &
               lagrange_interp_weights(3,num_zones)+ &
-              log(thdifm(num_zones))*lagrange_interp_weights(4,num_zones))
+              log(mix_phys%thdifm(num_zones))*lagrange_interp_weights(4,num_zones))
          i1=num_zones-1
       else
          i1=zone_max
       end if
 !  GENERAL CASE.
       do 20 i = i0,i1
-         kinematic_viscosity_interface(i)=exp(log(viscm(i-2))* &
-              lagrange_interp_weights(1,i)+log(viscm(i-1)) &
-              *lagrange_interp_weights(2,i)+log(viscm(i))* &
-              lagrange_interp_weights(3,i)+log(viscm(i+1)) &
+         kinematic_viscosity_interface(i)=exp(log(mix_phys%viscm(i-2))* &
+              lagrange_interp_weights(1,i)+log(mix_phys%viscm(i-1)) &
+              *lagrange_interp_weights(2,i)+log(mix_phys%viscm(i))* &
+              lagrange_interp_weights(3,i)+log(mix_phys%viscm(i+1)) &
               *lagrange_interp_weights(4,i))
-         thermal_diffusivity_interface(i)=exp(log(thdifm(i-2))* &
-              lagrange_interp_weights(1,i)+log(thdifm(i-1)) &
-              *lagrange_interp_weights(2,i)+log(thdifm(i))* &
-              lagrange_interp_weights(3,i)+log(thdifm(i+1)) &
+         thermal_diffusivity_interface(i)=exp(log(mix_phys%thdifm(i-2))* &
+              lagrange_interp_weights(1,i)+log(mix_phys%thdifm(i-1)) &
+              *lagrange_interp_weights(2,i)+log(mix_phys%thdifm(i))* &
+              lagrange_interp_weights(3,i)+log(mix_phys%thdifm(i+1)) &
               *lagrange_interp_weights(4,i))
    20 continue
 ! USE LINEAR INTERPOLATION FOR OMEGA AND MU.
       do i = 2,num_zones
-         mean_molecular_weight_interface(i) = 0.5d0*(amum(i)+amum(i-1))
+         mean_molecular_weight_interface(i) = 0.5d0*(mix_phys%amum(i)+mix_phys%amum(i-1))
          omega_interface(i) = 0.5d0*(omega(i)+omega(i-1))
       end do
 ! MHP 8/03 OMITTED OLD KM1974 MERIDIONAL CIRCULATION VELOCITY ESTIMATE.
@@ -477,7 +467,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !      ELSE IF(IMU.EQ.2)THEN
 ! MHP 06/02 REPLACE WITH THE ZAHN&MAEDER 1998 PRESCRIPTION
        do i = zone_min,zone_max
-          qmu = log(amum(i))-log(amum(i-1))
+          qmu = log(mix_phys%amum(i))-log(mix_phys%amum(i-1))
           qp = ln10*(log_pressure(i)-log_pressure(i-1))
           ddel=del_grad_diff_interface(i)+ qmu/qp
           ddtest = max(del_grad_diff_interface(i),1.0d-3)
@@ -550,7 +540,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          dr = radius(i)-radius(i-1)
          if (gsf_inhibition_mode.eq.0) then
             qwrmx=2.0d0*sqrt(interface_gravity_factor(i)* &
-                 abs(amum(i)-amum(i-1)) &
+                 abs(mix_phys%amum(i)-mix_phys%amum(i-1)) &
                  /dr/mean_molecular_weight_interface(i))
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
                gsf_circulation_velocity(i) = 0.0d0
@@ -696,7 +686,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
               dlnomega_dlnr_max(i)
          if (abs(dlnomega_dlnr(i)).gt.qwrmx) then
 !  UNSTABLE; CHECK FOR MU GRADIENTS.
-            if (abs((amum(i)-amum(i-1))/mean_molecular_weight_interface(i)) &
+            if (abs((mix_phys%amum(i)-mix_phys%amum(i-1))/mean_molecular_weight_interface(i)) &
                  .lt.1.0d-10) then
                qwrmx2 = 0.0d0
                qwr = abs(dlnomega_dlnr(i)) - qwrmx
@@ -710,7 +700,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  GIVEN (1 - CON)P = CGAS*RHO*T/MU
 !      FACT = (RHOM/PM)*QTMU*DMU/AMUMI/DP*HGM**2
                qwrmx2 = 2.0d0*sqrt(max(1.0d-20,mu_gradient_richardson_coeff(i)* &
-                        abs((amum(i)-amum(i-1))/ &
+                        abs((mix_phys%amum(i)-mix_phys%amum(i-1))/ &
                         mean_molecular_weight_interface(i))))
                if (abs(dlnomega_dlnr(i)).gt.qwrmx2) then
 !  INTERFACE UNSTABLE WITH RESPECT TO BOTH CONDITIONS; CHOOSE THE

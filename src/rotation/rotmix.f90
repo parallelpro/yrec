@@ -22,6 +22,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass)
 
+      use mdphy_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -83,15 +84,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       common/gravs4/ use_new_diffusion_routines, ldifli
 
 
-! common/mdphy/: only delm (originally DELM) is used here -- swapped
-! temporarily into shell_diag%del_grad(2,*) (common/scrtch/) around the settling
-! call. Naming matches liburn.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 
       integer :: num_species
@@ -221,7 +213,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          total_mass=exp(ln10*log_total_mass)
          do 130 zone_idx = 1,num_zones
             del_grad2_save(zone_idx) = shell_diag%del_grad(2,zone_idx)
-            shell_diag%del_grad(2,zone_idx) = delm(zone_idx)
+            shell_diag%del_grad(2,zone_idx) = mix_phys%delm(zone_idx)
             dlnp_dr_settling(zone_idx)=-exp(ln10*(log_density(zone_idx)+ &
                  cgl+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
                  log_pressure(zone_idx)))

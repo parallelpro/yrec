@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use mdphy_lib
       use light_burn_lib
       use turnover_lib
       use scrtch_lib
@@ -110,14 +111,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       logical :: use_extended_composition
       common/flag/ use_extended_composition
 
-! common/mdphy/: current-timestep auxiliary physics quantities, all
-! set here. Naming matches liburn.f90/mixgrid.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 
 ! common/oldrot/: not used in this file. Naming matches hpoint.f90.
@@ -221,7 +214,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
             convective_flag_prev(j) = prev_model%old_convective_flag(j)
             radius_prev(j) = prev_model%old_radius(j)
             del_grad_diff_prev(j) = old_del_adiabatic_mix(j)-old_del_radiative_mix(j)
-            amum(j) = old_amu(j)
+            mix_phys%amum(j) = old_amu(j)
             do 10 i = 1,num_species_tracked
                composition(i,j) = prev_model%old_composition(i,j)
    10       continue
@@ -252,41 +245,41 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 !           HCOMPP(I,J) = HCOMP(I,J)
 !  30    CONTINUE
          hg_mid(j) = old_hg(j) + time_fraction*(hg(j) - old_hg(j))
-         del_adiabatic_mix(j) = old_del_adiabatic_mix(j) + &
+         mix_phys%del_adiabatic_mix(j) = old_del_adiabatic_mix(j) + &
               time_fraction*(shell_diag%del_grad(3,j)-old_del_adiabatic_mix(j))
-         delm(j) = old_delm(j) + time_fraction*(shell_diag%del_grad(2,j) - old_delm(j))
-         del_radiative_mix(j) = old_del_radiative_mix(j) + &
+         mix_phys%delm(j) = old_delm(j) + time_fraction*(shell_diag%del_grad(2,j) - old_delm(j))
+         mix_phys%del_radiative_mix(j) = old_del_radiative_mix(j) + &
               time_fraction*(shell_diag%del_grad(1,j) - old_del_radiative_mix(j))
-         esumm(j) = old_esum(j) + time_fraction*(shell_diag%sesum(j) - old_esum(j))
-         viscm(j) = old_visc(j) + time_fraction*(visc(j) - old_visc(j))
-         thdifm(j) = old_thdif(j) + time_fraction*(thdif(j) - old_thdif(j))
-         cpm(j) = old_cp(j) + time_fraction*(cp(j) - old_cp(j))
-         qdtm(j) = old_qdt(j) + time_fraction*(qdt(j) - old_qdt(j))
-         om(j) = old_om(j) + time_fraction*(shell_diag%so(j) - old_om(j))
-         amum(j) = amum(j) + step_fraction_ratio*(mean_molecular_weight(j) - old_amu(j))
+         mix_phys%esumm(j) = old_esum(j) + time_fraction*(shell_diag%sesum(j) - old_esum(j))
+         mix_phys%viscm(j) = old_visc(j) + time_fraction*(visc(j) - old_visc(j))
+         mix_phys%thdifm(j) = old_thdif(j) + time_fraction*(thdif(j) - old_thdif(j))
+         mix_phys%cpm(j) = old_cp(j) + time_fraction*(cp(j) - old_cp(j))
+         mix_phys%qdtm(j) = old_qdt(j) + time_fraction*(qdt(j) - old_qdt(j))
+         mix_phys%om(j) = old_om(j) + time_fraction*(shell_diag%so(j) - old_om(j))
+         mix_phys%amum(j) = mix_phys%amum(j) + step_fraction_ratio*(mean_molecular_weight(j) - old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
          total_epsilon = shell_diag%sesum(j)+shell_diag%seg(6,j)+shell_diag%seg(7,j)
-         epsm(j) = old_eps(j)+time_fraction*(total_epsilon-old_eps(j))
+         mix_phys%epsm(j) = old_eps(j)+time_fraction*(total_epsilon-old_eps(j))
    40 continue
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
 !  RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS TO DETERMINE WHETHER
 !  OR NOT A ZONE IS CONVECTIVE IF IT CHANGES STATE OVER THE COURSE OF A
 !  TIMESTEP.
       do 50 i = 1,num_zones
-         del_grad_diff_new(i) = del_adiabatic_mix(i)-del_radiative_mix(i)
+         del_grad_diff_new(i) = mix_phys%del_adiabatic_mix(i)-mix_phys%del_radiative_mix(i)
          if (convective_flag(i).eqv.convective_flag_prev(i)) then
             convective_flag_mid(i) = convective_flag(i)
-            velm(i) = old_vel(i) + time_fraction*(shell_diag%svel(i)-old_vel(i))
+            mix_phys%velm(i) = old_vel(i) + time_fraction*(shell_diag%svel(i)-old_vel(i))
             convective_state_changed(i) = .false.
          else
             convective_state_changed(i) = .true.
             new_cz_detected = .true.
-            if (del_adiabatic_mix(i).lt.del_radiative_mix(i)) then
+            if (mix_phys%del_adiabatic_mix(i).lt.mix_phys%del_radiative_mix(i)) then
                convective_flag_mid(i) = .true.
-               velm(i) = max(old_vel(i),shell_diag%svel(i))
+               mix_phys%velm(i) = max(old_vel(i),shell_diag%svel(i))
             else
                convective_flag_mid(i) = .false.
-               velm(i) = 0.0D0
+               mix_phys%velm(i) = 0.0D0
             endif
          endif
    50 continue

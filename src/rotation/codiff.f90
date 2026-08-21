@@ -47,6 +47,7 @@
 subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
 
+      use mdphy_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -65,15 +66,6 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
       common/intvar/ interface_luminosity, delami, delmi, dm, epsilm, &
            interface_gravity_factor, hs3, pm, qdtmi, interface_radius, tm
 
-!       old version: COMMON/INTVR2/AMUM(JSON),THDIFM(JSON),VISCM(JSON),WM(JSON)
-! common/mdphy/: not used in this file. Naming matches vcirc.f90/
-! rotgrid.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 ! common/temp2/: es_circulation_velocity/gsf_circulation_velocity/
 ! secular_shear_velocity/hle are used here; the "_prev" pair and

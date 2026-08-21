@@ -22,6 +22,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
      transport_zone_end, num_zones, radius_unlogged, &
      dynamical_shear_omega_limit)
 
+      use mdphy_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -45,15 +46,6 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 
 
 
-! common/mdphy/: amum/del_adiabatic_mix/del_radiative_mix/esumm/om/
-! qdtm/cpm are used here; delm/thdifm/velm/viscm/epsm are unused
-! placeholders. Naming matches liburn.f90/rotmix.f90/vcirc.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 ! MHP 06/02 ADDED FACT7 AND FACT8 FOR DIF/AD TREATMENT
 ! common/vfact/: fact1-fact5/fact7/fact8, all used here (originally
@@ -229,20 +221,20 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               log_density(2)*lagrange_interp_weights(2,2) &
               +log_density(3)*lagrange_interp_weights(3,2)+ &
               log_density(4)*lagrange_interp_weights(4,2)))
-         delmi(2)=del_radiative_mix(1)*lagrange_interp_weights(1,2)+ &
-              del_radiative_mix(2)*lagrange_interp_weights(2,2)+ &
-              del_radiative_mix(3)*lagrange_interp_weights(3,2)+ &
-              del_radiative_mix(4)*lagrange_interp_weights(4,2)
-         delami(2)=del_adiabatic_mix(1)*lagrange_interp_weights(1,2)+ &
-              del_adiabatic_mix(2)*lagrange_interp_weights(2,2)+ &
-              del_adiabatic_mix(3)*lagrange_interp_weights(3,2)+ &
-              del_adiabatic_mix(4)*lagrange_interp_weights(4,2)
-         qdtmi(2)=qdtm(1)*lagrange_interp_weights(1,2)+qdtm(2)*lagrange_interp_weights(2,2)+ &
-              qdtm(3)*lagrange_interp_weights(3,2)+qdtm(4)*lagrange_interp_weights(4,2)
+         delmi(2)=mix_phys%del_radiative_mix(1)*lagrange_interp_weights(1,2)+ &
+              mix_phys%del_radiative_mix(2)*lagrange_interp_weights(2,2)+ &
+              mix_phys%del_radiative_mix(3)*lagrange_interp_weights(3,2)+ &
+              mix_phys%del_radiative_mix(4)*lagrange_interp_weights(4,2)
+         delami(2)=mix_phys%del_adiabatic_mix(1)*lagrange_interp_weights(1,2)+ &
+              mix_phys%del_adiabatic_mix(2)*lagrange_interp_weights(2,2)+ &
+              mix_phys%del_adiabatic_mix(3)*lagrange_interp_weights(3,2)+ &
+              mix_phys%del_adiabatic_mix(4)*lagrange_interp_weights(4,2)
+         qdtmi(2)=mix_phys%qdtm(1)*lagrange_interp_weights(1,2)+mix_phys%qdtm(2)*lagrange_interp_weights(2,2)+ &
+              mix_phys%qdtm(3)*lagrange_interp_weights(3,2)+mix_phys%qdtm(4)*lagrange_interp_weights(4,2)
          hs3(2)=mass_unlogged(1)*lagrange_interp_weights(1,2)+mass_unlogged(2)*lagrange_interp_weights(2,2)+ &
               mass_unlogged(3)*lagrange_interp_weights(3,2)+mass_unlogged(4)*lagrange_interp_weights(4,2)
-         epsilm(2)=esumm(1)*lagrange_interp_weights(1,2)+esumm(2)*lagrange_interp_weights(2,2)+ &
-              esumm(3)*lagrange_interp_weights(3,2)+esumm(4)*lagrange_interp_weights(4,2)
+         epsilm(2)=mix_phys%esumm(1)*lagrange_interp_weights(1,2)+mix_phys%esumm(2)*lagrange_interp_weights(2,2)+ &
+              mix_phys%esumm(3)*lagrange_interp_weights(3,2)+mix_phys%esumm(4)*lagrange_interp_weights(4,2)
          interface_luminosity(2)=solar_luminosity_cgs*(luminosity(1)*lagrange_interp_weights(1,2)+ &
               luminosity(2)*lagrange_interp_weights(2,2)+ &
               luminosity(3)*lagrange_interp_weights(3,2)+luminosity(4)*lagrange_interp_weights(4,2))
@@ -250,11 +242,11 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               local_gravity(2)*lagrange_interp_weights(2,2)+ &
               local_gravity(3)*lagrange_interp_weights(3,2)+local_gravity(4)*lagrange_interp_weights(4,2)
 !  opacity.
-         opacity_interface(2)=om(1)*lagrange_interp_weights(1,2)+om(2)*lagrange_interp_weights(2,2)+ &
-              om(3)*lagrange_interp_weights(3,2)+om(4)*lagrange_interp_weights(4,2)
+         opacity_interface(2)=mix_phys%om(1)*lagrange_interp_weights(1,2)+mix_phys%om(2)*lagrange_interp_weights(2,2)+ &
+              mix_phys%om(3)*lagrange_interp_weights(3,2)+mix_phys%om(4)*lagrange_interp_weights(4,2)
 !  specific heat
-         specific_heat_interface(2)=cpm(1)*lagrange_interp_weights(1,2)+cpm(2)*lagrange_interp_weights(2,2)+ &
-              cpm(3)*lagrange_interp_weights(3,2)+cpm(4)*lagrange_interp_weights(4,2)
+         specific_heat_interface(2)=mix_phys%cpm(1)*lagrange_interp_weights(1,2)+mix_phys%cpm(2)*lagrange_interp_weights(2,2)+ &
+              mix_phys%cpm(3)*lagrange_interp_weights(3,2)+mix_phys%cpm(4)*lagrange_interp_weights(4,2)
       else
          interior_begin = transport_zone_begin
       endif
@@ -291,26 +283,26 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               log_density(num_zones-2)*lagrange_interp_weights(2,num_zones) &
               +log_density(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
               log_density(num_zones)*lagrange_interp_weights(4,num_zones)))
-         delmi(num_zones)=del_radiative_mix(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
-              del_radiative_mix(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
-              del_radiative_mix(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
-              del_radiative_mix(num_zones)*lagrange_interp_weights(4,num_zones)
-         delami(num_zones)=del_adiabatic_mix(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
-              del_adiabatic_mix(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
-              del_adiabatic_mix(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
-              del_adiabatic_mix(num_zones)*lagrange_interp_weights(4,num_zones)
-         qdtmi(num_zones)=qdtm(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
-              qdtm(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
-              qdtm(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
-              qdtm(num_zones)*lagrange_interp_weights(4,num_zones)
+         delmi(num_zones)=mix_phys%del_radiative_mix(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
+              mix_phys%del_radiative_mix(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
+              mix_phys%del_radiative_mix(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
+              mix_phys%del_radiative_mix(num_zones)*lagrange_interp_weights(4,num_zones)
+         delami(num_zones)=mix_phys%del_adiabatic_mix(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
+              mix_phys%del_adiabatic_mix(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
+              mix_phys%del_adiabatic_mix(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
+              mix_phys%del_adiabatic_mix(num_zones)*lagrange_interp_weights(4,num_zones)
+         qdtmi(num_zones)=mix_phys%qdtm(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
+              mix_phys%qdtm(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
+              mix_phys%qdtm(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
+              mix_phys%qdtm(num_zones)*lagrange_interp_weights(4,num_zones)
          hs3(num_zones)=mass_unlogged(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
               mass_unlogged(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
               mass_unlogged(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
               mass_unlogged(num_zones)*lagrange_interp_weights(4,num_zones)
-         epsilm(num_zones)=esumm(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
-              esumm(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
-              esumm(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
-              esumm(num_zones)*lagrange_interp_weights(4,num_zones)
+         epsilm(num_zones)=mix_phys%esumm(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
+              mix_phys%esumm(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
+              mix_phys%esumm(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
+              mix_phys%esumm(num_zones)*lagrange_interp_weights(4,num_zones)
          interface_luminosity(num_zones)=solar_luminosity_cgs*(luminosity(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
               luminosity(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
               luminosity(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
@@ -320,15 +312,15 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               local_gravity(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
               local_gravity(num_zones)*lagrange_interp_weights(4,num_zones)
 !  opacity.
-         opacity_interface(num_zones)=om(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
-              om(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
-              om(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
-              om(num_zones)*lagrange_interp_weights(4,num_zones)
+         opacity_interface(num_zones)=mix_phys%om(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
+              mix_phys%om(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
+              mix_phys%om(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
+              mix_phys%om(num_zones)*lagrange_interp_weights(4,num_zones)
 !  specific heat
-         specific_heat_interface(num_zones)=cpm(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
-              cpm(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
-              cpm(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
-              cpm(num_zones)*lagrange_interp_weights(4,num_zones)
+         specific_heat_interface(num_zones)=mix_phys%cpm(num_zones-3)*lagrange_interp_weights(1,num_zones)+ &
+              mix_phys%cpm(num_zones-2)*lagrange_interp_weights(2,num_zones)+ &
+              mix_phys%cpm(num_zones-1)*lagrange_interp_weights(3,num_zones)+ &
+              mix_phys%cpm(num_zones)*lagrange_interp_weights(4,num_zones)
       else
          interior_end = transport_zone_end
       endif
@@ -375,30 +367,30 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               log_density(zone_idx+1)*lagrange_interp_weights(4,zone_idx)))
 !  DEL (ACTUAL).
 !  DEL (RADIATIVE) IS INTERPOLATED, AND DEL IS THE MIN OF DELA,DELR.
-         delmi(zone_idx)=del_radiative_mix(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
-              del_radiative_mix(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
-              del_radiative_mix(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
-              del_radiative_mix(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
+         delmi(zone_idx)=mix_phys%del_radiative_mix(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
+              mix_phys%del_radiative_mix(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
+              mix_phys%del_radiative_mix(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
+              mix_phys%del_radiative_mix(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
 !  DEL(ADIABATIC).
-         delami(zone_idx)=del_adiabatic_mix(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
-              del_adiabatic_mix(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
-              del_adiabatic_mix(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
-              del_adiabatic_mix(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
+         delami(zone_idx)=mix_phys%del_adiabatic_mix(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
+              mix_phys%del_adiabatic_mix(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
+              mix_phys%del_adiabatic_mix(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
+              mix_phys%del_adiabatic_mix(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
 !  D LN RHO/D LN T.
-         qdtmi(zone_idx)=qdtm(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
-              qdtm(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
-              qdtm(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
-              qdtm(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
+         qdtmi(zone_idx)=mix_phys%qdtm(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
+              mix_phys%qdtm(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
+              mix_phys%qdtm(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
+              mix_phys%qdtm(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
 !  UNLOGGED MASS INTERIOR TO THE INTERFACE.
          hs3(zone_idx)=mass_unlogged(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
               mass_unlogged(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
               mass_unlogged(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
               mass_unlogged(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
 !  SPECIFIC ENERGY GENERATION RATE.
-         epsilm(zone_idx)=esumm(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
-              esumm(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
-              esumm(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
-              esumm(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
+         epsilm(zone_idx)=mix_phys%esumm(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
+              mix_phys%esumm(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
+              mix_phys%esumm(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
+              mix_phys%esumm(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
 !  LUMINOSITY.
          interface_luminosity(zone_idx)=solar_luminosity_cgs*(luminosity(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
               luminosity(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
@@ -410,15 +402,15 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               local_gravity(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
               local_gravity(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
 !  opacity.
-         opacity_interface(zone_idx)=om(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
-              om(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
-              om(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
-              om(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
+         opacity_interface(zone_idx)=mix_phys%om(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
+              mix_phys%om(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
+              mix_phys%om(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
+              mix_phys%om(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
 !  specific heat
-         specific_heat_interface(zone_idx)=cpm(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
-              cpm(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
-              cpm(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
-              cpm(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
+         specific_heat_interface(zone_idx)=mix_phys%cpm(zone_idx-2)*lagrange_interp_weights(1,zone_idx)+ &
+              mix_phys%cpm(zone_idx-1)*lagrange_interp_weights(2,zone_idx)+ &
+              mix_phys%cpm(zone_idx)*lagrange_interp_weights(3,zone_idx)+ &
+              mix_phys%cpm(zone_idx+1)*lagrange_interp_weights(4,zone_idx)
    30 continue
       do 35 zone_idx = transport_zone_begin,transport_zone_end
          delmi(zone_idx) = min(delmi(zone_idx),delami(zone_idx))
@@ -451,18 +443,18 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
       cpigi_const = 4.0d0/c4pi/grav_const
       do 40 zone_idx = transport_zone_begin,transport_zone_end
          if(.not.use_diffusion_advection_transport)then
-            dlnmu_dlnp = (log10(amum(zone_idx))-log10(amum(zone_idx-1)))/ &
+            dlnmu_dlnp = (log10(mix_phys%amum(zone_idx))-log10(mix_phys%amum(zone_idx-1)))/ &
                  (log_pressure(zone_idx)-log_pressure(zone_idx-1))
          else
             dlnmu_dlnp = 0.0d0
          endif
          if(zone_idx.eq.transport_zone_begin)then
-            ddel_floor=max(1.0d-3,0.5d0*(del_adiabatic_mix(transport_zone_begin+1)- &
-                 delm(transport_zone_begin+1)) &
+            ddel_floor=max(1.0d-3,0.5d0*(mix_phys%del_adiabatic_mix(transport_zone_begin+1)- &
+                 mix_phys%delm(transport_zone_begin+1)) &
                  +dlnmu_dlnp)
          else if(zone_idx.eq.transport_zone_end)then
-            ddel_floor=max(1.0d-3,0.5d0*(del_adiabatic_mix(transport_zone_end-1)- &
-                 delm(transport_zone_end-1)) &
+            ddel_floor=max(1.0d-3,0.5d0*(mix_phys%del_adiabatic_mix(transport_zone_end-1)- &
+                 mix_phys%delm(transport_zone_end-1)) &
                  +dlnmu_dlnp)
          else
             ddel_floor = 1.0d-3
@@ -552,7 +544,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
       if(use_diffusion_advection_transport)then
          ht_temp_scale_prev = exp(ln10*(log_pressure(transport_zone_begin-1)+ &
               2.0d0*log_radius(transport_zone_begin-1)-log_density(transport_zone_begin-1))) &
-              /mass_unlogged(transport_zone_begin-1)/grav_const/del_radiative_mix(transport_zone_begin-1)
+              /mass_unlogged(transport_zone_begin-1)/grav_const/mix_phys%del_radiative_mix(transport_zone_begin-1)
          third_deriv_geom_factor(transport_zone_begin-1) = ht_temp_scale_prev
          do zone_idx = transport_zone_begin,transport_zone_end
 !         DDEL = MAX(DELAMI(I)-DELMI(I),1.0D-3)
@@ -579,7 +571,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
          qchit = 3.0d0 - 0.5d0*(dlnkappa_dlnt(zone_idx)+dlnkappa_dlnt(zone_idx-1))
          qqchitr = (dlnkappa_dlnt(zone_idx-1)-dlnkappa_dlnt(zone_idx))/dr_local
          ht_temp_scale = exp(ln10*(log_pressure(zone_idx)+2.0d0*log_radius(zone_idx)-log_density(zone_idx)))/ &
-              mass_unlogged(zone_idx)/grav_const/delm(zone_idx)
+              mass_unlogged(zone_idx)/grav_const/mix_phys%delm(zone_idx)
          third_deriv_geom_factor(zone_idx) = ht_temp_scale
          ht_temp_scale2 = dr_local/ln10/(log_temperature(zone_idx-1)-log_temperature(zone_idx))
          dhtscale_dr = (abs(ht_temp_scale)-abs(ht_temp_scale_prev))/dr_local

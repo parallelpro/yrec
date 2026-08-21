@@ -161,6 +161,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      reaction_rate_13, n15_alpha_branch_fraction, &
      be7_electron_capture_fraction)
 
+      use fluxes_lib
       use engeb_diag_lib
       use light_burn_lib
       use turnover_lib
@@ -202,12 +203,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 
 
 
-! common/fluxes/: only neutrino_flux is used here. Naming matches
-! wrtmonte.f90/wrtout.f90.
-      double precision :: neutrino_flux(10), neutrino_flux_total(10), &
-           cl37_snu_rate, ga71_snu_rate
-      common/fluxes/ neutrino_flux, neutrino_flux_total, cl37_snu_rate, &
-           ga71_snu_rate
 
 
 ! 9/06 GN --- New neutrino loss common block
@@ -1158,7 +1153,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! MHP 9/91 CHANGE TO TURN OFF NEUTRINO CALC FOR HYDROGEN-EXHAUSTED CORE.
          if (hydrogen_fraction.le.1.0d-6) then
             do i=1,10
-               neutrino_flux(i)=0.0d0
+               flux_diag%neutrino_flux(i)=0.0d0
             end do
          else
 ! ****************************************************************
@@ -1173,23 +1168,23 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! DEFINE 4*PI*(AU)**2 .
          fourpiau2 = 2.812295e+27
 ! FLUX OF PP NEUTRINOS.
-         neutrino_flux(1) = eg(1)/fourpiau2
+         flux_diag%neutrino_flux(1) = eg(1)/fourpiau2
 ! FLUX OF PEP NEUTRINOS. USE EQUATION 3.17 OF NEUTRINO ASTROPHYSICS.
 ! Note that should not change SStandard(14) unless the ratio of pep to pp
 !  is changed.  Pep rate is explicitly scaled here with respect to the pp
 !  rate.
-         neutrino_flux(2) = (3.4848e-6)*electron_number_density_na*t9_m12* &
+         flux_diag%neutrino_flux(2) = (3.4848e-6)*electron_number_density_na*t9_m12* &
               (1.0 + 20.*t9)*eg(1)
-         neutrino_flux(2) = neutrino_flux(2)*cross_section_scale(14)/fourpiau2
+         flux_diag%neutrino_flux(2) = flux_diag%neutrino_flux(2)*cross_section_scale(14)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
          q6hep = -6.1399
 ! Q6 IS THE NEGATIVE OF THE COEFFICIENT OF T9M13 IN TAU, EQUATION 3.10.
-         neutrino_flux(3) = (1.71724e+11)*density*t9_m23*exp(q6hep*t9_m13)
+         flux_diag%neutrino_flux(3) = (1.71724e+11)*density*t9_m23*exp(q6hep*t9_m13)
 ! THE DERIVATIVES OF THE CROSS SECTION FACTOR ARE NOT KNOWN AND ARE
 !  TAKEN TO BE ZERO.  THE ONLY TERM FROM EQUATION 3.14 THAT SURVIVES
 !  IS 5/(12*TAU).
-         neutrino_flux(3) = (1.0 + 0.067862*t9_p13)*cross_section_scale(17)* &
-              neutrino_flux(3)
+         flux_diag%neutrino_flux(3) = (1.0 + 0.067862*t9_p13)*cross_section_scale(17)* &
+              flux_diag%neutrino_flux(3)
 ! CALCULATE WEAK OR INTERMEDIATE SCREENING FOR HEP NEUTRINOS.
          zprdhe3p = 2.0
          z86he3p = 3.08687
@@ -1201,8 +1196,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
             utothe3p = uint
          end if
 ! END OF CALCULATION OF SCREENING CORRECTION FOR HE3 + P REACTION.
-         neutrino_flux(3) = neutrino_flux(3)*exp(utothe3p)
-         neutrino_flux(3) = neutrino_flux(3)*hydrogen_fraction*he3_fraction/ &
+         flux_diag%neutrino_flux(3) = flux_diag%neutrino_flux(3)*exp(utothe3p)
+         flux_diag%neutrino_flux(3) = flux_diag%neutrino_flux(3)*hydrogen_fraction*he3_fraction/ &
               fourpiau2
 ! COMPUTE BE7MASSFRACTION. THIS IS NOT REQUIRED FOR THE NEUTRINO
 !  FLUXES SINCE BE7 IS ALWAYS IN EQUILIBRIUM WITH THE SLOWER PRODUCTION
@@ -1212,28 +1207,28 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          engeb_diag%be7_mass_fraction = eg(3)/(be7proton + be7electron)
 ! END OF NOVEMBER 6, 1990  ADDITION.
 ! FLUX OF BE7 NEUTRINOS.
-         neutrino_flux(4) = eg(3)*f1/fourpiau2
+         flux_diag%neutrino_flux(4) = eg(3)*f1/fourpiau2
 ! FLUX OF B8 NEUTRINOS.
-         neutrino_flux(5) = eg(3)*f2/fourpiau2
+         flux_diag%neutrino_flux(5) = eg(3)*f2/fourpiau2
 ! FLUX OF N13 NEUTRINOS.
-         neutrino_flux(6) = eg(4)/fourpiau2
+         flux_diag%neutrino_flux(6) = eg(4)/fourpiau2
 ! FLUX OF O15 NEUTRINOS.
-         neutrino_flux(7) = eg(6)/fourpiau2
+         flux_diag%neutrino_flux(7) = eg(6)/fourpiau2
 ! FLUX OF F17 NEUTRINOS.
-         neutrino_flux(8) = eg(7)/fourpiau2
+         flux_diag%neutrino_flux(8) = eg(7)/fourpiau2
 ! FLUX OF FICTIONAL HE3 + HE3 NEUTRINOS.
-         neutrino_flux(9) = eg(2)/fourpiau2
+         flux_diag%neutrino_flux(9) = eg(2)/fourpiau2
 ! FLUX OF FICTIONAL HE3 + HE4 NEUTRINOS.
-         neutrino_flux(10) = eg(3)/fourpiau2
+         flux_diag%neutrino_flux(10) = eg(3)/fourpiau2
 ! SET UNITS OF NEUTRINO FLUXES TO BE 10**10 PER CM^2 PER SEC PER GM AT THE
 !  EARTH. MULTIPLY BY 10**-10.
 !  IF THE VALUE FOR THIS SHELL IS NEGLIGIBLY SMALL, SET EQUAL TO ZERO.
          do k = 1,10
-            neutrino_flux(k) = (1.0e-10)*neutrino_flux(k)
-            flux_value = neutrino_flux(k)
+            flux_diag%neutrino_flux(k) = (1.0e-10)*flux_diag%neutrino_flux(k)
+            flux_value = flux_diag%neutrino_flux(k)
 ! KC 2025-05-30 CHANGED 1.E-50 TO 0.0 TO AVOID UNDERFLOW
             if (flux_value.le.0.0) then
-              neutrino_flux(k) = 0.0
+              flux_diag%neutrino_flux(k) = 0.0
             end if
          end do
 ! MHP 9/91 ENDIF INSERTED HERE.

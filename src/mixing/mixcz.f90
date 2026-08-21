@@ -23,6 +23,7 @@
 ! executes.
 subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
+      use mdphy_lib
       use light_burn_lib
       use turnover_lib
       use scrtch_lib
@@ -60,17 +61,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
 
 
-! G Somers 6/14: common block with the variables needed to select
-! between SDEL (common/scrtch/) and DELRM/DELAM (common/mdphy/) for
-! the gradients used in the (now-dead) taucz calculation, depending on
-! whether mixcz is called before or after midmod. Not used in this
-! file. Naming matches liburn.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 
       double precision :: species_sum(15)

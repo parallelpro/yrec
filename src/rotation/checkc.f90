@@ -27,13 +27,14 @@
 ! OUTPUT VARIABLES:
 ! dt : DIFFUSION TIMESTEP, WHICH CAN BE CUT IF ERRORS IN THE
 !    COMPOSITION DIFFUSION ARE DISCOVERED.
-! amum : NEW RUN OF MEAN MOLECULAR WEIGHT.
+! mix_phys%amum (former common/mdphy/) : NEW RUN OF MEAN MOLECULAR WEIGHT.
 ! cut_count : NUMBER OF TIMES DIFFUSION TIMESTEP HAS BEEN CUT.
 ! converged_flag : SET F IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 ! redo_flag : SET T IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 subroutine checkc(composition, iteration_number, print_flag, num_zones, &
      dt, cut_count, converged_flag, redo_flag)
 
+      use mdphy_lib
       use oldmod_lib
       use luout_lib
       implicit none
@@ -74,14 +75,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       common/flag/ use_extended_composition
 
 
-! common/mdphy/: only amum is written here. Naming matches codiff.f90/
-! vcirc.f90/rotgrid.f90.
-      double precision :: amum(json), cpm(json), delm(json), &
-           del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
-           om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
-           epsm(json)
-      common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
-           esumm, om, qdtm, thdifm, velm, viscm, epsm
 
 
       double precision :: atomic_weight(4)
@@ -215,7 +208,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                  + composition(2,zone_index)/atomic_weight(2)) + &
                  0.5d0*composition(3,zone_index)
             electron_mean_weight_inverse = 1.0d0/amu_calc_temp
-            amum(zone_index) = ion_mean_weight_inverse* &
+            mix_phys%amum(zone_index) = ion_mean_weight_inverse* &
                  electron_mean_weight_inverse/ &
                  (ion_mean_weight_inverse+electron_mean_weight_inverse)
    90    continue
