@@ -19,6 +19,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      log_temperature, model_number, log_luminosity_lsun, log_teff, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
+      use rotdiff_lib
       use run_diag_lib
       use temp2_lib
       use pulse_diag_lib
@@ -60,20 +61,10 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 
 
 
-! DBG 7/95 To store variables for pulse output
-! common/pualpha/: valfmlt/vphmlt/vcmxmlt are used here. Naming
-! matches tpgrad.f90.
-      double precision :: alfmlt, phmlt, cmxmlt
-      double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
-      common/pualpha/ alfmlt, phmlt, cmxmlt, valfmlt, vphmlt, vcmxmlt
 ! common/roten/: not used in this file. Naming matches putstore.f90.
       double precision :: rotational_energy_term(json)
       common/roten/ rotational_energy_term
 
-! common/quadd/: not used in this file. Naming matches vcirc.f90.
-      double precision :: phisp(json), phirot(json), phidis(json), &
-           circulation_correction_ratio(json)
-      common/quadd/ phisp, phirot, phidis, circulation_correction_ratio
 ! G Somers END
 
       double precision :: dum1(4), dum2(3), dum3(3), dum4(3)
@@ -274,9 +265,9 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             pulse_diag%pulse_specific_heat(i), pulse_diag%pulse_mean_molecular_weight(i), pulse_diag%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Modifed to include mixing length variables
-         write(opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),valfmlt(i), &
-            log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_diag%pulse_dlnrho_dlnp(i), pulse_diag%pulse_dlneps_dlnrho(i),vphmlt(i), &
-            pulse_diag%pulse_dlneps_dlnt(i), pulse_diag%pulse_dlnkap_dlnrho(i), pulse_diag%pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i),vcmxmlt(i), &
+         write(opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),rot_diff%valfmlt(i), &
+            log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_diag%pulse_dlnrho_dlnp(i), pulse_diag%pulse_dlneps_dlnrho(i),rot_diff%vphmlt(i), &
+            pulse_diag%pulse_dlneps_dlnt(i), pulse_diag%pulse_dlnkap_dlnrho(i), pulse_diag%pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i),rot_diff%vcmxmlt(i), &
             pulse_diag%pulse_specific_heat(i), pulse_diag%pulse_mean_molecular_weight(i), pulse_diag%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          end if
  5003      continue

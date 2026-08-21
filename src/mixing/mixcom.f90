@@ -43,6 +43,7 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, shell_mass, zone_begin, zone_end, &
      convective_flag, final_iteration_flag, num_zones, composition, &
      species_begin, species_end)
+      use rotdiff_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -56,16 +57,7 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: species_begin, species_end
 
-! common/egrid/: the equally spaced coordinate grid (chi/echi/es1) and
-! its spacing/point count (dchi/ntot). Naming matches mixgrid.f90.
-      double precision :: chi(json), echi(json), es1(json), dchi
-      integer :: ntot
-      common/egrid/ chi, echi, es1, dchi, ntot
 
-! common/splin/: scratch spline in/out arrays, used as work space by
-! the calls to osplin. Naming matches mixgrid.f90.
-      double precision :: xval(json), yval(json), xtab(json), ytab(json)
-      common/splin/ xval, yval, xtab, ytab
 
 ! Tridiagonal-solve work arrays (Thomas algorithm): filled in by the
 ! call to ccoeft below, then consumed by the call to ctridi (solution
@@ -117,18 +109,18 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
       do species_num = 1, num_varying_species
          do zone_idx = 1, ntab
             orig_zone_idx = zone_idx + zone_begin - 1
-            xtab(zone_idx) = chi(zone_idx)
-            ytab(zone_idx) = composition(varying_species_id(species_num), &
+            rot_diff%xtab(zone_idx) = rot_diff%chi(zone_idx)
+            rot_diff%ytab(zone_idx) = composition(varying_species_id(species_num), &
                  orig_zone_idx)
          end do
-         call osplin(echi, equally_spaced_composition, xtab, ytab, ntab, &
-              ntot)
+         call osplin(rot_diff%echi, equally_spaced_composition, rot_diff%xtab, rot_diff%ytab, ntab, &
+              rot_diff%ntot)
 ! SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR COMP AT END OF TSTEP
-         call ccoeft(equally_spaced_diffusion_coeff, dchi, timestep, &
-              equally_spaced_composition, equally_spaced_mass, ntot, &
+         call ccoeft(equally_spaced_diffusion_coeff, rot_diff%dchi, timestep, &
+              equally_spaced_composition, equally_spaced_mass, rot_diff%ntot, &
               sub_diag, diag, super_diag, rhs)
 ! SOLVE MATRIX FOR THE RUN OF COMP AT TIME N+1 AT THE NEW GRID.
-         call ctridi(ntot, sub_diag, diag, super_diag, rhs, solution)
+         call ctridi(rot_diff%ntot, sub_diag, diag, super_diag, rhs, solution)
 ! TRANSFORM BACK TO THE ORIGINAL GRID AND UPDATE HCOMP IN THE
 ! DIFFUSED REGION. U IS THE NEW RUN OF COMPOSITION IN THE REGION AT THE
 ! EQUALLY SPACED GRID POINTS.
@@ -137,18 +129,18 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
 ! THEREFORE ADD THE *CHANGE* IN COMPOSITION AT THE EQUALLY SPACED GRID
 ! POINTS TO HCOMP AND DO NOT REPLACE HCOMP WITH U.
          dcomp = 0.0d0
-         do zone_idx = 1, ntot
-            xtab(zone_idx) = echi(zone_idx)
-            ytab(zone_idx) = solution(zone_idx) - &
+         do zone_idx = 1, rot_diff%ntot
+            rot_diff%xtab(zone_idx) = rot_diff%echi(zone_idx)
+            rot_diff%ytab(zone_idx) = solution(zone_idx) - &
                  equally_spaced_composition(zone_idx)
-            dcomp = dcomp + ytab(zone_idx)*equally_spaced_mass(zone_idx)
+            dcomp = dcomp + rot_diff%ytab(zone_idx)*equally_spaced_mass(zone_idx)
          end do
          do zone_idx = 1, ntab
-            xval(zone_idx) = chi(zone_idx)
+            rot_diff%xval(zone_idx) = rot_diff%chi(zone_idx)
          end do
 ! USE YVAL AS DUMMY ARRAY FOR THE NEW RUN OF COMP AT THE ORIGINAL
 ! POINT GRID.
-         call osplin(xval, yval, xtab, ytab, ntot, ntab)
+         call osplin(rot_diff%xval, rot_diff%yval, rot_diff%xtab, rot_diff%ytab, rot_diff%ntot, ntab)
 ! CHECK FOR LOWER CONVECTION ZONE
          if (convective_flag(zone_begin).and.zone_begin.gt.1) then
             do zone_idx = zone_begin-1, 1, -1
@@ -186,8 +178,8 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
             j_idx = zone_begin + zone_idx - 1
             composition(varying_species_id(species_num),j_idx) = &
                  composition(varying_species_id(species_num),j_idx) + &
-                 yval(zone_idx)
-            dcomp2 = dcomp2 + yval(zone_idx)*shell_mass(j_idx)
+                 rot_diff%yval(zone_idx)
+            dcomp2 = dcomp2 + rot_diff%yval(zone_idx)*shell_mass(j_idx)
             sum_species_updated = sum_species_updated + &
                  shell_mass(j_idx)*composition( &
                  varying_species_id(species_num),j_idx)
@@ -200,7 +192,7 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
                sum_species_updated = sum_species_updated + &
                     shell_mass(zone_idx)*composition( &
                     varying_species_id(species_num),zone_idx)
-               dcomp2 = dcomp2 + yval(1)*shell_mass(zone_idx)
+               dcomp2 = dcomp2 + rot_diff%yval(1)*shell_mass(zone_idx)
             end do
          end if
 ! UPDATE OUTER CZ COMPOSITION IF APPLICABLE.
@@ -211,7 +203,7 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
                sum_species_updated = sum_species_updated + &
                     shell_mass(zone_idx)*composition( &
                     varying_species_id(species_num),zone_idx)
-               dcomp2 = dcomp2 + yval(ntab)*shell_mass(zone_idx)
+               dcomp2 = dcomp2 + rot_diff%yval(ntab)*shell_mass(zone_idx)
             end do
          end if
 ! CHECK FOR CONSERVATION OF SPECIES

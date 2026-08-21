@@ -34,6 +34,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
      num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
      mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff)
 
+      use rotdiff_lib
       use run_diag_lib
       use envelope_comp_lib
       use light_burn_lib
@@ -64,13 +65,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       double precision, intent(in) :: log_teff
 
 
-! common/burn/: reaction_rate_by_zone (originally HCOMPM) stores the
-! per-zone reaction rates/branching fractions computed below (see the
-! rates.f90 argument mapping in the comment further down) for use
-! elsewhere in the code; not read back in this file. Not referenced in
-! any already-converted file.
-      double precision :: reaction_rate_by_zone(15,json)
-      common/burn/ reaction_rate_by_zone
 
 
 
@@ -292,21 +286,21 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
               shell_mass, composition, timestep_years)
    50 continue
       do zone_idx = 1, num_zones
-         reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
-         reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
-         reaction_rate_by_zone(3,zone_idx) = rate_he3_he4(zone_idx)
-         reaction_rate_by_zone(4,zone_idx) = rate_c12_p(zone_idx)
-         reaction_rate_by_zone(5,zone_idx) = rate_c13_p(zone_idx)
-         reaction_rate_by_zone(6,zone_idx) = rate_n14_p(zone_idx)
-         reaction_rate_by_zone(7,zone_idx) = rate_o16_p(zone_idx)
-         reaction_rate_by_zone(8,zone_idx) = rate_c13_alpha(zone_idx)
-         reaction_rate_by_zone(9,zone_idx) = rate_zero9(zone_idx)
-         reaction_rate_by_zone(10,zone_idx) = rate_c12_alpha(zone_idx)
-         reaction_rate_by_zone(11,zone_idx) = rate_n14_alpha(zone_idx)
-         reaction_rate_by_zone(12,zone_idx) = rate_triple_alpha(zone_idx)
-         reaction_rate_by_zone(13,zone_idx) = rate_zero13(zone_idx)
-         reaction_rate_by_zone(14,zone_idx) = frac_c12_alpha(zone_idx)
-         reaction_rate_by_zone(15,zone_idx) = frac_be7_electron(zone_idx)
+         rot_diff%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
+         rot_diff%reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
+         rot_diff%reaction_rate_by_zone(3,zone_idx) = rate_he3_he4(zone_idx)
+         rot_diff%reaction_rate_by_zone(4,zone_idx) = rate_c12_p(zone_idx)
+         rot_diff%reaction_rate_by_zone(5,zone_idx) = rate_c13_p(zone_idx)
+         rot_diff%reaction_rate_by_zone(6,zone_idx) = rate_n14_p(zone_idx)
+         rot_diff%reaction_rate_by_zone(7,zone_idx) = rate_o16_p(zone_idx)
+         rot_diff%reaction_rate_by_zone(8,zone_idx) = rate_c13_alpha(zone_idx)
+         rot_diff%reaction_rate_by_zone(9,zone_idx) = rate_zero9(zone_idx)
+         rot_diff%reaction_rate_by_zone(10,zone_idx) = rate_c12_alpha(zone_idx)
+         rot_diff%reaction_rate_by_zone(11,zone_idx) = rate_n14_alpha(zone_idx)
+         rot_diff%reaction_rate_by_zone(12,zone_idx) = rate_triple_alpha(zone_idx)
+         rot_diff%reaction_rate_by_zone(13,zone_idx) = rate_zero13(zone_idx)
+         rot_diff%reaction_rate_by_zone(14,zone_idx) = frac_c12_alpha(zone_idx)
+         rot_diff%reaction_rate_by_zone(15,zone_idx) = frac_be7_electron(zone_idx)
       end do
 !
 ! IF ITLVL=1 THEN THE RATES OF HYDROGEN AND HELIUM BURNING ARE

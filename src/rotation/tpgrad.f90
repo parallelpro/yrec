@@ -40,6 +40,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
      convective_velocity, want_derivatives, is_convective, &
      pressure_rotation_factor, temperature_rotation_factor, log_teff)
 
+      use rotdiff_lib
       use luout_lib
       use const_lib
       implicit none
@@ -72,12 +73,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 
 
 
-! DBG 7/95 To store variables for pulse output
-! common/pualpha/: alfmlt/phmlt/cmxmlt are set here; valfmlt/vphmlt/
-! vcmxmlt are unused placeholders. Naming is local to this batch.
-      double precision :: alfmlt, phmlt, cmxmlt
-      double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
-      common/pualpha/ alfmlt, phmlt, cmxmlt, valfmlt, vphmlt, vcmxmlt
 
 ! G Somers END
       double precision, parameter :: vtol=1.0d-10
@@ -89,9 +84,9 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
            tempop, qddelt, qddelp, temp1, qa1t, qa1p, qa1r, qa3t, qa3p, &
            qa3r, temp2, temp3, qvt, qvp, qvr, deli, ateffl, deepx
 
-      alfmlt=0.0d0
-      phmlt=0.0d0
-      cmxmlt=0.0d0
+      rot_diff%alfmlt=0.0d0
+      rot_diff%phmlt=0.0d0
+      rot_diff%cmxmlt=0.0d0
       radiative_gradient = opacity*luminosity_lsun*dexp(ln10*(log_pressure - &
            log_mass - 4d0*log_temperature + log10_solar_luminosity - cgl + &
            cdelrl))* &

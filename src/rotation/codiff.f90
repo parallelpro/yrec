@@ -47,6 +47,7 @@
 subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
 
+      use rotdiff_lib
       use temp2_lib
       use mdphy_lib
       use const_lib
@@ -60,23 +61,11 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
            mixing_diffusion_coeff(json)
 
 
-! common/intvar/: not used in this file. Naming matches vcirc.f90.
-      double precision :: interface_luminosity(json), delami(json), &
-           delmi(json), dm(json), epsilm(json), interface_gravity_factor(json), &
-           hs3(json), pm(json), qdtmi(json), interface_radius(json), tm(json)
-      common/intvar/ interface_luminosity, delami, delmi, dm, epsilm, &
-           interface_gravity_factor, hs3, pm, qdtmi, interface_radius, tm
 
 
 
 
 
-! common/advec/: not used in this file (no references anywhere in the
-! executable code of the original). Not referenced in any already-
-! converted file; kept as lowercased placeholders pending a confirmed
-! source.
-      double precision :: fadv(json), fadv0(json)
-      common/advec/ fadv, fadv0
 
 
 

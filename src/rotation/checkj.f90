@@ -72,6 +72,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
      already_converged_flag)
 
+      use rotdiff_lib
       use run_diag_lib
       use temp2_lib
       use const_lib
@@ -105,46 +106,15 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 
 
 
-! common/errmom/: moment_of_inertia_tolerance (originally TOLERI), used
-! here to relax the GETROT convergence tolerance except on the final
-! diffusion iteration. Not referenced in any already-converted file.
-      double precision :: moment_of_inertia_tolerance
-      common/errmom/ moment_of_inertia_tolerance
 
 
 
 
 
 
-! MHP 3/93
-! common/quadd/: only circulation_correction_ratio (RAT) is used here.
-! Naming matches vcirc.f90.
-      double precision :: phisp(json), phirot(json), phidis(json), &
-           circulation_correction_ratio(json)
-      common/quadd/ phisp, phirot, phidis, circulation_correction_ratio
 
-! MHP 11/94
-! common/egrid/: all members used in the (dead-code) diffusion-velocity
-! print block. Naming matches rotgrid.f90.
-      double precision :: chi(json), echi(json), es1(json), dchi
-      integer :: ntot
-      common/egrid/ chi, echi, es1, dchi, ntot
 
-! common/difad/: am_advective_coeff/am_diffusive_coeff (originally
-! ECOD3/ECOD4), used in the (dead-code) print block. Naming matches
-! dcoeft.f90/dadcoeft.f90/rotgrid.f90.
-      double precision :: am_advective_coeff(json), am_diffusive_coeff(json)
-      common/difad/ am_advective_coeff, am_diffusive_coeff
 
-! common/difad2/: es_advective_velocity/es_advective_velocity_prev/
-! es_diffusive_velocity/es_diffusive_velocity_prev (VESA/VESA0/VESD/
-! VESD0), used in the (dead-code) print block. Naming matches
-! rotgrid.f90/vcirc.f90.
-      double precision :: es_advective_velocity(json), &
-           es_advective_velocity_prev(json), es_diffusive_velocity(json), &
-           es_diffusive_velocity_prev(json)
-      common/difad2/ es_advective_velocity, es_advective_velocity_prev, &
-           es_diffusive_velocity, es_diffusive_velocity_prev
 
       save
 
@@ -223,17 +193,17 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  ITERATIVELY.  BECAUSE THE ERROR IN THE DIFFUSION IS OF ORDER DJOK,
 !  RELAX TOLERANCE FOR MOMENT OF INERTIA ITERATION EXCEPT FOR THE
 !  FINAL STEP.
-      saved_tolerance = moment_of_inertia_tolerance
+      saved_tolerance = rot_diff%moment_of_inertia_tolerance
       saved_acc_tolerance = acfpft
       if(iteration_number.lt.itdif2.and..not.converged_flag)then
-         moment_of_inertia_tolerance = &
+         rot_diff%moment_of_inertia_tolerance = &
               max(convergence_tolerance*1.0d-2,saved_tolerance)
          acfpft = max(convergence_tolerance*1.0d-2,saved_acc_tolerance)
       endif
       call getrot(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius)
-      moment_of_inertia_tolerance = saved_tolerance
+      rot_diff%moment_of_inertia_tolerance = saved_tolerance
       acfpft = saved_acc_tolerance
 !  SEARCH FOR REVERSAL OF OMEGA GRADIENTS.  IF ONE EXISTS, ENFORCE
 !  SOLID-BODY ROTATION IN THE OFFENDING PAIR OF ZONES.
@@ -411,7 +381,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                  circ_vel%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
                  circ_vel%gsf_circulation_velocity(print_zone_id(zone_index)), &
                  circ_vel%secular_shear_velocity(print_zone_id(zone_index)), &
-                 circulation_correction_ratio(print_zone_id(zone_index)), &
+                 rot_diff%circulation_correction_ratio(print_zone_id(zone_index)), &
                  diffusion_velocity(print_zone_id(zone_index)), &
                  circ_vel%hle(print_zone_id(zone_index)), &
                  circ_vel%mu_gradient_velocity(print_zone_id(zone_index))
@@ -424,41 +394,41 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !     *         ECOD(ID(I)),ECOD2(ID(I)),ECOD3(ID(I)),ECOD4(ID(I))
 ! 221           FORMAT(1X,I5,1P7E12.3)
 !            END DO
-            if(print_zone_count.eq.ntot)then
+            if(print_zone_count.eq.rot_diff%ntot)then
             do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,chi(zone_index), &
+               write(imodpt,221)zone_index,rot_diff%chi(zone_index), &
                     circ_vel%es_circulation_velocity(zone_index), &
-                    es_advective_velocity(zone_index), &
-                    es_diffusive_velocity(zone_index),echi(zone_index), &
-                    am_advective_coeff(zone_index),am_diffusive_coeff(zone_index)
+                    rot_diff%es_advective_velocity(zone_index), &
+                    rot_diff%es_diffusive_velocity(zone_index),rot_diff%echi(zone_index), &
+                    rot_diff%am_advective_coeff(zone_index),rot_diff%am_diffusive_coeff(zone_index)
  221           format(1x,i5,1p7e12.3)
             end do
-            else if(print_zone_count.lt.ntot)then
+            else if(print_zone_count.lt.rot_diff%ntot)then
             do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,chi(zone_index), &
+               write(imodpt,221)zone_index,rot_diff%chi(zone_index), &
                     circ_vel%es_circulation_velocity(zone_index), &
-                    es_advective_velocity(zone_index), &
-                    es_diffusive_velocity(zone_index),echi(zone_index), &
-                    am_advective_coeff(zone_index),am_diffusive_coeff(zone_index)
+                    rot_diff%es_advective_velocity(zone_index), &
+                    rot_diff%es_diffusive_velocity(zone_index),rot_diff%echi(zone_index), &
+                    rot_diff%am_advective_coeff(zone_index),rot_diff%am_diffusive_coeff(zone_index)
             end do
-            do zone_index = print_zone_count+1,ntot
-               write(imodpt,222)zone_index,echi(zone_index), &
-                    am_advective_coeff(zone_index),am_diffusive_coeff(zone_index)
+            do zone_index = print_zone_count+1,rot_diff%ntot
+               write(imodpt,222)zone_index,rot_diff%echi(zone_index), &
+                    rot_diff%am_advective_coeff(zone_index),rot_diff%am_diffusive_coeff(zone_index)
  222           format(1x,i5,48x,1p3e12.3)
             end do
             else
-            do zone_index = 1,ntot
-               write(imodpt,221)zone_index,chi(zone_index), &
+            do zone_index = 1,rot_diff%ntot
+               write(imodpt,221)zone_index,rot_diff%chi(zone_index), &
                     circ_vel%es_circulation_velocity(zone_index), &
-                    es_advective_velocity(zone_index), &
-                    es_diffusive_velocity(zone_index),echi(zone_index), &
-                    am_advective_coeff(zone_index),am_diffusive_coeff(zone_index)
+                    rot_diff%es_advective_velocity(zone_index), &
+                    rot_diff%es_diffusive_velocity(zone_index),rot_diff%echi(zone_index), &
+                    rot_diff%am_advective_coeff(zone_index),rot_diff%am_diffusive_coeff(zone_index)
             end do
-            do zone_index = ntot+1,print_zone_count
-               write(imodpt,223)zone_index,chi(zone_index), &
+            do zone_index = rot_diff%ntot+1,print_zone_count
+               write(imodpt,223)zone_index,rot_diff%chi(zone_index), &
                     circ_vel%es_circulation_velocity(zone_index), &
-                    es_advective_velocity(zone_index), &
-                    es_diffusive_velocity(zone_index)
+                    rot_diff%es_advective_velocity(zone_index), &
+                    rot_diff%es_diffusive_velocity(zone_index)
  223           format(1x,i5,1p4e12.3)
             end do
             endif

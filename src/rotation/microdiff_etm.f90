@@ -22,6 +22,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
      composition, dlnp_dr, radius_bl, enclosed_mass, temperature_bl, &
      num_zones, total_mass, num_light, light_element_id)
+      use rotdiff_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -40,13 +41,6 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       double precision, intent(inout) :: total_mass
       integer, intent(in) :: light_element_id(num_light)
 
-! common/confac/: CON_RAD/CON_MASS/CON_TEMP/CON_TIME, the Bahcall &
-! Loeb unit-conversion factors set up by microdiff_setup.f90 and
-! converted back here. Naming matches microdiff_setup.f90.
-      double precision :: bl_radius_scale, bl_mass_scale, bl_temp_scale, &
-           bl_time_scale
-      common/confac/ bl_radius_scale, bl_mass_scale, bl_temp_scale, &
-           bl_time_scale
 
 
 
@@ -182,12 +176,12 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       endif
 !
       do 70 i=1,num_zones
-         radius_bl(i)=radius_bl(i)/bl_radius_scale
-         temperature_bl(i)=temperature_bl(i)/bl_temp_scale
-         enclosed_mass(i)=enclosed_mass(i)/bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)*bl_radius_scale
+         radius_bl(i)=radius_bl(i)/rot_diff%bl_radius_scale
+         temperature_bl(i)=temperature_bl(i)/rot_diff%bl_temp_scale
+         enclosed_mass(i)=enclosed_mass(i)/rot_diff%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)*rot_diff%bl_radius_scale
    70 continue
-      timestep=timestep*bl_time_scale
-      total_mass=total_mass/bl_mass_scale
+      timestep=timestep*rot_diff%bl_time_scale
+      total_mass=total_mass/rot_diff%bl_mass_scale
       return
 end subroutine microdiff_etm

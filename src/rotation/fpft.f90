@@ -17,11 +17,12 @@
 ! potential (via trapzd/polint Richardson extrapolation) and averages
 ! the resulting local effective gravity over the shell (via qgauss/
 ! func) to get mean_gravity, from which FP/FT and the diagnostic
-! potential terms phisp/phirot/phidis (common/quadd/) are built.
+! potential terms rot_diff%phisp/rot_diff%phirot/rot_diff%phidis (common/quadd/) are built.
 subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0)
 
+      use rotdiff_lib
       use luout_lib
       use const_lib
       use numerics_lib
@@ -41,12 +42,6 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
 
 
 
-! common/quadd/: phisp/phirot/phidis are set here;
-! circulation_correction_ratio is an unused placeholder. Naming
-! matches vcirc.f90.
-      double precision :: phisp(json), phirot(json), phidis(json), &
-           circulation_correction_ratio(json)
-      common/quadd/ phisp, phirot, phidis, circulation_correction_ratio
 
       double precision :: extrap_step(20), xa(20), ya(20), aint0(10)
       double precision :: previous_shell_mass
@@ -124,9 +119,9 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
 ! OUTPUT DATA
          rphi = dexp(ln10*log_radius(i))
          rphi3 = rphi**3
-         phisp(i) = g_times_mass/rphi
-         phirot(i) =  omega_sq*rphi**2
-         phidis(i) = c4pi*cc13*aint/rphi3
+         rot_diff%phisp(i) = g_times_mass/rphi
+         rot_diff%phirot(i) =  omega_sq*rphi**2
+         rot_diff%phidis(i) = c4pi*cc13*aint/rphi3
          prev_aint = aint
          prev_q = q
          previous_shell_mass = shell_mass

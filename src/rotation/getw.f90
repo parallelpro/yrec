@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use rotdiff_lib
       use run_diag_lib
       use temp2_lib
       use temp_lib
@@ -100,14 +101,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 
 
 
-! common/oldphy/: only old_amu is used here. Naming matches hpoint.f90.
-      double precision :: old_delm(json), old_del_adiabatic_mix(json), &
-           old_amu(json), old_om(json), old_cp(json), old_qdt(json), &
-           old_vel(json), old_visc(json), old_thdif(json), old_esum(json), &
-           old_del_radiative_mix(json), old_eps(json)
-      common/oldphy/ old_delm, old_del_adiabatic_mix, old_amu, old_om, &
-           old_cp, old_qdt, old_vel, old_visc, old_thdif, old_esum, &
-           old_del_radiative_mix, old_eps
 
 
 
@@ -115,29 +108,13 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 
 
 
-! common/oldab/: not used in this file. Naming matches midmod.f90.
-      double precision :: composition_snapshot(15,json)
-      common/oldab/ composition_snapshot
-
-
-
-! common/quadru/: only quadrupole_moment is used here. Naming matches
-! vcirc.f90.
-      double precision :: quadrupole_moment(json), local_gravity(json)
-      common/quadru/ quadrupole_moment, local_gravity
 
 
 
 
-! MHP 06/02
-! Time change of theta
-! common/oldrot2/: tho/theta_mean/theta_prev/qwrst/wmst/qwrmst are
-! used here. Naming matches hpoint.f90.
-      double precision :: tho(json), theta_new(json), theta_mean(json), &
-           del_grad_diff_interface(json), es_relaxation_factor(json), &
-           theta_prev(json), qwrst(json), wmst(json), qwrmst(json)
-      common/oldrot2/ tho, theta_new, theta_mean, del_grad_diff_interface, &
-           es_relaxation_factor, theta_prev, qwrst, wmst, qwrmst
+
+
+
 
 
       save
@@ -329,24 +306,24 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 ! COPY OVER PRIOR THETA(TIME) TERM TO TEMPORARY SLOT
 ! FOR USE IN THE ADVECTION/DIFFUSION TREATMENT OF MAEDER&ZAHN 1998
       if(first_call)then
-         theta_prev(1) = tho(1)
-         wmst(1) = run_diag%old_omega(1)
+         rot_diff%theta_prev(1) = rot_diff%tho(1)
+         rot_diff%wmst(1) = run_diag%old_omega(1)
          do zone_index = 2,num_zones
-            qwrmst(zone_index) = qwrst(zone_index)
-            theta_prev(zone_index) = tho(zone_index)
-            wmst(zone_index) = run_diag%old_omega(zone_index)
+            rot_diff%qwrmst(zone_index) = rot_diff%qwrst(zone_index)
+            rot_diff%theta_prev(zone_index) = rot_diff%tho(zone_index)
+            rot_diff%wmst(zone_index) = run_diag%old_omega(zone_index)
          end do
 ! RECOMPUTE THETA
       else
-         wmst(1) = omega(1)
+         rot_diff%wmst(1) = omega(1)
          do zone_index = 2,num_zones
             omega_avg = 0.5D0*(omega(zone_index)+omega(zone_index-1))
             delta_radius_step = 10.0D0**log_radius_mid(zone_index)- &
                  10.0D0**log_radius_mid(zone_index-1)
             domega_dr = (omega(zone_index)-omega(zone_index-1))/delta_radius_step
-            theta_prev(zone_index) = theta_mean(zone_index)*omega_avg*domega_dr
-            qwrmst(zone_index) = domega_dr
-            wmst(zone_index) = omega(zone_index)
+            rot_diff%theta_prev(zone_index) = rot_diff%theta_mean(zone_index)*omega_avg*domega_dr
+            rot_diff%qwrmst(zone_index) = domega_dr
+            rot_diff%wmst(zone_index) = omega(zone_index)
          end do
       endif
       fx = elapsed_substep_time/full_timestep
@@ -430,7 +407,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
             do 80 zone_index = 1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum_saved(zone_index)
-               mix_phys%amum(zone_index) = mix_phys%amum(zone_index) - fx*(shell_temp%mean_molecular_weight(zone_index)-old_amu(zone_index))
+               mix_phys%amum(zone_index) = mix_phys%amum(zone_index) - fx*(shell_temp%mean_molecular_weight(zone_index)-rot_diff%old_amu(zone_index))
                do 70 species_index = 1,num_species_tracked
                   composition(species_index,zone_index) = prev_model%old_composition(species_index,zone_index)
    70          continue
@@ -559,7 +536,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
          log_radius_surface = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity &
               - 4.0D0*log_teff - c4pil - csigl)
          fx = exp(ln10*3.0D0*(log_radius(num_zones)-log_radius_surface))
-         surface_quad_term = fx*quadrupole_moment(num_zones)
+         surface_quad_term = fx*rot_diff%quadrupole_moment(num_zones)
          surface_potential = exp(ln10*(cgl+log_total_mass-log_radius_surface))
          write(*,9911)surface_quad_term,surface_potential,-1.5D0*surface_quad_term/surface_potential
  9911    format(1X,'QUAD ',1PE12.3,' PHIS ',E12.3,' 3/2 QUAD/G ', &

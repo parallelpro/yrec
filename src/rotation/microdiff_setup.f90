@@ -40,6 +40,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
      zone_end, fully_convective_flag, density_orig, temperature_orig)
 
+      use rotdiff_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -65,27 +66,11 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 
 
 
-! common/confac/: CON_RAD/CON_MASS/CON_TEMP/CON_TIME, the Bahcall &
-! Loeb unit-conversion factors set up here and shared with
-! microdiff_etm.f90 (which converts back). Naming is local to this
-! batch.
-      double precision :: bl_radius_scale, bl_mass_scale, bl_temp_scale, &
-           bl_time_scale
-      common/confac/ bl_radius_scale, bl_mass_scale, bl_temp_scale, &
-           bl_time_scale
 
 
 
 
 
-! MHP 8/94 ADDED I/O FOR DIFFUSION
-!      COMMON/GSCOF2/TAPP(JSON),TATP(JSON),TCLP(JSON),TAPZP(JSON),
-!     *              TATZP(JSON)
-! common/gscof/: not used in this file; declared only to preserve
-! layout. Not referenced in any already-converted file, so kept as
-! lowercased originals pending a confirmed source.
-      double precision :: app(json), atp(json), apzp(json), atzp(json)
-      common/gscof/ app, atp, apzp, atzp
 
 
       save
@@ -150,26 +135,26 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       goto 9999
    47 continue
       zone_end = i
-!     bl_mass_scale=CONVERSION FACTOR FOR MASS.
-!     bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
-!     bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
-!     bl_time_scale=CONVERSION FACTOR FOR TIME.
-      bl_radius_scale=1.0d0/crsun_bah
-      bl_mass_scale=1.0d-2*bl_radius_scale**3
-      bl_temp_scale=1.0d-7
+!     rot_diff%bl_mass_scale=CONVERSION FACTOR FOR MASS.
+!     rot_diff%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
+!     rot_diff%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
+!     rot_diff%bl_time_scale=CONVERSION FACTOR FOR TIME.
+      rot_diff%bl_radius_scale=1.0d0/crsun_bah
+      rot_diff%bl_mass_scale=1.0d-2*rot_diff%bl_radius_scale**3
+      rot_diff%bl_temp_scale=1.0d-7
 !     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
-      bl_time_scale=2.7d13*csecyr_bah
+      rot_diff%bl_time_scale=2.7d13*csecyr_bah
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do 50 i=1,num_zones
-         radius_bl(i)=exp(ln10*log_radius(i))*bl_radius_scale
-         temperature_bl(i)=exp(ln10*log_temperature(i))*bl_temp_scale
-         enclosed_mass(i)=enclosed_mass(i)*bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)/bl_radius_scale
+         radius_bl(i)=exp(ln10*log_radius(i))*rot_diff%bl_radius_scale
+         temperature_bl(i)=exp(ln10*log_temperature(i))*rot_diff%bl_temp_scale
+         enclosed_mass(i)=enclosed_mass(i)*rot_diff%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)/rot_diff%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
    50 continue
-      timestep=timestep/bl_time_scale
-      total_mass=total_mass*bl_mass_scale
+      timestep=timestep/rot_diff%bl_time_scale
+      total_mass=total_mass*rot_diff%bl_mass_scale
 !
 ! COLLECT THE NECESSARY QUANTITIES (NAMELY RHO AND T) FOR LATER
 ! TRANSFORMATION TO THE EQUALLY SPACED GRID.

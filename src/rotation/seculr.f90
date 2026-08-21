@@ -56,6 +56,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok)
 
+      use rotdiff_lib
       use run_diag_lib
       use temp2_lib
       use oldmod_lib
@@ -108,44 +109,16 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 
 
 
-! 3/92 common block added for centered dw/dlnr.
-! common/intvar/: only interface_radius (RM) is used here. Naming
-! matches setupv.f90/vcirc.f90/getfc.f90/codiff.f90.
-      double precision :: interface_luminosity(json), delami(json), &
-           delmi(json), dm(json), epsilm(json), interface_gravity_factor(json), &
-           hs3(json), pm(json), qdtmi(json), interface_radius(json), tm(json)
-      common/intvar/ interface_luminosity, delami, delmi, dm, epsilm, &
-           interface_gravity_factor, hs3, pm, qdtmi, interface_radius, tm
-
-
-
-! common/oldab/: composition_snapshot is used here to restore
-! composition between diffusion iterations. Naming matches getw.f90/
-! midmod.f90.
-      double precision :: composition_snapshot(15,json)
-      common/oldab/ composition_snapshot
 
 
 
 
 
-! common/egrid/: only ntot is used here (as the equally-spaced point
-! count passed to dcoeft/dadcoeft/tridia). Naming matches rotgrid.f90/
-! checkj.f90.
-      double precision :: chi(json), echi(json), es1(json), dchi
-      integer :: ntot
-      common/egrid/ chi, echi, es1, dchi, ntot
 
 
-! Time change of theta.
-! common/oldrot2/: only wmst is used here (the surface omega from the
-! start of the timestep). Naming matches getw.f90/hpoint.f90/
-! setupv.f90/vcirc.f90.
-      double precision :: tho(json), theta_new(json), theta_mean(json), &
-           del_grad_diff_interface(json), es_relaxation_factor(json), &
-           theta_prev(json), qwrst(json), wmst(json), qwrmst(json)
-      common/oldrot2/ tho, theta_new, theta_mean, del_grad_diff_interface, &
-           es_relaxation_factor, theta_prev, qwrst, wmst, qwrmst
+
+
+
 
 
       save
@@ -250,7 +223,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  COMPUTE ANGULAR VELOCITY GRADIENTS
       do 10 i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
-         log_radius_center = log10(interface_radius(i))
+         log_radius_center = log10(rot_diff%interface_radius(i))
          dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
               1.0D0/ln10/(log_radius_center-log_radius(i-1))
          dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
@@ -279,7 +252,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  STORE INITIAL SURFACE ANGULAR VELOCITY FOR USE IN ANGULAR MOMENTUM
 !  LOSS CALCULATIONS.
 !      WBEG = OMEGA(M)
-      omega_surface_start = wmst(num_zones)
+      omega_surface_start = rot_diff%wmst(num_zones)
       diffusion_solve_ok = .false.
 !  ON THE FIRST LEVEL OF ITERATION, THE UNPERTURBED MODEL IS USED TO
 !  CALCULATE THE DIFFUSION VELOCITIES. ON THE SECOND AND SUBSEQUENT
@@ -298,7 +271,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  COMPUTE NEW RUN OF ANGULAR VELOCITY GRADIENTS.
             do 30 i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
-               log_radius_center = log10(interface_radius(i))
+               log_radius_center = log10(rot_diff%interface_radius(i))
                dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
                     1.0D0/ln10/(log_radius_center-log_radius(i-1))
                dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
@@ -319,7 +292,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             do 50 i = 1,num_zones
                specific_angular_momentum(i) = specific_angular_momentum_saved(i)
                do 40 j = 1,4
-                  composition(j,i) = composition_snapshot(j,i)
+                  composition(j,i) = rot_diff%composition_snapshot(j,i)
    40          continue
    50       continue
 ! MHP 10/91 CHANGED TO REMIX CZ'S TO THEIR PROPER DEPTH!
@@ -469,7 +442,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             else
                fix_omega_at_surface = .false.
                if(ljdot0)then
-                  cz_moment_of_inertia = eq_moment_of_inertia(ntot)
+                  cz_moment_of_inertia = eq_moment_of_inertia(rot_diff%ntot)
                   omega_surface = omega(num_zones)
                   call mcowind(log_luminosity_lsun,sub_timestep, &
                        cz_moment_of_inertia,iteration,omega_surface, &
@@ -489,12 +462,12 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
          if(.not.use_diffusion_advection_transport)then
 !  SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR OMEGA AT END OF TSTEP
             call dcoeft(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
-                 eq_moment_of_inertia,eq_angular_momentum,eq_omega,ntot, &
+                 eq_moment_of_inertia,eq_angular_momentum,eq_omega,rot_diff%ntot, &
                  wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
                  sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
 !  SOLVE MATRIX FOR THE RUN OF OMEGA AT THE END OF THE TIMESTEP AT THE
 !  EQUALLY SPACED GRID POINTS.
-            call tridia(ntot,eq_moment_of_inertia, &
+            call tridia(rot_diff%ntot,eq_moment_of_inertia, &
                  eq_delta_angular_momentum,sum_delta_angular_momentum, &
                  sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
                  surface_wind_loss_term)
@@ -503,7 +476,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
          else
 ! SOLVE FOR OMEGA AND ITS DERIVATIVES IN A BAND MATRIX
             call dadcoeft(grid_spacing,sub_timestep,eq_moment_of_inertia, &
-                 eq_omega,ntot,wind_loss_explicit,wind_loss_implicit, &
+                 eq_omega,rot_diff%ntot,wind_loss_explicit,wind_loss_implicit, &
                  eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
                  sum_delta_angular_momentum,fix_omega_at_surface, &
                  diffusion_converged)
@@ -604,13 +577,13 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
              5X,'H',8X,'HE3',7X,'C12',7X,'C13',7X,'N14', &
              7X,'LI7',7X,'BE9')
       do i = 1,print_zone_count
-         delta_h1 = composition(1,print_zone_id(i))-composition_snapshot(1,print_zone_id(i))
-         delta_he3 = composition(4,print_zone_id(i))-composition_snapshot(4,print_zone_id(i))
-         delta_c12 = composition(5,print_zone_id(i))-composition_snapshot(5,print_zone_id(i))
-         delta_c13 = composition(6,print_zone_id(i))-composition_snapshot(6,print_zone_id(i))
-         delta_n14 = composition(7,print_zone_id(i))-composition_snapshot(7,print_zone_id(i))
-         delta_li7 = composition(14,print_zone_id(i))-composition_snapshot(14,print_zone_id(i))
-         delta_be9 = composition(15,print_zone_id(i))-composition_snapshot(15,print_zone_id(i))
+         delta_h1 = composition(1,print_zone_id(i))-rot_diff%composition_snapshot(1,print_zone_id(i))
+         delta_he3 = composition(4,print_zone_id(i))-rot_diff%composition_snapshot(4,print_zone_id(i))
+         delta_c12 = composition(5,print_zone_id(i))-rot_diff%composition_snapshot(5,print_zone_id(i))
+         delta_c13 = composition(6,print_zone_id(i))-rot_diff%composition_snapshot(6,print_zone_id(i))
+         delta_n14 = composition(7,print_zone_id(i))-rot_diff%composition_snapshot(7,print_zone_id(i))
+         delta_li7 = composition(14,print_zone_id(i))-rot_diff%composition_snapshot(14,print_zone_id(i))
+         delta_be9 = composition(15,print_zone_id(i))-rot_diff%composition_snapshot(15,print_zone_id(i))
          write(imodpt,199)print_zone_id(i),delta_h1,delta_he3,delta_c12, &
               delta_c13,delta_n14,delta_li7,delta_be9
  199     format(I5,1P7E10.3)

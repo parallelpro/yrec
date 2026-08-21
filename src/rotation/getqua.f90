@@ -24,6 +24,7 @@
 ! final shell, such that QUAD(I) varies as 1/R**4.
 subroutine getqua(log_density, gravity, radius, angular_velocity, num_zones)
 
+      use rotdiff_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -44,10 +45,6 @@ subroutine getqua(log_density, gravity, radius, angular_velocity, num_zones)
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), solution(json), gamma_elim(json)
 
-! common/quadru/: the quadrupole moment and local gravity, both set
-! here. Naming matches vcirc.f90.
-      double precision :: quadrupole_moment(json), local_gravity(json)
-      common/quadru/ quadrupole_moment, local_gravity
 
       double precision :: density_omega2(json)
       save
@@ -135,8 +132,8 @@ subroutine getqua(log_density, gravity, radius, angular_velocity, num_zones)
               gamma_elim(matrix_row+1)*solution(matrix_row+1)
       end do
       do zone_index = 1,num_zones
-         quadrupole_moment(zone_index) = solution(zone_index)
-         local_gravity(zone_index) = gravity(zone_index)
+         rot_diff%quadrupole_moment(zone_index) = solution(zone_index)
+         rot_diff%local_gravity(zone_index) = gravity(zone_index)
       end do
 
       return

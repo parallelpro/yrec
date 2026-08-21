@@ -62,6 +62,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
      num_eq_points, wind_loss_explicit, wind_loss_implicit, &
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged)
+      use rotdiff_lib
       use const_lib
       use light_burn_lib
       use turnover_lib
@@ -82,93 +83,14 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       logical, intent(out) :: diffusion_converged
 
 
-! DIFFUSION COEFFICIENTS FOR THE TERMS INVOLVING D/DR (OMEGA)
-! (ECOD3) AND D/DR (D OMEGA/DR) (ECOD4).
-! common/difad/: am_advective_coeff/am_diffusive_coeff (originally
-! ECOD3/ECOD4). Both used here. Naming matches rotgrid.f90.
-      double precision :: am_advective_coeff(json), am_diffusive_coeff(json)
-      common/difad/ am_advective_coeff, am_diffusive_coeff
-
-! common/difad3/: higher-order terms in the meridional-circulation
-! velocity (MHP 06/02). facd2/facd3 (second/third-order coefficients,
-! used to build vesd2/vesd3), am_2nd_deriv_coeff/am_3rd_deriv_coeff
-! (originally ECOD5/ECOD6, the diffusion coefficients for the
-! d2(omega)/dr2 and d3(omega)/dr3 terms), geometric_factor (originally
-! FGEOM, the rho*r^4*dchi/dr-type Jacobian factor multiplying the
-! velocity-based terms to form diffusion coefficients), and the
-! eq_velocity_coeff*/velocity_coeff* pairs (originally EV*/FV*, with
-! FV1A/FV1B/FV2A/FV2B unused in this batch) which parameterize the
-! circulation velocity as a polynomial in omega**2 -- exact physical
-! role of each term beyond the algebra below is not confidently
-! identified. shear_diffusion_coeff/gsf_diffusion_coeff (DSS/DGSF) are
-! written but not read here; shear_diffusion_coeff_eqgrid/
-! gsf_diffusion_coeff_eqgrid (ESS/EGSF) are the equally-spaced-grid
-! shear/GSF diffusion coefficients, updated and read here. Naming is
-! local to this batch.
-      double precision :: facd2(json), facd3(json), vesd2(json), &
-           vesd3(json), am_2nd_deriv_coeff(json), am_3rd_deriv_coeff(json), &
-           geometric_factor(json), velocity_coeff0(json), &
-           velocity_coeff1a(json), velocity_coeff1b(json), &
-           velocity_coeff2a(json), velocity_coeff2b(json), &
-           eq_velocity_coeff0(json), eq_velocity_coeff1a(json), &
-           eq_velocity_coeff1b(json), eq_velocity_coeff2a(json), &
-           eq_velocity_coeff2b(json), shear_diffusion_coeff(json), &
-           gsf_diffusion_coeff(json), shear_diffusion_coeff_eqgrid(json), &
-           gsf_diffusion_coeff_eqgrid(json)
-      common/difad3/ facd2, facd3, vesd2, vesd3, am_2nd_deriv_coeff, &
-           am_3rd_deriv_coeff, geometric_factor, velocity_coeff0, &
-           velocity_coeff1a, velocity_coeff1b, velocity_coeff2a, &
-           velocity_coeff2b, eq_velocity_coeff0, eq_velocity_coeff1a, &
-           eq_velocity_coeff1b, eq_velocity_coeff2a, eq_velocity_coeff2b, &
-           shear_diffusion_coeff, gsf_diffusion_coeff, &
-           shear_diffusion_coeff_eqgrid, gsf_diffusion_coeff_eqgrid
-
-! time change of theta
-! common/difaddt/: ethvn/ethvp (originally ETHVN/ETHVP) are unused
-! placeholders in this file -- the code that would read them is
-! entirely commented out below, so the d(theta)/dt terms (theta_term_n/
-! theta_term_p) are always zero in the live code. omega_avg_start/
-! domega_dr_start (EWST/EQWRST) are read (to seed omega_mid_init/
-! domega_dr_init on the first sub-step) but the values stored into
-! those are not subsequently used either; kept as their own names since
-! the intent is clear even though the result is unused. Naming is
-! local to this batch.
-      double precision :: ethvn(json), ethvp(json), omega_avg_start(json), &
-           domega_dr_start(json)
-      common/difaddt/ ethvn, ethvp, omega_avg_start, domega_dr_start
-
-
-! VALUES OF D CHI/DR AT THE ZONE EDGES AND ZONE CENTERS
-! common/egridchi/: dchi_dr_edge (QCHIRE) is used here; dchi_dr_center
-! (QCHIRC) is not (its one reference is commented out). Naming is
-! local to this batch.
-      double precision :: dchi_dr_edge(json), dchi_dr_center(json)
-      common/egridchi/ dchi_dr_edge, dchi_dr_center
-
-! DEFINITION TERMS FOR THE SECOND AND THIRD DERIVATIVE
-! TERMS
-! common/egridder/: second/third-derivative geometric factors, raw
-! grid (second_deriv_geom_factor/third_deriv_geom_factor, originally
-! QQCOD/QQQCOD -- not used in this file) and their equally-spaced-grid
-! counterparts (second_deriv_geom_factor_eqgrid/
-! third_deriv_geom_factor_eqgrid, originally EQQCOD/EQQQCOD -- used
-! here). Naming is local to this batch.
-      double precision :: second_deriv_geom_factor_eqgrid(json), &
-           third_deriv_geom_factor_eqgrid(json), second_deriv_geom_factor(json), &
-           third_deriv_geom_factor(json)
-      common/egridder/ second_deriv_geom_factor_eqgrid, &
-           third_deriv_geom_factor_eqgrid, second_deriv_geom_factor, &
-           third_deriv_geom_factor
 
 
 
-! common/difad4/: mixing_geometric_factor/mixing_velocity_estimate/
-! equatorial_radius (FGEOMIX/VESN/REQ), all used here. Naming is local
-! to this batch.
-      double precision :: mixing_geometric_factor(json), &
-           mixing_velocity_estimate(json), equatorial_radius(json)
-      common/difad4/ mixing_geometric_factor, mixing_velocity_estimate, &
-           equatorial_radius
+
+
+
+
+
 
 ! MHP 8/17 ADDED EXCEN, C_2 TO COMMON BLOCK FOR MATT ET AL. 2012 CENT. TERM
 ! former common/cwind/: wind_saturation_omega/wind_law_omega_exponent
@@ -227,7 +149,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 ! STORE START OF TIMESTEP GRADIENTS AND
 ! AVERAGED OMEGAS.
       do i = 2,num_eq_points
-         domega_dr(i) = dchi_dr_edge(i)*(eq_omega(i)-eq_omega(i-1))/ &
+         domega_dr(i) = rot_diff%dchi_dr_edge(i)*(eq_omega(i)-eq_omega(i-1))/ &
               grid_spacing
          omega_mid_start(i) = 0.5d0*(eq_omega(i)+eq_omega(i-1))
       end do
@@ -307,8 +229,8 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 ! THE FIRST AND SECOND ORDER TERMS.
       if (substep_idx.eq.1) then
          do i = 2,num_eq_points
-            omega_mid_init(i) = 0.5d0*(omega_avg_start(i)+omega_avg_start(i-1))
-            domega_dr_init(i) = domega_dr_start(i)
+            omega_mid_init(i) = 0.5d0*(rot_diff%omega_avg_start(i)+rot_diff%omega_avg_start(i-1))
+            domega_dr_init(i) = rot_diff%domega_dr_start(i)
          end do
       else
          do i = 2,num_eq_points
@@ -328,20 +250,20 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 !         WM(I) = 0.5D0*(WM(I)+WMINIT(I))
          omega_mid_it = 0.5d0*(omega_prev_medium_iter_avg(i)+ &
               omega_prev_medium_iter_avg(i-1))
-         domega_dr_prev_substep = dchi_dr_edge(i)*(omega_working(i)- &
+         domega_dr_prev_substep = rot_diff%dchi_dr_edge(i)*(omega_working(i)- &
               omega_working(i-1))/grid_spacing
 !         QWR2 = 0.5D0*(QWR2+QWRINIT(I))
-         domega_dr_it = dchi_dr_edge(i)*(omega_prev_medium_iter_avg(i)- &
+         domega_dr_it = rot_diff%dchi_dr_edge(i)*(omega_prev_medium_iter_avg(i)- &
               omega_prev_medium_iter_avg(i-1))/grid_spacing
          if (abs(domega_dr(i)).gt.tiny) then
-            shear_diffusion_coeff_eqgrid(i) = shear_diffusion_coeff_eqgrid(i)* &
+            rot_diff%shear_diffusion_coeff_eqgrid(i) = rot_diff%shear_diffusion_coeff_eqgrid(i)* &
                  (domega_dr_prev_substep/domega_dr(i))**2
-            gsf_diffusion_coeff_eqgrid(i) = gsf_diffusion_coeff_eqgrid(i)* &
+            rot_diff%gsf_diffusion_coeff_eqgrid(i) = rot_diff%gsf_diffusion_coeff_eqgrid(i)* &
                  (domega_dr_prev_substep/domega_dr(i))**2
          end if
-         advective_term1 = difad_velocity_scale*eq_velocity_coeff0(i)* &
-              omega_mid(i)**2*(eq_velocity_coeff1a(i)+ &
-              omega_mid(i)**2*eq_velocity_coeff1b(i))
+         advective_term1 = difad_velocity_scale*rot_diff%eq_velocity_coeff0(i)* &
+              omega_mid(i)**2*(rot_diff%eq_velocity_coeff1a(i)+ &
+              omega_mid(i)**2*rot_diff%eq_velocity_coeff1b(i))
 !         VTH = FW*(ETHVN(I)*WM(I)*QWR2-ETHVP(I))/DT
          theta_term_n = 0.0d0
 !         VTHN = FW*ETHVN(I)*WM(I)**2/DT
@@ -362,16 +284,16 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
             theta_term_n=0.0d0
             theta_term_p=0.0d0
          end if
-         diffusive_term2 = difad_velocity_scale*eq_velocity_coeff0(i)* &
-              omega_mid(i)**2*(eq_velocity_coeff2a(i)+ &
-              eq_velocity_coeff2b(i))+theta_term_n
+         diffusive_term2 = difad_velocity_scale*rot_diff%eq_velocity_coeff0(i)* &
+              omega_mid(i)**2*(rot_diff%eq_velocity_coeff2a(i)+ &
+              rot_diff%eq_velocity_coeff2b(i))+theta_term_n
          advective_term1 = advective_term1 + theta_term_p
 !         ECOD3(I) = 0.2D0*(V1+VTH)*FGEOM(I)
-         am_advective_coeff(i) = 0.2d0*advective_term1*geometric_factor(i)
-         am_diffusive_coeff(i) = (0.2d0*diffusive_term2+ &
-              shear_diffusion_coeff_eqgrid(i)+gsf_diffusion_coeff_eqgrid(i))* &
-              geometric_factor(i)
-         am_diffusive_coeff(i) = max(0.0d0,am_diffusive_coeff(i))
+         rot_diff%am_advective_coeff(i) = 0.2d0*advective_term1*rot_diff%geometric_factor(i)
+         rot_diff%am_diffusive_coeff(i) = (0.2d0*diffusive_term2+ &
+              rot_diff%shear_diffusion_coeff_eqgrid(i)+rot_diff%gsf_diffusion_coeff_eqgrid(i))* &
+              rot_diff%geometric_factor(i)
+         rot_diff%am_diffusive_coeff(i) = max(0.0d0,rot_diff%am_diffusive_coeff(i))
       end do
 ! USE THE PRIOR RUN TO CORRECT THE
 ! DIFFUSION COEFFICIENTS FOR CHANGES IN OMEGA;
@@ -419,18 +341,18 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          end do
       end do
 ! OMEGA TERMS - ADVECTIVE
-      coeff_matrix(1,5) = 1.0d0  - facta_half_dt_over_ei_dr*am_advective_coeff(2)
-      coeff_matrix(1,9) = -facta_half_dt_over_ei_dr*am_advective_coeff(2)
+      coeff_matrix(1,5) = 1.0d0  - facta_half_dt_over_ei_dr*rot_diff%am_advective_coeff(2)
+      coeff_matrix(1,9) = -facta_half_dt_over_ei_dr*rot_diff%am_advective_coeff(2)
 ! OMEGA TERMS - DW/DR
-      coeff_matrix(1,7) = -fact_over_ei*dchi_dr_edge(2)*am_diffusive_coeff(2)
+      coeff_matrix(1,7) = -fact_over_ei*rot_diff%dchi_dr_edge(2)*rot_diff%am_diffusive_coeff(2)
 ! OMEGA TERMS - D2W/DR2
 !      A(1,6) = -FACTA*ECOD5(2)*FX1(2)
 !      FPL = EQQCOD(2)*QCHIRE(2)*FX1(2)
-      coeff_matrix(1,10) = -facta_half_dt_over_ei_dr*dchi_dr_edge(2)* &
-           am_2nd_deriv_coeff(2)*third_order_ratio_factor(2)
+      coeff_matrix(1,10) = -facta_half_dt_over_ei_dr*rot_diff%dchi_dr_edge(2)* &
+           rot_diff%am_2nd_deriv_coeff(2)*third_order_ratio_factor(2)
 !     *          +0.125D0*ECOD3(2)*DR**2/FPL
 ! OMEGA TERMS - D3W/DR3
-      coeff_matrix(1,8) = fact_over_ei*dchi_dr_edge(2)*am_3rd_deriv_coeff(2)* &
+      coeff_matrix(1,8) = fact_over_ei*rot_diff%dchi_dr_edge(2)*rot_diff%am_3rd_deriv_coeff(2)* &
            third_order_ratio_factor(2)
 ! D^2W/DR^2 - SET TO ZERO AT THE LOWER BOUNDARY.
       coeff_matrix(2,5) = 1.0d0
@@ -451,52 +373,52 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
               eq_moment_of_inertia(ii)/grid_spacing
          i = 1+(ii-1)*4
 ! OMEGA TERMS - ADVECTIVE
-         coeff_matrix(i,1) = facta_half_dt_over_ei_dr*am_advective_coeff(ii)
+         coeff_matrix(i,1) = facta_half_dt_over_ei_dr*rot_diff%am_advective_coeff(ii)
          coeff_matrix(i,5) = 1.0d0 + facta_half_dt_over_ei_dr* &
-              (am_advective_coeff(ii)-am_advective_coeff(ii+1))
-         coeff_matrix(i,9) = -facta_half_dt_over_ei_dr*am_advective_coeff(ii+1)
+              (rot_diff%am_advective_coeff(ii)-rot_diff%am_advective_coeff(ii+1))
+         coeff_matrix(i,9) = -facta_half_dt_over_ei_dr*rot_diff%am_advective_coeff(ii+1)
 ! OMEGA TERMS - DW/DR
-         coeff_matrix(i,3) = fact_over_ei*dchi_dr_edge(ii)* &
-              am_diffusive_coeff(ii)
-         coeff_matrix(i,7) = -fact_over_ei*dchi_dr_edge(ii+1)* &
-              am_diffusive_coeff(ii+1)
+         coeff_matrix(i,3) = fact_over_ei*rot_diff%dchi_dr_edge(ii)* &
+              rot_diff%am_diffusive_coeff(ii)
+         coeff_matrix(i,7) = -fact_over_ei*rot_diff%dchi_dr_edge(ii+1)* &
+              rot_diff%am_diffusive_coeff(ii+1)
 ! OMEGA TERMS - D2W/DR2
 !         FMI = EQQCOD(II)*QCHIRE(II)*FX1(II)
 !         FPL = EQQCOD(II+1)*QCHIRE(II+1)*FX1(II+1)
-         coeff_matrix(i,2) = facta_half_dt_over_ei_dr*dchi_dr_edge(ii)* &
-              am_2nd_deriv_coeff(ii)*third_order_ratio_factor(ii)
+         coeff_matrix(i,2) = facta_half_dt_over_ei_dr*rot_diff%dchi_dr_edge(ii)* &
+              rot_diff%am_2nd_deriv_coeff(ii)*third_order_ratio_factor(ii)
 !     *           -0.125D0*ECOD3(II)*DR**2/FMI
          coeff_matrix(i,6) = facta_half_dt_over_ei_dr* &
-              (am_2nd_deriv_coeff(ii)*dchi_dr_edge(ii)* &
+              (rot_diff%am_2nd_deriv_coeff(ii)*rot_diff%dchi_dr_edge(ii)* &
               third_order_ratio_factor(ii) &
-              - am_2nd_deriv_coeff(ii+1)*dchi_dr_edge(ii+1)* &
+              - rot_diff%am_2nd_deriv_coeff(ii+1)*rot_diff%dchi_dr_edge(ii+1)* &
               third_order_ratio_factor(ii+1))
 !     *          +0.125D0*DR**2*(ECOD3(II)/FMI - ECOD3(II+1)/FPL)
          coeff_matrix(i,10) = -facta_half_dt_over_ei_dr* &
-              am_2nd_deriv_coeff(ii+1)*dchi_dr_edge(ii+1)* &
+              rot_diff%am_2nd_deriv_coeff(ii+1)*rot_diff%dchi_dr_edge(ii+1)* &
               third_order_ratio_factor(ii+1)
 !     *           +0.125D0*ECOD3(II+1)*DR**2/FPL
 ! OMEGA TERMS - D3W/DR3
-         coeff_matrix(i,4) = fact_over_ei*am_3rd_deriv_coeff(ii)* &
-              dchi_dr_edge(ii)*third_order_ratio_factor(ii)
-         coeff_matrix(i,8) = -fact_over_ei*am_3rd_deriv_coeff(ii+1)* &
-              dchi_dr_edge(ii+1)*third_order_ratio_factor(ii+1)
+         coeff_matrix(i,4) = fact_over_ei*rot_diff%am_3rd_deriv_coeff(ii)* &
+              rot_diff%dchi_dr_edge(ii)*third_order_ratio_factor(ii)
+         coeff_matrix(i,8) = -fact_over_ei*rot_diff%am_3rd_deriv_coeff(ii+1)* &
+              rot_diff%dchi_dr_edge(ii+1)*third_order_ratio_factor(ii+1)
 ! D^2W/DR^2 COEFFICIENTS
-         coeff_matrix(i+1,2) = second_deriv_geom_factor_eqgrid(ii)* &
-              dchi_dr_edge(ii)/grid_spacing*third_order_ratio_factor(ii)
+         coeff_matrix(i+1,2) = rot_diff%second_deriv_geom_factor_eqgrid(ii)* &
+              rot_diff%dchi_dr_edge(ii)/grid_spacing*third_order_ratio_factor(ii)
          coeff_matrix(i+1,5) = 1.0d0
-         coeff_matrix(i+1,6) = -second_deriv_geom_factor_eqgrid(ii+1)* &
-              dchi_dr_edge(ii+1)/grid_spacing*third_order_ratio_factor(ii+1)
+         coeff_matrix(i+1,6) = -rot_diff%second_deriv_geom_factor_eqgrid(ii+1)* &
+              rot_diff%dchi_dr_edge(ii+1)/grid_spacing*third_order_ratio_factor(ii+1)
 ! D W/DR COEFFICIENTS
          coeff_matrix(i+2,3) = 1.0d0/grid_spacing
          coeff_matrix(i+2,5) = 1.0d0
          coeff_matrix(i+2,7) = -1.0d0/grid_spacing
 ! D^3 W/DR^3 COEFFICIENTS
-         coeff_matrix(i+3,3) = dchi_dr_edge(ii)* &
-              third_deriv_geom_factor_eqgrid(ii)/grid_spacing
+         coeff_matrix(i+3,3) = rot_diff%dchi_dr_edge(ii)* &
+              rot_diff%third_deriv_geom_factor_eqgrid(ii)/grid_spacing
          coeff_matrix(i+3,5) = 1.0d0
-         coeff_matrix(i+3,7) = -dchi_dr_edge(ii)* &
-              third_deriv_geom_factor_eqgrid(ii+1)/grid_spacing
+         coeff_matrix(i+3,7) = -rot_diff%dchi_dr_edge(ii)* &
+              rot_diff%third_deriv_geom_factor_eqgrid(ii+1)/grid_spacing
       end do
 !  LAST SHELL B.C. : SAME AS FIRST SHELL B.C.
       fact_over_ei = dt_over_dr/eq_moment_of_inertia(num_eq_points)
@@ -512,22 +434,22 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       if (.not.fix_omega_at_surface) then
 ! OMEGA TERMS - ADVECTIVE
          coeff_matrix(i,1) = facta_half_dt_over_ei_dr* &
-              am_advective_coeff(num_eq_points)
+              rot_diff%am_advective_coeff(num_eq_points)
          coeff_matrix(i,5) = 1.0d0 + facta_half_dt_over_ei_dr* &
-              am_advective_coeff(num_eq_points)
+              rot_diff%am_advective_coeff(num_eq_points)
 ! OMEGA TERMS - DW/DR
-         coeff_matrix(i,3) = fact_over_ei*dchi_dr_edge(num_eq_points)* &
-              am_diffusive_coeff(num_eq_points)
+         coeff_matrix(i,3) = fact_over_ei*rot_diff%dchi_dr_edge(num_eq_points)* &
+              rot_diff%am_diffusive_coeff(num_eq_points)
 ! OMEGA TERMS - D2W/DR2
 !         FMI = EQQCOD(NTOT)*QCHIRE(NTOT)*FX1(NTOT)
          coeff_matrix(i,2) = facta_half_dt_over_ei_dr* &
-              dchi_dr_edge(num_eq_points)*am_2nd_deriv_coeff(num_eq_points)* &
+              rot_diff%dchi_dr_edge(num_eq_points)*rot_diff%am_2nd_deriv_coeff(num_eq_points)* &
               third_order_ratio_factor(num_eq_points)
 !     *            -0.125D0*ECOD3(NTOT)*DR**2/FMI
 !         A(I,6) = FACTA*QCHIRE(NTOT)*ECOD5(NTOT)*FX1(NTOT)
 ! OMEGA TERMS - D3W/DR3
-         coeff_matrix(i,4) = fact_over_ei*dchi_dr_edge(num_eq_points)* &
-              am_3rd_deriv_coeff(num_eq_points)
+         coeff_matrix(i,4) = fact_over_ei*rot_diff%dchi_dr_edge(num_eq_points)* &
+              rot_diff%am_3rd_deriv_coeff(num_eq_points)
       else
 ! HOLD OMEGA FIXED
          coeff_matrix(i,5) = 1.0d0
@@ -730,7 +652,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
            wind_loss_delta
       do k = 2,num_eq_points
          omega_mid_prev(k) = 0.5d0*(omega_working(k)+omega_working(k-1))
-         domega_dr_prev(k) = dchi_dr_edge(k)*(omega_working(k)- &
+         domega_dr_prev(k) = rot_diff%dchi_dr_edge(k)*(omega_working(k)- &
               omega_working(k-1))/grid_spacing
       end do
       end do
@@ -752,17 +674,17 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          ii = 1 + 4*(i-1)
          omega_mid_new = 0.5d0*(rhs(ii)+rhs(ii-4))
          domega_dr_mid_new = 0.5d0*(rhs(ii+1)+rhs(ii-3))
-         advective_velocity_term = am_advective_coeff(i)/geometric_factor(i)
-         domega_dr_velocity_term = am_diffusive_coeff(i)/geometric_factor(i)* &
-              rhs(ii-2)*dchi_dr_edge(i)/omega_mid_new
+         advective_velocity_term = rot_diff%am_advective_coeff(i)/rot_diff%geometric_factor(i)
+         domega_dr_velocity_term = rot_diff%am_diffusive_coeff(i)/rot_diff%geometric_factor(i)* &
+              rhs(ii-2)*rot_diff%dchi_dr_edge(i)/omega_mid_new
          domega_dr_velocity_term_alt = 0.2d0*difad_velocity_scale* &
-              eq_velocity_coeff0(i)*omega_mid_new*dchi_dr_edge(i)* &
-              (eq_velocity_coeff2a(i)+eq_velocity_coeff2b(i))*rhs(ii-2)
-         if (am_diffusive_coeff(i).le.0.0d0) domega_dr_velocity_term_alt = 0.0d0
-         curvature_velocity_term = am_2nd_deriv_coeff(i)/geometric_factor(i)* &
-              dchi_dr_edge(i)*domega_dr_mid_new/omega_mid_new
-         third_deriv_velocity_term = am_3rd_deriv_coeff(i)/geometric_factor(i)* &
-              rhs(ii-1)*dchi_dr_edge(i)/omega_mid_new
+              rot_diff%eq_velocity_coeff0(i)*omega_mid_new*rot_diff%dchi_dr_edge(i)* &
+              (rot_diff%eq_velocity_coeff2a(i)+rot_diff%eq_velocity_coeff2b(i))*rhs(ii-2)
+         if (rot_diff%am_diffusive_coeff(i).le.0.0d0) domega_dr_velocity_term_alt = 0.0d0
+         curvature_velocity_term = rot_diff%am_2nd_deriv_coeff(i)/rot_diff%geometric_factor(i)* &
+              rot_diff%dchi_dr_edge(i)*domega_dr_mid_new/omega_mid_new
+         third_deriv_velocity_term = rot_diff%am_3rd_deriv_coeff(i)/rot_diff%geometric_factor(i)* &
+              rhs(ii-1)*rot_diff%dchi_dr_edge(i)/omega_mid_new
          total_velocity = advective_velocity_term+domega_dr_velocity_term+ &
               curvature_velocity_term+third_deriv_velocity_term
          total_velocity_alt = advective_velocity_term+ &
@@ -774,14 +696,14 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
               third_deriv_velocity_term,total_velocity, &
               rhs(ii+1),rhs(ii+2),rhs(ii+3)
          end if
-         mixing_velocity_estimate(i) = 5.0d0*abs(mixing_velocity_scale* &
-              es_mixing_scale*total_velocity_alt*equatorial_radius(i))
-         mixing_diffusion_raw = (mixing_velocity_estimate(i)+ &
+         rot_diff%mixing_velocity_estimate(i) = 5.0d0*abs(mixing_velocity_scale* &
+              es_mixing_scale*total_velocity_alt*rot_diff%equatorial_radius(i))
+         mixing_diffusion_raw = (rot_diff%mixing_velocity_estimate(i)+ &
               mixing_velocity_scale*secular_shear_mixing_scale* &
-              shear_diffusion_coeff_eqgrid(i)+mixing_velocity_scale* &
-              gsf_mixing_scale*gsf_diffusion_coeff_eqgrid(i))
+              rot_diff%shear_diffusion_coeff_eqgrid(i)+mixing_velocity_scale* &
+              gsf_mixing_scale*rot_diff%gsf_diffusion_coeff_eqgrid(i))
          eq_mixing_diffusion_coeff(i) = mixing_diffusion_raw* &
-              mixing_geometric_factor(i)
+              rot_diff%mixing_geometric_factor(i)
 !         WRITE(*,1111)I,VESN(I),DCMIX,ECOD2(I),REQ(I)
  911  format(1p10e12.3)
 !  1111 FORMAT(I5,1P4E12.3)

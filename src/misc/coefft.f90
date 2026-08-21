@@ -50,6 +50,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use rotdiff_lib
       use run_diag_lib
       use pulse_diag_lib
       use fluxes_lib
@@ -85,10 +86,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       integer, intent(in) :: envelope_zone_index
       double precision, intent(in) :: log_teff
 
-! DBG 7/95 To store variables for pulse output
-      double precision :: alfmlt, phmlt, cmxmlt
-      double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
-      common/pualpha/alfmlt,phmlt,cmxmlt,valfmlt,vphmlt,vcmxmlt
       double precision :: rotational_energy_term(json)
       common/roten/rotational_energy_term
 ! MHP 06/02 COMMON BLOCK ADDED FOR DERIVATIVES OF
@@ -578,9 +575,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          pulse_diag%pulse_electron_mean_molecular_weight(im) = &
               electron_mean_weight_inverse
          pulse_diag%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
-         valfmlt(im) = alfmlt
-         vphmlt(im) = phmlt
-         vcmxmlt(im) = cmxmlt
+         rot_diff%valfmlt(im) = rot_diff%alfmlt
+         rot_diff%vphmlt(im) = rot_diff%phmlt
+         rot_diff%vcmxmlt(im) = rot_diff%cmxmlt
  30   continue
 
       return

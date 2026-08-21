@@ -21,6 +21,7 @@
 subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
      total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
 
+      use rotdiff_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -32,26 +33,6 @@ subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
       double precision, intent(out) :: diffused_abundance_mid(json)
       logical, intent(in) :: use_generic_diffusion_vectors
 
-! common/gravez/: metal (Z) diffusion work arrays, parallel to the
-! diffusion_coeff1/diffused_abundance_mid dummy arguments above but
-! for the metal species specifically. Only metal_diffusion_coeff1 (in)
-! and metal_abundance_change_mid (out) are used here. The "_mid"
-! members mirror the "_mid" convention used for equally-spaced-grid
-! quantities in microdiff_run.f90; the "eq_" prefixed pair's exact
-! role is not exercised by this file and is preserved only for
-! common-block layout (naming is a conservative guess, not confirmed
-! usage -- possibly the equally-spaced-grid analogue of the metal
-! diffusion coefficients, by analogy with eq_mass/eq_radius/etc. in
-! microdiff_run.f90).
-      double precision :: metal_diffusion_coeff1(json), &
-           metal_diffusion_coeff1_mid(json), metal_diffusion_coeff2_mid(json), &
-           eq_metal_diffusion_coeff1_mid(json), &
-           eq_metal_diffusion_coeff2_mid(json), metal_abundance_change(json), &
-           metal_abundance_change_mid(json)
-      common/gravez/ metal_diffusion_coeff1, metal_diffusion_coeff1_mid, &
-           metal_diffusion_coeff2_mid, eq_metal_diffusion_coeff1_mid, &
-           eq_metal_diffusion_coeff2_mid, metal_abundance_change, &
-           metal_abundance_change_mid
       save
 
       double precision :: dt_half, zone_mass, delta_abundance_mid, &
@@ -77,18 +58,18 @@ subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
       if(use_diffusion_z.and..not.use_generic_diffusion_vectors)then
 ! central boundary condition
          zone_mass = eq_mass(2)
-         delta_metal_abundance_mid = dt_half*metal_diffusion_coeff1(2)/zone_mass
-         metal_abundance_change_mid(1) = delta_metal_abundance_mid
+         delta_metal_abundance_mid = dt_half*rot_diff%metal_diffusion_coeff1(2)/zone_mass
+         rot_diff%metal_abundance_change_mid(1) = delta_metal_abundance_mid
 ! general case
          do i = 2,num_eq_points-2
             zone_mass = eq_mass(i+1)-eq_mass(i)
-            delta_metal_abundance_mid = dt_half*(metal_diffusion_coeff1(i+1)-metal_diffusion_coeff1(i))/zone_mass
-            metal_abundance_change_mid(i) = delta_metal_abundance_mid
+            delta_metal_abundance_mid = dt_half*(rot_diff%metal_diffusion_coeff1(i+1)-rot_diff%metal_diffusion_coeff1(i))/zone_mass
+            rot_diff%metal_abundance_change_mid(i) = delta_metal_abundance_mid
          end do
 ! surface boundary condition.
          zone_mass = total_mass-eq_mass(num_eq_points-1)
-         delta_metal_abundance_mid = -dt_half*metal_diffusion_coeff1(num_eq_points-1)/zone_mass
-         metal_abundance_change_mid(num_eq_points-1) = delta_metal_abundance_mid
+         delta_metal_abundance_mid = -dt_half*rot_diff%metal_diffusion_coeff1(num_eq_points-1)/zone_mass
+         rot_diff%metal_abundance_change_mid(num_eq_points-1) = delta_metal_abundance_mid
       endif
       return
 end subroutine lax_wendrof1

@@ -18,6 +18,7 @@ subroutine lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
      diffused_abundance, num_eq_points, total_mass, &
      use_generic_diffusion_vectors)
 
+      use rotdiff_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -30,19 +31,6 @@ subroutine lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
       double precision, intent(in) :: total_mass
       logical, intent(in) :: use_generic_diffusion_vectors
 
-! common/gravez/: metal (Z) diffusion work arrays; see lax_wendrof1.f90
-! for the full member-naming rationale. Only
-! metal_diffusion_coeff1_mid (in) and metal_abundance_change (inout)
-! are used here.
-      double precision :: metal_diffusion_coeff1(json), &
-           metal_diffusion_coeff1_mid(json), metal_diffusion_coeff2_mid(json), &
-           eq_metal_diffusion_coeff1_mid(json), &
-           eq_metal_diffusion_coeff2_mid(json), metal_abundance_change(json), &
-           metal_abundance_change_mid(json)
-      common/gravez/ metal_diffusion_coeff1, metal_diffusion_coeff1_mid, &
-           metal_diffusion_coeff2_mid, eq_metal_diffusion_coeff1_mid, &
-           eq_metal_diffusion_coeff2_mid, metal_abundance_change, &
-           metal_abundance_change_mid
       save
 
       double precision :: dt_full, zone_mass, delta_abundance, &
@@ -68,18 +56,18 @@ subroutine lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
 ! mhp 3/94 added metal diffusion.
       if(use_diffusion_z.and..not.use_generic_diffusion_vectors)then
          zone_mass = eq_mass_mid(1)
-         delta_metal_abundance = dt_full*metal_diffusion_coeff1_mid(1)/zone_mass
-         metal_abundance_change(1) = metal_abundance_change(1)+delta_metal_abundance
+         delta_metal_abundance = dt_full*rot_diff%metal_diffusion_coeff1_mid(1)/zone_mass
+         rot_diff%metal_abundance_change(1) = rot_diff%metal_abundance_change(1)+delta_metal_abundance
 ! general case
          do i = 2,num_eq_points-1
             zone_mass = eq_mass_mid(i)-eq_mass_mid(i-1)
-            delta_metal_abundance = dt_full*(metal_diffusion_coeff1_mid(i)-metal_diffusion_coeff1_mid(i-1))/zone_mass
-            metal_abundance_change(i) = metal_abundance_change(i)+delta_metal_abundance
+            delta_metal_abundance = dt_full*(rot_diff%metal_diffusion_coeff1_mid(i)-rot_diff%metal_diffusion_coeff1_mid(i-1))/zone_mass
+            rot_diff%metal_abundance_change(i) = rot_diff%metal_abundance_change(i)+delta_metal_abundance
          end do
 ! surface boundary condition.
          zone_mass = total_mass-eq_mass_mid(num_eq_points-1)
-         delta_metal_abundance = -dt_full*metal_diffusion_coeff1_mid(num_eq_points-1)/zone_mass
-         metal_abundance_change(num_eq_points) = metal_abundance_change(num_eq_points)+delta_metal_abundance
+         delta_metal_abundance = -dt_full*rot_diff%metal_diffusion_coeff1_mid(num_eq_points-1)/zone_mass
+         rot_diff%metal_abundance_change(num_eq_points) = rot_diff%metal_abundance_change(num_eq_points)+delta_metal_abundance
       endif
       return
 end subroutine lax_wendrof2

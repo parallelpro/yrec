@@ -10,6 +10,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, temperature, num_zones, &
      total_mass)
+      use rotdiff_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -20,7 +21,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
            equal_hydrogen_fraction(json)
       integer, intent(in) :: zone_begin, zone_end, num_equal_points
       double precision, intent(inout) :: composition(15,json)
-! aux_radial_quantity (originally HQPR): only scaled by bl_radius_scale
+! aux_radial_quantity (originally HQPR): only scaled by rot_diff%bl_radius_scale
 ! here (parallel to radius), its physical meaning is not otherwise
 ! exercised in this file.
       double precision, intent(inout) :: aux_radial_quantity(json)
@@ -29,26 +30,8 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
 
-! common/confac/: CON_RAD/CON_MASS/CON_TEMP/CON_TIME, all used here.
-! Naming matches microdiff_setup.f90.
-      double precision :: bl_radius_scale, bl_mass_scale, bl_temp_scale, &
-           bl_time_scale
-      common/confac/ bl_radius_scale, bl_mass_scale, bl_temp_scale, &
-           bl_time_scale
 
 
-! common/gravez/: only metal_abundance_change (EZ) is used here; the
-! remaining members are unused placeholders. Naming matches
-! lax_wendrof1.f90/lax_wendrof2.f90/model_to_equal.f90.
-      double precision :: metal_diffusion_coeff1(json), &
-           metal_diffusion_coeff1_mid(json), metal_diffusion_coeff2_mid(json), &
-           eq_metal_diffusion_coeff1_mid(json), &
-           eq_metal_diffusion_coeff2_mid(json), metal_abundance_change(json), &
-           metal_abundance_change_mid(json)
-      common/gravez/ metal_diffusion_coeff1, metal_diffusion_coeff1_mid, &
-           metal_diffusion_coeff2_mid, eq_metal_diffusion_coeff1_mid, &
-           eq_metal_diffusion_coeff2_mid, metal_abundance_change, &
-           metal_abundance_change_mid
 
       double precision :: radius_table(4), interp_factors(4)
       save
@@ -74,7 +57,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
       if(use_diffusion_z)then
          do zone_index = zone_begin,1,-1
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
-            metal_new=min(composition(3,zone_index)+metal_abundance_change(1),metal_max)
+            metal_new=min(composition(3,zone_index)+rot_diff%metal_abundance_change(1),metal_max)
             metal_scale_ratio = metal_new/composition(3,zone_index)
             composition(3,zone_index) = metal_new
             do j = 5,11
@@ -127,10 +110,10 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! MHP 3/94 ADDED METAL DIFFUSION
          if(use_diffusion_z)then
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
-            delta_z = interp_factors(1)*metal_abundance_change(k0)+ &
-                 interp_factors(2)*metal_abundance_change(k0+1)+ &
-                 interp_factors(3)*metal_abundance_change(k0+2)+ &
-                 interp_factors(4)*metal_abundance_change(k0+3)
+            delta_z = interp_factors(1)*rot_diff%metal_abundance_change(k0)+ &
+                 interp_factors(2)*rot_diff%metal_abundance_change(k0+1)+ &
+                 interp_factors(3)*rot_diff%metal_abundance_change(k0+2)+ &
+                 interp_factors(4)*rot_diff%metal_abundance_change(k0+3)
             metal_new = min(composition(3,zone_index)+delta_z,metal_max)
             metal_scale_ratio = metal_new/composition(3,zone_index)
             composition(3,zone_index)=metal_new
@@ -154,7 +137,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
          metal_floor = 0.0D0
          do zone_index = zone_end,num_zones
             metal_new = max(composition(3,zone_index)+ &
-                 metal_abundance_change(num_equal_points),metal_floor)
+                 rot_diff%metal_abundance_change(num_equal_points),metal_floor)
             metal_scale_ratio = metal_new/composition(3,zone_index)
             composition(3,zone_index) = metal_new
             do j = 5,11
@@ -171,12 +154,12 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
       endif
       do 70 zone_index=1,num_zones
 
-         radius(zone_index)=radius(zone_index)/bl_radius_scale
-         temperature(zone_index)=temperature(zone_index)/bl_temp_scale
-         enclosed_mass(zone_index)=enclosed_mass(zone_index)/bl_mass_scale
-         aux_radial_quantity(zone_index)=aux_radial_quantity(zone_index)*bl_radius_scale
+         radius(zone_index)=radius(zone_index)/rot_diff%bl_radius_scale
+         temperature(zone_index)=temperature(zone_index)/rot_diff%bl_temp_scale
+         enclosed_mass(zone_index)=enclosed_mass(zone_index)/rot_diff%bl_mass_scale
+         aux_radial_quantity(zone_index)=aux_radial_quantity(zone_index)*rot_diff%bl_radius_scale
    70 continue
-      timestep=timestep*bl_time_scale
-      total_mass=total_mass/bl_mass_scale
+      timestep=timestep*rot_diff%bl_time_scale
+      total_mass=total_mass/rot_diff%bl_mass_scale
       return
 end subroutine equal_to_model

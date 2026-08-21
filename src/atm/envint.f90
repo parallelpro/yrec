@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use rotdiff_lib
       use run_diag_lib
       use atmstruct_lib
       use pulse_diag_lib
@@ -89,12 +90,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            atm_ion_fraction(3)
       common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
            atm_log10_density, atm_opacity, atm_ion_fraction
-! DBG 7/95 To store variables for pulse output
-! common/pualpha/: alfmlt/phmlt/cmxmlt are used (read) here for the
-! pulsation mixing-length diagnostic output. Naming matches tpgrad.f90.
-      double precision :: alfmlt, phmlt, cmxmlt
-      double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
-      common/pualpha/alfmlt, phmlt, cmxmlt, valfmlt, vphmlt, vcmxmlt
 
       double precision :: ion_fraction(3)
       double precision :: taucal_delta_mass(json), taucal_shell_mass(json), &
@@ -565,9 +560,9 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
                  pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
          else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Appended mixing length info at end of first three lines
-          write(opal_envelope_unit,6003)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl,alfmlt, &
-                 pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed,phmlt, &
-                 pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela,cmxmlt, &
+          write(opal_envelope_unit,6003)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl,rot_diff%alfmlt, &
+                 pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed,rot_diff%phmlt, &
+                 pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela,rot_diff%cmxmlt, &
                  pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
          end if
       end if   !uncertain!
@@ -703,9 +698,9 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
                     pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
             else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Appended mixing length info at end of first three lines
-               write(opal_envelope_unit,6003)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl,alfmlt, &
-                    pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed,phmlt, &
-                    pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela,cmxmlt, &
+               write(opal_envelope_unit,6003)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl,rot_diff%alfmlt, &
+                    pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed,rot_diff%phmlt, &
+                    pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela,rot_diff%cmxmlt, &
                     pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
             end if
          end if

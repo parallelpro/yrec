@@ -10,16 +10,17 @@
 ! Builds the equally-spaced-grid quantities needed by mixcom.f90's
 ! diffusive composition solve: given the first/last unstable zones of
 ! a region (zone_begin/zone_end), calls getgrid to lay down the
-! equally spaced coordinate chi, then computes the equally spaced grid
+! equally spaced coordinate rot_diff%chi, then computes the equally spaced grid
 ! masses (equally_spaced_mass) and the geometrically weighted
 ! diffusion coefficients (equally_spaced_diffusion_coeff) at the zone
 ! edges, including the Jacobian factor for the transformation from
-! radius to the chi coordinate.
+! radius to the rot_diff%chi coordinate.
 subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
+      use rotdiff_lib
       use mdphy_lib
       use const_lib
       use numerics_lib
@@ -42,19 +43,8 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 
 
 
-! common/egrid/: the equally spaced coordinate grid (chi/echi/es1) and
-! its spacing/point count (dchi/ntot), all used here. Not referenced
-! in any already-converted file.
-      double precision :: chi(json), echi(json), es1(json), dchi
-      integer :: ntot
-      common/egrid/ chi, echi, es1, dchi, ntot
 
 
-! common/splin/: scratch spline in/out arrays, used as work space here
-! by the calls to osplin. Not referenced in any already-converted
-! file.
-      double precision :: xval(json), yval(json), xtab(json), ytab(json)
-      common/splin/ xval, yval, xtab, ytab
 
       save
 
@@ -78,8 +68,8 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 ! CENTERS:
 ! TOTAL ZONE MASSES
 ! INTERMEDIATE POINTS
-      do idx = 2, ntot-1
-         equally_spaced_mass(idx) = 0.5d0*(es1(idx+1) - es1(idx-1))
+      do idx = 2, rot_diff%ntot-1
+         equally_spaced_mass(idx) = 0.5d0*(rot_diff%es1(idx+1) - rot_diff%es1(idx-1))
       end do
 ! SPECIAL TREATMENT OF THE BOUNDARIES; CAN BE CONVECTIVE.
 ! IF CONVECTIVE SUM OVER ALL SHELLS.  CARE IS NEEDED TO DO BOOK-KEEPING
@@ -87,7 +77,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 ! HALFWAY TO EDGE OF UNEQUALLY SPACED ORIGINAL SET OF POINTS.
 !
 ! CENTER
-      em_top = 0.5d0*(es1(2) + es1(1))
+      em_top = 0.5d0*(rot_diff%es1(2) + rot_diff%es1(1))
       if (zone_begin.gt.1) then
          em_bot = 0.5d0*(enclosed_mass(zone_begin) + &
               enclosed_mass(zone_begin-1))
@@ -110,21 +100,21 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          i0 = 1
       end if
 ! SURFACE
-      em_bot = 0.5d0*(es1(ntot) + es1(ntot-1))
+      em_bot = 0.5d0*(rot_diff%es1(rot_diff%ntot) + rot_diff%es1(rot_diff%ntot-1))
       if (zone_end.lt.num_zones) then
          em_top = 0.5d0*(enclosed_mass(zone_end) + &
               enclosed_mass(zone_end+1))
       else
          em_top = exp(ln10*log_total_mass)
       end if
-      equally_spaced_mass(ntot) = em_top - em_bot
+      equally_spaced_mass(rot_diff%ntot) = em_top - em_bot
       if (zone_end.lt.num_zones) then
          do search_idx = zone_end+1, num_zones
             if (.not.convective_flag(search_idx)) then
                i1 = idx - 1
                goto 20
             end if
-            equally_spaced_mass(ntot) = equally_spaced_mass(ntot) + &
+            equally_spaced_mass(rot_diff%ntot) = equally_spaced_mass(rot_diff%ntot) + &
                  shell_mass(search_idx)
          end do
          i1 = num_zones
@@ -137,26 +127,26 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 ! GRID IN R, WE NEED TO INCLUDE A JACOBIAN TERM FOR THE TRANSFORMATION
 ! OF VARIABLES.
       ntab = zone_end - zone_begin + 1
-      xtab(1) = chi(1)
+      rot_diff%xtab(1) = rot_diff%chi(1)
       do idx = 2, ntab
-         xtab(idx) = 0.5d0*(chi(idx) + chi(idx-1))
+         rot_diff%xtab(idx) = 0.5d0*(rot_diff%chi(idx) + rot_diff%chi(idx-1))
       end do
       ntabb = ntab + 1
-      xtab(ntabb) = chi(ntab)
+      rot_diff%xtab(ntabb) = rot_diff%chi(ntab)
 ! DIFFUSION COEFFICIENT FOR MIXING - ASSUME CONSTANT BELOW
 ! BOTTOM INTERFACE OR ABOVE TOP INTERFACE
-      ytab(1) = diffusion_coeff(zone_begin+1)
+      rot_diff%ytab(1) = diffusion_coeff(zone_begin+1)
       do idx = 2, ntab
          search_idx = zone_begin + idx - 1
-         ytab(idx) = diffusion_coeff(search_idx)
+         rot_diff%ytab(idx) = diffusion_coeff(search_idx)
       end do
-      ytab(ntabb) = diffusion_coeff(zone_end)
-      xval(1) = chi(1)
-      do idx = 2, ntot
-         xval(idx) = echi(idx) - 0.5d0*dchi
+      rot_diff%ytab(ntabb) = diffusion_coeff(zone_end)
+      rot_diff%xval(1) = rot_diff%chi(1)
+      do idx = 2, rot_diff%ntot
+         rot_diff%xval(idx) = rot_diff%echi(idx) - 0.5d0*rot_diff%dchi
       end do
-      call osplin(xval, equally_spaced_diffusion_coeff, xtab, ytab, ntabb, &
-           ntot)
+      call osplin(rot_diff%xval, equally_spaced_diffusion_coeff, rot_diff%xtab, rot_diff%ytab, ntabb, &
+           rot_diff%ntot)
 ! PRODUCT OF RHO R^2 BY D CHI/DR
       mass_scale = chi_grid_scale(2)
       luminosity_scale = chi_grid_scale(9)*log_luminosity(num_zones)* &
@@ -164,7 +154,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
       pressure_scale = chi_grid_scale(11)
       do idx = 1, ntab
          search_idx = zone_begin + idx - 1
-         xtab(idx) = chi(idx)
+         rot_diff%xtab(idx) = rot_diff%chi(idx)
 ! D CHI/DR = 1/DM*( D LOG M/DR) + 1/DL*(DL/DR) - 1/DP*(D LOG P/DR)
 ! OR, USING FAC = 4*PI*RHO*R**2
 ! D CHI/DR = FAC/(LN 10 * DM * M) + FAC*EPSILON/DL + RHO*GM/(LN10*DP*R**2)
@@ -176,14 +166,14 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
               exp(ln10*(cgl + log_density(search_idx) + log_mass(search_idx) &
               - log_pressure(search_idx) - &
               2.0d0*log_radius(search_idx)))/(ln10*pressure_scale)
-         ytab(idx) = log_density(search_idx) + log10(dchidr) + &
+         rot_diff%ytab(idx) = log_density(search_idx) + log10(dchidr) + &
               2.0d0*log_radius(search_idx)
       end do
-      call osplin(xval, yval, xtab, ytab, ntab, ntot)
+      call osplin(rot_diff%xval, rot_diff%yval, rot_diff%xtab, rot_diff%ytab, ntab, rot_diff%ntot)
 ! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
-      do idx = 1, ntot
+      do idx = 1, rot_diff%ntot
          equally_spaced_diffusion_coeff(idx) = &
-              equally_spaced_diffusion_coeff(idx)*exp(ln10*yval(idx))
+              equally_spaced_diffusion_coeff(idx)*exp(ln10*rot_diff%yval(idx))
       end do
  9999 continue
       return

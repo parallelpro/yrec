@@ -24,6 +24,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
 
+      use rotdiff_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -51,13 +52,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 
 
 
-! common/confac/: bl_radius_scale/bl_mass_scale/bl_temp_scale/
-! bl_time_scale, all used here (originally CON_RAD/CON_MASS/CON_TEMP/
-! CON_TIME). Naming matches microdiff_setup.f90/equal_to_model.f90.
-      double precision :: bl_radius_scale, bl_mass_scale, bl_temp_scale, &
-           bl_time_scale
-      common/confac/ bl_radius_scale, bl_mass_scale, bl_temp_scale, &
-           bl_time_scale
 
 
 
@@ -78,12 +72,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
            src_grid_metal_diffusion_coeff1_dz, &
            src_grid_metal_diffusion_coeff2_dz
 
-! MHP 8/94 ADDED I/O FOR DIFFUSION
-! common/gscof/: not used in this file; declared only to preserve
-! layout. Not referenced in any already-converted file, so kept as
-! lowercased originals. Naming matches microdiff_setup.f90.
-      double precision :: app(json), atp(json), apzp(json), atzp(json)
-      common/gscof/ app, atp, apzp, atzp
 
 
 ! MHP 8/94 ADDED ATOMIC WEIGHTS AND CHARGES FOR H,HE,FE,ELECTRONS -
@@ -193,27 +181,27 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       goto 9999
    47 continue
       zone_end = zone_idx
-!     bl_mass_scale=CONVERSION FACTOR FOR MASS.
+!     rot_diff%bl_mass_scale=CONVERSION FACTOR FOR MASS.
 !     CON_RADIUS=CONVERSION FACTOR FOR RADIUS.
-!     bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
-!     bl_time_scale=CONVERSION FACTOR FOR TIME.
-      bl_radius_scale=1.0d0/solar_radius_bl
-      bl_mass_scale=1.0d-2*bl_radius_scale**3
-      bl_temp_scale=1.0d-7
+!     rot_diff%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
+!     rot_diff%bl_time_scale=CONVERSION FACTOR FOR TIME.
+      rot_diff%bl_radius_scale=1.0d0/solar_radius_bl
+      rot_diff%bl_mass_scale=1.0d-2*rot_diff%bl_radius_scale**3
+      rot_diff%bl_temp_scale=1.0d-7
 !     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
-      bl_time_scale=2.7d13*seconds_per_year_bl
+      rot_diff%bl_time_scale=2.7d13*seconds_per_year_bl
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do 50 zone_idx=1,num_zones
 
-         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*bl_radius_scale
-         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*bl_temp_scale
-         mass_grams(zone_idx)=mass_grams(zone_idx)*bl_mass_scale
-         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/bl_radius_scale
+         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*rot_diff%bl_radius_scale
+         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*rot_diff%bl_temp_scale
+         mass_grams(zone_idx)=mass_grams(zone_idx)*rot_diff%bl_mass_scale
+         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/rot_diff%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
    50 continue
-      timestep_seconds=timestep_seconds/bl_time_scale
-      total_mass=total_mass*bl_mass_scale
+      timestep_seconds=timestep_seconds/rot_diff%bl_time_scale
+      total_mass=total_mass*rot_diff%bl_mass_scale
 !     SET UP DIFFUSION COEFFICIENTS.
 !     MODIFIED BY BC MAY/90 -- VALID FOR ALL X WITH VARIABLE LN LAMBDA
 !     GENERAL EQUATION IS

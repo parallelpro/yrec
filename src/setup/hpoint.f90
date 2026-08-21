@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use rotdiff_lib
       use run_diag_lib
       use temp_lib
       use envelope_comp_lib
@@ -74,11 +75,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
 
 
-! common/burn/: reaction_rate_by_zone (originally HCOMPM) is read here
-! (interpolated to the new mesh alongside HCOMP). Naming matches
-! mix.f90.
-      double precision :: reaction_rate_by_zone(15,json)
-      common/burn/ reaction_rate_by_zone
 
 
 
@@ -98,29 +94,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 
 
 
-! common/oldphy/: previous-timestep auxiliary physics quantities,
-! stored here for use by the diffusion/mixing routines at the start of
-! the next timestep. Naming is local to this batch (matches
-! midmod.f90); member names parallel common/mdphy/'s amum/cpm/delm/
-! delam/delrm/esumm/om/qdtm/thdifm/velm/viscm/epsm.
-      double precision :: old_delm(json), old_del_adiabatic_mix(json), &
-           old_amu(json), old_om(json), old_cp(json), old_qdt(json), &
-           old_vel(json), old_visc(json), old_thdif(json), old_esum(json), &
-           old_del_radiative_mix(json), old_eps(json)
-      common/oldphy/ old_delm, old_del_adiabatic_mix, old_amu, old_om, &
-           old_cp, old_qdt, old_vel, old_visc, old_thdif, old_esum, &
-           old_del_radiative_mix, old_eps
 
-! MHP 06/02
-! Time change of theta
-! common/oldrot2/: tho/qwrst (domega/dr and its exponentially-weighted
-! form) are used here; the remaining members are unused placeholders.
-! Naming matches vcirc.f90.
-      double precision :: tho(json), theta_new(json), theta_mean(json), &
-           del_grad_diff_interface(json), es_relaxation_factor(json), &
-           theta_prev(json), qwrst(json), wmst(json), qwrmst(json)
-      common/oldrot2/ tho, theta_new, theta_mean, del_grad_diff_interface, &
-           es_relaxation_factor, theta_prev, qwrst, wmst, qwrmst
 
 
 
@@ -719,12 +693,12 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
       do 849 i = 1,7
        do 847 j = 1,num_zones
-          prev_model%old_pressure(j) = reaction_rate_by_zone(reaction_rate_species_index(i),j)
+          prev_model%old_pressure(j) = rot_diff%reaction_rate_by_zone(reaction_rate_species_index(i),j)
   847    continue
          call osplin(prev_model%old_shell_mass,prev_model%old_temperature,log_mass,prev_model%old_pressure, &
               old_point_count,new_point_count)
        do 848 j = 1,new_num_zones
-          reaction_rate_by_zone(reaction_rate_species_index(i),j) = &
+          rot_diff%reaction_rate_by_zone(reaction_rate_species_index(i),j) = &
                prev_model%old_temperature(j)
   848    continue
   849 continue
@@ -828,13 +802,13 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
       if (rotation_active .or. (use_extended_composition .and. &
            envelope_overshoot_active)) then
-         call osplin(prev_model%old_shell_mass,old_esum,log_mass,shell_diag%sesum, &
+         call osplin(prev_model%old_shell_mass,rot_diff%old_esum,log_mass,shell_diag%sesum, &
               old_point_count,new_point_count)
          do zone_index = 1,num_zones
             spline_y(zone_index) = shell_diag%sesum(zone_index)+shell_diag%seg(6,zone_index)+ &
                  shell_diag%seg(7,zone_index)
          end do
-         call osplin(prev_model%old_shell_mass,old_eps,log_mass,spline_y, &
+         call osplin(prev_model%old_shell_mass,rot_diff%old_eps,log_mass,spline_y, &
               old_point_count,new_point_count)
       endif
       write(short_file_unit,1020) num_zones,new_num_zones
@@ -931,19 +905,19 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 !   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN
 !   ONE LARGE EVOLUTIONARY TIMESTEP.
          do 1040 zone_index = 1,num_zones
-            old_del_radiative_mix(zone_index) = shell_diag%del_grad(1,zone_index)
-            old_delm(zone_index) = shell_diag%del_grad(2,zone_index)
-            old_del_adiabatic_mix(zone_index) = shell_diag%del_grad(3,zone_index)
-            old_amu(zone_index) = shell_temp%mean_molecular_weight(zone_index)
-            old_om(zone_index) = shell_diag%so(zone_index)
-            old_cp(zone_index) = shell_temp%cp(zone_index)
-            old_qdt(zone_index) = shell_temp%qdt(zone_index)
-            old_vel(zone_index) = shell_diag%svel(zone_index)
-            old_visc(zone_index) = shell_temp%visc(zone_index)
-            old_thdif(zone_index) = shell_temp%thdif(zone_index)
+            rot_diff%old_del_radiative_mix(zone_index) = shell_diag%del_grad(1,zone_index)
+            rot_diff%old_delm(zone_index) = shell_diag%del_grad(2,zone_index)
+            rot_diff%old_del_adiabatic_mix(zone_index) = shell_diag%del_grad(3,zone_index)
+            rot_diff%old_amu(zone_index) = shell_temp%mean_molecular_weight(zone_index)
+            rot_diff%old_om(zone_index) = shell_diag%so(zone_index)
+            rot_diff%old_cp(zone_index) = shell_temp%cp(zone_index)
+            rot_diff%old_qdt(zone_index) = shell_temp%qdt(zone_index)
+            rot_diff%old_vel(zone_index) = shell_diag%svel(zone_index)
+            rot_diff%old_visc(zone_index) = shell_temp%visc(zone_index)
+            rot_diff%old_thdif(zone_index) = shell_temp%thdif(zone_index)
 ! MHP 06/02
-            del_grad_diff_interface(zone_index) = &
-                 old_del_adiabatic_mix(zone_index) - old_delm(zone_index)
+            rot_diff%del_grad_diff_interface(zone_index) = &
+                 rot_diff%old_del_adiabatic_mix(zone_index) - rot_diff%old_delm(zone_index)
 ! MHP 6/00 CALCULATED EARLIER
 !            ESUMO(IM) = SESUM(IM)
             max_domega_dr_old(zone_index) = max_domega_dr(zone_index)
@@ -956,8 +930,8 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
             omega_mid = 0.5D0*(omega(i)+omega(i-1))
             log_factor = 2.0D0*(log_radius(i)+log_radius(i-1))-0.5D0* &
      (log_mass(i)+log_mass(i-1))-cgl
-            tho(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
-            qwrst(i) = delta_omega/delta_radius
+            rot_diff%tho(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
+            rot_diff%qwrst(i) = delta_omega/delta_radius
          end do
       endif
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.

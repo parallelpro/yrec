@@ -24,7 +24,7 @@
 !       rotationally induced instabilities.
 !   angular_momentum - contains the run of angular momentum prior to
 !       angular momentum redistribution.
-!   ntot (common/egrid/) - number of equally spaced grid points in the
+!   rot_diff%ntot (common/egrid/) - number of equally spaced grid points in the
 !       unstable region.
 !   total_delta_angular_momentum - total change in angular momentum
 !       across grid.
@@ -51,6 +51,7 @@
 subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
      zone_begin, zone_end, convective_flag, num_points, &
      total_delta_angular_momentum, specific_angular_momentum)
+      use rotdiff_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -63,11 +64,6 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
       double precision, intent(in) :: total_delta_angular_momentum
       double precision, intent(inout) :: specific_angular_momentum(json)
 
-      double precision :: xval(json), yval(json), xtab(json), ytab(json)
-      common/splin/ xval, yval, xtab, ytab
-      double precision :: chi(json), echi(json), es1(json), dchi
-      integer :: ntot
-      common/egrid/ chi, echi, es1, dchi, ntot
 
       save
 
@@ -102,40 +98,40 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
 ! INTERPOLATE IN DJ/J AS A FUNCTION OF ECHI
       nmod = zone_end - zone_begin + 1
       do i = 1, nmod
-         xval(i) = chi(i)
+         rot_diff%xval(i) = rot_diff%chi(i)
       end do
-      do i = 1, ntot
-         xtab(i) = echi(i)
-         ytab(i) = delta_angular_momentum(i)/angular_momentum(i)
+      do i = 1, rot_diff%ntot
+         rot_diff%xtab(i) = rot_diff%echi(i)
+         rot_diff%ytab(i) = delta_angular_momentum(i)/angular_momentum(i)
       end do
-      call osplin(xval, yval, xtab, ytab, ntot, nmod)
+      call osplin(rot_diff%xval, rot_diff%yval, rot_diff%xtab, rot_diff%ytab, rot_diff%ntot, nmod)
 ! APPLY THE FRACTIONAL CHANGE IN J/M ACROSS THE MODEL.
       sumjmod = 0.0d0
       sumdjmod = 0.0d0
       if (i0.lt.zone_begin) then
          do i = i0, zone_begin-1
             sumjmod = sumjmod + specific_angular_momentum(i)*shell_mass(i)
-            sumdjmod = sumdjmod + yval(1)*specific_angular_momentum(i)* &
+            sumdjmod = sumdjmod + rot_diff%yval(1)*specific_angular_momentum(i)* &
                  shell_mass(i)
             specific_angular_momentum(i) = specific_angular_momentum(i)* &
-                 (1.0d0+yval(1))
+                 (1.0d0+rot_diff%yval(1))
          end do
       end if
       do i = zone_begin, zone_end
          ii = i - zone_begin + 1
          sumjmod = sumjmod + specific_angular_momentum(i)*shell_mass(i)
-         sumdjmod = sumdjmod + yval(ii)*specific_angular_momentum(i)* &
+         sumdjmod = sumdjmod + rot_diff%yval(ii)*specific_angular_momentum(i)* &
               shell_mass(i)
          specific_angular_momentum(i) = specific_angular_momentum(i)* &
-              (1.0d0+yval(ii))
+              (1.0d0+rot_diff%yval(ii))
       end do
       if (i1.gt.zone_end) then
          do i = zone_end+1, i1
             sumjmod = sumjmod + specific_angular_momentum(i)*shell_mass(i)
-            sumdjmod = sumdjmod + yval(nmod)*specific_angular_momentum(i)* &
+            sumdjmod = sumdjmod + rot_diff%yval(nmod)*specific_angular_momentum(i)* &
                  shell_mass(i)
             specific_angular_momentum(i) = specific_angular_momentum(i)* &
-                 (1.0d0+yval(nmod))
+                 (1.0d0+rot_diff%yval(nmod))
          end do
       end if
 ! CHECK THAT ANGULAR MOMENTUM HAS BEEN CONSERVED.  THE TOTAL ANGULAR
