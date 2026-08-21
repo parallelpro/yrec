@@ -78,43 +78,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! batch.
       logical :: lprt0_placeholder
       common/rotprt/ lprt0_placeholder
-! JVS 01/11 ACOUSTIC DEPTH
-! KC 2025-05-30 reordered common block elements
-! COMMON/ACDPTH/TAUCZN,DELADJ(JSON),TAUHE, TNORM, TCZ, WHE, ICLCD,
-! common/acdpth/: normalized_acoustic_depth/acoustic_depth_to_cz/
-! acoustic_crossing_time/helium_zone_acoustic_depth/helium_zone_weight/
-! atmosphere_acoustic_depth/extra_last_model_unit/extra_last_model_active/
-! compute_acoustic_depth/acoustic_depth_output are used here (the
-! first six unlike in getopal95.f90, which leaves this whole block as
-! unused placeholders -- here they are actually written out in the
-! .track 1800 format, so real names are given instead; their precise
-! physical definitions are not confidently known beyond "acoustic
-! depth family of diagnostics", flagged accordingly). The remaining
-! members are unused placeholders preserving the shared storage
-! layout, matching getopal95.f90's naming for those slots.
-      double precision :: normalized_acoustic_depth, deladj_placeholder(json), &
-           helium_zone_acoustic_depth, acoustic_crossing_time, &
-           acoustic_depth_to_cz, helium_zone_weight
-      double precision :: acatmr_placeholder(json), acatmd_placeholder(json), &
-           acatmp_placeholder(json), acatmt_placeholder(json), &
-           atmosphere_acoustic_depth
-      double precision :: ageout_placeholder(5)
-      logical :: lclcd_placeholder
-      integer :: iclcd_placeholder, iacat_placeholder, extra_last_model_unit
-      logical :: extra_last_model_active, ljwrt_placeholder, &
-           compute_acoustic_depth, laoly_placeholder
-      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
-      logical :: acoustic_depth_output
-      common/acdpth/normalized_acoustic_depth,deladj_placeholder, &
-           helium_zone_acoustic_depth, acoustic_crossing_time, &
-           acoustic_depth_to_cz, helium_zone_weight, &
-           acatmr_placeholder, acatmd_placeholder, acatmp_placeholder, &
-           acatmt_placeholder, atmosphere_acoustic_depth, &
-           ageout_placeholder, lclcd_placeholder, iclcd_placeholder, &
-           iacat_placeholder, extra_last_model_unit, extra_last_model_active, &
-           ljwrt_placeholder, compute_acoustic_depth, laoly_placeholder, &
-           ijvs_placeholder, ijent_placeholder, ijdel_placeholder, &
-           acoustic_depth_output
 ! JVS 08/13 IF THE CZ IS BEYOND THE FITTING POINT, STORE ITS LOCATION
 ! common/envcz/: not used in this file. Naming is local to this batch.
       double precision :: convection_zone_radius_placeholder, rint_placeholder
@@ -804,7 +767,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !      *            LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
                   log_teff, composition, age_gyr, envelope_cz_bottom_index)
             else if (envelope_cz_bottom_index.eq.1) then
-                  normalized_acoustic_depth=0.0D0
+                  taucz_placeholder=0.0D0
             endif
             if (convective_flag(num_shells)) then
                   icheck=1
@@ -812,8 +775,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
                   icheck = 0
             endif
 
-        if (extra_last_model_active) then
-         iwrite = extra_last_model_unit
+        if (ljlast_placeholder) then
+         iwrite = ijlast_placeholder
          call wrtlst(iwrite,composition,log_density,log_luminosity,log_pressure,log_radius,log_mass,log_temperature,convective_flag,trial_log_temperature,trial_log_luminosity,fit_point_pressure, &
          fit_point_temperature,fit_point_radius,envelope_fit_coeffs,trial_sign_flag,luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun,log_total_mass, &
          age_gyr,timestep_yr,omega)
@@ -824,7 +787,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
             flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
             (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
-            total_angular_momentum,normalized_acoustic_depth,acoustic_depth_to_cz,acoustic_crossing_time,helium_zone_acoustic_depth,helium_zone_weight,atmosphere_acoustic_depth,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
+            total_angular_momentum,taucz_placeholder,tcz_placeholder,tnorm_placeholder,tauhe_placeholder,whe_placeholder,tatmos_placeholder,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck
  1800      format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3, &
                   39E16.8, I8)

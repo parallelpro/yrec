@@ -192,19 +192,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            old_eta_squared(json)
       common/oldrot/ old_omega, old_specific_angular_momentum, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
-! MHP  5/97 ADDED COMMON BLOCK FOR SCV EOS TABLES
-! common/scveos/: only use_scv_eos is used here (the rest are unused
-! placeholders). Naming matches setscv.f90/eqstat2.f90, except idtt:
-! setscv.f90 names this slot "idt", which would collide here with
-! common/optab/'s idt (also declared in this file); kept as the
-! original cryptic spelling (lowercased) to avoid that collision.
-      double precision :: tlogx(nts), tablex(nts,nps,12), &
-           tabley(nts,nps,12), smix(nts,nps), tablez(nts,nps,13), &
-           tablenv(nts,nps,12)
-      integer :: nptsx(nts), idtt, idp
-      logical :: use_scv_eos
-      common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
-           use_scv_eos, idtt, idp
 ! LLP  3/19/03 Add COMMON block /I2O/ for info directly transferred from
 !      input to output model - starting with a code for th initial model
 !      compostion (COMPMIX)

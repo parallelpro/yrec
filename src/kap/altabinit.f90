@@ -29,6 +29,7 @@
 !    4 columns.
 subroutine altabinit
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: nta = 250
@@ -56,20 +57,7 @@ subroutine altabinit
            allard_gl_index_max, allard_teffl_min, allard_teffl_max, &
            allard_gl_min, allard_gl_max
 
-! Shared: ALFILEIN, ALSURFP and PARMIN
-      double precision :: allard_target_feh, allard_target_alpha
-      logical :: allard_use_tau100
-      integer :: allard_table_unit
-      common /alatm03/ allard_target_feh, allard_target_alpha, allard_use_tau100, &
-           allard_table_unit
 
-! MHP 8/25 Removed character file names from common block
-! common/alatm04/: unused everywhere in this file family; placeholders
-! preserving the shared storage layout.
-      double precision :: alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
-      common /alatm04/ alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
 
       double precision :: allard_al_teffl_min, allard_al_teffl_max
       common /alatm05/ allard_al_teffl_min, allard_al_teffl_max

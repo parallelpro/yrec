@@ -171,21 +171,13 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
            equatorial_radius
 
 ! MHP 8/17 ADDED EXCEN, C_2 TO COMMON BLOCK FOR MATT ET AL. 2012 CENT. TERM
-! common/cwind/: wind_saturation_omega/wind_law_omega_exponent
+! former common/cwind/: wind_saturation_omega/wind_law_omega_exponent
 ! (WMAX/EXW) are used here; the rest are unused placeholders (magnetic-
 ! braking law parameters -- exponents on mass-loss rate/convective
 ! turnover timescale/radius/mass/luminosity/Rossby number, and overall
 ! normalization constants, per the Matt et al. 2012-style wind-torque
-! law this block evidently parameterizes). Naming is local to this
-! batch.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
+! law this block evidently parameterizes).
 !      COMMON/CWIND/WMAX,EXMD,EXW,EXTAU,EXR,EXM,CONSTFACTOR,STRUCTFACTOR,LJDOT0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
 
 
 !       DIMENSION EI(JSON),EW(JSON),EJ(JSON),DJ(JSON),  ! KC 2025-05-31

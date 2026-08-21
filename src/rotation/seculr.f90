@@ -104,17 +104,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 
 
 
-! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent.
-! term.
-! common/cwind/: only ljdot0 is used here. Naming matches getw.f90/
-! midmod.f90.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
 
 
 
@@ -162,13 +151,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       common/oldrot2/ tho, theta_new, theta_mean, del_grad_diff_interface, &
            es_relaxation_factor, theta_prev, qwrst, wmst, qwrmst
 
-! MHP 3/99 added flag to treat the entire star as 'convective' for
-! angular momentum purposes.
-! JNT 09/25 for 05/15 add impjmod
-! common/sbrot/: both used here. Naming matches getw.f90/midmod.f90.
-      logical :: force_solid_body_rotation
-      integer :: solid_body_mode_flag
-      common/sbrot/ force_solid_body_rotation, solid_body_mode_flag
 
       save
 ! MHP 6/00 added MRZONE,MXZONE for BS mixing plus burning (no longer

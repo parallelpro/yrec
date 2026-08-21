@@ -80,16 +80,6 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
 
 
 
-! MHP 02/12 PERMIT CONSTANT DIFFUSION COEFFICIENT
-! KC 2025-05-30 reordered common block elements
-!       COMMON/MAG/LCODM,CODM
-! common/mag/: constant_background_diffusion_coeff/use_constant_
-! background_diffusion (originally CODM/LCODM), both used here. Naming
-! is local to this batch; not referenced in any already-converted file.
-      double precision :: constant_background_diffusion_coeff
-      logical :: use_constant_background_diffusion
-      common/mag/ constant_background_diffusion_coeff, &
-           use_constant_background_diffusion
 
       save
 

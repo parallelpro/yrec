@@ -9,13 +9,11 @@
 
 subroutine setversion()
 
+      use const_lib
       implicit none
-! yrec_version_string: released version tag.
-! git_hash_string: short git commit hash + indicator if working tree
-!                   was not clean.
-      character*10 yrec_version_string
-      character*20 git_hash_string
-      common/version/ yrec_version_string, git_hash_string
+! former common/version/: yrec_version_string (released version tag)
+! and git_hash_string (short git commit hash + indicator if working
+! tree was not clean) are now use-associated from const_lib.
       yrec_version_string = YREC_VERSION
       git_hash_string = GIT_HASH
 end subroutine setversion

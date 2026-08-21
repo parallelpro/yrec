@@ -25,42 +25,7 @@ subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
 
 
 
-! common/cwind/: exr/exm/exl/expr/exm/extau and structfactor (the
-! output) are used here. Naming matches getw.f90.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
 
-! common/pmmwind/: Matt-type ("PMM") magnetic-wind calibration block.
-! First converted here; also used (with these same names) in cowind.f90
-! (no -- cowind.f90 doesn't reference it) and mcowind.f90/mwind.f90.
-! pmm_exponent_a/b/c/d/m are dimensionless calibration exponents of the
-! Matt+2012/2015-type wind-torque law (their exact individual physical
-! roles are not confidently known from this file alone -- see parmin.f
-! for how they combine into exw/exr/exm/exl/expr/excen). pmm_norm_jdot
-! and pmm_norm_mdot are solar normalization constants (angular-
-! momentum-loss and mass-loss rate scales, cgs); pmm_solar_pressure/
-! pmm_solar_omega/pmm_solar_turnover_timescale are solar reference
-! values used to non-dimensionalize the photospheric-pressure,
-! rotation, and Rossby-scaling factors below. use_pmm_wind_law selects
-! the Matt-type law (mcowind.f90/mwind.f90) over the legacy
-! Kawaler-type law (cowind.f90/wind.f90); scale_by_rossby_number and
-! scale_by_b_field are the associated Rossby/field-scaling toggles;
-! wind_law_name is a short label (e.g. 'K97') for the adopted law.
-      double precision :: pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, &
-           pmm_exponent_d, pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
-           pmm_solar_pressure, pmm_solar_omega, pmm_solar_turnover_timescale
-      logical :: use_pmm_wind_law, scale_by_rossby_number, scale_by_b_field
-      character*3 :: wind_law_name
-      common/pmmwind/ pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, &
-           pmm_exponent_d, pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
-           pmm_solar_pressure, pmm_solar_omega, pmm_solar_turnover_timescale, &
-           use_pmm_wind_law, scale_by_rossby_number, scale_by_b_field, &
-           wind_law_name
 
 
       save

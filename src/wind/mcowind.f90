@@ -64,32 +64,9 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 
 
 
-! common/cwind/: wind_law_omega_exponent/constfactor/excen/c_2 are used
-! here; structfactor is set by amcalc (called below) and consumed
-! here. Naming matches getw.f90.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
 
 
 
-! common/pmmwind/: use_pmm_wind_law/scale_by_rossby_number/
-! scale_by_b_field/pmm_solar_omega/pmm_solar_turnover_timescale are
-! used here. Naming matches amcalc.f90 (first converted there).
-      double precision :: pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, &
-           pmm_exponent_d, pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
-           pmm_solar_pressure, pmm_solar_omega, pmm_solar_turnover_timescale
-      logical :: use_pmm_wind_law, scale_by_rossby_number, scale_by_b_field
-      character*3 :: wind_law_name
-      common/pmmwind/ pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, &
-           pmm_exponent_d, pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
-           pmm_solar_pressure, pmm_solar_omega, pmm_solar_turnover_timescale, &
-           use_pmm_wind_law, scale_by_rossby_number, scale_by_b_field, &
-           wind_law_name
 
       save
 

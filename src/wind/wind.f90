@@ -38,15 +38,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 
 
 
-! common/cwind/: wind_saturation_omega/constfactor/exmd/exr/exm/
-! wind_law_omega_exponent are used here. Naming matches getw.f90.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
 
 
 

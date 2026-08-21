@@ -70,11 +70,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 
 
 
-! common/govs/: use_envelope_triangle_dt (originally LTRIST) governs
-! whether the entime() envelope-triangle timestep limiter is applied.
-! First appearance of this common block in the converted sources.
-      logical :: use_envelope_triangle_dt
-      common/govs/ use_envelope_triangle_dt
 
 
 

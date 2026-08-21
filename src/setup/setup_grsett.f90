@@ -85,13 +85,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       double precision :: app(json), atp(json), apzp(json), atzp(json)
       common/gscof/ app, atp, apzp, atzp
 
-!CFD 10/09 ADDED COMMON BLOCK FOR EXTRA MIXING. IT MIMIC SOME MIXING BY
-! AFFECTING THE SETTLING COEFFICIENT DIRECTLY (in setup_grsett.f)
-! common/cmixing/: cstmixing/cstdiffmix, both used here. Not referenced
-! in any already-converted file, so kept as lowercased originals.
-! Naming matches microdiff_setup.f90.
-      double precision :: cstmixing, cstdiffmix
-      common/cmixing/ cstmixing, cstdiffmix
 
 ! MHP 8/94 ADDED ATOMIC WEIGHTS AND CHARGES FOR H,HE,FE,ELECTRONS -
 ! NEEDED FOR FULL THOUL COEFFICIENTS

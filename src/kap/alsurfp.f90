@@ -85,6 +85,7 @@
 !       If LPRT  is .TRUE. print Log(P) at the associated Log(Teff) to ISHORT and IMODPT.
 subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
 
+      use const_lib
       use luout_lib
       use numerics_lib
       implicit none
@@ -123,17 +124,6 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
       common /alatm02/ allard_gl_row_min, allard_gl_row_max, allard_gl_index_min, &
            allard_gl_index_max, allard_teffl_min, allard_teffl_max, &
            allard_gl_min, allard_gl_max
-! Shared: ALFILEIN, ALSURFP and PARMIN
-      double precision :: allard_target_feh, allard_target_alpha
-      logical :: allard_use_tau100
-      integer :: allard_table_unit
-      common /alatm03/ allard_target_feh, allard_target_alpha, allard_use_tau100, &
-           allard_table_unit
-! MHP 8/25 Removed character file names from common block
-      double precision :: alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
-      common /alatm04/ alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
 
       integer :: gl_index(4)
 ! sized 20 (only the first 4 elements are ever used) to match polint's

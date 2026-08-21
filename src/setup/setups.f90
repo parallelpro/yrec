@@ -87,27 +87,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       common/fac/kurucz_gmin_index, kurucz_gmax_index, &
            teff_interp_start_index, gravity_interp_indices, &
            castelli_gmin_index, castelli_gmax_index
-! MHP  5/97 ADDED COMMON BLOCK FOR SCV EOS TABLES
-! common/scveos/: tlogx/nptsx/tablex/tabley/tablez used here;
-! smix/tablenv are unused placeholders. idt/idp (also unused
-! placeholders here) are dropped from this file's own declaration --
-! they're the trailing two members, so omitting them doesn't affect
-! any other member's position -- since they'd otherwise collide with
-! the unrelated const_lib idt added for former common/optab/ (same
-! collision setscv.f90 already avoids for its own same-slot idtt).
-! Naming matches eqstat2.f90.
-      double precision :: tlogx(nts), tablex(nts,nps,12), &
-           tabley(nts,nps,12), smix(nts,nps), tablez(nts,nps,13), &
-           tablenv(nts,nps,12)
-      integer :: nptsx(nts)
-      logical :: use_scv_eos
-      common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
-           use_scv_eos
-! MHP 8/25 Removed file names from common block
-! common/scv2/: not used in this file; declared only to preserve
-! layout. Not referenced in any already-converted file.
-      integer :: scv_h_unit, scv_he_unit, scv_z_unit
-      common/scv2/ scv_h_unit, scv_he_unit, scv_z_unit
 
       save
 

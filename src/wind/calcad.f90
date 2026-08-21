@@ -31,17 +31,17 @@
 !
 ! OUTPUTS:
 !       Adjusts the values in the common block for acoustic depth:
-!            normalized_acoustic_depth = acoustic depth to CZ / sound
+!            taucz_placeholder = acoustic depth to CZ / sound
 !                 travel time from surface-center
-!            acoustic_depth_to_cz = acoustic depth to CZ (seconds)
-!            acoustic_crossing_time = sound travel time from surface
+!            tcz_placeholder = acoustic depth to CZ (seconds)
+!            tnorm_placeholder = sound travel time from surface
 !                 to center (seconds)
-!            adiabatic_gradient = adiabatic gradient from OPAL 2006
+!            deladj_placeholder = adiabatic gradient from OPAL 2006
 !                 EOS or SCV EOS
 !
 ! COMMON BLOCKED THINGS:
 !
-!        calcad_output_active = Logical flag for output of CALCAD
+!        lclcd_placeholder = Logical flag for output of CALCAD
 !             files at AGEOUT ages
 !        AGEOUT(5) = Ages for which you want output. Hard coded in
 !             parmin
@@ -79,41 +79,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       double precision, intent(in) :: age_gyr
       integer, intent(in) :: envelope_cz_bottom_index
 
-! common/acdpth/: normalized_acoustic_depth/acoustic_depth_to_cz/
-! acoustic_crossing_time/atmosphere_acoustic_depth/calcad_output_active/
-! calcad_output_unit are actively used here (see the header comment
-! above for their meaning). adiabatic_gradient (DELADJ) is likewise
-! actively computed/written here -- unlike in wrtout.f90/getopal95.f90,
-! where this whole block is left as unused-placeholder "*_placeholder"
-! names, DELADJ genuinely carries the adiabatic gradient per this
-! file's own header, so it (and calcad_output_active/calcad_output_unit,
-! which genuinely gate/target output here) are given real names
-! instead of wrtout.f90's inherited "deladj_placeholder"/
-! "lclcd_placeholder"/"iclcd_placeholder"; all other members are unused
-! placeholders here, matching wrtout.f90's naming for those slots.
-      double precision :: normalized_acoustic_depth, adiabatic_gradient(json), &
-           helium_zone_acoustic_depth, acoustic_crossing_time, &
-           acoustic_depth_to_cz, helium_zone_weight
-      double precision :: acatmr_placeholder(json), acatmd_placeholder(json), &
-           acatmp_placeholder(json), acatmt_placeholder(json), &
-           atmosphere_acoustic_depth
-      double precision :: ageout_placeholder(5)
-      logical :: calcad_output_active
-      integer :: calcad_output_unit, iacat_placeholder, extra_last_model_unit
-      logical :: extra_last_model_active, ljwrt_placeholder, &
-           compute_acoustic_depth, laoly_placeholder
-      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
-      logical :: acoustic_depth_output
-      common/acdpth/ normalized_acoustic_depth, adiabatic_gradient, &
-           helium_zone_acoustic_depth, acoustic_crossing_time, &
-           acoustic_depth_to_cz, helium_zone_weight, &
-           acatmr_placeholder, acatmd_placeholder, acatmp_placeholder, &
-           acatmt_placeholder, atmosphere_acoustic_depth, &
-           ageout_placeholder, calcad_output_active, calcad_output_unit, &
-           iacat_placeholder, extra_last_model_unit, extra_last_model_active, &
-           ljwrt_placeholder, compute_acoustic_depth, laoly_placeholder, &
-           ijvs_placeholder, ijent_placeholder, ijdel_placeholder, &
-           acoustic_depth_output
 
 
 
@@ -149,18 +114,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 
-! common/scveos/: all used here (SCV EOS table + control, backing the
-! non-OPAL2006 branch below via eqstat2). Naming matches eqstat2.f90,
-! except idtt: this slot's usual name (idt) would collide with the
-! unrelated const_lib idt added for former common/optab/ -- same
-! disambiguation setup/setscv.f90 uses.
-      double precision :: tlogx(nts), tablex(nts,nps,12), &
-           tabley(nts,nps,12), smix(nts,nps), tablez(nts,nps,13), &
-           tablenv(nts,nps,12)
-      integer :: nptsx(nts), idtt, idp
-      logical :: use_scv_eos
-      common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
-           use_scv_eos, idtt, idp
 
 
 
@@ -195,7 +148,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       double precision :: cz_radius_cm(1)
 ! boole's output argument is a length-1 array (see numerics/boole.f90);
 ! these hold its result before copying into the plain scalars
-! acoustic_crossing_time/acoustic_depth_to_cz (common/acdpth/), matching
+! tnorm_placeholder/tcz_placeholder (common/acdpth/), matching
 ! this file's existing cz_radius_cm/spline_interp_value convention.
       double precision :: acoustic_crossing_time_arr(1), acoustic_depth_to_cz_arr(1)
       double precision :: pressure_rotation_factor, temperature_rotation_factor
@@ -215,13 +168,13 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       double precision :: chi_rho, chi_t, specific_heat_cv
 
 ! Initialize values:
-      normalized_acoustic_depth = 0.0d0
-      acoustic_depth_to_cz = 0.0d0
-      acoustic_crossing_time = 0.0d0
-      helium_zone_weight = 0.0d0
-      helium_zone_acoustic_depth = 0.0d0
+      taucz_placeholder = 0.0d0
+      tcz_placeholder = 0.0d0
+      tnorm_placeholder = 0.0d0
+      whe_placeholder = 0.0d0
+      tauhe_placeholder = 0.0d0
       atmosphere_hydrogen_fraction = 0.0d0
-      atmosphere_acoustic_depth = 0.0d0
+      tatmos_placeholder = 0.0d0
 !      KTSAV = 3
 
 ! Need to calculate the sound speed in the envelope: first, stitch
@@ -316,7 +269,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 999                  continue
                   star_inverse_sound_speed(zone_idx)=1.0d0/ &
                        sqrt(eos_output(8)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
-                  adiabatic_gradient(zone_idx)=1.0d0/eos_output(9)
+                  deladj_placeholder(zone_idx)=1.0d0/eos_output(9)
                   local_gamma1(zone_idx) = eos_output(8)
 36            continue
       endif
@@ -352,7 +305,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                   local_gamma1(zone_idx) = chi_rho*qcp_eos/specific_heat_cv
                   star_inverse_sound_speed(zone_idx)=1.0d0/ &
                        sqrt(local_gamma1(zone_idx)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
-                  adiabatic_gradient(zone_idx) = dela_eos
+                  deladj_placeholder(zone_idx) = dela_eos
 41            continue
       endif
 
@@ -374,7 +327,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
       call boole(star_radius_cm,star_inverse_sound_speed,integration_count, &
            grid_count,acoustic_crossing_time_arr)
-      acoustic_crossing_time = acoustic_crossing_time_arr(1)
+      tnorm_placeholder = acoustic_crossing_time_arr(1)
 
 
 
@@ -450,9 +403,9 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
             endif
             call boole(star_radius_to_cz,star_inverse_sound_speed_to_cz, &
                  cz_segment_count,grid_count,acoustic_depth_to_cz_arr)
-            acoustic_depth_to_cz = acoustic_depth_to_cz_arr(1)
+            tcz_placeholder = acoustic_depth_to_cz_arr(1)
       else
-            acoustic_depth_to_cz = 0.0d0
+            tcz_placeholder = 0.0d0
       endif
 
 ! Deal with the atmosphere seperately
@@ -508,21 +461,21 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 !      CALL BOOLE(ATMOSR,ATMOSC,V,NN,TATMOS)
 
 ! Output normalized acoustic depth
-      normalized_acoustic_depth=0.0d0
-      normalized_acoustic_depth=acoustic_depth_to_cz/acoustic_crossing_time
+      taucz_placeholder=0.0d0
+      taucz_placeholder=tcz_placeholder/tnorm_placeholder
 
 ! Output acoustic depth info to ISHORT
-      write(short_file_unit,67)acoustic_depth_to_cz,acoustic_crossing_time, &
-           normalized_acoustic_depth,atmosphere_acoustic_depth
+      write(short_file_unit,67)tcz_placeholder,tnorm_placeholder, &
+           taucz_placeholder,tatmos_placeholder
 67       format(1X,'Acoustic depth to CZ:',F14.8,2X,'Acoustic depth to center', &
      F13.7,2X,'Normalized taucz:',F11.9, 'Acoustic depth of atmopshere:',F16.8,2X)
 
 ! 555            CONTINUE
 !--------------------------------------------------------------
 ! Save all vectors of interest when the end of a kind card is reached.
-      if(calcad_output_active)then
+      if(lclcd_placeholder)then
 
-            write(unit=calcad_output_unit,fmt=1506) env_struct%num_env_points,num_shells,cz_zone_index
+            write(unit=iclcd_placeholder,fmt=1506) env_struct%num_env_points,num_shells,cz_zone_index
 1506            format(1X, 'Number of points in envelope:',I5,2X, &
      'Number of points in interior:',I5,2X,'Index near Rcz:' &
      ,I5,2X)
@@ -530,17 +483,17 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                   do 1505 zone_idx=1,num_shells+env_struct%num_env_points-1
                         if (zone_idx .le. integration_count-cz_zone_index+1) then
 !                         WRITE(UNIT=ICLCD,FMT=1504),DAGE, STARR(I), STARC(I),
-                        write(unit=calcad_output_unit,fmt=1504) age_gyr, &
+                        write(unit=iclcd_placeholder,fmt=1504) age_gyr, &
                              star_radius_cm(zone_idx),star_inverse_sound_speed(zone_idx), &
      star_radius_to_cz(zone_idx), star_inverse_sound_speed_to_cz(zone_idx), &
-     adiabatic_gradient(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
+     deladj_placeholder(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
      star_temperature_1e6k(zone_idx),star_density_cgs(zone_idx),star_hydrogen_fraction(zone_idx)
 
                         else
 !                         WRITE(UNIT=ICLCD,FMT=1504) DAGE, STARR(I), STARC(I),
-                        write(unit=calcad_output_unit,fmt=1504) age_gyr, &
+                        write(unit=iclcd_placeholder,fmt=1504) age_gyr, &
                              star_radius_cm(zone_idx),star_inverse_sound_speed(zone_idx), &
-     0.0d0, 0.0d0, adiabatic_gradient(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
+     0.0d0, 0.0d0, deladj_placeholder(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
      star_temperature_1e6k(zone_idx),star_density_cgs(zone_idx),star_hydrogen_fraction(zone_idx)
 
                         endif

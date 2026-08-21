@@ -188,16 +188,6 @@ program main
 
 
 
-! MHP 8/17 ADDED EXCEN, C_2 TO COMMON BLOCK FOR MATT ET AL. 2012 CENT. TERM
-! common/cwind/: only ljdot0 used here; the rest are unused
-! placeholders. Naming matches cowind.f90/getw.f90.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
 
 
 
@@ -362,36 +352,6 @@ program main
 
 
 
-! JVS 02/11
-! KC 2025-05-30 reordered common block elements
-! common/acdpth/: ageout_placeholder/lclcd_placeholder/
-! ljlast_placeholder/ljwrt_placeholder/compute_acoustic_depth/
-! acoustic_depth_output are actively used in this file (see the header
-! COMMON BLOCK NOTE for why several nonetheless keep their established
-! placeholder names); the rest are unused placeholders. Naming matches
-! getopal95.f90/envint.f90.
-      double precision :: taucz_placeholder, deladj_placeholder(json), &
-           tauhe_placeholder, tnorm_placeholder, tcz_placeholder, &
-           whe_placeholder
-      double precision :: acatmr_placeholder(json), acatmd_placeholder(json), &
-           acatmp_placeholder(json), acatmt_placeholder(json), &
-           tatmos_placeholder
-      double precision :: ageout_placeholder(5)
-      logical :: lclcd_placeholder
-      integer :: iclcd_placeholder, iacat_placeholder, ijlast_placeholder
-      logical :: ljlast_placeholder, ljwrt_placeholder, &
-           compute_acoustic_depth, laoly_placeholder
-      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
-      logical :: acoustic_depth_output
-      common/acdpth/ taucz_placeholder, deladj_placeholder, &
-           tauhe_placeholder, tnorm_placeholder, tcz_placeholder, &
-           whe_placeholder, acatmr_placeholder, acatmd_placeholder, &
-           acatmp_placeholder, acatmt_placeholder, tatmos_placeholder, &
-           ageout_placeholder, lclcd_placeholder, iclcd_placeholder, &
-           iacat_placeholder, ijlast_placeholder, ljlast_placeholder, &
-           ljwrt_placeholder, compute_acoustic_depth, laoly_placeholder, &
-           ijvs_placeholder, ijent_placeholder, ijdel_placeholder, &
-           acoustic_depth_output
       integer :: nao
       data nao/1/
 
@@ -402,11 +362,6 @@ program main
       double precision :: convection_zone_radius_placeholder, rint_placeholder
       common/envcz/ convection_zone_radius_placeholder, rint_placeholder
 
-! JVS 04/14 Common block for additional timestep governors
-! common/govs/: not used in this file's logic; declared only to
-! preserve layout. Naming matches htimer.f90.
-      logical :: use_envelope_triangle_dt
-      common/govs/ use_envelope_triangle_dt
 
 ! MHP 10/24 NEW VARIABLES FOR STOP CRITERIA ON CENTRAL ABUNDANCE are
 ! carried in common/sett/ above.

@@ -11,6 +11,7 @@
 ! .short log file.
 subroutine alprint
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: nta = 250, nga = 25
@@ -39,20 +40,7 @@ subroutine alprint
            allard_gl_index_max, allard_teffl_min, allard_teffl_max, &
            allard_gl_min, allard_gl_max
 
-! common/alatm03/: not used in this file; declared only to preserve
-! layout. Naming matches alfilein.f90.
-      double precision :: allard_target_feh, allard_target_alpha
-      logical :: allard_use_tau100
-      integer :: allard_table_unit
-      common /alatm03/ allard_target_feh, allard_target_alpha, allard_use_tau100, &
-           allard_table_unit
 
-! common/alatm04/: unused everywhere in this file family; placeholders
-! preserving the layout. Naming matches alfilein.f90/altabinit.f90.
-      double precision :: alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
-      common /alatm04/ alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
 
       save
 

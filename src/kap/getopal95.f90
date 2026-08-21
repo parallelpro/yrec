@@ -24,6 +24,7 @@
 subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_t = 70
@@ -74,35 +75,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       logical :: opal95_extrap_lo, opal95_extrap_hi, opal95_extrap_hi_row(4)
       common/op95ext/ opal95_logr, opal95_logr_lo_edge, opal95_logr_hi_edge, &
            opal95_extrap_lo, opal95_extrap_hi, opal95_extrap_hi_row
-! JVS Acoustic depth common block
-! KC 2025-05-30 reordered common block elements
-!       COMMON/ACDPTH/TAUCZN,DELADJ(JSON),TAUHE, TNORM, TCZ, WHE, ICLCD,
-! common/acdpth/: only compute_acoustic_depth (LADON) and
-! acoustic_depth_output (LACOUT) are used here; the remaining members
-! are unused placeholders preserving the shared storage layout, kept
-! under their (lowercased) original cryptic names since their exact
-! meaning is not confidently known from this file alone.
-      double precision :: taucz_placeholder, deladj_placeholder(json), &
-           tauhe_placeholder, tnorm_placeholder, tcz_placeholder, &
-           whe_placeholder
-      double precision :: acatmr_placeholder(json), acatmd_placeholder(json), &
-           acatmp_placeholder(json), acatmt_placeholder(json), tatmos_placeholder
-      double precision :: ageout_placeholder(5)
-      logical :: lclcd_placeholder
-      integer :: iclcd_placeholder, iacat_placeholder, ijlast_placeholder
-      logical :: ljlast_placeholder, ljwrt_placeholder, compute_acoustic_depth, &
-           laoly_placeholder
-      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
-      logical :: acoustic_depth_output
-      common/acdpth/taucz_placeholder,deladj_placeholder,tauhe_placeholder, &
-           tnorm_placeholder, tcz_placeholder, whe_placeholder, &
-           acatmr_placeholder, acatmd_placeholder, acatmp_placeholder, &
-           acatmt_placeholder, tatmos_placeholder, &
-           ageout_placeholder, lclcd_placeholder, iclcd_placeholder, &
-           iacat_placeholder, ijlast_placeholder, ljlast_placeholder, &
-           ljwrt_placeholder, compute_acoustic_depth, laoly_placeholder, &
-           ijvs_placeholder, ijent_placeholder, ijdel_placeholder, &
-           acoustic_depth_output
 ! END JVS
       double precision :: interp_nodes(4), weight(4), dweight(4)
       save

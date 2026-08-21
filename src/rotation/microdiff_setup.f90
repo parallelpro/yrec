@@ -87,13 +87,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       double precision :: app(json), atp(json), apzp(json), atzp(json)
       common/gscof/ app, atp, apzp, atzp
 
-! FD 10/09 ADDED COMMON BLOCK FOR EXTRA MIXING. IT MIMIC SOME MIXING BY
-! AFFECTING THE SETTLING COEFFICIENT DIRECTLY (in setup_grsett.f)
-! common/cmixing/: not used in this file; declared only to preserve
-! layout. Not referenced in any already-converted file, so kept as
-! lowercased originals pending a confirmed source.
-      double precision :: cstmixing, cstdiffmix
-      common/cmixing/ cstmixing, cstdiffmix
 
       save
 

@@ -31,10 +31,6 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
            mean_radius(json)
       integer, intent(in) :: num_zones
 
-! common/sbrot/: both used here. Naming matches getw.f90.
-      logical :: force_solid_body_rotation
-      integer :: solid_body_mode_flag
-      common/sbrot/ force_solid_body_rotation, solid_body_mode_flag
 
 
 

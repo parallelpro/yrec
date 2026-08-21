@@ -66,29 +66,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 !      compostion (COMPMIX)
       common /i2o/ initial_composition_code
 
-!      COMMON/CWIND/WMAX,EXMD,EXW,EXTAU,EXR,EXM,CONSTFACTOR,STRUCTFACTOR,LJDOT0
-! MHP 8/17 ADDED EXCEN, C_2 TO COMMON BLOCK FOR MATT ET AL. 2012 CENT. TERM
-! common/cwind/: only ljdot0 is used here. Naming matches dadcoeft.f90.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
-! common/scveos/: only use_scv_eos is used here. Naming matches
-! eqscve.f90.
-      double precision :: table_log10_temperature(nts), &
-           hydrogen_table(nts,nps,12), helium_table(nts,nps,12), &
-           entropy_of_mixing_table(nts,nps), metal_table(nts,nps,13), &
-           envelope_table(nts,nps,12)
-      integer :: num_pressure_points(nts)
-      logical :: use_scv_eos
-      integer :: scv_temp_index, scv_pressure_index
-      common/scveos/ table_log10_temperature, hydrogen_table, &
-           helium_table, entropy_of_mixing_table, metal_table, &
-           envelope_table, num_pressure_points, use_scv_eos, &
-           scv_temp_index, scv_pressure_index
 
       save
 

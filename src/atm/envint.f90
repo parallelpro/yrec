@@ -98,19 +98,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            current_log10_radius, current_log10_mass, current_log10_density, &
            current_opacity, current_beta, current_gradients, &
            current_ion_fraction, current_velocity
-! MHP 6/97 ADDED ALLARD MODEL ATMOSPHERES
-! common/alatm03/: not used in this file (ALSURFP's own common).
-! Naming matches alsurfp.f90.
-      double precision :: allard_target_feh, allard_target_alpha
-      logical :: allard_use_tau100
-      integer :: allard_table_unit
-      common /alatm03/allard_target_feh, allard_target_alpha, &
-           allard_use_tau100, allard_table_unit
-! common/alatm04/: not used in this file. Naming matches alsurfp.f90.
-      double precision :: alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
-      common /alatm04/alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
 ! DBG 7/95 To store variables for pulse output
 ! common/pualpha/: alfmlt/phmlt/cmxmlt are used (read) here for the
 ! pulsation mixing-length diagnostic output. Naming matches tpgrad.f90.
@@ -130,34 +117,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            taucal_local_gravity(json), taucal_radiative_gradient(json), &
            taucal_adiabatic_gradient(json)
 
-! JVS Acoustic depth common block
-! KC 2025-05-30 reordered common block elements
-!       COMMON/ACDPTH/TAUCZN,DELADJ(JSON),TAUHE, TNORM, TCZ, WHE, ICLCD,
-! common/acdpth/: only lclcd_placeholder is used here (see JVS 02/11
-! comment below); the remaining members are unused placeholders
-! preserving the shared storage layout, matching getopal95.f90's
-! naming for those slots.
-      double precision :: taucz_placeholder, deladj_placeholder(json), &
-           tauhe_placeholder, tnorm_placeholder, tcz_placeholder, &
-           whe_placeholder
-      double precision :: acatmr_placeholder(json), acatmd_placeholder(json), &
-           acatmp_placeholder(json), acatmt_placeholder(json), tatmos_placeholder
-      double precision :: ageout_placeholder(5)
-      logical :: lclcd_placeholder
-      integer :: iclcd_placeholder, iacat_placeholder, ijlast_placeholder
-      logical :: ljlast_placeholder, ljwrt_placeholder, compute_acoustic_depth, &
-           laoly_placeholder
-      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
-      logical :: acoustic_depth_output
-      common/acdpth/taucz_placeholder,deladj_placeholder,tauhe_placeholder, &
-           tnorm_placeholder,tcz_placeholder,whe_placeholder, &
-           acatmr_placeholder, acatmd_placeholder, acatmp_placeholder, &
-           acatmt_placeholder,tatmos_placeholder, &
-           ageout_placeholder, lclcd_placeholder, iclcd_placeholder, &
-           iacat_placeholder, ijlast_placeholder, ljlast_placeholder, &
-           ljwrt_placeholder, compute_acoustic_depth,laoly_placeholder, &
-           ijvs_placeholder, ijent_placeholder, ijdel_placeholder, &
-           acoustic_depth_output
 
 ! G Somers END
 

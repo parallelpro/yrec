@@ -94,15 +94,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 
 
 
-! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent. term
-! common/cwind/: only ljdot0 is used here. Naming matches midmod.f90.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
 
 
 
@@ -149,13 +140,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       common/rotprt/ lprt0_placeholder
 
 
-! MHP 3/99 ADDED FLAG TO TREAT THE ENTIRE STAR AS 'CONVECTIVE'
-! for angular momentum purposes.
-! JNT 09/2025 for 05/15 add impjmod
-! common/sbrot/: both used here. Naming matches midmod.f90.
-      logical :: force_solid_body_rotation
-      integer :: solid_body_mode_flag
-      common/sbrot/ force_solid_body_rotation, solid_body_mode_flag
 
 ! MHP 06/02
 ! Time change of theta

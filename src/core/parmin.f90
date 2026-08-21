@@ -43,14 +43,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       implicit none
 
 ! PARAMETERS for Allard model surface pressures (n_allard_teff/
-! n_allard_logg), the SCV EOS tables (n_scv_teff/n_scv_press), and the
-! shared array length used by the variable-FC and acoustic-depth
-! diagnostics (max_diag_pts). n_atm_teff/n_atm_logg/n_katm_teff/
-! n_katm_logg (former parameters for the tabulated Kurucz/Castelli
-! surface pressures, now handled via const_lib's own array dimensions)
-! are no longer used in this file.
+! n_allard_logg) and the shared array length used by the variable-FC
+! and acoustic-depth diagnostics (max_diag_pts). n_atm_teff/n_atm_logg/
+! n_katm_teff/n_katm_logg/n_scv_teff/n_scv_press (former parameters for
+! the tabulated Kurucz/Castelli surface pressures and SCV EOS tables,
+! now handled via const_lib's own array dimensions) are no longer used
+! in this file.
       integer, parameter :: n_allard_teff = 54, n_allard_logg = 5
-      integer, parameter :: n_scv_teff = 63, n_scv_press = 76
       integer, parameter :: max_diag_pts = 5000
 
 ! --- CONTROL/PHYSICS namelist variables (including this routine's
@@ -632,55 +631,53 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: sstandard(17)
       logical :: lnewnuc
 
-! common /newcross/
-      double precision :: s0_1_1, s0_3_3, s0_3_4, s0_1_12, s0_1_13, s0_1_14, s0_1_16, s0_pep, &
-           s0_1_be7e, s0_1_be7p, s0_hep, s0_1_15_c12alp, s0_1_15_o16, s0p_1_1, s0p_3_3, s0p_3_4, &
-           s0p_1_12, s0p_1_13, s0p_1_14, s0p_1_16, s0pp_1_12, s0pp_1_13, s0pp_1_16, s0p_1_be7p, &
-           s0pp_1_be7p
-      common /newcross/ s0_1_1, s0_3_3, s0_3_4, s0_1_12, s0_1_13, s0_1_14, s0_1_16, s0_pep, &
-           s0_1_be7e, s0_1_be7p, s0_hep, s0_1_15_c12alp, s0_1_15_o16, s0p_1_1, s0p_3_3, s0p_3_4, &
+! newcross: s0_1_1/s0_3_3/s0_3_4/s0_1_12/s0_1_13/s0_1_14/s0_1_16/
+! s0_1_be7e/s0_1_be7p/s0_1_15_c12alp/s0_1_15_o16/s0p_1_1/s0p_3_3/
+! s0p_3_4/s0p_1_12/s0p_1_13/s0p_1_14/s0p_1_16/s0pp_1_12/s0pp_1_13/
+! s0pp_1_16/s0p_1_be7p/s0pp_1_be7p are NAMELIST /physics/ members, each
+! with a different canonical const_lib spelling, kept local under
+! their NAMELIST spelling here and copy-assigned below. s0_pep/s0_hep
+! are NAMELIST /physics/ members spelled identically to their const_lib
+! canonical names -- use-associated directly; their DATA defaults
+! moved to const_lib.f90.
+      double precision :: s0_1_1, s0_3_3, s0_3_4, s0_1_12, s0_1_13, s0_1_14, s0_1_16, &
+           s0_1_be7e, s0_1_be7p, s0_1_15_c12alp, s0_1_15_o16, s0p_1_1, s0p_3_3, s0p_3_4, &
            s0p_1_12, s0p_1_13, s0p_1_14, s0p_1_16, s0pp_1_12, s0pp_1_13, s0pp_1_16, s0p_1_be7p, &
            s0pp_1_be7p
 
-! common /newparam/
-      double precision :: flag_dx, flag_dw, flag_dz, time_core_min, time_dl, time_dp, time_dr, &
-           time_dt, time_dw_global, time_dw_mix, time_dx_core_frac, time_dx_core_tot, time_dx_shell, &
-           time_dx_total, time_dy_core_frac, time_dy_core_tot, time_dy_shell, time_dy_total, &
-           tol_czbase_fine_width, tol_dl_max, tol_dm_max, tol_dm_min, tol_dp_core_max, &
-           tol_dp_czbase_max, tol_dp_env_max, tol_dx_max, tol_dz_max, time_max_dt_frac
-      logical :: lstruct_time, lnewvars
-      common /newparam/ flag_dx, flag_dw, flag_dz, time_core_min, time_dl, time_dp, time_dr, time_dt, &
-           time_dw_global, time_dw_mix, time_dx_core_frac, time_dx_core_tot, time_dx_shell, &
-           time_dx_total, time_dy_core_frac, time_dy_core_tot, time_dy_shell, time_dy_total, &
-           tol_czbase_fine_width, tol_dl_max, tol_dm_max, tol_dm_min, tol_dp_core_max, &
-           tol_dp_czbase_max, tol_dp_env_max, tol_dx_max, tol_dz_max, time_max_dt_frac, lstruct_time, &
-           lnewvars
+! newparam: all 29 NAMELIST /physics/ members are spelled identically
+! to their const_lib canonical names -- use-associated directly.
 
 ! former common/monte/: lmonte/imbeg/imend are NAMELIST /physics/
 ! values spelled identically to their const_lib canonical names --
 ! use-associated directly rather than locally declared.
 
-! common /scveos/
-      double precision :: tlogx(n_scv_teff), tablex(n_scv_teff,n_scv_press,12), &
-           tabley(n_scv_teff,n_scv_press,12), smix(n_scv_teff,n_scv_press), &
-           tablez(n_scv_teff,n_scv_press,13), tablenv(n_scv_teff,n_scv_press,12)
-      integer :: nptsx(n_scv_teff), idtt, idp
+! scveos: tlogx/tablex/tabley/smix/tablez/tablenv/nptsx/idtt/idp are
+! spelled identically to their const_lib canonical names --
+! use-associated directly. lscv is a NAMELIST /physics/ member with a
+! different canonical spelling (use_scv_eos), so kept local under its
+! NAMELIST spelling here and copy-assigned after the namelist read
+! below.
       logical :: lscv
-      common /scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, lscv, idtt, idp
 
-! common /scv2/
-      integer :: iscvh, iscvhe, iscvz
-      common /scv2/ iscvh, iscvhe, iscvz
+! former common/scv2/: iscvh/iscvhe/iscvz are not namelist values and
+! genuinely used in this file -- renamed in place to their canonical
+! const_lib names (scv_h_unit/scv_he_unit/scv_z_unit), now
+! use-associated rather than locally declared.
 
-! common /alatm03/
+! alatm_feh/alatm_alpha/laltptau100: NAMELIST /physics/ members, each
+! with a different canonical const_lib spelling (allard_target_feh/
+! allard_target_alpha/allard_use_tau100), so kept local under their
+! NAMELIST spelling here and copy-assigned after the namelist read
+! below. ioatma (former common/alatm03/'s remaining member) is not a
+! namelist value and genuinely used in this file -- renamed in place
+! to its canonical const_lib name (allard_table_unit), now
+! use-associated rather than locally declared.
       double precision :: alatm_feh, alatm_alpha
       logical :: laltptau100
-      integer :: ioatma
-      common /alatm03/ alatm_feh, alatm_alpha, laltptau100, ioatma
 
-! common /alatm04/
-      double precision :: dummy1, dummy2, dummy3, dummy4
-      common /alatm04/ dummy1, dummy2, dummy3, dummy4
+! former common/alatm04/: dummy1-4 are unused in this file, so they're
+! dropped entirely.
 
 ! tdisk/pdisk/ldisk: NAMELIST /physics/ members (must keep this exact
 ! spelling); copied into const_lib's disk_temperature/disk_pressure/
@@ -695,10 +692,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! weak_screening_threshold right after the namelist read below.
       double precision :: weakscreening
 
-! common /sbrot/
+! sbrot: NAMELIST /physics/ members, both renamed in const_lib (lsolid/
+! impjmod -> force_solid_body_rotation/solid_body_mode_flag), kept
+! local and copy-assigned below.
       logical :: lsolid
       integer :: impjmod
-      common /sbrot/ lsolid, impjmod
 
 ! dmdt0/compacc/lmdot: NAMELIST /physics/ members (must keep this
 ! exact spelling). Former common /masschg/; fczdmdt/ftotdmdt/creim/
@@ -709,36 +707,51 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: dmdt0, compacc(15)
       logical :: lmdot
 
-! common /cmixing/
-      double precision :: cstmixing, cstdiffmix
-      common /cmixing/ cstmixing, cstdiffmix
+! cmixing: cstmixing/cstdiffmix are NAMELIST /physics/ members spelled
+! identically to their const_lib canonical names -- use-associated
+! directly.
 
-! common /acdpth/
-      double precision :: tauczn, deladj(max_diag_pts), tauhe, tnorm, tcz, whe, acatmr(max_diag_pts), &
-           acatmd(max_diag_pts), acatmp(max_diag_pts), acatmt(max_diag_pts), tatmos, ageout(5)
-      logical :: lclcd, ljlast, ljwrt, ladon, laoly, lacout
-      integer :: iclcd, iacat, ijlast, ijvs, ijent, ijdel
-      common /acdpth/ tauczn, deladj, tauhe, tnorm, tcz, whe, acatmr, acatmd, acatmp, acatmt, tatmos, &
-           ageout, lclcd, iclcd, iacat, ijlast, ljlast, ljwrt, ladon, laoly, ijvs, ijent, ijdel, &
-           lacout
+! former common/acdpth/: ageout/lclcd/iclcd/ljlast/ljwrt/lacout are not
+! namelist values and genuinely used in this file -- renamed in place
+! to their canonical const_lib names (ageout_placeholder/
+! lclcd_placeholder/iclcd_placeholder/ljlast_placeholder/
+! ljwrt_placeholder/acoustic_depth_output), now use-associated rather
+! than locally declared. Their DATA defaults moved to const_lib.f90
+! since DATA can no longer target them here. tauczn/deladj/tauhe/
+! tnorm/tcz/whe/acatmr/acatmd/acatmp/acatmt/tatmos/iacat/ijlast/ladon/
+! laoly/ijvs/ijent/ijdel (former common/acdpth/'s remaining members)
+! are unused in this file, so they're dropped entirely.
 
-! common /govs/
+! govs: ltrist is a NAMELIST /physics/ member with a different
+! canonical const_lib spelling (use_envelope_triangle_dt), so kept
+! local under its NAMELIST spelling here and copy-assigned after the
+! namelist read below.
       logical :: ltrist
-      common /govs/ ltrist
 
-! common /pmmwind/
+! pmmwind: NAMELIST /physics/ members, all renamed in const_lib (pmma/
+! pmmb/pmmc/pmmd/pmmm/pmmjd/pmmmd/pmmsolp/pmmsolw/pmmsoltau/lmwind/
+! lrossby/lbscale/awind -> pmm_exponent_a/pmm_exponent_b/
+! pmm_exponent_c/pmm_exponent_d/pmm_exponent_m/pmm_norm_jdot/
+! pmm_norm_mdot/pmm_solar_pressure/pmm_solar_omega/
+! pmm_solar_turnover_timescale/use_pmm_wind_law/scale_by_rossby_number/
+! scale_by_b_field/wind_law_name), kept local and copy-assigned below.
       double precision :: pmma, pmmb, pmmc, pmmd, pmmm, pmmjd, pmmmd, pmmsolp, pmmsolw, pmmsoltau
       logical :: lmwind, lrossby, lbscale
       character(len=3) :: awind
-      common /pmmwind/ pmma, pmmb, pmmc, pmmd, pmmm, pmmjd, pmmmd, pmmsolp, pmmsolw, pmmsoltau, &
-           lmwind, lrossby, lbscale, awind
 
-! common /cwind/
-      double precision :: wmax, exmd, exw, extau, exr, exm, exl, expr, constfactor, structfactor, &
-           excen, c_2
-      logical :: ljdot0
-      common /cwind/ wmax, exmd, exw, extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
+! wmax: NAMELIST /physics/ member with a different canonical const_lib
+! spelling (wind_saturation_omega), so kept local under its NAMELIST
+! spelling here and copy-assigned after the namelist read below.
+! exmd/extau/exr/exm/exl/expr/constfactor/excen/c_2/ljdot0 (former
+! common/cwind/'s other NAMELIST-visible or tautological members) are
+! spelled identically to their const_lib canonical names --
+! use-associated directly; ljdot0's DATA default moved to const_lib.f90
+! since DATA can no longer target it here. exw is not a namelist value
+! and genuinely used in this file -- renamed in place to its canonical
+! const_lib name (wind_law_omega_exponent), now use-associated rather
+! than locally declared. structfactor (former common/cwind/'s
+! remaining member) is unused in this file, so it's dropped entirely.
+      double precision :: wmax
 
 ! lnewtcz/lcalcenv: NAMELIST /physics/ members (must keep this exact
 ! spelling); copied into const_lib's use_new_turnover_timescale/
@@ -749,15 +762,20 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! -- so they're dropped from this file's own declarations entirely.
       logical :: lnewtcz, lcalcenv
 
-! common /mag/
+! mag: NAMELIST /physics/ members, both renamed in const_lib (codm/
+! lcodm -> constant_background_diffusion_coeff/
+! use_constant_background_diffusion), kept local and copy-assigned
+! below.
       double precision :: codm
       logical :: lcodm
-      common /mag/ codm, lcodm
 
-! common /xsect/
+! former common/xsect/: xsli6/xsli7/xsbe91/xsbe92/xsbe93/lxli6/lxli7/
+! lxbe91/lxbe92/lxbe93 are NAMELIST /physics/ members used only within
+! this file (as raw inputs immediately transformed into sli6/sli7/
+! sbe91/sbe92/sbe93 below) -- not shared with any other file, so they
+! stay ordinary local variables rather than becoming const_lib members.
       double precision :: xsli6, xsli7, xsbe91, xsbe92, xsbe93
       logical :: lxli6, lxli7, lxbe91, lxbe92, lxbe93
-      common /xsect/ xsli6, xsli7, xsbe91, xsbe92, xsbe93, lxli6, lxli7, lxbe91, lxbe92, lxbe93
 
 ! sli6/sli7/sbe91/sbe92/sbe93 are themselves NAMELIST /physics/ members
 ! (see the "G Somers 6/14" list below) so must keep their exact
@@ -772,10 +790,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: spotf, spotx
       logical :: lsdepth
 
-! common /version/
-      character(len=10) :: yrecver
-      character(len=20) :: githash
-      common /version/ yrecver, githash
+! former common/version/: yrecver/githash are not namelist values and
+! genuinely used in this file -- renamed in place to their canonical
+! const_lib names (yrec_version_string/git_hash_string), now
+! use-associated rather than locally declared.
 
       save
 !
@@ -996,7 +1014,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! walpcz/lwnew/wnew defaults moved to const_lib.f90 (former
 ! common/rot/); lrot/linstb stay local (NAMELIST spelling).
       data lrot,linstb/.false.,.false./
-      data ljdot0,alfa,fk/.true.,1.5d0,1.0d0/
+! ljdot0's default moved to const_lib.f90 (former common/cwind/): DATA
+! can no longer target it here now that it's use-associated.
+      data alfa,fk/1.5d0,1.0d0/
 ! fo's default moved to const_lib.f90 (former common/vmult/): DATA can
 ! no longer target it here now that it's use-associated.
       data fw,fc,fes,fgsf,fmu,fss,rcrit/1.0d0, &
@@ -1102,10 +1122,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! 3/09 Alexander 2006 opacity table options and opacity ramp options
       data tmolmin,tmolmax,lalex06/4.0d0,4.1d0,.false./
 !FD 10/09 Mimic mixing options - acting on setling and differential settling
-      data cstmixing, cstdiffmix/1.0,1.0/
+! cstmixing/cstdiffmix's defaults moved to const_lib.f90 (former
+! common/cmixing/): DATA can no longer target them here now that
+! they're use-associated.
 ! JVS 02/11 Initialize acoustic depth common block values appropriately
-      data ageout/0.5d0, 1.0d0, 5.0d0, 10.0d0, 20.0d0/
-      data lclcd, ljlast, ljwrt, lacout/.false.,.false., .false.,.false./
+! ageout_placeholder/lclcd_placeholder/ljlast_placeholder/
+! ljwrt_placeholder/acoustic_depth_output defaults moved to
+! const_lib.f90 (former common/acdpth/): DATA can no longer target
+! them here now that they're use-associated.
 ! JVS end
 ! MHP 02/12 NEW PARAMETERIZATION OF ANGULAR MOMENTUM AND MASS LOSS
 ! FROM MAGNETIZED SOLAR-LIKE WINDS
@@ -1144,14 +1168,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! REFERENCE ADELBERGER ET AL. 2011. UNITS ARE KeV b
       data s0_1_1,s0_3_3,s0_3_4,s0_1_12,s0_1_13/ &
            &      4.01d-22,5.21d3,5.6d-1,1.34d0,7.6d0/
-      data s0_1_14,s0_1_16,s0_pep,s0_1_be7e/ &
-           &      1.66d0,1.06d1,3.5734d-6,1.7709d-10/
+! s0_pep/s0_hep's defaults moved to const_lib.f90 (former
+! common/newcross/): DATA can no longer target them here now that
+! they're use-associated.
+      data s0_1_14,s0_1_16,s0_1_be7e/ &
+           &      1.66d0,1.06d1,1.7709d-10/
 ! NOTE: PEP IS THE PROPORTIONALITY CONSTANT RELATIVE TO PP
 ! NOTE: BE7+E- IS THE PROPORTIONALITY CONSTANT IN THE LINEAR TERM
 ! THE CODE USES T9, NOT T6, SO ANY EXPRESSION IN TERMS OF T/10^6 K
 ! NEEDS TO BE DIVIDED BY 1000^0.5 (FOR BOTH PEP AND BE7+E-)
-      data s0_1_be7p,s0_hep,s0_1_15_c12alp,s0_1_15_o16/ &
-           &      0.0208d0,8.6d-20,7.3d4,3.6d1/
+      data s0_1_be7p,s0_1_15_c12alp,s0_1_15_o16/ &
+           &      0.0208d0,7.3d4,3.6d1/
 ! REFERENCE FIRST DERRIVATIVES OF CROSS-SECTIONS (ADELBERGER ET AL. 2011)
 ! UNITS ARE b
       data s0p_1_1,s0p_3_3,s0p_3_4,s0p_1_12/ &
@@ -1162,18 +1189,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data s0pp_1_12,s0pp_1_13,s0pp_1_16,s0pp_1_be7p/ &
            &      8.3d-5,7.29d-4,0.0d0,-2.288d-7/
       data lnewnuc /.false./
-      data time_core_min,time_dl,time_dp,time_dr,time_dt,time_dw_global, &
-           &      time_dw_mix,time_dx_core_frac,time_dx_core_tot,time_dx_shell, &
-           &      time_dx_total,time_dy_core_frac,time_dy_core_tot, &
-           &      time_dy_shell,time_dy_total,time_max_dt_frac,lnewvars/ &
-           &      1.0d-3,2.0d-2,4.0d-2,2.0d-2,2.0d-2,8.0d-2, &
-           &      8.0d-2,0.5d0,2.0d-2,0.1d0, &
-           &      1.5d-3,0.5d0,2.0d-2,0.1d0,1.5d-3,1.5d0,.false./
-      data flag_dx,flag_dw,flag_dz,lstruct_time,tol_czbase_fine_width, &
-           &      tol_dl_max,tol_dm_max,tol_dm_min,tol_dp_core_max, &
-           &      tol_dp_czbase_max,tol_dp_env_max,tol_dx_max,tol_dz_max/ &
-           &      0.05d0,0.10d0,0.05d0,.false.,0.0d0, &
-           &      0.02d0,0.08d0,1.0d-8,0.05d0,0.05d0,0.05d0,1.0d0,1.0d0/
+! All 30 former common/newparam/ members' DATA defaults moved to
+! const_lib.f90: DATA can no longer target them here now that they're
+! use-associated.
 ! DEFAULT TO YES FOR NEW TAUCZ CALCULATION
       data lnewtcz,lcalcenv /.true.,.true./
 !
@@ -1260,14 +1278,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       ioopal2 = 64
       ikur2 = 65
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES
-      ioatma = 66
+      allard_table_unit = 66
 ! MHP 6/98 MONTE CARLO FOR SNUs
       monte_carlo_unit1 = 70
       monte_carlo_unit2 = 71
 ! INPUT FILES FOR THE SCV EOS
-      iscvh=72
-      iscvhe=73
-      iscvz=74
+      scv_h_unit=72
+      scv_he_unit=73
+      scv_z_unit=74
 ! Input files for Potekhin conductive opacities. LLP 7/8/06
       icondopacp = 75
 !      FcondOpacP = 'condall.d'
@@ -1279,7 +1297,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       alex06_table_unit = 90
 
       print *,''
-      print *,'Yale Rotating Evolution Code - YREC, v',yrecver(1:len_trim(yrecver)),' (',githash(1:len_trim(githash)),')'
+      print *,'Yale Rotating Evolution Code - YREC, v',yrec_version_string(1:len_trim(yrec_version_string)),' (',git_hash_string(1:len_trim(git_hash_string)),')'
 
 ! JVS 02/11 Altered the yrec8 input format so that files can be entered
 ! on the command line, with the *.nml1 as the first argument, and *.nml2 as
@@ -1292,7 +1310,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !      CLOSE(IRUN)
 
 ! Dynamically create format string so version info is nicely spaced
-      write(version_fmt, 315) len_trim(yrecver), len_trim(githash)
+      write(version_fmt, 315) len_trim(yrec_version_string), len_trim(git_hash_string)
       315 format('(''# YREC v'', A', i2.2, ', '' ('', A', i2.2, &
            &        ', '')'')')
 
@@ -1496,6 +1514,53 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use_conductive_opacity = lcondopacp
       use_diffusion_advection_transport = ldifad
       no_am_transport_in_core = lnoj
+      allard_target_feh = alatm_feh
+      allard_target_alpha = alatm_alpha
+      allard_use_tau100 = laltptau100
+      force_solid_body_rotation = lsolid
+      solid_body_mode_flag = impjmod
+      use_envelope_triangle_dt = ltrist
+      pmm_exponent_a = pmma
+      pmm_exponent_b = pmmb
+      pmm_exponent_c = pmmc
+      pmm_exponent_d = pmmd
+      pmm_exponent_m = pmmm
+      pmm_norm_jdot = pmmjd
+      pmm_norm_mdot = pmmmd
+      pmm_solar_pressure = pmmsolp
+      pmm_solar_omega = pmmsolw
+      pmm_solar_turnover_timescale = pmmsoltau
+      use_pmm_wind_law = lmwind
+      scale_by_rossby_number = lrossby
+      scale_by_b_field = lbscale
+      wind_law_name = awind
+      wind_saturation_omega = wmax
+      constant_background_diffusion_coeff = codm
+      use_constant_background_diffusion = lcodm
+      s0_pp = s0_1_1
+      s0_he3he3 = s0_3_3
+      s0_he3he4 = s0_3_4
+      s0_p_c12 = s0_1_12
+      s0_p_c13 = s0_1_13
+      s0_p_n14 = s0_1_14
+      s0_p_o16 = s0_1_16
+      s0_be7_electron = s0_1_be7e
+      s0_be7_p = s0_1_be7p
+      s0_n15_p_c12_branch = s0_1_15_c12alp
+      s0_n15_p_o16_branch = s0_1_15_o16
+      s0p_pp = s0p_1_1
+      s0p_he3he3 = s0p_3_3
+      s0p_he3he4 = s0p_3_4
+      s0p_p_c12 = s0p_1_12
+      s0p_p_c13 = s0p_1_13
+      s0p_p_n14 = s0p_1_14
+      s0p_p_o16 = s0p_1_16
+      s0pp_p_c12 = s0pp_1_12
+      s0pp_p_c13 = s0pp_1_13
+      s0pp_p_o16 = s0pp_1_16
+      s0p_be7_p = s0p_1_be7p
+      s0pp_be7_p = s0pp_1_be7p
+      use_scv_eos = lscv
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
@@ -1553,13 +1618,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! JVS 02/11 Acoustic depth/ Asteroseismic glitch output. Puts output
 ! in the same directory as all other output, and names it with the
 ! same conventions
-      if (lacout) then
-            iclcd = 91
+      if (acoustic_depth_output) then
+            iclcd_placeholder = 91
             short_prefix_len=index(fshort,'short')
             fcalcad=fshort(1:short_prefix_len-1)//'calcad'
-            open(unit=iclcd, file=fcalcad, status='UNKNOWN')
-            write(iclcd,*) 'Acoustic depth calculation output file'
-            write(iclcd,*) 'age (Gyr),radius(cm),1/sound speed(s/cm),radius (CZ), 1/cs (CZ)                                         &
+            open(unit=iclcd_placeholder, file=fcalcad, status='UNKNOWN')
+            write(iclcd_placeholder,*) 'Acoustic depth calculation output file'
+            write(iclcd_placeholder,*) 'age (Gyr),radius(cm),1/sound speed(s/cm),radius (CZ), 1/cs (CZ)                                         &
 &       delad,gamma1,P, T, X'
 
 
@@ -1663,7 +1728,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
          if(lstch)then
             lphhd = .true.
          else
-            write(istor,version_fmt) yrecver, githash
+            write(istor,version_fmt) yrec_version_string, git_hash_string
             write(istor,1012)
          endif   
       endif
@@ -1777,7 +1842,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             two_thirds = 2.0d0/3.0d0
             constfactor = fk*2.036d33*1.452d9**alfa
             exmd = 1.0d0 - two_thirds*alfa
-            exw = 1.0d0 + 2.0d0*two_thirds*alfa
+            wind_law_omega_exponent = 1.0d0 + 2.0d0*two_thirds*alfa
             exr = 2.0d0 - alfa
             exm = -one_third*alfa
 !
@@ -1831,7 +1896,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
                pmmd = 1.0
                lbscale = .true.
             endif
-            exw   = 1.0d0 + pmma - 2.0d0*pmma*pmmm + 4.0d0*pmmm*pmmb
+            wind_law_omega_exponent   = 1.0d0 + pmma - 2.0d0*pmma*pmmm + 4.0d0*pmmm*pmmb
 ! G Somers 8/17 ZERO'D OUT EXTAU. TAUCZ TERM NOW COMPUTED IN
 ! MWIND/MCOWIND, NOT IN AMCALC.
 !            EXTAU = 4.0D0*PMMM
@@ -1846,7 +1911,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! INITIALIZE CONSTANT FACTOR FOR CENTRIFUGAL TERM
             c_2 = 0.0506
 ! SET THE CONSTANT FACTOR
-            constfactor = fk*pmmjd/pmmsolw**exw
+            constfactor = fk*pmmjd/pmmsolw**wind_law_omega_exponent
 ! IF RELEVANT RESET THE SATURATION THRESHOLD IN
 ! TERMS OF THE SOLAR ROTATION RATE.  WMAX_SUN<1000
 ! INDICATES SATURATION (AT THE SUN), SO
@@ -1857,6 +1922,22 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
          endif
       endif
 !     WINDLAW END
+! impjmod/pmma/pmmb/pmmc/pmmd/pmmm/lbscale/wmax can all be overridden
+! above (the LSOLID-overwrites-IMPJMOD line and the K97/V13 PMM-windlaw
+! branch), after they were already copy-assigned into their const_lib
+! canonical names (solid_body_mode_flag/pmm_exponent_a/pmm_exponent_b/
+! pmm_exponent_c/pmm_exponent_d/pmm_exponent_m/scale_by_b_field/
+! wind_saturation_omega) earlier in this subroutine -- re-sync now so
+! the const_lib values reflect any override from this block, not just
+! the raw namelist read.
+      solid_body_mode_flag = impjmod
+      pmm_exponent_a = pmma
+      pmm_exponent_b = pmmb
+      pmm_exponent_c = pmmc
+      pmm_exponent_d = pmmd
+      pmm_exponent_m = pmmm
+      scale_by_b_field = lbscale
+      wind_saturation_omega = wmax
 !
       parmin_ln10 = dlog(10.0d0)
       if(lnewcp) then
@@ -2137,7 +2218,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       write(imodpt,310) descrip(1),  descrip(2)
 
       write(short_file_unit,314)
-      write(short_file_unit,version_fmt) yrecver, githash
+      write(short_file_unit,version_fmt) yrec_version_string, git_hash_string
       write(short_file_unit,310) descrip(1),  descrip(2)
       310    format('# DESCRIPTION OF RUN:',a80,/, '#',9x,'  ',8x,': ', &
            &           a80,/,'#', 100('='))
@@ -2146,7 +2227,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
          write(itrack,314)
       314    format('#',/,'#',100('='))
-         write(itrack,version_fmt) yrecver, githash
+         write(itrack,version_fmt) yrec_version_string, git_hash_string
          write(itrack,320) descrip(1), descrip(2)
       320    format('# DESCRIPTION OF RUN:',a80,/, '#',9x,'  ',8x,': ', &
            &           a80,/,'#', 100('='))

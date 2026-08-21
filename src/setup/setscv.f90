@@ -29,20 +29,6 @@ subroutine setscv
 
 
 
-! MHP  5/97 ADDED COMMON BLOCK FOR SCV EOS TABLES
-! common/scveos/: tlogx/tablex/tabley/smix/tablez/tablenv/nptsx/idtt/idp,
-! all used here. Naming matches eqstat2.f90, except idtt: this file's
-! own idt is now renamed idtt (a purely local table-index variable,
-! unrelated to the shared idt) since it would otherwise collide with
-! the unrelated const_lib idt added for former common/optab/ -- same
-! disambiguation core/starin.f90 already uses for this same slot.
-      double precision :: tlogx(nts), tablex(nts,nps,12), &
-           tabley(nts,nps,12), smix(nts,nps), tablez(nts,nps,13), &
-           tablenv(nts,nps,12)
-      integer :: nptsx(nts), idtt, idp
-      logical :: use_scv_eos
-      common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
-           use_scv_eos, idtt, idp
 
 
       double precision :: interp_x(3), t_interp_weight(3), &

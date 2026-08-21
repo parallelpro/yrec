@@ -27,20 +27,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 
 
 
-! common/scveos/: the SCV equation-of-state tables and the persistent
-! (search-hunt) table indices, all used here. mhp 5/97 added this
-! common block for SCV EOS tables.
-      double precision :: table_log10_temperature(nts), &
-           hydrogen_table(nts,nps,12), helium_table(nts,nps,12), &
-           entropy_of_mixing_table(nts,nps), metal_table(nts,nps,13), &
-           envelope_table(nts,nps,12)
-      integer :: num_pressure_points(nts)
-      logical :: use_scv_eos
-      integer :: scv_temp_index, scv_pressure_index
-      common/scveos/ table_log10_temperature, hydrogen_table, &
-           helium_table, entropy_of_mixing_table, metal_table, &
-           envelope_table, num_pressure_points, use_scv_eos, &
-           scv_temp_index, scv_pressure_index
 
 
       double precision, intent(in) :: log10_temperature, temperature
@@ -83,58 +69,58 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
       beta_complement = 1.0d0 - beta
       log10_gas_pressure = dlog10(beta*pressure)
 ! check if the point is within the table
-      if (log10_temperature.lt.table_log10_temperature(1) .or. &
-           log10_temperature.gt.table_log10_temperature(nts) .or. &
+      if (log10_temperature.lt.tlogx(1) .or. &
+           log10_temperature.gt.tlogx(nts) .or. &
            log10_gas_pressure.lt.4.0d0) then
          valid_table_point = .false.
          return
       end if
 ! find nearest points in temperature.
-      if (log10_temperature.lt.table_log10_temperature(scv_temp_index+1)) then
+      if (log10_temperature.lt.tlogx(idtt+1)) then
 ! search down to find nearest 4 table elements
-         do i = scv_temp_index, 1, -1
-            if (log10_temperature.gt.table_log10_temperature(i)) then
+         do i = idtt, 1, -1
+            if (log10_temperature.gt.tlogx(i)) then
                ii = i - 1
                goto 10
             end if
          end do
          ii = 1
   10     continue
-         scv_temp_index = max(1,ii)
-         scv_temp_index = min(nts-3,scv_temp_index)
+         idtt = max(1,ii)
+         idtt = min(nts-3,idtt)
       else
 ! search up for nearest 4 table elements
-         do i = scv_temp_index+2, nts
-            if (log10_temperature.lt.table_log10_temperature(i)) then
+         do i = idtt+2, nts
+            if (log10_temperature.lt.tlogx(i)) then
                ii = i - 2
                goto 20
             end if
          end do
          ii = nts - 3
   20     continue
-         scv_temp_index = max(1,ii)
-         scv_temp_index = min(nts-3,scv_temp_index)
+         idtt = max(1,ii)
+         idtt = min(nts-3,idtt)
       end if
 ! find nearest points in pressure.
-      jjj = min(num_pressure_points(scv_temp_index)-3, scv_pressure_index)
-      if (log10_gas_pressure.lt.envelope_table(scv_temp_index,jjj+1,1)) then
+      jjj = min(nptsx(idtt)-3, idp)
+      if (log10_gas_pressure.lt.tablenv(idtt,jjj+1,1)) then
 ! search down to find nearest 4 table elements
          do j = jjj, 1, -1
-            if (log10_gas_pressure.gt.envelope_table(scv_temp_index,j,1)) then
+            if (log10_gas_pressure.gt.tablenv(idtt,j,1)) then
                jj = j - 1
                goto 30
             end if
          end do
          jj = 1
   30     continue
-         scv_pressure_index = max(1,jj)
-         scv_pressure_index = min(num_pressure_points(scv_temp_index)-3, &
-              scv_pressure_index)
+         idp = max(1,jj)
+         idp = min(nptsx(idtt)-3, &
+              idp)
       else
 ! search up for nearest 4 table elements.  note search is done at lowest
 ! temperature point (with the minimum range in p).
-         do j = jjj+2, num_pressure_points(scv_temp_index)
-            if (log10_gas_pressure.lt.envelope_table(scv_temp_index,j,1)) then
+         do j = jjj+2, nptsx(idtt)
+            if (log10_gas_pressure.lt.tablenv(idtt,j,1)) then
                jj = j - 2
                goto 40
             end if
@@ -144,17 +130,17 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          valid_table_point = .false.
          return
   40     continue
-         scv_pressure_index = min(num_pressure_points(scv_temp_index)-3, jj)
+         idp = min(nptsx(idtt)-3, jj)
       end if
       valid_table_point = .true.
       do k = 1,4
-         interp_nodes(k) = table_log10_temperature(k+scv_temp_index-1)
+         interp_nodes(k) = tlogx(k+idtt-1)
       end do
       call interp(interp_nodes, temp_interp_weights, &
            temp_interp_weight_derivs, log10_temperature)
       do k = 1,4
-         interp_nodes(k) = envelope_table(scv_temp_index, &
-              scv_pressure_index+k-1, 1)
+         interp_nodes(k) = tablenv(idtt, &
+              idp+k-1, 1)
       end do
       call interp(interp_nodes, press_interp_weights, &
            press_interp_weight_derivs, log10_gas_pressure)
@@ -165,19 +151,19 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! density for x=1, y=1, z=1
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
-         ii = scv_temp_index+i-1
-         temp_work(i,1) = press_interp_weights(1)*hydrogen_table(ii,scv_pressure_index,4) + &
-         press_interp_weights(2)*hydrogen_table(ii,scv_pressure_index+1,4) + &
-         press_interp_weights(3)*hydrogen_table(ii,scv_pressure_index+2,4) &
-         + press_interp_weights(4)*hydrogen_table(ii,scv_pressure_index+3,4)
-         temp_work(i,2) = press_interp_weights(1)*helium_table(ii,scv_pressure_index,4) + &
-         press_interp_weights(2)*helium_table(ii,scv_pressure_index+1,4) + &
-         press_interp_weights(3)*helium_table(ii,scv_pressure_index+2,4) &
-         + press_interp_weights(4)*helium_table(ii,scv_pressure_index+3,4)
-         temp_work(i,3) = press_interp_weights(1)*metal_table(ii,scv_pressure_index,4) + &
-         press_interp_weights(2)*metal_table(ii,scv_pressure_index+1,4) + &
-         press_interp_weights(3)*metal_table(ii,scv_pressure_index+2,4) &
-         + press_interp_weights(4)*metal_table(ii,scv_pressure_index+3,4)
+         ii = idtt+i-1
+         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,4) + &
+         press_interp_weights(2)*tablex(ii,idp+1,4) + &
+         press_interp_weights(3)*tablex(ii,idp+2,4) &
+         + press_interp_weights(4)*tablex(ii,idp+3,4)
+         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,4) + &
+         press_interp_weights(2)*tabley(ii,idp+1,4) + &
+         press_interp_weights(3)*tabley(ii,idp+2,4) &
+         + press_interp_weights(4)*tabley(ii,idp+3,4)
+         temp_work(i,3) = press_interp_weights(1)*tablez(ii,idp,4) + &
+         press_interp_weights(2)*tablez(ii,idp+1,4) + &
+         press_interp_weights(3)*tablez(ii,idp+2,4) &
+         + press_interp_weights(4)*tablez(ii,idp+3,4)
       end do
 ! interpolate in temperature
       log10_density_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
@@ -207,19 +193,19 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! for radiation pressure qdp = 0, so qdp(tot) = qdp(gas)*p/pgas
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
-         ii = scv_temp_index+i-1
-         temp_work(i,1) = press_interp_weights(1)*hydrogen_table(ii,scv_pressure_index,8) + &
-         press_interp_weights(2)*hydrogen_table(ii,scv_pressure_index+1,8) + &
-         press_interp_weights(3)*hydrogen_table(ii,scv_pressure_index+2,8) &
-         + press_interp_weights(4)*hydrogen_table(ii,scv_pressure_index+3,8)
-         temp_work(i,2) = press_interp_weights(1)*helium_table(ii,scv_pressure_index,8) + &
-         press_interp_weights(2)*helium_table(ii,scv_pressure_index+1,8) + &
-         press_interp_weights(3)*helium_table(ii,scv_pressure_index+2,8) &
-         + press_interp_weights(4)*helium_table(ii,scv_pressure_index+3,8)
-         temp_work(i,3) = press_interp_weights(1)*metal_table(ii,scv_pressure_index,13) + &
-         press_interp_weights(2)*metal_table(ii,scv_pressure_index+1,13) + &
-         press_interp_weights(3)*metal_table(ii,scv_pressure_index+2,13) &
-         + press_interp_weights(4)*metal_table(ii,scv_pressure_index+3,13)
+         ii = idtt+i-1
+         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,8) + &
+         press_interp_weights(2)*tablex(ii,idp+1,8) + &
+         press_interp_weights(3)*tablex(ii,idp+2,8) &
+         + press_interp_weights(4)*tablex(ii,idp+3,8)
+         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,8) + &
+         press_interp_weights(2)*tabley(ii,idp+1,8) + &
+         press_interp_weights(3)*tabley(ii,idp+2,8) &
+         + press_interp_weights(4)*tabley(ii,idp+3,8)
+         temp_work(i,3) = press_interp_weights(1)*tablez(ii,idp,13) + &
+         press_interp_weights(2)*tablez(ii,idp+1,13) + &
+         press_interp_weights(3)*tablez(ii,idp+2,13) &
+         + press_interp_weights(4)*tablez(ii,idp+3,13)
       end do
 ! interpolate in temperature
       dlnrho_dlnp_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
@@ -243,19 +229,19 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! radiation pressure and use the corrected qdp, qpt to get qdt.
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
-         ii = scv_temp_index+i-1
-         temp_work(i,1) = press_interp_weights(1)*hydrogen_table(ii,scv_pressure_index,7) + &
-         press_interp_weights(2)*hydrogen_table(ii,scv_pressure_index+1,7) + &
-         press_interp_weights(3)*hydrogen_table(ii,scv_pressure_index+2,7) &
-         + press_interp_weights(4)*hydrogen_table(ii,scv_pressure_index+3,7)
-         temp_work(i,2) = press_interp_weights(1)*helium_table(ii,scv_pressure_index,7) + &
-         press_interp_weights(2)*helium_table(ii,scv_pressure_index+1,7) + &
-         press_interp_weights(3)*helium_table(ii,scv_pressure_index+2,7) &
-         + press_interp_weights(4)*helium_table(ii,scv_pressure_index+3,7)
-         temp_work(i,3) = press_interp_weights(1)*metal_table(ii,scv_pressure_index,10) + &
-         press_interp_weights(2)*metal_table(ii,scv_pressure_index+1,10) + &
-         press_interp_weights(3)*metal_table(ii,scv_pressure_index+2,10) &
-         + press_interp_weights(4)*metal_table(ii,scv_pressure_index+3,10)
+         ii = idtt+i-1
+         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,7) + &
+         press_interp_weights(2)*tablex(ii,idp+1,7) + &
+         press_interp_weights(3)*tablex(ii,idp+2,7) &
+         + press_interp_weights(4)*tablex(ii,idp+3,7)
+         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,7) + &
+         press_interp_weights(2)*tabley(ii,idp+1,7) + &
+         press_interp_weights(3)*tabley(ii,idp+2,7) &
+         + press_interp_weights(4)*tabley(ii,idp+3,7)
+         temp_work(i,3) = press_interp_weights(1)*tablez(ii,idp,10) + &
+         press_interp_weights(2)*tablez(ii,idp+1,10) + &
+         press_interp_weights(3)*tablez(ii,idp+2,10) &
+         + press_interp_weights(4)*tablez(ii,idp+3,10)
       end do
 ! interpolate in temperature
       dlnrho_dlnt_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
@@ -286,19 +272,19 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! entropy and entropy of mixing
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
-         ii = scv_temp_index+i-1
-         temp_work(i,1) = press_interp_weights(1)*hydrogen_table(ii,scv_pressure_index,5) + &
-         press_interp_weights(2)*hydrogen_table(ii,scv_pressure_index+1,5) + &
-         press_interp_weights(3)*hydrogen_table(ii,scv_pressure_index+2,5) &
-         + press_interp_weights(4)*hydrogen_table(ii,scv_pressure_index+3,5)
-         temp_work(i,2) = press_interp_weights(1)*helium_table(ii,scv_pressure_index,5) + &
-         press_interp_weights(2)*helium_table(ii,scv_pressure_index+1,5) + &
-         press_interp_weights(3)*helium_table(ii,scv_pressure_index+2,5) &
-         + press_interp_weights(4)*helium_table(ii,scv_pressure_index+3,5)
-         temp_work(i,3) = press_interp_weights(1)*entropy_of_mixing_table(ii,scv_pressure_index) + &
-         press_interp_weights(2)*entropy_of_mixing_table(ii,scv_pressure_index+1) + &
-         press_interp_weights(3)*entropy_of_mixing_table(ii,scv_pressure_index+2) &
-         + press_interp_weights(4)*entropy_of_mixing_table(ii,scv_pressure_index+3)
+         ii = idtt+i-1
+         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,5) + &
+         press_interp_weights(2)*tablex(ii,idp+1,5) + &
+         press_interp_weights(3)*tablex(ii,idp+2,5) &
+         + press_interp_weights(4)*tablex(ii,idp+3,5)
+         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,5) + &
+         press_interp_weights(2)*tabley(ii,idp+1,5) + &
+         press_interp_weights(3)*tabley(ii,idp+2,5) &
+         + press_interp_weights(4)*tabley(ii,idp+3,5)
+         temp_work(i,3) = press_interp_weights(1)*smix(ii,idp) + &
+         press_interp_weights(2)*smix(ii,idp+1) + &
+         press_interp_weights(3)*smix(ii,idp+2) &
+         + press_interp_weights(4)*smix(ii,idp+3)
       end do
 ! interpolate in temperature
       log10_entropy_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
@@ -326,19 +312,19 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! d ln s/ d ln t (x and y) and du/dt (z)
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
-         ii = scv_temp_index+i-1
-         temp_work(i,1) = press_interp_weights(1)*hydrogen_table(ii,scv_pressure_index,9) + &
-         press_interp_weights(2)*hydrogen_table(ii,scv_pressure_index+1,9) + &
-         press_interp_weights(3)*hydrogen_table(ii,scv_pressure_index+2,9) &
-         + press_interp_weights(4)*hydrogen_table(ii,scv_pressure_index+3,9)
-         temp_work(i,2) = press_interp_weights(1)*helium_table(ii,scv_pressure_index,9) + &
-         press_interp_weights(2)*helium_table(ii,scv_pressure_index+1,9) + &
-         press_interp_weights(3)*helium_table(ii,scv_pressure_index+2,9) &
-         + press_interp_weights(4)*helium_table(ii,scv_pressure_index+3,9)
-         temp_work(i,3) = press_interp_weights(1)*metal_table(ii,scv_pressure_index,7) + &
-         press_interp_weights(2)*metal_table(ii,scv_pressure_index+1,7) + &
-         press_interp_weights(3)*metal_table(ii,scv_pressure_index+2,7) &
-         + press_interp_weights(4)*metal_table(ii,scv_pressure_index+3,7)
+         ii = idtt+i-1
+         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,9) + &
+         press_interp_weights(2)*tablex(ii,idp+1,9) + &
+         press_interp_weights(3)*tablex(ii,idp+2,9) &
+         + press_interp_weights(4)*tablex(ii,idp+3,9)
+         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,9) + &
+         press_interp_weights(2)*tabley(ii,idp+1,9) + &
+         press_interp_weights(3)*tabley(ii,idp+2,9) &
+         + press_interp_weights(4)*tabley(ii,idp+3,9)
+         temp_work(i,3) = press_interp_weights(1)*tablez(ii,idp,7) + &
+         press_interp_weights(2)*tablez(ii,idp+1,7) + &
+         press_interp_weights(3)*tablez(ii,idp+2,7) &
+         + press_interp_weights(4)*tablez(ii,idp+3,7)
       end do
 ! interpolate in temperature
       dlns_dlnt_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
@@ -380,15 +366,15 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 !   Helium tables.
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
-         ii = scv_temp_index+i-1
-         temp_work(i,1) = press_interp_weights(1)*hydrogen_table(ii,scv_pressure_index,2) + &
-         press_interp_weights(2)*hydrogen_table(ii,scv_pressure_index+1,2) + &
-         press_interp_weights(3)*hydrogen_table(ii,scv_pressure_index+2,2) &
-         + press_interp_weights(4)*hydrogen_table(ii,scv_pressure_index+3,2)
-         temp_work(i,2) = press_interp_weights(1)*helium_table(ii,scv_pressure_index,2) + &
-         press_interp_weights(2)*helium_table(ii,scv_pressure_index+1,2) + &
-         press_interp_weights(3)*helium_table(ii,scv_pressure_index+2,2) &
-         + press_interp_weights(4)*helium_table(ii,scv_pressure_index+3,2)
+         ii = idtt+i-1
+         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,2) + &
+         press_interp_weights(2)*tablex(ii,idp+1,2) + &
+         press_interp_weights(3)*tablex(ii,idp+2,2) &
+         + press_interp_weights(4)*tablex(ii,idp+3,2)
+         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,2) + &
+         press_interp_weights(2)*tabley(ii,idp+1,2) + &
+         press_interp_weights(3)*tabley(ii,idp+2,2) &
+         + press_interp_weights(4)*tabley(ii,idp+3,2)
       end do
 ! interpolate in temperature
       xtf_h2 = temp_interp_weights(1)*temp_work(1,1) + &
@@ -407,15 +393,15 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 !   Helium tables.
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
-         ii = scv_temp_index+i-1
-         temp_work(i,1) = press_interp_weights(1)*hydrogen_table(ii,scv_pressure_index,3) + &
-         press_interp_weights(2)*hydrogen_table(ii,scv_pressure_index+1,3) + &
-         press_interp_weights(3)*hydrogen_table(ii,scv_pressure_index+2,3) &
-         + press_interp_weights(4)*hydrogen_table(ii,scv_pressure_index+3,3)
-         temp_work(i,2) = press_interp_weights(1)*helium_table(ii,scv_pressure_index,3) + &
-         press_interp_weights(2)*helium_table(ii,scv_pressure_index+1,3) + &
-         press_interp_weights(3)*helium_table(ii,scv_pressure_index+2,3) &
-         + press_interp_weights(4)*helium_table(ii,scv_pressure_index+3,3)
+         ii = idtt+i-1
+         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,3) + &
+         press_interp_weights(2)*tablex(ii,idp+1,3) + &
+         press_interp_weights(3)*tablex(ii,idp+2,3) &
+         + press_interp_weights(4)*tablex(ii,idp+3,3)
+         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,3) + &
+         press_interp_weights(2)*tabley(ii,idp+1,3) + &
+         press_interp_weights(3)*tabley(ii,idp+2,3) &
+         + press_interp_weights(4)*tabley(ii,idp+3,3)
       end do
 ! interpolate in temperature
       xtf_h1 = temp_interp_weights(1)*temp_work(1,1) + &

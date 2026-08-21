@@ -27,46 +27,7 @@ subroutine remap
 
 
 
-! common/newcross/: user-supplied nuclear reaction S-factors (and
-! first/second derivative ratios relative to the Adelberger et al. 1998
-! Solar Fusion I values) that feed the cross_section_scale/qs0e_scale/
-! qqs0ee_scale vectors above. Not referenced in any already-converted
-! file.
-      double precision :: s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, &
-           s0_p_n14, s0_p_o16, s0_pep, s0_be7_electron, s0_be7_p, s0_hep, &
-           s0_n15_p_c12_branch, s0_n15_p_o16_branch, &
-           s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, s0p_p_c13, s0p_p_n14, &
-           s0p_p_o16, s0pp_p_c12, s0pp_p_c13, s0pp_p_o16, s0p_be7_p, &
-           s0pp_be7_p
-      common/newcross/ s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, &
-           s0_p_n14, s0_p_o16, s0_pep, s0_be7_electron, s0_be7_p, s0_hep, &
-           s0_n15_p_c12_branch, s0_n15_p_o16_branch, &
-           s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, s0p_p_c13, s0p_p_n14, &
-           s0p_p_o16, s0pp_p_c12, s0pp_p_c13, s0pp_p_o16, s0p_be7_p, &
-           s0pp_be7_p
 
-! 10/14 MHP NEW PARAMETERS - REPLACING DTDIF,DTWIND, HPTTOL & ATIME VECTORS
-! KC 2025-05-30 reordered common block elements
-! common/newparam/: the "intuitively named" namelist parameters this
-! routine remaps onto the legacy HPTTOL/ATIME/DTDIF/DTWIND/LPTIME
-! storage above. Not referenced in any already-converted file.
-      double precision :: flag_dx, flag_dw, flag_dz, time_core_min, &
-           time_dl, time_dp, time_dr, time_dt, time_dw_global, time_dw_mix, &
-           time_dx_core_frac, time_dx_core_tot, time_dx_shell, &
-           time_dx_total, time_dy_core_frac, time_dy_core_tot, &
-           time_dy_shell, time_dy_total, tol_czbase_fine_width, &
-           tol_dl_max, tol_dm_max, tol_dm_min, tol_dp_core_max, &
-           tol_dp_czbase_max, tol_dp_env_max, tol_dx_max, tol_dz_max, &
-           time_max_dt_frac
-      logical :: lstruct_time, lnewvars
-      common/newparam/ flag_dx, flag_dw, flag_dz, &
-           time_core_min, time_dl, time_dp, time_dr, time_dt, &
-           time_dw_global, time_dw_mix, time_dx_core_frac, &
-           time_dx_core_tot, time_dx_shell, time_dx_total, &
-           time_dy_core_frac, time_dy_core_tot, time_dy_shell, &
-           time_dy_total, tol_czbase_fine_width, tol_dl_max, tol_dm_max, &
-           tol_dm_min, tol_dp_core_max, tol_dp_czbase_max, tol_dp_env_max, &
-           tol_dx_max, tol_dz_max, time_max_dt_frac, lstruct_time, lnewvars
 
       save
 

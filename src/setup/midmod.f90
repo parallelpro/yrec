@@ -87,17 +87,9 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 
 
 ! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent. term
-! common/cwind/: not used in this file (only referenced in the
-! commented-out taucz calculation below). Naming matches midmod.f90's
-! own comment block; local to this batch.
-      double precision :: wind_saturation_omega, exmd, &
-           wind_law_omega_exponent, extau, exr, exm, exl, expr, &
-           constfactor, structfactor, excen, c_2
-      logical :: ljdot0
+! former common/cwind/: not used in this file (only referenced in the
+! commented-out taucz calculation below).
 !      COMMON/CWIND/WMAX,EXMD,EXW,EXTAU,EXR,EXM,CONSTFACTOR,STRUCTFACTOR,LJDOT0
-      common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
-           extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
-           c_2, ljdot0
 
 
 
@@ -143,13 +135,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
            convective_flag_prev
 
 
-! MHP 3/09 added flag to enforce solid body rotation at all times.
-! JNT 09/25 for 05/15 add impjmod
-! common/sbrot/: both used here. Not referenced in any already-
-! converted file.
-      logical :: force_solid_body_rotation
-      integer :: solid_body_mode_flag
-      common/sbrot/ force_solid_body_rotation, solid_body_mode_flag
 
 ! MHP 06/02
       logical :: convective_state_changed(json)

@@ -38,6 +38,7 @@ subroutine alfilein(allard_table_path)
 ! The maximum nuber of Teff's in the current table is nTeff, and the
 ! associated max number of GL's is nGL.
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: nta = 250
@@ -60,17 +61,6 @@ subroutine alfilein(allard_table_path)
            allard_alpha_grid, allard_log10_pressure, allard_log10_pressure_tau100, &
            allard_log10_temp_tau100, allard_is_old_nextgen, allard_num_teff, &
            allard_num_gl, allard_num_feh, allard_num_alpha
-! Shared: ALFILEIN, ALSURFP and PARMIN
-      double precision :: allard_target_feh, allard_target_alpha
-      logical :: allard_use_tau100
-      integer :: allard_table_unit
-      common /alatm03/ allard_target_feh, allard_target_alpha, allard_use_tau100, &
-           allard_table_unit
-! MHP 8/25 Removed character file names from common block
-      double precision :: alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
-      common /alatm04/ alatm04_placeholder1, alatm04_placeholder2, &
-           alatm04_placeholder3, alatm04_placeholder4
 
       external sort_shell
 

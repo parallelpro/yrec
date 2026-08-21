@@ -746,4 +746,184 @@ module const_lib
 ! core/parmin.f90 and copy-assigned.
       logical :: no_am_transport_in_core
 
+! former common/scv2/: scv_h_unit/scv_he_unit/scv_z_unit (originally
+! iscvh/iscvhe/iscvz) are not namelist values -- genuinely used in
+! core/parmin.f90, renamed in place there.
+      integer :: scv_h_unit, scv_he_unit, scv_z_unit
+
+! former common/alatm03/: allard_target_feh/allard_target_alpha/
+! allard_use_tau100 (originally alatm_feh/alatm_alpha/laltptau100) are
+! NAMELIST values with different canonical spellings, kept local in
+! core/parmin.f90 and copy-assigned. allard_table_unit (originally
+! ioatma) is not a namelist value -- genuinely used in
+! core/parmin.f90, renamed in place there.
+      double precision :: allard_target_feh, allard_target_alpha
+      logical :: allard_use_tau100
+      integer :: allard_table_unit
+
+! former common/sbrot/: force_solid_body_rotation/solid_body_mode_flag
+! (originally lsolid/impjmod) are NAMELIST values with different
+! canonical spellings, kept local in core/parmin.f90 and copy-assigned
+! (solid_body_mode_flag also re-synced after the "LSOLID overwrites
+! IMPJMOD" line may override it).
+      logical :: force_solid_body_rotation
+      integer :: solid_body_mode_flag
+
+! former common/cmixing/: cstmixing/cstdiffmix are NAMELIST values
+! spelled identically to their canonical names -- use-associated
+! directly.
+      double precision :: cstmixing = 1.0d0, cstdiffmix = 1.0d0
+
+! former common/acdpth/: ageout_placeholder/lclcd_placeholder/
+! iclcd_placeholder/ljlast_placeholder/ljwrt_placeholder/
+! acoustic_depth_output (originally ageout/lclcd/iclcd/ljlast/ljwrt/
+! lacout) are not namelist values -- genuinely used in
+! core/parmin.f90, renamed in place there. Their DATA defaults moved
+! here since DATA can no longer target use-associated entities.
+! taucz_placeholder/deladj_placeholder/tauhe_placeholder/
+! tnorm_placeholder/tcz_placeholder/whe_placeholder/acatmr_placeholder/
+! acatmd_placeholder/acatmp_placeholder/acatmt_placeholder/
+! tatmos_placeholder/iacat_placeholder/ijlast_placeholder/
+! laoly_placeholder/ijvs_placeholder/ijent_placeholder/ijdel_placeholder
+! (former common/acdpth/'s remaining members, originally tauczn/
+! deladj/tauhe/tnorm/tcz/whe/acatmr/acatmd/acatmp/acatmt/tatmos/iacat/
+! ijlast/laoly/ijvs/ijent/ijdel) are unused in core/parmin.f90 --
+! genuinely used (or carried as placeholders) in wind/calcad.f90,
+! io/wrtout.f90, core/main.f90, atm/envint.f90, kap/getopal95.f90, so
+! still declared here, using the majority spelling across those five
+! files (wind/calcad.f90 and io/wrtout.f90 give several of these real
+! semantic names instead -- e.g. normalized_acoustic_depth,
+! adiabatic_gradient -- but the 3-file placeholder spelling wins
+! per the majority-name convention). compute_acoustic_depth (LADON) is
+! spelled identically to its canonical name everywhere -- used, not a
+! placeholder.
+      double precision :: taucz_placeholder, deladj_placeholder(5000), &
+           tauhe_placeholder, tnorm_placeholder, &
+           tcz_placeholder, whe_placeholder, &
+           acatmr_placeholder(5000), acatmd_placeholder(5000), &
+           acatmp_placeholder(5000), acatmt_placeholder(5000), &
+           tatmos_placeholder
+      integer :: iacat_placeholder, ijlast_placeholder
+      logical :: laoly_placeholder
+      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
+      logical :: compute_acoustic_depth
+      double precision :: ageout_placeholder(5) = &
+           [0.5d0, 1.0d0, 5.0d0, 10.0d0, 20.0d0]
+      logical :: lclcd_placeholder = .false., ljlast_placeholder = .false., &
+           ljwrt_placeholder = .false., acoustic_depth_output = .false.
+      integer :: iclcd_placeholder
+
+! former common/govs/: use_envelope_triangle_dt (originally ltrist) is
+! a NAMELIST value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned.
+      logical :: use_envelope_triangle_dt
+
+! former common/pmmwind/: pmm_exponent_a/pmm_exponent_b/
+! pmm_exponent_c/pmm_exponent_d/pmm_exponent_m/pmm_norm_jdot/
+! pmm_norm_mdot/pmm_solar_pressure/pmm_solar_omega/
+! pmm_solar_turnover_timescale/use_pmm_wind_law/scale_by_rossby_number/
+! scale_by_b_field/wind_law_name (originally pmma/pmmb/pmmc/pmmd/pmmm/
+! pmmjd/pmmmd/pmmsolp/pmmsolw/pmmsoltau/lmwind/lrossby/lbscale/awind)
+! are NAMELIST values with different canonical spellings, kept local
+! in core/parmin.f90 and copy-assigned (pmm_exponent_a/b/c/d/m and
+! scale_by_b_field also re-synced after the K97/V13 PMM-windlaw branch
+! may override them).
+      double precision :: pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, &
+           pmm_exponent_d, pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
+           pmm_solar_pressure, pmm_solar_omega, pmm_solar_turnover_timescale
+      logical :: use_pmm_wind_law, scale_by_rossby_number, scale_by_b_field
+      character(len=3) :: wind_law_name
+
+! former common/cwind/: wind_saturation_omega (originally wmax) is a
+! NAMELIST value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned (also re-synced after the K97/V13
+! PMM-windlaw branch may override it). exmd/extau/exr/exm/exl/expr/
+! constfactor/excen/c_2/ljdot0 are spelled identically to their
+! canonical names -- use-associated directly; ljdot0's DATA default
+! moved here since DATA can no longer target a use-associated entity.
+! wind_law_omega_exponent (originally exw) is not a namelist value --
+! genuinely used in core/parmin.f90, renamed in place there.
+! structfactor (former common/cwind/'s remaining member) is unused in
+! core/parmin.f90, so still declared here for its other users.
+      double precision :: exmd, extau, exr, exm, exl, expr, constfactor, &
+           structfactor, excen, c_2, wind_law_omega_exponent
+      double precision :: wind_saturation_omega
+      logical :: ljdot0 = .true.
+
+! former common/mag/: constant_background_diffusion_coeff/
+! use_constant_background_diffusion (originally codm/lcodm) are
+! NAMELIST values with different canonical spellings, kept local in
+! core/parmin.f90 and copy-assigned.
+      double precision :: constant_background_diffusion_coeff
+      logical :: use_constant_background_diffusion
+
+! former common/version/: yrec_version_string/git_hash_string
+! (originally yrecver/githash) are not namelist values -- genuinely
+! used in core/parmin.f90, renamed in place there.
+      character(len=10) :: yrec_version_string
+      character(len=20) :: git_hash_string
+
+! former common/newparam/: all 30 NAMELIST values (the "intuitively
+! named" timestep/tolerance parameters replacing DTDIF/DTWIND/HPTTOL/
+! ATIME) are spelled identically to their canonical names everywhere --
+! use-associated directly. Their DATA defaults moved here from
+! core/parmin.f90 since DATA can no longer target use-associated
+! entities.
+      double precision :: flag_dx = 0.05d0, flag_dw = 0.10d0, flag_dz = 0.05d0
+      double precision :: time_core_min = 1.0d-3, time_dl = 2.0d-2, &
+           time_dp = 4.0d-2, time_dr = 2.0d-2, time_dt = 2.0d-2, &
+           time_dw_global = 8.0d-2, time_dw_mix = 8.0d-2, &
+           time_dx_core_frac = 0.5d0, time_dx_core_tot = 2.0d-2, &
+           time_dx_shell = 0.1d0, time_dx_total = 1.5d-3, &
+           time_dy_core_frac = 0.5d0, time_dy_core_tot = 2.0d-2, &
+           time_dy_shell = 0.1d0, time_dy_total = 1.5d-3, &
+           time_max_dt_frac = 1.5d0
+      double precision :: tol_czbase_fine_width = 0.0d0, tol_dl_max = 0.02d0, &
+           tol_dm_max = 0.08d0, tol_dm_min = 1.0d-8, &
+           tol_dp_core_max = 0.05d0, tol_dp_czbase_max = 0.05d0, &
+           tol_dp_env_max = 0.05d0, tol_dx_max = 1.0d0, tol_dz_max = 1.0d0
+      logical :: lstruct_time = .false., lnewvars = .false.
+
+! former common/newcross/: user-supplied nuclear reaction S-factors
+! (and first/second derivative ratios relative to the Adelberger et
+! al. 1998 Solar Fusion I values). s0_pp/s0_p_c12/s0_p_c13/s0_p_n14/
+! s0_p_o16/s0_be7_electron/s0_be7_p/s0_n15_p_c12_branch/
+! s0_n15_p_o16_branch/s0p_pp/s0p_he3he3/s0p_he3he4/s0p_p_c12/
+! s0p_p_c13/s0p_p_n14/s0p_p_o16/s0pp_p_c12/s0pp_p_c13/s0pp_p_o16/
+! s0p_be7_p/s0pp_be7_p (originally s0_1_1/s0_1_12/s0_1_13/s0_1_14/
+! s0_1_16/s0_1_be7e/s0_1_be7p/s0_1_15_c12alp/s0_1_15_o16/s0p_1_1/
+! s0p_3_3/s0p_3_4/s0p_1_12/s0p_1_13/s0p_1_14/s0p_1_16/s0pp_1_12/
+! s0pp_1_13/s0pp_1_16/s0p_1_be7p/s0pp_1_be7p) are NAMELIST values with
+! different canonical spellings, kept local in core/parmin.f90 and
+! copy-assigned. s0_he3he3 (originally s0_3_3, renamed) is likewise
+! kept local and copy-assigned. s0_he3he4 (originally s0_3_4, renamed)
+! is likewise kept local and copy-assigned. s0_pep/s0_hep are NAMELIST
+! values spelled identically to their canonical names --
+! use-associated directly; their DATA defaults moved here since DATA
+! can no longer target use-associated entities.
+      double precision :: s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, &
+           s0_p_n14, s0_p_o16, s0_be7_electron, s0_be7_p, &
+           s0_n15_p_c12_branch, s0_n15_p_o16_branch
+      double precision :: s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, &
+           s0p_p_c13, s0p_p_n14, s0p_p_o16, s0pp_p_c12, s0pp_p_c13, &
+           s0pp_p_o16, s0p_be7_p, s0pp_be7_p
+      double precision :: s0_pep = 3.5734d-6, s0_hep = 8.6d-20
+
+! former common/scveos/: the SCV EOS tables. tlogx/tablex/tabley/smix/
+! tablez/tablenv/nptsx/idtt/idp are spelled identically to their
+! canonical names in the majority of files that declare this block
+! (io/wrtlst.f90/io/putstore.f90/eos/eqscve.f90/eos/eqscvg.f90 used a
+! distinct, more-descriptive naming scheme -- table_log10_temperature/
+! hydrogen_table/helium_table/entropy_of_mixing_table/metal_table/
+! envelope_table/num_pressure_points/scv_temp_index/scv_pressure_index
+! -- renamed to the majority spelling here). idtt is itself a rename
+! (from idt) to avoid colliding with the unrelated const_lib idt
+! (former common/optab/). use_scv_eos (originally lscv) is a NAMELIST
+! value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned.
+      double precision :: tlogx(63), tablex(63,76,12), tabley(63,76,12), &
+           smix(63,76), tablez(63,76,13), tablenv(63,76,12)
+      integer :: nptsx(63), idtt, idp
+      logical :: use_scv_eos
+
 end module const_lib
