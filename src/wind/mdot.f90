@@ -91,21 +91,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       logical :: use_extended_composition
       common/flag/ use_extended_composition
 
-! common/masschg/: fczdmdt/ftotdmdt/accreted_composition/
-! use_mass_accretion (set here) are used. Naming matches dburn.f90.
-      double precision :: mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition(15), creim
-      logical :: lreimer, use_mass_accretion
-      common/masschg/ mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition, creim, lreimer, use_mass_accretion
 
-! common/rot/: only rotation_active/walpcz are used here. Naming
-! matches getw.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/masschg2/: accretion_specific_entropy/updated_mass_msun/
 ! delta_log_pressure/delta_log_temperature (order local to this file --

@@ -238,13 +238,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       common/opaleos/ use_opal95_eos, iopale, use_opal2001_eos, &
            use_opal2006_eos, lnumderiv
 
-! common/masschg/: not used here (this file's mass-loss common block
-! member is unused layout only). Naming matches dburn.f90.
-      double precision :: mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition(15), creim
-      logical :: lreimer, use_mass_accretion
-      common/masschg/ mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition, creim, lreimer, use_mass_accretion
 
 ! G Somers 10/14, Add spot common block
 ! common/spots/: spot_filling_factor/spot_temp_contrast are used here.

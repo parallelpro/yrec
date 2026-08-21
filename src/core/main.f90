@@ -249,15 +249,6 @@ program main
       integer :: itdif1, itdif2
       common/difus/ dtdif, convergence_tolerance, itdif1, itdif2
 
-! common/dpmix/: alphae/envelope_overshoot_active used here; the rest
-! are unused placeholders. Naming matches coefft.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
       double precision :: pressure_scale_height_start, &
            pressure_scale_height_end
@@ -304,11 +295,6 @@ program main
       logical :: helium_flash_active
       common/heflsh/ helium_flash_active
 
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
 ! common/sett/: end_age_stop_active/target_end_age/central_deuterium_

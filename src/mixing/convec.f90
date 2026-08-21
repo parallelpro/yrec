@@ -51,6 +51,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
      radiative_zone_bounds, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
      num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot)
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -67,15 +68,6 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
       integer, intent(out) :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
 
-! common/dpmix/: dpenv, lovstc, envelope_overshoot_active, and lovstm
-! are used here. Naming matches liburn.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
 
       save

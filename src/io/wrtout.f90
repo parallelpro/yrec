@@ -120,13 +120,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! common/label/: not used in this file. Naming matches wrthead.f90.
       double precision :: initial_envelope_x, initial_envelope_z
       common/label/ initial_envelope_x, initial_envelope_z
-! common/rot/: only rotation_active is used here. Naming matches
-! momi.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 ! common/scrtch/: only so/sdel(del_grad) are used here. Naming matches
 ! microdiff_setup.f90.
       double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)

@@ -107,15 +107,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
            niter2, niter3
 
-! common/dpmix/: alphae/envelope_overshoot_active are used here. Naming
-! matches liburn.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
 ! common/dwmax/: max shear (domega/dr) magnitude, current and from the
 ! previous timestep; only max_domega_dr is set here. Not referenced in
@@ -167,13 +158,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       integer :: idt, idd(4)
       common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
 
-! common/rot/: only rotation_active is used here. Naming matches
-! liburn.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/scrtch/: sesum/seg/del_grad/so/svel are used here. Naming
 ! matches liburn.f90/rotmix.f90.

@@ -29,24 +29,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 
 
 
-! common/dpmix/: dpenv, alphac, alphae, alpham, betac, lovstc,
-! envelope_overshoot_active, lovstm, and lovmax are used here. Naming
-! matches liburn.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
-! common/rot/: only rotation_active and instability_transport_active
-! are used here. Naming matches liburn.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
       save
 

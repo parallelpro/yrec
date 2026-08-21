@@ -66,17 +66,6 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
            sfxion, svel, scp
 
-! common/dpmix/: only envelope_overshoot_active (originally LOVSTE) is
-! used here -- uncertain interpretation, inferred as a flag gating
-! whether the true (overshoot-adjusted) envelope convection-zone base
-! location is used.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
 ! common/liov/: pressure scale heights used to search downward from the
 ! CZ base for the true (overshoot-corrected) base location.
@@ -84,15 +73,6 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
            pressure_scale_height_end
       common/liov/ pressure_scale_height_start, pressure_scale_height_end
 
-! common/rot/: only rotation_active (LROT) and instability_transport_
-! active (LINSTB) are used here -- LINSTB's interpretation (rotational
-! instability-driven mixing/transport enabled) is inferred from context
-! and marked uncertain.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/mdphy/: only del_adiabatic_mix and del_radiative_mix
 ! (originally DELAM/DELRM) are used here -- the rotating-model
@@ -120,13 +100,6 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/masschg/: use_mass_accretion, mass_accretion_rate, and
-! accreted_composition are used here. Naming matches dburn.f90.
-      double precision :: mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition(15), creim
-      logical :: lreimer, use_mass_accretion
-      common/masschg/ mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition, creim, lreimer, use_mass_accretion
 
       double precision :: li6_substep_depletion(json), &
            li7_substep_depletion(json), be9_substep_depletion(json)

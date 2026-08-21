@@ -68,13 +68,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       logical :: helium_flash_active
       common/heflsh/ helium_flash_active
 
-! common/rot/: only rotation_active is used here. Naming matches
-! momi.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! llp  3/19/03 Add COMMON block /I2O/ for info directly transferred from
 !      input to output model - starting with a code for th initial model
@@ -110,16 +103,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       logical :: disk_locking_active
       common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
            disk_locking_active
-! common/dpmix/: only iov1/iov2/iovim/ladov (unused here) plus
-! lovstc/envelope_overshoot_active/lovstm/lsemic are used here. Naming
-! matches tpgrad.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 ! common/gravst/: only diffuse_helium_active is used here. Naming
 ! matches microdiff.f90.
       double precision :: settling_tolerance

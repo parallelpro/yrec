@@ -72,6 +72,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
      already_converged_flag)
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -127,13 +128,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       common/oldrot/ old_omega, old_specific_angular_momentum, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
-! common/rot/: acfpft is used here (relaxed alongside the moment-of-
-! inertia tolerance around the GETROT call). Naming matches hpoint.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/temp2/: all members used in the (dead-code) diffusion-velocity
 ! print block. Naming matches codiff.f90.

@@ -58,12 +58,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
       common/ovrtrn/use_new_turnover_timescale, calc_envelope_flag, &
            convective_turnover_timescale, convective_turnover_timescale_old, &
            pphot, pphot0, fracstep
-! common/rot/: not used in this file. Naming matches mixcz.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 ! common/const/: only solar_radius_cgs is used here. Naming matches
 ! wrtout.f90.
       double precision :: solar_luminosity_cgs, log10_solar_luminosity, &

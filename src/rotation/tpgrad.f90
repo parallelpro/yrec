@@ -79,15 +79,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 
 
 
-! common/dpmix/: only iov1/iov2/iovim/ladov are used here. Naming
-! matches liburn.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
 ! DBG 7/95 To store variables for pulse output
 ! common/pualpha/: alfmlt/phmlt/cmxmlt are set here; valfmlt/vphmlt/

@@ -108,12 +108,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
            env_step_max
       common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
-! common/rot/: not used in this file. Naming matches momi.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/scrtch/: only sesum/seg/so/del_grad are used here. Naming
 ! matches microdiff_setup.f90.

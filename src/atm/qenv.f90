@@ -96,14 +96,6 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       common/mhd/use_mhd_eos, unit_zams_a, unit_zams_b, unit_zams_c, &
            unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
            unit_centre5
-! common/dpmix/: only iovim is used here. Naming matches mix.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
       save
 

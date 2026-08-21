@@ -37,13 +37,6 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/masschg/: mass_accretion_rate, accreted_composition, and
-! use_mass_accretion are used here.
-      double precision :: mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition(15), creim
-      logical :: lreimer, use_mass_accretion
-      common/masschg/ mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition, creim, lreimer, use_mass_accretion
 
 
       save

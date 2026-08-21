@@ -71,13 +71,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       logical :: helium_flash_active
       common/heflsh/ helium_flash_active
 
-! common/rot/: only rotation_active/instability_transport_active are
-! used here. Naming matches momi.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! llp  3/19/03 Add COMMON block /I2O/ for info directly transferred from
 !      input to output model - starting with a code for th initial model
@@ -113,15 +106,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       logical :: disk_locking_active
       common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
            disk_locking_active
-! common/dpmix/: only lovstc/envelope_overshoot_active/lovstm/lsemic
-! are used here. Naming matches tpgrad.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 !      COMMON/DPMIX/DPENV,ALPHAC,ALPHAE,ALPHAM,IOV1,IOV2,
 !     *      IOVIM, LOVSTC, LOVSTE, LOVSTM, LSEMIC, LADOV
 ! common/gravst/: only diffuse_helium_active is used here. Naming

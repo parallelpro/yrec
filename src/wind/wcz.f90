@@ -36,12 +36,6 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
       integer, intent(in) :: num_zones
 
 
-! common/rot/: only walpcz is used here. Naming matches getw.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
       save
 

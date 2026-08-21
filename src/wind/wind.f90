@@ -61,13 +61,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/rot/: only instability_transport_active is used here. Naming
-! matches getw.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/ovrtrn/: only convective_turnover_timescale is used here.
 ! Naming matches getw.f90.

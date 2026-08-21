@@ -81,14 +81,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       logical :: use_extended_composition
       common/flag/ use_extended_composition
 
-! LROT NEEDED TO KNOW IF YOU HAVE TO COMPUTE ROTATION TERMS.
-! common/rot/: only rotation_active/walpcz are used here. Naming
-! matches hpoint.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! HPTTOL USED TO SET THE SPATIAL RESOLUTION OF THE ENVELOPE INTEGRATION
 ! common/ctol/: only chi_grid_scale is used here. Naming matches

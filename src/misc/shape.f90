@@ -28,13 +28,6 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 
 
 
-! common/rot/: only acfpft/itfp1/itfp2 are used here. Naming matches
-! checkj.f90/hpoint.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
       save
 

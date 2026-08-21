@@ -93,16 +93,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 
 
 
-! 11/91 common blocks added for pressure scale height calc. for LIBURN
-! common/dpmix/: alphae/envelope_overshoot_active are used here.
-! Naming matches liburn.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
 ! common/liov/: pressure scale heights, only pressure_scale_height_end
 ! is set here. Naming matches liburn.f90.
@@ -162,13 +152,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       common/oldrot/ old_omega, old_specific_angular_momentum, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
-! common/rot/: only instability_transport_active is used here. Naming
-! matches hpoint.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/temp/: only mean_molecular_weight (HAMU) is used here. Naming
 ! matches hpoint.f90.

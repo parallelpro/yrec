@@ -101,11 +101,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       double precision :: so(json), del_grad(3,json), sfxion(3,json), &
            svel(json), scp(json)
       common/scrtch/sesum,seg,sbeta,seta,locons,so,del_grad,sfxion,svel,scp
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/wnew,walpcz,acfpft,itfp1,itfp2,rotation_active, &
-           instability_transport_active,lwnew
 ! DBG PULSE
       double precision :: pulsation_mass_msun
       logical :: pulsation_output_active
@@ -154,12 +149,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
            dhnue(18)
       logical :: ldh
       common/debhu/cdh,etadh0,etadh1,zdh,xxdy,yydh,zzdh,dhnue,ldh
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/dpenv,alphac,alphae,alpham,betac,iov1,iov2,iovim,lovstc, &
-           envelope_overshoot_active,lovstm,lsemic,ladov,lovmax
 ! DBG 7/95 To store variables for pulse output
       double precision :: alfmlt, phmlt, cmxmlt
       double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
@@ -177,11 +166,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
            neutrino_loss_fraction(json)
       common/rotder/dlnkappa_dlnrho,dlnkappa_dlnt,dlnepsilon_dlnrho, &
            dlnepsilon_dlnt,neutrino_loss_fraction
-      double precision :: mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition(15), creim
-      logical :: lreimer, use_mass_accretion
-      common/masschg/mass_accretion_rate,fczdmdt,ftotdmdt, &
-           accreted_composition,creim,lreimer,use_mass_accretion
       double precision :: accretion_specific_entropy, &
            envelope_specific_entropy, updated_mass_msun, delta_log_pressure, &
            delta_log_temperature

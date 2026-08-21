@@ -37,12 +37,6 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
       common/sbrot/ force_solid_body_rotation, solid_body_mode_flag
 
 
-! common/rot/: only walpcz is used here. Naming matches getw.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
       save
 

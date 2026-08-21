@@ -61,13 +61,6 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/rot/: not used here (LINSTB is checked in wind.f90, not
-! here). Naming matches getw.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
 ! common/ovrtrn/: only convective_turnover_timescale(_old)/fracstep

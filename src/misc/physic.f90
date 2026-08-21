@@ -99,14 +99,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       logical :: ldh
       common/debhu/ cdh, etadh0, etadh1, zdh, xxdh, yydh, zzdh, dhnue, ldh
 
-! common/dpmix/: only iovim is set here. Naming matches convec.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
       double precision :: atomic_weight(4)
       double precision :: log_mass_nodes(4), interp_weights(4)

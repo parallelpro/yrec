@@ -40,16 +40,6 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
 
 
 
-! common/rot/: only walpcz (originally WALPCZ, the forced-solid-body
-! convective-zone angular velocity, nonzero flags that the current
-! region is a solid-body-rotating convection zone) is used here. Naming
-! matches liburn.f90 -- LROT/LINSTB there mapped to rotation_active/
-! instability_transport_active.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
       save
 

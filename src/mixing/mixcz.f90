@@ -68,13 +68,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
            sfxion, svel, scp
 
 
-! MHP 02/12 added rotation information (not used in this file -- see
-! header note above). Naming matches liburn.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 
 ! G Somers 6/14: common block with the variables needed to select

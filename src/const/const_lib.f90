@@ -79,4 +79,46 @@ module const_lib
       logical :: use_new_nuclear_rates
       double precision :: weak_screening_threshold
 
+! former common/dpmix/: overshoot/semiconvection mixing-length
+! parameters and on/off flags, all NAMELIST /physics/ values. iov1/
+! iov2/iovim have no default here, matching before (no DATA statement
+! for them in core/parmin.f90 either -- COMMON left them at whatever
+! the loader zero-filled).
+      double precision :: dpenv = 1.0d0
+      logical :: lovstc = .false.
+      double precision :: alphac = 0.0d0
+      logical :: envelope_overshoot_active = .false.
+      double precision :: alphae = 0.0d0
+      logical :: lovstm = .false.
+      double precision :: alpham = 0.0d0
+      logical :: ladov = .false.
+      logical :: lovmax = .false.
+      double precision :: betac = 0.15d0
+      logical :: lsemic = .false.
+      integer :: iov1, iov2, iovim
+
+! former common/rot/: rotation control parameters/flags, all
+! NAMELIST /physics/ values. walpcz is clamped once at startup
+! (core/parmin.f90: if(walpcz.lt.-2.0d0) walpcz=-2.0d0, etc.) --
+! still configuration, not per-call data.
+      double precision :: acfpft = 1.0d-36
+      integer :: itfp1 = 5, itfp2 = 20
+      logical :: rotation_active = .false.
+      double precision :: walpcz = 0.0d0
+      logical :: instability_transport_active = .false., lwnew = .false.
+      double precision :: wnew = 0.0d0
+
+! former common/masschg/: mass-accretion/Reimers-wind parameters, all
+! NAMELIST /physics/ values. use_mass_accretion can be flipped off
+! mid-run by wind/mdot.f90 (if a circumstellar disk is exhausted) --
+! still a shared global flag touched from one distant point, same
+! character as walpcz's startup clamp, just possibly more than once.
+      double precision :: mass_accretion_rate = -1.0d-14
+      double precision :: fczdmdt = 0.1d0, ftotdmdt = 1.0d-2
+      double precision :: accreted_composition(15) = (/0.71668d0, &
+           0.265721d0,0.01757d0,2.9d-5,3.013d-3,3.385d-5,9.346d-4, &
+           0.0d0,8.462d-3,0.0d0,1.696d-5,0.0d0,2.0d-9,2.0d-9,3.0d-11/)
+      double precision :: creim = -4.0d-13
+      logical :: lreimer = .false., use_mass_accretion = .false.
+
 end module const_lib

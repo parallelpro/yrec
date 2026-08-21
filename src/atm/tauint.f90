@@ -40,13 +40,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
       integer :: jcz
       common/deuter/deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
-! common/rot/: only rotation_active is used here. Naming matches
-! mixcz.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 ! common/const/: only solar_mass_cgs is used here. Naming matches
 ! wrtout.f90.
       double precision :: solar_luminosity_cgs, log10_solar_luminosity, &

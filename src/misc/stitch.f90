@@ -92,13 +92,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
-! common/rot/: only rotation_active is used here. Naming matches
-! checkj.f90/hpoint.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/envstruct/: all used/set here. Naming matches envint.f90.
       double precision :: env_log10_pressure(json), &

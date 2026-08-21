@@ -190,12 +190,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: itdif1, itdif2
       common /difus/ dtdif, djok, itdif1, itdif2
 
-! common /dpmix/
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, lovste, lovstm, lsemic, ladov, lovmax
-      common /dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, iovim, lovstc, lovste, lovstm, &
-           lsemic, ladov, lovmax
+! lovste: NAMELIST /physics/ member (must keep this exact spelling).
+! Former common /dpmix/; every other member already matches
+! const_lib's canonical spelling, so only lovste needs to stay local
+! (copied into const_lib's envelope_overshoot_active right after the
+! namelist read below).
+      logical :: lovste
 
 ! common /envgen/
       double precision :: atmstp, envstp
@@ -250,11 +250,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: idt, idd(4)
       common /optab/ optol, zsi, idt, idd
 
-! common /rot/
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: lrot, linstb, lwnew
-      common /rot/ wnew, walpcz, acfpft, itfp1, itfp2, lrot, linstb, lwnew
+! lrot/linstb: NAMELIST /physics/ members (must keep this exact
+! spelling). Former common /rot/; every other member already matches
+! const_lib's canonical spelling, so only these two need to stay local
+! (copied into const_lib's rotation_active/instability_transport_active
+! right after the namelist read below).
+      logical :: lrot, linstb
 
 ! common /sett/
       double precision :: endage(50), setdt(50), end_dcen(50), end_xcen(50), end_ycen(50)
@@ -504,10 +505,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: impjmod
       common /sbrot/ lsolid, impjmod
 
-! common /masschg/
-      double precision :: dmdt0, fczdmdt, ftotdmdt, compacc(15), creim
-      logical :: lreimer, lmdot
-      common /masschg/ dmdt0, fczdmdt, ftotdmdt, compacc, creim, lreimer, lmdot
+! dmdt0/compacc/lmdot: NAMELIST /physics/ members (must keep this
+! exact spelling). Former common /masschg/; fczdmdt/ftotdmdt/creim/
+! lreimer already match const_lib's canonical spelling, so only these
+! three need to stay local (copied into const_lib's
+! mass_accretion_rate/accreted_composition/use_mass_accretion right
+! after the namelist read below).
+      double precision :: dmdt0, compacc(15)
+      logical :: lmdot
 
 ! common /cmixing/
       double precision :: cstmixing, cstdiffmix
@@ -751,7 +756,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &  0.172148d0,0.184156d0,0.19239d0,0.191425d0, &
            &  0.050426d0,0.050344d0,0.059012d0,0.058716d0, &
            &  0.468195d0,0.416592d0,0.415631d0,0.413545d0/
-      data acfpft,itfp1,itfp2/1.0d-36,5,20/
+! acfpft/itfp1/itfp2 defaults moved to const_lib.f90 (former
+! common/rot/).
       data tridt,tridl/1.0d-2,8.0d-2/
       data niter1,niter2,niter3,fcorr0,fcorri/2,20,2,0.8d0,0.1d0/
 ! atime's default moved to const_lib.f90 -- see the tcut/etc. note
@@ -766,15 +772,18 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data lkuthe/.false./
 !       DATA DPENV,LNSTDMX,LOVSTC,ALPHAC,LOVSTE,ALPHAE, LOVSTM, ALPHAM
 !      */1.0D0,.FALSE.,.FALSE., 0.0D0, .FALSE.,0.0D0, .FALSE., 0.0/
-      data dpenv,lovstc,alphac,lovste,alphae, lovstm, alpham &
-           & /1.0d0,.false., 0.0d0, .false.,0.0d0, .false., 0.0/
-      data ladov/.false./
+! dpenv/lovstc/alphac/alphae/lovstm/alpham defaults moved to
+! const_lib.f90 (former common/dpmix/); lovste stays local (NAMELIST
+! spelling).
+      data lovste/.false./
+! ladov/lovmax/betac defaults moved to const_lib.f90 (former
+! common/dpmix/).
 ! JVS 07/13
-       data lovmax,betac/.false.,0.15d0/
 ! END JVS
       data lnew0,lexcom/.false.,.false./
-      data lrot,walpcz,linstb,lwnew,wnew/.false.,0.0d0,.false., &
-           &      .false.,0.0d0/
+! walpcz/lwnew/wnew defaults moved to const_lib.f90 (former
+! common/rot/); lrot/linstb stay local (NAMELIST spelling).
+      data lrot,linstb/.false.,.false./
       data ljdot0,alfa,fk/.true.,1.5d0,1.0d0/
       data fw,fc,fo,fes,fgsf,fmu,fss,rcrit/1.0d0,1.0d0, &
            &      1.0d0,1.0d0,1.0d0,1.0d0,1.0d0,1.0d3/
@@ -803,7 +812,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data etadh0, etadh1, ldh/-1.0d0, 1.0d0, .false./
       data fesc,fssc,fgsfc/1.0d0,1.0d0,1.0d0/
       data ies,igsf,imu/1,1,1/
-      data lsemic/.false./
+! lsemic's default moved to const_lib.f90 (former common/dpmix/).
 ! DBGLAOL
       data tollaol,llaol,lpurez/10.0,.false.,.false./
 ! DBG 11/11/91
@@ -856,12 +865,15 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! ALL TIMES
 ! JNT 09/2025 FOR 05/15 IMPJMOD default set to 0
       data lsolid, impjmod/.false.,0/   !JNT 09/2025
-      data dmdt0,fczdmdt,ftotdmdt,compacc,creim,lreimer,lmdot &
+! fczdmdt/ftotdmdt/creim/lreimer defaults moved to const_lib.f90
+! (former common/masschg/); dmdt0/compacc/lmdot stay local (NAMELIST
+! spelling).
+      data dmdt0,compacc,lmdot &
            &      /-1.0d-14, &
-           &      0.1d0,1.0d-2,0.71668d0,0.265721d0,0.01757d0,2.9d-5, &
+           &      0.71668d0,0.265721d0,0.01757d0,2.9d-5, &
            &      3.013d-3,3.385d-5,9.346d-4,0.0d0,8.462d-3,0.0d0, &
-           &      1.696d-5,0.0d0,2.0d-9,2.0d-9,3.0d-11,-4.0d-13, &
-           &      .false.,.false./
+           &      1.696d-5,0.0d0,2.0d-9,2.0d-9,3.0d-11, &
+           &      .false./
 ! mhp 8/10 added scaled solar wind mass loss option
 !      DATA LSOLWIND,DMSUN,DMWSUN,DMWMAX/.FALSE.,-2.0D-14,2.863E-6,9.054E-5/
       data lsolwind/.false./
@@ -1090,6 +1102,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! const_lib's cross-section-scale members.
       use_new_nuclear_rates = lnewnuc
       weak_screening_threshold = weakscreening
+! envelope_overshoot_active/rotation_active/instability_transport_
+! active/mass_accretion_rate/accreted_composition/use_mass_accretion:
+! same reasoning, copied from their NAMELIST-spelled locals. Order
+! relative to `call remap` doesn't matter for these -- remap.f90
+! doesn't read any of them.
+      envelope_overshoot_active = lovste
+      rotation_active = lrot
+      instability_transport_active = linstb
+      mass_accretion_rate = dmdt0
+      accreted_composition = compacc
+      use_mass_accretion = lmdot
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap

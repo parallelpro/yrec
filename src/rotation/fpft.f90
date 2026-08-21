@@ -46,12 +46,6 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
 
 
 
-! common/rot/: not used in this file. Naming matches momi.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/quadd/: phisp/phirot/phidis are set here;
 ! circulation_correction_ratio is an unused placeholder. Naming

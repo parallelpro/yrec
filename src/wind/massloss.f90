@@ -90,13 +90,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 
 
 
-! common/masschg/: mass_accretion_rate/lreimer/use_mass_accretion are
-! used here. Naming matches dburn.f90.
-      double precision :: mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition(15), creim
-      logical :: lreimer, use_mass_accretion
-      common/masschg/ mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition, creim, lreimer, use_mass_accretion
 
 ! common/masschg2/: only envelope_specific_entropy (SCEN, set here and
 ! consumed by mdot.f90) is used. sacc/smass0 are unused placeholders

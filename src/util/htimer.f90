@@ -93,13 +93,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
       logical :: use_envelope_triangle_dt
       common/govs/ use_envelope_triangle_dt
 
-! common/rot/: only rotation_active is used here. Naming matches
-! getw.f90/hpoint.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/sett/: timestep_override_active/timestep_override (LSETDT/
 ! SETDT) and end_age_stop_active/target_end_age (LENDAG/ENDAGE) are

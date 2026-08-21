@@ -66,15 +66,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
            sfxion, svel, scp
 
-! common/dpmix/: only envelope_overshoot_active (originally LOVSTE) is
-! used here. Naming matches liburn.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
 ! common/liov/: pressure scale heights used to search downward from the
 ! CZ base for the true (overshoot-corrected) base location. Naming
@@ -83,13 +74,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
            pressure_scale_height_end
       common/liov/ pressure_scale_height_start, pressure_scale_height_end
 
-! common/rot/: only rotation_active and instability_transport_active
-! are used here. Naming matches liburn.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 
 ! common/mdphy/: only del_adiabatic_mix and del_radiative_mix are used
 ! here. Naming matches liburn.f90.

@@ -92,15 +92,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/dpmix/: dpenv and lsemic are used here. Naming matches
-! liburn.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 
 ! common/flag/: use_extended_composition (originally LEXCOM). Naming
 ! matches mixcz.f90.
@@ -149,14 +140,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       double precision :: dage
       common/theage/ dage
 
-! ADDED FOR MASS ACCRETION
-! common/masschg/: mass_accretion_rate, accreted_composition, and
-! use_mass_accretion are used here. Naming matches dburn.f90.
-      double precision :: mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition(15), creim
-      logical :: lreimer, use_mass_accretion
-      common/masschg/ mass_accretion_rate, fczdmdt, ftotdmdt, &
-           accreted_composition, creim, lreimer, use_mass_accretion
 
 ! rate_pp..frac_be7_electron: per-zone reaction rates/branching
 ! fractions (originally HR1-HR13,HF1,HF2). Naming and ordering match

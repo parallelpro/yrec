@@ -261,13 +261,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       double precision :: metal_fraction_match_tolerance, zsi
       integer :: idt, idd(4)
       common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
-! common/rot/: all used here. Naming matches coefft.f90/fpft.f90/
-! crrect.f90.
-      double precision :: wnew, walpcz, acfpft
-      integer :: itfp1, itfp2
-      logical :: rotation_active, instability_transport_active, lwnew
-      common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
-           instability_transport_active, lwnew
 ! common/mhd/: only use_mhd_eos is used here. Naming matches
 ! physic.f90/mhdtbl.f90.
       logical :: use_mhd_eos
@@ -294,15 +287,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            dhnue(18)
       logical :: ldh
       common/debhu/ cdh, etadh0, etadh1, zdh, xxdh, yydh, zzdh, dhnue, ldh
-! common/dpmix/: iovim is used here (the rest are unused placeholders).
-! Naming matches hpoint.f90/liburn.f90/physic.f90.
-      double precision :: dpenv, alphac, alphae, alpham, betac
-      integer :: iov1, iov2, iovim
-      logical :: lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
-      common/dpmix/ dpenv, alphac, alphae, alpham, betac, iov1, iov2, &
-           iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
-           lovmax
 ! OPACITY COMMON BLOCKS - modified 3/09
 ! common/newopac/: not used in this file's logic; layout placeholder.
 ! Naming matches getopac.f90/surfopac.f90.
