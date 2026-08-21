@@ -55,6 +55,7 @@
 subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
      mass_grams, log_temperature, convective_flag, num_zones, total_mass)
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -100,10 +101,6 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
            eq_metal_diffusion_coeff2_mid, metal_abundance_change, &
            metal_abundance_change_mid
 
-! common/const1/: not used in this file; declared only to preserve
-! layout. Naming matches chkscal.f90/eqstat.f90/hpoint.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/luout/: only short_file_unit/iowr are used here. Naming
 ! matches getopac.f90/setup_grsett.f90.

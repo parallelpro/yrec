@@ -161,6 +161,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      reaction_rate_13, n15_alpha_branch_fraction, &
      be7_electron_capture_fraction)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -207,10 +208,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            tenv0, tenv1, tenv, tgcut
       common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
-! common/const1/: only ln10/cc13/cc23 are used here. Naming matches
-! eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! ADDED SECONDS PER YEAR
 ! common/const3/: not used in this file; declared only to preserve

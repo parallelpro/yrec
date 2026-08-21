@@ -16,6 +16,7 @@
 subroutine tauint(shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -46,11 +47,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
       logical :: rotation_active, instability_transport_active, lwnew
       common/rot/wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
            instability_transport_active, lwnew
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 ! common/const/: only solar_mass_cgs is used here. Naming matches
 ! wrtout.f90.
       double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
@@ -59,9 +55,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
       common/const/solar_luminosity_cgs, log10_solar_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 ! common/jtest/: not used in this file. Naming is local to this batch.
       integer :: imax1_placeholder, imax2_placeholder
       logical :: ljvs_placeholder

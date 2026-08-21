@@ -22,6 +22,7 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0)
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -41,16 +42,7 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
       common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
            lscrib, lstch, lphhd
 
-! common/const1/: only ln10/c4pi/c4pil/cc13 are used here. Naming
-! matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/luout/: not used in this file; declared only to preserve
 ! layout. Naming matches getopac.f90.

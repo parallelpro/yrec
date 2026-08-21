@@ -22,6 +22,7 @@
 subroutine rscale(luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag)
 ! DBG 5/94 Added rescaling of Z in core ZRAMP stuff.
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -66,10 +67,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only ln10 is used here. Naming matches chkscal.f90/
-! eqstat.f90/hpoint.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/label/: initial_envelope_x/initial_envelope_z, both used
 ! here. Naming matches wrthead.f90.

@@ -14,6 +14,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, num_zones, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, num_mixed_zones)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -32,9 +33,6 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
       common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
            imodpt, istor, iowr
 
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/dpmix/: dpenv, alphac, alphae, alpham, betac, lovstc,
 ! envelope_overshoot_active, lovstm, and lovmax are used here. Naming

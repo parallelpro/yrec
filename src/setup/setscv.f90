@@ -21,21 +21,12 @@
 ! to fill tablenv columns 7-12.
 subroutine setscv
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: nts = 63, nps = 76
 
-! common/const1/: only ln10/cc13 are used here. Naming matches
-! chkscal.f90/eqstat.f90/hpoint.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only radiation_constant_over_3 is used here. Naming
-! matches chkscal.f90/eqstat.f90/hpoint.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! MHP  5/97 ADDED COMMON BLOCK FOR SCV EOS TABLES
 ! common/scveos/: tlogx/tablex/tabley/smix/tablez/tablenv/nptsx/idt/idp,

@@ -20,6 +20,7 @@
 subroutine wcz(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, istart, iend, eta_squared, moment_of_inertia, &
      omega, qiw, mean_radius, num_zones)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -34,9 +35,6 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
            mean_radius(json)
       integer, intent(in) :: num_zones
 
-! common/const1/: only ln10 is used here. Naming matches getw.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/rot/: only walpcz is used here. Naming matches getw.f90.
       double precision :: wnew, walpcz, acfpft

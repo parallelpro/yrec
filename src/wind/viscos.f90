@@ -12,6 +12,7 @@
 ! rotational-mixing/instability diffusion routines.
 subroutine viscos(composition, log_density, log_temperature, num_zones)
 !       SUBROUTINE VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -19,9 +20,6 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
            log_temperature(json)
       integer, intent(in) :: num_zones
 
-! common/const1/: only cc13 is used here. Naming matches getw.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/scrtch/: only so (opacity) is used here. Naming matches
 ! hpoint.f90.

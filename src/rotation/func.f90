@@ -18,20 +18,11 @@
 subroutine func(colatitude, local_gravity, area_element, r0, log_mass, &
      aint, q, w2, a, i)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
-! common/const1/: only cln (=ln10)/c4pi/cc13 are used here. Naming
-! matches dburn.f90/eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90/
-! meqos.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
       double precision, intent(in) :: colatitude
       double precision, intent(out) :: local_gravity, area_element

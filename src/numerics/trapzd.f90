@@ -23,19 +23,10 @@
 subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
      eta22p, q, qp)
 
+      use const_lib
       implicit none
 
-! common/const1/: not used in this file; declared only to preserve
-! layout. Naming matches dburn.f90/eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: not used in this file; declared only to preserve
-! layout. Naming matches eqstat2.f90/meqos.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
       double precision, intent(in) :: b1, b2
       double precision, intent(inout) :: s

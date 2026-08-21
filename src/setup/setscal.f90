@@ -16,6 +16,7 @@
 ! setcal.f90's solar-calibration run-list expansion.
 subroutine setscal
 
+      use const_lib
       implicit none
 
 ! common/ckind/: rescale_params/num_models/rescale_kind/first_call_flag/
@@ -65,10 +66,6 @@ subroutine setscal
       common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
            use_z_ramp
 
-! common/const1/: only c4pi is used here. Naming matches chkscal.f90/
-! eqstat.f90/hpoint.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const/: only solar_luminosity_cgs/solar_radius_cgs are used
 ! here. Naming matches chkscal.f90/amcalc.f90/getw.f90.
@@ -79,12 +76,6 @@ subroutine setscal
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const2/: only csig is used here. Naming matches chkscal.f90/
-! eqstat.f90/hpoint.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/calstar/: target-star calibration state; all members used
 ! here. Naming matches chkscal.f90.

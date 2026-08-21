@@ -22,6 +22,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
      transport_zone_end, num_zones, radius_unlogged, &
      dynamical_shear_omega_limit)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -42,17 +43,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only ln10/cc23/c4pi/cc13 are used here. Naming
-! matches chkscal.f90/eqstat.f90/hpoint.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only radiation_constant_over_3/cgl are used here.
-! Naming matches chkscal.f90/eqstat.f90/hpoint.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/mdphy/: amum/del_adiabatic_mix/del_radiative_mix/esumm/om/
 ! qdtm/cpm are used here; delm/thdifm/velm/viscm/epsm are unused

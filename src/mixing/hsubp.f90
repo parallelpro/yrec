@@ -15,6 +15,7 @@
 subroutine hsubp(composition, density, pressure, radius, mass, &
      temperature, edge_zone, pscahe)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -22,16 +23,6 @@ subroutine hsubp(composition, density, pressure, radius, mass, &
            pressure(json), radius(json), mass(json), temperature(json)
       integer, intent(in) :: edge_zone
       double precision, intent(out) :: pscahe
-
-! common/const1/: only cln is used here. Naming matches eqburn.f90.
-      double precision :: cln, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ cln, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! DBG 7/92 common block added to compute Debye-Huckel correction.
 ! common/debhu/: Debye-Huckel correction data; xxdh/yydh/zzdh/zdh(1:3)
@@ -85,9 +76,9 @@ subroutine hsubp(composition, density, pressure, radius, mass, &
 !  COMPUTE PRESSURE SCALE HEIGHT.
       log10_mass = mass(edge_zone)
       log10_radius = radius(edge_zone)
-      pscap = rmu*exp(cln*(log10_temperature-cgl-log10_mass+log10_radius+ &
+      pscap = rmu*exp(ln10*(log10_temperature-cgl-log10_mass+log10_radius+ &
            log10_radius))
-      pscahe = exp(cln*(log10_pressure + 2.0d0*log10_radius - &
+      pscahe = exp(ln10*(log10_pressure + 2.0d0*log10_radius - &
            log10_density - cgl - log10_mass))
       return
 end subroutine hsubp

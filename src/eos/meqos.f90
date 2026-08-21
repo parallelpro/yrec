@@ -22,6 +22,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp_dt, specific_heat_cp_dp)
 
 ! LATMO,KSAHA NEEDED FOR EQSAHA
+      use const_lib
       implicit none
 
       double precision, intent(in) :: log10_temperature, log10_pressure
@@ -66,18 +67,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
            tenv0, tenv1, tenv, tgcut
       common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
-! common/const1/: not used in this file; declared only to preserve
-! layout. ln10 is the name used where this member is actually read.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: not used in this file; declared only to preserve
-! layout. gas_constant/radiation_constant_over_3 are the names used
-! where these members are actually read.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/ccout2/: no member is used anywhere in this batch of files;
 ! all are unrenamed placeholders preserving the storage layout.

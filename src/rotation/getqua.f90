@@ -24,6 +24,7 @@
 ! final shell, such that QUAD(I) varies as 1/R**4.
 subroutine getqua(log_density, gravity, radius, angular_velocity, num_zones)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -31,15 +32,7 @@ subroutine getqua(log_density, gravity, radius, angular_velocity, num_zones)
            radius(json), angular_velocity(json)
       integer, intent(in) :: num_zones
 
-! common/const1/: only c4pil is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/tridi/: tridiagonal-solve work arrays (Thomas algorithm), all
 ! used here. Naming matches tridia.f90.

@@ -39,6 +39,7 @@
 subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -59,15 +60,7 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only ln10 is used here. Naming matches getw.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only csigl is used here. Naming matches getw.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/cwind/: wind_saturation_omega/exmd/wind_law_omega_exponent/
 ! exr/exm/constfactor are used here. Naming matches getw.f90.

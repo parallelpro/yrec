@@ -26,6 +26,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      eq_del_grad_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col)
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -60,10 +61,6 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       double precision :: dage
       common/theage/ dage
 
-! MHP 3/94 ADDED METAL DIFFUSION
-! common/const1/: only c4pi is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/luout/: only short_file_unit/iowr are used here. Naming
 ! matches vcirc.f90/momi.f90.

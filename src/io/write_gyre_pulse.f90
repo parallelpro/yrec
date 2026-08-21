@@ -24,6 +24,7 @@
 subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
      log_temperature, omega)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -60,17 +61,6 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
            pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, pulse_specific_heat, &
            pulse_mean_molecular_weight, pulse_dlnrho_dlnt, &
            pulse_electron_mean_molecular_weight, lpumod
-! common/const2/: cgl (log10 of the gravitational constant), used to
-! form the local gravity for the Brunt-Vaisala frequency. Naming
-! matches wrtout.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
-! common/const1/: ln10, used throughout to go from log10 quantities to
-! linear cgs values. Naming matches wrtout.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 ! common/const/: solar_luminosity_cgs, used to convert the per-shell
 ! linear L/Lsun array (log_luminosity here, despite its name -- see
 ! core/main.f90's cross-callee naming note on HL/luminosity_lsun) to

@@ -150,6 +150,7 @@ program main
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: numtt = 70
@@ -239,13 +240,6 @@ program main
       common/ckind/ rescale_params, num_models, rescale_kind, &
            first_call_flag, num_runs
 
-! 11/91 COMMON BLOCKS ADDED FOR PRESSURE SCALE HEIGHT CALC. FOR LIBURN
-! common/const2/: not used in this file's logic; declared only to
-! preserve layout. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! MHP 05/02 ADDED OPTION TO ITERATE BETWEEN ROTATION AND
 ! STRUCTURE CALCULATIONS - SET ITDIF1 GREATER THAN 1
@@ -479,11 +473,6 @@ program main
       common /po/ po_weight_l, po_weight_teff, po_weight_age, &
            po_max_len_sq, po_output_enabled
 
-! MHP 1/93 add common blocks for automatic calibration of solar models.
-! common/const1/: only ln10 used here. Naming matches wrtout.f90/
-! crrect.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/calsun/: dlum_dx/drad_dx/dlum_dalpha/drad_dalpha/
 ! solar_calibration_active used here; log_l_prev/log_r_prev/delta_x/

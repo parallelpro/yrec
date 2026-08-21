@@ -15,6 +15,7 @@
 subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
      omega, eta2, r0)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -25,16 +26,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
       double precision, intent(inout) :: eta2(json)
       double precision, intent(out) :: r0(json)
 
-! common/const1/: ln10/cc13 are used here. Naming matches eqburn.f90/
-! tpgrad.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl is used here. Naming matches tpgrad.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/rot/: only acfpft/itfp1/itfp2 are used here. Naming matches
 ! checkj.f90/hpoint.f90.

@@ -11,6 +11,7 @@
 ! unit, printed every nprtpt points (plus the first and last points).
 subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -46,16 +47,7 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only ln10/c4pi are used here. Naming matches
-! eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl is used here. Naming matches meqos.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/scrtch/: only sesum/seg are used here. Naming matches
 ! microdiff_setup.f90.

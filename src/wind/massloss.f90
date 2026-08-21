@@ -46,6 +46,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -86,16 +87,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only ln10 is used here. Naming matches getw.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only radiation_constant_over_3/cgl are used here.
-! Naming matches getw.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/const3/: only seconds_per_year is used here. Naming matches
 ! getw.f90.

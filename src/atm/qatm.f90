@@ -17,6 +17,7 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      atm_call_count, saha_state)
 
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -75,10 +76,6 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
            atm_ion_fraction(3)
       common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
            atm_log10_density, atm_opacity, atm_ion_fraction
-! common/const1/: only ln10/cc23 are used here. Naming matches
-! eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 ! common/atmos/: atm_choice/atm_hras are used here. Naming matches
 ! putstore.f90.
       double precision :: atm_hras

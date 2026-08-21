@@ -28,6 +28,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      env_call_count, saha_state)
 
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -74,14 +75,6 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
            zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
       common/comp/envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 ! common/envprt/: all used/set here. Naming is local to this batch
 ! (shared with envint.f90's usage of this block).
       double precision :: current_log10_pressure, current_log10_temperature, &

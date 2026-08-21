@@ -25,6 +25,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -125,16 +126,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-! common/const1/: only ln10/c4pil/c4pi3l/cc13/cc23 are used here.
-! Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-! common/const2/: only csigl/cgl are used here. Naming matches
-! meqos.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 ! common/flag/: not used in this file. Naming matches mixcz.f90.
       logical :: use_extended_composition
       common/flag/ use_extended_composition

@@ -14,6 +14,7 @@
 ! Burning rates from Caughlin and Fowler (1988).
 subroutine lirate88(composition, log_density, log_temperature, num_zones, &
      use_current_model)
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -22,10 +23,6 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
       double precision, intent(in) :: log_temperature(json)
       integer, intent(in) :: num_zones, use_current_model
 
-! common/const1/: only ln10 and cc13 are used here. Naming matches
-! dburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/newrat/: lithium/beryllium burning rates at the end of the
 ! timestep. Naming matches liburn.f90.

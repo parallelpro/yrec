@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -99,9 +100,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
-! common/const1/: ln10/cc23 are used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const3/: only clndp is used here. Naming matches dburnm.f90/
 ! rotmix.f90.
@@ -188,11 +186,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       common/oldrot2/ tho, theta_new, theta_mean, del_grad_diff_interface, &
            es_relaxation_factor, theta_prev, qwrst, wmst, qwrmst
 
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/optab/: not used in this file. Naming matches getopac.f90.
       double precision :: metal_fraction_match_tolerance, zsi

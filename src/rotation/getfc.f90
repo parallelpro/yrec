@@ -15,6 +15,7 @@
 subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
      zone_max, angular_velocity)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -29,9 +30,6 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
       integer, intent(in) :: zone_min, zone_max
       double precision, intent(in) :: angular_velocity(json)
 
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/intvar/: only dm (RHO at zone edges) and interface_radius (RM,
 ! the run of radii at zone edges) are used here; the rest are unused

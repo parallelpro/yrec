@@ -89,6 +89,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
      rate_c12_alpha,rate_n14_alpha,rate_triple_alpha,rate_zero13, &
      frac_c12_alpha,frac_be7_electron)
 
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -109,10 +110,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
            tenv0, tenv1, tenv, tgcut
       common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
-! common/const1/: only ln10 and cc13 are used here. Naming matches
-! dburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! MHP 8/96 CROSS SECTIONS PUT IN COMMON BLOCK.
 !      COMMON/CROSS/SSTANDARD(17)

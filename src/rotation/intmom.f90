@@ -17,6 +17,7 @@
 ! eta_squared (originally ETA2X). Called once per zone by momi.f90.
 subroutine intmom(rotation_param, eta_squared, dlnr0_dlnr, r0_geom_factor, &
      moment_of_inertia_per_mass, di_domega_per_mass)
+      use const_lib
       implicit none
 
       double precision, intent(in) :: rotation_param, eta_squared, &
@@ -24,9 +25,6 @@ subroutine intmom(rotation_param, eta_squared, dlnr0_dlnr, r0_geom_factor, &
       double precision, intent(out) :: moment_of_inertia_per_mass, &
            di_domega_per_mass
 
-! common/const1/: only cc23 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! series_coeff: coefficients of the power series (in rotation_param) used
 ! to correct the spherical moment of inertia for rotational distortion.

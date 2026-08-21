@@ -15,20 +15,11 @@
 ! q, w2, a, and i are passed through unchanged to func on each call.
 subroutine qgauss(g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
-! common/const1/: not used in this file; declared only to preserve
-! layout. Naming matches dburn.f90/eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: not used in this file; declared only to preserve
-! layout. Naming matches eqstat2.f90/meqos.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
       double precision, intent(out) :: g0g, ginvg, sphig
       double precision, intent(in) :: b

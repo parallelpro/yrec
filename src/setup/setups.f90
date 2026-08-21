@@ -27,6 +27,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
      centre5_table_path, opal92_table2_path, pure_z_table_path, &
      scv_h_table_path, scv_he_table_path, scv_z_table_path, &
      alex95_table_paths)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 ! JNT 06/14 ADD NTC FOR KURUCZ/CASTELLI 2004 ATM
@@ -105,17 +106,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: all members assigned here. Naming matches
-! chkscal.f90/eqstat.f90/hpoint.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: all members assigned here. Naming matches
-! chkscal.f90/eqstat.f90/hpoint.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/const3/: cdelrl/cmixl2/cmixl3/seconds_per_year are assigned
 ! here; mixing_length (CMIXL) is an unused placeholder. Naming matches

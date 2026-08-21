@@ -12,6 +12,7 @@
 subroutine yalo3d(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_x = 7
@@ -25,9 +26,6 @@ subroutine yalo3d(log10_density, log10_temperature, hydrogen_fraction, &
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
 
-! common/const1/: only ln10 is used here. Naming matches eqstat2.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/newopac/: not used directly here (ALXZTAB/ALX8TH read it).
       double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &

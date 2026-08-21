@@ -25,6 +25,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -68,17 +69,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only cc13/cc23/ln10 are used here. Naming matches
-! getw.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only radiation_constant_over_3 is used here. Naming
-! matches getw.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/const3/: only seconds_per_year is used here. Naming matches
 ! getw.f90.

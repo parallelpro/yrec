@@ -29,6 +29,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -80,16 +81,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       common/const/solar_luminosity_cgs, log10_solar_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-! common/const1/: only ln10/c4pil/csigl are used here. Naming matches
-! eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-! common/const2/: only cgl/csigl are used here. Naming matches
-! eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 ! common/comp/: only stotal is used here. Naming matches getopac.f90.
       double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv

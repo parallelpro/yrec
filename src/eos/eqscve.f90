@@ -23,22 +23,13 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
      ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
      adiabatic_gradient, valid_table_point)
 
+      use const_lib
       use numerics_lib
       implicit none
 
       integer, parameter :: nts = 63, nps = 76
 
-! common/const1/: only ln10 is used here; the rest are placeholders
-! preserving the shared storage layout (see getopac.f90).
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: no member is used in this file. Names match where
-! gas_constant/radiation_constant_over_3 are actually read (eqstat2.f90).
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/scveos/: the SCV equation-of-state tables and the persistent
 ! (search-hunt) table indices, all used here. mhp 5/97 added this

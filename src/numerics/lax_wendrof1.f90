@@ -21,6 +21,7 @@
 subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
      total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -31,10 +32,6 @@ subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
       double precision, intent(out) :: diffused_abundance_mid(json)
       logical, intent(in) :: use_generic_diffusion_vectors
 
-! common/const1/: only c4pi is used here. Naming matches envint.f90/
-! microdiff_run.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 ! common/gravs3/: only use_diffusion_z is used here. Naming matches
 ! eqstat.f90. MHP 3/94 added metal diffusion.
       double precision :: fgry, fgrz

@@ -29,6 +29,7 @@
 ! 11/91 HR added to call.
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -47,9 +48,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
            imodpt, istor, iowr
 
-! common/const1/: only ln10 is used here. Naming matches dburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/newrat/: lithium/beryllium burning rates at the end of the
 ! timestep. Naming matches liburn.f90.

@@ -59,6 +59,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, convective_flag, &
      num_zones, total_mass)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 ! SET NLIGHT TO THE NUMBER OF LIGHT ELEMENTS TO BE DIFFUSED.
@@ -94,9 +95,6 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       logical :: use_new_diffusion_routines, ldifli
       common/gravs4/ use_new_diffusion_routines, ldifli
 
-! common/const1/: not used in this file. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/luout/: not used in this file. Naming matches vcirc.f90/
 ! momi.f90.

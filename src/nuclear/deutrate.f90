@@ -13,16 +13,13 @@
 ! convection zone, the rate is capped so that deuterium burning cannot
 ! proceed faster than the local convective overturn timescale.
 subroutine deutrate(dl,tl,x,i,itlvl)
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
       double precision, intent(in) :: dl, tl, x
       integer, intent(in) :: i, itlvl
 
-! common/const1/: only ln10 and cc13 are used here. Naming matches
-! dburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const3/: not used in this file; declared only to preserve
 ! layout. Naming matches dburnm.f90 (only seconds_per_year there is

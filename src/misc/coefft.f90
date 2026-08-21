@@ -50,6 +50,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -92,12 +93,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       common/const/solar_luminosity_cgs,log10_solar_luminosity, &
            ln_solar_luminosity,solar_mass_cgs,log10_solar_mass, &
            solar_radius_cgs,log10_solar_radius,solar_bolometric_magnitude
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ln10,clni,c4pi,c4pil,c4pi3l,cc13,cc23,cpi
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/gas_constant,radiation_constant_over_3,ca3l,csig,csigl, &
-           cgl,cmkh,cmkhn
       double precision :: cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
            seconds_per_year
       common/const3/cdelrl,mixing_length,cmixl2,cmixl3,clndp,seconds_per_year

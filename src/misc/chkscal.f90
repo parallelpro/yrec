@@ -17,15 +17,12 @@
 ! ON EVEN NK
 subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 
+      use const_lib
       implicit none
 
       double precision, intent(in) :: log_l_lsun, log_teff, current_age
       integer, intent(in) :: run_index
 
-! common/const1/: ln10/c4pi are used here. Naming matches eqstat.f90/
-! hpoint.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const/: solar_luminosity_cgs/solar_radius_cgs are used here.
 ! Naming matches amcalc.f90/getw.f90.
@@ -36,12 +33,6 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const2/: only csig (Stefan-Boltzmann constant) is used here.
-! Naming matches eqstat.f90/hpoint.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/ckind/: rescale_params is used here (RESCAL); num_models/
 ! rescale_kind/first_call_flag/num_runs are unused placeholders. Naming

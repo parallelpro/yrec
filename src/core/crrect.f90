@@ -99,6 +99,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
      specific_angular_momentum, iteration_level, am_transport_convective_flag, &
      mixed_zone_bounds, qiw, kinetic_energy_rot, kinetic_energy_rot_old)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -194,17 +195,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only ln10 (originally CLN) is used here, in the
-! surface-BC luminosity-equation coefficients. Naming matches
-! coefft.f90/eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: not used in this file. Naming matches coefft.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/ctol/: htoler/fcorr0/fcorri/fcorr are all used here for the
 ! Newton-Raphson convergence/divergence tolerances and correction

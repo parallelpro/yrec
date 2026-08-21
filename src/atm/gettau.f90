@@ -26,6 +26,7 @@
 subroutine gettau(composition, log_radius, log_pressure, log_density, &
      enclosed_mass, log_temperature, fp, ft, log_teff, log_total_mass, &
      log_luminosity_lsun, num_zones, convective_flag, radius_at_bcz)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -63,9 +64,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
            env_step_max
       common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
-! common/const1/: c4pil/ln10 are used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const/: only log10_solar_luminosity is used here. Naming
 ! matches vcirc.f90.
@@ -76,11 +74,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const2/: csigl/cgl are used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/envstruct/: env_log10_radius/env_log10_pressure/
 ! env_log10_density/env_log10_mass/env_log10_temperature/

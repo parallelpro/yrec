@@ -14,6 +14,7 @@
 subroutine entime(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -40,17 +41,7 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: not used in this file's logic; layout placeholder.
-! Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: not used in this file's logic; layout placeholder.
-! Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/const3/: not used in this file's logic; layout placeholder.
 ! Naming matches tpgrad.f90.

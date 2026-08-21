@@ -20,6 +20,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -47,17 +48,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: ln10 and c4pi are used here. Naming matches
-! eqburn.f90/dburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl (used in the log(g) term of the chi
-! Jacobian) is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/ctol/: only chi_grid_scale (originally HPTTOL) is used here,
 ! for the mass/luminosity/pressure scale factors (indices 2/9/11) that

@@ -40,6 +40,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
      zone_end, fully_convective_flag, density_orig, temperature_orig)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -71,9 +72,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
            crsunl, cmbol
       common/const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
 
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const3/: not used in this file. Naming matches dburnm.f90/
 ! rotmix.f90.

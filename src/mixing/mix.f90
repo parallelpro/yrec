@@ -34,6 +34,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
      num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
      mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -80,16 +81,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
            zenvm, envelope_amu, envelope_species_fractions, xnew, znew, &
            stotal, senv
 
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-!***MHP COMMON BLOCK ADDED FOR G.S.
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/const3/: only seconds_per_year is used here. Naming matches
 ! dburnm.f90.

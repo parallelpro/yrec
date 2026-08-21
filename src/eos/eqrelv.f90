@@ -31,6 +31,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
      adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp)
 
+      use const_lib
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -67,13 +68,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       common/ccr/ fermi_table_x_grid, fermi_table_eta, fermi_table_data, &
            fermi_table_x_lookup
 
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
 
 ! common/const3/: not used in this file.
       double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &

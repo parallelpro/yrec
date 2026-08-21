@@ -18,6 +18,7 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
      metal_fraction, specific_gas_constant, ion_mean_weight_inverse, &
      electron_mean_weight_inverse, beta)
 
+      use const_lib
       implicit none
 
       double precision, intent(in) :: temperature, pressure, density, &
@@ -42,17 +43,7 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
            tenv0, tenv1, tenv, tgcut
       common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
-! common/const1/: not used in this file; declared only to preserve
-! layout. Naming matches meqos.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only gas_constant is used here. Naming matches
-! meqos.f90/eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/ccout2/: not used in this file; declared only to preserve
 ! layout. Naming matches meqos.f90.

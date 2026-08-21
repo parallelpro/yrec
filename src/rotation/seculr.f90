@@ -56,6 +56,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -114,10 +115,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            crsunl, cmbol
       common/const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
 
-! common/const1/: only ln10 is used here. Naming matches getw.f90/
-! eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent.
 ! term.

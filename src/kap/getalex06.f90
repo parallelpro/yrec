@@ -13,6 +13,7 @@
 subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_x = 9
@@ -26,9 +27,6 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
 
-! common/const1/: only ln10 is used here. Naming matches eqstat2.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/galot06/: ALEX06 low-T opacity table grids.
       double precision :: alex06_grid_logt(num_t), alex06_grid_x(num_x), &

@@ -15,6 +15,7 @@
 ! set of equally spaced chi values and their location in mass.
 subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -28,9 +29,6 @@ subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
            log_mass(json)
       integer, intent(in) :: zone_begin, zone_end, num_zones
 
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/ctol/: only chi_grid_scale (originally HPTTOL) is used here.
 ! Naming matches mixgrid.f90.

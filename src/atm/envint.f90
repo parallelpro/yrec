@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES OF KURUCZ.
@@ -104,15 +105,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
            seconds_per_year
       common/const3/cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-! common/const2/: only gas_constant/radiation_constant_over_3/cgl are
-! used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 ! common/ctlim/: only tenv is used here. Naming matches eqburn.f90/
 ! eqstat2.f90.
       double precision :: atime(14), tcut(5), saha_log10t_cutoff, &

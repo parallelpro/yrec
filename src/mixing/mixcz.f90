@@ -23,6 +23,7 @@
 ! executes.
 subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -66,9 +67,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
            sfxion, svel, scp
 
-! common/const1/: not used in this file. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! MHP 02/12 added rotation information (not used in this file -- see
 ! header note above). Naming matches liburn.f90.
@@ -78,11 +76,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       common/rot/ wnew, walpcz, acfpft, itfp1, itfp2, rotation_active, &
            instability_transport_active, lwnew
 
-! common/const2/: not used in this file. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! G Somers 6/14: common block with the variables needed to select
 ! between SDEL (common/scrtch/) and DELRM/DELAM (common/mdphy/) for

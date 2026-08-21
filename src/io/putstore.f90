@@ -27,6 +27,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts=63, nps=76
@@ -213,14 +214,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-! common/const2/: only cgl is used here. Naming matches meqos.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 ! common/scrtch/: only so/del_grad/svel/sbeta/seta/seg/sesum are used
 ! here. Naming matches microdiff_setup.f90.
       double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)

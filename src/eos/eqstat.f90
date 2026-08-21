@@ -35,6 +35,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 !  Update (Input and Output) Arguments: saha_state
 !
 
+      use const_lib
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -83,16 +84,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
            tenv0, tenv1, tenv, tgcut
       common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
-! common/const1/: only ln10 is used here. Naming matches eqstat2.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: not used in this file; declared only to preserve
-! layout. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/debhu/: Debye-Huckel correction data; not used in this file.
 ! DBG 7/92 common block added to compute Debye-Huckel correction.

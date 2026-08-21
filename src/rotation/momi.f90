@@ -18,6 +18,7 @@
 ! formula is used directly.
 subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -35,16 +36,7 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
       common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
            lscrib, lstch, lphhd
 
-! common/const1/: only cc13/cc23 are used here. Naming matches
-! eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/luout/: not used in this file. Naming matches getopac.f90.
       integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &

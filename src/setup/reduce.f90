@@ -28,6 +28,7 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
      dqr_dp0,dqr_dp,dqr_dt0,dqr_dt,eq_l_val0,eq_l_val,dql_dp0,dql_dp, &
      dql_dt0,dql_dt)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -46,9 +47,6 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
            eq_l_val0,eq_l_val,dql_dp0,dql_dp
       double precision, intent(in) :: dql_dt0,dql_dt
 
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
       double precision :: q(4,4)
       save

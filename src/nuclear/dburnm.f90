@@ -19,6 +19,7 @@
 subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep, deuterium_rate_end, deuterium_rate_start, &
      step_fraction)
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -30,10 +31,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
            deuterium_rate_start(json)
       double precision, intent(in) :: step_fraction
 
-! common/const1/: not used in this file; declared only to preserve
-! layout. Naming matches dburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const3/: only seconds_per_year is used here. Naming matches
 ! deutrate.f90.

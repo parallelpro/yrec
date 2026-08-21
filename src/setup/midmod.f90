@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -86,9 +87,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: ln10/cc23 are used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent. term
 ! common/cwind/: not used in this file (only referenced in the

@@ -22,6 +22,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff)
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -50,16 +51,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       double precision :: envelope_helium_fraction, envelope_he3_fraction
       common/comp2/ envelope_helium_fraction, envelope_he3_fraction
 
-! common/const1/: ln10 is used here. Naming matches eqburn.f90/tpgrad.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: not directly used in this file's logic; layout
-! placeholder. Naming matches tpgrad.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/flag/: use_extended_composition (originally LEXCOM); not used
 ! in this file's logic. Naming matches getw.f90/mixcz.f90.

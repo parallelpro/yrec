@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -142,10 +143,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
            env_step_max
       common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
-! common/const1/: only ln10/cc13/cc23 are used here. Naming matches
-! getw.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const/: only log10_solar_radius/solar_radius_cgs? no -- only
 ! log10_solar_radius is used here. Naming matches getw.f90.
@@ -156,12 +153,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const2/: only radiation_constant_over_3(ca3)/cgl/csigl are
-! used here. Naming matches getw.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/scrtch/: not used here. Naming matches hpoint.f90.
       double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)

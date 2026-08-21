@@ -47,6 +47,7 @@
 subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -56,9 +57,6 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
       double precision, intent(out) :: am_diffusion_coeff(json), &
            mixing_diffusion_coeff(json)
 
-! common/const1/: only c4pi is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/intvar/: not used in this file. Naming matches vcirc.f90.
       double precision :: interface_luminosity(json), delami(json), &

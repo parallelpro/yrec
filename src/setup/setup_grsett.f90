@@ -24,6 +24,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -60,10 +61,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only ln10/cc13 are used here. Naming matches
-! chkscal.f90/eqstat.f90/hpoint.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/const3/: not used in this file; declared only to preserve
 ! layout. Naming matches mix.f90/wrthead.f90.

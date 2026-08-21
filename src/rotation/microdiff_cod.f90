@@ -28,6 +28,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -47,9 +48,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
       logical :: lthoul, use_diffusion_z
       common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
-! common/const1/: only cc13 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/scrtch/: not used in this file. Naming matches liburn.f90/
 ! rotmix.f90.

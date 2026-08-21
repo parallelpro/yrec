@@ -23,6 +23,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
 
+      use const_lib
       implicit none
 
       double precision, intent(in) :: saha_mass_fractions(12)
@@ -48,13 +49,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
            imodpt, istor, iowr
 
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! --- locals ---
 ! ionization_temp/helium_ionization_temp_1/helium_ionization_temp_2:

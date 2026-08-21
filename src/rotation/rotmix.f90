@@ -22,6 +22,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -62,15 +63,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       logical :: use_extended_composition
       common/flag/ use_extended_composition
 
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 !*** BC 5/92 ROTMIX MODIFIED TO INCLUDE CALL TO GRAVITATIONAL SETTLING
 !    ROUTINE USING THE BAHCALL AND LOEB METHOD.

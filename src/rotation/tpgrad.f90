@@ -40,6 +40,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
      convective_velocity, want_derivatives, is_convective, &
      pressure_rotation_factor, temperature_rotation_factor, log_teff)
 
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 !  DL,OL,X,Z,LOCOND USED BY OPACTY
@@ -79,15 +80,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const1/: only ln10 is used here. Naming matches eqburn.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
-! common/const2/: only cgl is used here. Naming matches eqstat2.f90.
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-      common/const2/ gas_constant, radiation_constant_over_3, ca3l, csig, &
-           csigl, cgl, cmkh, cmkhn
 
 ! common/const3/: cdelrl/cmixl/cmixl2/cmixl3 are used here; clndp/
 ! seconds_per_year are unused placeholders. Naming matches dburnm.f90/

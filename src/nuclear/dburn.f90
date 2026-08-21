@@ -18,6 +18,7 @@
 subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -26,10 +27,6 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: timestep
 
-! common/const1/: not used in this file; declared only to preserve
-! layout. Naming matches eqstat2.f90.
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
-      common/const1/ ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 
 ! common/deuter/: deuterium_burning_rate (start/end of timestep) and
 ! accreted_mass_fraction are used here; jcz is not.
