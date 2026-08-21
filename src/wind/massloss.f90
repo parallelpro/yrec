@@ -52,6 +52,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       use turnover_lib
       use scrtch_lib
       use const_lib
+      use eos_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -251,7 +252,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          eos_deriv_flag = .false.
          saha_flag = 1
          eos_atmosphere_flag = .true.
-         call eqstat(log10_temperature_local,temperature_local, &
+         call eos_get(log10_temperature_local,temperature_local, &
               log10_pressure_local,pressure_local,log10_density_local, &
               density_local,hydrogen_fraction_local,metal_fraction_local, &
               beta_local,beta_ion,beta14,ion_fraction,mean_molecular_weight_eos, &
@@ -278,7 +279,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  csig)**0.25d0
             log10_pressure_local = log10(pressure_from_wind)
             log10_temperature_local = log10(temperature_from_wind)
-            call eqstat(log10_temperature_local,temperature_from_wind, &
+            call eos_get(log10_temperature_local,temperature_from_wind, &
                  log10_pressure_local,pressure_from_wind,log10_density_local, &
                  density_local,hydrogen_fraction_local,metal_fraction_local, &
                  beta_local,beta_ion,beta14,ion_fraction,mean_molecular_weight_eos, &

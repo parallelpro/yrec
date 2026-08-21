@@ -36,6 +36,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       use scrtch_lib
       use luout_lib
       use const_lib
+      use eos_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -217,31 +218,12 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       is_atmosphere_point = .true.
       compute_derivatives = .false.
 !  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
-! YC  If LMHD then use MHD equation of state.
-      if (use_mhd_eos) then
-         call meqos(log_temperature_center,temperature_linear_center,log_pressure_center,pressure_linear, &
-              log_density_center,density_linear_center,hydrogen_fraction_center,metal_fraction_center, &
-              beta_center,beta_inverse_center,beta14_center,fxion,mean_molecular_weight_center, &
-!      *   AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,
-!      *   LDERIV,LATMO,KSAHA)  ! KC 2025-05-31
-         amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
-         qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center)
-      else
-         if (use_debye_huckel_correction) then
-            debye_huckel_x = composition(1,1)
-            debye_huckel_y = composition(2,1)+composition(4,1)
-            debye_huckel_z_total = composition(3,1)
-            debye_huckel_z(1) = composition(5,1)+composition(6,1)
-            debye_huckel_z(2) = composition(7,1)+composition(8,1)
-            debye_huckel_z(3) = composition(9,1)+composition(10,1)+composition(11,1)
-         end if
-         call eqstat(log_temperature_center,temperature_linear_center,log_pressure_center,pressure_linear, &
-              log_density_center,density_linear_center,hydrogen_fraction_center,metal_fraction_center, &
-              beta_center,beta_inverse_center,beta14_center,fxion,mean_molecular_weight_center, &
-              amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
-              qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center, &
-              compute_derivatives,is_atmosphere_point,ksaha_center)
-      end if
+      call eos_get(log_temperature_center,temperature_linear_center,log_pressure_center,pressure_linear, &
+           log_density_center,density_linear_center,hydrogen_fraction_center,metal_fraction_center, &
+           beta_center,beta_inverse_center,beta14_center,fxion,mean_molecular_weight_center, &
+           amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
+           qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center, &
+           compute_derivatives,is_atmosphere_point,ksaha_center,composition_at_zone=composition(:,1))
 ! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
 ! STORE CENTRAL RHO,P,T FOR LATER USE
       run_diag%central_log10_pressure = log_pressure_center

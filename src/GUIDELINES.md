@@ -214,6 +214,39 @@ phase starts:
    domain's own internals. The swap-value goal is already achieved
    after step 3; step 4 is not urgent.
 
+**First facade, `eos_get` (2026-08-21)**: `eos/eos_lib.f90`, `module
+eos_lib` / `contains subroutine eos_get(...)`, is the first domain
+facade built under this plan -- a second precedent (alongside
+`numerics_lib`) for "a module hosting real callable subroutines, not
+just derived-type state." It has the same 27-arg signature as
+`eqstat.f90` plus one new trailing `optional` argument,
+`composition_at_zone(15)`; Fortran requires the module-procedure form
+(not a bare external subroutine) for the optional argument to be
+legal. Internally it dispatches to `meqos` (MHD path) or `eqstat`
+(non-MHD path) based on `use_mhd_eos`, both called unchanged -- and,
+on the non-MHD path, centralizes the Debye-Hückel composition setup
+(`debye_huckel_x/y/z_total/z(3)`) that 6 of its 10 callers used to
+duplicate verbatim, gated on `present(composition_at_zone) .and.
+use_debye_huckel_correction`. Migrated 10 files / 13 call sites
+(`atm/envint.f90`, `atm/qatm.f90`, `atm/qenv.f90`, `misc/coefft.f90`,
+`io/wrtout.f90`, `misc/physic.f90`, `core/starin.f90`,
+`mixing/hsubp.f90`, `mixing/sconvec.f90` x3, `wind/massloss.f90` x2)
+to call `eos_get` instead of duplicating the `use_mhd_eos` if/else at
+each site. `wind/calcad.f90` was deliberately left alone -- confirmed
+against the original F77 source, it never participated in the
+`eqstat`/`meqos` dispatch (calls `esac06`/`eqstat2` directly under its
+own `use_opal2006_eos` check) and isn't part of this pattern. The
+migration also fixed a real bug in `core/starin.f90` (a missing
+`ELSE`, confirmed via git archaeology against the pre-modernization
+source, that made it call both `meqos` and `eqstat` when MHD was on)
+and extended real MHD coverage to `hsubp.f90`/`sconvec.f90`/
+`massloss.f90`, none of which ever checked `use_mhd_eos` even in the
+original decades-old source -- both changes were deliberate,
+user-approved parts of the migration, not accidents. Caveat: no
+Stage-0 regression case sets `LMHD`, so the byte-identical verification
+covers the non-MHD path only; the `starin.f90` fix and the 3
+newly-MHD-capable files have no reference output to check against.
+
 ## Build mechanics
 
 - Any file introducing `module ... contains` must be added to the

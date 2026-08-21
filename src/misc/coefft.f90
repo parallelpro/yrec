@@ -58,6 +58,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       use scrtch_lib
       use luout_lib
       use const_lib
+      use eos_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -203,39 +204,17 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
        zone_log10_density = log10_density(im)
        pressure_rotation_factor = rotation_p_factor(im)
         temperature_rotation_factor = rotation_t_factor(im)
-! YC   IF LMHD USE MHD EQUATION OF STATE.
-         if (use_mhd_eos) then
-            call meqos(zone_log_temperature, temperature, &
-                 zone_log_pressure, pressure, zone_log10_density, density, &
-                 hydrogen_fraction, metal_fraction, beta, beta_inverse, &
-                 beta14, ion_fraction, specific_gas_constant, &
-                 ion_mean_weight_inverse, electron_mean_weight_inverse, &
-                 electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-                 specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-                 dlnrho_dlnp_dt, adiabatic_gradient_dt, &
-                 adiabatic_gradient_dp, specific_heat_cp_dt, &
-                 specific_heat_cp_dp)
-         else
-            if (use_debye_huckel_correction) then
-               debye_huckel_x = composition(1,im)
-               debye_huckel_y = composition(2,im)+composition(4,im)
-               debye_huckel_z_total = composition(3,im)
-               debye_huckel_z(1) = composition(5,im)+composition(6,im)
-               debye_huckel_z(2) = composition(7,im)+composition(8,im)
-               debye_huckel_z(3) = composition(9,im)+composition(10,im)+composition(11,im)
-            end if
-            call eqstat(zone_log_temperature, temperature, &
-                 zone_log_pressure, pressure, zone_log10_density, density, &
-                 hydrogen_fraction, metal_fraction, beta, beta_inverse, &
-                 beta14, ion_fraction, specific_gas_constant, &
-                 ion_mean_weight_inverse, electron_mean_weight_inverse, &
-                 electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-                 specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-                 dlnrho_dlnp_dt, adiabatic_gradient_dt, &
-                 adiabatic_gradient_dp, specific_heat_cp_dt, &
-                 specific_heat_cp_dp, want_derivatives, in_atmosphere, &
-                 saha_state)
-         end if
+         call eos_get(zone_log_temperature, temperature, &
+              zone_log_pressure, pressure, zone_log10_density, density, &
+              hydrogen_fraction, metal_fraction, beta, beta_inverse, &
+              beta14, ion_fraction, specific_gas_constant, &
+              ion_mean_weight_inverse, electron_mean_weight_inverse, &
+              electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
+              specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
+              dlnrho_dlnp_dt, adiabatic_gradient_dt, &
+              adiabatic_gradient_dp, specific_heat_cp_dt, &
+              specific_heat_cp_dp, want_derivatives, in_atmosphere, &
+              saha_state, composition_at_zone=composition(:,im))
 ! DBG 12/95 GET OPACITY
          call getopac(zone_log10_density, zone_log_temperature, &
               hydrogen_fraction, metal_fraction, opacity, log10_opacity, &

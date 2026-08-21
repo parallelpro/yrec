@@ -17,6 +17,7 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      atm_call_count, saha_state)
 
+      use eos_lib
       use atm_table_lib
       use pulse_diag_lib
       use const_lib
@@ -79,27 +80,15 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
             log10_temperature = log10_teff + hra(optical_depth) - atm_hras
       end if
       log10_pressure = y(1)
-! IF LMHD USE MHD EQUATION OF STATE.
-      if (use_mhd_eos)then
-       call meqos(log10_temperature,temperature,log10_pressure,pressure, &
-            log10_density,density,hydrogen_fraction,metal_fraction,beta, &
-            beta_inverse,beta14,fxion,specific_gas_constant, &
-            ion_mean_weight_inverse,electron_mean_weight_inverse, &
-            electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
-            specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
-            dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
-            specific_heat_cp_dt,specific_heat_cp_dp)
-      else
-       call eqstat(log10_temperature,temperature,log10_pressure,pressure, &
-            log10_density,density,hydrogen_fraction,metal_fraction,beta, &
-            beta_inverse,beta14,fxion,specific_gas_constant, &
-            ion_mean_weight_inverse,electron_mean_weight_inverse, &
-            electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
-            specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
-            dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
-            specific_heat_cp_dt,specific_heat_cp_dp,want_derivatives, &
-            in_atmosphere,saha_state)
-      endif
+      call eos_get(log10_temperature,temperature,log10_pressure,pressure, &
+           log10_density,density,hydrogen_fraction,metal_fraction,beta, &
+           beta_inverse,beta14,fxion,specific_gas_constant, &
+           ion_mean_weight_inverse,electron_mean_weight_inverse, &
+           electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
+           specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
+           dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
+           specific_heat_cp_dt,specific_heat_cp_dp,want_derivatives, &
+           in_atmosphere,saha_state)
       call getopac(log10_density, log10_temperature, hydrogen_fraction, &
            metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
            dlnkap_dlnt, fxion)

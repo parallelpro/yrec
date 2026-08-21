@@ -118,6 +118,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       use oldmod_lib
       use luout_lib
       use const_lib
+      use eos_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts = 63, nps = 76
@@ -744,39 +745,17 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
              do 588 kk = 1,4
               idd(kk) = 5
  588           continue
-               if (use_mhd_eos) then
-                  call meqos(log10_temperature,temperature,log10_pressure, &
-                       pressure,log10_density,density,hydrogen_fraction, &
-                       metal_fraction,beta,beta_inverse,beta14,ion_fraction, &
-                       specific_gas_constant,ion_mean_weight_inverse, &
-                       electron_mean_weight_inverse, &
-                       electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
-                       specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
-!      *                 QDTP,QAT,QAP,QCPT,QCPP,LDERIV,LATMO,KSAHA)  ! KC 2025-05-31
-                       dlnrho_dlnp_dt,adiabatic_gradient_dt, &
-                       adiabatic_gradient_dp,specific_heat_cp_dt, &
-                       specific_heat_cp_dp)
-                  if (use_debye_huckel_correction) then
-                     debye_huckel_x = composition(1,num_shells)
-                     debye_huckel_y = composition(2,num_shells)+composition(4,num_shells)
-                     debye_huckel_z_total = composition(3,num_shells)
-                     debye_huckel_z(1) = composition(5,num_shells)+composition(6,num_shells)
-                     debye_huckel_z(2) = composition(7,num_shells)+composition(8,num_shells)
-                     debye_huckel_z(3) = composition(9,num_shells)+ &
-                          composition(10,num_shells)+composition(11,num_shells)
-                  end if
-                  call eqstat(log10_temperature,temperature,log10_pressure, &
-                       pressure,log10_density,density,hydrogen_fraction, &
-                       metal_fraction,beta,beta_inverse,beta14,ion_fraction, &
-                       specific_gas_constant,ion_mean_weight_inverse, &
-                       electron_mean_weight_inverse, &
-                       electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
-                       specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
-                       dlnrho_dlnp_dt,adiabatic_gradient_dt, &
-                       adiabatic_gradient_dp,specific_heat_cp_dt, &
-                       specific_heat_cp_dp,want_derivatives,in_atmosphere, &
-                       saha_state)
-               end if
+               call eos_get(log10_temperature,temperature,log10_pressure, &
+                    pressure,log10_density,density,hydrogen_fraction, &
+                    metal_fraction,beta,beta_inverse,beta14,ion_fraction, &
+                    specific_gas_constant,ion_mean_weight_inverse, &
+                    electron_mean_weight_inverse, &
+                    electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
+                    specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
+                    dlnrho_dlnp_dt,adiabatic_gradient_dt, &
+                    adiabatic_gradient_dp,specific_heat_cp_dt, &
+                    specific_heat_cp_dp,want_derivatives,in_atmosphere, &
+                    saha_state,composition_at_zone=composition(:,num_shells))
                call getopac(log10_density, log10_temperature, &
                     hydrogen_fraction, metal_fraction, opacity, &
                     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)

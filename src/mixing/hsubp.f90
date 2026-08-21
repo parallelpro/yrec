@@ -16,6 +16,7 @@ subroutine hsubp(composition, density, pressure, radius, mass, &
      temperature, edge_zone, pscahe)
 
       use const_lib
+      use eos_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -50,20 +51,12 @@ subroutine hsubp(composition, density, pressure, radius, mass, &
       log10_pressure = pressure(edge_zone)
       log10_temperature = temperature(edge_zone)
       log10_density = density(edge_zone)
-      if (use_debye_huckel_correction) then
-         debye_huckel_x = composition(1,edge_zone)
-         debye_huckel_y = composition(2,edge_zone)+composition(4,edge_zone)
-         debye_huckel_z_total = composition(3,edge_zone)
-         debye_huckel_z(1) = composition(5,edge_zone)+composition(6,edge_zone)
-         debye_huckel_z(2) = composition(7,edge_zone)+composition(8,edge_zone)
-         debye_huckel_z(3) = composition(9,edge_zone)+composition(10,edge_zone)+ &
-              composition(11,edge_zone)
-      end if
-      call eqstat(log10_temperature,temperature_out,log10_pressure, &
+      call eos_get(log10_temperature,temperature_out,log10_pressure, &
            pressure_out,log10_density,density_out,hydrogen_fraction, &
            metal_fraction,beta,betai,beta14,fxion, &
            rmu,amu,emu,eta,qdt,qdp,qcp,dela,qdtt,qdtp, &
-           qat,qap,qcpt,qcpp,lderiv,latmo,ksaha)
+           qat,qap,qcpt,qcpp,lderiv,latmo,ksaha, &
+           composition_at_zone=composition(:,edge_zone))
 !  COMPUTE PRESSURE SCALE HEIGHT.
       log10_mass = mass(edge_zone)
       log10_radius = radius(edge_zone)

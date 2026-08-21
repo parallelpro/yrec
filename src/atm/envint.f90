@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use eos_lib
       use atm_table_lib
       use rotdiff_lib
       use run_diag_lib
@@ -226,28 +227,15 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            radiation_constant_over_3*temperature**3)*temperature)
 
 ! NOW FIND THE OPTICAL DEPTH(X0) WHERE THE ATMOSPHERE INTEGRATION BEGINS.
-! YC   IF LMHD USE MHD EQUATION OF STATE.
-      if(use_mhd_eos)then
-         call meqos(log10_temperature,temperature,log10_pressure,pressure, &
-              log10_density,density,hydrogen_fraction,metal_fraction,beta, &
-              beta_inverse,beta14,ion_fraction,specific_gas_constant, &
-              ion_mean_weight_inverse,electron_mean_weight_inverse, &
-              electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
-              specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
-              dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
-              specific_heat_cp_dt,specific_heat_cp_dp)
-!     *        QCPP,LDERIV,LATMO,KSAHA)  ! KC 2025-05-31
-      else
-         call eqstat(log10_temperature,temperature,log10_pressure,pressure, &
-              log10_density,density,hydrogen_fraction,metal_fraction,beta, &
-              beta_inverse,beta14,ion_fraction,specific_gas_constant, &
-              ion_mean_weight_inverse,electron_mean_weight_inverse, &
-              electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
-              specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
-              dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
-              specific_heat_cp_dt,specific_heat_cp_dp,want_derivatives, &
-              in_atmosphere,saha_state)
-      endif
+      call eos_get(log10_temperature,temperature,log10_pressure,pressure, &
+           log10_density,density,hydrogen_fraction,metal_fraction,beta, &
+           beta_inverse,beta14,ion_fraction,specific_gas_constant, &
+           ion_mean_weight_inverse,electron_mean_weight_inverse, &
+           electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
+           specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
+           dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
+           specific_heat_cp_dt,specific_heat_cp_dp,want_derivatives, &
+           in_atmosphere,saha_state)
 ! DBG 12/95 GET OPACITY
       call getopac(log10_density, log10_temperature, hydrogen_fraction, &
            metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &

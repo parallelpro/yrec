@@ -40,6 +40,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
 
       use luout_lib
       use const_lib
+      use eos_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -159,16 +160,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
             pressure_rotation_factor = 1.0d0
             temperature_rotation_factor = 1.0d0
             current_zone_idx = cz_edge_idx
-            if (use_debye_huckel_correction) then
-               debye_huckel_x = composition(1,cz_edge_idx)
-               debye_huckel_y = composition(2,cz_edge_idx) + composition(4,cz_edge_idx)
-               debye_huckel_z_total = composition(3,cz_edge_idx)
-               debye_huckel_z(1) = composition(5,cz_edge_idx) + composition(6,cz_edge_idx)
-               debye_huckel_z(2) = composition(7,cz_edge_idx) + composition(8,cz_edge_idx)
-               debye_huckel_z(3) = composition(9,cz_edge_idx) + &
-                    composition(10,cz_edge_idx) + composition(11,cz_edge_idx)
-            end if
-            call eqstat(log_temperature_zone, temperature_k, &
+            call eos_get(log_temperature_zone, temperature_k, &
                  log_pressure_zone, pressure_cgs, log_density_zone, &
                  density_cgs, hydrogen_fraction, metal_fraction, beta, &
                  beta_inverse, beta14, ion_fraction, specific_gas_constant, &
@@ -178,7 +170,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  dlnrho_dlnp_dt, adiabatic_gradient_dt, &
                  adiabatic_gradient_dp, specific_heat_cp_dt, &
                  specific_heat_cp_dp, want_derivatives, in_atmosphere, &
-                 saha_state)
+                 saha_state, composition_at_zone=composition(:,cz_edge_idx))
 ! DBG 12/95 GET OPACITY
             call getopac(log_density_zone, log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, opacity, log_opacity, &
@@ -208,20 +200,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
             hydrogen_fraction = composition(1,adjacent_radiative_idx)
             metal_fraction = composition(3,adjacent_radiative_idx)
             current_zone_idx = adjacent_radiative_idx
-            if (use_debye_huckel_correction) then
-               debye_huckel_x = composition(1,adjacent_radiative_idx)
-               debye_huckel_y = composition(2,adjacent_radiative_idx) + &
-                    composition(4,adjacent_radiative_idx)
-               debye_huckel_z_total = composition(3,adjacent_radiative_idx)
-               debye_huckel_z(1) = composition(5,adjacent_radiative_idx) + &
-                    composition(6,adjacent_radiative_idx)
-               debye_huckel_z(2) = composition(7,adjacent_radiative_idx) + &
-                    composition(8,adjacent_radiative_idx)
-               debye_huckel_z(3) = composition(9,adjacent_radiative_idx) + &
-                    composition(10,adjacent_radiative_idx) + &
-                    composition(11,adjacent_radiative_idx)
-            end if
-            call eqstat(log_temperature_zone, temperature_k, &
+            call eos_get(log_temperature_zone, temperature_k, &
                  log_pressure_zone, pressure_cgs, log_density_zone, &
                  density_cgs, hydrogen_fraction, metal_fraction, beta, &
                  beta_inverse, beta14, ion_fraction, specific_gas_constant, &
@@ -231,7 +210,8 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  dlnrho_dlnp_dt, adiabatic_gradient_dt, &
                  adiabatic_gradient_dp, specific_heat_cp_dt, &
                  specific_heat_cp_dp, want_derivatives, in_atmosphere, &
-                 saha_state)
+                 saha_state, &
+                 composition_at_zone=composition(:,adjacent_radiative_idx))
 ! DBG 12/95 GET OPACITY
             call getopac(log_density_zone, log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, opacity, log_opacity, &
@@ -297,20 +277,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                hydrogen_fraction = composition(1,search_zone_idx)
                metal_fraction = composition(3,search_zone_idx)
                current_zone_idx = search_zone_idx
-               if (use_debye_huckel_correction) then
-                  debye_huckel_x = composition(1,search_zone_idx)
-                  debye_huckel_y = composition(2,search_zone_idx) + &
-                       composition(4,search_zone_idx)
-                  debye_huckel_z_total = composition(3,search_zone_idx)
-                  debye_huckel_z(1) = composition(5,search_zone_idx) + &
-                       composition(6,search_zone_idx)
-                  debye_huckel_z(2) = composition(7,search_zone_idx) + &
-                       composition(8,search_zone_idx)
-                  debye_huckel_z(3) = composition(9,search_zone_idx) + &
-                       composition(10,search_zone_idx) + &
-                       composition(11,search_zone_idx)
-               end if
-               call eqstat(log_temperature_zone, temperature_k, &
+               call eos_get(log_temperature_zone, temperature_k, &
                     log_pressure_zone, pressure_cgs, log_density_zone, &
                     density_cgs, hydrogen_fraction, metal_fraction, beta, &
                     beta_inverse, beta14, ion_fraction, &
@@ -321,7 +288,8 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                     dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
                     adiabatic_gradient_dp, specific_heat_cp_dt, &
                     specific_heat_cp_dp, want_derivatives, in_atmosphere, &
-                    saha_state)
+                    saha_state, &
+                    composition_at_zone=composition(:,search_zone_idx))
 ! DBG 12/95 GET OPACITY
                call getopac(log_density_zone, log_temperature_zone, &
                     hydrogen_fraction, metal_fraction, opacity, &
