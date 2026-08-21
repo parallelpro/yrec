@@ -1845,7 +1845,7 @@ end subroutine intpt
 !
 ! Moved here (2026) from nuclear_lib.f90: a generic table-lookup
 ! interpolation/extrapolation routine with no nuclear-physics content
-! -- called by this module's own intpt above, and by eos/mhdpx1.f90;
+! -- called by this module's own intpt above, and by eos/mhd/mhdpx1.f90;
 ! it was mis-homed in nuclear_lib purely because nuclear/liburn.f90
 ! also happens to use it (see ratext below, which shares that
 ! history). Naming/module placement follows GUIDELINES.md's rule that

@@ -912,7 +912,7 @@ module const_lib
 ! former common/scveos/: the SCV EOS tables. tlogx/tablex/tabley/smix/
 ! tablez/tablenv/nptsx/idtt/idp are spelled identically to their
 ! canonical names in the majority of files that declare this block
-! (io/wrtlst.f90/io/putstore.f90/eos/eqscve.f90/eos/eqscvg.f90 used a
+! (io/wrtlst.f90/io/putstore.f90/eos/scv/eqscve.f90/eos/scv/eqscvg.f90 used a
 ! distinct, more-descriptive naming scheme -- table_log10_temperature/
 ! hydrogen_table/helium_table/entropy_of_mixing_table/metal_table/
 ! envelope_table/num_pressure_points/scv_temp_index/scv_pressure_index

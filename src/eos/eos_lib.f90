@@ -9,10 +9,11 @@
 ! interface entry point that replaces the `if (use_mhd_eos) call meqos
 ! else call eqstat` dispatch that used to be duplicated at every call
 ! site, and additionally centralizes the Debye-Huckel composition
-! setup (debye_huckel_x/y/z_total/z(3), read only by eos/eqrelv.f90 on
-! the non-MHD path) that 6 of those call sites also used to duplicate
-! verbatim. eqstat.f90/eqstat2.f90/eqrelv.f90/meqos.f90 are unchanged;
-! this is a pure dispatch/setup wrapper.
+! setup (debye_huckel_x/y/z_total/z(3), read only by eos/yale/eqrelv.f90
+! on the non-MHD path) that 6 of those call sites also used to
+! duplicate verbatim. eos/eqstat.f90 (which also hosts eqstat2, its
+! co-located pair), eos/yale/eqrelv.f90, and eos/mhd/meqos.f90 are all
+! unchanged; this is a pure dispatch/setup wrapper.
 !
 ! composition_at_zone is OPTIONAL: callers that carry full per-species
 ! composition (misc/coefft.f90, io/wrtout.f90, core/starin.f90,

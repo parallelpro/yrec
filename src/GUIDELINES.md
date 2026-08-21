@@ -247,6 +247,59 @@ Stage-0 regression case sets `LMHD`, so the byte-identical verification
 covers the non-MHD path only; the `starin.f90` fix and the 3
 newly-MHD-capable files have no reference output to check against.
 
+**`eos/` reorganized by EOS type (2026-08-21)**: per the YREC public
+release paper, the code offers three user-facing EOS choices --
+**OPAL** (recommended, tabulated, three table vintages), **SCV**
+(Saumon-Chabrier-Van Horn, tabulated, covers the cool/dense phase
+space OPAL's tables don't), and **Yale** (the Prather 1976 Saha solve
+plus a fully-ionized/relativistic regime, analytic, always available)
+-- plus a fourth, undocumented-in-the-paper legacy option, **MHD**
+(Mihalas-Hummer-Dappen, tabulated), which the tie-breaker in
+`eqstat2` never touches (`meqos`/`eos_get` route around it entirely
+via `use_mhd_eos`). `eos/` now has one subfolder per type:
+`eos/opal/` (27 files: `eqbound*`, `esac*`, `gmass*`, `oeqos*`,
+`quad*`, `radsub*`, `readco*`, `rhoofp*`, `t6rinterp*`/`t6rinteos*`),
+`eos/mhd/` (`mhdpx`, `mhdpx1`, `mhdpx2`, `mhdst`, `mhdst1`, `mhdtbl`,
+and `meqos` -- the MHD top-level entry point, grouped here the same
+way `oeqos*` sit inside `opal/` as OPAL's top-level entries),
+`eos/scv/` (`eqscve`, `eqscvg`), and `eos/yale/` (`eqsaha`, `eqrelv`).
+`eos/eos_lib.f90` (the cross-type facade), `eos/eqstat.f90` (see
+below), and `eos/mu.f90` (a mean-molecular-weight helper genuinely
+shared by both MHD and all three OPAL vintages, so it doesn't belong
+to any one subfolder) stay at `eos/` root. The corresponding
+derived-type module state, `state/opal_eos_lib.f90` and
+`state/mhd_eos_lib.f90`, deliberately stayed in `state/` rather than
+moving alongside their routines -- keeps the established convention
+that all per-domain module state lives together in `state/*_lib.f90`,
+by user's explicit choice. Before moving anything, checked for
+cross-family calls (none: MHD/OPAL/SCV/Yale don't call into each
+other, only into `eos/mu.f90` or shared `numerics_lib.f90`/`util/`
+helpers) and fixed every stale `eos/<file>.f90` path reference in
+comments across the repo (`state/atm_table_lib.f90`,
+`state/mhd_eos_lib.f90`, `state/opal_eos_lib.f90`,
+`const/const_lib.f90`, `numerics/numerics_lib.f90`, `eos/eos_lib.f90`
+itself) to point at the new subfolder paths.
+
+**`eqstat`/`eqstat2` co-located in one file, same reorg**: `eqstat` is
+a pure numerical-differentiation wrapper around `eqstat2` and the two
+have always been a matched pair, so `eqstat2.f90`'s subroutine moved
+into `eqstat.f90` (both remain plain external subroutines, not module
+procedures -- callers, `eos_lib.f90`'s `eos_get` for `eqstat` and
+`wind/calcad.f90` calling `eqstat2` directly, needed no changes).
+Co-locating them let gfortran see both signatures in the same
+compilation unit for the first time, which surfaced a genuine (though
+harmless) pre-existing interface violation: `eqstat` was passing its
+own `intent(in) metal_fraction` into `eqstat2`'s `intent(inout)`
+dummy of the same name -- illegal by the Fortran standard, previously
+invisible since the two were separate translation units with no
+shared interface. Traced rather than silently "fixed": the only write
+to `metal_fraction` inside `eqstat2`'s body was a save-then-restore
+pair around the whole routine, and none of the callees it's passed to
+(`opal/oeqos*.f90`, `scv/eqscve.f90`) mutate their own `metal_fraction`
+dummy (all declare it `intent(in)`) -- so the restore was provably a
+no-op. Removed the dead save/restore, changed `eqstat2`'s dummy to
+`intent(in)`; zero behavior change, verified byte-identical.
+
 ## Build mechanics
 
 - Any file introducing `module ... contains` must be added to the

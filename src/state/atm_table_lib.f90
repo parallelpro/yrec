@@ -16,7 +16,7 @@ module atm_table_lib
 
       type, public :: atm_table_state
 ! former common/ccr/: the degenerate-electron (Fermi-Dirac) EOS table
-! used by eos/eqrelv.f90, loaded once at startup by setup/setups.f90.
+! used by eos/yale/eqrelv.f90, loaded once at startup by setup/setups.f90.
            double precision :: fermi_table_x_grid(43), fermi_table_eta(43), &
                 fermi_table_data(5,43,20)
            integer :: fermi_table_x_lookup(261)

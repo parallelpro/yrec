@@ -12,7 +12,7 @@
 ! own module rather than folded into const_lib to keep the (large)
 ! MHD table arrays out of the globally-`use`d const_lib. All members
 ! use byte-identical names/order across their only two declaring files
-! (eos/mhdpx2.f90, eos/mhdst.f90); no DATA statements target any
+! (eos/mhd/mhdpx2.f90, eos/mhd/mhdst.f90); no DATA statements target any
 ! member.
 module mhd_eos_lib
       implicit none

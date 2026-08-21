@@ -19,9 +19,11 @@
 ! DATA-statement defaults (x_grid/eos_var_order/t6_index_lo/
 ! density_index_edge_at_t/density_index_edge for all three years) are
 ! preserved as declaration-time initializers, transcribed verbatim
-! from eos/blkdta000.f90 (1995), eos/esac01.f90 + eos/readcoeos01.f90
-! (2001), eos/esac06.f90 (2006), and eos/readco.f90 (1995's
-! rmpopeos ramp table) -- every repeat-count list's element count was
+! from eos/blkdta000.f90 (1995 -- since deleted, its DATA statements
+! were the only thing it did and became dead once these members moved
+! here), eos/opal/esac01.f90 + eos/opal/readcoeos01.f90 (2001),
+! eos/opal/esac06.f90 (2006), and eos/opal/readco.f90 (1995's rmpopeos
+! ramp table) -- every repeat-count list's element count was
 ! independently verified against its table's nr/nt dimension before
 ! use. The 2001/2006 x_grid arrays are intentionally initialized
 ! WITHOUT a d0 suffix (0.0, 0.2, 0.4, 0.6, 0.8), exactly matching the
