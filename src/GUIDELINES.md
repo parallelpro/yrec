@@ -51,6 +51,24 @@ all via COMMON rather than arguments).
   problem as case 1 without the "it's just a declaration swap" safety
   margin; treat it as a module instead, or handle case-by-case.
 
+**Closure size is a hint, not the test -- always trace the actual data
+flow before picking a treatment.** `common/intpar/` looked like a
+textbook case 2 candidate at first glance: shared by exactly two
+files (`numerics/bsstep.f90`, `atm/envint.f90`), same narrow-closure
+shape as `common/tridi/`. But tracing what each file actually reads
+showed they use *disjoint* members -- `envint.f90` only reads
+`tolerance_fraction`, `bsstep.f90` only reads `max_stage_index`/
+`extrap_order` -- and all three are NAMELIST /physics/ values set once
+at startup. Nothing computes a value in one file for the other to
+consume; they just happen to share a block that a third file
+(`core/parmin.f90`) initializes. That's case 1, not case 2. The tell:
+in a genuine case 2, the *same* member is written by one file and read
+by another *within one call sequence* (`common/tridi/`'s sub_diag
+etc., filled by `ccoeft`/`dcoeft`, read moments later by `ctridi`/
+`tridia`). If each file's actual usage doesn't overlap, or nothing
+about the value changes call to call, it's case 1 regardless of how
+few files share the block.
+
 ## Deciding whether a file's COMMON usage is even real
 
 Before doing either conversion, check whether the block is actually
