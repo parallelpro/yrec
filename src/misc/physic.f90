@@ -22,6 +22,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff)
 
+      use temp_lib
       use envelope_comp_lib
       use scrtch_lib
       use const_lib
@@ -50,11 +51,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 
 
 
-! common/temp/: cp/mean_molecular_weight/qdt are set here. Naming
-! matches getw.f90/hpoint.f90.
-      double precision :: cp(json), mean_molecular_weight(json), qdt(json), &
-           thdif(json), visc(json)
-      common/temp/ cp, mean_molecular_weight, qdt, thdif, visc
 
 ! common/dwmax/: max shear (domega/dr) magnitude; only max_domega_dr
 ! is set here. Naming matches hpoint.f90.
@@ -189,10 +185,10 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               2.0d0*(composition(4,im)/atomic_weight(4) + &
               composition(2,im)/atomic_weight(2)) + 0.5d0*composition(3,im)
          emu2 = 1.0d0/temp_scratch
-         mean_molecular_weight(im) = amu2*emu2/(amu2+emu2)
+         shell_temp%mean_molecular_weight(im) = amu2*emu2/(amu2+emu2)
          shell_diag%so(im) = opacity
-         cp(im) = specific_heat_cp
-         qdt(im) = dlnrho_dlnt
+         shell_temp%cp(im) = specific_heat_cp
+         shell_temp%qdt(im) = dlnrho_dlnt
 ! JVS 10/13 Always want SVEL
          shell_diag%svel(im) = convective_velocity
 !         IF(LC(IM))THEN

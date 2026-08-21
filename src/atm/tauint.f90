@@ -16,6 +16,7 @@
 subroutine tauint(shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
+      use envstruct_lib
       use const_lib
       use envelope_comp_lib
       use light_burn_lib
@@ -36,30 +37,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
       integer :: imax1_placeholder, imax2_placeholder
       logical :: ljvs_placeholder
       common/jtest/imax1_placeholder, imax2_placeholder, ljvs_placeholder
-! Needs access to this common block: grants knowledge of envellope
-! KC 2025-05-30 reordered common block elements
-! JvS 08/25 Updated with new elements
-! common/envstruct/: only env_log10_radius/env_convective_velocity/
-! num_env_points are used here (stitching the envelope on for extra
-! room when the interior search overshoots). Naming is local to this
-! batch.
-      double precision :: env_log10_pressure(json), env_log10_temperature(json), &
-           env_log10_mass(json), env_log10_density(json), env_log10_radius(json), &
-           env_hydrogen_fraction(json), env_metal_fraction(json)
-      logical :: env_convective_flag(json)
-      double precision :: env_gradients(3,json), env_convective_velocity(json), &
-           env_beta(json)
-      double precision :: env_gamma1(json), env_specific_heat_cp(json), &
-           env_ion_fraction(3,json)
-      double precision :: env_opacity(json), env_luminosity(json), &
-           env_dlnrho_dlnt(json)
-      integer :: num_env_points
-      common/envstruct/env_log10_pressure, env_log10_temperature, &
-           env_log10_mass, env_log10_density, env_log10_radius, &
-           env_hydrogen_fraction, env_metal_fraction, env_convective_flag, &
-           env_gradients, env_convective_velocity, env_beta, &
-           env_gamma1, env_specific_heat_cp, env_ion_fraction, &
-           env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
 
       save
 
@@ -145,12 +122,12 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
             end do
             ! One pressure scale height overshoots edge of interior
             ! calculation. Stitch on the envelope for more room
-            do k = 2,num_env_points
-               if (env_log10_radius(k).gt.log10_radius_test .and. env_convective_velocity(k) .gt. 0.0) then
+            do k = 2,env_struct%num_env_points
+               if (env_struct%env_log10_radius(k).gt.log10_radius_test .and. env_struct%env_convective_velocity(k) .gt. 0.0) then
                   interp_fraction = (log10_radius_test-log10_radius(num_points))/ &
-                       (env_log10_radius(k)-log10_radius(num_points))
+                       (env_struct%env_log10_radius(k)-log10_radius(num_points))
                   convective_velocity_bcz = convective_velocity(num_points)+ &
-                       interp_fraction*(env_convective_velocity(k)-convective_velocity(num_points))
+                       interp_fraction*(env_struct%env_convective_velocity(k)-convective_velocity(num_points))
                   goto 85
                endif
             end do

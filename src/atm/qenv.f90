@@ -28,6 +28,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      env_call_count, saha_state)
 
+      use pulse_diag_lib
       use envelope_comp_lib
       use const_lib
       implicit none
@@ -45,25 +46,6 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       integer, intent(inout) :: env_call_count, saha_state
 
       double precision :: ion_fraction(3)
-! common/pulse1/: only lpumod is used here; remaining members are
-! unused placeholders. Naming matches wrtmod.f90.
-      double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &
-           pulse_dlneps_dlnt(json), pulse_dlnkap_dlnrho(json), &
-           pulse_dlnkap_dlnt(json), pulse_specific_heat(json), &
-           pulse_mean_molecular_weight(json), pulse_dlnrho_dlnt(json), &
-           pulse_electron_mean_molecular_weight(json)
-      logical :: lpumod
-      common/pulse1/pulse_dlnrho_dlnp, pulse_dlneps_dlnrho, &
-           pulse_dlneps_dlnt, pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, &
-           pulse_specific_heat, pulse_mean_molecular_weight, &
-           pulse_dlnrho_dlnt, pulse_electron_mean_molecular_weight, lpumod
-! common/pulse2/: values saved here for pulsation/diagnostic output
-! when print_flag/lpumod is set. Naming matches wrtmod.f90 (kept close
-! to the original cryptic names).
-      double precision :: qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, &
-           qrmu, qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
-      common/pulse2/qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, qrmu, &
-           qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
 ! common/envprt/: all used/set here. Naming is local to this batch
 ! (shared with envint.f90's usage of this block).
       double precision :: current_log10_pressure, current_log10_temperature, &
@@ -153,34 +135,34 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       current_ion_fraction(1) = ion_fraction(1)
       current_ion_fraction(2) = ion_fraction(2)
       current_ion_fraction(3) = ion_fraction(3)
-      qqdp = dlnrho_dlnp
-      qqdt = dlnrho_dlnt
-      qqcp = specific_heat_cp
+      pulse_diag%qqdp = dlnrho_dlnp
+      pulse_diag%qqdt = dlnrho_dlnt
+      pulse_diag%qqcp = specific_heat_cp
 
-      if(print_flag .or. lpumod) then
+      if(print_flag .or. pulse_diag%lpumod) then
        current_opacity = opacity
        current_ion_fraction(1) = ion_fraction(1)
        current_ion_fraction(2) = ion_fraction(2)
        current_ion_fraction(3) = ion_fraction(3)
-       qtl = log10_temperature
-       qt = dexp(ln10*log10_temperature)
-       qpl = log10_pressure
-       qp = dexp(ln10*log10_pressure)
-       qdl = log10_density
-       qd = dexp(ln10*log10_density)
-       qo = opacity
-       qol = log10_opacity
-       qfs = dexp(ln10*(log10_mass-env_comp%stotal))
-       qqdp = dlnrho_dlnp
-       qqed = 0.0d0
-       qqod = dlnkap_dlnrho
-       qqot = dlnkap_dlnt
-       qdel = actual_gradient
-       qqdt = dlnrho_dlnt
-       qdela = adiabatic_gradient
-       qqcp = specific_heat_cp
-       qrmu = specific_gas_constant
-       qemu = electron_mean_weight_inverse
+       pulse_diag%qtl = log10_temperature
+       pulse_diag%qt = dexp(ln10*log10_temperature)
+       pulse_diag%qpl = log10_pressure
+       pulse_diag%qp = dexp(ln10*log10_pressure)
+       pulse_diag%qdl = log10_density
+       pulse_diag%qd = dexp(ln10*log10_density)
+       pulse_diag%qo = opacity
+       pulse_diag%qol = log10_opacity
+       pulse_diag%qfs = dexp(ln10*(log10_mass-env_comp%stotal))
+       pulse_diag%qqdp = dlnrho_dlnp
+       pulse_diag%qqed = 0.0d0
+       pulse_diag%qqod = dlnkap_dlnrho
+       pulse_diag%qqot = dlnkap_dlnt
+       pulse_diag%qdel = actual_gradient
+       pulse_diag%qqdt = dlnrho_dlnt
+       pulse_diag%qdela = adiabatic_gradient
+       pulse_diag%qqcp = specific_heat_cp
+       pulse_diag%qrmu = specific_gas_constant
+       pulse_diag%qemu = electron_mean_weight_inverse
       endif
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.

@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use temp_lib
       use mdphy_lib
       use light_burn_lib
       use turnover_lib
@@ -127,11 +128,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
 
-! common/temp/: only mean_molecular_weight (HAMU) is used here. Naming
-! matches hpoint.f90.
-      double precision :: cp(json), mean_molecular_weight(json), qdt(json), &
-           thdif(json), visc(json)
-      common/temp/ cp, mean_molecular_weight, qdt, thdif, visc
 
 
 
@@ -482,7 +478,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
             do 80 zone_index = 1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum_saved(zone_index)
-               mix_phys%amum(zone_index) = mix_phys%amum(zone_index) - fx*(mean_molecular_weight(zone_index)-old_amu(zone_index))
+               mix_phys%amum(zone_index) = mix_phys%amum(zone_index) - fx*(shell_temp%mean_molecular_weight(zone_index)-old_amu(zone_index))
                do 70 species_index = 1,num_species_tracked
                   composition(species_index,zone_index) = prev_model%old_composition(species_index,zone_index)
    70          continue

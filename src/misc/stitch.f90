@@ -30,6 +30,8 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
 
+      use pulse_diag_lib
+      use envstruct_lib
       use turnover_lib
       use scrtch_lib
       use luout_lib
@@ -69,25 +71,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
 
 
-! common/envstruct/: all used/set here. Naming matches envint.f90.
-      double precision :: env_log10_pressure(json), &
-           env_log10_temperature(json), env_log10_mass(json), &
-           env_log10_density(json), env_log10_radius(json), &
-           env_hydrogen_fraction(json), env_metal_fraction(json)
-      logical :: env_convective_flag(json)
-      double precision :: env_gradients(3,json), &
-           env_convective_velocity(json), env_beta(json)
-      double precision :: env_gamma1(json), env_specific_heat_cp(json), &
-           env_ion_fraction(3,json)
-      double precision :: env_opacity(json), env_luminosity(json), &
-           env_dlnrho_dlnt(json)
-      integer :: num_env_points
-      common/envstruct/ env_log10_pressure, env_log10_temperature, &
-           env_log10_mass, env_log10_density, env_log10_radius, &
-           env_hydrogen_fraction, env_metal_fraction, env_convective_flag, &
-           env_gradients, env_convective_velocity, env_beta, env_gamma1, &
-           env_specific_heat_cp, env_ion_fraction, env_opacity, &
-           env_luminosity, env_dlnrho_dlnt, num_env_points
 
 ! common/atmstruct/: all used here. Naming matches envint.f90.
       double precision :: atmo_log10_pressure(json), &
@@ -104,18 +87,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
            atmo_specific_heat_cp, num_atm_points
 
 
-! common/pulse1/: only pulse_dlnrho_dlnt (originally PQDT) is used
-! here. Naming matches coefft.f90/envint.f90/qatm.f90/qenv.f90/wrtmod.f90.
-      double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &
-           pulse_dlneps_dlnt(json), pulse_dlnkap_dlnrho(json), &
-           pulse_dlnkap_dlnt(json), pulse_specific_heat(json), &
-           pulse_mean_molecular_weight(json), pulse_dlnrho_dlnt(json), &
-           pulse_electron_mean_molecular_weight(json)
-      logical :: lpumod
-      common/pulse1/ pulse_dlnrho_dlnp, pulse_dlneps_dlnrho, &
-           pulse_dlneps_dlnt, pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, &
-           pulse_specific_heat, pulse_mean_molecular_weight, &
-           pulse_dlnrho_dlnt, pulse_electron_mean_molecular_weight, lpumod
 
 
 ! common/roten/: rotational_energy_term (DEROT), used here. Naming
@@ -178,7 +149,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
                  shell_diag%del_grad(3,i),shell_diag%svel(i),adiabatic_index_gamma1(i), &
                  shell_diag%sfxion(1,i),shell_diag%sfxion(2,i),shell_diag%sfxion(3,i), &
                  shell_diag%sbeta(i),shell_diag%seta(i),(shell_diag%seg(k,i),k=1,5),shell_diag%sesum(i),shell_diag%seg(6,i),shell_diag%seg(7,i), &
-                 shell_diag%scp(i),pulse_dlnrho_dlnt(i)
+                 shell_diag%scp(i),pulse_diag%pulse_dlnrho_dlnt(i)
 ! write out additional rotation info if rotation is on
             if(rotation_active)then
               fm = dexp(ln10*log_mass(i))
@@ -244,25 +215,25 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
          dum2,dum3,dum4,lpulpt)
 
 ! DEFINE SOME ARRAYS WE NEED
-      do i=1,num_env_points
-          envs1(i) = dexp(ln10*(env_log10_mass(i)+log_total_mass))
+      do i=1,env_struct%num_env_points
+          envs1(i) = dexp(ln10*(env_struct%env_log10_mass(i)+log_total_mass))
       end do
-         do i=m+1,m+num_env_points
-            sg = dexp(ln10*(cgl - 2.0d0*env_log10_radius(i-m)))*envs1(i-m)
+         do i=m+1,m+env_struct%num_env_points
+            sg = dexp(ln10*(cgl - 2.0d0*env_struct%env_log10_radius(i-m)))*envs1(i-m)
 ! write out the basic info. Omega and abundances take value of last interior point.
-            write(istor,62,advance='no') model,i,env_log10_mass(i-m)+log_total_mass, &
-            env_log10_radius(i-m),env_luminosity(i-m), &
-            env_log10_pressure(i-m),env_log10_temperature(i-m), &
-            env_log10_density(i-m),omega(m),env_convective_flag(i-m), &
+            write(istor,62,advance='no') model,i,env_struct%env_log10_mass(i-m)+log_total_mass, &
+            env_struct%env_log10_radius(i-m),env_struct%env_luminosity(i-m), &
+            env_struct%env_log10_pressure(i-m),env_struct%env_log10_temperature(i-m), &
+            env_struct%env_log10_density(i-m),omega(m),env_struct%env_convective_flag(i-m), &
             .false.,.true.,.false., &
             (composition(j,m),j=1,15)
 ! write out additional physics
-               write(istor,63,advance='no') env_opacity(i-m),sg,env_gradients(1,i-m), &
-                 env_gradients(2,i-m), &
-                 env_gradients(3,i-m),env_convective_velocity(i-m), &
-                 env_gamma1(i-m),env_ion_fraction(1,i-m),env_ion_fraction(2,i-m), &
-                 env_ion_fraction(3,i-m),env_beta(i-m),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, &
-                 env_specific_heat_cp(i-m),env_dlnrho_dlnt(i-m)
+               write(istor,63,advance='no') env_struct%env_opacity(i-m),sg,env_struct%env_gradients(1,i-m), &
+                 env_struct%env_gradients(2,i-m), &
+                 env_struct%env_gradients(3,i-m),env_struct%env_convective_velocity(i-m), &
+                 env_struct%env_gamma1(i-m),env_struct%env_ion_fraction(1,i-m),env_struct%env_ion_fraction(2,i-m), &
+                 env_struct%env_ion_fraction(3,i-m),env_struct%env_beta(i-m),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, &
+                 env_struct%env_specific_heat_cp(i-m),env_struct%env_dlnrho_dlnt(i-m)
 ! zero out rotation columns for envelope
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
          end do
@@ -275,9 +246,9 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
        if(lstatm)then
             do i=num_atm_points,1,-1
 ! write out the basic info. Omega and abundances take value of last interior point.
-            rad = dlog10(dexp(ln10*env_log10_radius(num_env_points)) + &
+            rad = dlog10(dexp(ln10*env_struct%env_log10_radius(env_struct%num_env_points)) + &
                  atmo_delta_depth(i))
-            write(istor,62,advance='no') model,num_atm_points-i+m+num_env_points, &
+            write(istor,62,advance='no') model,num_atm_points-i+m+env_struct%num_env_points, &
                  log_total_mass,rad,b, &
             atmo_log10_pressure(i),atmo_log10_temperature(i), &
             atmo_log10_density(i),omega(m), &

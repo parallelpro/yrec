@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use temp_lib
       use mdphy_lib
       use light_burn_lib
       use turnover_lib
@@ -119,11 +120,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
            old_del_radiative_mix, old_eps
 
 
-! common/temp/: cp/mean_molecular_weight/qdt/thdif/visc are used here.
-! Naming matches hpoint.f90.
-      double precision :: cp(json), mean_molecular_weight(json), qdt(json), &
-           thdif(json), visc(json)
-      common/temp/ cp, mean_molecular_weight, qdt, thdif, visc
 
 ! common/dwmax/: not used in this file. Naming matches hpoint.f90.
       double precision :: max_domega_dr(json), max_domega_dr_old(json)
@@ -239,12 +235,12 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
          mix_phys%del_radiative_mix(j) = old_del_radiative_mix(j) + &
               time_fraction*(shell_diag%del_grad(1,j) - old_del_radiative_mix(j))
          mix_phys%esumm(j) = old_esum(j) + time_fraction*(shell_diag%sesum(j) - old_esum(j))
-         mix_phys%viscm(j) = old_visc(j) + time_fraction*(visc(j) - old_visc(j))
-         mix_phys%thdifm(j) = old_thdif(j) + time_fraction*(thdif(j) - old_thdif(j))
-         mix_phys%cpm(j) = old_cp(j) + time_fraction*(cp(j) - old_cp(j))
-         mix_phys%qdtm(j) = old_qdt(j) + time_fraction*(qdt(j) - old_qdt(j))
+         mix_phys%viscm(j) = old_visc(j) + time_fraction*(shell_temp%visc(j) - old_visc(j))
+         mix_phys%thdifm(j) = old_thdif(j) + time_fraction*(shell_temp%thdif(j) - old_thdif(j))
+         mix_phys%cpm(j) = old_cp(j) + time_fraction*(shell_temp%cp(j) - old_cp(j))
+         mix_phys%qdtm(j) = old_qdt(j) + time_fraction*(shell_temp%qdt(j) - old_qdt(j))
          mix_phys%om(j) = old_om(j) + time_fraction*(shell_diag%so(j) - old_om(j))
-         mix_phys%amum(j) = mix_phys%amum(j) + step_fraction_ratio*(mean_molecular_weight(j) - old_amu(j))
+         mix_phys%amum(j) = mix_phys%amum(j) + step_fraction_ratio*(shell_temp%mean_molecular_weight(j) - old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
          total_epsilon = shell_diag%sesum(j)+shell_diag%seg(6,j)+shell_diag%seg(7,j)
          mix_phys%epsm(j) = old_eps(j)+time_fraction*(total_epsilon-old_eps(j))

@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use envstruct_lib
       use envelope_comp_lib
       use scrtch_lib
       use luout_lib
@@ -114,24 +115,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
            ijvs_placeholder, ijent_placeholder, ijdel_placeholder, &
            acoustic_depth_output
 
-! common/envstruct/: all set/read here. Naming matches envint.f90.
-      double precision :: env_log10_pressure(json), env_log10_temperature(json), &
-           env_log10_mass(json), env_log10_density(json), env_log10_radius(json), &
-           env_hydrogen_fraction(json), env_metal_fraction(json)
-      logical :: env_convective_flag(json)
-      double precision :: env_gradients(3,json), env_convective_velocity(json), &
-           env_beta(json)
-      double precision :: env_gamma1(json), env_specific_heat_cp(json), &
-           env_ion_fraction(3,json)
-      double precision :: env_opacity(json), env_luminosity(json), &
-           env_dlnrho_dlnt(json)
-      integer :: num_env_points
-      common/envstruct/ env_log10_pressure, env_log10_temperature, &
-           env_log10_mass, env_log10_density, env_log10_radius, &
-           env_hydrogen_fraction, env_metal_fraction, env_convective_flag, &
-           env_gradients, env_convective_velocity, env_beta, &
-           env_gamma1, env_specific_heat_cp, env_ion_fraction, &
-           env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
 
 
 
@@ -318,11 +301,11 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
             star_hydrogen_fraction(zone_idx)=composition(1,zone_idx)
             star_metal_fraction(zone_idx)=composition(3,num_shells)
 34      continue
-      do 35, zone_idx=1,num_env_points-1
-            star_radius_cm(num_shells+zone_idx)=dexp(ln10*env_log10_radius(zone_idx+1))
-            star_temperature_1e6k(num_shells+zone_idx)=dexp(ln10*env_log10_temperature(zone_idx+1))/1.0d6
-            star_density_cgs(num_shells+zone_idx)=dexp(ln10*env_log10_density(zone_idx+1))
-            star_pressure_cgs(num_shells+zone_idx)=dexp(ln10*env_log10_pressure(zone_idx+1))
+      do 35, zone_idx=1,env_struct%num_env_points-1
+            star_radius_cm(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_radius(zone_idx+1))
+            star_temperature_1e6k(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_temperature(zone_idx+1))/1.0d6
+            star_density_cgs(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_density(zone_idx+1))
+            star_pressure_cgs(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_pressure(zone_idx+1))
             star_hydrogen_fraction(num_shells+zone_idx)=composition(1,num_shells)
             star_metal_fraction(num_shells+zone_idx)=composition(3,num_shells)
 35      continue
@@ -333,7 +316,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       if (use_opal2006_eos) then
             eos_interp_order=9
             eos_rad_flag=1
-            do 36, zone_idx=1,num_shells+num_env_points-1
+            do 36, zone_idx=1,num_shells+env_struct%num_env_points-1
                   star_x_local=star_hydrogen_fraction(zone_idx)
                   star_t_local=star_temperature_1e6k(zone_idx)
                   star_d_local=star_density_cgs(zone_idx)
@@ -349,7 +332,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       endif
 ! For SCV EOS: (when OPAL06 is turned off, SCV on for backup, Yale if SCV is off)
       if ( .not. use_opal2006_eos) then
-            do 41, zone_idx=1,num_shells+num_env_points-1
+            do 41, zone_idx=1,num_shells+env_struct%num_env_points-1
                   star_x_local=star_hydrogen_fraction(zone_idx)
                   star_t_local=star_temperature_1e6k(zone_idx)*1.0d6
                   star_d_local=star_density_cgs(zone_idx)
@@ -387,8 +370,8 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 ! Integrate for the full acoustic depth for normalization
-      integration_count=num_env_points-1+num_shells-1
-      remainder=mod((num_env_points-1+num_shells-1),4)
+      integration_count=env_struct%num_env_points-1+num_shells-1
+      remainder=mod((env_struct%num_env_points-1+num_shells-1),4)
       if (remainder.ne.0) then
             grid_count=integration_count+4-remainder+1
       else
@@ -549,12 +532,12 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 ! Save all vectors of interest when the end of a kind card is reached.
       if(calcad_output_active)then
 
-            write(unit=calcad_output_unit,fmt=1506) num_env_points,num_shells,cz_zone_index
+            write(unit=calcad_output_unit,fmt=1506) env_struct%num_env_points,num_shells,cz_zone_index
 1506            format(1X, 'Number of points in envelope:',I5,2X, &
      'Number of points in interior:',I5,2X,'Index near Rcz:' &
      ,I5,2X)
 
-                  do 1505 zone_idx=1,num_shells+num_env_points-1
+                  do 1505 zone_idx=1,num_shells+env_struct%num_env_points-1
                         if (zone_idx .le. integration_count-cz_zone_index+1) then
 !                         WRITE(UNIT=ICLCD,FMT=1504),DAGE, STARR(I), STARC(I),
                         write(unit=calcad_output_unit,fmt=1504) age_gyr, &

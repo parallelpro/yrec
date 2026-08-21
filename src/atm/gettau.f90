@@ -26,6 +26,7 @@
 subroutine gettau(composition, log_radius, log_pressure, log_density, &
      enclosed_mass, log_temperature, fp, ft, log_teff, log_total_mass, &
      log_luminosity_lsun, num_zones, convective_flag, radius_at_bcz)
+      use envstruct_lib
       use turnover_lib
       use scrtch_lib
       use luout_lib
@@ -56,27 +57,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 
 
 
-! common/envstruct/: env_log10_radius/env_log10_pressure/
-! env_log10_density/env_log10_mass/env_log10_temperature/
-! env_convective_velocity/env_gradients/num_env_points are used here.
-! Naming matches envint.f90.
-      double precision :: env_log10_pressure(json), env_log10_temperature(json), &
-           env_log10_mass(json), env_log10_density(json), env_log10_radius(json), &
-           env_hydrogen_fraction(json), env_metal_fraction(json)
-      logical :: env_convective_flag(json)
-      double precision :: env_gradients(3,json), env_convective_velocity(json), &
-           env_beta(json)
-      double precision :: env_gamma1(json), env_specific_heat_cp(json), &
-           env_ion_fraction(3,json)
-      double precision :: env_opacity(json), env_luminosity(json), &
-           env_dlnrho_dlnt(json)
-      integer :: num_env_points
-      common/envstruct/ env_log10_pressure, env_log10_temperature, &
-           env_log10_mass, env_log10_density, env_log10_radius, &
-           env_hydrogen_fraction, env_metal_fraction, env_convective_flag, &
-           env_gradients, env_convective_velocity, env_beta, &
-           env_gamma1, env_specific_heat_cp, env_ion_fraction, &
-           env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
 
 
       double precision :: combined_composition(15,json)
@@ -202,25 +182,25 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! IF CHKPRS < 1, THEN STITCH THE ENVELOPE ONTO THE INTERIOR.
 ! ENVELOPE WAS JUST INTEGRATED IN ENVINT ABOVE, SO USE THAT RUN.
 ! THIS CODE BORROWED FROM STITCH.F.
-         combined_num_points = num_zones+num_env_points-1
+         combined_num_points = num_zones+env_struct%num_env_points-1
          do zone_index=num_zones+1,combined_num_points
             do species_index=1,15
                combined_composition(species_index,zone_index) = &
                     composition(species_index,num_zones+1)
             enddo
-            combined_radius(zone_index) = env_log10_radius(zone_index-num_zones+1)
-            combined_pressure(zone_index) = env_log10_pressure(zone_index-num_zones+1)
-            combined_density(zone_index) = env_log10_density(zone_index-num_zones+1)
+            combined_radius(zone_index) = env_struct%env_log10_radius(zone_index-num_zones+1)
+            combined_pressure(zone_index) = env_struct%env_log10_pressure(zone_index-num_zones+1)
+            combined_density(zone_index) = env_struct%env_log10_density(zone_index-num_zones+1)
             combined_mass(zone_index) = exp(ln10*(log_total_mass+ &
-                 env_log10_mass(zone_index-num_zones+1)))
+                 env_struct%env_log10_mass(zone_index-num_zones+1)))
             combined_gravity(zone_index) = combined_mass(zone_index)* &
                  exp(ln10*(cgl-2.0D0*combined_radius(zone_index)))
-            combined_temperature(zone_index) = env_log10_temperature(zone_index-num_zones+1)
+            combined_temperature(zone_index) = env_struct%env_log10_temperature(zone_index-num_zones+1)
 
-            combined_velocity(zone_index) = env_convective_velocity(zone_index-num_zones+1)
-            combined_grad1(zone_index) = env_gradients(1,zone_index-num_zones+1)
-            combined_grad2(zone_index) = env_gradients(2,zone_index-num_zones+1)
-            combined_convective_flag(zone_index) = env_convective_flag(zone_index-num_zones+1)
+            combined_velocity(zone_index) = env_struct%env_convective_velocity(zone_index-num_zones+1)
+            combined_grad1(zone_index) = env_struct%env_gradients(1,zone_index-num_zones+1)
+            combined_grad2(zone_index) = env_struct%env_gradients(2,zone_index-num_zones+1)
+            combined_convective_flag(zone_index) = env_struct%env_convective_flag(zone_index-num_zones+1)
          enddo
       endif
 ! CALL TAUINT

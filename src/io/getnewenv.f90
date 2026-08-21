@@ -18,6 +18,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag)
+      use envstruct_lib
       use envelope_comp_lib
       use const_lib
       implicit none
@@ -70,31 +71,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
 
-! STORED CONTENTS OF THE ENVELOPE INTEGRATION.
-! KC 2025-05-30 reordered common block elements
-! JvS 08/25 Updated with new elements
-! common/envstruct/: env_log10_radius/env_log10_pressure/
-! env_log10_density/env_log10_mass/env_log10_temperature/
-! env_hydrogen_fraction/env_metal_fraction/env_convective_flag/
-! env_convective_velocity/env_gradients/num_env_points are used here.
-! Naming matches envint.f90.
-      double precision :: env_log10_pressure(json), env_log10_temperature(json), &
-           env_log10_mass(json), env_log10_density(json), env_log10_radius(json), &
-           env_hydrogen_fraction(json), env_metal_fraction(json)
-      logical :: env_convective_flag(json)
-      double precision :: env_gradients(3,json), env_convective_velocity(json), &
-           env_beta(json)
-      double precision :: env_gamma1(json), env_specific_heat_cp(json), &
-           env_ion_fraction(3,json)
-      double precision :: env_opacity(json), env_luminosity(json), &
-           env_dlnrho_dlnt(json)
-      integer :: num_env_points
-      common/envstruct/ env_log10_pressure, env_log10_temperature, &
-           env_log10_mass, env_log10_density, env_log10_radius, &
-           env_hydrogen_fraction, env_metal_fraction, env_convective_flag, &
-           env_gradients, env_convective_velocity, env_beta, &
-           env_gamma1, env_specific_heat_cp, env_ion_fraction, &
-           env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
 
       double precision :: envint_dummy1(4), envint_dummy2(3), &
            envint_dummy3(3), envint_dummy4(3)
@@ -219,53 +195,53 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       env_step_begin = env_begin_saved
       env_comp%senv = target_envelope_mass
 ! STOP IF THE DESIRED NUMBER OF POINTS EXCEEDS THE ARRAY DIMENSIONS
-      if(num_zones+num_env_points.ge.json) stop 9999
+      if(num_zones+env_struct%num_env_points.ge.json) stop 9999
 ! THE FIRST POINT IN THE ENVELOPE SOLUTION IS THE SET OF PROPERTIES
 ! OBTAINED AT A MASS EQUAL TO THE LAST INTERIOR POINT.  USE THIS TO
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
 ! ADJUST THE (P, RHO, T, R) POINTS TO BE CONSISTENT
 ! WITH THE LAST MODEL POINT AND SHIFT ALL OF THE POINTS DOWN BY ONE.
-      pressure_offset = log_pressure(num_zones) - env_log10_pressure(1)
-      density_offset = log_density(num_zones) - env_log10_density(1)
-      temperature_offset = log_temperature(num_zones) - env_log10_temperature(1)
-      radius_offset = log_radius(num_zones) - env_log10_radius(1)
+      pressure_offset = log_pressure(num_zones) - env_struct%env_log10_pressure(1)
+      density_offset = log_density(num_zones) - env_struct%env_log10_density(1)
+      temperature_offset = log_temperature(num_zones) - env_struct%env_log10_temperature(1)
+      radius_offset = log_radius(num_zones) - env_struct%env_log10_radius(1)
       mass_test = log_mass(num_zones)
       num_new_env_points = 0
-      do zone_index = 1,num_env_points - 1
-         mass_test2 = env_comp%stotal+env_log10_mass(zone_index+1)
+      do zone_index = 1,env_struct%num_env_points - 1
+         mass_test2 = env_comp%stotal+env_struct%env_log10_mass(zone_index+1)
          if(mass_test2-mass_test.gt.1.0D-10)then
-            env_log10_density(zone_index) = env_log10_density(zone_index+1)+density_offset
-            env_log10_pressure(zone_index) = env_log10_pressure(zone_index+1)+pressure_offset
-            env_log10_radius(zone_index) = env_log10_radius(zone_index+1)+radius_offset
-            env_log10_mass(zone_index) = env_log10_mass(zone_index+1)
-            env_log10_temperature(zone_index) = env_log10_temperature(zone_index+1)+temperature_offset
-            env_hydrogen_fraction(zone_index) = env_hydrogen_fraction(zone_index+1)
-            env_metal_fraction(zone_index) = env_metal_fraction(zone_index+1)
+            env_struct%env_log10_density(zone_index) = env_struct%env_log10_density(zone_index+1)+density_offset
+            env_struct%env_log10_pressure(zone_index) = env_struct%env_log10_pressure(zone_index+1)+pressure_offset
+            env_struct%env_log10_radius(zone_index) = env_struct%env_log10_radius(zone_index+1)+radius_offset
+            env_struct%env_log10_mass(zone_index) = env_struct%env_log10_mass(zone_index+1)
+            env_struct%env_log10_temperature(zone_index) = env_struct%env_log10_temperature(zone_index+1)+temperature_offset
+            env_struct%env_hydrogen_fraction(zone_index) = env_struct%env_hydrogen_fraction(zone_index+1)
+            env_struct%env_metal_fraction(zone_index) = env_struct%env_metal_fraction(zone_index+1)
             mass_test = mass_test2
             num_new_env_points = num_new_env_points + 1
          endif
       end do
-      num_env_points = num_new_env_points
+      env_struct%num_env_points = num_new_env_points
 ! ASSIGN NEW POINTS
-      do zone_index = num_zones+1,num_zones+num_env_points
+      do zone_index = num_zones+1,num_zones+env_struct%num_env_points
          species_index = zone_index-num_zones
 ! LUMINOSITY ASSUMED CONSTANT
          log_luminosity(zone_index) = log_luminosity(num_zones)
 ! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
-         if(env_log10_mass(species_index).lt.env_comp%senv)then
-            log_density(zone_index) = env_log10_density(species_index)
-            log_pressure(zone_index) = env_log10_pressure(species_index)
-            log_radius(zone_index) = env_log10_radius(species_index)
-            log_mass(zone_index) = env_log10_mass(species_index) + env_comp%stotal
-            log_temperature(zone_index) = env_log10_temperature(species_index)
-            composition(1,zone_index) = env_hydrogen_fraction(species_index)
-            composition(3,zone_index) = env_metal_fraction(species_index)
+         if(env_struct%env_log10_mass(species_index).lt.env_comp%senv)then
+            log_density(zone_index) = env_struct%env_log10_density(species_index)
+            log_pressure(zone_index) = env_struct%env_log10_pressure(species_index)
+            log_radius(zone_index) = env_struct%env_log10_radius(species_index)
+            log_mass(zone_index) = env_struct%env_log10_mass(species_index) + env_comp%stotal
+            log_temperature(zone_index) = env_struct%env_log10_temperature(species_index)
+            composition(1,zone_index) = env_struct%env_hydrogen_fraction(species_index)
+            composition(3,zone_index) = env_struct%env_metal_fraction(species_index)
             do k = 4,species_end_index
                composition(k,zone_index) = composition(k,num_zones)
             end do
             composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
                  composition(3,zone_index)-composition(4,zone_index)
-            convective_flag(zone_index) = env_convective_flag(species_index)
+            convective_flag(zone_index) = env_struct%env_convective_flag(species_index)
          else
 ! POINTS BEYOND THIS ARE ABOVE THE NEW DESIRED FITTING POINT;
 ! INTERPOLATE LINEARLY, SET NEW NUMBER OF TOTAL POINTS, AND EXIT
@@ -273,60 +249,60 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 ! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
                mass_interp_x0 = log_mass(num_zones)
                mass_interp_x1 = env_comp%stotal + env_comp%senv
-               mass_interp_x2 = env_log10_mass(species_index) + env_comp%stotal
+               mass_interp_x2 = env_struct%env_log10_mass(species_index) + env_comp%stotal
                if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) stop 9998
                interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
                     (mass_interp_x2-mass_interp_x0)
                log_density(zone_index) = log_density(num_zones)+interp_fraction* &
-                    (env_log10_density(species_index)-log_density(num_zones))
+                    (env_struct%env_log10_density(species_index)-log_density(num_zones))
                log_pressure(zone_index) = log_pressure(num_zones)+interp_fraction* &
-                    (env_log10_pressure(species_index)-log_pressure(num_zones))
+                    (env_struct%env_log10_pressure(species_index)-log_pressure(num_zones))
                log_radius(zone_index) = log_radius(num_zones)+interp_fraction* &
-                    (env_log10_radius(species_index)-log_radius(num_zones))
+                    (env_struct%env_log10_radius(species_index)-log_radius(num_zones))
                log_mass(zone_index) = mass_interp_x1
                log_temperature(zone_index) = log_temperature(num_zones)+interp_fraction* &
-                    (env_log10_temperature(species_index)-log_temperature(num_zones))
+                    (env_struct%env_log10_temperature(species_index)-log_temperature(num_zones))
                composition(1,zone_index) = composition(1,num_zones)+interp_fraction* &
-                    (composition(1,num_zones)-env_hydrogen_fraction(species_index))
+                    (composition(1,num_zones)-env_struct%env_hydrogen_fraction(species_index))
                composition(3,zone_index) = composition(3,num_zones)+interp_fraction* &
-                    (composition(3,num_zones)-env_metal_fraction(species_index))
+                    (composition(3,num_zones)-env_struct%env_metal_fraction(species_index))
                do k = 4,species_end_index
                   composition(k,zone_index) = composition(k,num_zones)
                end do
                composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
                     composition(3,zone_index)-composition(4,zone_index)
-               if(env_convective_flag(species_index).or.convective_flag(num_zones))then
+               if(env_struct%env_convective_flag(species_index).or.convective_flag(num_zones))then
                   convective_flag(zone_index) = .true.
                else
                   convective_flag(zone_index) = .false.
                endif
             else
 ! INTERPOLATE BETWEEN THE LAST 2 ENVELOPE POINTS
-               mass_interp_x0 = env_log10_mass(species_index-1) + env_comp%stotal
+               mass_interp_x0 = env_struct%env_log10_mass(species_index-1) + env_comp%stotal
                mass_interp_x1 = env_comp%stotal + env_comp%senv
-               mass_interp_x2 = env_log10_mass(species_index) + env_comp%stotal
+               mass_interp_x2 = env_struct%env_log10_mass(species_index) + env_comp%stotal
                if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) stop 9998
                interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
                     (mass_interp_x2-mass_interp_x0)
-               log_density(zone_index) = env_log10_density(species_index-1)+interp_fraction* &
-                    (env_log10_density(species_index)-env_log10_density(species_index-1))
-               log_pressure(zone_index) = env_log10_pressure(species_index-1)+interp_fraction* &
-                    (env_log10_pressure(species_index)-env_log10_pressure(species_index-1))
-               log_radius(zone_index) = env_log10_radius(species_index-1)+interp_fraction* &
-                    (env_log10_radius(species_index)-env_log10_radius(species_index-1))
+               log_density(zone_index) = env_struct%env_log10_density(species_index-1)+interp_fraction* &
+                    (env_struct%env_log10_density(species_index)-env_struct%env_log10_density(species_index-1))
+               log_pressure(zone_index) = env_struct%env_log10_pressure(species_index-1)+interp_fraction* &
+                    (env_struct%env_log10_pressure(species_index)-env_struct%env_log10_pressure(species_index-1))
+               log_radius(zone_index) = env_struct%env_log10_radius(species_index-1)+interp_fraction* &
+                    (env_struct%env_log10_radius(species_index)-env_struct%env_log10_radius(species_index-1))
                log_mass(zone_index) = mass_interp_x1
-               log_temperature(zone_index) = env_log10_temperature(species_index-1)+interp_fraction* &
-                    (env_log10_temperature(species_index)-env_log10_temperature(species_index-1))
-               composition(1,zone_index) = env_hydrogen_fraction(species_index-1)+interp_fraction* &
-                    (env_hydrogen_fraction(species_index)-env_hydrogen_fraction(species_index-1))
-               composition(3,zone_index) = env_metal_fraction(species_index-1)+interp_fraction* &
-                    (env_metal_fraction(species_index)-env_metal_fraction(species_index-1))
+               log_temperature(zone_index) = env_struct%env_log10_temperature(species_index-1)+interp_fraction* &
+                    (env_struct%env_log10_temperature(species_index)-env_struct%env_log10_temperature(species_index-1))
+               composition(1,zone_index) = env_struct%env_hydrogen_fraction(species_index-1)+interp_fraction* &
+                    (env_struct%env_hydrogen_fraction(species_index)-env_struct%env_hydrogen_fraction(species_index-1))
+               composition(3,zone_index) = env_struct%env_metal_fraction(species_index-1)+interp_fraction* &
+                    (env_struct%env_metal_fraction(species_index)-env_struct%env_metal_fraction(species_index-1))
                do k = 4,species_end_index
                   composition(k,zone_index) = composition(k,num_zones)
                end do
                composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
                     composition(3,zone_index)-composition(4,zone_index)
-               if(env_convective_flag(species_index).or.env_convective_flag(species_index-1))then
+               if(env_struct%env_convective_flag(species_index).or.env_struct%env_convective_flag(species_index-1))then
                   convective_flag(zone_index) = .true.
                else
                   convective_flag(zone_index) = .false.
@@ -337,7 +313,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
          endif
       end do
 ! ASSIGN THE BOUNDARY AT THE PHOTOSPHERE FOR ENVELOPE MASS BELOW 1.0D-12.
-      num_zones = num_zones + num_env_points
+      num_zones = num_zones + env_struct%num_env_points
  587  continue
 ! ADD THE UNLOGGED MASSES OF THE NEW SHELLS (HS1) AND COMPUTE THE
 ! MASS CONTENTS OF THE NEW SHELLS (HS2).

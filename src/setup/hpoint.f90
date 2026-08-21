@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use temp_lib
       use envelope_comp_lib
       use light_burn_lib
       use scrtch_lib
@@ -131,12 +132,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 
 
 
-! common/temp/: current-timestep counterparts of common/oldphy/'s
-! old_cp/old_amu/old_qdt/old_thdif/old_visc, all used here. Not
-! referenced in any already-converted file.
-      double precision :: cp(json), mean_molecular_weight(json), qdt(json), &
-           thdif(json), visc(json)
-      common/temp/ cp, mean_molecular_weight, qdt, thdif, visc
 
 ! 7/91 entropy term common block added.
 ! common/entrop/: entropy-correction terms for T/P/L/R, all used here
@@ -954,13 +949,13 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
             old_del_radiative_mix(zone_index) = shell_diag%del_grad(1,zone_index)
             old_delm(zone_index) = shell_diag%del_grad(2,zone_index)
             old_del_adiabatic_mix(zone_index) = shell_diag%del_grad(3,zone_index)
-            old_amu(zone_index) = mean_molecular_weight(zone_index)
+            old_amu(zone_index) = shell_temp%mean_molecular_weight(zone_index)
             old_om(zone_index) = shell_diag%so(zone_index)
-            old_cp(zone_index) = cp(zone_index)
-            old_qdt(zone_index) = qdt(zone_index)
+            old_cp(zone_index) = shell_temp%cp(zone_index)
+            old_qdt(zone_index) = shell_temp%qdt(zone_index)
             old_vel(zone_index) = shell_diag%svel(zone_index)
-            old_visc(zone_index) = visc(zone_index)
-            old_thdif(zone_index) = thdif(zone_index)
+            old_visc(zone_index) = shell_temp%visc(zone_index)
+            old_thdif(zone_index) = shell_temp%thdif(zone_index)
 ! MHP 06/02
             del_grad_diff_interface(zone_index) = &
                  old_del_adiabatic_mix(zone_index) - old_delm(zone_index)

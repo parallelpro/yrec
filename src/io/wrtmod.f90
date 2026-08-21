@@ -19,6 +19,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      log_temperature, model_number, log_luminosity_lsun, log_teff, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
+      use pulse_diag_lib
       use envelope_comp_lib
       use scrtch_lib
       use luout_lib
@@ -64,30 +65,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 
 
 
-! common/pulse1/: per-shell partial derivatives used to build the
-! pulsation model output. The exact physical definition of each is not
-! confidently known from this file alone (they parallel the eqstat
-! QDP/QDT/QCP/RMU/EMU family, saved per shell for pulsation output);
-! names below are conservative guesses, flagged accordingly. lpumod is
-! an unused placeholder.
-      double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &
-           pulse_dlneps_dlnt(json), pulse_dlnkap_dlnrho(json), &
-           pulse_dlnkap_dlnt(json), pulse_specific_heat(json), &
-           pulse_mean_molecular_weight(json), pulse_dlnrho_dlnt(json), &
-           pulse_electron_mean_molecular_weight(json)
-      logical :: lpumod
-      common/pulse1/ pulse_dlnrho_dlnp, pulse_dlneps_dlnrho, &
-           pulse_dlneps_dlnt, pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, &
-           pulse_specific_heat, pulse_mean_molecular_weight, &
-           pulse_dlnrho_dlnt, pulse_electron_mean_molecular_weight, lpumod
 
-! common/pulse2/: not used in this file; declared only to preserve
-! layout. Naming is local to this batch (kept close to the original
-! cryptic names since the members are unused here).
-      double precision :: qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, &
-           qrmu, qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
-      common/pulse2/ qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, qrmu, &
-           qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
 
 ! MHP 7/96 COMMON BLOCK INSERTED FOR SOUND SPEED
 ! common/sound/: adiabatic_index_gamma1/sound_speed_output_active,
@@ -186,7 +164,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             xxx = -exp(ln10*(cgl+log_mass(i)+log_density(i)-log_pressure(i)-log_radius(i)))
             xx2 = -xxx/adiabatic_index_gamma1(i)
             xx3 = adiabatic_index_gamma1(i)
-            xx4 = -xx2-xxx*(pulse_dlnrho_dlnp(i)+shell_diag%del_grad(2,i)*pulse_dlnrho_dlnt(i))
+            xx4 = -xx2-xxx*(pulse_diag%pulse_dlnrho_dlnp(i)+shell_diag%del_grad(2,i)*pulse_diag%pulse_dlnrho_dlnt(i))
             xx5 = exp(ln10*(c4pil+log_density(i)+3.0D0*log_radius(i)-log_mass(i)))
             sound_velocity = 1.0D-5*sqrt(adiabatic_index_gamma1(i)*exp(ln10*(log_pressure(i)-log_density(i))))
             write(imodpt,123)fr,fm,xx1,xx2,xx3,xx4,xx5,sound_velocity
@@ -203,9 +181,9 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
                     adiabatic_index_gamma1(i+1)*exp(ln10*log_pressure(i+1)))*dr
               divr = 0.5D0*(exp(ln10*log_density(i))+exp(ln10*log_density(i+1)))*dr
               qpr1 = exp(ln10*(cgl+log_mass(i)+log_density(i)-2.0D0*log_radius(i)))
-              qdr1 = exp(ln10*(log_density(i)-log_pressure(i)))*pulse_dlnrho_dlnp(i)*qpr1
+              qdr1 = exp(ln10*(log_density(i)-log_pressure(i)))*pulse_diag%pulse_dlnrho_dlnp(i)*qpr1
               qpr2 = exp(ln10*(cgl+log_mass(i+1)+log_density(i+1)-2.0D0*log_radius(i+1)))
-              qdr2 = exp(ln10*(log_density(i+1)-log_pressure(i+1)))*pulse_dlnrho_dlnp(i+1)*qpr1
+              qdr2 = exp(ln10*(log_density(i+1)-log_pressure(i+1)))*pulse_diag%pulse_dlnrho_dlnp(i+1)*qpr1
               qqpr = (qpr1-qpr2)/divp
               qqdr = (qdr1-qdr2)/divr
               write(imodpt,124)rmid/solar_radius_cgs,qpr1,qdr1,qqpr,qqdr
@@ -316,22 +294,22 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !          ADDED X AND Z TO OUTPUT
          if ((j.eq.2).and.(i.eq.1)) goto 5003
          if(pulsation_file_version.eq.1) then
-         pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* pulse_electron_mean_molecular_weight(i)
+         pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* pulse_diag%pulse_electron_mean_molecular_weight(i)
          write(opal_model_unit, 5052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
-                log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i), &
-                pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i), &
-                pulse_specific_heat(i), pulse_mean_molecular_weight(i), pulse_dlnrho_dlnt(i), pelpf
+                log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_diag%pulse_dlnrho_dlnp(i), pulse_diag%pulse_dlneps_dlnrho(i), &
+                pulse_diag%pulse_dlneps_dlnt(i), pulse_diag%pulse_dlnkap_dlnrho(i), pulse_diag%pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i), &
+                pulse_diag%pulse_specific_heat(i), pulse_diag%pulse_mean_molecular_weight(i), pulse_diag%pulse_dlnrho_dlnt(i), pelpf
          else if (pulsation_file_version.eq.2) then
          write(opal_model_unit, 6052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
-            log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i), &
-            pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i), &
-            pulse_specific_heat(i), pulse_mean_molecular_weight(i), pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
+            log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_diag%pulse_dlnrho_dlnp(i), pulse_diag%pulse_dlneps_dlnrho(i), &
+            pulse_diag%pulse_dlneps_dlnt(i), pulse_diag%pulse_dlnkap_dlnrho(i), pulse_diag%pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i), &
+            pulse_diag%pulse_specific_heat(i), pulse_diag%pulse_mean_molecular_weight(i), pulse_diag%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Modifed to include mixing length variables
          write(opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),valfmlt(i), &
-            log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i),vphmlt(i), &
-            pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i),vcmxmlt(i), &
-            pulse_specific_heat(i), pulse_mean_molecular_weight(i), pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
+            log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_diag%pulse_dlnrho_dlnp(i), pulse_diag%pulse_dlneps_dlnrho(i),vphmlt(i), &
+            pulse_diag%pulse_dlneps_dlnt(i), pulse_diag%pulse_dlnkap_dlnrho(i), pulse_diag%pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i),vcmxmlt(i), &
+            pulse_diag%pulse_specific_heat(i), pulse_diag%pulse_mean_molecular_weight(i), pulse_diag%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          end if
  5003      continue
  5052      format(5E16.9,/,5E16.9,/,5E16.9,/,5E16.9)

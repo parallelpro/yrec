@@ -17,6 +17,7 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      atm_call_count, saha_state)
 
+      use pulse_diag_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -44,25 +45,6 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       common/nwlaol/olaol, oxa, ot, orho, tollaol, &
            iolaol, numofxyz, numrho, numt, llaol, use_pure_z_table, iopurez
       double precision :: fxion(3)
-! common/pulse1/: only lpumod is used here; remaining members are
-! unused placeholders. Naming matches wrtmod.f90.
-      double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &
-           pulse_dlneps_dlnt(json), pulse_dlnkap_dlnrho(json), &
-           pulse_dlnkap_dlnt(json), pulse_specific_heat(json), &
-           pulse_mean_molecular_weight(json), pulse_dlnrho_dlnt(json), &
-           pulse_electron_mean_molecular_weight(json)
-      logical :: lpumod
-      common/pulse1/pulse_dlnrho_dlnp, pulse_dlneps_dlnrho, &
-           pulse_dlneps_dlnt, pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, &
-           pulse_specific_heat, pulse_mean_molecular_weight, &
-           pulse_dlnrho_dlnt, pulse_electron_mean_molecular_weight, lpumod
-! common/pulse2/: values saved here for pulsation/diagnostic output
-! when print_flag/lpumod is set. Naming matches wrtmod.f90 (kept close
-! to the original cryptic names).
-      double precision :: qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, &
-           qrmu, qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
-      common/pulse2/qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, qrmu, &
-           qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
 ! common/atmprt/: all used/set here. Naming matches alsurfp.f90.
       double precision :: atm_tau, atm_log10_pressure, &
            atm_log10_temperature, atm_log10_density, atm_opacity, &
@@ -136,30 +118,30 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       atm_call_count = atm_call_count + 1
       atm_log10_pressure = log10_pressure
       atm_log10_temperature = log10_temperature
-      if (print_flag .or. lpumod) then
+      if (print_flag .or. pulse_diag%lpumod) then
        atm_log10_density = log10_density
        atm_opacity = opacity
        atm_ion_fraction(1) = fxion(1)
        atm_ion_fraction(2) = fxion(2)
        atm_ion_fraction(3) = fxion(3)
-       qtl = log10_temperature
-       qt = dexp(ln10*log10_temperature)
-       qpl = log10_pressure
-       qp = dexp(ln10*log10_pressure)
-       qdl = log10_density
-       qd = dexp(ln10*log10_density)
-       qo = opacity
-       qol = log10_opacity
-       qqdp = dlnrho_dlnp
-       qqed = 0.0d0
-       qqod = dlnkap_dlnrho
-       qqot = dlnkap_dlnt
-       qdel = 0.0d0
-       qqdt = dlnrho_dlnt
-       qdela = adiabatic_gradient
-       qqcp = specific_heat_cp
-       qrmu = specific_gas_constant
-       qemu = electron_mean_weight_inverse
+       pulse_diag%qtl = log10_temperature
+       pulse_diag%qt = dexp(ln10*log10_temperature)
+       pulse_diag%qpl = log10_pressure
+       pulse_diag%qp = dexp(ln10*log10_pressure)
+       pulse_diag%qdl = log10_density
+       pulse_diag%qd = dexp(ln10*log10_density)
+       pulse_diag%qo = opacity
+       pulse_diag%qol = log10_opacity
+       pulse_diag%qqdp = dlnrho_dlnp
+       pulse_diag%qqed = 0.0d0
+       pulse_diag%qqod = dlnkap_dlnrho
+       pulse_diag%qqot = dlnkap_dlnt
+       pulse_diag%qdel = 0.0d0
+       pulse_diag%qqdt = dlnrho_dlnt
+       pulse_diag%qdela = adiabatic_gradient
+       pulse_diag%qqcp = specific_heat_cp
+       pulse_diag%qrmu = specific_gas_constant
+       pulse_diag%qemu = electron_mean_weight_inverse
       endif
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.

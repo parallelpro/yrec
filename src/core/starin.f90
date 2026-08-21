@@ -110,6 +110,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
      trial_log_luminosity, trial_log_temperature, fit_point_temperature, &
      convective_velocity, mean_gravity, species_mix_weights)
 
+      use envstruct_lib
       use envelope_comp_lib
       use turnover_lib
       use scrtch_lib
@@ -288,30 +289,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       logical :: use_scv_eos
       common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
            use_scv_eos, idtt, idp
-! MHP 07/02 STORE CONTENTS OF ENVELOPE INTEGRATION INTO A
-! SET OF VECTORS, WHICH ARE FLIPPED AND CONVERTED INTO AN ASCENDING
-! SERIES AFTER THE INTEGRATION IS DONE.
-! KC 2025-05-30 reordered common block elements
-! JvS 08/25 Updated with new elements
-! common/envstruct/: all used here. Naming matches gettau.f90/
-! envint.f90.
-      double precision :: env_log10_pressure(json), env_log10_temperature(json), &
-           env_log10_mass(json), env_log10_density(json), env_log10_radius(json), &
-           env_hydrogen_fraction(json), env_metal_fraction(json)
-      logical :: env_convective_flag(json)
-      double precision :: env_gradients(3,json), env_convective_velocity(json), &
-           env_beta(json)
-      double precision :: env_gamma1(json), env_specific_heat_cp(json), &
-           env_ion_fraction(3,json)
-      double precision :: env_opacity(json), env_luminosity(json), &
-           env_dlnrho_dlnt(json)
-      integer :: num_env_points
-      common/envstruct/ env_log10_pressure, env_log10_temperature, &
-           env_log10_mass, env_log10_density, env_log10_radius, &
-           env_hydrogen_fraction, env_metal_fraction, env_convective_flag, &
-           env_gradients, env_convective_velocity, env_beta, &
-           env_gamma1, env_specific_heat_cp, env_ion_fraction, &
-           env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
 ! LLP  3/19/03 Add COMMON block /I2O/ for info directly transferred from
 !      input to output model - starting with a code for th initial model
 !      compostion (COMPMIX)
@@ -1035,45 +1012,45 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
             env_step_min = saved_env_step_min
             env_step_begin = saved_env_step_begin
           env_comp%senv = requested_envelope_mass
-            if (num_shells+num_env_points.ge.json) stop 9999
+            if (num_shells+env_struct%num_env_points.ge.json) stop 9999
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
 ! ADJUST THE (P, RHO, T, R) POINTS TO BE CONSISTENT
 ! WITH THE LAST MODEL POINT.
-            pressure_offset = log_pressure(num_shells) - env_log10_pressure(1)
-            density_offset = log_density(num_shells) - env_log10_density(1)
+            pressure_offset = log_pressure(num_shells) - env_struct%env_log10_pressure(1)
+            density_offset = log_density(num_shells) - env_struct%env_log10_density(1)
             temperature_offset = log_temperature(num_shells) - &
-                 env_log10_temperature(1)
-            radius_offset = log_radius(num_shells) - env_log10_radius(1)
-            do j = 1,num_env_points - 1
-               env_log10_density(j) = env_log10_density(j+1)+density_offset
-               env_log10_pressure(j) = env_log10_pressure(j+1)+pressure_offset
-               env_log10_radius(j) = env_log10_radius(j+1)+radius_offset
-               env_log10_mass(j) = env_log10_mass(j+1)
-               env_log10_temperature(j) = env_log10_temperature(j+1)+ &
+                 env_struct%env_log10_temperature(1)
+            radius_offset = log_radius(num_shells) - env_struct%env_log10_radius(1)
+            do j = 1,env_struct%num_env_points - 1
+               env_struct%env_log10_density(j) = env_struct%env_log10_density(j+1)+density_offset
+               env_struct%env_log10_pressure(j) = env_struct%env_log10_pressure(j+1)+pressure_offset
+               env_struct%env_log10_radius(j) = env_struct%env_log10_radius(j+1)+radius_offset
+               env_struct%env_log10_mass(j) = env_struct%env_log10_mass(j+1)
+               env_struct%env_log10_temperature(j) = env_struct%env_log10_temperature(j+1)+ &
                     temperature_offset
-               env_hydrogen_fraction(j) = env_hydrogen_fraction(j+1)
-               env_metal_fraction(j) = env_metal_fraction(j+1)
+               env_struct%env_hydrogen_fraction(j) = env_struct%env_hydrogen_fraction(j+1)
+               env_struct%env_metal_fraction(j) = env_struct%env_metal_fraction(j+1)
             end do
-            num_env_points = num_env_points - 1
-            do j = num_shells+1,num_shells+num_env_points
+            env_struct%num_env_points = env_struct%num_env_points - 1
+            do j = num_shells+1,num_shells+env_struct%num_env_points
                env_point_index = j-num_shells
 ! LUMINOSITY ASSUMED CONSTANT
                luminosity_lsun(j) = luminosity_lsun(num_shells)
 ! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
-               if (env_log10_mass(env_point_index).le.env_comp%senv) then
-                  log_density(j) = env_log10_density(env_point_index)
-                  log_pressure(j) = env_log10_pressure(env_point_index)
-                  log_radius(j) = env_log10_radius(env_point_index)
-                  log_mass(j) = env_log10_mass(env_point_index) + env_comp%stotal
-                  log_temperature(j) = env_log10_temperature(env_point_index)
-                  composition(1,j) = env_hydrogen_fraction(env_point_index)
-                  composition(3,j) = env_metal_fraction(env_point_index)
+               if (env_struct%env_log10_mass(env_point_index).le.env_comp%senv) then
+                  log_density(j) = env_struct%env_log10_density(env_point_index)
+                  log_pressure(j) = env_struct%env_log10_pressure(env_point_index)
+                  log_radius(j) = env_struct%env_log10_radius(env_point_index)
+                  log_mass(j) = env_struct%env_log10_mass(env_point_index) + env_comp%stotal
+                  log_temperature(j) = env_struct%env_log10_temperature(env_point_index)
+                  composition(1,j) = env_struct%env_hydrogen_fraction(env_point_index)
+                  composition(3,j) = env_struct%env_metal_fraction(env_point_index)
                   do k = 4,num_species
                      composition(k,j) = composition(k,num_shells)
                   end do
                   composition(2,j)=1.0d0-composition(1,j)-composition(3,j)- &
                        composition(4,j)
-                  convective_flag(j) = env_convective_flag(env_point_index)
+                  convective_flag(j) = env_struct%env_convective_flag(env_point_index)
                else
 ! POINTS BEYOND THIS ARE ABOVE THE NEW DESIRED FITTING POINT;
 ! INTERPOLATE LINEARLY, SET NEW NUMBER OF TOTAL POINTS, AND EXIT
@@ -1081,7 +1058,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
                      lower_mass_coord = log_mass(num_shells)
                      target_mass_coord = env_comp%stotal + env_comp%senv
-                     upper_mass_coord = env_log10_mass(env_point_index) + &
+                     upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
                           env_comp%stotal
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) &
                           stop 9998
@@ -1089,30 +1066,30 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                           lower_mass_coord)/(upper_mass_coord- &
                           lower_mass_coord)
                      log_density(j) = log_density(num_shells)+ &
-                          envelope_interp_fraction*(env_log10_density( &
+                          envelope_interp_fraction*(env_struct%env_log10_density( &
                           env_point_index)-log_density(num_shells))
                      log_pressure(j) = log_pressure(num_shells)+ &
-                          envelope_interp_fraction*(env_log10_pressure( &
+                          envelope_interp_fraction*(env_struct%env_log10_pressure( &
                           env_point_index)-log_pressure(num_shells))
                      log_radius(j) = log_radius(num_shells)+ &
-                          envelope_interp_fraction*(env_log10_radius( &
+                          envelope_interp_fraction*(env_struct%env_log10_radius( &
                           env_point_index)-log_radius(num_shells))
                      log_mass(j) = target_mass_coord
                      log_temperature(j) = log_temperature(num_shells)+ &
-                          envelope_interp_fraction*(env_log10_temperature( &
+                          envelope_interp_fraction*(env_struct%env_log10_temperature( &
                           env_point_index)-log_temperature(num_shells))
                      composition(1,j) = composition(1,num_shells)+ &
                           envelope_interp_fraction*(composition(1,num_shells) &
-                          -env_hydrogen_fraction(env_point_index))
+                          -env_struct%env_hydrogen_fraction(env_point_index))
                      composition(3,j) = composition(3,num_shells)+ &
                           envelope_interp_fraction*(composition(3,num_shells) &
-                          -env_metal_fraction(env_point_index))
+                          -env_struct%env_metal_fraction(env_point_index))
                      do k = 4,num_species
                         composition(k,j) = composition(k,num_shells)
                      end do
                      composition(2,j)=1.0d0-composition(1,j)- &
                           composition(3,j)-composition(4,j)
-                     if (env_convective_flag(env_point_index).or. &
+                     if (env_struct%env_convective_flag(env_point_index).or. &
                           convective_flag(num_shells)) then
                         convective_flag(j) = .true.
                      else
@@ -1120,45 +1097,45 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                      endif
                   else
 ! INTERPOLATE BETWEEN THE LAST 2 ENVELOPE POINTS
-                     lower_mass_coord = env_log10_mass(env_point_index-1) + &
+                     lower_mass_coord = env_struct%env_log10_mass(env_point_index-1) + &
                           env_comp%stotal
                      target_mass_coord = env_comp%stotal + env_comp%senv
-                     upper_mass_coord = env_log10_mass(env_point_index) + &
+                     upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
                           env_comp%stotal
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) &
                           stop 9998
                      envelope_interp_fraction = (target_mass_coord- &
                           lower_mass_coord)/(upper_mass_coord- &
                           lower_mass_coord)
-                     log_density(j) = env_log10_density(env_point_index-1)+ &
-                          envelope_interp_fraction*(env_log10_density( &
-                          env_point_index)-env_log10_density(env_point_index-1))
-                     log_pressure(j) = env_log10_pressure(env_point_index-1)+ &
-                          envelope_interp_fraction*(env_log10_pressure( &
-                          env_point_index)-env_log10_pressure(env_point_index-1))
-                     log_radius(j) = env_log10_radius(env_point_index-1)+ &
-                          envelope_interp_fraction*(env_log10_radius( &
-                          env_point_index)-env_log10_radius(env_point_index-1))
+                     log_density(j) = env_struct%env_log10_density(env_point_index-1)+ &
+                          envelope_interp_fraction*(env_struct%env_log10_density( &
+                          env_point_index)-env_struct%env_log10_density(env_point_index-1))
+                     log_pressure(j) = env_struct%env_log10_pressure(env_point_index-1)+ &
+                          envelope_interp_fraction*(env_struct%env_log10_pressure( &
+                          env_point_index)-env_struct%env_log10_pressure(env_point_index-1))
+                     log_radius(j) = env_struct%env_log10_radius(env_point_index-1)+ &
+                          envelope_interp_fraction*(env_struct%env_log10_radius( &
+                          env_point_index)-env_struct%env_log10_radius(env_point_index-1))
                      log_mass(j) = target_mass_coord
-                     log_temperature(j) = env_log10_temperature( &
+                     log_temperature(j) = env_struct%env_log10_temperature( &
                           env_point_index-1)+envelope_interp_fraction*( &
-                          env_log10_temperature(env_point_index)- &
-                          env_log10_temperature(env_point_index-1))
-                     composition(1,j) = env_hydrogen_fraction( &
+                          env_struct%env_log10_temperature(env_point_index)- &
+                          env_struct%env_log10_temperature(env_point_index-1))
+                     composition(1,j) = env_struct%env_hydrogen_fraction( &
                           env_point_index-1)+envelope_interp_fraction*( &
-                          env_hydrogen_fraction(env_point_index)- &
-                          env_hydrogen_fraction(env_point_index-1))
-                     composition(3,j) = env_metal_fraction( &
+                          env_struct%env_hydrogen_fraction(env_point_index)- &
+                          env_struct%env_hydrogen_fraction(env_point_index-1))
+                     composition(3,j) = env_struct%env_metal_fraction( &
                           env_point_index-1)+envelope_interp_fraction*( &
-                          env_metal_fraction(env_point_index)- &
-                          env_metal_fraction(env_point_index-1))
+                          env_struct%env_metal_fraction(env_point_index)- &
+                          env_struct%env_metal_fraction(env_point_index-1))
                      do k = 4,num_species
                         composition(k,j) = composition(k,num_shells)
                      end do
                      composition(2,j)=1.0d0-composition(1,j)- &
                           composition(3,j)-composition(4,j)
-                     if (env_convective_flag(env_point_index).or. &
-                          env_convective_flag(env_point_index-1)) then
+                     if (env_struct%env_convective_flag(env_point_index).or. &
+                          env_struct%env_convective_flag(env_point_index-1)) then
                         convective_flag(j) = .true.
                      else
                         convective_flag(j) = .false.
@@ -1169,7 +1146,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                endif
             end do
 ! ASSIGN THE BOUNDARY AT THE PHOTOSPHERE FOR ENVELOPE MASS BELOW 1.0D-12.
-            num_shells = num_shells + num_env_points
+            num_shells = num_shells + env_struct%num_env_points
  587        continue
             if (rotation_active) then
                do j = old_last_shell+1,num_shells
@@ -1398,7 +1375,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                   enclosed_mass,log_temperature,pressure_rotation_factor, &
                   temperature_rotation_factor,log_teff, &
                   log_total_mass,log10_luminosity,num_shells,convective_flag, &
-                  env_log10_radius)
+                  env_struct%env_log10_radius)
       turnover%convective_turnover_timescale_old = turnover%convective_turnover_timescale
       turnover%pphot0 = turnover%pphot
       turnover%fracstep = 0.5

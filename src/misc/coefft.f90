@@ -23,7 +23,7 @@
 ! output (common/scrtch/, common/pulse1/, common/sound/, common/
 ! rotder/, common/roten/).
 !
-! Three dummy arguments below (qt, qp, qtl -- see common/pulse2/) are
+! Three dummy arguments below (pulse_diag%qt, pulse_diag%qp, pulse_diag%qtl -- see common/pulse2/) are
 ! simultaneously common-block storage: COMMON/PULSE2/ was first
 ! declared (unused, as placeholders) in an earlier-converted file
 ! (wrtmod.f90) with generic member names kept close to the original;
@@ -31,7 +31,7 @@
 ! live temperature/pressure Henyey-equation scratch terms (they also
 ! double as the eq_t_val/eq_p_val/dqt_dl arguments passed to reduce),
 ! so per the project's COMMON-block-reuse rule they keep the
-! wrtmod.f90 names (qt/qp/qtl) here too, despite those names no
+! wrtmod.f90 names (pulse_diag%qt/pulse_diag%qp/pulse_diag%qtl) here too, despite those names no
 ! longer being very descriptive of their role in this file.
 !
 ! KC 2025-05-31 removed the unused MODEL argument and reordered the
@@ -50,6 +50,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use pulse_diag_lib
       use fluxes_lib
       use engeb_diag_lib
       use scrtch_lib
@@ -83,25 +84,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       integer, intent(in) :: envelope_zone_index
       double precision, intent(in) :: log_teff
 
-      double precision :: pulse_dlnrho_dlnp(json), pulse_dlneps_dlnrho(json), &
-           pulse_dlneps_dlnt(json), pulse_dlnkap_dlnrho(json), &
-           pulse_dlnkap_dlnt(json), pulse_specific_heat(json), &
-           pulse_mean_molecular_weight(json), pulse_dlnrho_dlnt(json), &
-           pulse_electron_mean_molecular_weight(json)
-      logical :: lpumod
-      common/pulse1/pulse_dlnrho_dlnp,pulse_dlneps_dlnrho,pulse_dlneps_dlnt, &
-           pulse_dlnkap_dlnrho,pulse_dlnkap_dlnt,pulse_specific_heat, &
-           pulse_mean_molecular_weight,pulse_dlnrho_dlnt, &
-           pulse_electron_mean_molecular_weight,lpumod
-! common/pulse2/: qt/qp/qtl (positions 15/16/10) are the live
-! temperature/pressure Henyey-equation scratch terms used throughout
-! this file (see the header note above); the remaining members are
-! unused placeholders, kept at the generic names first given to this
-! block (unused there) in wrtmod.f90.
-      double precision :: qqdp, qqed, qqet, qqod, qqot, qdel, qdela, qqcp, &
-           qrmu, qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
-      common/pulse2/qqdp,qqed,qqet,qqod,qqot,qdel,qdela,qqcp,qrmu,qtl,qpl, &
-           qdl,qo,qol,qt,qp,qqdt,qemu,qd,qfs
 ! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
       double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
            dhnue(18)
@@ -323,26 +305,26 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
        dqr_dr = - eq_r_val - eq_r_val - eq_r_val
        dqr_dp = -eq_r_val*dlnrho_dlnp
        dqr_dt = -eq_r_val*dlnrho_dlnt
-       qp =-dexp(ln10*(cgl + zone_log_mass + zone_log_mass - &
+       pulse_diag%qp =-dexp(ln10*(cgl + zone_log_mass + zone_log_mass - &
             zone_log_pressure - qtemp - zone_log_radius ))*rotation_p_factor(im)
 !       QPR = -QP - QP - QP - QP*(1.0D0 - QFPR)
-       dqp_dr = -qp - qp - qp - qp
-       dqp_dp = -qp
+       dqp_dr = -pulse_diag%qp - pulse_diag%qp - pulse_diag%qp - pulse_diag%qp
+       dqp_dp = -pulse_diag%qp
        convective_flag(im) = is_convective
-       qt = actual_gradient*qp
-       dqt_dr = -qt - qt - qt - qt
+       pulse_diag%qt = actual_gradient*pulse_diag%qp
+       dqt_dr = -pulse_diag%qt - pulse_diag%qt - pulse_diag%qt - pulse_diag%qt
 !       QTR = -QT - QT - QT - QT*(1.0D0 - QFTR)
        if (.not.is_convective) then
 ! TEMPERATURE GRADIENT IS RADIATIVE
-          qtl = clni*qt/zone_luminosity_lsun
-          dqt_dp = qt*dlnkap_dlnrho*dlnrho_dlnp
-          dqt_dt = qt*(-4.0d0 + dlnkap_dlnt + dlnkap_dlnrho*dlnrho_dlnt)
+          pulse_diag%qtl = clni*pulse_diag%qt/zone_luminosity_lsun
+          dqt_dp = pulse_diag%qt*dlnkap_dlnrho*dlnrho_dlnp
+          dqt_dt = pulse_diag%qt*(-4.0d0 + dlnkap_dlnt + dlnkap_dlnrho*dlnrho_dlnt)
        else
 ! TEMPERATURE GRADIENT IS CONVECTIVE
-          qtl = 0.0d0
-          dqt_dp = qt*(-1.0d0 + dgrad_dp_component)
-          dqt_dt = qt*dgrad_dt_component
-          dqt_dr = dqt_dr + qt*dgrad_dr_component
+          pulse_diag%qtl = 0.0d0
+          dqt_dp = pulse_diag%qt*(-1.0d0 + dgrad_dp_component)
+          dqt_dt = pulse_diag%qt*dgrad_dt_component
+          dqt_dr = dqt_dr + pulse_diag%qt*dgrad_dr_component
        end if
        eq_l_val = 0.0d0
        dql_dt = 0.0d0
@@ -460,8 +442,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             im1 = im
             call reduce(im1,elim_coeff,elim_rhs,luminosity_lsun,max_residual, &
                  log_pressure,log_radius,log_mass,log_temperature, &
-                 eq_p_val0,qp,dqp_dr0,dqp_dr,dqp_dp0,dqp_dp,eq_t_val0,qt, &
-                 dqt_dr0,dqt_dr,dqt_dl0,qtl,dqt_dp0,dqt_dp,dqt_dt0,dqt_dt, &
+                 eq_p_val0,pulse_diag%qp,dqp_dr0,dqp_dr,dqp_dp0,dqp_dp,eq_t_val0,pulse_diag%qt, &
+                 dqt_dr0,dqt_dr,dqt_dl0,pulse_diag%qtl,dqt_dp0,dqt_dp,dqt_dt0,dqt_dt, &
                  eq_r_val0,eq_r_val,dqr_dr0,dqr_dr,dqr_dp0,dqr_dp,dqr_dt0, &
                  dqr_dt,eq_l_val0,eq_l_val,dql_dp0,dql_dp,dql_dt0,dql_dt)
          else
@@ -474,12 +456,12 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             elim_coeff(4,2,1) = -dql_dt
             elim_rhs(4,1) = clni*eq_l_val - zone_luminosity_lsun
          end if
-         eq_p_val0 = qp
+         eq_p_val0 = pulse_diag%qp
          dqp_dr0 = dqp_dr
          dqp_dp0 = dqp_dp
-         eq_t_val0 = qt
+         eq_t_val0 = pulse_diag%qt
          dqt_dr0 = dqt_dr
-         dqt_dl0 = qtl
+         dqt_dl0 = pulse_diag%qtl
          dqt_dp0 = dqt_dp
          dqt_dt0 = dqt_dt
          eq_r_val0 = eq_r_val
@@ -559,8 +541,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                  log10_density(im)-log_temperature(im)))*chi_t**2/chi_rho
             adiabatic_index_gamma1(im) = chi_rho*specific_heat_cp/ &
                  specific_heat_cv
-            pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-            pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+            pulse_diag%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
+            pulse_diag%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
 ! JVS END
 
 
@@ -594,16 +576,16 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! copying them into the pulse1/mixing-length output arrays -- no
 ! change to any existing output (.short/.track/.store/.pmod/.penv/
 ! .patm) values, since none of those read from these arrays.
-         pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-         pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
-         pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
-         pulse_dlnkap_dlnrho(im) = dlnkap_dlnrho
-         pulse_dlnkap_dlnt(im) = dlnkap_dlnt
-         pulse_specific_heat(im) = specific_heat_cp
-         pulse_mean_molecular_weight(im) = specific_gas_constant
-         pulse_electron_mean_molecular_weight(im) = &
+         pulse_diag%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
+         pulse_diag%pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
+         pulse_diag%pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
+         pulse_diag%pulse_dlnkap_dlnrho(im) = dlnkap_dlnrho
+         pulse_diag%pulse_dlnkap_dlnt(im) = dlnkap_dlnt
+         pulse_diag%pulse_specific_heat(im) = specific_heat_cp
+         pulse_diag%pulse_mean_molecular_weight(im) = specific_gas_constant
+         pulse_diag%pulse_electron_mean_molecular_weight(im) = &
               electron_mean_weight_inverse
-         pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+         pulse_diag%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
          valfmlt(im) = alfmlt
          vphmlt(im) = phmlt
          vcmxmlt(im) = cmxmlt
