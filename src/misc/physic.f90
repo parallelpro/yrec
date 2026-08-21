@@ -22,6 +22,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff)
 
+      use scrtch_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -63,14 +64,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       integer :: idt, idd(4)
       common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
 
-! common/scrtch/: sesum/seg/del_grad/so/svel are set here. Naming
-! matches hpoint.f90/liburn.f90/rotmix.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! common/temp/: cp/mean_molecular_weight/qdt are set here. Naming
 ! matches getw.f90/hpoint.f90.
@@ -201,9 +194,9 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               want_derivatives, is_convective, pressure_rotation_factor, &
               temperature_rotation_factor, log_teff)
          convective_flag(im) = is_convective
-         del_grad(1,im) = radiative_gradient
-         del_grad(2,im) = actual_gradient
-         del_grad(3,im) = adiabatic_gradient
+         shell_diag%del_grad(1,im) = radiative_gradient
+         shell_diag%del_grad(2,im) = actual_gradient
+         shell_diag%del_grad(3,im) = adiabatic_gradient
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
          dfx1 = composition(1,im) - envelope_hydrogen_fraction
@@ -219,11 +212,11 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               composition(2,im)/atomic_weight(2)) + 0.5d0*composition(3,im)
          emu2 = 1.0d0/temp_scratch
          mean_molecular_weight(im) = amu2*emu2/(amu2+emu2)
-         so(im) = opacity
+         shell_diag%so(im) = opacity
          cp(im) = specific_heat_cp
          qdt(im) = dlnrho_dlnt
 ! JVS 10/13 Always want SVEL
-         svel(im) = convective_velocity
+         shell_diag%svel(im) = convective_velocity
 !         IF(LC(IM))THEN
 !            SVEL(IM) = VEL
 !         ELSE
@@ -269,14 +262,14 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               log_density(k+1)*interp_weights(2) + &
               log_density(k+2)*interp_weights(3) + &
               log_density(k+3)*interp_weights(4)
-         actual_grad_mid = del_grad(2,k)*interp_weights(1) + &
-              del_grad(2,k+1)*interp_weights(2) + &
-              del_grad(2,k+2)*interp_weights(3) + &
-              del_grad(2,k+3)*interp_weights(4)
-         adiabatic_grad_mid = del_grad(3,k)*interp_weights(1) + &
-              del_grad(3,k+1)*interp_weights(2) + &
-              del_grad(3,k+2)*interp_weights(3) + &
-              del_grad(3,k+3)*interp_weights(4)
+         actual_grad_mid = shell_diag%del_grad(2,k)*interp_weights(1) + &
+              shell_diag%del_grad(2,k+1)*interp_weights(2) + &
+              shell_diag%del_grad(2,k+2)*interp_weights(3) + &
+              shell_diag%del_grad(2,k+3)*interp_weights(4)
+         adiabatic_grad_mid = shell_diag%del_grad(3,k)*interp_weights(1) + &
+              shell_diag%del_grad(3,k+1)*interp_weights(2) + &
+              shell_diag%del_grad(3,k+2)*interp_weights(3) + &
+              shell_diag%del_grad(3,k+3)*interp_weights(4)
          gravity_mid = hg(k)*interp_weights(1) + hg(k+1)*interp_weights(2) + &
               hg(k+2)*interp_weights(3) + hg(k+3)*interp_weights(4)
          temp_scratch = dexp(ln10*(density_mid - pressure_mid))* &

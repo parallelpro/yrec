@@ -28,6 +28,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col)
 
+      use scrtch_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -49,14 +50,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
       common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 
-! common/scrtch/: not used in this file. Naming matches liburn.f90/
-! rotmix.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! common/theage/: not used in this file. Naming matches mix.f90.
       double precision :: dage
@@ -116,7 +109,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          if(species_col.eq.1) hydrogen_concen(i) = concen(1)
 !        now check whether the Thoul routine must be run. if not,
 !        write COD1 = COD2 = 0. If its the first shell in the depleted
-!        zone, permit the calculations so that AD is correct.
+!        zone, permit the calculations shell_diag%so that AD is correct.
          if(species_fraction(species_col,i).eq.0.0.and.i.ne.num_eq_points)then
             if(species_fraction(species_col,i+1).eq.0.0)then
                diffusion_term(i) = 0.0
@@ -179,7 +172,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          at = -temp_coeff(species_col)*eq_del_grad(i)
          ah = -conc_coeff(species_col,1)
          ad = -conc_coeff(species_col,species_col)
-!        store the numbers so the hydrogen gradient can finish
+!        store the numbers shell_diag%so the hydrogen gradient can finish
 !        being calculated; then use them later.
          coeff_scale(i) = fac
          pressure_term(i) = ap

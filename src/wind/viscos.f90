@@ -12,6 +12,7 @@
 ! rotational-mixing/instability diffusion routines.
 subroutine viscos(composition, log_density, log_temperature, num_zones)
 !       SUBROUTINE VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
+      use scrtch_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -21,14 +22,6 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       integer, intent(in) :: num_zones
 
 
-! common/scrtch/: only so (opacity) is used here. Naming matches
-! hpoint.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! common/temp/: cp/thdif/visc are used (thdif/visc are set here).
 ! Naming matches getw.f90.
@@ -67,7 +60,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       do 100 shell_idx = 1,num_zones
 !  COMPUTE THE KINEMATIC MICROSCOPIC VISCOSITY DUE TO RADIATION AND IONS
 !  CONVERT TO NUMBER DENSITIES AND FIND MEAN CHARGE PER ION(ZF) AND NE.
-         opacity_local = so(shell_idx)
+         opacity_local = shell_diag%so(shell_idx)
          mean_charge = 0.0d0
          number_density_sum = 0.0d0
          do 10 species_idx = 1,11

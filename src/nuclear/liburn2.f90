@@ -21,7 +21,7 @@
 ! without the iterative sub-step refinement used by liburn.f90.
 !
 ! The degree of lithium burning in a surface CZ depends sensitively
-! on the temperature at its base -- so accurately locating it is
+! on the temperature at its base -- shell_diag%so accurately locating it is
 ! important. Determine the true location (cz_base_frac) of the base
 ! of the CZ at the end of the timestep, and the location of the edge
 ! of overshoot regions if applicable.
@@ -29,6 +29,7 @@
 ! 11/91 HR added to call.
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use scrtch_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -57,14 +58,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
            rate_be9_start(json)
       common/oldrat/ rate_li6_start, rate_li7_start, rate_be9_start
 
-! common/scrtch/: only del_grad (originally SDEL) is used here. Naming
-! matches liburn.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 
 ! common/liov/: pressure scale heights used to search downward from the
@@ -129,8 +122,8 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
-            del_diff = del_grad(3,env_cz_zone)-del_grad(1,env_cz_zone)
-            del_diff_below = del_grad(3,env_cz_zone-1)-del_grad(1,env_cz_zone-1)
+            del_diff = shell_diag%del_grad(3,env_cz_zone)-shell_diag%del_grad(1,env_cz_zone)
+            del_diff_below = shell_diag%del_grad(3,env_cz_zone-1)-shell_diag%del_grad(1,env_cz_zone-1)
          endif
 ! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
 ! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE

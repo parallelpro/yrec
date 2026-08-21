@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use scrtch_lib
       use luout_lib
       use const_lib
       use numerics_lib
@@ -83,7 +84,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 ! actively computed/written here -- unlike in wrtout.f90/getopal95.f90,
 ! where this whole block is left as unused-placeholder "*_placeholder"
 ! names, DELADJ genuinely carries the adiabatic gradient per this
-! file's own header, so it (and calcad_output_active/calcad_output_unit,
+! file's own header, shell_diag%so it (and calcad_output_active/calcad_output_unit,
 ! which genuinely gate/target output here) are given real names
 ! instead of wrtout.f90's inherited "deladj_placeholder"/
 ! "lclcd_placeholder"/"iclcd_placeholder"; all other members are unused
@@ -155,13 +156,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
-! common/scrtch/: not used here. Naming matches hpoint.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! common/comp/: envelope_hydrogen_fraction(unused here)/stotal(unused
 ! here) -- only used member is none actually read/set directly by
@@ -306,7 +300,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 !      KTSAV = 3
 
 ! Need to calculate the sound speed in the envelope: first, stitch
-! envelope and interior together (so that T, P, R all agree at fitting
+! envelope and interior together (shell_diag%so that T, P, R all agree at fitting
 ! point. Then calculate sound speed in the envelope and interior
 ! and integrate.
 

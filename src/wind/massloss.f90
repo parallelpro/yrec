@@ -38,7 +38,7 @@
 ! is positional, this means the two files disagree about which
 ! physical quantity occupies which storage slot. Neither variable is
 ! actually read or set in this file's body (they are unused layout
-! placeholders here), so the mismatch has no effect on this file's own
+! placeholders here), shell_diag%so the mismatch has no effect on this file's own
 ! behavior; reproduced exactly rather than silently reconciled.
 subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      log_density, specific_angular_momentum, log_pressure, log_radius, &
@@ -46,6 +46,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed)
+      use scrtch_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -109,13 +110,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/scrtch/: not used here. Naming matches hpoint.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
 ! common/ovrtrn/: only convective_turnover_timescale is used (written

@@ -77,7 +77,7 @@
 !     log10_mass/opacity/beta/.../is_convective etc.), since this
 !     block is explicitly "stolen from PHYSIC" per the original
 !     source's own comment. Note physic.f90 uses a "log10_" prefix for
-!     these per-point scalars specifically so they do not collide with
+!     these per-point scalars specifically shell_diag%so they do not collide with
 !     its "log_"-prefixed array dummy names; the same convention is
 !     used here for the same reason (this file's own array dummies are
 !     named log_pressure/log_temperature/log_density/log_radius/
@@ -110,6 +110,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
      trial_log_luminosity, trial_log_temperature, fit_point_temperature, &
      convective_velocity, mean_gravity, species_mix_weights)
 
+      use scrtch_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -434,14 +435,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
-! common/scrtch/: not used in this file's logic; layout placeholder.
-! Naming matches hpoint.f90/gettau.f90/physic.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! MHP 10/24 ENSURE THAT ONLY HOMOGENEOUS MODELS HAVE THE MIXTURE ALTERED
       double precision :: reference_composition(15)

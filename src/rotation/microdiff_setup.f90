@@ -40,6 +40,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
      zone_end, fully_convective_flag, density_orig, temperature_orig)
 
+      use scrtch_lib
       use luout_lib
       use const_lib
       implicit none
@@ -86,14 +87,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       common/gravs2/ settling_timestep_fraction, hydrogen_diffusion_floor, &
            helium_diffusion_min, use_thoul_fit
 
-! common/scrtch/: not used in this file. Naming matches liburn.f90/
-! rotmix.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! common/gravst/: not used in this file. Naming matches mix.f90/
 ! rotmix.f90.
@@ -112,7 +105,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 !      COMMON/GSCOF2/TAPP(JSON),TATP(JSON),TCLP(JSON),TAPZP(JSON),
 !     *              TATZP(JSON)
 ! common/gscof/: not used in this file; declared only to preserve
-! layout. Not referenced in any already-converted file, so kept as
+! layout. Not referenced in any already-converted file, shell_diag%so kept as
 ! lowercased originals pending a confirmed source.
       double precision :: app(json), atp(json), apzp(json), atzp(json)
       common/gscof/ app, atp, apzp, atzp
@@ -120,7 +113,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 ! FD 10/09 ADDED COMMON BLOCK FOR EXTRA MIXING. IT MIMIC SOME MIXING BY
 ! AFFECTING THE SETTLING COEFFICIENT DIRECTLY (in setup_grsett.f)
 ! common/cmixing/: not used in this file; declared only to preserve
-! layout. Not referenced in any already-converted file, so kept as
+! layout. Not referenced in any already-converted file, shell_diag%so kept as
 ! lowercased originals pending a confirmed source.
       double precision :: cstmixing, cstdiffmix
       common/cmixing/ cstmixing, cstdiffmix

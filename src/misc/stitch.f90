@@ -30,6 +30,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
 
+      use scrtch_lib
       use luout_lib
       use const_lib
       implicit none
@@ -127,14 +128,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
            atmo_gamma1, atmo_dlnrho_dlnt, atmo_ion_fraction, atmo_opacity, &
            atmo_specific_heat_cp, num_atm_points
 
-! common/scrtch/: so/del_grad/svel/sfxion/ebetas(sbeta)/seta/seg/sesum/
-! scp are used here. Naming matches hpoint.f90/liburn.f90/rotmix.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! common/pulse1/: only pulse_dlnrho_dlnt (originally PQDT) is used
 ! here. Naming matches coefft.f90/envint.f90/qatm.f90/qenv.f90/wrtmod.f90.
@@ -223,11 +216,11 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
                  log_density(i),omega(i),convective_flag(i),.true.,.false., &
                  .false.,(composition(j,i),j=1,15)
 ! write out additional physics if desired
-            write(istor,63,advance='no') so(i),sg,del_grad(1,i),del_grad(2,i), &
-                 del_grad(3,i),svel(i),adiabatic_index_gamma1(i), &
-                 sfxion(1,i),sfxion(2,i),sfxion(3,i), &
-                 sbeta(i),seta(i),(seg(k,i),k=1,5),sesum(i),seg(6,i),seg(7,i), &
-                 scp(i),pulse_dlnrho_dlnt(i)
+            write(istor,63,advance='no') shell_diag%so(i),sg,shell_diag%del_grad(1,i),shell_diag%del_grad(2,i), &
+                 shell_diag%del_grad(3,i),shell_diag%svel(i),adiabatic_index_gamma1(i), &
+                 shell_diag%sfxion(1,i),shell_diag%sfxion(2,i),shell_diag%sfxion(3,i), &
+                 shell_diag%sbeta(i),shell_diag%seta(i),(shell_diag%seg(k,i),k=1,5),shell_diag%sesum(i),shell_diag%seg(6,i),shell_diag%seg(7,i), &
+                 shell_diag%scp(i),pulse_dlnrho_dlnt(i)
 ! write out additional rotation info if rotation is on
             if(rotation_active)then
               fm = dexp(ln10*log_mass(i))
@@ -249,7 +242,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
 ! **************************   WRITE OUT ENVELOPE INFORMATION   **********************
 
-      if(lstenv)then ! only provide an envelope if asked to do so
+      if(lstenv)then ! only provide an envelope if asked to do shell_diag%so
 ! Begin by "dropping a sinkline" with the envelope integrator
       abeg0 = atm_step_begin
       amin0 = atm_step_min

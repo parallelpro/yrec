@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use scrtch_lib
       use oldmod_lib
       use const_lib
       implicit none
@@ -134,14 +135,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
            old_cp, old_qdt, old_vel, old_visc, old_thdif, old_esum, &
            old_del_radiative_mix, old_eps
 
-! common/scrtch/: sesum/seg/del_grad/svel are used here. Naming
-! matches liburn.f90/rotmix.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! common/temp/: cp/mean_molecular_weight/qdt/thdif/visc are used here.
 ! Naming matches hpoint.f90.
@@ -274,19 +267,19 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 !  30    CONTINUE
          hg_mid(j) = old_hg(j) + time_fraction*(hg(j) - old_hg(j))
          del_adiabatic_mix(j) = old_del_adiabatic_mix(j) + &
-              time_fraction*(del_grad(3,j)-old_del_adiabatic_mix(j))
-         delm(j) = old_delm(j) + time_fraction*(del_grad(2,j) - old_delm(j))
+              time_fraction*(shell_diag%del_grad(3,j)-old_del_adiabatic_mix(j))
+         delm(j) = old_delm(j) + time_fraction*(shell_diag%del_grad(2,j) - old_delm(j))
          del_radiative_mix(j) = old_del_radiative_mix(j) + &
-              time_fraction*(del_grad(1,j) - old_del_radiative_mix(j))
-         esumm(j) = old_esum(j) + time_fraction*(sesum(j) - old_esum(j))
+              time_fraction*(shell_diag%del_grad(1,j) - old_del_radiative_mix(j))
+         esumm(j) = old_esum(j) + time_fraction*(shell_diag%sesum(j) - old_esum(j))
          viscm(j) = old_visc(j) + time_fraction*(visc(j) - old_visc(j))
          thdifm(j) = old_thdif(j) + time_fraction*(thdif(j) - old_thdif(j))
          cpm(j) = old_cp(j) + time_fraction*(cp(j) - old_cp(j))
          qdtm(j) = old_qdt(j) + time_fraction*(qdt(j) - old_qdt(j))
-         om(j) = old_om(j) + time_fraction*(so(j) - old_om(j))
+         om(j) = old_om(j) + time_fraction*(shell_diag%so(j) - old_om(j))
          amum(j) = amum(j) + step_fraction_ratio*(mean_molecular_weight(j) - old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
-         total_epsilon = sesum(j)+seg(6,j)+seg(7,j)
+         total_epsilon = shell_diag%sesum(j)+shell_diag%seg(6,j)+shell_diag%seg(7,j)
          epsm(j) = old_eps(j)+time_fraction*(total_epsilon-old_eps(j))
    40 continue
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
@@ -297,14 +290,14 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
          del_grad_diff_new(i) = del_adiabatic_mix(i)-del_radiative_mix(i)
          if (convective_flag(i).eqv.convective_flag_prev(i)) then
             convective_flag_mid(i) = convective_flag(i)
-            velm(i) = old_vel(i) + time_fraction*(svel(i)-old_vel(i))
+            velm(i) = old_vel(i) + time_fraction*(shell_diag%svel(i)-old_vel(i))
             convective_state_changed(i) = .false.
          else
             convective_state_changed(i) = .true.
             new_cz_detected = .true.
             if (del_adiabatic_mix(i).lt.del_radiative_mix(i)) then
                convective_flag_mid(i) = .true.
-               velm(i) = max(old_vel(i),svel(i))
+               velm(i) = max(old_vel(i),shell_diag%svel(i))
             else
                convective_flag_mid(i) = .false.
                velm(i) = 0.0D0

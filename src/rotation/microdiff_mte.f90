@@ -24,6 +24,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
      eq_density_mid, eq_temperature_mid, eq_dlnp_dr_mid, eq_del_grad_mid, &
      eq_hydrogen_mid, eq_helium_mid, eq_metal_mid, eq_light_mid)
 
+      use scrtch_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -58,14 +59,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       logical :: use_new_diffusion_routines, ldifli
       common/gravs4/ use_new_diffusion_routines, ldifli
 
-! common/scrtch/: only del_grad (originally SDEL) is used here.
-! Naming matches liburn.f90/rotmix.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
       integer :: half_json
       save
@@ -120,7 +113,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_temperature_mid(1) = temperature_orig(iu-1)+ &
            fx*(temperature_orig(iu)-temperature_orig(iu-1))
       eq_dlnp_dr_mid(1) = dlnp_dr(iu-1)+fx*(dlnp_dr(iu)-dlnp_dr(iu-1))
-      eq_del_grad_mid(1) = del_grad(2,iu-1)+fx*(del_grad(2,iu)-del_grad(2,iu-1))
+      eq_del_grad_mid(1) = shell_diag%del_grad(2,iu-1)+fx*(shell_diag%del_grad(2,iu)-shell_diag%del_grad(2,iu-1))
       eq_hydrogen_mid(1) = composition(1,iu-1)+fx*(composition(1,iu)-composition(1,iu-1))
       eq_helium_mid(1) = composition(2,iu-1)+fx*(composition(2,iu)-composition(2,iu-1))
       eq_metal_mid(1) = composition(3,iu-1)+fx*(composition(3,iu)-composition(3,iu-1))
@@ -172,8 +165,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                    facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
          eq_dlnp_dr_mid(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
                    facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_del_grad_mid(i) = facinterp(1)*del_grad(2,k0)+facinterp(2)*del_grad(2,k0+1)+ &
-                   facinterp(3)*del_grad(2,k0+2)+facinterp(4)*del_grad(2,k0+3)
+         eq_del_grad_mid(i) = facinterp(1)*shell_diag%del_grad(2,k0)+facinterp(2)*shell_diag%del_grad(2,k0+1)+ &
+                   facinterp(3)*shell_diag%del_grad(2,k0+2)+facinterp(4)*shell_diag%del_grad(2,k0+3)
 !  MASS FRACTION OF HYDROGEN
          eq_hydrogen_mid(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
@@ -216,7 +209,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_density(1) = density_orig(zone_begin)
       eq_temperature(1) = temperature_orig(zone_begin)
       eq_dlnp_dr(1) = dlnp_dr(zone_begin)
-      eq_del_grad(1) = del_grad(2,zone_begin)
+      eq_del_grad(1) = shell_diag%del_grad(2,zone_begin)
       eq_hydrogen(1) = composition(1,zone_begin)
       eq_helium(1) = composition(2,zone_begin)
       eq_metal(1) = composition(3,zone_begin)
@@ -265,8 +258,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                    facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
          eq_dlnp_dr(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
                    facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_del_grad(i) = facinterp(1)*del_grad(2,k0)+facinterp(2)*del_grad(2,k0+1)+ &
-                   facinterp(3)*del_grad(2,k0+2)+facinterp(4)*del_grad(2,k0+3)
+         eq_del_grad(i) = facinterp(1)*shell_diag%del_grad(2,k0)+facinterp(2)*shell_diag%del_grad(2,k0+1)+ &
+                   facinterp(3)*shell_diag%del_grad(2,k0+2)+facinterp(4)*shell_diag%del_grad(2,k0+3)
          eq_hydrogen(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
               +facinterp(3)*composition(1,k0+2) &
@@ -294,7 +287,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_density(num_eq_points) = density_orig(zone_end)
       eq_temperature(num_eq_points) = temperature_orig(zone_end)
       eq_dlnp_dr(num_eq_points) = dlnp_dr(zone_end)
-      eq_del_grad(num_eq_points) = del_grad(2,zone_end)
+      eq_del_grad(num_eq_points) = shell_diag%del_grad(2,zone_end)
       eq_hydrogen(num_eq_points) = composition(1,zone_end)
       eq_helium(num_eq_points) = composition(2,zone_end)
       eq_metal(num_eq_points) = composition(3,zone_end)

@@ -22,6 +22,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass)
 
+      use scrtch_lib
       use luout_lib
       use const_lib
       implicit none
@@ -83,7 +84,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 
 
 ! common/mdphy/: only delm (originally DELM) is used here -- swapped
-! temporarily into del_grad(2,*) (common/scrtch/) around the settling
+! temporarily into shell_diag%del_grad(2,*) (common/scrtch/) around the settling
 ! call. Naming matches liburn.f90.
       double precision :: amum(json), cpm(json), delm(json), &
            del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
@@ -92,14 +93,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
            esumm, om, qdtm, thdifm, velm, viscm, epsm
 
-! common/scrtch/: only del_grad (originally SDEL) is used here.
-! Naming matches liburn.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
       integer :: num_species
       double precision :: timestep_years
@@ -227,8 +220,8 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
   150    continue
          total_mass=exp(ln10*log_total_mass)
          do 130 zone_idx = 1,num_zones
-            del_grad2_save(zone_idx) = del_grad(2,zone_idx)
-            del_grad(2,zone_idx) = delm(zone_idx)
+            del_grad2_save(zone_idx) = shell_diag%del_grad(2,zone_idx)
+            shell_diag%del_grad(2,zone_idx) = delm(zone_idx)
             dlnp_dr_settling(zone_idx)=-exp(ln10*(log_density(zone_idx)+ &
                  cgl+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
                  log_pressure(zone_idx)))
@@ -286,7 +279,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             end if
   160    continue
          do zone_idx = 1,num_zones
-            del_grad(2,zone_idx) = del_grad2_save(zone_idx)
+            shell_diag%del_grad(2,zone_idx) = del_grad2_save(zone_idx)
          end do
   170    continue
       end if

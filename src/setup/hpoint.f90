@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use scrtch_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -159,14 +160,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
 
 
-! common/scrtch/: sesum/seg/del_grad/so/svel are used here. Naming
-! matches liburn.f90/rotmix.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! common/temp/: current-timestep counterparts of common/oldphy/'s
 ! old_cp/old_amu/old_qdt/old_thdif/old_visc, all used here. Not
@@ -893,11 +886,11 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
       if (rotation_active .or. (use_extended_composition .and. &
            envelope_overshoot_active)) then
-         call osplin(prev_model%old_shell_mass,old_esum,log_mass,sesum, &
+         call osplin(prev_model%old_shell_mass,old_esum,log_mass,shell_diag%sesum, &
               old_point_count,new_point_count)
          do zone_index = 1,num_zones
-            spline_y(zone_index) = sesum(zone_index)+seg(6,zone_index)+ &
-                 seg(7,zone_index)
+            spline_y(zone_index) = shell_diag%sesum(zone_index)+shell_diag%seg(6,zone_index)+ &
+                 shell_diag%seg(7,zone_index)
          end do
          call osplin(prev_model%old_shell_mass,old_eps,log_mass,spline_y, &
               old_point_count,new_point_count)
@@ -996,14 +989,14 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 !   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN
 !   ONE LARGE EVOLUTIONARY TIMESTEP.
          do 1040 zone_index = 1,num_zones
-            old_del_radiative_mix(zone_index) = del_grad(1,zone_index)
-            old_delm(zone_index) = del_grad(2,zone_index)
-            old_del_adiabatic_mix(zone_index) = del_grad(3,zone_index)
+            old_del_radiative_mix(zone_index) = shell_diag%del_grad(1,zone_index)
+            old_delm(zone_index) = shell_diag%del_grad(2,zone_index)
+            old_del_adiabatic_mix(zone_index) = shell_diag%del_grad(3,zone_index)
             old_amu(zone_index) = mean_molecular_weight(zone_index)
-            old_om(zone_index) = so(zone_index)
+            old_om(zone_index) = shell_diag%so(zone_index)
             old_cp(zone_index) = cp(zone_index)
             old_qdt(zone_index) = qdt(zone_index)
-            old_vel(zone_index) = svel(zone_index)
+            old_vel(zone_index) = shell_diag%svel(zone_index)
             old_visc(zone_index) = visc(zone_index)
             old_thdif(zone_index) = thdif(zone_index)
 ! MHP 06/02

@@ -23,6 +23,7 @@
 ! executes.
 subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
+      use scrtch_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -59,13 +60,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/scrtch/: not used in this file. Naming matches liburn.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 
 
@@ -170,7 +164,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !
 ! JVS 02/12 calculate the local convective overturn timescale at the
 ! base of the CZ. In older versions this was only done for rotating
-! models; this makes it so taucz is calculated for all models.
+! models; this makes it shell_diag%so taucz is calculated for all models.
 ! This code snagged from midmod
 !
 !  determine extent of surface convection zone.
@@ -234,11 +228,11 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !            do k = imax+1,m
 !               if(hr(k).gt.rtestl)then
 !                  fx = (rtestl-hr(k-1))/(hr(k)-hr(k-1))
-!                  cvel = svel(k-1)+fx*(svel(k)-svel(k-1))
+!                  cvel = shell_diag%svel(k-1)+fx*(shell_diag%svel(k)-shell_diag%svel(k-1))
 !                  goto 85
 !               endif
 !            end do
-!            cvel = svel(m)
+!            cvel = shell_diag%svel(m)
 ! 85         continue
 !  define taucz
 !            taucz = psca/cvel
@@ -252,7 +246,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !            if(psca2.le.rtest2)then
 !  hp < r at the first point.  assume v constant inside and hp = k/r for
 !  slowly varying density and pressure near the center.
-!               cvel = svel(1)
+!               cvel = shell_diag%svel(1)
 !               psca = (psca2*rtest2)**0.5d0
 !               taucz = psca/cvel
 !            else
@@ -268,7 +262,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !                  if(psca2.le.rtest2)then
 !                     fx = (rtest1-psca1)/((psca2-rtest2)-(psca1-rtest1))
 !  find v
-!                     cvel = svel(k-1)+fx*(svel(k)-svel(k-1))
+!                     cvel = shell_diag%svel(k-1)+fx*(shell_diag%svel(k)-shell_diag%svel(k-1))
 !                     psca = psca1+fx*(psca2-psca1)
 !  define taucz
 !                     taucz = psca/cvel
@@ -276,7 +270,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !                  endif
 !               end do
 !               k = m
-!               cvel = svel(m)
+!               cvel = shell_diag%svel(m)
 !               psca = psca2
 !               taucz = psca/cvel
 ! 95            continue

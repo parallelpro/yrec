@@ -24,6 +24,7 @@
 ! 11/91 HR added to call.
 subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use scrtch_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -53,18 +54,6 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
            rate_be9_start(json)
       common/oldrat/ rate_li6_start, rate_li7_start, rate_be9_start
 
-! common/scrtch/: only del_grad (originally SDEL) is used here, to
-! evaluate del(ad)-del(rad) at the last convective point. The other
-! members are declared only to preserve the storage layout.
-! del_grad(1,*)/(3,*) are inferred (from the DELAM/DELRM analog in
-! common/mdphy/ below) to be the radiative/adiabatic temperature
-! gradients; the meaning of (2,*) is not used here and not confirmed.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 
 ! common/liov/: pressure scale heights used to search downward from the
@@ -76,7 +65,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 
 ! common/mdphy/: only del_adiabatic_mix and del_radiative_mix
 ! (originally DELAM/DELRM) are used here -- the rotating-model
-! counterpart of common/scrtch/'s del_grad.
+! counterpart of common/scrtch/'s shell_diag%del_grad.
       double precision :: amum(json), cpm(json), delm(json), &
            del_adiabatic_mix(json), del_radiative_mix(json), esumm(json), &
            om(json), qdtm(json), thdifm(json), velm(json), viscm(json), &
@@ -156,8 +145,8 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
-            del_diff = del_grad(3,env_cz_zone)-del_grad(1,env_cz_zone)
-            del_diff_below = del_grad(3,env_cz_zone-1)-del_grad(1,env_cz_zone-1)
+            del_diff = shell_diag%del_grad(3,env_cz_zone)-shell_diag%del_grad(1,env_cz_zone)
+            del_diff_below = shell_diag%del_grad(3,env_cz_zone-1)-shell_diag%del_grad(1,env_cz_zone-1)
          endif
 ! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
 ! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE

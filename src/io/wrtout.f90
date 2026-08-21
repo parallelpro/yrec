@@ -25,6 +25,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use scrtch_lib
       use luout_lib
       use const_lib
       implicit none
@@ -120,14 +121,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! common/label/: not used in this file. Naming matches wrthead.f90.
       double precision :: initial_envelope_x, initial_envelope_z
       common/label/ initial_envelope_x, initial_envelope_z
-! common/scrtch/: only so/sdel(del_grad) are used here. Naming matches
-! microdiff_setup.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 ! DBG PULSE
 ! common/pulse/: only pulsation_output_active is used here. Naming
 ! matches wrtmod.f90.
@@ -196,7 +189,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! compute_acoustic_depth/acoustic_depth_output are used here (the
 ! first six unlike in getopal95.f90, which leaves this whole block as
 ! unused placeholders -- here they are actually written out in the
-! .track 1800 format, so real names are given instead; their precise
+! .track 1800 format, shell_diag%so real names are given instead; their precise
 ! physical definitions are not confidently known beyond "acoustic
 ! depth family of diagnostics", flagged accordingly). The remaining
 ! members are unused placeholders preserving the shared storage
@@ -390,8 +383,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! subroutine. core_boundary_fx2 (FX2) is computed just above but is
 ! NOT what is used here -- this looks like a bug (FX2 vs FX typo) in
 ! the original wrtout.f, preserved exactly, not fixed.
-       core_boundary_fx2 = (del_grad(3,core_cz_top_index+1)-del_grad(1,core_cz_top_index))/ &
-             (del_grad(3,core_cz_top_index+1)-del_grad(1,core_cz_top_index))
+       core_boundary_fx2 = (shell_diag%del_grad(3,core_cz_top_index+1)-shell_diag%del_grad(1,core_cz_top_index))/ &
+             (shell_diag%del_grad(3,core_cz_top_index+1)-shell_diag%del_grad(1,core_cz_top_index))
        core_boundary_log_radius = log_radius(core_cz_top_index)+envelope_boundary_fx* &
             (log_radius(core_cz_top_index+1)-log_radius(core_cz_top_index))-log10_solar_radius
        core_boundary_radius = dexp(ln10*core_boundary_log_radius)
@@ -411,7 +404,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       pressure_linear = dexp(ln10*log_pressure(1))
       log_pressure_center = dlog10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-      log_temperature_center = log_temperature(1) + dlog10(1.0D0+ temp_value*del_grad(2,1)/pressure_linear)
+      log_temperature_center = log_temperature(1) + dlog10(1.0D0+ temp_value*shell_diag%del_grad(2,1)/pressure_linear)
       log_density_center = log_density(1)
       hydrogen_fraction_center = composition(1,1)
       metal_fraction_center = composition(3,1)
@@ -457,8 +450,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! JVS 10/11/13 SDEL(1,JENV) IN DENOMINATOR WAS A TYPO. CHANGED TO SDEL(3,JENV)
 !            FX = (SDEL(3,JENV)-SDEL(1,JENV-1))/
 !     *           (SDEL(3,JENV)-SDEL(1,JENV-1))
-            dd2 = del_grad(1,envelope_cz_bottom_index-1)-del_grad(3,envelope_cz_bottom_index-1)
-            dd1 = del_grad(1,envelope_cz_bottom_index)-del_grad(3,envelope_cz_bottom_index)
+            dd2 = shell_diag%del_grad(1,envelope_cz_bottom_index-1)-shell_diag%del_grad(3,envelope_cz_bottom_index-1)
+            dd1 = shell_diag%del_grad(1,envelope_cz_bottom_index)-shell_diag%del_grad(3,envelope_cz_bottom_index)
             envelope_boundary_fx = dd2/(dd2-dd1)
 !            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
             cz_base_mass = mass_coordinate(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
@@ -471,8 +464,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             envelope_cz_log_radius = log_radius(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (log_radius(envelope_cz_bottom_index)-log_radius(envelope_cz_bottom_index-1))-log10_solar_radius
             envelope_radius = exp(ln10*envelope_cz_log_radius)
-            envelope_cz_o16 = so(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (so(envelope_cz_bottom_index)-so(envelope_cz_bottom_index-1))
+            envelope_cz_o16 = shell_diag%so(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (shell_diag%so(envelope_cz_bottom_index)-shell_diag%so(envelope_cz_bottom_index-1))
             envelope_cz_log_temperature = log_temperature(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (log_temperature(envelope_cz_bottom_index)-log_temperature(envelope_cz_bottom_index-1))
             envelope_cz_log_density = log_density(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
@@ -488,7 +481,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             envelope_cz_temperature = 10.0D0**central_log10_temperature
             envelope_cz_density = 10.0D0**central_log10_density
             envelope_cz_pressure = 10.0D0**central_log10_pressure
-            envelope_cz_o16 = so(1)
+            envelope_cz_o16 = shell_diag%so(1)
        endif
       else
        envelope_mass = 0.0D0

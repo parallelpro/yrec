@@ -30,7 +30,7 @@
 ! this file is the first to actually USE those three slots, as the
 ! live temperature/pressure Henyey-equation scratch terms (they also
 ! double as the eq_t_val/eq_p_val/dqt_dl arguments passed to reduce),
-! so per the project's COMMON-block-reuse rule they keep the
+! shell_diag%so per the project's COMMON-block-reuse rule they keep the
 ! wrtmod.f90 names (qt/qp/qtl) here too, despite those names no
 ! longer being very descriptive of their role in this file.
 !
@@ -50,6 +50,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use scrtch_lib
       use luout_lib
       use const_lib
       implicit none
@@ -96,11 +97,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       double precision :: metal_fraction_match_tolerance, zsi
       integer :: idt, idd(4)
       common/optab/metal_fraction_match_tolerance,zsi,idt,idd
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/sesum,seg,sbeta,seta,locons,so,del_grad,sfxion,svel,scp
 ! DBG PULSE
       double precision :: pulsation_mass_msun
       logical :: pulsation_output_active
@@ -546,7 +542,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! SUCH AS OPACITY ARE SAVED; PRIOR RESTRICTIONS WERE BASED ON OBSOLETE
 ! MEMORY RESTRICTIONS IN LEGACY CODE
 !         IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
-         svel(im) = convective_velocity
+         shell_diag%svel(im) = convective_velocity
 !         ENDIF
 !  STORE VARIABLES FOR OUTPUT IN SCRIB2 IF MODEL IS TO BE PRINTED OUT
 ! DBG PULSE STORE VARIABLES FOR PULSATION OUPUT
@@ -556,26 +552,26 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !         LSHORT = .NOT.LONG .AND. MOD(MODEL,NPRT1).EQ.0
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
          if (log_temperature(im).lt.tcut(1)) then
-            sesum(im) = 0.0d0
-            seg(7,im) = gravitational_luminosity(im)
+            shell_diag%sesum(im) = 0.0d0
+            shell_diag%seg(7,im) = gravitational_luminosity(im)
             do j = 1,6
-               seg(j,im) = 0.0d0
+               shell_diag%seg(j,im) = 0.0d0
            end do
          else
 !         ELSE IF(LONG) THEN
 !  LONG OUTPUT NEEDED
-            sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
+            shell_diag%sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
                  energy_gen_component(3)+energy_gen_component(4)+ &
                  energy_gen_component(5)
-            seg(6,im) = energy_gen_component(6)
-            seg(7,im) = gravitational_luminosity(im)
-            if (sesum(im).gt.1.0d-22) then
-               energy_sum_inverse = 1.0d0/sesum(im)
+            shell_diag%seg(6,im) = energy_gen_component(6)
+            shell_diag%seg(7,im) = gravitational_luminosity(im)
+            if (shell_diag%sesum(im).gt.1.0d-22) then
+               energy_sum_inverse = 1.0d0/shell_diag%sesum(im)
             else
                energy_sum_inverse = 0.0d0
             end if
             do j = 1,5
-               seg(j,im) = energy_gen_component(j)*energy_sum_inverse
+               shell_diag%seg(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
 !  SHORT OUTPUT ONLY
 !         ELSE
@@ -583,18 +579,18 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !            SEG(6,IM) = EG(6)
 !            SEG(7,IM) = HHC(IM)
          end if
-         sbeta(im) = beta
-         seta(im) = electron_degeneracy_parameter
-         locons(im) = conductive_opacity_flag
-         so(im) = opacity
-         del_grad(1,im) = radiative_gradient
-         del_grad(2,im) = actual_gradient
-         del_grad(3,im) = adiabatic_gradient
+         shell_diag%sbeta(im) = beta
+         shell_diag%seta(im) = electron_degeneracy_parameter
+         shell_diag%locons(im) = conductive_opacity_flag
+         shell_diag%so(im) = opacity
+         shell_diag%del_grad(1,im) = radiative_gradient
+         shell_diag%del_grad(2,im) = actual_gradient
+         shell_diag%del_grad(3,im) = adiabatic_gradient
          do j = 1,3
-            sfxion(j,im) = ion_fraction(j)
+            shell_diag%sfxion(j,im) = ion_fraction(j)
          end do
-         svel(im) = convective_velocity
-         scp(im) = specific_heat_cp
+         shell_diag%svel(im) = convective_velocity
+         shell_diag%scp(im) = specific_heat_cp
 ! MHP 02/12 COMMENTED CODE OUT, AS REPLICATED BELOW
 !         IF(LSOUND) THEN
 ! MHP 7/96 CALCULATION OF GAMMA1 FROM GUENTHER 1995 P.C.
@@ -621,12 +617,12 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             dlnkappa_dlnrho(im) = dlnkap_dlnrho
             dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error
-            if (sesum(im).gt.0.0d0) then
+            if (shell_diag%sesum(im).gt.0.0d0) then
 !            IF(SESUM(I).GT.0.0D0)THEN
 !               ETOT = SESUM(I)
 !               EGNEUT = SEG(6,I)+SEG(7,I)
-               total_energy_sum = sesum(im)
-               neutrino_and_grav_sum = seg(6,im)+seg(7,im)
+               total_energy_sum = shell_diag%sesum(im)
+               neutrino_and_grav_sum = shell_diag%seg(6,im)+shell_diag%seg(7,im)
                neutrino_loss_fraction(im) = (total_energy_sum - &
                     neutrino_and_grav_sum)/total_energy_sum
             else
@@ -643,7 +639,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! wrtout.f90) and needs these populated for every converged model, not
 ! just ones flagged by the older mechanism. All source locals here
 ! (dlnrho_dlnp, dlnkap_dlnrho/dlnt, zone_dlnepsilon_dlnrho/dlnt, etc.)
-! are already computed unconditionally above, so this is just always
+! are already computed unconditionally above, shell_diag%so this is just always
 ! copying them into the pulse1/mixing-length output arrays -- no
 ! change to any existing output (.short/.track/.store/.pmod/.penv/
 ! .patm) values, since none of those read from these arrays.

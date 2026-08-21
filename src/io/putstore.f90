@@ -27,6 +27,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+      use scrtch_lib
       use luout_lib
       use const_lib
       implicit none
@@ -187,14 +188,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-! common/scrtch/: only so/del_grad/svel/sbeta/seta/seg/sesum are used
-! here. Naming matches microdiff_setup.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 ! common/sound/: adiabatic_index_gamma1 is used here. Naming is local
 ! to this batch.
       double precision :: adiabatic_index_gamma1(json)
@@ -235,7 +228,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! LMILNE is likewise never declared in any COMMON block of the
 ! original putstore.f (unlike wrtout.f/wrtlst.f, which get it from
 ! common/ccout2/) -- it is an implicitly-typed, SAVE'd, always-default
-! (.FALSE. in practice) local here, so "IF(LMILNE) CALL WRTMIL(...)"
+! (.FALSE. in practice) local here, shell_diag%so "IF(LMILNE) CALL WRTMIL(...)"
 ! below is effectively dead code. Preserved exactly as in the
 ! original; not "fixed" here.
       logical :: lmilne
@@ -427,9 +420,9 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! write out additional physics if desired
             if(lstphys)then
              sg = dexp(ln10*(cgl - 2.0D0*log_radius(i)))*mass_coordinate(i)
-               write(istor,63,advance='no') so(i),sg,del_grad(1,i),del_grad(2,i), &
-                 del_grad(3,i),svel(i),adiabatic_index_gamma1(i),0.0,0.0,0.0,sbeta(i),seta(i), &
-                 (seg(k,i),k=1,5),sesum(i),seg(6,i),seg(7,i)
+               write(istor,63,advance='no') shell_diag%so(i),sg,shell_diag%del_grad(1,i),shell_diag%del_grad(2,i), &
+                 shell_diag%del_grad(3,i),shell_diag%svel(i),adiabatic_index_gamma1(i),0.0,0.0,0.0,shell_diag%sbeta(i),shell_diag%seta(i), &
+                 (shell_diag%seg(k,i),k=1,5),shell_diag%sesum(i),shell_diag%seg(6,i),shell_diag%seg(7,i)
 !               WRITE(ISTOR,63,ADVANCE='no') SO(I),SG,SDEL(1,I),SDEL(2,I),
 !     *           SDEL(3,I),SVEL(I),GAM1(I),SFXION(1,I),SFXION(2,I),SFXION(3,I),
 !     *           SBETA(I),SETA(I),(SEG(K,I),K=1,5),SESUM(I),SEG(6,I),SEG(7,I)

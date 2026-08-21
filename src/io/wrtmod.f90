@@ -19,6 +19,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      log_temperature, model_number, log_luminosity_lsun, log_teff, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
+      use scrtch_lib
       use luout_lib
       use const_lib
       implicit none
@@ -109,14 +110,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       common/intenv/ env_error_tol, env_step_begin, env_step_min, env_step_max
 
 
-! common/scrtch/: only sesum/seg/so/del_grad are used here. Naming
-! matches microdiff_setup.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
 ! DBG PULSE
 ! common/pulse/: pulsation_mass_msun/pulsation_output_active/
@@ -208,7 +201,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 ! anywhere in this subroutine (no CALL PINDEX or equivalent here,
 ! unlike putstore.f90/wrtlst.f90). With the implicit SAVE below they
 ! keep their static-storage default (in practice 0 on essentially all
-! platforms), so "DO 220 J = 1,IDM" never executes and the WRITE(
+! platforms), shell_diag%so "DO 220 J = 1,IDM" never executes and the WRITE(
 ! IOPMOD,5001) statement always reports IDM=0. This looks like a
 ! latent bug (perhaps a lost CALL PINDEX from an earlier refactor),
 ! but it is preserved exactly as in the original wrtmod.f; not "fixed"
@@ -256,7 +249,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             xxx = -exp(ln10*(cgl+log_mass(i)+log_density(i)-log_pressure(i)-log_radius(i)))
             xx2 = -xxx/adiabatic_index_gamma1(i)
             xx3 = adiabatic_index_gamma1(i)
-            xx4 = -xx2-xxx*(pulse_dlnrho_dlnp(i)+del_grad(2,i)*pulse_dlnrho_dlnt(i))
+            xx4 = -xx2-xxx*(pulse_dlnrho_dlnp(i)+shell_diag%del_grad(2,i)*pulse_dlnrho_dlnt(i))
             xx5 = exp(ln10*(c4pil+log_density(i)+3.0D0*log_radius(i)-log_mass(i)))
             sound_velocity = 1.0D-5*sqrt(adiabatic_index_gamma1(i)*exp(ln10*(log_pressure(i)-log_density(i))))
             write(imodpt,123)fr,fm,xx1,xx2,xx3,xx4,xx5,sound_velocity
@@ -388,19 +381,19 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
          if(pulsation_file_version.eq.1) then
          pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* pulse_electron_mean_molecular_weight(i)
          write(opal_model_unit, 5052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
-                log_pressure(i), sesum(i),so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i), &
-                pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), del_grad(2,i),del_grad(3,i), &
+                log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i), &
+                pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i), &
                 pulse_specific_heat(i), pulse_mean_molecular_weight(i), pulse_dlnrho_dlnt(i), pelpf
          else if (pulsation_file_version.eq.2) then
          write(opal_model_unit, 6052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
-            log_pressure(i), sesum(i),so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i), &
-            pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), del_grad(2,i),del_grad(3,i), &
+            log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i), &
+            pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i), &
             pulse_specific_heat(i), pulse_mean_molecular_weight(i), pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Modifed to include mixing length variables
          write(opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),valfmlt(i), &
-            log_pressure(i), sesum(i),so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i),vphmlt(i), &
-            pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), del_grad(2,i),del_grad(3,i),vcmxmlt(i), &
+            log_pressure(i), shell_diag%sesum(i),shell_diag%so(i), pulse_dlnrho_dlnp(i), pulse_dlneps_dlnrho(i),vphmlt(i), &
+            pulse_dlneps_dlnt(i), pulse_dlnkap_dlnrho(i), pulse_dlnkap_dlnt(i), shell_diag%del_grad(2,i),shell_diag%del_grad(3,i),vcmxmlt(i), &
             pulse_specific_heat(i), pulse_mean_molecular_weight(i), pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          end if
  5003      continue

@@ -26,6 +26,7 @@
 subroutine gettau(composition, log_radius, log_pressure, log_density, &
      enclosed_mass, log_temperature, fp, ft, log_teff, log_total_mass, &
      log_luminosity_lsun, num_zones, convective_flag, radius_at_bcz)
+      use scrtch_lib
       use luout_lib
       use const_lib
       implicit none
@@ -93,14 +94,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
            env_gamma1, env_specific_heat_cp, env_ion_fraction, &
            env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
 
-! common/scrtch/: svel/del_grad are used here. Naming matches
-! hpoint.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 
       double precision :: combined_composition(15,json)
       double precision :: combined_radius(json), combined_pressure(json), &
@@ -147,7 +140,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       convective_turnover_timescale = 0.0
       pphot = 0.0
 
-! Check if 1 PSCA above BCZ is within envelope. If so, only the interior
+! Check if 1 PSCA above BCZ is within envelope. If shell_diag%so, only the interior
 ! model should be considered for TAUCZ. Set LCALCENV = .FALSE.. If not,
 ! have ENVINT calculate the full structure, and stitch the envelope
 ! and interior together.
@@ -229,9 +222,9 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
               exp(ln10*(cgl-2.0D0*log_radius(zone_index)))
          combined_temperature(zone_index) = log_temperature(zone_index)
 
-         combined_velocity(zone_index) = svel(zone_index)
-         combined_grad1(zone_index) = del_grad(1,zone_index)
-         combined_grad2(zone_index) = del_grad(3,zone_index)
+         combined_velocity(zone_index) = shell_diag%svel(zone_index)
+         combined_grad1(zone_index) = shell_diag%del_grad(1,zone_index)
+         combined_grad2(zone_index) = shell_diag%del_grad(3,zone_index)
          combined_convective_flag(zone_index) = convective_flag(zone_index)
       enddo
 !

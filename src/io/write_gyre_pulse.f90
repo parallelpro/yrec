@@ -24,6 +24,7 @@
 subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
      log_temperature, omega)
+      use scrtch_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -33,15 +34,6 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
            log_density(json), log_luminosity(json), log_pressure(json), &
            log_radius(json), log_temperature(json), omega(json)
 
-! common/scrtch/: so (opacity) and del_grad (2=actual gradient,
-! 3=adiabatic gradient) are used here. Naming matches wrtout.f90/
-! coefft.f90.
-      double precision :: sesum(json), seg(7,json), sbeta(json), seta(json)
-      logical :: locons(json)
-      double precision :: so(json), del_grad(3,json), sfxion(3,json), &
-           svel(json), scp(json)
-      common/scrtch/ sesum, seg, sbeta, seta, locons, so, del_grad, &
-           sfxion, svel, scp
 ! common/sound/: adiabatic_index_gamma1 (Gamma_1), used here. Naming
 ! matches wrtout.f90.
       double precision :: adiabatic_index_gamma1(json)
@@ -103,14 +95,14 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
          if (radius_cm.gt.0.0d0) then
             grav = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)
             brunt_n2 = grav*grav*(density_cgs/pressure_cgs)*delta* &
-                 (del_grad(3,i)-del_grad(2,i))
+                 (shell_diag%del_grad(3,i)-shell_diag%del_grad(2,i))
          else
             brunt_n2 = 0.0d0
          end if
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
-              pressure_cgs,temperature_k,density_cgs,del_grad(2,i), &
-              brunt_n2,adiabatic_index_gamma1(i),del_grad(3,i),delta, &
-              so(i),pulse_dlnkap_dlnt(i),pulse_dlnkap_dlnrho(i),sesum(i), &
+              pressure_cgs,temperature_k,density_cgs,shell_diag%del_grad(2,i), &
+              brunt_n2,adiabatic_index_gamma1(i),shell_diag%del_grad(3,i),delta, &
+              shell_diag%so(i),pulse_dlnkap_dlnt(i),pulse_dlnkap_dlnrho(i),shell_diag%sesum(i), &
               pulse_dlneps_dlnt(i),pulse_dlneps_dlnrho(i),omega(i)
  110     format(I6,99(1X,1PE26.16))
       end do
