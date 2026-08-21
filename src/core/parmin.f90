@@ -36,6 +36,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
      fscvz, opecalex)
 
+      use const_lib
       use luout_lib
       use intpar_lib
       implicit none
@@ -99,7 +100,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       character(len=256) :: shell_cmd
       integer :: i, j, last_slash_idx
       integer :: short_prefix_len
-      double precision :: one_third, two_thirds, ln10
+      double precision :: one_third, two_thirds
+! parmin_ln10: this file's own private ln(10) (never read after being
+! set -- see the assignment below), distinct from const_lib's ln10
+! (which this file now also uses via const3's `use const_lib`, hence
+! the rename needed here to avoid a name collision).
+      double precision :: parmin_ln10
       double precision :: sum_frac
       integer :: nkind
       integer :: first_model_binary_lu, last_model_binary_lu, &
@@ -164,9 +170,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
       common /const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
 
-! common /const3/
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, csecyr
-      common /const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, csecyr
 
 ! common /ctlim/
       double precision :: atime(14), tcut(5), tscut, tenv0, tenv1, tenv, tgcut
@@ -753,7 +756,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data lptime/.true./
 ! JVS 04/14
       data ltrist/.false./
-      data lkuthe,cmixl/.false.,1.4d0/
+! cmixl's default (1.4d0) moved to const_lib.f90's own declaration: a
+! DATA statement can no longer target it here now that it's
+! use-associated from const_lib rather than locally declared/COMMON.
+      data lkuthe/.false./
 !       DATA DPENV,LNSTDMX,LOVSTC,ALPHAC,LOVSTE,ALPHAE, LOVSTM, ALPHAM
 !      */1.0D0,.FALSE.,.FALSE., 0.0D0, .FALSE.,0.0D0, .FALSE., 0.0/
       data dpenv,lovstc,alphac,lovste,alphae, lovstm, alpham &
@@ -1419,7 +1425,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       endif
 !     WINDLAW END
 !
-      ln10 = dlog(10.0d0)
+      parmin_ln10 = dlog(10.0d0)
       if(lnewcp) then
        lrel = .true.
        if(atmp.eq.'ABS') lrel = .false.

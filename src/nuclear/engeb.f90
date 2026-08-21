@@ -205,12 +205,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 
-! ADDED SECONDS PER YEAR
-! common/const3/: not used in this file; declared only to preserve
-! layout. Naming matches dburnm.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! 7/91 COMMON BLOCK ADDED TO SKIP FLUX CALCULATIONS IF LSNU=F
 ! common/neweng/: only lsnu is used here. Naming matches mix.f90.

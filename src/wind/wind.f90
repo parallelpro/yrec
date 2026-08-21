@@ -43,13 +43,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 
 
 
-! common/const3/: not used here. Naming matches getw.f90. NOTE: this
-! file (like mwind.f90) locally spells the 2nd member "cmixz" in the
-! original source (mwind.f/wind.f) instead of "cmixl" as elsewhere;
-! same COMMON storage position, unused in this file either way.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/cwind/: wind_saturation_omega/constfactor/exmd/exr/exm/
 ! wind_law_omega_exponent are used here. Naming matches getw.f90.

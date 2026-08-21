@@ -78,11 +78,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 
 
 
-! common/const3/: only seconds_per_year is used here. Naming matches
-! dburnm.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/ctlim/: only tcut is used here. Naming matches eqburn.f90.
       double precision :: atime(14), tcut(5), saha_log10t_cutoff, &

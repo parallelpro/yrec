@@ -43,6 +43,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
      log_teff)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -79,11 +80,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const3/: only seconds_per_year (CSECYR) is used here. Naming
-! matches tpgrad.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/ct3/: use_structure_dt_limits (originally LPTIME) is used
 ! here, both read and (conditionally) cleared. Naming matches

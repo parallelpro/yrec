@@ -89,11 +89,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 
 
 
-! common/const3/: only seconds_per_year is used here. Naming matches
-! getw.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/masschg/: mass_accretion_rate/lreimer/use_mass_accretion are
 ! used here. Naming matches dburn.f90.

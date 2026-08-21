@@ -43,11 +43,6 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 
 
 
-! common/const3/: not used in this file's logic; layout placeholder.
-! Naming matches tpgrad.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/ctlim/: only atime(13) (global timestep-change limiter) is
 ! used here. Naming matches eqstat2.f90/eqburn.f90.

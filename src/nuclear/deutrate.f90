@@ -21,13 +21,6 @@ subroutine deutrate(dl,tl,x,i,itlvl)
       integer, intent(in) :: i, itlvl
 
 
-! common/const3/: not used in this file; declared only to preserve
-! layout. Naming matches dburnm.f90 (only seconds_per_year there is
-! interpreted with confidence; the rest are unused placeholders here
-! too).
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/deuter/: only deuterium_burning_rate (end-of-step) and
 ! deuterium_burning_rate_start are set here; accreted_mass_fraction and

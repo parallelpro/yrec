@@ -9,6 +9,7 @@
 ! Write the headers for all the appropriate output files.
 subroutine wrthead(total_mass_msun)
 
+      use const_lib
       use luout_lib
       implicit none
 
@@ -52,12 +53,6 @@ subroutine wrthead(total_mass_msun)
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const3/: only mixing_length (CMIXL) is used here. Naming
-! matches mix.f90.
-      double precision :: cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
 
 
 ! common/lunum/: not used in this file; declared only to preserve
@@ -90,13 +85,13 @@ subroutine wrthead(total_mass_msun)
 
       if (rescale_kind(nk) .eq. 1) then
          write(iowr, 47) nk, initial_envelope_x, initial_envelope_z, &
-              mixing_length, num_models(nk)
+              cmixl, num_models(nk)
       else if (rescale_kind(nk) .eq. 2) then
          write(iowr, 48) nk, initial_envelope_x, initial_envelope_z, &
-              mixing_length, num_models(nk)
+              cmixl, num_models(nk)
       else if (rescale_kind(nk) .eq. 3) then
          write(iowr, 49) nk, initial_envelope_x, initial_envelope_z, &
-              mixing_length, num_models(nk)
+              cmixl, num_models(nk)
       end if
   47  format(/, ' RUN=',I2,' EVOLVE  ', ' X=',F8.6, &
              ' Z=',F8.6,' CMIXL=', F8.6, ' NO.MODS=', I5)
@@ -109,7 +104,7 @@ subroutine wrthead(total_mass_msun)
 ! header stuff for isochrone output
          total_mass_grams = total_mass_msun*solar_mass_cgs
          write(isochrone_file_unit, 1495) total_mass_grams, &
-              initial_envelope_x,initial_envelope_z,mixing_length,solar_bolometric_magnitude
+              initial_envelope_x,initial_envelope_z,cmixl,solar_bolometric_magnitude
  1495    format(7X, 1P5E16.8)
       end if
 
@@ -117,7 +112,7 @@ subroutine wrthead(total_mass_msun)
 ! ITRVER identifies version of track out file.  If you change
 ! the track out file then change this version number.
          write(itrack, 1500)track_file_version,total_mass_msun,initial_envelope_x, &
-              initial_envelope_z,mixing_length
+              initial_envelope_z,cmixl
  1500    format('#Version=',i3,'  Mtot/Msun =',1PE16.8, &
               '  Initial: X =',1PE16.8,' Z =',1PE16.8, &
               '  Mix. length =', 1PE16.8)

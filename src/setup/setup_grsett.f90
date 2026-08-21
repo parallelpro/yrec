@@ -57,12 +57,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
 
-! common/const3/: not used in this file; declared only to preserve
-! layout. Naming matches mix.f90/wrthead.f90.
-      double precision :: cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
 
 ! common/confac/: bl_radius_scale/bl_mass_scale/bl_temp_scale/
 ! bl_time_scale, all used here (originally CON_RAD/CON_MASS/CON_TEMP/

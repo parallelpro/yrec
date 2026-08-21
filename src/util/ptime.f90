@@ -47,11 +47,6 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
 
 
 
-! common/const3/: not used in this file's logic; layout placeholder.
-! Naming matches tpgrad.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/ctlim/: atime(8)-atime(9)-atime(10)-atime(11) (max delta T, P,
 ! R, L per model) and atime(13) (global timestep-change limiter) are

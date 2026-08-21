@@ -77,12 +77,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 
 
 
-! common/const3/: cdelrl/cmixl/cmixl2/cmixl3 are used here; clndp/
-! seconds_per_year are unused placeholders. Naming matches dburnm.f90/
-! rotmix.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/ctlim/: only tgcut is used here. Naming matches eqstat2.f90/
 ! rotmix.f90 (saha_log10t_cutoff there is the TSCUT slot).

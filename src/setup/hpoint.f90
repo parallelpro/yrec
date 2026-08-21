@@ -96,11 +96,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
 
-! common/const3/: only clndp is used here. Naming matches dburnm.f90/
-! rotmix.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/ctlim/: tenv0/tenv1 are used here. Naming matches eqburn.f90.
       double precision :: atime(14), tcut(5), saha_log10t_cutoff, tenv0, &

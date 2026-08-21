@@ -19,6 +19,7 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
      rate_zero9, rate_c12_alpha, rate_n14_alpha, rate_triple_alpha, &
      rate_zero13, frac_c12_alpha, frac_be7_electron, h_shell_zone_begin)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -57,11 +58,6 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const3/: not used in this file's logic; layout placeholder.
-! Naming matches tpgrad.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/ct3/: not used in this file's logic; layout placeholder.
 ! Naming matches remap.f90.

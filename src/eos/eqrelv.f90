@@ -66,10 +66,6 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
 
 
 
-! common/const3/: not used in this file.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! DBG 7/92 CDH IS CONSTANT TERM DEFINED IN SETUPS
 !     RAMP FUNCTION BETWEEN NO ELECTRON DEGENERACY ETA .LT. ETADH0

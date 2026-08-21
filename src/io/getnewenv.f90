@@ -63,11 +63,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 
 
 
-! common/const3/: not used in this file. Naming matches eqburn.f90/
-! rotmix.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/envprt/: not used in this file. Naming matches envint.f90/
 ! qenv.f90.

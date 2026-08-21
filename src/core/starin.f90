@@ -230,11 +230,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       common/const/ solar_luminosity_cgs, log10_solar_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-! common/const3/: cmixl/seconds_per_year are used here. Naming matches
-! envint.f90/hpoint.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 ! common/envprt/: not used in this file's logic; layout placeholder.
 ! Naming matches envint.f90/getnewenv.f90/qenv.f90.
       double precision :: current_log10_pressure, current_log10_temperature, &

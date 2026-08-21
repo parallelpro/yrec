@@ -32,11 +32,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(in) :: step_fraction
 
 
-! common/const3/: only seconds_per_year is used here. Naming matches
-! deutrate.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/deuter/: only accreted_mass_fraction is used here (the
 ! start/end burning rates come in as dummy arguments in this variant of

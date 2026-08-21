@@ -91,11 +91,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 
 
 
-! common/const3/: only clndp is used here. Naming matches eqburn.f90/
-! rotmix.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! 11/91 common blocks added for pressure scale height calc. for LIBURN
 ! common/dpmix/: alphae/envelope_overshoot_active are used here.

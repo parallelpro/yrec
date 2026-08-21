@@ -277,11 +277,6 @@ program main
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
 
-! common/const3/: cmixl/clndp/seconds_per_year used here; the rest are
-! unused placeholders. Naming matches coefft.f90/dburnm.f90/hpoint.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/ctol/: fcorr0/fcorri/fcorr/niter1/niter2/niter3 used here; the
 ! rest are unused placeholders. Naming matches crrect.f90/hpoint.f90.

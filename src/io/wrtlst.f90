@@ -25,6 +25,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 ! CONVERGED MODEL) AND STORE MODELS D(EVERY NPUNCH MODELS)
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -56,12 +57,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 !      CHARACTER*256 FOPALE,FOPALE01,FOPALE06  ! FcondOpacP
 
 
-! common/const3/: only mixing_length is used here. Naming matches
-! mix.f90.
-      double precision :: cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
 
 ! common/flag/: use_extended_composition (originally LEXCOM). Naming
 ! matches mixcz.f90.
@@ -243,7 +238,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       if (use_opal92_tables) high_temp_opacity_flag='OP92'
       if (use_laol89_tables) high_temp_opacity_flag='LL89'
 
-      call putmodel2(log_luminosity_lsun,envelope_fit_coeffs,mixing_length, &
+      call putmodel2(log_luminosity_lsun,envelope_fit_coeffs,cmixl, &
            age_gyr,timestep_yr,trial_sign_flag,composition,log_density, &
            log_luminosity,log_pressure,log_radius,log_mass,log_total_mass, &
            log_temperature,iwrite,short_file_unit,core_cz_top_index, &

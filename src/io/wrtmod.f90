@@ -84,12 +84,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 
 
 
-! common/const3/: only mixing_length is used here. Naming matches
-! mix.f90.
-      double precision :: cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
 
 ! common/envgen/: atmosphere/envelope step sizes for printout, used
 ! here. Naming is local to this batch.
@@ -375,7 +369,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
          tempr = rsurfl - log10_solar_radius
          qsmass = pulsation_mass_msun
          write (opal_model_unit, 5001) model_number,num_pulsation_points,pulsation_file_version,qsmass, &
-               log_teff,log_luminosity_lsun,tempr, age_gyr, mixing_length, initial_envelope_x, initial_envelope_z
+               log_teff,log_luminosity_lsun,tempr, age_gyr, cmixl, initial_envelope_x, initial_envelope_z
  5001    format(' MODEL#=', I5, '  NUMBER OF SHELLS IN MODEL=',I5, &
                 ' VER=',I2,/, &
                 ' MASS=',F8.5, '  LOG(TEFF)=',F8.5,/, ' LOG(L/LSUN)=', &

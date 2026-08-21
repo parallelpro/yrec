@@ -68,11 +68,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       common/const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
 
 
-! common/const3/: not used in this file. Naming matches dburnm.f90/
-! rotmix.f90.
-      double precision :: cdelrl, cmixl, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, cmixl, cmixl2, cmixl3, clndp, seconds_per_year
 
 ! common/confac/: CON_RAD/CON_MASS/CON_TEMP/CON_TIME, the Bahcall &
 ! Loeb unit-conversion factors set up here and shared with

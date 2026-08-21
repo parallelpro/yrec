@@ -103,13 +103,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 
 
 
-! common/const3/: cdelrl/cmixl2/cmixl3/seconds_per_year are assigned
-! here; mixing_length (CMIXL) is an unused placeholder. Naming matches
-! mix.f90/wrthead.f90/setup_grsett.f90.
-      double precision :: cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
-      common/const3/ cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
-           seconds_per_year
 
 ! common/ccr/: this batch's own block (see eqrelv.f90 for the full
 ! member-by-member discussion); all read in here from the Fermi table
