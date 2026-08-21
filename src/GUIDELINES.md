@@ -229,3 +229,72 @@ first pass for these. Instead:
   double), and can cascade into thousands of differing lines through
   an iterative solver. Never "improve" a literal's precision suffix
   while doing an unrelated mechanical conversion.
+
+## Re-triage after every conversion, not just at the start
+
+A COMMON-to-module conversion can leave *other* files newly eligible
+for a treatment they weren't eligible for before, as a side effect --
+and nothing flags this automatically. Concretely: converting
+`common/const1/`/`common/luout/`/`common/intpar/`/`common/tridi/` left
+9 files in `numerics/` (`ctridi`, `tridia`, `bsstep`, `intpol`,
+`splint`, `splintd2`, `trapzd`, `qgauss`, `intpt`) fully COMMON-free,
+but each of those commits was correctly scoped to just its own COMMON
+block, so none of them checked whether the change also unlocked a
+merge-into-`numerics_lib`-style conversion elsewhere. They sat
+unconverted for several commits before anyone (the user, in this
+case) asked why. After converting a COMMON block, re-run the
+COMMON-usage census (`grep "^\s*common" <file>`) on every file that
+*used to* share it, not just the files directly touched by that one
+conversion -- a file can cross from "still coupled" to "fully clean"
+without being the direct target of the change that did it.
+
+## Known interface-violation shapes
+
+Every module conversion so far has surfaced at least one pre-existing
+bug via the new explicit interface (per the build-mechanics note
+above). Recognizing which of these three shapes you're looking at
+saves re-deriving the fix from scratch:
+
+- **Array too small.** Caller declares a local array shorter than the
+  callee's dummy (e.g. `kap/alsurfp.f90` passed 4-element arrays where
+  `polint`'s dummy is `xa(20)`/`ya(20)`). Tell: "Actual argument
+  contains too few elements." Fix: widen the caller's declared array
+  size to match the callee's real contract (check other correct
+  callers, e.g. `rotation/fpft.f90`, to confirm the right size) --
+  never shrink the callee's dummy to match the caller.
+- **Scalar vs. length-1 array.** Caller passes a `(1)`-dimensioned
+  array where the callee's dummy is a plain scalar, or vice versa
+  (`wind/calcad.f90` did this twice, against `numerics/boole.f90` and
+  against `splint`). Tell: "Rank mismatch ... (scalar and rank-1)."
+  Both sides are legal, standalone F77 idioms (a length-1 array and a
+  scalar share identical memory layout, so this always worked via
+  sequence association under the old implicit interface) -- fix by
+  passing the array *element* (`x(1)`) instead of the whole array at
+  the call site, not by changing either declaration.
+- **Intent mismatch.** Caller declares its own dummy argument
+  `intent(in)`, then passes it as the actual argument to a callee
+  whose corresponding dummy is `intent(inout)`/`intent(out)`
+  (`atm/envint.f90` did this passing values through `bsstep`/`mmid` to
+  an arbitrary `deriv` callback that might modify them). Tell: "Dummy
+  argument ... with INTENT(IN) in variable definition context." Fix:
+  first determine which side is actually right by checking whether the
+  callee (or something *it* calls) ever assigns to the value -- if so,
+  the callee's wider intent reflects real behavior and the caller's
+  declaration should be widened to match (safe whenever every call
+  site already passes a real variable, never a literal/expression, in
+  that position -- check this before widening). Don't narrow the
+  callee's intent to make the error go away without checking first.
+
+## Git hygiene when interleaving sub-tasks in one session
+
+`git mv`/`git add` stage changes that persist across unrelated later
+work. Doing a `git mv` for one sub-task (e.g. relocating misfiled
+files) and then, several steps later, running `git commit -m "..."`
+without an explicit pathspec for an unrelated sub-task will silently
+sweep the still-staged renames into that commit -- the result isn't
+wrong (everything staged did get verified together), but the commit
+message won't describe what's actually in it. Re-run `git status`
+immediately before every commit, not just after making the edits you
+were thinking about, and scope `git commit` with an explicit file
+pathspec whenever more than one sub-task's changes might be staged at
+once.
