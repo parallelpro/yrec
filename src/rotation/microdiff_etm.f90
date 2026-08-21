@@ -22,6 +22,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
      composition, dlnp_dr, radius_bl, enclosed_mass, temperature_bl, &
      num_zones, total_mass, num_light, light_element_id)
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -47,17 +48,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       common/confac/ bl_radius_scale, bl_mass_scale, bl_temp_scale, &
            bl_time_scale
 
-! MHP 3/94 ADDED METAL DIFFUSION
-! common/gravs3/: only use_diffusion_z (LDIFZ) is used here. Naming
-! matches eqstat.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
-! common/gravs4/: only ldifli is used here. Naming matches mix.f90/
-! rotmix.f90.
-      logical :: use_new_diffusion_routines, ldifli
-      common/gravs4/ use_new_diffusion_routines, ldifli
 
       double precision :: tabler(4), facinterp(4)
       save

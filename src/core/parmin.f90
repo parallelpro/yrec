@@ -195,15 +195,29 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lptime
       common /ct3/ lptime
 
-! common /ctol/
-      double precision :: htoler(5,2), fcorr0, fcorri, fcorr, hpttol(12)
-      integer :: niter1, niter2, niter3
-      common /ctol/ htoler, fcorr0, fcorri, fcorr, hpttol, niter1, niter2, niter3
+! htoler/fcorr0/fcorri/niter1/niter2/niter3: NAMELIST /physics/ members
+! spelled identically to their const_lib canonical names -- use-
+! associated directly. hpttol is also a NAMELIST member (kept local
+! purely so a .nml2 file could still set HPTTOL directly by that name)
+! but is NOT copy-assigned into const_lib's chi_grid_scale the usual
+! way: when lnewvars is set (as in every current example), setup/
+! remap.f90 recomputes chi_grid_scale from the more user-friendly
+! tol_dm_min/tol_dm_max/etc namelist inputs when `call remap` runs
+! below, overwriting whatever hpttol/chi_grid_scale started as -- so
+! copying hpttol into chi_grid_scale here would just get clobbered
+! (this file's own diagnostic writes read chi_grid_scale directly,
+! after `call remap`, not hpttol, to reflect that). fcorr (former
+! common/ctol/'s remaining member) is unused in this file --
+! core/crrect.f90/core/main.f90 compute it at runtime -- so it's
+! dropped entirely.
+      double precision :: hpttol(12)
 
-! common /difus/
-      double precision :: dtdif, djok
-      integer :: itdif1, itdif2
-      common /difus/ dtdif, djok, itdif1, itdif2
+! dtdif/itdif1/itdif2: NAMELIST /physics/ members spelled identically
+! to their const_lib canonical names -- use-associated directly. djok
+! is also a NAMELIST member but needs a different canonical spelling
+! (convergence_tolerance), so it keeps its local NAMELIST-spelled name
+! here and is copy-assigned after the namelist read below.
+      double precision :: djok
 
 ! lovste: NAMELIST /physics/ member (must keep this exact spelling).
 ! Former common /dpmix/; every other member already matches
@@ -311,11 +325,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: ies, igsf, imu
       common /vmult2/ fesc, fssc, fgsfc, ies, igsf, imu
 
-! common /gravst/
+! grtol/ilambda/niter_gs/ldify: NAMELIST /physics/ members, each with
+! a different canonical const_lib spelling (settling_tolerance/
+! coulomb_log_choice/settling_num_iterations/diffuse_helium_active),
+! so kept local under their NAMELIST spelling here and copy-assigned
+! after the namelist read below.
       double precision :: grtol
       integer :: ilambda, niter_gs
       logical :: ldify
-      common /gravst/ grtol, ilambda, niter_gs, ldify
 
 
 ! common /burtol/
@@ -327,19 +344,27 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: iliv95
       common /lopal95/ iliv95
 
-! common /gravs2/
+! dt_gs/xmin/ymin/lthoulfit: NAMELIST /physics/ members, each with a
+! different canonical const_lib spelling (settling_timestep_fraction/
+! hydrogen_diffusion_floor/helium_diffusion_min/use_thoul_fit), so
+! kept local under their NAMELIST spelling here and copy-assigned
+! after the namelist read below.
       double precision :: dt_gs, xmin, ymin
       logical :: lthoulfit
-      common /gravs2/ dt_gs, xmin, ymin, lthoulfit
 
-! common /gravs3/
-      double precision :: fgry, fgrz
-      logical :: lthoul, ldifz
-      common /gravs3/ fgry, fgrz, lthoul, ldifz
+! fgry/fgrz/lthoul: NAMELIST /physics/ members spelled identically to
+! their const_lib canonical names -- use-associated directly. ldifz is
+! also a NAMELIST member but needs a different canonical spelling
+! (use_diffusion_z), so it keeps its local NAMELIST-spelled name here
+! and is copy-assigned after the namelist read below.
+      logical :: ldifz
 
-! common /gravs4/
-      logical :: lnewdif, ldifli
-      common /gravs4/ lnewdif, ldifli
+! lnewdif: NAMELIST /physics/ member with a different canonical
+! spelling (use_new_diffusion_routines), so kept local under its
+! NAMELIST spelling here and copy-assigned after the namelist read
+! below. ldifli is a NAMELIST member spelled identically to its
+! const_lib canonical name -- use-associated directly.
+      logical :: lnewdif
 
 ! common /pulse/
       double precision :: xmsol
@@ -503,10 +528,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            tol_dp_czbase_max, tol_dp_env_max, tol_dx_max, tol_dz_max, time_max_dt_frac, lstruct_time, &
            lnewvars
 
-! common /monte/
-      logical :: lmonte
-      integer :: imbeg, imend
-      common /monte/ lmonte, imbeg, imend
+! former common/monte/: lmonte/imbeg/imend are NAMELIST /physics/
+! values spelled identically to their const_lib canonical names --
+! use-associated directly rather than locally declared.
 
 ! common /scveos/
       double precision :: tlogx(n_scv_teff), tablex(n_scv_teff,n_scv_press,12), &
@@ -734,7 +758,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !
 ! DBG DATA CARDS FOR THE RUN PARAMETERS
 ! MHP DATA FOR MONTE CARLO OPTION, ETC
-      data lmonte,imbeg,imend/.false.,1,1/
+! lmonte/imbeg/imend defaults moved to const_lib.f90 (former
+! common/monte/).
 ! Changed slightly 3He-3He on 9/25/97 to take account of the S'.
 !  Previously (6/16/97) used S at Gamow Peak. Agrees with Workshop paper.
 !
@@ -777,9 +802,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &      1.0d-1,5.0d-1/
       data enverr,envbeg,envmin,envmax/3.0d-4,1.0d-1,1.0d-1,5.0d-1/
       data stolr0,imax,nuse/1.0d-3,11,7/
-      data dtdif,djok,itdif1,itdif2/1.0d-2,1.0d-4,1,1/
-      data htoler/6.0d-5,4.5d-5,3.0d-5,9.0d-5,3.0d-5,9.0d-1,5.0d-1, &
-           &      5.0d-1,2.0d0,2.5d-6/
+! dtdif/itdif1/itdif2/htoler defaults moved to const_lib.f90 (former
+! common/difus/, common/ctol/): DATA can no longer target them here
+! now that they're use-associated.
+      data djok/1.0d-4/
       data hpttol/1.0d-8,8.0d-2,5.0d-2,5.0d-2,1.0d0,1.0d0,0.0d0,5.0d-2, &
            &             2.0d-2,5.0d-2,5.0d-2,1.0d-1/
       data lnewcp,anewcp,xnewcp/.false.,'   ',1.3d1/
@@ -811,7 +837,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! acfpft/itfp1/itfp2 defaults moved to const_lib.f90 (former
 ! common/rot/).
       data tridt,tridl/1.0d-2,8.0d-2/
-      data niter1,niter2,niter3,fcorr0,fcorri/2,20,2,0.8d0,0.1d0/
+! niter1/niter2/niter3/fcorr0/fcorri defaults moved to const_lib.f90
+! (former common/ctol/).
 ! atime's default moved to const_lib.f90 -- see the tcut/etc. note
 ! above; ATIME(13) was orginally = 1.5.
       data dtwind /1.0d1/
@@ -859,8 +886,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! niter4/lnews/lsnu defaults moved to const_lib.f90 (former
 ! common/neweng/).
       data dt_gs,xmin,ymin,lthoulfit/0.1d0,1.0d-3,1.0d-3,.false./
-      data lthoul,ldifz,fgrz,fgry/.false.,.false.,1.0d0,1.0d0/
-      data lnewdif,ldifli/.false.,.false./
+! lthoul/fgrz/fgry/ldifli defaults moved to const_lib.f90 (former
+! common/gravs3/, common/gravs4/): DATA can no longer target them here
+! now that they're use-associated.
+      data ldifz/.false./
+      data lnewdif/.false./
       data cmin,abstol,reltol,kemmax/1.0d-20,1.0d-5,1.0d-4,50/
       data etadh0, etadh1, ldh/-1.0d0, 1.0d0, .false./
       data fesc,fssc,fgsfc/1.0d0,1.0d0,1.0d0/
@@ -1200,6 +1230,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use_mhd_eos = lmhd
       metal_fraction_match_tolerance = optol
       print_point_interval = nprtpt
+      convergence_tolerance = djok
+      settling_tolerance = grtol
+      coulomb_log_choice = ilambda
+      settling_num_iterations = niter_gs
+      diffuse_helium_active = ldify
+      settling_timestep_fraction = dt_gs
+      hydrogen_diffusion_floor = xmin
+      helium_diffusion_min = ymin
+      use_thoul_fit = lthoulfit
+      use_diffusion_z = ldifz
+      use_new_diffusion_routines = lnewdif
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
@@ -1443,7 +1484,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             stop
          endif
       endif
-      write(short_file_unit,1)(hpttol(i),i=1,12),alphae,alphac,linstb,ljdot0, &
+      write(short_file_unit,1)(chi_grid_scale(i),i=1,12),alphae,alphac,linstb,ljdot0, &
            &               alfa,fk,fw,fc,fo,fmu,rcrit
       1 format(1x,'PT TOL',12f6.3/1x,'O.S.ENV',f6.3,' O.S.CORE',f6.3, &
            &        ' LINSTB ',l1,' LJDOT ',l1,' WIND IND.',f6.3,' FK', &
@@ -1686,6 +1727,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
           lthoulfit=.false.
           ilambda=4
       endif
+! ldify/ldifz/lnewdif/lthoulfit/ilambda can all be overridden above,
+! after they were already copy-assigned into their const_lib canonical
+! names (diffuse_helium_active/use_diffusion_z/
+! use_new_diffusion_routines/use_thoul_fit/coulomb_log_choice) earlier
+! in this subroutine -- re-sync now so the const_lib values reflect
+! any override from this block, not just the raw namelist read.
+      diffuse_helium_active = ldify
+      use_diffusion_z = ldifz
+      use_new_diffusion_routines = lnewdif
+      use_thoul_fit = lthoulfit
+      coulomb_log_choice = ilambda
 
 !     WRITE OUT RUN PARAMETERS.
 
@@ -1741,7 +1793,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 &-R MIN.COR-L MAX.COR-P MAX.COR-T MAX.COR-R MAX.COR-L'/2x,'STANDARD                                                            &
 &  3.00E-05  2.50E-06  6.00E-05  4.50E-05  3.00E-05  9.00E-05  9.00                                                            &
 &E-01  5.00E-01  5.00E-01  2.00E+00'/3x,'CURRENT',10(2x,1pe8.2))
-      write(short_file_unit,65)(hpttol(j),j=1,8)
+      write(short_file_unit,65)(chi_grid_scale(j),j=1,8)
       65 format(3x,'LINE  6  D(S)-MIN  D(S)-MAX   FLAG-DX   FLAG-DZ    MAX                                                             &
 &DP MAX DL/LT    MAX DX    MAX DZ'/2x,'STANDARD  1.00E-08  8.00E-02                                                            &
 &  5.00E-02  1.00E+00  5.00E-02  2.00E-02  1.00E+00  1.00E+00'/3x, &

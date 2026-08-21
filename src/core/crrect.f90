@@ -171,14 +171,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 
 
 
-! common/ctol/: htoler/fcorr0/fcorri/fcorr are all used here for the
-! Newton-Raphson convergence/divergence tolerances and correction
-! damping. Naming matches hpoint.f90/mixgrid.f90.
-      double precision :: htoler(5,2), fcorr0, fcorri, fcorr, &
-           chi_grid_scale(12)
-      integer :: niter1, niter2, niter3
-      common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
-           niter2, niter3
 
 ! common/envgen/: not used in this file. Naming matches stitch.f90/
 ! wrtmod.f90.

@@ -21,21 +21,8 @@ subroutine remap
       integer, parameter :: nts = 63, nps = 76
       integer, parameter :: json = 5000
 
-! common/ctol/: only chi_grid_scale (originally HPTTOL) is used here,
-! being assigned from the TOL_* namelist parameters below. Naming
-! matches mixgrid.f90.
-      double precision :: htoler(5,2), fcorr0, fcorri, fcorr, &
-           chi_grid_scale(12)
-      integer :: niter1, niter2, niter3
-      common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
-           niter2, niter3
 
 
-! common/difus/: only dtdif is used (set) here. Naming matches
-! dadcoeft.f90.
-      double precision :: dtdif, convergence_tolerance
-      integer :: itdif1, max_iterations
-      common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
 ! common/ct2/: max permitted change in omega per global timestep. Not
 ! referenced in any already-converted file.

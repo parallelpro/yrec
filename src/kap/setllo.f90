@@ -50,9 +50,6 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
       integer :: opal92_num_x_z2, opal92_num_temps_z2
       common /llot2/ opal92_log10_opacity_z2, opal92_num_x_z2, opal92_num_temps_z2
 
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/fgry, fgrz, lthoul, use_diffusion_z
 
 ! MHP 8/25 Removed character file names from common block
 ! common/zramp/: not used here; declared only to preserve the shared

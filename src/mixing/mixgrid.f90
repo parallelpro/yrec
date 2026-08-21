@@ -41,16 +41,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 
 
 
-! common/ctol/: only chi_grid_scale (originally HPTTOL) is used here,
-! for the mass/luminosity/pressure scale factors (indices 2/9/11) that
-! normalize the terms of the chi-coordinate Jacobian. Remaining
-! members are unused layout placeholders; not referenced in any
-! already-converted file.
-      double precision :: htoler(5,2), fcorr0, fcorri, fcorr, &
-           chi_grid_scale(12)
-      integer :: niter1, niter2, niter3
-      common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
-           niter2, niter3
 
 ! common/egrid/: the equally spaced coordinate grid (chi/echi/es1) and
 ! its spacing/point count (dchi/ntot), all used here. Not referenced

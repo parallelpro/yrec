@@ -70,7 +70,10 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! --- locals ---
       double precision :: current_turnover_timescale, omega_now, &
            omega_saturation
-      double precision :: fsun, log10_radius, fcorr, fcen
+! fcorr_local: a wind centrifugal-correction factor, unrelated to
+! former common/ctol/'s fcorr -- renamed (2026) to avoid colliding
+! with the const_lib fcorr added for that block.
+      double precision :: fsun, log10_radius, fcorr_local, fcen
       double precision :: domega_test
       integer :: num_substeps
       double precision :: sub_timestep
@@ -149,9 +152,9 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !     RADIUS
       log10_radius = 0.5d0*(log_luminosity_lsun+log10_solar_luminosity-c4pil- &
            csigl-4.d0*log_teff)
-      fcorr = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
+      fcorr_local = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
            total_mass_msun/solar_mass_cgs
-      fcen = ((c_2**2+fsun)/(c_2**2+fcorr))**excen
+      fcen = ((c_2**2+fsun)/(c_2**2+fcorr_local))**excen
       domega_test = (full_timestep/cz_moment_of_inertia)*constfactor* &
            structfactor*omega_surface &
            *min(omega_now,omega_saturation)**(wind_law_omega_exponent-1.0d0)*fcen
@@ -193,9 +196,9 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !     *          *MIN(W,WSAT)**(EXW-1.0D0)
 ! MHP 8/17 ADDED CENTRIFUGAL REDUCTION TERM FROM MATT+2012 ApJ 754, L26
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
-         fcorr = 0.5*omega_iter**2*exp(ln10*(3.0*log10_radius-cgl))/ &
+         fcorr_local = 0.5*omega_iter**2*exp(ln10*(3.0*log10_radius-cgl))/ &
               total_mass_msun/solar_mass_cgs
-         fcen = ((c_2**2+fsun)/(c_2**2+fcorr))**excen
+         fcen = ((c_2**2+fsun)/(c_2**2+fcorr_local))**excen
          omega_iter_new = omega_substep_start - (sub_timestep/ &
               cz_moment_of_inertia)*constfactor*structfactor*omega_iter &
               *min(omega_now,omega_saturation)**(wind_law_omega_exponent-1.0d0)*fcen

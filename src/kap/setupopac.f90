@@ -16,6 +16,7 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
      opal92_table_path, opal92_table2_path, pure_z_table_path, &
      alex95_table_paths)
 
+      use const_lib
       implicit none
 
       double precision, intent(in) :: envelope_hydrogen_fraction
@@ -50,10 +51,6 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
       common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
            use_z_ramp
 
-! common/gravs3/: only use_diffusion_z is used here.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! common/nwlaol/: not read here, but written by the table-loading
 ! routines called below (rdzlaol/zsulaol etc.) via this same block.

@@ -85,13 +85,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 
 
 
-! common/ctol/: chi_grid_scale (originally HPTTOL) is used here for the
-! mesh-spacing tolerances. Naming matches mixgrid.f90.
-      double precision :: htoler(5,2), fcorr0, fcorri, fcorr, &
-           chi_grid_scale(12)
-      integer :: niter1, niter2, niter3
-      common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
-           niter2, niter3
 
 
 ! common/dwmax/: max shear (domega/dr) magnitude, current and from the

@@ -275,4 +275,69 @@ module const_lib
       integer :: dynamics_unit, laol_table_unit, neutrino_unit
       integer :: composition_unit, kurucz_table_unit
 
+! former common/monte/: lmonte/imbeg/imend are all NAMELIST /physics/
+! values spelled identically to their canonical names -- same
+! treatment as common/ccout/ above.
+      logical :: lmonte = .false.
+      integer :: imbeg = 1, imend = 1
+
+! former common/ctol/: htoler/fcorr0/fcorri/niter1/niter2/niter3 are
+! NAMELIST /physics/ values spelled identically to their canonical
+! names -- use-associated directly in core/parmin.f90. chi_grid_scale
+! (originally hpttol) is also a NAMELIST value but needed a different,
+! more readable name established elsewhere, so core/parmin.f90 keeps
+! a local hpttol and copy-assigns (no declaration-time default here,
+! since it's always set that way before first use). fcorr (former
+! common/ctol/'s remaining member) is not a namelist value --
+! core/crrect.f90/core/main.f90 compute it at runtime -- so it has no
+! declaration-time default either.
+      double precision :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, &
+           9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
+      double precision :: fcorr0 = 0.8d0, fcorri = 0.1d0, fcorr
+      double precision :: chi_grid_scale(12)
+      integer :: niter1 = 2, niter2 = 20, niter3 = 2
+
+! former common/difus/: dtdif/itdif1/itdif2 are NAMELIST /physics/
+! values spelled identically to their canonical names -- use-
+! associated directly. convergence_tolerance (originally djok) is also
+! a NAMELIST value but needed a different, more readable name
+! established elsewhere, so core/parmin.f90 keeps a local djok and
+! copy-assigns.
+      double precision :: dtdif = 1.0d-2
+      double precision :: convergence_tolerance
+      integer :: itdif1 = 1, itdif2 = 1
+
+! former common/gravst/: all 4 members are NAMELIST /physics/ values,
+! each with a different canonical spelling than core/parmin.f90's
+! terse names (grtol/ilambda/niter_gs/ldify), so core/parmin.f90 keeps
+! those local and copy-assigns.
+      double precision :: settling_tolerance
+      integer :: coulomb_log_choice, settling_num_iterations
+      logical :: diffuse_helium_active
+
+! former common/gravs2/: all 4 members are NAMELIST /physics/ values,
+! each with a different canonical spelling than core/parmin.f90's
+! terse names (dt_gs/xmin/ymin/lthoulfit), so core/parmin.f90 keeps
+! those local and copy-assigns.
+      double precision :: settling_timestep_fraction, &
+           hydrogen_diffusion_floor, helium_diffusion_min
+      logical :: use_thoul_fit
+
+! former common/gravs3/: fgry/fgrz/lthoul are NAMELIST /physics/
+! values spelled identically to their canonical names -- use-
+! associated directly. use_diffusion_z (originally ldifz) is also a
+! NAMELIST value but needed a different, more readable name, so
+! core/parmin.f90 keeps a local ldifz and copy-assigns.
+      double precision :: fgry = 1.0d0, fgrz = 1.0d0
+      logical :: lthoul = .false.
+      logical :: use_diffusion_z
+
+! former common/gravs4/: use_new_diffusion_routines (originally
+! lnewdif) is a NAMELIST value with a different canonical spelling, so
+! core/parmin.f90 keeps a local lnewdif and copy-assigns. ldifli is a
+! NAMELIST value spelled identically to its canonical name -- use-
+! associated directly.
+      logical :: use_new_diffusion_routines
+      logical :: ldifli = .false.
+
 end module const_lib

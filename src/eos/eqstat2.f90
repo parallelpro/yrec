@@ -75,11 +75,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       common/opaleos/ use_opal95_eos, iopale, use_opal2001_eos, &
            use_opal2006_eos, lnumderiv
 
-! common/gravs3/: only use_diffusion_z is used here. Naming matches
-! setupopac.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! common/scveos/: only use_scv_eos is used here (to select whether the
 ! Saumon-Chabrier-Van Horn table lookup, eqscve, backs the Saha

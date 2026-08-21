@@ -71,20 +71,7 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
 
-! common/gravst/: only settling_num_iterations/settling_tolerance are
-! used here. Naming matches mix.f90/rotmix.f90/setup_grsett.f90.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
 
-! MHP 3/94 ADDED METAL DIFFUSION
-! common/gravs3/: only use_diffusion_z is used here. Naming matches
-! eqstat2.f90/equal_to_model.f90/setupopac.f90/setup_grsett.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! common/gravez/: metal_diffusion_coeff1/metal_diffusion_coeff1_mid/
 ! metal_diffusion_coeff2_mid/eq_metal_diffusion_coeff1_mid/

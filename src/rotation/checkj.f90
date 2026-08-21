@@ -38,7 +38,7 @@
 !   *NOTE: zone_min = 2 AND zone_max = NUMBER OF MODEL POINTS UNLESS A
 !    SURFACE OR CENTRAL CONVECTION ZONE EXISTS.
 ! iteration_number : ITERATION NUMBER.
-! max_iterations : MAXIMUM NUMBER OF ITERATIONS ALLOWED IN A GIVEN
+! itdif2 : MAXIMUM NUMBER OF ITERATIONS ALLOWED IN A GIVEN
 !    DIFFUSION TIMESTEP.
 ! am_transport_convective_flag : ARRAY SET T IF A ZONE IS CONVECTIVE
 !    FOR ANGULAR MOMENTUM REDISTRIBUTION PURPOSES (I.E. INCLUDES
@@ -102,11 +102,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       logical, intent(in) :: already_converged_flag
 
 
-! common/difus/: convergence_tolerance/max_iterations are used here.
-! Naming matches getw.f90/dadcoeft.f90/checkc.f90.
-      double precision :: dtdif, convergence_tolerance
-      integer :: itdif1, max_iterations
-      common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
 ! common/errmom/: moment_of_inertia_tolerance (originally TOLERI), used
 ! here to relax the GETROT convergence tolerance except on the final
@@ -253,7 +248,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  FINAL STEP.
       saved_tolerance = moment_of_inertia_tolerance
       saved_acc_tolerance = acfpft
-      if(iteration_number.lt.max_iterations.and..not.converged_flag)then
+      if(iteration_number.lt.itdif2.and..not.converged_flag)then
          moment_of_inertia_tolerance = &
               max(convergence_tolerance*1.0d-2,saved_tolerance)
          acfpft = max(convergence_tolerance*1.0d-2,saved_acc_tolerance)
@@ -345,7 +340,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                        moment_of_inertia,omega,qiw,mean_radius,num_zones)
             goto 70
          endif
-         if(iteration_number.eq.max_iterations.or.converged_flag) &
+         if(iteration_number.eq.itdif2.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number
   120    format(5x,'OMEGA GRADIENT REVERSAL BETWEEN ZONES ', &
                  i5,' AND ',i5,' ITERATION ',i5)
@@ -356,7 +351,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       zone_bottom = zone_index
       if(zone_index.gt.1) goto 20
 !  I/O FOR END OF DIFFUSION STEP.
-      if(iteration_number.eq.max_iterations.or.converged_flag)then
+      if(iteration_number.eq.itdif2.or.converged_flag)then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN J/M OVER TIMESTEP.
          max_fractional_dj = 0.0d0
          max_dj_zone = 0

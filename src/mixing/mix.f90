@@ -79,33 +79,8 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 
 
 
-!*** MHP 5/90 ADD COMMON BLOCK FOR GRAVITATIONAL SETTLING.
-! common/gravst/: only diffuse_helium_active (originally LDIFY) is
-! used here; the tolerance/iteration-count members are unused
-! placeholders. Not referenced in any already-converted file.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
 
-!*** MHP 6/90 ADDITIONAL COMMON BLOCK FOR SETTLING.
-! common/gravs2/: settling_timestep_fraction, hydrogen_diffusion_floor,
-! and helium_diffusion_min are used here; use_thoul_fit is an unused
-! placeholder. Not referenced in any already-converted file.
-      double precision :: settling_timestep_fraction, &
-           hydrogen_diffusion_floor, helium_diffusion_min
-      logical :: use_thoul_fit
-      common/gravs2/ settling_timestep_fraction, hydrogen_diffusion_floor, &
-           helium_diffusion_min, use_thoul_fit
 
-! GES 6/15 INCLUDED COMMON BLOCK FOR NEW DIFFUSION ROUTINES.
-! common/gravs4/: only use_new_diffusion_routines (originally LNEWDIF)
-! is used here; ldifli is an unused placeholder (uncertain
-! interpretation -- possibly a lithium-diffusion enable flag). Not
-! referenced in any already-converted file.
-      logical :: use_new_diffusion_routines, ldifli
-      common/gravs4/ use_new_diffusion_routines, ldifli
 
 
 

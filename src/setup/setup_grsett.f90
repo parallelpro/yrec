@@ -59,29 +59,9 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       common/confac/ bl_radius_scale, bl_mass_scale, bl_temp_scale, &
            bl_time_scale
 
-! common/gravs2/: hydrogen_diffusion_floor/helium_diffusion_min/
-! use_thoul_fit are used here; settling_timestep_fraction is an unused
-! placeholder. Naming matches mix.f90/rotmix.f90.
-      double precision :: settling_timestep_fraction, &
-           hydrogen_diffusion_floor, helium_diffusion_min
-      logical :: use_thoul_fit
-      common/gravs2/ settling_timestep_fraction, hydrogen_diffusion_floor, &
-           helium_diffusion_min, use_thoul_fit
 
 
-! common/gravst/: only coulomb_log_choice is used here. Naming matches
-! mix.f90/rotmix.f90.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
 
-! common/gravs3/: fgry/fgrz/lthoul/use_diffusion_z, all used here.
-! Naming matches eqstat2.f90/equal_to_model.f90/setupopac.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! common/gravsz/: src_grid_metal_diffusion_coeff1/coeff2/coeff1_dz/

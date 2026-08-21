@@ -74,27 +74,9 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       common/confac/ bl_radius_scale, bl_mass_scale, bl_temp_scale, &
            bl_time_scale
 
-! common/gravs2/: only hydrogen_diffusion_floor/helium_diffusion_min
-! (XMIN/YMIN) are used here. Naming matches mix.f90/rotmix.f90.
-      double precision :: settling_timestep_fraction, &
-           hydrogen_diffusion_floor, helium_diffusion_min
-      logical :: use_thoul_fit
-      common/gravs2/ settling_timestep_fraction, hydrogen_diffusion_floor, &
-           helium_diffusion_min, use_thoul_fit
 
 
-! common/gravst/: not used in this file. Naming matches mix.f90/
-! rotmix.f90.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
 
-! common/gravs3/: not used in this file. Naming matches eqstat.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! MHP 8/94 ADDED I/O FOR DIFFUSION
 !      COMMON/GSCOF2/TAPP(JSON),TATP(JSON),TCLP(JSON),TAPZP(JSON),

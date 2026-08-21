@@ -44,10 +44,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
            atomic_charge_diffused
       integer, intent(in) :: species_col
 
-! common/gravs3/: not used in this file. Naming matches eqstat.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 
 

@@ -30,13 +30,6 @@ subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
       integer, intent(in) :: zone_begin, zone_end, num_zones
 
 
-! common/ctol/: only chi_grid_scale (originally HPTTOL) is used here.
-! Naming matches mixgrid.f90.
-      double precision :: htoler(5,2), fcorr0, fcorri, fcorr, &
-           chi_grid_scale(12)
-      integer :: niter1, niter2, niter3
-      common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
-           niter2, niter3
 
 ! common/egrid/: the equally spaced coordinate grid (chi/echi/es1) and
 ! its spacing/point count (dchi/ntot), all set here. Naming matches

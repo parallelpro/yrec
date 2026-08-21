@@ -10,6 +10,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, temperature, num_zones, &
      total_mass)
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -35,12 +36,6 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
       common/confac/ bl_radius_scale, bl_mass_scale, bl_temp_scale, &
            bl_time_scale
 
-! MHP 3/94 ADDED METAL DIFFUSION
-! common/gravs3/: only use_diffusion_z is used here. Naming matches
-! setupopac.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! common/gravez/: only metal_abundance_change (EZ) is used here; the
 ! remaining members are unused placeholders. Naming matches

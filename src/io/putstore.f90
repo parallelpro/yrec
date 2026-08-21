@@ -97,20 +97,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
            dhnue(18)
       logical :: ldh
       common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
-!      COMMON/DPMIX/DPENV,ALPHAC,ALPHAE,ALPHAM,IOV1,IOV2,
-!     *      IOVIM, LOVSTC, LOVSTE, LOVSTM, LSEMIC, LADOV
-! common/gravst/: only diffuse_helium_active is used here. Naming
-! matches microdiff.f90.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
-! common/gravs3/: only use_diffusion_z is used here. Naming matches
-! eqstat.f90/microdiff.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 ! OPACITY COMMON BLOCKS - modified 3/09
 ! common/newopac/: not used in this file; declared only to preserve
 ! layout. Naming matches getopac.f90.

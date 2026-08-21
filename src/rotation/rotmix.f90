@@ -54,29 +54,8 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 
 
 
-!*** BC 5/92 ROTMIX MODIFIED TO INCLUDE CALL TO GRAVITATIONAL SETTLING
-!    ROUTINE USING THE BAHCALL AND LOEB METHOD.
-! common/gravst/: only diffuse_helium_active is used here. Naming
-! matches mix.f90.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
 
-! common/gravs2/: settling_timestep_fraction, hydrogen_diffusion_floor,
-! and helium_diffusion_min are used here. Naming matches mix.f90.
-      double precision :: settling_timestep_fraction, &
-           hydrogen_diffusion_floor, helium_diffusion_min
-      logical :: use_thoul_fit
-      common/gravs2/ settling_timestep_fraction, hydrogen_diffusion_floor, &
-           helium_diffusion_min, use_thoul_fit
 
-! GES 6/15 INCLUDED COMMON BLOCK FOR NEW DIFFUSION ROUTINES.
-! common/gravs4/: only use_new_diffusion_routines is used here. Naming
-! matches mix.f90.
-      logical :: use_new_diffusion_routines, ldifli
-      common/gravs4/ use_new_diffusion_routines, ldifli
 
 
 

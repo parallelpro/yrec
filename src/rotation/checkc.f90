@@ -18,7 +18,7 @@
 !    FUNCTION OF MASS.
 ! iteration_number : THE PROGRAM ITERATES FOR THE DIFFUSION
 !    COEFFICIENTS; IT IS THE ITERATION NUMBER.
-! max_iterations : USER PARAMETER - MAXIMUM NUMBER OF ITERATIONS.
+! itdif2 : USER PARAMETER - MAXIMUM NUMBER OF ITERATIONS.
 ! cut_count : NUMBER OF TIMES DIFFUSION TIMESTEP HAS BEEN CUT.
 ! converged_flag : FLAG SET T IF DIFFUSION COEFFICEINTS HAVE CONVERGED.
 ! print_flag : FLAG SET T IF OUTPUT ABOUT CHECMICAL DIFFUSION DESIRED.
@@ -58,11 +58,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       double precision :: envelope_helium_fraction, envelope_he3_fraction
       common/comp2/ envelope_helium_fraction, envelope_he3_fraction
 
-! common/difus/: only max_iterations is used here. Naming matches
-! getw.f90/dadcoeft.f90.
-      double precision :: dtdif, convergence_tolerance
-      integer :: itdif1, max_iterations
-      common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
 
 
@@ -88,7 +83,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 !  CHECK FOR ANOMALOUS COMPOSITIONS.
 !  PRIOR TO THE LAST ITERATION, ONLY DIFFUSION OF H,HE,HE3 PERFORMED.
 !  FIND NUMBER OF SPECIES BEING DIFFUSED.
-      if(iteration_number.eq.max_iterations)then
+      if(iteration_number.eq.itdif2)then
          num_diffused_species = 11
       else
          num_diffused_species = 4
@@ -143,7 +138,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
             endif
    10    continue
    20 continue
-      if(iteration_number.eq.max_iterations.and.print_flag) then
+      if(iteration_number.eq.itdif2.and.print_flag) then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN COMPOSITION AND PRINT IT OUT.
          max_fractional_comp_change = 0.0d0
          max_change_zone = 0

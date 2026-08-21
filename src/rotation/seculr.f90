@@ -115,9 +115,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
 
-      double precision :: dtdif, convergence_tolerance
-      integer :: itdif1, max_iterations
-      common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
 
 ! 3/92 common block added for centered dw/dlnr.
@@ -334,7 +331,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  ITERATION IS USED TO GET THE VELOCITIES.  THIS 'NEW' VELOCITY IS THEN
 !  AVERAGED WITH THE VELOCITY FOUND IN THE PREVIOUS ITERATION TO GET A
 !  CORRECTED V AND THUS A MORE ACCURATE RUN OF DIFFUSION COEFFICIENTS.
-      do 100 iteration = 1,max_iterations
+      do 100 iteration = 1,itdif2
          omega_surface = omega(num_zones)
          if(iteration.gt.1)then
 !  COMPUTE NEW RUN OF ANGULAR VELOCITIES (AVERAGE OF INITIAL AND

@@ -87,11 +87,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       common/opaleos/ use_opal95_eos, iopale, use_opal2001_eos, &
            use_opal2006_eos, use_numerical_derivatives
 
-! common/gravs3/: not used in this file; declared only to preserve
-! layout. MHP 3/94 added metal diffusion. Naming matches setupopac.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! common/scveos/: not used in this file; declared only to preserve
 ! layout. MHP 5/97 added common block for SCV EOS tables. Naming

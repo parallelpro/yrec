@@ -104,10 +104,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
            extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
 
-! common/difus/: dtdif is used here. Naming matches remap.f90.
-      double precision :: dtdif, convergence_tolerance
-      integer :: itdif1, max_iterations
-      common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
 
 

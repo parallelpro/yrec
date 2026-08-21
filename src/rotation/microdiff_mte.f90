@@ -24,6 +24,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
      eq_density_mid, eq_temperature_mid, eq_dlnp_dr_mid, eq_del_grad_mid, &
      eq_hydrogen_mid, eq_helium_mid, eq_metal_mid, eq_light_mid)
 
+      use const_lib
       use scrtch_lib
       use numerics_lib
       implicit none
@@ -48,16 +49,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
            eq_helium_mid(json), eq_metal_mid(json)
       double precision, intent(out) :: eq_light_mid(num_light,json)
 
-! MHP 3/94 ADDED METAL DIFFUSION.
-! common/gravs3/: not used in this file. Naming matches eqstat.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
-! common/gravs4/: only ldifli is used here. Naming matches mix.f90/
-! rotmix.f90.
-      logical :: use_new_diffusion_routines, ldifli
-      common/gravs4/ use_new_diffusion_routines, ldifli
 
 
       integer :: half_json

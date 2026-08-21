@@ -223,29 +223,12 @@ program main
            first_call_flag, num_runs
 
 
-! MHP 05/02 ADDED OPTION TO ITERATE BETWEEN ROTATION AND
-! STRUCTURE CALCULATIONS - SET ITDIF1 GREATER THAN 1
-! common/difus/: dtdif/itdif1 used here; convergence_tolerance (DJOK)
-! unused placeholder. The 4th member (originally ITDIF2) is kept at
-! its lowercased-cryptic spelling itdif2, NOT checkc.f90's established
-! "max_iterations", per the header COMMON BLOCK NOTE above (name
-! collision with this file's own max_iterations local).
-      double precision :: dtdif, convergence_tolerance
-      integer :: itdif1, itdif2
-      common/difus/ dtdif, convergence_tolerance, itdif1, itdif2
 
 
 
 
 
 
-! common/ctol/: fcorr0/fcorri/fcorr/niter1/niter2/niter3 used here; the
-! rest are unused placeholders. Naming matches crrect.f90/hpoint.f90.
-      double precision :: htoler(5,2), fcorr0, fcorri, fcorr, &
-           chi_grid_scale(12)
-      integer :: niter1, niter2, niter3
-      common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
-           niter2, niter3
 
 ! MHP 8/17 ADDED EXCEN, C_2 TO COMMON BLOCK FOR MATT ET AL. 2012 CENT. TERM
 ! common/cwind/: only ljdot0 used here; the rest are unused
@@ -407,11 +390,6 @@ program main
            calibrate_solar_model, calibrate_solar_zx, target_solar_zx, &
            target_solar_age
 
-! common/gravs3/: only fgrz used here (LMONTE block); the rest unused
-! placeholders. Naming matches eqstat.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! DBG 12/94 added calibrate stellar model
 ! common/calstar/: all used here. Naming matches chkscal.f90, except
@@ -440,10 +418,6 @@ program main
       logical :: sound_speed_output_active
       common/sound/ adiabatic_index_gamma1, sound_speed_output_active
 
-! MHP 8/96 monte carlo option for snus added.
-      logical :: lmonte
-      integer :: imbeg, imend
-      common/monte/ lmonte, imbeg, imend
 
 
 

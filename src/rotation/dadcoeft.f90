@@ -62,6 +62,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
      num_eq_points, wind_loss_explicit, wind_loss_implicit, &
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged)
+      use const_lib
       use light_burn_lib
       use turnover_lib
       implicit none
@@ -136,13 +137,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
            domega_dr_start(json)
       common/difaddt/ ethvn, ethvp, omega_avg_start, domega_dr_start
 
-! CONVERGENCE CRITERION
-! common/difus/: convergence_tolerance/max_iterations (DJOK/ITDIF2)
-! are used here; dtdif/itdif1 are unused placeholders. Naming is local
-! to this batch.
-      double precision :: dtdif, convergence_tolerance
-      integer :: itdif1, max_iterations
-      common/difus/ dtdif, convergence_tolerance, itdif1, max_iterations
 
 ! VALUES OF D CHI/DR AT THE ZONE EDGES AND ZONE CENTERS
 ! common/egridchi/: dchi_dr_edge (QCHIRE) is used here; dchi_dr_center
@@ -286,7 +280,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          substep_frac = timestep/full_timestep
 ! LOOP FOR ITERATION ON THE D THETA/DT TERM;
 ! COEFFICIENTS UPDATED ONCE PER NNN
-      do theta_iter_idx = 1,max_iterations
+      do theta_iter_idx = 1,itdif2
 ! LOOP FOR ITERATION ON THE OTHER COEFFICIENTS
 ! THAT ARE FUNCTIONS OF OMEGA; UPDATED ONCE PER
 ! NN.
@@ -332,7 +326,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
                  (wind_law_omega_exponent-1.0d0)* &
                  (omega_working(num_eq_points)/eq_omega(num_eq_points))
          end if
-      do coeff_iter_idx = 1,max_iterations
+      do coeff_iter_idx = 1,itdif2
 ! COMPUTE THE DIFFUSION COEFFICIENTS FOR
 ! THE FIRST AND SECOND ORDER TERMS.
       if (substep_idx.eq.1) then

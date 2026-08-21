@@ -60,14 +60,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 
 
 
-! HPTTOL USED TO SET THE SPATIAL RESOLUTION OF THE ENVELOPE INTEGRATION
-! common/ctol/: only chi_grid_scale is used here. Naming matches
-! mixgrid.f90.
-      double precision :: htoler(5,2), fcorr0, fcorri, fcorr, &
-           chi_grid_scale(12)
-      integer :: niter1, niter2, niter3
-      common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
-           niter2, niter3
 
 ! TERMS NEEDED TO COMPUTE THE DEBYE-HUCKEL CORRECTION IN THE E.O.S.
 ! common/debhu/: cdh/ldh are used to gate the block; xxdy/yydh/zzdh/zdh

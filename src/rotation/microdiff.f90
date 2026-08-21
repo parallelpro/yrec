@@ -76,25 +76,8 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
 
-! common/gravst/: only diffuse_helium_active (LDIFY) is used here.
-! Naming matches mix.f90/rotmix.f90.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
 
-! MHP 3/94 ADDED METAL DIFFUSION
-! common/gravs3/: only use_diffusion_z (LDIFZ) is used here. Naming
-! matches eqstat.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
-! common/gravs4/: only ldifli is used here. Naming matches mix.f90/
-! rotmix.f90.
-      logical :: use_new_diffusion_routines, ldifli
-      common/gravs4/ use_new_diffusion_routines, ldifli
 
 
 

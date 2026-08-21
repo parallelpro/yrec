@@ -17,6 +17,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      equal_diffusion_coeff1_dx_mid, equal_diffusion_coeff2_dx_mid, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -37,12 +38,6 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
            equal_hydrogen_fraction_mid(json)
       integer, intent(out) :: num_equal_points
 
-! MHP 3/94 ADDED METAL DIFFUSION.
-! common/gravs3/: only use_diffusion_z is used here. Naming matches
-! setupopac.f90.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 
 ! common/gravsz/: the metal-diffusion analogs of the diffusion_coeff1/
 ! diffusion_coeff2/diffusion_coeff1_dx/diffusion_coeff2_dx dummy

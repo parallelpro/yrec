@@ -50,13 +50,6 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
            atomic_charge_diffused
       integer, intent(in) :: species_col
 
-! common/gravst/: only settling_tolerance/settling_num_iterations
-! (GRTOL/NITER_GS) are used here. Naming matches mix.f90/rotmix.f90.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
 
 ! common/theage/: not used in this file. Naming matches mix.f90.
       double precision :: dage

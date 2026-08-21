@@ -32,11 +32,6 @@ subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
       double precision, intent(out) :: diffused_abundance_mid(json)
       logical, intent(in) :: use_generic_diffusion_vectors
 
-! common/gravs3/: only use_diffusion_z is used here. Naming matches
-! eqstat.f90. MHP 3/94 added metal diffusion.
-      double precision :: fgry, fgrz
-      logical :: lthoul, use_diffusion_z
-      common/gravs3/ fgry, fgrz, lthoul, use_diffusion_z
 ! common/gravez/: metal (Z) diffusion work arrays, parallel to the
 ! diffusion_coeff1/diffused_abundance_mid dummy arguments above but
 ! for the metal species specifically. Only metal_diffusion_coeff1 (in)

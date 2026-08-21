@@ -96,13 +96,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       integer :: pulsation_file_version
       common/pulse/ pulsation_mass_msun, pulsation_output_active, &
            pulsation_file_version
-! MHP 5/90 ADD COMMON BLOCK FOR GRAVITATIONAL SETTLING.
-! common/gravst/: not used in this file. Naming matches microdiff.f90.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      common/gravst/ settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active
 ! MHP 8/25 Removed character file names from common block
 ! DBG 11/11/91
 ! common/chrone/: only isochrone_output_active/isochrone_file_unit are
