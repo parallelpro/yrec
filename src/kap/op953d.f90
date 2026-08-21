@@ -12,6 +12,7 @@
 ! fraction but X does not match the surface composition.
 subroutine op953d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use opacity_table_lib
       implicit none
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19
@@ -22,26 +23,6 @@ subroutine op953d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
 
-! AS ABOVE FOR THE MODEL Z.
-      double precision :: opal95_fixed_z_opacity(num_x,num_t,num_d), opal95_fixed_z
-      common /llot95/opal95_fixed_z_opacity, opal95_fixed_z
-! INDICES FOR INTERPOLATION IN Z,X,T, AND R
-      integer :: opal95_index_z, opal95_index_x(4,4), opal95_index_t, &
-           opal95_index_rho(4)
-      common/op95indx/ opal95_index_z, opal95_index_x, opal95_index_t, &
-           opal95_index_rho
-! INTERPOLATION FACTORS FOR Z,X,T, AND R, AS WELL AS DERIVATIVE
-! FACTORS FOR T AND RHO.
-      double precision :: opal95_weight_z(4), opal95_weight_x(4,4), &
-           opal95_weight_t(4), opal95_dweight_t(4), opal95_weight_rho(4,4), &
-           opal95_dweight_rho(4,4)
-      common/op95fact/ opal95_weight_z, opal95_weight_x, opal95_weight_t, &
-           opal95_dweight_t, opal95_weight_rho, opal95_dweight_rho
-! DATA FOR LINEAR EXTRAPOLATION WHEN OUTSIDE TABLE IN RHO
-      double precision :: opal95_logr, opal95_logr_lo_edge, opal95_logr_hi_edge(4)
-      logical :: opal95_extrap_lo, opal95_extrap_hi, opal95_extrap_hi_row(4)
-      common/op95ext/ opal95_logr, opal95_logr_lo_edge, opal95_logr_hi_edge, &
-           opal95_extrap_lo, opal95_extrap_hi, opal95_extrap_hi_row
       double precision :: logcappa_at_t(4), dlogcappa_dlogr_at_t(4)
       double precision :: logcappa_at_x(4), dlogcappa_dlogt_at_x(4), &
            dlogcappa_dlogr_at_x(4)
@@ -52,58 +33,58 @@ subroutine op953d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
 ! FIND OPACITY AT EACH OF THE 4 NEARBY VALUES OF X
       do j = 1,4
-         x_table_index = opal95_index_x(1,j)
+         x_table_index = opacity_table%opal95_index_x(1,j)
 ! FOR EACH X, GET CAPPA FOR 4 VALUES OF T
          do i = 1,4
-            temp_index = opal95_index_t + i - 1
+            temp_index = opacity_table%opal95_index_t + i - 1
 ! FOR EACH T, GET CAPPA FOR 4 VALUES OF R
-            density_index = opal95_index_rho(i)
+            density_index = opacity_table%opal95_index_rho(i)
 ! LOG CAPPA AT DESIRED RHO FOR EACH OF THE 4 DESIRED T.
-            logcappa_at_t(i) = opal95_weight_rho(i,1)*opal95_fixed_z_opacity(x_table_index,temp_index,density_index) &
-                 + opal95_weight_rho(i,2)*opal95_fixed_z_opacity(x_table_index,temp_index,density_index+1) &
-                 + opal95_weight_rho(i,3)*opal95_fixed_z_opacity(x_table_index,temp_index,density_index+2) &
-                 + opal95_weight_rho(i,4)*opal95_fixed_z_opacity(x_table_index,temp_index,density_index+3)
+            logcappa_at_t(i) = opacity_table%opal95_weight_rho(i,1)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index) &
+                 + opacity_table%opal95_weight_rho(i,2)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+1) &
+                 + opacity_table%opal95_weight_rho(i,3)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+2) &
+                 + opacity_table%opal95_weight_rho(i,4)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+3)
 ! D LOG CAPPA/D LOG R FOR EACH OF THE 4 DESIRED T.
-            dlogcappa_dlogr_at_t(i) = opal95_dweight_rho(i,1)*opal95_fixed_z_opacity(x_table_index,temp_index,density_index) &
-                 + opal95_dweight_rho(i,2)*opal95_fixed_z_opacity(x_table_index,temp_index,density_index+1) &
-                 + opal95_dweight_rho(i,3)*opal95_fixed_z_opacity(x_table_index,temp_index,density_index+2) &
-                 + opal95_dweight_rho(i,4)*opal95_fixed_z_opacity(x_table_index,temp_index,density_index+3)
+            dlogcappa_dlogr_at_t(i) = opacity_table%opal95_dweight_rho(i,1)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index) &
+                 + opacity_table%opal95_dweight_rho(i,2)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+1) &
+                 + opacity_table%opal95_dweight_rho(i,3)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+2) &
+                 + opacity_table%opal95_dweight_rho(i,4)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+3)
          end do
 ! CHECK ON WHETHER RHO IS OUTSIDE OF THE TABLE AND NEEDS EXTRAPOLATION
-         if (opal95_extrap_lo) then
+         if (opacity_table%opal95_extrap_lo) then
 ! FACTOR IN R
-            delta_logr = opal95_logr - opal95_logr_lo_edge
+            delta_logr = opacity_table%opal95_logr - opacity_table%opal95_logr_lo_edge
 ! CORRECT CAPPA BY USING THE DERIVATIVE AT THE BOUNDARY.
             do i = 1,4
                logcappa_at_t(i) = logcappa_at_t(i) + delta_logr*dlogcappa_dlogr_at_t(i)
             end do
-         else if (opal95_extrap_hi) then
+         else if (opacity_table%opal95_extrap_hi) then
             do i = 1,4
-               if (opal95_extrap_hi_row(i)) then
-                  delta_logr = opal95_logr - opal95_logr_hi_edge(i)
+               if (opacity_table%opal95_extrap_hi_row(i)) then
+                  delta_logr = opacity_table%opal95_logr - opacity_table%opal95_logr_hi_edge(i)
                   logcappa_at_t(i) = logcappa_at_t(i) + delta_logr*dlogcappa_dlogr_at_t(i)
                endif
             end do
          endif
 ! INTERPOLATE FOR LOG CAPPA IN T.
-         logcappa_at_x(j) = opal95_weight_t(1)*logcappa_at_t(1) + opal95_weight_t(2)*logcappa_at_t(2) &
-              + opal95_weight_t(3)*logcappa_at_t(3) + opal95_weight_t(4)*logcappa_at_t(4)
+         logcappa_at_x(j) = opacity_table%opal95_weight_t(1)*logcappa_at_t(1) + opacity_table%opal95_weight_t(2)*logcappa_at_t(2) &
+              + opacity_table%opal95_weight_t(3)*logcappa_at_t(3) + opacity_table%opal95_weight_t(4)*logcappa_at_t(4)
 ! D LOG CAPPA/D LOG T
-         dlogcappa_dlogt_at_x(j) = opal95_dweight_t(1)*logcappa_at_t(1) + opal95_dweight_t(2)*logcappa_at_t(2) &
-              + opal95_dweight_t(3)*logcappa_at_t(3) + opal95_dweight_t(4)*logcappa_at_t(4)
+         dlogcappa_dlogt_at_x(j) = opacity_table%opal95_dweight_t(1)*logcappa_at_t(1) + opacity_table%opal95_dweight_t(2)*logcappa_at_t(2) &
+              + opacity_table%opal95_dweight_t(3)*logcappa_at_t(3) + opacity_table%opal95_dweight_t(4)*logcappa_at_t(4)
 ! D LOG CAPPA/D LOG R
-         dlogcappa_dlogr_at_x(j) = opal95_weight_t(1)*dlogcappa_dlogr_at_t(1) + opal95_weight_t(2)*dlogcappa_dlogr_at_t(2) &
-              + opal95_weight_t(3)*dlogcappa_dlogr_at_t(3) + opal95_weight_t(4)*dlogcappa_dlogr_at_t(4)
+         dlogcappa_dlogr_at_x(j) = opacity_table%opal95_weight_t(1)*dlogcappa_dlogr_at_t(1) + opacity_table%opal95_weight_t(2)*dlogcappa_dlogr_at_t(2) &
+              + opacity_table%opal95_weight_t(3)*dlogcappa_dlogr_at_t(3) + opacity_table%opal95_weight_t(4)*dlogcappa_dlogr_at_t(4)
       end do
 ! INTERPOLATE FOR LOG CAPPA IN X.
-      log10_opacity = opal95_weight_x(1,1)*logcappa_at_x(1) + opal95_weight_x(1,2)*logcappa_at_x(2) + &
-           opal95_weight_x(1,3)*logcappa_at_x(3) + opal95_weight_x(1,4)*logcappa_at_x(4)
+      log10_opacity = opacity_table%opal95_weight_x(1,1)*logcappa_at_x(1) + opacity_table%opal95_weight_x(1,2)*logcappa_at_x(2) + &
+           opacity_table%opal95_weight_x(1,3)*logcappa_at_x(3) + opacity_table%opal95_weight_x(1,4)*logcappa_at_x(4)
 ! INTERPOLATE FOR QOT IN X.
-      dlnkap_dlnt = opal95_weight_x(1,1)*dlogcappa_dlogt_at_x(1) + opal95_weight_x(1,2)*dlogcappa_dlogt_at_x(2) + &
-           opal95_weight_x(1,3)*dlogcappa_dlogt_at_x(3) + opal95_weight_x(1,4)*dlogcappa_dlogt_at_x(4)
+      dlnkap_dlnt = opacity_table%opal95_weight_x(1,1)*dlogcappa_dlogt_at_x(1) + opacity_table%opal95_weight_x(1,2)*dlogcappa_dlogt_at_x(2) + &
+           opacity_table%opal95_weight_x(1,3)*dlogcappa_dlogt_at_x(3) + opacity_table%opal95_weight_x(1,4)*dlogcappa_dlogt_at_x(4)
 ! INTERPOLATE FOR QOD IN X.
-      dlnkap_dlnrho = opal95_weight_x(1,1)*dlogcappa_dlogr_at_x(1) + opal95_weight_x(1,2)*dlogcappa_dlogr_at_x(2) + &
-           opal95_weight_x(1,3)*dlogcappa_dlogr_at_x(3) + opal95_weight_x(1,4)*dlogcappa_dlogr_at_x(4)
+      dlnkap_dlnrho = opacity_table%opal95_weight_x(1,1)*dlogcappa_dlogr_at_x(1) + opacity_table%opal95_weight_x(1,2)*dlogcappa_dlogr_at_x(2) + &
+           opacity_table%opal95_weight_x(1,3)*dlogcappa_dlogr_at_x(3) + opacity_table%opal95_weight_x(1,4)*dlogcappa_dlogr_at_x(4)
 ! CORRECT FROM DERIVATE AT FIXED R TO DERIVATIVE AT FIXED RHO.
       dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
       opacity = 1.0d1**log10_opacity

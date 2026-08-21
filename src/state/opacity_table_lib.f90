@@ -38,6 +38,9 @@ module opacity_table_lib
            kurucz_max_num_densities = 50, kurucz_num_x_tables = 1, &
            kurucz_num_x_temp_entries = kurucz_max_num_temps*kurucz_num_x_tables, &
            kurucz_num_spline_coeffs = 4*kurucz_max_num_densities
+! OPAL95 opacity table dimensions
+      integer, parameter :: n_opal95_t = 70, n_opal95_d = 19, &
+           n_opal95_x = 10, n_opal95_z = 13, n_opal95_xz = 126
 
       type, public :: opacity_table_state
 ! former common/gllot/, llot/, lintpl/ (OPAL92, first Z table)
@@ -152,6 +155,51 @@ module opacity_table_lib
            double precision :: zslaol_opacity(104,52), zslaol_log_rho(104,52), &
                 zslaol_d2opacity(104,52)
            integer :: zslaol_num_points(52)
+! former common/llot95a/: the OPAL95 opacity table grid and full
+! (all-Z) opacity array. opal95_grid_x/opal95_grid_z/
+! opal95_table_start_index/opal95_num_x_at_z DATA-initialized in
+! kap/ll95tbl.f90 (values transcribed verbatim below);
+! opal95_grid_logt/opal95_full_opacity filled by file I/O there.
+           double precision :: opal95_grid_logt(n_opal95_t)
+           double precision :: opal95_grid_x(n_opal95_x) = &
+                [0.0d0, 0.1d0,0.2d0,0.35d0,0.5d0,0.7d0,0.8d0,0.9d0, &
+                 0.95d0,1.0d0]
+           double precision :: opal95_grid_logr(n_opal95_d)
+           double precision :: opal95_grid_z(n_opal95_z) = &
+                [0.0d0, 0.0001d0, 0.0003d0, 0.001d0, 0.002d0, &
+                 0.004d0, 0.01d0, 0.02d0, 0.03d0, &
+                 0.04d0, 0.06d0, 0.08d0, 0.10d0]
+           double precision :: opal95_full_opacity(n_opal95_xz,n_opal95_t,n_opal95_d)
+           integer :: opal95_num_x_at_z(n_opal95_z) = &
+                [10,10,10,10,10,10,10,10,10,10,9,9,8]
+           integer :: opal95_table_start_index(n_opal95_z) = &
+                [0,10,20,30,40,50,60,70,80,90,100,109,118]
+! former common/llot95/: the single-Z OPAL95 opacity table, sliced at
+! the model's actual Z. wind/calcad.f90 declared a mismatched single-
+! scalar layout for this block (never read/set there) -- the majority
+! (7-file) array+scalar layout below is used; calcad.f90's reference
+! now maps onto (an unused corner of) this same type.
+           double precision :: opal95_fixed_z_opacity(n_opal95_x,n_opal95_t,n_opal95_d)
+           double precision :: opal95_fixed_z
+! former common/llot95e/: the OPAL95 surface-X opacity table.
+           double precision :: opal95_surface_opacity(n_opal95_t,n_opal95_d)
+           double precision :: opal95_surface_x
+! former common/op95indx/: cached Z/X/T/rho interpolation indices, all
+! 22 scalar values DATA-initialized to 1 in kap/ll95tbl.f90.
+           integer :: opal95_index_z = 1
+           integer :: opal95_index_x(4,4) = 1
+           integer :: opal95_index_t = 1
+           integer :: opal95_index_rho(4) = 1
+! former common/op95fact/: Z/X/T/rho interpolation weights and
+! T/rho derivative weights, recomputed fresh each call -- no DATA.
+           double precision :: opal95_weight_z(4), opal95_weight_x(4,4), &
+                opal95_weight_t(4), opal95_dweight_t(4), &
+                opal95_weight_rho(4,4), opal95_dweight_rho(4,4)
+! former common/op95ext/: log(R) extrapolation-edge state, set fresh
+! each call -- no DATA.
+           double precision :: opal95_logr, opal95_logr_lo_edge, &
+                opal95_logr_hi_edge(4)
+           logical :: opal95_extrap_lo, opal95_extrap_hi, opal95_extrap_hi_row(4)
       end type opacity_table_state
 
       type(opacity_table_state), public :: opacity_table

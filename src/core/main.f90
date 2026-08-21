@@ -150,6 +150,7 @@ program main
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
+      use opacity_table_lib
       use run_diag_lib
       use fluxes_lib
       use engeb_diag_lib
@@ -244,46 +245,10 @@ program main
 
 
 
-! common/llot95a/: not used in this file's logic; declared only to
-! preserve layout. Naming matches op95ztab.f90.
-      double precision :: opal95_grid_logt(numtt), opal95_grid_x(numx), &
-           opal95_grid_logr(numd), opal95_grid_z(numz), &
-           opal95_full_opacity(numxz,numtt,numd)
-      integer :: opal95_num_x_at_z(numz), opal95_table_start_index(numz)
-      common /llot95a/ opal95_grid_logt, opal95_grid_x, opal95_grid_logr, &
-           opal95_grid_z, opal95_full_opacity, opal95_num_x_at_z, &
-           opal95_table_start_index
 
-! as above for the model Z.
-! common/llot95/: not used in this file's logic; declared only to
-! preserve layout. Naming matches op95xtab.f90.
-      double precision :: opal95_fixed_z_opacity(numx,numtt,numd), &
-           opal95_fixed_z
-      common /llot95/ opal95_fixed_z_opacity, opal95_fixed_z
 
-! as above for desired surface value of X.
-! common/llot95e/: not used in this file's logic; declared only to
-! preserve layout. Naming matches op95xtab.f90.
-      double precision :: opal95_surface_opacity(numtt,numd), opal95_surface_x
-      common /llot95e/ opal95_surface_opacity, opal95_surface_x
 
-! indices for interpolation in Z,X,T, and R
-! common/op95indx/: not used in this file's logic; declared only to
-! preserve layout. Naming matches getopal95.f90.
-      integer :: opal95_index_z, opal95_index_x(4,4), opal95_index_t, &
-           opal95_index_rho(4)
-      common/op95indx/ opal95_index_z, opal95_index_x, opal95_index_t, &
-           opal95_index_rho
 
-! interpolation factors for Z,X,T, and R, as well as derivative
-! factors for T and RHO.
-! common/op95fact/: not used in this file's logic; declared only to
-! preserve layout. Naming matches getopal95.f90.
-      double precision :: opal95_weight_z(4), opal95_weight_x(4,4), &
-           opal95_weight_t(4), opal95_dweight_t(4), opal95_weight_rho(4,4), &
-           opal95_dweight_rho(4,4)
-      common/op95fact/ opal95_weight_z, opal95_weight_x, opal95_weight_t, &
-           opal95_dweight_t, opal95_weight_rho, opal95_dweight_rho
 
 
 

@@ -92,13 +92,15 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 
-! common/llot95/: this file declares only a single unused scalar for a
-! block whose canonical layout (established in getopal95.f90) is a
-! much larger set of OPAL95 pure-Z-table arrays. This single-scalar
-! declaration is preserved exactly from the original (COMMON/LLOT95/
-! ZTAB) -- llot95_ztab_placeholder is never read or set in this file.
-      double precision :: llot95_ztab_placeholder
-      common/llot95/ llot95_ztab_placeholder
+! former common/llot95/: this file declared only a single unused
+! scalar for a block whose canonical layout (established in
+! getopal95.f90) is a much larger set of OPAL95 pure-Z-table arrays
+! (opacity_table%opal95_fixed_z_opacity/opal95_fixed_z, now
+! use-associated) -- the single-scalar declaration was preserved
+! exactly from the original (COMMON/LLOT95/ ZTAB) while this block was
+! still raw COMMON, but now that it's a module, the mismatched local
+! layout can't be carried forward: it maps onto (an unused corner of)
+! the same canonical type instead. Never read or set in this file.
 
 
 

@@ -13,6 +13,7 @@
 ! by op95ztab).
 subroutine op95xtab(hydrogen_fraction)
 
+      use opacity_table_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_t = 70
@@ -23,38 +24,18 @@ subroutine op95xtab(hydrogen_fraction)
 
       double precision, intent(in) :: hydrogen_fraction
 
-! FULL SET OF TABLES: OPACITY AS A FUNCTION OF Z AND X, T, RHO/T6**3
-! TABLES ARE INCREMENTED IN SETS OF NZ*NX.  SO THE TABLES FOR THE
-! THIRD METAL ABUNDANCE (3 X 10**-4)BEGIN AT TABLE 21 AND END AT TABLE 30.
-! FOR THE HIGH VALUES OF Z, THE NUMBER OF X TABLES IS NOT THE SAME (I.E.
-! X<0.9 FOR Z=0.1).
-! FOR EACH COMPOSITION A FULL GRID IN (T,RHO/T6**3) IS RETAINED.
-      double precision :: opal95_grid_logt(num_t), opal95_grid_x(num_x), &
-           opal95_grid_logr(num_d), opal95_grid_z(num_z), &
-           opal95_full_opacity(num_xz,num_t,num_d)
-      integer :: opal95_num_x_at_z(num_z), opal95_table_start_index(num_z)
-      common /llot95a/ opal95_grid_logt, opal95_grid_x, opal95_grid_logr, &
-           opal95_grid_z, opal95_full_opacity, opal95_num_x_at_z, &
-           opal95_table_start_index
-! GRID ENTRIES FOR TEMPERATURE, ABUNDANCE (X), AND RHO/T6**3
-! OPACITY AS A FUNCTION OF X, T, AND RHO/T6**3
-      double precision :: opal95_fixed_z_opacity(num_x,num_t,num_d), opal95_fixed_z
-      common /llot95/opal95_fixed_z_opacity, opal95_fixed_z
-! AS ABOVE FOR DESIRED SURFACE VALUE OF X.
-      double precision :: opal95_surface_opacity(num_t,num_d), opal95_surface_x
-      common /llot95e/opal95_surface_opacity, opal95_surface_x
       double precision :: table_x_nodes(4), x_weight(4)
       save
 
       integer :: i, j, k, x_table_index
       integer :: table1_index, table2_index, table3_index, table4_index
 
-      opal95_surface_x = hydrogen_fraction
+      opacity_table%opal95_surface_x = hydrogen_fraction
 !  FIND 4 NEAREST TABLES IN X TO DESIRED VALUE.
       if (hydrogen_fraction.le.0.8d0) then
 ! DON'T NEED TO WORRY ABOUT MISSING X TABLES AT HIGH Z.
          do i = 3,num_x-1
-            if (opal95_grid_x(i).ge.hydrogen_fraction) then
+            if (opacity_table%opal95_grid_x(i).ge.hydrogen_fraction) then
                x_table_index = i - 2
                goto 10
             endif
@@ -62,12 +43,12 @@ subroutine op95xtab(hydrogen_fraction)
          x_table_index = num_x - 3
    10    continue
          do i = 1,4
-            table_x_nodes(i) = opal95_grid_x(x_table_index+i-1)
+            table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
          end do
-      else if (opal95_fixed_z.le.0.04d0) then
+      else if (opacity_table%opal95_fixed_z.le.0.04d0) then
 ! HIGH X TABLES PRESENT AT LOW Z.
          do i = 3,num_x-1
-            if (opal95_grid_x(i).ge.hydrogen_fraction) then
+            if (opacity_table%opal95_grid_x(i).ge.hydrogen_fraction) then
                x_table_index = i - 2
                goto 20
             endif
@@ -75,22 +56,22 @@ subroutine op95xtab(hydrogen_fraction)
          x_table_index = num_x - 3
    20    continue
          do i = 1,4
-            table_x_nodes(i) = opal95_grid_x(x_table_index+i-1)
+            table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
          end do
-      else if (opal95_fixed_z.ge.0.1d0) then
+      else if (opacity_table%opal95_fixed_z.ge.0.1d0) then
 ! USE TABLES 6-9
          x_table_index = 6
          do i = 1,4
-            table_x_nodes(i) = opal95_grid_x(x_table_index+i-1)
+            table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
          end do
       else
 ! IF Z IS BETWEEN 0.04 AND 0.1, TABLES 1-8 AND 10 EXIST.
 ! SINCE WE HAVE ALREADY DETERMINED THAT X > 0.8, USE 6-8 AND 10.
          x_table_index = 11
-         table_x_nodes(1) = opal95_grid_x(6)
-         table_x_nodes(2) = opal95_grid_x(7)
-         table_x_nodes(3) = opal95_grid_x(8)
-         table_x_nodes(4) = opal95_grid_x(10)
+         table_x_nodes(1) = opacity_table%opal95_grid_x(6)
+         table_x_nodes(2) = opacity_table%opal95_grid_x(7)
+         table_x_nodes(3) = opacity_table%opal95_grid_x(8)
+         table_x_nodes(4) = opacity_table%opal95_grid_x(10)
       endif
 !
 !  FIND INTERPOLATION FACTORS IN Z.
@@ -109,9 +90,9 @@ subroutine op95xtab(hydrogen_fraction)
       endif
       do j = 1,num_t
          do k = 1,num_d
-            opal95_surface_opacity(j,k) = x_weight(1)*opal95_fixed_z_opacity(table1_index,j,k) + &
-            x_weight(2)*opal95_fixed_z_opacity(table2_index,j,k) + x_weight(3)*opal95_fixed_z_opacity(table3_index,j,k) + &
-            x_weight(4)*opal95_fixed_z_opacity(table4_index,j,k)
+            opacity_table%opal95_surface_opacity(j,k) = x_weight(1)*opacity_table%opal95_fixed_z_opacity(table1_index,j,k) + &
+            x_weight(2)*opacity_table%opal95_fixed_z_opacity(table2_index,j,k) + x_weight(3)*opacity_table%opal95_fixed_z_opacity(table3_index,j,k) + &
+            x_weight(4)*opacity_table%opal95_fixed_z_opacity(table4_index,j,k)
          end do
       end do
       return

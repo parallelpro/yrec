@@ -14,6 +14,7 @@
 ! (not part of this batch).
 subroutine ll95tbl(opal95_table_path)
 
+      use opacity_table_lib
       use const_lib
       use luout_lib
       implicit none
@@ -26,24 +27,6 @@ subroutine ll95tbl(opal95_table_path)
       character(len=256), intent(in) :: opal95_table_path
 
 
-! FULL SET OF TABLES: OPACITY AS A FUNCTION OF Z AND X, T, RHO/T6**3
-! TABLES ARE INCREMENTED IN SETS OF NZ*NX.  SO THE TABLES FOR THE
-! THIRD METAL ABUNDANCE (3 X 10**-4)BEGIN AT TABLE 21 AND END AT TABLE 30.
-! FOR THE HIGH VALUES OF Z, THE NUMBER OF X TABLES IS NOT THE SAME (I.E.
-! X<0.9 FOR Z=0.1).
-! FOR EACH COMPOSITION A FULL GRID IN (T,RHO/T6**3) IS RETAINED.
-      double precision :: opal95_grid_logt(num_t), opal95_grid_x(num_x), &
-           opal95_grid_logr(num_d), opal95_grid_z(num_z), &
-           opal95_full_opacity(num_xz,num_t,num_d)
-      integer :: opal95_num_x_at_z(num_z), opal95_table_start_index(num_z)
-      common /llot95a/ opal95_grid_logt, opal95_grid_x, opal95_grid_logr, &
-           opal95_grid_z, opal95_full_opacity, opal95_num_x_at_z, &
-           opal95_table_start_index
-! INDICES FOR INTERPOLATION IN Z,X,T, AND R
-      integer :: opal95_index_z, opal95_index_x(4,4), opal95_index_t, &
-           opal95_index_rho(4)
-      common/op95indx/ opal95_index_z, opal95_index_x, opal95_index_t, &
-           opal95_index_rho
 
 ! common/newopac/: ll95tbl.f declares an OUT-OF-SYNC 16-member version
 ! of this block (10 doubles + 6 logicals) vs. the canonical 17-member
@@ -66,20 +49,10 @@ subroutine ll95tbl(opal95_table_path)
 ! use-association is correct here despite the historic mismatch.
 
 
-! NUMBER OF COMPOSITION TABLES AT LOWER Z FOR EACH ABUNDANCE
-      data opal95_table_start_index/0,10,20,30,40,50,60,70,80,90,100,109,118/
-! NUMBER OF X TABLES AT EACH Z
-      data opal95_num_x_at_z/10,10,10,10,10,10,10,10,10,10,9,9,8/
-! TABULTED SET OF X
-      data opal95_grid_x/0.0d0, 0.1d0,0.2d0,0.35d0,0.5d0,0.7d0,0.8d0,0.9d0, &
-           0.95d0,1.0d0/
-! TABULATED SET OF Z
-      data opal95_grid_z/0.0d0, 0.0001d0, 0.0003d0, 0.001d0, 0.002d0, &
-           0.004d0, 0.01d0, 0.02d0, 0.03d0, &
-           0.04d0, 0.06d0, 0.08d0, 0.10d0/
-! INDICES FOR INTERPOLATION
-      data opal95_index_z,opal95_index_x,opal95_index_t,opal95_index_rho &
-           /1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1/
+! opal95_table_start_index/opal95_num_x_at_z/opal95_grid_x/
+! opal95_grid_z/opal95_index_z/opal95_index_x/opal95_index_t/
+! opal95_index_rho defaults moved to opacity_table_lib.f90: DATA can
+! no longer target them here now that they're use-associated.
 ! LOCAL VECTOR, USED TO SKIP LONG HEADER.
       character(len=132) :: header_line
 
@@ -99,63 +72,63 @@ subroutine ll95tbl(opal95_table_path)
       nn = 1
 !     ENTRY POINT FOR GETTING NEW TABLES.
    15 continue
-      n = opal95_table_start_index(iz)+ix
+      n = opacity_table%opal95_table_start_index(iz)+ix
       if (ix.lt.num_x) then
-         xxt = opal95_grid_x(ix)
+         xxt = opacity_table%opal95_grid_x(ix)
       else
-         xxt = 1.0d0 - opal95_grid_z(iz)
+         xxt = 1.0d0 - opacity_table%opal95_grid_z(iz)
       endif
-      if (opal95_grid_z(iz).ne.zz .or. xxt.ne.xx) then
+      if (opacity_table%opal95_grid_z(iz).ne.zz .or. xxt.ne.xx) then
        write(short_file_unit,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
          stop
       endif
 
 !     READ IN HEADER INFO: GRID IN RHO/T6**3
-      read(opal95_table_unit,20,end=1000) (opal95_grid_logr(i),i=1,num_d)
+      read(opal95_table_unit,20,end=1000) (opacity_table%opal95_grid_logr(i),i=1,num_d)
    20 format(///,4x,19f7.1,/)
 !     READ IN FULL TABLE: LOG CAPPA AS A FUNCTION OF LOG T AND
 !     LOG R = RHO/T6**3
       do i = 1,57
-         read(opal95_table_unit,30,end=9999) opal95_grid_logt(i), &
-              (opal95_full_opacity(n,i,j),j=1,num_d)
+         read(opal95_table_unit,30,end=9999) opacity_table%opal95_grid_logt(i), &
+              (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d)
       end do
    30 format(f4.2,19f7.3)
 ! MHP 12/97 NOW TREAT CORNER WITHOUT DATA.
-      read(opal95_table_unit,31,end=9999) opal95_grid_logt(58), &
-           (opal95_full_opacity(n,58,j),j=1,num_d-1)
+      read(opal95_table_unit,31,end=9999) opacity_table%opal95_grid_logt(58), &
+           (opacity_table%opal95_full_opacity(n,58,j),j=1,num_d-1)
    31 format(f4.2,18f7.3)
 
-      opal95_full_opacity(n,58,19) = 9.999d0
+      opacity_table%opal95_full_opacity(n,58,19) = 9.999d0
       do i = 59,60
-         read(opal95_table_unit,32,end=9999) opal95_grid_logt(i), &
-              (opal95_full_opacity(n,i,j),j=1,num_d-2)
+         read(opal95_table_unit,32,end=9999) opacity_table%opal95_grid_logt(i), &
+              (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-2)
    32    format(f4.2,17f7.3)
          do j = 18,19
-            opal95_full_opacity(n,i,j) = 9.999d0
+            opacity_table%opal95_full_opacity(n,i,j) = 9.999d0
          end do
       end do
       do i = 61,64
-         read(opal95_table_unit,33,end=9999) opal95_grid_logt(i), &
-              (opal95_full_opacity(n,i,j),j=1,num_d-3)
+         read(opal95_table_unit,33,end=9999) opacity_table%opal95_grid_logt(i), &
+              (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-3)
    33    format(f4.2,16f7.3)
          do j = 17,19
-            opal95_full_opacity(n,i,j) = 9.999d0
+            opacity_table%opal95_full_opacity(n,i,j) = 9.999d0
          end do
       end do
       do i = 65,69
-         read(opal95_table_unit,34,end=9999) opal95_grid_logt(i), &
-              (opal95_full_opacity(n,i,j),j=1,num_d-4)
+         read(opal95_table_unit,34,end=9999) opacity_table%opal95_grid_logt(i), &
+              (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-4)
    34    format(f4.2,15f7.3)
          do j = 16,19
-            opal95_full_opacity(n,i,j) = 9.999d0
+            opacity_table%opal95_full_opacity(n,i,j) = 9.999d0
          end do
       end do
       i = 70
-      read(opal95_table_unit,35,end=9999) opal95_grid_logt(i), &
-           (opal95_full_opacity(n,i,j),j=1,num_d-5)
+      read(opal95_table_unit,35,end=9999) opacity_table%opal95_grid_logt(i), &
+           (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-5)
    35 format(f4.2,14f7.3)
       do j = 15,19
-         opal95_full_opacity(n,i,j) = 9.999d0
+         opacity_table%opal95_full_opacity(n,i,j) = 9.999d0
       end do
 
 !     EXIT IF CORRECT NUMBER OF TABLES READ IN.
