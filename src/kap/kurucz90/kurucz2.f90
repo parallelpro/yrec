@@ -10,7 +10,7 @@
 ! spline interpolation scheme -- second Z table (see kurucz.f90).
 ! Uses the classic F77 "alternate return" (the trailing `*` dummy
 ! argument / `return 1`) to signal "point outside the table" to the
-! caller (see getopac.f90, label 100). Unlike kurucz.f90, this
+! caller (see kap_lib.f90's kap_get, label 100). Unlike kurucz.f90, this
 ! routine does NOT pre-check log10_density/log10_temperature against
 ! the -3.0/4.1 bounds before searching -- that early-out check is
 ! absent from the original kurucz2.f and is preserved as-is here.

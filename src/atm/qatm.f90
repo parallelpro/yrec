@@ -18,6 +18,7 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
      atm_call_count, saha_state)
 
       use eos_lib
+      use kap_lib
       use atm_table_lib
       use pulse_diag_lib
       use const_lib
@@ -89,7 +90,7 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
            dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
            specific_heat_cp_dt,specific_heat_cp_dp,want_derivatives, &
            in_atmosphere,saha_state)
-      call getopac(log10_density, log10_temperature, hydrogen_fraction, &
+      call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
            metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
            dlnkap_dlnt, fxion)
       dydx(1) = effective_gravity*optical_depth/(pressure*opacity)

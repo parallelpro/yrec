@@ -41,6 +41,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
       use luout_lib
       use const_lib
       use eos_lib
+      use kap_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -172,7 +173,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  specific_heat_cp_dp, want_derivatives, in_atmosphere, &
                  saha_state, composition_at_zone=composition(:,cz_edge_idx))
 ! DBG 12/95 GET OPACITY
-            call getopac(log_density_zone, log_temperature_zone, &
+            call kap_get(log_density_zone, log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, opacity, log_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)
             call tpgrad(log_temperature_zone, temperature_k, &
@@ -213,7 +214,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  saha_state, &
                  composition_at_zone=composition(:,adjacent_radiative_idx))
 ! DBG 12/95 GET OPACITY
-            call getopac(log_density_zone, log_temperature_zone, &
+            call kap_get(log_density_zone, log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, opacity, log_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)
             call tpgrad(log_temperature_zone, temperature_k, &
@@ -291,7 +292,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                     saha_state, &
                     composition_at_zone=composition(:,search_zone_idx))
 ! DBG 12/95 GET OPACITY
-               call getopac(log_density_zone, log_temperature_zone, &
+               call kap_get(log_density_zone, log_temperature_zone, &
                     hydrogen_fraction, metal_fraction, opacity, &
                     log_opacity, dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)
                call tpgrad(log_temperature_zone, temperature_k, &

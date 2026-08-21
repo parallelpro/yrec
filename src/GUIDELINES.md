@@ -300,6 +300,56 @@ dummy (all declare it `intent(in)`) -- so the restore was provably a
 no-op. Removed the dead save/restore, changed `eqstat2`'s dummy to
 `intent(in)`; zero behavior change, verified byte-identical.
 
+**Second facade, `kap_get` (2026-08-21)**: unlike `eos`, investigation
+found `kap/getopac.f90` was *already* a single, clean, explicit-
+interface entry point -- all 8 external call sites did a plain
+`call getopac(...)`, no duplicated dispatch logic anywhere (`eos`'s
+core problem). So this wasn't a new-facade build the way `eos_get`
+was: `getopac.f90` was renamed to `kap/kap_lib.f90` (`module kap_lib`
+/ `contains subroutine kap_get(...)`), body and argument list
+unchanged, purely to give `kap` the same public-facade shape as
+`eos_lib` (matching this doc's own naming rule, which already
+anticipated `kap_lib` by name) -- a third precedent (alongside
+`numerics_lib`, `eos_lib`) for "a module hosting a real callable
+subroutine." The 8 callers got `use kap_lib` added and their calls
+renamed to `kap_get`; no Makefile change beyond adding
+`kap/kap_lib.f90` to `MODULE_SRCS`.
+
+Investigation also found two misplaced-domain file groups inside
+`kap/`, same pattern as `meval.f90` (single external caller elsewhere,
+zero domain content) -- moved out:
+- `alsurfp.f90`/`alfilein.f90`/`altabinit.f90` -> `atm/`. These
+  interpolate Allard NextGen atmosphere tables for Log(P)/Log(T) at
+  fixed Teff/GL/tau=100 -- a boundary condition, not opacity -- and
+  sit right alongside `atm/kcsurfp.f90` (the Kurucz/Castelli
+  equivalent, already correctly filed) at their only call sites
+  (`atm/envint.f90`, `wind/massloss.f90`).
+- `ifermi12.f90`/`zfermim12.f90` -> `nuclear/`. Fermi-Dirac degeneracy
+  integrals called only from `nuclear/nuclear_lib.f90`, nowhere in
+  `kap/` itself.
+
+The remaining 34 files split cleanly into 7 physical groups, matching
+`kap_get`'s own flags exactly: `kap/alex06/` (Ferguson et al. 2005
+low-T opacities, 3 files), `kap/alex94/` (Alexander 1994 low-T
+opacities -- note the code's own flag is `use_alex95_tables` despite
+the tables being 1994-dated; not renamed, just flagged), `kap/kurucz90/`
+(4 files), `kap/opal95/` (Iglesias & Rogers 1996 H/He/metal mixtures,
+7 files), `kap/opal92/` (the Livermore "LL"-named tables, 7 files),
+`kap/laol89/` (Los Alamos, including its pure-Z variant used for the
+He-burning correction, 7 files), `kap/conductive/` (Potekhin, per
+Cassisi et al. 2007, 2 files). `kap_lib.f90` and `setupopac.f90` (the
+startup-time table loader, called once from `setup/setups.f90`) stay
+at `kap/` root. Per the YREC public release paper, this maps onto
+three *user-facing* opacity families (conductive, atomic, molecular);
+the paper's third atomic family (OP/Badnell 2005) doesn't have an
+obvious match among `opal95`/`opal92`/`laol89` -- left unresolved,
+not blocking, since the reorg reflects the code's actual structure as
+it exists today rather than the paper's summary framing.
+
+Verification: full clean build + Stage-0 byte-identical regression,
+each step (facade rename, misplaced-file moves, subfolder split)
+checked independently before combining into the commit.
+
 ## Build mechanics
 
 - Any file introducing `module ... contains` must be added to the
@@ -395,7 +445,7 @@ above). Recognizing which of these three shapes you're looking at
 saves re-deriving the fix from scratch:
 
 - **Array too small.** Caller declares a local array shorter than the
-  callee's dummy (e.g. `kap/alsurfp.f90` passed 4-element arrays where
+  callee's dummy (e.g. `atm/alsurfp.f90` passed 4-element arrays where
   `polint`'s dummy is `xa(20)`/`ya(20)`). Tell: "Actual argument
   contains too few elements." Fix: widen the caller's declared array
   size to match the callee's real contract (check other correct

@@ -18,7 +18,7 @@
 ! MODEL2 format, detected from the file's 4-character keyword) via
 ! getyrec7/getmodel2, optionally extends the innermost shell inward
 ! (common/core/), rescales it (rscale), optionally changes the
-! envelope fitting point mass (calling envint/meqos/eqstat/getopac/
+! envelope fitting point mass (calling envint/eos_get/kap_get/
 ! tpgrad to keep the new last interior shell's radiative/convective
 ! flag and density consistent), sets up the rotation curve (fpft/
 ! momi) if rotation is active, sets up the surface mixture and
@@ -119,6 +119,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       use luout_lib
       use const_lib
       use eos_lib
+      use kap_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts = 63, nps = 76
@@ -756,7 +757,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                     adiabatic_gradient_dp,specific_heat_cp_dt, &
                     specific_heat_cp_dp,want_derivatives,in_atmosphere, &
                     saha_state,composition_at_zone=composition(:,num_shells))
-               call getopac(log10_density, log10_temperature, &
+               call kap_get(log10_density, log10_temperature, &
                     hydrogen_fraction, metal_fraction, opacity, &
                     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)
                iovim = -1

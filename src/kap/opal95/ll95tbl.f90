@@ -30,7 +30,7 @@ subroutine ll95tbl(opal95_table_path)
 
 ! common/newopac/: ll95tbl.f declares an OUT-OF-SYNC 16-member version
 ! of this block (10 doubles + 6 logicals) vs. the canonical 17-member
-! layout (10 doubles + 7 logicals) used by getopac.f90/setupopac.f90
+! layout (10 doubles + 7 logicals) used by kap_lib.f90's kap_get/setupopac.f90
 ! and every other file in this batch -- a pre-existing bug in the
 ! original ll95tbl.f (this file is the ONLY one in the opacity family
 ! with this mismatched declaration; confirmed by comparing against

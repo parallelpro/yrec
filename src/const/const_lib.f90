@@ -789,7 +789,7 @@ module const_lib
 ! deladj/tauhe/tnorm/tcz/whe/acatmr/acatmd/acatmp/acatmt/tatmos/iacat/
 ! ijlast/laoly/ijvs/ijent/ijdel) are unused in core/parmin.f90 --
 ! genuinely used (or carried as placeholders) in wind/calcad.f90,
-! io/wrtout.f90, core/main.f90, atm/envint.f90, kap/getopal95.f90, so
+! io/wrtout.f90, core/main.f90, atm/envint.f90, kap/opal95/getopal95.f90, so
 ! still declared here, using the majority spelling across those five
 ! files (wind/calcad.f90 and io/wrtout.f90 give several of these real
 ! semantic names instead -- e.g. normalized_acoustic_depth,

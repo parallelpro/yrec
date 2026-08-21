@@ -28,6 +28,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      pulse_print_flag)
 
       use eos_lib
+      use kap_lib
       use atm_table_lib
       use rotdiff_lib
       use run_diag_lib
@@ -237,7 +238,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            specific_heat_cp_dt,specific_heat_cp_dp,want_derivatives, &
            in_atmosphere,saha_state)
 ! DBG 12/95 GET OPACITY
-      call getopac(log10_density, log10_temperature, hydrogen_fraction, &
+      call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
            metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
            dlnkap_dlnt, ion_fraction)
       indep_var = log10_pressure - log10_gravity + dlog10(opacity)

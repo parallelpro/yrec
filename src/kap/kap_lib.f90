@@ -1,17 +1,28 @@
 !----------------------------------------------------------------------
-! getopac
+! kap_lib
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original getopac.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
+! Added 2026 as part of the YREC readability refactor's phase two
+! (disentangling the solver from the physics domains -- see
+! GUIDELINES.md's "Physics domains still entangled with the solver").
+! Unlike eos_lib.f90's eos_get, this is not a new dispatch consolidation:
+! getopac (renamed kap_get) was already the single, clean, explicit-
+! interface entry point every external caller used uniformly -- no
+! duplicated dispatch logic existed at any of its 8 call sites. This
+! rename/module-wrap is purely to give kap/ the same public-facade
+! shape as eos_lib (a module named `<domain>_lib`, matching
+! GUIDELINES.md's naming rule, which already anticipated `kap_lib` by
+! name) and the same numerics_lib/eos_lib precedent for "a module
+! hosting a real callable subroutine." kap_get's body, dispatch logic,
+! and argument list are otherwise unchanged from getopac.
+module kap_lib
+      implicit none
+contains
+
 ! Computes the opacity for a given composition (X, Z), blending
 ! between molecular/atmosphere tables, interior tables (OPAL/LAOL/
 ! Kurucz families, optionally interpolated between two Z values or a
 ! pure-Z table), and a conductive-opacity correction.
-subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
+subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction)
       use const_lib
@@ -290,4 +301,6 @@ subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
            (radiative_opacity + conductive_opacity))
 
       return
-end subroutine getopac
+end subroutine kap_get
+
+end module kap_lib

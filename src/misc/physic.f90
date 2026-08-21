@@ -29,6 +29,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       use scrtch_lib
       use const_lib
       use eos_lib
+      use kap_lib
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -117,7 +118,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               adiabatic_gradient_dp, specific_heat_cp_dt, &
               specific_heat_cp_dp, want_derivatives, in_atmosphere, &
               saha_state, composition_at_zone=composition(:,im))
-         call getopac(log10_density, log10_temperature, hydrogen_fraction, &
+         call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
               metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
               dlnkap_dlnt, ion_fraction)
          iovim = im

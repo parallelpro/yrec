@@ -9,7 +9,7 @@
 !
 ! Reads in the opacity tables selected by the use_*_tables flags (set
 ! from the run's namelist) and builds the interpolation splines used
-! later by getopac.
+! later by kap_lib.f90's kap_get.
 subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
      alex06_table_path, kurucz_table_path, kurucz_table2_path, &
      laol_table_path, laol_table2_path, opal95_table_path, &

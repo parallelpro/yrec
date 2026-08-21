@@ -10,7 +10,7 @@
 ! spline interpolation scheme (two-dimensional: temperature and
 ! density). Uses the classic F77 "alternate return" (the trailing `*`
 ! dummy argument / `return 1`) to signal "point outside the table" to
-! the caller (see getopac.f90, label 100).
+! the caller (see kap_lib.f90's kap_get, label 100).
 subroutine kurucz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, *)
 

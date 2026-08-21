@@ -16,9 +16,10 @@
 ! DATA-statement defaults (kipmll/kipm/kipm2's cached-index scalars,
 ! and the Alexander 94/06 table-grid arrays) are preserved here as
 ! declaration-time initializers, transcribed verbatim from the
-! original DATA statements in kap/alxtbl.f90, kap/readalex06.f90,
-! kap/kurucz.f90, kap/kurucz2.f90. kap/yllo3d2.f90's mirror of
-! kap/yllo3d.f90's common/kipmll/ (its own common/kipmll2/) never had a
+! original DATA statements in kap/alex94/alxtbl.f90,
+! kap/alex06/readalex06.f90, kap/kurucz90/kurucz.f90,
+! kap/kurucz90/kurucz2.f90. kap/opal92/yllo3d2.f90's mirror of
+! kap/opal92/yllo3d.f90's common/kipmll/ (its own common/kipmll2/) never had a
 ! DATA statement in the original, so its members are left without an
 ! initializer here too, preserving that asymmetry.
 module opacity_table_lib
@@ -68,8 +69,8 @@ module opacity_table_lib
            double precision :: opal92_surface_spline_coeffs_z2(n_opal92_t,n_opal92_4d)
            integer :: opal92_surface_x_index_z2
 ! former common/kipmll/ (cached grid indices, DATA-initialized in
-! kap/yllo3d.f90) and common/kipmll2/ (its second-Z mirror in
-! kap/yllo3d2.f90, never DATA-initialized in the original -- no
+! kap/opal92/yllo3d.f90) and common/kipmll2/ (its second-Z mirror in
+! kap/opal92/yllo3d2.f90, never DATA-initialized in the original -- no
 ! initializer here either, preserving that asymmetry).
            integer :: abund_index = 1, temp_index = 1, dens_index = 1
            integer :: abund_index_z2, temp_index_z2, dens_index_z2
@@ -158,7 +159,7 @@ module opacity_table_lib
 ! former common/llot95a/: the OPAL95 opacity table grid and full
 ! (all-Z) opacity array. opal95_grid_x/opal95_grid_z/
 ! opal95_table_start_index/opal95_num_x_at_z DATA-initialized in
-! kap/ll95tbl.f90 (values transcribed verbatim below);
+! kap/opal95/ll95tbl.f90 (values transcribed verbatim below);
 ! opal95_grid_logt/opal95_full_opacity filled by file I/O there.
            double precision :: opal95_grid_logt(n_opal95_t)
            double precision :: opal95_grid_x(n_opal95_x) = &
@@ -185,7 +186,7 @@ module opacity_table_lib
            double precision :: opal95_surface_opacity(n_opal95_t,n_opal95_d)
            double precision :: opal95_surface_x
 ! former common/op95indx/: cached Z/X/T/rho interpolation indices, all
-! 22 scalar values DATA-initialized to 1 in kap/ll95tbl.f90.
+! 22 scalar values DATA-initialized to 1 in kap/opal95/ll95tbl.f90.
            integer :: opal95_index_z = 1
            integer :: opal95_index_x(4,4) = 1
            integer :: opal95_index_t = 1

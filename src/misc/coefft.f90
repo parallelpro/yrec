@@ -12,7 +12,8 @@
 !
 ! Builds the Henyey structure-equation coefficients (elim_coeff/
 ! elim_rhs, via reduce) for every mesh point: at each shell, calls the
-! equation of state (meqos or eqstat), opacity (getopac), and
+! equation of state (via eos_lib's eos_get), opacity (via kap_lib's
+! kap_get), and
 ! temperature-gradient (tpgrad) routines to get the local physics,
 ! optionally the nuclear energy generation (engeb) and gravitational/
 ! entropy ("Kelvin-Helmholtz") energy term, assembles the pressure/
@@ -59,6 +60,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       use luout_lib
       use const_lib
       use eos_lib
+      use kap_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -216,7 +218,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
               specific_heat_cp_dp, want_derivatives, in_atmosphere, &
               saha_state, composition_at_zone=composition(:,im))
 ! DBG 12/95 GET OPACITY
-         call getopac(zone_log10_density, zone_log_temperature, &
+         call kap_get(zone_log10_density, zone_log_temperature, &
               hydrogen_fraction, metal_fraction, opacity, log10_opacity, &
               dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)
          iovim = im
