@@ -49,15 +49,6 @@ subroutine remap
       logical :: use_structure_dt_limits
       common/ct3/ use_structure_dt_limits
 
-! MHP 8/96 CROSS SECTIONS PUT IN COMMON BLOCK.
-! MHP 6/14 DERIVATIVES ADDED
-! common/cross/: cross-section scale factors, all set here. Naming
-! matches rates.f90.
-      double precision :: cross_section_scale(17), qs0e_scale(8), &
-           qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
-      logical :: use_new_nuclear_rates
-      common/cross/ cross_section_scale, qs0e_scale, qqs0ee_scale, &
-           o16_gamma_scale, c12_alpha_scale, use_new_nuclear_rates
 
 ! common/newcross/: user-supplied nuclear reaction S-factors (and
 ! first/second derivative ratios relative to the Adelberger et al. 1998

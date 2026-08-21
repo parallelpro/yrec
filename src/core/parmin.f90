@@ -427,10 +427,16 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lnoj
       common /notran/ lnoj
 
-! common /cross/
-      double precision :: sstandard(17), qs0e(8), qqs0ee(8), fo16, fc12
+! sstandard/lnewnuc: NAMELIST /physics/ members (must keep this exact
+! spelling, see this file's naming note at the top). Former common
+! /cross/; only these two are actually read anywhere (sstandard's
+! namelist value is never referenced outside its own declaration --
+! setup/remap.f90 fully recomputes const_lib's cross_section_scale
+! from other inputs regardless -- so it's dropped here rather than
+! copied). lnewnuc is copied into const_lib's use_new_nuclear_rates
+! right after the namelist read below, since remap.f90 needs it.
+      double precision :: sstandard(17)
       logical :: lnewnuc
-      common /cross/ sstandard, qs0e, qqs0ee, fo16, fc12, lnewnuc
 
 ! common /newcross/
       double precision :: s0_1_1, s0_3_3, s0_3_4, s0_1_12, s0_1_13, s0_1_14, s0_1_16, s0_pep, &
@@ -488,9 +494,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: ldisk
       common /disk/ sage, tdisk, pdisk, ldisk
 
-! common /weak/
+! weakscreening: NAMELIST /physics/ member (must keep this exact
+! spelling). Former common /weak/; copied into const_lib's
+! weak_screening_threshold right after the namelist read below.
       double precision :: weakscreening
-      common /weak/ weakscreening
 
 ! common /sbrot/
       logical :: lsolid
@@ -1077,6 +1084,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       tolerance_fraction = stolr0
       max_stage_index = imax
       extrap_order = nuse
+! use_new_nuclear_rates/weak_screening_threshold: same reasoning,
+! copied from their NAMELIST-spelled locals before remap runs, since
+! remap.f90 reads use_new_nuclear_rates to decide how to compute
+! const_lib's cross-section-scale members.
+      use_new_nuclear_rates = lnewnuc
+      weak_screening_threshold = weakscreening
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap

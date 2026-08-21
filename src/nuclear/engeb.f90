@@ -240,23 +240,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       common/nuloss/neutrino_dlnq_dlnt, neutrino_dlnq_dlnd, &
            use_itoh_neutrino_loss
 
-! MHP 8/96 CROSS SECTIONS PUT IN COMMON BLOCK.
-!      COMMON/CROSS/SSTANDARD(17)
-! MHP 6/14 DERIVATIVES ADDED
-! common/cross/: cross_section_scale/qs0e_scale/qqs0ee_scale/
-! o16_gamma_scale/c12_alpha_scale all used here; use_new_nuclear_rates
-! is an unused placeholder. Naming matches rates.f90.
-      double precision :: cross_section_scale(17), qs0e_scale(8), &
-           qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
-      logical :: use_new_nuclear_rates
-      common/cross/ cross_section_scale, qs0e_scale, qqs0ee_scale, &
-           o16_gamma_scale, c12_alpha_scale, use_new_nuclear_rates
 
-! common/weak/: the screening threshold used to decide between weak
-! and intermediate/strong screening, used here. Naming matches
-! rates.f90.
-      double precision :: weak_screening_threshold
-      common/weak/ weak_screening_threshold
 
 ! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
 ! common/ovrtrn/: only convective_turnover_timescale is used here.

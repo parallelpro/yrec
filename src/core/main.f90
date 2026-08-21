@@ -531,15 +531,6 @@ program main
       common/fluxes/ neutrino_flux, neutrino_flux_total, cl37_snu_rate, &
            ga71_snu_rate
 
-! MHP 6/14 DERIVATIVES ADDED TO COMMON BLOCK. NOT USED FOR DERIVATIVES
-! IN THE MONTE CARLO.
-! common/cross/: cross_section_scale/qs0e_scale used here; the rest
-! unused placeholders. Naming matches engeb.f90.
-      double precision :: cross_section_scale(17), qs0e_scale(8), &
-           qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
-      logical :: use_new_nuclear_rates
-      common/cross/ cross_section_scale, qs0e_scale, qqs0ee_scale, &
-           o16_gamma_scale, c12_alpha_scale, use_new_nuclear_rates
 
 ! MHP 8/96
 ! added monte carlo parameters for metal diffusion, solar L, solar age.

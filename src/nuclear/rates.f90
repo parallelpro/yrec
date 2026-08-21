@@ -107,21 +107,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 
 
 
-! MHP 8/96 CROSS SECTIONS PUT IN COMMON BLOCK.
-!      COMMON/CROSS/SSTANDARD(17)
-! MHP 6/14 DERIVATIVES ADDED
-! common/cross/: cross-section scale factors, all used here except
-! use_new_nuclear_rates (unused placeholder).
-      double precision :: cross_section_scale(17), qs0e_scale(8), &
-           qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
-      logical :: use_new_nuclear_rates
-      common/cross/ cross_section_scale, qs0e_scale, qqs0ee_scale, &
-           o16_gamma_scale, c12_alpha_scale, use_new_nuclear_rates
 
-! common/weak/: the screening threshold used to decide between weak and
-! intermediate/strong screening.
-      double precision :: weak_screening_threshold
-      common/weak/ weak_screening_threshold
 
       double precision :: mass_frac(13), rate(13), screening_factor(13), &
            charge_product(13), z53(13), z43(13), z23(13), z86(13)
