@@ -34,11 +34,6 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
 ! MHP 10/02 added proper dimensions to last 2 variables
       double precision :: dage
       common/theage/ dage
-      double precision :: po_weight_l, po_weight_teff, po_weight_age, &
-           po_max_len_sq
-      logical :: po_output_enabled
-      common /po/ po_weight_l, po_weight_teff, po_weight_age, &
-           po_max_len_sq, po_output_enabled
 ! MHP 8/25 Removed character file names from common block
       double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
       integer :: iolaol2, ioopal2, nk

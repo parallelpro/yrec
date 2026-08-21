@@ -201,15 +201,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            old_eta_squared(json)
       common/oldrot/ old_omega, old_specific_angular_momentum, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
-! common/core/: all used here. Only established elsewhere in
-! parmin.f90 (as lcore/mcore/fcore, kept cryptic there per that file's
-! NAMELIST constraint); this file is not bound by that and uses
-! descriptive names instead.
-      logical :: extend_core_inward
-      integer :: num_core_shells_added
-      double precision :: core_mass_reduction_factor
-      common/core/ extend_core_inward, num_core_shells_added, &
-           core_mass_reduction_factor
 ! OPACITY COMMON BLOCKS - modified 3/09
 ! common/newopac/: not used in this file's logic; layout placeholder.
 ! Naming matches getopac.f90/surfopac.f90.

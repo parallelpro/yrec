@@ -188,10 +188,6 @@ program main
       common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
            numrho, numt, llaol, use_pure_z_table, iopurez
 
-! common/track/: track_file_version (ITRVER); not used in this file's
-! logic. Naming matches wrthead.f90.
-      integer :: track_file_version
-      common/track/ track_file_version
 
 
 
@@ -313,17 +309,6 @@ program main
       common/stch/ composition_final, log_radius_final, log_pressure_final, &
            log_density_final, log_mass_final, log_temperature_final
 
-! DBG PULSE OUT 7/92
-! variables used to contral output of pulsation models. model
-! output after has traveled pomax in HR diagram
-! LPOUT and POMAX added to control common block, rest in physics
-! common/po/: only po_output_enabled used here; the rest unused
-! placeholders. Naming matches pdist.f90.
-      double precision :: po_weight_l, po_weight_teff, po_weight_age, &
-           po_max_len_sq
-      logical :: po_output_enabled
-      common /po/ po_weight_l, po_weight_teff, po_weight_age, &
-           po_max_len_sq, po_output_enabled
 
 
 ! common/calsun/: dlum_dx/drad_dx/dlum_dalpha/drad_dalpha/

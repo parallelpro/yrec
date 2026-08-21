@@ -40,14 +40,6 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
       common/intvar/ interface_luminosity, delami, delmi, dm, epsilm, &
            interface_gravity_factor, hs3, pm, qdtmi, interface_radius, tm
 
-! common/vmult/: only mixing_velocity_scale (FC) is used here. Naming
-! matches vcirc.f90.
-      double precision :: difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
-      common/vmult/ difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
 
 ! common/varfc/: only vfc (the output mixing/angular-momentum-transport
 ! diffusion-coefficient ratio) is used (set) here. Naming matches

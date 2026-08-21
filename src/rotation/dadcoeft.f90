@@ -160,23 +160,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
            third_deriv_geom_factor_eqgrid, second_deriv_geom_factor, &
            third_deriv_geom_factor
 
-! common/vmult/: only difad_velocity_scale/mixing_velocity_scale (FW/FC)
-! are used here. Naming matches rotgrid.f90.
-      double precision :: difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
-      common/vmult/ difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
 
-! common/vmult2/: only es_mixing_scale/secular_shear_mixing_scale/
-! gsf_mixing_scale (FESC/FSSC/FGSFC) are used here; ies/igsf/imu are
-! unused placeholders. Naming is local to this batch.
-      double precision :: es_mixing_scale, secular_shear_mixing_scale, &
-           gsf_mixing_scale
-      integer :: ies, igsf, imu
-      common/vmult2/ es_mixing_scale, secular_shear_mixing_scale, &
-           gsf_mixing_scale, ies, igsf, imu
 
 ! common/difad4/: mixing_geometric_factor/mixing_velocity_estimate/
 ! equatorial_radius (FGEOMIX/VESN/REQ), all used here. Naming is local

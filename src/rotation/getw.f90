@@ -135,13 +135,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       common/oldab/ composition_snapshot
 
 
-! common/vmult/: not used in this file. Naming matches vcirc.f90.
-      double precision :: difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
-      common/vmult/ difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
 
 ! common/quadru/: only quadrupole_moment is used here. Naming matches
 ! vcirc.f90.

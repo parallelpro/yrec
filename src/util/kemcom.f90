@@ -61,13 +61,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
       double precision, intent(out) :: composition(15,json)
       double precision, intent(in) :: timestep_years
 
-! common/burtol/: min_abundance, absolute_tolerance, relative_tolerance,
-! max_burn_iterations (originally CMIN,ABSTOL,RELTOL,KEMMAX). First
-! appearance of this common block in the converted sources.
-      double precision :: min_abundance, absolute_tolerance, relative_tolerance
-      integer :: max_burn_iterations
-      common/burtol/ min_abundance, absolute_tolerance, relative_tolerance, &
-           max_burn_iterations
 
 
 

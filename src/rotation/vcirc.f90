@@ -119,24 +119,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
       common/vfact/ fact1, fact2, fact3, fact4, mu_gradient_richardson_coeff, &
            difad_shear_coeff1, difad_shear_coeff2
 
-! common/vmult/: only es_velocity_scale/gsf_velocity_scale/
-! secular_shear_velocity_scale/critical_reynolds are used here. Naming
-! matches rotgrid.f90.
-      double precision :: difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
-      common/vmult/ difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
 
-! common/vmult2/: only gsf_inhibition_mode (IGSF) is used here; the
-! rest are unused placeholders (their only references are in
-! commented-out code). Naming matches dadcoeft.f90.
-      double precision :: es_mixing_scale, secular_shear_mixing_scale, &
-           gsf_mixing_scale
-      integer :: ies, gsf_inhibition_mode, imu
-      common/vmult2/ es_mixing_scale, secular_shear_mixing_scale, &
-           gsf_mixing_scale, ies, gsf_inhibition_mode, imu
 
 ! common/prevmu/: mu_gradient_velocity_prev (originally VMUP), the
 ! previous-iteration circ_vel%mu_gradient_velocity, saved (but not subsequently

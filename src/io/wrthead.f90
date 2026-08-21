@@ -24,10 +24,6 @@ subroutine wrthead(total_mass_msun)
       common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
            use_z_ramp
 
-! common/track/: track_file_version (ITRVER), used here. Naming is
-! local to this batch.
-      integer :: track_file_version
-      common/track/ track_file_version
 
 
 

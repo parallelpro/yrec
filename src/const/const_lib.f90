@@ -523,4 +523,64 @@ module const_lib
            initial_be9_fraction, initial_b10_fraction, &
            initial_b11_fraction
 
+! former common/vmult/: difad_velocity_scale/mixing_velocity_scale/
+! es_velocity_scale/gsf_velocity_scale/mu_gradient_scale/
+! secular_shear_velocity_scale/critical_reynolds (originally fw/fc/
+! fes/fgsf/fmu/fss/rcrit) are NAMELIST values with different canonical
+! spellings, kept local in core/parmin.f90 and copy-assigned. fo is a
+! NAMELIST value spelled identically to its canonical name --
+! use-associated directly; its DATA default moved here since DATA can
+! no longer target a use-associated entity.
+      double precision :: fo = 1.0d0
+      double precision :: difad_velocity_scale, mixing_velocity_scale, &
+           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
+           secular_shear_velocity_scale, critical_reynolds
+
+! former common/vmult2/: es_mixing_scale/secular_shear_mixing_scale/
+! gsf_mixing_scale/gsf_inhibition_mode (originally fesc/fssc/fgsfc/
+! igsf) are NAMELIST values with different canonical spellings, kept
+! local in core/parmin.f90 and copy-assigned. ies/imu are NAMELIST
+! values spelled identically to their canonical names --
+! use-associated directly; their DATA defaults moved here since DATA
+! can no longer target use-associated entities.
+      integer :: ies = 1
+      integer :: imu = 1
+      double precision :: es_mixing_scale, secular_shear_mixing_scale, &
+           gsf_mixing_scale
+      integer :: gsf_inhibition_mode
+
+! former common/burtol/: min_abundance/absolute_tolerance/
+! relative_tolerance/max_burn_iterations (originally cmin/abstol/
+! reltol/kemmax) are NAMELIST values with different canonical
+! spellings, kept local in core/parmin.f90 and copy-assigned.
+      double precision :: min_abundance, absolute_tolerance, &
+           relative_tolerance
+      integer :: max_burn_iterations
+
+! former common/lopal95/: opal95_table_unit (originally iliv95) is not
+! a namelist value -- genuinely used in core/parmin.f90, renamed in
+! place there.
+      integer :: opal95_table_unit
+
+! former common/po/: po_weight_l/po_weight_teff/po_weight_age/
+! po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/
+! lpout) are NAMELIST values with different canonical spellings, kept
+! local in core/parmin.f90 and copy-assigned.
+      double precision :: po_weight_l, po_weight_teff, po_weight_age, &
+           po_max_len_sq
+      logical :: po_output_enabled
+
+! former common/track/: track_file_version (originally itrver) is a
+! NAMELIST value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned.
+      integer :: track_file_version
+
+! former common/core/: extend_core_inward/num_core_shells_added/
+! core_mass_reduction_factor (originally lcore/mcore/fcore) are
+! NAMELIST values with different canonical spellings, kept local in
+! core/parmin.f90 and copy-assigned.
+      logical :: extend_core_inward
+      integer :: num_core_shells_added
+      double precision :: core_mass_reduction_factor
+
 end module const_lib

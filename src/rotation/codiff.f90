@@ -69,24 +69,7 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
 
 
 
-! common/vmult/: only difad_velocity_scale/mixing_velocity_scale (FW/FC)
-! are used here. Naming matches rotgrid.f90/vcirc.f90/dadcoeft.f90.
-      double precision :: difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
-      common/vmult/ difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
 
-! common/vmult2/: only es_mixing_scale/secular_shear_mixing_scale/
-! gsf_mixing_scale (FESC/FSSC/FGSFC) are used here; ies/gsf_inhibition_
-! mode/imu are unused placeholders. Naming matches vcirc.f90/
-! dadcoeft.f90.
-      double precision :: es_mixing_scale, secular_shear_mixing_scale, &
-           gsf_mixing_scale
-      integer :: ies, gsf_inhibition_mode, imu
-      common/vmult2/ es_mixing_scale, secular_shear_mixing_scale, &
-           gsf_mixing_scale, ies, gsf_inhibition_mode, imu
 
 ! common/advec/: not used in this file (no references anywhere in the
 ! executable code of the original). Not referenced in any already-

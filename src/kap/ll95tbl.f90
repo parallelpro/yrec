@@ -14,6 +14,7 @@
 ! (not part of this batch).
 subroutine ll95tbl(opal95_table_path)
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: num_t = 70
@@ -24,9 +25,6 @@ subroutine ll95tbl(opal95_table_path)
 
       character(len=256), intent(in) :: opal95_table_path
 
-! MHP 8/25 Removed character file names from common block
-      integer :: opal95_table_unit
-      common /lopal95/ opal95_table_unit
 
 ! FULL SET OF TABLES: OPACITY AS A FUNCTION OF Z AND X, T, RHO/T6**3
 ! TABLES ARE INCREMENTED IN SETS OF NZ*NX.  SO THE TABLES FOR THE

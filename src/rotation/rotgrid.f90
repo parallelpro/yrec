@@ -95,19 +95,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
       logical :: lvfc, use_diffusion_advection_transport
       common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
-! common/vmult/: user-defined multiplicative scale factors for the
-! rotational-instability circulation velocity estimates (MHP 8/03
-! "MULTIPLY VELOCITY ESTIMATES BY USER PARAMETER SCALE FACTORS", see
-! vcirc.f90); only difad_velocity_scale is used here. fo/mu_gradient_
-! scale are not live anywhere in this batch (mu_gradient_scale appears
-! only in commented-out code in vcirc.f90). Naming is local to this
-! batch.
-      double precision :: difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
-      common/vmult/ difad_velocity_scale, mixing_velocity_scale, fo, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
 
       double precision :: eq_reduced_moment_of_inertia(json)
       save

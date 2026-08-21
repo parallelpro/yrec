@@ -358,9 +358,15 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! than locally declared.
       double precision :: endage(50), setdt(50), end_dcen(50), end_xcen(50), end_ycen(50)
 
-! common /vmult/
-      double precision :: fw, fc, fo, fes, fgsf, fmu, fss, rcrit
-      common /vmult/ fw, fc, fo, fes, fgsf, fmu, fss, rcrit
+! fo: NAMELIST /physics/ member spelled identically to its const_lib
+! canonical name -- use-associated directly. fw/fc/fes/fgsf/fmu/fss/
+! rcrit (former common/vmult/'s remaining members) are also NAMELIST
+! members but need different canonical spellings (difad_velocity_scale/
+! mixing_velocity_scale/es_velocity_scale/gsf_velocity_scale/
+! mu_gradient_scale/secular_shear_velocity_scale/critical_reynolds),
+! so they keep their local NAMELIST-spelled names here and are
+! copy-assigned after the namelist read below.
+      double precision :: fw, fc, fes, fgsf, fmu, fss, rcrit
 
 ! etadh0/etadh1/ldh: NAMELIST /physics/ members, each with a different
 ! canonical const_lib spelling (debye_huckel_eta_min/
@@ -376,10 +382,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: etadh0, etadh1
       logical :: ldh
 
-! common /vmult2/
+! ies/imu: NAMELIST /physics/ members spelled identically to their
+! const_lib canonical names -- use-associated directly. fesc/fssc/
+! fgsfc/igsf (former common/vmult2/'s remaining members) are also
+! NAMELIST members but need different canonical spellings
+! (es_mixing_scale/secular_shear_mixing_scale/gsf_mixing_scale/
+! gsf_inhibition_mode -- the last chosen over parmin's own igsf since
+! it's the majority spelling, used directly by 2 of igsf's 3 peer
+! files), so they keep their local NAMELIST-spelled names here and are
+! copy-assigned after the namelist read below.
       double precision :: fesc, fssc, fgsfc
-      integer :: ies, igsf, imu
-      common /vmult2/ fesc, fssc, fgsfc, ies, igsf, imu
+      integer :: igsf
 
 ! grtol/ilambda/niter_gs/ldify: NAMELIST /physics/ members, each with
 ! a different canonical const_lib spelling (settling_tolerance/
@@ -391,14 +404,18 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: ldify
 
 
-! common /burtol/
+! cmin/abstol/reltol/kemmax: NAMELIST /physics/ members, each with a
+! different canonical const_lib spelling (min_abundance/
+! absolute_tolerance/relative_tolerance/max_burn_iterations), so kept
+! local under their NAMELIST spelling here and copy-assigned after the
+! namelist read below.
       double precision :: cmin, abstol, reltol
       integer :: kemmax
-      common /burtol/ cmin, abstol, reltol, kemmax
 
-! common /lopal95/
-      integer :: iliv95
-      common /lopal95/ iliv95
+! former common/lopal95/: iliv95 is not a namelist value and genuinely
+! used in this file -- renamed in place to its canonical const_lib
+! name (opal95_table_unit), now use-associated rather than locally
+! declared.
 
 ! dt_gs/xmin/ymin/lthoulfit: NAMELIST /physics/ members, each with a
 ! different canonical const_lib spelling (settling_timestep_fraction/
@@ -431,14 +448,16 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lpulse
       integer :: ipver
 
-! common /po/
+! po: NAMELIST /physics/ members, all renamed in const_lib (poa/pob/poc/
+! pomax/lpout -> po_weight_l/po_weight_teff/po_weight_age/po_max_len_sq/
+! po_output_enabled), so kept local under their NAMELIST spelling and
+! copy-assigned after the namelist read below.
       double precision :: poa, pob, poc, pomax
       logical :: lpout
-      common /po/ poa, pob, poc, pomax, lpout
 
-! common /track/
+! track: NAMELIST /physics/ member, renamed in const_lib (itrver ->
+! track_file_version), kept local and copy-assigned below.
       integer :: itrver
-      common /track/ itrver
 
 ! kttau: NAMELIST /physics/ member with a different canonical const_lib
 ! spelling (atm_choice), so kept local under its NAMELIST spelling
@@ -460,11 +479,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! const_lib rather than locally declared.
       logical :: lmhd
 
-! common /core/
+! core: NAMELIST /physics/ members, all renamed in const_lib (lcore/
+! mcore/fcore -> extend_core_inward/num_core_shells_added/
+! core_mass_reduction_factor), kept local and copy-assigned below.
       logical :: lcore
       integer :: mcore
       double precision :: fcore
-      common /core/ lcore, mcore, fcore
 
 ! common /nwlaol/
       double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), tollaol
@@ -930,7 +950,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! common/rot/); lrot/linstb stay local (NAMELIST spelling).
       data lrot,linstb/.false.,.false./
       data ljdot0,alfa,fk/.true.,1.5d0,1.0d0/
-      data fw,fc,fo,fes,fgsf,fmu,fss,rcrit/1.0d0,1.0d0, &
+! fo's default moved to const_lib.f90 (former common/vmult/): DATA can
+! no longer target it here now that it's use-associated.
+      data fw,fc,fes,fgsf,fmu,fss,rcrit/1.0d0, &
            &      1.0d0,1.0d0,1.0d0,1.0d0,1.0d0,1.0d3/
 ! MHP 8/17 INITIALIZED WMAX_SUN
       data wmax,wmax_sun/3.0d-4,1000.0/
@@ -960,7 +982,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data cmin,abstol,reltol,kemmax/1.0d-20,1.0d-5,1.0d-4,50/
       data etadh0, etadh1, ldh/-1.0d0, 1.0d0, .false./
       data fesc,fssc,fgsfc/1.0d0,1.0d0,1.0d0/
-      data ies,igsf,imu/1,1,1/
+! ies/imu defaults moved to const_lib.f90 (former common/vmult2/):
+! DATA can no longer target them here now that they're use-associated.
+      data igsf/1/
 ! lsemic's default moved to const_lib.f90 (former common/dpmix/).
 ! DBGLAOL
       data tollaol,llaol,lpurez/10.0,.false.,.false./
@@ -1150,7 +1174,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! YCK INPUT: OPAL92 OPACITY TABLES
       laol_table_unit = 32
 ! YCK INPUT: OPAL95 OPACITY TABLE
-      iliv95 = 48
+      opal95_table_unit = 48
 ! OUTPUT: SNU FLUXES
       neutrino_unit = 33
 ! OUTPUT: EXTENDED COMPOSITION INFO
@@ -1352,6 +1376,30 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       initial_be9_fraction = xbe9_ini
       initial_b10_fraction = xb10_ini
       initial_b11_fraction = xb11_ini
+      difad_velocity_scale = fw
+      mixing_velocity_scale = fc
+      es_velocity_scale = fes
+      gsf_velocity_scale = fgsf
+      mu_gradient_scale = fmu
+      secular_shear_velocity_scale = fss
+      critical_reynolds = rcrit
+      es_mixing_scale = fesc
+      secular_shear_mixing_scale = fssc
+      gsf_mixing_scale = fgsfc
+      gsf_inhibition_mode = igsf
+      min_abundance = cmin
+      absolute_tolerance = abstol
+      relative_tolerance = reltol
+      max_burn_iterations = kemmax
+      po_weight_l = poa
+      po_weight_teff = pob
+      po_weight_age = poc
+      po_max_len_sq = pomax
+      po_output_enabled = lpout
+      track_file_version = itrver
+      extend_core_inward = lcore
+      num_core_shells_added = mcore
+      core_mass_reduction_factor = fcore
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
