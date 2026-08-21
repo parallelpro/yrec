@@ -60,11 +60,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
 
 
-! common/debhu/: Debye-Huckel correction data; not used in this file.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
 ! common/opaleos/: use_opal95_eos, use_opal2001_eos, and
 ! use_opal2006_eos are used here to select which OPAL EOS table (if

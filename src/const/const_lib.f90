@@ -382,4 +382,27 @@ module const_lib
       logical :: use_ttau_relation
       double precision :: atm_hras
 
+! former common/debhu/: Debye-Huckel EOS correction data. No readable
+! rename had ever been established for this block (every file used
+! the original cryptic COMMON member spelling, unlike most other
+! blocks), so these canonical names are new (2026), not picked up from
+! an existing convention. use_debye_huckel_correction/
+! debye_huckel_eta_min/debye_huckel_eta_max (originally ldh/etadh0/
+! etadh1) are NAMELIST /physics/ values, kept local in
+! core/parmin.f90 and copy-assigned. debye_huckel_coefficient/
+! debye_huckel_nu (originally cdh/dhnue) are not namelist values --
+! setup/setups.f90 computes them once at startup -- so they have no
+! declaration-time default. debye_huckel_x/debye_huckel_y/
+! debye_huckel_z_total/debye_huckel_z (originally xxdh(or xxdy)/yydh/
+! zzdh/zdh) are likewise not namelist values -- mixing/hsubp.f90
+! recomputes them per shell from the local composition -- so they too
+! have no declaration-time default.
+      double precision :: debye_huckel_coefficient
+      double precision :: debye_huckel_eta_min, debye_huckel_eta_max
+      double precision :: debye_huckel_z(18)
+      double precision :: debye_huckel_x, debye_huckel_y, &
+           debye_huckel_z_total
+      double precision :: debye_huckel_nu(18)
+      logical :: use_debye_huckel_correction
+
 end module const_lib

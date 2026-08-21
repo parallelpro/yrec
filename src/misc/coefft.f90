@@ -84,11 +84,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       integer, intent(in) :: envelope_zone_index
       double precision, intent(in) :: log_teff
 
-! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/cdh,etadh0,etadh1,zdh,xxdy,yydh,zzdh,dhnue,ldh
 ! DBG 7/95 To store variables for pulse output
       double precision :: alfmlt, phmlt, cmxmlt
       double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
@@ -241,13 +236,13 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                  adiabatic_gradient_dp, specific_heat_cp_dt, &
                  specific_heat_cp_dp)
          else
-            if (ldh) then
-               xxdy = composition(1,im)
-               yydh = composition(2,im)+composition(4,im)
-               zzdh = composition(3,im)
-               zdh(1) = composition(5,im)+composition(6,im)
-               zdh(2) = composition(7,im)+composition(8,im)
-               zdh(3) = composition(9,im)+composition(10,im)+composition(11,im)
+            if (use_debye_huckel_correction) then
+               debye_huckel_x = composition(1,im)
+               debye_huckel_y = composition(2,im)+composition(4,im)
+               debye_huckel_z_total = composition(3,im)
+               debye_huckel_z(1) = composition(5,im)+composition(6,im)
+               debye_huckel_z(2) = composition(7,im)+composition(8,im)
+               debye_huckel_z(3) = composition(9,im)+composition(10,im)+composition(11,im)
             end if
             call eqstat(zone_log_temperature, temperature, &
                  zone_log_pressure, pressure, zone_log10_density, density, &

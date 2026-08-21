@@ -67,18 +67,6 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
 
 
 
-! DBG 7/92 CDH IS CONSTANT TERM DEFINED IN SETUPS
-!     RAMP FUNCTION BETWEEN NO ELECTRON DEGENERACY ETA .LT. ETADH0
-!     AND FULL ELECTRON DEGENERACY ETA .GT. ETADH1 VERSION OF D.H.
-!     CORRECTION.
-!     IF LDH = .TRUE. THEN APPLY D.H. CORRECTION.
-!     ZDH IS ARRAY OF RELATIVE MASS FRACTIONS OF LAOL METAL MIXTURE
-!     SUMMED TO 1.0.
-! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
       save
 
@@ -131,13 +119,13 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       nden = 1
       id1p = -100
 ! DBG 7/92 CALCULATE D.H. TERMS: ALPHA-MIXTURE, MASS-FRAC0, MASS-FRAC1
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          almix = 0.0d0
          do ii=1,18
-            almix = almix + dhnue(ii)*zdh(ii)
+            almix = almix + debye_huckel_nu(ii)*debye_huckel_z(ii)
          end do
-         cmfdh0 = 2.0d0*xxdy+1.5d0*yydh+0.5d0*(zzdh+almix)
-         cmfdh1 = xxdy+yydh+0.5d0*almix
+         cmfdh0 = 2.0d0*debye_huckel_x+1.5d0*debye_huckel_y+0.5d0*(debye_huckel_z_total+almix)
+         cmfdh1 = debye_huckel_x+debye_huckel_y+0.5d0*almix
       end if
    10 continue
 ! BEGIN ITERATION LOOP FOR CORRECT DENSITY
@@ -178,18 +166,18 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       dcl1 = (dx2 + dx3)*cden1
       dcl2 = (dx3 + dx1)*cden2
       dcl3 = (dx1 + dx2)*cden3
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          electron_degeneracy_parameter = cl1*fermi_table_eta(id1) + &
               cl2*fermi_table_eta(id2) + cl3*fermi_table_eta(id3)
-         if (electron_degeneracy_parameter .lt. etadh0) then
+         if (electron_degeneracy_parameter .lt. debye_huckel_eta_min) then
             cmfdh = cmfdh0*sqrt(cmfdh0)
-         else if (electron_degeneracy_parameter .gt. etadh1) then
+         else if (electron_degeneracy_parameter .gt. debye_huckel_eta_max) then
             cmfdh = cmfdh0*sqrt(cmfdh1)
          else
             t0 = cmfdh0*sqrt(cmfdh0)
             t1 = cmfdh0*sqrt(cmfdh1)
-            slope = (t1-t0)/(etadh1-etadh0)
-            cmfdh = t0+(electron_degeneracy_parameter-etadh0)*slope
+            slope = (t1-t0)/(debye_huckel_eta_max-debye_huckel_eta_min)
+            cmfdh = t0+(electron_degeneracy_parameter-debye_huckel_eta_min)*slope
          end if
       end if
 !  NOW FIND PE AND ITS 1ST AND 2ND DERIVS.W/R/T DENSITY
@@ -199,22 +187,22 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       d8 = dexp(ln10*dl8)
       pa = ramut*d8
       pe = dexp(ln10*pel)
-      if (ldh) then
-         pdh = cdh*cmfdh*sqrt(d8/temperature)*d8
+      if (use_debye_huckel_correction) then
+         pdh = debye_huckel_coefficient*cmfdh*sqrt(d8/temperature)*d8
       end if
       pt = pa + pe + pr
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          pt = pt + pdh
          pdhp = pdh/pt
       end if
       ptl = dlog10(pt)
       pr7 = (pa + pe*dpel1)/pt
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          pr7 = pr7 + 1.5d0*pdhp
       end if
       pr8 = (ptl - pl8)/pr7
       pr9 = ln10*( (pa + pe*(dpel1**2+dpel2/ln10))/(pt*pr7) - pr7 )
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          pr9 = pr9 + 2.25d0*pdhp/pr7
       end if
 ! FACTOR IS THE DIFFERENCE BETWEEN THE P PREDICTED FROM THE GIVEN RHO
@@ -264,23 +252,23 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       qpeqd = peq*pr4
       qpeqt = peq*(pr5 - 1.50d0*pr4)
       qpt = (pa + peq)*pinv + 4.0d0*beta1
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          qpt = qpt - 0.5d0*pdhp
       end if
       qpd = (pa + pe*qped)*pinv
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          qpd = qpd + 1.5d0*pdhp
       end if
       qqptt = (pa + qpeqt)*pinv + 16.0d0*beta1 - qpt**2
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          qqptt = qqptt+(0.5d0*qpt+0.25d0)*pdhp
       end if
       qqpdt = (pa + qpeqd)*pinv - qpt*qpd
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          qqpdt = qqpdt+(0.5d0*qpt-0.75d0)*pdhp
       end if
       qqpdd = (pa + pe*(qped**2 + qqpedd))*pinv - qpd**2
-      if (ldh) then
+      if (use_debye_huckel_correction) then
         qqpdd = qqpdd + (-1.5d0*qpd+2.25d0)*pdhp
       end if
 ! DERIVATIVES OF DENSITY
@@ -303,31 +291,31 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       pdt = pd/temperature
       ua = 1.50d0*ramut
       ur = 3.0d0*beta1*pd
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          udh = 3.0d0*pdh/d8
       end if
       u = ua + ue + ur
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          u = u + udh
          udhu = udh/u
       end if
       ui = 1.0d0/u
       pdu = pd*ui
       qutd = (ua + ueq + 4.0d0*ur)*ui
-      if(ldh) then
+      if(use_debye_huckel_correction) then
          qutd = qutd -0.5d0*udhu
       end if
       qudt = pdu*(1.0d0 - qpt)
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          qudt = qudt + 0.5d0*udhu
       end if
       qutp = qutd + dlnrho_dlnt*qudt
       qqutt = (ua + queqt + 16.0d0*ur)*ui - qutd**2
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          qqutt = qqutt + (0.5d0*qutd+0.25d0)*udhu
       end if
       qqudt = qudt*(qpt - qutd) - pdu*qqptt
-      if (ldh) then
+      if (use_debye_huckel_correction) then
          qqudt = qqudt + (0.5d0*qudt-0.25d0)*udhu
       end if
 ! SPECIFIC HEAT(QCP) AND ITS DERIVATIVES

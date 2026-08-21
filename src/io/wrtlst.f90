@@ -80,11 +80,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       common/cwind/ wind_saturation_omega, exmd, wind_law_omega_exponent, &
            extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
-! common/debhu/: only ldh is used here. Naming matches eqstat.f90.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 ! OPACITY COMMON BLOCKS - modified 3/09
 ! common/newopac/: not used in this file; declared only to preserve
 ! layout. Naming matches getopac.f90.
@@ -155,12 +150,12 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       endif
 ! Determine equation of state flag, EOS
       eos_flag='SAHA  '
-      if (ldh) eos_flag='SAH+DH'
+      if (use_debye_huckel_correction) eos_flag='SAH+DH'
       if (use_scv_eos) then
          eos_flag='SCV   '
          if (use_opal95_eos) eos_flag='SCV+OP'
          if (use_opal2001_eos) eos_flag='SCV+O1'
-         if (ldh) then
+         if (use_debye_huckel_correction) then
          if (use_opal2006_eos) eos_flag='SCV+O6'
             eos_flag='SCV+DH'
             if (use_opal95_eos) eos_flag='SCVDHO'
@@ -170,15 +165,15 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       else
          if (use_opal95_eos) then
             eos_flag='OPAL  '
-            if (ldh) eos_flag='OPA+DH'
+            if (use_debye_huckel_correction) eos_flag='OPA+DH'
          endif
          if (use_opal2001_eos) then
             eos_flag='OPAL01'
-            if (ldh) eos_flag='OP1+DH'
+            if (use_debye_huckel_correction) eos_flag='OP1+DH'
          endif
          if (use_opal2006_eos) then
             eos_flag='OPAL06'
-            if (ldh) eos_flag='OP6+DH'
+            if (use_debye_huckel_correction) eos_flag='OP6+DH'
          endif
       endif
 ! Determine low temperature opacities flag, ALOK

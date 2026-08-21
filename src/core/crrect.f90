@@ -70,7 +70,7 @@
 !   - ETA2 is named eta_squared (matches getrot.f90); fpft.f90's slot
 !     name for the same array is "eta2".
 !   - The Debye-Huckel hydrogen-fraction common/debhu/ member (XXDH in
-!     the original) is named xxdy here to match coefft.f90 (this
+!     the original) is named debye_huckel_x here to match coefft.f90 (this
 !     file's closest sibling, called every iteration below); note
 !     hsubp.f90 instead uses the physically-clearer "xxdh" for the
 !     same slot -- see hsubp.f90's own comment on this pre-existing
@@ -189,16 +189,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 
 
 
-! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
-! common/debhu/: cdh/ldh gate and select the correction; xxdy (H
-! fraction)/yydh (He)/zzdh (metals)/zdh(1:3) (CNO groups) are set here
-! ahead of calling surfbc. Naming matches coefft.f90 (xxdy there is an
-! apparent pre-existing typo for the hydrogen fraction -- see the
-! cross-callee naming note above).
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
 ! --- locals ---
       integer :: kenv, katm, ksaha
@@ -242,13 +232,13 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
        hydrogen_fraction = env_comp%xnew
        metal_fraction = env_comp%znew
        log10_pressure_limit = log_pressure(num_points)
-       if (ldh) then
-          xxdy = composition(1,num_points)
-          yydh = composition(2,num_points)+composition(4,num_points)
-          zzdh = composition(3,num_points)
-          zdh(1) = composition(5,num_points)+composition(6,num_points)
-          zdh(2) = composition(7,num_points)+composition(8,num_points)
-          zdh(3) = composition(9,num_points)+composition(10,num_points)+ &
+       if (use_debye_huckel_correction) then
+          debye_huckel_x = composition(1,num_points)
+          debye_huckel_y = composition(2,num_points)+composition(4,num_points)
+          debye_huckel_z_total = composition(3,num_points)
+          debye_huckel_z(1) = composition(5,num_points)+composition(6,num_points)
+          debye_huckel_z(2) = composition(7,num_points)+composition(8,num_points)
+          debye_huckel_z(3) = composition(9,num_points)+composition(10,num_points)+ &
                composition(11,num_points)
        end if
        call surfbc(tri_teffl,tri_logl,envelope_coeffs,vtx_logp,vtx_logt, &

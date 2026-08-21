@@ -234,15 +234,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       double precision :: core_mass_reduction_factor
       common/core/ extend_core_inward, num_core_shells_added, &
            core_mass_reduction_factor
-! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
-! common/debhu/: cdh/etadh0/etadh1/zdh/xxdh/yydh/zzdh/ldh are used
-! here. Naming matches hsubp.f90 (there noted as the physically
-! correct spelling for xxdh; crrect.f90/coefft.f90 instead spell this
-! slot "xxdy", an apparent pre-existing typo in those files).
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdh, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdh, yydh, zzdh, dhnue, ldh
 ! OPACITY COMMON BLOCKS - modified 3/09
 ! common/newopac/: not used in this file's logic; layout placeholder.
 ! Naming matches getopac.f90/surfopac.f90.
@@ -912,13 +903,13 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                        dlnrho_dlnp_dt,adiabatic_gradient_dt, &
                        adiabatic_gradient_dp,specific_heat_cp_dt, &
                        specific_heat_cp_dp)
-                  if (ldh) then
-                     xxdh = composition(1,num_shells)
-                     yydh = composition(2,num_shells)+composition(4,num_shells)
-                     zzdh = composition(3,num_shells)
-                     zdh(1) = composition(5,num_shells)+composition(6,num_shells)
-                     zdh(2) = composition(7,num_shells)+composition(8,num_shells)
-                     zdh(3) = composition(9,num_shells)+ &
+                  if (use_debye_huckel_correction) then
+                     debye_huckel_x = composition(1,num_shells)
+                     debye_huckel_y = composition(2,num_shells)+composition(4,num_shells)
+                     debye_huckel_z_total = composition(3,num_shells)
+                     debye_huckel_z(1) = composition(5,num_shells)+composition(6,num_shells)
+                     debye_huckel_z(2) = composition(7,num_shells)+composition(8,num_shells)
+                     debye_huckel_z(3) = composition(9,num_shells)+ &
                           composition(10,num_shells)+composition(11,num_shells)
                   end if
                   call eqstat(log10_temperature,temperature,log10_pressure, &
@@ -979,13 +970,13 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
           log10_pressure_limit = log_pressure(num_shells)
 ! DBG PULSE: DO NOT DO PULSE OUTPUT
             pulse_print_flag = .false.
-            if (ldh) then
-               xxdh = composition(1,num_shells)
-               yydh = composition(2,num_shells)+composition(4,num_shells)
-               zzdh = composition(3,num_shells)
-               zdh(1) = composition(5,num_shells)+composition(6,num_shells)
-               zdh(2) = composition(7,num_shells)+composition(8,num_shells)
-               zdh(3) = composition(9,num_shells)+composition(10,num_shells)+ &
+            if (use_debye_huckel_correction) then
+               debye_huckel_x = composition(1,num_shells)
+               debye_huckel_y = composition(2,num_shells)+composition(4,num_shells)
+               debye_huckel_z_total = composition(3,num_shells)
+               debye_huckel_z(1) = composition(5,num_shells)+composition(6,num_shells)
+               debye_huckel_z(2) = composition(7,num_shells)+composition(8,num_shells)
+               debye_huckel_z(3) = composition(9,num_shells)+composition(10,num_shells)+ &
                     composition(11,num_shells)
             end if
 ! MHP 10/02  define ISTORE - used in ENVINT

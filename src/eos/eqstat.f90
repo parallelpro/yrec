@@ -69,12 +69,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 
 
 
-! common/debhu/: Debye-Huckel correction data; not used in this file.
-! DBG 7/92 common block added to compute Debye-Huckel correction.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
 ! common/opaleos/: only use_numerical_derivatives is used here (the
 ! rest select which OPAL EOS table eqstat2 blends in; not read here).

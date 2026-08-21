@@ -96,13 +96,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       integer :: isochrone_file_unit
       common/chrone/ lrwsh_placeholder, isochrone_output_active, &
            isochrone_file_unit
-! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
-! common/debhu/: only xxdy(=XXDH)/yydh/zzdh/zdh/ldh are used here.
-! Naming matches eqstat.f90/wrtlst.f90.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 ! common/rotprt/: not used in this file. Naming is local to this
 ! batch.
       logical :: lprt0_placeholder
@@ -325,13 +318,13 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
          amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
          qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center)
       else
-         if (ldh) then
-            xxdy = composition(1,1)
-            yydh = composition(2,1)+composition(4,1)
-            zzdh = composition(3,1)
-            zdh(1) = composition(5,1)+composition(6,1)
-            zdh(2) = composition(7,1)+composition(8,1)
-            zdh(3) = composition(9,1)+composition(10,1)+composition(11,1)
+         if (use_debye_huckel_correction) then
+            debye_huckel_x = composition(1,1)
+            debye_huckel_y = composition(2,1)+composition(4,1)
+            debye_huckel_z_total = composition(3,1)
+            debye_huckel_z(1) = composition(5,1)+composition(6,1)
+            debye_huckel_z(2) = composition(7,1)+composition(8,1)
+            debye_huckel_z(3) = composition(9,1)+composition(10,1)+composition(11,1)
          end if
          call eqstat(log_temperature_center,temperature_linear_center,log_pressure_center,pressure_linear, &
               log_density_center,density_linear_center,hydrogen_fraction_center,metal_fraction_center, &

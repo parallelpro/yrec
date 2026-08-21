@@ -73,13 +73,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       logical :: llaol, use_pure_z_table
       common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
            numrho, numt, llaol, use_pure_z_table, iopurez
-! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
-! common/debhu/: all members assigned here. Naming matches
-! eqstat2.f90.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
 
 
@@ -211,28 +204,28 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       hydrogen_atom_mass = 1.0d0/6.0222137d23
 ! charge electron (ESU)
       electron_charge_esu=4.802d-10
-      cdh = -sqrt(cpi/(boltzmann_constant*hydrogen_atom_mass* &
+      debye_huckel_coefficient = -sqrt(cpi/(boltzmann_constant*hydrogen_atom_mass* &
            hydrogen_atom_mass*hydrogen_atom_mass))*electron_charge_esu* &
            electron_charge_esu*electron_charge_esu/3.0d0
 ! Electric charge of C,N,O,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni
-      dhnue(1) = 6.0d0
-      dhnue(2) = 7.0d0
-      dhnue(3) = 8.0d0
-      dhnue(4) = 10.0d0
-      dhnue(5) = 11.0d0
-      dhnue(6) = 12.0d0
-      dhnue(7) = 13.0d0
-      dhnue(8) = 14.0d0
-      dhnue(9) = 15.0d0
-      dhnue(10) = 16.0d0
-      dhnue(11) = 17.0d0
-      dhnue(12) = 18.0d0
-      dhnue(13) = 20.0d0
-      dhnue(14) = 22.0d0
-      dhnue(15) = 24.0d0
-      dhnue(16) = 25.0d0
-      dhnue(17) = 26.0d0
-      dhnue(18) = 28.0d0
+      debye_huckel_nu(1) = 6.0d0
+      debye_huckel_nu(2) = 7.0d0
+      debye_huckel_nu(3) = 8.0d0
+      debye_huckel_nu(4) = 10.0d0
+      debye_huckel_nu(5) = 11.0d0
+      debye_huckel_nu(6) = 12.0d0
+      debye_huckel_nu(7) = 13.0d0
+      debye_huckel_nu(8) = 14.0d0
+      debye_huckel_nu(9) = 15.0d0
+      debye_huckel_nu(10) = 16.0d0
+      debye_huckel_nu(11) = 17.0d0
+      debye_huckel_nu(12) = 18.0d0
+      debye_huckel_nu(13) = 20.0d0
+      debye_huckel_nu(14) = 22.0d0
+      debye_huckel_nu(15) = 24.0d0
+      debye_huckel_nu(16) = 25.0d0
+      debye_huckel_nu(17) = 26.0d0
+      debye_huckel_nu(18) = 28.0d0
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     EVALUATE TAU = 2/3 TEMPERATURE FOR HRA
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -24,15 +24,6 @@ subroutine hsubp(composition, density, pressure, radius, mass, &
       integer, intent(in) :: edge_zone
       double precision, intent(out) :: pscahe
 
-! DBG 7/92 common block added to compute Debye-Huckel correction.
-! common/debhu/: Debye-Huckel correction data; xxdh/yydh/zzdh/zdh(1:3)
-! and ldh are used here. Naming matches eqstat.f90 except xxdh (there
-! named xxdy, apparently a pre-existing typo in that file's comment;
-! this file uses the physically correct hydrogen-fraction name).
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdh, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdh, yydh, zzdh, dhnue, ldh
 
       double precision :: fxion(3)
       save
@@ -59,13 +50,13 @@ subroutine hsubp(composition, density, pressure, radius, mass, &
       log10_pressure = pressure(edge_zone)
       log10_temperature = temperature(edge_zone)
       log10_density = density(edge_zone)
-      if (ldh) then
-         xxdh = composition(1,edge_zone)
-         yydh = composition(2,edge_zone)+composition(4,edge_zone)
-         zzdh = composition(3,edge_zone)
-         zdh(1) = composition(5,edge_zone)+composition(6,edge_zone)
-         zdh(2) = composition(7,edge_zone)+composition(8,edge_zone)
-         zdh(3) = composition(9,edge_zone)+composition(10,edge_zone)+ &
+      if (use_debye_huckel_correction) then
+         debye_huckel_x = composition(1,edge_zone)
+         debye_huckel_y = composition(2,edge_zone)+composition(4,edge_zone)
+         debye_huckel_z_total = composition(3,edge_zone)
+         debye_huckel_z(1) = composition(5,edge_zone)+composition(6,edge_zone)
+         debye_huckel_z(2) = composition(7,edge_zone)+composition(8,edge_zone)
+         debye_huckel_z(3) = composition(9,edge_zone)+composition(10,edge_zone)+ &
               composition(11,edge_zone)
       end if
       call eqstat(log10_temperature,temperature_out,log10_pressure, &

@@ -13,6 +13,7 @@
 ! requested, a second LAOL89 table).
 subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
 
+      use const_lib
       use luout_lib
       implicit none
       double precision, intent(inout) :: laol_work_array(12)
@@ -40,12 +41,6 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
            use_z_ramp
 
 
-! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
-! common/debhu/: only zdh is used here. Naming matches eqstat2.f90.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
 ! common/newopac/: only use_two_z_tables is used here.
       double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
@@ -90,7 +85,7 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
 ! DBG 7/92 NEED RELATIVE ABUNDANCES OF METALS FOR DEBYE-HUCKEL
 !     CORRECTION. 18 ELEMENTS, C,N,O,Ne,Na,Mg,Al,Si,P,
 !     S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni scaled to sum to ZHIT
-      read(iolaol,130) zhit, zdh
+      read(iolaol,130) zhit, debye_huckel_z
 ! 130 FORMAT(54X,F8.5,///////)
   130 format(54x,f8.5,/////,1p6e12.5,/,1p6e12.5,/1p6e12.5)
 !     READ IN H MASS FRACTIONS OF TABLE

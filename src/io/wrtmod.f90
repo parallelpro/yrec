@@ -73,15 +73,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       double precision :: adiabatic_index_gamma1(json)
       logical :: sound_speed_output_active
       common/sound/ adiabatic_index_gamma1, sound_speed_output_active
-! DBG
-! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
-! common/debhu/: only ldh/xxdy(=XXDH)/yydh/zzdh/zdh are used here.
-! Naming matches eqstat.f90/wrtlst.f90 (xxdy is the converted name for
-! the original XXDH slot).
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 ! DBG 7/95 To store variables for pulse output
 ! common/pualpha/: valfmlt/vphmlt/vcmxmlt are used here. Naming
 ! matches tpgrad.f90.
@@ -231,13 +222,13 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
        plim = log_pressure(num_shells)
 ! DBG PULSE: ADDED ARGUEMENT TO ENVINT TO TURN ON/OFF PULSE OUTPUT
          lpulpt = pulsation_output_active
-            if (ldh) then
-               xxdy = composition(1,num_shells)
-               yydh = composition(2,num_shells)+composition(4,num_shells)
-               zzdh = composition(3,num_shells)
-               zdh(1) = composition(5,num_shells)+composition(6,num_shells)
-               zdh(2) = composition(7,num_shells)+composition(8,num_shells)
-               zdh(3) = composition(9,num_shells)+composition(10,num_shells)+composition(11,num_shells)
+            if (use_debye_huckel_correction) then
+               debye_huckel_x = composition(1,num_shells)
+               debye_huckel_y = composition(2,num_shells)+composition(4,num_shells)
+               debye_huckel_z_total = composition(3,num_shells)
+               debye_huckel_z(1) = composition(5,num_shells)+composition(6,num_shells)
+               debye_huckel_z(2) = composition(7,num_shells)+composition(8,num_shells)
+               debye_huckel_z(3) = composition(9,num_shells)+composition(10,num_shells)+composition(11,num_shells)
             end if
 ! MHP 10/02  define ISTORE - used in ENVINT
          idum = 0

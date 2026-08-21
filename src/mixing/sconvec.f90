@@ -72,16 +72,6 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
       common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
            numrho, numt, llaol, use_pure_z_table, iopurez
 
-! DBG 7/92 common block added to compute Debye-Huckel correction.
-! common/debhu/: ldh gates the correction; xxdy/yydh/zzdh/zdh are set
-! (hydrogen/helium/metal/CNO group mass fractions passed to the
-! correction) when active. Naming matches eqstat.f90/eqstat2.f90
-! (xxdy there is an unused placeholder; here it is actively set to the
-! hydrogen mass fraction).
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
       double precision :: ion_fraction(3)
       save
@@ -182,13 +172,13 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
             pressure_rotation_factor = 1.0d0
             temperature_rotation_factor = 1.0d0
             current_zone_idx = cz_edge_idx
-            if (ldh) then
-               xxdy = composition(1,cz_edge_idx)
-               yydh = composition(2,cz_edge_idx) + composition(4,cz_edge_idx)
-               zzdh = composition(3,cz_edge_idx)
-               zdh(1) = composition(5,cz_edge_idx) + composition(6,cz_edge_idx)
-               zdh(2) = composition(7,cz_edge_idx) + composition(8,cz_edge_idx)
-               zdh(3) = composition(9,cz_edge_idx) + &
+            if (use_debye_huckel_correction) then
+               debye_huckel_x = composition(1,cz_edge_idx)
+               debye_huckel_y = composition(2,cz_edge_idx) + composition(4,cz_edge_idx)
+               debye_huckel_z_total = composition(3,cz_edge_idx)
+               debye_huckel_z(1) = composition(5,cz_edge_idx) + composition(6,cz_edge_idx)
+               debye_huckel_z(2) = composition(7,cz_edge_idx) + composition(8,cz_edge_idx)
+               debye_huckel_z(3) = composition(9,cz_edge_idx) + &
                     composition(10,cz_edge_idx) + composition(11,cz_edge_idx)
             end if
             call eqstat(log_temperature_zone, temperature_k, &
@@ -231,16 +221,16 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
             hydrogen_fraction = composition(1,adjacent_radiative_idx)
             metal_fraction = composition(3,adjacent_radiative_idx)
             current_zone_idx = adjacent_radiative_idx
-            if (ldh) then
-               xxdy = composition(1,adjacent_radiative_idx)
-               yydh = composition(2,adjacent_radiative_idx) + &
+            if (use_debye_huckel_correction) then
+               debye_huckel_x = composition(1,adjacent_radiative_idx)
+               debye_huckel_y = composition(2,adjacent_radiative_idx) + &
                     composition(4,adjacent_radiative_idx)
-               zzdh = composition(3,adjacent_radiative_idx)
-               zdh(1) = composition(5,adjacent_radiative_idx) + &
+               debye_huckel_z_total = composition(3,adjacent_radiative_idx)
+               debye_huckel_z(1) = composition(5,adjacent_radiative_idx) + &
                     composition(6,adjacent_radiative_idx)
-               zdh(2) = composition(7,adjacent_radiative_idx) + &
+               debye_huckel_z(2) = composition(7,adjacent_radiative_idx) + &
                     composition(8,adjacent_radiative_idx)
-               zdh(3) = composition(9,adjacent_radiative_idx) + &
+               debye_huckel_z(3) = composition(9,adjacent_radiative_idx) + &
                     composition(10,adjacent_radiative_idx) + &
                     composition(11,adjacent_radiative_idx)
             end if
@@ -320,16 +310,16 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                hydrogen_fraction = composition(1,search_zone_idx)
                metal_fraction = composition(3,search_zone_idx)
                current_zone_idx = search_zone_idx
-               if (ldh) then
-                  xxdy = composition(1,search_zone_idx)
-                  yydh = composition(2,search_zone_idx) + &
+               if (use_debye_huckel_correction) then
+                  debye_huckel_x = composition(1,search_zone_idx)
+                  debye_huckel_y = composition(2,search_zone_idx) + &
                        composition(4,search_zone_idx)
-                  zzdh = composition(3,search_zone_idx)
-                  zdh(1) = composition(5,search_zone_idx) + &
+                  debye_huckel_z_total = composition(3,search_zone_idx)
+                  debye_huckel_z(1) = composition(5,search_zone_idx) + &
                        composition(6,search_zone_idx)
-                  zdh(2) = composition(7,search_zone_idx) + &
+                  debye_huckel_z(2) = composition(7,search_zone_idx) + &
                        composition(8,search_zone_idx)
-                  zdh(3) = composition(9,search_zone_idx) + &
+                  debye_huckel_z(3) = composition(9,search_zone_idx) + &
                        composition(10,search_zone_idx) + &
                        composition(11,search_zone_idx)
                end if

@@ -320,10 +320,19 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: fw, fc, fo, fes, fgsf, fmu, fss, rcrit
       common /vmult/ fw, fc, fo, fes, fgsf, fmu, fss, rcrit
 
-! common /debhu/
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdh, yydh, zzdh, dhnue(18)
+! etadh0/etadh1/ldh: NAMELIST /physics/ members, each with a different
+! canonical const_lib spelling (debye_huckel_eta_min/
+! debye_huckel_eta_max/use_debye_huckel_correction -- no readable
+! rename had ever been established for this block, so these names are
+! new (2026) rather than picked up from an existing convention), so
+! kept local under their NAMELIST spelling here and copy-assigned
+! after the namelist read below. cdh/zdh/xxdh/yydh/zzdh/dhnue (former
+! common/debhu/'s remaining members) are unused in this file --
+! setup/setups.f90 computes cdh/dhnue at startup, mixing/hsubp.f90
+! computes zdh/xxdh/yydh/zzdh per-shell -- so they're dropped entirely
+! rather than carried forward.
+      double precision :: etadh0, etadh1
       logical :: ldh
-      common /debhu/ cdh, etadh0, etadh1, zdh, xxdh, yydh, zzdh, dhnue, ldh
 
 ! common /vmult2/
       double precision :: fesc, fssc, fgsfc
@@ -1266,6 +1275,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       pulsation_output_active = lpulse
       pulsation_file_version = ipver
       atm_choice = kttau
+      debye_huckel_eta_min = etadh0
+      debye_huckel_eta_max = etadh1
+      use_debye_huckel_correction = ldh
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap

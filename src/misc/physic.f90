@@ -58,13 +58,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       common/dwmax/ max_domega_dr, max_domega_dr_old
 
 
-! DBG 7/92 common block added to compute Debye-Huckel correction.
-! common/debhu/: not used in this file's logic; layout placeholder.
-! Naming matches hsubp.f90.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdh, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdh, yydh, zzdh, dhnue, ldh
 
 
       double precision :: atomic_weight(4)
@@ -131,13 +124,13 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
                  specific_heat_cp_dp)
 !      *           QCPP,LDERIV,LATMO,KSAHA)  ! KC 2025-05-31
          else
-            if (ldh) then
-               xxdh = composition(1,im)
-               yydh = composition(2,im) + composition(4,im)
-               zzdh = composition(3,im)
-               zdh(1) = composition(5,im) + composition(6,im)
-               zdh(2) = composition(7,im) + composition(8,im)
-               zdh(3) = composition(9,im) + composition(10,im) + &
+            if (use_debye_huckel_correction) then
+               debye_huckel_x = composition(1,im)
+               debye_huckel_y = composition(2,im) + composition(4,im)
+               debye_huckel_z_total = composition(3,im)
+               debye_huckel_z(1) = composition(5,im) + composition(6,im)
+               debye_huckel_z(2) = composition(7,im) + composition(8,im)
+               debye_huckel_z(3) = composition(9,im) + composition(10,im) + &
                     composition(11,im)
             end if
             call eqstat(log10_temperature, temperature, log10_pressure, &

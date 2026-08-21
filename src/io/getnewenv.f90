@@ -62,13 +62,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 
 
 
-! TERMS NEEDED TO COMPUTE THE DEBYE-HUCKEL CORRECTION IN THE E.O.S.
-! common/debhu/: cdh/ldh are used to gate the block; xxdy/yydh/zzdh/zdh
-! are set here if ldh. Naming matches eqstat2.f90.
-      double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
-           dhnue(18)
-      logical :: ldh
-      common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
 
 
 
@@ -161,13 +154,13 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       pulsation_output_flag = .false.
 ! SET UP VALUES FOR THE EQUATION OF STATE CALCULATION
       ixx_flag = 0
-      if (ldh) then
-         xxdy = composition(1,num_zones)
-         yydh = composition(2,num_zones)+composition(4,num_zones)
-         zzdh = composition(3,num_zones)
-         zdh(1) = composition(5,num_zones)+composition(6,num_zones)
-         zdh(2) = composition(7,num_zones)+composition(8,num_zones)
-         zdh(3) = composition(9,num_zones)+composition(10,num_zones)+ &
+      if (use_debye_huckel_correction) then
+         debye_huckel_x = composition(1,num_zones)
+         debye_huckel_y = composition(2,num_zones)+composition(4,num_zones)
+         debye_huckel_z_total = composition(3,num_zones)
+         debye_huckel_z(1) = composition(5,num_zones)+composition(6,num_zones)
+         debye_huckel_z(2) = composition(7,num_zones)+composition(8,num_zones)
+         debye_huckel_z(3) = composition(9,num_zones)+composition(10,num_zones)+ &
               composition(11,num_zones)
       end if
 ! INTEGRATE DOWN TO THE CURRENT FITTING POINT USING THE SURFACE L AND TEFF.
