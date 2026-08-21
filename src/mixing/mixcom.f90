@@ -67,13 +67,15 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
       double precision :: xval(json), yval(json), xtab(json), ytab(json)
       common/splin/ xval, yval, xtab, ytab
 
-! common/tridi/: tridiagonal-solve work arrays (Thomas algorithm).
-! Only solution (originally U) is read here; the rest are filled in by
-! ctridi/ccoeft and are placeholders for layout here. Naming matches
-! tridia.f90.
+! Tridiagonal-solve work arrays (Thomas algorithm): filled in by the
+! call to ccoeft below, then consumed by the call to ctridi (solution
+! is read back afterward). Was originally common/tridi/ (positional
+! storage, shared with ccoeft.f90/ctridi.f90); converted (2026,
+! GUIDELINES.md) to explicit arguments since this is real per-call
+! data flow, not global configuration. gamma_elim is no longer needed
+! here at all -- it was always solver-internal to ctridi.f90.
       double precision :: sub_diag(json), diag(json), super_diag(json), &
-           rhs(json), solution(json), gamma_elim(json)
-      common/tridi/ sub_diag, diag, super_diag, rhs, solution, gamma_elim
+           rhs(json), solution(json)
 
       double precision :: equally_spaced_composition(json)
       integer :: varying_species_id(15)
@@ -123,9 +125,10 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
               ntot)
 ! SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR COMP AT END OF TSTEP
          call ccoeft(equally_spaced_diffusion_coeff, dchi, timestep, &
-              equally_spaced_composition, equally_spaced_mass, ntot)
+              equally_spaced_composition, equally_spaced_mass, ntot, &
+              sub_diag, diag, super_diag, rhs)
 ! SOLVE MATRIX FOR THE RUN OF COMP AT TIME N+1 AT THE NEW GRID.
-         call ctridi(ntot)
+         call ctridi(ntot, sub_diag, diag, super_diag, rhs, solution)
 ! TRANSFORM BACK TO THE ORIGINAL GRID AND UPDATE HCOMP IN THE
 ! DIFFUSED REGION. U IS THE NEW RUN OF COMPOSITION IN THE REGION AT THE
 ! EQUALLY SPACED GRID POINTS.

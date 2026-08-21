@@ -245,6 +245,20 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            eq_omega(json)
       integer :: print_zone_id(json)
 
+! Tridiagonal-solve work arrays (Thomas algorithm) threaded from
+! dcoeft (fills them) to tridia (solves): were originally shared via
+! common/tridi/ (positional storage), converted (2026, GUIDELINES.md)
+! to explicit arguments since this is real per-call data flow, not
+! global configuration. tridia's solution(:) (the new omega
+! distribution) was never actually read back here -- this call site
+! only used dj/sumdj (eq_delta_angular_momentum/
+! sum_delta_angular_momentum below) -- so it's captured in an unused
+! local. surface_wind_loss_term is dcoeft's computed surface wind
+! angular-momentum-loss term, previously smuggled to tridia via
+! gamma_elim(n) (see tridia.f90's header note).
+      double precision :: sub_diag(json), diag(json), super_diag(json), &
+           rhs(json), unused_tridia_solution(json), surface_wind_loss_term
+
 ! --- other locals ---
       logical :: print_diffusion_flag
       logical :: disk_lock_active
@@ -559,11 +573,14 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR OMEGA AT END OF TSTEP
             call dcoeft(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
                  eq_moment_of_inertia,eq_angular_momentum,eq_omega,ntot, &
-                 wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface)
+                 wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
+                 sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
 !  SOLVE MATRIX FOR THE RUN OF OMEGA AT THE END OF THE TIMESTEP AT THE
 !  EQUALLY SPACED GRID POINTS.
             call tridia(ntot,eq_moment_of_inertia, &
-                 eq_delta_angular_momentum,sum_delta_angular_momentum)
+                 eq_delta_angular_momentum,sum_delta_angular_momentum, &
+                 sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
+                 surface_wind_loss_term)
 !  TRANSFORM THE NEW ANGULAR MOMENTUM DISTRIBUTION BACK TO THE ORIGINAL GRID
 !  POINTS IN THE UNSTABLE REGION.
          else

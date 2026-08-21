@@ -9,14 +9,29 @@
 !
 ! Thomas-algorithm tridiagonal solve (see also tridiag_gs.f90, the
 ! same algorithm operating on explicit dummy arguments instead of a
-! shared common block). The caller fills common/tridi/'s sub_diag/
-! diag/super_diag/rhs before calling; tridia solves for solution(:)
-! in place and also returns dj(:), the per-zone contribution of the
-! change in solution weighted by ei(:), and sumdj, their sum.
+! shared common block, and ctridi.f90, the same algorithm for
+! compositional diffusion). The caller fills sub_diag/diag/super_diag/
+! rhs before calling; tridia solves for solution(:) in place and also
+! returns dj(:), the per-zone contribution of the change in solution
+! weighted by ei(:), and sumdj, their sum.
+!
+! Was originally shared with ctridi.f90 via common/tridi/ (positional
+! storage); converted (2026, GUIDELINES.md) to explicit arguments
+! since this is real per-call data flow, not global configuration.
+! dj_n_seed replaces what was previously smuggled in via
+! gamma_elim(n): the caller (dcoeft.f90, via seculr.f90) computes a
+! surface wind-angular-momentum-loss term and used to stash it in the
+! shared common block's gamma_elim(num_eq_points) slot specifically so
+! this routine's very first statement (before gamma_elim is
+! overwritten as pure solver scratch below) could pick it up as dj(n)'s
+! initial value. That's now an explicit input instead of a COMMON
+! side-channel; see dcoeft.f90's matching surface_wind_loss_term
+! output argument.
 ! KC 2025-05-31 removed the unused ej dummy argument (see the
 ! commented-out original signature below).
 !       SUBROUTINE TRIDIA(N,EI,EJ,DJ,SUMDJ)  ! KC 2025-05-31
-subroutine tridia(n, ei, dj, sumdj)
+subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
+     solution, dj_n_seed)
       implicit none
       integer, parameter :: json = 5000
 
@@ -24,24 +39,27 @@ subroutine tridia(n, ei, dj, sumdj)
       double precision, intent(in) :: ei(json)
       double precision, intent(out) :: dj(json)
       double precision, intent(out) :: sumdj
-
-! common/tridi/: tridiagonal-solve work arrays (Thomas algorithm).
 ! sub_diag/diag/super_diag are the tridiagonal matrix's three
 ! diagonals and rhs is the right-hand side, all filled in by the
-! caller; solution and gamma_elim are solver-internal work arrays
-! that persist across calls via SAVE. Not referenced elsewhere in
-! the already-converted reference files, so names are free to choose
-! here (COMMON storage is positional, not name-matched).
-      double precision :: sub_diag(json), diag(json), super_diag(json), &
-           rhs(json), solution(json), gamma_elim(json)
-      common/tridi/ sub_diag, diag, super_diag, rhs, solution, gamma_elim
+! caller; solution is solved for here. dj_n_seed is dj(n)'s initial
+! value (see header note above).
+      double precision, intent(in) :: sub_diag(json), diag(json), &
+           super_diag(json), rhs(json)
+      double precision, intent(out) :: solution(json)
+      double precision, intent(in) :: dj_n_seed
+
+! gamma_elim is solver-internal scratch (SAVE preserved from the
+! original common-block version though nothing here actually depends
+! on it persisting across calls, now that dj_n_seed carries the one
+! value that used to be read from it across calls).
+      double precision :: gamma_elim(json)
 
       double precision :: rhs_orig(json)
       integer :: i, j
       double precision :: bet, fj
       save
 
-      dj(n) = gamma_elim(n)
+      dj(n) = dj_n_seed
       do i = 1, n
          rhs_orig(i) = rhs(i)
       end do

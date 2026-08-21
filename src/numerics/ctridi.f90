@@ -10,29 +10,33 @@
 ! Solves a tridiagonal matrix system for the fractional abundance of a
 ! species. This routine is from Numerical Recipes, p.40.
 !
-! Shares common/tridi/ with tridia.f90 (the Henyey structure-equation
-! tridiagonal solver): same six work arrays, same Thomas-algorithm
-! layout, reused here for compositional (species-abundance) diffusion
-! solves instead. The solution is left in the common block's solution
-! array (originally named U here) for the caller to read back.
-subroutine ctridi(n)
+! Analogue of tridia.f90 (the Henyey structure-equation tridiagonal
+! solver): same Thomas-algorithm layout, used here for compositional
+! (species-abundance) diffusion solves instead. Was originally shared
+! with tridia.f90 via common/tridi/ (positional storage); converted
+! (2026, GUIDELINES.md) to explicit arguments since this is real
+! per-call data flow (matrix in, solution out), not global
+! configuration -- see GUIDELINES.md's module-vs-argument distinction.
+subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
 
       implicit none
       integer, parameter :: json = 5000
 
       integer, intent(in) :: n
-
-! common/tridi/: tridiagonal-solve work arrays (Thomas algorithm).
 ! sub_diag/diag/super_diag are the tridiagonal matrix's three
 ! diagonals and rhs is the right-hand side, all filled in by the
-! caller; solution (originally U, the new species abundance) and
-! gamma_elim are solver-internal work arrays that persist across
-! calls via SAVE. Naming matches tridia.f90, which shares this exact
-! common block for the structure-equation solve.
-      double precision :: sub_diag(json), diag(json), super_diag(json), &
-           rhs(json), solution(json), gamma_elim(json)
-      common/tridi/ sub_diag, diag, super_diag, rhs, solution, gamma_elim
+! caller; solution (originally U, the new species abundance) is
+! solved for here.
+      double precision, intent(in) :: sub_diag(json), diag(json), &
+           super_diag(json), rhs(json)
+      double precision, intent(out) :: solution(json)
 
+! gamma_elim is solver-internal scratch, never read by any caller
+! (unlike tridia.f90's gamma_elim(n), which doubled as a genuine
+! cross-call input -- see tridia.f90's header note). SAVE preserved
+! from the original common-block version though nothing here actually
+! depends on it persisting across calls.
+      double precision :: gamma_elim(json)
       save
 
       double precision :: bet

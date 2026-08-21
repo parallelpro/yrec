@@ -20,7 +20,7 @@
 !  eq_mass (EM) : RUN OF MASSES OF THE EQUALLY SPACED GRID POINTS (GM).
 !  num_eq_points (NTOT) : NUMBER OF POINTS IN THE EQUALLY SPACED GRID
 !     USED TO SOLVE THE DIFFUSION EQUATION.
-!  OUTPUT VARIABLES (via common/tridi/, see mixcom.f90/tridia.f90) :
+!  OUTPUT VARIABLES (sub_diag/diag/super_diag/rhs dummy arguments) :
 !  THE ABUNDANCE OF SHELL I AT TIME N+1 (COMP(I,N+1)) IS A FUNCTION OF
 !  COMP(I-1),COMP(I),AND COMP(I+1) AS DISCUSSED BELOW.  THIS CAN BE EXPRESSED
 !  AS A TRIDIAGONAL MATRIX.  TERMS WHICH DEPEND ON COMP(I-1) ARE STORED IN
@@ -41,9 +41,15 @@
 !  THIS SYSTEM IS SUPPLEMENTED WITH APPROPRIATE BOUNDARY CONDITIONS.
 !
 ! Composition-transport analogue of dcoeft.f90's angular-momentum-
-! transport tridiagonal setup; called by mixcom.f90.
+! transport tridiagonal setup; called by mixcom.f90, which passes the
+! output matrix straight on to ctridi.f90.
+!
+! sub_diag/diag/super_diag/rhs were originally shared with mixcom.f90/
+! ctridi.f90 via common/tridi/ (positional storage); converted (2026,
+! GUIDELINES.md) to explicit output arguments since this is real
+! per-call data flow, not global configuration.
 subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
-     eq_mass, num_eq_points)
+     eq_mass, num_eq_points, sub_diag, diag, super_diag, rhs)
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -52,6 +58,8 @@ subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
       double precision, intent(in) :: grid_spacing, timestep
       double precision, intent(in) :: eq_composition(json), eq_mass(json)
       integer, intent(in) :: num_eq_points
+      double precision, intent(out) :: sub_diag(json), diag(json), &
+           super_diag(json), rhs(json)
 
 ! common/ccout/: not used in this file. Naming matches vcirc.f90/
 ! momi.f90.
@@ -59,15 +67,6 @@ subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
            lstch, lphhd
       common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
            lscrib, lstch, lphhd
-
-
-! common/tridi/: tridiagonal-solve work arrays (Thomas algorithm).
-! sub_diag/diag/super_diag/rhs are filled in here; solution/gamma_elim
-! are solver-internal (not touched here). Naming matches mixcom.f90/
-! tridia.f90.
-      double precision :: sub_diag(json), diag(json), super_diag(json), &
-           rhs(json), solution(json), gamma_elim(json)
-      common/tridi/ sub_diag, diag, super_diag, rhs, solution, gamma_elim
 
       save
 

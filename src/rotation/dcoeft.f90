@@ -25,7 +25,7 @@
 !  wind_loss_implicit (WIND2) : AS WIND1, BUT COMPUTED IMPLICITLY.
 !  *NOTE: IF NOT APPLICABLE, WIND1 AND WIND2 ARE ZEROED OUT.
 !
-!  OUTPUT VARIABLES (via common/tridi/, see mixcom.f90/tridia.f90) :
+!  OUTPUT VARIABLES (sub_diag/diag/super_diag/rhs dummy arguments) :
 !  THE ANGULAR VELOCITY OF SHELL I AT TIME N+1 (W(I,N+1)) IS A FUNCTION OF
 !  W(I-1),W(I),AND W(I+1) AS DISCUSSED BELOW.  THIS CAN BE EXPRESSED
 !  AS A TRIDIAGONAL MATRIX.
@@ -34,7 +34,10 @@
 !  super_diag(I) : CONTAINS ALL TERMS INVOLVING OMEGA(I+1)
 !  rhs(I) : THE ANGULAR VELOCITY TERMS AT THE BEGINNING OF THE TIMESTEP.
 !  *NOTE: ANGULAR MOMENTUM LOSS FROM A SURFACE C.Z. IS SUBTRACTED FROM
-!     THE LAST ELEMENT OF ARRAY rhs IF APPLICABLE.
+!     THE LAST ELEMENT OF ARRAY rhs IF APPLICABLE, AND ALSO RETURNED
+!     VIA surface_wind_loss_term FOR tridia.f90 TO SEED dj(n) WITH
+!     (SEE tridia.f90'S HEADER NOTE -- THIS WAS PREVIOUSLY SMUGGLED
+!     THROUGH common/tridi/'s gamma_elim(num_eq_points) SLOT).
 !
 !  THE DIFFUSION EQUATION WE ARE SOLVING IS
 !  dW/dT = 1/(4pi*RHO*R**2) 1/(I/M) d/dR(D*dW/dR)
@@ -52,9 +55,19 @@
 ! companion to dadcoeft.f90's 4-band angular-momentum-transport solve,
 ! and analogue of ccoeft.f90 (the composition-transport version of the
 ! same tridiagonal setup).
+! sub_diag/diag/super_diag/rhs/surface_wind_loss_term were originally
+! shared with tridia.f90 (via seculr.f90, which calls both) through
+! common/tridi/ (positional storage; surface_wind_loss_term was
+! smuggled through the gamma_elim(num_eq_points) slot specifically so
+! tridia.f90's first statement could read it before overwriting
+! gamma_elim as pure solver scratch). Converted (2026, GUIDELINES.md)
+! to explicit output arguments since this is real per-call data flow,
+! not global configuration -- see tridia.f90's matching dj_n_seed
+! input argument.
 subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
      eq_moment_of_inertia, eq_angular_momentum, eq_omega, num_eq_points, &
-     wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface)
+     wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
+     sub_diag, diag, super_diag, rhs, surface_wind_loss_term)
       implicit none
       integer, parameter :: json = 5000
 
@@ -64,17 +77,9 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
            eq_angular_momentum(json), eq_omega(json)
       integer, intent(in) :: num_eq_points
       double precision, intent(in) :: wind_loss_explicit, wind_loss_implicit
-
-! common/tridi/: tridiagonal-solve work arrays (Thomas algorithm).
-! sub_diag/diag/super_diag/rhs are filled in here; solution is
-! solver-internal (not touched here). gamma_elim is used here purely
-! as scratch storage for the surface wind-loss term (matching the
-! original's reuse of GAMA(NTOT) for this purpose, before tridia.f90
-! overwrites it as solver work space). Naming matches mixcom.f90/
-! tridia.f90.
-      double precision :: sub_diag(json), diag(json), super_diag(json), &
-           rhs(json), solution(json), gamma_elim(json)
-      common/tridi/ sub_diag, diag, super_diag, rhs, solution, gamma_elim
+      double precision, intent(out) :: sub_diag(json), diag(json), &
+           super_diag(json), rhs(json)
+      double precision, intent(out) :: surface_wind_loss_term
 
 ! common/difad/: am_advective_coeff/am_diffusive_coeff (originally
 ! ECOD3/ECOD4), used only under the diffusion+advection treatment.
@@ -100,10 +105,10 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
       do 10 i = 1,num_eq_points
          rhs(i) = eq_omega(i)
    10 continue
-      gamma_elim(num_eq_points) = -0.5d0*(wind_loss_explicit+ &
+      surface_wind_loss_term = -0.5d0*(wind_loss_explicit+ &
            wind_loss_implicit)*eq_moment_of_inertia(num_eq_points)
       rhs(num_eq_points) = rhs(num_eq_points)*(1.0d0+ &
-           gamma_elim(num_eq_points)/eq_angular_momentum(num_eq_points))
+           surface_wind_loss_term/eq_angular_momentum(num_eq_points))
       if (.not.use_diffusion_advection_transport) then
 !  FIRST SHELL BOUNDARY CONDITIONS: NO FLOW BELOW THE BOUNDARY
 !  I.E. THE ANGULAR MOMENTUM TRANSPORT AT THE FIRST SHELL DOES NOT

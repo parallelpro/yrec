@@ -34,11 +34,15 @@ subroutine getqua(log_density, gravity, radius, angular_velocity, num_zones)
 
 
 
-! common/tridi/: tridiagonal-solve work arrays (Thomas algorithm), all
-! used here. Naming matches tridia.f90.
+! Tridiagonal-solve work arrays (Thomas algorithm) for this file's own
+! self-contained inline solve below (not shared with any other file --
+! was originally common/tridi/, which is genuinely shared elsewhere
+! (ctridi.f90/tridia.f90/ccoeft.f90/dcoeft.f90/mixcom.f90), but this
+! file never called those solvers, just reused the block's memory
+! layout; converted (2026, GUIDELINES.md) to plain locals since there
+! was never any real data flow to another file here).
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), solution(json), gamma_elim(json)
-      common/tridi/ sub_diag, diag, super_diag, rhs, solution, gamma_elim
 
 ! common/quadru/: the quadrupole moment and local gravity, both set
 ! here. Naming matches vcirc.f90.
