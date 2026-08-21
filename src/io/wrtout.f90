@@ -78,13 +78,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! matches wrthead.f90.
       integer :: track_file_version
       common/track/ track_file_version
-! common/heflsh/: helium_flash_active (originally LKUTHE), used here.
-! Naming matches wrtlst.f90.
-      logical :: helium_flash_active
-      common/heflsh/ helium_flash_active
-! common/label/: not used in this file. Naming matches wrthead.f90.
-      double precision :: initial_envelope_x, initial_envelope_z
-      common/label/ initial_envelope_x, initial_envelope_z
 ! MHP 8/25 Removed character file names from common block
 ! DBG 11/11/91
 ! common/chrone/: only isochrone_output_active/isochrone_file_unit are

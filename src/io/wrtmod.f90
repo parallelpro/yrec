@@ -41,10 +41,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 
 
 
-! common/label/: initial_envelope_x/initial_envelope_z, used here.
-! Naming matches wrthead.f90.
-      double precision :: initial_envelope_x, initial_envelope_z
-      common/label/ initial_envelope_x, initial_envelope_z
 
 
 
@@ -54,11 +50,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 
 
 
-! common/envgen/: atmosphere/envelope step sizes for printout, used
-! here. Naming is local to this batch.
-      double precision :: atm_step_size, envelope_step_size
-      logical :: envelope_generation_flag
-      common/envgen/ atm_step_size, envelope_step_size, envelope_generation_flag
 
 
 

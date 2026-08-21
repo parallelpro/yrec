@@ -145,10 +145,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       double precision :: llot95_ztab_placeholder
       common/llot95/ llot95_ztab_placeholder
 
-! common/envgen/: all used here. Naming matches wrtmod.f90.
-      double precision :: atm_step_size, envelope_step_size
-      logical :: envelope_generation_flag
-      common/envgen/ atm_step_size, envelope_step_size, envelope_generation_flag
 
 
 

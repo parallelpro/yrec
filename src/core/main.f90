@@ -193,10 +193,6 @@ program main
       integer :: track_file_version
       common/track/ track_file_version
 
-! common/label/: initial_envelope_x/initial_envelope_z (XENV0/ZENV0),
-! both used here. Naming matches wrthead.f90.
-      double precision :: initial_envelope_x, initial_envelope_z
-      common/label/ initial_envelope_x, initial_envelope_z
 
 
 
@@ -222,8 +218,6 @@ program main
            c_2, ljdot0
 
 
-      logical :: helium_flash_active
-      common/heflsh/ helium_flash_active
 
 
 

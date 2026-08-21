@@ -47,10 +47,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       double precision, intent(out) :: radius_at_bcz
 
 
-! common/envgen/: not used in this file. Naming matches wrtmod.f90.
-      double precision :: atm_step_size, envelope_step_size
-      logical :: envelope_generation_flag
-      common/envgen/ atm_step_size, envelope_step_size, envelope_generation_flag
 
 
 

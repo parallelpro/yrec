@@ -65,9 +65,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 
 
 
-! common/heflsh/: not used in this file. Naming is local to this batch.
-      logical :: helium_flash_active
-      common/heflsh/ helium_flash_active
 
 
 ! llp  3/19/03 Add COMMON block /I2O/ for info directly transferred from

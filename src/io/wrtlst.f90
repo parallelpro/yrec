@@ -59,10 +59,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 
 
 
-! common/heflsh/: helium_flash_active (originally LKUTHE); not used in
-! this file. Naming is local to this batch.
-      logical :: helium_flash_active
-      common/heflsh/ helium_flash_active
 
 
 ! llp  3/19/03 Add COMMON block /I2O/ for info directly transferred from

@@ -246,19 +246,23 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! namelist read below).
       logical :: lovste
 
-! common /envgen/
+! atmstp/envstp/lenvg: NAMELIST /physics/ members, each with a
+! different canonical const_lib spelling (atm_step_size/
+! envelope_step_size/envelope_generation_flag), so kept local under
+! their NAMELIST spelling here and copy-assigned after the namelist
+! read below.
       double precision :: atmstp, envstp
       logical :: lenvg
-      common /envgen/ atmstp, envstp, lenvg
 
 ! lexcom: NAMELIST /physics/ member (must keep this exact spelling);
 ! copied into const_lib's use_extended_composition after the namelist
 ! read below.
       logical :: lexcom
 
-! common /heflsh/
+! lkuthe: NAMELIST /physics/ member with a different canonical
+! spelling (helium_flash_active), so kept local under its NAMELIST
+! spelling here and copy-assigned after the namelist read below.
       logical :: lkuthe
-      common /heflsh/ lkuthe
 
 ! atmerr/atmd0/atmbeg/atmmin/atmmax: NAMELIST /physics/ members, each
 ! with a different canonical const_lib spelling (atm_error_tol/
@@ -289,24 +293,42 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! namelist read below, same treatment as stolr0/imax/nuse above.
       double precision :: tscut
 
-! common /label/
-      double precision :: xenv0, zenv0
-      common /label/ xenv0, zenv0
+! former common/label/: xenv0/zenv0 are not namelist values, and
+! genuinely used in this file (initial envelope H/Z, read in the
+! run-parameters dump below) -- renamed in place to their canonical
+! const_lib names (initial_envelope_x/initial_envelope_z), now
+! use-associated rather than locally declared.
 
-! common /newcmp/
+! xnewcp/lnewcp: NAMELIST /physics/ members, each with a different
+! canonical const_lib spelling (new_species_value/
+! rescale_species_active), so kept local under their NAMELIST spelling
+! here and copy-assigned after the namelist read below (lnewcp is
+! also overridden further down in this file, in the CNO-rescaling
+! validation block, so it gets a second copy-assignment there too).
+! inewcp/lrel (former common/newcmp/'s remaining members) are not
+! namelist values and are genuinely used in this file, so renamed in
+! place to their canonical const_lib names (new_species_index/
+! value_relative_to_h), now use-associated rather than locally
+! declared.
       double precision :: xnewcp
-      integer :: inewcp
-      logical :: lnewcp, lrel
-      common /newcmp/ xnewcp, inewcp, lnewcp, lrel
+      logical :: lnewcp
 
-! common /newmx/
+! isetmix/isetiso/r12_13/r14_15/r16_17/r16_18/xh2_ini/xhe3_ini/
+! xli6_ini/xli7_ini/xbe9_ini/xb10_ini/xb11_ini: NAMELIST /physics/
+! members, each with a different canonical const_lib spelling, kept
+! local under their NAMELIST spelling here and copy-assigned after the
+! namelist read below. frac_c/frac_n/frac_o/zxmix are likewise
+! NAMELIST members with different canonical spellings, but are also
+! overridden further down in this file (the CNO-mixture validation
+! block), so they get a second copy-assignment there too. lmixture/
+! lisotope (former common/newmx/'s remaining members) are not
+! namelist values -- set by this file's own CNO/isotope validation
+! logic -- so renamed in place to their canonical const_lib names
+! (change_cno_mixture_active/change_isotope_ratios_active), now
+! use-associated rather than locally declared.
       integer :: isetmix, isetiso
-      logical :: lmixture, lisotope
       double precision :: frac_c, frac_n, frac_o, r12_13, r14_15, r16_17, r16_18, zxmix, xh2_ini, &
            xhe3_ini, xli6_ini, xli7_ini, xbe9_ini, xb10_ini, xb11_ini
-      common /newmx/ isetmix, isetiso, lmixture, lisotope, frac_c, frac_n, frac_o, r12_13, r14_15, &
-           r16_17, r16_18, zxmix, xh2_ini, xhe3_ini, xli6_ini, xli7_ini, xbe9_ini, xb10_ini, &
-           xb11_ini
 
 ! optol: NAMELIST /physics/ member (must keep this exact spelling);
 ! copied into const_lib's metal_fraction_match_tolerance after the
@@ -817,7 +839,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data xalex/0.7e0/
       data zalex/0.02e0/
       data lsenv0a, senv0a /50*.false.,50*1.26d-4/
-      data xenv0, zenv0/0.7,0.02/
+      ! xenv0/zenv0 defaults moved to const_lib.f90 (former common/label/).
 ! ldebug/lcorr/npoint/lmilne/ltrack/lstore/lstpch/lscrib/lstch/nprtmod
 ! defaults moved to const_lib.f90 (see its own header note): DATA can
 ! no longer target them here now that they're use-associated from
@@ -1307,6 +1329,29 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use_structure_dt_limits = lptime
       tri_delta_teffl = tridt
       tri_delta_logl = tridl
+      atm_step_size = atmstp
+      envelope_step_size = envstp
+      envelope_generation_flag = lenvg
+      helium_flash_active = lkuthe
+      new_species_value = xnewcp
+      rescale_species_active = lnewcp
+      mixture_change_mode = isetmix
+      isotope_change_mode = isetiso
+      target_carbon_cno_fraction = frac_c
+      target_nitrogen_cno_fraction = frac_n
+      target_oxygen_cno_fraction = frac_o
+      c12_to_c13_ratio = r12_13
+      n14_to_n15_ratio = r14_15
+      o16_to_o17_ratio = r16_17
+      o16_to_o18_ratio = r16_18
+      target_metal_fraction = zxmix
+      initial_h2_fraction = xh2_ini
+      initial_he3_fraction = xhe3_ini
+      initial_li6_fraction = xli6_ini
+      initial_li7_fraction = xli7_ini
+      initial_be9_fraction = xbe9_ini
+      initial_b10_fraction = xb10_ini
+      initial_b11_fraction = xb11_ini
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
@@ -1661,14 +1706,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !
       parmin_ln10 = dlog(10.0d0)
       if(lnewcp) then
-       lrel = .true.
-       if(atmp.eq.'ABS') lrel = .false.
+       value_relative_to_h = .true.
+       if(atmp.eq.'ABS') value_relative_to_h = .false.
 ! DECIDE WHICH ELEMENT IN ARRAY HCOMP TO BE RESCALED
 ! USING CHARACTER ARRAY AID AND INPUT CHARACTER VARIABLE ANEWCP
        do 10 i = 1,12
           if(anewcp.eq.element_id(i)) then
 ! INEWCP IS THE INDEX OF THE ELEMENT BEING ALTERED
-            inewcp = i + 3
+            new_species_index = i + 3
             goto 30
           endif
       10    continue
@@ -1679,8 +1724,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    'RESCALING NOT PERFORMED')
       30    continue
       endif
-      lmixture = .false.
-      lisotope = .false.
+      change_cno_mixture_active = .false.
+      change_isotope_ratios_active = .false.
       if(isetmix.eq.1)then
 ! IF DEFAULT MIX (GS98) CNOFRACS ARE ALREADY SET.
 !         IF(AMIX.EQ.'GS98')THEN
@@ -1706,7 +1751,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
                goto 602
             endif
 ! VALID MIXTURE, USE CUSTOM ENTRIES FROM .NML1
-            lmixture = .true.
+            change_cno_mixture_active = .true.
             goto 606
          endif
 ! SEARCH THROUGH OTHER VALID MIXTURE ENTRIES;IF FOUND,ASSIGN
@@ -1717,7 +1762,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
                frac_c = frac_c_table(i)
                frac_n = frac_n_table(i)
                frac_o = frac_o_table(i)
-               lmixture = .true.
+               change_cno_mixture_active = .true.
                goto 606
             endif
          end do
@@ -1726,7 +1771,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
          write(short_file_unit,589)amix
       589    format('DESIRED CNO MIXTURE ',a8,' NOT FOUND. MIX NOT ALTERED.')
       endif
-      606 if(lmixture)then
+      606 if(change_cno_mixture_active)then
          write(*,604)amix,frac_c,frac_n,frac_o
          write(short_file_unit,604)amix,frac_c,frac_n,frac_o
       604    format('CNO MIXTURE ',a8,' C ',e12.4,' N ',e12.4,' O ', &
@@ -1767,9 +1812,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             goto 603
          endif
 !     PASSED ALL CHECKS - EITHER THE DEFAULT OR THE CUSTOM SETTINGS WILL BE APPLIED
-         lisotope = .true.
+         change_isotope_ratios_active = .true.
       endif
-      if(lisotope)then
+      if(change_isotope_ratios_active)then
          write(*,605)aiso,r12_13,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini
          write(short_file_unit,605)aiso,r12_13,r16_18, &
@@ -1804,10 +1849,19 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use_new_diffusion_routines = lnewdif
       use_thoul_fit = lthoulfit
       coulomb_log_choice = ilambda
+! lnewcp/frac_c/frac_n/frac_o/zxmix can likewise be overridden above
+! (the ANEWCP-rescaling and CNO-mixture validation blocks), after
+! already being copy-assigned into their const_lib canonical names
+! earlier in this subroutine -- re-sync for the same reason as above.
+      rescale_species_active = lnewcp
+      target_carbon_cno_fraction = frac_c
+      target_nitrogen_cno_fraction = frac_n
+      target_oxygen_cno_fraction = frac_o
+      target_metal_fraction = zxmix
 
 !     WRITE OUT RUN PARAMETERS.
 
-      write(short_file_unit,50)xenv0,zenv0
+      write(short_file_unit,50)initial_envelope_x,initial_envelope_z
       50 format(30x,'RUN DATA VALUES'/3x, &
            &        'LINE  1     XENV0     ZENV0       ZSI'/2x, &
            &        'STANDARD       N/A       N/A  0.00E+00'/3x, &
@@ -1864,7 +1918,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 &DP MAX DL/LT    MAX DX    MAX DZ'/2x,'STANDARD  1.00E-08  8.00E-02                                                            &
 &  5.00E-02  1.00E+00  5.00E-02  2.00E-02  1.00E+00  1.00E+00'/3x, &
            & 'CURRENT',8(2x,1pe8.2))
-      write(short_file_unit,75)lnewcp,anewcp,lrel,xnewcp
+      write(short_file_unit,75)lnewcp,anewcp,value_relative_to_h,xnewcp
       75 format(3x,'LINE  7    LNEWCP    ANEWCP      LREL    XNEWCP'/2x, &
            & 'STANDARD',9x,'F',7x,'N/A',9x,'T',7x,'N/A'/3x,'CURRENT',9x,l1,7x, &
            & a3,9x,l1,1pe10.2)

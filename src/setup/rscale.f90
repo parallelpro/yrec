@@ -41,22 +41,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 
 
 
-! common/label/: initial_envelope_x/initial_envelope_z, both used
-! here. Naming matches wrthead.f90.
-      double precision :: initial_envelope_x, initial_envelope_z
-      common/label/ initial_envelope_x, initial_envelope_z
 
-! MHP 10/24 ADDED NEW CONTROLS FOR ALTERING THE HEAVY ELEMENT MIXTURE
-! THEY ARE USED IN STARIN. THE OLD ENTRIES (XNEWCP->ANEWCP) ARE USED HERE
-!      COMMON/NEWCMP/XNEWCP,INEWCP,LNEWCP,LREL,ACOMP
-! common/newcmp/: new_species_value/new_species_index/
-! rescale_species_active/value_relative_to_h, all used here. Not
-! referenced in any already-converted file.
-      double precision :: new_species_value
-      integer :: new_species_index
-      logical :: rescale_species_active, value_relative_to_h
-      common/newcmp/ new_species_value, new_species_index, &
-           rescale_species_active, value_relative_to_h
 !      ISETMIX,ISETISO,
 !     * LMIXTURE,LISOTOPE,FRAC_C,FRAC_N,FRAC_O,R12_13,R14_15,R16_17,R16_18,ZXMIX,
 !     * XH2_INI,XHE3_INI,XLI6_INI,XLI7_INI,XBE9_INI,XB10_INI,XB11_INI

@@ -464,4 +464,63 @@ module const_lib
 ! core/parmin.f90 and copy-assigned.
       logical :: use_structure_dt_limits
 
+! former common/envgen/: all 3 members are NAMELIST values with
+! different canonical spellings, kept local in core/parmin.f90 and
+! copy-assigned.
+      double precision :: atm_step_size, envelope_step_size
+      logical :: envelope_generation_flag
+
+! former common/heflsh/: helium_flash_active (originally lkuthe) is a
+! NAMELIST value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned.
+      logical :: helium_flash_active
+
+! former common/label/: initial_envelope_x/initial_envelope_z
+! (originally xenv0/zenv0) are not namelist values -- genuinely used
+! in core/parmin.f90, renamed in place there -- so their DATA defaults
+! moved here as declaration-time initializers.
+      double precision :: initial_envelope_x = 0.7d0
+      double precision :: initial_envelope_z = 0.02d0
+
+! former common/newcmp/: new_species_value/rescale_species_active
+! (originally xnewcp/lnewcp) are NAMELIST values with different
+! canonical spellings, kept local in core/parmin.f90 and copy-assigned
+! (rescale_species_active also re-synced after the ANEWCP-rescaling
+! validation block may override it). new_species_index/
+! value_relative_to_h (originally inewcp/lrel) are not namelist values
+! -- genuinely used in core/parmin.f90, renamed in place there -- no
+! declaration-time default (none in the original either).
+      double precision :: new_species_value
+      integer :: new_species_index
+      logical :: rescale_species_active
+      logical :: value_relative_to_h
+
+! former common/newmx/: mixture_change_mode/isotope_change_mode/
+! target_carbon_cno_fraction/target_nitrogen_cno_fraction/
+! target_oxygen_cno_fraction/c12_to_c13_ratio/n14_to_n15_ratio/
+! o16_to_o17_ratio/o16_to_o18_ratio/target_metal_fraction/
+! initial_h2_fraction/initial_he3_fraction/initial_li6_fraction/
+! initial_li7_fraction/initial_be9_fraction/initial_b10_fraction/
+! initial_b11_fraction (originally isetmix/isetiso/frac_c/frac_n/
+! frac_o/r12_13/r14_15/r16_17/r16_18/zxmix/xh2_ini/xhe3_ini/xli6_ini/
+! xli7_ini/xbe9_ini/xb10_ini/xb11_ini) are NAMELIST values with
+! different canonical spellings, kept local in core/parmin.f90 and
+! copy-assigned (the CNO-fraction/metal-fraction four are also
+! re-synced after the CNO-mixture validation block may override
+! them). change_cno_mixture_active/change_isotope_ratios_active
+! (originally lmixture/lisotope) are not namelist values -- set by
+! core/parmin.f90's own CNO/isotope validation logic, renamed in place
+! there -- so no declaration-time default for those two.
+      integer :: mixture_change_mode, isotope_change_mode
+      logical :: change_cno_mixture_active, change_isotope_ratios_active
+      double precision :: target_carbon_cno_fraction, &
+           target_nitrogen_cno_fraction, target_oxygen_cno_fraction
+      double precision :: c12_to_c13_ratio, n14_to_n15_ratio, &
+           o16_to_o17_ratio, o16_to_o18_ratio
+      double precision :: target_metal_fraction
+      double precision :: initial_h2_fraction, initial_he3_fraction, &
+           initial_li6_fraction, initial_li7_fraction, &
+           initial_be9_fraction, initial_b10_fraction, &
+           initial_b11_fraction
+
 end module const_lib

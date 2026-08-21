@@ -194,10 +194,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            current_log10_radius, current_log10_mass, current_log10_density, &
            current_opacity, current_beta, current_gradients, &
            current_ion_fraction, current_velocity
-! common/heflsh/: not used in this file's logic; layout placeholder.
-! Naming matches crrect.f90/wrtlst.f90/wrtout.f90.
-      logical :: helium_flash_active
-      common/heflsh/ helium_flash_active
 ! common/oldrot/: only old_omega is used here (the rest are unused
 ! placeholders). Naming matches hpoint.f90/midmod.f90.
       double precision :: old_omega(json), old_specific_angular_momentum(json), &
@@ -261,47 +257,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! getmodel2). Naming matches this file's own atm_code/eos_code/
 ! hik_code/alok_code convention.
       common /i2o/ compmix_code
-! G Somers END
-! MHP 10/24 ADDED NEW CONTROLS FOR ALTERING THE CNO MASS FRACTIONS
-! ISOTOPIC RATIOS(C,N,O) AND D/HE3/LI/BE/B ABUNDANCES.
-! THESE CONTROLS ONLY ALTER THE MIXTURE IN THE STARTING MODEL AND ONLY
-! IF THE MODEL IS CHEMICALLY UNEVOLVED. POSTPROCESSING TOOLS SHOULD BE USED FOR THE
-! CORE HE BURNING PHASE.
-!      COMMON/NEWCMP/XNEWCP,INEWCP,LNEWCP,LREL,ANEWCP
-! common/newcmp/: not used in this file's logic; layout placeholder.
-! Naming matches rscale.f90.
-      double precision :: new_species_value
-      integer :: new_species_index
-      logical :: rescale_species_active, value_relative_to_h
-      common/newcmp/ new_species_value, new_species_index, &
-           rescale_species_active, value_relative_to_h
-! common/newmx/: change_cno_mixture_active/change_isotope_ratios_active/
-! target_carbon_cno_fraction/target_nitrogen_cno_fraction/
-! target_oxygen_cno_fraction/c12_to_c13_ratio/o16_to_o18_ratio/
-! initial_h2_fraction/initial_he3_fraction/initial_li6_fraction/
-! initial_li7_fraction/initial_be9_fraction are used here (the rest
-! are unused placeholders). Only established elsewhere in parmin.f90
-! (as isetmix/isetiso/lmixture/lisotope/frac_c/frac_n/frac_o/r12_13/
-! r14_15/r16_17/r16_18/zxmix/xh2_ini/xhe3_ini/xli6_ini/xli7_ini/
-! xbe9_ini/xb10_ini/xb11_ini, kept cryptic there per that file's
-! NAMELIST constraint); this file is not bound by that and uses
-! descriptive names instead.
-      integer :: mixture_change_mode, isotope_change_mode
-      logical :: change_cno_mixture_active, change_isotope_ratios_active
-      double precision :: target_carbon_cno_fraction, &
-           target_nitrogen_cno_fraction, target_oxygen_cno_fraction, &
-           c12_to_c13_ratio, n14_to_n15_ratio, o16_to_o17_ratio, &
-           o16_to_o18_ratio, target_metal_fraction, initial_h2_fraction, &
-           initial_he3_fraction, initial_li6_fraction, initial_li7_fraction, &
-           initial_be9_fraction, initial_b10_fraction, initial_b11_fraction
-      common/newmx/ mixture_change_mode, isotope_change_mode, &
-           change_cno_mixture_active, change_isotope_ratios_active, &
-           target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
-           target_oxygen_cno_fraction, c12_to_c13_ratio, n14_to_n15_ratio, &
-           o16_to_o17_ratio, o16_to_o18_ratio, target_metal_fraction, &
-           initial_h2_fraction, initial_he3_fraction, initial_li6_fraction, &
-           initial_li7_fraction, initial_be9_fraction, initial_b10_fraction, &
-           initial_b11_fraction
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/

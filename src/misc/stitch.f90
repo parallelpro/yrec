@@ -61,11 +61,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
 
 
-! common/envgen/: all used here. Naming matches calcad.f90/wrtmod.f90.
-      double precision :: atm_step_size, envelope_step_size
-      logical :: envelope_generation_flag
-      common/envgen/ atm_step_size, envelope_step_size, &
-           envelope_generation_flag
 
 
 

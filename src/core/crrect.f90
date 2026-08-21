@@ -167,18 +167,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 
 
 
-! common/envgen/: not used in this file. Naming matches stitch.f90/
-! wrtmod.f90.
-      double precision :: atm_step_size, envelope_step_size
-      logical :: envelope_generation_flag
-      common/envgen/ atm_step_size, envelope_step_size, &
-           envelope_generation_flag
 
-! common/heflsh/: helium_flash_active (originally LKUTHE) is used here
-! to gate the He-flash correction-damping logic. Naming matches
-! wrtlst.f90/wrtout.f90.
-      logical :: helium_flash_active
-      common/heflsh/ helium_flash_active
 
 
 

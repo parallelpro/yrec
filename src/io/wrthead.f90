@@ -29,10 +29,6 @@ subroutine wrthead(total_mass_msun)
       integer :: track_file_version
       common/track/ track_file_version
 
-! common/label/: initial_envelope_x/initial_envelope_z (XENV0/ZENV0),
-! used here. Naming is local to this batch.
-      double precision :: initial_envelope_x, initial_envelope_z
-      common/label/ initial_envelope_x, initial_envelope_z
 
 
 
