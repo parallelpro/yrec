@@ -56,6 +56,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok)
 
+      use temp2_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -127,15 +128,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            interface_gravity_factor, hs3, pm, qdtmi, interface_radius, tm
 
 
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
 
 ! common/oldab/: composition_snapshot is used here to restore
 ! composition between diffusion iterations. Naming matches getw.f90/

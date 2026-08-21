@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use atmstruct_lib
       use pulse_diag_lib
       use envstruct_lib
       use envelope_comp_lib
@@ -138,22 +139,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       double precision :: alfmlt, phmlt, cmxmlt
       double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
       common/pualpha/alfmlt, phmlt, cmxmlt, valfmlt, vphmlt, vcmxmlt
-! JvS SAVE ATMOSPHERE STRUCTURE TO MAKE PROFILE OUTPUT EASIER
-! common/atmstruct/: all used/set here. Naming is local to this batch.
-! Note atmo_delta_depth (ATMOR) stores DELTR (a J.P.Cox-P590
-! acoustic-depth-like increment), not a radius, despite the parallel
-! structure with env_struct%env_log10_radius in common/envstruct/.
-      double precision :: atmo_log10_pressure(json), atmo_log10_temperature(json), &
-           atmo_log10_density(json), atmo_delta_depth(json)
-      double precision :: atmo_gradients(3,json), atmo_beta(json)
-      double precision :: atmo_gamma1(json), atmo_dlnrho_dlnt(json), &
-           atmo_ion_fraction(3,json)
-      double precision :: atmo_opacity(json), atmo_specific_heat_cp(json)
-      integer :: num_atm_points
-      common/atmstruct/atmo_log10_pressure, atmo_log10_temperature, &
-           atmo_log10_density, atmo_delta_depth, atmo_gradients, atmo_beta, &
-           atmo_gamma1, atmo_dlnrho_dlnt, atmo_ion_fraction, atmo_opacity, &
-           atmo_specific_heat_cp, num_atm_points
 ! JVS 08/13 IF THE CZ IS BEYOND THE FITTING POINT, STORE ITS LOCATION
 ! common/envcz/: convection_zone_radius_placeholder (ENVRCZ) is
 ! actually set here despite the inherited "_placeholder" name (from
@@ -482,17 +467,17 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
                      saha_state,atm_call_count,gamma1,pulse_diag%qqdp,pulse_diag%qqdt,beta,pulse_diag%qqcp,specific_heat_cv
           endif
 ! JvS: SAVE STRUCTURE TO COMMON BLOCK
-          atmo_log10_pressure(step_index) = atm_log10_pressure
-          atmo_log10_temperature(step_index) = atm_log10_temperature
-          atmo_log10_density(step_index) = atm_log10_density
-          atmo_beta(step_index) = beta
-          atmo_gamma1(step_index) = gamma1
-          atmo_dlnrho_dlnt(step_index) = pulse_diag%qqdt
-          atmo_ion_fraction(1,step_index) = atm_ion_fraction(1)
-          atmo_ion_fraction(2,step_index) = atm_ion_fraction(2)
-          atmo_ion_fraction(3,step_index) = atm_ion_fraction(3)
-          atmo_opacity(step_index) = atm_opacity
-          atmo_specific_heat_cp(step_index) = pulse_diag%qqcp
+          atmo_struct%atmo_log10_pressure(step_index) = atm_log10_pressure
+          atmo_struct%atmo_log10_temperature(step_index) = atm_log10_temperature
+          atmo_struct%atmo_log10_density(step_index) = atm_log10_density
+          atmo_struct%atmo_beta(step_index) = beta
+          atmo_struct%atmo_gamma1(step_index) = gamma1
+          atmo_struct%atmo_dlnrho_dlnt(step_index) = pulse_diag%qqdt
+          atmo_struct%atmo_ion_fraction(1,step_index) = atm_ion_fraction(1)
+          atmo_struct%atmo_ion_fraction(2,step_index) = atm_ion_fraction(2)
+          atmo_struct%atmo_ion_fraction(3,step_index) = atm_ion_fraction(3)
+          atmo_struct%atmo_opacity(step_index) = atm_opacity
+          atmo_struct%atmo_specific_heat_cp(step_index) = pulse_diag%qqcp
        endif
        if(h_did.eq.h_step) then
           num_ok = num_ok + 1
@@ -535,11 +520,11 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
                        end if
             end if
 ! JvS SAVE TO COMMON ATMSTRUCT COMMON BLOCK
-          atmo_delta_depth(step_index) = delta_tau_step
-          atmo_gradients(1,step_index) = pulse_radiative_gradient
-          atmo_gradients(2,step_index) = pulse_gradient
-          atmo_gradients(3,step_index) = pulse_diag%qdela
-          num_atm_points = step_index
+          atmo_struct%atmo_delta_depth(step_index) = delta_tau_step
+          atmo_struct%atmo_gradients(1,step_index) = pulse_radiative_gradient
+          atmo_struct%atmo_gradients(2,step_index) = pulse_gradient
+          atmo_struct%atmo_gradients(3,step_index) = pulse_diag%qdela
+          atmo_struct%num_atm_points = step_index
 
           prev_tau = tau_now
           prev_density = density_now

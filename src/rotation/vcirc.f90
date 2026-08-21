@@ -16,10 +16,10 @@
 !       MULTIPLIED BY A GRADIENT BETWEEN THE SHELLS MUST BE LESS THAN
 !       SOME CRITICAL NUMBER.
 ! Computes, at each unstable interface, the Eddington-Sweet meridional
-! circulation velocity (es_circulation_velocity, Zahn 1991/1992, with
+! circulation velocity (circ_vel%es_circulation_velocity, Zahn 1991/1992, with
 ! a quadrupole correction), the GSF-instability circulation velocity
-! (gsf_circulation_velocity, Kippenhahn 1980 estimate), and the
-! diffusive/dynamical shear velocity (secular_shear_velocity), then
+! (circ_vel%gsf_circulation_velocity, Kippenhahn 1980 estimate), and the
+! diffusive/dynamical shear velocity (circ_vel%secular_shear_velocity), then
 ! combines them into total_circulation_velocity (HV).
 !
 !       SUBROUTINE VCIRC(HJM,HR,HRU,IMIN,IMAX,IT,LCZ,M,OMEGA,LDO,  ! KC 2025-05-31
@@ -29,6 +29,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
      dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
      total_luminosity, timestep, log_pressure)
 
+      use temp2_lib
       use mdphy_lib
       use luout_lib
       use const_lib
@@ -104,19 +105,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 
 
 
-! common/temp2/: es_circulation_velocity/secular_shear_velocity/
-! gsf_circulation_velocity/mu_gradient_velocity (VES/VSS/VGSF/VMU) and
-! their previous-iteration counterparts (VES0/VSS0/VGSF0) are used
-! here; hle is an unused placeholder. Naming is local to this batch.
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
 
 ! MHP 06/02 ADDED FACT7 AND FACT8 FOR DIF/AD TREATMENT
 ! common/vfact/: mu_gradient_richardson_coeff (FACT5, used in the GSF
@@ -151,7 +139,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
            gsf_mixing_scale, ies, gsf_inhibition_mode, imu
 
 ! common/prevmu/: mu_gradient_velocity_prev (originally VMUP), the
-! previous-iteration mu_gradient_velocity, saved (but not subsequently
+! previous-iteration circ_vel%mu_gradient_velocity, saved (but not subsequently
 ! read back) here. Naming is local to this batch.
       double precision :: mu_gradient_velocity_prev(json)
       common/prevmu/ mu_gradient_velocity_prev
@@ -271,10 +259,10 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  STORE THE OLD VELOCITY ESTIMATES FOR LATER USE.
       if (iteration.gt.1) then
          do 5 i = zone_min,zone_max
-            mu_gradient_velocity_prev(i) = mu_gradient_velocity(i)
-            gsf_circulation_velocity_prev(i) = gsf_circulation_velocity(i)
-            es_circulation_velocity_prev(i) = es_circulation_velocity(i)
-            secular_shear_velocity_prev(i) = secular_shear_velocity(i)
+            mu_gradient_velocity_prev(i) = circ_vel%mu_gradient_velocity(i)
+            circ_vel%gsf_circulation_velocity_prev(i) = circ_vel%gsf_circulation_velocity(i)
+            circ_vel%es_circulation_velocity_prev(i) = circ_vel%es_circulation_velocity(i)
+            circ_vel%secular_shear_velocity_prev(i) = circ_vel%secular_shear_velocity(i)
     5    continue
          if (use_diffusion_advection_transport) then
             do i = zone_min,zone_max
@@ -285,10 +273,10 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
       end if
       do 10 i = 1,num_zones
          total_circulation_velocity(i) = 0.0d0
-         es_circulation_velocity(i) = 0.0d0
-         gsf_circulation_velocity(i) = 0.0d0
-         secular_shear_velocity(i) = 0.0d0
-         mu_gradient_velocity(i) = 0.0d0
+         circ_vel%es_circulation_velocity(i) = 0.0d0
+         circ_vel%gsf_circulation_velocity(i) = 0.0d0
+         circ_vel%secular_shear_velocity(i) = 0.0d0
+         circ_vel%mu_gradient_velocity(i) = 0.0d0
    10 continue
 !  MEAN MOLECULAR WEIGHT (AS WELL AS QUANTITIES WHICH DEPEND ON IT) AND
 !  THE ANGULAR VELOCITY DISTRIBUTION CHANGE DURING A DIFFUSION TIMESTEP.
@@ -381,7 +369,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          if (am_transport_convective_flag(i).and. &
               am_transport_convective_flag(i-1)) goto 31
 ! ORIGINAL ESTIMATE,USING DG/G = W**2 R**3 / GM.
-         es_circulation_velocity(i) = omega_interface(i)**2* &
+         circ_vel%es_circulation_velocity(i) = omega_interface(i)**2* &
               (es_velocity_coeff1(i)+omega_interface(i)**2*es_velocity_coeff2(i))
 ! QUADRUPOLE TERM ADDED, DG/G COMPUTED AS PER ZAHN 1992.
          dr = radius(i) - radius(i-1)
@@ -402,8 +390,8 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  3e10.3/' QUA,G,R ',6e12.3)
          end if
          if (.not.use_diffusion_advection_transport) then
-            es_circulation_velocity(i) = &
-                 abs(circulation_correction_ratio(i)*es_circulation_velocity(i)- &
+            circ_vel%es_circulation_velocity(i) = &
+                 abs(circulation_correction_ratio(i)*circ_vel%es_circulation_velocity(i)- &
                  es_shear_coeff(i)*qw)
          else
 ! MHP 05/02 ADD FACTOR OF 1/5 HERE
@@ -413,7 +401,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             theta_new(i) = es_relaxation_factor(i)*(theta_mean(i)*qw- &
                  theta_prev(i))/timestep
             es_advective_velocity(i) = 0.2d0* &
-                 (circulation_correction_ratio(i)*es_circulation_velocity(i)+ &
+                 (circulation_correction_ratio(i)*circ_vel%es_circulation_velocity(i)+ &
                  theta_new(i))
             q1 = difad_shear_coeff1(i)*omega_interface(i)**2
             q2 = difad_shear_coeff2(i)*qw
@@ -426,8 +414,8 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! THIRD ORDER TERM
             vesd3(i) = 0.2d0*facd3(i)*omega_interface(i)
 !               VES(I) = ABS(RAT(I)*VES(I)+THN(I)-FES3(I)*QW)
-            es_circulation_velocity(i) = &
-                 circulation_correction_ratio(i)*es_circulation_velocity(i)+ &
+            circ_vel%es_circulation_velocity(i) = &
+                 circulation_correction_ratio(i)*circ_vel%es_circulation_velocity(i)+ &
                  theta_new(i)+ &
                  (es_shear_coeff(i)+difad_shear_coeff1(i))*qw+ &
                  difad_shear_coeff2(i)*((omega(i)-omega(i-1))/dr)**2
@@ -461,7 +449,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
           ddtest = max(del_grad_diff_interface(i),1.0d-3)
           ddtest2 = max(ddel,1.0d-3)
           qqq = ddtest/ddtest2
-          es_circulation_velocity(i) = es_circulation_velocity(i)*qqq
+          circ_vel%es_circulation_velocity(i) = circ_vel%es_circulation_velocity(i)*qqq
           if (use_diffusion_advection_transport) then
              es_advective_velocity(i) = es_advective_velocity(i)*qqq
              es_diffusive_velocity(i) = es_diffusive_velocity(i)*qqq
@@ -517,7 +505,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             qwrmx = 2.0d0*sqrt(kinematic_viscosity_interface(i)/ &
                  thermal_diffusivity_interface(i))*dlnomega_dlnr_max(i)
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
-               gsf_circulation_velocity(i) = 0.0d0
+               circ_vel%gsf_circulation_velocity(i) = 0.0d0
                goto 40
             else
               fxx = sqrt((abs(dlnomega_dlnr(i))-qwrmx)/qwrmx)
@@ -531,7 +519,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  abs(mix_phys%amum(i)-mix_phys%amum(i-1)) &
                  /dr/mean_molecular_weight_interface(i))
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
-               gsf_circulation_velocity(i) = 0.0d0
+               circ_vel%gsf_circulation_velocity(i) = 0.0d0
                goto 40
             else
 ! MHP 05/02 ADDED TESTS TO AVOID DIVIDE BY ZERO
@@ -562,14 +550,14 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
 ! FACTOR OF R IN THE DENOMINATOR OCCURS BECAUSE ALL THE CIRCULATION
 ! VELOCITIES ARE LATER MULTIPLIED BY R (THE "LENGTH SCALE").
-            gsf_circulation_velocity(i) = gsf_kippenhahn_coeff(i)*fx* &
+            circ_vel%gsf_circulation_velocity(i) = gsf_kippenhahn_coeff(i)*fx* &
                  thermal_diffusivity_interface(i)*omega_interface(i)**2/rmid
          else
-            gsf_circulation_velocity(i)=0.25d0*gsf_kippenhahn_coeff(i)* &
+            circ_vel%gsf_circulation_velocity(i)=0.25d0*gsf_kippenhahn_coeff(i)* &
                  thermal_diffusivity_interface(i)*dlnwdr* &
                  omega_interface(i)**2/rmid
          end if
-         gsf_circulation_velocity(i) = abs(fxx*gsf_circulation_velocity(i))
+         circ_vel%gsf_circulation_velocity(i) = abs(fxx*circ_vel%gsf_circulation_velocity(i))
    40 continue
 ! OMIT JAMES AND KAHN ESTIMATE
 !      ELSE
@@ -610,7 +598,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  VALUE AND COMPUTE (LARGE) DYNAMICAL SHEAR VELOCITY.
          if (abs(dlnomega_dlnr(i)).gt.dlnomega_dlnr_max(i)) then
             qwr = abs(dlnomega_dlnr(i))
-            secular_shear_velocity(i)=8.0d0/4.5d1* &
+            circ_vel%secular_shear_velocity(i)=8.0d0/4.5d1* &
                  thermal_diffusivity_interface(i)* &
                  (qwr/dlnomega_dlnr_max(i))**2/interface_radius(i)
 !  CORRECT GSF VELOCITY AS WELL.
@@ -640,10 +628,10 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             if (omega(i)*radius(i)**2.lt.wmin*radius(i-1)**2) then
                fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
                qwrmx_dyn = max(2.0d0*dlnjmdr0,0.25d0*dlnwdr0)
-               gsf_circulation_velocity(i) = gsf_circulation_velocity(i)* &
+               circ_vel%gsf_circulation_velocity(i) = circ_vel%gsf_circulation_velocity(i)* &
                     fx/qwrmx_dyn
             else
-               gsf_circulation_velocity(i)=gsf_circulation_velocity(i)* &
+               circ_vel%gsf_circulation_velocity(i)=circ_vel%gsf_circulation_velocity(i)* &
                     dlnwdr/dlnwdr0
             end if
 !            ELSE IF(IGSF.EQ.3)THEN
@@ -678,7 +666,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  .lt.1.0d-10) then
                qwrmx2 = 0.0d0
                qwr = abs(dlnomega_dlnr(i)) - qwrmx
-               secular_shear_velocity(i)=8.0d0/4.5d1* &
+               circ_vel%secular_shear_velocity(i)=8.0d0/4.5d1* &
                     thermal_diffusivity_interface(i)* &
                     (qwr/dlnomega_dlnr_max(i))**2/interface_radius(i)
             else
@@ -696,7 +684,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  THAN THE FIRST(I.E. IF A MU GRADIENT IS SLOWING J TRANSPORT).
                   qwrmx = max(qwrmx2,qwrmx)
                   qwr = abs(dlnomega_dlnr(i)) - qwrmx
-            secular_shear_velocity(i)=8.0d0/4.5d1* &
+            circ_vel%secular_shear_velocity(i)=8.0d0/4.5d1* &
                  thermal_diffusivity_interface(i)* &
                  (qwr/dlnomega_dlnr_max(i))**2/interface_radius(i)
                end if
@@ -762,12 +750,12 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! MHP 8/03 MULTIPLY VELOCITY ESTIMATES BY USER PARAMETER
 ! SCALE FACTORS
       do i = zone_min,zone_max
-         es_circulation_velocity(i)=abs(es_velocity_scale* &
-              es_circulation_velocity(i))
-         gsf_circulation_velocity(i) = gsf_velocity_scale* &
-              gsf_circulation_velocity(i)
-         secular_shear_velocity(i)= secular_shear_velocity_scale* &
-              secular_shear_velocity(i)
+         circ_vel%es_circulation_velocity(i)=abs(es_velocity_scale* &
+              circ_vel%es_circulation_velocity(i))
+         circ_vel%gsf_circulation_velocity(i) = gsf_velocity_scale* &
+              circ_vel%gsf_circulation_velocity(i)
+         circ_vel%secular_shear_velocity(i)= secular_shear_velocity_scale* &
+              circ_vel%secular_shear_velocity(i)
       end do
 ! MHP 11/94
 ! REPEAT FOR DIF+AD
@@ -802,12 +790,12 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! IT AS AN ENTRY IN THE DIFFUSION EQUATION.
          do i = zone_min,zone_max
             es_diffusive_velocity(i) = es_diffusive_velocity(i)+ &
-                 interface_radius(i)*(abs(gsf_circulation_velocity(i))+ &
-                 abs(secular_shear_velocity(i)))
+                 interface_radius(i)*(abs(circ_vel%gsf_circulation_velocity(i))+ &
+                 abs(circ_vel%secular_shear_velocity(i)))
             shear_diffusion_coeff(i) = interface_radius(i)* &
-                 abs(secular_shear_velocity(i))
+                 abs(circ_vel%secular_shear_velocity(i))
             gsf_diffusion_coeff(i) = interface_radius(i)* &
-                 abs(gsf_circulation_velocity(i))
+                 abs(circ_vel%gsf_circulation_velocity(i))
 !            IF(VGSF(I).GT.0.0D0)THEN
 ! D LN W/DR
 !               DR = HRU(I) - HRU(I-1)
@@ -826,12 +814,12 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  AVERAGE PREVIOUS AND NEW VELOCITY ESTIMATES AFTER THE FIRST ITERATION.
       if (iteration.gt.1) then
          do 70 i = zone_min,zone_max
-            gsf_circulation_velocity(i) = 0.5d0*(gsf_circulation_velocity(i) &
-                 + gsf_circulation_velocity_prev(i))
-            es_circulation_velocity(i) = 0.5d0*(es_circulation_velocity(i) &
-                 + es_circulation_velocity_prev(i))
-            secular_shear_velocity(i) = 0.5d0*(secular_shear_velocity(i) &
-                 + secular_shear_velocity_prev(i))
+            circ_vel%gsf_circulation_velocity(i) = 0.5d0*(circ_vel%gsf_circulation_velocity(i) &
+                 + circ_vel%gsf_circulation_velocity_prev(i))
+            circ_vel%es_circulation_velocity(i) = 0.5d0*(circ_vel%es_circulation_velocity(i) &
+                 + circ_vel%es_circulation_velocity_prev(i))
+            circ_vel%secular_shear_velocity(i) = 0.5d0*(circ_vel%secular_shear_velocity(i) &
+                 + circ_vel%secular_shear_velocity_prev(i))
    70    continue
 ! MHP 11/94
          if (use_diffusion_advection_transport) then
@@ -844,8 +832,8 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          end if
       end if
       do 80 i =zone_min,zone_max
-         total_circulation_velocity(i) = gsf_circulation_velocity(i) + &
-              es_circulation_velocity(i) + secular_shear_velocity(i)
+         total_circulation_velocity(i) = circ_vel%gsf_circulation_velocity(i) + &
+              circ_vel%es_circulation_velocity(i) + circ_vel%secular_shear_velocity(i)
          if (total_circulation_velocity(i).lt.1.0d-20) &
               total_circulation_velocity(i)=0.0d0
          if (total_circulation_velocity(i).gt.0.0d0) any_transport_active=.true.
@@ -858,9 +846,9 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             dell = interface_luminosity(i)/total_luminosity
             if (dell.lt.9.9d-1) then
                total_circulation_velocity(i) = 0.0d0
-               gsf_circulation_velocity(i) = 0.0d0
-               es_circulation_velocity(i) = 0.0d0
-               secular_shear_velocity(i) = 0.0d0
+               circ_vel%gsf_circulation_velocity(i) = 0.0d0
+               circ_vel%es_circulation_velocity(i) = 0.0d0
+               circ_vel%secular_shear_velocity(i) = 0.0d0
 ! MHP 11/94
                es_advective_velocity(i) = 0.0d0
                es_diffusive_velocity(i) = 0.0d0

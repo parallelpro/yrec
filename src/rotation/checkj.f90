@@ -72,6 +72,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
      already_converged_flag)
 
+      use temp2_lib
       use const_lib
       use luout_lib
       implicit none
@@ -120,17 +121,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
 
-! common/temp2/: all members used in the (dead-code) diffusion-velocity
-! print block. Naming matches codiff.f90.
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
 
 ! MHP 7/93
 ! common/varfc/: only use_diffusion_advection_transport (LDIFAD) is
@@ -429,15 +419,15 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
               'VSS',9x,'RAT',8x,'VTOT',7x,'LENGTH',8x,'VMU')
          do 230 zone_index = 1,print_zone_count
             write(imodpt,220)print_zone_id(zone_index), &
-                 es_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 es_circulation_velocity(print_zone_id(zone_index)), &
-                 gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 gsf_circulation_velocity(print_zone_id(zone_index)), &
-                 secular_shear_velocity(print_zone_id(zone_index)), &
+                 circ_vel%es_circulation_velocity_prev(print_zone_id(zone_index)), &
+                 circ_vel%es_circulation_velocity(print_zone_id(zone_index)), &
+                 circ_vel%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
+                 circ_vel%gsf_circulation_velocity(print_zone_id(zone_index)), &
+                 circ_vel%secular_shear_velocity(print_zone_id(zone_index)), &
                  circulation_correction_ratio(print_zone_id(zone_index)), &
                  diffusion_velocity(print_zone_id(zone_index)), &
-                 hle(print_zone_id(zone_index)), &
-                 mu_gradient_velocity(print_zone_id(zone_index))
+                 circ_vel%hle(print_zone_id(zone_index)), &
+                 circ_vel%mu_gradient_velocity(print_zone_id(zone_index))
   220 format(1x,i5,1p10e12.3)
   230    continue
          if(use_diffusion_advection_transport)then
@@ -450,7 +440,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             if(print_zone_count.eq.ntot)then
             do zone_index = 1,print_zone_count
                write(imodpt,221)zone_index,chi(zone_index), &
-                    es_circulation_velocity(zone_index), &
+                    circ_vel%es_circulation_velocity(zone_index), &
                     es_advective_velocity(zone_index), &
                     es_diffusive_velocity(zone_index),echi(zone_index), &
                     am_advective_coeff(zone_index),am_diffusive_coeff(zone_index)
@@ -459,7 +449,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             else if(print_zone_count.lt.ntot)then
             do zone_index = 1,print_zone_count
                write(imodpt,221)zone_index,chi(zone_index), &
-                    es_circulation_velocity(zone_index), &
+                    circ_vel%es_circulation_velocity(zone_index), &
                     es_advective_velocity(zone_index), &
                     es_diffusive_velocity(zone_index),echi(zone_index), &
                     am_advective_coeff(zone_index),am_diffusive_coeff(zone_index)
@@ -472,14 +462,14 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             else
             do zone_index = 1,ntot
                write(imodpt,221)zone_index,chi(zone_index), &
-                    es_circulation_velocity(zone_index), &
+                    circ_vel%es_circulation_velocity(zone_index), &
                     es_advective_velocity(zone_index), &
                     es_diffusive_velocity(zone_index),echi(zone_index), &
                     am_advective_coeff(zone_index),am_diffusive_coeff(zone_index)
             end do
             do zone_index = ntot+1,print_zone_count
                write(imodpt,223)zone_index,chi(zone_index), &
-                    es_circulation_velocity(zone_index), &
+                    circ_vel%es_circulation_velocity(zone_index), &
                     es_advective_velocity(zone_index), &
                     es_diffusive_velocity(zone_index)
  223           format(1x,i5,1p4e12.3)

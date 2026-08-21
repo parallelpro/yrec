@@ -30,6 +30,8 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
 
+      use temp2_lib
+      use atmstruct_lib
       use pulse_diag_lib
       use envstruct_lib
       use turnover_lib
@@ -72,19 +74,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
 
 
-! common/atmstruct/: all used here. Naming matches envint.f90.
-      double precision :: atmo_log10_pressure(json), &
-           atmo_log10_temperature(json), atmo_log10_density(json), &
-           atmo_delta_depth(json)
-      double precision :: atmo_gradients(3,json), atmo_beta(json)
-      double precision :: atmo_gamma1(json), atmo_dlnrho_dlnt(json), &
-           atmo_ion_fraction(3,json)
-      double precision :: atmo_opacity(json), atmo_specific_heat_cp(json)
-      integer :: num_atm_points
-      common/atmstruct/ atmo_log10_pressure, atmo_log10_temperature, &
-           atmo_log10_density, atmo_delta_depth, atmo_gradients, atmo_beta, &
-           atmo_gamma1, atmo_dlnrho_dlnt, atmo_ion_fraction, atmo_opacity, &
-           atmo_specific_heat_cp, num_atm_points
 
 
 
@@ -100,18 +89,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       logical :: sound_speed_output_active
       common/sound/ adiabatic_index_gamma1, sound_speed_output_active
 
-! common/temp2/: es_circulation_velocity/gsf_circulation_velocity/
-! secular_shear_velocity (VES/VGSF/VSS) are used here. Naming matches
-! vcirc.f90/codiff.f90.
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
 
       save
 
@@ -156,13 +133,13 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
               duma = cc13*omega(i)**2/(cg*fm)*5.d0/(2.d0+rotation_eta2(i))
               a_val = duma * radius_ratio_r0(i)**3
               rpoleq = (1.0d0 - a_val)/(1.0d0 + 0.5d0*a_val)
-              vtot = es_circulation_velocity(i)+gsf_circulation_velocity(i)+ &
-                   secular_shear_velocity(i)
+              vtot = circ_vel%es_circulation_velocity(i)+circ_vel%gsf_circulation_velocity(i)+ &
+                   circ_vel%secular_shear_velocity(i)
               write(istor,64) a_val,rpoleq,shape_factor_fp(i), &
                    shape_factor_ft(i),specific_angular_momentum(i), &
                    shell_moment_of_inertia(i),rotational_energy_term(i), &
-                   es_circulation_velocity(i),gsf_circulation_velocity(i), &
-                   secular_shear_velocity(i),vtot
+                   circ_vel%es_circulation_velocity(i),circ_vel%gsf_circulation_velocity(i), &
+                   circ_vel%secular_shear_velocity(i),vtot
             else
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
             end if
@@ -244,21 +221,21 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 ! *************************** WRITE OUT ATMOSPHERE INFORMATION  ************************
 ! Finish with the atmosphere, if the atmosphere was computed
        if(lstatm)then
-            do i=num_atm_points,1,-1
+            do i=atmo_struct%num_atm_points,1,-1
 ! write out the basic info. Omega and abundances take value of last interior point.
             rad = dlog10(dexp(ln10*env_struct%env_log10_radius(env_struct%num_env_points)) + &
-                 atmo_delta_depth(i))
-            write(istor,62,advance='no') model,num_atm_points-i+m+env_struct%num_env_points, &
+                 atmo_struct%atmo_delta_depth(i))
+            write(istor,62,advance='no') model,atmo_struct%num_atm_points-i+m+env_struct%num_env_points, &
                  log_total_mass,rad,b, &
-            atmo_log10_pressure(i),atmo_log10_temperature(i), &
-            atmo_log10_density(i),omega(m), &
+            atmo_struct%atmo_log10_pressure(i),atmo_struct%atmo_log10_temperature(i), &
+            atmo_struct%atmo_log10_density(i),omega(m), &
             .false.,.false.,.false.,.true.,(composition(j,m),j=1,15)
 ! write out additional physics
-            write(istor,63,advance='no') atmo_opacity(i),sg,atmo_gradients(1,i), &
-                 atmo_gradients(2,i),atmo_gradients(3,i),0.0,atmo_gamma1(i), &
-                 atmo_ion_fraction(1,i),atmo_ion_fraction(2,i), &
-                 atmo_ion_fraction(3,i),atmo_beta(i),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, &
-                 atmo_specific_heat_cp(i),atmo_dlnrho_dlnt(i)
+            write(istor,63,advance='no') atmo_struct%atmo_opacity(i),sg,atmo_struct%atmo_gradients(1,i), &
+                 atmo_struct%atmo_gradients(2,i),atmo_struct%atmo_gradients(3,i),0.0,atmo_struct%atmo_gamma1(i), &
+                 atmo_struct%atmo_ion_fraction(1,i),atmo_struct%atmo_ion_fraction(2,i), &
+                 atmo_struct%atmo_ion_fraction(3,i),atmo_struct%atmo_beta(i),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0, &
+                 atmo_struct%atmo_specific_heat_cp(i),atmo_struct%atmo_dlnrho_dlnt(i)
 !  zero placeholders for rotation output
             write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
          end do

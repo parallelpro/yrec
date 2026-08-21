@@ -25,6 +25,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use temp2_lib
       use envelope_comp_lib
       use fluxes_lib
       use engeb_diag_lib
@@ -144,15 +145,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       double precision :: adiabatic_index_gamma1(json)
       logical :: sound_speed_output_active
       common/sound/ adiabatic_index_gamma1, sound_speed_output_active
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
       double precision :: rotational_energy_term(json)
       common/roten/ rotational_energy_term
 ! G Somers END

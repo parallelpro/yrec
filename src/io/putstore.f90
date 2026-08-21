@@ -27,6 +27,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+      use temp2_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -138,17 +139,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       double precision :: adiabatic_index_gamma1(json)
       logical :: sound_speed_output_active
       common/sound/ adiabatic_index_gamma1, sound_speed_output_active
-! common/temp2/: only es_circulation_velocity/gsf_circulation_velocity/
-! secular_shear_velocity are used here. Naming matches vcirc.f90.
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
 ! common/roten/: rotational_energy_term, used here. Naming is local to
 ! this batch.
       double precision :: rotational_energy_term(json)
@@ -383,11 +373,11 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
              duma = cc13*omega(i)**2/(local_g_const*fm)*5.D0/(2.D0+rotation_eta2(i))
              oblateness_a = duma * radius_ratio_r0(i)**3
              pole_to_equator_ratio = (1.0D0 - oblateness_a)/(1.0D0 + 0.5D0*oblateness_a)
-               vtot = es_circulation_velocity(i)+gsf_circulation_velocity(i)+secular_shear_velocity(i)
+               vtot = circ_vel%es_circulation_velocity(i)+circ_vel%gsf_circulation_velocity(i)+circ_vel%secular_shear_velocity(i)
                write(istor,64) oblateness_a,pole_to_equator_ratio,shape_factor_fp(i), &
                   shape_factor_ft(i),specific_angular_momentum(i),shell_moment_of_inertia(i), &
-                  rotational_energy_term(i),es_circulation_velocity(i), &
-                  gsf_circulation_velocity(i),secular_shear_velocity(i),vtot
+                  rotational_energy_term(i),circ_vel%es_circulation_velocity(i), &
+                  circ_vel%gsf_circulation_velocity(i),circ_vel%secular_shear_velocity(i),vtot
             else
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
             endif

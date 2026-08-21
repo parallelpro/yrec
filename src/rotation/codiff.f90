@@ -47,6 +47,7 @@
 subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
 
+      use temp2_lib
       use mdphy_lib
       use const_lib
       implicit none
@@ -67,19 +68,6 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
            interface_gravity_factor, hs3, pm, qdtmi, interface_radius, tm
 
 
-! common/temp2/: es_circulation_velocity/gsf_circulation_velocity/
-! secular_shear_velocity/hle are used here; the "_prev" pair and
-! mu_gradient_velocity are unused placeholders. Naming matches
-! vcirc.f90.
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
 
 ! common/vmult/: only difad_velocity_scale/mixing_velocity_scale (FW/FC)
 ! are used here. Naming matches rotgrid.f90/vcirc.f90/dadcoeft.f90.
@@ -140,10 +128,10 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
 
 !  THIS SR DETERMINES THE RUN OF CHARACTERISTIC VELOCITY LENGTH
 !  SCALES FOR THE DIFFUSION EQUATIONS.
-      hle(1) = 0.0d0
+      circ_vel%hle(1) = 0.0d0
       radius_mid(1) = 0.0d0
       do i = 2,num_zones
-         hle(i) = 0.0d0
+         circ_vel%hle(i) = 0.0d0
          radius_mid(i) = 0.5d0*(radius_mid_prev(i)+radius_mid_prev(i-1))
       end do
 ! MHP 9/14 ADDED LOOP TO ALLOW A CONSTANT BACKGROUND DIFFUSION COEFFICIENT
@@ -152,19 +140,19 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
          if (.not.lvfc) then
             con2 = con1*mixing_velocity_scale
             do i = 2,num_zones
-               am_diffusion_coeff(i)=con1*(es_circulation_velocity(i)+ &
-                    gsf_circulation_velocity(i)+secular_shear_velocity(i))* &
+               am_diffusion_coeff(i)=con1*(circ_vel%es_circulation_velocity(i)+ &
+                    circ_vel%gsf_circulation_velocity(i)+circ_vel%secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i)=con2*(es_mixing_scale* &
-                    es_circulation_velocity(i)+gsf_mixing_scale* &
-                    gsf_circulation_velocity(i)+secular_shear_mixing_scale* &
-                    secular_shear_velocity(i))*radius_mid(i)
+                    circ_vel%es_circulation_velocity(i)+gsf_mixing_scale* &
+                    circ_vel%gsf_circulation_velocity(i)+secular_shear_mixing_scale* &
+                    circ_vel%secular_shear_velocity(i))*radius_mid(i)
 !               HLE(I)=RMID(I)
             end do
          else
             do i = 2,num_zones
-               am_diffusion_coeff(i) = con1*(es_circulation_velocity(i)+ &
-                    gsf_circulation_velocity(i)+secular_shear_velocity(i))* &
+               am_diffusion_coeff(i) = con1*(circ_vel%es_circulation_velocity(i)+ &
+                    circ_vel%gsf_circulation_velocity(i)+circ_vel%secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*vfc(i)
 !               HLE(I) = RMID(I)
@@ -175,17 +163,17 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
             con2 = con1*mixing_velocity_scale
             do i = 2,num_zones
                am_diffusion_coeff(i)=con1*(constant_background_diffusion_coeff+ &
-                    (es_circulation_velocity(i)+gsf_circulation_velocity(i)+ &
-                    secular_shear_velocity(i))*radius_mid(i))
+                    (circ_vel%es_circulation_velocity(i)+circ_vel%gsf_circulation_velocity(i)+ &
+                    circ_vel%secular_shear_velocity(i))*radius_mid(i))
                mixing_diffusion_coeff(i)=con2*(es_mixing_scale* &
-                    es_circulation_velocity(i)+gsf_mixing_scale* &
-                    gsf_circulation_velocity(i)+secular_shear_mixing_scale* &
-                    secular_shear_velocity(i))*radius_mid(i)
+                    circ_vel%es_circulation_velocity(i)+gsf_mixing_scale* &
+                    circ_vel%gsf_circulation_velocity(i)+secular_shear_mixing_scale* &
+                    circ_vel%secular_shear_velocity(i))*radius_mid(i)
             end do
          else
             do i = 2,num_zones
-               am_diffusion_coeff(i) = con1*(es_circulation_velocity(i)+ &
-                    gsf_circulation_velocity(i)+secular_shear_velocity(i))* &
+               am_diffusion_coeff(i) = con1*(circ_vel%es_circulation_velocity(i)+ &
+                    circ_vel%gsf_circulation_velocity(i)+circ_vel%secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*vfc(i)
 ! MHP 8/13 ADD D.C. AFTER SCALE FACTOR FOR MIXING APPLIED

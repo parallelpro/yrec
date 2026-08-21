@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use temp2_lib
       use temp_lib
       use mdphy_lib
       use light_burn_lib
@@ -135,18 +136,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       double precision :: composition_snapshot(15,json)
       common/oldab/ composition_snapshot
 
-! 8/92 common block for computation of beginning of step mu
-! barrier.
-! common/temp2/: not used in this file. Naming matches vcirc.f90.
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
 
 ! common/vmult/: not used in this file. Naming matches vcirc.f90.
       double precision :: difad_velocity_scale, mixing_velocity_scale, fo, &

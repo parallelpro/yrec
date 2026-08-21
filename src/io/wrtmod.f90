@@ -19,6 +19,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      log_temperature, model_number, log_luminosity_lsun, log_teff, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
+      use temp2_lib
       use pulse_diag_lib
       use envelope_comp_lib
       use scrtch_lib
@@ -83,16 +84,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       double precision :: rotational_energy_term(json)
       common/roten/ rotational_energy_term
 
-! common/temp2/: not used in this file. Naming matches vcirc.f90.
-      double precision :: es_circulation_velocity(json), &
-           es_circulation_velocity_prev(json), secular_shear_velocity(json), &
-           secular_shear_velocity_prev(json), hle(json), &
-           gsf_circulation_velocity(json), gsf_circulation_velocity_prev(json), &
-           mu_gradient_velocity(json)
-      common/temp2/ es_circulation_velocity, es_circulation_velocity_prev, &
-           secular_shear_velocity, secular_shear_velocity_prev, hle, &
-           gsf_circulation_velocity, gsf_circulation_velocity_prev, &
-           mu_gradient_velocity
 ! common/quadd/: not used in this file. Naming matches vcirc.f90.
       double precision :: phisp(json), phirot(json), phidis(json), &
            circulation_correction_ratio(json)
