@@ -44,11 +44,6 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 
 
 
-! common/ctlim/: only atime(13) (global timestep-change limiter) is
-! used here. Naming matches eqstat2.f90/eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/oldmod/: only old_luminosity/old_teff/old_num_zones are used
 ! here. Naming matches eqburn.f90/dburn.f90.

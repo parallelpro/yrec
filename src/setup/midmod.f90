@@ -169,11 +169,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       double precision :: composition_snapshot(15,json)
       common/oldab/ composition_snapshot
 
-! MHP 05/02 added for deuterium burning
-! common/ctlim/: only tcut is used here. Naming matches eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, tenv0, &
-           tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/deuter/: deuterium_burning_rate/deuterium_burning_rate_start
 ! are used here. Naming matches dburn.f90.

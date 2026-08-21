@@ -171,9 +171,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       common /const/ clsun, clsunl, clnsun, cmsun, cmsunl, crsun, crsunl, cmbol
 
 
-! common /ctlim/
-      double precision :: atime(14), tcut(5), tscut, tenv0, tenv1, tenv, tgcut
-      common /ctlim/ atime, tcut, tscut, tenv0, tenv1, tenv, tgcut
 
 ! common /ct2/
       double precision :: dtwind
@@ -635,7 +632,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    optol, &
            &    rcrit, reltol, &
            &    stolr0, &
-           &    tcut, tscut, tenv0, tenv1, tgcut, tridt, tridl, &
+           &    tcut, saha_log10t_cutoff, tenv0, tenv1, tgcut, tridt, tridl, &
            &    tollaol, &
            &    vnew, &
            &    walpcz, wnew, weakscreening, &
@@ -709,8 +706,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data element_id/'HE3','C12','C13','N14','N15','O16','O17','O18','H2 ', &
            & 'LI6','LI7','BE9'/
       data optol,zsi/1.0d-8,0.0d0/
-      data tcut,tscut,tenv0,tenv1,tgcut/ &
-           &      6.5d0,6.5d0,6.82d0,7.7d0,7.5d0,6.0d0,3.0d0,9.0d0,6.9d0/
+! tcut/saha_log10t_cutoff/tenv0/tenv1/tgcut defaults moved to
+! const_lib.f90 (see its own header note): DATA can no longer target
+! them here now that they're use-associated from const_lib.
       data atmerr,atmd0,atmbeg,atmmin,atmmax/3.0d-4,1.0d-10,1.0d-1, &
            &      1.0d-1,5.0d-1/
       data enverr,envbeg,envmin,envmax/3.0d-4,1.0d-1,1.0d-1,5.0d-1/
@@ -749,9 +747,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data acfpft,itfp1,itfp2/1.0d-36,5,20/
       data tridt,tridl/1.0d-2,8.0d-2/
       data niter1,niter2,niter3,fcorr0,fcorri/2,20,2,0.8d0,0.1d0/
-      data atime/1.0d-3,2.0d-2,5.0d-1,2.0d-2,3.0d-1,1.5d-3,1.0d-1, &
-           &            2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0,1.5d0,0.25d0/
-!      ATIME(13) was orginally = 1.5.
+! atime's default moved to const_lib.f90 -- see the tcut/etc. note
+! above; ATIME(13) was orginally = 1.5.
       data dtwind /1.0d1/
       data lptime/.true./
 ! JVS 04/14
@@ -1590,7 +1587,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
 !     SPIT OUT NAMELIST VARIABLES TO ISHORT
 
-      write(short_file_unit,25) (tcut(j),j=1,5),tscut,tenv0,tenv1,tgcut
+      write(short_file_unit,25) (tcut(j),j=1,5),saha_log10t_cutoff,tenv0,tenv1,tgcut
       25 format(3x,'LINE  2    TCUT-  E  TCUT- PP  TCUT-CNO  TCUT-                                                                     &
 &3A  TCUT- NU TCUT-SAHA     TENV0     TENV1     TGCUT'/2x, 'STANDAR                                                            &
 &D',9x,'6.50',6x,'6.50',6x,'6.82',6x,'7.70',6x,'7.50',6x, &

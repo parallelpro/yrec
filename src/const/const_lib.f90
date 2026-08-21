@@ -26,6 +26,11 @@
 !                 the rest of const1-3 -- still "occasional
 !                 configuration read broadly," not per-call data, so
 !                 the same module treatment applies.
+! ctlim members: atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv,
+!                tgcut -- NAMELIST /physics/ values (core/parmin.f90),
+!                same "set once, read broadly" character as const1-3;
+!                tenv is the one computed member (0.5*(tenv0+tenv1)),
+!                still only once, not per call.
 module const_lib
       implicit none
 
@@ -44,5 +49,18 @@ module const_lib
 ! real model, same as before.
       double precision :: cdelrl, cmixl2, cmixl3, clndp, seconds_per_year
       double precision :: cmixl = 1.4d0
+
+! former common/ctlim/. Defaults (previously two DATA statements in
+! core/parmin.f90, now illegal there since these are use-associated
+! rather than locally declared) moved here as declaration-time
+! initializers. tenv is the one member computed at runtime (see
+! core/parmin.f90: tenv = 0.5d0*(tenv0+tenv1)), so it has no default.
+      double precision :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
+           3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
+           1.5d0,0.25d0/)
+      double precision :: tcut(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
+      double precision :: saha_log10t_cutoff = 6.0d0
+      double precision :: tenv0 = 3.0d0, tenv1 = 9.0d0, tgcut = 6.9d0
+      double precision :: tenv
 
 end module const_lib

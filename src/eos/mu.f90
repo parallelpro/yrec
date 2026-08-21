@@ -37,11 +37,6 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
            zenvm, envelope_amu, envelope_species_fractions, xnew, znew, &
            stotal, senv
 
-! common/ctlim/: not used in this file; declared only to preserve
-! layout. Naming matches meqos.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 
 

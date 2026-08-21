@@ -65,11 +65,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
       integer, intent(in) :: h_shell_zone_begin
       double precision, intent(in) :: log_teff
 
-! common/ctlim/: only atime(13) (global timestep-change limiter) is
-! used here. Naming matches eqstat2.f90/eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/const/: not used in this file's logic; layout placeholder.
 ! Naming matches wrtout.f90.

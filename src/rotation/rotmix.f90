@@ -48,10 +48,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       common/burn/ reaction_rate_by_zone
 
 
-! common/ctlim/: only tcut is used here. Naming matches eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/flag/: use_extended_composition (originally LEXCOM) selects
 ! whether the light-element species (Li6/Li7/Be9) are tracked in

@@ -78,11 +78,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 
 
 
-! common/ctlim/: only tgcut is used here. Naming matches eqstat2.f90/
-! rotmix.f90 (saha_log10t_cutoff there is the TSCUT slot).
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, tenv0, &
-           tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/dpmix/: only iov1/iov2/iovim/ladov are used here. Naming
 ! matches liburn.f90.

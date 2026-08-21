@@ -43,11 +43,6 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
            frac_be7_electron(json)
       integer, intent(in) :: h_shell_zone_begin
 
-! common/ctlim/: atime(1), atime(4)-atime(5) are used here. Naming
-! matches eqstat2.f90/eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/const/: only solar_luminosity_cgs (CLSUN) is used here.
 ! Naming matches wrtout.f90.

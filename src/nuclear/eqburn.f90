@@ -21,6 +21,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
      zone_end, dc_dt, do_dt, dx_dt, dy_dt, equilibrium_xc12, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -35,10 +36,6 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
            equilibrium_xc12, equilibrium_xo16, hydrogen_fraction, &
            metal_fraction
 
-! common/ctlim/: only tcut is used here. Naming matches eqstat2.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/oldmod/: previous-timestep model snapshot; only
 ! old_composition is used here. Naming matches dburn.f90.

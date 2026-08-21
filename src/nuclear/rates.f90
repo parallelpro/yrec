@@ -105,10 +105,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       double precision, intent(out) :: frac_c12_alpha(json), &
            frac_be7_electron(json)
 
-! common/ctlim/: only tcut is used here. Naming matches eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 
 ! MHP 8/96 CROSS SECTIONS PUT IN COMMON BLOCK.

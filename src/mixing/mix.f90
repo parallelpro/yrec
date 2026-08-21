@@ -79,10 +79,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 
 
 
-! common/ctlim/: only tcut is used here. Naming matches eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! MHP 05/02 DEUTERIUM BURNING RATE ADDED
 ! common/deuter/: only deuterium_burning_rate is used here (set by the

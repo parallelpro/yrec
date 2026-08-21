@@ -43,6 +43,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
      rate_triple_alpha, frac_c12_alpha, shell_mass, composition, &
      timestep_years)
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -67,11 +68,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
       common/burtol/ min_abundance, absolute_tolerance, relative_tolerance, &
            max_burn_iterations
 
-! common/ctlim/: only tcut(1) is used here. Naming matches
-! eqstat2.f90/eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 
 ! common/oldmod/: only old_composition is used here. Naming matches

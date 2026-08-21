@@ -48,12 +48,6 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
 
 
 
-! common/ctlim/: atime(8)-atime(9)-atime(10)-atime(11) (max delta T, P,
-! R, L per model) and atime(13) (global timestep-change limiter) are
-! used here. Naming matches eqstat2.f90/eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/oldmod/: only old_pressure/old_temperature/old_radius/
 ! old_luminosity are used here. Naming matches eqburn.f90/dburn.f90.

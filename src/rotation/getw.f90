@@ -112,10 +112,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       double precision :: max_domega_global
       common/ct2/ max_domega_global
 
-! common/ctlim/: not used in this file. Naming matches eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, tenv0, &
-           tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent. term
 ! common/cwind/: only ljdot0 is used here. Naming matches midmod.f90.

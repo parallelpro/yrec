@@ -12,6 +12,7 @@
 subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
      max_domega_frac)
 
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -39,11 +40,6 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       common/oldrot/ old_omega, old_specific_angular_momentum, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
 
-! common/ctlim/: only atime(13) (global timestep-change limiter) is
-! used here. Naming matches eqstat2.f90/eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
       save
 

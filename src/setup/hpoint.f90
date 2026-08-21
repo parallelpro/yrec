@@ -97,10 +97,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 
 
 
-! common/ctlim/: tenv0/tenv1 are used here. Naming matches eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, tenv0, &
-           tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/ctol/: chi_grid_scale (originally HPTTOL) is used here for the
 ! mesh-spacing tolerances. Naming matches mixgrid.f90.

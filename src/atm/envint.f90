@@ -114,11 +114,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       common/const/solar_luminosity_cgs, log10_solar_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-! common/ctlim/: only tenv is used here. Naming matches eqburn.f90/
-! eqstat2.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 ! common/envprt/: all used/set here. Naming is local to this batch
 ! (shared with qenv.f90's usage of this block).
       double precision :: current_log10_pressure, current_log10_temperature, &

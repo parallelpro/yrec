@@ -199,10 +199,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            accreted_mass_fraction, jcz
 
 
-! common/ctlim/: only tcut is used here. Naming matches eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 
 

@@ -45,6 +45,7 @@
 subroutine findsh(composition, luminosity, is_convective, num_points, &
      core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
      has_h_shell)
+      use const_lib
       implicit none
       integer, parameter :: json=5000
 
@@ -55,10 +56,6 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
            shell_end, shell_mid
       logical, intent(out) :: has_h_shell
 
-! common/ctlim/: only atime is used here. Naming matches envint.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, tenv0, &
-           tenv1, tenv, tgcut
-      common/ctlim/atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
       double precision :: luminosity_change_tol, hydrogen_surface_tol
       double precision :: half_surface_x, luminosity_end_threshold

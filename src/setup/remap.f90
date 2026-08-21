@@ -11,6 +11,7 @@
 ! Subroutine to remap new, more intuitively named, namelist parameters
 ! onto existing code parameters.
 subroutine remap
+      use const_lib
       implicit none
 
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES.
@@ -29,11 +30,6 @@ subroutine remap
       common/ctol/ htoler, fcorr0, fcorri, fcorr, chi_grid_scale, niter1, &
            niter2, niter3
 
-! common/ctlim/: only atime is used (set) here. Naming matches
-! eqburn.f90.
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, tenv0, &
-           tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 ! common/difus/: only dtdif is used (set) here. Naming matches
 ! dadcoeft.f90.

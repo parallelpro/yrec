@@ -91,9 +91,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       common/const/solar_luminosity_cgs,log10_solar_luminosity, &
            ln_solar_luminosity,solar_mass_cgs,log10_solar_mass, &
            solar_radius_cgs,log10_solar_radius,solar_bolometric_magnitude
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, tenv0, &
-           tenv1, tenv, tgcut
-      common/ctlim/atime,tcut,saha_log10t_cutoff,tenv0,tenv1,tenv,tgcut
       logical :: use_extended_composition
       common/flag/use_extended_composition
       double precision :: metal_fraction_match_tolerance, zsi

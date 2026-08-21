@@ -47,12 +47,6 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
            zenvm, envelope_amu, envelope_species_fractions, xnew, znew, &
            stotal, senv
 
-! common/ctlim/: not used in this file; declared only to preserve
-! layout. saha_log10t_cutoff is the name used where this member is
-! actually read (eqstat2.f90).
-      double precision :: atime(14), tcut(5), saha_log10t_cutoff, &
-           tenv0, tenv1, tenv, tgcut
-      common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
 
 
