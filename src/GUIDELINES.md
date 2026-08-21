@@ -36,6 +36,45 @@ startup or namelist-read time), read broadly, never really an
   it themselves, just relay it) is *more* invasive than a module swap
   and buys no extra safety.
 
+  **1b. Genuinely evolving global state (not constant, but still
+  module territory).** Some blocks change every model and are written
+  from several distinct places rather than once at startup (example:
+  `common/oldmod/`, the previous-model snapshot, written from
+  `core/starin.f90`, `core/main.f90`, and `setup/hpoint.f90`). This is
+  *not* case 2 -- nothing here flows cleanly from one caller to one
+  callee within a single call sequence, it's read and written from
+  many distant, unrelated points in the call graph, exactly like a
+  constant is, just mutable. The mechanical conversion is exactly as
+  safe as case 1 (a pure storage-association swap, still verified
+  byte-identical) -- don't let "this is real physics state, not a
+  constant" talk you out of the module treatment; that's about the
+  data's *nature*, not the conversion's *risk*. The one added cost is
+  verification thoroughness: trace *every* write site (not just one,
+  the way a namelist-read case has exactly one writer) before
+  converting.
+
+  For this sub-case, consider a **real derived type** instead of bare
+  module variables (MESA's `prev_star_info` pattern) rather than
+  defaulting to the bare-variable style: `type :: prev_model_state`
+  with the block's members as components, plus one module-level
+  `type(prev_model_state) :: prev_model` instance. Two reasons this is
+  worth the extra work here specifically: the `prev_model%` prefix
+  makes it unambiguous at every use site that a field is *previous*-
+  model state rather than some current-model quantity that happens to
+  share a name, and bundling the fields into one type makes later
+  iteration/serialization (profile/history/pulse output) much easier
+  than chasing bare module variables one at a time. This does not
+  imply multi-instance support the way MESA's real `star_info` needs
+  (YREC runs one star at a time) -- it's a single module-level
+  instance, same usage pattern as the COMMON block was, just through
+  named/typed fields instead of bare positional slots. The real cost
+  is that every read/write site needs a `%` inserted, not just the
+  declaration -- budget for rewriting the whole file body, not a
+  one-line swap. Bare module variables remain the default for
+  genuinely constant/config data (case 1 proper); reach for the type
+  only when the data is itself evolving state naturally suited to
+  being bundled and later iterated.
+
 **2. Real per-call data flow currently smuggled through COMMON** --
 varies call to call, and is genuinely an input or output of a specific
 computation, just hidden in a side channel instead of the argument
@@ -298,3 +337,28 @@ immediately before every commit, not just after making the edits you
 were thinking about, and scope `git commit` with an explicit file
 pathspec whenever more than one sub-task's changes might be staged at
 once.
+
+## Scripting a COMMON-to-module conversion: two parser traps
+
+Both of these produced silent, wrong results (not crashes) until
+caught by manually inspecting a sample conversion before applying
+broadly -- always do that inspection, don't trust a script that
+reports 100% success without having read at least one real diff.
+
+- **A naive `str.split(",")` breaks on 2D array bounds.** A
+  declaration like `old_composition(15,json)` has a comma *inside*
+  its dimension spec; splitting the whole declaration list on every
+  comma turns this into two bogus tokens (`old_composition(15` and
+  `json)`), silently corrupting the parsed member list. Use a
+  paren-depth-aware splitter (only split on commas at depth 0) instead
+  of a plain `.split(",")` whenever parsing a Fortran declaration or
+  argument list that might contain arrays.
+- **Declaration order does not have to match COMMON order.** Fortran
+  groups type declarations by type (all the `double precision`
+  members together, then all the `logical` members, then `integer`,
+  etc.), which is often a different order than the COMMON statement's
+  own positional listing -- this is legal and common, not a bug in the
+  source. Comparing the declared-name list against the COMMON-member
+  list must be done as an unordered set comparison, not a sequence
+  comparison, or a correct file will be wrongly rejected as
+  "mismatched."
