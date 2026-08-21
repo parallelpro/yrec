@@ -23,6 +23,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
 !     INTERPOLATION IN TABLES WITH DIFFERENT X AND FIXED Z
       use luout_lib
       use numerics_lib
+      use nuclear_lib
       implicit none
       integer, parameter :: ivarx = 25
       integer, parameter :: ndimt = 8

@@ -1286,6 +1286,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
      step_err)
       use intpar_lib
+      use nuclear_lib
       implicit none
 
       double precision, parameter :: one = 1.0d0, shrink_factor = 0.95d0, &
@@ -1728,6 +1729,7 @@ end subroutine qgauss
 subroutine intpt(log10_pressure, log10_temperature, table_data, &
      table_dim_t, table_dim_r, num_vars, table_log10t, num_t, num_r, &
      work1, work2, y_work, interp_vars)
+      use nuclear_lib
       implicit none
       integer, intent(in) :: table_dim_t, table_dim_r, num_vars
       double precision, intent(in) :: log10_pressure, log10_temperature

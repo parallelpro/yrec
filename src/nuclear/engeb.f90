@@ -163,6 +163,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 
       use luout_lib
       use const_lib
+      use nuclear_lib
       implicit none
       integer, parameter :: json = 5000
 

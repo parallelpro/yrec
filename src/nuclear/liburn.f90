@@ -26,6 +26,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use luout_lib
       use const_lib
+      use nuclear_lib
       implicit none
       integer, parameter :: json=5000
 
