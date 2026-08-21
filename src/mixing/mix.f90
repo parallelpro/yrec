@@ -36,6 +36,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 
       use luout_lib
       use const_lib
+      use nuclear_lib
       implicit none
       integer, parameter :: json = 5000
 
