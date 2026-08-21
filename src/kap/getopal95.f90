@@ -24,6 +24,8 @@
 subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use interp_mod
+      use intrp2_mod
       implicit none
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19

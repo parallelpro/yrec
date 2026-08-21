@@ -26,6 +26,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
      num_zones, omega, grid_spacing, eq_am_diffusion_coeff, &
      eq_mixing_diffusion_coeff, eq_moment_of_inertia, eq_angular_momentum, &
      eq_mass, eq_omega, single_interface_flag)
+      use osplin_mod
       implicit none
       integer, parameter :: json = 5000
 

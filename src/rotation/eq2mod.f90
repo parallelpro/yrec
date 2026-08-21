@@ -51,6 +51,7 @@
 subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
      zone_begin, zone_end, convective_flag, num_points, &
      total_delta_angular_momentum, specific_angular_momentum)
+      use osplin_mod
       implicit none
       integer, parameter :: json = 5000
 

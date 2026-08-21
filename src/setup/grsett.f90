@@ -55,6 +55,7 @@
 subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
      mass_grams, log_temperature, convective_flag, num_zones, total_mass)
 
+      use tridiag_gs_mod
       implicit none
       integer, parameter :: json = 5000
 

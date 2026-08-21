@@ -24,6 +24,7 @@
 ! linearly extrapolates/interpolates in X if needed.
 subroutine yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+      use findex_mod
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17

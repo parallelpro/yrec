@@ -21,6 +21,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
 !
 !     MHDST MUST BE CALLED IN MAIN.
 !     INTERPOLATION IN TABLES WITH DIFFERENT X AND FIXED Z
+      use quint_mod
       implicit none
       integer, parameter :: ivarx = 25
       integer, parameter :: ndimt = 8

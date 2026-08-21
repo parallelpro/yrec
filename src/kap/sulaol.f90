@@ -12,6 +12,7 @@
 ! rdlaol.f90, for use by gtlaol.f90/gtlaol2.f90.
 subroutine sulaol
 
+      use cspline_mod
       implicit none
 
 ! MHP 8/25 Removed unused variables

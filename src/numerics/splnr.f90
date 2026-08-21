@@ -11,6 +11,8 @@
 ! spline coefficient generator, the classic Numerical Recipes SPLINE
 ! routine kept in its original real precision (unlike cspline/splinj/
 ! splinc, which are real*8 ports of the same algorithm).
+module splnr_mod
+contains
 subroutine splnr(x, y, n, yp1, ypn, y2)
       implicit none
       integer, parameter :: nmax = 500
@@ -49,3 +51,4 @@ subroutine splnr(x, y, n, yp1, ypn, y2)
       end do
       return
 end subroutine splnr
+end module splnr_mod

@@ -10,6 +10,8 @@
 ! Fixed-size (4-point) natural cubic spline coefficient generator,
 ! same algorithm as cspline/splinj/splinc but hardwired to n=4 points
 ! and always the natural-spline boundary condition.
+module kspline_mod
+contains
 subroutine kspline(x, y, y2)
       implicit none
       integer, parameter :: nm = 4
@@ -40,3 +42,4 @@ subroutine kspline(x, y, y2)
       end do
       return
 end subroutine kspline
+end module kspline_mod

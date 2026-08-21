@@ -12,6 +12,8 @@
 ! explicit dummy arguments): solves the tridiagonal system with
 ! sub-diagonal a, diagonal b, super-diagonal c, and right-hand side
 ! ex_prime, returning the solution in ex.
+module tridiag_gs_mod
+contains
 subroutine tridiag_gs(a, b, c, ex_prime, npt, ex)
       implicit none
       integer, parameter :: json = 5000
@@ -41,3 +43,4 @@ subroutine tridiag_gs(a, b, c, ex_prime, npt, ex)
 
       return
 end subroutine tridiag_gs
+end module tridiag_gs_mod

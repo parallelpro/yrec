@@ -22,6 +22,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff)
 
+      use intrp2_mod
       implicit none
       integer, parameter :: json = 5000
 

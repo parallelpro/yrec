@@ -17,6 +17,8 @@
 ! arguments forwarded unchanged to deriv (the caller-supplied
 ! derivative routine, e.g. qatm/qenv) -- named to match the actual
 ! arguments used at the bsstep call sites in envint.f90.
+module mmid_mod
+contains
 subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
      luminosity_linear, pressure_rotation_factor, temperature_rotation_factor, &
      log10_gravity, in_atmosphere, want_derivatives, conductive_opacity_flag, &
@@ -78,3 +80,4 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
       end do
       return
 end subroutine mmid
+end module mmid_mod

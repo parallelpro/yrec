@@ -55,6 +55,8 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use boole_mod
+      use splinj_mod
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts = 63, nps = 76
@@ -294,6 +296,11 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       integer :: envint_unused_flag, katm, kenv, ksaha, ixx_flag
       integer :: klo, khi
       double precision :: cz_radius_cm(1)
+! boole's output argument is a length-1 array (see numerics/boole.f90);
+! these hold its result before copying into the plain scalars
+! acoustic_crossing_time/acoustic_depth_to_cz (common/acdpth/), matching
+! this file's existing cz_radius_cm/spline_interp_value convention.
+      double precision :: acoustic_crossing_time_arr(1), acoustic_depth_to_cz_arr(1)
       double precision :: pressure_rotation_factor, temperature_rotation_factor
       logical :: print_flag, surface_bc_flag, pulsation_output_flag
       double precision :: spot_adjusted_teff
@@ -469,7 +476,8 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       endif
 
       call boole(star_radius_cm,star_inverse_sound_speed,integration_count, &
-           grid_count,acoustic_crossing_time)
+           grid_count,acoustic_crossing_time_arr)
+      acoustic_crossing_time = acoustic_crossing_time_arr(1)
 
 
 
@@ -544,7 +552,8 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                   grid_count=integration_count-cz_zone_index+1+1
             endif
             call boole(star_radius_to_cz,star_inverse_sound_speed_to_cz, &
-                 cz_segment_count,grid_count,acoustic_depth_to_cz)
+                 cz_segment_count,grid_count,acoustic_depth_to_cz_arr)
+            acoustic_depth_to_cz = acoustic_depth_to_cz_arr(1)
       else
             acoustic_depth_to_cz = 0.0d0
       endif

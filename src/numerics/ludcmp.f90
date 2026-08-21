@@ -12,6 +12,8 @@
 ! itself; indx records the row permutation, d returns +/-1 depending
 ! on whether the number of row interchanges was even or odd (used by
 ! the caller to get the sign of the determinant).
+module ludcmp_mod
+contains
 subroutine ludcmp(a, n, np, indx, d)
       implicit none
       integer, parameter :: nmax = 100
@@ -91,3 +93,4 @@ subroutine ludcmp(a, n, np, indx, d)
       return
 
 end subroutine ludcmp
+end module ludcmp_mod

@@ -9,6 +9,8 @@
 !
 ! Natural cubic spline coefficient generator, sized exactly to n
 ! (unlike splinc, which is dimensioned to the json=5000 maximum).
+module splinj_mod
+contains
 subroutine splinj(x, y, y2, n)
       implicit none
 
@@ -38,3 +40,4 @@ subroutine splinj(x, y, y2, n)
       end do
       return
 end subroutine splinj
+end module splinj_mod

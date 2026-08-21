@@ -23,6 +23,9 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
      ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
      adiabatic_gradient, valid_table_point)
 
+      use interp_mod
+      use kspline_mod
+      use ksplint_mod
       implicit none
 
       integer, parameter :: nts = 63, nps = 76

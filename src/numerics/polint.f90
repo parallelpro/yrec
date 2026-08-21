@@ -12,6 +12,8 @@
 ! and an error estimate dy.
 ! MHP 10/02: dimensions changed for consistency with fpft (fixed at
 ! 20 rather than sized to n).
+module polint_mod
+contains
 subroutine polint(xa, ya, n, x, y, dy)
       implicit none
 
@@ -59,3 +61,4 @@ subroutine polint(xa, ya, n, x, y, dy)
       end do
       return
 end subroutine polint
+end module polint_mod

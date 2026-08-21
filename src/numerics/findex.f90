@@ -15,6 +15,8 @@
 ! guess. On entry, index is reset to 1 if it is out of [1,n_grid]. If
 ! x_eval falls below grid_x(1), index is returned as -1; if it falls
 ! at or above grid_x(n_grid), index is returned as -n_grid.
+module findex_mod
+contains
 subroutine findex(grid_x, n_grid, x_eval, index)
       implicit none
       integer, intent(in) :: n_grid
@@ -49,3 +51,4 @@ subroutine findex(grid_x, n_grid, x_eval, index)
 
       return
 end subroutine findex
+end module findex_mod

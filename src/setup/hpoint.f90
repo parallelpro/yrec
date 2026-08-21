@@ -26,6 +26,8 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use osplin_mod
+      use splinc_mod
       implicit none
       integer, parameter :: json = 5000
 

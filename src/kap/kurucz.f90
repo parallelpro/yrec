@@ -29,6 +29,7 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
 !     THE VARIABLES WHICH HAVE 'F'-TAIL ARE WHAT WILL BE RETURNED.
 !     THIS VALUES IS ESTIMATED BY NUMERICAL DIFFERENTIATION.
 
+      use findex_mod
       implicit none
       integer, parameter :: max_num_temps = 60
       integer, parameter :: max_num_densities = 50

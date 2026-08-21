@@ -20,6 +20,8 @@
 !
 ! Upon exit from subroutine 'slopes' -- first_derivs contains the
 ! computed first derivatives at each data point.
+module osplin_mod
+contains
 subroutine osplin(xval, yval, xtab, ytab, n, k)
       implicit none
       integer, parameter :: json = 5000
@@ -43,3 +45,4 @@ subroutine osplin(xval, yval, xtab, ytab, n, k)
 
       return
 end subroutine osplin
+end module osplin_mod

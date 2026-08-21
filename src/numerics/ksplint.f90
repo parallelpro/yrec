@@ -10,6 +10,8 @@
 ! Fixed-size (4-point) cubic-spline evaluation, companion to kspline:
 ! given the table xa/ya and the second derivatives y2a from kspline,
 ! evaluate the spline at x.
+module ksplint_mod
+contains
 subroutine ksplint(xa, ya, y2a, x, y)
       implicit none
       integer, parameter :: nm = 4
@@ -46,3 +48,4 @@ subroutine ksplint(xa, ya, y2a, x, y)
            ((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.0d0
       return
 end subroutine ksplint
+end module ksplint_mod

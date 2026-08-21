@@ -14,6 +14,7 @@
 ! calling this routine.
 subroutine alex06tab
 
+      use intrp2_mod
       implicit none
       integer, parameter :: num_x = 9
       integer, parameter :: num_z = 16

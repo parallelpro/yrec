@@ -12,6 +12,8 @@
 subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use cspline_mod
+      use locate_mod
       implicit none
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction

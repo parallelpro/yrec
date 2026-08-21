@@ -43,6 +43,7 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, shell_mass, zone_begin, zone_end, &
      convective_flag, final_iteration_flag, num_zones, composition, &
      species_begin, species_end)
+      use osplin_mod
       implicit none
       integer, parameter :: json = 5000
 

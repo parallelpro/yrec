@@ -11,6 +11,8 @@
 ! LUDCMP): solves a*x=b for x, given the LU decomposition of a (in
 ! place, as produced by ludcmp) and its pivot record indx. b is
 ! overwritten with the solution.
+module lubksb_mod
+contains
 subroutine lubksb(a, n, np, indx, b)
       implicit none
       integer, intent(in) :: n, np
@@ -51,3 +53,4 @@ subroutine lubksb(a, n, np, indx, b)
       return
 
 end subroutine lubksb
+end module lubksb_mod

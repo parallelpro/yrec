@@ -21,7 +21,10 @@
 ! work. Data that are not already so are interpolated onto an even
 ! grid using spline interpolation (Numerical Recipes SPLINE, renamed
 ! splinj here, and SPLINT).
+module boole_mod
+contains
 subroutine boole(x, y, n, n_grid, integral)
+      use splinj_mod
       implicit none
       double precision, parameter :: scalex = 1e-11
       double precision, parameter :: scaley = 1e7
@@ -72,3 +75,4 @@ subroutine boole(x, y, n, n_grid, integral)
 !----------------------------------------------------------------
 
 end subroutine boole
+end module boole_mod

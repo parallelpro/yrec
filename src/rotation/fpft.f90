@@ -22,6 +22,7 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0)
 
+      use polint_mod
       implicit none
       integer, parameter :: json = 5000
 

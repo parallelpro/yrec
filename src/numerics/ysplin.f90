@@ -11,6 +11,8 @@
 ! On entry c(1,i) holds the tabulated function values at xi(i); on
 ! exit c(2,i)/c(3,i)/c(4,i) hold the first/second/third-order
 ! coefficients of the cubic on each sub-interval.
+module ysplin_mod
+contains
 subroutine ysplin(xi, c, n)
       implicit none
       integer, parameter :: np = 100
@@ -81,3 +83,4 @@ subroutine ysplin(xi, c, n)
 
       return
 end subroutine ysplin
+end module ysplin_mod

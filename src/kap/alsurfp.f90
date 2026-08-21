@@ -85,6 +85,8 @@
 !       If LPRT  is .TRUE. print Log(P) at the associated Log(Teff) to ISHORT and IMODPT.
 subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
 
+      use locate_mod
+      use polint_mod
       implicit none
       integer, parameter :: nta = 250
       integer, parameter :: nga = 25
@@ -138,9 +140,12 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
            alatm04_placeholder3, alatm04_placeholder4
 
       integer :: gl_index(4)
-      double precision :: pressure_row(4), pressure_tau100_row(4), &
-           temp_tau100_row(4), pressure_col(4), pressure_tau100_col(4), &
-           temp_tau100_col(4)
+! sized 20 (only the first 4 elements are ever used) to match polint's
+! dummy arguments xa(20)/ya(20) -- see numerics/polint.f90's header
+! comment and rotation/fpft.f90's identical convention.
+      double precision :: pressure_row(20), pressure_tau100_row(20), &
+           temp_tau100_row(20), pressure_col(20), pressure_tau100_col(20), &
+           temp_tau100_col(20)
 
       save
 

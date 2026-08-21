@@ -17,6 +17,7 @@
 subroutine yllo2d(temperature, density, abund_index, temp_index, &
      dens_index, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use findex_mod
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17

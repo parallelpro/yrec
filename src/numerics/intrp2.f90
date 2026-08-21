@@ -13,6 +13,8 @@
 ! x_nodes and evaluation point x_eval, returns the Lagrangian weights
 ! (weight) such that a function's interpolated value at x_eval is
 ! sum(weight(:)*f(:)) for f sampled at x_nodes.
+module intrp2_mod
+contains
 subroutine intrp2(x_nodes, weight, x_eval)
 
       implicit none
@@ -48,3 +50,4 @@ subroutine intrp2(x_nodes, weight, x_eval)
       weight(4) = (dx1*dx2*dx3)/denom4
       return
 end subroutine intrp2
+end module intrp2_mod

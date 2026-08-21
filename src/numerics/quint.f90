@@ -9,6 +9,8 @@
 !
 ! Quadratic interpolation for equidistant points.
 ! y0=y(x0), y1=y(x1), y2=y(x2); h=x1-x0=x2-x1; computes y=y(x).
+module quint_mod
+contains
 subroutine quint(x, x0, h, y0, y1, y2, y)
       implicit none
       double precision, intent(in) :: x, x0, h, y0, y1, y2
@@ -23,3 +25,4 @@ subroutine quint(x, x0, h, y0, y1, y2, y)
       y = y0 + t*d1 + 0.5d0*t*(t-1.d0)*d2
       return
 end subroutine quint
+end module quint_mod

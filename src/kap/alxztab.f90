@@ -11,6 +11,7 @@
 ! by 4-point Lagrangian interpolation in Z.
 subroutine alxztab(metal_fraction)
 
+      use intrp2_mod
       implicit none
       integer, parameter :: num_x = 7
       integer, parameter :: num_z = 15

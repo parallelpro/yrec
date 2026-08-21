@@ -13,6 +13,7 @@
 ! OPAL92 opacity tables, and for the second (different-Z) OPAL92
 ! table set when use_two_z_tables is set.
 subroutine ylloc
+      use ysplin_mod
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17

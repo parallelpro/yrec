@@ -18,6 +18,8 @@
 ! larger, the routine is signalled to set the corresponding boundary
 ! condition for a natural spline, with zero second derivative on that
 ! boundary.
+module cspline_mod
+contains
 subroutine cspline(x, y, n, yp1, ypn, y2)
       implicit none
       integer, parameter :: json = 5000
@@ -58,3 +60,4 @@ subroutine cspline(x, y, n, yp1, ypn, y2)
       end do
       return
 end subroutine cspline
+end module cspline_mod

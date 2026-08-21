@@ -10,6 +10,8 @@
 ! Given an array xx of length n, and given a value x, returns a
 ! value j such that x is between xx(j) and xx(j+1). j=0 or n then
 ! out of range.
+module locate_mod
+contains
 subroutine locate(xx, n, x, j)
       implicit none
       integer, intent(in) :: n
@@ -39,3 +41,4 @@ subroutine locate(xx, n, x, j)
       end if
       return
 end subroutine locate
+end module locate_mod

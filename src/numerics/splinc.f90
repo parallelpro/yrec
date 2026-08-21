@@ -10,6 +10,8 @@
 ! Natural cubic spline coefficient generator, same algorithm as
 ! splinj but with x/y/y2/u dimensioned to the json=5000 maximum
 ! rather than to n, exactly as in the original file.
+module splinc_mod
+contains
 subroutine splinc(x, y, y2, n)
       implicit none
       integer, parameter :: json = 5000
@@ -41,3 +43,4 @@ subroutine splinc(x, y, y2, n)
       end do
       return
 end subroutine splinc
+end module splinc_mod

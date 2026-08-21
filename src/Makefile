@@ -33,6 +33,16 @@
 # The name for the executable
 NAME = yrec
 
+# GNU Make picks the default goal (what bare `make`/`make -j4` builds) as
+# the target of the *first* rule with a real target list in this file --
+# not necessarily the `default:` target below. The MODULE_OBJS order-only
+# rule further down expands to a long list of plain object-file targets,
+# and would otherwise become that first rule, silently hijacking the
+# default goal to a single arbitrary .o file instead of linking $(NAME).
+# Pin it explicitly so bare `make` always does what the `default:` target
+# below says.
+.DEFAULT_GOAL := default
+
 # The default path into which the 'install' target will try to copy the executable.
 PREFIX ?= /usr/local/bin
 
@@ -41,6 +51,25 @@ PREFIX ?= /usr/local/bin
 # every .f90 file recursively and keep each .o alongside its source.
 SRCS := $(shell find . -name '*.f90' | sed 's|^\./||')
 OBJS := $(patsubst %.f90,%.o,$(SRCS))
+
+# Files that define a Fortran MODULE must be compiled before anything that
+# `use`s them, so the compiler can find the resulting .mod file. GNU Make
+# has no built-in Fortran module dependency scanning, so this list is
+# maintained by hand -- add a source here whenever it gains a `module`
+# statement. The order-only prerequisite below (declared once all module
+# sources are known) ensures every module object is built first, safely
+# under parallel (-j) builds, without forcing spurious rebuilds.
+MODULE_SRCS := numerics/boole.f90 numerics/cspline.f90 numerics/findex.f90 numerics/inter3.f90 numerics/interp.f90 numerics/intrp2.f90 numerics/kspline.f90 numerics/ksplint.f90 numerics/locate.f90 numerics/lubksb.f90 numerics/ludcmp.f90 numerics/mmid.f90 numerics/osplin.f90 numerics/polint.f90 numerics/quint.f90 numerics/splinc.f90 numerics/splinj.f90 numerics/splnr.f90 numerics/tridiag_gs.f90 numerics/ysplin.f90
+MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
+
+$(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
+
+# The rule above only orders non-module objects after the full set of
+# module objects; it does not order module objects relative to each
+# other. Where one module source itself `use`s another module, that
+# specific edge needs its own order-only prerequisite so parallel (-j)
+# builds don't race to compile the user before the .mod it needs exists.
+numerics/boole.o: | numerics/splinj.o
 
 # Flags for GNU Fortran (gfortran)
 GNU_BASE_FFLAGS = -ffixed-line-length-132 -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'"

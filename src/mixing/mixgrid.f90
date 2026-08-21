@@ -20,6 +20,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
+      use osplin_mod
       implicit none
       integer, parameter :: json = 5000
 

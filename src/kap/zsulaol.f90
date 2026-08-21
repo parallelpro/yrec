@@ -12,6 +12,7 @@
 ! rdzlaol.f90, for use by gtpurz.f90.
 subroutine zsulaol
 
+      use cspline_mod
       implicit none
       double precision :: row_log10_opacity(104), row_log_rho(104), &
            row_d2opacity(104)

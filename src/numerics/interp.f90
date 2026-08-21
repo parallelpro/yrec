@@ -14,6 +14,8 @@
 ! derivatives with respect to x_eval (dweight) such that a function's
 ! interpolated value/derivative at x_eval are sum(weight(:)*f(:)) and
 ! sum(dweight(:)*f(:)) for f sampled at x_nodes.
+module interp_mod
+contains
 subroutine interp(x_nodes, weight, dweight, x_eval)
 
       implicit none
@@ -51,3 +53,4 @@ subroutine interp(x_nodes, weight, dweight, x_eval)
 
       return
 end subroutine interp
+end module interp_mod

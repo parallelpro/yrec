@@ -17,6 +17,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      equal_diffusion_coeff1_dx_mid, equal_diffusion_coeff2_dx_mid, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
+      use interp_mod
       implicit none
       integer, parameter :: json = 5000
 

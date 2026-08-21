@@ -12,6 +12,8 @@
 subroutine gtpurz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use cspline_mod
+      use locate_mod
       implicit none
       double precision, intent(in) :: log10_density, log10_temperature
       double precision, intent(out) :: opacity, log10_opacity, &

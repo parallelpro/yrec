@@ -21,6 +21,7 @@
 ! to fill tablenv columns 7-12.
 subroutine setscv
 
+      use inter3_mod
       implicit none
       integer, parameter :: nts = 63, nps = 76
 
