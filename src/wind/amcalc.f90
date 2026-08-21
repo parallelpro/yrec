@@ -15,6 +15,7 @@
 ! pressure, and (optionally) convective-turnover-timescale (Rossby)
 ! scaling, each raised to its own calibrated exponent.
 subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
+      use turnover_lib
       use const_lib
       implicit none
 
@@ -69,14 +70,6 @@ subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
            use_pmm_wind_law, scale_by_rossby_number, scale_by_b_field, &
            wind_law_name
 
-! common/ovrtrn/: only convective_turnover_timescale(_old)/pphot(0)/
-! fracstep are used here. Naming matches getw.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
       save
 
@@ -96,12 +89,12 @@ subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
 !     LUMINOSITY
       luminosity_lsun = 10.**log_luminosity_lsun
 !     PHOTOSPHERIC PRESSURE
-      photospheric_pressure_ratio = 10.**(pphot0+fracstep*(pphot-pphot0))/ &
+      photospheric_pressure_ratio = 10.**(turnover%pphot0+turnover%fracstep*(turnover%pphot-turnover%pphot0))/ &
            (10.**pmm_solar_pressure)
 !     CONVECTIVE OVERTURN TIMESCALE
       if(scale_by_rossby_number)then
-         turnover_ratio = (convective_turnover_timescale_old+fracstep* &
-              (convective_turnover_timescale-convective_turnover_timescale_old))/ &
+         turnover_ratio = (turnover%convective_turnover_timescale_old+turnover%fracstep* &
+              (turnover%convective_turnover_timescale-turnover%convective_turnover_timescale_old))/ &
               pmm_solar_turnover_timescale
       else
          turnover_ratio = 1.

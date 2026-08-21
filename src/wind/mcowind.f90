@@ -47,6 +47,7 @@
 subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end)
+      use turnover_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -88,15 +89,6 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: convective_turnover_timescale(_old)/fracstep are used
-! here. Naming matches getw.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 ! common/pmmwind/: use_pmm_wind_law/scale_by_rossby_number/
 ! scale_by_b_field/pmm_solar_omega/pmm_solar_turnover_timescale are
@@ -135,8 +127,8 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 ! ADD ROSSBY SCALING TO WMAX = CRITICAL W FOR THE SUN.
       if(scale_by_rossby_number)then
 ! MHP 8/17 CORRECTED TAUCZ CALCULATION TO INTERPOLATE PROPERLY IN TIMESTEP
-         current_turnover_timescale = convective_turnover_timescale_old+ &
-              fracstep*(convective_turnover_timescale-convective_turnover_timescale_old)
+         current_turnover_timescale = turnover%convective_turnover_timescale_old+ &
+              turnover%fracstep*(turnover%convective_turnover_timescale-turnover%convective_turnover_timescale_old)
          omega_saturation = wind_saturation_omega*pmm_solar_turnover_timescale/ &
               current_turnover_timescale
 ! G Somers 08/17 IF ADDING ADDITIONAL B SCALING, ADD ADDITIONAL TAUCZ TERM.

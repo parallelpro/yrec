@@ -16,6 +16,7 @@
 subroutine tauint(shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
+      use turnover_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -76,15 +77,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
            env_gradients, env_convective_velocity, env_beta, &
            env_gamma1, env_specific_heat_cp, env_ion_fraction, &
            env_opacity, env_luminosity, env_dlnrho_dlnt, num_env_points
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: only convective_turnover_timescale is set here.
-! Naming matches mixcz.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
       save
 
@@ -182,7 +174,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
             convective_velocity_bcz = convective_velocity(num_points)
  85         continue
 ! DEFINE TAUCZ
-            convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+            turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
 
          else
 ! INFER HP
@@ -196,7 +188,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
 ! SLOWLY VARYING DENSITY AND PRESSURE NEAR THE CENTER.
                convective_velocity_bcz = convective_velocity(1)
                pressure_scale_height_bcz = (pressure_scale_height2*radius_test2)**0.5d0
-               convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+               turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
             else
                do k = 2,num_points
                   pressure_scale_height1 = pressure_scale_height2
@@ -216,19 +208,19 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
                      pressure_scale_height_bcz = pressure_scale_height1+ &
                           interp_fraction*(pressure_scale_height2-pressure_scale_height1)
 ! DEFINE TAUCZ
-                     convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+                     turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
                      goto 95
                   endif
                end do
                k = num_points
                convective_velocity_bcz = convective_velocity(num_points)
                pressure_scale_height_bcz = pressure_scale_height2
-               convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+               turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
  95            continue
             endif
          endif
       else
-         convective_turnover_timescale = 0.0d0
+         turnover%convective_turnover_timescale = 0.0d0
       endif
 
 !--------------------------------------------------------------

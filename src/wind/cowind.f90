@@ -39,6 +39,7 @@
 subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end)
+      use turnover_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -79,14 +80,6 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/ovrtrn/: only convective_turnover_timescale is used here.
-! Naming matches getw.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
       save
 
@@ -101,12 +94,12 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 ! MHP 3/09 IF WMAX > 1 THEN ASSUME THAT THE PARAMETER WMAX IS DEFINED BY
 ! WMAX = WMAX(SUN)*TAUCZ(SUN) AND THE SATURATION THRESHOLD WSAT = WMAX/TAUCZ(STAR)
       if(wind_saturation_omega.gt.1.0d0)then
-         if(convective_turnover_timescale.gt.1.0d0)then
-            omega_saturation = wind_saturation_omega/convective_turnover_timescale
+         if(turnover%convective_turnover_timescale.gt.1.0d0)then
+            omega_saturation = wind_saturation_omega/turnover%convective_turnover_timescale
 !            WRITE(*,912)WSAT,TAUCZ
 ! 912        FORMAT('Omega sat, Tau',1p2e12.3)
          else
-            write(*,911)wind_saturation_omega,convective_turnover_timescale
+            write(*,911)wind_saturation_omega,turnover%convective_turnover_timescale
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
             stop
          endif

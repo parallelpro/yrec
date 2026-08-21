@@ -46,6 +46,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed)
+      use turnover_lib
       use scrtch_lib
       use const_lib
       implicit none
@@ -111,15 +112,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
            accreted_mass_fraction, jcz
 
 
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: only convective_turnover_timescale is used (written
-! diagnostically) here. Naming matches getw.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 ! MHP 5/02 EFFICIENCY FACTOR FOR THE THERMAL ENERGY CONTENT
 ! OF ACCRETED MATTER.
@@ -196,11 +188,11 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 !               TAUCZ = TAUCZ + DR/V
 !            ENDIF
 !         END DO
-         write(*,*)convective_turnover_timescale/seconds_per_year, &
+         write(*,*)turnover%convective_turnover_timescale/seconds_per_year, &
               total_radius_cm/solar_radius_cgs
          jcz = envelope_boundary_zone
       else
-         convective_turnover_timescale = 0.0d0
+         turnover%convective_turnover_timescale = 0.0d0
          jcz = num_zones
       endif
 ! MHP 8/10

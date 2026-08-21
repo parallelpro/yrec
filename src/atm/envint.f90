@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use turnover_lib
       use luout_lib
       use const_lib
       use intpar_lib
@@ -318,15 +319,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            lstch, lphhd
 ! G Somers END
 
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: only calc_envelope_flag/pphot/use_new_turnover_timescale
-! are used here. Naming matches mixcz.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 ! MHP 1/01 CHANGED END OF FILE INDICATOR IN ATMOSPHERE/ENVELOPE FILES TO
 ! VECTOR FROM SCALAR
@@ -703,7 +695,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
   200 continue   ! Kurucz and Allard (KTTAU=3 and 4) bypass atmosphere
                  !  integration and come here
 ! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
-      pphot = atm_log10_pressure
+      turnover%pphot = atm_log10_pressure
       if(.not.calc_envelope_flag) goto 555
 
 ! G Somers 11/14 WRITE ENVELOPE HEADER

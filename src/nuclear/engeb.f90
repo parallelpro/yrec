@@ -161,6 +161,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      reaction_rate_13, n15_alpha_branch_fraction, &
      be7_electron_capture_fraction)
 
+      use turnover_lib
       use luout_lib
       use const_lib
       use nuclear_lib
@@ -225,27 +226,18 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! 9/06 GN --- New neutrino loss common block
 ! KC 2025-05-30 reordered common block elements
 !       COMMON/NULOSS/LNULOS1,DSNUDT,DSNUDD
-! common/nuloss/: switch (use_itoh_neutrino_loss) selecting the Itoh
-! 1996 neutrino-loss routines used below, and the log-derivatives of
-! the resulting loss rate w.r.t. T/rho (neutrino_dlnq_dlnt/
-! neutrino_dlnq_dlnd), all set/used here. First appearance of this
-! common block in the converted sources.
+! former common/nuloss/: use_itoh_neutrino_loss (switch selecting the
+! Itoh 1996 neutrino-loss routines below) is real shared configuration
+! -- now use-associated from const_lib. neutrino_dlnq_dlnt/
+! neutrino_dlnq_dlnd (the log-derivatives of the resulting loss rate
+! w.r.t. T/rho) are set and consumed entirely within this file --
+! core/parmin.f90, which declared the same common block, never
+! actually touches them -- so they're genuinely local, not shared
+! state, and become plain locals here rather than moving to a module.
       double precision :: neutrino_dlnq_dlnt, neutrino_dlnq_dlnd
-      logical :: use_itoh_neutrino_loss
-      common/nuloss/neutrino_dlnq_dlnt, neutrino_dlnq_dlnd, &
-           use_itoh_neutrino_loss
 
 
 
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: only convective_turnover_timescale is used here.
-! Naming matches mixcz.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 ! JVS 10/11 Common block for He3+He3 luminosity
 ! common/grab/: he3_luminosity_placeholder/he3_total_placeholder are
@@ -645,8 +637,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
         qrtdeut = cc13*((tfacdeut2/tfacdeut) -2.0d0 - zz)
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
-        if (shell_index.ge.jcz .and. convective_turnover_timescale.gt.1.0d0) then
-           rdeutmax = 6.023d23/atomic_mass_amu(3)/convective_turnover_timescale
+        if (shell_index.ge.jcz .and. turnover%convective_turnover_timescale.gt.1.0d0) then
+           rdeutmax = 6.023d23/atomic_mass_amu(3)/turnover%convective_turnover_timescale
            rdeut2 = rdeut*hydrogen_fraction
            if (rdeut2.gt.rdeutmax) then
 ! JVS 0712 Commented out write command

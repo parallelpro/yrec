@@ -19,6 +19,7 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
      specific_angular_momentum)
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
+      use turnover_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -62,15 +63,6 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
            accreted_mass_fraction, jcz
 
 
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: only convective_turnover_timescale(_old)/fracstep
-! are used here. Naming matches getw.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 ! common/pmmwind/: use_pmm_wind_law/scale_by_rossby_number/
 ! scale_by_b_field/pmm_solar_omega/pmm_solar_turnover_timescale are
@@ -116,8 +108,8 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! ADD ROSSBY SCALING IF DESIRED.
       if(scale_by_rossby_number)then
 ! MHP 8/17 CORRECTED TAUCZ CALCULATION TO INTERPOLATE PROPERLY IN TIMESTEP
-         current_turnover_timescale = convective_turnover_timescale_old+ &
-              fracstep*(convective_turnover_timescale-convective_turnover_timescale_old)
+         current_turnover_timescale = turnover%convective_turnover_timescale_old+ &
+              turnover%fracstep*(turnover%convective_turnover_timescale-turnover%convective_turnover_timescale_old)
          if(scale_by_b_field)then
 ! G Somers 8/17 CREATE ROTATION DUMMY VARIABLES.
             omega_now = omega_surface*current_turnover_timescale/ &

@@ -25,6 +25,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use turnover_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -246,17 +247,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
            he3_he3_rate_placeholder(json), he3_he4_rate_placeholder(json)
       common/grab/ he3_luminosity_placeholder, he3_total_placeholder, &
            he3_he3_rate_placeholder, he3_he4_rate_placeholder
-! JVS end
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: convective_turnover_timescale/
-! convective_turnover_timescale_old/pphot/pphot0 are used here. Naming
-! matches mixcz.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
       double precision :: fxion(3)
       double precision :: clsnuf(8), gasnuf(8)
@@ -761,8 +751,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
       call gettau(composition,log_radius,log_pressure,log_density,mass_coordinate,log_temperature,shape_factor_fp,shape_factor_ft,log_teff, &
                   log_total_mass,log_luminosity_lsun,num_shells,convective_flag,envelope_radius)
-      convective_turnover_timescale_old = convective_turnover_timescale
-      pphot0 = pphot
+      turnover%convective_turnover_timescale_old = turnover%convective_turnover_timescale
+      turnover%pphot0 = turnover%pphot
 
 ! JVS 02/12 Added PPHOT and SMASS to the output
             write(itrack, 1499) model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,envelope_mass, &
@@ -770,8 +760,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
             cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
             (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
-            total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,omega(num_shells),omega(1),rotation_period_days,equatorial_velocity_kms,convective_turnover_timescale, &
-            h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius,pphot,total_mass_msun
+            total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,omega(num_shells),omega(1),rotation_period_days,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
+            h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius,turnover%pphot,total_mass_msun
 ! MHP 9/25 added more columns to cz depth to avoid overflow
 !     1499       FORMAT(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3,41E16.8)
 ! MCR 12/25 Preserve precision and 'E' for values w/ 3-digit exponents
@@ -840,7 +830,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
          if (track_file_version .eq. 2) then
 
             write(itrack,1540)total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,omega(num_shells), &
-                           omega(1),rotation_period_days,equatorial_velocity_kms,convective_turnover_timescale
+                           omega(1),rotation_period_days,equatorial_velocity_kms,turnover%convective_turnover_timescale
  1540       format(1X, 1P6E13.5,0P,2F11.5,1E13.5)
          end if
          if (track_file_version .eq. 3) then
@@ -955,7 +945,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
             cl37_snu_rate,ga71_snu_rate,(neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
             (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
-            total_angular_momentum,normalized_acoustic_depth,acoustic_depth_to_cz,acoustic_crossing_time,helium_zone_acoustic_depth,helium_zone_weight,atmosphere_acoustic_depth,equatorial_velocity_kms,convective_turnover_timescale, &
+            total_angular_momentum,normalized_acoustic_depth,acoustic_depth_to_cz,acoustic_crossing_time,helium_zone_acoustic_depth,helium_zone_weight,atmosphere_acoustic_depth,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck
  1800      format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3, &
                   39E16.8, I8)

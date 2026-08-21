@@ -23,6 +23,7 @@
 ! executes.
 subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
+      use turnover_lib
       use scrtch_lib
       use const_lib
       implicit none
@@ -76,15 +77,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
            esumm, om, qdtm, thdifm, velm, viscm, epsm
 
-! G Somers 3/17: taucz is now passed in via this common block rather
-! than computed here. Not used in this file (the taucz code below is
-! dead). Naming matches deutrate.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
       double precision :: species_sum(15)
       integer :: zone_bounds(24)

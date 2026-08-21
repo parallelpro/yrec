@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use turnover_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -233,14 +234,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       common/oldrot2/ tho, theta_new, theta_mean, del_grad_diff_interface, &
            es_relaxation_factor, theta_prev, qwrst, wmst, qwrmst
 
-! common/ovrtrn/: only fracstep is used (set) here. Naming matches
-! midmod.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
       save
 
@@ -359,7 +352,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
 ! MHP 10/17 timestep average loss rate
 !            FRACSTEP = 1.
-            fracstep = 0.5
+            turnover%fracstep = 0.5
             call mwind(log_luminosity_lsun,full_timestep,cz_mass_bottom, &
                  cz_mass_top,envelope_boundary_zone,num_zones,wind_loss_active, &
                  omega_surface, &
@@ -452,7 +445,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
          end do
       endif
       fx = elapsed_substep_time/full_timestep
-      fracstep = fx
+      turnover%fracstep = fx
 ! INTERPOLATE LINEARLY IN TIME FOR THE MODEL STRUCTURE BETWEEN THE
 ! START AND END OF THE TIMESTEP.
 ! JVS

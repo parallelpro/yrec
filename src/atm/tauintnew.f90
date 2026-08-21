@@ -24,6 +24,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      num_interior_points, convective_velocity, radiative_gradient, &
      adiabatic_gradient, radius_at_bcz)
+      use turnover_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -50,14 +51,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
       integer :: jcz
       common/deuter/deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
-! common/ovrtrn/: only convective_turnover_timescale is set here.
-! Naming matches mixcz.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 ! common/const/: only solar_radius_cgs is used here. Naming matches
 ! wrtout.f90.
       double precision :: solar_luminosity_cgs, log10_solar_luminosity, &
@@ -228,7 +221,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
             k = cz_base_index
             convective_velocity_bcz = convective_velocity(cz_base_index)
             pressure_scale_height = pressure_scale_height2
-            convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
+            turnover%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
          else
             do k = cz_base_index+1,num_points-1,1
                pressure_scale_height1 = pressure_scale_height2
@@ -269,7 +262,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
                   call kspline(spline_x_delta,spline_y_radius,spline_deriv)
                   call ksplint(spline_x_delta,spline_y_radius,spline_deriv,0.0d0,log10_radius_interp)
 ! DEFINE TAUCZ
-                  convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
+                  turnover%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
                   goto 140
                endif
             end do
@@ -313,19 +306,19 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
             call kspline(spline_x_radius,spline_y_velocity,spline_deriv)
             call ksplint(spline_x_radius,spline_y_velocity,spline_deriv,radius_test,convective_velocity_bcz)
 ! DEFINE TAUCZ
-            convective_turnover_timescale = cz_width/convective_velocity_bcz
+            turnover%convective_turnover_timescale = cz_width/convective_velocity_bcz
   140       continue
 ! KC 2025-05-31 MOVED ENDIF ABOVE TO AVOID BLOCK MISMATCH.
 !          ENDIF
 !        CONVERT CORE RADIUS INTO SOLAR UNITS
          radius_at_bcz = radius_at_bcz/solar_radius_cgs
       else
-         convective_turnover_timescale = 0.0d0
+         turnover%convective_turnover_timescale = 0.0d0
          radius_at_bcz = 0.0
       endif
 !     ENSURE THAT TAUCZ WAS NOT ACCIDENTALLY CALCULATED
 !     DEEP IN THE STELLAR INTERIOR. IF YES, REDO CALCULATION.
-      if (convective_turnover_timescale.gt.1.0e20) then
+      if (turnover%convective_turnover_timescale.gt.1.0e20) then
          search_start_index = cz_base_index + 1
        goto 50
       endif

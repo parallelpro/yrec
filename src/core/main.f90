@@ -150,6 +150,7 @@ program main
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
+      use turnover_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -646,15 +647,6 @@ program main
       logical :: use_envelope_triangle_dt
       common/govs/ use_envelope_triangle_dt
 
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: only convective_turnover_timescale used here; the
-! rest unused placeholders. Naming matches envint.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 ! MHP 10/24 NEW VARIABLES FOR STOP CRITERIA ON CENTRAL ABUNDANCE are
 ! carried in common/sett/ above.
 
@@ -1016,7 +1008,7 @@ program main
          pulsation_mass_msun=total_mass_msun
 ! MHP 08/02 STORE STARTING CZ PROPERTIES
          jcz = envelope_cz_bottom_index
-         convective_turnover_timescale = 0.0D0
+         turnover%convective_turnover_timescale = 0.0D0
 ! write out headers of the appropriate output files
       call wrthead(total_mass_msun)
 ! DBG PULSE OUT 7/92

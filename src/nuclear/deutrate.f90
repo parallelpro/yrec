@@ -13,6 +13,7 @@
 ! convection zone, the rate is capped so that deuterium burning cannot
 ! proceed faster than the local convective overturn timescale.
 subroutine deutrate(dl,tl,x,i,itlvl)
+      use turnover_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -31,15 +32,6 @@ subroutine deutrate(dl,tl,x,i,itlvl)
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/ovrtrn/: only convective_turnover_timescale (taucz) is used
-! here. G Somers 3/17, adding new taucz common block. Remaining members
-! are placeholders (uncertain interpretation) preserving layout.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
       double precision :: c21
       data c21/5.240358E-8/
@@ -72,8 +64,8 @@ subroutine deutrate(dl,tl,x,i,itlvl)
       rdeut = rho*2.240d3*t9p23*exp(z)*tfacdeut*3.0115d23
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
-      if(i.ge.jcz .and. convective_turnover_timescale.gt.1.0d0)then
-         rdeutmax = 3.0115d23/convective_turnover_timescale
+      if(i.ge.jcz .and. turnover%convective_turnover_timescale.gt.1.0d0)then
+         rdeutmax = 3.0115d23/turnover%convective_turnover_timescale
          rdeut2 = rdeut*x
          if(i.eq.jcz)then
 ! JVS 0712 Commented out write command

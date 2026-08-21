@@ -372,10 +372,15 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: atmplc(n_katm_teff,n_katm_logg), atmtlc(n_katm_teff), atmglc(n_katm_logg)
       common /atmos2c/ atmplc, atmtlc, atmglc
 
-! common /nuloss/
-      double precision :: dsnudt, dsnudd
+! lnulos1: NAMELIST /physics/ member (must keep this exact spelling);
+! copied into const_lib's use_itoh_neutrino_loss after the namelist
+! read below. dsnudt/dsnudd (former common/nuloss/'s other two
+! members) are unused in this file and confirmed dead everywhere else
+! too (nuclear/engeb.f90's neutrino_dlnq_dlnt/neutrino_dlnq_dlnd,
+! which shared this block only by position, are genuinely local to
+! that file and were made plain locals there), so they're dropped
+! entirely rather than carried forward.
       logical :: lnulos1
-      common /nuloss/ dsnudt, dsnudd, lnulos1
 
 ! common /cals2/
       double precision :: toll, tolr, tolz, calsolzx, calsolage
@@ -549,10 +554,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       common /cwind/ wmax, exmd, exw, extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
 
-! common /ovrtrn/
+! lnewtcz/lcalcenv: NAMELIST /physics/ members (must keep this exact
+! spelling); copied into const_lib's use_new_turnover_timescale/
+! calc_envelope_flag after the namelist read below. taucz/taucz0/
+! pphot/pphot0/fracstep (former common/ovrtrn/'s other five members)
+! are unused in this file -- they're genuinely evolving per-model
+! state read/written by many distant files, now state/turnover_lib.f90
+! -- so they're dropped from this file's own declarations entirely.
       logical :: lnewtcz, lcalcenv
-      double precision :: taucz, taucz0, pphot, pphot0, fracstep
-      common /ovrtrn/ lnewtcz, lcalcenv, taucz, taucz0, pphot, pphot0, fracstep
 
 ! common /mag/
       double precision :: codm
@@ -1124,6 +1133,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       mass_accretion_rate = dmdt0
       accreted_composition = compacc
       use_mass_accretion = lmdot
+! use_itoh_neutrino_loss/use_new_turnover_timescale/calc_envelope_flag:
+! same reasoning, copied from their NAMELIST-spelled locals.
+      use_itoh_neutrino_loss = lnulos1
+      use_new_turnover_timescale = lnewtcz
+      calc_envelope_flag = lcalcenv
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap

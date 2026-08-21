@@ -26,6 +26,7 @@
 subroutine gettau(composition, log_radius, log_pressure, log_density, &
      enclosed_mass, log_temperature, fp, ft, log_teff, log_total_mass, &
      log_luminosity_lsun, num_zones, convective_flag, radius_at_bcz)
+      use turnover_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -104,15 +105,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       double precision :: envint_dummy1(4), envint_dummy2(3), &
            envint_dummy3(3), envint_dummy4(3)
       integer :: katm, kenv, ksaha
-! common/ovrtrn/: use_new_turnover_timescale/calc_envelope_flag/
-! convective_turnover_timescale/pphot are used here. Naming matches
-! midmod.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 ! common/spots/: spot_filling_factor/spot_temp_contrast are used here.
 ! Naming matches wrtmod.f90.
@@ -137,8 +129,8 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       integer :: combined_num_points
 
 ! TAUCZ = 0.0
-      convective_turnover_timescale = 0.0
-      pphot = 0.0
+      turnover%convective_turnover_timescale = 0.0
+      turnover%pphot = 0.0
 
 ! Check if 1 PSCA above BCZ is within envelope. If shell_diag%so, only the interior
 ! model should be considered for TAUCZ. Set LCALCENV = .FALSE.. If not,
@@ -205,7 +197,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! TOP OF THE INTERIOR MODEL IS RADIATIVE. CHECK IF TAUCZ = 0.0. IF NOT,
 ! THEN GO TO THE END.
 !
-      if (convective_turnover_timescale.ne.0.0) goto 100
+      if (turnover%convective_turnover_timescale.ne.0.0) goto 100
 !
 ! COLLECT THE NECESSARY STRUCTURE VARIABLES INTO DUMMY VECTORS.
       combined_num_points = num_zones

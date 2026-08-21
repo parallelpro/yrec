@@ -137,4 +137,26 @@ module const_lib
       double precision :: li6_rate_scale, li7_rate_scale, &
            be9_pg_rate_scale, be9_pd_rate_scale, be9_palpha_rate_scale
 
+! former common/nuloss/'s one config member: switch selecting the Itoh
+! 1996 neutrino-loss routines (nuclear/engeb.f90), a NAMELIST /physics/
+! value. core/parmin.f90's local name for it (lnulos1) is itself
+! namelist-visible and can't be renamed, so it stays local there and
+! is copied into this canonical name after the namelist read -- same
+! treatment as li6_rate_scale etc above. common/nuloss/'s other two
+! members (dsnudt/dsnudd in core/parmin.f90, neutrino_dlnq_dlnt/
+! neutrino_dlnq_dlnd in nuclear/engeb.f90) were dead/purely-local and
+! dropped/delocalized rather than moved here -- see those files.
+      logical :: use_itoh_neutrino_loss = .false.
+
+! former common/ovrtrn/'s two config members: NAMELIST /physics/
+! values selecting the newer convective-turnover-timescale calculation
+! and whether to run the full envelope integration. Same
+! namelist-can't-rename treatment as use_itoh_neutrino_loss above --
+! core/parmin.f90 keeps its local lnewtcz/lcalcenv and copies into
+! these canonical names. The other five former common/ovrtrn/ members
+! are genuinely evolving per-model state, not configuration -- see
+! state/turnover_lib.f90.
+      logical :: use_new_turnover_timescale = .true.
+      logical :: calc_envelope_flag = .true.
+
 end module const_lib

@@ -62,6 +62,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
      num_eq_points, wind_loss_explicit, wind_loss_implicit, &
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged)
+      use turnover_lib
       implicit none
       integer, parameter :: json = 5000, nmax = 8000
 
@@ -214,16 +215,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
            extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
 
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: only convective_turnover_timescale (TAUCZ) is used
-! here (in the LROSSBY branch discussed below). Naming matches
-! mixcz.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 !       DIMENSION EI(JSON),EW(JSON),EJ(JSON),DJ(JSON),  ! KC 2025-05-31
       double precision :: coeff_matrix(nmax,10), rhs(nmax), &
@@ -320,7 +311,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 ! leave in them rather than the intended global Rossby-scaling flag.
             if (lrossby) then
                wind_saturation_threshold = wind_saturation_omega* &
-                    pmmsoltau/convective_turnover_timescale
+                    pmmsoltau/turnover%convective_turnover_timescale
             else
                wind_saturation_threshold = wind_saturation_omega
             end if

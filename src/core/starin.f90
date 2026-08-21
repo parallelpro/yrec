@@ -110,6 +110,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
      trial_log_luminosity, trial_log_temperature, fit_point_temperature, &
      convective_velocity, mean_gravity, species_mix_weights)
 
+      use turnover_lib
       use scrtch_lib
       use oldmod_lib
       use luout_lib
@@ -385,12 +386,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       double precision :: spot_filling_factor, spot_temp_contrast
       logical :: spot_depth_varies
       common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 ! G Somers END
 ! MHP 10/24 ADDED NEW CONTROLS FOR ALTERING THE CNO MASS FRACTIONS
 ! ISOTOPIC RATIOS(C,N,O) AND D/HE3/LI/BE/B ABUNDANCES.
@@ -1471,9 +1466,9 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                   temperature_rotation_factor,log_teff, &
                   log_total_mass,log10_luminosity,num_shells,convective_flag, &
                   env_log10_radius)
-      convective_turnover_timescale_old = convective_turnover_timescale
-      pphot0 = pphot
-      fracstep = 0.5
+      turnover%convective_turnover_timescale_old = turnover%convective_turnover_timescale
+      turnover%pphot0 = turnover%pphot
+      turnover%fracstep = 0.5
 
       return
 end subroutine starin

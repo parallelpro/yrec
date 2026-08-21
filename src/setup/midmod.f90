@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use turnover_lib
       use scrtch_lib
       use oldmod_lib
       use const_lib
@@ -170,15 +171,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       common/prevmid/ del_grad_diff_prev, del_grad_diff_new, radius_prev, &
            convective_flag_prev
 
-! G Somers 3/17, adding new taucz common block
-! common/ovrtrn/: not used in this file (only referenced in the
-! commented-out taucz calculation below). Naming matches mixcz.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 ! MHP 3/09 added flag to enforce solid body rotation at all times.
 ! JNT 09/25 for 05/15 add impjmod

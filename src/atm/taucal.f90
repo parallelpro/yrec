@@ -16,6 +16,7 @@
 subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
+      use turnover_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -49,15 +50,6 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
       common/const/solar_luminosity_cgs, log10_solar_luminosity, &
            ln_solar_luminosity, solar_mass_cgs, log10_solar_mass, &
            solar_radius_cgs, log10_solar_radius, solar_bolometric_magnitude
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: only convective_turnover_timescale is set here.
-! Naming matches mixcz.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
       save
 
@@ -193,7 +185,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
                              (convective_velocity(j)+convective_velocity(j+1))*delta_mass(j)
                   enddo
                   avg_convective_velocity = velocity_mass_sum/mass_sum
-                  convective_turnover_timescale = cz_width/avg_convective_velocity
+                  turnover%convective_turnover_timescale = cz_width/avg_convective_velocity
             else
 !             (ORIGINAL ROUTINE)
 !             FIND V
@@ -209,7 +201,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
                     convective_velocity_bcz = convective_velocity(num_points)
  85                continue
 !                  DEFINE TAUCZ
-                  convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+                  turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
             endif
 
 ! JVS 10/11/13
@@ -254,7 +246,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
 !            ENDIF
 !         ENDIF
       else
-         convective_turnover_timescale = 0.0d0
+         turnover%convective_turnover_timescale = 0.0d0
       endif
       print*, 'TauCal'
 

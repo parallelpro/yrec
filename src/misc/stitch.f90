@@ -30,6 +30,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
 
+      use turnover_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -149,16 +150,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       logical :: spot_depth_varies
       common/spots/ spot_filling_factor, spot_temp_contrast, &
            spot_depth_varies
-! G Somers END
-! G Somers 3/17, ADDING NEW TAUCZ COMMON BLOCK
-! common/ovrtrn/: not used in this file's logic; layout placeholder.
-! Naming matches amcalc.f90.
-      logical :: use_new_turnover_timescale, calc_envelope_flag
-      double precision :: convective_turnover_timescale, &
-           convective_turnover_timescale_old, pphot, pphot0, fracstep
-      common/ovrtrn/ use_new_turnover_timescale, calc_envelope_flag, &
-           convective_turnover_timescale, convective_turnover_timescale_old, &
-           pphot, pphot0, fracstep
 
 ! common/roten/: rotational_energy_term (DEROT), used here. Naming
 ! matches coefft.f90/putstore.f90.
