@@ -181,14 +181,17 @@ For each file:
 ## Physics domains still entangled with the solver (eos, kap, nuclear,
 ## atm, wind, mixing, rotation)
 
-These are not COMMON-free and their COMMON is woven directly into the
-Henyey coefficient-building code (`misc/coefft.f90`) or otherwise
-central to the solver. Do not attempt full COMMON elimination on the
-first pass for these. This is deliberately phase two: finish
-converting every domain's COMMON blocks to modules/derived types
-first (the mechanical work this whole document otherwise describes),
-then come back and do this disentangling as a separate later pass.
-Sequencing it this way isn't just cleanup ordering -- designing each
+As of 2026-08-21 every domain, including these, is COMMON-free -- all
+COMMON blocks repo-wide are now module/derived-type state (see
+`state/*.f90`, `const_lib.f90`). That mechanical conversion (phase
+one) is done. What these domains still have is architectural
+entanglement: external files reach directly into a domain's internal
+module state (`use opal_eos_lib` and touch `opal_eos%...` fields
+directly, etc.) instead of going through a small, explicit-interface
+entry point, and that reach-through is woven directly into the Henyey
+coefficient-building code (`misc/coefft.f90`) or otherwise central to
+the solver. This is phase two, deliberately sequenced after phase one
+finished. Sequencing it this way isn't just cleanup ordering -- designing each
 facade's return arguments (e.g. `eos_get`'s `p, gamma1, chit, chirho,
 cp, ...`) is much easier once the domain's per-model state already
 lives in an explicit derived type (oldmod_lib/scrtch_lib/
