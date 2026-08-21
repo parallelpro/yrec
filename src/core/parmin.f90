@@ -37,6 +37,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      fscvz, opecalex)
 
       use luout_lib
+      use intpar_lib
       implicit none
 
 ! PARAMETERS for tabulated surface pressures (n_atm_teff/n_atm_logg),
@@ -217,10 +218,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: enverr, envbeg, envmin, envmax
       common /intenv/ enverr, envbeg, envmin, envmax
 
-! common /intpar/
+! stolr0/imax/nuse: NAMELIST /physics/ members (must keep this exact
+! spelling, see this file's naming note at the top). Former common
+! /intpar/; copied into intpar_lib's canonically-named variables after
+! the namelist read below, since intpar_lib's names differ from these
+! namelist-fixed ones.
       double precision :: stolr0
       integer :: imax, nuse
-      common /intpar/ stolr0, imax, nuse
 
 ! common /label/
       double precision :: xenv0, zenv0
@@ -1063,6 +1067,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       read(unit=irun, nml=physics)
       close(istand)
       close(irun)
+! stolr0/imax/nuse must keep their exact NAMELIST /physics/ spelling
+! (see this file's naming note at the top), so intpar_lib's
+! canonically-named variables are set by copying from them here,
+! after the namelist read, rather than by renaming in place.
+      tolerance_fraction = stolr0
+      max_stage_index = imax
+      extrap_order = nuse
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap

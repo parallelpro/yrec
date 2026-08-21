@@ -29,6 +29,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
 
       use luout_lib
       use const_lib
+      use intpar_lib
       implicit none
       integer, parameter :: json=5000
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES OF KURUCZ.
@@ -135,12 +136,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       double precision :: env_error_tol, env_step_begin, env_step_min, &
            env_step_max
       common/intenv/env_error_tol, env_step_begin, env_step_min, env_step_max
-! common/intpar/: only tolerance_fraction is used here; imax/nuse
-! placeholders are unused in this file. Naming is local to this batch.
-      double precision :: tolerance_fraction
-      integer :: intpar_imax_placeholder, intpar_nuse_placeholder
-      common/intpar/tolerance_fraction, intpar_imax_placeholder, &
-           intpar_nuse_placeholder
 ! common/optab/: only idt/idd are used (set) here. Naming matches
 ! getopac.f90.
       double precision :: metal_fraction_match_tolerance, zsi

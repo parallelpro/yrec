@@ -23,6 +23,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
      step_err)
       use numerics_lib
+      use intpar_lib
       implicit none
 
       double precision, parameter :: one = 1.0d0, shrink_factor = 0.95d0, &
@@ -43,14 +44,6 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
            hydrogen_fraction, metal_fraction
       integer, intent(inout) :: call_count, saha_state
       double precision, intent(out) :: step_err(3)
-
-! common/intpar/: tolerance_fraction is unused here (matches the
-! unused placeholder in envint.f90); max_stage_index/extrap_order are
-! IMAX/NUSE and, unlike in envint.f90, are actively used by this file
-! to control the extrapolation sequence and step-size heuristics.
-      double precision :: tolerance_fraction
-      integer :: max_stage_index, extrap_order
-      common/intpar/tolerance_fraction, max_stage_index, extrap_order
 
       double precision :: y_err(3), y_sav(3), dy_sav(3), y_seq(3)
       integer :: substep_sequence(11)
