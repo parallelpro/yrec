@@ -6,8 +6,8 @@
 ! control parameters (tolerance_fraction/max_stage_index/extrap_order),
 ! set once from NAMELIST /physics/ (core/parmin.f90, defaulted there
 ! via a DATA statement) and read by numerics/bsstep.f90 and
-! atm/envint.f90. Global configuration, not per-call data -- each
-! caller reads a different subset (envint.f90 only tolerance_fraction,
+! atm/atm_lib.f90. Global configuration, not per-call data -- each
+! caller reads a different subset (atm_lib.f90 only tolerance_fraction,
 ! bsstep.f90 only max_stage_index/extrap_order), confirming these
 ! aren't actually data flowing between the two, just shared constants.
 module intpar_lib

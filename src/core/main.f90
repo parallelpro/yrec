@@ -138,7 +138,7 @@
 !     ageout_placeholder/lclcd_placeholder/ljlast_placeholder/
 !     ljwrt_placeholder; common/rotprt/'s run_diag%lprt0_placeholder;
 !     common/chrone/'s lrwsh_placeholder; common/cenv/'s
-!     lnew0). Per the precedent set by envint.f90 (keeps
+!     lnew0). Per the precedent set by atm_lib.f90 (keeps
 !     lclcd_placeholder despite noting its own active use) and
 !     getw.f90 (keeps run_diag%lprt0_placeholder despite noting its own active
 !     use), these established names are reused verbatim here too

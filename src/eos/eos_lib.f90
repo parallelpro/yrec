@@ -20,7 +20,7 @@
 ! misc/physic.f90, mixing/hsubp.f90, mixing/sconvec.f90) pass
 ! composition(:,idx) and get the same Debye-Huckel setup they used to
 ! compute themselves. Callers that only ever carried bulk
-! hydrogen_fraction/metal_fraction (atm/envint.f90, atm/qatm.f90,
+! hydrogen_fraction/metal_fraction (atm/atm_lib.f90, atm/qatm.f90,
 ! atm/qenv.f90, wind/massloss.f90) omit it -- exactly matching their
 ! prior behavior, since none of them set these fields before either.
 !

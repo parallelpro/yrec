@@ -1,25 +1,38 @@
 !----------------------------------------------------------------------
-! envint
+! atm_lib
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original envint.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
+! Added 2026 as part of the YREC readability refactor's phase two
+! (disentangling the solver from the physics domains -- see
+! GUIDELINES.md's "Physics domains still entangled with the solver").
+! Like kap_lib's kap_get, this is not a new dispatch consolidation:
+! envint (renamed atm_get) was already the domain's generic "solve one
+! envelope for this (Teff, L)" primitive, called uniformly (no
+! duplicated dispatch) from 7 sites -- 6 external, plus atm/surfbc.f90
+! (the domain's other, more specialized entry point: a single-caller,
+! solver-loop-internal wrapper around atm_get that adds a cached
+! (Teff, L) triangle for cheap derivative interpolation and the
+! hot-edge gray-atmosphere fallback -- surfbc.f90 itself is unchanged
+! by this rename). This rename/module-wrap is purely to give atm/ the
+! same public-facade shape as eos_lib/kap_lib.
 !
 ! Computes one envelope solution (P, T, R at the model's fitting
 ! point) for a given (Teff, L) vertex: first integrates the gray (or
 ! Eddington/Krishna-Swamy) atmosphere in optical depth from a starting
 ! guess down to tau=2/3 via QATM (bypassed entirely for tabulated
 ! Kurucz/Allard atmospheres, which look up the boundary pressure
-! directly via SURFP/KCSURFP/ALSURFP), then integrates the envelope
-! structure equations in pressure from tau=2/3 to the fitting mass
-! point via QENV. Both integrations use the Bulirsch-Stoer stepper
-! BSSTEP. Also saves the full atmosphere/envelope structure (for
-! profile output and pulsation) and, unless the caller has switched to
-! the newer TAUINTNEW-based method, locates the surface convection
-! zone within the envelope via TAUCAL.
-subroutine envint(luminosity_linear, pressure_rotation_factor, &
+! directly via SURFP/KCSURFP/ALSURFP, in atm/tables/), then integrates
+! the envelope structure equations in pressure from tau=2/3 to the
+! fitting mass point via QENV. Both integrations use the Bulirsch-
+! Stoer stepper BSSTEP. Also saves the full atmosphere/envelope
+! structure (for profile output and pulsation) and, unless the caller
+! has switched to the newer TAUINTNEW-based method, locates the
+! surface convection zone within the envelope via TAUCAL (in
+! atm/turnover/).
+module atm_lib
+      implicit none
+contains
+
+subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
      vertex_index, print_flag, save_boundary_flag, log10_pressure_limit, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
@@ -929,4 +942,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
 
 555      continue
       return
-end subroutine envint
+end subroutine atm_get
+
+end module atm_lib

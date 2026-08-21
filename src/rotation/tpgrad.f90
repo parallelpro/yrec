@@ -122,7 +122,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 ! setting the flux to Lspotted = L/[f*x^4 + (1-f)], where f is the
 ! spot filling factor and x is the temperature contrast between
 ! the spotted surface and the normal surface (0 <= x <= 1). We also
-! alter the surface boundary condition used in envint.f, by looking
+! alter the surface boundary condition used in atm/atm_lib.f90, by looking
 ! up the pressure at the un-spotted T (ATEFFL) instead of Teff.
 !
 ! We have also included the ability to have the temperature contrast

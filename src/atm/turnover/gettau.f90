@@ -26,6 +26,7 @@
 subroutine gettau(composition, log_radius, log_pressure, log_density, &
      enclosed_mass, log_temperature, fp, ft, log_teff, log_total_mass, &
      log_luminosity_lsun, num_zones, convective_flag, radius_at_bcz)
+      use atm_lib
       use envstruct_lib
       use turnover_lib
       use scrtch_lib
@@ -61,8 +62,8 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
            combined_gravity(json), combined_velocity(json)
       double precision :: combined_grad1(json), combined_grad2(json)
       logical :: combined_convective_flag(json)
-      double precision :: envint_dummy1(4), envint_dummy2(3), &
-           envint_dummy3(3), envint_dummy4(3)
+      double precision :: atm_get_dummy1(4), atm_get_dummy2(3), &
+           atm_get_dummy3(3), atm_get_dummy4(3)
       integer :: katm, kenv, ksaha
 
 
@@ -72,7 +73,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       logical :: fully_convective_flag
       double precision :: pressure_diff_check
       double precision :: fp_surface, ft_surface
-      integer :: envint_unused_flag
+      integer :: atm_get_unused_flag
       double precision :: luminosity_linear
       integer :: ixx_flag
       logical :: print_flag, surface_bc_flag, pulsation_output_flag
@@ -113,7 +114,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 !
       fp_surface = fp(num_zones)
       ft_surface = ft(num_zones)
-      envint_unused_flag = 0
+      atm_get_unused_flag = 0
       luminosity_linear = dexp(ln10*log_luminosity_lsun)
       katm = 0
       kenv = 0
@@ -138,12 +139,12 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       else
          spot_adjusted_log_teff = log_teff
       endif
-      call envint(luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
+      call atm_get(luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
            log_total_mass,ixx_flag,print_flag,surface_bc_flag, &
            pressure_limit,log_radius_surface,spot_adjusted_log_teff, &
-           hydrogen_fraction,metal_fraction,envint_dummy1,envint_unused_flag, &
+           hydrogen_fraction,metal_fraction,atm_get_dummy1,atm_get_unused_flag, &
            katm,kenv,ksaha, &
-           envint_dummy2,envint_dummy3,envint_dummy4,pulsation_output_flag)
+           atm_get_dummy2,atm_get_dummy3,atm_get_dummy4,pulsation_output_flag)
 ! PPHOT is now set, and structure variables are caluclated if
 ! LCALCENV = .TRUE..
 !

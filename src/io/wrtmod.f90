@@ -19,6 +19,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      log_temperature, model_number, log_luminosity_lsun, log_teff, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
+      use atm_lib
       use rotdiff_lib
       use run_diag_lib
       use temp2_lib
@@ -204,7 +205,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
        else
           ateffl = log_teff
        endif
-       call envint(b,fpl,ftl,gl,hstot,ixx,lprt,lsbc0,plim,rl, &
+       call atm_get(b,fpl,ftl,gl,hstot,ixx,lprt,lsbc0,plim,rl, &
                      ateffl,x,z,dum1,idum,katm,kenv,ksaha,dum2, &
                      dum3,dum4,lpulpt)
 ! G Somers END

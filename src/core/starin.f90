@@ -18,7 +18,7 @@
 ! MODEL2 format, detected from the file's 4-character keyword) via
 ! getyrec7/getmodel2, optionally extends the innermost shell inward
 ! (common/core/), rescales it (rscale), optionally changes the
-! envelope fitting point mass (calling envint/eos_get/kap_get/
+! envelope fitting point mass (calling atm_get/eos_get/kap_get/
 ! tpgrad to keep the new last interior shell's radiative/convective
 ! flag and density consistent), sets up the rotation curve (fpft/
 ! momi) if rotation is active, sets up the surface mixture and
@@ -110,6 +110,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
      trial_log_luminosity, trial_log_temperature, fit_point_temperature, &
      convective_velocity, mean_gravity, species_mix_weights)
 
+      use atm_lib
       use run_diag_lib
       use envstruct_lib
       use envelope_comp_lib
@@ -237,10 +238,10 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
       double precision :: log10_gravity
       integer :: vertex_index
       double precision :: log10_pressure_limit
-      integer :: envint_unused_flag
+      integer :: atm_get_unused_flag
       double precision :: spot_adjusted_log_teff
-      double precision :: envint_dummy1(4), envint_dummy2(3), &
-           envint_dummy3(3), envint_dummy4(3)
+      double precision :: atm_get_dummy1(4), atm_get_dummy2(3), &
+           atm_get_dummy3(3), atm_get_dummy4(3)
       double precision :: pressure_offset, density_offset, &
            temperature_offset, radius_offset
       integer :: env_point_index
@@ -813,7 +814,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
                     composition(11,num_shells)
             end if
 ! MHP 10/02  define ISTORE - used in ENVINT
-            envint_unused_flag = 0
+            atm_get_unused_flag = 0
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
           if (envelope_zone_index.eq.num_shells.and.spot_filling_factor.ne. &
@@ -824,13 +825,13 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
           else
              spot_adjusted_log_teff = log_teff
           endif
-          call envint(shell_luminosity_lsun,point_pressure_rotation_factor, &
+          call atm_get(shell_luminosity_lsun,point_pressure_rotation_factor, &
                  point_temperature_rotation_factor,log10_gravity,env_comp%stotal, &
                  vertex_index,print_flag,save_boundary_flag, &
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
-                 hydrogen_fraction,metal_fraction,envint_dummy1, &
-                 envint_unused_flag,katm,kenv,saha_state,envint_dummy2, &
-                 envint_dummy3,envint_dummy4,pulse_print_flag)
+                 hydrogen_fraction,metal_fraction,atm_get_dummy1, &
+                 atm_get_unused_flag,katm,kenv,saha_state,atm_get_dummy2, &
+                 atm_get_dummy3,atm_get_dummy4,pulse_print_flag)
 ! G Somers END
             env_step_max = saved_env_step_max
             env_step_min = saved_env_step_min

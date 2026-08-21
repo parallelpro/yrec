@@ -7,7 +7,7 @@
 ! ionization/opacity/specific heat in log space, indexed
 ! 1..num_atm_points), the atmosphere-region counterpart of
 ! envstruct_lib's envelope profile. Computed by the atmosphere
-! integrator (atm/envint.f90) and read by output writers
+! integrator (atm/atm_lib.f90) and read by output writers
 ! (misc/stitch.f90, io/putstore.f90, io/wrtmod.f90, io/wrtout.f90) and
 ! rotation/ files needing the current atmosphere structure.
 !

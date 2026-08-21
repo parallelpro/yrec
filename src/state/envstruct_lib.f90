@@ -6,7 +6,7 @@
 ! structure profile (pressure/temperature/mass/density/radius/
 ! composition/convective-flag/gradients/velocity/opacity/luminosity in
 ! log space, indexed 1..num_env_points), computed by the envelope
-! integrator (atm/envint.f90) and read by core/starin.f90 and other
+! integrator (atm/atm_lib.f90) and read by core/starin.f90 and other
 ! callers that need the just-integrated envelope profile.
 !
 ! Per GUIDELINES.md's module-vs-argument test this is case 1b, same as

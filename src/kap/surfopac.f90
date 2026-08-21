@@ -9,7 +9,12 @@
 !
 ! Sets up the low-temperature/surface opacity tables (OPAL95, OPAL92,
 ! ALEX95) for the envelope hydrogen fraction, assuming the underlying
-! tables have already been read in.
+! tables have already been read in. Relocated here from atm/ (2026,
+! atm/ phase-two reorg): zero atm-domain content -- it only refreshes
+! cached table slices in kap/opal95/, kap/opal92/, kap/alex94/ -- and
+! its callers (core/starin.f90, setup/hpoint.f90) aren't in atm/
+! either; same "misplaced, meval.f90-style" pattern as alsurfp.f90's
+! earlier move the other direction (kap/ -> atm/).
 subroutine surfopac(hydrogen_fraction)
       use const_lib
       implicit none

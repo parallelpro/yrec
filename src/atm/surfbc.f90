@@ -11,10 +11,23 @@
 ! solution (P, T, R at the fitting point) around the current model's
 ! (TEFFL, BL): checks whether the requested point still lies inside
 ! the existing triangle, re-triangulates and recomputes any envelope
-! vertices as needed via ENVINT, and rebuilds the bilinear
+! vertices as needed via atm_lib.f90's atm_get, and rebuilds the bilinear
 ! interpolation coefficients CFENV. Also handles the automatic
 ! gray-atmosphere fallback when Teff moves outside the range of a
 ! tabulated (Kurucz/Allard) T-tau relation.
+!
+! hydrogen_fraction/metal_fraction/pressure_rotation_factor/
+! temperature_rotation_factor are intent(inout), not intent(in): they
+! are relayed unchanged into atm_get's own same-named dummies, which
+! atm_get's own header documents as intent(inout) because they flow
+! through to bsstep/mmid's callback machinery. Declaring them
+! intent(in) here was a pre-existing bug of the same shape documented
+! in atm_get's header (and eos/eqstat.f90's metal_fraction fix) --
+! silently tolerated while atm_get (as envint) was a bare external
+! subroutine with no interface to check against, surfaced once
+! atm_lib.f90 gave it one. core/crrect.f90 (this routine's only
+! caller) already passes real local variables for these positions, so
+! widening the intent here changes nothing about how it's called.
 subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
@@ -29,6 +42,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
+      use atm_lib
       use atm_table_lib
       use envelope_comp_lib
       use luout_lib
@@ -47,7 +61,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       integer, intent(inout) :: saha_state, env_call_count, atm_call_count
       double precision, intent(in) :: log10_star_mass, luminosity_linear
       double precision, intent(inout) :: log10_teff
-      double precision, intent(in) :: hydrogen_fraction, metal_fraction, &
+      double precision, intent(inout) :: hydrogen_fraction, metal_fraction, &
            pressure_rotation_factor, temperature_rotation_factor
       logical, intent(out) :: envelope_recomputed_flag
       double precision, intent(in) :: log10_pressure_limit
@@ -188,7 +202,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           else
              adjusted_teffl = log10_teff
           endif
-          call envint(b,pressure_rotation_factor,temperature_rotation_factor,gl, &
+          call atm_get(b,pressure_rotation_factor,temperature_rotation_factor,gl, &
                  log10_star_mass,vertex_being_computed,print_envelope_flag, &
                  save_boundary_flag,log10_pressure_limit,rl, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &

@@ -30,6 +30,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
 
+      use atm_lib
       use rotdiff_lib
       use run_diag_lib
       use temp2_lib
@@ -175,7 +176,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       else
           ateffl = log_teff
       end if
-      call envint(b,fpl,ftl,gl,log_total_mass,ixx,lprt,lsbc0, &
+      call atm_get(b,fpl,ftl,gl,log_total_mass,ixx,lprt,lsbc0, &
          plim,rl,ateffl,x,z,dum1,idum,katm,kenv,ksaha, &
          dum2,dum3,dum4,lpulpt)
 

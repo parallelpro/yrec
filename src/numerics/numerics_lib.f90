@@ -664,7 +664,7 @@ end subroutine ludcmp
 ! b/pressure_rotation_factor/.../saha_state are opaque pass-through
 ! arguments forwarded unchanged to deriv (the caller-supplied
 ! derivative routine, e.g. qatm/qenv) -- named to match the actual
-! arguments used at the bsstep call sites in envint.f90.
+! arguments used at the bsstep call sites in atm/atm_lib.f90.
 subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
      luminosity_linear, pressure_rotation_factor, temperature_rotation_factor, &
      log10_gravity, in_atmosphere, want_derivatives, conductive_opacity_flag, &
@@ -1288,7 +1288,7 @@ end subroutine tridia
 ! luminosity_linear/pressure_rotation_factor/.../saha_state are opaque
 ! pass-through arguments forwarded unchanged to mmid/deriv -- named to
 ! match the actual arguments used at the bsstep call sites in
-! envint.f90.
+! atm/atm_lib.f90.
 subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      h_did, h_next, deriv, luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, in_atmosphere, &

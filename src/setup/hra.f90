@@ -9,7 +9,7 @@
 !
 ! Evaluates a fit to the Harvard Reference Atmosphere T-tau relation:
 ! given the optical depth tau, returns log10(T). Called (as an
-! external double precision function) from qatm.f90 and envint.f90.
+! external double precision function) from qatm.f90 and atm_lib.f90.
 double precision function hra(optical_depth)
       implicit none
 

@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use atm_lib
       use atm_table_lib
       use run_diag_lib
       use envstruct_lib
@@ -116,8 +117,8 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       double precision :: spline_radius_neighborhood(7), &
            spline_speed_neighborhood(7), spline_second_deriv(7), &
            spline_interp_value(1)
-      double precision :: envint_dummy1(4), envint_dummy2(3), &
-           envint_dummy3(3), envint_dummy4(3)
+      double precision :: atm_get_dummy1(4), atm_get_dummy2(3), &
+           atm_get_dummy3(3), atm_get_dummy4(3)
       double precision :: hydrogen_fraction, metal_fraction, log10_gravity, &
            log10_radius_local, log10_pressure_limit, luminosity_linear
       double precision :: atm_step_begin_saved, atm_step_min_saved, &
@@ -135,7 +136,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       integer :: zone_idx, integration_count, neighborhood_idx, remainder, &
            cz_zone_index, grid_count, iendj_unused, first_match_flag, &
            cz_segment_count
-      integer :: envint_unused_flag, katm, kenv, ksaha, ixx_flag
+      integer :: atm_get_unused_flag, katm, kenv, ksaha, ixx_flag
       integer :: klo, khi
       double precision :: cz_radius_cm(1)
 ! boole's output argument is a length-1 array (see numerics/boole.f90);
@@ -188,7 +189,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       env_step_begin = envelope_step_size
       env_step_min = envelope_step_size
       env_step_max = envelope_step_size
-      envint_unused_flag = 0
+      atm_get_unused_flag = 0
       luminosity_linear = dexp(ln10*log_luminosity_lsun)
       pressure_rotation_factor = shape_factor_fp(num_shells)
       temperature_rotation_factor = shape_factor_ft(num_shells)
@@ -216,13 +217,13 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       else
             spot_adjusted_teff = log_teff
       endif
-      call envint(luminosity_linear,pressure_rotation_factor, &
+      call atm_get(luminosity_linear,pressure_rotation_factor, &
            temperature_rotation_factor,log10_gravity,log_total_mass,ixx_flag, &
            print_flag,surface_bc_flag, &
            log10_pressure_limit,log10_radius_local,spot_adjusted_teff, &
-           hydrogen_fraction,metal_fraction,envint_dummy1,envint_unused_flag, &
+           hydrogen_fraction,metal_fraction,atm_get_dummy1,atm_get_unused_flag, &
            katm,kenv,ksaha, &
-           envint_dummy2,envint_dummy3,envint_dummy4,pulsation_output_flag)
+           atm_get_dummy2,atm_get_dummy3,atm_get_dummy4,pulsation_output_flag)
 !      G Somers END
 
 

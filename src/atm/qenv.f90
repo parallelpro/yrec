@@ -18,7 +18,7 @@
 ! in_atmosphere/want_derivatives/conductive_opacity_flag/print_flag/
 ! log10_radius/log10_teff/hydrogen_fraction/metal_fraction match the
 ! sibling routine qatm.f90's naming at the equivalent call-site
-! positions (both are called via EXTERNAL from ENVINT/BSSTEP).
+! positions (both are called via EXTERNAL from atm_lib.f90's atm_get/BSSTEP).
 ! pressure_rotation_factor/temperature_rotation_factor (FPL/FTL) match
 ! tpgrad.f90's naming, discovered from that file's own analysis of the
 ! DELR formula.

@@ -18,6 +18,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag)
+      use atm_lib
       use run_diag_lib
       use envstruct_lib
       use envelope_comp_lib
@@ -56,8 +57,8 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 
 
 
-      double precision :: envint_dummy1(4), envint_dummy2(3), &
-           envint_dummy3(3), envint_dummy4(3)
+      double precision :: atm_get_dummy1(4), atm_get_dummy2(3), &
+           atm_get_dummy3(3), atm_get_dummy4(3)
 
 ! G Somers END
       save
@@ -75,7 +76,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       double precision :: pressure_limit
       logical :: pulsation_output_flag
       integer :: ixx_flag
-      integer :: envint_unused_flag
+      integer :: atm_get_unused_flag
       double precision :: spot_adjusted_log_teff
       double precision :: pressure_offset, density_offset, temperature_offset, &
            radius_offset
@@ -156,7 +157,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       end if
 ! INTEGRATE DOWN TO THE CURRENT FITTING POINT USING THE SURFACE L AND TEFF.
 ! MHP 10/02  define ISTORE - used in ENVINT
-      envint_unused_flag = 0
+      atm_get_unused_flag = 0
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
       if(convective_flag(num_zones).and.spot_filling_factor.ne.0.0.and. &
@@ -166,12 +167,12 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       else
          spot_adjusted_log_teff = log_teff
       endif
-      call envint(luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
+      call atm_get(luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
            log_total_mass,ixx_flag,print_flag,surface_bc_flag,pressure_limit, &
            log_radius_surface, &
            spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
-           envint_dummy1,envint_unused_flag,katm,kenv,ksaha,envint_dummy2, &
-           envint_dummy3,envint_dummy4,pulsation_output_flag)
+           atm_get_dummy1,atm_get_unused_flag,katm,kenv,ksaha,atm_get_dummy2, &
+           atm_get_dummy3,atm_get_dummy4,pulsation_output_flag)
 ! G Somers END
 ! RESET THE NUMERICAL PARAMETERS FOR THE ENVELOPE INTEGRATION
       env_step_max = env_max_saved

@@ -93,9 +93,9 @@ all via COMMON rather than arguments).
 **Closure size is a hint, not the test -- always trace the actual data
 flow before picking a treatment.** `common/intpar/` looked like a
 textbook case 2 candidate at first glance: shared by exactly two
-files (`numerics/bsstep.f90`, `atm/envint.f90`), same narrow-closure
+files (`numerics/bsstep.f90`, `atm/atm_lib.f90`), same narrow-closure
 shape as `common/tridi/`. But tracing what each file actually reads
-showed they use *disjoint* members -- `envint.f90` only reads
+showed they use *disjoint* members -- `atm_lib.f90` only reads
 `tolerance_fraction`, `bsstep.f90` only reads `max_stage_index`/
 `extrap_order` -- and all three are NAMELIST /physics/ values set once
 at startup. Nothing computes a value in one file for the other to
@@ -228,7 +228,7 @@ on the non-MHD path, centralizes the Debye-Hückel composition setup
 (`debye_huckel_x/y/z_total/z(3)`) that 6 of its 10 callers used to
 duplicate verbatim, gated on `present(composition_at_zone) .and.
 use_debye_huckel_correction`. Migrated 10 files / 13 call sites
-(`atm/envint.f90`, `atm/qatm.f90`, `atm/qenv.f90`, `misc/coefft.f90`,
+(`atm/atm_lib.f90`, `atm/qatm.f90`, `atm/qenv.f90`, `misc/coefft.f90`,
 `io/wrtout.f90`, `misc/physic.f90`, `core/starin.f90`,
 `mixing/hsubp.f90`, `mixing/sconvec.f90` x3, `wind/massloss.f90` x2)
 to call `eos_get` instead of duplicating the `use_mhd_eos` if/else at
@@ -321,9 +321,9 @@ zero domain content) -- moved out:
 - `alsurfp.f90`/`alfilein.f90`/`altabinit.f90` -> `atm/`. These
   interpolate Allard NextGen atmosphere tables for Log(P)/Log(T) at
   fixed Teff/GL/tau=100 -- a boundary condition, not opacity -- and
-  sit right alongside `atm/kcsurfp.f90` (the Kurucz/Castelli
+  sit right alongside `atm/tables/kcsurfp.f90` (the Kurucz/Castelli
   equivalent, already correctly filed) at their only call sites
-  (`atm/envint.f90`, `wind/massloss.f90`).
+  (`atm/atm_lib.f90`, `wind/massloss.f90`).
 - `ifermi12.f90`/`zfermim12.f90` -> `nuclear/`. Fermi-Dirac degeneracy
   integrals called only from `nuclear/nuclear_lib.f90`, nowhere in
   `kap/` itself.
@@ -370,6 +370,60 @@ When it's picked back up: trace each candidate file's locals by hand
 removing its `save`, same rigor as the `metal_fraction` intent fix
 above, and verify with the standard full-build + Stage-0 byte-diff
 per file or small batch.
+
+**Third facade, `atm_get` (2026-08-21)**: per the YREC public release
+paper's section 2.3.6 ("Boundary Conditions"), `atm/` computes the
+(P, T, R) envelope solution at the model's fitting point for a given
+(Teff, L). Investigation found the domain has two callable entry
+points at genuinely different grains, not one -- different from both
+`eos` and `kap`: `envint.f90` (renamed `atm_lib.f90`'s `atm_get`) is
+the generic "solve one envelope for this exact (Teff, L)" primitive,
+already called uniformly (no duplicated dispatch) from 7 sites; and
+`surfbc.f90` is a specialized, single-caller (`core/crrect.f90`, the
+solver's Newton-Raphson corrector) wrapper that adds a cached
+(Teff, L) triangle for cheap derivative interpolation plus the paper's
+"hot edge -> fall back to gray atmosphere" logic. Only `envint`/
+`atm_get` was renamed to match `eos_lib`/`kap_lib`'s shape (a module
+hosting the domain's generic primitive); `surfbc.f90` stays as its own
+file, already correctly using `atm_get` as a plain, non-duplicated
+call.
+
+Renaming `envint` surfaced a second instance of the `metal_fraction`-
+shaped bug: `atm_get`'s own header already documented
+`hydrogen_fraction`/`metal_fraction`/`pressure_rotation_factor`/
+`temperature_rotation_factor` as legitimately `intent(inout)` (they
+flow through to `bsstep`/`mmid`'s callback machinery), but
+`surfbc.f90`, which relays them straight through, had declared its
+own same-named dummies `intent(in)` -- too narrow, invisible while
+`envint` was a bare external subroutine with no interface to check
+against, caught the moment `atm_lib.f90` gave it one. Fixed by
+widening `surfbc.f90`'s dummies to `intent(inout)`, matching
+`core/crrect.f90` (its only caller), which already passes real local
+variables there -- zero behavior change.
+
+Investigation also found one misplaced file (the reverse move of the
+`kap` sweep's `alsurfp`/`alfilein`/`altabinit` discovery):
+`surfopac.f90` had zero atm-domain content -- it only refreshes
+cached table slices in `kap/opal95/`, `kap/opal92/`, `kap/alex94/` --
+and its callers (`core/starin.f90`, `setup/hpoint.f90`) aren't in
+`atm/` either. Moved to `kap/`, alongside `setupopac.f90`.
+
+The remaining 9 files split into 2 groups matching the paper's own
+structure: `atm/tables/` (the 3 table-lookup boundary-condition
+sources the paper names -- Kurucz 1993 via `surfp.f90`, Castelli &
+Kurucz 2003 via `kcsurfp.f90`, Allard & Hauschildt 1995 via
+`alsurfp.f90`/`alfilein.f90`/`altabinit.f90`) and `atm/turnover/`
+(`gettau.f90`/`taucal.f90`/`tauint.f90`/`tauintnew.f90` -- the
+convective-overturn-timescale calculation, a distinct sub-concern
+built on `atm_get`'s machinery but not itself boundary-condition
+physics; consumed cross-domain by `core/`, `io/`, and
+`rotation/getw.f90`, not misplaced, just multi-consumer). `atm_lib.f90`,
+`qatm.f90`, `qenv.f90`, and `surfbc.f90` -- the core boundary-condition
+machinery -- stay at `atm/` root.
+
+Verification: full clean build + Stage-0 byte-identical regression,
+checked after the facade rename, after the `surfbc.f90` intent fix,
+and after the subfolder split, before combining into one commit.
 
 ## Build mechanics
 
@@ -466,7 +520,7 @@ above). Recognizing which of these three shapes you're looking at
 saves re-deriving the fix from scratch:
 
 - **Array too small.** Caller declares a local array shorter than the
-  callee's dummy (e.g. `atm/alsurfp.f90` passed 4-element arrays where
+  callee's dummy (e.g. `atm/tables/alsurfp.f90` passed 4-element arrays where
   `polint`'s dummy is `xa(20)`/`ya(20)`). Tell: "Actual argument
   contains too few elements." Fix: widen the caller's declared array
   size to match the callee's real contract (check other correct
@@ -484,7 +538,7 @@ saves re-deriving the fix from scratch:
 - **Intent mismatch.** Caller declares its own dummy argument
   `intent(in)`, then passes it as the actual argument to a callee
   whose corresponding dummy is `intent(inout)`/`intent(out)`
-  (`atm/envint.f90` did this passing values through `bsstep`/`mmid` to
+  (`atm/atm_lib.f90` did this passing values through `bsstep`/`mmid` to
   an arbitrary `deriv` callback that might modify them). Tell: "Dummy
   argument ... with INTENT(IN) in variable definition context." Fix:
   first determine which side is actually right by checking whether the

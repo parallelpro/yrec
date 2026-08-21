@@ -9,7 +9,7 @@
 ! arrays computed by misc/coefft.f90 every Newton iteration (same
 ! cadence as scrtch_lib) plus lpumod; common/pulse2/'s 20 members are
 ! scalars holding the current envelope point's diagnostics, set by
-! atm/qatm.f90/atm/qenv.f90 and read by atm/envint.f90/io/wrtmod.f90.
+! atm/qatm.f90/atm/qenv.f90 and read by atm/atm_lib.f90/io/wrtmod.f90.
 ! Bundled into one type since every file using more than one of these
 ! two former blocks already handles them together.
 !
