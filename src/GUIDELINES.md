@@ -334,6 +334,24 @@ saves re-deriving the fix from scratch:
   site already passes a real variable, never a literal/expression, in
   that position -- check this before widening). Don't narrow the
   callee's intent to make the error go away without checking first.
+- **Dummy argument collides with a module variable.** A file's own
+  subroutine signature declares a dummy argument whose name happens to
+  match a `const_lib` (or other module) variable added by an *earlier,
+  unrelated* conversion -- surfaces only when this file's own COMMON
+  block finally gets converted and needs its first `use const_lib`.
+  Real example: `io/getyrec7.f90`/`getmodel2.f90`/`putyrec7.f90`/
+  `putmodel2.f90` read/write old model-file fields named
+  `rotation_active`, `envelope_overshoot_active`, `lovstc`, etc as
+  `intent(in)`/`intent(out)` dummy arguments -- same names as unrelated
+  runtime-config variables already in `const_lib`. Tell: "ambiguous
+  reference to ... from current program unit" or "has no IMPLICIT
+  type" errors pointing at the dummy-argument declaration line, right
+  after adding a `use` statement. Fix: `use const_lib, only: <the one
+  or two members actually needed>` instead of the blanket `use
+  const_lib` -- never rename the dummy arguments themselves when
+  they're part of a shared calling convention across sibling files
+  (check for siblings with the same signature pattern before deciding
+  a fix is file-local).
 
 ## Git hygiene when interleaving sub-tasks in one session
 
