@@ -30,6 +30,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       use luout_lib
       use const_lib
       use intpar_lib
+      use numerics_lib
       implicit none
       integer, parameter :: json=5000
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES OF KURUCZ.
@@ -39,15 +40,30 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
 ! MHP 8/97 ADDED NTA AND NGA FOR ALLARD ATMOSPHERE TABLES
       integer, parameter :: nta=54, nga=5
 
-      double precision, intent(in) :: luminosity_linear, &
+! luminosity_linear/pressure_rotation_factor/temperature_rotation_factor/
+! log10_gravity/print_flag/hydrogen_fraction/metal_fraction are
+! intent(inout), not intent(in): they're relayed unchanged through
+! this file's own calls to bsstep (numerics_lib) down to mmid and then
+! to the deriv callback (qatm/qenv/etc, whose actual identity varies
+! per call site) -- both bsstep and mmid declare their corresponding
+! dummy arguments intent(inout), since the callback may modify them.
+! Declaring them intent(in) here was a pre-existing bug (silently
+! tolerated under the old implicit-interface calling convention,
+! surfaced once bsstep moved into numerics_lib and gained an explicit
+! interface -- see GUIDELINES.md); every call site already passes real
+! variables for these positions, so widening the intent here changes
+! nothing about how any of them are called.
+      double precision, intent(inout) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, &
-           log10_gravity, log10_star_mass
+           log10_gravity
+      double precision, intent(in) :: log10_star_mass
       integer, intent(in) :: vertex_index
-      logical, intent(in) :: print_flag, save_boundary_flag
+      logical, intent(inout) :: print_flag
+      logical, intent(in) :: save_boundary_flag
       double precision, intent(in) :: log10_pressure_limit
       double precision, intent(inout) :: log10_radius
       double precision, intent(inout) :: log10_teff
-      double precision, intent(in) :: hydrogen_fraction, metal_fraction
+      double precision, intent(inout) :: hydrogen_fraction, metal_fraction
       double precision, intent(inout) :: stored_envelope_state(4)
       integer, intent(inout) :: stored_vertex_index
       integer, intent(inout) :: atm_call_count, env_call_count, saha_state

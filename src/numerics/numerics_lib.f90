@@ -1116,4 +1116,712 @@ subroutine ysplin(xi, c, n)
       return
 end subroutine ysplin
 
+!----------------------------------------------------------------------
+! ctridi
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original ctridi.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! Solves a tridiagonal matrix system for the fractional abundance of a
+! species. This routine is from Numerical Recipes, p.40.
+!
+! Analogue of tridia.f90 (the Henyey structure-equation tridiagonal
+! solver): same Thomas-algorithm layout, used here for compositional
+! (species-abundance) diffusion solves instead. Was originally shared
+! with tridia.f90 via common/tridi/ (positional storage); converted
+! (2026, GUIDELINES.md) to explicit arguments since this is real
+! per-call data flow (matrix in, solution out), not global
+! configuration -- see GUIDELINES.md's module-vs-argument distinction.
+subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
+
+      implicit none
+      integer, parameter :: json = 5000
+
+      integer, intent(in) :: n
+! sub_diag/diag/super_diag are the tridiagonal matrix's three
+! diagonals and rhs is the right-hand side, all filled in by the
+! caller; solution (originally U, the new species abundance) is
+! solved for here.
+      double precision, intent(in) :: sub_diag(json), diag(json), &
+           super_diag(json), rhs(json)
+      double precision, intent(out) :: solution(json)
+
+! gamma_elim is solver-internal scratch, never read by any caller
+! (unlike tridia.f90's gamma_elim(n), which doubled as a genuine
+! cross-call input -- see tridia.f90's header note). SAVE preserved
+! from the original common-block version though nothing here actually
+! depends on it persisting across calls.
+      double precision :: gamma_elim(json)
+      save
+
+      double precision :: bet
+      integer :: j
+
+      bet = diag(1)
+      solution(1) = rhs(1)/bet
+      do j = 2,n
+         gamma_elim(j) = super_diag(j-1)/bet
+         bet = diag(j) - sub_diag(j)*gamma_elim(j)
+         if (bet.eq.0) stop '#TRIDIA:SINGULAR MATRIX'
+         solution(j) = (rhs(j) - sub_diag(j)*solution(j-1))/bet
+      end do
+      do j = n-1,1,-1
+         solution(j) = solution(j) - gamma_elim(j+1)*solution(j+1)
+      end do
+
+      return
+end subroutine ctridi
+
+!----------------------------------------------------------------------
+! tridia
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original tridia.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! Thomas-algorithm tridiagonal solve (see also tridiag_gs.f90, the
+! same algorithm operating on explicit dummy arguments instead of a
+! shared common block, and ctridi.f90, the same algorithm for
+! compositional diffusion). The caller fills sub_diag/diag/super_diag/
+! rhs before calling; tridia solves for solution(:) in place and also
+! returns dj(:), the per-zone contribution of the change in solution
+! weighted by ei(:), and sumdj, their sum.
+!
+! Was originally shared with ctridi.f90 via common/tridi/ (positional
+! storage); converted (2026, GUIDELINES.md) to explicit arguments
+! since this is real per-call data flow, not global configuration.
+! dj_n_seed replaces what was previously smuggled in via
+! gamma_elim(n): the caller (dcoeft.f90, via seculr.f90) computes a
+! surface wind-angular-momentum-loss term and used to stash it in the
+! shared common block's gamma_elim(num_eq_points) slot specifically so
+! this routine's very first statement (before gamma_elim is
+! overwritten as pure solver scratch below) could pick it up as dj(n)'s
+! initial value. That's now an explicit input instead of a COMMON
+! side-channel; see dcoeft.f90's matching surface_wind_loss_term
+! output argument.
+! KC 2025-05-31 removed the unused ej dummy argument (see the
+! commented-out original signature below).
+!       SUBROUTINE TRIDIA(N,EI,EJ,DJ,SUMDJ)  ! KC 2025-05-31
+subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
+     solution, dj_n_seed)
+      implicit none
+      integer, parameter :: json = 5000
+
+      integer, intent(in) :: n
+      double precision, intent(in) :: ei(json)
+      double precision, intent(out) :: dj(json)
+      double precision, intent(out) :: sumdj
+! sub_diag/diag/super_diag are the tridiagonal matrix's three
+! diagonals and rhs is the right-hand side, all filled in by the
+! caller; solution is solved for here. dj_n_seed is dj(n)'s initial
+! value (see header note above).
+      double precision, intent(in) :: sub_diag(json), diag(json), &
+           super_diag(json), rhs(json)
+      double precision, intent(out) :: solution(json)
+      double precision, intent(in) :: dj_n_seed
+
+! gamma_elim is solver-internal scratch (SAVE preserved from the
+! original common-block version though nothing here actually depends
+! on it persisting across calls, now that dj_n_seed carries the one
+! value that used to be read from it across calls).
+      double precision :: gamma_elim(json)
+
+      double precision :: rhs_orig(json)
+      integer :: i, j
+      double precision :: bet, fj
+      save
+
+      dj(n) = dj_n_seed
+      do i = 1, n
+         rhs_orig(i) = rhs(i)
+      end do
+      bet = diag(1)
+      solution(1) = rhs(1)/bet
+      do j = 2, n
+         gamma_elim(j) = super_diag(j-1)/bet
+         bet = diag(j) - sub_diag(j)*gamma_elim(j)
+         if (bet.eq.0) stop '#TRIDIA:SINGULAR MATRIX'
+         solution(j) = (rhs(j) - sub_diag(j)*solution(j-1))/bet
+      end do
+      dj(n) = dj(n)+(solution(n)-rhs_orig(n))*ei(n)
+      sumdj = dj(n)
+      fj = 1.0d0+(solution(n)-rhs_orig(n))/rhs_orig(n)
+      solution(n) = rhs_orig(n)*fj
+      do j = n-1, 1, -1
+         solution(j) = solution(j) - gamma_elim(j+1)*solution(j+1)
+         dj(j) = (solution(j)-rhs_orig(j))*ei(j)
+         sumdj = sumdj + dj(j)
+      end do
+
+      return
+end subroutine tridia
+
+!----------------------------------------------------------------------
+! bsstep
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original bsstep.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! Bulirsch-Stoer step-size-control driver: repeatedly calls mmid at
+! increasing substep counts (substep_sequence), extrapolates the
+! results to zero step size via ratext, and either accepts the step
+! (returning x0, h_did, h_next) or shrinks h and retries. This SR is
+! the classic Numerical-Recipes BSSTEP algorithm.
+! luminosity_linear/pressure_rotation_factor/.../saha_state are opaque
+! pass-through arguments forwarded unchanged to mmid/deriv -- named to
+! match the actual arguments used at the bsstep call sites in
+! envint.f90.
+subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
+     h_did, h_next, deriv, luminosity_linear, pressure_rotation_factor, &
+     temperature_rotation_factor, log10_gravity, in_atmosphere, &
+     want_derivatives, conductive_opacity_flag, print_flag, log10_radius, &
+     log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
+     step_err)
+      use intpar_lib
+      implicit none
+
+      double precision, parameter :: one = 1.0d0, shrink_factor = 0.95d0, &
+           grow_factor = 1.2d0
+
+      double precision, intent(inout) :: y(3)
+      double precision, intent(in) :: dydx(3)
+      integer, intent(in) :: num_eqs
+      double precision, intent(inout) :: indep_var
+      double precision, intent(in) :: h_step, tolerance, y_scale(3)
+      double precision, intent(out) :: h_did, h_next
+      external deriv
+      double precision, intent(inout) :: luminosity_linear, &
+           pressure_rotation_factor, temperature_rotation_factor, log10_gravity
+      logical, intent(inout) :: in_atmosphere, want_derivatives, &
+           conductive_opacity_flag, print_flag
+      double precision, intent(inout) :: log10_radius, log10_teff, &
+           hydrogen_fraction, metal_fraction
+      integer, intent(inout) :: call_count, saha_state
+      double precision, intent(out) :: step_err(3)
+
+      double precision :: y_err(3), y_sav(3), dy_sav(3), y_seq(3)
+      integer :: substep_sequence(11)
+      double precision :: h, x_sav, x_est, err_max
+      integer :: i, j
+      save
+      data substep_sequence /2,4,6,8,12,16,24,32,48,64,96/
+
+      h = h_step
+      x_sav = indep_var
+      do i = 1,num_eqs
+       y_sav(i) = y(i)
+       dy_sav(i) = dydx(i)
+      end do
+   20 do i = 1,max_stage_index
+       call mmid(y_sav, dy_sav, num_eqs, x_sav, h, substep_sequence(i), &
+            y_seq, deriv, luminosity_linear, pressure_rotation_factor, &
+            temperature_rotation_factor, log10_gravity, in_atmosphere, &
+            want_derivatives, conductive_opacity_flag, print_flag, &
+            log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
+            call_count, saha_state)
+       x_est = (h/substep_sequence(i))**2
+       call ratext(i, x_est, y_seq, y, y_err, num_eqs, extrap_order)
+       err_max = 0.0d0
+       do j = 1,num_eqs
+          err_max = dmax1(err_max, dabs(y_err(j)/y_scale(j)))
+          step_err(j) = dabs(y_err(j)/y_scale(j))
+       end do
+       err_max = err_max/tolerance
+       if(err_max.lt.one) then
+          indep_var = indep_var + h
+          h_did = h
+          if(i.eq.extrap_order) then
+             h_next = h*shrink_factor
+          else if (i.eq.extrap_order-1) then
+             h_next = h*grow_factor
+          else
+             h_next = h*dfloat(substep_sequence(extrap_order-1))/ &
+                  dfloat(substep_sequence(i))
+          endif
+          return
+       endif
+      end do
+      h = 0.25d0*h/2.0d0**int((max_stage_index-extrap_order)/2)
+!      H = 0.25D0*H/2**((IMAX-NUSE)/2)
+      if(hydrogen_fraction+h.eq.hydrogen_fraction) then
+         write(*,*) 'ERROR IN BSSTEP'
+       stop
+      end if
+      goto 20
+
+end subroutine bsstep
+
+!----------------------------------------------------------------------
+! intpol
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original intpol.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! ***** the interpolation routine *****
+! this routine contains two interpolation methods; hermite,
+! and spline.  each of these has own merit and demerit.
+! if the interpolant is smooth, both of these will give good
+! results.  generally, spline gives more smooth interpolation.
+! when the interpolant contains abrupt variation in gradient,
+! however, spline get worse at that part, while hermit still
+! gives reasonable result.  unfortunately, there is no criterion
+! for selection between these two methods.  therefore, this
+! routine gives the right for selection to user.
+! YCK 3/91
+!
+! x_grid  ; array of abscissa points
+! y_grid  ; array of ordinate points
+! n_grid  ; size of the arrays
+! x_eval  ; a x-value at which we want to find y-value
+! k_lo    ; the grid point smaller than and closest to x_eval
+! y_eval  ; the value we want
+! dy_eval ; the derivative value at x_eval
+subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval)
+      use luout_lib
+      implicit none
+      integer, parameter :: np=100
+
+      double precision, intent(in) :: x_grid(n_grid), y_grid(n_grid)
+      integer, intent(in) :: n_grid
+      double precision, intent(in) :: x_eval
+      double precision, intent(out) :: y_eval, dy_eval
+
+      double precision :: spline_coeff(4,np), dx_local, x_eval_copy
+      double precision :: interp_value, interp_deriv
+      integer :: i, k_lo, k_hi, k_mid
+      data spline_coeff/400*0.0d0/
+      save
+
+! the coefficients for the zero-th order term
+      do i=1,n_grid
+         spline_coeff(1,i)=y_grid(i)
+      end do
+! find the coefficients for spline interploation
+      call ysplin(x_grid, spline_coeff, n_grid)
+      x_eval_copy=x_eval
+! find the grid point,  k_lo, such that x_grid(k_lo)<=x_eval_copy, and
+! abs(x_grid(k_lo)-x_eval_copy)<1.
+      if(x_grid(1).gt.x_eval)then
+         k_lo=1
+         k_hi=2
+         go to 522
+      endif
+      if(x_grid(n_grid).lt.x_eval)then
+         k_lo=n_grid-1
+         k_hi=n_grid
+         go to 522
+      endif
+      k_lo=1
+      k_hi=n_grid
+    2 if((k_hi-k_lo).gt.1)then
+         k_mid = (k_hi+k_lo)/2
+         if(x_grid(k_mid).gt.x_eval_copy)then
+            k_hi=k_mid
+         else
+            k_lo=k_mid
+         endif
+         go to 2
+      endif
+      if((k_hi-k_lo).le.0)then
+         write(iowr, *) 'ERROR COX OP: INTERPOLATION'
+         write(short_file_unit, *) 'ERROR COX OP: INTERPOLATION'
+         stop
+      endif
+  522 continue
+! now, (k_lo,k_hi) is sub-range of x_grid which contains x_eval_copy.
+      dx_local=x_eval_copy-x_grid(k_lo)
+! go on to the spline interpolation routine.
+! evaluates the interpolation value in the sub-range we determined.
+      interp_value=((spline_coeff(4,k_lo)*dx_local+spline_coeff(3,k_lo))*dx_local &
+           +spline_coeff(2,k_lo))*dx_local+spline_coeff(1,k_lo)
+      interp_deriv=(3.0d0*spline_coeff(4,k_lo)*dx_local+2.0d0*spline_coeff(3,k_lo)) &
+           *dx_local+spline_coeff(2,k_lo)
+! return the results from the spline routine
+      y_eval=interp_value
+      dy_eval=interp_deriv
+
+      return
+end subroutine intpol
+
+!----------------------------------------------------------------------
+! splint
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original splint.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! double precision version for opacities, changed from real*4 10/02
+! MHP. Taken from Numerical Recipes, Press, et al, p89. Given the
+! arrays xa and ya of length n, which tabulate a function (with the
+! xa(i)'s in order), and given the array y2a, which is the output of
+! cspline above, and given a value of x, this routine returns a
+! cubic-spline interpolated value y.
+subroutine splint(xa, ya, n, y2a, x, y, klo, khi)
+      use luout_lib
+      implicit none
+
+      integer, intent(in) :: n
+      double precision, intent(in) :: xa(n), ya(n), y2a(n), x
+      double precision, intent(out) :: y
+      integer, intent(out) :: klo, khi
+
+
+      integer :: k
+      double precision :: h, a, b
+      save
+
+      klo = 1
+      khi = n
+    1 if (khi-klo .gt. 1) then
+         k = (khi+klo)/2
+         if (xa(k) .gt. x) then
+            khi = k
+         else
+            klo = k
+         end if
+         goto 1
+      end if
+      h = xa(khi) - xa(klo)
+      if (h .eq. 0d0) then
+           write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         stop
+      end if
+      a = (xa(khi)-x)/h
+      b = (x - xa(klo))/h
+      y = a*ya(klo)+b*ya(khi)+ &
+           ((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.0d0
+      return
+end subroutine splint
+
+!----------------------------------------------------------------------
+! splintd2
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original splintd2.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! double precision version. Taken from Numerical Recipes, Press, et
+! al, p89. Given the arrays xa and ya of length n, which tabulate a
+! function (with the xa(i)'s in order), and given the array y2a, which
+! is the output of cspline above, and given a value of x, this routine
+! returns a cubic-spline interpolated value y.
+!
+! Note: xa/ya/y2a are dimensioned to the json=5000 module-wide
+! maximum rather than to n, exactly as in the original file.
+subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi)
+      use luout_lib
+      implicit none
+      integer, parameter :: json = 5000
+
+      integer, intent(in) :: n
+      double precision, intent(in) :: xa(json), ya(json), y2a(json), x
+      double precision, intent(out) :: y
+      integer, intent(out) :: klo, khi
+
+
+      integer :: k
+      double precision :: h, a, b
+      save
+
+      klo = 1
+      khi = n
+    1 if (khi-klo .gt. 1) then
+         k = (khi+klo)/2
+         if (xa(k) .gt. x) then
+            khi = k
+         else
+            klo = k
+         end if
+         goto 1
+      end if
+      h = xa(khi) - xa(klo)
+      if (h .eq. 0d0) then
+           write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         stop
+      end if
+      a = (xa(khi)-x)/h
+      b = (x - xa(klo))/h
+      y = a*ya(klo)+b*ya(khi)+ &
+           ((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6d0
+      return
+end subroutine splintd2
+
+!----------------------------------------------------------------------
+! trapzd
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original trapzd.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! Numerical Recipes-style trapzd: on the n=1 call, evaluates the
+! integrand q at the single point r0=b2 and returns the crude
+! 2-point trapezoidal estimate s over [b1,b2]. On subsequent calls
+! (n>1) it refines s by adding the contribution of the newly
+! inserted midpoints, with the interpolated intermediate rho/sm/w2/
+! eta22 values linearly interpolated between the (rhop,smp,w2p,
+! eta22p) state at b1 and the (rho,sm,w2,eta22) state at b2. it is
+! the number of subintervals from the previous call, held across
+! calls via SAVE (the Numerical Recipes call-count doubling scheme;
+! it used to be passed in explicitly as a dummy argument i -- see
+! the commented-out original signature below).
+!       SUBROUTINE TRAPZD(B1,B2,S,N,RHO,RHOP,SM,SMP,W2,W2P,ETA22,
+!      *ETA22P,Q,QP,I)  ! KC 2025-05-31
+subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
+     eta22p, q, qp)
+
+      use const_lib
+      implicit none
+
+
+
+      double precision, intent(in) :: b1, b2
+      double precision, intent(inout) :: s
+      integer, intent(in) :: n
+      double precision, intent(in) :: rho, rhop, sm, smp, w2, w2p, &
+           eta22, eta22p
+      double precision, intent(inout) :: q
+      double precision, intent(in) :: qp
+
+      integer :: it
+      save
+
+      double precision :: r0, r03, tnm, dr, del, y, sum, drho, dm, &
+           deta2, dw2, r03t, rhot, smt, w2t, eta22t, q0
+      integer :: j
+
+      r0 = b2
+      r03 = r0**3
+      if (n.eq.1) then
+!  aint = int(0=>r0) (rho/m)*r0'**7*omega**2*(5+eta2)/(2+eta2) dr0'
+!  q is the integrand (ro'**7,etc.) evaluated at r0(i)
+!  aint and its derivatives w/r/to r and theta are needed to find <g>
+       q = (rho*w2*r03*(3.0d0+eta22)/(sm*eta22))*r03*r0
+!        q(i) = dexp(cln*(hd(i)-hs(i)))*omega(i)**2*r0(i)**6
+!    *   *(5.0d0+eta2(i))/(2.0d0+eta2(i))
+       s = 0.5d0*(b2-b1)*(qp+q)
+       it = 1
+      else
+       tnm = dfloat(it)
+       dr = b2 - b1
+       del = dr/tnm
+       y = b1 + 0.5d0*del
+       sum = 0.0d0
+       drho = (rho - rhop)/dr
+       dm = (sm - smp)/(b2**2 - b1**2)
+       deta2 = (eta22 - eta22p)/dr
+       dw2 = (w2 - w2p)/dr
+       do j = 1, it
+          r03t = y**3
+! interpolate rho,m,omega,eta2+2 between shell i and shell i-1
+          rhot = rhop+drho*del
+          smt = smp+dm*(y**2 - b1**2)
+          w2t = w2p + dw2*del
+          eta22t = eta22p + deta2*del
+! calculate q between shells
+          q0 = (rhot*w2t*r03t*(3.0d0+eta22t)/(smt*eta22t))*r03t*y
+! q0 = rho*w2*r07t*(3.0d0+eta22)/(sm*eta22)
+          sum = sum + q0
+          y = y+del
+       end do
+       s = 0.5d0*(s+del*sum)
+       it = it*2
+      end if
+
+      return
+end subroutine trapzd
+
+!----------------------------------------------------------------------
+! qgauss
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original qgauss.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! 10-point (5-point-symmetric) Gauss-Legendre quadrature over [0,b]
+! of three related integrands evaluated by the external routine
+! func: g0g = integral of g*s, ginvg = integral of s/g, and sphig =
+! integral of s, where (g,s) and (g2,s2) are func's outputs at the
+! two symmetric abscissas about the interval midpoint. r0, hs, aint,
+! q, w2, a, and i are passed through unchanged to func on each call.
+subroutine qgauss(g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
+
+      use const_lib
+      implicit none
+      integer, parameter :: json = 5000
+
+
+
+      double precision, intent(out) :: g0g, ginvg, sphig
+      double precision, intent(in) :: b
+      double precision, intent(in) :: r0(json), hs(json)
+      double precision, intent(in) :: aint, q, w2, a
+      integer, intent(in) :: i
+
+      double precision :: x(5), w(5)
+      data x/.14887433898163d0,.43339539412925d0,.67940956829902d0, &
+           .86506336668899d0,.97390652851717d0/
+      data w/.29552422471475d0,.26926671931d0,.21908636251598d0, &
+           .14945134915058d0,.06667134430869d0/
+
+      double precision :: xm, xr, dx, g, s, g2, s2
+      integer :: j
+      save
+
+      xm = 0.5d0*b
+      xr = xm
+      g0g = 0.0d0
+      ginvg = 0.0d0
+      sphig = 0.0d0
+      do j = 1, 5
+       dx = xr*x(j)
+       call func(xm+dx, g, s, r0, hs, aint, q, w2, a, i)
+       call func(xm-dx, g2, s2, r0, hs, aint, q, w2, a, i)
+       g0g = g0g+w(j)*(g*s+g2*s2)
+       ginvg = ginvg+w(j)*(s/g+s2/g2)
+       sphig = sphig+w(j)*(s+s2)
+      end do
+      g0g = g0g*xr
+      ginvg = ginvg*xr
+      sphig = sphig*xr
+      return
+end subroutine qgauss
+
+!------------------------    GROUP: SR_P     -------------------------------
+!----------------------------------------------------------------------
+! intpt
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original intpt.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model). NOT exercised by that suite
+! (only called from mhdpx2.f90, the MHD equation-of-state path, which
+! the suite's 4 test cases do not select) -- verified by build +
+! code review only.
+!
+! Bicubic-style interpolation in a (log10_pressure, log10_temperature)
+! table_data(table_dim_t,table_dim_r,num_vars) grid, via two passes of
+! the external 4-point Lagrangian interpolator lir: first at fixed
+! t_indices columns to interpolate in pressure (work1 -> work2), then
+! across the 4 selected t_indices to interpolate in temperature
+! (work2 -> interp_vars). Dummy-argument names match the actual
+! arguments used at the intpt call sites in mhdpx2.f90.
+subroutine intpt(log10_pressure, log10_temperature, table_data, &
+     table_dim_t, table_dim_r, num_vars, table_log10t, num_t, num_r, &
+     work1, work2, y_work, interp_vars)
+      implicit none
+      integer, intent(in) :: table_dim_t, table_dim_r, num_vars
+      double precision, intent(in) :: log10_pressure, log10_temperature
+      double precision, intent(in) :: table_data(table_dim_t,table_dim_r,num_vars)
+      double precision, intent(in) :: table_log10t(table_dim_t)
+      integer, intent(in) :: num_t, num_r
+      double precision, intent(inout) :: work1(num_vars,4), work2(num_vars,4)
+      double precision, intent(inout) :: y_work(num_vars)
+      double precision, intent(out) :: interp_vars(num_vars)
+
+      integer :: r_lo_guess(4), r_indices(4,4), t_indices(4)
+      double precision :: x_nodes(4)
+! lir_order is INTEGER*4 in the original (overriding this file's
+! IMPLICIT LOGICAL*4(L) for the single name L), holding a flag passed
+! to the external routine lir; its exact meaning there is not
+! established from this file alone.
+      integer :: lir_order
+      save
+
+      integer :: n, i, m, j, t_col, iv, t_idx, r_idx, t_idx_max, r_idx_max
+      double precision :: p_min, p_max
+      integer :: lir_num_vars, lir_leading_dim, lir_num_points, lir_interp_mode
+
+      do 100 n=1,num_t
+         if(table_log10t(n).ge.log10_temperature) goto 101
+         t_indices(1)=n
+ 100  continue
+ 101  if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1
+      t_idx_max=num_t-3
+      if(t_indices(1).gt.t_idx_max) t_indices(1)=t_idx_max
+      do i=2,4
+         t_indices(i)=t_indices(1)+i-1
+      end do
+      do i=1,4
+         r_lo_guess(i)=1
+         t_idx=t_indices(i)
+         p_min=table_data(t_idx, 1,2)
+         p_max=table_data(t_idx,num_r,2)
+         if(log10_pressure.gt.p_max) then
+            return
+         end if
+         do 200 m=1,num_r
+            if(table_data(t_idx,m,2).ge.log10_pressure) goto 201
+            r_lo_guess(i)=m
+ 200     continue
+ 201     if(r_lo_guess(i).ge.2) r_lo_guess(i)=r_lo_guess(i)-1
+         r_idx_max=num_r-3
+         if(r_lo_guess(i).gt.r_idx_max) r_lo_guess(i)=r_idx_max
+      end do
+      do i=1,4
+         do j=1,4
+            r_indices(j,i)=r_lo_guess(i)+j-1
+         end do
+      end do
+      do t_col=1,4
+         t_idx=t_indices(t_col)
+         do i=1,4
+            r_idx=r_indices(i,t_col)
+            x_nodes(i)=table_data(t_idx,r_idx,2)
+         end do
+         do i=1,4
+            r_idx=r_indices(i,t_col)
+            do iv=1,num_vars
+               work1(iv,i)=table_data(t_idx,r_idx,iv)
+            end do
+         end do
+
+         lir_num_vars=num_vars
+         lir_leading_dim=num_vars
+         lir_num_points=4
+         lir_order=1
+         lir_interp_mode=1
+         call lir(log10_pressure, x_nodes, y_work, work1, lir_num_vars, &
+              lir_leading_dim, lir_num_points, lir_order, lir_interp_mode)
+         do iv=1,num_vars
+            work2(iv,t_col) = y_work(iv)
+         end do
+
+      end do
+      do i=1,4
+         t_idx=t_indices(i)
+         x_nodes(i) = table_log10t(t_idx)
+      end do
+
+      lir_num_vars=num_vars
+      lir_leading_dim=num_vars
+      lir_num_points=4
+      lir_order=1
+      lir_interp_mode=1
+
+      call lir(log10_temperature, x_nodes, interp_vars, work2, lir_num_vars, &
+           lir_leading_dim, lir_num_points, lir_order, lir_interp_mode)
+
+      return
+end subroutine intpt
+
 end module numerics_lib

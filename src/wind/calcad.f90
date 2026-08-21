@@ -495,7 +495,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                                    spline_speed_neighborhood,spline_second_deriv,7)
                               call splint(spline_radius_neighborhood, &
                                    spline_speed_neighborhood,7,spline_second_deriv, &
-                                   cz_radius_cm,spline_interp_value,klo,khi)
+                                   cz_radius_cm(1),spline_interp_value(1),klo,khi)
                               star_radius_cm(cz_zone_index)=cz_radius_cm(1)
                               star_inverse_sound_speed(cz_zone_index)=spline_interp_value(1)
                         endif
@@ -516,7 +516,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                                          spline_speed_neighborhood,spline_second_deriv,7)
                                     call splint(spline_radius_neighborhood, &
                                          spline_speed_neighborhood,7,spline_second_deriv, &
-                                         cz_radius_cm,spline_interp_value,klo,khi)
+                                         cz_radius_cm(1),spline_interp_value(1),klo,khi)
                                     star_radius_cm(cz_zone_index)=cz_radius_cm(1)
                                     star_inverse_sound_speed(cz_zone_index)=spline_interp_value(1)
                               endif

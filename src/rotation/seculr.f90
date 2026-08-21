@@ -58,6 +58,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 
       use luout_lib
       use const_lib
+      use numerics_lib
       implicit none
       integer, parameter :: json = 5000
 
