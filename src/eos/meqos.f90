@@ -22,6 +22,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp_dt, specific_heat_cp_dp)
 
 ! LATMO,KSAHA NEEDED FOR EQSAHA
+      use mhd_eos_lib
       use const_lib
       use envelope_comp_lib
       use luout_lib
@@ -50,11 +51,6 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
 
 
 
-! common/mhdout/: raw output vector from the MHD table interpolator
-! (mhdpx), indexed as documented inline below where each element is
-! read.
-      double precision :: mhd_output(ivarx)
-      common/mhdout/ mhd_output
 
       save
 
@@ -69,32 +65,32 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
       pressure = 10.0d0**log10_pressure
       call mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
            mhdpx_r10)
-      log10_density = mhd_output(1)
+      log10_density = mhd_eos%mhd_output(1)
       density = 10.0d0**log10_density
-      dlnrho_dlnp = 1.0d0/mhd_output(4)
-      chi_rho = mhd_output(4)
-      chi_t = mhd_output(5)
+      dlnrho_dlnp = 1.0d0/mhd_eos%mhd_output(4)
+      chi_rho = mhd_eos%mhd_output(4)
+      chi_t = mhd_eos%mhd_output(5)
       dlnrho_dlnt = -chi_t/chi_rho
-      log10_specific_heat_cp = mhd_output(9)
+      log10_specific_heat_cp = mhd_eos%mhd_output(9)
       specific_heat_cp = 10.0d0**log10_specific_heat_cp
-      specific_heat_cp_dp = dlnrho_dlnp*mhd_output(12)
-      specific_heat_cp_dt = mhd_output(13) + mhd_output(12)*dlnrho_dlnt
-      adiabatic_gradient = mhd_output(8)
-      adiabatic_gradient_dp = dlnrho_dlnp*mhd_output(10)*cnvs/adiabatic_gradient
-      adiabatic_gradient_dt = (mhd_output(11) + mhd_output(10)*dlnrho_dlnt)* &
+      specific_heat_cp_dp = dlnrho_dlnp*mhd_eos%mhd_output(12)
+      specific_heat_cp_dt = mhd_eos%mhd_output(13) + mhd_eos%mhd_output(12)*dlnrho_dlnt
+      adiabatic_gradient = mhd_eos%mhd_output(8)
+      adiabatic_gradient_dp = dlnrho_dlnp*mhd_eos%mhd_output(10)*cnvs/adiabatic_gradient
+      adiabatic_gradient_dt = (mhd_eos%mhd_output(11) + mhd_eos%mhd_output(10)*dlnrho_dlnt)* &
            cnvs/adiabatic_gradient
       dlnrho_dlnp_dt = dlnrho_dlnt*(adiabatic_gradient_dp - 1.0d0 + &
            dlnrho_dlnp + specific_heat_cp_dp)
       dlnrho_dlnt_dt = dlnrho_dlnt*(adiabatic_gradient_dt + 1.0d0 + &
            dlnrho_dlnt + specific_heat_cp_dt)
-      beta = 10.0d0**(mhd_output(20) - mhd_output(2))
+      beta = 10.0d0**(mhd_eos%mhd_output(20) - mhd_eos%mhd_output(2))
       beta_inverse = 1.0d0/beta
       beta14 = 1.0d0 - beta
       do ion_idx = 1, 3
-      ion_fraction(ion_idx) = mhd_output(ion_idx+13)
+      ion_fraction(ion_idx) = mhd_eos%mhd_output(ion_idx+13)
       end do
-      electron_degeneracy_parameter = mhd_output(18)
-      specific_gas_constant = 10.0d0**mhd_output(20)/(density*temperature)
+      electron_degeneracy_parameter = mhd_eos%mhd_output(18)
+      specific_gas_constant = 10.0d0**mhd_eos%mhd_output(20)/(density*temperature)
       call mu(temperature, pressure, density, hydrogen_fraction, &
            metal_fraction, specific_gas_constant_check, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, beta)

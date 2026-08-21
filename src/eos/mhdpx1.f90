@@ -21,6 +21,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
 !
 !     MHDST MUST BE CALLED IN MAIN.
 !     INTERPOLATION IN TABLES WITH DIFFERENT X AND FIXED Z
+      use mhd_eos_lib
       use const_lib
       use luout_lib
       use numerics_lib
@@ -33,22 +34,12 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
 
       double precision :: table_vars(ndimt,ivarx), table_hfrac(ndimt)
 
-! common/tttt/: temperature boundaries between the lower/upper ZAMS
-! table regions and the centre-table region, and the overall
-! temperature range covered by the loaded tables. Set by mhdst.
-      double precision :: zams_lower_upper_boundary_log10t, &
-           zams_centre_boundary_log10t, table_log10t_min, table_log10t_max
-      common/tttt/zams_lower_upper_boundary_log10t, &
-           zams_centre_boundary_log10t, table_log10t_min, table_log10t_max
 !     QUANTITIES FOR INTERPOLATION IN X
       double precision :: cubic_vars(ivarx,4), cubic_x_nodes(4)
       integer :: cubic_table_index(4)
 ! LIR's "type" flag; the file's own IMPLICIT LOGICAL*4(L) rule is
 ! overridden below by an explicit INTEGER*4 declaration for L.
       integer :: lir_type_flag
-!     OUTPUT
-      double precision :: mhd_output(ivarx)
-      common/mhdout/ mhd_output
       save
 !     READ FROM APPROPRIATE TABLES
 !     AND FILL ARRAYS VAROUT AND XC
@@ -60,18 +51,18 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
            var_at_x0, var_at_x1, var_at_x2
 
 !     IRANGE = 1
-      if (log10_temperature.lt.table_log10t_min .or. &
-           log10_temperature.gt.table_log10t_max) then
+      if (log10_temperature.lt.mhd_eos%table_log10t_min .or. &
+           log10_temperature.gt.mhd_eos%table_log10t_max) then
 !         IRANGE = 0
           go to 999
       end if
 !     LOWER ZAMS TABLES
-      if (log10_temperature.lt.zams_lower_upper_boundary_log10t) then
+      if (log10_temperature.lt.mhd_eos%zams_lower_upper_boundary_log10t) then
          do 10 i=1,3
          itbl = -i
          call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt)
  10      continue
-      else if (log10_temperature.lt.zams_centre_boundary_log10t) then
+      else if (log10_temperature.lt.mhd_eos%zams_centre_boundary_log10t) then
 !     UPPER ZAMS TABLES
          do 20 i=1,3
          itbl = i
@@ -86,7 +77,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
  30      continue
       end if
 !     INTERPOLATION IN X
-      if (log10_temperature.le.zams_centre_boundary_log10t) then
+      if (log10_temperature.le.mhd_eos%zams_centre_boundary_log10t) then
 !        QUADRATIC NEWTON (EQUIDISTANT XC'S)
          x_grid_origin = table_hfrac(1)
          x_grid_spacing  = table_hfrac(2) - table_hfrac(1)
@@ -107,7 +98,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
          var_at_x1 = table_vars(2,iv)
          var_at_x2 = table_vars(3,iv)
          call quint(hydrogen_fraction, x_grid_origin, x_grid_spacing, &
-              var_at_x0, var_at_x1, var_at_x2, mhd_output(iv))
+              var_at_x0, var_at_x1, var_at_x2, mhd_eos%mhd_output(iv))
  100     continue
       else
 !     CUBIC LAGRANGIAN (ARBITRARILY SPACED XC'S)
@@ -141,7 +132,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
          num_points=4
          lir_type_flag=1
          interp_mode=1
-         call lir(hydrogen_fraction, cubic_x_nodes, mhd_output, cubic_vars, &
+         call lir(hydrogen_fraction, cubic_x_nodes, mhd_eos%mhd_output, cubic_vars, &
               num_vars, var_leading_dim, num_points, lir_type_flag, interp_mode)
       end if
   999 return

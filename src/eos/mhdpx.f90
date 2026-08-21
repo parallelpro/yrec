@@ -30,6 +30,7 @@
 ! variable-X interpolation in mhdpx1, then returns log10(density).
 subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
      log10_density)
+      use mhd_eos_lib
       use const_lib
       use luout_lib
       implicit none
@@ -40,15 +41,11 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
            hydrogen_fraction
       double precision, intent(out) :: log10_density
 
-!     S/R MHDSTX MUST BE CALLED IN MAIN.
-!     CALLS VARIABLE-X VERSION
-      double precision :: mhd_output(ivarx)
-      common/mhdout/ mhd_output
       save
 
       call mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
 !     IERR = 0
-      log10_density = mhd_output(1)
+      log10_density = mhd_eos%mhd_output(1)
       return
 !   999 CONTINUE
       write(iowr,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
