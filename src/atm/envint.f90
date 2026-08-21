@@ -82,14 +82,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       external qatm, qenv
       double precision :: hra
       external hra
-! common/nwlaol/: not used in this file; declared only to preserve
-! layout. Naming matches getopac.f90.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/olaol, oxa, ot, orho, tollaol, &
-           iolaol, numofxyz, numrho, numt, llaol, use_pure_z_table, iopurez
 ! common/atmprt/: all used/set here. Naming matches alsurfp.f90.
       double precision :: atm_tau, atm_log10_pressure, &
            atm_log10_temperature, atm_log10_density, atm_opacity, &
@@ -106,20 +98,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
            current_log10_radius, current_log10_mass, current_log10_density, &
            current_opacity, current_beta, current_gradients, &
            current_ion_fraction, current_velocity
-! common/atmos2/: not used in this file (SURFP's own common). Naming
-! matches surfp.f90.
-      double precision :: kurucz_log10_pressure_table(nt,ng), &
-           kurucz_teff_table(nt), kurucz_logg_table(ng), kurucz_table_z
-      integer :: atm_table_file_unit
-      common/atmos2/kurucz_log10_pressure_table, kurucz_teff_table, &
-           kurucz_logg_table, kurucz_table_z, atm_table_file_unit
-! JNT 6/14 ADD FOR KURUCZ/CASTELLI 2004 ATMOSPHERES
-! common/atmos2c/: not used in this file (KCSURFP's own common).
-! Naming matches kcsurfp.f90.
-      double precision :: kurucz_castelli_log10_pressure_table(ntc,ngc), &
-           kurucz_castelli_teff_table(ntc), kurucz_castelli_logg_table(ngc)
-      common/atmos2c/kurucz_castelli_log10_pressure_table, &
-           kurucz_castelli_teff_table, kurucz_castelli_logg_table
 ! MHP 6/97 ADDED ALLARD MODEL ATMOSPHERES
 ! common/alatm03/: not used in this file (ALSURFP's own common).
 ! Naming matches alsurfp.f90.

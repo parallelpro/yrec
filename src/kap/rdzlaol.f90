@@ -12,18 +12,11 @@
 ! MHP 10/02 vector v not used
 subroutine rdzlaol(pure_z_table_path)
 
+      use const_lib
       use luout_lib
       implicit none
       character(len=256), intent(in) :: pure_z_table_path
 
-! MHP 8/25 Removed character file names from common block
-! common/nwlaol/: only iopurez is used here.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
 ! DBG 12/95 ARRAYS FOR PURE Z TABLE
       double precision :: zlaol_opacity(104,52), zlaol_logt_grid(52), &

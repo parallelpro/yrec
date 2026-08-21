@@ -63,16 +63,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !     3    FLLDAT, FSNU, FSCOMP, FKUR,
 !     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
 
-! DBGLAOL
-! MHP 8/25 Removed character file names from common block
-! common/nwlaol/: not used in this file; declared only to preserve
-! layout. Naming matches getopac.f90.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
 
 
@@ -89,24 +79,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
            fermi_table_x_lookup
 
 
-      double precision :: kurucz_log10_pressure_table(nt,ng), &
-           kurucz_teff_table(nt), kurucz_logg_table(ng), kurucz_table_z
-      integer :: atm_table_file_unit
-! MHP 8/25 Removed file names from common block
-! JMH 8/18/91
-!      COMMON/ATMOS2/ATMPL(NT,NG),ATMTL(NT),
-!     *              ATMGL(NG),ATMZ,IOATM,FATM
-! common/atmos2/: the Kurucz surface-pressure table, all used here.
-! Naming matches surfp.f90.
-      common/atmos2/kurucz_log10_pressure_table, kurucz_teff_table, &
-           kurucz_logg_table, kurucz_table_z, atm_table_file_unit
-! JNT 06/14
-! common/atmos2c/: the Kurucz/Castelli surface-pressure table, all
-! used here. Naming matches kcsurfp.f90.
-      double precision :: kurucz_castelli_log10_pressure_table(ntc,ngc), &
-           kurucz_castelli_teff_table(ntc), kurucz_castelli_logg_table(ngc)
-      common/atmos2c/kurucz_castelli_log10_pressure_table, &
-           kurucz_castelli_teff_table, kurucz_castelli_logg_table
 ! MHP 8/92 COMMON BLOCK ADDED FOR LOWER EDGE OF TABLE IN LOG G.
 ! common/fac/: all members assigned here. Naming matches surfp.f90.
       integer :: kurucz_gmin_index(nt), kurucz_gmax_index(nt), &

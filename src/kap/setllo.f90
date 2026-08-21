@@ -51,14 +51,6 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
       common /llot2/ opal92_log10_opacity_z2, opal92_num_x_z2, opal92_num_temps_z2
 
 
-! MHP 8/25 Removed character file names from common block
-! common/zramp/: not used here; declared only to preserve the shared
-! storage layout (see getopac.f90/setupopac.f90 for these names).
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
 ! common/newopac/: only use_two_z_tables is used here.
       double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &

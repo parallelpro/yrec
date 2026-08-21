@@ -42,14 +42,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use intpar_lib
       implicit none
 
-! PARAMETERS for tabulated surface pressures (n_atm_teff/n_atm_logg),
-! Kurucz/Castelli surface pressures (n_katm_teff/n_katm_logg, JNT
-! 6/2014), Allard model surface pressures (n_allard_teff/
+! PARAMETERS for Allard model surface pressures (n_allard_teff/
 ! n_allard_logg), the SCV EOS tables (n_scv_teff/n_scv_press), and the
 ! shared array length used by the variable-FC and acoustic-depth
-! diagnostics (max_diag_pts).
-      integer, parameter :: n_atm_teff = 57, n_atm_logg = 11
-      integer, parameter :: n_katm_teff = 76, n_katm_logg = 11
+! diagnostics (max_diag_pts). n_atm_teff/n_atm_logg/n_katm_teff/
+! n_katm_logg (former parameters for the tabulated Kurucz/Castelli
+! surface pressures, now handled via const_lib's own array dimensions)
+! are no longer used in this file.
       integer, parameter :: n_allard_teff = 54, n_allard_logg = 5
       integer, parameter :: n_scv_teff = 63, n_scv_press = 76
       integer, parameter :: max_diag_pts = 5000
@@ -486,31 +485,44 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer :: mcore
       double precision :: fcore
 
-! common /nwlaol/
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, lpurez
-      common /nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, numrho, numt, llaol, lpurez, &
-           iopurez
+! nwlaol: olaol/oxa/ot/orho/tollaol/iolaol/numofxyz/numrho/numt/llaol/
+! iopurez are spelled identically to their const_lib canonical names --
+! use-associated directly. lpurez is a NAMELIST /physics/ member with a
+! different canonical spelling (use_pure_z_table), so kept local under
+! its NAMELIST spelling here and copy-assigned after the namelist read
+! below.
+      logical :: lpurez
 
-! common /chrone/
+! lrwsh/liso: NAMELIST /physics/ members, each with a different
+! canonical const_lib spelling (lrwsh_placeholder/
+! isochrone_output_active), so kept local under their NAMELIST spelling
+! here and copy-assigned after the namelist read below. iiso (former
+! common/chrone/'s remaining member) is not a namelist value and
+! genuinely used in this file -- renamed in place to its canonical
+! const_lib name (isochrone_file_unit), now use-associated rather than
+! locally declared.
       logical :: lrwsh, liso
-      integer :: iiso
-      common /chrone/ lrwsh, liso, iiso
 
-! common /newxym/
+! newxym: NAMELIST /physics/ members, all renamed in const_lib (xenv0a/
+! zenv0a/cmixla/lsenv0a/senv0a -> initial_x_array/initial_z_array/
+! mixing_length_array/has_senv0_array/senv0_array), kept local and
+! copy-assigned below.
       double precision :: xenv0a(50), zenv0a(50), cmixla(50), senv0a(50)
       logical :: lsenv0a(50)
-      common /newxym/ xenv0a, zenv0a, cmixla, lsenv0a, senv0a
 
-! common /atmos2/
-      double precision :: atmpl(n_atm_teff,n_atm_logg), atmtl(n_atm_teff), atmgl(n_atm_logg), atmz
-      integer :: ioatm
-      common /atmos2/ atmpl, atmtl, atmgl, atmz, ioatm
+! former common/atmos2/: the Kurucz surface-pressure table (atmpl/
+! atmtl/atmgl/atmz) is unused in this file, renamed to its canonical
+! const_lib names (kurucz_log10_pressure_table/kurucz_teff_table/
+! kurucz_logg_table/kurucz_table_z) and dropped entirely. ioatm is not
+! a namelist value and genuinely used in this file -- renamed in place
+! to its canonical const_lib name (atm_table_file_unit), now
+! use-associated rather than locally declared.
 
-! common /atmos2c/
-      double precision :: atmplc(n_katm_teff,n_katm_logg), atmtlc(n_katm_teff), atmglc(n_katm_logg)
-      common /atmos2c/ atmplc, atmtlc, atmglc
+! former common/atmos2c/: the Kurucz/Castelli surface-pressure table
+! (atmplc/atmtlc/atmglc) is unused in this file, renamed to its
+! canonical const_lib names (kurucz_castelli_log10_pressure_table/
+! kurucz_castelli_teff_table/kurucz_castelli_logg_table) and dropped
+! entirely.
 
 ! lnulos1: NAMELIST /physics/ member (must keep this exact spelling);
 ! copied into const_lib's use_itoh_neutrino_loss after the namelist
@@ -522,22 +534,33 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! entirely rather than carried forward.
       logical :: lnulos1
 
-! common /cals2/
+! cals2: NAMELIST /physics/ members, all renamed in const_lib (toll/
+! tolr/tolz/lcals/lcalsolzx/calsolzx/calsolage -> luminosity_tolerance/
+! radius_tolerance/zx_tolerance/calibrate_solar_model/
+! calibrate_solar_zx/target_solar_zx/target_solar_age), kept local and
+! copy-assigned below.
       double precision :: toll, tolr, tolz, calsolzx, calsolage
       logical :: lcals, lcalsolzx
-      common /cals2/ toll, tolr, tolz, lcals, lcalsolzx, calsolzx, calsolage
 
-! common /zramp/
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
+! zramp: rsclzc/rsclzm1/rsclzm2/iolaol2/ioopal2/nk are spelled
+! identically to their const_lib canonical names -- use-associated
+! directly. lzramp is a NAMELIST /physics/ member with a different
+! canonical spelling (use_z_ramp), so kept local under its NAMELIST
+! spelling here and copy-assigned after the namelist read below.
       logical :: lzramp
-      common /zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, lzramp
 
-! common /calstar/
-      double precision :: xls, xlstol, steff, sr, bli, alri, ager, blr, blrp, agei
-      logical :: lstar, lteff, lpassr, lcalst
-      common /calstar/ xls, xlstol, steff, sr, bli, alri, ager, blr, blrp, agei, lstar, lteff, &
-           lpassr, lcalst
+! calstar: xls/xlstol/steff/sr/lteff/lcalst are NAMELIST /physics/
+! members with different canonical const_lib spellings
+! (target_luminosity_lsun/target_star_luminosity_tolerance/
+! target_teff/target_radius_rsun/specify_teff_flag/
+! calibrate_star_flag -- xlstol's canonical name is disambiguated from
+! common/cals2/'s own luminosity_tolerance member, which wins the
+! shorter name), so kept local under their NAMELIST spelling here and
+! copy-assigned after the namelist read below. bli/alri/ager/blr/blrp/
+! agei/lstar/lpassr (former common/calstar/'s remaining members) are
+! unused in this file, so they're dropped entirely.
+      double precision :: xls, xlstol, steff, sr
+      logical :: lteff, lcalst
 
 ! common /opaleos/
       logical :: lopale, lopale01, lopale06, lnumderiv
@@ -986,8 +1009,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! DATA can no longer target them here now that they're use-associated.
       data igsf/1/
 ! lsemic's default moved to const_lib.f90 (former common/dpmix/).
+! tollaol/llaol defaults moved to const_lib.f90 (former common/nwlaol/):
+! DATA can no longer target them here now that they're use-associated.
 ! DBGLAOL
-      data tollaol,llaol,lpurez/10.0,.false.,.false./
+      data lpurez/.false./
 ! DBG 11/11/91
       data lrwsh,liso/.false.,.false./
 ! 3/92 DBG
@@ -999,8 +1024,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &      1.0d-4,1.0d-3,.false.,.false.,4.57d9,0.02292d0/
 !      DATA TOLL,TOLR,LCALS/1.0D-5,1.0D-4,.FALSE./
 ! DBG 4/94 ZRAMP STUFF
-      data rsclzc, rsclzm1, rsclzm2, lzramp/50*-1.0d0, 50*-1.0d0, &
-           &        50*-1.0d0, .false./
+! rsclzc/rsclzm1/rsclzm2 defaults moved to const_lib.f90 (former
+! common/zramp/): DATA can no longer target them here now that they're
+! use-associated.
+      data lzramp/.false./
 ! DBG 12/94 CALIBRATED STELLAR MODEL STUFF
       data lcalst, lteff/.false., .false./
 ! YCK >>>  2/95 OPAL eos
@@ -1182,9 +1209,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! YCK INPUT: KURUCZ LOW T OPACITIES
       kurucz_table_unit = 36
 ! OUPUT: ISOCHRONE INFORMATION
-      iiso = 37
+      isochrone_file_unit = 37
 ! INPUT: KURUCZ ATMOSPHER TABLE
-      ioatm = 38
+      atm_table_file_unit = 38
 ! YCK INPUT: Alex LOW T OPACITIES
       ialxo = 39
 ! INPUT: MHD EQU. OF STATE TABLES
@@ -1400,6 +1427,28 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       extend_core_inward = lcore
       num_core_shells_added = mcore
       core_mass_reduction_factor = fcore
+      use_pure_z_table = lpurez
+      lrwsh_placeholder = lrwsh
+      isochrone_output_active = liso
+      initial_x_array = xenv0a
+      initial_z_array = zenv0a
+      mixing_length_array = cmixla
+      has_senv0_array = lsenv0a
+      senv0_array = senv0a
+      luminosity_tolerance = toll
+      radius_tolerance = tolr
+      zx_tolerance = tolz
+      calibrate_solar_model = lcals
+      calibrate_solar_zx = lcalsolzx
+      target_solar_zx = calsolzx
+      target_solar_age = calsolage
+      use_z_ramp = lzramp
+      target_luminosity_lsun = xls
+      target_star_luminosity_tolerance = xlstol
+      target_teff = steff
+      target_radius_rsun = sr
+      specify_teff_flag = lteff
+      calibrate_star_flag = lcalst
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
@@ -1632,7 +1681,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
          open(icondopacp,file=fcondopacp,status='OLD')
       endif
       if(liso) then
-         open(iiso, file=fiso,status='UNKNOWN', form='FORMATTED')
+         open(isochrone_file_unit, file=fiso,status='UNKNOWN', form='FORMATTED')
       endif
       if(lsemic)then
          if(lovstc.or.lovste.or.lovstm)then

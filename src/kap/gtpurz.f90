@@ -12,6 +12,7 @@
 subroutine gtpurz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use const_lib
       use luout_lib
       use numerics_lib
       implicit none
@@ -26,14 +27,6 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
            logt_d2opacity(52)
 
 
-! MHP 8/25 Removed character file names from common block
-! common/nwlaol/: only tollaol is used here.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
 ! common/slaol/: not used here; declared only to preserve the shared
 ! storage layout (see gtlaol.f90 for these names).

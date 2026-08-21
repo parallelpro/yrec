@@ -23,43 +23,11 @@ subroutine setscal
 
 
 
-! common/newxym/: initial_x_array/initial_z_array/mixing_length_array/
-! has_senv0_array/senv0_array, all used here. Naming matches
-! chkcal.f90.
-      double precision :: initial_x_array(50), initial_z_array(50), &
-           mixing_length_array(50)
-      logical :: has_senv0_array(50)
-      double precision :: senv0_array(50)
-      common /newxym/ initial_x_array, initial_z_array, &
-           mixing_length_array, has_senv0_array, senv0_array
-
-! MHP 8/25 Removed character file names from common block
-! common/zramp/: rsclzc/rsclzm1/rsclzm2 are used here; the remaining
-! members are unused placeholders. Naming matches gtlaol2.f90.
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
 
 
 
-! common/calstar/: target-star calibration state; all members used
-! here. Naming matches chkscal.f90.
-      double precision :: target_luminosity_lsun, luminosity_tolerance, &
-           target_teff, target_radius_rsun, log_l_prev_model, &
-           log_r_prev_model, age_at_target_radius, &
-           log_l_at_target_radius, log_l_at_target_radius_prev_run, &
-           age_prev_model
-      logical :: star_found_flag, specify_teff_flag, &
-           just_passed_target_radius_flag, calibrate_star_flag
-      common/calstar/ target_luminosity_lsun, luminosity_tolerance, &
-           target_teff, target_radius_rsun, &
-           log_l_prev_model, log_r_prev_model, age_at_target_radius, &
-           log_l_at_target_radius, log_l_at_target_radius_prev_run, &
-           age_prev_model, star_found_flag, specify_teff_flag, &
-           just_passed_target_radius_flag, calibrate_star_flag
+
 
       save
 !     LSTAR     T - have got a star at Teff and L

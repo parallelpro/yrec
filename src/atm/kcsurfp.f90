@@ -12,6 +12,7 @@
 ! rather than the original Kurucz table (ATMOS2, sized NT x NG).
 subroutine kcsurfp(log10_teff, log10_gravity, print_flag)
 
+      use const_lib
       use luout_lib
       use numerics_lib
       implicit none
@@ -29,19 +30,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag)
            atm_ion_fraction(3)
       common/atmprt/atm_tau, atm_log10_pressure, atm_log10_temperature, &
            atm_log10_density, atm_opacity, atm_ion_fraction
-! common/atmos2c/: the Kurucz/Castelli surface-pressure table, all
-! used here. Naming is local to this batch.
-      double precision :: kurucz_castelli_log10_pressure_table(ntc,ngc), &
-           kurucz_castelli_teff_table(ntc), kurucz_castelli_logg_table(ngc)
-      common/atmos2c/kurucz_castelli_log10_pressure_table, &
-           kurucz_castelli_teff_table, kurucz_castelli_logg_table
-! common/atmos2/: not used in this file (SURFP's original Kurucz
-! table); declared only to preserve layout. Naming matches surfp.f90.
-      double precision :: kurucz_log10_pressure_table(nt,ng), &
-           kurucz_teff_table(nt), kurucz_logg_table(ng), kurucz_table_z
-      integer :: atm_table_file_unit
-      common/atmos2/kurucz_log10_pressure_table, kurucz_teff_table, &
-           kurucz_logg_table, kurucz_table_z, atm_table_file_unit
 ! common/fac/: castelli_gmin_index/castelli_gmax_index are used here;
 ! kurucz_gmin_index/kurucz_gmax_index/teff_interp_start_index/
 ! gravity_interp_indices are unused placeholders (SURFP's table

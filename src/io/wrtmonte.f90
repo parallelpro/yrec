@@ -44,14 +44,6 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
            monte_carlo_run_number
 
 
-! common/newxym/: only mixing_length_array is used here (CMIXLA).
-! Naming is local to this batch.
-      double precision :: initial_x_array(50), initial_z_array(50), &
-           mixing_length_array(50)
-      logical :: has_senv0_array(50)
-      double precision :: senv0_array(50)
-      common /newxym/ initial_x_array, initial_z_array, mixing_length_array, &
-           has_senv0_array, senv0_array
 
 ! common/calsun/: dlum_dx/drad_dx/dlum_dalpha/drad_dalpha are used
 ! here; log_l_prev/log_r_prev/delta_x/delta_alpha/solar_calibration_active

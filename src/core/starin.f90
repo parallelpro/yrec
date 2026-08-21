@@ -168,15 +168,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 
 ! DBGLAOL
       integer*4 :: katm, kenv, saha_state
-! common/nwlaol/: olaol/oxa/ot/orho/tollaol (the LAOL pure-Z table
-! data itself) are placeholders for layout; llaol is used here. Naming
-! matches getopac.f90/envint.f90.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 !      CHARACTER*256 OPECALEX(7)
       character(len=4) :: format_tag
       character(len=6) :: eos_code

@@ -173,20 +173,6 @@ program main
 
 
 
-! common/lufnm/ is commented out in the original (superseded by
-! passing file names directly, per the MHP 8/25 note below) and is not
-! declared.
-! MHP 8/25 Removed character file names from common block
-! DBGLAOL
-! MHP 8/25 Removed character file names from common block
-! common/nwlaol/: not used in this file's logic; declared only to
-! preserve layout. Naming matches envint.f90/getopac.f90.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
 
 
@@ -236,35 +222,8 @@ program main
 
 
 
-! MHP 8/25 Removed character file names from common block
-! common/chrone/: lrwsh_placeholder actively used here (see the header
-! COMMON BLOCK NOTE for why the established placeholder name is kept);
-! the rest are unused placeholders. Naming matches wrthead.f90.
-      logical :: lrwsh_placeholder, isochrone_output_active
-      integer :: isochrone_file_unit
-      common/chrone/ lrwsh_placeholder, isochrone_output_active, &
-           isochrone_file_unit
 
-! DBG 1/92 let XENV0, ZENV0, and CMIXL be arrays so can change during
-! a set of runs.
-! common/newxym/: all used here. Naming matches chkcal.f90/chkscal.f90.
-      double precision :: initial_x_array(50), initial_z_array(50), &
-           mixing_length_array(50)
-      logical :: has_senv0_array(50)
-      double precision :: senv0_array(50)
-      common /newxym/ initial_x_array, initial_z_array, &
-           mixing_length_array, has_senv0_array, senv0_array
 
-! MHP 8/25 Removed character file names from common block
-! common/zramp/: nk used here (the outer kind-card run index -- this
-! IS the same storage as the DO 200 loop variable below, not a
-! separate local); the rest unused placeholders. Naming matches
-! wrthead.f90/setllo.f90.
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
 ! DBG 4/26/94 Tired of not have access to current age of model so...
 ! common/theage/: dage used here. Naming matches pdist.f90/mix.f90/
@@ -321,39 +280,8 @@ program main
            log_l_prev, log_r_prev, delta_x, delta_alpha, &
            solar_calibration_active
 
-! MHP 6/13 ADD OPTION TO CALIBRATE SOLAR Z/X, SOLAR Z/X, SOLAR AGE
-! common/cals2/: all used here. Naming matches chkcal.f90; see the
-! header COMMON BLOCK NOTE above regarding the collision between this
-! block's own established luminosity_tolerance member and
-! common/calstar/'s.
-      double precision :: luminosity_tolerance, radius_tolerance, &
-           zx_tolerance
-      logical :: calibrate_solar_model, calibrate_solar_zx
-      double precision :: target_solar_zx, target_solar_age
-      common/cals2/ luminosity_tolerance, radius_tolerance, zx_tolerance, &
-           calibrate_solar_model, calibrate_solar_zx, target_solar_zx, &
-           target_solar_age
 
 
-! DBG 12/94 added calibrate stellar model
-! common/calstar/: all used here. Naming matches chkscal.f90, except
-! the 2nd member -- see the header COMMON BLOCK NOTE above regarding
-! the collision with common/cals2/'s own established
-! luminosity_tolerance member.
-      double precision :: target_luminosity_lsun, &
-           target_star_luminosity_tolerance, target_teff, &
-           target_radius_rsun, log_l_prev_model, log_r_prev_model, &
-           age_at_target_radius, log_l_at_target_radius, &
-           log_l_at_target_radius_prev_run, age_prev_model
-      logical :: star_found_flag, specify_teff_flag, &
-           just_passed_target_radius_flag, calibrate_star_flag
-      common/calstar/ target_luminosity_lsun, &
-           target_star_luminosity_tolerance, target_teff, &
-           target_radius_rsun, log_l_prev_model, log_r_prev_model, &
-           age_at_target_radius, log_l_at_target_radius, &
-           log_l_at_target_radius_prev_run, age_prev_model, &
-           star_found_flag, specify_teff_flag, &
-           just_passed_target_radius_flag, calibrate_star_flag
 
 ! MHP 7/96 common block added for sound speed
 ! common/sound/: only sound_speed_output_active used here; gam1

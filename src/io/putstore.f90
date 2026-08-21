@@ -97,15 +97,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
            molecular_opacity_logt_max, use_alex06_tables, &
            use_laol89_tables, use_opal92_tables, use_opal95_tables, &
            use_kurucz90_tables, use_alex95_tables, use_two_z_tables
-! MHP 8/25 Removed character file names from common block
-! common/nwlaol/: only use_pure_z_table is used here. Naming matches
-! getopac.f90.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 ! KC 2025-05-30 reordered common block elements
 !       COMMON/OPALEOS/FOPALE,LOPALE,IOPALE,FOPALE01,LOPALE01,
 !      x  FOPALE06,LOPALE06,LNumDeriv

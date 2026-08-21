@@ -30,30 +30,7 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 
 !      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
 
-! common/newxym/: only initial_x_array is used here. Naming matches
-! wrtmonte.f90/chkcal.f90.
-      double precision :: initial_x_array(50), initial_z_array(50), &
-           mixing_length_array(50)
-      logical :: has_senv0_array(50)
-      double precision :: senv0_array(50)
-      common /newxym/ initial_x_array, initial_z_array, &
-           mixing_length_array, has_senv0_array, senv0_array
 
-! common/calstar/: target-star calibration state; all members used
-! here. Not referenced in any already-converted file.
-      double precision :: target_luminosity_lsun, luminosity_tolerance, &
-           target_teff, target_radius_rsun, log_l_prev_model, &
-           log_r_prev_model, age_at_target_radius, &
-           log_l_at_target_radius, log_l_at_target_radius_prev_run, &
-           age_prev_model
-      logical :: star_found_flag, specify_teff_flag, &
-           just_passed_target_radius_flag, calibrate_star_flag
-      common/calstar/ target_luminosity_lsun, luminosity_tolerance, &
-           target_teff, target_radius_rsun, &
-           log_l_prev_model, log_r_prev_model, age_at_target_radius, &
-           log_l_at_target_radius, log_l_at_target_radius_prev_run, &
-           age_prev_model, star_found_flag, specify_teff_flag, &
-           just_passed_target_radius_flag, calibrate_star_flag
 
 
       save
@@ -129,7 +106,7 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
       write(itrack,*) '#X, LogL/Lsun at R* =', &
            rescale_params(2,run_index-1), log_l_at_target_radius
       if (abs(10.0d0**log_l_at_target_radius-target_luminosity_lsun) &
-           .le. luminosity_tolerance) then
+           .le. target_star_luminosity_tolerance) then
 !        Get here then have track that passes through specified
 !        L and R. Use age at R for final
 !        run to stop at that age. Do one more run

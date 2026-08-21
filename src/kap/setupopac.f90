@@ -42,24 +42,8 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
            use_laol89_tables, use_opal92_tables, use_opal95_tables, &
            use_kurucz90_tables, use_alex95_tables, use_two_z_tables
 
-! common/zramp/: only use_z_ramp is used here; remaining members are
-! placeholders preserving the shared storage layout (see getopac.f90
-! for why renaming here doesn't require touching other files).
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
 
-! common/nwlaol/: not read here, but written by the table-loading
-! routines called below (rdzlaol/zsulaol etc.) via this same block.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
       save
 

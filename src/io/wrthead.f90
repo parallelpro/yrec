@@ -16,13 +16,6 @@ subroutine wrthead(total_mass_msun)
       double precision, intent(in) :: total_mass_msun
 
 
-! common/zramp/: only nk (the current run index) is used here. Naming
-! matches setllo.f90.
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
 
 
@@ -30,13 +23,6 @@ subroutine wrthead(total_mass_msun)
 
 
 
-! common/chrone/: only isochrone_output_active/isochrone_file_unit
-! (LISO/IISO) are used here; lrwsh_placeholder is an unused
-! placeholder. Naming is local to this batch.
-      logical :: lrwsh_placeholder, isochrone_output_active
-      integer :: isochrone_file_unit
-      common/chrone/ lrwsh_placeholder, isochrone_output_active, &
-           isochrone_file_unit
 
 
       save

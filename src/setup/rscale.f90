@@ -42,20 +42,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 
 
 
-!      ISETMIX,ISETISO,
-!     * LMIXTURE,LISOTOPE,FRAC_C,FRAC_N,FRAC_O,R12_13,R14_15,R16_17,R16_18,ZXMIX,
-!     * XH2_INI,XHE3_INI,XLI6_INI,XLI7_INI,XBE9_INI,XB10_INI,XB11_INI
-! COMMON/NEWCMP/XNEWCP,INEWCP,LNEWCP,LREL,ANEWCP
-! MHP 8/25 Removed character file names from common block
-! DBG 5/94 ZRAMP stuff.
-! common/zramp/: rsclzc/rsclzm1/rsclzm2/use_z_ramp are used here; the
-! remaining members are unused placeholders. Naming matches
-! gtlaol2.f90.
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
       save
 

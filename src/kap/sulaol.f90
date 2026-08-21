@@ -12,6 +12,7 @@
 ! rdlaol.f90, for use by gtlaol.f90/gtlaol2.f90.
 subroutine sulaol
 
+      use const_lib
       use numerics_lib
       implicit none
 
@@ -19,13 +20,6 @@ subroutine sulaol
       double precision :: row_log10_opacity(104), row_log_rho(104), &
            row_d2opacity(104)
 
-! MHP 8/25 Removed character file names from common block
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
       double precision :: olaol2(12,104,52), oxa2(12), ot2(52), orho2(104)
       integer :: nxyz2, nrho2, nt2
@@ -43,14 +37,6 @@ subroutine sulaol
       common/slaol2/ slaol2_opacity, slaol2_log_rho, slaol2_d2opacity, &
            slaol2_num_points
 
-! MHP 8/25 Removed character file names from common block
-! common/zramp/: not used here; declared only to preserve the shared
-! storage layout (see getopac.f90/setupopac.f90 for these names).
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
 ! common/newopac/: only use_two_z_tables is used here.
       double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &

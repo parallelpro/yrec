@@ -12,6 +12,7 @@
 subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use const_lib
       use luout_lib
       use numerics_lib
       implicit none
@@ -28,13 +29,6 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
       double precision :: opacity_by_x(4), x_values(4)
 
 
-! MHP 8/25 Removed character file names from common block
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
       double precision :: slaol_opacity(12,104,52), slaol_log_rho(12,104,52), &
            slaol_d2opacity(12,104,52)

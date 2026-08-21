@@ -28,15 +28,6 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
 !      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
 
-! common/newxym/: initial_x_array/initial_z_array/mixing_length_array
-! are used here; has_senv0_array/senv0_array are unused placeholders.
-! Naming matches wrtmonte.f90.
-      double precision :: initial_x_array(50), initial_z_array(50), &
-           mixing_length_array(50)
-      logical :: has_senv0_array(50)
-      double precision :: senv0_array(50)
-      common /newxym/ initial_x_array, initial_z_array, &
-           mixing_length_array, has_senv0_array, senv0_array
 
 ! common/calsun/: dlum_dx/drad_dx/dlum_dalpha/drad_dalpha/log_l_prev/
 ! log_r_prev/delta_x/delta_alpha/solar_calibration_active, all used
@@ -48,18 +39,6 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
            log_l_prev, log_r_prev, delta_x, delta_alpha, &
            solar_calibration_active
 
-! MHP 6/13 ADD OPTION TO CALIBRATE SOLAR Z/X, SOLAR Z/X, SOLAR AGE
-! common/cals2/: luminosity_tolerance/radius_tolerance/zx_tolerance/
-! calibrate_solar_zx/target_solar_zx are used here; calibrate_solar_model/
-! target_solar_age are unused placeholders. Not referenced in any
-! already-converted file.
-      double precision :: luminosity_tolerance, radius_tolerance, &
-           zx_tolerance
-      logical :: calibrate_solar_model, calibrate_solar_zx
-      double precision :: target_solar_zx, target_solar_age
-      common/cals2/ luminosity_tolerance, radius_tolerance, zx_tolerance, &
-           calibrate_solar_model, calibrate_solar_zx, target_solar_zx, &
-           target_solar_age
 !      COMMON/CALS2/TOLL,TOLR,LCALS
 
 

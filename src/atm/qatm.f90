@@ -33,17 +33,11 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: atm_call_count, saha_state
 
-! common/nwlaol/: not used in this file; declared only to preserve
-! layout. Naming matches getopac.f90.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
+! former common/nwlaol/: not used in this file; declared only to
+! preserve layout.
 ! MHP 8/25 Removed unused variables
 !      CHARACTER*256 FLAOL, FPUREZ
 ! MHP 8/25 Removed character file names from common block
-      common/nwlaol/olaol, oxa, ot, orho, tollaol, &
-           iolaol, numofxyz, numrho, numt, llaol, use_pure_z_table, iopurez
       double precision :: fxion(3)
 ! common/atmprt/: all used/set here. Naming matches alsurfp.f90.
       double precision :: atm_tau, atm_log10_pressure, &

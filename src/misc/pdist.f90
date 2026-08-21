@@ -34,12 +34,6 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
 ! MHP 10/02 added proper dimensions to last 2 variables
       double precision :: dage
       common/theage/ dage
-! MHP 8/25 Removed character file names from common block
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
       save
 
       double precision :: delta_log_l, delta_log_teff, delta_age

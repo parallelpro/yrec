@@ -54,23 +54,10 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
       integer, intent(inout) :: num_zones_mixed
       double precision, intent(in) :: log_teff
 
-! DBGLAOL
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
 ! MHP 8/25 Removed unused variables
 !      CHARACTER*256 FLAOL, FPUREZ
-
-
-
-
-
 ! MHP 8/25 Removed character file names from common block
-! DBGLAOL
-! common/nwlaol/: not used in this file. Naming matches getopac.f90.
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
+! former common/nwlaol/: not used in this file.
 
 
       double precision :: ion_fraction(3)

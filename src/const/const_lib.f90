@@ -583,4 +583,96 @@ module const_lib
       integer :: num_core_shells_added
       double precision :: core_mass_reduction_factor
 
+! former common/nwlaol/: the LAOL pure-Z opacity table (olaol/oxa/ot/
+! orho/tollaol/iolaol/numofxyz/numrho/numt/llaol/iopurez) is spelled
+! identically to its canonical name everywhere -- use-associated
+! directly. tollaol/llaol's DATA defaults moved here from
+! core/parmin.f90 since DATA can no longer target use-associated
+! entities. use_pure_z_table (originally lpurez) is a NAMELIST value
+! with a different canonical spelling, kept local in core/parmin.f90
+! and copy-assigned.
+      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104)
+      double precision :: tollaol = 10.0d0
+      integer :: iolaol, numofxyz, numrho, numt, iopurez
+      logical :: llaol = .false.
+      logical :: use_pure_z_table
+
+! former common/chrone/: lrwsh_placeholder/isochrone_output_active
+! (originally lrwsh/liso) are NAMELIST values with different canonical
+! spellings, kept local in core/parmin.f90 and copy-assigned.
+! isochrone_file_unit (originally iiso) is not a namelist value --
+! genuinely used in core/parmin.f90, renamed in place there.
+      logical :: lrwsh_placeholder, isochrone_output_active
+      integer :: isochrone_file_unit
+
+! former common/newxym/: initial_x_array/initial_z_array/
+! mixing_length_array/has_senv0_array/senv0_array (originally xenv0a/
+! zenv0a/cmixla/lsenv0a/senv0a) are NAMELIST values with different
+! canonical spellings, kept local in core/parmin.f90 and copy-assigned.
+      double precision :: initial_x_array(50), initial_z_array(50), &
+           mixing_length_array(50), senv0_array(50)
+      logical :: has_senv0_array(50)
+
+! former common/atmos2/: the Kurucz surface-pressure table
+! (kurucz_log10_pressure_table/kurucz_teff_table/kurucz_logg_table/
+! kurucz_table_z, originally atmpl/atmtl/atmgl/atmz) and
+! atm_table_file_unit (originally ioatm) are spelled identically to
+! their canonical names -- use-associated directly.
+      double precision :: kurucz_log10_pressure_table(57,11), &
+           kurucz_teff_table(57), kurucz_logg_table(11), kurucz_table_z
+      integer :: atm_table_file_unit
+
+! former common/atmos2c/: the Kurucz/Castelli surface-pressure table
+! (kurucz_castelli_log10_pressure_table/kurucz_castelli_teff_table/
+! kurucz_castelli_logg_table, originally atmplc/atmtlc/atmglc) is
+! spelled identically to its canonical name everywhere -- use-associated
+! directly. Unused in core/parmin.f90.
+      double precision :: kurucz_castelli_log10_pressure_table(76,11), &
+           kurucz_castelli_teff_table(76), kurucz_castelli_logg_table(11)
+
+! former common/cals2/: luminosity_tolerance/radius_tolerance/
+! zx_tolerance/calibrate_solar_model/calibrate_solar_zx/
+! target_solar_zx/target_solar_age (originally toll/tolr/tolz/lcals/
+! lcalsolzx/calsolzx/calsolage) are NAMELIST values with different
+! canonical spellings, kept local in core/parmin.f90 and copy-assigned.
+! luminosity_tolerance is the winner of a name collision with
+! common/calstar/'s xlstol (disambiguated there as
+! target_star_luminosity_tolerance).
+      double precision :: luminosity_tolerance, radius_tolerance, &
+           zx_tolerance, target_solar_zx, target_solar_age
+      logical :: calibrate_solar_model, calibrate_solar_zx
+
+! former common/zramp/: rsclzc/rsclzm1/rsclzm2/iolaol2/ioopal2/nk are
+! spelled identically to their canonical names everywhere --
+! use-associated directly; their DATA defaults moved here from
+! core/parmin.f90 since DATA can no longer target use-associated
+! entities. use_z_ramp (originally lzramp) is a NAMELIST value with a
+! different canonical spelling, kept local in core/parmin.f90 and
+! copy-assigned.
+      double precision :: rsclzc(50) = -1.0d0, rsclzm1(50) = -1.0d0, &
+           rsclzm2(50) = -1.0d0
+      integer :: iolaol2, ioopal2, nk
+      logical :: use_z_ramp
+
+! former common/calstar/: target_luminosity_lsun/
+! target_star_luminosity_tolerance/target_teff/target_radius_rsun/
+! specify_teff_flag/calibrate_star_flag (originally xls/xlstol/steff/
+! sr/lteff/lcalst) are NAMELIST values with different canonical
+! spellings, kept local in core/parmin.f90 and copy-assigned.
+! target_star_luminosity_tolerance is disambiguated from
+! common/cals2/'s own luminosity_tolerance member (see that block's
+! note above). log_l_prev_model/log_r_prev_model/age_at_target_radius/
+! log_l_at_target_radius/log_l_at_target_radius_prev_run/
+! age_prev_model/star_found_flag/just_passed_target_radius_flag
+! (former common/calstar/'s remaining members) are unused in
+! core/parmin.f90 -- genuinely used in misc/chkscal.f90/
+! setup/setscal.f90/core/main.f90, so still declared here.
+      double precision :: target_luminosity_lsun, &
+           target_star_luminosity_tolerance, target_teff, &
+           target_radius_rsun, log_l_prev_model, log_r_prev_model, &
+           age_at_target_radius, log_l_at_target_radius, &
+           log_l_at_target_radius_prev_run, age_prev_model
+      logical :: star_found_flag, specify_teff_flag, &
+           just_passed_target_radius_flag, calibrate_star_flag
+
 end module const_lib

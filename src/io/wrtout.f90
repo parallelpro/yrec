@@ -74,14 +74,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
            central_log10_density, envelope_mass, envelope_radius
       common/cent/ central_log10_temperature, central_log10_pressure, &
            central_log10_density, envelope_mass, envelope_radius
-! MHP 8/25 Removed character file names from common block
-! DBG 11/11/91
-! common/chrone/: only isochrone_output_active/isochrone_file_unit are
-! used here. Naming matches wrthead.f90.
-      logical :: lrwsh_placeholder, isochrone_output_active
-      integer :: isochrone_file_unit
-      common/chrone/ lrwsh_placeholder, isochrone_output_active, &
-           isochrone_file_unit
 ! common/rotprt/: not used in this file. Naming is local to this
 ! batch.
       logical :: lprt0_placeholder

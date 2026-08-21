@@ -24,28 +24,9 @@ subroutine setcal(age_scale_factor)
 
       double precision, intent(in) :: age_scale_factor
 
-! MHP 6/13 ADD OPTION TO CALIBRATE SOLAR Z/X, SOLAR Z/X, SOLAR AGE
-! common/cals2/: only target_solar_age is used here. Naming matches
-! chkcal.f90.
-      double precision :: luminosity_tolerance, radius_tolerance, &
-           zx_tolerance
-      logical :: calibrate_solar_model, calibrate_solar_zx
-      double precision :: target_solar_zx, target_solar_age
-      common/cals2/ luminosity_tolerance, radius_tolerance, zx_tolerance, &
-           calibrate_solar_model, calibrate_solar_zx, target_solar_zx, &
-           target_solar_age
 
 
 
-! common/newxym/: initial_x_array/initial_z_array/mixing_length_array/
-! has_senv0_array/senv0_array, all used here. Naming matches
-! chkcal.f90.
-      double precision :: initial_x_array(50), initial_z_array(50), &
-           mixing_length_array(50)
-      logical :: has_senv0_array(50)
-      double precision :: senv0_array(50)
-      common /newxym/ initial_x_array, initial_z_array, &
-           mixing_length_array, has_senv0_array, senv0_array
 
 ! common/calsun/: only solar_calibration_active is used here. Naming
 ! matches chkcal.f90.
@@ -56,14 +37,6 @@ subroutine setcal(age_scale_factor)
            log_l_prev, log_r_prev, delta_x, delta_alpha, &
            solar_calibration_active
 
-! MHP 8/25 Removed character file names from common block
-! common/zramp/: rsclzc/rsclzm1/rsclzm2 are used here; the remaining
-! members are unused placeholders. Naming matches gtlaol2.f90.
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
       save
 

@@ -42,14 +42,6 @@ subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
 
 
 
-! common/nwlaol/: only use_pure_z_table is used here; remaining members
-! (the LAOL pure-Z table data itself) are placeholders for layout.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
 
 ! common/miscopac/: only use_conductive_opacity is used here.

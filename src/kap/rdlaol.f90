@@ -19,26 +19,12 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
       double precision, intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
 
-! MHP 8/25 Removed character file names from common block
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104), &
-           tollaol
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
-      logical :: llaol, use_pure_z_table
-      common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
-           numrho, numt, llaol, use_pure_z_table, iopurez
 
 ! DBG 4/94 New common block for second opacity table
       double precision :: olaol2(12,104,52), oxa2(12), ot2(52), orho2(104)
       integer :: nxyz2, nrho2, nt2
       common/nwlaol2/ olaol2, oxa2, ot2, orho2, nxyz2, nrho2, nt2
 
-! MHP 8/25 Removed character file names from common block
-! common/zramp/: only iolaol2 is used here.
-      double precision :: rsclzc(50), rsclzm1(50), rsclzm2(50)
-      integer :: iolaol2, ioopal2, nk
-      logical :: use_z_ramp
-      common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
-           use_z_ramp
 
 
 
