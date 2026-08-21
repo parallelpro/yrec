@@ -14,6 +14,7 @@
 subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction)
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: log10_density, log10_temperature, &
@@ -47,11 +48,6 @@ subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
       common/comp/ envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
 
-! common/luout/: only short_file_unit (the .short log unit) is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/nwlaol/: only use_pure_z_table is used here; remaining members
 ! (the LAOL pure-Z table data itself) are placeholders for layout.

@@ -12,6 +12,7 @@
 subroutine gtpurz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use luout_lib
       use numerics_lib
       implicit none
       double precision, intent(in) :: log10_density, log10_temperature
@@ -24,11 +25,6 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
       double precision :: logt_interp_opacity(52), logt_values(52), &
            logt_d2opacity(52)
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! MHP 8/25 Removed character file names from common block
 ! common/nwlaol/: only tollaol is used here.

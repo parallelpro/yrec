@@ -17,6 +17,7 @@
 ! ON EVEN NK
 subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: log_l_lsun, log_r_rsun
@@ -79,12 +80,6 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
            target_solar_age
 !      COMMON/CALS2/TOLL,TOLR,LCALS
 
-! MHP 10/02 MISSING LOGICAL UNIT IOWR ADDED
-! common/luout/: only iowr is used here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       save
 !     DATA TOLL,TOLR/1.0D-5,1.0D-4/

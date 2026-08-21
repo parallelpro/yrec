@@ -18,6 +18,7 @@
 ! formula is used directly.
 subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -38,11 +39,6 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
 
 
 
-! common/luout/: not used in this file. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/rot/: only walpcz (originally WALPCZ, the forced-solid-body
 ! convective-zone angular velocity, nonzero flags that the current

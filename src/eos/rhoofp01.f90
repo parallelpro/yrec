@@ -13,6 +13,7 @@
 double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag)
 
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -47,11 +48,6 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
       double precision :: esact, eos_output(mv)
       common/eeos/ esact, eos_output
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
 ! density_index_edge(t6_idx): highest valid density-grid index for
 ! temperature-grid row t6_idx (local copy; see rhoofp.f90's note on

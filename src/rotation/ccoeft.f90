@@ -44,6 +44,7 @@
 ! transport tridiagonal setup; called by mixcom.f90.
 subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
      eq_mass, num_eq_points)
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -59,12 +60,6 @@ subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
       common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
            lscrib, lstch, lphhd
 
-! common/luout/: not used in this file. Naming matches vcirc.f90/
-! momi.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/tridi/: tridiagonal-solve work arrays (Thomas algorithm).
 ! sub_diag/diag/super_diag/rhs are filled in here; solution/gamma_elim

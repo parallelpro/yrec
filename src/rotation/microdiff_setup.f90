@@ -40,6 +40,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
      zone_end, fully_convective_flag, density_orig, temperature_orig)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -59,12 +60,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       double precision, intent(out) :: density_orig(json), &
            temperature_orig(json)
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! vcirc.f90/momi.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/const/: not used in this file. Naming matches rotgrid.f90/
 ! vcirc.f90.

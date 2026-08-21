@@ -85,6 +85,7 @@
 !       If LPRT  is .TRUE. print Log(P) at the associated Log(Teff) to ISHORT and IMODPT.
 subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
 
+      use luout_lib
       use numerics_lib
       implicit none
       integer, parameter :: nta = 250
@@ -94,10 +95,6 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
       logical, intent(in) :: print_to_files
       logical, intent(out) :: lookup_failed
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/atmprt/: only atm_log10_pressure and atm_log10_temperature
 ! (AP, AT) are used/set here; the remaining members are unused

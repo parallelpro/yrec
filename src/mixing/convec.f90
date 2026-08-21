@@ -51,6 +51,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
      radiative_zone_bounds, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
      num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot)
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -76,12 +77,6 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
            iovim, lovstc, envelope_overshoot_active, lovstm, lsemic, ladov, &
            lovmax
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90/meqos.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       save
 

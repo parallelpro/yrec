@@ -22,6 +22,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp_dt, specific_heat_cp_dp)
 
 ! LATMO,KSAHA NEEDED FOR EQSAHA
+      use luout_lib
       use const_lib
       implicit none
 
@@ -38,12 +39,6 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
            dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
 
-! common/luout/: only short_file_unit and main_output_unit are used
-! here; the rest are placeholders. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
       integer, parameter :: ivarx = 25
       double precision, parameter :: cnvs = 0.434294481d0
@@ -124,10 +119,10 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, beta)
       if (abs((specific_gas_constant-specific_gas_constant_check)/ &
            specific_gas_constant).gt.5.0d-7) then
-          write(main_output_unit,*)' ERROR(MHD) IN MEAN WEIGHTS ... '
-          write(main_output_unit,*) specific_gas_constant, &
+          write(iowr,*)' ERROR(MHD) IN MEAN WEIGHTS ... '
+          write(iowr,*) specific_gas_constant, &
                specific_gas_constant_check
-        write(main_output_unit,*) 'ERROR (MHD): CHECK MU'
+        write(iowr,*) 'ERROR (MHD): CHECK MU'
           write(short_file_unit,*)' ERROR(MHD): IN MEAN WEIGHTS ... '
           write(short_file_unit,*) specific_gas_constant, &
                specific_gas_constant_check

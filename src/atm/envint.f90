@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -52,11 +53,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       double precision, intent(inout) :: vtx_logp(3), vtx_logr(3), vtx_logt(3)
       logical, intent(in) :: pulse_print_flag
 
-! common/luout/: all used here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 ! common/lunum/: only opal_envelope_unit/opal_atm_unit are used here.
 ! Naming matches wrthead.f90.
       integer :: first_unit, run_unit, standard_unit, fermi_unit, &

@@ -110,6 +110,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
      trial_log_luminosity, trial_log_temperature, fit_point_temperature, &
      convective_velocity, mean_gravity, species_mix_weights)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -192,17 +193,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            opal_model_unit, opal_envelope_unit, opal_atm_unit, &
            dynamics_unit, laol_table_unit, neutrino_unit, &
            composition_unit, kurucz_table_unit
-!     COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,
-!     1    FDEBUG, FTRACK, FSHORT, FMILNE, FMODPT,
-!     2    FSTOR, FPMOD, FPENV, FPATM, FDYN,
-!     3    FLLDAT, FSNU, FSCOMP, FKUR,
-!     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
-! common/luout/: short_file_unit/iowr are used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 ! DBGLAOL
 ! MHP 8/25 Removed all character strings from common blocks
 ! common/cenv/: requested_envelope_mass/change_envelope_mass_flag are

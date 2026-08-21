@@ -26,6 +26,7 @@
 subroutine gettau(composition, log_radius, log_pressure, log_density, &
      enclosed_mass, log_temperature, fp, ft, log_teff, log_total_mass, &
      log_luminosity_lsun, num_zones, convective_flag, radius_at_bcz)
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -42,11 +43,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       logical, intent(in) :: convective_flag(json)
       double precision, intent(out) :: radius_at_bcz
 
-! common/luout/: not used in this file. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/envgen/: not used in this file. Naming matches wrtmod.f90.
       double precision :: atm_step_size, envelope_step_size

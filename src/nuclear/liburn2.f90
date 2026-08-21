@@ -29,6 +29,7 @@
 ! 11/91 HR added to call.
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -41,12 +42,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       double precision, intent(in) :: log_temperature(json)
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
 
-! common/luout/: only short_file_unit is declared here for layout
-! consistency with liburn.f90; it is not actually used in this file.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 
 ! common/newrat/: lithium/beryllium burning rates at the end of the

@@ -32,6 +32,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
 !     THE VARIABLES WHICH HAVE 'F'-TAIL ARE WHAT WILL BE RETURNED.
 !     THIS VALUES IS ESTIMATED BY NUMERICAL DIFFERENTIATION.
 
+      use luout_lib
       use numerics_lib
       implicit none
       integer, parameter :: max_num_temps = 60
@@ -59,11 +60,6 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       integer :: kurucz2_num_temps
       common /krz2/ kurucz2_log10_opacity, kurucz2_log10_rho, kurucz2_num_temps
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       integer :: kurucz2_ix_x, kurucz2_ix_t, kurucz2_ix_rho
       common /kipm2/ kurucz2_ix_x, kurucz2_ix_t, kurucz2_ix_rho

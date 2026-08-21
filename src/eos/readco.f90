@@ -16,6 +16,7 @@
 ! common/lreadco/) from esac.f90.
 subroutine readco
 
+      use luout_lib
       implicit none
 
       integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
@@ -29,12 +30,6 @@ subroutine readco
       common/opaleos/ use_opal95_eos, iopale, use_opal2001_eos, &
            use_opal2006_eos, lnumderiv
 
-! common/luout/: only short_file_unit (the .short log unit) is used
-! here; the rest are placeholders. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
       double precision :: moles_per_gram_table(mx)
       character(len=1) :: blank_line

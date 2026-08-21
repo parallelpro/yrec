@@ -23,6 +23,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
 
+      use luout_lib
       use const_lib
       implicit none
 
@@ -44,10 +45,6 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
            specific_heat_cp_dt, specific_heat_cp_dp
       integer, intent(inout) :: saha_state
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 
 

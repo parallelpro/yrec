@@ -27,6 +27,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -59,12 +60,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 !      CHARACTER*256 FLAOL, FPUREZ
 !      CHARACTER*256 FOPALE,FOPALE01,FOPALE06  ! FcondOpacP
 
-! common/luout/: only iowr/istor are used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, ishort, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, ishort, imilne, &
-           imodpt, istor, iowr
 
 ! common/const3/: only mixing_length is used here. Naming matches
 ! mix.f90.
@@ -319,7 +314,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       if (use_laol89_tables) high_temp_opacity_flag='LL89'
 
       if(atmosphere_flag .eq. ' ? ') then
-         write(ishort,7)
+         write(short_file_unit,7)
   7      format('*** YREC7 input file, flags, etc., have been ', &
                 'defaulted.  ***')
       endif

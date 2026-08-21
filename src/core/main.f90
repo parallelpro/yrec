@@ -150,6 +150,7 @@ program main
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -165,11 +166,6 @@ program main
 ! (declared further below, in the --- locals --- section, using
 ! setups.f90's/pdist.f90's own descriptive dummy-argument spelling).
 
-! common/luout/: all used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/lunum/: all used here.
       integer :: first_unit, run_unit, standard_unit, fermi_unit, &

@@ -34,6 +34,7 @@
 subroutine checkc(composition, iteration_number, print_flag, num_zones, &
      dt, cut_count, converged_flag, redo_flag)
 
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -71,12 +72,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       logical :: use_extended_composition
       common/flag/ use_extended_composition
 
-! common/luout/: only short_file_unit (the .short log unit) is used
-! here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/mdphy/: only amum is written here. Naming matches codiff.f90/
 ! vcirc.f90/rotgrid.f90.

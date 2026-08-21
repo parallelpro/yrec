@@ -30,6 +30,7 @@
 ! variable-X interpolation in mhdpx1, then returns log10(density).
 subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
      log10_density)
+      use luout_lib
       implicit none
       integer, parameter :: ivarx = 25
       integer, parameter :: nchem0 = 6
@@ -38,12 +39,6 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
            hydrogen_fraction
       double precision, intent(out) :: log10_density
 
-! common/luout/: only short_file_unit and main_output_unit are used
-! here. Naming matches meqos.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 !     S/R MHDSTX MUST BE CALLED IN MAIN.
 !     CALLS VARIABLE-X VERSION
       double precision :: mhd_output(ivarx)
@@ -57,7 +52,7 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
       log10_density = mhd_output(1)
       return
 !   999 CONTINUE
-      write(main_output_unit,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
+      write(iowr,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
       write(short_file_unit,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
       stop
 end subroutine mhdpx

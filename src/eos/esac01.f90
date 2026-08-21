@@ -27,6 +27,7 @@
 subroutine esac01(hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, *)
 
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -99,11 +100,6 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
       double precision :: esact, eos_output(mv)
       common/eeos/ esact, eos_output
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
       double precision :: species_mass_fraction(7)
       double precision :: molar_gas_constant_mbcc

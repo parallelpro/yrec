@@ -22,6 +22,7 @@
 subroutine rscale(luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag)
 ! DBG 5/94 Added rescaling of Z in core ZRAMP stuff.
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -34,12 +35,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       double precision, intent(inout) :: star_mass
       logical, intent(in) :: convective_flag(json)
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/ckind/: only rescale_params is used here. Naming matches
 ! chkcal.f90/wrthead.f90/wrtmonte.f90.

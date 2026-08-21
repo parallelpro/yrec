@@ -26,6 +26,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      eq_del_grad_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col)
 
+      use luout_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -62,12 +63,6 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       common/theage/ dage
 
 
-! common/luout/: only short_file_unit/iowr are used here. Naming
-! matches vcirc.f90/momi.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       double precision :: diffused_abundance(json), diffused_abundance_mid(json), &
            diffused_abundance_orig(json), diffused_abundance_orig_mid(json), &

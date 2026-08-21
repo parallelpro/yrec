@@ -27,6 +27,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
      centre5_table_path, opal92_table2_path, pure_z_table_path, &
      scv_h_table_path, scv_he_table_path, scv_z_table_path, &
      alex95_table_paths)
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -66,12 +67,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !     3    FLLDAT, FSNU, FSCOMP, FKUR,
 !     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 ! DBGLAOL
 ! MHP 8/25 Removed character file names from common block
 ! common/nwlaol/: not used in this file; declared only to preserve

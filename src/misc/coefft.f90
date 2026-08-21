@@ -50,6 +50,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -79,9 +80,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       integer, intent(in) :: envelope_zone_index
       double precision, intent(in) :: log_teff
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ilast,idebug,itrack,short_file_unit,imilne,imodpt,istor,iowr
       logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &
            lstch, lphhd
       common/ccout/lstore,lstatm,lstenv,lstmod,lstphys,lstrot,lscrib,lstch,lphhd

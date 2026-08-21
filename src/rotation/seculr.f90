@@ -56,6 +56,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -182,10 +183,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       logical :: lvfc, use_diffusion_advection_transport
       common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/rotprt/: not used in this file (LPRT is hardcoded .false.
 ! below rather than computed from lprt0_placeholder). Naming matches

@@ -9,6 +9,7 @@
 ! Write the headers for all the appropriate output files.
 subroutine wrthead(total_mass_msun)
 
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: total_mass_msun
@@ -58,12 +59,6 @@ subroutine wrthead(total_mass_msun)
       common/const3/ cdelrl, mixing_length, cmixl2, cmixl3, clndp, &
            seconds_per_year
 
-! common/luout/: only iowr/itrack are used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, ishort, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, ishort, imilne, &
-           imodpt, istor, iowr
 
 ! common/lunum/: not used in this file; declared only to preserve
 ! layout. Naming matches setkrz.f90.

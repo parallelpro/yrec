@@ -12,6 +12,7 @@
 ! common/lreadco/) from esac01.f90.
 subroutine readcoeos01
 
+      use luout_lib
       implicit none
 
       integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 191
@@ -61,11 +62,6 @@ subroutine readcoeos01
            mean_molecular_weight_header, density_grid_table, &
            species_fraction_header, log10_r_value, temperature_count_used
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
 ! common/opaleos/: reused member names from eqstat2.f90 (order/type
 ! match the original LOPALE,IOPALE,lopale01,lopale06,lNumDeriv).

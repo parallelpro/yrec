@@ -29,6 +29,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
      dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
      total_luminosity, timestep, log_pressure)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -111,11 +112,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
            thermal_diffusivity_interface, kinematic_viscosity_interface, &
            omega_interface
 
-! common/luout/: not used in this file. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 !      JvS 09/25 CHANGED VARIABLE NAMES TO BE CONSISTENT ACROSS ALL SUBROUTINES
 !      COMMON/MDPHY/HAMU(JSON),CP(JSON),DELM(JSON),DELAM(JSON),

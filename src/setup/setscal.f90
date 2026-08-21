@@ -16,6 +16,7 @@
 ! setcal.f90's solar-calibration run-list expansion.
 subroutine setscal
 
+      use luout_lib
       use const_lib
       implicit none
 
@@ -28,12 +29,6 @@ subroutine setscal
       common /ckind/ rescale_params, num_models, rescale_kind, &
            first_call_flag, num_runs
 
-! common/luout/: only itrack (the .track log unit) is used here.
-! Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
 ! common/sett/: target_end_age/timestep_override are used here; the

@@ -22,6 +22,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
      dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, *)
 
+      use luout_lib
       use const_lib
       implicit none
 
@@ -60,12 +61,6 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       logical :: ldebug, lcorr, lmilne, ltrack, lstpch
       common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
 
-! common/luout/: only short_file_unit (the .short log unit) is used
-! here; the rest are placeholders. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
       integer, parameter :: ivarx = 25
       double precision, parameter :: cnvs = 0.434294481d0

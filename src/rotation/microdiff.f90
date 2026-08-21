@@ -59,6 +59,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, convective_flag, &
      num_zones, total_mass)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -96,12 +97,6 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       common/gravs4/ use_new_diffusion_routines, ldifli
 
 
-! common/luout/: not used in this file. Naming matches vcirc.f90/
-! momi.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       double precision :: radius_bl(json), temperature_bl(json)
       double precision :: density_orig(json), temperature_orig(json)

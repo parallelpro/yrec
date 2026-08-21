@@ -11,6 +11,7 @@
 subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
+      use luout_lib
       use numerics_lib
       implicit none
       double precision, intent(in) :: log10_density, log10_temperature, &
@@ -24,11 +25,6 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
            logt_d2opacity(52), dlnkap_dlnt_by_x(4)
       double precision :: opacity_by_x(4), x_values(4)
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! MHP 8/25 Removed character file names from common block
 ! common/nwlaol/: not used here (this file reads from nwlaol2 instead).

@@ -27,6 +27,7 @@
 ! MHP 8/25 Added file name to subroutine call
 subroutine readalex06(alex06_table_path)
 
+      use luout_lib
       implicit none
       integer, parameter :: num_x = 9
       integer, parameter :: num_z = 16
@@ -55,10 +56,6 @@ subroutine readalex06(alex06_table_path)
       double precision :: alex06_full_opacity(num_xz, num_t, num_d)
       common /alot06all/ alex06_full_opacity
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 !     LOCAL ARRAYS
       double precision :: row_logr_check(num_d), header_x, header_z, row_temp

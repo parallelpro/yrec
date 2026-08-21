@@ -38,6 +38,7 @@ subroutine alfilein(allard_table_path)
 ! The maximum nuber of Teff's in the current table is nTeff, and the
 ! associated max number of GL's is nGL.
 
+      use luout_lib
       implicit none
       integer, parameter :: nta = 250
       integer, parameter :: nga = 25
@@ -47,10 +48,6 @@ subroutine alfilein(allard_table_path)
       character(len=256) :: header_line
       double precision :: local_teffs(nta)
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! Shared: ALFILEIN, ALTABINIT and ALSURFP
       double precision :: allard_teffl_grid(nta), allard_gl_grid(nga), &

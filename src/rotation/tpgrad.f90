@@ -40,6 +40,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
      convective_velocity, want_derivatives, is_convective, &
      pressure_rotation_factor, temperature_rotation_factor, log_teff)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -64,12 +65,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
       double precision, intent(in) :: pressure_rotation_factor, &
            temperature_rotation_factor, log_teff
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! vcirc.f90/momi.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/const/: only log10_solar_luminosity (CLSUNL) is used here.
 ! Naming matches rotgrid.f90/vcirc.f90.

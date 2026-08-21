@@ -14,6 +14,7 @@
 ! cspline above, and given a value of x, this routine returns a
 ! cubic-spline interpolated value y.
 subroutine splint(xa, ya, n, y2a, x, y, klo, khi)
+      use luout_lib
       implicit none
 
       integer, intent(in) :: n
@@ -21,12 +22,6 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi)
       double precision, intent(out) :: y
       integer, intent(out) :: klo, khi
 
-! common/luout/: only short_file_unit (the .short log unit) is used
-! here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       integer :: k
       double precision :: h, a, b

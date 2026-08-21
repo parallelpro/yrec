@@ -16,6 +16,7 @@
 ! Note: xa/ya/y2a are dimensioned to the json=5000 module-wide
 ! maximum rather than to n, exactly as in the original file.
 subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi)
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -24,12 +25,6 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi)
       double precision, intent(out) :: y
       integer, intent(out) :: klo, khi
 
-! common/luout/: only short_file_unit (the .short log unit) is used
-! here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       integer :: k
       double precision :: h, a, b

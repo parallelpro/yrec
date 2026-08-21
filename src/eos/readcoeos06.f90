@@ -26,6 +26,7 @@
 ! transliterated exactly rather than "fixed".
 subroutine readcoeos06
 
+      use luout_lib
       implicit none
 
       integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
@@ -83,11 +84,6 @@ subroutine readcoeos06
            density_grid_table, species_fraction_header, log10_r_value, &
            temperature_count_used
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
 ! common/opaleos/: reused member names from eqstat2.f90 (order/type
 ! match the original LOPALE,IOPALE,lopale01,lopale06,lNumDeriv).

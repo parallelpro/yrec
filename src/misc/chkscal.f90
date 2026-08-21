@@ -17,6 +17,7 @@
 ! ON EVEN NK
 subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 
+      use luout_lib
       use const_lib
       implicit none
 
@@ -82,12 +83,6 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
            age_prev_model, star_found_flag, specify_teff_flag, &
            just_passed_target_radius_flag, calibrate_star_flag
 
-! common/luout/: only itrack (the .track log unit) is used here.
-! Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       save
 

@@ -14,6 +14,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, num_zones, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, num_mixed_zones)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -26,12 +27,6 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
       integer, intent(in) :: mixed_zone_bounds_no_overshoot(12,2)
       integer, intent(in) :: num_mixed_zones
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90/meqos.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 
 ! common/dpmix/: dpenv, alphac, alphae, alpham, betac, lovstc,

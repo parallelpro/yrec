@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use luout_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -66,12 +67,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
 
-! common/luout/: ishort/iowr/idebug are used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/burn/: reaction_rate_by_zone (originally HCOMPM) is read here
 ! (interpolated to the new mesh alongside HCOMP). Naming matches

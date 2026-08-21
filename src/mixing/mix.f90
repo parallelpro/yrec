@@ -34,6 +34,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
      num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
      mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -57,12 +58,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       integer, intent(inout) :: mixed_zone_bounds_no_overshoot(12,2)
       double precision, intent(in) :: log_teff
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90/meqos.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/burn/: reaction_rate_by_zone (originally HCOMPM) stores the
 ! per-zone reaction rates/branching fractions computed below (see the

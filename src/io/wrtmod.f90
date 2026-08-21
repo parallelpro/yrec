@@ -19,6 +19,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      log_temperature, model_number, log_luminosity_lsun, log_teff, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -34,11 +35,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       double precision, intent(in) :: log_mass(json)
       double precision, intent(in) :: age_gyr
 
-! common/luout/: only imodpt is used here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/lunum/: only opal_model_unit (IOPMOD) is used here. Naming
 ! matches setkrz.f90.

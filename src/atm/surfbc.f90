@@ -29,6 +29,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -51,12 +52,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: zone_index
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
       logical :: tri_vertex_valid(3)
 ! common/ccout/: not used in this file (referenced only for layout).
 ! Naming matches ccoeft.f90.

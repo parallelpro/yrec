@@ -72,6 +72,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
      already_converged_flag)
 
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -116,12 +117,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       double precision :: moment_of_inertia_tolerance
       common/errmom/ moment_of_inertia_tolerance
 
-! common/luout/: only imodpt (the .full/model-point log unit) is used
-! here (in the dead-code print block). Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/oldrot/: old_omega (WOLD), used here to detect a genuine sign
 ! change in the omega gradient vs. simply an existing negative

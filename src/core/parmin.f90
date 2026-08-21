@@ -36,6 +36,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
      fscvz, opecalex)
 
+      use luout_lib
       implicit none
 
 ! PARAMETERS for tabulated surface pressures (n_atm_teff/n_atm_logg),
@@ -107,9 +108,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: vnew(12)
       common /vnewcb/ vnew
 
-! common /luout/
-      integer :: ilast, idebug, itrack, ishort, imilne, imodpt, istor, iowr
-      common /luout/ ilast, idebug, itrack, ishort, imilne, imodpt, istor, iowr
 
 ! common /lunum/
       integer :: ifirst, irun, istand, ifermi, iopmod, iopenv, iopatm, idyn, illdat, isnu, iscomp, &
@@ -955,7 +953,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! OUTPUT: TRACK
       itrack = 19
 ! OUTPUT: ALL DIAGNOSTIC INFO
-      ishort = 20
+      short_file_unit = 20
 ! OUTPUT: MILNE INVARIANT VARIABLES
       imilne = 21
 ! OUTPUT: SHELL BY SHELL INFO ON MODELS
@@ -1073,8 +1071,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       kttau0 = kttau
       lttau = .false.
 ! DBG WRITE OUT ENTIRE NAMELIST TO ISHORT
-      write(ishort,nml=physics)
-      write(ishort,nml=control)
+      write(short_file_unit,nml=physics)
+      write(short_file_unit,nml=control)
 
 ! Post-process all CONTROL namelist vars that hold path values.
 ! Expand any placeholders found in the string with the value taken from a
@@ -1243,8 +1241,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !     1'FT J/M MOMENT DEL_KE V_ES V_GSF V_SS VTOT ')
 ! G Somers END
 
-      open(ishort,file=fshort,form='FORMATTED',status='UNKNOWN')
-      rewind(ishort)
+      open(short_file_unit,file=fshort,form='FORMATTED',status='UNKNOWN')
+      rewind(short_file_unit)
       if (ltrack) then
           open(unit=itrack,file=ftrack, form='FORMATTED', &
            &         status='UNKNOWN')
@@ -1294,14 +1292,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       endif
       if(lsemic)then
          if(lovstc.or.lovste.or.lovstm)then
-            write(ishort,2)lsemic,lovste,lovstc,lovstm
+            write(short_file_unit,2)lsemic,lovste,lovstc,lovstm
       2       format(1x,'ERROR IN SUBROUTINE PARMIN'/'SEMI-CONVECTION', &
            &  ' AND OVERSHOOT FLAGS BOTH TURNED ON'/'FLAGS LSEMIC',l2, &
            &  ' OVERSHOOT - CORE,ENVELOPE,INTERMEDIATE-',3l2/'RUN STOPPED')
             stop
          endif
       endif
-      write(ishort,1)(hpttol(i),i=1,12),alphae,alphac,linstb,ljdot0, &
+      write(short_file_unit,1)(hpttol(i),i=1,12),alphae,alphac,linstb,ljdot0, &
            &               alfa,fk,fw,fc,fo,fmu,rcrit
       1 format(1x,'PT TOL',12f6.3/1x,'O.S.ENV',f6.3,' O.S.CORE',f6.3, &
            &        ' LINSTB ',l1,' LJDOT ',l1,' WIND IND.',f6.3,' FK', &
@@ -1425,7 +1423,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       10    continue
 ! ANEWCP NOT A RECOGNIZED ELEMENT
        lnewcp = .false.
-       write(ishort,20) anewcp
+       write(short_file_unit,20) anewcp
       20    format(1x,'VARIABLE',a4,1x,'NOT A RECOGNIZED ELEMENT'/1x, &
            &    'RESCALING NOT PERFORMED')
       30    continue
@@ -1443,7 +1441,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
          if(amix.eq.'CUS')then
             if(frac_c.lt.0.0d0.or.frac_n.lt.0.0d0.or.frac_o.lt.0.0d0)then
                write(*,591)frac_c,frac_n,frac_o
-               write(ishort,591)frac_c,frac_n,frac_o
+               write(short_file_unit,591)frac_c,frac_n,frac_o
       591          format('NEGATIVE INPUT CNO FRACTION ',3e12.4, &
            &              ' MIX NOT MODIFIED')
                goto 602
@@ -1451,7 +1449,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             sum_frac=frac_c+frac_n+frac_o
             if(sum_frac.ge.1.0d0)then
                write(*,598)frac_c,frac_n,frac_o
-               write(ishort,598)frac_c,frac_n,frac_o
+               write(short_file_unit,598)frac_c,frac_n,frac_o
       598          format('INPUT CNO FRACTION ',3e12.4, &
            &              ' EXCEEDS 1. MIX NOT MODIFIED')
                goto 602
@@ -1474,12 +1472,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
          end do
 !     NO VALID MIX SPECIFIED
          write(*,589)amix
-         write(ishort,589)amix
+         write(short_file_unit,589)amix
       589    format('DESIRED CNO MIXTURE ',a8,' NOT FOUND. MIX NOT ALTERED.')
       endif
       606 if(lmixture)then
          write(*,604)amix,frac_c,frac_n,frac_o
-         write(ishort,604)amix,frac_c,frac_n,frac_o
+         write(short_file_unit,604)amix,frac_c,frac_n,frac_o
       604    format('CNO MIXTURE ',a8,' C ',e12.4,' N ',e12.4,' O ', &
            &         e12.4,' APPLIED TO STARTING MODEL.')
       endif
@@ -1494,7 +1492,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &  xbe9_ini.lt.0.0d0.or.xb10_ini.lt.0.0d0 .or.xb11_ini.lt.0.0d0)then
                write(*,596)r12_13,r14_15,r16_17,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini
-               write(ishort,596)r12_13,r14_15,r16_17,r16_18, &
+               write(short_file_unit,596)r12_13,r14_15,r16_17,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini
       596          format('NEGATIVE INPUT ISOTOPE RATIO OR LIGHT ELEMENT' &
            &   ' MASS FRACTION ',11e12.4, &
@@ -1506,7 +1504,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             if(sum_frac.ge.1.0d0)then
                write(*,595)xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini, &
            &  xb10_ini,xb11_ini
-               write(ishort,595)xh2_ini,xhe3_ini,xli6_ini,xli7_ini, &
+               write(short_file_unit,595)xh2_ini,xhe3_ini,xli6_ini,xli7_ini, &
            &  xbe9_ini,xb10_ini,xb11_ini
       595          format('SUM OF LIGHT ELEMENT MASS FRACTIONS EXCEEDS 1', &
            &  11e12.4,' MIX NOT MODIFIED')
@@ -1523,7 +1521,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       if(lisotope)then
          write(*,605)aiso,r12_13,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini
-         write(ishort,605)aiso,r12_13,r16_18, &
+         write(short_file_unit,605)aiso,r12_13,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini
       605    format('ISOTOPE AND LIGHT ELEMENT MIXTURE ',a8,' C12/C13 ', &
            &    e12.4,' O16/O18 ',e12.4,' H2 ',e12.4,' HE3 ',e12.4,' LI6 ', &
@@ -1547,41 +1545,41 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
 !     WRITE OUT RUN PARAMETERS.
 
-      write(ishort,50)xenv0,zenv0
+      write(short_file_unit,50)xenv0,zenv0
       50 format(30x,'RUN DATA VALUES'/3x, &
            &        'LINE  1     XENV0     ZENV0       ZSI'/2x, &
            &        'STANDARD       N/A       N/A  0.00E+00'/3x, &
            &        'CURRENT',1p2e10.0,2x,e8.2)
       if(npoint.le.0) npoint = 9999
-      write(ishort,70) ldebug,lcorr,npoint,lmilne,ltrack,lstore,lstpch
+      write(short_file_unit,70) ldebug,lcorr,npoint,lmilne,ltrack,lstore,lstpch
       70 format(3x,'LINE  2    LDEBUG     LCORR    NPOINT    LMILNE    LTRA                                                            &
 &CK    LSTORE    LSTPCH'/2x,'STANDARD',2(9x,'T'),6x, &
            & '9999',9x,'F',2(9x,'T'),9x,'T'/3x,'CURRENT',2(9x,l1),6x, &
            & i4,3(9x,l1),9x,l1)
       if(npenv.le.0) npenv = 9999
-      write(ishort,90) lscrib,lstatm,lstenv,lstmod,lstphys,lstrot
+      write(short_file_unit,90) lscrib,lstatm,lstenv,lstmod,lstphys,lstrot
       90 format(3x,'LINE  3    LSCRIB    LSTATM    LSTENV    LSTMOD',5x, &
            & 'LSTPHYS    LSTROT'/2x,'STANDARD',9x,'T',2(9x,'F'), &
            & 9x,'T',2(9x,'F'),9x,'2'/3x,'CURRENT',5(9x,l1),9x,l1)
-      write(ishort,110)lenvg,atmstp,envstp
+      write(short_file_unit,110)lenvg,atmstp,envstp
       110 format(3x,'LINE 4     LENVG    ATMSTP    ENVSTP'/2x,'STANDARD',7x, &
            &        'N/A',6x,'0.50',6x,'0.50'/3x,'CURRENT',9x,l1,2(4x,f6.3))
       if(nprtmod.le.0) nprtmod = 9999
       if(nprtpt.le.0) nprtpt = 9999
       if(pulse_gyre_interval.lt.0) pulse_gyre_interval = 0
-      write(ishort,130) nprtmod,nprtpt
+      write(short_file_unit,130) nprtmod,nprtpt
       130 format(3x,'LINE  4  NPRTMOD    NPRTPT'/2x,'STANDARD', &
            & 1(7x,'N/A'),9x,'5'/3x,'CURRENT',2(6x,i4))
 
 !     SPIT OUT NAMELIST VARIABLES TO ISHORT
 
-      write(ishort,25) (tcut(j),j=1,5),tscut,tenv0,tenv1,tgcut
+      write(short_file_unit,25) (tcut(j),j=1,5),tscut,tenv0,tenv1,tgcut
       25 format(3x,'LINE  2    TCUT-  E  TCUT- PP  TCUT-CNO  TCUT-                                                                     &
 &3A  TCUT- NU TCUT-SAHA     TENV0     TENV1     TGCUT'/2x, 'STANDAR                                                            &
 &D',9x,'6.50',6x,'6.50',6x,'6.82',6x,'7.70',6x,'7.50',6x, &
            & '6.00',6x,'3.00',6x,'9.00',6x,'6.90'/3x,'CURRENT', &
            & 9(5x,f5.2))
-      write(ishort,35) atmerr,atmmax,atmd0,enverr,envmax,envmin
+      write(short_file_unit,35) atmerr,atmmax,atmd0,enverr,envmax,envmin
 ! MHP 10/02 obsolete variables removed
 !      WRITE(ISHORT,35) NIATM,ATMERR,ATMMAX,ATMD0,NIENV,ENVERR,ENVMAX,
 !     *ENVMIN
@@ -1590,65 +1588,65 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            & '3.00E-04  5.00E-01  1.00E-10',8x,'10  3.00E-04  5.00E-01  2.50E-0                                                            &
 &1'/3x,'CURRENT',10x,3(1pe10.2),10x,3(1pe10.2))
 !     *1'/3X,'CURRENT',7X,I3,3(1PE10.2),7X,I3,3(1PE10.2))
-      write(ishort,45) tridt,tridl/tridt/tridl
+      write(short_file_unit,45) tridt,tridl/tridt/tridl
       45 format(3x,'LINE  4     TRIDT     TRIDL    LSENV0',5x, &
            & 'SENV0'/2x,'STANDARD',6x,'0.01',6x,'0.08',9x,'F',2x, &
            & '1.00E-07'/3x,'CURRENT',2f10.4)
-      write(ishort,55)(htoler(5,j),j=1,2),((htoler(i,j),i=1,4),j=1,2)
+      write(short_file_unit,55)(htoler(5,j),j=1,2),((htoler(i,j),i=1,4),j=1,2)
       55 format(3x,'LINE  5 TOL.RHS-P TOL.RHS-T MIN.COR-P MIN.COR-T MIN.COR                                                            &
 &-R MIN.COR-L MAX.COR-P MAX.COR-T MAX.COR-R MAX.COR-L'/2x,'STANDARD                                                            &
 &  3.00E-05  2.50E-06  6.00E-05  4.50E-05  3.00E-05  9.00E-05  9.00                                                            &
 &E-01  5.00E-01  5.00E-01  2.00E+00'/3x,'CURRENT',10(2x,1pe8.2))
-      write(ishort,65)(hpttol(j),j=1,8)
+      write(short_file_unit,65)(hpttol(j),j=1,8)
       65 format(3x,'LINE  6  D(S)-MIN  D(S)-MAX   FLAG-DX   FLAG-DZ    MAX                                                             &
 &DP MAX DL/LT    MAX DX    MAX DZ'/2x,'STANDARD  1.00E-08  8.00E-02                                                            &
 &  5.00E-02  1.00E+00  5.00E-02  2.00E-02  1.00E+00  1.00E+00'/3x, &
            & 'CURRENT',8(2x,1pe8.2))
-      write(ishort,75)lnewcp,anewcp,lrel,xnewcp
+      write(short_file_unit,75)lnewcp,anewcp,lrel,xnewcp
       75 format(3x,'LINE  7    LNEWCP    ANEWCP      LREL    XNEWCP'/2x, &
            & 'STANDARD',9x,'F',7x,'N/A',9x,'T',7x,'N/A'/3x,'CURRENT',9x,l1,7x, &
            & a3,9x,l1,1pe10.2)
-      write(ishort,85)acfpft,itfp1,itfp2
+      write(short_file_unit,85)acfpft,itfp1,itfp2
       85 format(3x,'LINE  8    ACFPFT     ITFP1     ITFP2'/2x,'STANDARD', &
            & 1x,'1.000E-20',9x,'2',8x,'20'/3x,'CURRENT',1pe10.3,6x,i4,6x,i4)
-      write(ishort,105) niter1,niter2,fcorr0,fcorri
+      write(short_file_unit,105) niter1,niter2,fcorr0,fcorri
       105 format(32x,'RUN DATA VALUES'/3x, &
            & 'LINE  1    NITER1    NITER2    FCORR0    FCORRI'/2x, &
            & 'STANDARD',9x,'2',8x,'20',6x,'0.80',6x,'0.10'/3x, &
            & 'CURRENT',2(6x,i4),2(5x,f5.2))
-      write(ishort,145)(atime(i),i=1,3),atime(7)
+      write(short_file_unit,145)(atime(i),i=1,3),atime(7)
       145 format(3x,'LINE  5 XCORE MIN  DEL.XCORE FRAC.XCORE DEL.XSHELL'/2x, &
            & 'STANDARD     0.001     0.020     0.500     0.100'/3x,'CURRENT', &
            & 4(4x,f6.3))
-      write(ishort,155)(atime(i),i=4,6)
+      write(short_file_unit,155)(atime(i),i=4,6)
       155 format(3x,'LINE  7 DEL.YCORE  FRAC.YCORE DEL.YSHELL'/2x,'STANDARD                                                             &
 &    0.020     0.300    0.0015'/3x,'CURRENT',2(5x,f5.3),4x,f6.4)
-      write(ishort,165) lkuthe
+      write(short_file_unit,165) lkuthe
       165 format(3x,'LINE  8    LKUTHE'/,2x, &
            & 'STANDARD',9x,'F'/3x,'CURRENT',9x,l1)
-      write(ishort,175) cmixl,dpenv,lovstc,alphac,lovste,alphae
+      write(short_file_unit,175) cmixl,dpenv,lovstc,alphac,lovste,alphae
       175 format(3x,'LINE  9   CMIXL     DPENV    LOVSTC    ALPHAC    LOVSTE                                                            &
 &    ALPHAE'/2x,'STANDARD',7x,'N/A',6x,'1.00',2(9x,'F',6x,'0.00')/ &
            & 3x,'CURRENT',2(5x,f5.2),2(9x,l1,5x,f5.2))
-      write(ishort,185) lnew0,lexcom
+      write(short_file_unit,185) lnew0,lexcom
       185 format(3x,'LINE 10   LNEW0    LEXCOM'/2x, &
            & 'STANDARD',2(9x,'F')/3x,'CURRENT',2(9x,l1))
-      write(ishort,195) lrot,walpcz,linstb
+      write(short_file_unit,195) lrot,walpcz,linstb
       195 format(3x,'LINE 11      LROT    WALPCZ    LINSTB'/2x,'STANDARD', &
            & 7x,'N/A',6x,'0.00',7x,'N/A'/3x,'CURRENT',9x,l1,5x,f5.2,9x,l1)
       if(kttau .eq. 0) then
-           write(ishort, 197)
+           write(short_file_unit, 197)
       else if (kttau .eq. 1) then
-           write(ishort, 198)
+           write(short_file_unit, 198)
       else if (kttau .eq. 2) then
-           write(ishort, 1999)
+           write(short_file_unit, 1999)
       else if (kttau .eq. 3) then
-           write(ishort, 1888)
+           write(short_file_unit, 1888)
       else if (kttau .eq. 4) then
-           write(ishort, 1889)
+           write(short_file_unit, 1889)
 ! JNT 6/14 ADD FOR NEW KURUCZ/CASTELLI ATMOSPHERE TABLES
       else if (kttau .eq. 5) then
-           write(ishort, 1887)
+           write(short_file_unit, 1887)
       end if
       197 format(' USING EDDINGTON T-TAU RELATION.')
       198 format(' USING KRISHNA-SWAMY T-TAU RELATION.')
@@ -1659,18 +1657,18 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
 ! DBG PULSE
       if (lpulse) then
-          write(ishort,196)
+          write(short_file_unit,196)
       196     format(/,' CALCULATE PULSATION OUTPUT ON LAST MODEL')
       end if
       if (lpurez) then
-          write(ishort,*) ' USING PURE C AND N OPACITY TABLES'
+          write(short_file_unit,*) ' USING PURE C AND N OPACITY TABLES'
       end if
 
       write(imodpt,310) descrip(1),  descrip(2)
 
-      write(ishort,314)
-      write(ishort,version_fmt) yrecver, githash
-      write(ishort,310) descrip(1),  descrip(2)
+      write(short_file_unit,314)
+      write(short_file_unit,version_fmt) yrecver, githash
+      write(short_file_unit,310) descrip(1),  descrip(2)
       310    format('# DESCRIPTION OF RUN:',a80,/, '#',9x,'  ',8x,': ', &
            &           a80,/,'#', 100('='))
 
@@ -1684,12 +1682,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &           a80,/,'#', 100('='))
 
       endif
-      write(ishort,323)
+      write(short_file_unit,323)
       323 format(' USING OSCILATORY SPLINE INTERPOLATION IN HPOINT')
 
 !     INTERPRET RUN FROM SEQUENCE OF "KIND" CARDS
 
-      write(ishort,200)
+      write(short_file_unit,200)
       200 format(/35x,'RUN CARDS'/)
 
       lfirst(1) = .true.
@@ -1712,13 +1710,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             if (nmodls(nkind).gt.0) then
           if (lfirst(nkind)) then
              write(iowr,350) nkind,nmodls(nkind)
-             write(ishort,350) nkind,nmodls(nkind)
+             write(short_file_unit,350) nkind,nmodls(nkind)
       350          format(/1x,'RUN #',i3,'   EVOLVE ',i5, &
            &          ' MODELS, STARTING', &
            &          ' WITH THE INPUT "FIRST MODEL".')
           else
              write(iowr,351) nkind, nmodls(nkind)
-             write(ishort,351) nkind, nmodls(nkind)
+             write(short_file_unit,351) nkind, nmodls(nkind)
       351          format(/1x,'RUN #',i3,'   EVOLVE ',i5, &
            &          ' MODELS, STARTING', &
            &          ' WITH THE PREVIOUS RUN''S LAST MODEL.')
@@ -1728,7 +1726,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
              write(iowr,370)lendag(nkind),lsetdt(nkind), &
            &               endage(nkind), setdt(nkind),end_dcen(nkind), &
            &          end_xcen(nkind),end_ycen(nkind)
-             write(ishort,370)lendag(nkind),lsetdt(nkind), &
+             write(short_file_unit,370)lendag(nkind),lsetdt(nkind), &
            &          endage(nkind), setdt(nkind),end_dcen(nkind), &
            &          end_xcen(nkind),end_ycen(nkind)
       370          format(1x,'EVOLVE TO AGE ',l1,' SET DELT ', &
@@ -1747,17 +1745,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             if (nmodls(nkind) .gt. 0) then
           if (lfirst(nkind)) then
              write(iowr,450) nkind
-             write(ishort,450) nkind
+             write(short_file_unit,450) nkind
       450          format(/1x,'RUN #',i3, &
            &          '   RESCALE THE INPUT MODEL: "FIRST MODEL".')
           else
              write(iowr,451) nkind
-             write(ishort,451) nkind
+             write(short_file_unit,451) nkind
       451          format(/1x,'RUN #',i3, &
            &          '   RESCALE THE PREVIOUS RUN''S LAST MODEL.')
           end if
           write(iowr,452) nmodls(nkind),(rescal(i,nkind),i = 1,4)
-          write(ishort,452) nmodls(nkind), &
+          write(short_file_unit,452) nmodls(nkind), &
            &       (rescal(i,nkind),i = 1,4)
       452       format(1x,'RELAX RESCALED MODEL',i3, &
            &       ' TIMES. RESCALE THE FOLLOW', &
@@ -1775,17 +1773,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             rescal(4,nkind) = rsclcm(nkind)
             if (lfirst(nkind)) then
                write(iowr,550) nkind
-               write(ishort,550) nkind
+               write(short_file_unit,550) nkind
       550          format(/1x,'RUN #',i3, &
            &          '   RESCALE & EVOLVE THE INPUT MODEL: "FIRST MODEL".')
             else
                write(iowr,451) nkind
-               write(ishort,451) nkind
+               write(short_file_unit,451) nkind
 !   551          FORMAT(/1X,'RUN #',I3,
 !      1         '   RESCALE & EVOLVE THE PREVIOUS RUN''S LAST MODEL.')
             end if
             write(iowr,452) nmodls(nkind),(rescal(i,nkind),i = 1,4)
-            write(ishort,452) nmodls(nkind), &
+            write(short_file_unit,452) nmodls(nkind), &
            &       (rescal(i,nkind),i = 1,4)
        end if
          if(rescal(3,nkind).ge.0.0d0)  zenv=rescal(3,nkind)

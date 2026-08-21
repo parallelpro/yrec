@@ -32,6 +32,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
      adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp)
 
       use const_lib
+      use luout_lib
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -46,11 +47,6 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
            dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, &
            dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
            adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp
-
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
 
 ! common/ccr/: this batch's own block (no reuse precedent found
 ! elsewhere in the already-converted sources). fermi_table_x_grid is

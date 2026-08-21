@@ -25,6 +25,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 ! CONVERGED MODEL) AND STORE MODELS D(EVERY NPUNCH MODELS)
 
 !     WRITE MODEL OUT IN ASCII FORMAT
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts=63, nps=76
@@ -54,12 +55,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 !      CHARACTER*256 FLAOL, FPUREZ
 !      CHARACTER*256 FOPALE,FOPALE01,FOPALE06  ! FcondOpacP
 
-! common/luout/: only iowr/ishort are used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, ishort, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, ishort, imilne, &
-           imodpt, istor, iowr
 
 ! common/const3/: only mixing_length is used here. Naming matches
 ! mix.f90.
@@ -251,7 +246,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       call putmodel2(log_luminosity_lsun,envelope_fit_coeffs,mixing_length, &
            age_gyr,timestep_yr,trial_sign_flag,composition,log_density, &
            log_luminosity,log_pressure,log_radius,log_mass,log_total_mass, &
-           log_temperature,iwrite,ishort,core_cz_top_index, &
+           log_temperature,iwrite,short_file_unit,core_cz_top_index, &
            envelope_cz_bottom_index,convective_flag,use_extended_composition, &
            rotation_active,num_shells,model_number,omega,fit_point_pressure, &
            fit_point_radius,total_mass_msun,log_teff,luminosity_breakdown, &
@@ -271,9 +266,9 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
   360 format(I6,'  #SHELLS=', I4, '  LogTeff=',F8.5, &
              '  Log(L/Lsun)=',F8.5,'  Age=',F12.5)
       if(iwrite.eq.11) then
-       write(ishort,330) model_number,iwrite
+       write(short_file_unit,330) model_number,iwrite
       else
-       write(ishort,340) model_number,age_gyr,iwrite
+       write(short_file_unit,340) model_number,age_gyr,iwrite
       endif
   330 format(' DUMPED MODEL',I5,'  FILE',I3)
   340 format(' DUMPED MODEL',I5,' AGE',F13.9,'  FILE',I3)

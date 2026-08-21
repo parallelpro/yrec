@@ -30,6 +30,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -59,11 +60,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       common/ccout/ lstore, lstatm, lstenv, lstmod, lstphys, lstrot, &
            lscrib, lstch, lphhd
 
-! common/luout/: only istor is used here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/envgen/: all used here. Naming matches calcad.f90/wrtmod.f90.
       double precision :: atm_step_size, envelope_step_size

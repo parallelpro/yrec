@@ -29,15 +29,11 @@
 !    4 columns.
 subroutine altabinit
 
+      use luout_lib
       implicit none
       integer, parameter :: nta = 250
       integer, parameter :: nga = 25
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! Shared: ALFILEIN, ALTABINIT and ALSURFP
       double precision :: allard_teffl_grid(nta), allard_gl_grid(nga), &

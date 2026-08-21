@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -141,11 +142,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       logical :: use_extended_composition
       common/flag/ use_extended_composition
 
-! common/luout/: not used in this file. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/mdphy/: only amum is used here. Naming matches liburn.f90/
 ! mixgrid.f90.

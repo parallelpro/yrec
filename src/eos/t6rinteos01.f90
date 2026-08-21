@@ -11,6 +11,7 @@
 ! (x_interp_result) in T6 and density to produce esact.
 subroutine t6rinteos01(slr, slt)
 
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: slr, slt
@@ -52,11 +53,6 @@ subroutine t6rinteos01(slr, slt)
       double precision :: esact, eos_output(mv)
       common/eeos/ esact, eos_output
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
       save
 

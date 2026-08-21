@@ -24,6 +24,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -45,12 +46,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       double precision, intent(out) :: diffusion_coeff1_dx(json), &
            diffusion_coeff2_dx(json)
 
-! common/luout/: only short_file_unit (the .short log unit) is used
-! here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/const/: not used in this file; declared only to preserve
 ! layout. Naming matches chkscal.f90/wrthead.f90.

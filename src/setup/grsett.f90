@@ -55,6 +55,7 @@
 subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
      mass_grams, log_temperature, convective_flag, num_zones, total_mass)
 
+      use luout_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -102,12 +103,6 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
            metal_abundance_change_mid
 
 
-! common/luout/: only short_file_unit/iowr are used here. Naming
-! matches getopac.f90/setup_grsett.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! --- locals ---
 ! Names below are chosen to match the dummy-argument names of the

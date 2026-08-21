@@ -43,6 +43,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
      rate_triple_alpha, frac_c12_alpha, shell_mass, composition, &
      timestep_years)
 
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -72,12 +73,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
            tenv0, tenv1, tenv, tgcut
       common/ctlim/ atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv, tgcut
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/oldmod/: only old_composition is used here. Naming matches
 ! eqburn.f90/dburn.f90.

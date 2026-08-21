@@ -13,6 +13,7 @@
 ! requested, a second LAOL89 table).
 subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
 
+      use luout_lib
       implicit none
       double precision, intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
@@ -38,10 +39,6 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
       common/zramp/ rsclzc, rsclzm1, rsclzm2, iolaol2, ioopal2, nk, &
            use_z_ramp
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
 ! common/debhu/: only zdh is used here. Naming matches eqstat2.f90.

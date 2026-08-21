@@ -11,15 +11,10 @@
 ! .short log file.
 subroutine alprint
 
+      use luout_lib
       implicit none
       integer, parameter :: nta = 250, nga = 25
 
-! common/luout/: only short_file_unit (the .short log unit) is used
-! here. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/alatm01/: Allard grid arrays and sizes; shared with alfilein,
 ! altabinit, alsurfp. Naming matches alfilein.f90.

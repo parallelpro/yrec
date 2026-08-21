@@ -11,6 +11,7 @@
 ! unit, printed every nprtpt points (plus the first and last points).
 subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -19,13 +20,6 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
            hp(json), hr(json), hs1(json)
       integer, intent(in) :: m, model
 
-! common/luout/: only milne_file_unit is used here. Naming matches
-! getopac.f90 (short_file_unit there is the ishort slot; here we need
-! the imilne slot).
-      integer :: ilast, idebug, itrack, ishort, milne_file_unit, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, ishort, milne_file_unit, &
-           imodpt, istor, iowr
 
 ! common/ccout1/: only print_point_interval (NPRTPT) is used here.
       integer :: npenv, nprtmod, print_point_interval, npoint
@@ -69,7 +63,7 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 !  WRITE THEM OUT TO LOGICAL UNIT IMILNE.
 !  HEADER
       smtot = dexp(ln10*stotal)/solar_mass_cgs
-      write(milne_file_unit,5) model,envelope_hydrogen_fraction, &
+      write(imilne,5) model,envelope_hydrogen_fraction, &
            envelope_metal_fraction,smtot
     5 format(10X,'MODEL',I5,'  XENV =',1PD10.3,'  ZENV =',D10.3, &
            '  MASS(SOLAR UNITS) =',D10.3)
@@ -81,7 +75,7 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       v = dexp(ln10*cgl)*hs1(1)*d/(p*r)
       w = u*hs1(1)*(sesum(1)+seg(7,1))/(hl(1)*solar_luminosity_cgs)
       np1 = 1.0d0/del_grad(2,1)
-      write(milne_file_unit,10)1,hs1(1),r,p,d,hcomp(1,1),hl(1),u,v,w,np1
+      write(imilne,10)1,hs1(1),r,p,d,hcomp(1,1),hl(1),u,v,w,np1
    10 format(1X,I4,10(1PE11.3))
 !  PRINT OUT EVERY NPRTPT POINTS;LAST POINT ALWAYS PRINTED.
       iend = 1
@@ -96,7 +90,7 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
           v = dexp(ln10*cgl)*hs1(i)*d/(p*r)
           w = u*hs1(i)*(sesum(i)+seg(7,i))/(hl(i)*solar_luminosity_cgs)
           np1 = 1.0d0/del_grad(2,i)
-          write(milne_file_unit,10)i,hs1(i),r,p,d,hcomp(1,i),hl(i), &
+          write(imilne,10)i,hs1(i),r,p,d,hcomp(1,i),hl(i), &
                             u,v,w,np1
    20    continue
       endif
@@ -109,9 +103,9 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
        v = dexp(ln10*cgl)*hs1(m)*d/(p*r)
        w = u*hs1(m)*(sesum(m)+seg(7,m))/(hl(m)*solar_luminosity_cgs)
        np1 = 1.0d0/del_grad(2,m)
-       write(milne_file_unit,10)m,hs1(m),r,p,d,hcomp(1,m),hl(m), &
+       write(imilne,10)m,hs1(m),r,p,d,hcomp(1,m),hl(m), &
                          u,v,w,np1
       endif
-      close(milne_file_unit)
+      close(imilne)
       return
 end subroutine wrtmil

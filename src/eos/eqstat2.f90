@@ -25,6 +25,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state)
 
+      use luout_lib
       use const_lib
       implicit none
 
@@ -53,12 +54,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90/meqos.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/comp/: envelope_hydrogen_fraction, envelope_metal_fraction,
 ! envelope_amu, and envelope_species_fractions are used here. Naming

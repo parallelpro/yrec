@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use luout_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -197,12 +198,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       logical :: envelope_generation_flag
       common/envgen/ atm_step_size, envelope_step_size, envelope_generation_flag
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
 ! common/sett/: not used in this file. First converted here.

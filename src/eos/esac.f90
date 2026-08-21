@@ -35,6 +35,7 @@
 subroutine esac(hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, *)
 
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -43,11 +44,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
 
       integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
 ! common/lreadco/: table_loaded_flag is shared (by COMMON block name,
 ! not by design intent as far as this transliteration can tell) with

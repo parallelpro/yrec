@@ -22,6 +22,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -89,12 +90,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       logical :: use_new_diffusion_routines, ldifli
       common/gravs4/ use_new_diffusion_routines, ldifli
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/mdphy/: only delm (originally DELM) is used here -- swapped
 ! temporarily into del_grad(2,*) (common/scrtch/) around the settling

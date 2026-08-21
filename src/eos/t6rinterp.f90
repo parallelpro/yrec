@@ -14,17 +14,13 @@
 ! thermodynamic variable at (slt, slr) = (T6, density).
 subroutine t6rinterp(slr, slt)
 
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: slr, slt
 
       integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
 ! common/ee/: not used in this file; placeholders (see readco.f90).
       double precision :: x_interp_workspace(mx,nt,nr), x_grid_copy(mx)

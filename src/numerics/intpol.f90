@@ -27,6 +27,7 @@
 ! y_eval  ; the value we want
 ! dy_eval ; the derivative value at x_eval
 subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval)
+      use luout_lib
       use numerics_lib
       implicit none
       integer, parameter :: np=100
@@ -38,12 +39,6 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval)
 
       double precision :: spline_coeff(4,np), dx_local, x_eval_copy
       double precision :: interp_value, interp_deriv
-! common/luout/: only iowr/short_file_unit are used here. Naming
-! matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
       integer :: i, k_lo, k_hi, k_mid
       data spline_coeff/400*0.0d0/
       save

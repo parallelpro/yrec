@@ -15,6 +15,7 @@
 double precision function rhoofp(hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag)
 
+      use luout_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -23,11 +24,6 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
 
       integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
 
-! common/luout/: only short_file_unit is used here.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
 ! common/lreadco/: shared (by COMMON block name) with esac.f90/
 ! esac01.f90/esac06.f90/rhoofp01.f90/rhoofp06.f90 -- see esac.f90.

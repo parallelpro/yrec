@@ -35,6 +35,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 !  Update (Input and Output) Arguments: saha_state
 !
 
+      use luout_lib
       use const_lib
       implicit none
 
@@ -62,12 +63,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 
       integer, parameter :: nts = 63, nps = 76
 
-! common/luout/: not used in this file; declared only to preserve
-! layout. Naming matches getopac.f90/meqos.f90/eqstat2.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/comp/: not used in this file; declared only to preserve
 ! layout. Naming matches getopac.f90/meqos.f90/eqstat2.f90.

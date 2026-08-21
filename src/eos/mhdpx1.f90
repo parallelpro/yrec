@@ -21,6 +21,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
 !
 !     MHDST MUST BE CALLED IN MAIN.
 !     INTERPOLATION IN TABLES WITH DIFFERENT X AND FIXED Z
+      use luout_lib
       use numerics_lib
       implicit none
       integer, parameter :: ivarx = 25
@@ -30,12 +31,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
            hydrogen_fraction
 
       double precision :: table_vars(ndimt,ivarx), table_hfrac(ndimt)
-! common/luout/: only short_file_unit and main_output_unit are used
-! here. Naming matches meqos.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, main_output_unit
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, main_output_unit
 
       logical :: ldebug, lcorr, lmilne, ltrack, lstpch
       common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch
@@ -97,8 +92,8 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
          x_grid_origin = table_hfrac(1)
          x_grid_spacing  = table_hfrac(2) - table_hfrac(1)
          if (abs(table_hfrac(3)-table_hfrac(2)-x_grid_spacing).gt.1.d-4) then
-            write(main_output_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
-            write(main_output_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
+            write(iowr,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
+            write(iowr,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
             write(short_file_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
             write(short_file_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
             stop

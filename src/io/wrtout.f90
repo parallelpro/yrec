@@ -25,6 +25,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -54,23 +55,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       double precision, intent(in) :: total_angular_momentum, &
            total_rotational_kinetic_energy, shell_mass_increment(json)
 
-! MHP 8/25 Fscomp file depreciated,unused variables removed
-!      CHARACTER*256 FLAST, FFIRST, FRUN, FSTAND, FFERMI,
-!     1    FDEBUG, FTRACK, FSHORT, FMILNE, FMODPT,
-!     2    FSTOR, FPMOD, FPENV, FPATM, FDYN, FISO,
-!     3    FLLDAT, FSNU, FSCOMP, FKUR,
-!     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
-! JVS 0712 for call to envint:
-!       REAL*8 DUM1(4),DUM2(3),DUM3(3),DUM4(3)
-! JVS 10/13 for recalculation of taucz
-!       REAL*8 DEL1(JSON), DEL2(JSON)
-! end JVS
-! common/luout/: only itrack/ishort/ilast are used here. Naming
-! matches getopac.f90.
-      integer :: ilast, idebug, itrack, ishort, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, ishort, imilne, &
-           imodpt, istor, iowr
 ! common/lunum/: not used in this file; declared only to preserve
 ! layout. Naming matches setkrz.f90.
       integer :: first_unit, run_unit, standard_unit, fermi_unit, &
@@ -384,15 +368,15 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !  A DETAILED BREAKDOWN OF THE STELLAR STRUCTURE IS TO BE PRINTED
 !  FOR THIS MODEL.
 !
-      write(ishort,21)
+      write(short_file_unit,21)
    20 format(1X,127('*'))
    21 format(/,1X,127('*'))
       if(.not.helium_flash_active) then
-       write(ishort,30)model_number,total_mass_msun,xnew,znew,age_gyr,timestep_yr
+       write(short_file_unit,30)model_number,total_mass_msun,xnew,znew,age_gyr,timestep_yr
    30    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
           ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',F12.0)
       else
-       write(ishort,40)model_number,total_mass_msun,xnew,znew,age_gyr,timestep_yr
+       write(short_file_unit,40)model_number,total_mass_msun,xnew,znew,age_gyr,timestep_yr
    40    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
           ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',1PE12.4)
       endif
@@ -521,12 +505,12 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
          envelope_cz_pressure = 0.0D0
          envelope_cz_o16 = 0.0D0
       endif
-      write(ishort,50)num_shells,initial_envelope_x,initial_envelope_z,core_mass,envelope_mass, envelope_radius
+      write(short_file_unit,50)num_shells,initial_envelope_x,initial_envelope_z,core_mass,envelope_mass, envelope_radius
    50 format(1X,'SHELLS=',I5,2X,'(X0,Z0)=(',F9.7,',',F9.7,')',2X, &
        'CONV. ZONE MASSES(MSUN): CORE',F10.7,' ENV.',F10.7, &
        ' RAD. FRAC.',F10.7)
       radius_log_surface = radius_log_surface - log10_solar_radius
-      write(ishort,60)log_teff,bolometric_magnitude,log_luminosity_lsun,radius_log_surface,log_gravity
+      write(short_file_unit,60)log_teff,bolometric_magnitude,log_luminosity_lsun,radius_log_surface,log_gravity
    60 format(1X,'LOG(TEFF)=',F11.8,'  M(BOL)=',F11.7,'  LOG(L/LSUN)=' &
        ,F12.8,'  LOG(R/RSUN)=',F12.8,'  LOG(G) =',F12.8)
 ! MHP 02/12 MOVED ABOVE SECTION WHERE THESE ARE USED
@@ -562,12 +546,12 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !     *AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,LDERIV,
 !     *LATMO,KSAHA)
 !      END IF
-      write(ishort,70)log_pressure_center,log_temperature_center,log_density_center,beta_center, &
+      write(short_file_unit,70)log_pressure_center,log_temperature_center,log_density_center,beta_center, &
            degeneracy_eta_center,hydrogen_fraction_center,metal_fraction_center,composition(9,1)
    70 format(1X,'CENTER: LOG P=',F10.7,' LOG T=',F10.8,' LOG D=', &
        F10.6,' BETA=',F9.7,' ETA=',0PF10.5,'  X=',0PF9.7,' Z=',F9.7, &
        ' O16=',F9.7)
-      write(ishort,80)(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(6),luminosity_breakdown(7)
+      write(short_file_unit,80)(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(6),luminosity_breakdown(7)
    80 format(1X,'ENERGY: PPI',1PE13.6,'  PPII',E13.6,'  PPIII',E13.6, &
        '  CNO',E13.6,/,9X,'TRIPLE ALPHA',E13.6,'  HE-C',E13.6, &
        '  NEUTRINOS',E13.6,'  GRAV',E13.6)
@@ -595,7 +579,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
              h_shell_mid_mass = 0.0D0
              max_log_temperature = log_temperature(1)
           endif
-          write(ishort,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
+          write(short_file_unit,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
   120       format(1X,'H-SHELL MID-PT=',F10.7,' MASS TOTAL=', &
                 F10.7,2X,'HE-CORE MASS=',F10.7,1X,'MAX-T=',F10.7, &
                 ' (MASS=',F9.7,')')
@@ -612,15 +596,15 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !  ADDITIONAL OUTPUT FOR HE FLASH
              max_temp_log_radius = log_radius(max_temp_index)
              max_temp_convective_flag = convective_flag(max_temp_index)
-             write(ishort,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
-             write(ishort,150)max_temp_convective_flag,max_temp_log_radius
+             write(short_file_unit,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
+             write(short_file_unit,150)max_temp_convective_flag,max_temp_log_radius
   150          format(1X,'CONVECTION = ',L1,5X,'LOG(R) MAX-T =',F8.5)
           endif
        endif
 !  END H-SHELL SECTION
       endif
 !     PRINT OUT NEUTRINO RATES FROM ENGEB CALCULATION
-      write(ishort,160) (neutrino_flux_total(i),i=1,8)
+      write(short_file_unit,160) (neutrino_flux_total(i),i=1,8)
   160 format(1X,'NEUTRINOS 1E10ERG/CM^2 PP,PEP,HEP,BE7,', &
          'B8,N13,O15,F17:', 1P8E9.2)
 ! DBG 7/93 from Bahcall's book p 207 table 8.2
@@ -642,14 +626,14 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       fl115in = 78.0D0*neutrino_flux_total(1)+576.0D0*neutrino_flux_total(2)+6.1D4*neutrino_flux_total(3)+ &
               248.0D0*neutrino_flux_total(4)+2.5D4*neutrino_flux_total(5)+224.0D0*neutrino_flux_total(6)+ &
               355.0D0*neutrino_flux_total(7)+356.0D0*neutrino_flux_total(8)
-      write(ishort,2160) fl7li,fl37cl,fl71ga,fl81br,fl98mo,fl115in
+      write(short_file_unit,2160) fl7li,fl37cl,fl71ga,fl81br,fl98mo,fl115in
  2160 format(1X,'NEUTRINO ENERGIES (1.E-36ERG): 7Li=', 1PE9.2, &
        ' 37Cl=',1PE9.2,' 71Ga=',1PE9.2,' 81Br=',1PE9.2,' 98Mo=', &
        1PE9.2, ' 115In=', 1PE9.2)
       fit_point_mass = mass_coordinate(num_shells)/solar_mass_cgs
-      write(ishort,170)fit_point_mass,log_pressure(num_shells),log_temperature(num_shells),log_radius(num_shells)
+      write(short_file_unit,170)fit_point_mass,log_pressure(num_shells),log_temperature(num_shells),log_radius(num_shells)
   170 format(1X,'FIT-POINT    M/MSUN=',F16.12,5X,'(P,T,R) =',3F12.7)
-      write(ishort,20)
+      write(short_file_unit,20)
       if(ltrack) then
 ! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
 ! MHP 8/96

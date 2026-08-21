@@ -19,6 +19,7 @@
 subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
      log_luminosity, log_teff, model_number, pulse_atm_path, &
      pulse_env_path, pulse_mod_path)
+      use luout_lib
       implicit none
 
       double precision, intent(inout) :: prev_log_l, prev_log_teff, &
@@ -56,16 +57,6 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
            opal_model_unit, opal_envelope_unit, opal_atm_unit, &
            dynamics_unit, laol_table_unit, neutrino_unit, &
            composition_unit, kurucz_table_unit
-! MHP 8/25 Removed common block with file names
-!      COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,
-!     1    FDEBUG, FTRACK, FSHORT, FMILNE, FMODPT,
-!     2    FSTOR, FPMOD, FPENV, FPATM, FDYN,
-!     3    FLLDAT, FSNU, FSCOMP, FKUR,
-!     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
       save
 
       double precision :: delta_log_l, delta_log_teff, delta_age

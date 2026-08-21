@@ -38,6 +38,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
      mixed_zone_bounds, num_zones_mixed, log_teff)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -64,12 +65,6 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
       logical :: use_extended_composition
       common/flag/ use_extended_composition
 
-! common/luout/: only short_file_unit is used here. Naming matches
-! getopac.f90/meqos.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/const/: only solar_luminosity_cgs is used here. Naming
 ! matches mixgrid.f90.

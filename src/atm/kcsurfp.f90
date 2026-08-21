@@ -12,6 +12,7 @@
 ! rather than the original Kurucz table (ATMOS2, sized NT x NG).
 subroutine kcsurfp(log10_teff, log10_gravity, print_flag)
 
+      use luout_lib
       use numerics_lib
       implicit none
 ! PARAMETERS NTC AND NGC FOR TABULATED SURFACE PRESSURES.
@@ -51,12 +52,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag)
       common/fac/kurucz_gmin_index, kurucz_gmax_index, &
            teff_interp_start_index, gravity_interp_indices, &
            castelli_gmin_index, castelli_gmax_index
-! common/luout/: only short_file_unit/istor/iowr are used here. Naming
-! matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
       save
 

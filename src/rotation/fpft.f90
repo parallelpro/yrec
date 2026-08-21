@@ -22,6 +22,7 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0)
 
+      use luout_lib
       use const_lib
       use numerics_lib
       implicit none
@@ -44,12 +45,6 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
 
 
 
-! common/luout/: not used in this file; declared only to preserve
-! layout. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/rot/: not used in this file. Naming matches momi.f90.
       double precision :: wnew, walpcz, acfpft

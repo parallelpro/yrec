@@ -99,6 +99,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
      specific_angular_momentum, iteration_level, am_transport_convective_flag, &
      mixed_zone_bounds, qiw, kinetic_energy_rot, kinetic_energy_rot_old)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -155,12 +156,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       double precision, intent(inout) :: kinetic_energy_rot(json)
       double precision, intent(in) :: kinetic_energy_rot_old(json)
 
-! common/luout/: short_file_unit/iowr are used here. Naming matches
-! getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/ccout/: not used in this file. Naming matches coefft.f90.
       logical :: lstore, lstatm, lstenv, lstmod, lstphys, lstrot, lscrib, &

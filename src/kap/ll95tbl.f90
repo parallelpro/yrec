@@ -14,6 +14,7 @@
 ! (not part of this batch).
 subroutine ll95tbl(opal95_table_path)
 
+      use luout_lib
       implicit none
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19
@@ -76,10 +77,6 @@ subroutine ll95tbl(opal95_table_path)
            use_opal95_tables_placeholder, use_kurucz90_tables_placeholder, &
            use_alex95_tables_placeholder, use_two_z_tables_placeholder
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! NUMBER OF COMPOSITION TABLES AT LOWER Z FOR EACH ABUNDANCE
       data opal95_table_start_index/0,10,20,30,40,50,60,70,80,90,100,109,118/

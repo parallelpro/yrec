@@ -12,6 +12,7 @@
 ! MHP 10/02 vector v not used
 subroutine rdzlaol(pure_z_table_path)
 
+      use luout_lib
       implicit none
       character(len=256), intent(in) :: pure_z_table_path
 
@@ -31,10 +32,6 @@ subroutine rdzlaol(pure_z_table_path)
       common/zlaol/ zlaol_opacity, zlaol_logt_grid, zlaol_logrho_grid, &
            zlaol_num_rho, zlaol_num_t
 
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/newopac/: not used here; declared only to preserve the shared
 ! storage layout (see getopac.f90 for these names).

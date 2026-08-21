@@ -161,6 +161,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      reaction_rate_13, n15_alpha_branch_fraction, &
      be7_electron_capture_fraction)
 
+      use luout_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -196,12 +197,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
            accreted_mass_fraction, jcz
 
-! common/luout/: not used in this file; declared only to preserve
-! layout. Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! common/ctlim/: only tcut is used here. Naming matches eqburn.f90.
       double precision :: atime(14), tcut(5), saha_log10t_cutoff, &

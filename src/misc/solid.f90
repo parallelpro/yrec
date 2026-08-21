@@ -13,6 +13,7 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
 
+      use luout_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -34,12 +35,6 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       double precision :: moment_of_inertia_tolerance
       common/errmom/ moment_of_inertia_tolerance
 
-! common/luout/: not used in this file's logic; layout placeholder.
-! Naming matches getopac.f90.
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, imodpt, &
-           istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! MHP 9/94 ADDED DISK LOCKING OPTION - FLAG, TIME OVER WHICH LOCKING
 ! IS ENFORCED, AND PERIOD AT WHICH LOCKING IS SET ARE OPTIONS.

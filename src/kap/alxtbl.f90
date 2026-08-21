@@ -25,6 +25,7 @@
 ! MHP 8/25 Added file name to subroutine call
 subroutine alxtbl(alex95_table_paths)
 
+      use luout_lib
       implicit none
       integer, parameter :: num_x = 7
       integer, parameter :: num_z = 15
@@ -82,11 +83,6 @@ subroutine alxtbl(alex95_table_paths)
       double precision :: alex95_full_opacity(num_xz, num_t, num_d)
       common /alotall/ alex95_full_opacity
 
-! MHP 10/02 ISHORT UNDECLARED
-      integer :: ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
-      common/luout/ ilast, idebug, itrack, short_file_unit, imilne, &
-           imodpt, istor, iowr
 
 ! --- local arrays ---
       double precision :: row_opacity_temp(num_d)
