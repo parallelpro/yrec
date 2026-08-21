@@ -367,12 +367,25 @@ were thinking about, and scope `git commit` with an explicit file
 pathspec whenever more than one sub-task's changes might be staged at
 once.
 
-## Scripting a COMMON-to-module conversion: two parser traps
+## Scripting a COMMON-to-module conversion: three parser traps
 
-Both of these produced silent, wrong results (not crashes) until
+All three of these produced silent, wrong results (not crashes) until
 caught by manually inspecting a sample conversion before applying
 broadly -- always do that inspection, don't trust a script that
 reports 100% success without having read at least one real diff.
+
+- **macOS/BSD `sed -E` silently ignores `\s`.** It's a GNU-sed/Perl
+  extension, not POSIX; on macOS a pattern like
+  `s/^\s*(double precision|...) *:: *//` simply fails to match (no
+  error) and the input passes through unchanged. Downstream steps in
+  the same pipe (e.g. a later `tr -d ' '`) then silently glue the
+  unstripped prefix onto the next token (`logical ::
+  use_extended_composition` became `logical::use_extended_composition`
+  as one string), corrupting a symbol-list extraction without any
+  error message. Use `[[:space:]]`/`[ \t]` in shell `sed`, or do this
+  kind of parsing in Python instead (as most of this project's
+  conversion scripts already do) rather than a quick ad hoc `sed`
+  one-liner.
 
 - **A naive `str.split(",")` breaks on 2D array bounds.** A
   declaration like `old_composition(15,json)` has a comma *inside*
