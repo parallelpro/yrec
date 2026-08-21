@@ -15,6 +15,7 @@
 double precision function rhoofp(hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag)
 
+      use opal_eos_lib
       use luout_lib
       implicit none
 
@@ -25,33 +26,9 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
 
 
-! common/lreadco/: shared (by COMMON block name) with esac.f90/
-! esac01.f90/esac06.f90/rhoofp01.f90/rhoofp06.f90 -- see esac.f90.
-      integer :: table_loaded_flag
-      common/lreadco/ table_loaded_flag
 
-! common/a/: see readco.f90 for the full description of each member.
-      double precision :: eos_table(mx,mv,nt,nr), t6_list(nr,nt), &
-           density_grid(nr), t6_grid(nt), x_interp_result(nt,nr), &
-           x_interp_result_alt(nt,nr), x_grid_spacing_inv(mx), &
-           t6_grid_spacing_inv(nt), density_grid_spacing_inv(nr), &
-           x_grid(mx)
-      integer :: x_loop_index, x_index_lo
-      common/a/ eos_table, t6_list, density_grid, t6_grid, &
-           x_interp_result, x_interp_result_alt, x_grid_spacing_inv, &
-           t6_grid_spacing_inv, density_grid_spacing_inv, x_grid, &
-           x_loop_index, x_index_lo
 
-! common/b/: not used in this file; placeholders (see readco.f90).
-      double precision :: z_table(mx)
-      integer :: eos_index_inverse(10), eos_var_order(10), &
-           t6_index_lo(nr)
-      common/b/ z_table, eos_index_inverse, eos_var_order, t6_index_lo
 
-! common/e/: only eos_output(1) is used here (the interpolated
-! pressure from the trial esac.f90 call). Names reused from oeqos.f90.
-      double precision :: esact, eos_output(mv)
-      common/e/ esact, eos_output
 
 ! density_index_edge(t6_idx): highest valid density-grid index for
 ! temperature-grid row t6_idx (a local copy, DATA-initialized here;
@@ -86,7 +63,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
 !      IF(IRAD .EQ. 1) PR=4.D0/3.D0*RAT*T6**4   ! MB
       pressure_no_rad = pressure_e12 - radiation_pressure
 
-      if (table_loaded_flag.ne.12345678) then
+      if (opal_eos%table_loaded_flag.ne.12345678) then
          hydrogen_fraction_dbg = 0.5d0
          t6_dbg = 1.0d0
          density_dbg = 0.001d0
@@ -99,7 +76,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       hi_idx = mx
     8 if (hi_idx-lo_idx.gt.1) then
          mid_idx = (hi_idx+lo_idx)/2
-         if (hydrogen_fraction.le.x_grid(mid_idx)+1.0d-7) then
+         if (hydrogen_fraction.le.opal_eos%x_grid(mid_idx)+1.0d-7) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -112,11 +89,11 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       hi_idx = 2
    11 if (lo_idx-hi_idx.gt.1) then
          mid_idx = (hi_idx+lo_idx)/2
-         if (t6_temperature.eq.t6_list(1,mid_idx)) then
+         if (t6_temperature.eq.opal_eos%t6_list(1,mid_idx)) then
             lo_idx = mid_idx
             go to 14
          end if
-         if (t6_temperature.le.t6_list(1,mid_idx)) then
+         if (t6_temperature.le.opal_eos%t6_list(1,mid_idx)) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -125,12 +102,12 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       end if
    14 t6_bisect_idx = lo_idx
 
-      pressure_max = eos_table(x_bisect_idx,1,t6_bisect_idx, &
+      pressure_max = opal_eos%eos_table(x_bisect_idx,1,t6_bisect_idx, &
            density_index_edge(t6_bisect_idx))*t6_temperature* &
-           density_grid(density_index_edge(t6_bisect_idx)) + &
+           opal_eos%density_grid(density_index_edge(t6_bisect_idx)) + &
            rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
-      pressure_min = eos_table(x_bisect_idx,1,t6_bisect_idx,1)*t6_temperature* &
-           density_grid(1) + rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
+      pressure_min = opal_eos%eos_table(x_bisect_idx,1,t6_bisect_idx,1)*t6_temperature* &
+           opal_eos%density_grid(1) + rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
       if ((pressure_no_rad.gt.1.25d0*pressure_max) .or. &
            (pressure_no_rad.lt.pressure_min)) then
 !      WRITE(ISHORT,'(" THE REQUESTED PRESSURE-TEMPERATURE NOT IN ",
@@ -140,11 +117,11 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
          go to 999
       end if
 
-      density_trial1 = density_grid(density_index_edge(t6_bisect_idx))* &
+      density_trial1 = opal_eos%density_grid(density_index_edge(t6_bisect_idx))* &
            pressure_no_rad/pressure_max
       call esac(hydrogen_fraction, t6_temperature, density_trial1, 1, &
            rad_flag, *999)
-      pressure_trial1 = eos_output(1)
+      pressure_trial1 = opal_eos%eos_output(1)
       if (pressure_trial1.gt.pressure_no_rad) then
          pressure_trial2 = pressure_trial1
          density_trial2 = density_trial1
@@ -152,15 +129,15 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
          if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
          call esac(hydrogen_fraction, t6_temperature, density_trial1, 1, &
               rad_flag, *999)
-         pressure_trial1 = eos_output(1)
+         pressure_trial1 = opal_eos%eos_output(1)
       else
          density_trial2 = 5.0d0*density_trial1
 !          IF(RHOG2 .GT. RHO(KLO)) RHOG2=RHO(KLO) ! Corrected below  llp 8/19/08
-         if (density_trial2.gt.density_grid(density_index_edge(t6_bisect_idx))) &
-              density_trial2 = density_grid(density_index_edge(t6_bisect_idx)) ! Had wrong pointer, see RHOG1= ten lines up
+         if (density_trial2.gt.opal_eos%density_grid(density_index_edge(t6_bisect_idx))) &
+              density_trial2 = opal_eos%density_grid(density_index_edge(t6_bisect_idx)) ! Had wrong pointer, see RHOG1= ten lines up
          call esac(hydrogen_fraction, t6_temperature, density_trial2, 1, &
               rad_flag, *999)
-         pressure_trial2 = eos_output(1)
+         pressure_trial2 = opal_eos%eos_output(1)
       end if
 
       refine_count = 0
@@ -170,7 +147,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
            (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
       call esac(hydrogen_fraction, t6_temperature, density_trial3, 1, &
            rad_flag, *999)
-      pressure_trial3 = eos_output(1)
+      pressure_trial3 = opal_eos%eos_output(1)
 !      IF (ABS((P3-PNR)/PNR) .LT. 1.D-5) THEN
       if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.0.5d-7) then
          rhoofp = density_trial3

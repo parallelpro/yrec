@@ -23,6 +23,7 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
      dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, *)
 
+      use opal_eos_lib
       use const_lib
       use envelope_comp_lib
       use luout_lib
@@ -48,11 +49,6 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
 
 
 
-! common/eeos/: esact is not used here; eos_output holds the raw
-! OPAL 2001 EOS table output, indexed as documented inline below
-! where each element is read.
-      double precision :: esact, eos_output(mv)
-      common/eeos/ esact, eos_output
 
       save
 
@@ -94,14 +90,14 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
 !         STOP ' ERROR IN OEQOS01 PTOT'
 !      ENDIF
 !      QDP=1.0D0/EOS(6)
-      dlnrho_dlnp = 1.0d0/eos_output(5)
+      dlnrho_dlnp = 1.0d0/opal_eos%eos_output_01(5)
 !      QDT= -EOS(7)/ EOS(6)
-      dlnrho_dlnt = -eos_output(6)/eos_output(5)
+      dlnrho_dlnt = -opal_eos%eos_output_01(6)/opal_eos%eos_output_01(5)
 
 !      QCP=1.0D6*EOS(5)*EOS(8)/EOS(6)
-      specific_heat_cp = 1.0d6*eos_output(4)*eos_output(7)/eos_output(5)
+      specific_heat_cp = 1.0d6*opal_eos%eos_output_01(4)*opal_eos%eos_output_01(7)/opal_eos%eos_output_01(5)
 !      DELA=1.0D0/EOS(9)
-      adiabatic_gradient = 1.0d0/eos_output(8)
+      adiabatic_gradient = 1.0d0/opal_eos%eos_output_01(8)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)

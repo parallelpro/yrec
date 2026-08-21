@@ -14,6 +14,7 @@
 subroutine eqbound01(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
 
+      use opal_eos_lib
       implicit none
 
       integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 191
@@ -22,27 +23,7 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
       double precision, intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
 
-! common/aeos/: the main OPAL 2001 EOS table and its interpolation
-! grids/scratch arrays. Only density_grid, t6_grid,
-! density_index_edge_at_t (via common/rmpopeos01/, see below) are
-! used here; the rest are placeholders. Naming matches esac01.f90.
-      double precision :: eos_table(mx,mv,nt,nr), t6_list(nr,nt), &
-           density_grid(nr), t6_grid(nt), x_interp_result(nt,nr), &
-           x_interp_result_alt(nt,nr), x_grid_spacing_inv(mx), &
-           t6_grid_spacing_inv(nt), density_grid_spacing_inv(nr)
-      integer :: x_loop_index, x_index_lo
-      double precision :: x_grid(mx)
-      common/aeos/ eos_table, t6_list, density_grid, t6_grid, &
-           x_interp_result, x_interp_result_alt, x_grid_spacing_inv, &
-           t6_grid_spacing_inv, density_grid_spacing_inv, x_loop_index, &
-           x_index_lo, x_grid
 
-! common/rmpopeos01/: edge-of-table ramp data. Naming matches
-! readcoeos01.f90.
-      double precision :: density_edge_at_t(nt)
-      integer :: density_index_edge_at_t(nt), t_row_index
-      common/rmpopeos01/ density_edge_at_t, density_index_edge_at_t, &
-           t_row_index
 
       save
 
@@ -57,40 +38,40 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
          goto 9999        ! Out of Table in density. Go to Error exit
       end if
 !     find nearest table element in t.
-      if (t6.lt.t6_grid(t_row_index)) then
-         do t6_scan_idx = t_row_index+1, nt
-            if (t6.ge.t6_grid(t6_scan_idx)) then
-               t_row_index = t6_scan_idx - 1
+      if (t6.lt.opal_eos%t6_grid_01(opal_eos%t_row_index_01)) then
+         do t6_scan_idx = opal_eos%t_row_index_01+1, nt
+            if (t6.ge.opal_eos%t6_grid_01(t6_scan_idx)) then
+               opal_eos%t_row_index_01 = t6_scan_idx - 1
                goto 10
             end if
          end do
-         t6_top_of_table = t6_grid(nt)
+         t6_top_of_table = opal_eos%t6_grid_01(nt)
 !        sr call should have been stopped outside table bounds; stop code
-         write(*,5) t6, t6_top_of_table, t_row_index
+         write(*,5) t6, t6_top_of_table, opal_eos%t_row_index_01
     5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
          stop
    10    continue
       else
-         do t6_scan_idx = t_row_index, 1, -1
-            if (t6.le.t6_grid(t6_scan_idx)) then
-               t_row_index = t6_scan_idx
+         do t6_scan_idx = opal_eos%t_row_index_01, 1, -1
+            if (t6.le.opal_eos%t6_grid_01(t6_scan_idx)) then
+               opal_eos%t_row_index_01 = t6_scan_idx
                goto 20
             end if
          end do
-         t6_top_of_table = t6_grid(1)
+         t6_top_of_table = opal_eos%t6_grid_01(1)
 !        sr call should have been stopped outside table bounds; stop code
-         write(*,5) t6, t6_top_of_table, t_row_index
+         write(*,5) t6, t6_top_of_table, opal_eos%t_row_index_01
          stop
    20    continue
       end if
-      t_fraction = (t6 - t6_grid(t_row_index+1))/ &
-           (t6_grid(t_row_index)-t6_grid(t_row_index+1))
+      t_fraction = (t6 - opal_eos%t6_grid_01(opal_eos%t_row_index_01+1))/ &
+           (opal_eos%t6_grid_01(opal_eos%t_row_index_01)-opal_eos%t6_grid_01(opal_eos%t_row_index_01+1))
 !     define table edge in rho by linear interpolation.
-      table_edge_density = density_edge_at_t(t_row_index+1)
+      table_edge_density = opal_eos%density_edge_at_t_01(opal_eos%t_row_index_01+1)
       table_edge_density = log10(table_edge_density)
 !     define beginning of ramp in the same fashion -
 !     ramp is defined as one table element wide.
-      ramp_start_density = density_grid(density_index_edge_at_t(t_row_index+1)-1)
+      ramp_start_density = opal_eos%density_grid_01(opal_eos%density_index_edge_at_t_01(opal_eos%t_row_index_01+1)-1)
       ramp_start_density = log10(ramp_start_density)
 !     check if within table bounds in rho
       if (log10_density.gt.table_edge_density) then
@@ -102,12 +83,12 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
 
 !     Now we check if ramping is needed.
 !     First we check if ramping in temperature is needed.
-      if (t6.le.t6_grid(nt-1)) then
+      if (t6.le.opal_eos%t6_grid_01(nt-1)) then
          needs_ramp = .true.
-         ramp_factor = (t6-t6_grid(nt))/(t6_grid(nt-1)-t6_grid(nt))
-      else if (t6.ge.t6_grid(2)) then
+         ramp_factor = (t6-opal_eos%t6_grid_01(nt))/(opal_eos%t6_grid_01(nt-1)-opal_eos%t6_grid_01(nt))
+      else if (t6.ge.opal_eos%t6_grid_01(2)) then
          needs_ramp = .true.
-         ramp_factor = (t6_grid(1)-t6)/(t6_grid(1)-t6_grid(2))
+         ramp_factor = (opal_eos%t6_grid_01(1)-t6)/(opal_eos%t6_grid_01(1)-opal_eos%t6_grid_01(2))
       else if (log10_density.ge.ramp_start_density) then
 !        If we get here, ramping in density is needed.
          needs_ramp = .true.

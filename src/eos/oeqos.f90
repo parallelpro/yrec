@@ -22,6 +22,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
      dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, *)
 
+      use opal_eos_lib
       use const_lib
       use envelope_comp_lib
       use luout_lib
@@ -46,11 +47,6 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       double precision, parameter :: cnvs = 0.434294481d0
       double precision, parameter :: zero = 0.0d0
 
-! common/e/: esact is not used here; eos_output holds the raw OPAL
-! 1995 EOS table output (pressure, derivatives, etc.), indexed as
-! documented inline below where each element is read.
-      double precision :: esact, eos_output(10)
-      common/e/ esact, eos_output
 
       save
 
@@ -84,15 +80,15 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       call esac(hydrogen_fraction_work, t_million_k, density_cgs, &
            deriv_order, rad_flag, *999)
 
-      if (abs((p_e12-eos_output(1))/p_e12).gt.0.5d-6) then
-         write(short_file_unit,*) p_e12, eos_output(1)
+      if (abs((p_e12-opal_eos%eos_output(1))/p_e12).gt.0.5d-6) then
+         write(short_file_unit,*) p_e12, opal_eos%eos_output(1)
          stop ' ERROR IN OEQOS PTOT'
       end if
-      dlnrho_dlnp = 1.0d0/eos_output(6)
-      dlnrho_dlnt = -eos_output(7)/eos_output(6)
+      dlnrho_dlnp = 1.0d0/opal_eos%eos_output(6)
+      dlnrho_dlnt = -opal_eos%eos_output(7)/opal_eos%eos_output(6)
 
-      specific_heat_cp = 1.0d6*eos_output(5)*eos_output(8)/eos_output(6)
-      adiabatic_gradient = 1.0d0/eos_output(9)
+      specific_heat_cp = 1.0d6*opal_eos%eos_output(5)*opal_eos%eos_output(8)/opal_eos%eos_output(6)
+      adiabatic_gradient = 1.0d0/opal_eos%eos_output(9)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)

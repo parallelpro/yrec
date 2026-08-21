@@ -26,6 +26,7 @@
 subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
      mean_molecular_weight)
 
+      use opal_eos_lib
       use atm_table_lib
       implicit none
 
@@ -37,12 +38,6 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
       double precision, intent(in) :: mean_molecular_weight
 
 
-! common/beos06/: eos_index_inverse is used here; the rest are placeholders.
-      double precision :: z_table(mx)
-      integer :: eos_index_inverse(10), eos_var_order(10), &
-           t6_index_lo(nr), density_index_edge(nt)
-      common/beos06/ z_table, eos_index_inverse, eos_var_order, &
-           t6_index_lo, density_index_edge
 
       double precision :: rad_const_over_c, molar_gas_constant_mbcc
       data rad_const_over_c/1.8914785d-3/, molar_gas_constant_mbcc/83.14510d0/
@@ -64,15 +59,15 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
 
 !-----Calculate EOS without radiation correction
 
-      total_pressure = atm_table%eos_output(eos_index_inverse(1))
-      total_energy = atm_table%eos_output(eos_index_inverse(2))
-      total_entropy = atm_table%eos_output(eos_index_inverse(3))
-      de_drho_at_t = atm_table%eos_output(eos_index_inverse(4))
-      chi_rho = atm_table%eos_output(eos_index_inverse(6))*atm_table%eos_output(eos_index_inverse(1))/ &
+      total_pressure = atm_table%eos_output(opal_eos%eos_index_inverse_06(1))
+      total_energy = atm_table%eos_output(opal_eos%eos_index_inverse_06(2))
+      total_entropy = atm_table%eos_output(opal_eos%eos_index_inverse_06(3))
+      de_drho_at_t = atm_table%eos_output(opal_eos%eos_index_inverse_06(4))
+      chi_rho = atm_table%eos_output(opal_eos%eos_index_inverse_06(6))*atm_table%eos_output(opal_eos%eos_index_inverse_06(1))/ &
            total_pressure
-      chi_t6 = (atm_table%eos_output(eos_index_inverse(1))*atm_table%eos_output(eos_index_inverse(7)))/ &
+      chi_t6 = (atm_table%eos_output(opal_eos%eos_index_inverse_06(1))*atm_table%eos_output(opal_eos%eos_index_inverse_06(7)))/ &
            total_pressure
-      molar_specific_heat = (atm_table%eos_output(eos_index_inverse(5))*moles_per_ev/ &
+      molar_specific_heat = (atm_table%eos_output(opal_eos%eos_index_inverse_06(5))*moles_per_ev/ &
            mean_molecular_weight)
       gamma3_minus1_norad = total_pressure*chi_t6/(molar_specific_heat*density* &
            t6_temperature)
@@ -85,18 +80,18 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
          radiation_pressure = 4.0d0/3.0d0*rat*t6_temperature**4   ! Mb
          radiation_energy = 3.0d0*radiation_pressure/density   ! Mb-cc/gm
          radiation_entropy = 4.0d0/3.0d0*radiation_energy/t6_temperature   ! Mb-cc/(gm-unit T6)
-         total_pressure = atm_table%eos_output(eos_index_inverse(1)) + radiation_pressure
-         total_energy = atm_table%eos_output(eos_index_inverse(2)) + radiation_energy
-         total_entropy = atm_table%eos_output(eos_index_inverse(3)) + radiation_entropy
-         de_drho_at_t = atm_table%eos_output(eos_index_inverse(4)) - radiation_energy/density
-         chi_rho = atm_table%eos_output(eos_index_inverse(6))*atm_table%eos_output(eos_index_inverse(1))/ &
+         total_pressure = atm_table%eos_output(opal_eos%eos_index_inverse_06(1)) + radiation_pressure
+         total_energy = atm_table%eos_output(opal_eos%eos_index_inverse_06(2)) + radiation_energy
+         total_entropy = atm_table%eos_output(opal_eos%eos_index_inverse_06(3)) + radiation_entropy
+         de_drho_at_t = atm_table%eos_output(opal_eos%eos_index_inverse_06(4)) - radiation_energy/density
+         chi_rho = atm_table%eos_output(opal_eos%eos_index_inverse_06(6))*atm_table%eos_output(opal_eos%eos_index_inverse_06(1))/ &
               total_pressure
-         chi_t6 = (atm_table%eos_output(eos_index_inverse(1))*atm_table%eos_output(eos_index_inverse(7)) &
+         chi_t6 = (atm_table%eos_output(opal_eos%eos_index_inverse_06(1))*atm_table%eos_output(opal_eos%eos_index_inverse_06(7)) &
               + 4.0d0*radiation_pressure)/total_pressure
 !     gam1t(jcs,i)=(p(jcs,i)*gam1(jcs,i)+4D0/3D0*pr)/pt(jcs,i)
 !     gam2pt(jcs,i)=(gam2p(jcs,i)*p(jcs,i)+4D0*pr)/pt(jcs,i)
 !     gam3pt(jcs,i)=gam1t(jcs,i)/gam2pt(jcs,i)
-         molar_specific_heat = (atm_table%eos_output(eos_index_inverse(5))*moles_per_ev/ &
+         molar_specific_heat = (atm_table%eos_output(opal_eos%eos_index_inverse_06(5))*moles_per_ev/ &
               mean_molecular_weight + 4.0d0*radiation_energy/t6_temperature)
          gamma3_minus1 = total_pressure*chi_t6/(molar_specific_heat*density* &
               t6_temperature)                                        ! DIRECT
@@ -110,9 +105,9 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
 !-----Add difference between EOS with and without radiation.  cvtt
 !       calculation is not accurate enough to give accurate results using
 !       eq. 16.16 Landau&Lifshitz (SEE line labeled DIRECT)
-         atm_table%eos_output(eos_index_inverse(8)) = atm_table%eos_output(eos_index_inverse(8)) + &
+         atm_table%eos_output(opal_eos%eos_index_inverse_06(8)) = atm_table%eos_output(opal_eos%eos_index_inverse_06(8)) + &
               gamma1 - gamma1_norad
-         atm_table%eos_output(eos_index_inverse(9)) = atm_table%eos_output(eos_index_inverse(9)) + &
+         atm_table%eos_output(opal_eos%eos_index_inverse_06(9)) = atm_table%eos_output(opal_eos%eos_index_inverse_06(9)) + &
               gamma2_over_gamma2_minus1 - gamma2_over_gamma2_minus1_norad
 !     eos(iri(10))=eos(iri(10))+gam3pt-gam3pt_norad
       end if
@@ -121,12 +116,12 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
 !     fully-ionized, and has no radiation correction
 !     cvt=(eos(5)*molenak/tmass+4.*er/t6)
 !    x  /molenak
-      atm_table%eos_output(eos_index_inverse(1)) = total_pressure
-      atm_table%eos_output(eos_index_inverse(2)) = total_energy
-      atm_table%eos_output(eos_index_inverse(3)) = total_entropy
-      atm_table%eos_output(eos_index_inverse(4)) = de_drho_at_t
-      atm_table%eos_output(eos_index_inverse(5)) = molar_specific_heat
-      atm_table%eos_output(eos_index_inverse(6)) = chi_rho
-      atm_table%eos_output(eos_index_inverse(7)) = chi_t6
+      atm_table%eos_output(opal_eos%eos_index_inverse_06(1)) = total_pressure
+      atm_table%eos_output(opal_eos%eos_index_inverse_06(2)) = total_energy
+      atm_table%eos_output(opal_eos%eos_index_inverse_06(3)) = total_entropy
+      atm_table%eos_output(opal_eos%eos_index_inverse_06(4)) = de_drho_at_t
+      atm_table%eos_output(opal_eos%eos_index_inverse_06(5)) = molar_specific_heat
+      atm_table%eos_output(opal_eos%eos_index_inverse_06(6)) = chi_rho
+      atm_table%eos_output(opal_eos%eos_index_inverse_06(7)) = chi_t6
       return
 end subroutine radsub06
