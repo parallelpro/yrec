@@ -60,20 +60,10 @@ subroutine ll95tbl(opal95_table_path)
 ! rules (same order/type/dimensions as originally declared in THIS
 ! file). All other members below are unused placeholders local to
 ! this file's (buggy) view of /newopac/.
-      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, opal95_table_z2_placeholder, &
-           alex_table_z1_placeholder, alex_table_z2_placeholder, &
-           kurucz_table_z1_placeholder, kurucz_table_z2_placeholder
-      logical :: use_laol89_tables_placeholder, use_opal92_tables_placeholder, &
-           use_opal95_tables_placeholder, use_kurucz90_tables_placeholder, &
-           use_alex95_tables_placeholder, use_two_z_tables_placeholder
-      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, opal95_table_z2_placeholder, &
-           alex_table_z1_placeholder, alex_table_z2_placeholder, &
-           kurucz_table_z1_placeholder, kurucz_table_z2_placeholder, &
-           use_laol89_tables_placeholder, use_opal92_tables_placeholder, &
-           use_opal95_tables_placeholder, use_kurucz90_tables_placeholder, &
-           use_alex95_tables_placeholder, use_two_z_tables_placeholder
+! opal95_single_table_z is now use-associated from const_lib -- its
+! out-of-sync 5th-slot position happens to be identical in both this
+! file's buggy 16-member layout and the canonical 17-member layout, so
+! use-association is correct here despite the historic mismatch.
 
 
 ! NUMBER OF COMPOSITION TABLES AT LOWER Z FOR EACH ABUNDANCE

@@ -25,6 +25,7 @@
 ! MHP 8/25 Added file name to subroutine call
 subroutine alxtbl(alex95_table_paths)
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: num_x = 7
@@ -36,24 +37,7 @@ subroutine alxtbl(alex95_table_paths)
 
       character(len=256), intent(in) :: alex95_table_paths(7)
 
-! MHP 8/25 Removed all character strings from common blocks
-      integer :: alex95_table_unit
-      common /alexo/ alex95_table_unit
 
-! common/newopac/: only alex_table_z1 is used here.
-      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max
-      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
-           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           use_two_z_tables
-      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max, use_alex06_tables, &
-           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
-           use_kurucz90_tables, use_alex95_tables, use_two_z_tables
 
 ! common/galot/: ALEX95 low-T opacity table grids.
       double precision :: alex95_grid_logt(num_t), alex95_grid_x(num_x), &

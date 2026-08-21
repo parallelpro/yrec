@@ -89,11 +89,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
       common/difad2/ es_advective_velocity, es_advective_velocity_prev, &
            es_diffusive_velocity, es_diffusive_velocity_prev
 
-! common/varfc/: only ldifad is used here; vfc/lvfc are unused
-! placeholders. Naming is local to this batch.
-      double precision :: vfc(json)
-      logical :: lvfc, use_diffusion_advection_transport
-      common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
 
       double precision :: eq_reduced_moment_of_inertia(json)

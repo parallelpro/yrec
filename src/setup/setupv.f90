@@ -131,11 +131,6 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
            shear_diffusion_coeff, gsf_diffusion_coeff, &
            shear_diffusion_coeff_eqgrid, gsf_diffusion_coeff_eqgrid
 
-! common/varfc/: only use_diffusion_advection_transport is used here.
-! Naming matches vcirc.f90/rotgrid.f90.
-      double precision :: vfc(json)
-      logical :: lvfc, use_diffusion_advection_transport
-      common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
 ! JvS 09/25 CHANGED CPM --> CPMI TO AVOID CONFLICT IN MDPHY
       double precision :: specific_heat_interface(json), opacity_interface(json)

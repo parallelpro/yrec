@@ -13,6 +13,7 @@
 ! names established in setkrz.f90/kurucz.f90/kurucz2.f90.
 subroutine ykoeff
 
+      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_t = 60
@@ -43,20 +44,6 @@ subroutine ykoeff
       integer :: kurucz2_density_start_index(num_xt), kurucz2_density_count(num_xt)
       common /intpl22/ kurucz2_spline_coeffs, kurucz2_density_start_index, &
            kurucz2_density_count
-! OPACITY COMMON BLOCKS - modified 3/09
-      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max
-      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
-           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           use_two_z_tables
-      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max, use_alex06_tables, &
-           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
-           use_kurucz90_tables, use_alex95_tables, use_two_z_tables
       save
 
       integer :: it, index1, jd, ids, idf, id, index2, j, i

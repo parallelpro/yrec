@@ -78,20 +78,7 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
       double precision :: fadv(json), fadv0(json)
       common/advec/ fadv, fadv0
 
-! MHP 7/93
-! common/varfc/: only vfc/lvfc are used here (under the LVFC branch);
-! use_diffusion_advection_transport (LDIFAD) is an unused placeholder
-! in this file. Naming matches rotgrid.f90/vcirc.f90.
-      double precision :: vfc(json)
-      logical :: lvfc, use_diffusion_advection_transport
-      common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
-! MHP 9/93
-! common/notran/: no_am_transport_in_core (originally LNOJ) is used
-! here to optionally suppress angular-momentum transport. Naming
-! matches vcirc.f90.
-      logical :: no_am_transport_in_core
-      common/notran/ no_am_transport_in_core
 
 ! MHP 02/12 PERMIT CONSTANT DIFFUSION COEFFICIENT
 ! KC 2025-05-30 reordered common block elements

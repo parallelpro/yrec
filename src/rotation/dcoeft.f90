@@ -68,6 +68,7 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
      eq_moment_of_inertia, eq_angular_momentum, eq_omega, num_eq_points, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
      sub_diag, diag, super_diag, rhs, surface_wind_loss_term)
+      use const_lib
       implicit none
       integer, parameter :: json = 5000
 
@@ -87,13 +88,6 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
       double precision :: am_advective_coeff(json), am_diffusive_coeff(json)
       common/difad/ am_advective_coeff, am_diffusive_coeff
 
-! MHP 7/93
-! common/varfc/: only use_diffusion_advection_transport (LDIFAD) is
-! used here; vfc/lvfc are unused placeholders. Naming matches
-! rotgrid.f90/vcirc.f90.
-      double precision :: vfc(json)
-      logical :: lvfc, use_diffusion_advection_transport
-      common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
       logical, intent(in) :: fix_omega_at_surface
       save

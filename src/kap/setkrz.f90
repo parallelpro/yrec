@@ -38,25 +38,7 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
       integer :: kurucz2_num_temps
       common /krz2/ kurucz2_log10_opacity, kurucz2_log10_rho, kurucz2_num_temps
 
-! common/newopac/: only use_two_z_tables is used here.
-      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max
-      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
-           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           use_two_z_tables
-      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max, use_alex06_tables, &
-           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
-           use_kurucz90_tables, use_alex95_tables, use_two_z_tables
 
-! MHP 8/25 Removed character file names from common block
-      integer :: ikur2, icondopacp
-      logical :: use_conductive_opacity
-      common /miscopac/ ikur2, icondopacp, use_conductive_opacity
 
       save
 

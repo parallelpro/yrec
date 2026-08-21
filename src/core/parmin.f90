@@ -562,43 +562,64 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: xls, xlstol, steff, sr
       logical :: lteff, lcalst
 
-! common /opaleos/
+! opaleos: lopale/lopale01/lopale06/lnumderiv are NAMELIST /physics/
+! members with different canonical spellings (use_opal95_eos/
+! use_opal2001_eos/use_opal2006_eos/use_numerical_derivatives), kept
+! local under their NAMELIST spelling and copy-assigned below (also
+! re-synced after the "disable older OPAL EOS" validation block may
+! override lopale/lopale01). iopale is spelled identically to its
+! canonical name -- use-associated directly.
       logical :: lopale, lopale01, lopale06, lnumderiv
-      integer :: iopale
-      common /opaleos/ lopale, iopale, lopale01, lopale06, lnumderiv
 
-! common /newopac/
+! newopac: zlaol1/zlaol2/zopal1/zopal2/zopal951/zalex1/zkur1/zkur2/
+! tmolmin/tmolmax/lalex06/llaol89/lopal92/lopal95/lkur90/lalex95 are
+! NAMELIST /physics/ members with different canonical spellings, kept
+! local under their NAMELIST spelling and copy-assigned below
+! (lalex95/lkur90 also re-synced after the "disable older Alexander
+! opacities" validation block may override them). l2z (former
+! common/newopac/'s remaining member) is unused in this file, so it's
+! dropped entirely.
       double precision :: zlaol1, zlaol2, zopal1, zopal2, zopal951, zalex1, zkur1, zkur2, tmolmin, &
            tmolmax
-      logical :: lalex06, llaol89, lopal92, lopal95, lkur90, lalex95, l2z
-      common /newopac/ zlaol1, zlaol2, zopal1, zopal2, zopal951, zalex1, zkur1, zkur2, tmolmin, &
-           tmolmax, lalex06, llaol89, lopal92, lopal95, lkur90, lalex95, l2z
+      logical :: lalex06, llaol89, lopal92, lopal95, lkur90, lalex95
 
-! common /miscopac/
-      integer :: ikur2, icondopacp
+! miscopac: ikur2/icondopacp are spelled identically to their canonical
+! names -- use-associated directly. lcondopacp is a NAMELIST /physics/
+! member with a different canonical spelling
+! (use_conductive_opacity), so kept local under its NAMELIST spelling
+! here and copy-assigned after the namelist read below.
       logical :: lcondopacp
-      common /miscopac/ ikur2, icondopacp, lcondopacp
 
-! common /alexo/
-      integer :: ialxo
-      common /alexo/ ialxo
+! former common/alexo/: ialxo is not a namelist value and genuinely
+! used in this file -- renamed in place to its canonical const_lib
+! name (alex95_table_unit), now use-associated rather than locally
+! declared.
 
-! common /alex06/
-      integer :: ialex06
-      common /alex06/ ialex06
+! former common/alex06/: ialex06 is not a namelist value and genuinely
+! used in this file -- renamed in place to its canonical const_lib
+! name (alex06_table_unit), now use-associated rather than locally
+! declared.
 
-! common /alexmix/
-      double precision :: xalex, zalex
-      common /alexmix/ xalex, zalex
+! former common/alexmix/: xalex/zalex are not namelist values and
+! genuinely used in this file -- renamed in place to their canonical
+! const_lib names (alex_mixture_x/alex_mixture_z), now use-associated
+! rather than locally declared. Their DATA defaults moved to
+! const_lib.f90 since DATA can no longer target them here.
 
-! common /varfc/
-      double precision :: vfc(max_diag_pts)
-      logical :: lvfc, ldifad
-      common /varfc/ vfc, lvfc, ldifad
+! varfc: vfc/lvfc are spelled identically to their canonical names --
+! use-associated directly; lvfc's DATA default moved to const_lib.f90
+! since DATA can no longer target it here. ldifad is a NAMELIST
+! /physics/ member with a different canonical spelling
+! (use_diffusion_advection_transport), so kept local under its
+! NAMELIST spelling here and copy-assigned after the namelist read
+! below.
+      logical :: ldifad
 
-! common /notran/
+! notran: lnoj is a NAMELIST /physics/ member with a different
+! canonical spelling (no_am_transport_in_core), so kept local under
+! its NAMELIST spelling here and copy-assigned after the namelist read
+! below.
       logical :: lnoj
-      common /notran/ lnoj
 
 ! sstandard/lnewnuc: NAMELIST /physics/ members (must keep this exact
 ! spelling, see this file's naming note at the top). Former common
@@ -875,12 +896,15 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &  1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0108,0.7819,0.2875/
 ! MHP 7/93 VARIABLE FC OPTION
 ! MHP 9/94 COMBINED DIFFUSION/ADVECTION OPTION
-      data lvfc,ldifad/.false.,.false./
+! lvfc's default moved to const_lib.f90 (former common/varfc/): DATA
+! can no longer target it here now that it's use-associated.
+      data ldifad/.false./
 ! MHP 9/93
       data lnoj/.false./
       data tdisk,pdisk,ldisk/0.0d0,7.2722d-6,.false./
-      data xalex/0.7e0/
-      data zalex/0.02e0/
+! alex_mixture_x/alex_mixture_z defaults moved to const_lib.f90 (former
+! common/alexmix/): DATA can no longer target them here now that
+! they're use-associated.
       data lsenv0a, senv0a /50*.false.,50*1.26d-4/
       ! xenv0/zenv0 defaults moved to const_lib.f90 (former common/label/).
 ! ldebug/lcorr/npoint/lmilne/ltrack/lstore/lstpch/lscrib/lstch/nprtmod
@@ -1213,7 +1237,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! INPUT: KURUCZ ATMOSPHER TABLE
       atm_table_file_unit = 38
 ! YCK INPUT: Alex LOW T OPACITIES
-      ialxo = 39
+      alex95_table_unit = 39
 ! INPUT: MHD EQU. OF STATE TABLES
       unit_zams_a = 40
       unit_zams_b = 41
@@ -1252,7 +1276,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       alatm_alpha = 0d0
       laltptau100 = .false.
 ! 3/09 Input file for 2006 Alexander opacities
-      ialex06 = 90
+      alex06_table_unit = 90
 
       print *,''
       print *,'Yale Rotating Evolution Code - YREC, v',yrecver(1:len_trim(yrecver)),' (',githash(1:len_trim(githash)),')'
@@ -1449,6 +1473,29 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       target_radius_rsun = sr
       specify_teff_flag = lteff
       calibrate_star_flag = lcalst
+      use_opal95_eos = lopale
+      use_opal2001_eos = lopale01
+      use_opal2006_eos = lopale06
+      use_numerical_derivatives = lnumderiv
+      laol_table_z1 = zlaol1
+      laol_table_z2 = zlaol2
+      opal_table_z1 = zopal1
+      opal_table_z2 = zopal2
+      opal95_single_table_z = zopal951
+      alex_table_z1 = zalex1
+      kurucz_table_z1 = zkur1
+      kurucz_table_z2 = zkur2
+      molecular_opacity_logt_min = tmolmin
+      molecular_opacity_logt_max = tmolmax
+      use_alex06_tables = lalex06
+      use_laol89_tables = llaol89
+      use_opal92_tables = lopal92
+      use_opal95_tables = lopal95
+      use_kurucz90_tables = lkur90
+      use_alex95_tables = lalex95
+      use_conductive_opacity = lcondopacp
+      use_diffusion_advection_transport = ldifad
+      no_am_transport_in_core = lnoj
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
@@ -1597,6 +1644,16 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       if(lalex95)then
          lkur90 = .false.
       endif
+! lopale/lopale01/lalex95/lkur90 can all be overridden above, after
+! they were already copy-assigned into their const_lib canonical names
+! (use_opal95_eos/use_opal2001_eos/use_alex95_tables/
+! use_kurucz90_tables) earlier in this subroutine -- re-sync now so the
+! const_lib values reflect any override from this block, not just the
+! raw namelist read.
+      use_opal95_eos = lopale
+      use_opal2001_eos = lopale01
+      use_alex95_tables = lalex95
+      use_kurucz90_tables = lkur90
 
       open(istor,file=fstor,form='FORMATTED',status='UNKNOWN')
       rewind(istor)

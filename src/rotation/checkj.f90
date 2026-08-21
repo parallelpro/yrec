@@ -122,12 +122,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 
 
 
-! MHP 7/93
-! common/varfc/: only use_diffusion_advection_transport (LDIFAD) is
-! used here. Naming matches codiff.f90/rotgrid.f90/vcirc.f90.
-      double precision :: vfc(json)
-      logical :: lvfc, use_diffusion_advection_transport
-      common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
 ! MHP 3/93
 ! common/quadd/: only circulation_correction_ratio (RAT) is used here.

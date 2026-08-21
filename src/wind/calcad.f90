@@ -162,12 +162,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
            use_scv_eos, idtt, idp
 
-! common/opaleos/: only use_opal2006_eos is used here. Naming matches
-! eqstat2.f90.
-      logical :: use_opal95_eos, use_opal2001_eos, use_opal2006_eos, lnumderiv
-      integer :: iopale
-      common/opaleos/ use_opal95_eos, iopale, use_opal2001_eos, &
-           use_opal2006_eos, lnumderiv
 
 
 ! G Somers END

@@ -135,13 +135,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       double precision :: composition_snapshot(15,json)
       common/oldab/ composition_snapshot
 
-! Add option for variable Fc.
-! common/varfc/: use_diffusion_advection_transport (LDIFAD) gates the
-! banded-matrix solve path; vfc/lvfc are set but otherwise unused here.
-! Naming matches rotgrid.f90/checkj.f90/codiff.f90/dcoeft.f90/getfc.f90.
-      double precision :: vfc(json)
-      logical :: lvfc, use_diffusion_advection_transport
-      common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
 
 ! common/rotprt/: not used in this file (LPRT is hardcoded .false.
@@ -158,13 +151,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       integer :: ntot
       common/egrid/ chi, echi, es1, dchi, ntot
 
-! MHP 9/93
-! common/notran/: no_am_transport_in_core (originally LNOJ), "9/93
-! MIXING WITHOUT TRANSPORT ADDED" -- forces convergence without
-! angular-momentum transport in the core when set. Naming matches
-! vcirc.f90.
-      logical :: no_am_transport_in_core
-      common/notran/ no_am_transport_in_core
 
 ! Time change of theta.
 ! common/oldrot2/: only wmst is used here (the surface omega from the

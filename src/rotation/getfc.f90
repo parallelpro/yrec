@@ -41,12 +41,6 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
            interface_gravity_factor, hs3, pm, qdtmi, interface_radius, tm
 
 
-! common/varfc/: only vfc (the output mixing/angular-momentum-transport
-! diffusion-coefficient ratio) is used (set) here. Naming matches
-! vcirc.f90.
-      double precision :: vfc(json)
-      logical :: lvfc, use_diffusion_advection_transport
-      common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
       double precision :: half_dlnj_dlnr(json), circ_velocity(json)
       save

@@ -27,6 +27,7 @@
 ! MHP 8/25 Added file name to subroutine call
 subroutine readalex06(alex06_table_path)
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: num_x = 9
@@ -37,10 +38,6 @@ subroutine readalex06(alex06_table_path)
 
       character(len=256), intent(in) :: alex06_table_path
 
-!     ALEX LOW T OPACITY COMMON BLOCKS
-! MHP 8/25 Removed file names from common block
-      integer :: alex06_table_unit
-      common /alex06/ alex06_table_unit
 
       double precision :: alex06_grid_logt(num_t), alex06_grid_x(num_x), &
            alex06_grid_logr(num_d), alex06_grid_z(num_z)

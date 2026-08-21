@@ -70,16 +70,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 
 
 
-! common/opaleos/: only use_numerical_derivatives is used here (the
-! rest select which OPAL EOS table eqstat2 blends in; not read here).
-! YCK 2/95, LLP 2001, LLP 2006 OPAL eos; LLP added the
-! use_numerical_derivatives flag 7/07. It is part of the PARMIN
-! PHYSICS namelist.
-      logical :: use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
-           use_numerical_derivatives
-      integer :: iopale
-      common/opaleos/ use_opal95_eos, iopale, use_opal2001_eos, &
-           use_opal2006_eos, use_numerical_derivatives
 
 
 ! common/scveos/: not used in this file; declared only to preserve

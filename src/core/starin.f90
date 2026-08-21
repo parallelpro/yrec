@@ -192,33 +192,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            old_eta_squared(json)
       common/oldrot/ old_omega, old_specific_angular_momentum, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
-! OPACITY COMMON BLOCKS - modified 3/09
-! common/newopac/: not used in this file's logic; layout placeholder.
-! Naming matches getopac.f90/surfopac.f90.
-      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max
-      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
-           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           use_two_z_tables
-      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max, use_alex06_tables, use_laol89_tables, &
-           use_opal92_tables, use_opal95_tables, use_kurucz90_tables, &
-           use_alex95_tables, use_two_z_tables
-! MHP 8/25 Removed all character strings from common blocks
-! common/alexo/: not used in this file's logic; layout placeholder.
-! Naming matches alxtbl.f90 (parmin.f90 keeps this slot's cryptic
-! original name "ialxo").
-      integer :: alex95_table_unit
-      common /alexo/ alex95_table_unit
-! common/alexmix/: not used in this file's logic; layout placeholder.
-! Only established elsewhere in parmin.f90 (as xalex/zalex); this file
-! is not bound by that and uses descriptive names instead.
-      double precision :: alex_mixture_x, alex_mixture_z
-      common /alexmix/ alex_mixture_x, alex_mixture_z
 ! MHP  5/97 ADDED COMMON BLOCK FOR SCV EOS TABLES
 ! common/scveos/: only use_scv_eos is used here (the rest are unused
 ! placeholders). Naming matches setscv.f90/eqstat2.f90, except idtt:

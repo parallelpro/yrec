@@ -675,4 +675,75 @@ module const_lib
       logical :: star_found_flag, specify_teff_flag, &
            just_passed_target_radius_flag, calibrate_star_flag
 
+! former common/opaleos/: use_opal95_eos/use_opal2001_eos/
+! use_opal2006_eos/use_numerical_derivatives (originally lopale/
+! lopale01/lopale06/lnumderiv) are NAMELIST values with different
+! canonical spellings, kept local in core/parmin.f90 and copy-assigned
+! (use_opal95_eos/use_opal2001_eos also re-synced after the "disable
+! older OPAL EOS" validation block may override them). iopale is
+! spelled identically to its canonical name -- use-associated directly.
+      logical :: use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
+           use_numerical_derivatives
+      integer :: iopale
+
+! former common/newopac/: laol_table_z1/laol_table_z2/opal_table_z1/
+! opal_table_z2/opal95_single_table_z/alex_table_z1/kurucz_table_z1/
+! kurucz_table_z2/molecular_opacity_logt_min/
+! molecular_opacity_logt_max/use_alex06_tables/use_laol89_tables/
+! use_opal92_tables/use_opal95_tables/use_kurucz90_tables/
+! use_alex95_tables (originally zlaol1/zlaol2/zopal1/zopal2/zopal951/
+! zalex1/zkur1/zkur2/tmolmin/tmolmax/lalex06/llaol89/lopal92/lopal95/
+! lkur90/lalex95) are NAMELIST values with different canonical
+! spellings, kept local in core/parmin.f90 and copy-assigned
+! (use_alex95_tables/use_kurucz90_tables also re-synced after the
+! "disable older Alexander opacities" validation block may override
+! them). use_two_z_tables (originally l2z) is unused in
+! core/parmin.f90, so still declared here for its other users.
+      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
+           opal_table_z2, opal95_single_table_z, alex_table_z1, &
+           kurucz_table_z1, kurucz_table_z2, &
+           molecular_opacity_logt_min, molecular_opacity_logt_max
+      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
+           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
+           use_two_z_tables
+
+! former common/miscopac/: ikur2/icondopacp are spelled identically to
+! their canonical names -- use-associated directly.
+! use_conductive_opacity (originally lcondopacp) is a NAMELIST value
+! with a different canonical spelling, kept local in core/parmin.f90
+! and copy-assigned.
+      integer :: ikur2, icondopacp
+      logical :: use_conductive_opacity
+
+! former common/alexo/: alex95_table_unit (originally ialxo) is not a
+! namelist value -- genuinely used in core/parmin.f90, renamed in
+! place there.
+      integer :: alex95_table_unit
+
+! former common/alex06/: alex06_table_unit (originally ialex06) is not
+! a namelist value -- genuinely used in core/parmin.f90, renamed in
+! place there.
+      integer :: alex06_table_unit
+
+! former common/alexmix/: alex_mixture_x/alex_mixture_z (originally
+! xalex/zalex) are not namelist values -- genuinely used in
+! core/parmin.f90, renamed in place there. Their DATA defaults moved
+! here since DATA can no longer target use-associated entities.
+      double precision :: alex_mixture_x = 0.7d0, alex_mixture_z = 0.02d0
+
+! former common/varfc/: vfc/lvfc are spelled identically to their
+! canonical names -- use-associated directly; lvfc's DATA default
+! moved here from core/parmin.f90 since DATA can no longer target a
+! use-associated entity. use_diffusion_advection_transport (originally
+! ldifad) is a NAMELIST value with a different canonical spelling,
+! kept local in core/parmin.f90 and copy-assigned.
+      double precision :: vfc(5000)
+      logical :: lvfc = .false.
+      logical :: use_diffusion_advection_transport
+
+! former common/notran/: no_am_transport_in_core (originally lnoj) is
+! a NAMELIST value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned.
+      logical :: no_am_transport_in_core
+
 end module const_lib

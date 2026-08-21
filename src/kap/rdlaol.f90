@@ -28,20 +28,6 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
 
 
 
-! common/newopac/: only use_two_z_tables is used here.
-      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max
-      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
-           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           use_two_z_tables
-      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max, use_alex06_tables, &
-           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
-           use_kurucz90_tables, use_alex95_tables, use_two_z_tables
 
       double precision :: work_array2(12), zdh2(18)
       save

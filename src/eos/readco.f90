@@ -16,19 +16,12 @@
 ! common/lreadco/) from esac.f90.
 subroutine readco
 
+      use const_lib
       use luout_lib
       implicit none
 
       integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
 
-! common/opaleos/: reused member names from eqstat2.f90 (order/type
-! match the original LOPALE,IOPALE,lopale01,lopale06,lNumDeriv).
-! iopale doubles as the Fortran unit number the tables are read from.
-      logical :: use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
-           lnumderiv
-      integer :: iopale
-      common/opaleos/ use_opal95_eos, iopale, use_opal2001_eos, &
-           use_opal2006_eos, lnumderiv
 
 
       double precision :: moles_per_gram_table(mx)

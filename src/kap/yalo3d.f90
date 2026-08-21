@@ -27,20 +27,6 @@ subroutine yalo3d(log10_density, log10_temperature, hydrogen_fraction, &
            dlnkap_dlnrho, dlnkap_dlnt
 
 
-! common/newopac/: not used directly here (ALXZTAB/ALX8TH read it).
-      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max
-      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
-           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           use_two_z_tables
-      common /newopac/ laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max, use_alex06_tables, &
-           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
-           use_kurucz90_tables, use_alex95_tables, use_two_z_tables
 
 ! common/galot/: ALEX95 low-T opacity table grids.
       double precision :: alex95_grid_logt(num_t), alex95_grid_x(num_x), &

@@ -37,6 +37,7 @@
 subroutine condopacp(ion_charge, log10_temperature, log10_density, &
      log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt)
 
+      use const_lib
       implicit none
 
       double precision, intent(in) :: ion_charge, log10_temperature, &
@@ -51,12 +52,6 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
            z_grid(n_z_grid), &
            log10_kappa_table(n_temp_grid,n_rho_grid,n_z_grid)
 
-! The following three lines provide and interface to PARMIN in order to
-! locate the Potekhin files.
-! MHP 8/25 Removed character file names from common block
-      integer :: ikur2, icondopacp
-      logical :: use_conductive_opacity
-      common /miscopac/ ikur2, icondopacp, use_conductive_opacity
 
 ! removed unused variables
 !     CHARACTER*256 FKUR2,FcondOpacP

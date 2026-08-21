@@ -12,6 +12,7 @@
 ! common/lreadco/) from esac01.f90.
 subroutine readcoeos01
 
+      use const_lib
       use luout_lib
       implicit none
 
@@ -63,14 +64,6 @@ subroutine readcoeos01
            species_fraction_header, log10_r_value, temperature_count_used
 
 
-! common/opaleos/: reused member names from eqstat2.f90 (order/type
-! match the original LOPALE,IOPALE,lopale01,lopale06,lNumDeriv).
-! iopale doubles as the Fortran unit number the tables are read from.
-      logical :: use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
-           lnumderiv
-      integer :: iopale
-      common/opaleos/ use_opal95_eos, iopale, use_opal2001_eos, &
-           use_opal2006_eos, lnumderiv
 
 ! common/rmpopeos01/: edge-of-table ramp data (consumed elsewhere,
 ! e.g. eqbound01.f, out of scope for this batch).

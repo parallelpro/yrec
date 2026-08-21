@@ -138,20 +138,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
       double precision :: quadrupole_moment(json), local_gravity(json)
       common/quadru/ quadrupole_moment, local_gravity
 
-! MHP 9/93
-! common/notran/: no_am_transport_in_core (originally LNOJ), "9/93
-! MIXING WITHOUT TRANSPORT ADDED" -- zeroes out the AM-transport
-! velocity/diffusion estimates in the core to avoid numerical problems
-! in the H-burning shell.
-      logical :: no_am_transport_in_core
-      common/notran/ no_am_transport_in_core
 
-! common/varfc/: only use_diffusion_advection_transport (LDIFAD) is
-! used here; vfc/lvfc are unused placeholders. Naming matches
-! rotgrid.f90.
-      double precision :: vfc(json)
-      logical :: lvfc, use_diffusion_advection_transport
-      common/varfc/ vfc, lvfc, use_diffusion_advection_transport
 
 ! MHP 11/94 ADVECTIVE VELOCITY AND DIFFUSIVE COMPONENT.
 ! common/difad2/: es_advective_velocity/es_advective_velocity_prev/
