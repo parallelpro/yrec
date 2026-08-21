@@ -7,7 +7,7 @@
 ! between the beginning and end of a model timestep, fully set every
 ! call by setup/midmod.f90 (called once per rotational-diffusion
 ! sub-timestep from rotation/getw.f90) and read broadly across
-! mixing/, rotation/, and nuclear/liburn.f90/liburn2.f90. Explicitly
+! mixing/, rotation/, and nuclear_lib.f90's liburn/liburn2. Explicitly
 ! documented in-file as "the rotating-model counterpart of
 ! common/scrtch/'s shell_diag%del_grad".
 !

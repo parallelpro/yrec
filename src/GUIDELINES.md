@@ -425,6 +425,83 @@ Verification: full clean build + Stage-0 byte-identical regression,
 checked after the facade rename, after the `surfbc.f90` intent fix,
 and after the subfolder split, before combining into one commit.
 
+**`nuclear` completed its already-started library merge (2026-08-21)**:
+unlike `eos`/`kap`/`atm`, `nuclear_lib.f90` was already a `numerics_lib`-
+style module aggregating 6 routines (`neutrino`, `nulosses`, `azbar`,
+`sneut`, `rates`, `eqburn`) -- this domain was partway through the
+"small library, merge directly" treatment (`GUIDELINES.md`'s
+alternative to the facade pattern), not the facade pattern itself.
+Investigation found no `eos`-style duplicated dispatch (the domain's
+only 2-choice call site, `rotation/getw.f90`'s `liburn` vs `liburn2`,
+is single-sited, not repeated) -- the actual gap was 7 remaining files
+(`dburn.f90`, `dburnm.f90`, `deutrate.f90`, `engeb.f90`, `liburn.f90`
+-- which itself bundled a second small subroutine, `safedivexp` --
+`liburn2.f90`, `lirate88.f90`) plus 2 private Fermi-Dirac integral
+functions (`ifermi12.f90`/`zfermim12.f90`, only called from this
+module's own `rates`) still sitting as separate plain-external files.
+`dburn.f90`/`dburnm.f90` were investigated for a possible
+`eos_get`-style optional-arg collapse and explicitly kept separate:
+they differ in rate-data source, timestep units (seconds vs. Gyr),
+convergence threshold (1e-11 vs. 1e-14, plus an accretion-aware
+pre-check `dburn` has and `dburnm` doesn't), and the accretion-
+weighting formula structure -- genuine algorithmic differences for two
+different call-site contexts, not textually-identical duplication.
+All 9 files moved into `nuclear_lib.f90` unchanged; the 6 caller files
+that didn't already `use nuclear_lib` (`setup/midmod.f90`,
+`misc/coefft.f90`, `core/main.f90`, `util/ytime.f90`,
+`rotation/getw.f90`, `mixing/bursmix.f90`) got it added.
+
+This merge surfaced three mechanical issues worth remembering:
+
+1. `engeb.f90`'s own `use nuclear_lib` (it called `neutrino`) had to be
+   deleted -- a module cannot `use` itself; host association already
+   gives every contained procedure access to every sibling procedure.
+2. `sneut`'s existing declaration `double precision ifermi12,
+   zfermim12, ...` (an external-function type declaration, needed
+   when those two were separate files) had to be stripped down to just
+   its genuine locals once `ifermi12`/`zfermim12` moved into the same
+   module -- otherwise the plain local-type declaration shadows the
+   host-associated module function, producing an `_ifermi12_` linker
+   symbol the build can no longer provide (the function is now
+   `___nuclear_lib_MOD_ifermi12`). Watch for this shape whenever a
+   function that used to be called externally moves into the same
+   module as one of its existing callers.
+3. **A third instance of the `eqstat`/`eqstat2`-shaped intent bug, but
+   mirror-image this time.** `rotation/getw.f90` calls `liburn`/
+   `liburn2` passing its own `shell_mass`, which it had declared
+   `intent(in)`. `liburn`/`liburn2` need `intent(inout)` for
+   `shell_mass` -- unlike `eqstat2`'s `metal_fraction` (a dead
+   save/restore that could just be deleted), here the CZ-base mass is
+   genuinely perturbed and the perturbed value is read by the
+   following rate/abundance sums before being restored, so the write
+   is real and the callee's `intent(inout)` was already correct; the
+   fix was to widen the *caller*'s declaration to match, not narrow
+   the callee. Net effect on `getw.f90`'s own array is still zero
+   (every path that writes also restores before return) -- that's
+   exactly why its `intent(in)` had gone unnoticed for so long. Lesson
+   generalized: when this class of error appears, don't assume the
+   narrow-the-callee fix from the first two instances applies --
+   trace whether the callee's write is truly dead (delete + narrow) or
+   genuinely used before being restored (keep + widen the caller).
+   3 for 3 so far on "co-locating/adding an explicit interface
+   surfaces a latent intent bug" -- treat it as expected, not
+   surprising, whenever this kind of rename happens.
+
+The Makefile's `MODULE_SRCS` list also needed a genuine fix, not just
+reordering: a comment already on the existing `nuclear/nuclear_lib.o`
+order-only-prerequisite line states that list *position* in
+`MODULE_SRCS` does not guarantee build order between module objects
+under parallel (`-j`) builds -- only an explicit order-only
+prerequisite does. `atm_lib.f90`'s earlier `MODULE_SRCS` reorder (this
+same day) had worked by luck, not by guarantee. Replaced both ad hoc
+reorders with explicit `nuclear/nuclear_lib.o: | ...` and
+`atm/atm_lib.o: | ...` prerequisite lines naming every module object
+each actually `use`s, matching the established precedent's own stated
+correct pattern.
+
+Verification: full clean build (through 3 rounds of intent/linker
+fixes) + Stage-0 byte-identical regression.
+
 ## Build mechanics
 
 - Any file introducing `module ... contains` must be added to the

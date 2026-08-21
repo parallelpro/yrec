@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use nuclear_lib
       use rotdiff_lib
       use run_diag_lib
       use temp_lib

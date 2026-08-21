@@ -4,7 +4,7 @@
 ! New (2026) as part of the YREC module-modernization project (see
 ! GUIDELINES.md). Replaces common/neweps/, common/be7/, and
 ! common/grab/: per-model nuclear energy-generation diagnostics, all
-! set once per shell by nuclear/engeb.f90 and read from a handful of
+! set once per shell by nuclear_lib.f90's engeb and read from a handful of
 ! distant callers -- misc/coefft.f90 (alpha-capture energy, neutrino
 ! loss rate, and the He3+He3/He3+He4 diagnostic rate arrays) and
 ! util/ytime.f90 (alpha-capture energy, neutrino loss rate), plus

@@ -19,6 +19,7 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
      rate_zero9, rate_c12_alpha, rate_n14_alpha, rate_triple_alpha, &
      rate_zero13, frac_c12_alpha, frac_be7_electron, h_shell_zone_begin)
 
+      use nuclear_lib
       use engeb_diag_lib
       use const_lib
       implicit none

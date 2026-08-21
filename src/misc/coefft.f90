@@ -51,6 +51,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use nuclear_lib
       use rotdiff_lib
       use run_diag_lib
       use pulse_diag_lib

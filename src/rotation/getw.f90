@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use nuclear_lib
       use rotdiff_lib
       use run_diag_lib
       use temp2_lib
@@ -56,7 +57,8 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       double precision, intent(inout) :: log_luminosity(json), &
            log_pressure(json), log_radius(json)
       double precision, intent(in) :: log_mass(json)
-      double precision, intent(in) :: enclosed_mass(json), shell_mass(json)
+      double precision, intent(in) :: enclosed_mass(json)
+      double precision, intent(inout) :: shell_mass(json)
       double precision, intent(in) :: log_total_mass
       double precision, intent(inout) :: log_temperature(json)
       logical, intent(in) :: convective_flag(json)

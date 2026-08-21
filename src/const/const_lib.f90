@@ -138,14 +138,14 @@ module const_lib
            be9_pg_rate_scale, be9_pd_rate_scale, be9_palpha_rate_scale
 
 ! former common/nuloss/'s one config member: switch selecting the Itoh
-! 1996 neutrino-loss routines (nuclear/engeb.f90), a NAMELIST /physics/
-! value. core/parmin.f90's local name for it (lnulos1) is itself
-! namelist-visible and can't be renamed, so it stays local there and
-! is copied into this canonical name after the namelist read -- same
-! treatment as li6_rate_scale etc above. common/nuloss/'s other two
-! members (dsnudt/dsnudd in core/parmin.f90, neutrino_dlnq_dlnt/
-! neutrino_dlnq_dlnd in nuclear/engeb.f90) were dead/purely-local and
-! dropped/delocalized rather than moved here -- see those files.
+! 1996 neutrino-loss routines (nuclear_lib.f90's engeb), a NAMELIST
+! /physics/ value. core/parmin.f90's local name for it (lnulos1) is
+! itself namelist-visible and can't be renamed, so it stays local there
+! and is copied into this canonical name after the namelist read --
+! same treatment as li6_rate_scale etc above. common/nuloss/'s other
+! two members (dsnudt/dsnudd in core/parmin.f90, neutrino_dlnq_dlnt/
+! neutrino_dlnq_dlnd in nuclear_lib.f90's engeb) were dead/purely-local
+! and dropped/delocalized rather than moved here -- see those files.
       logical :: use_itoh_neutrino_loss = .false.
 
 ! former common/ovrtrn/'s two config members: NAMELIST /physics/
