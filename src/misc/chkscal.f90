@@ -37,17 +37,6 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
       common /ckind/ rescale_params, num_models, rescale_kind, &
            first_call_flag, num_runs
 
-! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
-! common/sett/: only target_end_age/end_age_stop_active are used here.
-! Naming matches calcad.f90/chkcal.f90.
-      double precision :: target_end_age(50), timestep_override(50)
-      logical :: end_age_stop_active(50), timestep_override_active(50)
-      double precision :: central_deuterium_stop(50), &
-           central_hydrogen_stop(50), central_helium_stop(50)
-      common/sett/ target_end_age, timestep_override, &
-           end_age_stop_active, timestep_override_active, &
-           central_deuterium_stop, central_hydrogen_stop, &
-           central_helium_stop
 !      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
 
 ! common/newxym/: only initial_x_array is used here. Naming matches

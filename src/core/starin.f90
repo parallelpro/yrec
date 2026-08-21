@@ -241,19 +241,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
            old_eta_squared(json)
       common/oldrot/ old_omega, old_specific_angular_momentum, &
            old_moment_of_inertia, old_hg, old_mean_radius, old_eta_squared
-! common/optab/: idt/idd are used here. Naming matches getopac.f90/
-! physic.f90.
-      double precision :: metal_fraction_match_tolerance, zsi
-      integer :: idt, idd(4)
-      common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
-! common/mhd/: only use_mhd_eos is used here. Naming matches
-! physic.f90/mhdtbl.f90.
-      logical :: use_mhd_eos
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-           unit_centre2, unit_centre3, unit_centre4, unit_centre5
-      common/mhd/ use_mhd_eos, unit_zams_a, unit_zams_b, unit_zams_c, &
-           unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
-           unit_centre5
 ! common/core/: all used here. Only established elsewhere in
 ! parmin.f90 (as lcore/mcore/fcore, kept cryptic there per that file's
 ! NAMELIST constraint); this file is not bound by that and uses
@@ -363,12 +350,6 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 ! getmodel2). Naming matches this file's own atm_code/eos_code/
 ! hik_code/alok_code convention.
       common /i2o/ compmix_code
-! G Somers 10/14, Add spot common block
-! common/spots/: spot_filling_factor/spot_temp_contrast are used here.
-! Naming matches gettau.f90/wrtmod.f90.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
 ! G Somers END
 ! MHP 10/24 ADDED NEW CONTROLS FOR ALTERING THE CNO MASS FRACTIONS
 ! ISOTOPIC RATIOS(C,N,O) AND D/HE3/LI/BE/B ABUNDANCES.

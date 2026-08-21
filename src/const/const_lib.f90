@@ -182,4 +182,62 @@ module const_lib
 ! canonical name.
       logical :: use_extended_composition = .false.
 
+! former common/spots/: all 3 members are NAMELIST /physics/ values,
+! same namelist-can't-rename treatment as above -- core/parmin.f90
+! keeps its local spotf/spotx/lsdepth and copies into these canonical
+! names.
+      double precision :: spot_filling_factor = 0.00d0
+      double precision :: spot_temp_contrast = 1.00d0
+      logical :: spot_depth_varies = .false.
+
+! former common/disk/: disk_temperature/disk_pressure/
+! disk_locking_active are NAMELIST /physics/ values (core/parmin.f90's
+! tdisk/pdisk/ldisk, kept local there and copy-assigned). disk_lifetime
+! (former common/disk/'s remaining member, originally "sage") is not a
+! namelist value -- core/main.f90 sets it at runtime -- so it has no
+! declaration-time default here.
+      double precision :: disk_temperature = 0.0d0
+      double precision :: disk_pressure = 7.2722d-6
+      logical :: disk_locking_active = .false.
+      double precision :: disk_lifetime
+
+! former common/sett/: target_end_age/timestep_override/
+! central_deuterium_stop/central_hydrogen_stop/central_helium_stop are
+! NAMELIST /physics/ values (core/parmin.f90's endage/setdt/end_dcen/
+! end_xcen/end_ycen, kept local there and copy-assigned).
+! end_age_stop_active/timestep_override_active (former common/sett/'s
+! remaining two members, originally lendag/lsetdt) are not namelist
+! values -- core/parmin.f90 computes them from the above -- so they
+! have no declaration-time default here.
+      double precision :: target_end_age(50) = 0.0d0
+      double precision :: timestep_override(50) = 0.0d0
+      double precision :: central_deuterium_stop(50) = 0.0d0
+      double precision :: central_hydrogen_stop(50) = 0.0d0
+      double precision :: central_helium_stop(50) = 0.0d0
+      logical :: end_age_stop_active(50), timestep_override_active(50)
+
+! former common/mhd/: use_mhd_eos is a NAMELIST /physics/ value
+! (core/parmin.f90's lmhd, kept local there and copy-assigned).
+! unit_zams_a/b/c/unit_centre1-5 (former common/mhd/'s remaining
+! members, originally iomhd1-8) are not namelist values --
+! core/parmin.f90 unconditionally assigns them fixed unit numbers at
+! runtime -- so they have no declaration-time default here.
+      logical :: use_mhd_eos = .false.
+      integer :: unit_zams_a, unit_zams_b, unit_zams_c
+      integer :: unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
+           unit_centre5
+
+! former common/optab/: metal_fraction_match_tolerance is a NAMELIST
+! /physics/ value (core/parmin.f90's optol, kept local there and
+! copy-assigned). zsi/idt/idd (former common/optab/'s remaining
+! members) are not namelist values -- dead in core/parmin.f90 (dropped
+! there) but genuinely set-and-consumed-locally in several other
+! files (misc/coefft.f90, misc/physic.f90, atm/envint.f90,
+! core/starin.f90), each independently assigning the same constants
+! (idt=15, idd(:)=5) -- kept here rather than deleted since removing
+! the assignment would be a logic change, not a mechanical conversion.
+      double precision :: metal_fraction_match_tolerance
+      double precision :: zsi = 0.0d0
+      integer :: idt, idd(4)
+
 end module const_lib

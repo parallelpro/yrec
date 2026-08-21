@@ -17,6 +17,7 @@
 ! ON EVEN NK
 subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
+      use const_lib
       use luout_lib
       implicit none
 
@@ -34,16 +35,6 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
       common /ckind/ rescale_params, num_models, rescale_kind, &
            first_call_flag, num_runs
 
-! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
-! common/sett/: not used in this file. Naming matches calcad.f90.
-      double precision :: target_end_age(50), timestep_override(50)
-      logical :: end_age_stop_active(50), timestep_override_active(50)
-      double precision :: central_deuterium_stop(50), &
-           central_hydrogen_stop(50), central_helium_stop(50)
-      common/sett/ target_end_age, timestep_override, &
-           end_age_stop_active, timestep_override_active, &
-           central_deuterium_stop, central_hydrogen_stop, &
-           central_helium_stop
 !      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
 
 ! common/newxym/: initial_x_array/initial_z_array/mixing_length_array

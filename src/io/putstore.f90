@@ -97,12 +97,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
            dhnue(18)
       logical :: ldh
       common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
-! common/disk/: disk-locking parameters, all used here. Naming matches
-! wrtlst.f90.
-      double precision :: disk_lifetime, disk_temperature, disk_pressure
-      logical :: disk_locking_active
-      common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
-           disk_locking_active
 !      COMMON/DPMIX/DPENV,ALPHAC,ALPHAE,ALPHAM,IOV1,IOV2,
 !     *      IOVIM, LOVSTC, LOVSTE, LOVSTM, LSEMIC, LADOV
 ! common/gravst/: only diffuse_helium_active is used here. Naming

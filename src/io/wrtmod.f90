@@ -156,12 +156,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       double precision :: rotational_energy_term(json)
       common/roten/ rotational_energy_term
 
-! G Somers 10/14, Add spot common block, and store common block.
-! common/spots/: spot_filling_factor/spot_temp_contrast, used here.
-! Naming matches tpgrad.f90.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
 ! common/temp2/: not used in this file. Naming matches vcirc.f90.
       double precision :: es_circulation_velocity(json), &
            es_circulation_velocity_prev(json), secular_shear_velocity(json), &

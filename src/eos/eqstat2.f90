@@ -87,10 +87,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       double precision :: tlogx(nts), tablex(nts,nps,12), &
            tabley(nts,nps,12), smix(nts,nps), tablez(nts,nps,13), &
            tablenv(nts,nps,12)
-      integer :: nptsx(nts), idt, idp
+      integer :: nptsx(nts), idtt, idp
       logical :: use_scv_eos
       common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
-           use_scv_eos, idt, idp
+           use_scv_eos, idtt, idp
 
       save
 

@@ -135,13 +135,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
            pulse_specific_heat, pulse_mean_molecular_weight, &
            pulse_dlnrho_dlnt, pulse_electron_mean_molecular_weight, lpumod
 
-! G Somers 10/14, Add spot common block
-! common/spots/: spot_filling_factor/spot_temp_contrast are used here.
-! Naming matches tpgrad.f90/wrtmod.f90.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/ spot_filling_factor, spot_temp_contrast, &
-           spot_depth_varies
 
 ! common/roten/: rotational_energy_term (DEROT), used here. Naming
 ! matches coefft.f90/putstore.f90.

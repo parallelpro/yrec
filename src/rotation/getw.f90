@@ -176,12 +176,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       logical :: lprt0_placeholder
       common/rotprt/ lprt0_placeholder
 
-! common/disk/: sage/tdisk/ldisk are used here. Naming matches
-! putstore.f90.
-      double precision :: disk_lifetime, disk_temperature, disk_pressure
-      logical :: disk_locking_active
-      common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
-           disk_locking_active
 
 ! MHP 3/99 ADDED FLAG TO TREAT THE ENTIRE STAR AS 'CONVECTIVE'
 ! for angular momentum purposes.

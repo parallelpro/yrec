@@ -282,19 +282,6 @@ program main
       common/heflsh/ helium_flash_active
 
 
-! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
-! common/sett/: end_age_stop_active/target_end_age/central_deuterium_
-! stop/central_hydrogen_stop/central_helium_stop used here; timestep_
-! override/timestep_override_active unused placeholders. Naming
-! matches chkscal.f90.
-      double precision :: target_end_age(50), timestep_override(50)
-      logical :: end_age_stop_active(50), timestep_override_active(50)
-      double precision :: central_deuterium_stop(50), &
-           central_hydrogen_stop(50), central_helium_stop(50)
-      common/sett/ target_end_age, timestep_override, &
-           end_age_stop_active, timestep_override_active, &
-           central_deuterium_stop, central_hydrogen_stop, &
-           central_helium_stop
 
 
 ! 7/91 ENTROPY TERM COMMON BLOCK ADDED.
@@ -312,14 +299,6 @@ program main
       logical :: lprt0_placeholder
       common/rotprt/ lprt0_placeholder
 
-! MHP 9/94 ADDED DISK LOCKING OPTION - FLAG, TIME OVER WHICH LOCKING
-! IS ENFORCED, AND PERIOD AT WHICH LOCKING IS SET ARE OPTIONS.
-! common/disk/: only disk_lifetime used here; the rest unused
-! placeholders. Naming matches getw.f90.
-      double precision :: disk_lifetime, disk_temperature, disk_pressure
-      logical :: disk_locking_active
-      common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
-           disk_locking_active
 
 ! common/pulse/: pulsation_mass_msun/pulsation_output_active used
 ! here; pulsation_file_version unused placeholder. Naming matches

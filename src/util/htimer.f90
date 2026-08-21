@@ -82,16 +82,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
       common/govs/ use_envelope_triangle_dt
 
 
-! common/sett/: timestep_override_active/timestep_override (LSETDT/
-! SETDT) and end_age_stop_active/target_end_age (LENDAG/ENDAGE) are
-! used here. Naming matches calcad.f90.
-      double precision :: target_end_age(50), timestep_override(50)
-      logical :: end_age_stop_active(50), timestep_override_active(50)
-      double precision :: central_deuterium_stop(50), central_hydrogen_stop(50), &
-           central_helium_stop(50)
-      common/sett/ target_end_age, timestep_override, end_age_stop_active, &
-           timestep_override_active, central_deuterium_stop, &
-           central_hydrogen_stop, central_helium_stop
 
       save
 

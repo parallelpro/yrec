@@ -146,10 +146,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
            es_relaxation_factor, theta_prev, qwrst, wmst, qwrmst
 
 
-! common/optab/: not used in this file. Naming matches getopac.f90.
-      double precision :: metal_fraction_match_tolerance, zsi
-      integer :: idt, idd(4)
-      common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
 
 
 

@@ -13,6 +13,7 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
 
+      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -36,15 +37,6 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       common/errmom/ moment_of_inertia_tolerance
 
 
-! MHP 9/94 ADDED DISK LOCKING OPTION - FLAG, TIME OVER WHICH LOCKING
-! IS ENFORCED, AND PERIOD AT WHICH LOCKING IS SET ARE OPTIONS.
-! common/disk/: sage/tdisk/ldisk are used here (as disk_lifetime/
-! disk_temperature/disk_locking_active). Naming matches getw.f90/
-! mdot.f90/putstore.f90.
-      double precision :: disk_lifetime, disk_temperature, disk_pressure
-      logical :: disk_locking_active
-      common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
-           disk_locking_active
 
       save
 

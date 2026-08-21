@@ -61,12 +61,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 
 
 
-! common/disk/: disk_lifetime/disk_temperature/disk_locking_active are
-! used here. Naming matches getw.f90.
-      double precision :: disk_lifetime, disk_temperature, disk_pressure
-      logical :: disk_locking_active
-      common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
-           disk_locking_active
 
 
 

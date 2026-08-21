@@ -100,14 +100,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       common/ccr/ fermi_table_x_grid, fermi_table_eta, fermi_table_data, &
            fermi_table_x_lookup
 
-! common/mhd/: only use_mhd_eos is used here. Naming matches
-! mhdtbl.f90/qatm.f90.
-      logical :: use_mhd_eos
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-           unit_centre2, unit_centre3, unit_centre4, unit_centre5
-      common/mhd/use_mhd_eos, unit_zams_a, unit_zams_b, unit_zams_c, &
-           unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
-           unit_centre5
 
 ! common/atmos/: atm_hras/atm_choice are used here; atm_choice_initial/
 ! use_ttau_relation are unused placeholders. Naming matches
@@ -144,15 +136,20 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
            castelli_gmin_index, castelli_gmax_index
 ! MHP  5/97 ADDED COMMON BLOCK FOR SCV EOS TABLES
 ! common/scveos/: tlogx/nptsx/tablex/tabley/tablez used here;
-! smix/tablenv/idt/idp are unused placeholders. Naming matches
-! eqstat2.f90.
+! smix/tablenv are unused placeholders. idt/idp (also unused
+! placeholders here) are dropped from this file's own declaration --
+! they're the trailing two members, so omitting them doesn't affect
+! any other member's position -- since they'd otherwise collide with
+! the unrelated const_lib idt added for former common/optab/ (same
+! collision setscv.f90 already avoids for its own same-slot idtt).
+! Naming matches eqstat2.f90.
       double precision :: tlogx(nts), tablex(nts,nps,12), &
            tabley(nts,nps,12), smix(nts,nps), tablez(nts,nps,13), &
            tablenv(nts,nps,12)
-      integer :: nptsx(nts), idt, idp
+      integer :: nptsx(nts)
       logical :: use_scv_eos
       common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
-           use_scv_eos, idt, idp
+           use_scv_eos
 ! MHP 8/25 Removed file names from common block
 ! common/scv2/: not used in this file; declared only to preserve
 ! layout. Not referenced in any already-converted file.

@@ -113,12 +113,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       double precision :: envint_dummy1(4), envint_dummy2(3), &
            envint_dummy3(3), envint_dummy4(3)
 
-! G Somers 10/14, Add spot common block
-! common/spots/: spot_filling_factor/spot_temp_contrast are used here.
-! Naming matches wrtmod.f90.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
 ! G Somers END
       save
 

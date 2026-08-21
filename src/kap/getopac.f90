@@ -14,6 +14,7 @@
 subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction)
+      use const_lib
       use envelope_comp_lib
       use luout_lib
       implicit none
@@ -50,10 +51,6 @@ subroutine getopac(log10_density, log10_temperature, hydrogen_fraction, &
       common/nwlaol/ olaol, oxa, ot, orho, tollaol, iolaol, numofxyz, &
            numrho, numt, llaol, use_pure_z_table, iopurez
 
-! common/optab/: only metal_fraction_match_tolerance is used here.
-      double precision :: metal_fraction_match_tolerance, zsi
-      integer :: idt, idd(4)
-      common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
 
 ! common/miscopac/: only use_conductive_opacity is used here.
       integer :: ikur2, icondopacp

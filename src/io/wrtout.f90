@@ -117,13 +117,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       integer :: pulsation_file_version
       common/pulse/ pulsation_mass_msun, pulsation_output_active, &
            pulsation_file_version
-! common/mhd/: only use_mhd_eos is used here. Naming matches
-! mhdtbl.f90.
-      logical :: use_mhd_eos
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-           unit_centre2, unit_centre3, unit_centre4, unit_centre5
-      common/mhd/use_mhd_eos,unit_zams_a,unit_zams_b,unit_zams_c,unit_centre1, &
-                 unit_centre2, unit_centre3, unit_centre4, unit_centre5
 ! MHP 5/90 ADD COMMON BLOCK FOR GRAVITATIONAL SETTLING.
 ! common/gravst/: not used in this file. Naming matches microdiff.f90.
       double precision :: settling_tolerance
@@ -194,11 +187,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       double precision :: adiabatic_index_gamma1(json)
       logical :: sound_speed_output_active
       common/sound/ adiabatic_index_gamma1, sound_speed_output_active
-! G Somers 10/14, Add spot common block
-! common/spots/: not used in this file. Naming matches tpgrad.f90.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
       double precision :: es_circulation_velocity(json), &
            es_circulation_velocity_prev(json), secular_shear_velocity(json), &
            secular_shear_velocity_prev(json), hle(json), &

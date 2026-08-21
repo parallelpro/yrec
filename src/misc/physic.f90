@@ -48,10 +48,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 
 
 
-! common/optab/: only idt/idd are set here. Naming matches getopac.f90.
-      double precision :: metal_fraction_match_tolerance, zsi
-      integer :: idt, idd(4)
-      common/optab/ metal_fraction_match_tolerance, zsi, idt, idd
 
 
 ! common/temp/: cp/mean_molecular_weight/qdt are set here. Naming
@@ -65,13 +61,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       double precision :: max_domega_dr(json), max_domega_dr_old(json)
       common/dwmax/ max_domega_dr, max_domega_dr_old
 
-! common/mhd/: only use_mhd_eos is used here. Naming matches mhdtbl.f90.
-      logical :: use_mhd_eos
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-           unit_centre2, unit_centre3, unit_centre4, unit_centre5
-      common/mhd/ use_mhd_eos, unit_zams_a, unit_zams_b, unit_zams_c, &
-           unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
-           unit_centre5
 
 ! DBG 7/92 common block added to compute Debye-Huckel correction.
 ! common/debhu/: not used in this file's logic; layout placeholder.

@@ -79,13 +79,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
       double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
       common/pualpha/ alfmlt, phmlt, cmxmlt, valfmlt, vphmlt, vcmxmlt
 
-! G Somers 09/14, Add spot common block
-! common/spots/: spot_filling_factor/spot_temp_contrast/
-! spot_depth_varies (SPOTF/SPOTX/LSDEPTH), all used here. Naming is
-! local to this batch.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
 ! G Somers END
       double precision, parameter :: vtol=1.0d-10
       save

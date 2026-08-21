@@ -88,9 +88,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       common/ccout/lstore,lstatm,lstenv,lstmod,lstphys,lstrot,lscrib,lstch,lphhd
       integer :: npenv, nprtmod, nprtpt, npoint
       common/ccout1/npenv,nprtmod,nprtpt,npoint
-      double precision :: metal_fraction_match_tolerance, zsi
-      integer :: idt, idd(4)
-      common/optab/metal_fraction_match_tolerance,zsi,idt,idd
 ! DBG PULSE
       double precision :: pulsation_mass_msun
       logical :: pulsation_output_active
@@ -116,12 +113,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
            qrmu, qtl, qpl, qdl, qo, qol, qt, qp, qqdt, qemu, qd, qfs
       common/pulse2/qqdp,qqed,qqet,qqod,qqot,qdel,qdela,qqcp,qrmu,qtl,qpl, &
            qdl,qo,qol,qt,qp,qqdt,qemu,qd,qfs
-! DBG
-      logical :: use_mhd_eos
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-           unit_centre2, unit_centre3, unit_centre4, unit_centre5
-      common/mhd/use_mhd_eos,unit_zams_a,unit_zams_b,unit_zams_c, &
-           unit_centre1,unit_centre2,unit_centre3,unit_centre4,unit_centre5
 ! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
       double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
            dhnue(18)

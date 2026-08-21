@@ -19,6 +19,7 @@
 ! points to iterate against.
 subroutine setcal(age_scale_factor)
 
+      use const_lib
       implicit none
 
       double precision, intent(in) :: age_scale_factor
@@ -43,18 +44,6 @@ subroutine setcal(age_scale_factor)
       common /ckind/ rescale_params, num_models, rescale_kind, &
            first_call_flag, num_runs
 
-! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
-! common/sett/: target_end_age/timestep_override/end_age_stop_active/
-! timestep_override_active are used here; the central-abundance stop
-! criteria are unused placeholders. Naming matches chkcal.f90.
-      double precision :: target_end_age(50), timestep_override(50)
-      logical :: end_age_stop_active(50), timestep_override_active(50)
-      double precision :: central_deuterium_stop(50), &
-           central_hydrogen_stop(50), central_helium_stop(50)
-      common/sett/ target_end_age, timestep_override, &
-           end_age_stop_active, timestep_override_active, &
-           central_deuterium_stop, central_hydrogen_stop, &
-           central_helium_stop
 
 ! common/newxym/: initial_x_array/initial_z_array/mixing_length_array/
 ! has_senv0_array/senv0_array, all used here. Naming matches

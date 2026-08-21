@@ -93,12 +93,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
            dhnue(18)
       logical :: ldh
       common/debhu/ cdh, etadh0, etadh1, zdh, xxdy, yydh, zzdh, dhnue, ldh
-! common/disk/: disk-locking parameters, all used here. Naming is
-! local to this batch.
-      double precision :: disk_lifetime, disk_temperature, disk_pressure
-      logical :: disk_locking_active
-      common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
-           disk_locking_active
 ! common/gravst/: only diffuse_helium_active is used here. Naming
 ! matches microdiff.f90.
       double precision :: settling_tolerance

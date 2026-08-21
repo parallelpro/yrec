@@ -172,13 +172,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       logical :: lprt0_placeholder
       common/rotprt/ lprt0_placeholder
 
-! MHP 9/94 added disk locking option - flag, time over which locking
-! is enforced, and period at which locking is set are options.
-! common/disk/: all used here. Naming matches getw.f90/putstore.f90.
-      double precision :: disk_lifetime, disk_temperature, disk_pressure
-      logical :: disk_locking_active
-      common/disk/ disk_lifetime, disk_temperature, disk_pressure, &
-           disk_locking_active
 
 ! common/egrid/: only ntot is used here (as the equally-spaced point
 ! count passed to dcoeft/dadcoeft/tridia). Naming matches rotgrid.f90/

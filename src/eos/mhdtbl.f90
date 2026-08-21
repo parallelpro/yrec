@@ -18,6 +18,7 @@
 subroutine mhdtbl(zams_a_table_path, zams_b_table_path, zams_c_table_path, &
      centre1_table_path, centre2_table_path, centre3_table_path, &
      centre4_table_path, centre5_table_path)
+      use const_lib
       implicit none
 
 !     COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,
@@ -29,11 +30,6 @@ subroutine mhdtbl(zams_a_table_path, zams_b_table_path, zams_c_table_path, &
            zams_c_table_path, centre1_table_path, centre2_table_path, &
            centre3_table_path, centre4_table_path, centre5_table_path
 
-      logical :: use_mhd_eos
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-           unit_centre2, unit_centre3, unit_centre4, unit_centre5
-      common/mhd/use_mhd_eos,unit_zams_a,unit_zams_b,unit_zams_c,unit_centre1, &
-                 unit_centre2, unit_centre3, unit_centre4, unit_centre5
 !       DATA UMOD /2.302585092994046 D0/
       logical :: ldebug, lcorr, lmilne, ltrack, lstpch
       common/ccout2/ ldebug, lcorr, lmilne, ltrack, lstpch

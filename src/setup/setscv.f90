@@ -30,15 +30,19 @@ subroutine setscv
 
 
 ! MHP  5/97 ADDED COMMON BLOCK FOR SCV EOS TABLES
-! common/scveos/: tlogx/tablex/tabley/smix/tablez/tablenv/nptsx/idt/idp,
-! all used here. Naming matches eqstat2.f90.
+! common/scveos/: tlogx/tablex/tabley/smix/tablez/tablenv/nptsx/idtt/idp,
+! all used here. Naming matches eqstat2.f90, except idtt: this file's
+! own idt is now renamed idtt (a purely local table-index variable,
+! unrelated to the shared idt) since it would otherwise collide with
+! the unrelated const_lib idt added for former common/optab/ -- same
+! disambiguation core/starin.f90 already uses for this same slot.
       double precision :: tlogx(nts), tablex(nts,nps,12), &
            tabley(nts,nps,12), smix(nts,nps), tablez(nts,nps,13), &
            tablenv(nts,nps,12)
-      integer :: nptsx(nts), idt, idp
+      integer :: nptsx(nts), idtt, idp
       logical :: use_scv_eos
       common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
-           use_scv_eos, idt, idp
+           use_scv_eos, idtt, idp
 
 
       double precision :: interp_x(3), t_interp_weight(3), &
@@ -153,14 +157,14 @@ subroutine setscv
          temp_value = (10.0d0**log_t_work)
 ! TEMPERATURE INTERPOLATION FACTORS
         if (t_idx.eq.1) then
-           idt = 1
+           idtt = 1
         else if (t_idx.eq.nts) then
-           idt = t_idx - 2
+           idtt = t_idx - 2
         else
-           idt = t_idx - 1
+           idtt = t_idx - 1
         end if
         do k_idx = 1,3
-           interp_x(k_idx) = ln10*tlogx(k_idx+idt-1)
+           interp_x(k_idx) = ln10*tlogx(k_idx+idtt-1)
         end do
         ln_t_work = ln10*log_t_work
         call inter3(interp_x,t_interp_weight,t_interp_dweight,ln_t_work)
@@ -209,9 +213,9 @@ subroutine setscv
 ! ENTROPY OF MIXING.
             entropy_total = hydrogen_fraction_local*entropy_h + &
                  helium_fraction_local*entropy_he + smix(t_idx,p_idx)
-            dsmix_dlnt = t_interp_dweight(1)*smix(idt,p_idx)+ &
-                 t_interp_dweight(2)*smix(idt+1,p_idx)+ &
-                 t_interp_dweight(3)*smix(idt+2,p_idx)
+            dsmix_dlnt = t_interp_dweight(1)*smix(idtt,p_idx)+ &
+                 t_interp_dweight(2)*smix(idtt+1,p_idx)+ &
+                 t_interp_dweight(3)*smix(idtt+2,p_idx)
 ! D LN S/ D LN T
             dlns_dlnt = (hydrogen_fraction_local*entropy_h* &
                  tablex(t_idx,p_idx,9) + helium_fraction_local*entropy_he* &
@@ -247,14 +251,14 @@ subroutine setscv
       do t_idx = 1, nts
 ! TEMPERATURE INTERPOLATION FACTORS
         if (t_idx.eq.1) then
-           idt = 1
+           idtt = 1
         else if (t_idx.eq.nts) then
-           idt = t_idx - 2
+           idtt = t_idx - 2
         else
-           idt = t_idx - 1
+           idtt = t_idx - 1
         end if
         do k_idx = 1,3
-           interp_x(k_idx) = ln10*tlogx(k_idx+idt-1)
+           interp_x(k_idx) = ln10*tlogx(k_idx+idtt-1)
         end do
         log_t_work = ln10*tlogx(t_idx)
         call inter3(interp_x,t_interp_weight,t_interp_dweight,log_t_work)
@@ -277,9 +281,9 @@ subroutine setscv
            dqdt_dlnp = tablenv(t_idx,idp,3)*p_interp_dweight(1)+ &
                 tablenv(t_idx,idp+1,3)*p_interp_dweight(2) &
                 +tablenv(t_idx,idp+2,3)*p_interp_dweight(3)
-           dqdt_dlnt = tablenv(idt,p_idx,3)*t_interp_dweight(1)+ &
-                tablenv(idt+1,p_idx,3)*t_interp_dweight(2) &
-                +tablenv(idt+2,p_idx,3)*t_interp_dweight(3)
+           dqdt_dlnt = tablenv(idtt,p_idx,3)*t_interp_dweight(1)+ &
+                tablenv(idtt+1,p_idx,3)*t_interp_dweight(2) &
+                +tablenv(idtt+2,p_idx,3)*t_interp_dweight(3)
 ! DERIVATIVES OF LN CP
            do k_idx = 1,3
               interp_x(k_idx) = dlog(tablenv(t_idx,idp+k_idx-1,5))
@@ -287,7 +291,7 @@ subroutine setscv
            dlncp_dlnp = interp_x(1)*p_interp_dweight(1)+ &
                 interp_x(2)*p_interp_dweight(2)+interp_x(3)*p_interp_dweight(3)
            do k_idx = 1,3
-              ii = idt+k_idx-1
+              ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
             interp_x(k_idx) = dlog(tablenv(ii,jj,5))
            end do
@@ -295,10 +299,10 @@ subroutine setscv
                 interp_x(2)*t_interp_dweight(2)+interp_x(3)*t_interp_dweight(3)
 ! DERIVATIVES OF DU/DT
            do k_idx = 1,3
-              ii = idt+k_idx-1
+              ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
             interp_x(k_idx) = tablenv(ii,jj,6)
-              interp_x(k_idx) = tablenv(idt+k_idx-1,p_idx,6)
+              interp_x(k_idx) = tablenv(idtt+k_idx-1,p_idx,6)
            end do
            dqut_dlnt = interp_x(1)*t_interp_dweight(1)+ &
                 interp_x(2)*t_interp_dweight(2)+interp_x(3)*t_interp_dweight(3)

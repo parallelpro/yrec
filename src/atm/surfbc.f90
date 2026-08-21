@@ -84,11 +84,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       integer :: numenv
       data numenv/0/
 
-! G Somers 10/14, Add spot common block
-! common/spots/: all used here. Naming matches tpgrad.f90.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/spot_filling_factor, spot_temp_contrast, spot_depth_varies
 ! G Somers END
 
       save

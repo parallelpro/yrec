@@ -98,11 +98,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
            envint_dummy3(3), envint_dummy4(3)
       integer :: katm, kenv, ksaha
 
-! common/spots/: spot_filling_factor/spot_temp_contrast are used here.
-! Naming matches wrtmod.f90.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
 
       save
 

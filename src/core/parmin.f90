@@ -257,10 +257,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            r16_17, r16_18, zxmix, xh2_ini, xhe3_ini, xli6_ini, xli7_ini, xbe9_ini, xb10_ini, &
            xb11_ini
 
-! common /optab/
-      double precision :: optol, zsi
-      integer :: idt, idd(4)
-      common /optab/ optol, zsi, idt, idd
+! optol: NAMELIST /physics/ member (must keep this exact spelling);
+! copied into const_lib's metal_fraction_match_tolerance after the
+! namelist read below. zsi (former common/optab/'s remaining
+! non-dead member) is not a namelist value -- its default moved to
+! const_lib.f90 (see that file's header note) since it's now
+! use-associated rather than locally declared. idt/idd are unused in
+! this file, so dropped entirely.
+      double precision :: optol
 
 ! lrot/linstb: NAMELIST /physics/ members (must keep this exact
 ! spelling). Former common /rot/; every other member already matches
@@ -269,10 +273,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! right after the namelist read below).
       logical :: lrot, linstb
 
-! common /sett/
+! endage/setdt/end_dcen/end_xcen/end_ycen: NAMELIST /physics/ members
+! (must keep this exact spelling); copied into const_lib's
+! target_end_age/timestep_override/central_deuterium_stop/
+! central_hydrogen_stop/central_helium_stop after the namelist read
+! below. lendag/lsetdt (former common/sett/'s remaining two members)
+! are not namelist values -- they're derived from the above further
+! down in this file -- so they're simply renamed in place to their
+! canonical const_lib names (end_age_stop_active/
+! timestep_override_active), now use-associated from const_lib rather
+! than locally declared.
       double precision :: endage(50), setdt(50), end_dcen(50), end_xcen(50), end_ycen(50)
-      logical :: lendag(50), lsetdt(50)
-      common /sett/ endage, setdt, lendag, lsetdt, end_dcen, end_xcen, end_ycen
 
 ! common /vmult/
       double precision :: fw, fc, fo, fes, fgsf, fmu, fss, rcrit
@@ -339,10 +350,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lttau
       common /atmos/ hras, kttau, kttau0, lttau
 
-! common /mhd/
+! lmhd: NAMELIST /physics/ member (must keep this exact spelling);
+! copied into const_lib's use_mhd_eos after the namelist read below.
+! iomhd1-8 (former common/mhd/'s remaining members, hardcoded unit
+! numbers assigned further down in this file) are not namelist values,
+! so they're simply renamed in place to their canonical const_lib
+! names (unit_zams_a/b/c/unit_centre1-5), now use-associated from
+! const_lib rather than locally declared.
       logical :: lmhd
-      integer :: iomhd1, iomhd2, iomhd3, iomhd4, iomhd5, iomhd6, iomhd7, iomhd8
-      common /mhd/ lmhd, iomhd1, iomhd2, iomhd3, iomhd4, iomhd5, iomhd6, iomhd7, iomhd8
 
 ! common /core/
       logical :: lcore
@@ -503,10 +518,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: dummy1, dummy2, dummy3, dummy4
       common /alatm04/ dummy1, dummy2, dummy3, dummy4
 
-! common /disk/
-      double precision :: sage, tdisk, pdisk
+! tdisk/pdisk/ldisk: NAMELIST /physics/ members (must keep this exact
+! spelling); copied into const_lib's disk_temperature/disk_pressure/
+! disk_locking_active after the namelist read below. sage (former
+! common/disk/'s remaining member) is unused in this file, so it's
+! dropped entirely rather than carried forward.
+      double precision :: tdisk, pdisk
       logical :: ldisk
-      common /disk/ sage, tdisk, pdisk, ldisk
 
 ! weakscreening: NAMELIST /physics/ member (must keep this exact
 ! spelling). Former common /weak/; copied into const_lib's
@@ -584,10 +602,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! via copy-assignment once these are computed below.
       double precision :: sli6, sli7, sbe91, sbe92, sbe93
 
-! common /spots/
+! spotf/spotx/lsdepth: NAMELIST /physics/ members (must keep this
+! exact spelling); copied into const_lib's spot_filling_factor/
+! spot_temp_contrast/spot_depth_varies after the namelist read below.
       double precision :: spotf, spotx
       logical :: lsdepth
-      common /spots/ spotf, spotx, lsdepth
 
 ! common /version/
       character(len=10) :: yrecver
@@ -737,7 +756,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &      /50*0.0,50*0.0,50*0.0/
       data element_id/'HE3','C12','C13','N14','N15','O16','O17','O18','H2 ', &
            & 'LI6','LI7','BE9'/
-      data optol,zsi/1.0d-8,0.0d0/
+      data optol/1.0d-8/
+! zsi's default (0.0d0) moved to const_lib.f90 -- DATA can no longer
+! target it here now that it's use-associated.
 ! tcut/saha_log10t_cutoff/tenv0/tenv1/tgcut defaults moved to
 ! const_lib.f90 (see its own header note): DATA can no longer target
 ! them here now that they're use-associated from const_lib.
@@ -1038,14 +1059,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! YCK INPUT: Alex LOW T OPACITIES
       ialxo = 39
 ! INPUT: MHD EQU. OF STATE TABLES
-      iomhd1 = 40
-      iomhd2 = 41
-      iomhd3 = 42
-      iomhd4 = 43
-      iomhd5 = 44
-      iomhd6 = 45
-      iomhd7 = 46
-      iomhd8 = 47
+      unit_zams_a = 40
+      unit_zams_b = 41
+      unit_zams_c = 42
+      unit_centre1 = 43
+      unit_centre2 = 44
+      unit_centre3 = 45
+      unit_centre4 = 46
+      unit_centre5 = 47
 ! INPUT: OPAL EQUATION OF STATE
       iopale = 49
 ! INPUT LAOL OPACITIES IN DENSE GRID FORMAT
@@ -1151,6 +1172,22 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! lexcom must likewise keep its NAMELIST spelling; copy into
 ! const_lib's use_extended_composition here.
       use_extended_composition = lexcom
+! spotf/spotx/lsdepth, tdisk/pdisk/ldisk, endage/setdt/end_dcen/
+! end_xcen/end_ycen, lmhd, and optol must likewise keep their NAMELIST
+! spelling; copy into const_lib's canonical names here.
+      spot_filling_factor = spotf
+      spot_temp_contrast = spotx
+      spot_depth_varies = lsdepth
+      disk_temperature = tdisk
+      disk_pressure = pdisk
+      disk_locking_active = ldisk
+      target_end_age = endage
+      timestep_override = setdt
+      central_deuterium_stop = end_dcen
+      central_hydrogen_stop = end_xcen
+      central_helium_stop = end_ycen
+      use_mhd_eos = lmhd
+      metal_fraction_match_tolerance = optol
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
       call remap
@@ -1797,11 +1834,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !          LENDAG(NKIND) = ENDAGE(NKIND).GT.0D0
             if(endage(nkind).gt.0.0d0 .or. end_dcen(nkind).gt.0.0d0 &
            &  .or. end_xcen(nkind).gt.0.0d0 .or. end_ycen(nkind).gt.0.0d0)then
-               lendag(nkind)=.true.
+               end_age_stop_active(nkind)=.true.
             else
-               lendag(nkind)=.false.
+               end_age_stop_active(nkind)=.false.
             endif
-          lsetdt(nkind) = setdt(nkind).gt.0d0
+          timestep_override_active(nkind) = setdt(nkind).gt.0d0
             if (nmodls(nkind).gt.0) then
           if (lfirst(nkind)) then
              write(iowr,350) nkind,nmodls(nkind)
@@ -1817,11 +1854,11 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &          ' WITH THE PREVIOUS RUN''S LAST MODEL.')
           end if
 ! GENERALIZE STOP CONDITIONS
-          if(lendag(nkind).or.lsetdt(nkind)) then
-             write(iowr,370)lendag(nkind),lsetdt(nkind), &
+          if(end_age_stop_active(nkind).or.timestep_override_active(nkind)) then
+             write(iowr,370)end_age_stop_active(nkind),timestep_override_active(nkind), &
            &               endage(nkind), setdt(nkind),end_dcen(nkind), &
            &          end_xcen(nkind),end_ycen(nkind)
-             write(short_file_unit,370)lendag(nkind),lsetdt(nkind), &
+             write(short_file_unit,370)end_age_stop_active(nkind),timestep_override_active(nkind), &
            &          endage(nkind), setdt(nkind),end_dcen(nkind), &
            &          end_xcen(nkind),end_ycen(nkind)
       370          format(1x,'EVOLVE TO AGE ',l1,' SET DELT ', &

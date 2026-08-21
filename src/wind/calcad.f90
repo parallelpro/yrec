@@ -179,21 +179,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       common/envgen/ atm_step_size, envelope_step_size, envelope_generation_flag
 
 
-! MHP 10/24 ADDED STOP CRITERIA FOR CENTRAL H,D,AND HE4
-! common/sett/: not used in this file. First converted here.
-! target_end_age/timestep_override/central_deuterium_stop/
-! central_hydrogen_stop/central_helium_stop are ages/abundance targets
-! (and end_age_stop_active/timestep_override_active the flags enabling
-! them) for stopping or overriding the timestep at specified central
-! abundances -- exact per-slot semantics beyond this are not
-! confidently known from this file alone (unused here).
-      double precision :: target_end_age(50), timestep_override(50)
-      logical :: end_age_stop_active(50), timestep_override_active(50)
-      double precision :: central_deuterium_stop(50), central_hydrogen_stop(50), &
-           central_helium_stop(50)
-      common/sett/ target_end_age, timestep_override, end_age_stop_active, &
-           timestep_override_active, central_deuterium_stop, &
-           central_hydrogen_stop, central_helium_stop
 
 ! common/atmos/: all used here. Naming matches envint.f90.
       double precision :: atm_hras
@@ -202,14 +187,17 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       common/atmos/ atm_hras, atm_choice, atm_choice_initial, use_ttau_relation
 
 ! common/scveos/: all used here (SCV EOS table + control, backing the
-! non-OPAL2006 branch below via eqstat2). Naming matches eqstat2.f90.
+! non-OPAL2006 branch below via eqstat2). Naming matches eqstat2.f90,
+! except idtt: this slot's usual name (idt) would collide with the
+! unrelated const_lib idt added for former common/optab/ -- same
+! disambiguation setup/setscv.f90 uses.
       double precision :: tlogx(nts), tablex(nts,nps,12), &
            tabley(nts,nps,12), smix(nts,nps), tablez(nts,nps,13), &
            tablenv(nts,nps,12)
-      integer :: nptsx(nts), idt, idp
+      integer :: nptsx(nts), idtt, idp
       logical :: use_scv_eos
       common/scveos/ tlogx, tablex, tabley, smix, tablez, tablenv, nptsx, &
-           use_scv_eos, idt, idp
+           use_scv_eos, idtt, idp
 
 ! common/opaleos/: only use_opal2006_eos is used here. Naming matches
 ! eqstat2.f90.
@@ -219,12 +207,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
            use_opal2006_eos, lnumderiv
 
 
-! G Somers 10/14, Add spot common block
-! common/spots/: spot_filling_factor/spot_temp_contrast are used here.
-! Naming matches wrtmod.f90/getnewenv.f90.
-      double precision :: spot_filling_factor, spot_temp_contrast
-      logical :: spot_depth_varies
-      common/spots/ spot_filling_factor, spot_temp_contrast, spot_depth_varies
 ! G Somers END
       save
 

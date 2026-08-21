@@ -128,11 +128,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       double precision :: env_error_tol, env_step_begin, env_step_min, &
            env_step_max
       common/intenv/env_error_tol, env_step_begin, env_step_min, env_step_max
-! common/optab/: only idt/idd are used (set) here. Naming matches
-! getopac.f90.
-      double precision :: metal_fraction_match_tolerance, zsi
-      integer :: idt, idd(4)
-      common/optab/metal_fraction_match_tolerance, zsi, idt, idd
 ! DBG PULSE
 ! common/pulse/: all used here. Naming matches wrtmod.f90.
       double precision :: pulsation_mass_msun
@@ -164,13 +159,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       integer :: atm_choice, atm_choice_initial
       logical :: use_ttau_relation
       common/atmos/atm_hras, atm_choice, atm_choice_initial, use_ttau_relation
-! common/mhd/: only use_mhd_eos is used here. Naming matches mhdtbl.f90.
-      logical :: use_mhd_eos
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-           unit_centre2, unit_centre3, unit_centre4, unit_centre5
-      common/mhd/use_mhd_eos, unit_zams_a, unit_zams_b, unit_zams_c, &
-           unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
-           unit_centre5
 ! common/atmos2/: not used in this file (SURFP's own common). Naming
 ! matches surfp.f90.
       double precision :: kurucz_log10_pressure_table(nt,ng), &
