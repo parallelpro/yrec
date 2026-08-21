@@ -151,9 +151,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
            cl37_snu_rate, ga71_snu_rate
       common/fluxes/ neutrino_flux, neutrino_flux_total, cl37_snu_rate, &
            ga71_snu_rate
-      integer :: niter4
-      logical :: lnews, lsnu
-      common/neweng/ niter4, lnews, lsnu
 ! MHP 8/25 Removed character file names from common block
 ! DBG 11/11/91
 ! common/chrone/: only isochrone_output_active/isochrone_file_unit are

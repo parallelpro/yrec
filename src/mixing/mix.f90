@@ -127,13 +127,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       common/gravs4/ use_new_diffusion_routines, ldifli
 
 
-!*** MHP 6/91 COMMON BLOCK FOR NEW MIXING AND SEMI-CONVECTION.
-! THESE ARE PARMIN PARAMETERS IN MARK6.
-! common/neweng/: not used in this file. Not referenced in any
-! already-converted file.
-      integer :: niter4
-      logical :: lnews, lsnu
-      common/neweng/ niter4, lnews, lsnu
 
 ! common/theage/: not used in this file. Not referenced in any
 ! already-converted file.

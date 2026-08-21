@@ -310,9 +310,6 @@ program main
            central_deuterium_stop, central_hydrogen_stop, &
            central_helium_stop
 
-      integer :: niter4
-      logical :: lnews, lsnu
-      common/neweng/ niter4, lnews, lsnu
 
 ! 7/91 ENTROPY TERM COMMON BLOCK ADDED.
       double precision :: temperature_entropy_term(json), &

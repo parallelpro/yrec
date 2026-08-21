@@ -202,11 +202,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 
 
 
-! 7/91 COMMON BLOCK ADDED TO SKIP FLUX CALCULATIONS IF LSNU=F
-! common/neweng/: only lsnu is used here. Naming matches mix.f90.
-      integer :: niter4
-      logical :: lnews, lsnu
-      common/neweng/ niter4, lnews, lsnu
 
 ! common/neweps/: alpha_capture_energy/neutrino_loss_rate, both set
 ! here. Naming matches ytime.f90.

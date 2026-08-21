@@ -121,4 +121,20 @@ module const_lib
       double precision :: creim = -4.0d-13
       logical :: lreimer = .false., use_mass_accretion = .false.
 
+! former common/neweng/: all 3 members are NAMELIST /physics/ values,
+! already canonically spelled in core/parmin.f90 (no rename needed
+! there).
+      integer :: niter4 = 0
+      logical :: lnews = .false., lsnu = .false.
+
+! former common/burnscs/: light-element cross-section scale factors.
+! core/parmin.f90's own local names (sli6 etc) are themselves NAMELIST
+! /physics/ members (see that file's naming note at the top) and can't
+! be renamed, so parmin.f90 keeps them local, computes them from the
+! real namelist inputs (xsli6 etc, held in its own internal
+! common/xsect/) via e.g. sli6 = xsli6/5.5d3, and then copy-assigns
+! into these canonical names.
+      double precision :: li6_rate_scale, li7_rate_scale, &
+           be9_pg_rate_scale, be9_pd_rate_scale, be9_palpha_rate_scale
+
 end module const_lib

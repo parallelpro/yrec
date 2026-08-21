@@ -37,13 +37,6 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
            rate_be9_start(json)
       common/oldrat/ rate_li6_start, rate_li7_start, rate_be9_start
 
-! common/burnscs/: G Somers 6/14, light-element burning rate scale
-! factors (used to scale the cross sections relative to the CF88
-! rates below).
-      double precision :: li6_rate_scale, li7_rate_scale, be9_pg_rate_scale, &
-           be9_pd_rate_scale, be9_palpha_rate_scale
-      common/burnscs/ li6_rate_scale, li7_rate_scale, be9_pg_rate_scale, &
-           be9_pd_rate_scale, be9_palpha_rate_scale
 ! G Somers END
 
       double precision :: tlim

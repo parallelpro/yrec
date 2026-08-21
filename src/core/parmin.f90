@@ -226,6 +226,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       double precision :: stolr0
       integer :: imax, nuse
 
+! tscut: NAMELIST /physics/ member (must keep this exact spelling).
+! Former common/ctlim/ member alongside atime/tcut/tenv0/tenv1/tgcut;
+! those five kept their spelling when ctlim moved to const_lib, but
+! tscut did not (const_lib calls it saha_log10t_cutoff), so it stays
+! local here and is copied into that canonical name after the
+! namelist read below, same treatment as stolr0/imax/nuse above.
+      double precision :: tscut
+
 ! common /label/
       double precision :: xenv0, zenv0
       common /label/ xenv0, zenv0
@@ -282,10 +290,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: ldify
       common /gravst/ grtol, ilambda, niter_gs, ldify
 
-! common /neweng/
-      integer :: niter4
-      logical :: lnews, lsnu
-      common /neweng/ niter4, lnews, lsnu
 
 ! common /burtol/
       double precision :: cmin, abstol, reltol
@@ -560,9 +564,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lxli6, lxli7, lxbe91, lxbe92, lxbe93
       common /xsect/ xsli6, xsli7, xsbe91, xsbe92, xsbe93, lxli6, lxli7, lxbe91, lxbe92, lxbe93
 
-! common /burnscs/
+! sli6/sli7/sbe91/sbe92/sbe93 are themselves NAMELIST /physics/ members
+! (see the "G Somers 6/14" list below) so must keep their exact
+! spelling (this file's naming note at the top); the canonical
+! const_lib names (li6_rate_scale etc, former common/burnscs/) are set
+! via copy-assignment once these are computed below.
       double precision :: sli6, sli7, sbe91, sbe92, sbe93
-      common /burnscs/ sli6, sli7, sbe91, sbe92, sbe93
 
 ! common /spots/
       double precision :: spotf, spotx
@@ -644,7 +651,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    optol, &
            &    rcrit, reltol, &
            &    stolr0, &
-           &    tcut, saha_log10t_cutoff, tenv0, tenv1, tgcut, tridt, tridl, &
+           &    tcut, tscut, tenv0, tenv1, tgcut, tridt, tridl, &
            &    tollaol, &
            &    vnew, &
            &    walpcz, wnew, weakscreening, &
@@ -804,7 +811,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! MHP 5/90 NEW DATA STATEMENTS FOR NEW PARAMETERS
       data grtol,ilambda,niter_gs,ldify/1.0d-8,1,10, &
            &      .false./
-      data niter4,lnews,lsnu/0,.false.,.false./
+! niter4/lnews/lsnu defaults moved to const_lib.f90 (former
+! common/neweng/).
       data dt_gs,xmin,ymin,lthoulfit/0.1d0,1.0d-3,1.0d-3,.false./
       data lthoul,ldifz,fgrz,fgry/.false.,.false.,1.0d0,1.0d0/
       data lnewdif,ldifli/.false.,.false./
@@ -1096,6 +1104,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       tolerance_fraction = stolr0
       max_stage_index = imax
       extrap_order = nuse
+! tscut must likewise keep its NAMELIST spelling; copy into const_lib's
+! saha_log10t_cutoff here.
+      saha_log10t_cutoff = tscut
 ! use_new_nuclear_rates/weak_screening_threshold: same reasoning,
 ! copied from their NAMELIST-spelled locals before remap runs, since
 ! remap.f90 reads use_new_nuclear_rates to decide how to compute
@@ -1232,6 +1243,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       if (lxbe93) then
           sbe93 = xsbe93/1.5d4
       endif
+! sli6/sli7/sbe91/sbe92/sbe93 must keep their NAMELIST spelling (see
+! declaration above), so copy into const_lib's canonical names here.
+      li6_rate_scale = sli6
+      li7_rate_scale = sli7
+      be9_pg_rate_scale = sbe91
+      be9_pd_rate_scale = sbe92
+      be9_palpha_rate_scale = sbe93
 ! G Somers END
 ! MHP 8/25 open relevant table as well as ensuring that only one is selected
 !  Disable Older OPAL EOS's if a newer one is specified
@@ -1623,7 +1641,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
 !     SPIT OUT NAMELIST VARIABLES TO ISHORT
 
-      write(short_file_unit,25) (tcut(j),j=1,5),saha_log10t_cutoff,tenv0,tenv1,tgcut
+      write(short_file_unit,25) (tcut(j),j=1,5),tscut,tenv0,tenv1,tgcut
       25 format(3x,'LINE  2    TCUT-  E  TCUT- PP  TCUT-CNO  TCUT-                                                                     &
 &3A  TCUT- NU TCUT-SAHA     TENV0     TENV1     TGCUT'/2x, 'STANDAR                                                            &
 &D',9x,'6.50',6x,'6.50',6x,'6.82',6x,'7.70',6x,'7.50',6x, &

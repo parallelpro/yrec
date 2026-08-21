@@ -133,9 +133,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
            cl37_snu_rate, ga71_snu_rate
       common/fluxes/neutrino_flux,neutrino_flux_total,cl37_snu_rate, &
            ga71_snu_rate
-      integer :: niter4
-      logical :: lnews, lsnu
-      common/neweng/niter4,lnews,lsnu
 ! MHP 5/91 ADD COMMON BLOCK FOR ENERGY FROM ALPHA CAPTURE REACTIONS
 !  AND LOSSES FROM NEUTRINO-COOLED CORES IN EVOVLED STARS.
       double precision :: alpha_capture_energy, neutrino_loss_rate

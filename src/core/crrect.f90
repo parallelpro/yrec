@@ -216,11 +216,6 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       common/heflsh/ helium_flash_active
 
 
-! common/neweng/: not used in this file. Naming matches coefft.f90/
-! mix.f90.
-      integer :: niter4
-      logical :: lnews, lsnu
-      common/neweng/ niter4, lnews, lsnu
 
 
 ! common/flag/: use_extended_composition (originally LEXCOM) is used
