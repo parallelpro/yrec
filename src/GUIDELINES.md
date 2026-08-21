@@ -184,7 +184,18 @@ For each file:
 These are not COMMON-free and their COMMON is woven directly into the
 Henyey coefficient-building code (`misc/coefft.f90`) or otherwise
 central to the solver. Do not attempt full COMMON elimination on the
-first pass for these. Instead:
+first pass for these. This is deliberately phase two: finish
+converting every domain's COMMON blocks to modules/derived types
+first (the mechanical work this whole document otherwise describes),
+then come back and do this disentangling as a separate later pass.
+Sequencing it this way isn't just cleanup ordering -- designing each
+facade's return arguments (e.g. `eos_get`'s `p, gamma1, chit, chirho,
+cp, ...`) is much easier once the domain's per-model state already
+lives in an explicit derived type (oldmod_lib/scrtch_lib/
+turnover_lib/light_burn_lib/engeb_diag_lib-style) instead of being
+scattered across raw COMMON; doing the facade design first would mean
+redoing it once the state conversion catches up anyway. When that
+phase starts:
 
 1. Design one small, explicit-interface entry point per domain (e.g.
    `eos_get(rho, t, ... -> p, gamma1, chit, chirho, cp, ...)`).
