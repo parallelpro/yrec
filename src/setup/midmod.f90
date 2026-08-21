@@ -31,6 +31,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
      num_radiative_zones,num_convective_zones)
 
+      use light_burn_lib
       use turnover_lib
       use scrtch_lib
       use oldmod_lib
@@ -154,13 +155,6 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       common/oldab/ composition_snapshot
 
 
-! common/deuter/: deuterium_burning_rate/deuterium_burning_rate_start
-! are used here. Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 ! MHP 06/02
 ! common/prevmid/: state saved from the previous MIDMOD call, all used
@@ -479,17 +473,17 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 ! INCREMENT THE TIMESTEP
          if (first_call) then
             do i = 1,num_zones
-               deuterium_rate_mid(i) = deuterium_burning_rate_start(i)+ &
-                    step_fraction_ratio*(deuterium_burning_rate(i)- &
-                    deuterium_burning_rate_start(i))
-               deuterium_rate_mid_start(i) = deuterium_burning_rate_start(i)
+               deuterium_rate_mid(i) = light_burn%deuterium_burning_rate_start(i)+ &
+                    step_fraction_ratio*(light_burn%deuterium_burning_rate(i)- &
+                    light_burn%deuterium_burning_rate_start(i))
+               deuterium_rate_mid_start(i) = light_burn%deuterium_burning_rate_start(i)
             end do
          else
             do i = 1,num_zones
                deuterium_rate_mid_start(i) = deuterium_rate_mid(i)
                deuterium_rate_mid(i) = deuterium_rate_mid(i)+ &
-                    step_fraction_ratio*(deuterium_burning_rate(i)- &
-                    deuterium_burning_rate_start(i))
+                    step_fraction_ratio*(light_burn%deuterium_burning_rate(i)- &
+                    light_burn%deuterium_burning_rate_start(i))
             end do
          endif
 ! RADIATIVE ZONES.

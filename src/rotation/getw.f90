@@ -33,6 +33,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
      envelope_boundary_zone_prev)
+      use light_burn_lib
       use turnover_lib
       use oldmod_lib
       use luout_lib
@@ -95,11 +96,6 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 
 
 
-! common/liov/: pressure scale heights, only pressure_scale_height_end
-! is set here. Naming matches liburn.f90.
-      double precision :: pressure_scale_height_start, &
-           pressure_scale_height_end
-      common/liov/ pressure_scale_height_start, pressure_scale_height_end
 
       double precision :: max_domega_global
       common/ct2/ max_domega_global
@@ -160,17 +156,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
            thdif(json), visc(json)
       common/temp/ cp, mean_molecular_weight, qdt, thdif, visc
 
-! 7/91 new lithium burning common blocks added.
-! common/newrat/: lithium/beryllium burning rates at end of timestep,
-! all used here. Naming matches liburn.f90.
-      double precision :: rate_li6(json), rate_li7(json), rate_be9(json)
-      common/newrat/ rate_li6, rate_li7, rate_be9
 
-! common/oldrat/: lithium/beryllium burning rates at start of
-! timestep, all used here. Naming matches liburn.f90.
-      double precision :: rate_li6_start(json), rate_li7_start(json), &
-           rate_be9_start(json)
-      common/oldrat/ rate_li6_start, rate_li7_start, rate_be9_start
 
 ! common/oldab/: not used in this file. Naming matches midmod.f90.
       double precision :: composition_snapshot(15,json)
@@ -560,11 +546,11 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
               num_convective_zones_burn)
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
          if(lovstm .and. convective_flag_mid(num_zones))then
-            pressure_scale_height_end = alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
+            light_burn%pressure_scale_height_end = alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
                  2.0D0*log_radius_mid(envelope_boundary_zone_cur) &
                  -log_density_mid(envelope_boundary_zone_cur)-cgl-log_mass(envelope_boundary_zone_cur)))
          else
-            pressure_scale_height_end = 0.0D0
+            light_burn%pressure_scale_height_end = 0.0D0
          endif
 ! FIND LIGHT ELEMENT BURNING RATES AT THE END OF THE TIME STEP.
          call lirate88(composition,log_density_mid,log_temperature_mid,num_zones,2)
@@ -579,11 +565,11 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
                  shell_mass,log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,num_zones)
             envelope_boundary_zone_prev = envelope_boundary_zone_cur
-            pressure_scale_height_start = pressure_scale_height_end
+            light_burn%pressure_scale_height_start = light_burn%pressure_scale_height_end
             do 155 zone_index = 1,num_zones
-               rate_li6_start(zone_index) = rate_li6(zone_index)
-               rate_li7_start(zone_index) = rate_li7(zone_index)
-               rate_be9_start(zone_index) = rate_be9(zone_index)
+               light_burn%rate_li6_start(zone_index) = light_burn%rate_li6(zone_index)
+               light_burn%rate_li7_start(zone_index) = light_burn%rate_li7(zone_index)
+               light_burn%rate_be9_start(zone_index) = light_burn%rate_be9(zone_index)
   155       continue
          else
 ! COMPUTE BURNING.

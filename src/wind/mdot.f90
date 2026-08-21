@@ -25,6 +25,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
+      use light_burn_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -72,13 +73,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 
 
 
-! common/deuter/: only accreted_mass_fraction (set here) is used.
-! Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 ! common/disk/: disk_lifetime/disk_temperature/disk_locking_active are
 ! used here. Naming matches getw.f90.
@@ -349,7 +343,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
                composition(species_idx,zone_idx) = mixed_abundance
             end do
          end do
-         accreted_mass_fraction = delta_mass_cgs
+         light_burn%accreted_mass_fraction = delta_mass_cgs
       endif
 !  9999 CONTINUE
       if(disk_exhausted_flag) use_mass_accretion = .false.

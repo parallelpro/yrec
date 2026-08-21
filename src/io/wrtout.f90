@@ -25,6 +25,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
      shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
      specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
      total_rotational_kinetic_energy, shell_mass_increment)
+      use engeb_diag_lib
+      use light_burn_lib
       use turnover_lib
       use scrtch_lib
       use luout_lib
@@ -171,13 +173,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! batch.
       logical :: lprt0_placeholder
       common/rotprt/ lprt0_placeholder
-! MHP 4/09 ADDED OPTION TO SCALE THE SATURATION RATE BY THE OVERTURN TIMESCALE
-! common/deuter/: not used in this file. Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 ! JVS 01/11 ACOUSTIC DEPTH
 ! KC 2025-05-30 reordered common block elements
 ! COMMON/ACDPTH/TAUCZN,DELADJ(JSON),TAUHE, TNORM, TCZ, WHE, ICLCD,
@@ -240,13 +235,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       common/roten/ rotational_energy_term
 ! G Somers END
 
-! JVS END
-! JVS 10/11 Common block for He3+He3 luminosity
-! common/grab/: not used in this file. Naming is local to this batch.
-      double precision :: he3_luminosity_placeholder, he3_total_placeholder, &
-           he3_he3_rate_placeholder(json), he3_he4_rate_placeholder(json)
-      common/grab/ he3_luminosity_placeholder, he3_total_placeholder, &
-           he3_he3_rate_placeholder, he3_he4_rate_placeholder
 
       double precision :: fxion(3)
       double precision :: clsnuf(8), gasnuf(8)

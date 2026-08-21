@@ -14,6 +14,7 @@
 ! Burning rates from Caughlin and Fowler (1988).
 subroutine lirate88(composition, log_density, log_temperature, num_zones, &
      use_current_model)
+      use light_burn_lib
       use oldmod_lib
       use const_lib
       implicit none
@@ -25,17 +26,8 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
       integer, intent(in) :: num_zones, use_current_model
 
 
-! common/newrat/: lithium/beryllium burning rates at the end of the
-! timestep. Naming matches liburn.f90.
-      double precision :: rate_li6(json), rate_li7(json), rate_be9(json)
-      common/newrat/ rate_li6, rate_li7, rate_be9
 
 
-! common/oldrat/: lithium/beryllium burning rates at the start of the
-! timestep. Naming matches liburn.f90.
-      double precision :: rate_li6_start(json), rate_li7_start(json), &
-           rate_be9_start(json)
-      common/oldrat/ rate_li6_start, rate_li7_start, rate_be9_start
 
 ! G Somers END
 
@@ -115,23 +107,23 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
 ! SUM RATES
          fsbe9 = fbe91 + fbe92 + fbe93
          if(use_current_model.eq.1)then
-            rate_li6(zone_idx) = fli6*rhox
-            rate_li7(zone_idx) = fli7*rhox
-            rate_be9(zone_idx) = fsbe9*rhox
+            light_burn%rate_li6(zone_idx) = fli6*rhox
+            light_burn%rate_li7(zone_idx) = fli7*rhox
+            light_burn%rate_be9(zone_idx) = fsbe9*rhox
          else
-            rate_li6_start(zone_idx) = fli6*rhox
-            rate_li7_start(zone_idx) = fli7*rhox
-            rate_be9_start(zone_idx) = fsbe9*rhox
+            light_burn%rate_li6_start(zone_idx) = fli6*rhox
+            light_burn%rate_li7_start(zone_idx) = fli7*rhox
+            light_burn%rate_be9_start(zone_idx) = fsbe9*rhox
          endif
   100 continue
   110 continue
       do 120 tail_idx = zone_idx,num_zones
-         rate_li6(tail_idx)=0.0d0
-         rate_li7(tail_idx)=0.0d0
-         rate_be9(tail_idx)=0.0d0
-         rate_li6_start(tail_idx)=0.0d0
-         rate_li7_start(tail_idx)=0.0d0
-         rate_be9_start(tail_idx)=0.0d0
+         light_burn%rate_li6(tail_idx)=0.0d0
+         light_burn%rate_li7(tail_idx)=0.0d0
+         light_burn%rate_be9(tail_idx)=0.0d0
+         light_burn%rate_li6_start(tail_idx)=0.0d0
+         light_burn%rate_li7_start(tail_idx)=0.0d0
+         light_burn%rate_be9_start(tail_idx)=0.0d0
   120 continue
       return
 end subroutine lirate88

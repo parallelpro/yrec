@@ -23,6 +23,7 @@
 ! executes.
 subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
+      use light_burn_lib
       use turnover_lib
       use scrtch_lib
       use const_lib
@@ -54,12 +55,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 ! unused here -- see header note above; declared only to preserve
 ! layout).
 
-! common/deuter/: not used in this file. Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
 

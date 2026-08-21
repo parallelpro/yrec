@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use light_burn_lib
       use scrtch_lib
       use oldmod_lib
       use luout_lib
@@ -178,14 +179,6 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       common/entrop/ temperature_entropy_term, pressure_entropy_term, &
            luminosity_entropy_term, radius_entropy_term
 
-! MHP 05/02 deuterium burning rate added
-! common/deuter/: only deuterium_burning_rate_start is used here.
-! Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
       integer :: reaction_rate_species_index(7)
       double precision :: z_new(json), x_new(json)
@@ -792,12 +785,12 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       if (use_extended_composition .and. &
            composition(12,num_zones).ge.1.0D-14) then
          do j = 1,num_zones
-            prev_model%old_pressure(j) = deuterium_burning_rate_start(j)
+            prev_model%old_pressure(j) = light_burn%deuterium_burning_rate_start(j)
          end do
          call osplin(prev_model%old_shell_mass,prev_model%old_temperature,log_mass,prev_model%old_pressure, &
               old_point_count,new_point_count)
          do j = 1,new_num_zones
-            deuterium_burning_rate_start(j) = prev_model%old_temperature(j)
+            light_burn%deuterium_burning_rate_start(j) = prev_model%old_temperature(j)
          end do
       endif
 ! NOW FIND RUN OF P,R,L,T,AND RHO IN THAT ORDER FOR THE NEW POINTS.

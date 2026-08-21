@@ -23,6 +23,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
      zone_min, env_cz_zone_old, env_cz_zone, final_iteration_flag, &
      convective_flag, num_zones, radiative_zone_bounds, mixed_zone_bounds, &
      num_radiative_zones, num_zones_mixed)
+      use light_burn_lib
       use oldmod_lib
       implicit none
       integer, parameter :: json = 5000
@@ -32,23 +33,8 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       logical :: use_extended_composition
       common/flag/ use_extended_composition
 
-! common/liov/: pressure scale heights used to search downward from
-! the CZ base for the true (overshoot-corrected) base location. Naming
-! matches liburn.f90.
-      double precision :: pressure_scale_height_start, &
-           pressure_scale_height_end
-      common/liov/ pressure_scale_height_start, pressure_scale_height_end
 
-! common/newrat/: lithium/beryllium burning rates at the end of the
-! timestep. Naming matches liburn.f90.
-      double precision :: rate_li6(json), rate_li7(json), rate_be9(json)
-      common/newrat/ rate_li6, rate_li7, rate_be9
 
-! common/oldrat/: lithium/beryllium burning rates at the start of the
-! timestep. Naming matches lirate88.f90.
-      double precision :: rate_li6_start(json), rate_li7_start(json), &
-           rate_be9_start(json)
-      common/oldrat/ rate_li6_start, rate_li7_start, rate_be9_start
 
 
 ! INPUT VARIABLES
@@ -182,12 +168,12 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       end do
       if (use_extended_composition) then
          do zone_idx = 1, num_zones
-            rate_li6_start(zone_idx) = rate_li6(zone_idx)
-            rate_li7_start(zone_idx) = rate_li7(zone_idx)
-            rate_be9_start(zone_idx) = rate_be9(zone_idx)
+            light_burn%rate_li6_start(zone_idx) = light_burn%rate_li6(zone_idx)
+            light_burn%rate_li7_start(zone_idx) = light_burn%rate_li7(zone_idx)
+            light_burn%rate_be9_start(zone_idx) = light_burn%rate_be9(zone_idx)
          end do
          env_cz_zone_old = env_cz_zone
-         pressure_scale_height_start = pressure_scale_height_end
+         light_burn%pressure_scale_height_start = light_burn%pressure_scale_height_end
       end if
       return
 end subroutine bursmix

@@ -29,6 +29,7 @@
 ! 11/91 HR added to call.
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use light_burn_lib
       use scrtch_lib
       use oldmod_lib
       use luout_lib
@@ -46,26 +47,11 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 
 
 
-! common/newrat/: lithium/beryllium burning rates at the end of the
-! timestep. Naming matches liburn.f90.
-      double precision :: rate_li6(json), rate_li7(json), rate_be9(json)
-      common/newrat/ rate_li6, rate_li7, rate_be9
-
-
-! common/oldrat/: lithium/beryllium burning rates at the start of the
-! timestep. Naming matches liburn.f90.
-      double precision :: rate_li6_start(json), rate_li7_start(json), &
-           rate_be9_start(json)
-      common/oldrat/ rate_li6_start, rate_li7_start, rate_be9_start
 
 
 
-! common/liov/: pressure scale heights used to search downward from the
-! CZ base for the true (overshoot-corrected) base location. Naming
-! matches liburn.f90.
-      double precision :: pressure_scale_height_start, &
-           pressure_scale_height_end
-      common/liov/ pressure_scale_height_start, pressure_scale_height_end
+
+
 
 
 ! common/mdphy/: only del_adiabatic_mix and del_radiative_mix are used
@@ -77,13 +63,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       common/mdphy/ amum, cpm, delm, del_adiabatic_mix, del_radiative_mix, &
            esumm, om, qdtm, thdifm, velm, viscm, epsm
 
-! common/prevcz/: remembers the previous end-of-timestep values for use
-! as the new beginning-of-timestep values. Naming matches liburn.f90.
-      double precision :: cz_base_radius_prev, log_rate_li6_prev, &
-           log_rate_li7_prev, log_rate_be9_prev
-      integer :: envelope_cz_base_zone_prev
-      common/prevcz/ cz_base_radius_prev, log_rate_li6_prev, &
-           log_rate_li7_prev, log_rate_be9_prev, envelope_cz_base_zone_prev
 
       double precision :: li6_substep_depletion(json), &
            li7_substep_depletion(json), be9_substep_depletion(json)
@@ -136,10 +115,10 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
             cz_base_zone_old = env_cz_zone_old
          else
 ! STARTING CZ DEPTH
-            if(cz_base_radius_prev.eq.0.0d0)then
-               cz_base_radius_prev = 0.5d0*(exp(ln10*prev_model%old_radius(env_cz_zone_old)) &
+            if(light_burn%cz_base_radius_prev.eq.0.0d0)then
+               light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*prev_model%old_radius(env_cz_zone_old)) &
                         +exp(ln10*prev_model%old_radius(env_cz_zone_old-1)))
-               search_radius = cz_base_radius_prev - pressure_scale_height_start
+               search_radius = light_burn%cz_base_radius_prev - light_burn%pressure_scale_height_start
                do zone_idx = env_cz_zone_old-1,1,-1
                   shell_radius = exp(ln10*prev_model%old_radius(zone_idx))
                   if(shell_radius.lt.search_radius)then
@@ -150,14 +129,14 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
                cz_base_zone_old = 1
    11          continue
             else
-               cz_base_zone_old = envelope_cz_base_zone_prev
+               cz_base_zone_old = light_burn%envelope_cz_base_zone_prev
             endif
 ! ENDING CZ DEPTH : DETERMINE OVERSHOOT FROM TRUE CZ BASE.
             delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
             cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
                     -cz_base_frac*delta_radius
-            cz_base_radius_prev = cz_base_radius
-            search_radius = cz_base_radius - pressure_scale_height_end
+            light_burn%cz_base_radius_prev = cz_base_radius
+            search_radius = cz_base_radius - light_burn%pressure_scale_height_end
             do zone_idx = env_cz_zone-1,1,-1
                shell_radius = exp(ln10*radius(zone_idx))
                if(shell_radius.lt.search_radius)then
@@ -176,12 +155,12 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          cz_base_zone = env_cz_zone
          cz_base_zone_old = env_cz_zone_old
       endif
-      envelope_cz_base_zone_prev = cz_base_zone
+      light_burn%envelope_cz_base_zone_prev = cz_base_zone
 ! RADIATIVE INTERIOR.
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
       do zone_idx = 1,min_zone-1
-         if(rate_be9(zone_idx).le.1.0d-32 .or. rate_be9_start(zone_idx).le.1.0d-32)goto 50
+         if(light_burn%rate_be9(zone_idx).le.1.0d-32 .or. light_burn%rate_be9_start(zone_idx).le.1.0d-32)goto 50
          if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 &
          .and.composition(15,zone_idx).lt.1.0d-24)goto 50
          if(log_temperature(zone_idx).gt.7.0d0)then
@@ -190,9 +169,9 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
             composition(15,zone_idx) = 0.0d0
             goto 50
          endif
-         log_rate_li6 = 0.5d0*(log(rate_li6(zone_idx)) + log(rate_li6_start(zone_idx)))
-         log_rate_li7 = 0.5d0*(log(rate_li7(zone_idx)) + log(rate_li7_start(zone_idx)))
-         log_rate_be9 = 0.5d0*(log(rate_be9(zone_idx)) + log(rate_be9_start(zone_idx)))
+         log_rate_li6 = 0.5d0*(log(light_burn%rate_li6(zone_idx)) + log(light_burn%rate_li6_start(zone_idx)))
+         log_rate_li7 = 0.5d0*(log(light_burn%rate_li7(zone_idx)) + log(light_burn%rate_li7_start(zone_idx)))
+         log_rate_be9 = 0.5d0*(log(light_burn%rate_be9(zone_idx)) + log(light_burn%rate_be9_start(zone_idx)))
          li6_substep_depletion(zone_idx) = timestep*exp(log_rate_li6)
          li7_substep_depletion(zone_idx) = timestep*exp(log_rate_li7)
          be9_substep_depletion(zone_idx) = timestep*exp(log_rate_be9)
@@ -226,7 +205,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 ! CONVECTION ZONE.
 !
 ! SKIP IF WHOLE CZ IS BELOW THE BURNING THRESHOLD.
-      if(rate_be9_start(cz_base_zone_old).le.1.0d-32.or.rate_be9(cz_base_zone).le.1.0d-32)goto 200
+      if(light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.light_burn%rate_be9(cz_base_zone).le.1.0d-32)goto 200
 ! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
       li6_cz_start = 0.0d0
       li7_cz_start = 0.0d0
@@ -242,24 +221,24 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       li6_cz_start = li6_cz_start/cz_mass_start
       li7_cz_start = li7_cz_start/cz_mass_start
       be9_cz_start = be9_cz_start/cz_mass_start
-      if(log_rate_li6_prev.le.0.0d0)then
+      if(light_burn%log_rate_li6_prev.le.0.0d0)then
 ! COMPUTE MASS-WEIGHTED AVERAGE RATES AT THE START OF THE STEP.
          log_rate_li6_cz_start = 0.0d0
          log_rate_li7_cz_start = 0.0d0
          log_rate_be9_cz_start = 0.0d0
          do 68 zone_idx = cz_base_zone_old,num_zones
-            log_rate_li6_cz_start = log_rate_li6_cz_start + rate_li6_start(zone_idx)*shell_mass(zone_idx)
-            log_rate_li7_cz_start = log_rate_li7_cz_start + rate_li7_start(zone_idx)*shell_mass(zone_idx)
-            log_rate_be9_cz_start = log_rate_be9_cz_start + rate_be9_start(zone_idx)*shell_mass(zone_idx)
+            log_rate_li6_cz_start = log_rate_li6_cz_start + light_burn%rate_li6_start(zone_idx)*shell_mass(zone_idx)
+            log_rate_li7_cz_start = log_rate_li7_cz_start + light_burn%rate_li7_start(zone_idx)*shell_mass(zone_idx)
+            log_rate_be9_cz_start = log_rate_be9_cz_start + light_burn%rate_be9_start(zone_idx)*shell_mass(zone_idx)
    68    continue
          log_rate_li6_cz_start = log(log_rate_li6_cz_start/cz_mass_start)
          log_rate_li7_cz_start = log(log_rate_li7_cz_start/cz_mass_start)
          log_rate_be9_cz_start = log(log_rate_be9_cz_start/cz_mass_start)
       else
 ! USE THE RATE FROM THE END OF THE PREVIOUS TIMESTEP.
-         log_rate_li6_cz_start = log_rate_li6_prev
-         log_rate_li7_cz_start = log_rate_li7_prev
-         log_rate_be9_cz_start = log_rate_be9_prev
+         log_rate_li6_cz_start = light_burn%log_rate_li6_prev
+         log_rate_li7_cz_start = light_burn%log_rate_li7_prev
+         log_rate_be9_cz_start = light_burn%log_rate_be9_prev
       endif
 ! USE THE LOCATION OF THE TRUE EDGE OF THE CONVECTION ZONE (FX, FOUND AT
 ! BEGINNING OF SR) TO ADJUST THE BURNING RATE AND MASS OF THE BOTTOM POINT
@@ -268,12 +247,12 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       if(cz_base_zone.gt.1.and.cz_base_zone.lt.num_zones)then
          shell_mass(cz_base_zone) = shell_mass(cz_base_zone)+cz_base_frac* &
               (mass_coordinate(cz_base_zone)-mass_coordinate(cz_base_zone-1))
-         rate_li6(cz_base_zone) = rate_li6(cz_base_zone)+0.5d0*cz_base_frac* &
-              (rate_li6(cz_base_zone-1)-rate_li6(cz_base_zone))
-         rate_li7(cz_base_zone) = rate_li7(cz_base_zone)+0.5d0*cz_base_frac* &
-              (rate_li7(cz_base_zone-1)-rate_li7(cz_base_zone))
-         rate_be9(cz_base_zone) = rate_be9(cz_base_zone)+0.5d0*cz_base_frac* &
-              (rate_be9(cz_base_zone-1)-rate_be9(cz_base_zone))
+         light_burn%rate_li6(cz_base_zone) = light_burn%rate_li6(cz_base_zone)+0.5d0*cz_base_frac* &
+              (light_burn%rate_li6(cz_base_zone-1)-light_burn%rate_li6(cz_base_zone))
+         light_burn%rate_li7(cz_base_zone) = light_burn%rate_li7(cz_base_zone)+0.5d0*cz_base_frac* &
+              (light_burn%rate_li7(cz_base_zone-1)-light_burn%rate_li7(cz_base_zone))
+         light_burn%rate_be9(cz_base_zone) = light_burn%rate_be9(cz_base_zone)+0.5d0*cz_base_frac* &
+              (light_burn%rate_be9(cz_base_zone-1)-light_burn%rate_be9(cz_base_zone))
       endif
 ! FIND RATES AT THE END OF THE TIMESTEP (USING THE DEPTH AT THE END).
 ! ALSO STORE INITIAL ABUNDANCES(FLI60,FLI70,FBE90).
@@ -286,9 +265,9 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       log_rate_li7_cz_end = 0.0d0
       log_rate_be9_cz_end = 0.0d0
       do 70 zone_idx = cz_base_zone,num_zones
-         log_rate_li6_cz_end = log_rate_li6_cz_end + rate_li6(zone_idx)*shell_mass(zone_idx)
-         log_rate_li7_cz_end = log_rate_li7_cz_end + rate_li7(zone_idx)*shell_mass(zone_idx)
-         log_rate_be9_cz_end = log_rate_be9_cz_end + rate_be9(zone_idx)*shell_mass(zone_idx)
+         log_rate_li6_cz_end = log_rate_li6_cz_end + light_burn%rate_li6(zone_idx)*shell_mass(zone_idx)
+         log_rate_li7_cz_end = log_rate_li7_cz_end + light_burn%rate_li7(zone_idx)*shell_mass(zone_idx)
+         log_rate_be9_cz_end = log_rate_be9_cz_end + light_burn%rate_be9(zone_idx)*shell_mass(zone_idx)
          li6_cz_end = li6_cz_end+composition(13,zone_idx)*shell_mass(zone_idx)
          li7_cz_end = li7_cz_end+composition(14,zone_idx)*shell_mass(zone_idx)
          be9_cz_end = be9_cz_end+composition(15,zone_idx)*shell_mass(zone_idx)
@@ -346,9 +325,9 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          composition(15,zone_idx) = be9_cz_end
       end do
 ! STORE ENDING RATE FOR USE AT THE BEGINNING OF THE NEXT STEP.
-      log_rate_li6_prev = log_rate_li6_cz_end
-      log_rate_li7_prev = log_rate_li7_cz_end
-      log_rate_be9_prev = log_rate_be9_cz_end
+      light_burn%log_rate_li6_prev = log_rate_li6_cz_end
+      light_burn%log_rate_li7_prev = log_rate_li7_cz_end
+      light_burn%log_rate_be9_prev = log_rate_be9_cz_end
 ! NOW SOLVE FOR ABUNDANCES IN THE REGION WHICH BEGAN CONVECTIVE AND
 ! ENDED RADIATIVE.
       if(cz_base_zone.le.cz_base_zone_old)goto 200
@@ -366,14 +345,14 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
-         if(rate_be9(zone_idx).le.1.0d-32)goto 200
+         if(light_burn%rate_be9(zone_idx).le.1.0d-32)goto 200
          radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
-         li6_depletion = timestep*exp(radiative_frac*log(rate_li6(zone_idx))+ &
+         li6_depletion = timestep*exp(radiative_frac*log(light_burn%rate_li6(zone_idx))+ &
               (1.0d0-radiative_frac)*log_rate_li6_cz_start)
-         li7_depletion = timestep*exp(radiative_frac*log(rate_li7(zone_idx))+ &
+         li7_depletion = timestep*exp(radiative_frac*log(light_burn%rate_li7(zone_idx))+ &
               (1.0d0-radiative_frac)*log_rate_li7_cz_start)
-         be9_depletion = timestep*exp(radiative_frac*log(rate_be9(zone_idx))+ &
+         be9_depletion = timestep*exp(radiative_frac*log(light_burn%rate_be9(zone_idx))+ &
               (1.0d0-radiative_frac)*log_rate_be9_cz_start)
 !***REMEMBER TO ADD FAILSAFES FOR LARGE DEPLETION***
          composition(13,zone_idx) = composition(13,zone_idx)/exp(li6_depletion)

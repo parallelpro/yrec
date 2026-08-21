@@ -46,6 +46,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed)
+      use light_burn_lib
       use turnover_lib
       use scrtch_lib
       use const_lib
@@ -103,13 +104,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       common/masschg2/ accretion_specific_entropy, envelope_specific_entropy, &
            updated_mass_msun, delta_log_temperature, delta_log_pressure
 
-! common/deuter/: only jcz (set here) is used. Naming matches
-! dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
 
@@ -190,10 +184,10 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 !         END DO
          write(*,*)turnover%convective_turnover_timescale/seconds_per_year, &
               total_radius_cm/solar_radius_cgs
-         jcz = envelope_boundary_zone
+         light_burn%jcz = envelope_boundary_zone
       else
          turnover%convective_turnover_timescale = 0.0d0
-         jcz = num_zones
+         light_burn%jcz = num_zones
       endif
 ! MHP 8/10
 ! THE RUNNING TOTAL OF THE MASS OF THE

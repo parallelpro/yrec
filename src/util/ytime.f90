@@ -19,6 +19,7 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
      rate_zero9, rate_c12_alpha, rate_n14_alpha, rate_triple_alpha, &
      rate_zero13, frac_c12_alpha, frac_be7_electron, h_shell_zone_begin)
 
+      use engeb_diag_lib
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -59,13 +60,6 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
       logical :: use_structure_dt_limits
       common/ct3/ use_structure_dt_limits
 
-! common/neweps/: alpha_capture_energy (EALPCA, meaning not confidently
-! known beyond "an alpha-capture-related energy term" -- read here but
-! never used) and neutrino_loss_rate (ENU, the standard stellar-physics
-! neutrino energy-loss term, copied into energy_gen_terms(6)). First
-! appearance of this common block in the converted sources.
-      double precision :: alpha_capture_energy, neutrino_loss_rate
-      common/neweps/alpha_capture_energy, neutrino_loss_rate
 
 ! common/flag/: use_extended_composition (originally LEXCOM) is used
 ! here. Naming matches mixcz.f90.
@@ -134,8 +128,8 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
          energy_gen_terms(3) = energy_gen_3
          energy_gen_terms(4) = energy_gen_4
          energy_gen_terms(5) = energy_gen_5
-         energy_gen_terms(6) = neutrino_loss_rate
-         dead_alpha_capture_energy = alpha_capture_energy
+         energy_gen_terms(6) = engeb_diag%neutrino_loss_rate
+         dead_alpha_capture_energy = engeb_diag%alpha_capture_energy
        if(energy_gen_terms(5).lt.1.d-22) energy_gen_terms(5) = 1.d-22
        helium_dt=1.0d15/energy_gen_terms(5)
       else

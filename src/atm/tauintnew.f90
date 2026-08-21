@@ -24,6 +24,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      num_interior_points, convective_velocity, radiative_gradient, &
      adiabatic_gradient, radius_at_bcz)
+      use light_burn_lib
       use turnover_lib
       use const_lib
       use numerics_lib
@@ -45,12 +46,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
            zenvm, amuenv, fxenv(12), xnew, znew, stotal, senv
       common/comp/envelope_hydrogen_fraction, envelope_metal_fraction, &
            zenvm, amuenv, fxenv, xnew, znew, stotal, senv
-! common/deuter/: not used in this file. Naming matches mix.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 ! common/const/: only solar_radius_cgs is used here. Naming matches
 ! wrtout.f90.
       double precision :: solar_luminosity_cgs, log10_solar_luminosity, &

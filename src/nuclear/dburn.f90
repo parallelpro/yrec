@@ -18,6 +18,7 @@
 subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep)
 
+      use light_burn_lib
       use oldmod_lib
       use const_lib
       implicit none
@@ -29,13 +30,6 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(in) :: timestep
 
 
-! common/deuter/: deuterium_burning_rate (start/end of timestep) and
-! accreted_mass_fraction are used here; jcz is not.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
 
@@ -59,8 +53,8 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          hydrogen_fraction = prev_model%old_composition(1,zone_begin)
          deuterium_fraction = prev_model%old_composition(12,zone_begin)
          helium3_fraction = prev_model%old_composition(4,zone_begin)
-         rate_start = deuterium_burning_rate_start(zone_begin)
-         rate_end = deuterium_burning_rate(zone_begin)
+         rate_start = light_burn%deuterium_burning_rate_start(zone_begin)
+         rate_end = light_burn%deuterium_burning_rate(zone_begin)
       else
          total_shell_mass = 0.0d0
          rate_start_sum = 0.0d0
@@ -71,9 +65,9 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          do zone_idx = zone_begin, zone_end
             total_shell_mass = total_shell_mass + shell_mass(zone_idx)
             rate_start_sum = rate_start_sum + &
-                 shell_mass(zone_idx)*deuterium_burning_rate_start(zone_idx)
+                 shell_mass(zone_idx)*light_burn%deuterium_burning_rate_start(zone_idx)
             rate_end_sum = rate_end_sum + &
-                 shell_mass(zone_idx)*deuterium_burning_rate(zone_idx)
+                 shell_mass(zone_idx)*light_burn%deuterium_burning_rate(zone_idx)
             hydrogen_fraction = hydrogen_fraction + &
                  prev_model%old_composition(1,zone_idx)*shell_mass(zone_idx)
             deuterium_fraction = deuterium_fraction + &
@@ -90,8 +84,8 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
       if (use_mass_accretion .and. zone_end.eq.num_zones .and. &
            mass_accretion_rate.gt.0.0d0) then
          deuterium_fraction_test = (deuterium_fraction*total_shell_mass + &
-              accreted_composition(12)*accreted_mass_fraction)/ &
-              (total_shell_mass + accreted_mass_fraction)
+              accreted_composition(12)*light_burn%accreted_mass_fraction)/ &
+              (total_shell_mass + light_burn%accreted_mass_fraction)
       else
          deuterium_fraction_test = deuterium_fraction
       end if
@@ -124,7 +118,7 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
 !     INCLUDE MASS ACCRETION FROM DEUTERIUM BURNING
       if (use_mass_accretion .and. zone_end.eq.num_zones) then
 !        ACCRETED MATTER IS EXPOSED TO BURNING FOR, ON
-!        AVERAGE. 1/2 OF THE TIMESTEP.  accreted_mass_fraction IS
+!        AVERAGE. 1/2 OF THE TIMESTEP.  light_burn%accreted_mass_fraction IS
 !        DEFINED AS DMDT*DT/ORIGINAL CZ MASS.
 !        BURN BOTH THE ACCRETED D AND THE ORIGINAL D
 !        SEPARATELY AND FIND THE NEW MASS-WEIGHTED
@@ -152,16 +146,16 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          deuterium_change_accreted = accreted_deuterium_burned - &
               accreted_composition(12)
          deuterium_fraction_new = (deuterium_fraction_burned*total_shell_mass &
-              + accreted_deuterium_burned*accreted_mass_fraction)/ &
-              (total_shell_mass + accreted_mass_fraction)
+              + accreted_deuterium_burned*light_burn%accreted_mass_fraction)/ &
+              (total_shell_mass + light_burn%accreted_mass_fraction)
          hydrogen_fraction_new = hydrogen_fraction + 0.5d0* &
               (deuterium_change_original*total_shell_mass + &
-              deuterium_change_accreted*accreted_mass_fraction)/ &
-              (total_shell_mass + accreted_mass_fraction)
+              deuterium_change_accreted*light_burn%accreted_mass_fraction)/ &
+              (total_shell_mass + light_burn%accreted_mass_fraction)
          helium3_fraction_new = helium3_fraction - 1.5d0* &
               (deuterium_change_original*total_shell_mass + &
-              deuterium_change_accreted*accreted_mass_fraction)/ &
-              (total_shell_mass + accreted_mass_fraction)
+              deuterium_change_accreted*light_burn%accreted_mass_fraction)/ &
+              (total_shell_mass + light_burn%accreted_mass_fraction)
       else
 !        INCREMENT H,D,HE3 WITHOUT MASS ACCRETION
          deuterium_change = deuterium_fraction_burned - deuterium_fraction

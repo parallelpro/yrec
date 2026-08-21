@@ -19,6 +19,7 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
      specific_angular_momentum)
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
+      use light_burn_lib
       use turnover_lib
       use const_lib
       implicit none
@@ -55,12 +56,6 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
            extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
 
-! common/deuter/: not used here. Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
 

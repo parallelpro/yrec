@@ -19,6 +19,7 @@
 subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep, deuterium_rate_end, deuterium_rate_start, &
      step_fraction)
+      use light_burn_lib
       use oldmod_lib
       use const_lib
       implicit none
@@ -34,14 +35,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
 
 
 
-! common/deuter/: only accreted_mass_fraction is used here (the
-! start/end burning rates come in as dummy arguments in this variant of
-! dburn). Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
 
@@ -126,7 +119,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
 ! INCLUDE MASS ACCRETION FROM DEUTERIUM BURNING
       if(use_mass_accretion .and. zone_end.eq.num_zones)then
 ! ACCRETED MATTER IS EXPOSED TO BURNING FOR, ON
-! AVERAGE. 1/2 OF THE TIMESTEP.  accreted_mass_fraction IS
+! AVERAGE. 1/2 OF THE TIMESTEP.  light_burn%accreted_mass_fraction IS
 ! DEFINED AS DMDT*DT/ORIGINAL CZ MASS.
 ! BURN BOTH THE ACCRETED D AND THE ORIGINAL D
 ! SEPARATELY AND FIND THE NEW MASS-WEIGHTED
@@ -153,7 +146,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
 ! HERE IS ONLY A PORTION OF THE TOTAL MODEL DT.
 ! DO ONLY THE SMALLER TIMESTEP PORTION OF THE
 ! TOTAL MASS ACCRETION.
-         accreted_mass_fraction_substep = step_fraction*accreted_mass_fraction
+         accreted_mass_fraction_substep = step_fraction*light_burn%accreted_mass_fraction
          deuterium_change_original = deuterium_fraction_burned - &
               deuterium_fraction
          deuterium_change_accreted = accreted_deuterium_burned - &

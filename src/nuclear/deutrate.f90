@@ -13,6 +13,7 @@
 ! convection zone, the rate is capped so that deuterium burning cannot
 ! proceed faster than the local convective overturn timescale.
 subroutine deutrate(dl,tl,x,i,itlvl)
+      use light_burn_lib
       use turnover_lib
       use const_lib
       implicit none
@@ -23,14 +24,6 @@ subroutine deutrate(dl,tl,x,i,itlvl)
 
 
 
-! common/deuter/: only deuterium_burning_rate (end-of-step) and
-! deuterium_burning_rate_start are set here; accreted_mass_fraction and
-! jcz are not used in this file. Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
       double precision :: c21
@@ -64,10 +57,10 @@ subroutine deutrate(dl,tl,x,i,itlvl)
       rdeut = rho*2.240d3*t9p23*exp(z)*tfacdeut*3.0115d23
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
-      if(i.ge.jcz .and. turnover%convective_turnover_timescale.gt.1.0d0)then
+      if(i.ge.light_burn%jcz .and. turnover%convective_turnover_timescale.gt.1.0d0)then
          rdeutmax = 3.0115d23/turnover%convective_turnover_timescale
          rdeut2 = rdeut*x
-         if(i.eq.jcz)then
+         if(i.eq.light_burn%jcz)then
 ! JVS 0712 Commented out write command
 !            WRITE(*,911)RDEUT2,RDEUTMAX,TAUCZ
 !  911        FORMAT(1P3E15.8)
@@ -80,9 +73,9 @@ subroutine deutrate(dl,tl,x,i,itlvl)
             endif
          endif
       endif
-      deuterium_burning_rate(i) = x*rdeut*c21
+      light_burn%deuterium_burning_rate(i) = x*rdeut*c21
       if(itlvl.eq.1)then
-         deuterium_burning_rate_start(i) = deuterium_burning_rate(i)
+         light_burn%deuterium_burning_rate_start(i) = light_burn%deuterium_burning_rate(i)
       endif
       return
 end subroutine deutrate

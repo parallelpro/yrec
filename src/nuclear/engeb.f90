@@ -161,6 +161,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      reaction_rate_13, n15_alpha_branch_fraction, &
      be7_electron_capture_fraction)
 
+      use engeb_diag_lib
+      use light_burn_lib
       use turnover_lib
       use luout_lib
       use const_lib
@@ -193,21 +195,12 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            n15_alpha_branch_fraction(json), &
            be7_electron_capture_fraction(json)
 
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
 
 
 
 
-! common/neweps/: alpha_capture_energy/neutrino_loss_rate, both set
-! here. Naming matches ytime.f90.
-      double precision :: alpha_capture_energy, neutrino_loss_rate
-      common/neweps/alpha_capture_energy, neutrino_loss_rate
 
 ! common/fluxes/: only neutrino_flux is used here. Naming matches
 ! wrtmonte.f90/wrtout.f90.
@@ -216,12 +209,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       common/fluxes/ neutrino_flux, neutrino_flux_total, cl37_snu_rate, &
            ga71_snu_rate
 
-! common/be7/: single-member block holding the Be7 mass fraction (not
-! needed for the neutrino fluxes since Be7 is always in equilibrium,
-! but of interest diagnostically). First appearance of this common
-! block in the converted sources.
-      double precision :: be7_mass_fraction
-      common/be7/be7_mass_fraction
 
 ! 9/06 GN --- New neutrino loss common block
 ! KC 2025-05-30 reordered common block elements
@@ -239,15 +226,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 
 
 
-! JVS 10/11 Common block for He3+He3 luminosity
-! common/grab/: he3_luminosity_placeholder/he3_total_placeholder are
-! actively SET here (despite the "placeholder" name, inherited from
-! wrtout.f90 where this block first appeared unused); the rate arrays
-! are not used in this file. Naming matches wrtout.f90.
-      double precision :: he3_luminosity_placeholder, he3_total_placeholder, &
-           he3_he3_rate_placeholder(json), he3_he4_rate_placeholder(json)
-      common/grab/ he3_luminosity_placeholder, he3_total_placeholder, &
-           he3_he3_rate_placeholder, he3_he4_rate_placeholder
 
       double precision :: mass_fraction(13), reaction_rate(13), &
            dlnrate_dlnrho(13), dlnrate_dlnt(13), screening_factor(13), &
@@ -513,8 +491,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 
 ! ZERO OUT THE ENERGY YIELDS FROM NEUTRINOS(ENU) AND ALPHA CAPTURE
 ! REACTIONS (EALPCA).
-      neutrino_loss_rate = 0.0d0
-      alpha_capture_energy = 0.0d0
+      engeb_diag%neutrino_loss_rate = 0.0d0
+      engeb_diag%alpha_capture_energy = 0.0d0
 ! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
 !  ISOTOPES.
 ! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
@@ -637,7 +615,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
         qrtdeut = cc13*((tfacdeut2/tfacdeut) -2.0d0 - zz)
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
-        if (shell_index.ge.jcz .and. turnover%convective_turnover_timescale.gt.1.0d0) then
+        if (shell_index.ge.light_burn%jcz .and. turnover%convective_turnover_timescale.gt.1.0d0) then
            rdeutmax = 6.023d23/atomic_mass_amu(3)/turnover%convective_turnover_timescale
            rdeut2 = rdeut*hydrogen_fraction
            if (rdeut2.gt.rdeutmax) then
@@ -1045,8 +1023,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       reaction_energy_gen(11)=eg(11)*5.815*convert
       reaction_energy_gen(12)=eg(12)*7.275*convert
 ! JVS 10/11 Need to grab He3 energy generation
-      he3_luminosity_placeholder = reaction_energy_gen(2)
-      he3_total_placeholder = reaction_energy_gen(2)+reaction_energy_gen(3)
+      engeb_diag%he3_luminosity_placeholder = reaction_energy_gen(2)
+      engeb_diag%he3_total_placeholder = reaction_energy_gen(2)+reaction_energy_gen(3)
 ! JVS end
 
 ! *******************************************************************
@@ -1174,7 +1152,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 
 
 ! ENERGY FROM ALPHA CAPTURE REACTIONS.
-      alpha_capture_energy=reaction_energy_gen(8)+reaction_energy_gen(10)+ &
+      engeb_diag%alpha_capture_energy=reaction_energy_gen(8)+reaction_energy_gen(10)+ &
            reaction_energy_gen(11)
       if (lsnu) then
 ! MHP 9/91 CHANGE TO TURN OFF NEUTRINO CALC FOR HYDROGEN-EXHAUSTED CORE.
@@ -1231,7 +1209,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  RATE OF HE3 + HE4.  HOWEVER, IT IS OF INTEREST IN SOME APPLICATIONS
 !  TO KNOW THE BE7 MASS FRACTION, SO I COMPUTE IT HERE AND IT CAN BE
 !  EXTRACTED WITH A COMMON STATEMENT IF DESIRED.
-         be7_mass_fraction = eg(3)/(be7proton + be7electron)
+         engeb_diag%be7_mass_fraction = eg(3)/(be7proton + be7electron)
 ! END OF NOVEMBER 6, 1990  ADDITION.
 ! FLUX OF BE7 NEUTRINOS.
          neutrino_flux(4) = eg(3)*f1/fourpiau2
@@ -1290,12 +1268,12 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
                neutrino_loss_snu,neutrino_dlnq_dlnt,neutrino_dlnq_dlnd)
 
 
-          neutrino_loss_rate = -neutrino_loss_snu
-          neutrino_dlnq_dlnt = -neutrino_dlnq_dlnt*neutrino_temp/neutrino_loss_rate
-          neutrino_dlnq_dlnd = -neutrino_dlnq_dlnd*neutrino_density/neutrino_loss_rate
+          engeb_diag%neutrino_loss_rate = -neutrino_loss_snu
+          neutrino_dlnq_dlnt = -neutrino_dlnq_dlnt*neutrino_temp/engeb_diag%neutrino_loss_rate
+          neutrino_dlnq_dlnd = -neutrino_dlnq_dlnd*neutrino_density/engeb_diag%neutrino_loss_rate
 
 
-          total_energy_gen_rate = total_energy_gen_rate + neutrino_loss_rate
+          total_energy_gen_rate = total_energy_gen_rate + engeb_diag%neutrino_loss_rate
 
 
           dlnepsilon_dlnrho = dlnepsilon_dlnrho + neutrino_dlnq_dlnd
@@ -1334,8 +1312,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          polx31 = v3(1) + ez*(v3(2) + ez*v3(3))
          polx32 = ez3 + eli*(v3(4) + eli*(v3(5) + eli*v3(6)))
          ex3 = emue**3*dexp(-ez*v3(7)+ln10*(dd+dd))*polx31/polx32
-         neutrino_loss_rate = -(ex1 + ex2 + ex3)
-         total_energy_gen_rate = total_energy_gen_rate + neutrino_loss_rate
+         engeb_diag%neutrino_loss_rate = -(ex1 + ex2 + ex3)
+         total_energy_gen_rate = total_energy_gen_rate + engeb_diag%neutrino_loss_rate
          qetnx = 0.0
          qednx = 0.0
          if (t9.ge.0.2) then

@@ -39,6 +39,7 @@
 subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end)
+      use light_burn_lib
       use turnover_lib
       use const_lib
       implicit none
@@ -73,12 +74,6 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
            extau, exr, exm, exl, expr, constfactor, structfactor, excen, &
            c_2, ljdot0
 
-! common/deuter/: not used here. Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
       save

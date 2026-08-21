@@ -150,6 +150,8 @@ program main
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
+      use engeb_diag_lib
+      use light_burn_lib
       use turnover_lib
       use oldmod_lib
       use luout_lib
@@ -251,15 +253,7 @@ program main
       common/difus/ dtdif, convergence_tolerance, itdif1, itdif2
 
 
-      double precision :: pressure_scale_height_start, &
-           pressure_scale_height_end
-      common/liov/ pressure_scale_height_start, pressure_scale_height_end
 
-      double precision :: cz_base_radius_prev, log_rate_li6_prev, &
-           log_rate_li7_prev, log_rate_be9_prev
-      integer :: envelope_cz_base_zone_prev
-      common/prevcz/ cz_base_radius_prev, log_rate_li6_prev, &
-           log_rate_li7_prev, log_rate_be9_prev, envelope_cz_base_zone_prev
 
 ! common/const/: several members used here (LMONTE block/RLL calc);
 ! others unused placeholders. Naming matches wrtout.f90/crrect.f90.
@@ -572,14 +566,6 @@ program main
            orig_composition(15,json)
       common/origstart/ orig_specific_angular_momentum, orig_composition
 
-! MHP 05/02 DEUTERIUM BURNING RATE ADDED
-! common/deuter/: only jcz used here; the rest unused placeholders.
-! Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 !***MHP 1/04 inserted for test
 ! common/optab/ is commented out in the original and is not declared.
@@ -590,9 +576,6 @@ program main
       logical :: use_structure_dt_limits
       common/ct3/ use_structure_dt_limits
 
-! MHP 2/04 ADDED FOR NEUTRINO FLUX TABLE
-      double precision :: be7_mass_fraction
-      common/be7/ be7_mass_fraction
 
 ! JVS 02/11
 ! KC 2025-05-30 reordered common block elements
@@ -627,13 +610,6 @@ program main
       integer :: nao
       data nao/1/
 
-! 10/11 He3+He3 luminosity info
-! common/grab/: not used in this file's logic; declared only to
-! preserve layout. Naming matches coefft.f90/wrtout.f90.
-      double precision :: he3_luminosity_placeholder, he3_total_placeholder, &
-           he3_he3_rate_placeholder(json), he3_he4_rate_placeholder(json)
-      common/grab/ he3_luminosity_placeholder, he3_total_placeholder, &
-           he3_he3_rate_placeholder, he3_he4_rate_placeholder
 
 ! JVS 08/13 IF THE CZ IS BEYOND THE FITTING POINT, STORE ITS LOCATION
 ! common/envcz/: not used in this file's logic; declared only to
@@ -961,7 +937,7 @@ program main
               reaction_rate_13,n15_alpha_branch_fraction, &
               be7_electron_capture_fraction)
 ! BE7 MASS FRACTION.
-         be7_mass_fraction_zone(i) = be7_mass_fraction
+         be7_mass_fraction_zone(i) = engeb_diag%be7_mass_fraction
 ! CONVERT FROM ERG/GM/S TO ERG/S FOR EACH SHELL BY MULTIPLYING
 ! BY THE MASS OF EACH SHELL IN GM (HS2).
          do j = 1,10
@@ -1007,7 +983,7 @@ program main
 ! save mass in solar units
          pulsation_mass_msun=total_mass_msun
 ! MHP 08/02 STORE STARTING CZ PROPERTIES
-         jcz = envelope_cz_bottom_index
+         light_burn%jcz = envelope_cz_bottom_index
          turnover%convective_turnover_timescale = 0.0D0
 ! write out headers of the appropriate output files
       call wrthead(total_mass_msun)
@@ -1060,9 +1036,9 @@ program main
 
 ! zero out light element burning rates in the surface CZ.
          if (use_extended_composition) then
-            log_rate_li6_prev = 0.0D0
-            log_rate_li7_prev = 0.0D0
-            log_rate_be9_prev = 0.0D0
+            light_burn%log_rate_li6_prev = 0.0D0
+            light_burn%log_rate_li7_prev = 0.0D0
+            light_burn%log_rate_be9_prev = 0.0D0
          endif
 
 ! for a given kind card, evolve NMODLS(NK) times
@@ -1231,7 +1207,7 @@ program main
                   specific_angular_momentum,kinetic_energy_rot,total_angular_momentum,total_rotational_ke, &
                   pressure_rotation_factor,temperature_rotation_factor,mean_gravity,qiw,log_teff)
 ! STORE NEW CZ BASE
-               jcz = envelope_cz_bottom_index
+               light_burn%jcz = envelope_cz_bottom_index
             else
 ! save old model for PTIME
                do i=1, num_zones
@@ -1256,13 +1232,13 @@ program main
 ! changed for lithium burning with overshoot.
 ! store starting depth of C.Z. for light element burning.
             if (use_extended_composition) then
-               cz_base_radius_prev = 0.0D0
+               light_burn%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = envelope_cz_bottom_index
                if (envelope_overshoot_active) then
-                  pressure_scale_height_start = alphae*exp(clndp*(log_pressure(envelope_cz_bottom_index)+2.0D0*log_radius(envelope_cz_bottom_index) &
+                  light_burn%pressure_scale_height_start = alphae*exp(clndp*(log_pressure(envelope_cz_bottom_index)+2.0D0*log_radius(envelope_cz_bottom_index) &
                            -log_density(envelope_cz_bottom_index)-cgl-log_mass(envelope_cz_bottom_index)))
                else
-                  pressure_scale_height_start = 0.0D0
+                  light_burn%pressure_scale_height_start = 0.0D0
                endif
 ! find burning rates at the beginning of the time step.
                call lirate88(composition,log_density,log_temperature,num_zones,1)
@@ -1476,10 +1452,10 @@ program main
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = envelope_cz_bottom_index
                if (envelope_overshoot_active) then
-                  pressure_scale_height_end = alphae*exp(clndp*(log_pressure(envelope_cz_bottom_index)+2.0D0*log_radius(envelope_cz_bottom_index) &
+                  light_burn%pressure_scale_height_end = alphae*exp(clndp*(log_pressure(envelope_cz_bottom_index)+2.0D0*log_radius(envelope_cz_bottom_index) &
                            -log_density(envelope_cz_bottom_index)-cgl-log_mass(envelope_cz_bottom_index)))
                else
-                  pressure_scale_height_end = 0.0D0
+                  light_burn%pressure_scale_height_end = 0.0D0
                endif
 ! FIND BURNING RATES AT THE END OF THE TIME STEP.
                call lirate88(composition,log_density,log_temperature,num_zones,2)

@@ -34,6 +34,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
      num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
      mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff)
 
+      use light_burn_lib
       use oldmod_lib
       use luout_lib
       use const_lib
@@ -82,15 +83,6 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 
 
 
-! MHP 05/02 DEUTERIUM BURNING RATE ADDED
-! common/deuter/: only deuterium_burning_rate is used here (set by the
-! deutrate/rates calls below, then read by dburn). Naming matches
-! dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 
 ! common/flag/: use_extended_composition (originally LEXCOM). Naming
@@ -279,7 +271,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
             call deutrate(log_density_zone, log_temperature_zone, &
                  hydrogen_fraction, zone_idx, iteration_level)
          else
-            deuterium_burning_rate(zone_idx) = 0.0d0
+            light_burn%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
    10 continue
       zone_idx = num_zones + 1
@@ -301,7 +293,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
          frac_c12_alpha(clear_idx) = 0.0d0
          frac_be7_electron(clear_idx) = 0.0d0
 ! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
-         deuterium_burning_rate(clear_idx) = 0.0d0
+         light_burn%deuterium_burning_rate(clear_idx) = 0.0d0
    21 continue
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE

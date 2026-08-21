@@ -62,6 +62,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
      num_eq_points, wind_loss_explicit, wind_loss_implicit, &
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged)
+      use light_burn_lib
       use turnover_lib
       implicit none
       integer, parameter :: json = 5000, nmax = 8000
@@ -79,13 +80,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       logical, intent(in) :: fix_omega_at_surface
       logical, intent(out) :: diffusion_converged
 
-! MHP 3/09 ADDED OPTION TO SCALE THE SATURATION RATE BY THE OVERTURN TIMESCALE
-! common/deuter/: not used in this file. Naming matches dburn.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/ deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
 
 ! DIFFUSION COEFFICIENTS FOR THE TERMS INVOLVING D/DR (OMEGA)
 ! (ECOD3) AND D/DR (D OMEGA/DR) (ECOD4).

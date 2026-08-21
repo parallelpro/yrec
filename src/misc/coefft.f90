@@ -50,6 +50,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff)
 
+      use engeb_diag_lib
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -133,10 +134,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
            cl37_snu_rate, ga71_snu_rate
       common/fluxes/neutrino_flux,neutrino_flux_total,cl37_snu_rate, &
            ga71_snu_rate
-! MHP 5/91 ADD COMMON BLOCK FOR ENERGY FROM ALPHA CAPTURE REACTIONS
-!  AND LOSSES FROM NEUTRINO-COOLED CORES IN EVOVLED STARS.
-      double precision :: alpha_capture_energy, neutrino_loss_rate
-      common/neweps/alpha_capture_energy,neutrino_loss_rate
 ! DBG 7/92 COMMON BLOCK ADDED TO COMPUTE DEBYE-HUCKEL CORRECTION.
       double precision :: cdh, etadh0, etadh1, zdh(18), xxdy, yydh, zzdh, &
            dhnue(18)
@@ -165,17 +162,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       common/masschg2/accretion_specific_entropy,envelope_specific_entropy, &
            updated_mass_msun,delta_log_pressure,delta_log_temperature
 
-! JVS 10/11 Common block for He3+He3 luminosity
-! common/grab/: he3_luminosity_placeholder/he3_total_placeholder are
-! read here (set by engeb.f90, which shares this block); the rate
-! arrays he3_he3_rate_placeholder/he3_he4_rate_placeholder ARE
-! actively written here (per-zone He3+He3 / He3+He4 luminosity),
-! despite the "placeholder" name inherited from wrtout.f90 where this
-! block first appeared entirely unused. Naming matches wrtout.f90.
-      double precision :: he3_luminosity_placeholder, he3_total_placeholder, &
-           he3_he3_rate_placeholder(json), he3_he4_rate_placeholder(json)
-      common/grab/he3_luminosity_placeholder,he3_total_placeholder, &
-           he3_he3_rate_placeholder,he3_he4_rate_placeholder
 ! JVS end
 
 ! --- locals ---
@@ -410,8 +396,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             energy_gen_component(3) = he3he4_be7_proton_gen
             energy_gen_component(4) = cno_gen
             energy_gen_component(5) = triple_alpha_gen
-            energy_gen_component(6) = neutrino_loss_rate
-            alpha_capture_energy_zone = alpha_capture_energy
+            energy_gen_component(6) = engeb_diag%neutrino_loss_rate
+            alpha_capture_energy_zone = engeb_diag%alpha_capture_energy
 ! 7/91 MHP
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
@@ -430,10 +416,10 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                     energy_gen_component(j)
  20         continue
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
-            he3_he3_rate_placeholder(im) = (shell_mass(im)/ &
-                 solar_luminosity_cgs)*he3_luminosity_placeholder
-            he3_he4_rate_placeholder(im) = (shell_mass(im)/ &
-                 solar_luminosity_cgs)*he3_total_placeholder
+            engeb_diag%he3_he3_rate_placeholder(im) = (shell_mass(im)/ &
+                 solar_luminosity_cgs)*engeb_diag%he3_luminosity_placeholder
+            engeb_diag%he3_he4_rate_placeholder(im) = (shell_mass(im)/ &
+                 solar_luminosity_cgs)*engeb_diag%he3_total_placeholder
 ! JVS end
             luminosity_terms(8)=luminosity_terms(8)+(shell_mass(im)/ &
                  solar_luminosity_cgs)*alpha_capture_energy_zone

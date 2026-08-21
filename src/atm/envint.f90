@@ -27,6 +27,7 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
      pulse_print_flag)
 
+      use light_burn_lib
       use turnover_lib
       use luout_lib
       use const_lib
@@ -268,14 +269,6 @@ subroutine envint(luminosity_linear, pressure_rotation_factor, &
       double precision :: convection_zone_radius_placeholder, rint_placeholder
       common/envcz/convection_zone_radius_placeholder, rint_placeholder
 
-! MHP 08/02 ADDED VECTOR FOR STORING THE OVERTURN TIMESCALE OF THE
-! SURFACE CONVECTION ZONE
-! common/deuter/: not used in this file. Naming matches mix.f90.
-      double precision :: deuterium_burning_rate(json), &
-           deuterium_burning_rate_start(json), accreted_mass_fraction
-      integer :: jcz
-      common/deuter/deuterium_burning_rate, deuterium_burning_rate_start, &
-           accreted_mass_fraction, jcz
       double precision :: ion_fraction(3)
       double precision :: taucal_delta_mass(json), taucal_shell_mass(json), &
            taucal_local_gravity(json), taucal_radiative_gradient(json), &
