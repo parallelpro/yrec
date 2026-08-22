@@ -15,11 +15,12 @@ module atm_table_lib
       integer, parameter :: atm_table_nta = 250, atm_table_nga = 25
 
       type, public :: atm_table_state
-! former common/ccr/: the degenerate-electron (Fermi-Dirac) EOS table
-! used by eos/yale/eqrelv.f90, loaded once at startup by setup/setups.f90.
-           double precision :: fermi_table_x_grid(43), fermi_table_eta(43), &
-                fermi_table_data(5,43,20)
-           integer :: fermi_table_x_lookup(261)
+! (former common/ccr/ -- the degenerate-electron Fermi-Dirac EOS
+! table, fermi_table_* -- lived here through phases one and two
+! purely as an accident of the original COMMON grouping; relocated
+! to yale_eos_lib in 2026, ROADMAP.md stage 1, alongside moving its
+! load from an inline setup/setups.f90 block into eos_lib's
+! eos_init. Consumed only by eos/yale/eqrelv.f90.)
 ! former common/fac/: lower-edge-of-table-in-log-g indices for the
 ! Kurucz (atm_table_nt) and Kurucz/Castelli (atm_table_ntc) surface-
 ! pressure tables.

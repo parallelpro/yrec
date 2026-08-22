@@ -126,31 +126,75 @@ end subroutine eos_get
 !----------------------------------------------------------------------
 ! Added 2026 (phase three, ROADMAP.md stage 1): the eos domain's
 ! startup-time table-load lifecycle entry, following MESA's
-! <mod>_init convention. Currently covers the MHD EOS tables (the
-! only eos tables loaded from named files at startup; the OPAL
-! 1995/2001/2006 EOS tables are lazily read on first use inside
-! esac/esac01/esac06 via their lreadco guards). The use_mhd_eos gate
-! previously lived at the call site (setup/setups.f90) -- moved
-! inside so the caller needs no knowledge of which eos configuration
-! requires which tables. Behavior is identical: when use_mhd_eos is
-! false this is a no-op, exactly as the gated call was.
-subroutine eos_init(zams_a_table_path, zams_b_table_path, &
-     zams_c_table_path, centre1_table_path, centre2_table_path, &
-     centre3_table_path, centre4_table_path, centre5_table_path)
+! <mod>_init convention. Covers the eos tables loaded from named
+! files at startup: the MHD EOS tables (gated on use_mhd_eos, moved
+! inside from the call site so the caller needs no knowledge of
+! which eos configuration requires which tables -- a no-op when MHD
+! is off, exactly as the gated call was) and the Yale EOS's
+! Fermi-Dirac degenerate-electron table (read unconditionally, into
+! yale_eos_lib; this block previously lived inline in
+! setup/setups.f90, writing into atm_table_lib -- moved here
+! verbatim, including its bin-construction loop, its glitch check,
+! and that check's `stop`, which ROADMAP.md stage 3 will convert to
+! ierr). The OPAL 1995/2001/2006 EOS tables are not loaded here:
+! they are lazily read on first use inside esac/esac01/esac06 via
+! their lreadco guards.
+subroutine eos_init(fermi_table_path, zams_a_table_path, &
+     zams_b_table_path, zams_c_table_path, centre1_table_path, &
+     centre2_table_path, centre3_table_path, centre4_table_path, &
+     centre5_table_path)
 
+      use yale_eos_lib
+      use luout_lib
       use const_lib
       implicit none
 
+      character(len=256), intent(in) :: fermi_table_path
       character(len=256), intent(in) :: zams_a_table_path, &
            zams_b_table_path, zams_c_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
            centre5_table_path
+
+      integer :: grid_idx, iden_idx, col_idx, card_idx
+      integer :: bin_start, bin_width, bin_end
 
       if (use_mhd_eos) then
          call mhdtbl(zams_a_table_path, zams_b_table_path, &
               zams_c_table_path, centre1_table_path, centre2_table_path, &
               centre3_table_path, centre4_table_path, centre5_table_path)
       end if
+
+!  INPUT F-TABLES FOR DEGENERATE EQUATION OF STATE
+!  OPEN DATA FILES
+      open(unit=fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
+      read(fermi_unit,150)  (yale_eos%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,150)  (yale_eos%fermi_table_eta(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,160) (grid_idx,iden_idx,(yale_eos%fermi_table_data(col_idx,grid_idx,iden_idx), &
+           col_idx=1,5),card_idx=1,860)
+  150 format(8x,9f8.4)
+  160 format(2i5,5f12.7)
+      rewind fermi_unit
+      bin_start = 1
+      do 180 grid_idx=1,41
+! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
+       if (yale_eos%fermi_table_x_grid(grid_idx+1).le.yale_eos%fermi_table_x_grid(grid_idx)) then
+!       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
+          write(short_file_unit,1000) grid_idx
+ 1000       format(1x,39('>'),40('<')/1x,'ERROR IN SUBROUTINE SETUPS'/ &
+           1x,'GLITCH IN FERMI TABLE ELEMENT',i4/1x,'RUN STOPPED')
+          stop
+       endif
+       bin_width = int((yale_eos%fermi_table_x_grid(grid_idx+1) - yale_eos%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
+       bin_end = bin_start + bin_width - 1
+       if (grid_idx.eq.41)  bin_end = 261
+       do 170 iden_idx=bin_start,bin_end
+          yale_eos%fermi_table_x_lookup(iden_idx) = grid_idx
+  170    continue
+       bin_start = bin_end + 1
+  180 continue
+
+!  CLOSE EQUATION OF STATE FILE.
+      close(fermi_unit)
 
       return
 end subroutine eos_init

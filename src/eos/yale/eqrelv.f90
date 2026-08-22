@@ -31,7 +31,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
      adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp)
 
-      use atm_table_lib
+      use yale_eos_lib
       use const_lib
       use luout_lib
       implicit none
@@ -117,34 +117,34 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
 ! BEGIN ITERATION LOOP FOR CORRECT DENSITY
 !  FIND INDEX (ID1,ID2,ID3) FOR 3-PT INTERPOLATION IN X
       xx = dml - 1.50d0*tl8
-      pr6= 20.0d0*(xx - atm_table%fermi_table_x_grid(1)) + 1.0d0
+      pr6= 20.0d0*(xx - yale_eos%fermi_table_x_grid(1)) + 1.0d0
 ! MHP 10/02 CORRECTED MIXED TYPE
       kk = int(pr6)
 !      KK = PR6
       kk = min0(261,max0(1,kk))
-      id1 = atm_table%fermi_table_x_lookup(kk)
+      id1 = yale_eos%fermi_table_x_lookup(kk)
 !  IF INDEX UNCHANGED FROM PREVIOUS LOOP,SKIP THIS SECTION
       if (id1.eq.id1p)  go to 30
       id1p = id1
       id2 = id1 + 1
       id3 = id1 + 2
-      pr9 = 1.0d0/( atm_table%fermi_table_x_grid(id3) - atm_table%fermi_table_x_grid(id2) )
-      pr8 = 1.0d0/( atm_table%fermi_table_x_grid(id2) - atm_table%fermi_table_x_grid(id1) )
-      pr7 = 1.0d0/( atm_table%fermi_table_x_grid(id1) - atm_table%fermi_table_x_grid(id3) )
+      pr9 = 1.0d0/( yale_eos%fermi_table_x_grid(id3) - yale_eos%fermi_table_x_grid(id2) )
+      pr8 = 1.0d0/( yale_eos%fermi_table_x_grid(id2) - yale_eos%fermi_table_x_grid(id1) )
+      pr7 = 1.0d0/( yale_eos%fermi_table_x_grid(id1) - yale_eos%fermi_table_x_grid(id3) )
       cden1 = -pr7*pr8
       cden2 = -pr8*pr9
       cden3 = -pr9*pr7
 !  INTERPOLATION IN Y IS NEWTONIAN(EQUAL SPACING IN Y)
       do 20 nn = 1,3
        id = id1 + nn - 1
-       df1(1,nn) = atm_table%fermi_table_data(1,id,jt2) - atm_table%fermi_table_data(1,id,jt1)
-       df2(1,nn) = atm_table%fermi_table_data(1,id,jt3)-atm_table%fermi_table_data(1,id,jt2)-df1(1,nn)
-       ff(1,nn) = atm_table%fermi_table_data(1,id,jt1) + ttud*df1(1,nn) + ttcu*df2(1,nn)
+       df1(1,nn) = yale_eos%fermi_table_data(1,id,jt2) - yale_eos%fermi_table_data(1,id,jt1)
+       df2(1,nn) = yale_eos%fermi_table_data(1,id,jt3)-yale_eos%fermi_table_data(1,id,jt2)-df1(1,nn)
+       ff(1,nn) = yale_eos%fermi_table_data(1,id,jt1) + ttud*df1(1,nn) + ttcu*df2(1,nn)
    20 continue
       dpel2 = 2.0d0*(ff(1,1)*cden1 + ff(1,2)*cden2 + ff(1,3)*cden3)
-   30 dx1 = xx - atm_table%fermi_table_x_grid(id1)
-      dx2 = xx - atm_table%fermi_table_x_grid(id2)
-      dx3 = xx - atm_table%fermi_table_x_grid(id3)
+   30 dx1 = xx - yale_eos%fermi_table_x_grid(id1)
+      dx2 = xx - yale_eos%fermi_table_x_grid(id2)
+      dx3 = xx - yale_eos%fermi_table_x_grid(id3)
 !  INTERPOLATION IN X IS LAGRANGIAN(UNEQUAL TABLE SPACING IN X)
       cl1 = dx2*dx3*cden1
       cl2 = dx3*dx1*cden2
@@ -153,8 +153,8 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       dcl2 = (dx3 + dx1)*cden2
       dcl3 = (dx1 + dx2)*cden3
       if (use_debye_huckel_correction) then
-         electron_degeneracy_parameter = cl1*atm_table%fermi_table_eta(id1) + &
-              cl2*atm_table%fermi_table_eta(id2) + cl3*atm_table%fermi_table_eta(id3)
+         electron_degeneracy_parameter = cl1*yale_eos%fermi_table_eta(id1) + &
+              cl2*yale_eos%fermi_table_eta(id2) + cl3*yale_eos%fermi_table_eta(id3)
          if (electron_degeneracy_parameter .lt. debye_huckel_eta_min) then
             cmfdh = cmfdh0*sqrt(cmfdh0)
          else if (electron_degeneracy_parameter .gt. debye_huckel_eta_max) then
@@ -220,9 +220,9 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       do 60 kk = 2,5
        do 50 nn = 1,3
           id = id1 + nn - 1
-          df1(kk,nn) = atm_table%fermi_table_data(kk,id,jt2) - atm_table%fermi_table_data(kk,id,jt1)
-          df2(kk,nn)=(atm_table%fermi_table_data(kk,id,jt3)-atm_table%fermi_table_data(kk,id,jt2))-df1(kk,nn)
-          ff(kk,nn)=atm_table%fermi_table_data(kk,id,jt1)+ttud*df1(kk,nn)+ttcu*df2(kk,nn)
+          df1(kk,nn) = yale_eos%fermi_table_data(kk,id,jt2) - yale_eos%fermi_table_data(kk,id,jt1)
+          df2(kk,nn)=(yale_eos%fermi_table_data(kk,id,jt3)-yale_eos%fermi_table_data(kk,id,jt2))-df1(kk,nn)
+          ff(kk,nn)=yale_eos%fermi_table_data(kk,id,jt1)+ttud*df1(kk,nn)+ttcu*df2(kk,nn)
    50    continue
        ffe(kk) = cl1*ff(kk,1) + cl2*ff(kk,2) + cl3*ff(kk,3)
    60 continue
@@ -322,8 +322,8 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       adiabatic_gradient = pr1*qcpi
       adiabatic_gradient_dt = pr3 - specific_heat_cp_dt
       adiabatic_gradient_dp = pr4 - specific_heat_cp_dp
-      electron_degeneracy_parameter = cl1*atm_table%fermi_table_eta(id1) + &
-           cl2*atm_table%fermi_table_eta(id2) + cl3*atm_table%fermi_table_eta(id3)
+      electron_degeneracy_parameter = cl1*yale_eos%fermi_table_eta(id1) + &
+           cl2*yale_eos%fermi_table_eta(id2) + cl3*yale_eos%fermi_table_eta(id3)
 
       return
 end subroutine eqrelv

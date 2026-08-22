@@ -83,7 +83,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
            planck_constant, hydrogen_atom_mass, electron_charge_esu
       double precision :: hra
       external hra
-      integer :: grid_idx, iden_idx, bin_width, bin_start, bin_end, card_idx
       integer :: teff_idx, logg_idx
       logical :: found_valid_pressure
       double precision :: scvhe_dummy_val, scvz_dummy_val
@@ -184,157 +183,25 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! character strings in common blocks can cause problems
 ! 2026 (ROADMAP.md stage 1): the use_mhd_eos gate moved inside
 ! eos_lib's eos_init; a no-op when MHD is off, exactly as before.
-      call eos_init(zams_a_table_path,zams_b_table_path, &
+! eos_init also reads the Fermi-Dirac degenerate-electron table
+! (the F-tables block that used to sit inline just below).
+      call eos_init(fermi_table_path,zams_a_table_path,zams_b_table_path, &
            zams_c_table_path,centre1_table_path,centre2_table_path, &
            centre3_table_path,centre4_table_path,centre5_table_path)
 !
 !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! INPUT F-TABLES FOR DEGENERATE EQUATION OF STATE
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!  OPEN DATA FILES
-      open(unit=fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
-      read(fermi_unit,150)  (atm_table%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,150)  (atm_table%fermi_table_eta(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,160) (grid_idx,iden_idx,(atm_table%fermi_table_data(col_idx,grid_idx,iden_idx), &
-           col_idx=1,5),card_idx=1,860)
-  150 format(8x,9f8.4)
-  160 format(2i5,5f12.7)
-      rewind fermi_unit
-      bin_start = 1
-      do 180 grid_idx=1,41
-! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
-       if (atm_table%fermi_table_x_grid(grid_idx+1).le.atm_table%fermi_table_x_grid(grid_idx)) then
-!       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
-          write(short_file_unit,1000) grid_idx
- 1000       format(1x,39('>'),40('<')/1x,'ERROR IN SUBROUTINE SETUPS'/ &
-           1x,'GLITCH IN FERMI TABLE ELEMENT',i4/1x,'RUN STOPPED')
-          stop
-       endif
-       bin_width = int((atm_table%fermi_table_x_grid(grid_idx+1) - atm_table%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
-       bin_end = bin_start + bin_width - 1
-       if (grid_idx.eq.41)  bin_end = 261
-       do 170 iden_idx=bin_start,bin_end
-          atm_table%fermi_table_x_lookup(iden_idx) = grid_idx
-  170    continue
-       bin_start = bin_end + 1
-  180 continue
-
-!  CLOSE EQUATION OF STATE FILE.
-      close(fermi_unit)
+! (The F-tables read for the degenerate equation of state that lived
+! here moved into eos_lib's eos_init above -- 2026, ROADMAP.md
+! stage 1 -- along with its state's relocation from atm_table_lib to
+! yale_eos_lib.)
 ! JMH 8/18/91
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! INPUT PRESSURE TABLE FOR SURFACE BOUNDARY CONDITIONS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if ((atm_choice .eq. 3) .or. (atm_choice .eq. 4)) then
-! OPEN SURFACE PRESSURE TABLE
-        open(atm_table_file_unit,file=atm_table_path, status='OLD')
-! GET ABUNDANCE:
-        read(atm_table_file_unit,200) kurucz_table_z
-  200   format(1x,10x,1pe16.8,/)
-! GET VALUES OF LOG Teff:
-        read(atm_table_file_unit,201) (kurucz_teff_table(teff_idx),teff_idx=1,nt)
-  201   format(1p4e16.8,13(/1p4e16.8),/1pe16.8,/)
-! GET VALUES OF LOG G:
-        read(atm_table_file_unit,202) (kurucz_logg_table(logg_idx),logg_idx=1,ng)
-  202   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
-! GET GRID OF LOG PRESSURE VALUES:
-        do 205 teff_idx=1,nt
-          read(atm_table_file_unit,203) (kurucz_log10_pressure_table(teff_idx,logg_idx),logg_idx=1,ng)
-  203     format(1p4e16.8,/1p4e16.8,/1p3e16.8)
-  205   continue
-        rewind atm_table_file_unit
-        close(atm_table_file_unit)
-!       G Somers 5/15; added a catch that allows the code to work
-!                      if the highest gravity P value for a specific
-!                      temperature is -999. LCATCH is set to true
-!                      once the first valid P is read, and it can
-!                      set the minimum P thereafter.
-         do teff_idx = 1,nt
-            found_valid_pressure = .false.
-            do logg_idx = ng,1,-1
-               if(kurucz_log10_pressure_table(teff_idx,logg_idx).le.0.0d0)then
-!                 check if the first non-999 value has been reached.
-!                 if so, set IMIN.
-                  if(found_valid_pressure)then
-                     atm_table%kurucz_gmin_index(teff_idx) = logg_idx + 1
-                     goto 5
-                  endif
-               else
-!                 if we have reached a non-negative pressure value,
-!                 turn off the catch so IMIN can be set. also record
-!                 the highest gravity with a pressure for later int.
-                  if(.not.found_valid_pressure) atm_table%kurucz_gmax_index(teff_idx) = logg_idx
-                  found_valid_pressure = .true.
-               endif
-            end do
-            atm_table%kurucz_gmin_index(teff_idx) = 1
-    5       continue
-!           if all of the P values at a given T are -999, set IMIN
-!           to the number of gravity terms. in responce, the code
-!           should break when trying to find surface P.
-            if(.not.found_valid_pressure) atm_table%kurucz_gmin_index(teff_idx) = ng
-         end do
-!        G Somers 5/15 END
-! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES; USED INSTEAD OF
-! KURUCZ FOR TEFF < 10,000 K.
-!            ATMZA = 0.02D0
-! 2026 (ROADMAP.md stage 1): the atm_choice.eq.4 gate moved inside
-! atm_lib's atm_init; a no-op for other atmosphere options, exactly
-! as the gated alfilein call was. 9/23/08 LLP
-          call atm_init(allard_table_path)
-
-
-! JNT 6/14 ADD OPTION FOR NEW KURUCZ/CASTELLI ATMOSHPERES
-      else if (atm_choice .eq. 5) then
-! OPEN SURFACE PRESSURE TABLE
-        open(atm_table_file_unit,file=atm_table_path, status='OLD')
-! GET ABUNDANCE:
-        read(atm_table_file_unit,200) kurucz_table_z
-! GET VALUES OF LOG Teff:
-        read(atm_table_file_unit,206) (kurucz_castelli_teff_table(teff_idx),teff_idx=1,ntc)
-  206   format(1p4e16.8,18(/1p4e16.8),/)
-! GET VALUES OF LOG G:
-        read(atm_table_file_unit,208) (kurucz_castelli_logg_table(logg_idx),logg_idx=1,ngc)
-  208   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
-! GET GRID OF LOG PRESSURE VALUES:
-        do 207 teff_idx=1,ntc
-          read(atm_table_file_unit,203) (kurucz_castelli_log10_pressure_table(teff_idx,logg_idx),logg_idx=1,ngc)
-  207   continue
-        rewind atm_table_file_unit
-        close(atm_table_file_unit)
-!       G Somers 5/15; added a catch that allows the code to work
-!                      if the highest gravity P value for a specific
-!                      temperature is -999. LCATCH is set to true
-!                      once the first valid P is read, and it can
-!                      set the minimum P thereafter.
-        do teff_idx = 1,ntc
-           found_valid_pressure = .false.
-           do logg_idx = ngc,1,-1
-              if(kurucz_castelli_log10_pressure_table(teff_idx,logg_idx).le.0.0d0)then
-!                check if the first non-999 value has been reached.
-!                if so, set IMIN2.
-                 if(found_valid_pressure)then
-                    atm_table%castelli_gmin_index(teff_idx) = logg_idx + 1
-                    goto 6
-                 endif
-              else
-!                if we have reached a non-negative pressure value,
-!                turn off the catch so IMIN2 can be set. also record
-!                the highest gravity with a pressure for later int.
-                 if(.not.found_valid_pressure) atm_table%castelli_gmax_index(teff_idx) = logg_idx
-                 found_valid_pressure = .true.
-              endif
-           end do
-           atm_table%castelli_gmin_index(teff_idx) = 1
-    6      continue
-!          if all of the P values at a given T are -999, set IMIN
-!          to the number of gravity terms. in responce, the code
-!          should break when trying to find surface P.
-           if(.not.found_valid_pressure) atm_table%castelli_gmin_index(teff_idx) = ng
-        end do
-! END JNT 6/14
-      endif
+! 2026 (ROADMAP.md stage 1): the Kurucz (atm_choice 3/4), Allard
+! (atm_choice 4), and Kurucz/Castelli (atm_choice 5) surface table
+! loads that lived inline here moved into atm_lib's atm_init.
+      call atm_init(atm_table_path,allard_table_path)
 
 ! MHP 5/97 ADDED OPTION FOR NEW SCV EQUATION OF STATE TABLES.
       if(use_scv_eos)then
