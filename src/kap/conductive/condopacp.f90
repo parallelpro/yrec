@@ -286,37 +286,46 @@ subroutine hunt(table,n,target_value,index)
       ascending=table(n).gt.table(1) ! true if ascending order, false otherwise
       if (index.le.0.or.index.gt.n) then ! Input guess not useful.
          index=0
-         index_hi=n+1
-         goto 3 ! go immediately to bisection
-      endif
+         index_hi=n+1  ! go immediately to bisection
+      else
       increment=1 ! set the hunting increment
       if (target_value.ge.table(index).eqv.ascending) then ! Hunt up:
-    1     index_hi=index+increment
+        do
+          index_hi=index+increment
         if (index_hi.gt.n) then ! Done hunting, since off end of table
            index_hi=n+1
+           exit
         elseif (target_value.ge.table(index_hi).eqv.ascending) then ! Not done hunting
            index=index_hi
            increment=increment+increment
-           goto 1
+        else
+           exit
         endif
+        end do
       else ! Hunt down:
          index_hi=index
-    2    index=index_hi-increment
+         do
+          index=index_hi-increment
         if (index.lt.1) then ! Done hunting, since off end of table
            index=0
+           exit
         elseif (target_value.lt.table(index).eqv.ascending) then ! Not done hunting
            index_hi=index
            increment=increment+increment ! so double the increment
-           goto 2      ! and try again
+        else
+           exit
         endif ! Done hunting, value bracketed
+         end do
+      endif
       endif
 !   Hunt is done, so begin the final bisection phase:
-    3 if (index_hi-index.eq.1) return
+      do
+      if (index_hi-index.eq.1) return
       index_mid=(index_hi+index)/2
       if (target_value.ge.table(index_mid).eqv.ascending) then
          index=index_mid
       else
          index_hi=index_mid
       endif
-      goto 3
+      end do
 end subroutine hunt

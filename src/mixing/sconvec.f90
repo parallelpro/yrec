@@ -272,7 +272,10 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                     ion_mean_weight_inverse+electron_mean_weight_inverse))* &
                     radius_diff
                radius_prev = radius_curr
-               if (radius_sum.gt.max_overshoot_radius) goto 33
+               if (radius_sum.gt.max_overshoot_radius) then
+                  reached_max_extent = .true.
+                  exit
+               end if
 ! TEST ON RESCALED RAD. GRADIENT FOR CONVECTION
                log_luminosity_zone = log_luminosity(search_zone_idx)
                log_mass_zone = log_mass(search_zone_idx)
@@ -315,13 +318,16 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                if (ierr /= 0) return
                log_density(search_zone_idx) = log_density_zone
 ! EXIT IF ZONE IS RADIATIVELY STABLE.
-               if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) goto 34
+               if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) exit
    32       continue
             end do
-            if (edge_side.eq.1) search_zone_idx = 0
-            if (edge_side.eq.2) search_zone_idx = num_zones + 1
-   33       reached_max_extent = .true.
-   34       continue
+! (Natural loop completion already leaves search_zone_idx at 0 for a
+! downward scan and num_zones+1 for an upward one -- the old explicit
+! resets before label 33 were redundant. Both fall-through paths set
+! reached_max_extent; the radiative-stability exit does not.)
+            if (search_zone_idx .lt. 1 .or. search_zone_idx .gt. num_zones) then
+               reached_max_extent = .true.
+            end if
 ! ASSIGN THE NEW EDGE LOCATION TO MXZONE.
             if (edge_side.eq.1) then
                mixed_zone_bounds(zone_idx,edge_side) = search_zone_idx + 1
@@ -342,7 +348,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY SEMI-CONVECTION.
       if (num_zones_mixed.le.1) return
       k_idx = 1
-   85 continue
+      merge_scan: do
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
       if (mixed_zone_bounds(k_idx,2).gt.mixed_zone_bounds(k_idx+1,1)) then
 !  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
@@ -363,13 +369,14 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
          end do
          num_zones_mixed = num_zones_mixed - 1
          if (k_idx.le.num_zones_mixed-1) then
-            goto 85
+            cycle merge_scan
          else
             return
          end if
       end if
       k_idx = k_idx + 1
-      if (k_idx.le.num_zones_mixed-1) goto 85
+      if (.not. (k_idx.le.num_zones_mixed-1)) exit merge_scan
+      end do merge_scan
 
       return
 end subroutine sconvec
