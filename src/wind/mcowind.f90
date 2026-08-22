@@ -46,7 +46,7 @@
 !  timestep.
 subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
-     omega_old, domega_start, domega_end)
+     omega_old, domega_start, domega_end, ierr)
       use light_burn_lib
       use turnover_lib
       use const_lib
@@ -77,10 +77,15 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
            domega_end_this_iter
 
 ! RUN OLD WINDLAW IF LMWIND = FALSE
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if(.not.use_pmm_wind_law)then
          call cowind(log_luminosity_lsun,full_timestep,cz_moment_of_inertia, &
               iteration_number,omega_surface,total_mass_msun,log_teff, &
-              omega_old,domega_start,domega_end)
+              omega_old,domega_start,domega_end, ierr)
+         if (ierr /= 0) return
          goto 9999
       endif
 !

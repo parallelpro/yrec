@@ -38,7 +38,7 @@
 !  loss for the timestep.
 subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
-     omega_old, domega_start, domega_end)
+     omega_old, domega_start, domega_end, ierr)
       use light_burn_lib
       use turnover_lib
       use const_lib
@@ -71,6 +71,10 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 !      CGRAV = EXP(CLN*CGL)
 ! MHP 3/09 IF WMAX > 1 THEN ASSUME THAT THE PARAMETER WMAX IS DEFINED BY
 ! WMAX = WMAX(SUN)*TAUCZ(SUN) AND THE SATURATION THRESHOLD WSAT = WMAX/TAUCZ(STAR)
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if(wind_saturation_omega.gt.1.0d0)then
          if(turnover%convective_turnover_timescale.gt.1.0d0)then
             omega_saturation = wind_saturation_omega/turnover%convective_turnover_timescale
@@ -79,7 +83,11 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
          else
             write(*,911)wind_saturation_omega,turnover%convective_turnover_timescale
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
-            stop
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
          endif
       else
          omega_saturation = wind_saturation_omega

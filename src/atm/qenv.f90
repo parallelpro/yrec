@@ -68,6 +68,14 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       double precision :: convective_velocity
       logical :: is_convective
 
+      ! 2026 (ROADMAP.md stage 3): tpgrad's error returns here via ierr,
+      ! but qenv's signature is fixed by the bsstep integrand callback
+      ! protocol, so the error cannot propagate further -- the historical
+      ! stop is preserved at this call site. Documented residual, in the
+      ! same class as numerics qgauss's hard-coded call into rotation func;
+      ! resolvable only by extending the callback protocol itself.
+      integer :: jerr
+
       log10_pressure = log10_pressure_indep
       log10_mass = y(1) + env_comp%stotal
       log10_temperature = y(2)
@@ -94,7 +102,8 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
            dgrad_dp_component,dgrad_dr_component,specific_heat_cp_dt, &
            specific_heat_cp_dp,convective_velocity,want_derivatives, &
            is_convective,pressure_rotation_factor,temperature_rotation_factor, &
-           log10_teff)
+           log10_teff, jerr)
+      if (jerr /= 0) stop
       dydx(1) = -dexp(ln10*(c4pil+4.0d0*log10_radius+log10_pressure-cgl- &
            log10_mass-log10_mass))/pressure_rotation_factor
       dydx(2) = actual_gradient

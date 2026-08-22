@@ -419,7 +419,7 @@ end subroutine kspline
 ! Fixed-size (4-point) cubic-spline evaluation, companion to kspline:
 ! given the table xa/ya and the second derivatives y2a from kspline,
 ! evaluate the spline at x.
-subroutine ksplint(xa, ya, y2a, x, y)
+subroutine ksplint(xa, ya, y2a, x, y, ierr)
       implicit none
       integer, parameter :: nm = 4
 
@@ -429,6 +429,10 @@ subroutine ksplint(xa, ya, y2a, x, y)
       double precision :: h, a, b
       integer :: klo, khi, k
       save
+
+      integer, intent(out), optional :: ierr
+
+      if (present(ierr)) ierr = 0
 
       klo = 1
       khi = nm
@@ -446,6 +450,14 @@ subroutine ksplint(xa, ya, y2a, x, y)
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
             print*, 'Ksplint failure'
+            ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
+            ! error returns instead; without it, the historical stop stands
+            ! (numerics has no facade -- each public procedure carries its
+            ! own gate).
+            if (present(ierr)) then
+               ierr = 1
+               return
+            end if
             stop
       end if
 !      if (h .eq. 0d0) stop 911
@@ -1294,7 +1306,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      temperature_rotation_factor, log10_gravity, in_atmosphere, &
      want_derivatives, conductive_opacity_flag, print_flag, log10_radius, &
      log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
-     step_err)
+     step_err, ierr)
       use intpar_lib
       implicit none
 
@@ -1323,6 +1335,10 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
       integer :: i, j
       save
       data substep_sequence /2,4,6,8,12,16,24,32,48,64,96/
+
+      integer, intent(out), optional :: ierr
+
+      if (present(ierr)) ierr = 0
 
       h = h_step
       x_sav = indep_var
@@ -1363,6 +1379,14 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
 !      H = 0.25D0*H/2**((IMAX-NUSE)/2)
       if(hydrogen_fraction+h.eq.hydrogen_fraction) then
          write(*,*) 'ERROR IN BSSTEP'
+       ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
+       ! error returns instead; without it, the historical stop stands
+       ! (numerics has no facade -- each public procedure carries its
+       ! own gate).
+       if (present(ierr)) then
+          ierr = 1
+          return
+       end if
        stop
       end if
       goto 20
@@ -1397,7 +1421,7 @@ end subroutine bsstep
 ! k_lo    ; the grid point smaller than and closest to x_eval
 ! y_eval  ; the value we want
 ! dy_eval ; the derivative value at x_eval
-subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval)
+subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       use luout_lib
       implicit none
       integer, parameter :: np=100
@@ -1414,6 +1438,10 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval)
       save
 
 ! the coefficients for the zero-th order term
+      integer, intent(out), optional :: ierr
+
+      if (present(ierr)) ierr = 0
+
       do i=1,n_grid
          spline_coeff(1,i)=y_grid(i)
       end do
@@ -1446,6 +1474,14 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval)
       if((k_hi-k_lo).le.0)then
          write(iowr, *) 'ERROR COX OP: INTERPOLATION'
          write(short_file_unit, *) 'ERROR COX OP: INTERPOLATION'
+         ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
+         ! error returns instead; without it, the historical stop stands
+         ! (numerics has no facade -- each public procedure carries its
+         ! own gate).
+         if (present(ierr)) then
+            ierr = 1
+            return
+         end if
          stop
       endif
   522 continue
@@ -1479,7 +1515,7 @@ end subroutine intpol
 ! xa(i)'s in order), and given the array y2a, which is the output of
 ! cspline above, and given a value of x, this routine returns a
 ! cubic-spline interpolated value y.
-subroutine splint(xa, ya, n, y2a, x, y, klo, khi)
+subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
       use luout_lib
       implicit none
 
@@ -1492,6 +1528,10 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi)
       integer :: k
       double precision :: h, a, b
       save
+
+      integer, intent(out), optional :: ierr
+
+      if (present(ierr)) ierr = 0
 
       klo = 1
       khi = n
@@ -1507,6 +1547,14 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi)
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
+         ! error returns instead; without it, the historical stop stands
+         ! (numerics has no facade -- each public procedure carries its
+         ! own gate).
+         if (present(ierr)) then
+            ierr = 1
+            return
+         end if
          stop
       end if
       a = (xa(khi)-x)/h
@@ -1533,7 +1581,7 @@ end subroutine splint
 !
 ! Note: xa/ya/y2a are dimensioned to the json=5000 module-wide
 ! maximum rather than to n, exactly as in the original file.
-subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi)
+subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -1547,6 +1595,10 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi)
       integer :: k
       double precision :: h, a, b
       save
+
+      integer, intent(out), optional :: ierr
+
+      if (present(ierr)) ierr = 0
 
       klo = 1
       khi = n
@@ -1562,6 +1614,14 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi)
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
+         ! error returns instead; without it, the historical stop stands
+         ! (numerics has no facade -- each public procedure carries its
+         ! own gate).
+         if (present(ierr)) then
+            ierr = 1
+            return
+         end if
          stop
       end if
       a = (xa(khi)-x)/h

@@ -18,7 +18,7 @@
 subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      cz_mass_top, start_zone, end_zone, wind_loss_active, omega_surface, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
-     specific_angular_momentum)
+     specific_angular_momentum, ierr)
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
       use light_burn_lib
       use turnover_lib
@@ -63,6 +63,10 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! MHP 3/09 IF WMAX > 1 THEN ASSUME THAT THE PARAMETER WMAX IS DEFINED BY
 ! WMAX = WMAX(SUN)*TAUCZ(SUN) AND THE SATURATION THRESHOLD WSAT = WMAX/TAUCZ(STAR)
 ! ONLY APPLY THIS IF ANGULAR MOMENTUM TRANSPORT ENABLED
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if(.not.instability_transport_active)then
          omega_saturation = wind_saturation_omega
       else if(wind_saturation_omega.gt.1.0d0)then
@@ -73,7 +77,11 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          else
             write(*,911)wind_saturation_omega,turnover%convective_turnover_timescale
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
-            stop
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
          endif
       else
          omega_saturation = wind_saturation_omega

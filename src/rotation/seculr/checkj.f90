@@ -70,7 +70,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      converged_flag, redo_flag, omega, &
 ! QIW,R0,WSAV,ID,IDM,ECOD,ECOD2,LOKAD)
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
-     already_converged_flag)
+     already_converged_flag, ierr)
 
       use rotdiff_lib
       use run_diag_lib
@@ -131,6 +131,10 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       integer :: print_zone_begin, print_zone_end
 
 !  CHECK FOR NEGATIVE J/M.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       converged_flag = .false.
       redo_flag = .false.
       if(already_converged_flag)then
@@ -149,7 +153,11 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                        5x,'NEGATIVE J/M ENCOUNTERED IN ZONE',i5, &
                        ' AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED'/ &
                        'RUN STOPPED')
-               stop
+               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+               ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+               ! preserve the historical stop on a nonzero return.
+               ierr = 1
+               return
             else
                redo_flag = .true.
                dt = 0.5d0*dt

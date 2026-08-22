@@ -20,7 +20,7 @@
 !       SUBROUTINE PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
 subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
-     num_zones, log_teff)
+     num_zones, log_teff, ierr)
 
       use rotdiff_lib
       use run_diag_lib
@@ -88,6 +88,10 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 
 !  FIND ACTUAL AND ADIABATIC TEMPERATURE GRADIENTS,OPACITY,AND
 !  MEAN MOLECULAR WEIGHT FOR ALL RADIATIVE SHELLS.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       want_derivatives = .false.
       local_conductive_opacity_flag = .false.
       in_atmosphere = .false.
@@ -132,7 +136,8 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               dgrad_dp_component, dgrad_dr_component, specific_heat_cp_dt, &
               specific_heat_cp_dp, convective_velocity, &
               want_derivatives, is_convective, pressure_rotation_factor, &
-              temperature_rotation_factor, log_teff)
+              temperature_rotation_factor, log_teff, ierr)
+         if (ierr /= 0) return
          convective_flag(im) = is_convective
          shell_diag%del_grad(1,im) = radiative_gradient
          shell_diag%del_grad(2,im) = actual_gradient

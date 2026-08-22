@@ -49,7 +49,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      want_derivatives, mixing_active, conductive_opacity_flag, &
      dlnrho_dlnt, dlnrho_dlnp, saha_state, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
-     kinetic_energy_rot_old, envelope_zone_index, log_teff)
+     kinetic_energy_rot_old, envelope_zone_index, log_teff, ierr)
 
       use nuclear_lib
       use rotdiff_lib
@@ -149,6 +149,10 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! 7/91 MHP
 ! ZERO OUT SOLAR NEUTRINO FLUXES.
 ! FLUXTOT = TOTAL FLUX OF EACH OF THE NEUTRINOS PRODUCED IN THE SUN
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (lsnu) then
          do 5 j = 1,10
             flux_diag%neutrino_flux_total(j) = 0.0d0
@@ -233,7 +237,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
               dgrad_dp_component, dgrad_dr_component, specific_heat_cp_dt, &
               specific_heat_cp_dp, convective_velocity, want_derivatives, &
               is_convective, pressure_rotation_factor, &
-              temperature_rotation_factor, log_teff)
+              temperature_rotation_factor, log_teff, ierr)
+         if (ierr /= 0) return
        log10_density(im) = zone_log10_density
 ! COMPUTE DERIVATIVES
 !       IF(LROT) THEN

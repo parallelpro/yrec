@@ -15,7 +15,7 @@
 ! count (asserted equal for every record) and log10(T), then reads
 ! num_vars variables at each of its density points.
 subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
-     num_t_points,num_rho_points,log_t,table_data)
+     num_t_points,num_rho_points,log_t,table_data, ierr)
       use const_lib
       implicit none
 
@@ -32,16 +32,26 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
 ! --- locals ---
       integer :: t_idx, rho_idx, var_idx, rho_count_read
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       do 10 t_idx = 1, num_t_points
 !     READ(IR,1001) NRR,TL(N)
       read(file_unit     ) rho_count_read,log_t(t_idx)
       if(t_idx.eq.1) num_rho_points=rho_count_read
 !     CHECK LIMITS AND NUMBER OF DENSITIY POINTS OF TABLE
       if ( num_t_points.gt.max_t_points .or.  num_rho_points.gt.max_rho_points ) then
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
       if ( t_idx.gt.1 .and. rho_count_read.ne.num_rho_points ) then
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
 !     END CHECK ....................................................
 ! KC 2025-05-30 fixed "Shared DO termination label"

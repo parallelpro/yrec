@@ -17,7 +17,7 @@
 subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      cz_mass_top, start_zone, end_zone, wind_loss_active, omega_surface, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
-     specific_angular_momentum)
+     specific_angular_momentum, ierr)
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
       use light_burn_lib
       use turnover_lib
@@ -63,12 +63,17 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 
 ! IF DESIRED, REMOVE ANGULAR MOMENTUM FROM OUTER CONVECTION ZONE
 ! USING A WEBER-DAVIS MAGNETIC WIND MODEL
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if(.not.use_pmm_wind_law)then
          call wind(log_luminosity_lsun,full_timestep,cz_mass_bottom, &
               cz_mass_top,start_zone,end_zone,wind_loss_active,omega_surface, &
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM)  ! KC 2025-05-31
               total_mass_msun,log_teff,cz_moment_of_inertia, &
-              specific_angular_momentum)
+              specific_angular_momentum, ierr)
+         if (ierr /= 0) return
          goto 9999
       endif
 !

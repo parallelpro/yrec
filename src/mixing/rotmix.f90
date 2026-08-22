@@ -20,7 +20,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      num_zones, radiative_zone_bounds, convective_zone_bounds, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
-     enclosed_mass)
+     enclosed_mass, ierr)
 
       use rotdiff_lib
       use mdphy_lib
@@ -75,6 +75,10 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
            max_settling_dt, settling_dt
 
 ! NSPEC IS THE NUMBER OF SPECIES BEING TRACKED.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (use_extended_composition) then
          num_species = 15
       else
@@ -120,7 +124,8 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 !      *                   DDAGE,ITLVL)  ! KC 2025-05-31
                  rate_c13_alpha,rate_c12_alpha,rate_n14_alpha, &
                  rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
-                 timestep_years)
+                 timestep_years, ierr)
+            if (ierr /= 0) return
    30    continue
    40 continue
    45 continue
@@ -138,7 +143,8 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 !      *                DDAGE,ITLVL)  ! KC 2025-05-31
               rate_c13_alpha,rate_c12_alpha,rate_n14_alpha, &
               rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
-              timestep_years)
+              timestep_years, ierr)
+         if (ierr /= 0) return
    50 continue
 !
 ! MICROSCOPIC DIFFUSION OF HELIUM.
@@ -165,7 +171,11 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             write(short_file_unit,911)
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL'/ &
                  'STOPPED IN SUBROUTINE MIX')
-            stop
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
          end if
 ! 7/92 MHP STATEMENT ADDED FOR EXIT IF OVERSHOOT CAUSES A FULLY CONVECTIVE
 ! CASE.  AVOIDS OCCASIONAL PRE-MS CRASH IN FIRST RADIATIVE MODEL.

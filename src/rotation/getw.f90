@@ -32,7 +32,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
      enclosed_mass, shell_mass, log_total_mass, log_temperature, &
      convective_flag, wind_loss_active, num_zones, total_mass_msun, &
      log_teff, eta_squared, hg, moment_of_inertia, omega, qiw, mean_radius, &
-     envelope_boundary_zone_prev)
+     envelope_boundary_zone_prev, ierr)
       use nuclear_lib
       use rotdiff_lib
       use run_diag_lib
@@ -163,6 +163,10 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
       double precision :: omega_avg, domega_dr, delta_radius_step
       double precision :: radius_at_bcz
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       burs_extrapolation_active = .false.
 ! DETERMINE THE NUMBER OF DIFFERENT ELEMENTS AND ISOTOPES BEING TRACKED
 ! BY THE CODE (NSPEC).
@@ -241,7 +245,8 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
                  cz_mass_top,envelope_boundary_zone,num_zones,wind_loss_active, &
                  omega_surface, &
                  total_mass_msun,log_teff,moment_of_inertia_cz, &
-                 specific_angular_momentum)
+                 specific_angular_momentum, ierr)
+            if (ierr /= 0) return
 !  FIND THE NEW RUN OF OMEGA IN THE CONVECTION ZONE AFTER THE WIND.
 ! MHP 10/02 REPLACED IEND WITH M IN CALL, DEFINED IEND=M
             iend = num_zones
@@ -275,7 +280,8 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
 !  KINEMATIC VISCOSITIES,THERMOMETRIC DIFFUSIVITY, AND HEAT CAPACITY.
 !       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
       call physic(fp,ft,composition,log_density,hg,log_luminosity,log_pressure, &
-           log_radius,log_mass,log_temperature,convective_flag,num_zones,log_teff)
+           log_radius,log_mass,log_temperature,convective_flag,num_zones,log_teff, ierr)
+      if (ierr /= 0) return
 ! 8/17 DETERMINE TAUCZ AND PPHOT
 !       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
       call gettau(composition,log_radius,log_pressure,log_density,enclosed_mass, &
@@ -344,7 +350,8 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
            envelope_boundary_zone,fully_convective_flag,convective_flag_mid, &
            am_transport_convective_flag_mid,surface_cz_active,omega_mid, &
            mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
-           num_radiative_zones,num_convective_zones)
+           num_radiative_zones,num_convective_zones, ierr)
+      if (ierr /= 0) return
 ! IF DESIRED, REMOVE ANGULAR MOMENTUM FROM OUTER CONVECTION ZONE
 ! USING A WEBER-DAVIS MAGNETIC WIND MODEL
       if(.not.disk_lock_engaged .and. wind_loss_active .and. surface_cz_active) then
@@ -355,7 +362,8 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
             call mwind(log_luminosity_lsun,sub_timestep,cz_mass_bottom,cz_mass_top, &
                  envelope_boundary_zone,num_zones,wind_loss_active,omega_surface, &
                  total_mass_msun,log_teff,moment_of_inertia_cz, &
-                 specific_angular_momentum)
+                 specific_angular_momentum, ierr)
+            if (ierr /= 0) return
 !  FIND THE NEW OMEGA OF THE CONVECTION ZONE AFTER THE WIND.
 ! MHP 10/02 REPLACED IEND WITH M IN CALL, DEFINED IEND=M
             iend = num_zones
@@ -400,7 +408,8 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
               log_total_mass,total_mass_msun,log_teff,redo_needed_flag,redo_count, &
               moment_of_inertia_cz,cz_mass_bottom,cz_mass_top,omega_surface,surface_cz_active, &
 !      *               MRZONE,MXZONE,NRZONE,NZONE,  ! KC 2025-05-31
-              cod2,diffusion_velocity,diffusion_solve_ok)
+              cod2,diffusion_velocity,diffusion_solve_ok, ierr)
+         if (ierr /= 0) return
 !  DIFFUSION TIMESTEP CUTTING REQUIRED IF LREDO IS TRUE.
 !  RESET MEAN MOLECULAR WEIGHT,COMPOSITION,AND SPECIFIC ANGULAR MOMENTUM
 !  TO THE VALUES THEY HAD PRIOR TO THE START OF THE STEP.
@@ -519,7 +528,8 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, fp, ft, &
              log_temperature_mid,diffusion_velocity,envelope_boundary_zone,core_boundary_zone, &
              envelope_boundary_zone_prev,envelope_boundary_zone_cur,diffusion_solve_ok, &
              am_transport_convective_flag_mid,num_zones,radiative_zone_bounds, &
-             convective_zone_bounds,num_radiative_zones,num_convective_zones)
+             convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+        if (ierr /= 0) return
          endif
       endif
 !  RETURN FOR NEXT SMALL DIFFUSION TIMESTEP IF NEEDED.

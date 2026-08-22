@@ -192,6 +192,10 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 
       save
 
+      ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
+      ! this driver-side call site preserves the historical stop.
+      integer :: jerr
+
       if (max_iterations.le.0) return
       log10_luminosity = dlog10(luminosity_lsun(num_points))
 ! ZERO COUNTERS
@@ -252,7 +256,8 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 !        *        HT,ITLVL,LC,M,QDT,QDP,DDAGE,JCORE,JENV,  ! KC 2025-05-31
               log_temperature,iteration_level,convective_flag,num_points, &
               timestep_years,core_cz_edge,envelope_zone_index, &
-              mixed_zone_bounds,mixed_zone_bounds_no_overshoot,log_teff)
+              mixed_zone_bounds,mixed_zone_bounds_no_overshoot,log_teff, jerr)
+         if (jerr /= 0) stop
       endif
 !      IF(LROT)THEN
 !         CALL OVROT(HCOMP,HD,HP,HR,HS,HT,LC,M,LCZ,MRZONE,MXZONE,
@@ -279,7 +284,8 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
 !      *   KSAHA,MODEL,FP,FT,HKEROT,HKEROT0,JENV,TEFFL)  ! KC 2025-05-31
             ksaha,pressure_rotation_factor,temperature_rotation_factor, &
             kinetic_energy_rot,kinetic_energy_rot_old,envelope_zone_index, &
-            log_teff)
+            log_teff, jerr)
+       if (jerr /= 0) stop
 ! RENORMALIZE TLUMX-S
 !CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
        total_luminosity_terms = luminosity_terms(1)+luminosity_terms(2)+ &

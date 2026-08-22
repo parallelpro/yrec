@@ -32,7 +32,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, log_temperature, iteration_level, convective_flag, &
      num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
-     mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff)
+     mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff, ierr)
 
       use rotdiff_lib
       use run_diag_lib
@@ -120,6 +120,10 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       integer :: num_settling_steps, substep_idx
 
 ! NSPEC IS THE NUMBER OF SPECIES BEING TRACKED.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (use_extended_composition) then
          num_species = 15
       else
@@ -268,7 +272,8 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
                  rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
                  rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
                  rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
-                 shell_mass, composition, timestep_years)
+                 shell_mass, composition, timestep_years, ierr)
+            if (ierr /= 0) return
    30    continue
    40 continue
    45 continue
@@ -283,7 +288,8 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
               rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
               rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
               rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
-              shell_mass, composition, timestep_years)
+              shell_mass, composition, timestep_years, ierr)
+         if (ierr /= 0) return
    50 continue
       do zone_idx = 1, num_zones
          rot_diff%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
@@ -392,7 +398,8 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
               call sconvec(timestep, composition, log_density, &
               log_luminosity, log_pressure, log_radius, log_mass, &
               log_temperature, num_zones, mixed_zone_bounds, &
-              num_mixed_zones, log_teff)
+              num_mixed_zones, log_teff, ierr)
+              if (ierr /= 0) return
       end if
       if (lsemic .or. (iteration_level .eq. 1)) then
 !

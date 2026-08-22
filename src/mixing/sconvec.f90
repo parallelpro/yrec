@@ -36,7 +36,7 @@
 ! mixed_zone_bounds, num_zones_mixed can be altered by the subroutine.
 subroutine sconvec(timestep, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
-     mixed_zone_bounds, num_zones_mixed, log_teff)
+     mixed_zone_bounds, num_zones_mixed, log_teff, ierr)
 
       use luout_lib
       use const_lib
@@ -102,6 +102,10 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
 
 ! RUN THROUGH ALL THE CONVECTION ZONES.
 !$$$      DO 210 I = 1,NZONE
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       only_check_core = .true.
       if (only_check_core) then
@@ -187,7 +191,8 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  dgrad_dp_component, dgrad_dr_component, specific_heat_cp_dt, &
                  specific_heat_cp_dp, convective_velocity, want_derivatives, &
                  is_convective, pressure_rotation_factor, &
-                 temperature_rotation_factor, log_teff)
+                 temperature_rotation_factor, log_teff, ierr)
+            if (ierr /= 0) return
 ! SKIP IF ZONE IS STABLE WITH THE CORE COMPOSITION.
             if (radiative_gradient.lt.adiabatic_gradient) goto 200
 ! STORE MEAN MOLECULAR WEIGHT, ADJUSTED RADIATIVE TEMPERATURE GRADIENT,
@@ -228,7 +233,8 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  dgrad_dp_component, dgrad_dr_component, specific_heat_cp_dt, &
                  specific_heat_cp_dp, convective_velocity, want_derivatives, &
                  is_convective, pressure_rotation_factor, &
-                 temperature_rotation_factor, log_teff)
+                 temperature_rotation_factor, log_teff, ierr)
+            if (ierr /= 0) return
             log_density(adjacent_radiative_idx) = log_density_zone
 ! FDEL IS THE RATIO OF THE GRADIENTS WITH THE OLD COMP AND NEW ONE.
             gradient_ratio = perturbed_radiative_gradient/radiative_gradient
@@ -307,7 +313,8 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                     specific_heat_cp_dt, specific_heat_cp_dp, &
                     convective_velocity, want_derivatives, is_convective, &
                     pressure_rotation_factor, temperature_rotation_factor, &
-                    log_teff)
+                    log_teff, ierr)
+               if (ierr /= 0) return
                log_density(search_zone_idx) = log_density_zone
 ! EXIT IF ZONE IS RADIATIVELY STABLE.
                if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) &

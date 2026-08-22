@@ -233,6 +233,45 @@ stdout). Remaining: the facade-less domains (rotation 5, numerics 5,
 wind 2, mixing 1, misc 2), where the surfacing decision is per
 public entry rather than per facade.
 
+STATUS (2026-08-21): **facade-less domains converted -- STAGE 3
+COMPLETE.** Three surfacing patterns, chosen per the call-graph
+reality:
+
+1. *numerics* (5: ksplint, bsstep, intpol, splint, splintd2): the
+   module's explicit interfaces allow the optional-ierr trick without
+   a facade, so each procedure carries its own gate at the failure
+   point -- ierr present: error return; absent: the historical stop
+   stands. Zero caller churn; callers opt in per call site.
+2. *the rotation/wind/mixing/misc cluster* (10 counted + 2 found
+   during execution): every one of these plain-external routines
+   funnels through just two public entries -- getw (rotation) and mix
+   (mixing) -- into four driver files. So required ierr threads the
+   whole graph (checkc/checkj/bandw/dadcoeft -> seculr;
+   wind -> mwind, cowind -> mcowind; rotmix <- bursmix/midmod;
+   simeqc <- kemcom <- rotmix/mix, where kemcom's own uncounted stop
+   surfaced during execution; tpgrad <- physic/coefft/sconvec;
+   getw and mix on top), and the four driver call-site files --
+   core/main, core/crrect, core/starin, setup/hpoint -- preserve the
+   historical stop via `if (jerr /= 0) stop`. This is the full MESA
+   discipline for these domains: the stop is now driver policy, not
+   library behavior. One documented residual: atm/qenv.f90's tpgrad
+   call keeps a local stop because qenv's signature is fixed by the
+   bsstep integrand-callback protocol (same class as qgauss's
+   hard-coded call into rotation func).
+3. *eos stragglers found during execution*: setup/rtab.f90 (2 stops)
+   and util/rabu.f90 (1 stop, uncounted) are the MHD table-read
+   helpers called only from eos/mhd/mhdst1 -- they joined the eos
+   chain (required ierr into eos_init's funnel). By the
+   misplaced-file test both belong under eos/mhd/; relocation left
+   as a follow-up candidate, not done here.
+
+Final stop inventory in library code: 13 = the 8 facade funnels
+(eos 3, kap 2, atm 3) + numerics' 5 per-procedure gates, every one
+behind an opt-in ierr; plus qenv's documented callback residual.
+Everything else that stops is driver code (core/, io/, setup/'s
+hpoint/rscale/parmin), where stopping is policy, which stage 3
+deliberately does not touch.
+
 ## Stage 4 -- named-index result arrays
 
 `eos_get` currently has 27 positional arguments; MESA's `eosDT_get`

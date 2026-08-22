@@ -61,7 +61,7 @@
 subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
      num_eq_points, wind_loss_explicit, wind_loss_implicit, &
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
-     sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged)
+     sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged, ierr)
       use rotdiff_lib
       use const_lib
       use light_burn_lib
@@ -141,6 +141,10 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
            max_omega_change_medium_iter_zone
 
 ! DCOEFT SETS UP THE COEFFICIENTS FOR THE DIFFUSION DIFFERENCE EQUATION.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       timestep_cut_count = 0
       num_substeps = 1
       full_timestep = timestep
@@ -479,7 +483,8 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 !      WRITE(*,910)((A(J,I),I=1,10),J=1,NM)
 !  910  FORMAT(1P10E12.3)
 !       CALL BANDW(A,NM,M1,M2,B)  ! KC 2025-05-31
-      call bandw(coeff_matrix,num_equations,rhs)
+      call bandw(coeff_matrix,num_equations,rhs, ierr)
+      if (ierr /= 0) return
 ! CHECK ON MATRIX INVERSION
       do i =1,num_equations
          residual_check(i) = 0.0d0
@@ -662,7 +667,11 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          num_substeps = 2*num_substeps
          if (timestep_cut_count.gt.5) then
             write(*,*) 'TIMESTEP CUT MORE THAN 5 TIMES - RUN STOPPED'
-            stop 111
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
          else
             write(*,*) 'TIMESTEP CUT #',timestep_cut_count,' IN DADCOEFT'
          end if

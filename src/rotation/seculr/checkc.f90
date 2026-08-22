@@ -32,7 +32,7 @@
 ! converged_flag : SET F IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 ! redo_flag : SET T IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 subroutine checkc(composition, iteration_number, print_flag, num_zones, &
-     dt, cut_count, converged_flag, redo_flag)
+     dt, cut_count, converged_flag, redo_flag, ierr)
 
       use run_diag_lib
       use const_lib
@@ -79,6 +79,10 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 !  CHECK FOR ANOMALOUS COMPOSITIONS.
 !  PRIOR TO THE LAST ITERATION, ONLY DIFFUSION OF H,HE,HE3 PERFORMED.
 !  FIND NUMBER OF SPECIES BEING DIFFUSED.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if(iteration_number.eq.itdif2)then
          num_diffused_species = 11
       else
@@ -117,7 +121,11 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
               ' ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5,' ABUNDANCE ', &
               1pe12.3/' 3 ATTEMPTS AT TIMESTEP CUTTING FAILED'/ &
               'RUN STOPPED')
-                  stop
+                  ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+                  ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+                  ! preserve the historical stop on a nonzero return.
+                  ierr = 1
+                  return
                else
                   redo_flag = .true.
                   converged_flag = .false.

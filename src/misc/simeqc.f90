@@ -10,7 +10,7 @@
 ! system matrix stored as a flat array: num_unknowns equations (rows),
 ! num_cols columns (num_cols > num_unknowns for one or more augmented
 ! right-hand-side columns), stored column-major in system_matrix(56).
-subroutine simeqc(system_matrix, num_cols, num_unknowns)
+subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
 
       implicit none
 
@@ -22,6 +22,10 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns)
       integer :: jj, j, jy, it, i, ij, imax, ia, ib, ic, id, ix, jx, ny, &
            n1, ig, ih
       double precision :: biga, swap_val
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       jj=-num_unknowns
       do 65 j=1,num_unknowns
@@ -39,7 +43,11 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns)
       goto 1012
  1010 write (5,1011)
  1011 format (1x,'STOPPED AT 1010')
-      stop 29
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+      ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+      ! preserve the historical stop on a nonzero return.
+      ierr = 1
+      return
  1012 ia=j+num_unknowns*(j-2)
       it=imax-j
       do 50 i=j,num_cols

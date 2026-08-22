@@ -26,7 +26,7 @@
 ! version of the elimination and backsubstitution as commented-out
 ! code; that dead code is preserved verbatim (as comments, unrenamed)
 ! below for historical reference -- none of it executes.
-subroutine bandw(coeff_matrix, nm, rhs)
+subroutine bandw(coeff_matrix, nm, rhs, ierr)
       implicit none
       integer, parameter :: json = 5000, nmax = 8000
 
@@ -50,10 +50,18 @@ subroutine bandw(coeff_matrix, nm, rhs)
 !         I3 = I+3
 !         I4 = I+4
 !         PIVOT = A(I,5)
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       do i = 1,nm-5
          if (abs(coeff_matrix(i,5)).lt.tiny) then
             write(*,911) i,(coeff_matrix(i,j),j=1,10)
-            stop 999
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
          end if
  911     format(i5,1p10e12.3)
          rhs(i) = rhs(i)/coeff_matrix(i,5)
@@ -77,7 +85,11 @@ subroutine bandw(coeff_matrix, nm, rhs)
          ii = nm-i
          if (abs(coeff_matrix(i,5)).lt.tiny) then
             write(*,911) i,(coeff_matrix(i,j),j=1,10)
-            stop 999
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
          end if
          rhs(i) = rhs(i)/coeff_matrix(i,5)
 !         WRITE(*,*)I,B(I),A(I,5)

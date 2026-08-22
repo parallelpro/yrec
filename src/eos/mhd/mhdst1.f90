@@ -90,9 +90,10 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
          ierr = 1
          return
       end if
-      if (composition_pass.eq.1) call rabu(table_unit,nchem0,num_chem,atomic_weight,number_abundance,mass_fraction,mean_molecular_weight)
-      if (composition_pass.eq.2) call rabu(table_unit,nchem0,num_chem,atomic_weight_down,number_abundance_down,mass_fraction_down,unused_mean_molecular_weight_down)
-      if (composition_pass.eq.3) call rabu(table_unit,nchem0,num_chem,atomic_weight_up,number_abundance_up,mass_fraction_up,unused_mean_molecular_weight_up)
+      if (composition_pass.eq.1) call rabu(table_unit,nchem0,num_chem,atomic_weight,number_abundance,mass_fraction,mean_molecular_weight,ierr)
+      if (composition_pass.eq.2) call rabu(table_unit,nchem0,num_chem,atomic_weight_down,number_abundance_down,mass_fraction_down,unused_mean_molecular_weight_down,ierr)
+      if (composition_pass.eq.3) call rabu(table_unit,nchem0,num_chem,atomic_weight_up,number_abundance_up,mass_fraction_up,unused_mean_molecular_weight_up,ierr)
+      if (ierr /= 0) return
 !     READ(IR,1001) NT1,NT2,DRH1,DRH2
       read(table_unit     ) num_t1,num_t2,drho1,drho2
       if (table_kind.eq.1 .and. num_t1.ne.0) then
@@ -102,14 +103,19 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
           return
       end if
       if (num_t1.gt.0) then
-         call rtab(table_unit,nt1m,nr1m,ivar1,num_t1,num_r1,log10t1,table_vars1)
+         call rtab(table_unit,nt1m,nr1m,ivar1,num_t1,num_r1,log10t1,table_vars1, ierr)
+         if (ierr /= 0) return
       end if
       if (table_kind.eq.1) then
-       if (composition_pass.eq.1) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t2,table_vars_centroid)
-       if (composition_pass.eq.2) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t_down,table_vars_down)
-       if (composition_pass.eq.3) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t_up,table_vars_up)
+       if (composition_pass.eq.1) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t2,table_vars_centroid, ierr)
+       if (ierr /= 0) return
+       if (composition_pass.eq.2) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t_down,table_vars_down, ierr)
+       if (ierr /= 0) return
+       if (composition_pass.eq.3) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t_up,table_vars_up, ierr)
+       if (ierr /= 0) return
       else if (table_kind.eq.0) then
-       call rtab(table_unit,nt2m,nr2m,ivar2,num_t2,num_r2,log10t2,table_vars2)
+       call rtab(table_unit,nt2m,nr2m,ivar2,num_t2,num_r2,log10t2,table_vars2, ierr)
+       if (ierr /= 0) return
       end if
  400  continue
       if (table_kind.eq.0) goto 450

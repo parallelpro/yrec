@@ -29,7 +29,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
      envelope_boundary_zone,fully_convective_flag,convective_flag_mid, &
      am_transport_convective_flag_mid,surface_cz_active,omega_mid, &
      mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
-     num_radiative_zones,num_convective_zones)
+     num_radiative_zones,num_convective_zones, ierr)
 
       use nuclear_lib
       use rotdiff_lib
@@ -139,6 +139,10 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 ! MIDMOD ALSO LOCATES THE OUTER EDGE OF A CENTRAL CONVECTION ZONE AND THE INNER
 ! EDGE OF A SURFACE C.Z., AND DETERMINES THE MASS AND MOMENT OF INERTIA OF
 ! THE SURFACE C.Z.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       num_species_tracked = 11
       if (use_extended_composition) num_species_tracked = 15
 !  INITIALIZE COMPOSITION ARRAY THE FIRST TIME THROUGH.
@@ -392,7 +396,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
            num_zones,radiative_zone_bounds,convective_zone_bounds, &
            num_radiative_zones,num_convective_zones &
            ,log_total_mass,log_density_mid,log_mass,log_radius_mid, &
-           log_pressure_mid,am_transport_convective_flag_mid,enclosed_mass)
+           log_pressure_mid,am_transport_convective_flag_mid,enclosed_mass, ierr)
+      if (ierr /= 0) return
       do i = 1,num_zones
          do j = 1,num_species_tracked
             rot_diff%composition_snapshot(j,i) = composition(j,i)

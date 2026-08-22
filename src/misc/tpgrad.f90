@@ -38,7 +38,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
      adiabatic_gradient_dp, dgrad_dt_component, dgrad_dp_component, &
      dgrad_dr_component, specific_heat_cp_dt, specific_heat_cp_dp, &
      convective_velocity, want_derivatives, is_convective, &
-     pressure_rotation_factor, temperature_rotation_factor, log_teff)
+     pressure_rotation_factor, temperature_rotation_factor, log_teff, ierr)
 
       use rotdiff_lib
       use luout_lib
@@ -83,6 +83,10 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
            v, a3, a3p, vp, vd, ddel, delpm, rrr, qdelat, qdelap, tempot, &
            tempop, qddelt, qddelp, temp1, qa1t, qa1p, qa1r, qa3t, qa3p, &
            qa3r, temp2, temp3, qvt, qvp, qvr, deli, ateffl, deepx
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       rot_diff%alfmlt=0.0d0
       rot_diff%phmlt=0.0d0
@@ -169,7 +173,11 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
            temperature_rotation_factor,pressure_rotation_factor,radiative_gradient, &
            adiabatic_gradient,log_radius
  911  format(1p10e12.3)
-          stop 912
+          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+          ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+          ! preserve the historical stop on a nonzero return.
+          ierr = 1
+          return
 !         GOTO 15
       endif
 !      A1 = CMIXL3*PHIPHI*T**3*O/(QCP*DSQRT(DELDEL*G*(-QDT)/PRESHT))

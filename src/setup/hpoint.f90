@@ -150,6 +150,10 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 !  THE MAXIMUM DISTANCE BETWEEN 2 SUCCESSIVE POINTS IN P,L,X, AND Z
 !  SPECIFIED BY THE USER IS NOT EXCEEDED.  IT ALSO FLAGS REAL
 !  DISCONTINUITIES TO PREVENT ARTIFICIAL SMOOTHING.
+      ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
+      ! this driver-side call site preserves the historical stop.
+      integer :: jerr
+
       point_reset_flag = .false.
 !  IEND IS THE NUMBER OF SPECIES THE PROGRAM IS KEEPING TRACK OF
       num_species_tracked = 11
@@ -895,7 +899,8 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 !        CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
        call physic(fp,ft,composition,log_density,hg,log_luminosity, &
             log_pressure,log_radius,log_mass,log_temperature, &
-            convective_flag,num_zones,log_teff)
+            convective_flag,num_zones,log_teff, jerr)
+       if (jerr /= 0) stop
 !   FOR DIFFUSION STORE THE AUXILLARY QUANTITIES NEEDED TO CALCULATE
 !   VELOCITIES AT THE START OF THE TIMESTEP WITH THE NEW POINT DISTRIBUTION
 !   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN

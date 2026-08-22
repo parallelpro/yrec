@@ -22,7 +22,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
      shell_mass, log_total_mass, log_temperature, velocity, zone_max, &
      zone_min, env_cz_zone_old, env_cz_zone, final_iteration_flag, &
      convective_flag, num_zones, radiative_zone_bounds, mixed_zone_bounds, &
-     num_radiative_zones, num_zones_mixed)
+     num_radiative_zones, num_zones_mixed, ierr)
       use nuclear_lib
       use const_lib
       use light_burn_lib
@@ -76,6 +76,10 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       double precision :: substep_dt
       logical :: converged
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (use_extended_composition) then
          num_species = 15
       else
@@ -120,7 +124,8 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
                  log_temperature, num_zones, radiative_zone_bounds, &
                  mixed_zone_bounds, num_radiative_zones, num_zones_mixed, &
                  log_total_mass, log_density, log_mass, log_radius, &
-                 log_pressure, convective_flag, enclosed_mass)
+                 log_pressure, convective_flag, enclosed_mass, ierr)
+            if (ierr /= 0) return
 ! PERFORM MIXING
             call ndifcom(substep_dt, diffusion_coeff, &
                  equally_spaced_diffusion_coeff, equally_spaced_mass, &

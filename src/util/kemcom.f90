@@ -41,7 +41,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
      rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, rate_n14_p, &
      rate_o16_p, rate_c13_alpha, rate_c12_alpha, rate_n14_alpha, &
      rate_triple_alpha, frac_c12_alpha, shell_mass, composition, &
-     timestep_years)
+     timestep_years, ierr)
 
       use oldmod_lib
       use const_lib
@@ -93,6 +93,10 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
            relative_change
       double precision :: o18_new, new_metal_fraction
       integer :: solved_species_idx
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       if(zone_begin.ne.zone_end) then
 !  homogenize convection zones.
@@ -373,7 +377,8 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             any_nonzero_flag = 1
          endif
    20 continue
-      if(any_nonzero_flag.ne.0) call simeqc(system_matrix,8,7)
+      if(any_nonzero_flag.ne.0) call simeqc(system_matrix,8,7, ierr)
+      if (ierr /= 0) return
 !  check to see if the system has converged within the desired tolerances.
       max_abs_change = 0.d0
       max_relative_change = 0.d0
@@ -397,7 +402,11 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
  1000       format(1X,39('>'),40('<')/1X,'ERROR IN SUBROUTINE KEMCOM'/ &
             1X,'UNABLE TO SOLVE FOR NEW ABUNDANCES IN SHELL',I4/1X, &
             'RUN STOPPED AFTER 50 ATTEMPTS')
-            stop
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
          else
             goto 10
          endif

@@ -367,6 +367,10 @@ program main
 !*******
 ! START
 !*******
+      ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
+      ! this driver-side call site preserves the historical stop.
+      integer :: jerr
+
       call setversion()
 
       iowr = 9
@@ -808,7 +812,8 @@ program main
                call mix(delta_time,composition,log_density,luminosity_lsun,log_pressure,log_radius,log_mass,enclosed_mass,shell_mass,log_total_mass, &
 !      *                     HT,ITLVL,LC,M,QDT,QDP,DDAGE,JCORE,JENV,  ! KC 2025-05-31
                             log_temperature,iteration_level,convective_flag,num_zones,timestep_yr,core_cz_top_index,envelope_cz_bottom_index, &
-                            mixed_zone_bounds,mixed_zone_bounds_no_overshoot,log_teff)
+                            mixed_zone_bounds,mixed_zone_bounds_no_overshoot,log_teff, jerr)
+               if (jerr /= 0) stop
              timestep_yr = delta_time/seconds_per_year
              run_diag%dage = run_diag%dage + 1.0D-9*timestep_yr
             endif
@@ -1069,7 +1074,8 @@ program main
                call getw(log10_luminosity,delta_time,max_domega_frac,pressure_rotation_factor,temperature_rotation_factor,composition,log_density,specific_angular_momentum,luminosity_lsun,log_pressure,log_radius, &
 !      *              HS,HS1,HS2,HSTOT,HT,LC,LJDOT,M,MODEL,SJTOT,SMASS,  ! KC 2025-05-31
                     log_mass,enclosed_mass,shell_mass,log_total_mass,log_temperature,convective_flag,wind_loss_active,num_zones,total_mass_msun, &
-                    log_teff,eta_squared,mean_gravity,moment_of_inertia,omega,qiw,mean_radius,envelope_cz_zone_prev)
+                    log_teff,eta_squared,mean_gravity,moment_of_inertia,omega,qiw,mean_radius,envelope_cz_zone_prev, jerr)
+               if (jerr /= 0) stop
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
                call fpft(log_density,log_radius,log_mass,num_zones,omega,eta_squared,pressure_rotation_factor,temperature_rotation_factor,mean_gravity,mean_radius)
             endif

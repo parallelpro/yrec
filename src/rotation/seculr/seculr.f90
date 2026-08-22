@@ -54,7 +54,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      log_total_mass, total_mass_msun, log_teff, redo_flag, cut_count, &
      cz_moment_of_inertia, cz_mass_bottom, cz_mass_top, omega_surface, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
-     diffusion_solve_ok)
+     diffusion_solve_ok, ierr)
 
       use rotdiff_lib
       use run_diag_lib
@@ -205,6 +205,10 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !         LPRT = .TRUE.
 !      ENDIF
 !      IF(.NOT.LSCRIB.OR..NOT.LPRTIN) LPRT = .FALSE.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       print_diffusion_flag = .false.
 ! MHP 9/94
 ! DISK LOCKING CHECKED
@@ -328,7 +332,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             call mwind(log_luminosity_lsun,sub_timestep,cz_mass_bottom, &
                  cz_mass_top,zone_max,num_zones,wind_loss_active,omega_surface, &
                  total_mass_msun,log_teff,cz_moment_of_inertia, &
-                 specific_angular_momentum)
+                 specific_angular_momentum, ierr)
+            if (ierr /= 0) return
 ! REMOVE TORQUE FROM ENTIRE STAR
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 SAME AS LSOLID
          else if(surface_cz_active .and. (force_solid_body_rotation .or. &
@@ -340,7 +345,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             call mwind(log_luminosity_lsun,sub_timestep,solid_cz_mass_bottom, &
                  solid_cz_mass_top,solid_start_zone,num_zones,wind_loss_active, &
                  omega_surface,total_mass_msun,log_teff,cz_moment_of_inertia, &
-                 specific_angular_momentum)
+                 specific_angular_momentum, ierr)
+            if (ierr /= 0) return
 !            WRITE(*,*)HJM(1),HJM(M)
             solid_body_zone_start = 1
             solid_body_zone_end = num_zones
@@ -447,7 +453,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                   call mcowind(log_luminosity_lsun,sub_timestep, &
                        cz_moment_of_inertia,iteration,omega_surface, &
                        total_mass_msun,log_teff,omega_surface_start, &
-                       wind_loss_explicit,wind_loss_implicit)
+                       wind_loss_explicit,wind_loss_implicit, ierr)
+                  if (ierr /= 0) return
                else
                   wind_loss_explicit = 0.0D0
                   wind_loss_implicit = 0.0D0
@@ -479,7 +486,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                  eq_omega,rot_diff%ntot,wind_loss_explicit,wind_loss_implicit, &
                  eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
                  sum_delta_angular_momentum,fix_omega_at_surface, &
-                 diffusion_converged)
+                 diffusion_converged, ierr)
+            if (ierr /= 0) return
          endif
 ! MHP 08/03 REMOVED OBSOLETE EQUAL2 ROUTINE
 !         IF(M.GT.1)THEN
@@ -523,12 +531,14 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
               am_transport_convective_flag,num_zones,sub_timestep,eta_squared, &
               moment_of_inertia,specific_angular_momentum,cut_count, &
               diffusion_solve_ok,redo_flag,omega,qiw,mean_radius,omega_start, &
-              print_zone_id,print_zone_count,diffusion_converged)
+              print_zone_id,print_zone_count,diffusion_converged, ierr)
+         if (ierr /= 0) return
 !         WRITE(*,*)OMEGA(1),OMEGA(M)
 ! CHECK COMPOSITION DIFFUSION AND RECOMPUTE MEAN MOLECULAR WEIGHT.
          if(.not.redo_flag)call checkc(composition,iteration, &
               print_diffusion_flag,num_zones,sub_timestep,cut_count, &
-              diffusion_solve_ok,redo_flag)
+              diffusion_solve_ok,redo_flag, ierr)
+         if (ierr /= 0) return
 ! MHP 9/93
          if(no_am_transport_in_core)diffusion_solve_ok = .true.
 ! IF LOK=T,CONVERGED.
