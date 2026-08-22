@@ -17,7 +17,7 @@
 !     TL > TLIM2:         CENTRE TABLES
 !     TMINI,TMAXI:        TEMPERATURE INTERVAL COVERED
 !                         BY THE TABLES
-subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
+subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 !
 !     MHDST MUST BE CALLED IN MAIN.
 !     INTERPOLATION IN TABLES WITH DIFFERENT X AND FIXED Z
@@ -51,6 +51,10 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
            var_at_x0, var_at_x1, var_at_x2
 
 !     IRANGE = 1
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (log10_temperature.lt.mhd_eos%table_log10t_min .or. &
            log10_temperature.gt.mhd_eos%table_log10t_max) then
 !         IRANGE = 0
@@ -86,7 +90,10 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
             write(iowr,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
             write(short_file_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
             write(short_file_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
-            stop
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+            ! facades stop when their caller passes no ierr.
+            ierr = 1
+            return
          end if
 !         IF( ( XC(3).GT.XC(1) .AND. (X.GT.XC(3) .OR. X.LT.XC(1)))
 !    1                               .OR.

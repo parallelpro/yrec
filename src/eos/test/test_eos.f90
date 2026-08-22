@@ -54,7 +54,7 @@ program test_eos
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
 
       double precision :: w(12), wsum, scale
-      integer :: i, ipt
+      integer :: i, ipt, eos_ierr
 
 ! eos_get argument set
       double precision :: logt, t, logp, p, logd, d
@@ -256,6 +256,35 @@ program test_eos
          end do
          use_mhd_eos = .false.
       end if
+
+! Error paths (2026, ROADMAP.md stage 3): in the eos domain the error
+! conditions behind the converted stops are corrupt-table /
+! misconfiguration cases (out-of-table lookups stay *recoverable* by
+! design here -- alternate returns and sentinels -- unlike kap), so
+! with healthy tables the facade cannot be driven to ierr /= 0. The
+! first check asserts the success path threads ierr = 0 end to end
+! through eqstat/eqstat2/oeqos06/esac06. The second drives esac06 (a
+! domain internal -- this test is in-domain, white-box by design)
+! with an invalid rad_flag, the same class of internal error the
+! converted stops guarded, and asserts ierr = 1 with no crash; its
+! diagnostic goes to short_file_unit as always.
+      write(*,'(a)') "# test_eos: error paths via ierr"
+      logt = 6.30d0
+      logp = 14.0d0
+      logd = 0.0d0
+      d = 0.0d0
+      ksaha = 0
+      lderiv = .true.
+      latmo = .false.
+      fxion = 0.0d0
+      call eos_get(logt, t, logp, p, logd, d, x_frac, z_frac, &
+           beta, betai, beta14, fxion, rmu, amu, emu, eta, &
+           qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
+           lderiv, latmo, ksaha, ierr=eos_ierr)
+      write(*,'(a,i4)') "err facade-success ierr = ", eos_ierr
+      call esac06(0.70d0, 2.0d0, 0.1d0, 9, 2, eos_ierr, *300)
+  300 continue
+      write(*,'(a,i4)') "err bad-rad-flag   ierr = ", eos_ierr
 
       close(short_file_unit)
       write(*,'(a)') "test_eos: done"

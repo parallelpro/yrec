@@ -188,8 +188,29 @@ return ierr=1 without crashing) and its baseline was regenerated.
 Execution surfaced a build-system footgun now recorded in
 GUIDELINES.md: no `.mod` dependency tracking means any module-
 procedure signature change requires `make clean`, or stale callers
-segfault. Remaining: eos (39 stops), atm (7), and the facade-less
+segfault. Remaining after kap: eos, atm, and the facade-less
 domains (rotation 5, numerics 5, wind 2, mixing 1, misc 2).
+
+STATUS (2026-08-21): **eos converted** -- all 39 library stops (37
+live plus 2 that were already dead code behind an unconditional
+return, meqos/mhdpx's commented-out F77 999-handling, converted in
+place for uniformity) became required-ierr returns in the leaves,
+threaded through the full chain (eqstat/eqstat2 -> oeqos*/eqbound* ->
+esac* -> readco*/t6rint*, the rhoofp* function trio, and the MHD
+chain mhdtbl -> mhdst -> mhdst1 plus meqos -> mhdpx -> mhdpx1) up to
+OPTIONAL `ierr` on all three facades: eos_get, eos_init (whose own
+inline Fermi-glitch stop joined the funnel), and eos_get_gamma1.
+3 stops now stand where 40 did -- one deliberate funnel per facade.
+The domain's pre-existing *recoverable* error channels were preserved
+untouched and are now clearly distinguishable from fatal errors: the
+esac* out-of-table alternate returns (labels 62/65), oeqos*'s *998
+fall-back-to-Yale exits, and rhoofp*'s -999 sentinel are recoverable
+by design; ierr covers only the corrupt-data/misconfiguration class
+that used to stop. Because of that design, healthy tables cannot
+drive the facade to ierr /= 0, so test_eos asserts both halves:
+the success path threads ierr = 0 end to end through the facade, and
+a white-box call into esac06 with an invalid rad_flag returns ierr=1
+with no crash. Remaining: atm (7), then the facade-less domains.
 
 ## Stage 4 -- named-index result arrays
 

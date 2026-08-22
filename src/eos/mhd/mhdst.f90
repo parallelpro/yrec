@@ -19,7 +19,7 @@
 ! centre-type unit numbers) and sets the shared temperature-range
 ! commons used by mhdpx1.
 subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-     unit_centre2, unit_centre3, unit_centre4, unit_centre5)
+     unit_centre2, unit_centre3, unit_centre4, unit_centre5, ierr)
 ! `use const_lib` removed (2026): unused (nothing in this file's body
 ! reaches a const_lib symbol), and its dummy arguments above now share
 ! names with the const_lib lunum members, which would otherwise be an
@@ -62,6 +62,10 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       integer :: num_chem_species, unused_num_t, unused_num_r, table_index
       double precision :: unused_drho
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       num_chem_species = 0
       unused_drho = 0.d0
       unused_num_t = 0
@@ -76,7 +80,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
                      mhd_eos%zams_a_number_abundance,mhd_eos%zams_a_mass_fraction,mhd_eos%zams_a_mean_molecular_weight, &
                      log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
                      atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end if
       if (unit_zams_b.gt.0) then
          table_index = 0
@@ -87,7 +92,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
                      mhd_eos%zams_b_number_abundance,mhd_eos%zams_b_mass_fraction,mhd_eos%zams_b_mean_molecular_weight, &
                      log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
                      atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end if
       if (unit_zams_c.gt.0) then
          table_index = 0
@@ -98,7 +104,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
                      mhd_eos%zams_c_number_abundance,mhd_eos%zams_c_mass_fraction,mhd_eos%zams_c_mean_molecular_weight, &
                      log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
                      atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end if
 !     READ CENTRE TABLES
       if (unit_centre1.gt.0) then
@@ -110,7 +117,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
                      mhd_eos%centre1_number_abundance,mhd_eos%centre1_mass_fraction,mhd_eos%centre1_mean_molecular_weight, &
                      log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
                      atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end if
       if (unit_centre2.gt.0) then
          table_index = 1
@@ -121,7 +129,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
                      mhd_eos%centre2_number_abundance,mhd_eos%centre2_mass_fraction,mhd_eos%centre2_mean_molecular_weight, &
                      log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
                      atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end if
       if (unit_centre3.gt.0) then
          table_index = 1
@@ -132,7 +141,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
                      mhd_eos%centre3_number_abundance,mhd_eos%centre3_mass_fraction,mhd_eos%centre3_mean_molecular_weight, &
                      log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
                      atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end if
       if (unit_centre4.gt.0) then
          table_index = 1
@@ -143,7 +153,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
                      mhd_eos%centre4_number_abundance,mhd_eos%centre4_mass_fraction,mhd_eos%centre4_mean_molecular_weight, &
                      log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
                      atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end if
       if (unit_centre5.gt.0) then
          table_index = 1
@@ -154,7 +165,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
                      mhd_eos%centre5_number_abundance,mhd_eos%centre5_mass_fraction,mhd_eos%centre5_mean_molecular_weight, &
                      log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
                      atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end if
 !     TEMPERATURE LIMITS
       mhd_eos%table_log10t_min = mhd_eos%zams_lower_log10t(  1)

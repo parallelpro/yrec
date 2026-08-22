@@ -25,7 +25,7 @@
 !   opal_eos%eos_output_01(8) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
 !   opal_eos%eos_output_01(9) gamma3-1 (Cox & Guili eq 9.88)
 subroutine esac01(hydrogen_fraction, t6_temperature, density, &
-     deriv_order, rad_flag, *)
+     deriv_order, rad_flag, ierr, *)
 
       use opal_eos_lib
       use luout_lib
@@ -88,13 +88,20 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
            metal_mole_fraction, mean_molecular_weight
       double precision, external :: quadeos01, gmass01
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       blank_line = ' '
       if (deriv_order.gt.9) then
          write (short_file_unit,'(A, " iorder cannot exceed 9")') routine_id
       end if
       if ((rad_flag.ne.0) .and. (rad_flag.ne.1)) then
          write (short_file_unit,'(A, " Irad must be 0 or 1")') routine_id
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
 
       hydrogen_fraction_copy = hydrogen_fraction
@@ -116,7 +123,8 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
          end do
 !
 ! ..... read the data files
-         call readcoeos01
+         call readcoeos01(ierr)
+         if (ierr /= 0) return
          table_metal_fraction = opal_eos%z_table_01(1)
 
          if (table_metal_fraction+hydrogen_fraction-1.0d-6.gt.1) go to 61
@@ -292,7 +300,10 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
            (opal_eos%z_table_01(x_index_3).ne.opal_eos%z_table_01(opal_eos%x_index_lo_01))) then
          write(short_file_unit,'(A,"Z does not match Z in OEOS01 files you are" &
               &," using")') routine_id
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
       if (table_metal_fraction.ne.opal_eos%z_table_01(opal_eos%x_index_lo_01)) go to 66
       recompute_flag = 0
@@ -364,7 +375,8 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
 !       mixes overlapping quadratics to obtain smoothed derivatives.
 !
 !
-      call t6rinteos01(density_value, t6_value)
+      call t6rinteos01(density_value, t6_value, ierr)
+      if (ierr /= 0) return
       opal_eos%eos_output_01(eos_var_idx) = opal_eos%esact_01
   124 continue
 
@@ -387,7 +399,10 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
 
    61 write(short_file_unit,*) routine_id, "Mass fractions exceed unity (61)"
       write(short_file_unit,*) 'Z, XH', table_metal_fraction, hydrogen_fraction
-      stop
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+      ! facades stop when their caller passes no ierr.
+      ierr = 1
+      return
    62 continue
       write(short_file_unit,*) routine_id, " T6 or rho outside of table range (62)"
       write(short_file_unit,*) "t6, t6a(1),t6a(nt):", t6_value, opal_eos%t6_grid_01(1), &
@@ -408,6 +423,9 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
       write(short_file_unit,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') &
            opal_eos%t6_interp_order_01, opal_eos%density_interp_order_01, opal_eos%t6_index_3_01, opal_eos%density_index_3_01, &
            hydrogen_fraction, t6_temperature, density, table_metal_fraction
-      stop
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+      ! facades stop when their caller passes no ierr.
+      ierr = 1
+      return
 
 end subroutine esac01

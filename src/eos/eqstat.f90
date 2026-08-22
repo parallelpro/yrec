@@ -21,7 +21,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
-     in_atmosphere, saha_state)
+     in_atmosphere, saha_state, ierr)
 !
 !  Input Arguments: log10_temperature, log10_pressure, hydrogen_fraction,
 !          metal_fraction, want_derivatives, in_atmosphere
@@ -94,6 +94,10 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
            adiabatic_gradient_dt_throwaway, adiabatic_gradient_dp_throwaway, &
            specific_heat_cp_dt_throwaway, specific_heat_cp_dp_throwaway
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       log10_pressure_orig = log10_pressure
       log10_temperature_orig = log10_temperature
       in_atmosphere_local = in_atmosphere
@@ -134,7 +138,8 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
               adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
               specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere_local, saha_state_local)
+              in_atmosphere_local, saha_state_local, ierr)
+         if (ierr /= 0) return
 
          ttl = log10_temperature - dtl
          temperature = 10.0d0**ttl
@@ -149,7 +154,8 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
               adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
               specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere_local, saha_state_local)
+              in_atmosphere_local, saha_state_local, ierr)
+         if (ierr /= 0) return
          dlnrho_dlnt_dt_1 = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
          specific_heat_cp_dt_1 = (dlog10(specific_heat_cp_1) - &
               dlog10(specific_heat_cp_2))/dtl2
@@ -171,7 +177,8 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
               adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
               specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere_local, saha_state_local)
+              in_atmosphere_local, saha_state_local, ierr)
+         if (ierr /= 0) return
          ppl = log10_pressure - dpl
          pressure = 10.0d0**ppl
          want_derivatives_2 = .false.
@@ -185,7 +192,8 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
               adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
               specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere_local, saha_state_local)
+              in_atmosphere_local, saha_state_local, ierr)
+         if (ierr /= 0) return
          log10_pressure = log10_pressure_orig
          pressure = 10.0d0**log10_pressure_orig   ! Restore original P
          dlnrho_dlnp_dt_1 = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10
@@ -217,7 +225,8 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
               adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives_2, &
-              in_atmosphere, saha_state)
+              in_atmosphere, saha_state, ierr)
+         if (ierr /= 0) return
       else
          want_derivatives_2 = .false.  ! We either already have numerical derivatives
                         ! or do not need any derivatives.
@@ -232,7 +241,8 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
               adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
               specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere, saha_state)
+              in_atmosphere, saha_state, ierr)
+         if (ierr /= 0) return
 !            Note that the dlnrho_dlnt_dt, dlnrho_dlnp_dt, etc OUTPUTS
 !            are to dummy variables so they can not affect the
 !            previously calculated second derivatives.
@@ -293,7 +303,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
-     in_atmosphere, saha_state)
+     in_atmosphere, saha_state, ierr)
 
       use envelope_comp_lib
       use luout_lib
@@ -378,6 +388,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !     SAHA IONIZATION EQUATION. IF LSAHA = F, FULLY IONIZED GAS ASSUMED.
 !     LONLYS = T IF SAHA EQUATION MUST BE SOLVED BUT RELATIVISTIC
 !     EQUATION OF STATE NOT NEEDED.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       need_saha_solution = log10_temperature.lt.saha_log10t_cutoff
       skip_relativistic_eos = log10_temperature.le. &
            (saha_log10t_cutoff - saha_ramp_width)
@@ -678,10 +692,12 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_ion_mean_weight_inverse, &
               opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
               opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, *998)
+              opal_adiabatic_gradient, ierr, *998)
+         if (ierr /= 0) return
 
          call eqbound(temperature, opal_log10_density, ramp_factor, &
-              in_opal_table, needs_ramp)
+              in_opal_table, needs_ramp, ierr)
+         if (ierr /= 0) return
 
          if (.not.in_opal_table) goto 998  ! Point is not in OPAL 1995 EOS table, so exit.
 
@@ -738,10 +754,12 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_ion_mean_weight_inverse, &
               opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
               opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, *998)
+              opal_adiabatic_gradient, ierr, *998)
+         if (ierr /= 0) return
 
          call eqbound01(temperature, opal_log10_density, ramp_factor, &
-              in_opal_table, needs_ramp)
+              in_opal_table, needs_ramp, ierr)
+         if (ierr /= 0) return
 !        eqbound01 determines whether or not the point is in the OPAL
 !        2001 EOS table
 
@@ -800,7 +818,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_ion_mean_weight_inverse, &
               opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
               opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, *998)
+              opal_adiabatic_gradient, ierr, *998)
+         if (ierr /= 0) return
 
          call eqbound06(temperature, opal_log10_density, ramp_factor, &
               in_opal_table, needs_ramp)

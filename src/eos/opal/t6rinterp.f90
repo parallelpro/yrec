@@ -12,7 +12,7 @@
 ! surrounding 3x3 (or 4x4, smoothed by mixing overlapping quadratics)
 ! grid to produce opal_eos%esact, the interpolated value of the current
 ! thermodynamic variable at (slt, slr) = (T6, density).
-subroutine t6rinterp(slr, slt)
+subroutine t6rinterp(slr, slt, ierr)
 
       use opal_eos_lib
       use luout_lib
@@ -34,6 +34,10 @@ subroutine t6rinterp(slr, slt)
       integer :: hi_loop_count, recompute_flag, cache_slot, t6_grid_idx
       double precision :: esactq, esact2, esactq2, dix, dix2
       double precision, external :: quad
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       hi_loop_count = 0
       recompute_flag = 0
@@ -106,7 +110,10 @@ subroutine t6rinterp(slr, slt)
       if (opal_eos%esact.gt.1.0d+15) then
          write(short_file_unit,'("INTERPOLATION INDICES OUT OF RANGE", &
               &";PLEASE REPORT CONDITIONS.")')
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
 
       return

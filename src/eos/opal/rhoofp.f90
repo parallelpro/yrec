@@ -13,7 +13,7 @@
 ! sentinel checked by oeqos.f90) if the point isn't bracketed in the
 ! table or the iteration fails to converge in 10 tries.
 double precision function rhoofp(hydrogen_fraction, t6_temperature, &
-     pressure_e12, rad_flag)
+     pressure_e12, rad_flag, ierr)
 
       use opal_eos_lib
       use luout_lib
@@ -58,6 +58,10 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
 
       save
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       rat = rad_const_over_c
       radiation_pressure = 0.0d0
 !      IF(IRAD .EQ. 1) PR=4.D0/3.D0*RAT*T6**4   ! MB
@@ -69,7 +73,8 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
          density_dbg = 0.001d0
          ideriv_dbg = 1
          call esac(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
-              rad_flag, *999)
+              rad_flag, ierr, *999)
+         if (ierr /= 0) go to 999
       end if
 
       lo_idx = 2
@@ -120,7 +125,8 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       density_trial1 = opal_eos%density_grid(density_index_edge(t6_bisect_idx))* &
            pressure_no_rad/pressure_max
       call esac(hydrogen_fraction, t6_temperature, density_trial1, 1, &
-           rad_flag, *999)
+           rad_flag, ierr, *999)
+      if (ierr /= 0) go to 999
       pressure_trial1 = opal_eos%eos_output(1)
       if (pressure_trial1.gt.pressure_no_rad) then
          pressure_trial2 = pressure_trial1
@@ -128,7 +134,8 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
          density_trial1 = 0.2d0*density_trial1
          if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
          call esac(hydrogen_fraction, t6_temperature, density_trial1, 1, &
-              rad_flag, *999)
+              rad_flag, ierr, *999)
+         if (ierr /= 0) go to 999
          pressure_trial1 = opal_eos%eos_output(1)
       else
          density_trial2 = 5.0d0*density_trial1
@@ -136,7 +143,8 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
          if (density_trial2.gt.opal_eos%density_grid(density_index_edge(t6_bisect_idx))) &
               density_trial2 = opal_eos%density_grid(density_index_edge(t6_bisect_idx)) ! Had wrong pointer, see RHOG1= ten lines up
          call esac(hydrogen_fraction, t6_temperature, density_trial2, 1, &
-              rad_flag, *999)
+              rad_flag, ierr, *999)
+         if (ierr /= 0) go to 999
          pressure_trial2 = opal_eos%eos_output(1)
       end if
 
@@ -146,7 +154,8 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
            (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
       call esac(hydrogen_fraction, t6_temperature, density_trial3, 1, &
-           rad_flag, *999)
+           rad_flag, ierr, *999)
+      if (ierr /= 0) go to 999
       pressure_trial3 = opal_eos%eos_output(1)
 !      IF (ABS((P3-PNR)/PNR) .LT. 1.D-5) THEN
       if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.0.5d-7) then

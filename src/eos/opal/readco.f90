@@ -14,7 +14,7 @@
 ! names), and derives the auxiliary grid-spacing arrays used by
 ! esac.f90/t6rinterp.f90 for interpolation. Called once (guarded by
 ! common/lreadco/) from esac.f90.
-subroutine readco
+subroutine readco(ierr)
 
       use opal_eos_lib
       use const_lib
@@ -42,6 +42,10 @@ subroutine readco
 ! no longer target it here now that it's use-associated.
 
       save
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       blank_line = ' '
 
@@ -79,7 +83,10 @@ subroutine readco
             if (record_number.ne.density_row) then
                write(short_file_unit,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') &
                     record_number, density_row
-               stop
+               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! facades stop when their caller passes no ierr.
+               ierr = 1
+               return
             end if
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
@@ -88,7 +95,10 @@ subroutine readco
                write(short_file_unit,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", &
                     &E14.4)') opal_eos%hydrogen_fraction_header(x_loop_index), &
                     opal_eos%density_grid_table(x_loop_index,density_row)
-               stop
+               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! facades stop when their caller passes no ierr.
+               ierr = 1
+               return
             end if
             do t6_row = 1, opal_eos%temperature_count_used(x_loop_index,density_row)
                if (t6_row.gt.opal_eos%t6_index_lo(density_row)) then

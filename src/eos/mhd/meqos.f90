@@ -19,7 +19,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
      electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
      specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-     specific_heat_cp_dt, specific_heat_cp_dp)
+     specific_heat_cp_dt, specific_heat_cp_dp, ierr)
 
 ! LATMO,KSAHA NEEDED FOR EQSAHA
       use mhd_eos_lib
@@ -60,11 +60,16 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
       double precision :: specific_gas_constant_check
       integer :: ion_idx
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       ier_flag = 0
       temperature = 10.0d0**log10_temperature
       pressure = 10.0d0**log10_pressure
       call mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
-           mhdpx_r10)
+           mhdpx_r10, ierr)
+      if (ierr /= 0) return
       log10_density = mhd_eos%mhd_output(1)
       density = 10.0d0**log10_density
       dlnrho_dlnp = 1.0d0/mhd_eos%mhd_output(4)
@@ -104,10 +109,16 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
           write(short_file_unit,*) specific_gas_constant, &
                specific_gas_constant_check
         write(short_file_unit,*) 'ERROR (MHD): CHECK MU'
-          stop
+          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+          ! facades stop when their caller passes no ierr.
+          ierr = 1
+          return
       end if
       return
 !   999 CONTINUE
       write(short_file_unit,*) 'ERROR(MHD):... MHD TABLE FAIL'
-      stop
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+      ! facades stop when their caller passes no ierr.
+      ierr = 1
+      return
 end subroutine meqos

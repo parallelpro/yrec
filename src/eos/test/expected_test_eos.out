@@ -64,4 +64,7 @@ g1  4   1.666295617340982E+00   3.966366433217321E-01
 g1  3   1.664268850065458E+00   3.983747568277375E-01
 g1  4   1.664333375060510E+00   3.989501157492888E-01
 # test_eos: MHD path SKIPPED (YREC_MHD_TABLES not set; no MHD tables ship with YREC)
+# test_eos: error paths via ierr
+err facade-success ierr =    0
+err bad-rad-flag   ierr =    1
 test_eos: done

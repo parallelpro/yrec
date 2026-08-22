@@ -9,7 +9,7 @@
 ! OPAL 2001 EOS analogue of t6rinterp.f90 (see there for the general
 ! description). Interpolates the already X-interpolated table slice
 ! (opal_eos%x_interp_result_01) in T6 and density to produce opal_eos%esact_01.
-subroutine t6rinteos01(slr, slt)
+subroutine t6rinteos01(slr, slt, ierr)
 
       use opal_eos_lib
       use luout_lib
@@ -31,6 +31,10 @@ subroutine t6rinteos01(slr, slt)
       integer :: hi_loop_count, recompute_flag, cache_slot, t6_grid_idx
       double precision :: esactq, esact2, esactq2, dix, dix2
       double precision, external :: quadeos01
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       hi_loop_count = 0
       recompute_flag = 0
@@ -99,7 +103,10 @@ subroutine t6rinteos01(slr, slt)
       if (opal_eos%esact_01.gt.1.0d+15) then
          write(short_file_unit,'("Interpolation indices out of range", &
               &";please report conditions.")')
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
 
       return

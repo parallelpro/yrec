@@ -58,7 +58,7 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
-     in_atmosphere, saha_state, composition_at_zone)
+     in_atmosphere, saha_state, composition_at_zone, ierr)
 
       use const_lib
       implicit none
@@ -85,6 +85,19 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
       double precision, intent(in), optional :: composition_at_zone(15)
+! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, the transitional form of
+! MESA's ierr-not-stop discipline (same shape as kap_lib's kap_get).
+! When the caller passes ierr, any error condition that used to stop
+! deep inside the eos internals is returned here instead, ierr /= 0,
+! and no stop occurs. When the caller omits ierr, behavior is exactly
+! historical: the same diagnostic messages, then a stop -- now located
+! in this facade's funnel rather than at the point of failure.
+      integer, intent(out), optional :: ierr
+
+      integer :: jerr
+
+      if (present(ierr)) ierr = 0
+      jerr = 0
 
       if (use_mhd_eos) then
          call meqos(log10_temperature, temperature, log10_pressure, &
@@ -95,7 +108,8 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
               adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
               adiabatic_gradient_dt, adiabatic_gradient_dp, &
-              specific_heat_cp_dt, specific_heat_cp_dp)
+              specific_heat_cp_dt, specific_heat_cp_dp, jerr)
+         if (jerr /= 0) go to 900
       else
          if (present(composition_at_zone) .and. use_debye_huckel_correction) then
             debye_huckel_x = composition_at_zone(1)
@@ -115,10 +129,22 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
               adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
               adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
-              in_atmosphere, saha_state)
+              in_atmosphere, saha_state, jerr)
+         if (jerr /= 0) go to 900
       end if
 
       return
+
+! error funnel: reached only when a callee reported jerr /= 0. With
+! ierr present the caller takes responsibility; without it, preserve
+! the historical stop (the diagnostic already printed at the point of
+! failure).
+  900 continue
+      if (present(ierr)) then
+         ierr = jerr
+         return
+      end if
+      stop
 end subroutine eos_get
 
 !----------------------------------------------------------------------
@@ -149,7 +175,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
      scv_he_table_path, scv_z_table_path, zams_a_table_path, &
      zams_b_table_path, zams_c_table_path, centre1_table_path, &
      centre2_table_path, centre3_table_path, centre4_table_path, &
-     centre5_table_path)
+     centre5_table_path, ierr)
 
       use yale_eos_lib
       use luout_lib
@@ -164,17 +190,25 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
            zams_b_table_path, zams_c_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
            centre5_table_path
+! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_get's.
+      integer, intent(out), optional :: ierr
 
+      integer :: jerr
       integer :: grid_idx, iden_idx, col_idx, card_idx
       integer :: bin_start, bin_width, bin_end
       integer :: t_idx, p_idx
       double precision :: scvhe_dummy_val, scvz_dummy_val
       integer :: scvhe_dummy_npts, scvz_dummy_npts
 
+      if (present(ierr)) ierr = 0
+      jerr = 0
+
       if (use_mhd_eos) then
          call mhdtbl(zams_a_table_path, zams_b_table_path, &
               zams_c_table_path, centre1_table_path, centre2_table_path, &
-              centre3_table_path, centre4_table_path, centre5_table_path)
+              centre3_table_path, centre4_table_path, centre5_table_path, &
+              jerr)
+         if (jerr /= 0) go to 900
       end if
 
 !  INPUT F-TABLES FOR DEGENERATE EQUATION OF STATE
@@ -195,7 +229,9 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
           write(short_file_unit,1000) grid_idx
  1000       format(1x,39('>'),40('<')/1x,'ERROR IN SUBROUTINE SETUPS'/ &
            1x,'GLITCH IN FERMI TABLE ELEMENT',i4/1x,'RUN STOPPED')
-          stop
+! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
+          jerr = 1
+          go to 900
        endif
        bin_width = int((yale_eos%fermi_table_x_grid(grid_idx+1) - yale_eos%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
        bin_end = bin_start + bin_width - 1
@@ -237,6 +273,14 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       endif
 
       return
+
+! error funnel: same contract as eos_get's.
+  900 continue
+      if (present(ierr)) then
+         ierr = jerr
+         return
+      end if
+      stop
 end subroutine eos_init
 
 !----------------------------------------------------------------------
@@ -259,7 +303,7 @@ end subroutine eos_init
 ! call sites, so the migration is byte-identical.
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
-     saha_state)
+     saha_state, ierr)
 
       use opal_eos_lib
       use const_lib
@@ -269,6 +313,13 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
            temperature_1e6k, density, pressure
       double precision, intent(out) :: gamma1, adiabatic_gradient
       integer, intent(inout) :: saha_state
+! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_get's.
+! Note the out-of-table alternate return of esac06 is NOT an error
+! here: it falls through with the previous point's results, preserved
+! verbatim from calcad's original handling.
+      integer, intent(out), optional :: ierr
+
+      integer :: jerr
 
 ! --- locals (per-call copies: esac06/eqstat2 write into several of
 !     the positions the inputs occupy) ---
@@ -285,6 +336,9 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       double precision :: chi_rho, chi_t, specific_heat_cv
       logical :: eos_deriv_flag, eos_atmosphere_flag
 
+      if (present(ierr)) ierr = 0
+      jerr = 0
+
       if (use_opal2006_eos) then
          eos_interp_order = 9
          eos_rad_flag = 1
@@ -292,7 +346,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          t6_local = temperature_1e6k
          d_local = density
          call esac06(x_local, t6_local, d_local, eos_interp_order, &
-              eos_rad_flag, *100)
+              eos_rad_flag, jerr, *100)
+         if (jerr /= 0) go to 900
   100    continue
          gamma1 = opal_eos%eos_output_06(8)
          adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(9)
@@ -314,7 +369,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
               electron_mean_weight_inverse, electron_degeneracy_parameter, &
               qdt_eos, qdp_eos, qcp_eos, dela_eos, qdtt_eos, qdtp_eos, &
               qat_eos, qap_eos, qcpt_eos, qcpp_eos, eos_deriv_flag, &
-              eos_atmosphere_flag, saha_state)
+              eos_atmosphere_flag, saha_state, jerr)
+         if (jerr /= 0) go to 900
          chi_rho = 1.0d0/qdp_eos
          chi_t = -chi_rho*qdt_eos
          specific_heat_cv = qcp_eos - exp(ln10*(log10_pressure - &
@@ -324,6 +380,14 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       end if
 
       return
+
+! error funnel: same contract as eos_get's.
+  900 continue
+      if (present(ierr)) then
+         ierr = jerr
+         return
+      end if
+      stop
 end subroutine eos_get_gamma1
 
 end module eos_lib

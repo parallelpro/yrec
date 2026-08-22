@@ -12,7 +12,7 @@
 ! result (see eqstat2.f90's use_opal95_eos branch, which calls this
 ! immediately after oeqos).
 subroutine eqbound(temperature, log10_density, ramp_factor, &
-     in_opal_table, needs_ramp)
+     in_opal_table, needs_ramp, ierr)
 
       use opal_eos_lib
       implicit none
@@ -32,6 +32,10 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       double precision :: t6_top_of_table, t_fraction
       integer :: t6_scan_idx
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       t6 = temperature*1.0d-6
 !     exit if outside table in rho
       if (log10_density.lt.-14d0 .or. log10_density.gt.5.0d0) then
@@ -49,7 +53,10 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
 !        sr call should have been stopped outside table bounds; stop code
          write(*,5) t6, t6_top_of_table, opal_eos%t_row_index
     5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
    10    continue
       else
          do t6_scan_idx = opal_eos%t_row_index, 1, -1
@@ -61,7 +68,10 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          t6_top_of_table = opal_eos%t6_grid(1)
 !        sr call should have been stopped outside table bounds; stop code
          write(*,5) t6, t6_top_of_table, opal_eos%t_row_index
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
    20    continue
       end if
       t_fraction = (t6 - opal_eos%t6_grid(opal_eos%t_row_index+1))/ &

@@ -24,7 +24,7 @@
 ! opal_eos%t6_list_06/amu_grid reads do. This looks like an original bug (using
 ! "j" instead of "i" in that READ's variable list) but is
 ! transliterated exactly rather than "fixed".
-subroutine readcoeos06
+subroutine readcoeos06(ierr)
 
       use opal_eos_lib
       use const_lib
@@ -52,6 +52,10 @@ subroutine readcoeos06
       double precision :: unused_field
 
       save
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       blank_line = ' '
 
@@ -92,7 +96,10 @@ subroutine readcoeos06
             if (record_number.ne.density_row) then
                write (short_file_unit,'(" OEOS06 Data file incorrect: numtot,jcs= " &
                     &,2I5)') record_number, density_row
-               stop
+               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! facades stop when their caller passes no ierr.
+               ierr = 1
+               return
             end if
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
@@ -101,7 +108,10 @@ subroutine readcoeos06
                write (short_file_unit,'("Problem with OEOS96 data files: X=",F6.4, &
                     &" density=",E14.4)') opal_eos%hydrogen_fraction_header_06(x_loop_index_06), &
                     opal_eos%density_grid_table_06(x_loop_index_06,density_row)
-               stop
+               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! facades stop when their caller passes no ierr.
+               ierr = 1
+               return
             end if
             do t6_row = 1, opal_eos%temperature_count_used_06(x_loop_index_06,density_row)
                if (t6_row.gt.opal_eos%t6_index_lo_06(density_row)) then
@@ -126,7 +136,10 @@ subroutine readcoeos06
          if (opal_eos%t6_list_06(1,t6_scan_idx).eq.0.0d0) then
             write(short_file_unit,'("READCOEOS06: Error:",I4, &
                  &"-th T6 value is zero")') t6_scan_idx
-            stop
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+            ! facades stop when their caller passes no ierr.
+            ierr = 1
+            return
          end if
          opal_eos%t6_grid_06(t6_scan_idx) = opal_eos%t6_list_06(1,t6_scan_idx)
       end do

@@ -21,7 +21,7 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, specific_gas_constant, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
-     dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, *)
+     dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, ierr, *)
 
       use opal_eos_lib
       use const_lib
@@ -59,6 +59,10 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
       integer :: rad_flag, deriv_order
       double precision, external :: rhoofp01
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       deriv_order = 9  ! gives all 1st and 2nd order data. See instructions
 !                  in esac01.
 !     NOTE: rad_flag=0 does not add radiation; rad_flag=1 adds radiation
@@ -73,7 +77,8 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
       metal_fraction_table = metal_fraction
 
       density_cgs = rhoofp01(hydrogen_fraction_work, t_million_k, p_e12, &
-           rad_flag)
+           rad_flag, ierr)
+      if (ierr /= 0) return
       if (density_cgs.le.-998.0d0) then
          return 1
       end if
@@ -81,7 +86,8 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
       log10_density = dlog10(density)
 
       call esac01(hydrogen_fraction_work, t_million_k, density_cgs, &
-           deriv_order, rad_flag, *999)
+           deriv_order, rad_flag, ierr, *999)
+      if (ierr /= 0) return
 
 !      IF(ABS((P12-EOS(1))/P12).GT.0.5D-6)THEN
 !         WRITE(ISHORT,*)'***** RUN TERMINATED --ERROR IN OEQOS01 PTOT'

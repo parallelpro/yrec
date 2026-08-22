@@ -22,7 +22,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
                   drho1,drho2,num_chem,atomic_weight,number_abundance,mass_fraction,mean_molecular_weight, &
                   log10t_down,log10t_up,table_vars_centroid,table_vars_down,table_vars_up, &
                   atomic_weight_down,atomic_weight_up, &
-                  number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up)
+                  number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
       use const_lib
       implicit none
       integer, intent(in) :: table_unit, table_kind, nt1m, nr1m, ivar1, &
@@ -53,6 +53,10 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       integer :: species_index, temp_check_index, temp_deriv_index, &
            density_deriv_index, var_index
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (table_kind.eq.0) then
           num_composition_reads = 1
       else
@@ -62,10 +66,16 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !     READ(IR,98,END=1000) IVARR,IDXR,IRESCR,DDX
       read(table_unit,   end=1000) num_vars_read,table_kind_read,composition_flag_read,delta_x
       if (ivar1.lt.num_vars_read) then
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
       if (table_kind.ne.table_kind_read) then
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
       if (composition_pass.eq.1) then
           composition_flag_expected= 0
@@ -75,7 +85,10 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
           composition_flag_expected= 1
       end if
       if (composition_flag_expected.ne.composition_flag_read) then
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       end if
       if (composition_pass.eq.1) call rabu(table_unit,nchem0,num_chem,atomic_weight,number_abundance,mass_fraction,mean_molecular_weight)
       if (composition_pass.eq.2) call rabu(table_unit,nchem0,num_chem,atomic_weight_down,number_abundance_down,mass_fraction_down,unused_mean_molecular_weight_down)
@@ -83,7 +96,10 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !     READ(IR,1001) NT1,NT2,DRH1,DRH2
       read(table_unit     ) num_t1,num_t2,drho1,drho2
       if (table_kind.eq.1 .and. num_t1.ne.0) then
-          stop
+          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+          ! facades stop when their caller passes no ierr.
+          ierr = 1
+          return
       end if
       if (num_t1.gt.0) then
          call rtab(table_unit,nt1m,nr1m,ivar1,num_t1,num_r1,log10t1,table_vars1)
@@ -140,11 +156,20 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       return
 !     ERROR EXIT AND ERROR MESSAGES
   500 continue
-      stop
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+      ! facades stop when their caller passes no ierr.
+      ierr = 1
+      return
  600  continue
-      stop
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+      ! facades stop when their caller passes no ierr.
+      ierr = 1
+      return
  1000 continue
-      stop
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+      ! facades stop when their caller passes no ierr.
+      ierr = 1
+      return
 !  98   FORMAT(1X,3I5,F13.5)
 !  99   FORMAT(1X,I5,(/1X,3E15.7))
 ! 1001  FORMAT(2I5,2F10.6)

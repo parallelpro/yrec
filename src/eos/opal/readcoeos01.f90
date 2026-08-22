@@ -10,7 +10,7 @@
 ! 2001-EOS common blocks (block names preserved verbatim -- see
 ! readco.f90's header for why). Called once (guarded by
 ! common/lreadco/) from esac01.f90.
-subroutine readcoeos01
+subroutine readcoeos01(ierr)
 
       use opal_eos_lib
       use const_lib
@@ -38,6 +38,10 @@ subroutine readcoeos01
 ! can no longer target it here now that it's use-associated.
 
       save
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       blank_line = ' '
 
@@ -76,7 +80,10 @@ subroutine readcoeos01
             if (record_number.ne.density_row) then
                write (short_file_unit,'(" Data file incorrect: numtot,jcs= ",2I5)') &
                     record_number, density_row
-               stop
+               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! facades stop when their caller passes no ierr.
+               ierr = 1
+               return
             end if
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
@@ -85,7 +92,10 @@ subroutine readcoeos01
                write (short_file_unit,'("problem with data files: X=",F6.4, &
                     &" density=",E14.4)') opal_eos%hydrogen_fraction_header_01(x_loop_index_01), &
                     opal_eos%density_grid_table_01(x_loop_index_01,density_row)
-               stop
+               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! facades stop when their caller passes no ierr.
+               ierr = 1
+               return
             end if
             do t6_row = 1, opal_eos%temperature_count_used_01(x_loop_index_01,density_row)
                if (t6_row.gt.opal_eos%t6_index_lo_01(density_row)) then
@@ -110,7 +120,10 @@ subroutine readcoeos01
          if (opal_eos%t6_list_01(1,t6_scan_idx).eq.0.0d0) then
             write(short_file_unit,'("READCOEOS01: Error:",I4, &
                  &"-th T6 value is zero")') t6_scan_idx
-            stop
+            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+            ! facades stop when their caller passes no ierr.
+            ierr = 1
+            return
          end if
          opal_eos%t6_grid_01(t6_scan_idx) = opal_eos%t6_list_01(1,t6_scan_idx)
       end do

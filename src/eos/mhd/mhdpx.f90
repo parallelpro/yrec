@@ -29,7 +29,7 @@
 ! be called in main to load the tables first. Dispatches to the
 ! variable-X interpolation in mhdpx1, then returns log10(density).
 subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
-     log10_density)
+     log10_density, ierr)
       use mhd_eos_lib
       use const_lib
       use luout_lib
@@ -43,12 +43,20 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
 
       save
 
-      call mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction)
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
+      call mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
+      if (ierr /= 0) return
 !     IERR = 0
       log10_density = mhd_eos%mhd_output(1)
       return
 !   999 CONTINUE
       write(iowr,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
       write(short_file_unit,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
-      stop
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+      ! facades stop when their caller passes no ierr.
+      ierr = 1
+      return
 end subroutine mhdpx
