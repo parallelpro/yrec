@@ -623,3 +623,25 @@ read_controls -> star_setup -> the run loop. Remaining in this
 phase: the evolve_step split (wants an evolution-state inventory of
 the loop's ~dozens of saved locals -- same method as the star_info
 scalars audit), then phase C (reset/re-entrancy).
+
+STATUS (2026-08-22, later still): **evolve_state + evolve_step
+done.** state/evolve_state_lib.f90 holds the 26 scalars the model
+loop genuinely shares with the run/Monte-Carlo levels (instance
+`evo`), completing the state taxonomy: star_info (model) / star_job
+(job config) / evolve_state (driver working state) / const_lib
+(physics controls). Measured twice: the first audit counted
+declaration lines as outside-uses and swept 28 loop temporaries into
+the struct; the Stage-0 byte-diff caught the resulting 1e-16 codegen
+drift in the per-zone prediction arithmetic, a 4-build variable-set
+bisection isolated the scratch delta_*_step temporaries, and the
+corrected executable-lines-only audit gave the clean 26/28 split.
+core/evolve_step.f90 then took the model-loop body verbatim (the
+divergence/redo cycle, corrector, mixing, rotation, rezoning, output,
+timestep update, stop criteria) with a step_status contract
+(0=continue, 1=run finished, 2=leave run loop; historical goto
+110/200 exits retarget local labels) and the 28 region-only locals
+under a load-bearing save. run_yrec's model loop is now four lines.
+nk stayed const_lib module state (former common/zramp/), not an
+argument. Phase C (reset/re-entrancy) is next: its reset surface is
+now enumerable -- evolve_state, evolve_step's saved locals, star,
+and the domains' table/lazy-init state.
