@@ -23,7 +23,7 @@ program test_kap
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-      integer :: ipt, kap_ierr
+      integer :: setups_ierr, ipt, kap_ierr
       double precision :: logt, logd, x_frac, z_frac
       double precision :: o, ol, qod, qot, fxion(3)
 
@@ -84,7 +84,11 @@ program test_kap
            opal95_path, dummy_path, dummy_path, dummy_path, dummy_path, &
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_paths7)
+           dummy_paths7, setups_ierr)
+      if (setups_ierr /= 0) then
+         write(*,'(a)') "test_kap: FAIL (setups error)"
+         stop 1
+      end if
 
       x_frac = 0.70d0
       z_frac = 0.016232d0

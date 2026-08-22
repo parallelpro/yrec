@@ -35,6 +35,7 @@ subroutine run_yrec(ierr)
       use luout_lib
       use const_lib
       use star_info_lib, only: star
+      use star_job_lib, only: job
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: numtt = 70
@@ -83,7 +84,6 @@ subroutine run_yrec(ierr)
 
 
       double precision :: trial_sign_flag
-      double precision :: mixture_weights(12)
 !     MHP 10/24 FLAG FOR END OF RUN
       logical :: end_kind_flag
 
@@ -129,7 +129,7 @@ subroutine run_yrec(ierr)
       data reference_solar_luminosity/3.844D33/
 
 ! --- locals ---
-      integer :: mc_run_start, mc_run_end, monte_carlo_run_number
+      integer :: monte_carlo_run_number
       double precision :: age_scale_factor
       logical :: saved_pulse_output_flag
       integer :: convergence_iterations
@@ -196,7 +196,6 @@ subroutine run_yrec(ierr)
       character(len=256) :: opal92_table2_path, pure_z_table_path, &
            scv_h_table_path, scv_he_table_path, scv_z_table_path
       character(len=256) :: alex95_table_paths(7)
-      character(len=256) :: pulse_atm_path, pulse_env_path, pulse_mod_path
       double precision :: monte_helium_diffusion_fraction
       logical :: punch_pending_flag
 
@@ -220,39 +219,14 @@ subroutine run_yrec(ierr)
       iowr = 9
 ! LPUNCH is TRUE once first model is calculated
       punch_pending_flag = .false.
-! read in user parameters
-      call parmin(alex06_table_path,allard_table_path,atm_table_path,fermi_table_path,kurucz_table_path,kurucz_table2_path,laol_table_path, &
-           laol_table2_path,opal95_table_path,opal92_table_path,zams_a_table_path,zams_b_table_path,zams_c_table_path,centre1_table_path,centre2_table_path,centre3_table_path,centre4_table_path, &
-           centre5_table_path,opal92_table2_path,pulse_atm_path,pulse_env_path,pulse_mod_path,pure_z_table_path,scv_h_table_path,scv_he_table_path,scv_z_table_path,alex95_table_paths, ierr)
+! 2026 (phase five): controls read and setup are now star-layer
+! routines operating on the star_job structure (state/star_job_lib).
+      call read_controls(ierr)
       if (ierr /= 0) return
-! set up constants and read in tabular data
-! MHP 8/25 directly pass file names instead of using common blocks
-      call setups(mixture_weights,alex06_table_path,allard_table_path,atm_table_path,fermi_table_path,kurucz_table_path,kurucz_table2_path, &
-           laol_table_path,laol_table2_path,opal95_table_path,opal92_table_path,zams_a_table_path,zams_b_table_path,zams_c_table_path,centre1_table_path,centre2_table_path,centre3_table_path, &
-           centre4_table_path,centre5_table_path,opal92_table2_path,pure_z_table_path,scv_h_table_path,scv_he_table_path,scv_z_table_path,alex95_table_paths)
-! MHP 3/96 changed I/O to read in only up to max run needed.
-      if (lmonte) then
-!c MHP 8/25 moved file open to parmin
-!     OPEN(UNIT=IDYN,FILE=FDYN,FORM='FORMATTED',STATUS='OLD')
-         mc_run_start = imbeg
-         imend = min(imend,1000)
-         mc_run_end = imend
-! read in monte carlo data
-         do i = 1,imend
-            read(dynamics_unit,1511)star%run%s11_rate(i),star%run%s33_rate(i),star%run%s34_rate(i), &
-                 star%run%s17_rate(i),star%run%metal_to_h_ratio(i),star%run%helium_fraction_param(i), &
-                 star%run%luminosity_target(i),star%run%age_target(i)
- 1511       format(7X,1P7E10.3/E9.3)
-            write(iowr,*)i,star%run%s11_rate(i),star%run%s33_rate(i),star%run%s34_rate(i),star%run%s17_rate(i), &
-                 star%run%metal_to_h_ratio(i),star%run%helium_fraction_param(i), &
-                 star%run%luminosity_target(i),star%run%age_target(i)
-            star%run%diffusion_factor(i) = star%run%helium_fraction_param(i)
-         end do
-      else
-         mc_run_start = 1
-         mc_run_end = 1
-      endif
-      do 500 monte_carlo_run_number = mc_run_start,mc_run_end
+      call star_setup(ierr)
+      if (ierr /= 0) return
+
+      do 500 monte_carlo_run_number = job%mc_run_start,job%mc_run_end
 ! for monte carlo run, input values of parameters being changed.
       if (lmonte) then
          cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
@@ -319,7 +293,7 @@ subroutine run_yrec(ierr)
             ikut_flag, istore_flag, model_diverged_flag, &
             recompute_envelope_triangle, nk, dlnrho_dlnp, dlnrho_dlnt, &
             total_angular_momentum, total_rotational_ke, &
-            convective_velocity, mixture_weights, ierr)
+            convective_velocity, job%mixture_weights, ierr)
        if (ierr /= 0) return
 
       if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
@@ -592,8 +566,8 @@ subroutine run_yrec(ierr)
 !FD end
             if (po_output_enabled) then
 ! MHP 8/25 changed to add file names as declared variables
-             call pdist(prev_log_l,prev_log_teff,prev_age,path_length_sq,star%log10_luminosity,star%log_teff,model_iteration,pulse_atm_path, &
-             pulse_env_path,pulse_mod_path)
+             call pdist(prev_log_l,prev_log_teff,prev_age,path_length_sq,star%log10_luminosity,star%log_teff,model_iteration,job%pulse_atm_path, &
+             job%pulse_env_path,job%pulse_mod_path)
           endif
 
 ! STARIN called here for timestep cutting
@@ -604,7 +578,7 @@ subroutine run_yrec(ierr)
                   model_diverged_flag, recompute_envelope_triangle, nk, &
                   dlnrho_dlnp, dlnrho_dlnt, total_angular_momentum, &
                   total_rotational_ke, convective_velocity, &
-                  mixture_weights, ierr)
+                  job%mixture_weights, ierr)
              if (ierr /= 0) return
              if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
 18               format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &

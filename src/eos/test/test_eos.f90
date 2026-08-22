@@ -54,7 +54,7 @@ program test_eos
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
 
       double precision :: w(12), wsum, scale
-      integer :: i, ipt, eos_ierr
+      integer :: setups_ierr, i, ipt, eos_ierr
 
 ! eos_get argument set
       double precision :: logt, t, logp, p, logd, d
@@ -159,7 +159,11 @@ program test_eos
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
            dummy_path, dummy_path, scvh_path, scvhe_path, scvz_path, &
-           dummy_paths7)
+           dummy_paths7, setups_ierr)
+      if (setups_ierr /= 0) then
+         write(*,'(a)') "test_eos: FAIL (setups error)"
+         stop 1
+      end if
 
 ! OPAL-2006 EOS file, opened as core/parmin.f90 does (esac06 reads it
 ! lazily on first use)

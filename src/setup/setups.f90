@@ -26,7 +26,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
      centre2_table_path, centre3_table_path, centre4_table_path, &
      centre5_table_path, opal92_table2_path, pure_z_table_path, &
      scv_h_table_path, scv_he_table_path, scv_z_table_path, &
-     alex95_table_paths)
+     alex95_table_paths, ierr)
       use eos_lib
       use kap_lib
       use atm_lib
@@ -35,6 +35,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       use luout_lib
       use const_lib
       implicit none
+      integer, intent(out) :: ierr
       integer, parameter :: json = 5000
 ! JNT 06/14 ADD NTC FOR KURUCZ/CASTELLI 2004 ATM
       integer, parameter :: nt = 57, ng = 11
@@ -168,11 +169,13 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ierr = 0
       call kap_init(env_comp%envelope_hydrogen_fraction, laol_work_array, &
            alex06_table_path,kurucz_table_path,kurucz_table2_path, &
            laol_table_path,laol_table2_path, &
            opal95_table_path,opal92_table_path,opal92_table2_path, &
-           pure_z_table_path,alex95_table_paths)
+           pure_z_table_path,alex95_table_paths, ierr)
+      if (ierr /= 0) return
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     READ IN MHD EOS TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -185,7 +188,8 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       call eos_init(fermi_table_path,scv_h_table_path,scv_he_table_path, &
            scv_z_table_path,zams_a_table_path,zams_b_table_path, &
            zams_c_table_path,centre1_table_path,centre2_table_path, &
-           centre3_table_path,centre4_table_path,centre5_table_path)
+           centre3_table_path,centre4_table_path,centre5_table_path, ierr)
+      if (ierr /= 0) return
 !
 !
 ! (The F-tables read for the degenerate equation of state that lived
@@ -199,7 +203,8 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! 2026 (ROADMAP.md stage 1): the Kurucz (atm_choice 3/4), Allard
 ! (atm_choice 4), and Kurucz/Castelli (atm_choice 5) surface table
 ! loads that lived inline here moved into atm_lib's atm_init.
-      call atm_init(atm_table_path,allard_table_path)
+      call atm_init(atm_table_path,allard_table_path, ierr)
+      if (ierr /= 0) return
 
 ! (The SCV equation-of-state table reads that lived here moved into
 ! eos_lib's eos_init -- 2026, ROADMAP.md stage 1 -- alongside the

@@ -31,7 +31,7 @@ program test_atm
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-      integer :: ipt, atm_ierr
+      integer :: setups_ierr, ipt, atm_ierr
       double precision :: teffl, gl
       logical :: failed
 
@@ -90,7 +90,11 @@ program test_atm
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_paths7)
+           dummy_paths7, setups_ierr)
+      if (setups_ierr /= 0) then
+         write(*,'(a)') "test_atm: FAIL (setups error)"
+         stop 1
+      end if
 
 ! --- Kurucz (1993), atm_choice=3, looked up via surfp ---
       atm_choice = 3

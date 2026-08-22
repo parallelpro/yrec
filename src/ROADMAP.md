@@ -605,3 +605,21 @@ callback residual, and io's writer stops (putstore/wrtmod family),
 which are next if full no-stop operation is wanted before phase C.
 The star_job controls structure and the evolve_step split remain
 the open design work of this phase.
+
+STATUS (2026-08-22, later): **star_job + the setup split done.**
+state/star_job_lib.f90 holds the job-level configuration -- the ~26
+table/file paths parmin fills and setups consumes (formerly run_yrec
+locals threaded through both calls), the LAOL mixture-weight array,
+and the Monte-Carlo run-range bounds -- as one module-level `job`
+instance (the star_info single-instance pattern). run_yrec's setup
+section became two star-layer routines: read_controls(ierr) (parmin
+into const_lib targets + job paths) and star_setup(ierr) (setups +
+the MC per-run parameter read). setups itself gained required ierr,
+threading the kap_init/eos_init/atm_init facades' optional ierr --
+a missing or corrupt table at startup is now an error return through
+run_yrec rather than a stop in a facade funnel; the three standalone
+test programs pass and check it too. run_yrec now reads: declare ->
+read_controls -> star_setup -> the run loop. Remaining in this
+phase: the evolve_step split (wants an evolution-state inventory of
+the loop's ~dozens of saved locals -- same method as the star_info
+scalars audit), then phase C (reset/re-entrancy).
