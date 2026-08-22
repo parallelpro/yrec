@@ -31,7 +31,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use const_lib
       use star_info_lib, only: star
       use star_job_lib, only: job
-      use evolve_state_lib, only: evo
+      use evolve_state_lib, only: evo, evolve_step_reset_pending
       implicit none
 
 ! nk (the run index) is const_lib module state (former common/zramp/),
@@ -56,6 +56,42 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 
       step_status = 0
       ierr = 0
+
+! 2026 (phase five, step C): on a repeated run_yrec call, put this
+! routine's SAVEd locals back to process-start state (static zero;
+! nao's data value). Set by yrec_reset_lib's prologue; a fresh
+! process never sees the flag, so call 1 is untouched.
+      if (evolve_step_reset_pending) then
+         delta_lum_step = 0.0d0
+         delta_pressure_step = 0.0d0
+         delta_radius_step = 0.0d0
+         delta_temp_step = 0.0d0
+         log_gravity = 0.0d0
+         target_envelope_mass = 0.0d0
+         teff_kelvin_unused = 0.0d0
+         envelope_cz_zone_end = 0
+         envelope_cz_zone_prev = 0
+         iteration_level = 0
+         iterations_done = 0
+         max_iterations = 0
+         num_mixed_zones = 0
+         num_mixed_zones_no_overshoot = 0
+         num_radiative_zones = 0
+         num_species = 0
+         nao = 1
+         conductive_opacity_flag = .false.
+         converged = .false.
+         end_kind_flag = .false.
+         evolve_model_flag = .false.
+         in_atmosphere = .false.
+         mixing_active = .false.
+         new_atmosphere_fit_needed = .false.
+         recompute_surface_bc = .false.
+         use_correct_gradients = .false.
+         want_derivatives = .false.
+         wind_loss_active = .false.
+         evolve_step_reset_pending = .false.
+      end if
 
 ! rewind ISHORT if LRWSH is true (keeps ISHORT small)
           if (lrwsh_placeholder) then

@@ -37,6 +37,7 @@ subroutine run_yrec(ierr)
       use star_info_lib, only: star
       use star_job_lib, only: job
       use evolve_state_lib, only: evo
+      use yrec_reset_lib, only: yrec_run_prologue
       implicit none
       integer :: step_status
       integer, parameter :: json = 5000
@@ -178,6 +179,10 @@ subroutine run_yrec(ierr)
       save
 
       ierr = 0
+
+! 2026 (phase five, step C): fresh-process semantics for repeated
+! calls -- see core/yrec_reset.f90.
+      call yrec_run_prologue
 
       call setversion()
 

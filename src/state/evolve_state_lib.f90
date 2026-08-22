@@ -40,4 +40,13 @@ module evolve_state_lib
 
       type(evolve_state), public, save :: evo
 
+! 2026 (phase five, step C): set by yrec_reset_lib's run prologue at
+! every run_yrec entry after the first; evolve_step and
+! update_output_diagnostics re-initialize their SAVEd locals to
+! process-start state (static zero, plus nao's data value) when they
+! see their flag, then clear it. Gives repeated run_yrec calls in one
+! process the same starting state as fresh processes.
+      logical, public, save :: evolve_step_reset_pending = .false.
+      logical, public, save :: output_diag_reset_pending = .false.
+
 end module evolve_state_lib

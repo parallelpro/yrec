@@ -28,6 +28,7 @@
 ! output model, exactly the cadence the blocks had inside wrtout.
 subroutine update_output_diagnostics(ierr)
       use star_info_lib, only: star
+      use evolve_state_lib, only: output_diag_reset_pending
 
       use star_info_lib, only: star
       use envelope_comp_lib
@@ -72,6 +73,55 @@ subroutine update_output_diagnostics(ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
+
+! 2026 (phase five, step C): see evolve_step's matching block. This
+! includes envelope_boundary_fx, whose previous-call stale value is
+! the documented FX/FX2 quirk -- a fresh process starts it at zero,
+! so a repeated call must too.
+      if (output_diag_reset_pending) then
+         total_luminosity_sum = 0.0d0
+         temp_value = 0.0d0
+         core_boundary_fx2 = 0.0d0
+         envelope_boundary_fx = 0.0d0
+         core_boundary_log_radius = 0.0d0
+         core_boundary_radius = 0.0d0
+         pressure_linear = 0.0d0
+         log_pressure_center = 0.0d0
+         log_temperature_center = 0.0d0
+         log_density_center = 0.0d0
+         hydrogen_fraction_center = 0.0d0
+         metal_fraction_center = 0.0d0
+         temperature_linear_center = 0.0d0
+         density_linear_center = 0.0d0
+         beta_center = 0.0d0
+         beta_inverse_center = 0.0d0
+         beta14_center = 0.0d0
+         mean_molecular_weight_center = 0.0d0
+         amu_center = 0.0d0
+         electron_mean_molecular_weight_center = 0.0d0
+         degeneracy_eta_center = 0.0d0
+         qdt_center = 0.0d0
+         qdp_center = 0.0d0
+         qcp_center = 0.0d0
+         dela_center = 0.0d0
+         qdtt_center = 0.0d0
+         qdtp_center = 0.0d0
+         qat_center = 0.0d0
+         qap_center = 0.0d0
+         qcpt_center = 0.0d0
+         qcpp_center = 0.0d0
+         dd1 = 0.0d0
+         dd2 = 0.0d0
+         cz_base_mass = 0.0d0
+         envelope_cz_log_temperature = 0.0d0
+         envelope_cz_log_density = 0.0d0
+         envelope_cz_log_pressure = 0.0d0
+         fxion = 0.0d0
+         ksaha_center = 0
+         is_atmosphere_point = .false.
+         compute_derivatives = .false.
+         output_diag_reset_pending = .false.
+      end if
 
       if(.not.helium_flash_active) then
        total_luminosity_sum = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &
