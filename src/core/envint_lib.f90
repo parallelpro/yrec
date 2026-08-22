@@ -90,6 +90,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 
 ! DBG CHANGED MAXSTEP FROM 200 TO 2000 TO GIVE ATMOSPHERE INTEGRATER A CHANCE.
       integer, parameter :: maxstp = 2000
+      logical :: tabulated_bc
       double precision, parameter :: tiny = 1.0d-30
       external qatm, qenv
       double precision :: hra
@@ -175,6 +176,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
  60   format(/,'******** ATMOSPHERE BEGIN ********')
 
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPL.
+      tabulated_bc = .false.
       if (atm_choice .eq. 3) then
 ! KURUCZ ATMOSPHERES
          if(lstch) lstatm=.false.
@@ -186,7 +188,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
             end if
             stop
          end if
-         goto 200
+         tabulated_bc = .true.
 ! JNT 06/14
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPLC.
       else if (atm_choice .eq. 5) then
@@ -200,7 +202,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
             end if
             stop
          end if
-         goto 200
+         tabulated_bc = .true.
 ! We have Kurucz atmosphere boundary conditions
       else if (atm_choice .eq. 4) then
 ! ALLARD & HAUSCHILDT ATMOSPHERES
@@ -221,12 +223,12 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! TeffL is above Allard max, or GL is out of range.
             write(*,*) 'ENVINT: Change to gray atmosphere (KTTAU=0)'
             write(short_file_unit,*)'ENVINT: Change to gray atmosphere (KTTAU=0)'
-            goto 2
+         else
+            tabulated_bc = .true.
          endif
-         goto 200
 ! We have Allard atmosphere boundary conditions
       endif
-    2 continue
+      if (.not. tabulated_bc) then
 ! Start gray atmosphere bounary conditions
 ! GUESS THE TEMPERATURE FOR AN OPTICAL DEPTH NEAR ZERO.
       idt = 15
@@ -247,8 +249,8 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 !                 point (XLIM). When this happens, we divide the effective
 !                 starting density (atmd0) by 10 and retry.
       atm_density_guess = atm_step_initial
- 1998 continue
-! Return point if X0 > XLIM
+      atm_retry: do
+! Return point if X0 > XLIM (was label 1998)
       temperature = dexp(ln10*log10_temperature)
 ! FIND THE PRESSURE CORRESPONDING TO THIS T AND THE DENSITY CHOSEN
 ! FOR THE START OF THE ATMOSPHERE INTEGRATION.
@@ -349,7 +351,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
          write(short_file_unit,*)"ENVINT: X0>XLIM, X0,XLIM:",indep_var,x_limit
        write(short_file_unit,*)"ENVINT: get new X0 by dividing ATMD0 by 10"
        atm_density_guess = atm_density_guess / 10d0   ! If not before, divide starting density by 10
-       goto 1998              ! and retry.
+       cycle atm_retry        ! and retry.
       endif
 
       h_max = atm_step_max
@@ -469,12 +471,13 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
    35       format(1X,'ATMOSPHERE INTEGRATION COMPLETE',1X, &
                  'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
                  I5/5X,'MAXIMUM RELATIVE ERROR IN P ',1PE22.13)
-          goto 200
+          exit
        endif
        if(h_next.lt.h_min) h_next = h_min
        h_step = h_next
 40    continue
       end do
+      if (step_index .gt. maxstp) then
 ! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
 ! PRINT NASTY MESSAGE AND QUIT.
       write(iowr,50)
@@ -488,6 +491,10 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
          return
       end if
       stop
+      end if
+      exit atm_retry
+      end do atm_retry
+      end if
 ! ENVELOPE INTEGRATION
 ! HERE P IS THE INDEPENDENT VARIABLE AND M,R,AND T ARE
 ! DEPENDENT VARIABLES.  INTEGRATE FROM TAU = 2/3 TO THE LAST
@@ -533,8 +540,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
           endif
        endif
  230     format(4X,3F16.12,8X,F16.12)
-       goto 300
-      endif
+      else
 !  INITIALIZE VARIABLES AND SET NUMERICAL PARAMETERS.
       in_atmosphere = .false.
       do i = 1,3
@@ -812,7 +818,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
              if(print_flag)write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%env_comp%senv
           endif
-          goto 300
+          exit
        else if(.not.store_flag_set) then
           if(y(2).ge.tenv .and. save_boundary_flag) then
              store_flag_set = .true.
@@ -827,6 +833,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
        h_step = h_next
  220  continue
       end do
+      if (step_index .gt. maxstp) then
 ! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
 ! PRINT NASTY MESSAGE AND QUIT.
       write(iowr,911)
@@ -840,7 +847,8 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
          return
       end if
       stop
- 300  continue
+      end if
+      end if
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR.
       if(star%env_comp%senv.lt.-1.0d-12)then
          do i = 1,env_struct%num_env_points

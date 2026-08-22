@@ -203,10 +203,8 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
 !        PP BURNING.
          dx_dt = -3.0d0*pp_reaction_term + 2.0d0*he3_he3_rate*local_xhe3**2 &
               - he3_he4_reaction_term*local_xhe3
-      else
-         dx_dt = 0.0d0
-         goto 100
-      end if
+! (Restructured 2026: the CN block below runs only on the hydrogen-
+! burning branch; the old `goto 100` skipped it from the else.)
       if (shell_temperature(zone_begin).gt.tcut(3)) then
 !        FIND EQUILIBRIUM C12,C13,N14 ABUNDANCES TREATING CN PROCESSING AS
 !        A CLOSED LOOP.
@@ -230,6 +228,9 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
               c13_p_rate*hydrogen_fraction*local_xc13 - &
               2.0d0*n14_p_rate*hydrogen_fraction*local_xn14 - &
               2.0d0*o16_p_rate*hydrogen_fraction*equilibrium_xo16
+      end if
+      else
+         dx_dt = 0.0d0
       end if
   100 continue
 !     HELIUM BURNING REACTIONS.
@@ -1418,8 +1419,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          f2=0.
          f3=0.
          f4=0.
-         goto 50
-      end if
+      else
       nz=8
 ! **************************************************************
 !  CALCULATE REACTION RATES FOR THE THREE PRINCIPAL RECTIONS OF
@@ -1564,7 +1564,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       f3 = c12alpha/(c12alpha + o16gamma)
       f4 = 1.0d0 - f3
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
-   50 do i=nz,nrxns
+      end if
+      do i=nz,nrxns
          reaction_rate(i)=0.
          dlnrate_dlnrho(i)=0.
          dlnrate_dlnt(i)=0.
@@ -1578,7 +1579,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if (log_temperature.lt.tcut(4)) go to 100
+      if (.not. (log_temperature.lt.tcut(4))) then
 ! C13(ALPHA,N) O16
       r1=t9_m23+0.0129d0*t9_m13+2.04d0+0.184d0*t9_p13
       a1 = 6.77d15*exp(-32.329d0*t9_m13-(t9/1.284d0)**2)
@@ -1638,7 +1639,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! *******************
 ! MULTIPLY THE RATES PER GRAM, RATE(I), BY THE ABUNDANCES OF THE
 !  REACTING SPECIES BY MASS, TO GET THE TOTAL RATES PER GRAM, EG.
-  100 eg(1)=reaction_rate(1)*hydrogen_fraction*hydrogen_fraction
+      end if
+      eg(1)=reaction_rate(1)*hydrogen_fraction*hydrogen_fraction
 ! MHP 5/02 ADD DEUTERIUM BURNING IF RELEVANT
       if (deuterium_fraction.gt.1.0d-11) then
          egdeut = rdeut*hydrogen_fraction*deuterium_fraction
@@ -2172,11 +2174,10 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
                   shell_radius = exp(ln10*star%prev%old_radius(zone_idx))
                   if(shell_radius.lt.search_radius)then
                      cz_base_zone_old = zone_idx + 1
-                     goto 11
+                     exit
                   endif
                end do
-               cz_base_zone_old = 1
-   11          continue
+               if (zone_idx .lt. 1) cz_base_zone_old = 1
             else
                cz_base_zone_old = star%light_burn%envelope_cz_base_zone_prev
             endif
@@ -2194,11 +2195,10 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
                   cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                   cz_base_frac = max(-0.5d0,cz_base_frac)
                   cz_base_frac = min(0.5d0,cz_base_frac)
-                  goto 12
+                  exit
                endif
             end do
-            cz_base_zone = 1
-   12       continue
+            if (zone_idx .lt. 1) cz_base_zone = 1
          endif
       else
          cz_base_zone = env_cz_zone
@@ -2210,12 +2210,12 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       max_zone = max(cz_base_zone,cz_base_zone_old)
       do zone_idx = 1,min_zone-1
          if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)exit
-         if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 .and.composition(15,zone_idx).lt.1.0d-24)goto 50
+         if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 .and.composition(15,zone_idx).lt.1.0d-24)cycle
          if(log_temperature(zone_idx).gt.7.0d0)then
             composition(13,zone_idx) = 0.0d0
             composition(14,zone_idx) = 0.0d0
             composition(15,zone_idx) = 0.0d0
-            goto 50
+            cycle
          endif
          do refine_idx = 1,11
 ! PERFORM BURNING IN substep_counts SMALLER TIMESTEPS.
@@ -2513,22 +2513,23 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          if(refine_idx.gt.1)then
             converged = .true.
             do species_idx=1,3
-               if(extrap_y(species_idx).lt.1.0d-24)goto 110
+               if(extrap_y(species_idx).lt.1.0d-24)cycle
                extrap_err(species_idx) = abs(extrap_err(species_idx)/extrap_y(species_idx))
                if(extrap_err(species_idx).gt.extrap_tol(species_idx))converged=.false.
   110       continue
             end do
             if(converged)then
 !              WRITE(ISHORT,912)JENV,J,(YEXT(K2),YERR(K2),K2=1,3)
-               goto 125
+               exit
             endif
          endif
   120 continue
       end do
+      if (refine_idx .gt. 11) then
 ! IF THE PROGRAM GETS HERE THEN IT FAILED TO CONVERGE TO WITHIN
 ! THE SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
       write(short_file_unit,911)cz_base_zone,(extrap_err(species_idx),species_idx=1,3)
-  125 continue
+      end if
 ! WRITE NEW ABUNDANCES AND EXIT.
       li6_cz_end = extrap_result(1)
       if(li6_cz_end.lt.1.0d-24)li6_cz_end=0.0d0
@@ -2715,11 +2716,10 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
                   shell_radius = exp(ln10*star%prev%old_radius(zone_idx))
                   if(shell_radius.lt.search_radius)then
                      cz_base_zone_old = zone_idx + 1
-                     goto 11
+                     exit
                   endif
                end do
-               cz_base_zone_old = 1
-   11          continue
+               if (zone_idx .lt. 1) cz_base_zone_old = 1
             else
                cz_base_zone_old = star%light_burn%envelope_cz_base_zone_prev
             endif
@@ -2737,11 +2737,10 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
                   cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                   cz_base_frac = max(-0.5d0,cz_base_frac)
                   cz_base_frac = min(0.5d0,cz_base_frac)
-                  goto 12
+                  exit
                endif
             end do
-            cz_base_zone = 1
-   12       continue
+            if (zone_idx .lt. 1) cz_base_zone = 1
          endif
       else
          cz_base_zone = env_cz_zone
