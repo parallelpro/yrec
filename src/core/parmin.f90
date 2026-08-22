@@ -36,6 +36,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
      fscvz, opecalex, ierr)
 
+      use star_job_lib, only: control_nml_override, physics_nml_override
       use star_info_lib, only: star
       use const_lib
       use luout_lib
@@ -1321,13 +1322,24 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       315 format('(''# YREC v'', A', i2.2, ', '' ('', A', i2.2, &
            &        ', '')'')')
 
+! 2026 (libyrec): when embedded (pyyrec), argv belongs to the host
+! process, so the C API injects the paths via star_job_lib overrides;
+! blank overrides preserve the CLI getarg behavior exactly.
+      if (control_nml_override .ne. ' ') then
+         control_nml_file = control_nml_override
+      else
       call getarg(1, control_nml_file)
       if (control_nml_file(1:2) .eq. ' ') control_nml_file = 'yrec8.nml1'
+      end if
       print *, ' '
       write(*,*) 'CONTROL namelist :  ',control_nml_file(1:len_trim(control_nml_file))
 
+      if (physics_nml_override .ne. ' ') then
+         physics_nml_file = physics_nml_override
+      else
       call getarg(2, physics_nml_file)
       if (physics_nml_file(1:2) .eq. ' ') physics_nml_file = 'yrec8.nml2'
+      end if
       write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
 
       open(unit=standard_unit, file=control_nml_file, status='OLD')

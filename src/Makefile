@@ -63,7 +63,7 @@ OBJS := $(patsubst %.f90,%.o,$(SRCS))
 # statement. The order-only prerequisite below (declared once all module
 # sources are known) ensures every module object is built first, safely
 # under parallel (-j) builds, without forcing spurious rebuilds.
-MODULE_SRCS := const/phys_const_lib.f90 const/controls_lib.f90 const/controls_reset_lib.f90 const/const_lib.f90 const/luout_lib.f90 const/intpar_lib.f90 state/oldmod_lib.f90 state/scrtch_lib.f90 state/turnover_lib.f90 state/light_burn_lib.f90 state/engeb_diag_lib.f90 state/fluxes_lib.f90 state/mdphy_lib.f90 state/envelope_comp_lib.f90 state/temp_lib.f90 state/envstruct_lib.f90 state/pulse_diag_lib.f90 state/atmstruct_lib.f90 state/temp2_lib.f90 state/run_diag_lib.f90 state/rotdiff_lib.f90 state/scv_eos_lib.f90 state/eos_mixture_lib.f90 state/conductive_table_lib.f90 state/star_info_lib.f90 state/star_job_lib.f90 state/evolve_state_lib.f90 state/atm_table_lib.f90 state/mhd_eos_lib.f90 state/opacity_table_lib.f90 state/opal_eos_lib.f90 state/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/yrec_reset.f90
+MODULE_SRCS := const/phys_const_lib.f90 const/controls_lib.f90 const/controls_reset_lib.f90 const/const_lib.f90 const/luout_lib.f90 const/intpar_lib.f90 state/oldmod_lib.f90 state/scrtch_lib.f90 state/turnover_lib.f90 state/light_burn_lib.f90 state/engeb_diag_lib.f90 state/fluxes_lib.f90 state/mdphy_lib.f90 state/envelope_comp_lib.f90 state/temp_lib.f90 state/envstruct_lib.f90 state/pulse_diag_lib.f90 state/atmstruct_lib.f90 state/temp2_lib.f90 state/run_diag_lib.f90 state/rotdiff_lib.f90 state/scv_eos_lib.f90 state/eos_mixture_lib.f90 state/conductive_table_lib.f90 state/star_info_lib.f90 state/star_job_lib.f90 state/evolve_state_lib.f90 state/atm_table_lib.f90 state/mhd_eos_lib.f90 state/opacity_table_lib.f90 state/opal_eos_lib.f90 state/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/yrec_reset.f90 core/yrec_capi.f90
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
@@ -74,6 +74,7 @@ $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 # objects relative to each other, and MODULE_SRCS list position alone
 # does not guarantee build order under parallel (-j) builds.
 const/const_lib.o: | const/phys_const_lib.o const/controls_lib.o
+core/yrec_capi.o: | state/star_job_lib.o
 numerics/numerics_lib.o: | const/const_lib.o const/intpar_lib.o \
 	const/luout_lib.o
 net/net_lib.o: | const/const_lib.o state/oldmod_lib.o \
@@ -110,7 +111,7 @@ core/envint_lib.o: | atm/atm_lib.o state/star_info_lib.o \
 	const/const_lib.o const/luout_lib.o const/intpar_lib.o
 
 # Flags for GNU Fortran (gfortran)
-GNU_BASE_FFLAGS = -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'"
+GNU_BASE_FFLAGS = -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
 GNU_DEV_FFLAGS = -fcheck=all -ffpe-trap=invalid,zero,overflow
 GNU_DBG_FFLAGS = -g -fsanitize=undefined -fsanitize=address -fstack-protector-strong -O0
 GNU_PROF_FFLAGS = -O3 -g -pg
@@ -240,11 +241,28 @@ prof: $(NAME)
 $(NAME): $(OBJS)
 	$(FC) $(LDFLAGS) -o $(NAME) $(OBJS)
 
+# libyrec (2026): the embeddable engine as a shared library -- every
+# object except the CLI wrapper. Entry point: core/yrec_capi.f90's
+# C-interoperable yrec_run, consumed by the pyyrec ctypes package.
+# (-fPIC is in GNU_BASE_FFLAGS: a no-op on Darwin, required on Linux.)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+SHLIB := libyrec.dylib
+else
+SHLIB := libyrec.so
+endif
+$(SHLIB): $(OBJS)
+	$(FC) $(LDFLAGS) -shared -o $(SHLIB) $(filter-out core/main.o,$(OBJS))
+
+lib: $(SHLIB)
+.PHONY: lib
+
 # Remove all object files, libraries, and executable
 clean:
 	@rm -f $(NAME)
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
+	@rm -f libyrec.dylib libyrec.so
 
 install:
 	install -d $(PREFIX)

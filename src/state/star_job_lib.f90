@@ -39,4 +39,13 @@ module star_job_lib
 
       type(star_job), public, save :: job
 
+      ! 2026 (libyrec): namelist-path overrides for embedded use. The C
+      ! API (core/yrec_capi.f90) sets these before calling run_yrec;
+      ! blank means the historical CLI behavior (parmin's getarg).
+      ! Deliberately module-level rather than star_job members: they
+      ! configure the NEXT run from outside the engine, so they must
+      ! not be captured/restored by yrec_reset's job snapshot.
+      character(len=256), public, save :: control_nml_override = ' '
+      character(len=256), public, save :: physics_nml_override = ' '
+
 end module star_job_lib
