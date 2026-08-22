@@ -634,6 +634,18 @@ Verification: full clean build + Stage-0 byte-identical regression,
 checked after the tpgrad/rotmix moves, after the bsrotmix move, and
 after the subfolder split.
 
+**Phase two is complete as of the `rotation` sweep above. Phase three
+is scoped in ROADMAP.md** (same directory): adopting the mechanical
+half of MESA's module architecture -- finishing the public/private
+boundary (fixing the remaining facade bypasses, `<mod>_init`
+lifecycle entries), per-module standalone builds and tests (which is
+what finally closes the LMHD verification gap), the ierr-not-stop
+error discipline (90 library `stop`s inventoried), named-index result
+arrays for the facades, and (optionally) MESA-style `other/` hooks.
+Handles/multi-instance support is an explicit non-goal (YREC is
+single-star). See ROADMAP.md for the inventory, the stage-by-stage
+plan, and the sequencing rationale.
+
 ## Build mechanics
 
 - Any file introducing `module ... contains` must be added to the
