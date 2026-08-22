@@ -78,25 +78,21 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 !     The ESAC06 variables (k=)opal_eos%t6_index_3_06 and (l-)opal_eos%density_index_2_06 are
 !     close to what we need. A linear search will work fine.
       t6_row = opal_eos%t6_index_3_06
-   10 if (t6.le.opal_eos%t6_grid_06(t6_row)) then
+   do while (t6.le.opal_eos%t6_grid_06(t6_row))
         t6_row = t6_row+1
-        goto 10
-      end if
-   20 if (t6.gt.opal_eos%t6_grid_06(t6_row-1)) then
+   end do
+   do while (t6.gt.opal_eos%t6_grid_06(t6_row-1))
         t6_row = t6_row-1
-        goto 20
-      end if
+   end do
 !     We now have: opal_eos%t6_grid_06(t6_row-1) >= T6 > opal_eos%t6_grid_06(t6_row)
 
       density_row = opal_eos%density_index_2_06
-   30 if (density.gt.opal_eos%density_grid_06(density_row)) then
+   do while (density.gt.opal_eos%density_grid_06(density_row))
         density_row = density_row+1
-        goto 30
-      end if
-   40 if (density.le.opal_eos%density_grid_06(density_row-1)) then
+   end do
+   do while (density.le.opal_eos%density_grid_06(density_row-1))
         density_row = density_row-1
-        goto 40
-      end if
+   end do
 !     We now have: opal_eos%density_grid_06(density_row-1) < D <= opal_eos%density_grid_06(density_row)
 
 !     For a given temperature in array opal_eos%t6_grid_06 with index t6_row, e.g.,

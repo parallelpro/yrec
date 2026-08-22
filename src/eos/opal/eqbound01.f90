@@ -46,9 +46,10 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
          do t6_scan_idx = opal_eos%t_row_index_01+1, nt
             if (t6.ge.opal_eos%t6_grid_01(t6_scan_idx)) then
                opal_eos%t_row_index_01 = t6_scan_idx - 1
-               goto 10
+               exit
             end if
          end do
+         if (t6_scan_idx > nt) then
          t6_top_of_table = opal_eos%t6_grid_01(nt)
 !        sr call should have been stopped outside table bounds; stop code
          write(*,5) t6, t6_top_of_table, opal_eos%t_row_index_01
@@ -57,6 +58,7 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
+         end if
    10    continue
       else
          do t6_scan_idx = opal_eos%t_row_index_01, 1, -1

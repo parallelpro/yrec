@@ -435,16 +435,14 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
 
       klo = 1
       khi = nm
-    1 continue
-      if (khi-klo .gt. 1) then
+    do while (khi-klo .gt. 1)
          k = (khi+klo)/2
          if (xa(k) .gt. x) then
             khi = k
          else
             klo = k
          end if
-         goto 1
-      end if
+    end do
 !      write(*,*) khi, klo, xa(khi), xa(klo), x
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
@@ -489,15 +487,14 @@ subroutine locate(xx, n, x, j)
 
       jl = 0
       ju = n+1
-   10 if (ju-jl.gt.1) then
+   do while (ju-jl.gt.1)
          jm = (ju+jl)/2
          if ((xx(n).gt.xx(1)).eqv.(x.gt.xx(jm))) then
             jl = jm
          else
             ju = jm
          end if
-         goto 10
-      end if
+   end do
       j = jl
       if ((j .eq. 0) .and. (x .gt. 0.99d0*xx(1))) then
          j = 1
@@ -1334,7 +1331,8 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
        y_sav(i) = y(i)
        dy_sav(i) = dydx(i)
       end do
-   20 do i = 1,max_stage_index
+      do    ! step-halving retry loop (was label 20)
+      do i = 1,max_stage_index
        call mmid(y_sav, dy_sav, num_eqs, x_sav, h, substep_sequence(i), &
             y_seq, deriv, luminosity_linear, pressure_rotation_factor, &
             temperature_rotation_factor, log10_gravity, in_atmosphere, &
@@ -1377,7 +1375,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
        end if
        stop
       end if
-      goto 20
+      end do
 
 end subroutine bsstep
 
@@ -1440,24 +1438,20 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       if(x_grid(1).gt.x_eval)then
          k_lo=1
          k_hi=2
-         go to 522
-      endif
-      if(x_grid(n_grid).lt.x_eval)then
+      else if(x_grid(n_grid).lt.x_eval)then
          k_lo=n_grid-1
          k_hi=n_grid
-         go to 522
-      endif
+      else
       k_lo=1
       k_hi=n_grid
-    2 if((k_hi-k_lo).gt.1)then
+    do while ((k_hi-k_lo).gt.1)
          k_mid = (k_hi+k_lo)/2
          if(x_grid(k_mid).gt.x_eval_copy)then
             k_hi=k_mid
          else
             k_lo=k_mid
          endif
-         go to 2
-      endif
+    end do
       if((k_hi-k_lo).le.0)then
          write(iowr, *) 'ERROR COX OP: INTERPOLATION'
          write(short_file_unit, *) 'ERROR COX OP: INTERPOLATION'
@@ -1471,7 +1465,7 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
          end if
          stop
       endif
-  522 continue
+      end if
 ! now, (k_lo,k_hi) is sub-range of x_grid which contains x_eval_copy.
       dx_local=x_eval_copy-x_grid(k_lo)
 ! go on to the spline interpolation routine.
@@ -1521,15 +1515,14 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
 
       klo = 1
       khi = n
-    1 if (khi-klo .gt. 1) then
+    do while (khi-klo .gt. 1)
          k = (khi+klo)/2
          if (xa(k) .gt. x) then
             khi = k
          else
             klo = k
          end if
-         goto 1
-      end if
+    end do
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
@@ -1587,15 +1580,14 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
 
       klo = 1
       khi = n
-    1 if (khi-klo .gt. 1) then
+    do while (khi-klo .gt. 1)
          k = (khi+klo)/2
          if (xa(k) .gt. x) then
             khi = k
          else
             klo = k
          end if
-         goto 1
-      end if
+    end do
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
@@ -1932,9 +1924,41 @@ end subroutine intpt
 ! MOST OF THE COMPUTATION IS PERFORMED IN SINGLE PRECISION
 subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
      num_points,continue_search,interp_flag)
+      implicit none
+      double precision, intent(in) :: target_z
+      double precision, intent(in) :: table_z(*)
+      double precision, intent(out) :: result_y(*)
+      double precision, intent(in) :: table_y(*)
+      integer, intent(in) :: num_y, y_stride, num_points, continue_search
+      integer, intent(out) :: interp_flag
+      call lir_impl(0, target_z, table_z, result_y, table_y, num_y, &
+           y_stride, num_points, continue_search, interp_flag)
+end subroutine lir
+
+! Always-linear entry; historically `ENTRY LIR1` inside LIR.
+subroutine lir1(target_z,table_z,result_y,table_y,num_y,y_stride, &
+     num_points,continue_search,interp_flag)
+      implicit none
+      double precision, intent(in) :: target_z
+      double precision, intent(in) :: table_z(*)
+      double precision, intent(out) :: result_y(*)
+      double precision, intent(in) :: table_y(*)
+      integer, intent(in) :: num_y, y_stride, num_points, continue_search
+      integer, intent(out) :: interp_flag
+      call lir_impl(1, target_z, table_z, result_y, table_y, num_y, &
+           y_stride, num_points, continue_search, interp_flag)
+end subroutine lir1
+
+! Shared implementation of LIR/LIR1 (restructured 2026: the ENTRY
+! statement became the two wrappers above, and the label 2-9 search
+! web became a structured loop; comparisons and arithmetic are
+! unchanged).
+subroutine lir_impl(linear_mode_in, target_z,table_z,result_y,table_y, &
+     num_y,y_stride,num_points,continue_search,interp_flag)
 
       implicit none
 
+      integer, intent(in) :: linear_mode_in
       double precision, intent(in) :: target_z
       double precision, intent(in) :: table_z(*)
       double precision, intent(out) :: result_y(*)
@@ -1955,16 +1979,10 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       integer :: y_idx, j, k, base_idx
       double precision :: yy
 
-      linear_mode=0
-      go to 1
-      entry lir1(target_z,table_z,result_y,table_y,num_y,y_stride, &
-           num_points,continue_search,interp_flag)
-      linear_mode=1
-    1 continue
+      linear_mode=linear_mode_in
       stride=1
 ! CHECK NT AND RESET IL IF NECESSARY
       if (num_points.lt.2) then
-         continue
          return
       end if
       if(num_points.lt.4) linear_mode=1
@@ -1979,65 +1997,48 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       search_idx=(search_idx-2)*stride+1
       if(continue_search.le.1.or.search_idx.lt.1) search_idx=1
 ! DETERMINE POSITION OF target_z WITHIN table_z
-    2 if(search_idx.gt.table_end) go to 8
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-!       IF(DIFF) 4,102,3
-!     3 IF(ZI(N)-Z) 5,6,9
-!     4 IF(ZI(N)-Z) 9,6,5
-      if (diff .lt. 0.0) then
-         goto 4
-      else if (diff .eq. 0.0) then
-         continue
-         return
-      else
-         goto 3
-      end if
-    3 if (table_z(search_idx) .lt. target_z) then
-         goto 5
-      else if (table_z(search_idx) .eq. target_z) then
-         goto 6
-      else
-         goto 9
-      end if
-    4 if (table_z(search_idx) .lt. target_z) then
-         goto 9
-      else if (table_z(search_idx) .eq. target_z) then
-         goto 6
-      else
-         goto 5
-      end if
-    5 search_idx=search_idx+stride
-      go to 2
+      do
+         if(search_idx.gt.table_end) then
+            interp_flag=0
+            exit
+         end if
+         if (diff .eq. 0.0) then
+            return
+         end if
+         if (diff .lt. 0.0) then
+            if (table_z(search_idx) .lt. target_z) exit
+         else
+            if (table_z(search_idx) .gt. target_z) exit
+         end if
+         if (table_z(search_idx) .eq. target_z) then
 ! SET Y WHEN Z LIES ON A MESH POINT
-    6 base_idx=(search_idx-1)*y_stride
-      do y_idx=1,num_y_strided
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       Y(I)=YI(I+J)
-!     7 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
-         result_y(y_idx)=table_y(y_idx+base_idx)
-         if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
-    7 continue
+            base_idx=(search_idx-1)*y_stride
+            do y_idx=1,num_y_strided
+               result_y(y_idx)=table_y(y_idx+base_idx)
+               if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
+            end do
+            search_idx=(search_idx+stride-1)/stride
+            return
+         end if
+         search_idx=search_idx+stride
       end do
-      search_idx=(search_idx+stride-1)/stride
-      return
 ! CONTROL WHEN Z DOES NOT LIE ON A MESH POINT
-    8 interp_flag=0
-    9 if(search_idx.le.1) interp_flag=0
+      if(search_idx.le.1) interp_flag=0
       if (.not. (linear_mode.eq.1)) then
 ! CUBIC INTERPOLATION/EXTRAPOLATION
 ! PIVOTAL POINT (M) AND POINT (K) CLOSEST TO Z
-!    10 M=N
       pivot=search_idx
       closest=3
       if (.not. (search_idx.gt.1+stride)) then
       pivot=1+stride+stride
       closest=search_idx
       end if
-   11 if(search_idx.lt.table_end) go to 12
+      if (.not. (search_idx.lt.table_end)) then
       pivot=table_end-stride
       closest=4
+      end if
 ! WEIGHTING FACTORS
-   12 y1=table_z(pivot-stride*2)
+      y1=table_z(pivot-stride*2)
       y2=table_z(pivot-stride)
       y3=table_z(pivot)
       y4=table_z(pivot+stride)
@@ -2045,49 +2046,34 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       z2=target_z-y2
       z3=target_z-y3
       z4=target_z-y4
-!    13 Z12=Z1*Z2
       z12=z1*z2
       z34=z3*z4
-!    14 A(1)=Z2*Z34/((Y1-Y2)*(Y1-Y3)*(Y1-Y4))
       weight(1)=z2*z34/((y1-y2)*(y1-y3)*(y1-y4))
       weight(2)=z1*z34/((y2-y1)*(y2-y3)*(y2-y4))
       weight(3)=z12*z4/((y3-y1)*(y3-y2)*(y3-y4))
       weight(4)=z12*z3/((y4-y1)*(y4-y2)*(y4-y3))
 ! CORRECT A(K)
-!    15 DIFF=A(1)+A(2)+A(3)+A(4)
       diff=weight(1)+weight(2)+weight(3)+weight(4)
       weight(closest)=(1.d0+weight(closest))-diff
 ! COMPUTE Y
-!    16 M=(M-1)/IR-3
       pivot=(pivot-1)/stride-3
       pivot=pivot*y_strided
       do y_idx=1,num_y_strided
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       K=I+M
-!       YY=0.D0
-!       DO 17 J=1,4
-!       K=K+IRD
-!       DIFF=YI(K)
-!    17 YY=YY+A(J)*DIFF
-!       Y(I)=YY
-!    18 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
          k=y_idx+pivot
          yy=0.d0
          do j=1,4
             k=k+y_strided
             diff=table_y(k)
             yy=yy+weight(j)*diff
-   17    continue
          end do
          result_y(y_idx)=yy
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
-   18 continue
       end do
       search_idx=(search_idx+stride-1)/stride
       return
 ! LINEAR INTERPOLATION/EXTRAPOLATION
       end if
-   20 if(search_idx.eq.1) search_idx=1+stride
+      if(search_idx.eq.1) search_idx=1+stride
       if(search_idx.gt.table_end) search_idx=table_end
       z1=table_z(search_idx)
       y1=(z1-target_z)/(z1-table_z(search_idx-stride))
@@ -2095,27 +2081,13 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       base_idx=(search_idx-1)*y_stride
       pivot=base_idx-y_strided
       do y_idx=1,num_y_strided,stride
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       Y(I)=Y1*YI(I+M)+Y2*YI(I+J)
-!    21 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
          result_y(y_idx)=y1*table_y(y_idx+pivot)+y2*table_y(y_idx+base_idx)
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
-   21 continue
       end do
 ! RESET N
-   30 search_idx=(search_idx+stride-1)/stride
+      search_idx=(search_idx+stride-1)/stride
       return
-! DIAGNOSTICS
-  101 continue
-      return
-  102 continue
-      return
-!  1001 FORMAT(/1X,10('*'),5X,'THERE ARE FEWER THAN TWO DATA POINTS IN',
-!      *      ' LIR     NT =',I4,5X,10('*')/)
-!  1002 FORMAT(/1X,10('*'),5X,'EXTREME VALUES OF INDEPENDENT VARIABLE',
-!      *      ' EQUAL IN LIR',5X,10('*')/16X,'ZI(1) =',1PE13.5,',   ',
-!      *       'ZI(',I4,') =',1PE13.5/)
-end subroutine lir
+end subroutine lir_impl
 
 !----------------------------------------------------------------------
 ! ratext

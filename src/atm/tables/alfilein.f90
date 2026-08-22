@@ -375,12 +375,11 @@ subroutine sort_shell(num_elements, values)
          do i=inc+1,n
             v=values(i)                        ! Outer loop of straight insertion
             j=i
-    3        if (values(j-inc) .gt. v) then      ! Inner loop of straight insertion
+    do while (values(j-inc) .gt. v)
                values(j)=values(j-inc)
                j=j-inc
                if (j .le. inc) goto 4
-            goto 3
-            endif
+    end do
     4       values(j)=v
          enddo
       if (.not. (inc .gt. 1)) exit

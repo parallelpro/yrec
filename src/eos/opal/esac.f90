@@ -143,15 +143,14 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
 !
       lo_idx = 2
       hi_idx = mx
-    8 if (hi_idx-lo_idx.gt.1) then
+    do while (hi_idx-lo_idx.gt.1)
          mid_idx = (hi_idx+lo_idx)/2
          if (hydrogen_fraction.le.opal_eos%x_grid(mid_idx)+1.0d-7) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
          end if
-         go to 8
-      end if
+    end do
       result_idx = hi_idx
       opal_eos%x_index_lo = result_idx - 2
       x_index_2 = result_idx - 1
@@ -170,7 +169,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
 !
       lo_idx = 2
       hi_idx = nr
-   12 if (hi_idx-lo_idx.gt.1) then
+   do while (hi_idx-lo_idx.gt.1)
          mid_idx = (hi_idx+lo_idx)/2
          if (density_value.eq.opal_eos%density_grid(mid_idx)) then
             hi_idx = mid_idx
@@ -181,8 +180,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
          else
             lo_idx = mid_idx
          end if
-         go to 12
-      end if
+   end do
    13 result_idx = hi_idx
       opal_eos%density_index_1 = result_idx - 2
       opal_eos%density_index_2 = result_idx - 1
@@ -191,7 +189,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
 !
       lo_idx = nt
       hi_idx = 2
-   11 if (lo_idx-hi_idx.gt.1) then
+   do while (lo_idx-hi_idx.gt.1)
          mid_idx = (hi_idx+lo_idx)/2
          if (t6_temperature.eq.opal_eos%t6_list(1,mid_idx)) then
             lo_idx = mid_idx
@@ -202,8 +200,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
          else
             lo_idx = mid_idx
          end if
-         go to 11
-      end if
+   end do
    14 result_idx = lo_idx
       opal_eos%t6_index_1 = result_idx - 2
       opal_eos%t6_index_2 = result_idx - 1

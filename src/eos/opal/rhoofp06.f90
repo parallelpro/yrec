@@ -76,20 +76,19 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
 
       lo_idx = 2
       hi_idx = mx
-    8 if (hi_idx-lo_idx.gt.1) then
+    do while (hi_idx-lo_idx.gt.1)
          mid_idx = (hi_idx+lo_idx)/2
          if (hydrogen_fraction.le.opal_eos%x_grid_06(mid_idx)+1.0d-7) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
          end if
-         go to 8
-      end if
+    end do
       x_bisect_idx = lo_idx
 
       lo_idx = nt
       hi_idx = 2
-   11 if (lo_idx-hi_idx.gt.1) then
+   do while (lo_idx-hi_idx.gt.1)
          mid_idx = (hi_idx+lo_idx)/2
          if (t6_temperature.eq.opal_eos%t6_list_06(1,mid_idx)) then
             lo_idx = mid_idx
@@ -100,8 +99,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          else
             lo_idx = mid_idx
          end if
-         go to 11
-      end if
+   end do
    14 t6_bisect_idx = lo_idx
 
       pressure_max = opal_eos%eos_table_06(x_bisect_idx,1,t6_bisect_idx, &

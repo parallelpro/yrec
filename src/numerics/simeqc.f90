@@ -37,17 +37,16 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       imax=i
    30 continue
       end do
-      if (.not. (dabs(biga).eq.0.0d0)) then
-      goto 1012
-      end if
- 1010 write (5,1011)
+      if (dabs(biga).eq.0.0d0) then
+      write (5,1011)
  1011 format (1x,'STOPPED AT 1010')
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
       ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
       ! preserve the historical stop on a nonzero return.
       ierr = 1
       return
- 1012 ia=j+num_unknowns*(j-2)
+      end if
+      ia=j+num_unknowns*(j-2)
       it=imax-j
       do i=j,num_cols
       ia=ia+num_unknowns
@@ -84,13 +83,14 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       n1=num_cols-1
       ig=ib
       ih=ic
-   75 if(n1.le.num_unknowns) go to 78
+      do
+      if(n1.le.num_unknowns) exit
       ig=ig-num_unknowns
       ih=ih-num_unknowns
       system_matrix(ig)=system_matrix(ig)-system_matrix(ia)*system_matrix(ih)
       n1=n1-1
-      go to 75
-   78 ia=ia-num_unknowns
+      end do
+      ia=ia-num_unknowns
       ic=ic-1
    80 continue
       end do
