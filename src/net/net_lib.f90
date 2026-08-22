@@ -2176,9 +2176,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
       o16_gamma_frac = 1.0d0 - c12_alpha_frac
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
-   50 do 60 i=nz,num_reactions
+   50 do i=nz,num_reactions
          rate(i)=0.
    60 continue
+   end do
 !***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
 !   RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
 !   THE CONVERSION FACTOR IN THE FRONT OBTAINED FROM VANDENBERG'S

@@ -1837,7 +1837,7 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
             return
          end if
          do m=1,num_r
-            if(table_data(t_idx,m,2).ge.log10_pressure) goto 201
+            if(table_data(t_idx,m,2).ge.log10_pressure) exit
             r_lo_guess(i)=m
  200     continue
          end do

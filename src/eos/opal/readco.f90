@@ -99,7 +99,7 @@ subroutine readco(ierr)
             do t6_row = 1, opal_eos%temperature_count_used(x_loop_index,density_row)
                if (t6_row.gt.opal_eos%t6_index_lo(density_row)) then
                   read (iopale,'(A)') blank_line
-                  go to 4
+                  cycle
                end if
                read (iopale,'(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)') &
                     opal_eos%t6_list(density_row,t6_row), &
@@ -120,19 +120,20 @@ subroutine readco(ierr)
       do t6_scan_idx = 1, nt
          if (opal_eos%t6_list(1,t6_scan_idx).eq.0.0d0) then
             t6_count_used = t6_scan_idx
-            go to 14
+            exit
          end if
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !    11 T6A(I)=T6LIST(1,I)
          opal_eos%t6_grid(t6_scan_idx) = opal_eos%t6_list(1,t6_scan_idx)
    11 continue
       end do
-   14 do 12 t6_idx = 2, nt
+   14 do t6_idx = 2, nt
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !    12 DFS(I)=1.D0/(T6A(I)-T6A(I-1))
          opal_eos%t6_grid_spacing_inv(t6_idx) = 1.0d0/(opal_eos%t6_grid(t6_idx) - &
               opal_eos%t6_grid(t6_idx-1))
    12 continue
+   end do
       opal_eos%density_grid(1) = opal_eos%density_grid_table(1,1)
       do r_idx = 2, nr
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"

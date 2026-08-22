@@ -204,7 +204,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! ZAHN (1991) VELOCITY ESTIMATE.
       do i = zone_min,zone_max
          if (am_transport_convective_flag(i).and. &
-              am_transport_convective_flag(i-1)) goto 31
+              am_transport_convective_flag(i-1)) cycle
 ! ORIGINAL ESTIMATE,USING DG/G = W**2 R**3 / GM.
          star%circ%es_circulation_velocity(i) = star%rot%omega_interface(i)**2* &
               (star%rot%es_velocity_coeff1(i)+star%rot%omega_interface(i)**2*star%rot%es_velocity_coeff2(i))
@@ -336,7 +336,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! KIPPENHAHN (1980) ESTIMATE
       do i = zone_min,zone_max
          if (am_transport_convective_flag(i).and. &
-              am_transport_convective_flag(i-1)) goto 40
+              am_transport_convective_flag(i-1)) cycle
 ! MHP 8/93 STABILITY CONDITION ADDED, NEGLECTING THE EFFECTS OF
 ! MU GRADIENTS.
          if (gsf_inhibition_mode.eq.2 .or. gsf_inhibition_mode.eq.0) then
@@ -344,7 +344,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  star%rot%thermal_diffusivity_interface(i))*dlnomega_dlnr_max(i)
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
                star%circ%gsf_circulation_velocity(i) = 0.0d0
-               goto 40
+               cycle
             else
               fxx = sqrt((abs(dlnomega_dlnr(i))-qwrmx)/qwrmx)
             end if
@@ -358,7 +358,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  /dr/star%rot%mean_molecular_weight_interface(i))
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
                star%circ%gsf_circulation_velocity(i) = 0.0d0
-               goto 40
+               cycle
             else
 ! MHP 05/02 ADDED TESTS TO AVOID DIVIDE BY ZERO
 !                  FXX2 = SQRT((ABS(QWLNR(I))-QWRMX)/QWRMX)
@@ -486,7 +486,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             write(6,9911) i,omega(i),omega(i-1),wmin
  9911       format(1x,'DYNAMICAL SHEAR-SHELL',i5,1p,' WTOP',e11.3, &
                  ' WBOT',e11.3,' LIMIT',e11.3)
-            goto 60
+            cycle
 ! *** END OF CHANGED SECTION
          end if
 !   FIND MAXIMUM GRADIENT IN OMEGA ALLOWED BY SECULAR SHEAR.
@@ -695,7 +695,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                star%rot%es_advective_velocity(i) = 0.0d0
                star%rot%es_diffusive_velocity(i) = 0.0d0
             else
-               goto 81
+               exit
             end if
          end do
  81      continue

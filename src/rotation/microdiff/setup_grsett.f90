@@ -147,7 +147,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !     CHECK FOR CONVECTIVE ENVELOPE.
       if(convective_flag(num_zones))then
          do zone_idx=num_zones-1,2,-1
-            if(.not.convective_flag(zone_idx))goto 40
+            if(.not.convective_flag(zone_idx))exit
    30    continue
          end do
    40    continue

@@ -103,7 +103,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 !     CHECK FOR CONVECTIVE ENVELOPE.
       if(convective_flag(num_zones))then
          do i=num_zones-1,2,-1
-            if(.not.convective_flag(i))goto 40
+            if(.not.convective_flag(i))exit
    30    continue
          end do
    40    continue

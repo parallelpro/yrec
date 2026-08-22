@@ -93,7 +93,7 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
       endif
 !ccc find boundary of central convection zone.
       do i = 1,num_points
-       if(.not.is_convective(i)) goto 40
+       if(.not.is_convective(i)) exit
    30 continue
       end do
    40 if(i.gt.1) then
@@ -103,7 +103,7 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
       endif
 !ccc find boundary of surface c.z.
       do i = num_points,1,-1
-       if(.not.is_convective(i)) goto 60
+       if(.not.is_convective(i)) exit
    50 continue
       end do
    60 if(i.lt.num_points) then

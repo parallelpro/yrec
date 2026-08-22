@@ -144,7 +144,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          if(saha_ratio(i).lt.-saha_exponent_tol) go to 12
          if(saha_ratio(i).gt.+saha_exponent_tol) go to 10
          saha_ratio(i) = beta_inverse*dexp(saha_ratio(i))
-         go to 11
+         cycle
  10      saha_ratio(i) = 1.0d16
          nz1 = i + 1
  11   continue

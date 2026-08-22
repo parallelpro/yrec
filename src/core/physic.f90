@@ -180,7 +180,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 !  SKIP CONVECTIVE REGIONS
          if (convective_flag(im).and.convective_flag(im-1)) then
             star%rot%max_domega_dr(im) = 0.0d0
-            goto 100
+            cycle
          end if
 !  NOW CHECK FOR SHEAR INSTABILITY -REF.ENDAL&SOFIA APJ 220:279(1978)
 !  THERMODYNAMIC QUANTITIES ARE CALCULATED AT THE SHELL MIDPOINT BY

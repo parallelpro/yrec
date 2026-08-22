@@ -46,7 +46,7 @@ subroutine bsrotmix(timestep, composition, extrapolation_order, num_zones, &
             do i = num_zones,1,-1
                if (composition(j,i).gt.1.0d-14) then
                   species_active(j) = .true.
-                  goto 5
+                  exit
                end if
             end do
     5       continue

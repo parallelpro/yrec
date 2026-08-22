@@ -51,7 +51,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
                return
             end if
 ! SKIP IF NO CORE OVERSHOOT IS DESIRED.
-            if (.not.lovstc) goto 100
+            if (.not.lovstc) cycle
             up_overshoot_flag = .true.
             down_overshoot_flag = .false.
             edge_idx = mixed_zone_bounds(zone_idx,2)
@@ -72,7 +72,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
          else if (mixed_zone_bounds(zone_idx,2).eq.num_zones) then
 ! CONVECTIVE ENVELOPE
 ! SKIP IF NO ENVELOPE OVERSHOOT IS DESIRED.
-            if (.not.envelope_overshoot_active) goto 100
+            if (.not.envelope_overshoot_active) cycle
             up_overshoot_flag = .false.
             down_overshoot_flag = .true.
             edge_idx = mixed_zone_bounds(zone_idx,1)
@@ -84,7 +84,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
          else
 ! INTERMEDIATE CONVECTION ZONE (NOT INCLUDING CENTRAL OR SURFACE POINT).
 ! SKIP IF NO INTERMEDIATE CONVECTION.
-            if (.not.lovstm) goto 100
+            if (.not.lovstm) cycle
             up_overshoot_flag = .true.
             down_overshoot_flag = .true.
 ! PSCALU AND PSCALD HAVE THE SAME MEANING AS ABOVE; OVERSHOOT BOTH BELOW

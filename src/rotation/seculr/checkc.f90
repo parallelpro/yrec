@@ -89,7 +89,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       redo_flag = .false.
       do species_index = 1,num_diffused_species
 !  composition(3,...) IS Z, WHICH IS NOT DIFFUSED AS A UNIT.
-         if(species_index.eq.3)goto 20
+         if(species_index.eq.3)cycle
          do zone_index = 2,num_zones-1
             if(composition(species_index,zone_index).lt.0.0d0.or. &
                  composition(species_index,zone_index).gt.1.0d0)then
@@ -107,7 +107,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                           (composition(species_index,zone_index+1)+ &
                           composition(species_index,zone_index-1)))
                   endif
-                  goto 10
+                  cycle
                endif
                cut_count = cut_count + 1
                if(cut_count.gt.3)then
@@ -148,13 +148,13 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
          max_change_zone = 0
          max_change_species = 0
          do species_index = 1,num_diffused_species
-            if(species_index.eq.3)goto 40
+            if(species_index.eq.3)cycle
 ! min_comp_for_check IS USED TO GUARD AGAINST DIVISION BY ZERO.
             min_comp_for_check = max(1.0d-6* &
                  composition(species_index,num_zones),1.0d-20)
             do zone_index = 1,num_zones
                if(star%prev%old_composition(species_index,zone_index).lt. &
-                    min_comp_for_check)goto 30
+                    min_comp_for_check)cycle
                fractional_comp_change = &
                     (composition(species_index,zone_index)- &
                     star%prev%old_composition(species_index,zone_index))/ &

@@ -336,7 +336,7 @@ subroutine run_yrec(ierr)
          shell_log_density = star%log_density(i)
          shell_log_temperature = star%log_temperature(i)
 ! SKIP CALCULATIONS FOR LOW TEMPERATURES.
-         if (shell_log_temperature.lt.6.0D0) goto 666
+         if (shell_log_temperature.lt.6.0D0) exit
          hydrogen_fraction = star%composition(1,i)
          helium_fraction = star%composition(2,i)
          metal_fraction = star%composition(3,i)
@@ -386,7 +386,7 @@ subroutine run_yrec(ierr)
       do i = 1,star%num_zones
 ! TEMPERATURE IN UNITS OF 10**6 K.
          t6_million_k = exp(ln10*(star%log_temperature(i)-6.0D0))
-         if (t6_million_k.lt.5.0D0) goto 141
+         if (t6_million_k.lt.5.0D0) exit
 ! ELECTRON DENSITY.
          log_electron_density = star%log_density(i)+log10((1.0D0+star%composition(1,i))/2.0D0)
 ! MASS FRACTION.
@@ -476,7 +476,7 @@ subroutine run_yrec(ierr)
 ! core/evolve_step.f90 (see its header for the step_status contract).
        call evolve_step(model_iteration, step_status, ierr)
        if (ierr /= 0) return
-       if (step_status == 1) goto 110
+       if (step_status == 1) exit
        if (step_status == 2) goto 200
   100    continue
        end do
@@ -506,13 +506,13 @@ subroutine run_yrec(ierr)
                use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
                if (star%run%solar_calibration_active) then
-                  go to 250
+                  exit
                else
 !c MHP 8/96 added counter for # of runs needed for calibration
                   convergence_iterations = convergence_iterations + 1
 ! MHP 6/97 STOP AFTER 10 ATTEMPTS AT CALIBRATION
 !                  IF(ICONV.GE.11) GOTO 250
-                  if (convergence_iterations.ge.15) goto 250
+                  if (convergence_iterations.ge.15) exit
                   if (pulsation_output_active) then
 ! DBG 6/93 Need to delete pulse output because have not got ultimate
 ! model yet.
@@ -535,7 +535,7 @@ subroutine run_yrec(ierr)
          endif
 
 ! DBG 12/94 NO MORE RUNS NEEDED. HAVE CALIBRATED STELLAR MODEL
-         if (calibrate_star_flag .and. star_found_flag.and.(mod(nk,2).eq.0)) goto 250
+         if (calibrate_star_flag .and. star_found_flag.and.(mod(nk,2).eq.0)) exit
 
 ! END RUN LOOP
  200  continue

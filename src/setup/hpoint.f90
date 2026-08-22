@@ -254,7 +254,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        else
           do overshoot_base_zone = star%envelope_cz_bottom_index-1,1,-1
              if (star%log_pressure(overshoot_base_zone)- &
-                  star%log_pressure(star%envelope_cz_bottom_index).gt.alphae) goto 193
+                  star%log_pressure(star%envelope_cz_bottom_index).gt.alphae) exit
   191       continue
           end do
   193       overshoot_base_zone = overshoot_base_zone + 1
@@ -284,7 +284,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           do fine_zone_base = overshoot_base_zone-1,1,-1
              if (star%log_pressure(fine_zone_base) - &
                   star%log_pressure(star%envelope_cz_bottom_index).gt.chi_grid_scale(7)) &
-                  goto 197
+                  exit
   195       continue
           end do
   197       fine_zone_base = fine_zone_base + 1
@@ -567,7 +567,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 !  ENVELOPE IN THE NEW POINT DISTRIBUTION.
       if (star%core_cz_top_index.gt.1) then
        do j = 2,new_num_zones
-          if (star%prev%old_shell_mass(j).gt.star%log_mass(star%core_cz_top_index)) goto 824
+          if (star%prev%old_shell_mass(j).gt.star%log_mass(star%core_cz_top_index)) exit
   823    continue
        end do
   824    star%core_cz_top_index = j - 1
@@ -577,7 +577,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       if (star%envelope_cz_bottom_index.lt.star%num_zones) then
        do j = new_num_zones-1,1,-1
           if (star%prev%old_shell_mass(j).lt.star%log_mass(star%envelope_cz_bottom_index)) &
-               goto 826
+               exit
   825    continue
        end do
   826    star%envelope_cz_bottom_index = j + 1

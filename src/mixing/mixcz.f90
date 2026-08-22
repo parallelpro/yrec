@@ -65,18 +65,18 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       do zone_idx = 1, num_zones_plus1
          if (.not.convective_flag(zone_idx)) goto 10
 ! CONVECTION ZONE
-         if (in_convection_zone) goto 11
+         if (in_convection_zone) cycle
 ! START OF CONVECTION ZONE
          in_convection_zone = .true.
          zone_start = zone_idx
-         goto 11
-   10    if (.not.in_convection_zone) goto 11
+         cycle
+   10    if (.not.in_convection_zone) cycle
 !   END OF CONVECTION ZONE
          in_convection_zone = .false.
          zone_bounds(j_idx) = zone_start
          zone_bounds(j_idx+1) = zone_idx - 1
          j_idx = j_idx + 2
-         if (j_idx.lt.24) goto 11
+         if (j_idx.lt.24) cycle
          goto 12
    11    continue
       end do
@@ -86,10 +86,10 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       if (use_extended_composition) num_species = 15
 ! MIX ALL CONVECTIVE ZONES
       do j_idx = 1, 24, 2
-         if (zone_bounds(j_idx).le.0) goto 110
+         if (zone_bounds(j_idx).le.0) exit
          zone_start = zone_bounds(j_idx)
          zone_end = min0(num_zones, zone_bounds(j_idx+1))
-         if (zone_start.ne.1 .and. zone_start.ge.zone_end) goto 100
+         if (zone_start.ne.1 .and. zone_start.ge.zone_end) cycle
 ! INITIALIZE SUMS
          weight_sum = 0.0d0
          do species_idx = 1, num_species

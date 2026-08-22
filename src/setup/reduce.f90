@@ -132,7 +132,7 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
       elim_coeff(2,1,zone_index) = elim_coeff(2,1,zone_index)*div
       elim_coeff(2,2,zone_index) = elim_coeff(2,2,zone_index)*div
       do j=1,4
-      if (j.eq.2) go to 2
+      if (j.eq.2) cycle
       q(j,1) = q(j,1) - q(j,2)*q(2,1)
       elim_rhs(j,zone_index) = elim_rhs(j,zone_index) - q(j,2)*elim_rhs(2,zone_index)
       elim_coeff(j,1,zone_index) = elim_coeff(j,1,zone_index) - &

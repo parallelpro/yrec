@@ -311,7 +311,7 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
             if (x_index_hi.eq.1) then
                opal_eos%x_interp_result_01(t6_scan_idx,density_scan_idx) = &
                     opal_eos%x_interp_workspace_01(opal_eos%x_index_lo_01,t6_scan_idx,density_scan_idx)
-               go to 46
+               cycle
             end if
             opal_eos%x_interp_result_01(t6_scan_idx,density_scan_idx) = &
                  quadeos01(recompute_flag, cache_slot, hydrogen_fraction, &

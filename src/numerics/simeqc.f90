@@ -32,7 +32,7 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       it=jj-j
       do i=j,num_unknowns
       ij=it+i
-      if(dabs(biga).ge.dabs(system_matrix(ij))) go to 30
+      if(dabs(biga).ge.dabs(system_matrix(ij))) cycle
       biga=system_matrix(ij)
       imax=i
    30 continue
@@ -57,7 +57,7 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       system_matrix(ia)=system_matrix(ia)/biga
    50 continue
       end do
-      if(j.eq.num_unknowns) go to 70
+      if(j.eq.num_unknowns) exit
       ia=num_unknowns*(j-1)
       do ix=jy,num_unknowns
       ib=ia+ix

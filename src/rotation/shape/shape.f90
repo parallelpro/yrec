@@ -67,7 +67,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
             (1.0d0 + c3*a_param**2 - c4*a_param**3)
             r0_cubed = r0_cubed + delta_r0_cubed
-            if(dabs(delta_r0_cubed/r0_cubed).le.acfpft)goto 20
+            if(dabs(delta_r0_cubed/r0_cubed).le.acfpft)exit
    10    continue
          end do
    20    r0(1) = r0_cubed**cc13
@@ -132,14 +132,14 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
                delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
                (1.0d0 + c3*a_param**2 - c4*a_param**3)
                r0_cubed = r0_cubed + delta_r0_cubed
-               if(dabs(delta_r0_cubed/r0_cubed).lt.acfpft)goto 50
+               if(dabs(delta_r0_cubed/r0_cubed).lt.acfpft)exit
    40       continue
             end do
    50       r0(i) = r0_cubed**cc13
             err = r0(i) - r0_estimate
 !  ETA2 IS A FUNCTION OF R0, AND R0=RPHI WAS USED TO CALCULATE ETA2
 !  CORRECT ETA2 HERE IF DR/R0 > CUBE ROOT OF ACFPFT
-            if(dabs(err)/r0(i).le.acc_tol) goto 70
+            if(dabs(err)/r0(i).le.acc_tol) exit
 ! FIND ETA2 USING 4-POINT RUNGE-KUTTE TECHNIQUE AGAIN,BUT FINDING
 ! ETA2 AT R0(I) RATHER THAN ASSUMING R0 = RPHI.
             eta2_temp = eta2(i)
@@ -159,7 +159,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             eta2(i) = eta2(i-1) + cc13*(0.5d0*deta1+deta2+deta3 &
                       + 0.5d0*deta4)
             err = eta2_temp - eta2(i)
-            if(dabs(err).le.acc_tol) goto 70
+            if(dabs(err).le.acc_tol) exit
             r0_estimate = r0(i)
    60    continue
          end do

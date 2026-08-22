@@ -96,7 +96,7 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                     gravity_weights(3)
                atm_table%gravity_interp_indices(node) = ngc-2
             endif
-            goto 20
+            cycle
          endif
          if (log10_gravity.ge.kurucz_castelli_logg_table(ngc-1)) then
 ! DESIRED LOG G ABOVE SECOND TO TOP TABLE LOG G - USE TOP 4 LOG G VALUES.
@@ -111,7 +111,7 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                  gravity_spline_deriv, log10_gravity, interpolated_value)
             pressure_at_nodes(node) = interpolated_value
             atm_table%gravity_interp_indices(node) = ngc-3
-            goto 20
+            cycle
          endif
 ! GENERAL CASE - FIND 4 NEAREST POINTS IN GRAVITY THAT ARE IN THE TABLE.
 ! G Somers, I changed NG to IMINMAX in the next line. This prevents the

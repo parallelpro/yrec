@@ -1612,7 +1612,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       do i = len_trim(ftrack), 1, -1
           if (ftrack(i:i) .eq. '/') then
               last_slash_idx = i
-              goto 1250
+              exit
           endif
       end do
       1250 continue

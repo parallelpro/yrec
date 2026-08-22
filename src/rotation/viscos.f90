@@ -89,20 +89,20 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          viscosity_molecular = 0.0d0
 !  VISCX(I) IS THE MOLECULAR VISCOSITY OF SPECIES I.
          do species_idx = 1,11
-            if(species_idx.eq.3) goto 30
+            if(species_idx.eq.3) cycle
             species_coeff = molecular_coeff*number_density(species_idx)* &
                  dsqrt(weight(species_idx))/ &
                  ((coulomb_log_factor-dlog(z(species_idx)))*z(species_idx)**2)
             species_sum = 0.0d0
             do species_idx2 = 1,11
-               if(species_idx2.eq.3) goto 20
+               if(species_idx2.eq.3) cycle
                species_sum = species_sum+number_density(species_idx2)* &
                     z(species_idx2)**2* &
                     dsqrt((weight(species_idx)+weight(species_idx2))/ &
                     weight(species_idx2))
    20       continue
             end do
-            if(dabs(species_sum).lt.1.0d-38) goto 30
+            if(dabs(species_sum).lt.1.0d-38) cycle
             viscosity_molecular_species(species_idx) = species_coeff/species_sum
             if(viscosity_molecular_species(species_idx).gt.0.0d0) &
                  viscosity_molecular = viscosity_molecular+ &
@@ -115,7 +115,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          viscosity_molecular_endal_sofia = 0.0d0
          endal_sofia_coeff = 2.21d-15*dsqrt(temperature_cgs)*temperature_sq
          do species_idx = 1,11
-            if(species_idx.eq.3) goto 40
+            if(species_idx.eq.3) cycle
             viscosity_endal_sofia_species(species_idx) = endal_sofia_coeff* &
                  composition(species_idx,shell_idx)/ &
                  (dsqrt(weight(species_idx))*z(species_idx)**4* &

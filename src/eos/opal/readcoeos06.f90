@@ -112,7 +112,7 @@ subroutine readcoeos06(ierr)
             do t6_row = 1, opal_eos%temperature_count_used_06(x_loop_index_06,density_row)
                if (t6_row.gt.opal_eos%t6_index_lo_06(density_row)) then
                   read (iopale,'(A)') blank_line
-                  go to 4
+                  cycle
                end if
                read (iopale,'(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)') &
                     opal_eos%t6_list_06(density_row,t6_row), opal_eos%amu_grid_06(density_row,t6_row), &

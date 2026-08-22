@@ -618,7 +618,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 ! DETERMINE IF RUN HAS CONVERGED
       if (abs(max_omega_change).lt.convergence_tolerance) then
          diffusion_converged = .true.
-         goto 900
+         exit
       end if
       end do
  900  continue
@@ -642,7 +642,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       end if
       if (abs(max_omega_change_medium_iter).le.convergence_tolerance .and. &
            theta_iter_idx.ge.2) then
-         goto 9999
+         exit
       else
          diffusion_converged = .false.
       end if

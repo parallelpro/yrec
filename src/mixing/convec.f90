@@ -78,12 +78,12 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
       do zone_idx = 1, num_zones + 1
          if (.not.convective_flag(zone_idx)) goto 10
 ! CONVECTION ZONE
-         if (in_convection_zone) goto 11
+         if (in_convection_zone) cycle
 ! START OF CONVECTION ZONE
          in_convection_zone = .true.
          zone_start = zone_idx
-         goto 11
-   10    if (.not.in_convection_zone) goto 11
+         cycle
+   10    if (.not.in_convection_zone) cycle
 !   END OF CONVECTION ZONE
          in_convection_zone = .false.
          if (zone_start.ne.zone_idx-1) then
@@ -91,10 +91,10 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
             mixed_zone_bounds(j_idx,2) = zone_idx - 1
             j_idx = j_idx + 1
          end if
-         if (j_idx.lt.12) goto 11
+         if (j_idx.lt.12) cycle
          write(short_file_unit,661)
   661    format(' -----TOO MANY MIX ZONES')
-         goto 12
+         exit
    11 continue
       end do
    12 continue

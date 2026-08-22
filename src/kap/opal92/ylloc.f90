@@ -39,7 +39,7 @@ subroutine ylloc
           chkd = opacity_table%opal92_grid_logr(id)
           chko = opacity_table%opal92_log10_opacity(it+num_t*(ix-1),id)
 !>>>> CHECK THE EMPTY REGION
-          if (chko.le.-9.999d0) go to 3
+          if (chko.le.-9.999d0) cycle
           if (jd.le.0) then
              opacity_table%opal92_density_start_index(index1) = id
              if (id.ne.1) stop ' CHECK NDS '
@@ -51,7 +51,7 @@ subroutine ylloc
     3   continue
         end do
         opacity_table%opal92_density_count(index1) = jd
-        if (jd.le.1) go to 2
+        if (jd.le.1) cycle
         call ysplin(density_nodes, spline_work, jd)
         do j = 1,jd
         do i = 1,4
@@ -77,7 +77,7 @@ subroutine ylloc
                do id = ids,idf
                   chkd = opacity_table%opal92_grid_logr_z2(id)
                   chko = opacity_table%opal92_log10_opacity_z2(it+num_t*(ix-1),id)
-                  if (chko.le.-9.999d0) go to 503
+                  if (chko.le.-9.999d0) cycle
                   if (jd.le.0) then
                      opacity_table%opal92_density_start_index_z2(index1) = id
                      if (id.ne.1) stop ' CHECK NDS2 '
@@ -88,7 +88,7 @@ subroutine ylloc
   503             continue
                end do
                opacity_table%opal92_density_count_z2(index1) = jd
-               if (jd.le.1) go to 502
+               if (jd.le.1) cycle
                call ysplin(density_nodes, spline_work, jd)
                do j = 1,jd
                   do i = 1,4

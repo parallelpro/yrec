@@ -130,7 +130,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                do copy_idx = zone_idx, star%num_zones
                   deep_mix_flag(copy_idx) = star%convective_flag(copy_idx)
                end do
-               goto 5
+               exit
             else
                deep_mix_flag(zone_idx) = .true.
             end if
@@ -404,7 +404,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! I1 AND I2 ARE THE FIRST AND LAST CONVECTIVE SHELLS IN THE GIVEN REGION.
             mix_start = star%mixed_zone_bounds(mixed_zone_idx,1)
             mix_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            if (mix_start.ne.1 .and. mix_start.ge.mix_end) goto 100
+            if (mix_start.ne.1 .and. mix_start.ge.mix_end) cycle
 ! INITIALIZE SUMS.
             weight_sum = 0.0d0
             do species_idx = 1, num_species

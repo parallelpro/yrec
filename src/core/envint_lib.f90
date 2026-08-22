@@ -817,7 +817,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
          do i = 1,env_struct%num_env_points
             inversion_index1 = i
             inversion_index2 = env_struct%num_env_points - i + 1
-            if(inversion_index1.ge.inversion_index2)goto 310
+            if(inversion_index1.ge.inversion_index2)exit
             swap_temp = env_struct%env_log10_density(inversion_index1)
             env_struct%env_log10_density(inversion_index1) = env_struct%env_log10_density(inversion_index2)
             env_struct%env_log10_density(inversion_index2) = swap_temp

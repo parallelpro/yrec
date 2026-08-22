@@ -103,7 +103,7 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
    35          continue
                end do
                call polint(xa, ya, k, 0.0d0, aint1, dint)
-               if (dabs(dint).lt.eps*dabs(aint1)) goto 50
+               if (dabs(dint).lt.eps*dabs(aint1)) exit
             end if
             aint0(j+1) = aint0(j)
             extrap_step(j+1) = 0.25d0*extrap_step(j)

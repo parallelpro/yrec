@@ -1561,11 +1561,12 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       f3 = c12alpha/(c12alpha + o16gamma)
       f4 = 1.0d0 - f3
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
-   50 do 60 i=nz,nrxns
+   50 do i=nz,nrxns
          reaction_rate(i)=0.
          dlnrate_dlnrho(i)=0.
          dlnrate_dlnt(i)=0.
    60 continue
+   end do
 ! ***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
 !    RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
 !    THE CONVERSION FACTOR IN THE FRONT OBTAINED FROM VANDENBERG'S
@@ -2205,7 +2206,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
       do zone_idx = 1,min_zone-1
-         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)goto 60
+         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)exit
          if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 &
          .and.composition(15,zone_idx).lt.1.0d-24)goto 50
          if(log_temperature(zone_idx).gt.7.0d0)then
@@ -2278,7 +2279,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
             if(refine_idx.gt.1)then
                converged = .true.
                do species_idx=1,3
-                  if(extrap_y(species_idx).lt.1.0d-24)goto 30
+                  if(extrap_y(species_idx).lt.1.0d-24)cycle
                   extrap_err(species_idx) = abs(extrap_err(species_idx)/extrap_y(species_idx))
                   if(extrap_err(species_idx).gt.extrap_tol(species_idx))converged=.false.
    30          continue
@@ -2555,7 +2556,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
-         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32)goto 145
+         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32)exit
          radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
          li6_depletion = timestep*exp(radiative_frac*log(star%light_burn%rate_li6(zone_idx))+ &
@@ -2741,14 +2742,14 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
       do zone_idx = 1,min_zone-1
-         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)goto 50
+         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)cycle
          if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 &
-         .and.composition(15,zone_idx).lt.1.0d-24)goto 50
+         .and.composition(15,zone_idx).lt.1.0d-24)cycle
          if(log_temperature(zone_idx).gt.7.0d0)then
             composition(13,zone_idx) = 0.0d0
             composition(14,zone_idx) = 0.0d0
             composition(15,zone_idx) = 0.0d0
-            goto 50
+            cycle
          endif
          log_rate_li6 = 0.5d0*(log(star%light_burn%rate_li6(zone_idx)) + log(star%light_burn%rate_li6_start(zone_idx)))
          log_rate_li7 = 0.5d0*(log(star%light_burn%rate_li7(zone_idx)) + log(star%light_burn%rate_li7_start(zone_idx)))
@@ -2929,7 +2930,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
-         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32)goto 200
+         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32)exit
          radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
          li6_depletion = timestep*exp(radiative_frac*log(star%light_burn%rate_li6(zone_idx))+ &
@@ -2992,7 +2993,7 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
       double precision :: t9a, c56
 
       do zone_idx = 1,num_zones
-         if(log_temperature(zone_idx).lt.tlim.and.star%prev%old_temperature(zone_idx).lt.tlim)goto 110
+         if(log_temperature(zone_idx).lt.tlim.and.star%prev%old_temperature(zone_idx).lt.tlim)exit
          if(use_current_model.eq.1)then
             rhox = exp(ln10*log_density(zone_idx))*composition(1,zone_idx)
             t9=exp(ln10*(log_temperature(zone_idx)-9.0d0))

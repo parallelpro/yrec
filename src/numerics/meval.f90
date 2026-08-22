@@ -83,7 +83,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! Determine if eval_x is nondecreasing.
       loop_bound = num_eval_points - 1
       do i = 1, loop_bound
-        if (eval_x(i+1) .ge. eval_x(i)) go to 10
+        if (eval_x(i+1) .ge. eval_x(i)) cycle
         err_code = 2
         go to 230
   10  continue
@@ -95,10 +95,11 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 !
 ! Determine if any of the points in eval_x are less than the abscissa
 ! of the first data point.
-  20  do 30 i = 1, num_eval_points
-        if (eval_x(i) .ge. table_x(1)) go to 40
+  20 do i = 1, num_eval_points
+        if (eval_x(i) .ge. table_x(1)) exit
         start_idx = i + 1
   30  continue
+  end do
 
   40  loop_bound = num_eval_points + 1
 
@@ -106,7 +107,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! abscissa of the last data point.
       do i = 1, num_eval_points
         ind = loop_bound - i
-        if (eval_x(ind) .le. table_x(num_table_points)) go to 60
+        if (eval_x(ind) .le. table_x(num_table_points)) exit
         end_idx = ind - 1
   50  continue
       end do
@@ -184,7 +185,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            spline_v1, spline_v2, spline_w1, spline_w2, spline_z1, &
            spline_z2, spline_y1, spline_y2, spline_case)
 
- 140  do 190 i = start_idx, end_idx
+ 140 do i = start_idx, end_idx
 
 ! If eval_x(i) - table_x(table_idx1) is negative, do not recalculate
 ! the parameters for this section of the spline since they are
@@ -203,11 +204,11 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            table_x(table_idx), table_y(table_idx), table_x(table_idx1), &
            table_y(table_idx1), spline_y1, spline_y2, spline_e2, &
            spline_w2, spline_v2, spline_case)
-      go to 190
+      cycle
 
 ! If eval_x(i) is a data point, its image is known.
  160  eval_y(i) = table_y(table_idx1)
-      go to 190
+      cycle
 
 ! Increment the pointers which give the location in the data vector.
  170  table_idx = table_idx1
@@ -236,6 +237,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            spline_z2, spline_y1, spline_y2, spline_case)
       go to 150
  190  continue
+ end do
 
 ! Calculate the images of the points of evaluation whose abscissas
 ! are greater than the abscissa of the last data point.

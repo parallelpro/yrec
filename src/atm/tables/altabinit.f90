@@ -64,14 +64,14 @@ subroutine altabinit(ierr)
          do j = 1, atm_table%allard_num_gl
             if (atm_table%allard_log10_pressure(i,j) .gt. -998d0) then
                atm_table%allard_gl_index_min(i) = j
-               goto 100
+               exit
             endif
          enddo
   100    continue
          do j = atm_table%allard_num_gl, 1, -1
             if (atm_table%allard_log10_pressure(i,j) .gt. -998d0) then
                atm_table%allard_gl_index_max(i) = j
-               goto 110
+               exit
             endif
          enddo
   110    continue

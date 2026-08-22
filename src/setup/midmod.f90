@@ -577,7 +577,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          if (surface_cz_active) then
             moment_of_inertia_cz = moment_of_inertia_mid(star%num_zones)
             do i = star%num_zones-1,1,-1
-               if (.not.am_transport_convective_flag_mid(i)) goto 110
+               if (.not.am_transport_convective_flag_mid(i)) exit
                moment_of_inertia_cz = moment_of_inertia_cz + moment_of_inertia_mid(i)
             end do
   110       continue

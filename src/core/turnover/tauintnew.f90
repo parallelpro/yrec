@@ -97,7 +97,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
 ! JvS 02/2026: ADDED LCZ(J+1) TO TRAP OUT CASES WHERE THE LAST (FEW) POINT(S) IN
 ! THE MODEL IS(ARE) ALREADY RADIATIVE
       do j = num_points-1,1,-1
-         if (convective_flag(j+1) .and. .not.convective_flag(j)) goto 90
+         if (convective_flag(j+1) .and. .not.convective_flag(j)) exit
    80 continue
       end do
    90 cz_base_index = i
@@ -230,7 +230,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
 ! OR MULTIPLE CONVECTION CELLS RESIDE WITHIN THE RADIATIVE ENVELOPE.
 ! IN THIS CASE, EVALUATE CVEL AT CENTER OF BOTTOM CZ. FIRST, FIND UPPER EDGE.
             do k = cz_base_index,num_points-1,1
-               if (.not.convective_flag(k))goto 120
+               if (.not.convective_flag(k))exit
             enddo
   120       cz_top_index = k-1
 ! PINPOINT TOP OF CZ LINEARLY
@@ -244,7 +244,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
 ! FIND INDICES SURROUNDING LINEAR CENTER OF CZ
             radius_test = log10(radius_at_bcz + 0.5*cz_width)
             do k = cz_base_index,cz_top_index+1,1
-               if (log10_radius(k).gt.radius_test) goto 130
+               if (log10_radius(k).gt.radius_test) exit
             enddo
   130       continue
             radius_test = exp(ln10*radius_test)

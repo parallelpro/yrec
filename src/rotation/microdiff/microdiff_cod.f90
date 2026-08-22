@@ -105,7 +105,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          if(species_fraction(species_col,i).eq.0.0.and.i.ne.num_eq_points)then
             if(species_fraction(species_col,i+1).eq.0.0)then
                diffusion_term(i) = 0.0
-               goto 5
+               cycle
             endif
          endif
 !        set relevant physical variables.

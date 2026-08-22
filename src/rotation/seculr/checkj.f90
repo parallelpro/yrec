@@ -224,7 +224,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  IF ADJACENT TO A CONVECTION ZONE, MIX THE CONVECTION ZONE AS WELL.
          if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
             do scan_index = zone_top + 1,num_zones
-               if(.not.am_transport_convective_flag(scan_index)) goto 40
+               if(.not.am_transport_convective_flag(scan_index)) exit
    30       continue
             end do
    40       zone_top = scan_index - 1
@@ -233,7 +233,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
          zone_bottom = zone_index - 1
          if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
             do scan_index = zone_bottom - 1,1,-1
-               if(.not.am_transport_convective_flag(scan_index)) goto 60
+               if(.not.am_transport_convective_flag(scan_index)) exit
    50       continue
             end do
    60       zone_bottom = scan_index + 1
@@ -253,7 +253,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                   zone_bottom = zone_bottom - 1
                   if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
                      do scan_index = zone_bottom - 1,1,-1
-                        if(.not.am_transport_convective_flag(scan_index)) goto 90
+                        if(.not.am_transport_convective_flag(scan_index)) exit
    80                continue
                      end do
    90                zone_bottom = scan_index + 1
@@ -269,7 +269,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                   zone_top = zone_top+1
                   if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
                      do scan_index = zone_top+1,num_zones
-                        if(.not.am_transport_convective_flag(scan_index)) goto 110
+                        if(.not.am_transport_convective_flag(scan_index)) exit
   100                continue
                      end do
   110                zone_top = scan_index - 1

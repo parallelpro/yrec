@@ -65,9 +65,10 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       else
          omega_guess = disk_pressure
       end if
-   20 do 30 zone_idx = zone_start,zone_end
+   20 do zone_idx = zone_start,zone_end
          omega(zone_idx) = omega_guess
    30 continue
+   end do
 !  DETERMINE THE MOMENTS OF INERTIA OF SHELLS JSTART TO JEND WITH OMEGA
 !  EQUAL TO WGUESS.
       call shape(log_density,log_radius,log_mass,zone_start,zone_end,omega, &

@@ -171,7 +171,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
                   if (opacity_table%opal95_full_opacity(x_table_index,temp_row_index,j).le.9.9d0) then
                      opacity_table%opal95_index_rho(i) = j - 3
                      density_base_index = j - 3
-                     goto 50
+                     exit
                   endif
                end do
    50          continue

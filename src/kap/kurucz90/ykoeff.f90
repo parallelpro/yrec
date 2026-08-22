@@ -37,7 +37,7 @@ subroutine ykoeff
          do id = ids,idf
             chkd = opacity_table%kurucz_log10_rho(it,id)
             chko = opacity_table%kurucz_log10_opacity(it,id)
-            if (chko.le.0.0d0) go to 103
+            if (chko.le.0.0d0) cycle
             if (jd.le.0) opacity_table%kurucz_density_start_index(index1) = id
             jd = jd + 1
             density_nodes(jd) = chkd
@@ -47,7 +47,7 @@ subroutine ykoeff
          opacity_table%kurucz_density_count(index1) = jd
          if (opacity_table%kurucz_density_start_index(index1).ne.1) stop ' ERROR KURUCZ OPACITY NDS'
          if (opacity_table%kurucz_density_count(index1).lt.25) stop ' ERROR KURUCZ OPACITY NDD'
-         if (jd.le.1) go to 102
+         if (jd.le.1) cycle
          call ysplin(density_nodes, spline_work, jd)
          do j = 1,jd
             do i = 1,4
@@ -70,7 +70,7 @@ subroutine ykoeff
             do id = ids,idf
                chkd = opacity_table%kurucz2_log10_rho(it,id)
                chko = opacity_table%kurucz2_log10_opacity(it,id)
-               if (chko.le.0.0d0) go to 203
+               if (chko.le.0.0d0) cycle
                if (jd.le.0) opacity_table%kurucz2_density_start_index(index1) = id
                jd = jd + 1
                density_nodes(jd) = chkd
@@ -80,7 +80,7 @@ subroutine ykoeff
             opacity_table%kurucz2_density_count(index1) = jd
             if (opacity_table%kurucz2_density_start_index(index1).ne.1) stop ' NDS2'
             if (opacity_table%kurucz2_density_count(index1).lt.25) stop ' NDD2'
-            if (jd.le.1) go to 202
+            if (jd.le.1) cycle
             call ysplin(density_nodes, spline_work, jd)
             do j = 1,jd
                do i = 1,4

@@ -135,8 +135,8 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
 ! CHECK SEMICONVECTION BELOW (K=1) AND ABOVE (K=2) THE CZ.
          do edge_side = 1, 2
 ! SKIP SEMI-CONVECTION BELOW A CENTRAL CZ AND ABOVE A SURFACE ONE.
-            if (edge_side.eq.1.and..not.down_semiconv_flag) goto 200
-            if (edge_side.eq.2.and..not.up_semiconv_flag) goto 200
+            if (edge_side.eq.1.and..not.down_semiconv_flag) cycle
+            if (edge_side.eq.2.and..not.up_semiconv_flag) cycle
 ! JMC AND JMR ARE THE LOCATIONS OF THE EDGE OF THE CONVECTIVE ZONE
 ! AND THE FIRST RADIATIVE POINT OUTSIDE IT RESPECTIVELY.
             cz_edge_idx = mixed_zone_bounds(zone_idx,edge_side)
@@ -192,7 +192,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  temperature_rotation_factor, log_teff, ierr)
             if (ierr /= 0) return
 ! SKIP IF ZONE IS STABLE WITH THE CORE COMPOSITION.
-            if (radiative_gradient.lt.adiabatic_gradient) goto 200
+            if (radiative_gradient.lt.adiabatic_gradient) cycle
 ! STORE MEAN MOLECULAR WEIGHT, ADJUSTED RADIATIVE TEMPERATURE GRADIENT,
 ! AND THE QUANTITY (DELR - DELA)/DELR.
             boundary_mean_molecular_weight = ion_mean_weight_inverse + &
