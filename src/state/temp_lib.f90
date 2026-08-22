@@ -4,7 +4,7 @@
 ! New (2026) as part of the YREC module-modernization project (see
 ! GUIDELINES.md). Replaces common/temp/: per-shell specific heat, mean
 ! molecular weight, and diffusion coefficients, computed by
-! misc/physic.f90 (cp/mean_molecular_weight/qdt) and wind/viscos.f90
+! misc/physic.f90 (cp/mean_molecular_weight/qdt) and rotation/viscos.f90
 ! (visc/thdif) every model, and read broadly (setup/hpoint.f90 copies
 ! them into oldmod_lib's previous-model arrays; rotation/getw.f90
 ! reads mean_molecular_weight during rotational mixing).

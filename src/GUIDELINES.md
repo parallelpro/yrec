@@ -232,7 +232,7 @@ use_debye_huckel_correction`. Migrated 10 files / 13 call sites
 `io/wrtout.f90`, `misc/physic.f90`, `core/starin.f90`,
 `mixing/hsubp.f90`, `mixing/sconvec.f90` x3, `wind/massloss.f90` x2)
 to call `eos_get` instead of duplicating the `use_mhd_eos` if/else at
-each site. `wind/calcad.f90` was deliberately left alone -- confirmed
+each site. `atm/turnover/calcad.f90` was deliberately left alone -- confirmed
 against the original F77 source, it never participated in the
 `eqstat`/`meqos` dispatch (calls `esac06`/`eqstat2` directly under its
 own `use_opal2006_eos` check) and isn't part of this pattern. The
@@ -285,7 +285,7 @@ a pure numerical-differentiation wrapper around `eqstat2` and the two
 have always been a matched pair, so `eqstat2.f90`'s subroutine moved
 into `eqstat.f90` (both remain plain external subroutines, not module
 procedures -- callers, `eos_lib.f90`'s `eos_get` for `eqstat` and
-`wind/calcad.f90` calling `eqstat2` directly, needed no changes).
+`atm/turnover/calcad.f90` calling `eqstat2` directly, needed no changes).
 Co-locating them let gfortran see both signatures in the same
 compilation unit for the first time, which surfaced a genuine (though
 harmless) pre-existing interface violation: `eqstat` was passing its
@@ -502,6 +502,48 @@ correct pattern.
 Verification: full clean build (through 3 rounds of intent/linker
 fixes) + Stage-0 byte-identical regression.
 
+**`wind` needed no facade, only relocation (2026-08-21)**: investigation
+found no `eos`-style duplicated dispatch -- `mwind.f90` and
+`mcowind.f90` each already internally dispatch Kawaler-type
+(`wind.f90`/`cowind.f90`) vs. Matt-type angular-momentum-loss physics,
+and where `rotation/seculr.f90` calls both `mwind` and `mcowind`, it's
+for genuinely different rotation-model branches (differential vs.
+solid-body, different `fix_omega_at_surface` cases), not repeated
+duplication of the same choice. `amcalc.f90`, `cowind.f90`/
+`mcowind.f90`, `mdot.f90`/`massloss.f90`, `mwind.f90`/`wind.f90` are
+all genuine wind-domain physics (magnetic-wind angular-momentum loss,
+mass loss/accretion), correctly filed even though their consumers are
+in `rotation/`/`core/` -- physics feeding a solver isn't misplacement.
+
+Three files were, though, found and relocated by the same
+zero-domain-content/callers-elsewhere test used for `meval.f90`/
+`alsurfp.f90`/`surfopac.f90`:
+- `wczimp.f90` -> `rotation/`. Enforces a user-specified rotation
+  profile (solid body / constant specific angular momentum / power
+  law) in a convective zone -- rotation-state control, not wind-driven
+  angular-momentum loss. Called only from `rotation/getw.f90`/
+  `rotation/getrot.f90`.
+- `viscos.f90` -> `rotation/`. Computes microscopic viscosity/thermal
+  diffusivity "for use by the rotational-mixing/instability diffusion
+  routines" (its own header). Zero wind content. Called only from
+  `misc/physic.f90`.
+- `calcad.f90` -> `atm/turnover/`. The acoustic-depth diagnostic
+  (already familiar from the `eos`/`kap` sweeps as the deliberately-
+  unmigrated `eqstat2`/`esac06` caller) integrates sound-speed
+  profiles for asteroseismology output -- no wind content, and the
+  same category of work as `atm/turnover/`'s other structure-
+  integration diagnostics (`gettau`/`taucal`/`tauint`/`tauintnew`).
+  Called only from `io/wrtout.f90`.
+
+`wcz.f90` -- confirmed zero callers anywhere, its own header already
+says every caller switched to `wczimp.f90` -- was deliberately **left
+in place** rather than deleted, per explicit user choice: it's
+documented dead code, not an accident, and the project isn't treating
+"unreachable" as automatic grounds for removal here.
+
+Verification: full clean build + Stage-0 byte-identical regression
+after the relocations.
+
 ## Build mechanics
 
 - Any file introducing `module ... contains` must be added to the
@@ -605,7 +647,7 @@ saves re-deriving the fix from scratch:
   never shrink the callee's dummy to match the caller.
 - **Scalar vs. length-1 array.** Caller passes a `(1)`-dimensioned
   array where the callee's dummy is a plain scalar, or vice versa
-  (`wind/calcad.f90` did this twice, against `numerics/boole.f90` and
+  (`atm/turnover/calcad.f90` did this twice, against `numerics/boole.f90` and
   against `splint`). Tell: "Rank mismatch ... (scalar and rank-1)."
   Both sides are legal, standalone F77 idioms (a length-1 array and a
   scalar share identical memory layout, so this always worked via

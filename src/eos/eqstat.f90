@@ -255,7 +255,7 @@ end subroutine eqstat
 ! two have always been a matched pair; both remain plain external
 ! subroutines (not module procedures), so this is a purely
 ! organizational move -- callers (eos_lib.f90's eos_get for eqstat;
-! wind/calcad.f90, which calls eqstat2 directly) are unaffected.
+! atm/turnover/calcad.f90, which calls eqstat2 directly) are unaffected.
 !
 ! Co-locating the two surfaced a genuine (harmless) interface bug:
 ! gfortran checks call-site argument intents against a callee's actual

@@ -176,7 +176,7 @@ module opacity_table_lib
            integer :: opal95_table_start_index(n_opal95_z) = &
                 [0,10,20,30,40,50,60,70,80,90,100,109,118]
 ! former common/llot95/: the single-Z OPAL95 opacity table, sliced at
-! the model's actual Z. wind/calcad.f90 declared a mismatched single-
+! the model's actual Z. atm/turnover/calcad.f90 declared a mismatched single-
 ! scalar layout for this block (never read/set there) -- the majority
 ! (7-file) array+scalar layout below is used; calcad.f90's reference
 ! now maps onto (an unused corner of) this same type.

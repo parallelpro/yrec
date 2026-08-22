@@ -39,7 +39,7 @@
 ! an acknowledged numerics change for use_mhd_eos=.true. runs, which
 ! the Stage-0 regression suite cannot verify (no test case sets LMHD).
 !
-! wind/calcad.f90 is NOT migrated: it calls esac06 directly (bypassing
+! atm/turnover/calcad.f90 is NOT migrated: it calls esac06 directly (bypassing
 ! eqstat2's boundary-ramping) under its own use_opal2006_eos check for
 ! a self-contained acoustic-depth diagnostic, and never checks
 ! use_mhd_eos at all -- confirmed to match the original F77 exactly,
