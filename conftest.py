@@ -6,12 +6,15 @@ tiny relative tolerance -- the standalone baselines are pinned on
 macOS/arm64, and x86_64 gfortran rounds the last printed digit
 differently in a handful of values (FMA/codegen ULP differences, seen
 on the first CI run). Everything non-numeric, and the line structure,
-must still match exactly; the tolerance (5e-12, sized by the worst observed CI difference, a cancellation-amplified 6e-13) is far below anything a real
-physics or refactor bug would produce.
+must still match exactly. The tolerance is 1e-9: the eos grid prints
+second-derivative quantities whose differencing amplifies platform ULP
+noise to ~1e-11 relative (worst observed across CI runs 4-5: 9.6e-12),
+so 1e-9 keeps two orders of margin over the noise while remaining far
+below anything a genuine physics or refactor defect would produce.
 """
 import os
 
-REL_TOL = 5.0e-12
+REL_TOL = 1.0e-9
 
 
 def _to_float(tok):
