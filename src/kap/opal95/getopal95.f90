@@ -22,7 +22,7 @@
 ! interpolation is required and dispatches to op952d/op953d/op954d
 ! (not part of this batch) accordingly.
 subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
-     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use opacity_table_lib
       use const_lib
@@ -40,6 +40,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
            hydrogen_fraction, metal_fraction
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      integer, intent(out) :: ierr
 
 ! END JVS
       double precision :: interp_nodes(4), weight(4), dweight(4)
@@ -52,13 +53,17 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 
 !     ENSURE THAT WE ARE WITHIN THE OPAL 95 TABLES.
 !     COMPUTE LOG R = RHO/T6**3
+      ierr = 0
       opacity_table%opal95_logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
 !     CHECK T
       if (log10_temperature.lt.opacity_table%opal95_grid_logt(1) .or. &
            log10_temperature.gt.opacity_table%opal95_grid_logt(num_t)) then
          write(*,5) log10_temperature
     5    format(' LOG T OF',f11.6,'OUT OF OPAL 95 TABLE RANGE')
-         stop
+! 2026 (ROADMAP.md stage 3): stop converted to ierr; the facade
+! (kap_lib's kap_get) stops when its caller passes no ierr.
+         ierr = 1
+         return
       endif
 !     CHECK TO SEE IF EXTRAPOLATION BELOW THE FIRST TABLE ELEMENT
 !     IN DENSITY IS NEEDED.

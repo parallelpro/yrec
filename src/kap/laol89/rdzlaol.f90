@@ -10,12 +10,13 @@
 !
 ! Reads the pure-Z (Z=1) LAOL89 opacity table.
 ! MHP 10/02 vector v not used
-subroutine rdzlaol(pure_z_table_path)
+subroutine rdzlaol(pure_z_table_path, ierr)
 
       use opacity_table_lib
       use const_lib
       use luout_lib
       implicit none
+      integer, intent(out) :: ierr
       character(len=256), intent(in) :: pure_z_table_path
 
 
@@ -27,6 +28,7 @@ subroutine rdzlaol(pure_z_table_path)
       integer :: n, i, ii, ir, it
       double precision :: dummy(104)
 
+      ierr = 0
       open(unit=iopurez, file=pure_z_table_path,form='FORMATTED', &
               status='OLD')
 !     READ IN ARRAY SIZES
@@ -34,7 +36,9 @@ subroutine rdzlaol(pure_z_table_path)
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (n.ne.1.or.opacity_table%zlaol_num_rho.gt.104.or.opacity_table%zlaol_num_t.gt.52) then
          write(short_file_unit,*)' Z OPACITY INPUT ERROR.'
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+         ierr = 1
+         return
       end if
       read(iopurez,120) (dummy(i),i=1,11)
   120 format(47x,f8.5,//,1p6e12.5,/,1p4e12.5)

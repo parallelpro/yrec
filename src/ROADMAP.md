@@ -174,6 +174,23 @@ returns `ierr` and the *application* decides.
   inputs and assert `ierr /= 0` with no crash -- the first time
   YREC's error paths become testable at all.
 
+STATUS (2026-08-21): **kap converted** -- all 29 library stops became
+required-ierr returns in the leaves (each failure's diagnostic still
+prints at the point of failure), threaded up to OPTIONAL `ierr`
+arguments on `kap_get` and `kap_init`: caller passes ierr -> error
+surfaces MESA-style with no stop; caller omits it -> identical
+historical behavior, with the stop relocated to a single labeled
+funnel per facade (2 stops now stand where 29 did, removable when the
+last caller opts in). `kap_update_surface_tables`'s chain has no
+error paths and needed nothing. test_kap gained the first error-path
+assertions in YREC's history (out-of-table and no-table-chosen both
+return ierr=1 without crashing) and its baseline was regenerated.
+Execution surfaced a build-system footgun now recorded in
+GUIDELINES.md: no `.mod` dependency tracking means any module-
+procedure signature change requires `make clean`, or stale callers
+segfault. Remaining: eos (39 stops), atm (7), and the facade-less
+domains (rotation 5, numerics 5, wind 2, mixing 1, misc 2).
+
 ## Stage 4 -- named-index result arrays
 
 `eos_get` currently has 27 positional arguments; MESA's `eosDT_get`

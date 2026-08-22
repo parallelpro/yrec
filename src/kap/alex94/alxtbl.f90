@@ -23,12 +23,13 @@
 ! 4-POINT LAGRANGIAN.
 !
 ! MHP 8/25 Added file name to subroutine call
-subroutine alxtbl(alex95_table_paths)
+subroutine alxtbl(alex95_table_paths, ierr)
 
       use opacity_table_lib
       use const_lib
       use luout_lib
       implicit none
+      integer, intent(out) :: ierr
       integer, parameter :: num_x = 7
       integer, parameter :: num_z = 15
       integer, parameter :: num_xz = 105
@@ -75,7 +76,9 @@ subroutine alxtbl(alex95_table_paths)
                     header_z, opacity_table%alex95_grid_z(i)
    20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
-               stop
+               ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+               ierr = 1
+               return
             endif
 !           OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T,
 !           STARTING R.  STORE IN A NUMZ*NUMT*NUMR ARRAY.
@@ -93,12 +96,15 @@ subroutine alxtbl(alex95_table_paths)
    40             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T,RHO',i3,4f7.2, &
                        ' RUN STOPPED')
-                  stop
+                  ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+                  ierr = 1
+                  return
                endif
             end do
          end do
          close(unit=alex95_table_unit)
       end do
+      ierr = 0
       target_z = alex_table_z1
       call alxztab(target_z)
       return

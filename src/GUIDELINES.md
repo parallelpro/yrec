@@ -650,6 +650,21 @@ plan, and the sequencing rationale.
 
 ## Build mechanics
 
+- **Changing a module procedure's signature requires `make clean`.**
+  The Makefile has no `.mod`-file dependency tracking: the order-only
+  prerequisites guarantee build *order*, not rebuild *triggering*, so
+  files that `use` a module are NOT recompiled when that module's
+  interfaces change. The failure mode is nasty: with gfortran, a
+  stale caller invoking a procedure that gained an `optional` dummy
+  passes no storage for it, the callee's `present()` reads stack
+  garbage as an address, and the program segfaults somewhere
+  unrelated-looking (first hit 2026-08-21, when kap_get/kap_init
+  gained optional ierr and every test binary crashed at startup until
+  a clean rebuild). Also beware orphaned `.o` files after `git mv`:
+  `make clean` only removes objects for *current* sources, so old
+  objects linger at the old paths -- harmless to make itself (it
+  links exactly $(OBJS)) but they poison any `find`-based tooling.
+
 - Any file introducing `module ... contains` must be added to the
   Makefile's `MODULE_SRCS` list so it's compiled before anything that
   `use`s it (GNU Make has no built-in Fortran module dependency

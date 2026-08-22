@@ -23,7 +23,7 @@ program test_kap
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-      integer :: ipt
+      integer :: ipt, kap_ierr
       double precision :: logt, logd, x_frac, z_frac
       double precision :: o, ol, qod, qot, fxion(3)
 
@@ -99,6 +99,27 @@ program test_kap
          call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion)
          write(*,'(a,i2,4(1pe24.15))') "kap ", ipt, o, ol, qod, qot
       end do
+
+! Error paths (2026, ROADMAP.md stage 3): with the optional ierr
+! passed, out-of-range points and misconfiguration return ierr /= 0
+! instead of stopping -- the first time these paths are testable at
+! all. The diagnostic each failure writes goes to short_file_unit /
+! stdout at the point of failure, as always.
+      write(*,'(a)') "# test_kap: error paths via optional ierr"
+      logt = 3.5d0
+      logd = -8.0d0
+      fxion = 0.0d0
+      call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
+           kap_ierr)
+      write(*,'(a,i4)') "err out-of-table   ierr = ", kap_ierr
+      use_opal95_tables = .false.
+      logt = 6.0d0
+      logd = -3.0d0
+      fxion = 0.0d0
+      call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
+           kap_ierr)
+      write(*,'(a,i4)') "err no-table-chosen ierr = ", kap_ierr
+      use_opal95_tables = .true.
 
       close(short_file_unit)
       write(*,'(a)') "test_kap: done"

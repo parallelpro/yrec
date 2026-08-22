@@ -15,7 +15,7 @@
 ! the -3.0/4.1 bounds before searching -- that early-out check is
 ! absent from the original kurucz2.f and is preserved as-is here.
 subroutine kurucz2(log10_density, log10_temperature, opacity, &
-     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, *)
+     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr, *)
 
 !     TWO DIMENSIONAL INTERPOLATION FOR OPACITY
 !     M1, M2, AND M3 ARE NEAREST GRID POINT OF ABUNDANCE, TEMPERATURE,
@@ -45,6 +45,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       double precision, intent(in) :: log10_density, log10_temperature
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      integer, intent(out) :: ierr
 
       double precision :: temp_subset_logt(max_num_temps), &
            temp_subset_log10_opacity(max_num_temps)
@@ -75,6 +76,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       call findex(opacity_table%kurucz2_grid_logt, opacity_table%kurucz2_num_temps, log10_temperature, &
            opacity_table%kurucz2_ix_t)
 
+      ierr = 0
       local_logt = log10_temperature
       local_logrho = log10_density
       search_full_range = .true.
@@ -147,7 +149,9 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
          endif
          write(short_file_unit,*) 'ERROR KURUCZ OP: NO TABLE VALUE ', &
               local_logrho, local_logt
-         stop
+! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+         ierr = 1
+         return
       endif
       if (temp_subset_logt(1).gt.local_logt .or. &
            temp_subset_logt(num_valid_temps).lt.local_logt) return 1

@@ -12,11 +12,12 @@
 ! The target X, Z are taken from opacity_table%alex06_cached_x/opacity_table%alex06_cached_z
 ! (common/alot06/), which the caller (getalex06.f90) sets before
 ! calling this routine.
-subroutine alex06tab
+subroutine alex06tab(ierr)
 
       use opacity_table_lib
       use numerics_lib
       implicit none
+      integer, intent(out) :: ierr
       integer, parameter :: num_x = 9
       integer, parameter :: num_z = 16
       integer, parameter :: num_xz = 143
@@ -34,18 +35,23 @@ subroutine alex06tab
       integer :: i, j, iz, k, kk, kk2, kk3, kk4
 
 !     XE = DESIRED X; ZE = DESIRED Z
+      ierr = 0
       x_max = 1.0d0 - opacity_table%alex06_cached_z
 !     CHECK THAT THE REQUESTED COMPOSITION IS INSIDE TABLE BOUNDS
       if (opacity_table%alex06_cached_x.lt.0.0d0 .or. opacity_table%alex06_cached_x .gt. x_max) then
          write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
     5    format('ILLEGAL COMPOSITION (X,Z) = ',2f6.2,' IN ALEX06.RUN STOPPED')
-         stop
+! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+         ierr = 1
+         return
       endif
 !     PERMIT EXTRAPOLATION IN Z BY UP TO 1 TABLE ELEMENT
       z_max = opacity_table%alex06_grid_z(num_z)+(opacity_table%alex06_grid_z(num_z)-opacity_table%alex06_grid_z(num_z-1))
       if (opacity_table%alex06_cached_z.lt.0.0d0 .or. opacity_table%alex06_cached_z .gt. z_max) then
          write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
-         stop
+! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+         ierr = 1
+         return
       endif
 !     FIND 4 NEAREST TABLES IN Z.
       do i = 3,num_z-2

@@ -21,7 +21,7 @@
 subroutine condopacpint(log10_density, log10_temperature, &
      hydrogen_fraction, metal_fraction, conductive_opacity, &
      conductive_log10_opacity, conductive_dlnkap_dlnrho, &
-     conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity)
+     conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, ierr)
 
       implicit none
 
@@ -32,6 +32,7 @@ subroutine condopacpint(log10_density, log10_temperature, &
            conductive_dlnkap_dlnt
       double precision, intent(in) :: ion_fraction(3)
       logical, intent(out) :: got_conductive_opacity
+      integer, intent(out) :: ierr
 
       save
       double precision :: atomic_weight_h1, atomic_weight_he4, &
@@ -53,6 +54,7 @@ subroutine condopacpint(log10_density, log10_temperature, &
       double precision :: unused_deriv1, unused_deriv2
 
 ! Get fractional abundances in nubers of atoms of H1, He4 and metals (Ox)
+      ierr = 0
       helium_fraction=1.0D0-hydrogen_fraction-metal_fraction
       number_fraction_h1  = (hydrogen_fraction/atomic_weight_h1)  / &
            (hydrogen_fraction/atomic_weight_h1 + &
@@ -92,11 +94,14 @@ subroutine condopacpint(log10_density, log10_temperature, &
            .and.log10_density.le.9.75D0) then
          if (log10_density.ge.-6.0D0) then
            call condopacp(1.0D0,log10_temperature,log10_density, &
-                log10_cond_h1,dlnkap_dlnrho_h1,dlnkap_dlnt_h1)
+                log10_cond_h1,dlnkap_dlnrho_h1,dlnkap_dlnt_h1,ierr)
+           if (ierr /= 0) return
            call condopacp(2.0D0,log10_temperature,log10_density, &
-                log10_cond_he4,dlnkap_dlnrho_he4,dlnkap_dlnt_he4)
+                log10_cond_he4,dlnkap_dlnrho_he4,dlnkap_dlnt_he4,ierr)
+           if (ierr /= 0) return
            call condopacp(8.0D0,log10_temperature,log10_density, &
-                log10_cond_ox,dlnkap_dlnrho_ox,dlnkap_dlnt_ox)
+                log10_cond_ox,dlnkap_dlnrho_ox,dlnkap_dlnt_ox,ierr)
+           if (ierr /= 0) return
 
            cond_h1 = 10.0D0**(-log10_cond_h1)
            cond_he4 = 10.0D0**(-log10_cond_he4)
@@ -126,11 +131,14 @@ subroutine condopacpint(log10_density, log10_temperature, &
          if (log10_density.lt.-6.0D0.and.extrapolation_indicator.ge.0.0D0) then
 ! Extrapolate Conductive opacity
            call condopacp(1.0D0,log10_temperature,-6.0D0,log10_cond_h1, &
-                conductive_dlnkap_dlnrho,conductive_dlnkap_dlnt)
+                conductive_dlnkap_dlnrho,conductive_dlnkap_dlnt,ierr)
+           if (ierr /= 0) return
            call condopacp(2.0D0,log10_temperature,-6.0D0,log10_cond_he4, &
-                unused_deriv1,unused_deriv2)
+                unused_deriv1,unused_deriv2,ierr)
+           if (ierr /= 0) return
            call condopacp(8.0D0,log10_temperature,-6.0D0,log10_cond_ox, &
-                unused_deriv1,unused_deriv2)
+                unused_deriv1,unused_deriv2,ierr)
+           if (ierr /= 0) return
 
            cond_h1 = 10.0D0**(-log10_cond_h1)
            cond_he4 = 10.0D0**(-log10_cond_he4)

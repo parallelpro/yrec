@@ -35,7 +35,7 @@
 !     Please address any questions/comments to Alexander Potekhin:
 !     e-mail: palex@astro.ioffe.rssi.ru
 subroutine condopacp(ion_charge, log10_temperature, log10_density, &
-     log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt)
+     log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, ierr)
 
       use const_lib
       implicit none
@@ -44,6 +44,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
            log10_density
       double precision, intent(out) :: log10_conductivity, &
            dlnkappa_dlnrho, dlnkappa_dlnt
+      integer, intent(out) :: ierr
 
       save
       integer, parameter :: n_temp_grid=19, n_rho_grid=64, n_z_grid=15
@@ -102,6 +103,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
          r_index=int(n_rho_grid/2.)+1
 !         print*,'Potekhin Conductivity File read in.'
       endif
+      ierr = 0
       log10_ion_charge=dlog10(ion_charge)
       call hunt(z_grid,n_z_grid,log10_ion_charge,z_index)
       if (z_index.eq.0.or.z_index.eq.n_z_grid) stop 'CONINTER: Z out of range'
@@ -111,7 +113,11 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       if (t_index.eq.0.or.t_index.eq.n_temp_grid) then
                   print*, z_grid
                   print*, n_z_grid, log10_temperature, z_index
-                  stop 'CONINTER: T out of range'
+! 2026 (ROADMAP.md stage 3): stop 'CONINTER: T out of range'
+! converted to ierr (see kap_lib's kap_get); message preserved.
+                  print*, 'CONINTER: T out of range'
+                  ierr = 1
+                  return
       endif
 
       call hunt(rho_grid,n_rho_grid,log10_density,r_index)

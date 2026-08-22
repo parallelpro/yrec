@@ -10,11 +10,12 @@
 ! Builds the fixed-Z (X, T, rho) opacity table by cubic interpolation
 ! across the 4 nearest Z tables in the full OPAL95 table set
 ! (common/llot95a/, filled by ll95tbl).
-subroutine op95ztab(metal_fraction)
+subroutine op95ztab(metal_fraction, ierr)
 
       use opacity_table_lib
       use numerics_lib
       implicit none
+      integer, intent(out) :: ierr
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19
       integer, parameter :: num_x = 10
@@ -29,6 +30,7 @@ subroutine op95ztab(metal_fraction)
       integer :: i, j, k, z_table_index, z_table_index2
       integer :: table1_index, table2_index, table3_index, table4_index
 
+      ierr = 0
       opacity_table%opal95_fixed_z = metal_fraction
 !  FIND 4 NEAREST TABLES IN Z TO DESIRED VALUE.
       do i = 3,num_z-1
@@ -41,7 +43,9 @@ subroutine op95ztab(metal_fraction)
       write(*,5)metal_fraction
     5 format(1x,'DESIRED Z',f10.6,'OUTSIDE OP95 TABLE RANGE'/ &
            ' RUN STOPPED')
-      stop
+      ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+      ierr = 1
+      return
    10 continue
 !  FIND INTERPOLATION FACTORS IN Z.
       do i = 1,4

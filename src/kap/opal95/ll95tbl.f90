@@ -12,12 +12,13 @@
 ! Reads the full set of OPAL95 opacity tables (all tabulated Z and X),
 ! skipping the header, then builds the fixed-Z table via op95ztab.f
 ! (not part of this batch).
-subroutine ll95tbl(opal95_table_path)
+subroutine ll95tbl(opal95_table_path, ierr)
 
       use opacity_table_lib
       use const_lib
       use luout_lib
       implicit none
+      integer, intent(out) :: ierr
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19
       integer, parameter :: num_x = 10
@@ -60,6 +61,7 @@ subroutine ll95tbl(opal95_table_path)
       double precision :: xx, zz, xxt, target_z
 
 !     READ IN OPACITY TABLES, SKIPPING HEADER.  HEY, IT WORKS.
+      ierr = 0
       open(opal95_table_unit,file=opal95_table_path,status='OLD',access='SEQUENTIAL')
       fmt_start=1
 
@@ -80,7 +82,9 @@ subroutine ll95tbl(opal95_table_path)
       endif
       if (opacity_table%opal95_grid_z(iz).ne.zz .or. xxt.ne.xx) then
        write(short_file_unit,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+         ierr = 1
+         return
       endif
 
 !     READ IN HEADER INFO: GRID IN RHO/T6**3
@@ -164,7 +168,8 @@ subroutine ll95tbl(opal95_table_path)
 !     Z TABLES.
       target_z = opal95_single_table_z
 
-      call op95ztab(target_z)
+      call op95ztab(target_z, ierr)
+      if (ierr /= 0) return
  9999 continue
       return
 end subroutine ll95tbl

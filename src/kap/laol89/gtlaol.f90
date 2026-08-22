@@ -10,7 +10,7 @@
 ! temperature, then linearly interpolate (or, within tollaol of the
 ! table edge, linearly extrapolate) in hydrogen abundance.
 subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
-     opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+     opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use opacity_table_lib
       use const_lib
@@ -21,6 +21,7 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
            hydrogen_fraction
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      integer, intent(out) :: ierr
 
 ! MHP 8/25 Removed character file names from common block
       double precision :: row_log10_opacity(104), row_log_rho(104), &
@@ -47,6 +48,7 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
 !     IF WITHIN TOLLAOL OF EDGE THEN LINEAR EXTRAPOLATE
 !
 !     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
+      ierr = 0
       log_extrap_tolerance = log(tollaol)
       local_x = hydrogen_fraction
       local_logt = log10_temperature
@@ -113,7 +115,9 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
                write(short_file_unit,120) log10_density, log10_temperature
   120          format(' OUTSIDE OPACITY TABLE, IN DENSITY.  ', &
                     'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-               stop
+! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+               ierr = 1
+               return
             end if
          end do
          if (num_valid_t .ge. 4) then
@@ -136,7 +140,9 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
             write(short_file_unit,121) log10_density, log10_temperature
   121       format(' OUTSIDE OPACITY TABLE, IN TEMPERATURE.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-            stop
+! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+            ierr = 1
+            return
          end if
       end do
       if (num_valid_x .ge. 2) then
@@ -157,7 +163,9 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
          write(short_file_unit,122) log10_density, log10_temperature
   122    format(' OUTSIDE OPACITY TABLE.  ', &
               'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-          stop
+! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+          ierr = 1
+          return
       end if
       return
 end subroutine gtlaol

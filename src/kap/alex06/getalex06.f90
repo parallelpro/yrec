@@ -11,7 +11,7 @@
 ! and log R = rho/T6**3, reloading the fixed-(X,Z) table via
 ! alex06tab.f90 whenever the requested composition changes.
 subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
-     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use opacity_table_lib
       use const_lib
@@ -27,6 +27,7 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
            hydrogen_fraction, metal_fraction
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      integer, intent(out) :: ierr
 
 
 
@@ -39,13 +40,15 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       logical :: extrapolate_linear
       integer :: i, ii
 
+      ierr = 0
       delta_z = abs(metal_fraction-opacity_table%alex06_cached_z)
       delta_x = abs(hydrogen_fraction-opacity_table%alex06_cached_x)
 !     ENSURE THAT OPACITY TABLE HAS THE SAME X,Z VALUE AS THE POINT
       if (delta_z.gt.1.0d-8 .or. delta_x.gt.1.0d-8) then
          opacity_table%alex06_cached_z = metal_fraction
          opacity_table%alex06_cached_x = hydrogen_fraction
-         call alex06tab
+         call alex06tab(ierr)
+         if (ierr /= 0) return
       endif
 !     COMPUTE R FOR GRID POINT
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)

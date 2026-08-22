@@ -11,12 +11,13 @@
 ! DBG 4/94 Modified to read in second table for ZRAMP core stuff.
 ! Reads the LAOL89 opacity table(s) (and, if a second Z table is
 ! requested, a second LAOL89 table).
-subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
+subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 
       use opacity_table_lib
       use const_lib
       use luout_lib
       implicit none
+      integer, intent(out) :: ierr
       double precision, intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
 
@@ -32,6 +33,7 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
       integer :: ii, ix, ir, it
       double precision :: zlot, zhit, zlot2, zhit2
 
+      ierr = 0
       open(unit=iolaol,file=laol_table_path, form='FORMATTED', &
            status='OLD')
 !     READ IN ARRAY SIZES
@@ -39,7 +41,9 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (numofxyz.gt.11.or.numrho.gt.104.or.numt.gt.52) then
          write(short_file_unit,*)' OPACITY ARRAY TOO LARGE.'
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+         ierr = 1
+         return
       end if
 !     READ IN RELATIVE ABUNDANCES BY WEIGTH OF THE METALS C,N,O,NE,NA,
 !     MG,SI,AR,FE (THE COX&STEWART MIX).  MIXTURE IS FOR THE ZLOT PART
@@ -88,7 +92,9 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path)
          read(iolaol2,100) opacity_table%nxyz2,opacity_table%nrho2,opacity_table%nt2
          if (opacity_table%nxyz2.gt.11.or.opacity_table%nrho2.gt.104.or.opacity_table%nt2.gt.52) then
             write(short_file_unit,*)' SECOND OPACITY ARRAY TOO LARGE.'
-            stop
+            ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+            ierr = 1
+            return
          end if
 !        READ IN RELATIVE ABUNDANCES BY WEIGTH OF THE METALS C,N,O,NE,NA,
 !        MG,SI,AR,FE (THE COX&STEWART MIX).  MIXTURE IS FOR THE ZLOT PART

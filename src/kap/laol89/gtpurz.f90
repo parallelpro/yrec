@@ -10,7 +10,7 @@
 ! interpolate in density, then in temperature (no composition
 ! interpolation needed since the table is pure Z).
 subroutine gtpurz(log10_density, log10_temperature, opacity, &
-     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use opacity_table_lib
       use const_lib
@@ -20,6 +20,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
       double precision, intent(in) :: log10_density, log10_temperature
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      integer, intent(out) :: ierr
 
 ! MHP 8/25 Removed unused variables
       double precision :: row_log10_opacity(104), row_log_rho(104), &
@@ -45,6 +46,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
 !     IF WITHIN TOLLAOL OF EDGE THEN LINEAR EXTRAPOLATE
 !
 !     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
+      ierr = 0
       log_extrap_tolerance = log(tollaol)
       local_logt = log10_temperature
       local_logrho = log10_density
@@ -97,7 +99,9 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
             write(short_file_unit,120) log10_density, log10_temperature
   120       format(' OUTSIDE Z OPACITY TABLE, IN DENSITY.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-            stop
+! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+            ierr = 1
+            return
          end if
       end do
       if (num_valid_t .ge. 4) then
@@ -116,7 +120,9 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
          write(short_file_unit,121) log10_density, log10_temperature
   121    format(' OUTSIDE Z OPACITY TABLE, IN TEMPERATURE.  ', &
               'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-         stop
+! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+         ierr = 1
+         return
       end if
       if (log10_opacity_value .gt. 35) then
          opacity = 1.0d35
