@@ -93,7 +93,7 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
   50  prev_idx=idx
       idx=next_idx
       next_idx=next_idx+1
-      if (idx .gt. num_points_m1) go to 60
+      if (.not. (idx .gt. num_points_m1)) then
 !
 ! CALCULATE THE SLOPES OF THE TWO LINES JOINING THREE CONSECUTIVE DATA
 ! POINTS.
@@ -106,6 +106,7 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
       go to 10
 !
 ! CALCULATE THE SLOPE AT THE LAST POINT, XTAB(NUM).
+      end if
   60  if ((slope1*slope2) .lt. 0.d0) go to 80
       x_mid= (table_x(num_points_m1)+table_x(num_points))/2.d0
       y_x_mid=first_derivs(num_points_m1)*(x_mid - table_x(num_points_m1)) + &
@@ -114,8 +115,9 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
 !       MTAB(NUM)=(YTAB(NUM)-YXMID)/(XTAB(NUM)-XMID)
       call safedivide((table_y(num_points)-y_x_mid), &
            (table_x(num_points)-x_mid), first_derivs(num_points))
-      if ((first_derivs(num_points)*slope2) .lt. 0.d0) go to 70
+      if (.not. ((first_derivs(num_points)*slope2) .lt. 0.d0)) then
       go to 90
+      end if
   70  first_derivs(num_points)=0.d0
       go to 90
   80  first_derivs(num_points)=2.d0*slope2
@@ -125,8 +127,9 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
       x_mid=(table_x(1) + table_x(2))/2.d0
       y_x_mid=first_derivs(2)*(x_mid - table_x(2)) + table_y(2)
       first_derivs(1)=(y_x_mid - table_y(1))/(x_mid - table_x(1))
-      if ((first_derivs(1) * slope1_saved) .lt. 0.d0) go to 100
+      if (.not. ((first_derivs(1) * slope1_saved) .lt. 0.d0)) then
       return
+      end if
   100 first_derivs(1)=0.d0
       return
   110 first_derivs(1)=2.d0*slope1_saved

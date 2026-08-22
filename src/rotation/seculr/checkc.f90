@@ -135,7 +135,9 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
  1015 format(' ERROR IN SR CHECKC'/' TIMESTEP CUT NUMBER ',i2, &
               ' DUE TO ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5, &
               ' ABUNDANCE ',1pe12.3)
-                  goto 100
+                  continue
+                  
+                  return
                endif
             endif
    10    continue

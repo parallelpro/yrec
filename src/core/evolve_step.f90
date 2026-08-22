@@ -601,7 +601,10 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                 teff_kelvin_unused = 10.0D0**star%log_teff
              else
                 call chkscal(star%log10_luminosity, star%log_teff, star%run%dage, nk)
-                if (just_passed_target_radius_flag) goto 820
+                if (just_passed_target_radius_flag) then
+                   step_status = 2
+                   return
+                end if
              end if
           endif
        endif

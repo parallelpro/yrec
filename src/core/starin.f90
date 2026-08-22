@@ -1058,7 +1058,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        total_rotational_ke = rotational_ke_sum
       endif
 
-      if (run_index.gt.1) goto 630
+      if (.not. (run_index.gt.1)) then
 ! SET UP MASS FRACTIONS AND NUMBER FRACTIONS OF ELEMENTS IN
 ! ENVELOPE.
 ! DBG 1/96 V (ENVELOPE MASS FRACTIONS WAS NORMALLY READ IN VIA
@@ -1116,6 +1116,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
            star%env_comp%fxenv)
 !     FIND SURFACE COMPOSITION OPACITY TABLE
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
+      end if
  630  continue
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
       call kap_update_surface_tables(star%env_comp%envelope_hydrogen_fraction)

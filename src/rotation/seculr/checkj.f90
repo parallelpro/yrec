@@ -150,7 +150,8 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                write(short_file_unit,1005)cut_count,zone_index
  1005          format(5x,'ERROR IN SR CHECKJ'/5x,'TIMESTEP CUT,',1x, &
                        'NUMBER',i5,' DUE TO NEGATIVE J/M IN ZONE',i5)
-               goto 240
+               continue
+               return
             endif
          endif
    10 continue
@@ -333,11 +334,17 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !
 ! SKIP OUTPUT IF NOT DESIRED.
 !         IF(.NOT.LPRT)GOTO 240
-         if(.true.)goto 240
+         if (.true.) then
+            continue
+            return
+         end if
 ! G Somers END
 !
 !  IF NPRTPT IS SET TO A LARGE NUMBER, SKIP DETAILED OUTPUT.
-         if(print_point_interval.gt.num_zones)goto 240
+         if (print_point_interval.gt.num_zones) then
+            continue
+            return
+         end if
          write(imodpt,170)
   170 format(' SHELL',3x,'OMEGA',5x,'DEL OMEGA',6x,'J/M',7x,'DEL J/M')
 !  DETERMINE WHICH SHELLS TO PRINT.

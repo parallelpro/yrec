@@ -142,9 +142,10 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          saha_ratio(i) = ln10*(saha_weight_term(i) + stemp) - &
               ionization_temp_over_t(i)
          if(saha_ratio(i).lt.-saha_exponent_tol) go to 12
-         if(saha_ratio(i).gt.+saha_exponent_tol) go to 10
+         if (.not. (saha_ratio(i).gt.+saha_exponent_tol)) then
          saha_ratio(i) = beta_inverse*dexp(saha_ratio(i))
          cycle
+         end if
  10      saha_ratio(i) = 1.0d16
          nz1 = i + 1
  11   continue
@@ -178,7 +179,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          eep1 = mean_electrons_per_ion*ep1
          c33 = -mean_electrons_per_ion*(1.0d0 + mean_electrons_per_ion)
          r3 = mean_electrons_per_ion
-         if(nz0.le.0) go to 22
+         if (.not. (nz0.le.0)) then
          do i=1,nz0
             div = 1.0d0/(saha_ratio(i) + eep1)
             temp8 = saha_ratio(i)*div
@@ -190,17 +191,18 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
             species_weighted_term(i) = temp8
  21      continue
          end do
+         end if
  22      c33 = c33*ep1e
          r3 = r3 - helium_mass_fraction*(helium_ion_fraction_1 + &
               helium_ion_fraction_2+helium_ion_fraction_2)
          converged = dabs(r3).lt.saha_convergence_tol
-         if(skip_helium_i) go to 25
+         if (.not. (skip_helium_i)) then
          c22 = helium_saha_ratio_1 + eep1
          c23 = helium_ion_fraction_1*ep12
          c32 = helium_mass_fraction
          r2 = helium_saha_ratio_1*(1.0d0-helium_ion_fraction_1- &
               helium_ion_fraction_2) - helium_ion_fraction_1*eep1
-         if(skip_helium_ii) go to 23
+         if (.not. (skip_helium_ii)) then
          c11 = eep1
          c12 = -helium_saha_ratio_2
          c13 = helium_ion_fraction_2*ep12
@@ -230,10 +232,12 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          r3 = r3 + cr13*r1
  210     continue
 ! ENTRY FOR NO FULLY IONIZED HELIUM (SAHEX2 = 0.0)
+         end if
  23      cr23 = - c32/c22
          c33 = c33 + cr23*c23
          r3 = r3 + cr23*r2
 ! ENTRY FOR NEUTRAL HELIUM
+         end if
  25      delta_electrons_per_ion = r3/c33
          if(skip_helium_i) go to 26
          deltx1 = (r2 - c23*delta_electrons_per_ion)/c22
@@ -286,12 +290,16 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       if(nz0.ge.7) ion_fraction(1) = species_ion_fraction(7)
       ion_fraction(2) = helium_ion_fraction_1
       ion_fraction(3) = helium_ion_fraction_2
-      if(in_atmosphere) go to 60
+      if (in_atmosphere) then
+         continue
+         
+         return
+      end if
 ! COMPUTE FIRST DERIVATIVES
       rmub = specific_gas_constant*beta_inverse
       r3t = 0.0d0
       r3p = 0.0d0
-      if(nz0.le.0) go to 31
+      if (.not. (nz0.le.0)) then
       do i=nz1,nz0
          r3p = r3p - species_weighted_term(i)
 !  30   R3T = R3T -FXS(I)*(2.5D0 + BETA14 + SAHATT(I))
@@ -300,13 +308,14 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
  30   continue
       end do
       r3p = -beta_inverse*r3p
+      end if
  31   if(skip_helium_i) go to 33
       helium_neutral_fraction = 1.0d0 - helium_ion_fraction_1 - helium_ion_fraction_2
       sk0qt = 2.5d0 + beta14 + helium_ionization_temp_1*temperature_inverse
       temp = helium_saha_ratio_1*helium_neutral_fraction
       r2t = temp*sk0qt
       r2p = -temp*beta_inverse
-      if(skip_helium_ii) go to 32
+      if (.not. (skip_helium_ii)) then
       sk1qt = 2.5d0 + beta14 + helium_ionization_temp_2*temperature_inverse
       temp = helium_saha_ratio_2*helium_ion_fraction_1
       r1t = temp*sk1qt
@@ -315,6 +324,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       r2p = r2p + cr12*r1p
       r3t = r3t + cr13*r1t
       r3p = r3p + cr13*r1p
+      end if
  32   r3t = r3t + cr23*r2t
       r3p = r3p + cr23*r2p
  33   sqet = r3t/c33
@@ -323,18 +333,20 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       dlnrho_dlnp = beta_inverse - ep1*sqep
 ! COMPUTE INTERNAL ENERGY TEMPERATURE DERIVATIVE(QUT)
       usum = 0.0d0
-      if(skip_helium_i) go to 35
+      if (.not. (skip_helium_i)) then
       sx1qt = (r2t - c23*sqet)/c22
       sx1qp = (r2p - c23*sqep)/c22
       sx2qt = 0.0d0
       sx2qp = 0.0d0
-      if(skip_helium_ii) go to 34
+      if (.not. (skip_helium_ii)) then
       sx2qt = (r1t - c12*sx1qt - c13*sqet)/c11
       sx2qp = (r1p - c12*sx1qp - c13*sqep)/c11
+      end if
  34   sx0qt = -(sx1qt + sx2qt)
       sx0qp = -(sx1qp + sx2qp)
       usum = helium_mass_fraction*(sx1qt*helium_ionization_temp_1 + &
            sx2qt*(helium_ionization_temp_1 + helium_ionization_temp_2))
+      end if
  35   if(nz0.le.0) go to 37
       stemp = 2.50d0 + beta14 - ep1e*sqet
       do i=nz1,nz0
@@ -355,14 +367,18 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       specific_heat_cp = qut - pdtq
       qcpi = 1.0d0/specific_heat_cp
       adiabatic_gradient = -pdtq*qcpi
-      if(.not.want_derivatives) go to 60
+      if (.not.want_derivatives) then
+         continue
+         
+         return
+      end if
 ! COMPUTE DERIVATIVES OF QDT,QCP,DELA
       beta16 = 4.0d0*beta_inverse*beta14
       r3t = 0.0d0
       r3p = 0.0d0
       utsum = 0.0d0
       upsum = 0.0d0
-      if(nz0.le.0) go to 42
+      if (.not. (nz0.le.0)) then
       etemp = (1.0d0+mean_electrons_per_ion+mean_electrons_per_ion)/ &
            (mean_electrons_per_ion*(1.0d0+mean_electrons_per_ion))**2
       stemp1 = 2.5d0 + beta14 - sqet*ep1e
@@ -382,8 +398,9 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          upsum = upsum + ionization_temp(i)*stemp7
  41   continue
       end do
+      end if
  42   continue
-      if(skip_helium_i) go to 44
+      if (.not. (skip_helium_i)) then
       stemp = 2.0d0*helium_ion_fraction_1*ep1*sqet
       r2t = helium_saha_ratio_1*(helium_neutral_fraction*(beta16- &
            helium_ionization_temp_1*temperature_inverse+sk0qt**2)+2d0*sx0qt*sk0qt) &
@@ -391,7 +408,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       r2p = helium_saha_ratio_1*(helium_neutral_fraction*beta_inverse* &
            (-beta14-sk0qt)+sx0qp*sk0qt-beta_inverse* &
            sx0qt) + ep12*(stemp*sqep - sx1qp*sqet - sx1qt*sqep)
-      if(skip_helium_ii) go to 43
+      if (.not. (skip_helium_ii)) then
       stemp = 2.0d0*helium_ion_fraction_2*ep1*sqet
       r1t = helium_saha_ratio_2*(helium_ion_fraction_1*(beta16- &
            helium_ionization_temp_2*temperature_inverse+sk1qt**2)+2d0*sx1qt*sk1qt) &
@@ -403,13 +420,15 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       r2p = r2p + cr12*r1p
       r3p = r3p + cr13*r1p
       r3t = r3t + cr13*r1t
+      end if
  43   r3p = r3p + cr23*r2p
       r3t = r3t + cr23*r2t
+      end if
  44   sqett = r3t/c33
       sqetp = r3p/c33
       dlnrho_dlnt_dt = -beta16 + (ep1*sqet)**2 - ep1*sqett
       dlnrho_dlnp_dt = beta_inverse*beta14 + ep12*sqet*sqep - ep1*sqetp
-      if(nz0.le.0) go to 46
+      if (.not. (nz0.le.0)) then
       stemp = ep1e*sqett
       stemp1 = ep1e*sqetp
       do i=nz1,nz0
@@ -418,19 +437,22 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          upsum = upsum - species_weighted_term(i)*ionization_temp(i)*stemp1
  45   continue
       end do
+      end if
  46   continue
-      if(skip_helium_i) go to 48
+      if (.not. (skip_helium_i)) then
       sx1qtt = (r2t - c23*sqett)/c22
       sx1qtp = (r2p - c23*sqetp)/c22
-      if(skip_helium_ii) go to 47
+      if (.not. (skip_helium_ii)) then
       sx2qtt = (r1t - c12*sx1qtt - c13*sqett)/c11
       sx2qtp = (r1p - c12*sx1qtp - c13*sqetp)/c11
       utsum = utsum + helium_mass_fraction*(helium_ionization_temp_1+ &
            helium_ionization_temp_2)*(sx2qtt - sx2qt)
       upsum = upsum + helium_mass_fraction*(helium_ionization_temp_1+ &
            helium_ionization_temp_2)*sx2qtp
+      end if
  47   utsum = utsum + helium_mass_fraction*helium_ionization_temp_1*(sx1qtt - sx1qt)
       upsum = upsum + helium_mass_fraction*helium_ionization_temp_1*sx1qtp
+      end if
  48   continue
       btemp = (1.0d0+mean_electrons_per_ion)*beta14*beta_inverse* &
            (24.0d0*beta_inverse - 9.0d0)

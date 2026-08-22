@@ -63,13 +63,14 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       num_zones_plus1 = num_zones + 1
       convective_flag(num_zones_plus1) = .false.
       do zone_idx = 1, num_zones_plus1
-         if (.not.convective_flag(zone_idx)) goto 10
+         if (.not. (.not.convective_flag(zone_idx))) then
 ! CONVECTION ZONE
          if (in_convection_zone) cycle
 ! START OF CONVECTION ZONE
          in_convection_zone = .true.
          zone_start = zone_idx
          cycle
+         end if
    10    if (.not.in_convection_zone) cycle
 !   END OF CONVECTION ZONE
          in_convection_zone = .false.

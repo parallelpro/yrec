@@ -49,12 +49,14 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
             log_zx_mismatch = log10(current_zx)-log10(target_solar_zx)
             if(abs(log_zx_mismatch).lt.zx_tolerance)then
                star%run%solar_calibration_active = .true.
-               goto 9999
+               continue
+               return
             endif
          else
 ! CALIBRATED SOLAR MODEL.  SET UP OUTPUT FLAGS AND EXIT
             star%run%solar_calibration_active = .true.
-            goto 9999
+            continue
+            return
          endif
       endif
 
@@ -78,7 +80,8 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
          initial_x_array(run_index+3)=initial_x_array(run_index+1)
          star%run%log_l_prev = log_l_lsun
          star%run%log_r_prev = log_r_rsun
-         goto 9999
+         continue
+         return
       else if(run_index.eq.6)then
 !     EVALUATE DERIVATIVE OF L AND R WITH RESPECT TO X.
 !         DLDX = (BL - BLP)/DX
@@ -98,7 +101,8 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
          initial_x_array(run_index+3)=initial_x_array(run_index+1)
          star%run%log_l_prev = log_l_lsun
          star%run%log_r_prev = log_r_rsun
-         goto 9999
+         continue
+         return
       else if(run_index.eq.9)then
 !     EVALUATE DERIVATIVE OF L AND R WITH RESPECT TO ALPHA.
          star%run%dlum_dalpha = (log_l_lsun - star%run%log_l_prev)/star%run%delta_alpha
@@ -125,7 +129,8 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
          write(iowr,*) "New A, Old A, Calc DA: ", &
              mixing_length_array(run_index+1), mixing_length_array(1), &
              star%run%delta_alpha
-         goto 9999
+         continue
+         return
 !      ELSE
       endif   ! terrminate old partial derivative code
 
@@ -170,7 +175,8 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
          star%run%log_l_prev = log_l_lsun
          star%run%log_r_prev = log_r_rsun
          log_zx_mismatch_prev = log_zx_mismatch
-         goto 9999
+         continue
+         return
 !      ENDIF
  9999 continue
       return

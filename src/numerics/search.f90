@@ -58,11 +58,12 @@ subroutine search(table_x, num_table_points, eval_point, table_idx, &
       last_idx=num_table_points
       found_flag=0
 !
-      if (table_x(1) .ne. eval_point) go to 10
+      if (.not. (table_x(1) .ne. eval_point)) then
       table_idx=1
       found_flag=1
       return
 !
+      end if
   10  if (table_x(num_table_points) .ne. eval_point) go to 20
       table_idx=num_table_points
       found_flag=1
@@ -81,7 +82,9 @@ subroutine search(table_x, num_table_points, eval_point, table_idx, &
       if (table_x(middle_idx) .lt. eval_point) then
          goto 40
       else if (table_x(middle_idx) .eq. eval_point) then
-         goto 50
+         table_idx=middle_idx
+         found_flag =1
+         return
       else
          goto 60
       end if

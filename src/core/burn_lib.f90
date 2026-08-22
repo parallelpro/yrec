@@ -338,7 +338,8 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          do zone_idx = zone_begin, zone_end
             composition(12,zone_idx) = 0.0d0
          end do
-         goto 9999
+         continue
+         return
       end if
 !     BURN DEUTERIUM IN A SERIES OF SMALL STEPS,
 !     INCREMENTING THE BURNING RATE FROM THE STARTING
@@ -506,7 +507,8 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
          do zone_idx = zone_begin,zone_end
             composition(12,zone_idx) = 0.0d0
          end do
-         goto 9999
+         continue
+         return
       endif
 ! BURN DEUTERIUM IN A SERIES OF SMALL STEPS,
 ! INCREMENTING THE BURNING RATE FROM THE STARTING
@@ -1245,7 +1247,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
             reaction_energy_gen(i) = 0.
    20    continue
          end do
-         go to 200
+         continue
+         return
       end if
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
 !  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
@@ -2312,7 +2315,10 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! CONVECTION ZONE.
 !
 ! SKIP IF WHOLE CZ IS BELOW THE BURNING THRESHOLD.
-      if(star%light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%light_burn%rate_be9(cz_base_zone).le.1.0d-32)goto 200
+      if (star%light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%light_burn%rate_be9(cz_base_zone).le.1.0d-32) then
+         continue
+         return
+      end if
 ! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
       li6_cz_start = 0.0d0
       li7_cz_start = 0.0d0
@@ -2541,7 +2547,10 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       star%light_burn%log_rate_be9_prev = log_rate_be9_cz_end
 ! NOW SOLVE FOR ABUNDANCES IN THE REGION WHICH BEGAN CONVECTIVE AND
 ! ENDED RADIATIVE.
-      if(cz_base_zone.le.cz_base_zone_old)goto 200
+      if (cz_base_zone.le.cz_base_zone_old) then
+         continue
+         return
+      end if
 ! FIND STARTING AND ENDING LOCATION IN MASS OF THE CZ BASE, AND
 ! ASSUME THAT THE FRACTION OF TIME SPENT IN THE CZ IS PROPORTIONAL TO
 ! THE LOCATION IN MASS (I.E. A POINT 1/3 FROM THE OLD TO THE NEW CZ
@@ -2787,7 +2796,10 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 ! CONVECTION ZONE.
 !
 ! SKIP IF WHOLE CZ IS BELOW THE BURNING THRESHOLD.
-      if(star%light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%light_burn%rate_be9(cz_base_zone).le.1.0d-32)goto 200
+      if (star%light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%light_burn%rate_be9(cz_base_zone).le.1.0d-32) then
+         continue
+         return
+      end if
 ! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
       li6_cz_start = 0.0d0
       li7_cz_start = 0.0d0
@@ -2915,7 +2927,10 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       star%light_burn%log_rate_be9_prev = log_rate_be9_cz_end
 ! NOW SOLVE FOR ABUNDANCES IN THE REGION WHICH BEGAN CONVECTIVE AND
 ! ENDED RADIATIVE.
-      if(cz_base_zone.le.cz_base_zone_old)goto 200
+      if (cz_base_zone.le.cz_base_zone_old) then
+         continue
+         return
+      end if
 ! FIND STARTING AND ENDING LOCATION IN MASS OF THE CZ BASE, AND
 ! ASSUME THAT THE FRACTION OF TIME SPENT IN THE CZ IS PROPORTIONAL TO
 ! THE LOCATION IN MASS (I.E. A POINT 1/3 FROM THE OLD TO THE NEW CZ

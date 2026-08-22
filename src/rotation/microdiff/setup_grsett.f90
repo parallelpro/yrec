@@ -125,7 +125,8 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
          fully_convective_flag=.true.
          write(short_file_unit,15)
    15    format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-         goto 9999
+         continue
+         return
    20    continue
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_begin = zone_idx-1
@@ -141,7 +142,8 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       write(short_file_unit,16)hydrogen_diffusion_floor
    16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
-      goto 9999
+      continue
+      return
    25 continue
       zone_begin = zone_idx
 !     CHECK FOR CONVECTIVE ENVELOPE.
@@ -166,7 +168,8 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       write(short_file_unit,17)helium_diffusion_min
    17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
-      goto 9999
+      continue
+      return
    47 continue
       zone_end = zone_idx
 !     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.

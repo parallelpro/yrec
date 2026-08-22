@@ -36,12 +36,22 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 
 !     Exit if outside table in rho
       if ((density.lt.opal_eos%density_grid_06(1)) .or. (density.ge.opal_eos%density_grid_06(nr))) then
-         goto 9999        ! Out of Table in density. Go to out of table exit.
+         continue
+         in_opal_table = .false.
+         needs_ramp = .true.
+         ramp_factor = 0d0
+         
+         return
       end if
 
 !     Exit if outside table in T6
       if ((t6.gt.opal_eos%t6_grid_06(1)) .or. (t6.le.opal_eos%t6_grid_06(nt))) then
-         goto 9999        ! Out of Table in temperature. Go to out of table exit.
+         continue
+         in_opal_table = .false.
+         needs_ramp = .true.
+         ramp_factor = 0d0
+         
+         return
       end if
 
 !     Initialize
@@ -98,7 +108,12 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 !     to opal_eos%density_index_edge_06(t6_row)
 
       if (density_row.gt.opal_eos%density_index_edge_06(t6_row)) then
-        goto 9999       ! Out of table exit in density.
+        continue
+        in_opal_table = .false.
+        needs_ramp = .true.
+        ramp_factor = 0d0
+        
+        return
       end if
       if (density_row.eq.opal_eos%density_index_edge_06(t6_row)) then
         needs_ramp = .true.
@@ -116,7 +131,12 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 !     equal to opal_eos%t6_index_lo_06(density_row).
 
       if (t6_row.gt.opal_eos%t6_index_lo_06(density_row)) then
-        goto 9999      ! Out of table exit in temperature
+        continue
+        in_opal_table = .false.
+        needs_ramp = .true.
+        ramp_factor = 0d0
+        
+        return
       end if
       if (t6_row.eq.opal_eos%t6_index_lo_06(density_row)) then
         needs_ramp = .true.

@@ -76,13 +76,14 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
       in_convection_zone = .false.
       convective_flag(num_zones+1) = .false.
       do zone_idx = 1, num_zones + 1
-         if (.not.convective_flag(zone_idx)) goto 10
+         if (.not. (.not.convective_flag(zone_idx))) then
 ! CONVECTION ZONE
          if (in_convection_zone) cycle
 ! START OF CONVECTION ZONE
          in_convection_zone = .true.
          zone_start = zone_idx
          cycle
+         end if
    10    if (.not.in_convection_zone) cycle
 !   END OF CONVECTION ZONE
          in_convection_zone = .false.
@@ -109,7 +110,9 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
          num_radiative_zones = 1
          radiative_zone_bounds(1,1) = 1
          radiative_zone_bounds(1,2) = num_zones
-         goto 9999
+         continue
+         
+         return
       end if
       num_mixed_zones = j_idx - 1
       do zone_idx = 1, num_mixed_zones
@@ -129,7 +132,9 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
             core_cz_edge = 1
             envelope_cz_edge = 1
             num_radiative_zones = 0
-            goto 9999
+            continue
+            
+            return
          else
             core_cz_edge = mixed_zone_bounds(1,2)
          end if

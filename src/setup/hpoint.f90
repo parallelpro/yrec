@@ -305,8 +305,9 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       endif
   130 flag_point(flag_count) = star%num_zones
 ! ARRANGE THE FLAG POINTS IN ASCENDING ORDER
-      if (flag_count.eq.1) goto 180
-  140 continue
+      if (.not. (flag_count.eq.1)) then
+      do
+         continue
       sort_done = .true.
       do i = 1,flag_count-1
        if (flag_point(i+1).lt.flag_point(i)) then
@@ -317,10 +318,12 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        endif
   150 continue
       end do
-      if (.not.sort_done) goto 140
+      if (.not. (.not.sort_done)) exit
+      end do
 ! ENSURE THAT POINTS ARENT FLAGGED MORE THAN ONCE.
       i = 2
-  160 continue
+      do
+         continue
       if (flag_point(i).eq.flag_point(i-1)) then
        if (i.lt.flag_count) then
           do j = i,flag_count-1
@@ -331,7 +334,9 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        flag_count = flag_count - 1
       endif
       i = i + 1
-      if (i.le.flag_count) goto 160
+      if (.not. (i.le.flag_count)) exit
+      end do
+      end if
   180 continue
       write(short_file_unit,185) (flag_point(j),j=1,flag_count)
   185 format(1X,'FLAG-POINTS',20I4)

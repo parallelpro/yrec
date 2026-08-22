@@ -71,7 +71,8 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
 ! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
       if (zone_end-zone_begin.le.1) then
          single_interface_flag = .true.
-         goto 9999
+         continue
+         return
       else
          single_interface_flag = .false.
       end if

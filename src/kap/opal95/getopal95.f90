@@ -223,12 +223,13 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 !     DETERMINE WHETHER A 2D (RHO,T); 3D (X,RHO,T); OR 4D (Z,X,RHO,T)
 !     INTERPOLATION IS NEEDED TO GET THE OPACITY.
 !     JVS 04/11 force 4d interpolation for acoustic depth calculations
-      if (compute_acoustic_depth .and. acoustic_depth_output) goto 153  ! If we're worrying about the acoustic depth, default to 4d interp
+      if (.not. (compute_acoustic_depth .and. acoustic_depth_output)) then
       if (abs(metal_fraction-opacity_table%opal95_fixed_z)/max(opacity_table%opal95_fixed_z,1.0d-6).le.1.0d-4) then
          if (abs(hydrogen_fraction-opacity_table%opal95_surface_x).le.1.0d-4) then
 !           2D INTERPOLATION IN SURFACE TABLE
             call op952d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-            goto 9999
+            continue
+            return
          else
 !           3D INTERPOLATION IN FIXED Z TABLE (X,T,RHO)
 !           GET INTERPOLATION FACTORS IN X.
@@ -293,9 +294,11 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             opacity_table%opal95_weight_x(1,j) = weight(j)
          end do
          call op953d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-         goto 9999
+         continue
+         return
       endif
       endif
+      end if
   153 continue
 !     4D INTERPOLATION IN Z,X,T,RHO
 !     GET NEAREST TABLES IN Z.

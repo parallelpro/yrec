@@ -47,7 +47,8 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
 ! stored in the previous model.
       if (dt_factor.eq.0.d0)then
           rotation_dt = 1.0d20
-          goto 999
+          continue
+          return
       endif
 ! restrict change in timestep to no more than a factor of atime(14)%
 ! up or down.

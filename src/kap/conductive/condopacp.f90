@@ -248,7 +248,7 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
          interp_value=val_lo1+v01*x+c2*interp_frac**2+c3*interp_frac**3
          interp_deriv=v01+(2d0*c2*interp_frac+3d0*c3*interp_frac**2)/h
          interp_deriv2=(2d0*c2+6d0*c3*interp_frac)/h**2
-         goto 10
+         return
       endif
       if (grid_index.eq.1) then   ! Quadratic interpolation
          c2=val_lo1-val_hi1+v11*h

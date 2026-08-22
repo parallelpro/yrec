@@ -116,7 +116,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       kk = min0(261,max0(1,kk))
       id1 = yale_eos%fermi_table_x_lookup(kk)
 !  IF INDEX UNCHANGED FROM PREVIOUS LOOP,SKIP THIS SECTION
-      if (id1.eq.id1p)  go to 30
+      if (.not. (id1.eq.id1p)) then
       id1p = id1
       id2 = id1 + 1
       id3 = id1 + 2
@@ -135,6 +135,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
    20 continue
       end do
       dpel2 = 2.0d0*(ff(1,1)*cden1 + ff(1,2)*cden2 + ff(1,3)*cden3)
+      end if
    30 dx1 = xx - yale_eos%fermi_table_x_grid(id1)
       dx2 = xx - yale_eos%fermi_table_x_grid(id2)
       dx3 = xx - yale_eos%fermi_table_x_grid(id3)

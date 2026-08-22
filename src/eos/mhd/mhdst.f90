@@ -177,7 +177,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
          mhd_eos%zams_centre_boundary_log10t = mhd_eos%centre_log10t(  1)
          mhd_eos%table_log10t_max = mhd_eos%centre_log10t(mhd_eos%centre_num_t)
       end if
-      if (unit_centre1.le.0) goto 500
+      if (.not. (unit_centre1.le.0)) then
+      end if
   500 continue
 ! 8002  FORMAT('      AT. WEIGHT     NUMBER ',
 !      & 'ABUNDANCE  MASS FRACTION',(/1X,1P3G16.7))

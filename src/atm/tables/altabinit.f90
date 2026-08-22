@@ -129,10 +129,11 @@ subroutine altabinit(ierr)
          endif
       enddo
 
-      if (table_is_bad) goto 9999            ! If bad table, go to error exit
+      if (.not. (table_is_bad)) then
 
       return                  ! If good table, return
 
+      end if
  9999      continue
        write(*,*)
        write(*,*)'******** ALTABINIT: Program Terminated ********'

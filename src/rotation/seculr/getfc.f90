@@ -50,7 +50,9 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
          do zone_index = zone_min, zone_max
             vfc(zone_index) = 0.0D0
          end do
-         goto 9999
+         continue
+         
+         return
       endif
 ! DETERMINE ALPHA.
       do zone_index = zone_min, zone_max

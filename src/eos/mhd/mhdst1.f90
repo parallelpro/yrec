@@ -117,7 +117,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       end if
  400  continue
       end do
-      if (table_kind.eq.0) goto 450
+      if (.not. (table_kind.eq.0)) then
 !     IF IDX=1: CHECK TABLES FOR CORRECT COMPOSITION CONSTRUCTION
 !     AND PERFORM NUMERICAL DERIVATIVES W.R.T. X
       composition_tolerance = 0.05d0*abs(delta_x)
@@ -131,8 +131,20 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
  420  continue
       end do
       do temp_check_index=1,num_t2
-      if (log10t2(temp_check_index).ne.log10t_down(temp_check_index)) goto 600
-      if (log10t2(temp_check_index).ne.log10t_up(temp_check_index)) goto 600
+      if (log10t2(temp_check_index).ne.log10t_down(temp_check_index)) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
+      if (log10t2(temp_check_index).ne.log10t_up(temp_check_index)) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
  430  continue
       end do
 !     NUMERICAL DERIVATIVES W.R.T. X
@@ -162,6 +174,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
   440 continue
       end do
 !     NORMAL EXIT
+      end if
  450  continue
       return
 !     ERROR EXIT AND ERROR MESSAGES

@@ -190,7 +190,9 @@ subroutine findex(grid_x, n_grid, x_eval, index)
          do j=found_index-1,1,-1
             if(grid_x(j).le.x_eval)then
                found_index=j
-               goto 213
+               index=found_index
+               
+               return
             endif
  211     continue
          end do
@@ -199,7 +201,9 @@ subroutine findex(grid_x, n_grid, x_eval, index)
          do j=found_index,n_grid-1
             if(grid_x(j+1).gt.x_eval)then
                found_index=j
-               goto 213
+               index=found_index
+               
+               return
             endif
  212     continue
          end do
@@ -1818,7 +1822,10 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
       integer :: lir_num_vars, lir_leading_dim, lir_num_points, lir_interp_mode
 
       do n=1,num_t
-         if(table_log10t(n).ge.log10_temperature) goto 101
+         if (table_log10t(n).ge.log10_temperature) then
+            continue
+            return
+         end if
          t_indices(1)=n
  100  continue
       end do
@@ -1956,7 +1963,10 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
     1 continue
       stride=1
 ! CHECK NT AND RESET IL IF NECESSARY
-      if(num_points.lt.2) go to 101
+      if (num_points.lt.2) then
+         continue
+         return
+      end if
       if(num_points.lt.4) linear_mode=1
 ! ADDRESSING CONSTANTS
       interp_flag=1
@@ -1977,7 +1987,8 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       if (diff .lt. 0.0) then
          goto 4
       else if (diff .eq. 0.0) then
-         goto 102
+         continue
+         return
       else
          goto 3
       end if
@@ -2007,7 +2018,8 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
     7 continue
       end do
-      go to 30
+      search_idx=(search_idx+stride-1)/stride
+      return
 ! CONTROL WHEN Z DOES NOT LIE ON A MESH POINT
     8 interp_flag=0
     9 if(search_idx.le.1) interp_flag=0
@@ -2017,9 +2029,10 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
 !    10 M=N
       pivot=search_idx
       closest=3
-      if(search_idx.gt.1+stride) go to 11
+      if (.not. (search_idx.gt.1+stride)) then
       pivot=1+stride+stride
       closest=search_idx
+      end if
    11 if(search_idx.lt.table_end) go to 12
       pivot=table_end-stride
       closest=4
@@ -2070,7 +2083,8 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
    18 continue
       end do
-      go to 30
+      search_idx=(search_idx+stride-1)/stride
+      return
 ! LINEAR INTERPOLATION/EXTRAPOLATION
    20 if(search_idx.eq.1) search_idx=1+stride
       if(search_idx.gt.table_end) search_idx=table_end

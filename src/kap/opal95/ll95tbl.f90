@@ -65,8 +65,10 @@ subroutine ll95tbl(opal95_table_path, ierr)
       open(opal95_table_unit,file=opal95_table_path,status='OLD',access='SEQUENTIAL')
       fmt_start=1
 
-   10 read(opal95_table_unit,1,end=9999) header_line
-      if ( header_line(fmt_start:fmt_start+4).ne.'TABLE' ) go to 10
+      do
+         read(opal95_table_unit,1,end=9999) header_line
+      if (.not. ( header_line(fmt_start:fmt_start+4).ne.'TABLE' )) exit
+      end do
     1 format(a)
       read(header_line,'(36X,F7.4,11X,F7.4)') xx,zz
       iz = 1

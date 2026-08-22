@@ -109,7 +109,7 @@ subroutine alfilein(allard_table_path, ierr)
       read(allard_table_unit,901) first_record
   901  format(a)
       rewind(allard_table_unit)
-      if (first_record(4:7) .eq. '3.50') goto 100  ! Old NextGen file type
+      if (.not. (first_record(4:7) .eq. '3.50')) then
       if (first_record(4:9) .eq. 'ALLARD') goto 200  ! Allard file type
 !     If we get here, the input file is invalid
       write(short_file_unit,*)'*** Invalid Allard Atmosphere input file ***'
@@ -119,6 +119,7 @@ subroutine alfilein(allard_table_path, ierr)
       goto 9999   ! The error exit
 
 !     Process old-stype nextgen input file.
+      end if
   100      continue
        atm_table%allard_is_old_nextgen = .true.
        write(short_file_unit,*) 'ALFileIn: File Description: 1999 NEXTGEN', &
@@ -362,9 +363,12 @@ subroutine sort_shell(num_elements, values)
       if (num_elements .eq. 1) return                  ! Exit if only one element
       n=num_elements
       inc=1
-    1 inc=3*inc+1                         ! Determin starting increment
-      if (inc .le. n) goto 1
-    2      continue
+      do
+         inc=3*inc+1                         ! Determin starting increment
+      if (.not. (inc .le. n)) exit
+      end do
+      do
+         continue
          inc=inc/3                        ! Loop over the partial sorts
          do i=inc+1,n
             v=values(i)                        ! Outer loop of straight insertion
@@ -377,7 +381,8 @@ subroutine sort_shell(num_elements, values)
             endif
     4       values(j)=v
          enddo
-      if (inc .gt. 1) goto 2
+      if (.not. (inc .gt. 1)) exit
+      end do
       return
 end subroutine sort_shell
 

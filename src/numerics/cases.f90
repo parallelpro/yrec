@@ -50,8 +50,8 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
            mbar1, mbar2, mbar3, c1, d1, h1, j1, knot_y_x, knot_y_y, &
            k1, ztwo
       integer :: spline_case
-      if ((spline_case .eq. 3).or.(spline_case .eq. 4)) go to 20
-      if (spline_case .eq. 2) go to 10
+      if (.not. ((spline_case .eq. 3).or.(spline_case .eq. 4))) then
+      if (.not. (spline_case .eq. 2)) then
 
 ! CALCULATE THE PARAMETERS FOR CASE 1.
       knot_z_x=(y_left-y_right+slope_right*x_right-slope_left*x_left)/ &
@@ -66,6 +66,7 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
       return
 
 ! CALCULATE THE PARAMETERS FOR CASE 2.
+      end if
   10  knot_z_x=(x_left+x_right)/2.d0
       knot_v_x=(x_left+knot_z_x)/2.d0
       knot_v_y=y_left+slope_left*(knot_v_x-x_left)
@@ -75,6 +76,7 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
       return
 
 ! CALCULATE THE PARAMETERS USED IN BOTH CASES 3 AND 4.
+      end if
   20  c1=x_left+(y_right-y_left)/slope_left
       d1=x_right+(y_left-y_right)/slope_right
       h1=2.d0*c1-x_left
@@ -82,13 +84,20 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
       mbar1=(y_right-y_left)/(h1-x_left)
       mbar2=(y_left-y_right)/(j1-x_right)
 
-      if (spline_case .eq. 4) go to 50
+      if (.not. (spline_case .eq. 4)) then
 
 ! CALCULATE THE PARAMETERS FOR CASE 3.
       k1=(y_left-y_right+x_right*mbar2-x_left*mbar1)/(mbar2-mbar1)
-      if (abs(slope_left) .gt. abs(slope_right)) go to 30
+      if (.not. (abs(slope_left) .gt. abs(slope_right))) then
       knot_z_x=(k1+x_right)/2.d0
-      go to 40
+      knot_v_x=(x_left+knot_z_x)/2.d0
+      knot_v_y=y_left+slope_left*(knot_v_x-x_left)
+      knot_w_x=(x_right+knot_z_x)/2.d0
+      knot_w_y=y_right+slope_right*(knot_w_x-x_right)
+      knot_z_y=knot_v_y+((knot_w_y-knot_v_y)/(knot_w_x-knot_v_x))* &
+      (knot_z_x-knot_v_x)
+      return
+      end if
   30  knot_z_x=(k1+x_left)/2.d0
   40  knot_v_x=(x_left+knot_z_x)/2.d0
       knot_v_y=y_left+slope_left*(knot_v_x-x_left)
@@ -99,6 +108,7 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
       return
 
 ! CALCULATE THE PARAMETERS FOR CASE 4.
+      end if
   50  knot_y_x=(x_left+c1)/2.d0
       knot_v_x=(x_left+knot_y_x)/2.d0
       knot_v_y=slope_left*(knot_v_x-x_left) + y_left

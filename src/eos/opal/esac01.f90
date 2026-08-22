@@ -124,7 +124,14 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
          if (ierr /= 0) return
          opal_eos%table_metal_fraction_01 = opal_eos%z_table_01(1)
 
-         if (opal_eos%table_metal_fraction_01+hydrogen_fraction-1.0d-6.gt.1) go to 61
+         if (opal_eos%table_metal_fraction_01+hydrogen_fraction-1.0d-6.gt.1) then
+            write(short_file_unit,*) routine_id, "Mass fractions exceed unity (61)"
+            write(short_file_unit,*) 'Z, XH', opal_eos%table_metal_fraction_01, hydrogen_fraction
+            
+            
+            ierr = 1
+            return
+         end if
       end if
 !
 !
@@ -264,7 +271,12 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
             opal_eos%density_index_3_01 = opal_eos%density_index_2_01 + 1
             go to 15
          else
-            go to 65
+            continue
+            write(short_file_unit,*) routine_id, "T6/rho in empty region of OPAL 2001 EOS", &
+            " table (65)"
+            write(short_file_unit,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, &
+            t6_temperature, density
+            return 1
          end if
       end if
       if (table_sum_3x4.lt.1.0d+30) opal_eos%t6_interp_order_01 = 3

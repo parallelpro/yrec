@@ -476,7 +476,10 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
                  !  integration and come here
 ! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
       star%turnover%pphot = atm_table%atm_log10_pressure
-      if(.not.calc_envelope_flag) goto 555
+      if (.not.calc_envelope_flag) then
+         continue
+         return
+      end if
 
 ! G Somers 11/14 WRITE ENVELOPE HEADER
       if(print_flag.and.lstenv)then
@@ -913,7 +916,10 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! LOCATION IN MASS AND RADIUS FOR USE WITH AM LOSS ROUTINES
 !
 ! G Somers 3/17, SKIP TAUCAL CALL IF USING NEW TAUCZ ROUTINES
-        if(use_new_turnover_timescale)goto 555
+        if (use_new_turnover_timescale) then
+           continue
+           return
+        end if
 ! G Somers END
       cz_start_index = 0
       do i=1,env_struct%num_env_points

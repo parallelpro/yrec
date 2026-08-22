@@ -167,7 +167,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
          radius_at_bcz = exp(ln10*radius_at_bcz)
 !        IF THERE ARE MULTIPLE CONVECTION CELLS IN THE PREDOMINATELY
 !        RADIATIVE ENVELOPE, USE AVERAGING METHOD.
-         if (index_gap.ne.0) goto 110
+         if (.not. (index_gap.ne.0)) then
 ! CALCULATE HP
          pressure_scale_height2 = exp(ln10*(log10_pressure(cz_base_index)- &
               log10_density(cz_base_index)))/local_gravity(cz_base_index)
@@ -225,6 +225,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
             end do
 ! KC 2025-05-31 MOVED ENDIF HERE TO AVOID BLOCK MISMATCH.
          endif
+         end if
   110       continue
 ! IF CODE GETS HERE, THEN 1 PSCA ABOVE THE BCZ IS OUTSIDE OF THE STAR,
 ! OR MULTIPLE CONVECTION CELLS RESIDE WITHIN THE RADIATIVE ENVELOPE.

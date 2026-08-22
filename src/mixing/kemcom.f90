@@ -135,7 +135,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             end do
    13    continue
          end do
-         goto 200
+         return
       endif
 !
 !  set up numerical parameters.

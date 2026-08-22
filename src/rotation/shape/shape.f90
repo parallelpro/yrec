@@ -71,7 +71,10 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
    10    continue
          end do
    20    r0(1) = r0_cubed**cc13
-         if (zone_end.eq.1) goto 9999
+         if (zone_end.eq.1) then
+            continue
+            return
+         end if
          rho_bar_prev = rho_bar
          r_phi_prev = r_phi
          rho_prev = density

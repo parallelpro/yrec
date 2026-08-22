@@ -72,7 +72,12 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          ideriv_dbg = 1
          call esac01(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
               rad_flag, ierr, *999)
-         if (ierr /= 0) go to 999
+         if (ierr /= 0) then
+            continue
+            rhoofp01 = -999.0d0
+            
+            return
+         end if
       end if
 
       lo_idx = 2
@@ -117,14 +122,22 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
 !     X       "table")')
 !     stop
 !      write (ISHORT,'("pnr, pmax,pmin=",3e14.4)') pnr,pmax,pmin
-         go to 999
+         continue
+         rhoofp01 = -999.0d0
+         
+         return
       end if
 
       density_trial1 = opal_eos%density_grid_01(density_index_edge(t6_bisect_idx))* &
            pressure_no_rad/pressure_max
       call esac01(hydrogen_fraction, t6_temperature, density_trial1, 1, &
            rad_flag, ierr, *999)
-      if (ierr /= 0) go to 999
+      if (ierr /= 0) then
+         continue
+         rhoofp01 = -999.0d0
+         
+         return
+      end if
       pressure_trial1 = opal_eos%eos_output_01(1)
       if (pressure_trial1.gt.pressure_no_rad) then
          pressure_trial2 = pressure_trial1
@@ -133,7 +146,12 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
          call esac01(hydrogen_fraction, t6_temperature, density_trial1, 1, &
               rad_flag, ierr, *999)
-         if (ierr /= 0) go to 999
+         if (ierr /= 0) then
+            continue
+            rhoofp01 = -999.0d0
+            
+            return
+         end if
          pressure_trial1 = opal_eos%eos_output_01(1)
       else
          density_trial2 = 5.0d0*density_trial1
@@ -142,7 +160,12 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
               density_trial2 = opal_eos%density_grid_01(density_index_edge(t6_bisect_idx)) ! Had wrong pointer, see rhog1= ten lines up
          call esac01(hydrogen_fraction, t6_temperature, density_trial2, 1, &
               rad_flag, ierr, *999)
-         if (ierr /= 0) go to 999
+         if (ierr /= 0) then
+            continue
+            rhoofp01 = -999.0d0
+            
+            return
+         end if
          pressure_trial2 = opal_eos%eos_output_01(1)
       end if
 
@@ -153,7 +176,12 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
            (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
       call esac01(hydrogen_fraction, t6_temperature, density_trial3, 1, &
            rad_flag, ierr, *999)
-      if (ierr /= 0) go to 999
+      if (ierr /= 0) then
+         continue
+         rhoofp01 = -999.0d0
+         
+         return
+      end if
       pressure_trial3 = opal_eos%eos_output_01(1)
 !      if (abs((p3-pnr)/pnr) .lt. 1.D-5) then
       if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.0.5d-7) then
@@ -166,14 +194,20 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          pressure_trial2 = pressure_trial3
          if (refine_count.lt.11) go to 1
 !        write (ISHORT,'("No convergence after 10 tries")')
-         go to 999
+         continue
+         rhoofp01 = -999.0d0
+         
+         return
 !        stop
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
          if (refine_count.lt.11) go to 1
 !        write (*,'("No convergence after 10 tries")')
-         go to 999
+         continue
+         rhoofp01 = -999.0d0
+         
+         return
 !        stop
       end if
 

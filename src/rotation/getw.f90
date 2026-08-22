@@ -247,7 +247,8 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 !         WOLD(I) = OMEGA(I)
 !   20 CONTINUE
 !  ENTRY FOR SERIES OF DIFFUSION TIMESTEPS.
-   30 continue
+      do
+         continue
       redo_count = 0
 !  ENTRY FOR DIFFUSION TIMESTEP CUTTING.
    40 continue
@@ -487,7 +488,8 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          endif
       endif
 !  RETURN FOR NEXT SMALL DIFFUSION TIMESTEP IF NEEDED.
-      if(elapsed_substep_time.lt.full_timestep)goto 30
+      if (.not. (elapsed_substep_time.lt.full_timestep)) exit
+      end do
 !  UPDATE OMEGA ARRAY TO REFLECT NEW ANGULAR MOMENTUM DISTRIBUTION.
       do zone_index = 1,star%num_zones
          star%omega(zone_index) = omega_mid(zone_index)

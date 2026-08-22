@@ -37,8 +37,9 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       imax=i
    30 continue
       end do
-      if(dabs(biga).eq.0.0d0) goto 1010
+      if (.not. (dabs(biga).eq.0.0d0)) then
       goto 1012
+      end if
  1010 write (5,1011)
  1011 format (1x,'STOPPED AT 1010')
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side

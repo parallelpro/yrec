@@ -57,7 +57,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       if (log10_temperature.lt.mhd_eos%table_log10t_min .or. &
            log10_temperature.gt.mhd_eos%table_log10t_max) then
 !         IRANGE = 0
-          go to 999
+          return
       end if
 !     LOWER ZAMS TABLES
       if (log10_temperature.lt.mhd_eos%zams_lower_upper_boundary_log10t) then

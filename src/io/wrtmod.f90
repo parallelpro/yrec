@@ -249,7 +249,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 ! MHP 10/02 uncommented pelpf statement, used later in i/o
 !         PELPF = CGAS * DEXP(CLN*(HT(I) + HD(I)))* PEMU(I)
 !          ADDED X AND Z TO OUTPUT
-         if ((j.eq.2).and.(i.eq.1)) goto 5003
+         if (.not. ((j.eq.2).and.(i.eq.1))) then
          if(pulsation_file_version.eq.1) then
          pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* star%pulse%pulse_electron_mean_molecular_weight(i)
          write(opal_model_unit, 5052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
@@ -267,6 +267,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i),star%rot%vphmlt(i), &
             star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(2,i),star%diag%del_grad(3,i),star%rot%vcmxmlt(i), &
             star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
+         end if
          end if
  5003      continue
  5052      format(5E16.9,/,5E16.9,/,5E16.9,/,5E16.9)

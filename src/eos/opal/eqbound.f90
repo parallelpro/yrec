@@ -34,7 +34,12 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       t6 = temperature*1.0d-6
 !     exit if outside table in rho
       if (log10_density.lt.-14d0 .or. log10_density.gt.5.0d0) then
-         goto 9999        ! Out of Table in density. Go to Error exit
+         continue
+         in_opal_table = .false.
+         needs_ramp = .true.
+         ramp_factor = 0d0
+         
+         return
       end if
 !     find nearest table element in t.
       if (t6.lt.opal_eos%t6_grid(opal_eos%t_row_index)) then
@@ -80,7 +85,12 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       ramp_start_density = log10(ramp_start_density)
 !     check if within table bounds in rho
       if (log10_density.gt.table_edge_density) then
-         goto 9999     ! Out of table in density. Go to error exit
+         continue
+         in_opal_table = .false.
+         needs_ramp = .true.
+         ramp_factor = 0d0
+         
+         return
       end if
 
 !     If we get here, the point is in the table.

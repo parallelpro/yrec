@@ -78,14 +78,14 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       start_idx = 1
       end_idx = num_eval_points
       err_code = 0
-      if (num_eval_points .eq. 1) go to 20
+      if (.not. (num_eval_points .eq. 1)) then
 
 ! Determine if eval_x is nondecreasing.
       loop_bound = num_eval_points - 1
       do i = 1, loop_bound
         if (eval_x(i+1) .ge. eval_x(i)) cycle
         err_code = 2
-        go to 230
+        return
   10  continue
       end do
 
@@ -95,6 +95,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 !
 ! Determine if any of the points in eval_x are less than the abscissa
 ! of the first data point.
+      end if
   20 do i = 1, num_eval_points
         if (eval_x(i) .ge. table_x(1)) exit
         start_idx = i + 1
@@ -130,7 +131,9 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
             spline_e2, spline_w2, spline_v2, spline_case)
   70  continue
       end do
-      if (num_eval_points .eq. 1) go to 230
+      if (num_eval_points .eq. 1) then
+         return
+      end if
 
 ! search locates the interval in which the first in-range point of
 ! evaluation lies.
@@ -146,11 +149,15 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! until a point of evaluation is found which is not equal to a data
 ! point.
       if (found_flag .eq. 0) go to 130
-  90  eval_y(start_idx) = table_y(table_idx)
+      do
+         eval_y(start_idx) = table_y(table_idx)
       start_idx1 = start_idx
       start_idx = start_idx + 1
-      if (start_idx .gt. num_eval_points) go to 230
-      if (eval_x(start_idx1) .eq. eval_x(start_idx)) go to 90
+      if (start_idx .gt. num_eval_points) then
+         return
+      end if
+      if (.not. (eval_x(start_idx1) .eq. eval_x(start_idx))) exit
+      end do
 
 ! KC 2025-05-30 fixed "Arithmetic IF statement"
 ! 100 IF (XVAL(START) - XTAB(LCN1)) 130,110,120
@@ -165,7 +172,9 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
  110  eval_y(start_idx) = table_y(table_idx1)
       start_idx1 = start_idx
       start_idx = start_idx + 1
-      if (start_idx .gt. num_eval_points) go to 230
+      if (start_idx .gt. num_eval_points) then
+         return
+      end if
       if (eval_x(start_idx) .ne. eval_x(start_idx1)) go to 120
       go to 110
 
@@ -241,7 +250,9 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 
 ! Calculate the images of the points of evaluation whose abscissas
 ! are greater than the abscissa of the last data point.
-      if (end_idx .eq. num_eval_points) go to 230
+      if (end_idx .eq. num_eval_points) then
+         return
+      end if
       if ((table_idx1 .eq. num_table_points) .and. &
            (eval_x(end_idx) .ne. table_x(num_table_points))) go to 210
 

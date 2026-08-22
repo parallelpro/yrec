@@ -62,7 +62,8 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
               total_mass_msun,log_teff,cz_moment_of_inertia, &
               specific_angular_momentum, ierr)
          if (ierr /= 0) return
-         goto 9999
+         continue
+         return
       endif
 !
 ! ADD ROSSBY SCALING IF DESIRED.

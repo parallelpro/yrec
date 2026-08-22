@@ -54,7 +54,7 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
       integer, intent(in) :: spline_case
       double precision :: linear_interp_frac
 
-      if (spline_case .eq. 4) go to 40
+      if (.not. (spline_case .eq. 4)) then
 !
 ! CASES 1,2, OR 3.
 !
@@ -64,7 +64,8 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
       if (z1 .lt. eval_point) then
          goto 10
       else if (z1 .eq. eval_point) then
-         goto 20
+         spline=z2
+         return
       else
          goto 30
       end if
@@ -97,10 +98,12 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
 ! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE FIRST KNOT.
 ! KC 2025-05-30 fixed "Arithmetic IF statement"
 !   40  IF (Y1 - XVALS) 70,60,50
+      end if
   40  if (y1 .lt. eval_point) then
          goto 70
       else if (y1 .eq. eval_point) then
-         goto 60
+         spline=y2
+         return
       else
          goto 50
       end if
@@ -124,7 +127,8 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
   70  if (z1 .lt. eval_point) then
          goto 100
       else if (z1 .eq. eval_point) then
-         goto 90
+         spline=z2
+         return
       else
          goto 80
       end if

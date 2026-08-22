@@ -689,7 +689,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               in_opal_table, needs_ramp, ierr)
          if (ierr /= 0) return
 
-         if (.not.in_opal_table) goto 998  ! Point is not in OPAL 1995 EOS table, so exit.
+         if (.not.in_opal_table) then
+            continue
+            return
+         end if
 
          if (.not.needs_ramp) then
 !           No ramping needed between OPAL 1995 EOS and Yale/SCV. Result
@@ -753,7 +756,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !        eqbound01 determines whether or not the point is in the OPAL
 !        2001 EOS table
 
-         if (.not.in_opal_table) goto 998  ! Point is not in OPAL 2001 table, so exit.
+         if (.not.in_opal_table) then
+            continue
+            return
+         end if
 !        USE OPAL RESULTS IF NOT IN (RHO,T) REGIME WHERE RAMP NEEDED
          if (.not.needs_ramp) then
 !           No ramping needed between OPAL 2001 EOS and Yale/SCV. Result
@@ -822,7 +828,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !        Also, to eliminate a point, one can set needs_ramp to true and
 !        ramp_factor to zero.
 
-         if (.not.in_opal_table) goto 998  ! Point is not in OPAL 2006 EOS table, so exit.
+         if (.not.in_opal_table) then
+            continue
+            return
+         end if
 
 !        USE OPAL 2006 RESULTS ONLY IF NOT IN (RHO,T) REGIME WHERE
 !        RAMPING is NEEDED

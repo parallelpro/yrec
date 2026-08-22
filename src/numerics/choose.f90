@@ -59,12 +59,16 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 ! CHECK WHETHER OR NOT spq IS 0.
 ! ******MODIFICATION BY MARC PINSONNEAULT TO AVOID DIVISION BY ZERO
 ! ******IN SR CASES
-      if(slope_left.eq.0.0d0.or.slope_right.eq.0.0d0) goto 9
+      if (.not. (slope_left.eq.0.0d0.or.slope_right.eq.0.0d0)) then
 ! ******
       if (spq .ne. 0.d0) go to 20
-      if ((slope_left*slope_right) .ge. 0.d0) go to 10
+      if ((slope_left*slope_right) .ge. 0.d0) then
+         spline_case=2
+         return
+      end if
       spline_case=1
       return
+      end if
    9  continue
   10  spline_case=2
       return
@@ -97,7 +101,11 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 
   30  if ((prod1 .lt. 0.d0).or.(prod2 .lt. 0.d0)) go to 80
   40  if (mref1 .gt. (2.d0*mref)) go to 50
-      if (mref2 .gt. (2.d0*mref)) go to 60
+      if (mref2 .gt. (2.d0*mref)) then
+         if (mref1 .gt. (2.d0-eps_tol)*mref) go to 70
+         spline_case=3
+         return
+      end if
 
 ! BOTH L1 AND L2 CROSS THE LINE THROUGH (x_left+x_right/2.,y_left) AND
 ! (x_left+x_right/2.,y_right), WHICH IS THE MIDLINE OF THE RECTANGLE FORMED
@@ -133,9 +141,12 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 ! AGREE WITH THE SIGN OF THE SLOPE spq.
   80  if ((prod1 .lt. 0.d0).and.(prod2 .lt. 0.d0)) go to 130
 
-      if (prod1 .lt. 0.d0) go to 90
-      go to 110
+      if (.not. (prod1 .lt. 0.d0)) then
+      if (mref1 .gt. ((1.d0+eps_tol)*mref)) go to 120
+      spline_case=2
+      return
 
+      end if
   90  if (mref2 .gt. ((1.d0+eps_tol)*mref)) go to 100
       spline_case=2
       return

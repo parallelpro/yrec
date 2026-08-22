@@ -130,7 +130,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       else
          apply_mass_change = .false.
          new_atmosphere_fit_needed = .false.
-         goto 9999
+         continue
+         return
       endif
 !      IF(.NOT.LDOMDOT)RETURN
 ! TEFFL IS THE BASE 10 LOG OF THE EFFECTIVE TEMPERATURE

@@ -67,7 +67,7 @@ subroutine op95ztab(metal_fraction, ierr)
       end do
 !  FOR X TABLES 9 AND 10, HIGH VALUES OF Z ARE NOT PRESENT
 !  OMIT TABLE 9 (X=0.95) IF DESIRED Z > 0.04
-      if (metal_fraction.ge.0.04d0) goto 20
+      if (.not. (metal_fraction.ge.0.04d0)) then
 !  OTHERWISE, CHECK TO ENSURE THAT THE 4 Z TABLES USED HAVE Z < 0.04
 !  ADJUST INTERPOLATION FACTORS IF NEEDED
       if (opacity_table%opal95_grid_z(z_table_index+3).gt.0.04d0) then
@@ -93,9 +93,10 @@ subroutine op95ztab(metal_fraction, ierr)
             z_weight_hix(4)*opacity_table%opal95_full_opacity(table4_index,j,k)
          end do
       end do
+      end if
    20 continue
 !  OMIT TABLE 10 (X = 1-Z) IF DESIRED Z >= 0.1
-      if (metal_fraction.ge.0.1d0) goto 30
+      if (.not. (metal_fraction.ge.0.1d0)) then
 !  CHECK TO ENSURE THAT Z=0.1 TABLE IS NOT ONE OF THE 4 TABLES; ADJUST
 !  INTERPOLATION FACTORS IF NEEDED.
       if (opacity_table%opal95_grid_z(z_table_index+3).ge.0.1d0) then
@@ -110,6 +111,7 @@ subroutine op95ztab(metal_fraction, ierr)
             z_weight_hix(i) = z_weight(i)
          end do
       endif
+      end if
    30 continue
       table1_index = opacity_table%opal95_table_start_index(z_table_index2)+10
       table2_index = opacity_table%opal95_table_start_index(z_table_index2+1)+10

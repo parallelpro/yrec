@@ -66,7 +66,12 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          ideriv_dbg = 1
          call esac06(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
               rad_flag, ierr, *999)
-         if (ierr /= 0) go to 999
+         if (ierr /= 0) then
+            continue
+            rhoofp06 = -999.0d0
+            
+            return
+         end if
       end if
 
       lo_idx = 2
@@ -110,13 +115,21 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
 !     x   " the OPAL 2006 EOS table")')
 !     stop
 !      write (ISHORT,'("pnr, pmax,pmin=",3e14.4)') pnr,pmax,pmin
-         go to 999     !RHOOFP06 error exit
+         continue
+         rhoofp06 = -999.0d0
+         
+         return
       end if
 
       density_trial1 = opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx))* &
            pressure_no_rad/pressure_max
       call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, *999)
-      if (ierr /= 0) go to 999
+      if (ierr /= 0) then
+         continue
+         rhoofp06 = -999.0d0
+         
+         return
+      end if
       pressure_trial1 = opal_eos%eos_output_06(1)
       if (pressure_trial1.gt.pressure_no_rad) then
          pressure_trial2 = pressure_trial1
@@ -124,7 +137,12 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          density_trial1 = 0.2d0*density_trial1
          if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
          call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, *999)
-         if (ierr /= 0) go to 999
+         if (ierr /= 0) then
+            continue
+            rhoofp06 = -999.0d0
+            
+            return
+         end if
          pressure_trial1 = opal_eos%eos_output_06(1)
       else
          density_trial2 = 5.0d0*density_trial1
@@ -132,7 +150,12 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          if (density_trial2.gt.opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx))) &
               density_trial2 = opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx)) ! Had wrong pointer, see rhog1= ten lines up
          call esac06(hydrogen_fraction, t6_temperature, density_trial2, 1, 0, ierr, *999)
-         if (ierr /= 0) go to 999
+         if (ierr /= 0) then
+            continue
+            rhoofp06 = -999.0d0
+            
+            return
+         end if
          pressure_trial2 = opal_eos%eos_output_06(1)
       end if
 
@@ -142,7 +165,12 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
            (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)  ! KC 2025-05-31
       call esac06(hydrogen_fraction, t6_temperature, density_trial3, 1, 0, ierr, *999)
-      if (ierr /= 0) go to 999
+      if (ierr /= 0) then
+         continue
+         rhoofp06 = -999.0d0
+         
+         return
+      end if
       pressure_trial3 = opal_eos%eos_output_06(1)
 ! Changed the comparison below to use the commented-out value 1.D-5
 ! found here to prevent array value eos(5) from growing without bound
@@ -157,14 +185,20 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          pressure_trial2 = pressure_trial3
          if (refine_count.lt.11) go to 1
 !        write (ISHORT,'("Rhoofp06: No convergence after 10 tries")')
-         go to 999     !RHOOFP06 error exit
+         continue
+         rhoofp06 = -999.0d0
+         
+         return
 !        stop
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
          if (refine_count.lt.11) go to 1
 !        write (ISHORT,'("RHOOFP06: No convergence after 10 tries")')
-         go to 999   ! RHOOFP06 error exit
+         continue
+         rhoofp06 = -999.0d0
+         
+         return
 !        stop
       end if
 

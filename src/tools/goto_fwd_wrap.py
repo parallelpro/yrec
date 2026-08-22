@@ -92,8 +92,20 @@ def transform(path):
         if bad:
             continue
         edits.append((i, indent, cond, tgt))
-    # apply from bottom up
-    for i, indent, cond, tgt in sorted(edits, key=lambda e: -e[0]):
+    # reject partially-overlapping (crossing) spans -- they would
+    # produce invalid interleaved if-blocks
+    spans = [(e[0], e[3]) for e in edits]
+    def crosses(a, b):
+        return (a[0] < b[0] < a[1] < b[1]) or (b[0] < a[0] < b[1] < a[1])
+    keep = []
+    for e in edits:
+        if any(crosses((e[0], e[3]), s2) for s2 in spans if s2 != (e[0], e[3])):
+            continue
+        keep.append(e)
+    # apply sorted by TARGET descending: an insert at a high target
+    # never shifts a lower edit's indices (nested spans handled
+    # naturally; goto-line replacements are always below their target)
+    for i, indent, cond, tgt in sorted(keep, key=lambda e: -e[3]):
         lines.insert(tgt, f"{indent}end if\n")
         lines[i] = f"{indent}if (.not. {cond}) then\n"
         changed += 1

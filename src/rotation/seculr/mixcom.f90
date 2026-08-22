@@ -97,7 +97,7 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
          end if
    20    continue
       end do
-      if (num_varying_species.eq.0) goto 200
+      if (.not. (num_varying_species.eq.0)) then
 ! NOW SOLVE FOR DIFFUSION OF ALL SPECIES THAT VARY OVER THE
 ! UNSTABLE REGION USING THE SAME DIFFUSION COEFFICIENTS.
       ntab = zone_end - zone_begin + 1
@@ -221,6 +221,7 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
             composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
                  composition(3,zone_idx) - composition(4,zone_idx)
          end do
+      end if
       end if
   200 continue
       return

@@ -103,7 +103,9 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
              .and. iovim.ne.-1) then
             actual_gradient = adiabatic_gradient
          end if
-       goto 200
+       continue
+       
+       return
       endif
 ! ZONE IS CONVECTIVE
       is_convective = .true.
@@ -117,7 +119,9 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
           dgrad_dp_component = adiabatic_gradient_dp
           dgrad_dr_component = 0.0d0
        endif
-       goto 200
+       continue
+       
+       return
       endif
 ! G Somers 9/14, Add the ability to include spots, which alter
 ! the radiative flux in the convective reigons. This is done by
@@ -205,7 +209,9 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
          dgrad_dp_component = adiabatic_gradient_dp
          dgrad_dr_component = 0.0d0
       endif
-      goto 200
+      continue
+      
+      return
    30 ddel = deldel*v*(v+a1)
       actual_gradient = adiabatic_gradient + ddel
 ! CALCULATE CONVECTIVE VELOCITY

@@ -150,7 +150,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! TOP OF THE INTERIOR MODEL IS RADIATIVE. CHECK IF TAUCZ = 0.0. IF NOT,
 ! THEN GO TO THE END.
 !
-      if (star%turnover%convective_turnover_timescale.ne.0.0) goto 100
+      if (.not. (star%turnover%convective_turnover_timescale.ne.0.0)) then
 !
 ! COLLECT THE NECESSARY STRUCTURE VARIABLES INTO DUMMY VECTORS.
       combined_num_points = num_zones
@@ -214,6 +214,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
               combined_num_points,combined_velocity,combined_grad1,combined_grad2)
       endif
 ! RETURN FULL FUNCTIONALITY TO ENVINT
+      end if
  100  continue
       calc_envelope_flag = .true.
       return

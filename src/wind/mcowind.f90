@@ -76,7 +76,8 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
               iteration_number,omega_surface,total_mass_msun,log_teff, &
               omega_old,domega_start,domega_end, ierr)
          if (ierr /= 0) return
-         goto 9999
+         continue
+         return
       endif
 !
 ! G Somers 8/17 CREATE ROTATION DUMMY VARIABLES.
