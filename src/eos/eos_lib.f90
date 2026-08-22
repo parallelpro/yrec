@@ -395,4 +395,31 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       stop
 end subroutine eos_get_gamma1
 
+
+!----------------------------------------------------------------------
+! eos_set_mixture
+!----------------------------------------------------------------------
+! Added 2026 (physics-purity pass): the star layer pushes the envelope
+! mixture here whenever it recomputes the envelope composition
+! (starin's mixture blocks, rscale's rescale); the eos internals read
+! only eos_mixture_lib's eos_mix. This removed the eos domain's last
+! reads of star_info.
+subroutine eos_set_mixture(envelope_hydrogen_fraction, &
+     envelope_metal_fraction, mean_atomic_mass, species_fractions)
+
+      use eos_mixture_lib, only: eos_mix
+      implicit none
+
+      double precision, intent(in) :: envelope_hydrogen_fraction, &
+           envelope_metal_fraction, mean_atomic_mass
+      double precision, intent(in) :: species_fractions(12)
+
+      eos_mix%envelope_hydrogen_fraction = envelope_hydrogen_fraction
+      eos_mix%envelope_metal_fraction = envelope_metal_fraction
+      eos_mix%amuenv = mean_atomic_mass
+      eos_mix%fxenv = species_fractions
+
+      return
+end subroutine eos_set_mixture
+
 end module eos_lib

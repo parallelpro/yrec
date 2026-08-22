@@ -62,6 +62,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       use const_lib
       use eos_lib
       use kap_lib
+      use burn_lib
       implicit none
       integer, parameter :: json=5000
 

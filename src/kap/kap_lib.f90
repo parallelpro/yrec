@@ -17,6 +17,10 @@
 module kap_lib
       use opacity_table_lib
       implicit none
+! the envelope metal fraction the surface-table machinery was
+! initialized with (set by kap_init; physics-purity pass 2026 -- the
+! kap domain no longer reads star_info)
+      double precision, save :: kap_envelope_metal_fraction
 contains
 
 ! Computes the opacity for a given composition (X, Z), blending
@@ -27,7 +31,6 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction, ierr)
       use const_lib
-      use star_info_lib, only: star
       use luout_lib
       use opacity_table_lib
       implicit none
@@ -183,7 +186,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
          dlnkap_dlnt = purez_dlnkap_dlnt + (metal_fraction - 1.0d0)*slope
 
       else if ((metal_fraction.gt.0.12d0) .or. &
-           ((abs(metal_fraction - star%env_comp%envelope_metal_fraction).gt. &
+           ((abs(metal_fraction - kap_envelope_metal_fraction).gt. &
            metal_fraction_match_tolerance) .and. .not.use_two_z_tables &
            .and. .not.use_opal95_tables)) then
 !        JCZ 211125 changed to 10^7 K in message to reflect above
@@ -191,7 +194,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
          write(short_file_unit,*) ' Z>0.12 T < 10^7 K', &
               ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z', &
               ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=', &
-              metal_fraction, star%env_comp%envelope_metal_fraction, log10_temperature
+              metal_fraction, kap_envelope_metal_fraction, log10_temperature
          jerr = 1
          go to 900
 
@@ -355,7 +358,8 @@ end subroutine kap_get
 ! interpolation splines); setup/setups.f90 previously called
 ! setupopac directly, making a de-facto-public entry of what is
 ! really internal loader machinery.
-subroutine kap_init(envelope_hydrogen_fraction, laol_work_array, &
+subroutine kap_init(envelope_hydrogen_fraction, &
+     envelope_metal_fraction, laol_work_array, &
      alex06_table_path, kurucz_table_path, kurucz_table2_path, &
      laol_table_path, laol_table2_path, opal95_table_path, &
      opal92_table_path, opal92_table2_path, pure_z_table_path, &
@@ -364,7 +368,8 @@ subroutine kap_init(envelope_hydrogen_fraction, laol_work_array, &
       use opacity_table_lib
       implicit none
 
-      double precision, intent(in) :: envelope_hydrogen_fraction
+      double precision, intent(in) :: envelope_hydrogen_fraction, &
+           envelope_metal_fraction
       double precision, intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: alex06_table_path, &
            kurucz_table_path, kurucz_table2_path, laol_table_path, &
@@ -379,6 +384,7 @@ subroutine kap_init(envelope_hydrogen_fraction, laol_work_array, &
       integer :: jerr
 
       if (present(ierr)) ierr = 0
+      kap_envelope_metal_fraction = envelope_metal_fraction
       call setupopac(envelope_hydrogen_fraction, laol_work_array, &
            alex06_table_path, kurucz_table_path, kurucz_table2_path, &
            laol_table_path, laol_table2_path, opal95_table_path, &

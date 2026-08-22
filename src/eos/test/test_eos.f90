@@ -155,6 +155,10 @@ program test_eos
       do i = 1, 12
          star%env_comp%fxenv(i) = w(i)*scale
       end do
+! push the mixture to the eos domain, as starin does (physics-purity)
+      call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
+           star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
+           star%env_comp%fxenv)
 
 ! constants + Fermi/SCV table loads (real setups + eos_init inside it)
       call setups(laol_work, dummy_path, dummy_path, dummy_path, &

@@ -32,7 +32,7 @@ DOMAINS = ["eos", "kap", "atm", "nuclear", "wind", "mixing",
 PUBLIC = {
     # The three eos_lib facade entries. Everything else in eos/
     # (eqstat/eqstat2, the OPAL/MHD/SCV/Yale internals, mu) is private.
-    "eos": {"eos_get", "eos_get_gamma1", "eos_init"},
+    "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture"},
     # The three kap_lib facade entries.
     "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
     # atm_lib's three entries, plus surfbc (the solver's boundary-

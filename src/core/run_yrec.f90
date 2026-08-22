@@ -38,6 +38,7 @@ subroutine run_yrec(ierr)
       use star_job_lib, only: job
       use evolve_state_lib, only: evo
       use yrec_reset_lib, only: yrec_run_prologue
+      use burn_lib
       implicit none
       integer :: step_status
       integer, parameter :: json = 5000

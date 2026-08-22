@@ -39,6 +39,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
       use star_info_lib, only: star
       use star_info_lib, only: star
       use const_lib
+      use burn_lib
       implicit none
       integer, parameter :: json = 5000
 

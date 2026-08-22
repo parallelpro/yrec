@@ -1102,6 +1102,10 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       do 620 i = 1,12
        star%env_comp%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
  620  continue
+! push the recomputed mixture to the eos domain (physics-purity pass)
+      call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
+           star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
+           star%env_comp%fxenv)
 !     FIND SURFACE COMPOSITION OPACITY TABLE
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
  630  continue

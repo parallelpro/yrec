@@ -22,6 +22,7 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
       use nuclear_lib
       use star_info_lib, only: star
       use const_lib
+      use burn_lib
       implicit none
       integer, parameter :: json = 5000
 

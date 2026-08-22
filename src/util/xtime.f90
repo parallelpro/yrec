@@ -24,6 +24,7 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
 
       use const_lib
       use nuclear_lib
+      use burn_lib
       implicit none
       integer, parameter :: json = 5000
 

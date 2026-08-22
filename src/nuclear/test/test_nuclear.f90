@@ -23,6 +23,7 @@ program test_nuclear
       use nuclear_lib
       use scv_eos_lib, only: use_scv_eos
       use opacity_table_lib, only: use_pure_z_table
+      use burn_lib
       implicit none
 
       character(len=256) :: yrec_input

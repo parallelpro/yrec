@@ -27,6 +27,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       use const_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
+      use burn_lib
       implicit none
       integer, parameter :: json = 5000
 

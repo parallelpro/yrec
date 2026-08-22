@@ -25,6 +25,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       use const_lib
       use star_info_lib, only: star
       use luout_lib
+      use eos_lib, only: eos_set_mixture
       implicit none
       integer, parameter :: json = 5000
 
@@ -115,6 +116,10 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 ! DBG 4/95 BUG FIX ZENV IS USED IN MANY ROUTINES AND NOT ZENV0 SO CHANGE
 !     ZENV WHENEVER Z IS CHANGED.
             star%env_comp%envelope_metal_fraction = initial_envelope_z
+! keep the eos-side mixture in step with the rescaled Z
+            call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
+                 star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
+                 star%env_comp%fxenv)
          else
 !  DESIRED Z >100%; Z NOT CHANGED
 !            ACOMP = ' Z '

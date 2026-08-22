@@ -32,6 +32,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use star_info_lib, only: star
       use star_job_lib, only: job
       use evolve_state_lib, only: evo, evolve_step_reset_pending
+      use burn_lib
       implicit none
 
 ! nk (the run index) is const_lib module state (former common/zramp/),

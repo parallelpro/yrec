@@ -761,3 +761,67 @@ joined the snapshot. Nuclear (commit 3e8b544): module map added and
 the fourth per-module standalone test (rates/sneut/azbar/deutrate +
 remap's SFII cross-section scales) pinned, in `make tests` and CI.
 Next milestone unchanged: libyrec + the Python binding.
+
+---
+
+# Decoupling the physics domains from the model + legacy constructs
+
+Added 2026-08-22 (user design review). Two positions, both now
+partially executed:
+
+## Physics purity (user: "kap/eos/nuclear (even atm?) should be
+## entirely decoupled from the model")
+
+Agreed -- it is MESA's boundary -- and the star% census made it
+precise. Executed same day:
+
+- **eos: DECOUPLED.** Its only model reads were the envelope mixture
+  (fxenv/amuenv/X/Z in eqstat2, mu, eqscve). New
+  state/eos_mixture_lib.f90 owns an eos-side copy; the star layer
+  pushes it through the new eos_set_mixture facade entry at the
+  three places the mixture is (re)computed (starin's mixture block,
+  parmin's and rscale's Z rescales). eos/ now contains zero star%
+  references.
+- **kap: DECOUPLED.** Its two reads (the surface-Z sanity check in
+  kap_get) become a kap-side copy set by kap_init's new
+  envelope_metal_fraction argument.
+- **nuclear: SPLIT.** The census was categorical -- the eight pure
+  kernels (rates, sneut, nulosses, neutrino, azbar, safedivexp,
+  ifermi12, zfermim12) have zero star% references; the eight burn
+  drivers (engeb/eqburn, dburn/dburnm/deutrate,
+  liburn/liburn2/lirate88, 181 star% references) are star-layer code
+  (MESA: struct_burn_mix, not net). Drivers moved verbatim to
+  core/burn_lib.f90; nuclear_lib is now pure.
+- **wind: RECLASSIFIED, not decoupled.** By the user's own criterion
+  (rotation/mixing may couple because they modify the structure),
+  wind belongs with them: it modifies the model's mass. Its
+  turnover/rotation-state reads are correct star-layer coupling.
+- **atm: DOCUMENTED, deferred.** atm is two things: the pure table
+  half (surfp/kcsurfp/alsurfp + atm tables -- MESA-atm-like, already
+  star-free) and the envelope-INTEGRATION half (atm_get's
+  pulse/run-diagnostics writes, env_comp%senv bookkeeping -- in MESA
+  this half lives inside the star solver). Splitting atm_get into a
+  star-layer integration driver over pure physics calls is the
+  remaining, largest purity item; measured at ~90 star% references.
+
+## Legacy constructs (user: "so many goto and save -- poor design?")
+
+Position: agree, with one distinction, and a measured policy rather
+than a big-bang rewrite (tools/inventory_legacy.py counts both;
+baseline 2026-08-22: 249 blanket saves, 698 gotos -- heaviest in
+eos 43/162, rotation 40/90, numerics 34/118, kap 36/79):
+
+- Blanket `save` as hidden static state is the enemy -- it is what
+  the phase-five reset machinery had to tame, and every remaining
+  occurrence is (a) reset-covered, (b) a benign first-call table
+  cache, or (c) unaudited debt; the inventory makes (c) shrink
+  measurably, and the standing rule from step C applies: state that
+  crosses steps/runs lives in star/evo/job or is reset-flagged.
+- `goto`: the structurally harmful ones (error exits, loop exits
+  across hundreds of lines) were already eliminated by the ierr
+  funnels and evolve_step's step_status contract. What remains is
+  mostly F77 kernel-internal flow (esac, seculr, bandw), where
+  rewriting risks byte drift for zero functional gain. Policy:
+  structured replacements opportunistically, whenever a file is
+  already open for edits, verified by the byte-diff -- never as a
+  standalone sweep of hot kernels.

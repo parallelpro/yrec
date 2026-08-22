@@ -41,6 +41,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       use luout_lib
       use const_lib
       use nuclear_lib
+      use burn_lib
       implicit none
       integer, parameter :: json = 5000
 

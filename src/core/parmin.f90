@@ -44,6 +44,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use opacity_table_lib
       use yale_eos_lib
       use scv_eos_lib
+      use eos_lib, only: eos_set_mixture
       implicit none
 
 ! PARAMETERS for Allard model surface pressures (n_allard_teff/
@@ -2349,6 +2350,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &       (rescale_params(i,nkind),i = 1,4)
        end if
          if(rescale_params(3,nkind).ge.0.0d0)  star%env_comp%envelope_metal_fraction=rescale_params(3,nkind)
+! keep the eos-side mixture in step with the rescaled Z
+         call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
+              star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
+              star%env_comp%fxenv)
       1000 continue
       return
 

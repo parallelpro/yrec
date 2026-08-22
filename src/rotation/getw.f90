@@ -41,6 +41,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       use star_info_lib, only: star
       use luout_lib
       use const_lib
+      use burn_lib
       implicit none
       integer, parameter :: json = 5000
 
