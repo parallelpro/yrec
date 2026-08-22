@@ -33,14 +33,78 @@
 # The name for the executable
 NAME = yrec
 
+# GNU Make picks the default goal (what bare `make`/`make -j4` builds) as
+# the target of the *first* rule with a real target list in this file --
+# not necessarily the `default:` target below. The MODULE_OBJS order-only
+# rule further down expands to a long list of plain object-file targets,
+# and would otherwise become that first rule, silently hijacking the
+# default goal to a single arbitrary .o file instead of linking $(NAME).
+# Pin it explicitly so bare `make` always does what the `default:` target
+# below says.
+.DEFAULT_GOAL := default
+
 # The default path into which the 'install' target will try to copy the executable.
 PREFIX ?= /usr/local/bin
 
-# Compose list of all object files to produce.
-OBJS := $(patsubst %.f,%.o,$(wildcard *.f))
+# Compose list of all object files to produce. Sources are organized into
+# subdirectories by physics domain (eos/, kap/, rotation/, etc.) -- find
+# every .f90 file recursively and keep each .o alongside its source.
+# Per-domain test/ directories hold standalone test PROGRAMs (phase
+# three, ROADMAP.md stage 2) and are excluded here so the yrec link
+# never sees a second `program` unit; they build via their own targets
+# below.
+SRCS := $(shell find . -name '*.f90' -not -path '*/test/*' | sed 's|^\./||')
+OBJS := $(patsubst %.f90,%.o,$(SRCS))
+
+# Files that define a Fortran MODULE must be compiled before anything that
+# `use`s them, so the compiler can find the resulting .mod file. GNU Make
+# has no built-in Fortran module dependency scanning, so this list is
+# maintained by hand -- add a source here whenever it gains a `module`
+# statement. The order-only prerequisite below (declared once all module
+# sources are known) ensures every module object is built first, safely
+# under parallel (-j) builds, without forcing spurious rebuilds.
+MODULE_SRCS := const/phys_const_lib.f90 const/controls_lib.f90 const/controls_reset_lib.f90 const/const_lib.f90 const/luout_lib.f90 const/intpar_lib.f90 state/oldmod_lib.f90 state/scrtch_lib.f90 state/turnover_lib.f90 state/light_burn_lib.f90 state/engeb_diag_lib.f90 state/fluxes_lib.f90 state/mdphy_lib.f90 state/envelope_comp_lib.f90 state/temp_lib.f90 state/envstruct_lib.f90 state/pulse_diag_lib.f90 state/atmstruct_lib.f90 state/temp2_lib.f90 state/run_diag_lib.f90 state/rotdiff_lib.f90 state/scv_eos_lib.f90 state/eos_mixture_lib.f90 state/star_info_lib.f90 state/star_job_lib.f90 state/evolve_state_lib.f90 state/atm_table_lib.f90 state/mhd_eos_lib.f90 state/opacity_table_lib.f90 state/opal_eos_lib.f90 state/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/yrec_reset.f90
+MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
+
+$(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
+
+# Module objects that `use` other module objects need an explicit
+# order-only prerequisite too -- the block rule above only orders
+# non-module objects after the full set of module objects, not module
+# objects relative to each other, and MODULE_SRCS list position alone
+# does not guarantee build order under parallel (-j) builds.
+const/const_lib.o: | const/phys_const_lib.o const/controls_lib.o
+net/net_lib.o: | const/const_lib.o state/oldmod_lib.o \
+	state/star_info_lib.o \
+	state/engeb_diag_lib.o state/fluxes_lib.o state/light_burn_lib.o \
+	const/luout_lib.o state/mdphy_lib.o numerics/numerics_lib.o \
+	state/scrtch_lib.o state/turnover_lib.o
+eos/eos_lib.o: | const/const_lib.o state/opal_eos_lib.o \
+	state/scv_eos_lib.o state/eos_mixture_lib.o \
+	state/yale_eos_lib.o const/luout_lib.o
+kap/kap_lib.o: | const/const_lib.o state/star_info_lib.o \
+	state/opacity_table_lib.o \
+	const/luout_lib.o
+state/star_info_lib.o: | state/oldmod_lib.o state/scrtch_lib.o \
+	state/run_diag_lib.o state/rotdiff_lib.o \
+	state/envelope_comp_lib.o state/turnover_lib.o state/light_burn_lib.o \
+	state/fluxes_lib.o state/engeb_diag_lib.o state/mdphy_lib.o \
+	state/temp_lib.o state/temp2_lib.o state/pulse_diag_lib.o
+const/controls_reset_lib.o: | const/controls_lib.o const/phys_const_lib.o
+core/burn_lib.o: | net/net_lib.o state/star_info_lib.o \
+	const/const_lib.o const/luout_lib.o
+core/yrec_reset.o: | state/star_info_lib.o state/star_job_lib.o \
+	state/evolve_state_lib.o const/controls_reset_lib.o
+atm/atm_lib.o: | state/atm_table_lib.o state/atmstruct_lib.o \
+	state/star_info_lib.o \
+	const/const_lib.o state/envelope_comp_lib.o state/envstruct_lib.o \
+	eos/eos_lib.o const/intpar_lib.o kap/kap_lib.o \
+	state/light_burn_lib.o const/luout_lib.o numerics/numerics_lib.o \
+	state/pulse_diag_lib.o state/rotdiff_lib.o state/run_diag_lib.o \
+	state/turnover_lib.o
 
 # Flags for GNU Fortran (gfortran)
-GNU_BASE_FFLAGS = -ffixed-line-length-132 -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'"
+GNU_BASE_FFLAGS = -ffixed-line-length-132 -ffree-line-length-none -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'"
 GNU_DEV_FFLAGS = -fcheck=all -ffpe-trap=invalid,zero,overflow
 GNU_DBG_FFLAGS = -g -fsanitize=undefined -fsanitize=address -fstack-protector-strong -O0
 GNU_PROF_FFLAGS = -O3 -g -pg
@@ -97,6 +161,57 @@ else
   REPO_HASH=unknown
 endif
 
+# Explicit rule for free-form modern Fortran sources (.f90); GNU Make's
+# built-in implicit rules don't reliably cover this suffix.
+%.o: %.f90
+	$(FC) $(FFLAGS) -c $< -o $@
+
+# Per-domain static libraries (phase three, ROADMAP.md stage 2),
+# following MESA's one-library-per-module convention. `make libs`
+# builds all of them; the yrec executable itself still links the flat
+# object list (the transition to library-based linking can go domain
+# by domain). Standalone per-domain test programs link against these.
+DOMAIN_DIRS := eos kap atm net wind mixing rotation numerics \
+	const state setup io core util
+
+define LIB_template
+lib$(1).a: $$(filter $(1)/%,$$(OBJS))
+	ar rcs $$@ $$^
+endef
+$(foreach d,$(DOMAIN_DIRS),$(eval $(call LIB_template,$(d))))
+
+LIBS := $(foreach d,$(DOMAIN_DIRS),lib$(d).a)
+
+.PHONY: libs
+libs: $(LIBS)
+
+# Standalone per-domain test programs (phase three, ROADMAP.md stage
+# 2). Each links the full object set minus core/main.o (the flat-link
+# transitional form; library-based linking can follow the yrec
+# executable's own transition). Compiled with the release flags so
+# pinned expected outputs are flag-stable.
+test_eos: FFLAGS += $(REL_FFLAGS)
+test_eos: eos/test/test_eos.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^
+
+test_kap: FFLAGS += $(REL_FFLAGS)
+test_kap: kap/test/test_kap.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^
+
+test_atm: FFLAGS += $(REL_FFLAGS)
+test_atm: atm/test/test_atm.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^
+
+test_reentry: FFLAGS += $(REL_FFLAGS)
+test_reentry: core/test/test_reentry.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^
+
+test_net: FFLAGS += $(REL_FFLAGS)
+test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^
+
+.PHONY: tests
+tests: test_eos test_kap test_atm test_net test_reentry
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
@@ -119,10 +234,11 @@ prof: $(NAME)
 $(NAME): $(OBJS)
 	$(FC) $(LDFLAGS) -o $(NAME) $(OBJS)
 
-# Remove all object files and executable
+# Remove all object files, libraries, and executable
 clean:
 	@rm -f $(NAME)
 	@rm -f $(OBJS)
+	@rm -f $(LIBS)
 
 install:
 	install -d $(PREFIX)

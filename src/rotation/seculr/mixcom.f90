@@ -1,0 +1,229 @@
+!----------------------------------------------------------------------
+! mixcom
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original mixcom.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! DIFCOM (this routine's original header name) calculates the
+! diffusion of composition due to angular momentum transport. This is
+! done by transforming to an equally spaced grid which was previously
+! defined (by mixgrid.f90) and then transforming back.
+!
+! INPUT VARIABLES:
+! timestep : diffusion timestep (sec).
+! equally_spaced_diffusion_coeff : diffusion coefficients for
+!    composition transport at the equally spaced grid points.
+! equally_spaced_mass : masses of the equally spaced grid points (gm).
+!    NOTE: for convective boundaries the mass of the last grid point is
+!          the mass of the entire convection zone.
+! composition : array of mass fraction of all of the species at the
+!    original model points.
+! shell_mass : masses of the original model points (unlogged).
+! zone_begin,zone_end : the first/last unstable points in the region.
+!    NOTE: for convective boundaries these are only the first
+!          convective points adjacent to an unstable radiative region.
+! convective_flag : flag which tells which of the original model
+!    points are convective for angular momentum transport purposes
+!    (i.e. includes overshoot regions). true if convective.
+! num_zones : number of model points.
+!
+! OUTPUT VARIABLES:
+! composition is updated in this routine to give the new run of
+! composition after angular momentum transport.
+!
+! Before the last iteration (final_iteration_flag=false), only
+! diffusion of H,He4,He3 calculated to calculate change in mu
+! gradients caused by diffusion. This routine will therefore be called
+! either to mix the other species or just the first 4 depending on
+! final_iteration_flag.
+subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
+     equally_spaced_mass, shell_mass, zone_begin, zone_end, &
+     convective_flag, final_iteration_flag, num_zones, composition, &
+     species_begin, species_end)
+      use star_info_lib, only: star
+      use numerics_lib
+      implicit none
+      integer, parameter :: json = 5000
+
+      double precision, intent(in) :: timestep
+      double precision, intent(in) :: equally_spaced_diffusion_coeff(json), &
+           equally_spaced_mass(json), shell_mass(json)
+      integer, intent(in) :: zone_begin, zone_end
+      logical, intent(in) :: convective_flag(json), final_iteration_flag
+      integer, intent(in) :: num_zones
+      double precision, intent(inout) :: composition(15,json)
+      integer, intent(in) :: species_begin, species_end
+
+
+
+! Tridiagonal-solve work arrays (Thomas algorithm): filled in by the
+! call to ccoeft below, then consumed by the call to ctridi (solution
+! is read back afterward). Was originally common/tridi/ (positional
+! storage, shared with ccoeft.f90/ctridi.f90); converted (2026,
+! GUIDELINES.md) to explicit arguments since this is real per-call
+! data flow, not global configuration. gamma_elim is no longer needed
+! here at all -- it was always solver-internal to ctridi.f90.
+      double precision :: sub_diag(json), diag(json), super_diag(json), &
+           rhs(json), solution(json)
+
+      double precision :: equally_spaced_composition(json)
+      integer :: varying_species_id(15)
+      save
+
+      integer :: num_varying_species, j_idx, zone_idx, ntab, species_num, &
+           orig_zone_idx, i0, i1
+      double precision :: test_value, dcomp, dcomp2, sum_species_orig, &
+           sum_species_updated
+
+! BEFORE THE LAST ITERATION(LOK=F),ONLY DIFFUSION OF H,HE4,HE3 CALCULATED
+! TO CALCULATE CHANGE IN MU GRADIENTS CAUSED BY DIFFUSION.
+! THIS ROUTINE WILL THEREFORE BE CALLED EITHER TO MIX THE OTHER SPECIES
+! OR JUST THE FIRST 4 DEPENDING ON LOK.
+! DETERMINE WHICH SPECIES VARY OVER THE UNSTABLE REGION.
+      num_varying_species = 0
+      do j_idx = species_begin, species_end
+         test_value = composition(j_idx,zone_begin)
+! ABUNDANCE 2(HE4) IS DEFINED AS 1-X-Z-HE3 SO IT IS NOT SOLVED FOR.
+         if (j_idx.ne.2) then
+            do zone_idx = zone_begin+1, zone_end
+               if (dabs(composition(j_idx,zone_idx)-test_value).gt.1.0d-14) &
+                    then
+                  num_varying_species = num_varying_species + 1
+                  varying_species_id(num_varying_species) = j_idx
+                  goto 20
+               end if
+            end do
+         end if
+   20    continue
+      end do
+      if (num_varying_species.eq.0) goto 200
+! NOW SOLVE FOR DIFFUSION OF ALL SPECIES THAT VARY OVER THE
+! UNSTABLE REGION USING THE SAME DIFFUSION COEFFICIENTS.
+      ntab = zone_end - zone_begin + 1
+! FIND RUN OF COMPOSITION AT THE EQUALLY SPACED GRID POINTS AT THE
+! START OF THE DIFFUSION TIMESTEP.  THIS IS DONE USING AN OSCULATORY
+! SPLINE.
+      do species_num = 1, num_varying_species
+         do zone_idx = 1, ntab
+            orig_zone_idx = zone_idx + zone_begin - 1
+            star%rot%xtab(zone_idx) = star%rot%chi(zone_idx)
+            star%rot%ytab(zone_idx) = composition(varying_species_id(species_num), &
+                 orig_zone_idx)
+         end do
+         call osplin(star%rot%echi, equally_spaced_composition, star%rot%xtab, star%rot%ytab, ntab, &
+              star%rot%ntot)
+! SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR COMP AT END OF TSTEP
+         call ccoeft(equally_spaced_diffusion_coeff, star%rot%dchi, timestep, &
+              equally_spaced_composition, equally_spaced_mass, star%rot%ntot, &
+              sub_diag, diag, super_diag, rhs)
+! SOLVE MATRIX FOR THE RUN OF COMP AT TIME N+1 AT THE NEW GRID.
+         call ctridi(star%rot%ntot, sub_diag, diag, super_diag, rhs, solution)
+! TRANSFORM BACK TO THE ORIGINAL GRID AND UPDATE HCOMP IN THE
+! DIFFUSED REGION. U IS THE NEW RUN OF COMPOSITION IN THE REGION AT THE
+! EQUALLY SPACED GRID POINTS.
+! FOR THE BOUNDARY POINTS IN THE MODEL,EXTRAPOLATING U PAST THE
+! LAST EQUALLY SPACED GRID POINTS CAN LEAD TO SERIOUS ERRORS.
+! THEREFORE ADD THE *CHANGE* IN COMPOSITION AT THE EQUALLY SPACED GRID
+! POINTS TO HCOMP AND DO NOT REPLACE HCOMP WITH U.
+         dcomp = 0.0d0
+         do zone_idx = 1, star%rot%ntot
+            star%rot%xtab(zone_idx) = star%rot%echi(zone_idx)
+            star%rot%ytab(zone_idx) = solution(zone_idx) - &
+                 equally_spaced_composition(zone_idx)
+            dcomp = dcomp + star%rot%ytab(zone_idx)*equally_spaced_mass(zone_idx)
+         end do
+         do zone_idx = 1, ntab
+            star%rot%xval(zone_idx) = star%rot%chi(zone_idx)
+         end do
+! USE YVAL AS DUMMY ARRAY FOR THE NEW RUN OF COMP AT THE ORIGINAL
+! POINT GRID.
+         call osplin(star%rot%xval, star%rot%yval, star%rot%xtab, star%rot%ytab, star%rot%ntot, ntab)
+! CHECK FOR LOWER CONVECTION ZONE
+         if (convective_flag(zone_begin).and.zone_begin.gt.1) then
+            do zone_idx = zone_begin-1, 1, -1
+               if (.not.convective_flag(zone_idx)) then
+                  i0 = zone_idx + 1
+                  goto 90
+               end if
+            end do
+            i0 = 1
+   90       continue
+         else
+            i0 = zone_begin
+         end if
+! CHECK FOR UPPER CONVECTION ZONE.
+         if (convective_flag(zone_end).and.zone_end.lt.num_zones) then
+            do zone_idx = zone_end+1, num_zones
+               if (.not.convective_flag(zone_idx)) then
+                  i1 = zone_idx - 1
+                  goto 97
+               end if
+            end do
+            i1 = num_zones
+   97       continue
+         end if
+         dcomp2 = 0.0d0
+! COMPUTE SUM OF SPECIES MASS
+         sum_species_orig = 0.0d0
+         do zone_idx = i0, i1
+            sum_species_orig = sum_species_orig + shell_mass(zone_idx)* &
+                 composition(varying_species_id(species_num),zone_idx)
+         end do
+! UPDATE COMPOSITION ARRAY.
+         sum_species_updated = 0.0d0
+         do zone_idx = 1, ntab
+            j_idx = zone_begin + zone_idx - 1
+            composition(varying_species_id(species_num),j_idx) = &
+                 composition(varying_species_id(species_num),j_idx) + &
+                 star%rot%yval(zone_idx)
+            dcomp2 = dcomp2 + star%rot%yval(zone_idx)*shell_mass(j_idx)
+            sum_species_updated = sum_species_updated + &
+                 shell_mass(j_idx)*composition( &
+                 varying_species_id(species_num),j_idx)
+         end do
+! UPDATE INNER CZ COMPOSITION IF APPLICABLE.
+         if (i0.lt.zone_begin) then
+            do zone_idx = zone_begin-1, i0, -1
+               composition(varying_species_id(species_num),zone_idx) = &
+                    composition(varying_species_id(species_num),zone_begin)
+               sum_species_updated = sum_species_updated + &
+                    shell_mass(zone_idx)*composition( &
+                    varying_species_id(species_num),zone_idx)
+               dcomp2 = dcomp2 + star%rot%yval(1)*shell_mass(zone_idx)
+            end do
+         end if
+! UPDATE OUTER CZ COMPOSITION IF APPLICABLE.
+         if (zone_end.lt.i1) then
+            do zone_idx = zone_end+1, i1
+               composition(varying_species_id(species_num),zone_idx) = &
+                    composition(varying_species_id(species_num),zone_end)
+               sum_species_updated = sum_species_updated + &
+                    shell_mass(zone_idx)*composition( &
+                    varying_species_id(species_num),zone_idx)
+               dcomp2 = dcomp2 + star%rot%yval(ntab)*shell_mass(zone_idx)
+            end do
+         end if
+! CHECK FOR CONSERVATION OF SPECIES
+!         TEST = ABS(SUMSPEC-SUMSPEC2)
+!         WRITE(*,911)ID(N),DCOMP,DCOMP2,SUMSPEC
+! 911     FORMAT(I5,1P3E10.2)
+!         IF(TEST.GT.1.0D-10*SUMSPEC)THEN
+!            RATIO = SUMSPEC/SUMSPEC2
+!            DO I = I0,I1
+!               HCOMP(ID(N),I)=RATIO*HCOMP(ID(N),I)
+!            END DO
+!         ENDIF
+      end do
+! ADJUST HE4 FOR CHANGES IN X, Z, AND HE3.
+      if (.not.final_iteration_flag) then
+         do zone_idx = i0, i1
+            composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
+                 composition(3,zone_idx) - composition(4,zone_idx)
+         end do
+      end if
+  200 continue
+      return
+end subroutine mixcom
