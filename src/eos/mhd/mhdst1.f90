@@ -121,13 +121,28 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !     IF IDX=1: CHECK TABLES FOR CORRECT COMPOSITION CONSTRUCTION
 !     AND PERFORM NUMERICAL DERIVATIVES W.R.T. X
       composition_tolerance = 0.05d0*abs(delta_x)
-      if ( abs(mass_fraction(1)-mass_fraction_down(1)-delta_x).gt.composition_tolerance  .or. &
-          abs(mass_fraction(1)-mass_fraction_up(1)+delta_x).gt.composition_tolerance  .or. &
-          abs(mass_fraction(2)-mass_fraction_down(2)+delta_x).gt.composition_tolerance  .or. &
-          abs(mass_fraction(2)-mass_fraction_up(2)-delta_x).gt.composition_tolerance )    goto 500
+      if ( abs(mass_fraction(1)-mass_fraction_down(1)-delta_x).gt.composition_tolerance  .or. abs(mass_fraction(1)-mass_fraction_up(1)+delta_x).gt.composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_down(2)+delta_x).gt.composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_up(2)-delta_x).gt.composition_tolerance ) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
       do species_index=3,num_chem
-      if ( abs(mass_fraction(species_index)-mass_fraction_up(species_index)).gt.composition_tolerance )      goto 500
-      if ( abs(mass_fraction(species_index)-mass_fraction_down(species_index)).gt.composition_tolerance )      goto 500
+      if ( abs(mass_fraction(species_index)-mass_fraction_up(species_index)).gt.composition_tolerance ) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
+      if ( abs(mass_fraction(species_index)-mass_fraction_down(species_index)).gt.composition_tolerance ) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
  420  continue
       end do
       do temp_check_index=1,num_t2

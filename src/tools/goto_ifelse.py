@@ -84,8 +84,8 @@ def transform(path):
             continue
         lab2 = m2.group(1)
         t2 = labels.get(lab2)
-        if t2 is None or t2 <= t1 or len(label_refs.get(lab2, [])) != 1:
-            continue
+        if t2 is None or t2 <= t1:
+            continue  # L2 may be multi-ref: other jumps to it exit the new block, which is legal
         if not span_ok(lines, i + 1, j, label_refs):
             continue
         if not span_ok(lines, t1, t2, label_refs):

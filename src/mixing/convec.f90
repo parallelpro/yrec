@@ -150,13 +150,12 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
 !  ADD CONVECTIVE OVERSHOOT IF NEEDED; THE SIZE OF THE OVERSHOOT REGION IS
 !  COMPUTED AND THE EDGES IN MXZONE ARE MOVED TO THE EDGES OF THE
 !  OVERSHOOT REGIONS.
-      if (.not.lovstc .and. .not.envelope_overshoot_active .and. &
-           .not.lovstm) goto 100
+      if (.not. (.not.lovstc .and. .not.envelope_overshoot_active .and. .not.lovstm)) then
       call oversh(composition, log_density, log_pressure, log_radius, &
            log_mass, log_temperature, num_zones, mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, num_mixed_zones)
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY OVERSHOOT.
-      if (num_mixed_zones.eq.1) goto 100
+      if (.not. (num_mixed_zones.eq.1)) then
       j_idx = 1
    85 continue
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
@@ -185,6 +184,8 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
       end if
       j_idx = j_idx + 1
       if (j_idx.le.num_mixed_zones-1) goto 85
+      end if
+      end if
   100 continue
 ! NOW DETERMINE THE NUMBER OF RADIATIVE REGIONS.
 ! CHECK FOR A RADIATIVE REGION BELOW THE FIRST CONVECTION ZONE.

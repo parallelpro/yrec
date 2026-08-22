@@ -74,7 +74,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
            rate_triple_alpha(json), rate_zero13(json)
       double precision :: frac_c12_alpha(json), frac_be7_electron(json)
 
-      if(previous_timestep.lt.0.0d0) goto 310
+      if (.not. (previous_timestep.lt.0.0d0)) then
 ! if user is fixing tstep, set dt to given value and exit
       if(timestep_override_active(kind_card_index)) then
        hydrogen_dt = timestep_override(kind_card_index)*seconds_per_year
@@ -204,6 +204,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 ! c *****************************
 
       hydrogen_dt = previous_timestep
+      end if
   310 continue
       previous_timestep = abs(previous_timestep)
       timestep_years = previous_timestep/seconds_per_year

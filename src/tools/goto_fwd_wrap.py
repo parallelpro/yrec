@@ -48,8 +48,10 @@ def transform(path):
         tgt = text_labels.get(lab)
         if tgt is None or tgt <= i:
             continue
-        if len(label_refs.get(lab, [])) != 1:
-            continue
+        # multi-reference labels are fine: other gotos to L either lie
+        # outside the span (unaffected) or inside it (jumping OUT of
+        # the new if-block, which Fortran permits); only jumps INTO
+        # the span are fatal, checked below
         # span structure check
         depth = 0
         ok = True

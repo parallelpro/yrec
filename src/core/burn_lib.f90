@@ -2210,8 +2210,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       max_zone = max(cz_base_zone,cz_base_zone_old)
       do zone_idx = 1,min_zone-1
          if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)exit
-         if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 &
-         .and.composition(15,zone_idx).lt.1.0d-24)goto 50
+         if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 .and.composition(15,zone_idx).lt.1.0d-24)goto 50
          if(log_temperature(zone_idx).gt.7.0d0)then
             composition(13,zone_idx) = 0.0d0
             composition(14,zone_idx) = 0.0d0

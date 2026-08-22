@@ -137,8 +137,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 
 ! search locates the interval in which the first in-range point of
 ! evaluation lies.
-  80  if ((num_eval_points .eq. 1) .and. (end_idx .ne. num_eval_points)) &
-           go to 200
+  80  if ((num_eval_points .eq. 1) .and. (end_idx .ne. num_eval_points)) go to 200
       call search(table_x, num_table_points, eval_x(start_idx), &
            table_idx, found_flag)
 
@@ -148,7 +147,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! data points, assign the appropriate value from table_y. Continue
 ! until a point of evaluation is found which is not equal to a data
 ! point.
-      if (found_flag .eq. 0) go to 130
+      if (.not. (found_flag .eq. 0)) then
       do
          eval_y(start_idx) = table_y(table_idx)
       start_idx1 = start_idx
@@ -175,15 +174,17 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       if (start_idx .gt. num_eval_points) then
          return
       end if
-      if (eval_x(start_idx) .ne. eval_x(start_idx1)) go to 120
+      if (.not. (eval_x(start_idx) .ne. eval_x(start_idx1))) then
       go to 110
 
+      end if
  120  table_idx = table_idx1
       table_idx1 = table_idx1 + 1
       go to 100
 
 ! Calculate the images of all the points which lie within range of
 ! the data.
+      end if
  130  if ((table_idx .eq. 1) .and. (err_code .eq. 1)) go to 140
       call choose(table_x(table_idx), table_y(table_idx), &
            table_slope(table_idx), table_slope(table_idx1), &
@@ -253,8 +254,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       if (end_idx .eq. num_eval_points) then
          return
       end if
-      if ((table_idx1 .eq. num_table_points) .and. &
-           (eval_x(end_idx) .ne. table_x(num_table_points))) go to 210
+      if ((table_idx1 .eq. num_table_points) .and. (eval_x(end_idx) .ne. table_x(num_table_points))) go to 210
 
 ! Previously, when we arrived at 200 or 210, NUM1 could be improperly
 ! set. The NUM1= lines below protect from that. llp 8/19/08

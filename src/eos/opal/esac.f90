@@ -126,9 +126,18 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
 !
 ! ..... determine T6,rho grid points to use in the
 !       interpolation.
-      if ((t6_value.gt.opal_eos%t6_grid(1)) .or. (t6_value.lt.opal_eos%t6_grid(nt))) go to 62
-      if ((density_value.lt.opal_eos%density_grid(1)) .or. &
-           (density_value.gt.opal_eos%density_grid(nr))) go to 62
+      if ((t6_value.gt.opal_eos%t6_grid(1)) .or. (t6_value.lt.opal_eos%t6_grid(nt))) then
+         write(short_file_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
+         write(short_file_unit,*) opal_eos%t6_grid(1), t6_value, opal_eos%t6_grid(nt)
+         write(short_file_unit,*) opal_eos%density_grid(1), density_value, opal_eos%density_grid(nr)
+         return 1
+      end if
+      if ((density_value.lt.opal_eos%density_grid(1)) .or. (density_value.gt.opal_eos%density_grid(nr))) then
+         write(short_file_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
+         write(short_file_unit,*) opal_eos%t6_grid(1), t6_value, opal_eos%t6_grid(nt)
+         write(short_file_unit,*) opal_eos%density_grid(1), density_value, opal_eos%density_grid(nr)
+         return 1
+      end if
 !
 !
 !

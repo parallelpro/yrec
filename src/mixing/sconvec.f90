@@ -315,8 +315,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                if (ierr /= 0) return
                log_density(search_zone_idx) = log_density_zone
 ! EXIT IF ZONE IS RADIATIVELY STABLE.
-               if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) &
-                    goto 34
+               if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) goto 34
    32       continue
             end do
             if (edge_side.eq.1) search_zone_idx = 0

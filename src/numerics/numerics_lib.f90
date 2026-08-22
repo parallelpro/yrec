@@ -2023,7 +2023,7 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
 ! CONTROL WHEN Z DOES NOT LIE ON A MESH POINT
     8 interp_flag=0
     9 if(search_idx.le.1) interp_flag=0
-      if(linear_mode.eq.1) go to 20
+      if (.not. (linear_mode.eq.1)) then
 ! CUBIC INTERPOLATION/EXTRAPOLATION
 ! PIVOTAL POINT (M) AND POINT (K) CLOSEST TO Z
 !    10 M=N
@@ -2086,6 +2086,7 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       search_idx=(search_idx+stride-1)/stride
       return
 ! LINEAR INTERPOLATION/EXTRAPOLATION
+      end if
    20 if(search_idx.eq.1) search_idx=1+stride
       if(search_idx.gt.table_end) search_idx=table_end
       z1=table_z(search_idx)

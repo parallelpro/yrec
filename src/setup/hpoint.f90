@@ -288,7 +288,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
   195       continue
           end do
   197       fine_zone_base = fine_zone_base + 1
-          if (fine_zone_base.eq.overshoot_base_zone) goto 198
+          if (.not. (fine_zone_base.eq.overshoot_base_zone)) then
           delta_log_pressure = star%log_pressure(fine_zone_base) - &
                star%log_pressure(overshoot_base_zone)
           overshoot_point_count = int(delta_log_pressure/chi_grid_scale(10))
@@ -300,6 +300,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
                flag_point(flag_count) = fine_zone_base
                flag_count = flag_count + 1
             endif
+          end if
   198       continue
        endif
       endif
@@ -467,7 +468,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 
 
 ! SKIP IF HPMAX(3) IS ZEROED OUT
-      if (point_spacing_max(3).le.1.0D-15) goto 102
+      if (.not. (point_spacing_max(3).le.1.0D-15)) then
 ! TEST ON X-CHANGE (ONLY FOR INCREASING X) USING HIO AS DUMMY ARRAY
       gradient_flag_count = 0
       do j = new_num_zones,2,-1
@@ -476,7 +477,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
             gradient_flag_index(gradient_flag_count) = j
          endif
       end do
-      if (gradient_flag_count.eq.0) goto 102
+      if (.not. (gradient_flag_count.eq.0)) then
       working_num_zones = new_num_zones
       do i = 1,gradient_flag_count
          j = gradient_flag_index(i)
@@ -497,6 +498,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       end do
       new_num_zones = working_num_zones
 !
+      end if
+      end if
  102  continue
 ! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN Z.
       do j = 1,star%num_zones
@@ -517,7 +520,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! SKIP IF HPMAX(4) IS ZEROED OUT
 !
 
-      if (point_spacing_max(4).le.1.0D-15) goto 103
+      if (.not. (point_spacing_max(4).le.1.0D-15)) then
       gradient_flag_count = 0
       do j = new_num_zones,2,-1
          if (z_new(j-1)-z_new(j).gt.point_spacing_max(4)) then
@@ -526,7 +529,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
         endif
       end do
 !
-      if (gradient_flag_count.eq.0) goto 103
+      if (.not. (gradient_flag_count.eq.0)) then
       working_num_zones = new_num_zones
 !
       do i = 1,gradient_flag_count
@@ -546,6 +549,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       end do
       new_num_zones = working_num_zones
 !
+      end if
+      end if
  103  continue
 ! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER.
 ! (NOTE HDO IS BEING USED AS A DUMMY ARRAY HERE).
@@ -607,12 +612,12 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       else
        radiative_zone_end = new_num_zones
       endif
-      if (radiative_zone_end.lt.1.or.radiative_zone_begin.gt.new_num_zones) &
-           goto 830
+      if (.not. (radiative_zone_end.lt.1.or.radiative_zone_begin.gt.new_num_zones)) then
       do j = radiative_zone_begin,radiative_zone_end
        star%convective_flag(j) = .false.
   829 continue
       end do
+      end if
   830 continue
 
 

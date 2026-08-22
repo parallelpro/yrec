@@ -427,7 +427,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! KEEP IREAD OPEN
       rewind iread
 ! End of the reading and processing of an input model file.
-      if (.not.first_call_flag(run_index)) goto 3000
+      if (.not. (.not.first_call_flag(run_index))) then
 !      IF(.NOT.LFIRST(NK).OR.NK.GT.1)GOTO 3000
 !     MHP 10/24 MACHINERY TO ALTER THE HEAVY ELEMENT MIXTURE
 !     THIS IS ONLY DONE if the first MODEL IS being READ IN, AND ONLY FOR A
@@ -521,6 +521,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                'LI7 BE9',12e12.4,' NEW ',12e12.4)
       endif
  602  continue
+      end if
  3000 continue
 
 !     The following code enables us to extend the model from the current

@@ -123,8 +123,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
 
 !     GET INTERIOR OPACITY IF NEEDED
 
-      if (log10_temperature.lt.molecular_opacity_logt_min .and. &
-           got_atmosphere_opacity) goto 1000
+      if (.not. (log10_temperature.lt.molecular_opacity_logt_min .and. got_atmosphere_opacity)) then
 
 !     HELIUM BURNING REGION (HB EVOLUTION) USE PURE Z TABLE
 !     mhp 7/12 Altered logic of the opacities in the He burnng
@@ -252,6 +251,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
          go to 900
       end if
 
+      end if
  1000 continue
 !     DO A RAMP BETWEEN SURFACE AND INTERIOR OPACITY
 

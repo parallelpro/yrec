@@ -296,8 +296,8 @@ subroutine alfilein(allard_table_path, ierr)
 
 !     we now verify that we have the correct FeH and Alpha
 
-      if (dabs(feh_value -allard_target_feh) .ge. 1d-6)  goto 440     ! Wrong FeH, bypass item
-      if (dabs(alpha_value -allard_target_alpha) .ge. 1d-6)  goto 440 ! Wrong Alpha, bypass item
+      if (.not. (dabs(feh_value -allard_target_feh) .ge. 1d-6)) then
+      if (.not. (dabs(alpha_value -allard_target_alpha) .ge. 1d-6)) then
 
 
 !     We now have the correct indices for our tables, i1 for the Teff-direction
@@ -309,6 +309,8 @@ subroutine alfilein(allard_table_path, ierr)
        atm_table%allard_log10_pressure_tau100(i1,j1) = pressure_tau100_value
        atm_table%allard_log10_temp_tau100(i1,j1) = temp_tau100_value
 
+      end if
+      end if
   440  continue
        goto 410   ! Back to process the next record
 

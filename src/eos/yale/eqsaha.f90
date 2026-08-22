@@ -155,10 +155,10 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       nz1 = min0(nz,nz1)
       skip_helium_i = .true.
       skip_helium_ii= .true.
-      if(helium_mass_fraction.lt.1.0d-10) go to 13
+      if (.not. (helium_mass_fraction.lt.1.0d-10)) then
       helium_saha_ratio_1 = ln10*(saha_weight_term(12) + stemp) - &
            helium_ionization_temp_1/temperature
-      if(helium_saha_ratio_1.lt.-saha_exponent_tol) go to 13
+      if (.not. (helium_saha_ratio_1.lt.-saha_exponent_tol)) then
       skip_helium_i = .false.
       helium_saha_ratio_1 = beta_inverse*dexp(helium_saha_ratio_1)
       helium_saha_ratio_2 = ln10*(saha_weight_term(13) + stemp) - &
@@ -167,6 +167,8 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       skip_helium_ii= .false.
       helium_saha_ratio_2 = beta_inverse*dexp(helium_saha_ratio_2)
       go to 15
+      end if
+      end if
  13   helium_ion_fraction_1 = 0.0d0
  14   helium_ion_fraction_2 = 0.0d0
  15   continue
@@ -217,19 +219,24 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          c32 = c32 + cr13*c12
          c23 = c23 + cr12*c13
          c33 = c33 + cr13*c13
-         if (r1.eq.0.0d0) go to 210
+         if (.not. (r1.eq.0.0d0)) then
          r1l=dlog10(dabs(r1))
-         if (cr12.eq.0.0d0) go to 200
+         if (.not. (cr12.eq.0.0d0)) then
          cr12l=dlog10(dabs(cr12))
          fact=cr12l+r1l
-         if (fact.lt.-38.0d0) go to 200
+         if (.not. (fact.lt.-38.0d0)) then
          r2 = r2 + cr12*r1
+         end if
+         end if
  200     continue
-         if (cr13.eq.0.0d0) go to 210
+         if (.not. (cr13.eq.0.0d0)) then
          cr13l=dlog10(dabs(cr13))
          fact=cr13l+r1l
-         if (fact.lt.-38.0d0) go to 210
+         if (.not. (fact.lt.-38.0d0)) then
          r3 = r3 + cr13*r1
+         end if
+         end if
+         end if
  210     continue
 ! ENTRY FOR NO FULLY IONIZED HELIUM (SAHEX2 = 0.0)
          end if
@@ -239,37 +246,43 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
 ! ENTRY FOR NEUTRAL HELIUM
          end if
  25      delta_electrons_per_ion = r3/c33
-         if(skip_helium_i) go to 26
+         if (.not. (skip_helium_i)) then
          deltx1 = (r2 - c23*delta_electrons_per_ion)/c22
          helium_ion_fraction_1 = helium_ion_fraction_1 + deltx1
          helium_ion_fraction_1 = dmax1(0.0d0,dmin1(1.0d0,helium_ion_fraction_1))
-         if(skip_helium_ii) go to 26
+         if (.not. (skip_helium_ii)) then
 !CC   STATEMENT RECALCULATED FOR DEC-20 SYSTEM
-         if (c12.eq.0.d0 .or. deltx1.eq.0.d0) go to 100
+         if (.not. (c12.eq.0.d0 .or. deltx1.eq.0.d0)) then
          c12l=dlog10(dabs(c12))
          delx1l=dlog10(dabs(deltx1))
          fact1=c12l+delx1l
-         if (fact1.ge.-38.0d0) go to 100
+         if (.not. (fact1.ge.-38.0d0)) then
          fact1=-38.0d0
          fact1=dexp(ln10*fact1)*dsign(1.0d0,c12)*dsign(1.0d0,deltx1)
          go to 105
+         end if
+         end if
  100     continue
          fact1=c12*deltx1
  105     continue
-         if (c13.eq.0.d0 .or. delta_electrons_per_ion.eq.0.d0) go to 110
+         if (.not. (c13.eq.0.d0 .or. delta_electrons_per_ion.eq.0.d0)) then
          c13l=dlog10(dabs(c13))
          deltel=dlog10(dabs(delta_electrons_per_ion))
          fact2=c13l+deltel
-         if (fact2.ge.-38.0d0) go to 110
+         if (.not. (fact2.ge.-38.0d0)) then
          fact2=-38.0d0
          fact2=dexp(ln10*fact2)*dsign(1.0d0,c13)*dsign(1.0d0,delta_electrons_per_ion)
          go to 115
+         end if
+         end if
  110     continue
          fact2=c13*delta_electrons_per_ion
  115     continue
          deltx2=(r1-fact1-fact2)/c11
          helium_ion_fraction_2 = helium_ion_fraction_2 + deltx2
          helium_ion_fraction_2 = dmax1(0.0d0,dmin1(1.0d0,helium_ion_fraction_2))
+         end if
+         end if
  26      mean_electrons_per_ion = mean_electrons_per_ion + delta_electrons_per_ion
          mean_electrons_per_ion = dmax1(1.0d-11,dmin1(max_electrons_per_ion, &
               mean_electrons_per_ion))

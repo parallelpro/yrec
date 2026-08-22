@@ -565,8 +565,10 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! MHP 10/24 GENERALIZED STOP CONDITIONS
 !     IF EVOLVING TO A GIVEN AGE AND AGE IS REACHED, KIND CARD IS DONE
 !       IF(LENDAG(NK).AND.ENDAGE(NK)-DAGE*1.0D9.LE.1.0D0)GOTO 110
-       if (end_age_stop_active(nk).and.target_end_age(nk).gt.0.0D0 .and. &
-         (target_end_age(nk)-star%run%dage*1.0D9).le.1.0D0) goto 810
+       if (end_age_stop_active(nk).and.target_end_age(nk).gt.0.0D0 .and. (target_end_age(nk)-star%run%dage*1.0D9).le.1.0D0) then
+          step_status = 1
+          return
+       end if
 ! MHP 10/24 CHECK ALL STOP CONDITIONS, EXIT IF ANY SATISFIED
          end_kind_flag = .false.
          if (end_age_stop_active(nk).and.central_deuterium_stop(nk).gt.0.0D0 .and. &
@@ -592,7 +594,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             pulsation_output_active = evo%saved_pulse_output_flag
             star%run%sound_speed_output_active = .true.
             star%run%lprt0_placeholder = .true.
-            goto 810
+            step_status = 1
+            return
          endif
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
          if (calibrate_star_flag .and. .not. star_found_flag) then

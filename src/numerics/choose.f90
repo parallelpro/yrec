@@ -83,9 +83,7 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 
 ! IF THE RELATIVE DEVIATION OF slope_left OR slope_right FROM spq IS LESS THAN
 ! eps_tol, THEN CHOOSE CASE 2 OR CASE 3.
-      if ((abs(spq-slope_left).le.eps_tol*mref) .or. &
-           (abs(spq-slope_right).le.eps_tol*mref)) &
-          go to 30
+      if (.not. ((abs(spq-slope_left).le.eps_tol*mref) .or. (abs(spq-slope_right).le.eps_tol*mref))) then
 
 ! COMPARE THE SIGNS OF THE SLOPES spq,slope_left, AND slope_right.
       if ((prod1 .lt. 0.d0).or.(prod2 .lt. 0.d0)) go to 80
@@ -99,6 +97,7 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
       spline_case=1
       return
 
+      end if
   30  if ((prod1 .lt. 0.d0).or.(prod2 .lt. 0.d0)) go to 80
   40  if (mref1 .gt. (2.d0*mref)) go to 50
       if (mref2 .gt. (2.d0*mref)) then

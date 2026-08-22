@@ -213,7 +213,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
            star%shell_mass,am_transport_convective_flag,star%num_zones,star%eta_squared, &
            star%moment_of_inertia,star%omega,star%qiw,star%mean_radius)
       skip_diffusion_flag = .not.instability_transport_active .and. .not.wind_loss_active
-      if(skip_diffusion_flag.or.full_timestep.le.0.0D0) goto 9999
+      if (.not. (skip_diffusion_flag.or.full_timestep.le.0.0D0)) then
 !  NOW LIMIT THE DIFFUSION TIMESTEP TO A MAXIMUM CHANGE IN OMEGA
 !  FROM THE PREVIOUS MODEL.
       if(max_domega_step.eq.0.0D0) max_domega_step = max_domega_global
@@ -499,6 +499,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       call getrot(star%log_density,star%specific_angular_momentum,star%log_radius,star%log_mass, &
            star%shell_mass,am_transport_convective_flag,star%num_zones,star%eta_squared, &
            star%moment_of_inertia,star%omega,star%qiw,star%mean_radius)
+      end if
  9999 continue
       if(star%run%lprt0_placeholder)then
          star%log10_luminosity = log10(star%luminosity_lsun(star%num_zones))

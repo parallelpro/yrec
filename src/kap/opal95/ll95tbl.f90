@@ -138,7 +138,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
       end do
 
 !     EXIT IF CORRECT NUMBER OF TABLES READ IN.
-      if (nn.ge.num_xz) goto 1000
+      if (.not. (nn.ge.num_xz)) then
       nn = nn + 1
 !     NEED TO ACCOUNT FOR FEWER X VALUES AT HIGHER Z.
       if (ix.le.8) then
@@ -161,6 +161,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
       read(opal95_table_unit,900) xx,zz
   900 format(/36x,f7.4,11x,f7.4)
       goto 15
+      end if
  1000 continue
 
       close(opal95_table_unit)

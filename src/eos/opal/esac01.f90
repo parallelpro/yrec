@@ -137,9 +137,24 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
 !
 ! ..... Determine T6,rho grid points to use in the
 !       interpolation.
-      if ((t6_value.gt.opal_eos%t6_grid_01(1)) .or. (t6_value.lt.opal_eos%t6_grid_01(nt))) go to 62
-      if ((density_value.lt.opal_eos%density_grid_01(1)) .or. &
-           (density_value.gt.opal_eos%density_grid_01(nr))) go to 62
+      if ((t6_value.gt.opal_eos%t6_grid_01(1)) .or. (t6_value.lt.opal_eos%t6_grid_01(nt))) then
+         continue
+         write(short_file_unit,*) routine_id, " T6 or rho outside of table range (62)"
+         write(short_file_unit,*) "t6, t6a(1),t6a(nt):", t6_value, opal_eos%t6_grid_01(1), &
+         opal_eos%t6_grid_01(nt)
+         write(short_file_unit,*) "slr,r,rho(1),rho(nr):", density_value, &
+         density, opal_eos%density_grid_01(1), opal_eos%density_grid_01(nr)
+         return 1
+      end if
+      if ((density_value.lt.opal_eos%density_grid_01(1)) .or. (density_value.gt.opal_eos%density_grid_01(nr))) then
+         continue
+         write(short_file_unit,*) routine_id, " T6 or rho outside of table range (62)"
+         write(short_file_unit,*) "t6, t6a(1),t6a(nt):", t6_value, opal_eos%t6_grid_01(1), &
+         opal_eos%t6_grid_01(nt)
+         write(short_file_unit,*) "slr,r,rho(1),rho(nr):", density_value, &
+         density, opal_eos%density_grid_01(1), opal_eos%density_grid_01(nr)
+         return 1
+      end if
 !
 !
 !

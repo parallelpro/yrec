@@ -225,11 +225,12 @@ subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
       jerr = 0
 
       call alsurfp(log_teff, log_g, print_to_files, lookup_failed, jerr)
-      if (jerr /= 0) go to 900
+      if (.not. (jerr /= 0)) then
 
       return
 
 ! error funnel: same contract as atm_get's.
+      end if
   900 continue
       if (present(ierr)) then
          ierr = jerr

@@ -126,7 +126,7 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
          search_start = zone_max + 1
    80    continue
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
-         if (.not.unstable_zone_found) goto 90
+         if (.not. (.not.unstable_zone_found)) then
 !  TRANSFORM TO EQUAL GRID SPACING IN R FOR THE REGION.
          call mixgrid(diffusion_coeff, log_density, log_luminosity, &
               log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
@@ -152,6 +152,7 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
               species_begin, species_end)
 !  RETURN FOR NEXT REGION IF APPLICABLE
          if (search_start.le.zone_max) goto 60
+         end if
    90    continue
       end if
       return
