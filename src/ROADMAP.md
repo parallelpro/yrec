@@ -925,3 +925,43 @@ byte-diff over both example dirs).
 - Remaining `goto`-family constructs: none. A few alternate returns
   (`return 1`) and unreferenced numeric labels remain untouched --
   separate, lower-value cleanups.
+
+
+## libyrec + pyyrec (2026-08-22, DONE)
+
+The engine is an embeddable shared library with a Python binding:
+
+- `make lib` -> libyrec.dylib/.so (every object minus core/main.o;
+  -fPIC in the base flags, a Darwin no-op verified byte-identical).
+- core/yrec_capi.f90: `int yrec_run(const char*, const char*)`.
+  Path injection via star_job_lib module-level overrides (NOT
+  star_job members: they configure the next run from outside the
+  engine, so they must not be captured by yrec_reset's snapshot);
+  parmin falls back to getarg when they are blank. The API closes
+  units 7-99 after each call -- embedders read output files
+  immediately, and only process exit or the next entry's prologue
+  would otherwise flush them.
+- pyyrec/ (repo root): ctypes binding, `pyyrec.run(nml1, nml2,
+  cwd=..., env=...)`. One engine per process; multiprocessing for
+  parallel scans.
+- test_pyyrec.py: CLI-run oracle, two in-process library runs
+  byte-identical to it (library + argv-free injection + re-entrancy
+  proven together). Local-only, like test_reentry; CI builds the
+  library but cannot run the case.
+
+Known residuals carried over, now API-visible: numerics-gate `stop`
+endings kill the embedding process (m0030-style configs); outputs
+are file-based (no in-memory results API yet).
+
+## Next: MESA-convention renaming (user directive, 2026-08-22)
+
+After libyrec/pyyrec (now done): rename variables to MESA's
+vocabulary wherever MESA has a name -- star% access mirroring s%,
+nz, dq/dm, the logT/lnT families, xa(j,k), k as the zone index,
+mstar, Teff, mixing_type -- keeping descriptive names only where
+MESA has no equivalent. This deliberately standardizes on
+MESA-literacy over the long-descriptive-name choice made during
+modernization. Method: same discipline as the save campaign
+(per-line quote-guarded renames, dual gates per batch). Fold
+star%evo / star%job in as nested sub-structs alongside it (MESA
+one-root convergence; MESA's own s% job precedent).
