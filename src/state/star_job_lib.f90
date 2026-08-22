@@ -37,7 +37,8 @@ module star_job_lib
             integer :: mc_run_start, mc_run_end
       end type star_job
 
-      type(star_job), public, save :: job
+      ! 2026 (MESA-convention pass): the single instance now lives
+      ! inside star_info as star%job (MESA's s% job precedent).
 
       ! 2026 (libyrec): namelist-path overrides for embedded use. The C
       ! API (core/yrec_capi.f90) sets these before calling run_yrec;

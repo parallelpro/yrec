@@ -38,7 +38,8 @@ module evolve_state_lib
                  total_rotational_ke, trial_sign_flag
       end type evolve_state
 
-      type(evolve_state), public, save :: evo
+      ! 2026 (MESA-convention pass): the single instance now lives
+      ! inside star_info as star%evo.
 
 ! 2026 (phase five, step C): set by yrec_reset_lib's run prologue at
 ! every run_yrec entry after the first; evolve_step and

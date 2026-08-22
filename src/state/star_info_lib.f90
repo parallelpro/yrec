@@ -44,6 +44,8 @@ module star_info_lib
       use temp_lib, only: shell_temp_state
       use temp2_lib, only: circulation_velocity_state
       use pulse_diag_lib, only: pulsation_diagnostics_state
+      use star_job_lib, only: star_job
+      use evolve_state_lib, only: evolve_state
       implicit none
       private
       integer, parameter, public :: json = 5000
@@ -131,6 +133,11 @@ module star_info_lib
             type(shell_temp_state) :: thermo
             type(circulation_velocity_state) :: circ
             type(pulsation_diagnostics_state) :: pulse
+! job configuration and driver-step state (2026 MESA-convention pass:
+! folded in as nested sub-structs -- MESA's s% job precedent; one
+! root means yrec_reset's star snapshot covers them automatically)
+            type(star_job) :: job
+            type(evolve_state) :: evo
       end type star_info
 
 ! the one star this process evolves (no handles -- see header)

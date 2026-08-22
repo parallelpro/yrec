@@ -35,8 +35,8 @@ subroutine run_yrec(ierr)
       use luout_lib
       use const_lib
       use star_info_lib, only: star
-      use star_job_lib, only: job
-      use evolve_state_lib, only: evo
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use yrec_reset_lib, only: yrec_run_prologue
       use burn_lib
       implicit none
@@ -189,7 +189,7 @@ subroutine run_yrec(ierr)
 
       iowr = 9
 ! LPUNCH is TRUE once first model is calculated
-      evo%punch_pending_flag = .false.
+      star%evo%punch_pending_flag = .false.
 ! 2026 (phase five): controls read and setup are now star-layer
 ! routines operating on the star_job structure (state/star_job_lib).
       call read_controls(ierr)
@@ -197,7 +197,7 @@ subroutine run_yrec(ierr)
       call star_setup(ierr)
       if (ierr /= 0) return
 
-      do monte_carlo_run_number = job%mc_run_start,job%mc_run_end
+      do monte_carlo_run_number = star%job%mc_run_start,star%job%mc_run_end
 ! for monte carlo run, input values of parameters being changed.
       if (lmonte) then
          cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
@@ -219,7 +219,7 @@ subroutine run_yrec(ierr)
       endif
 ! DBG PULSE: save LPULSE flag, set LPULSE to F except on last model of
 ! last run, then set LPULSE to saved value of LPULSE.
-      evo%saved_pulse_output_flag = pulsation_output_active
+      star%evo%saved_pulse_output_flag = pulsation_output_active
 ! 02/11 JVS uncommented LPULSE=.FALSE.
 !      LPULSE = .FALSE.
 ! MHP 1/93 add option to automatically calibrate solar model.
@@ -252,19 +252,19 @@ subroutine run_yrec(ierr)
          cmixl = mixing_length_array(nk)
        change_envelope_mass_flag = has_senv0_array(nk)
        requested_envelope_mass = senv0_array(nk)
-       evo%reset_triangle = .false.
-       evo%model_diverged_flag = .false.
+       star%evo%reset_triangle = .false.
+       star%evo%model_diverged_flag = .false.
 ! MHP 10/02 ZERO OUT INITIAL ANGULAR MOMENTUM
-         evo%total_angular_momentum = 0.0D0
-         evo%total_rotational_ke = 0.0D0
+         star%evo%total_angular_momentum = 0.0D0
+         star%evo%total_rotational_ke = 0.0D0
 ! read in the initial model here
 ! STARIN also calls RSCALE to perform rescaling if requested
 !        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-       call starin(evo%timestep_yr, evo%delta_time, evo%hydrogen_dt, evo%trial_sign_flag, &
-            evo%ikut_flag, evo%istore_flag, evo%model_diverged_flag, &
-            evo%recompute_envelope_triangle, nk, evo%dlnrho_dlnp, evo%dlnrho_dlnt, &
-            evo%total_angular_momentum, evo%total_rotational_ke, &
-            evo%convective_velocity, job%mixture_weights, ierr)
+       call starin(star%evo%timestep_yr, star%evo%delta_time, star%evo%hydrogen_dt, star%evo%trial_sign_flag, &
+            star%evo%ikut_flag, star%evo%istore_flag, star%evo%model_diverged_flag, &
+            star%evo%recompute_envelope_triangle, nk, star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, &
+            star%evo%total_angular_momentum, star%evo%total_rotational_ke, &
+            star%evo%convective_velocity, star%job%mixture_weights, ierr)
        if (ierr /= 0) return
 
       if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
@@ -415,43 +415,43 @@ subroutine run_yrec(ierr)
       call wrthead(star%total_mass_msun)
 ! DBG PULSE OUT 7/92
 ! initialize variables for calculating when to dump pulse output
-         evo%prev_log_l = star%log10_luminosity
-         evo%prev_log_teff = star%log_teff
-         evo%prev_age = star%run%dage
-         evo%path_length_sq = 0.0D0
+         star%evo%prev_log_l = star%log10_luminosity
+         star%evo%prev_log_teff = star%log_teff
+         star%evo%prev_age = star%run%dage
+         star%evo%path_length_sq = 0.0D0
 
        if (helium_flash_active) then
 ! timestep cutting requires a model stored in logical unit ILAST
 ! or it will crash - so copy initial model to unit ILAST
-          if (evo%punch_pending_flag) then
+          if (star%evo%punch_pending_flag) then
              wrtlst_unit = ilast
              call wrtlst(wrtlst_unit,star%composition,star%log_density,star%luminosity_lsun, &
                   star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag, &
                   star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
                   star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
-                  evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
+                  star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
                   star%envelope_cz_bottom_index,star%model_number,star%num_zones, &
                   star%total_mass_msun,star%log_teff,star%log10_luminosity,star%log_total_mass,star%run%dage, &
-                  evo%timestep_yr,star%omega)
+                  star%evo%timestep_yr,star%omega)
           endif
        endif
 
 ! locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if applicable).
          call findsh(star%composition,star%luminosity_lsun,star%convective_flag,star%num_zones, &
-              star%core_cz_top_index,star%envelope_cz_bottom_index,evo%h_shell_zone_begin, &
-              evo%h_shell_end_index,evo%h_shell_midpoint_zone,evo%has_h_shell)
+              star%core_cz_top_index,star%envelope_cz_bottom_index,star%evo%h_shell_zone_begin, &
+              star%evo%h_shell_end_index,star%evo%h_shell_midpoint_zone,star%evo%has_h_shell)
 ! determine timestep for model
 ! JVS 04/14 Added Teffl to passed variables
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(evo%delta_time,evo%hydrogen_dt,star%num_zones,star%log_density,star%luminosity_lsun, &
+       call htimer(star%evo%delta_time,star%evo%hydrogen_dt,star%num_zones,star%log_density,star%luminosity_lsun, &
             star%enclosed_mass,star%shell_mass,star%log_temperature,star%composition,star%core_cz_top_index, &
-            evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,evo%timestep_yr,nk, &
-            star%log_pressure,star%log_radius,star%omega,evo%max_domega_frac,evo%h_shell_zone_begin, &
+            star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,nk, &
+            star%log_pressure,star%log_radius,star%omega,star%evo%max_domega_frac,star%evo%h_shell_zone_begin, &
             star%log_teff)
 
-       evo%delta_time_saved = evo%delta_time
+       star%evo%delta_time_saved = star%evo%delta_time
 ! zero out entropy terms.
          do i = 1,star%num_zones
             star%run%temperature_entropy_term(i) = 0.0D0
@@ -483,11 +483,11 @@ subroutine run_yrec(ierr)
 
 ! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
 ! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
-  110    if (lstore.and.lstpch.and.evo%punch_pending_flag) then
+  110    if (lstore.and.lstpch.and.star%evo%punch_pending_flag) then
           call putstore(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%num_zones,star%total_mass_msun,star%log_teff,star%log10_luminosity,star%log_total_mass, &
-                 star%run%dage,evo%timestep_yr,star%omega,star%enclosed_mass,star%eta_squared,star%mean_radius,star%pressure_rotation_factor,star%temperature_rotation_factor,star%specific_angular_momentum,star%moment_of_inertia)
-            evo%punch_pending_flag = .false.
+                 star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%num_zones,star%total_mass_msun,star%log_teff,star%log10_luminosity,star%log_total_mass, &
+                 star%run%dage,star%evo%timestep_yr,star%omega,star%enclosed_mass,star%eta_squared,star%mean_radius,star%pressure_rotation_factor,star%temperature_rotation_factor,star%specific_angular_momentum,star%moment_of_inertia)
+            star%evo%punch_pending_flag = .false.
        endif
 ! 110  CONTINUE
 ! G Somers END
@@ -573,9 +573,9 @@ subroutine run_yrec(ierr)
 !      *        JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
 !      *        CFENV,FTRI,HSTOT,OMEGA,RLL,ICONV,NK,NN)  ! KC 2025-05-31
          call wrtmonte(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%num_zones,star%run%dage, &
-              evo%timestep_yr,star%total_mass_msun,star%log_teff,star%log10_luminosity, &
+              star%evo%timestep_yr,star%total_mass_msun,star%log_teff,star%log10_luminosity, &
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-              star%envelope_fit_coeffs,evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
+              star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
       else if (calibrate_solar_model .and. lsnu .and. star%run%solar_calibration_active) then
          rewind(ilast)
          rewind(first_unit)
@@ -622,9 +622,9 @@ subroutine run_yrec(ierr)
 !      *           JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
 !      *           CFENV,FTRI,HSTOT,OMEGA,RLL,ICONV,NK,NN)  ! KC 2025-05-31
             call wrtmonte(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%num_zones,star%run%dage, &
-                 evo%timestep_yr,star%total_mass_msun,star%log_teff,star%log10_luminosity, &
+                 star%evo%timestep_yr,star%total_mass_msun,star%log_teff,star%log10_luminosity, &
                  star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
+                 star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
          endif
       endif
  500  end do
