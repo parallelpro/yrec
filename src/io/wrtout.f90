@@ -57,8 +57,6 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 
       integer :: icheck
       data icheck/0/
-      save
-
 ! --- locals ---
       logical :: time_scaling_disabled
       integer :: i

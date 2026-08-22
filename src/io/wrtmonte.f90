@@ -54,9 +54,6 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
 ! used here; the file-path members (monte_carlo_file1_path/
 ! monte_carlo_file2_path) are unused placeholders here, now
 ! use-associated from const_lib along with the two used members.
-
-      save
-
 ! --- locals ---
       integer :: iwrite, j
       double precision :: surface_z_over_x, tcen, pcen, dcen, yini, zini

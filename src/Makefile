@@ -108,7 +108,7 @@ core/envint_lib.o: | atm/atm_lib.o state/star_info_lib.o \
 	const/const_lib.o const/luout_lib.o const/intpar_lib.o
 
 # Flags for GNU Fortran (gfortran)
-GNU_BASE_FFLAGS = -ffixed-line-length-132 -ffree-line-length-none -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'"
+GNU_BASE_FFLAGS = -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'"
 GNU_DEV_FFLAGS = -fcheck=all -ffpe-trap=invalid,zero,overflow
 GNU_DBG_FFLAGS = -g -fsanitize=undefined -fsanitize=address -fstack-protector-strong -O0
 GNU_PROF_FFLAGS = -O3 -g -pg

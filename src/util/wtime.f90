@@ -27,12 +27,6 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       double precision, intent(in) :: omega(json)
       double precision, intent(out) :: rotation_dt
       double precision, intent(out) :: max_domega_frac
-
-
-
-
-      save
-
       integer :: start_index, i, max_index
       double precision :: test_domega, dt_factor, dt_factor_limit
 

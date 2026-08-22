@@ -31,16 +31,6 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
       double precision, intent(in) :: log_teff
       integer, intent(in) :: num_points
       double precision, intent(out) :: envelope_dt
-
-
-
-
-
-
-
-
-      save
-
 ! dt_scale: maximum absolute time differences for each quantity
 ! (1 = Teff, 2 = L). Only elements 1-2 are ever set, matching the
 ! original DIMENSION HMAX(4) (element 3-4, and the commented-out

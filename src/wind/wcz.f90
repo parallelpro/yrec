@@ -34,11 +34,6 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
       double precision, intent(inout) :: omega(json), qiw(json), &
            mean_radius(json)
       integer, intent(in) :: num_zones
-
-
-
-      save
-
 ! --- locals ---
       double precision :: cz_total_am, cz_total_mass, cz_specific_am, &
            power_law_norm

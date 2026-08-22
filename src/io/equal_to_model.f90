@@ -34,8 +34,6 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 
 
       double precision :: radius_table(4), interp_factors(4)
-      save
-
       double precision :: hydrogen_floor
       integer :: zone_index
       double precision :: metal_max, metal_new, metal_scale_ratio

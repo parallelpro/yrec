@@ -14,19 +14,6 @@ subroutine wrthead(total_mass_msun)
       implicit none
 
       double precision, intent(in) :: total_mass_msun
-
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: total_mass_grams
 

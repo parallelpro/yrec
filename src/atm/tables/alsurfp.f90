@@ -107,9 +107,6 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
       double precision :: pressure_row(20), pressure_tau100_row(20), &
            temp_tau100_row(20), pressure_col(20), pressure_tau100_col(20), &
            temp_tau100_col(20)
-
-      save
-
       logical :: bad_point
       integer :: teffl_index, i, i1, j, j1, j2, j3, n
       double precision :: unused_dy

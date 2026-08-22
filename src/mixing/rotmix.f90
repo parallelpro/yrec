@@ -66,8 +66,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       double precision :: dlnp_dr_settling(json), del_grad2_save(json)
       logical :: am_transport_convective_flag(json)
       double precision :: total_mass
-      save
-
       integer :: zone_idx, region_idx, species_idx, burn_zone_start, &
            burn_zone_end, outer_boundary_zone, num_settling_substeps, &
            substep_idx

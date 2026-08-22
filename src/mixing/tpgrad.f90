@@ -76,8 +76,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 
 ! G Somers END
       double precision, parameter :: vtol=1.0d-10
-      save
-
       integer :: iter
       double precision :: deldel, g, presht, phi, phi2, phiphi, test, a1, &
            v, a3, a3p, vp, vd, ddel, delpm, rrr, qdelat, qdelap, tempot, &

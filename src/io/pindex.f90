@@ -21,11 +21,6 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
       integer, intent(in) :: m
       integer, intent(out) :: id(json)
       integer, intent(out) :: idm
-
-
-
-      save
-
       integer :: ibeg, iend, ixbeg, j
 
 !  ID IS THE ARRAY OF THE SHELLS TO BE PRINTED OUT;

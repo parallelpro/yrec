@@ -53,9 +53,6 @@ subroutine alfilein(allard_table_path, ierr)
 
 
       external sort_shell
-
-      save
-
       integer :: i, j, nhdr, irecno, i1, j1
       double precision :: teff_value, gl_value, feh_value, alpha_value
       double precision :: pressure_value, pressure_tau100_value, temp_tau100_value

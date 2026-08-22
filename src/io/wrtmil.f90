@@ -21,16 +21,6 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       double precision, intent(in) :: hcomp(15,json), hd(json), hl(json), &
            hp(json), hr(json), hs1(json)
       integer, intent(in) :: m, model
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: np1
       double precision :: smtot, d, p, r, u, v, w

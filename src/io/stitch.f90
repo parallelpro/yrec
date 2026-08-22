@@ -63,26 +63,6 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
       double precision :: dum1(4), dum2(3), dum3(3), dum4(3)
       double precision :: envs1(json)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       integer :: i, j, k
       double precision :: cg, sg, fm, duma, a_val, rpoleq, vtot

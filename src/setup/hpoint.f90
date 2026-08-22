@@ -83,8 +83,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       integer :: gradient_flag_index(json)
 !       DATA IDMAX/JSON/
       data reaction_rate_species_index/1,2,4,5,6,7,9/
-      save
-
       integer :: num_species_tracked, i, j, k
       integer :: flag_count
       double precision :: pressure_test, dp_scale

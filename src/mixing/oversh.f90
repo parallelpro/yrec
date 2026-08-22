@@ -26,13 +26,6 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
       integer, intent(inout) :: mixed_zone_bounds(12,2)
       integer, intent(in) :: mixed_zone_bounds_no_overshoot(12,2)
       integer, intent(in) :: num_mixed_zones
-
-
-
-
-
-      save
-
       logical :: up_overshoot_flag, down_overshoot_flag
       integer :: zone_idx, edge_idx, j_idx
       double precision :: pscale_up, pscale_down

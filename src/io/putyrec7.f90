@@ -60,9 +60,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 !       CHARACTER*6 EOS
 
       double precision :: omega_log10(json)
-
-      save
-
 ! --- locals ---
       integer :: i, j, zone_sign_index, ix, iz, num_full_rows, &
            remainder_count, start_index

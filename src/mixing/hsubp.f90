@@ -27,8 +27,6 @@ subroutine hsubp(composition, density, pressure, radius, mass, &
 
 
       double precision :: fxion(3)
-      save
-
       logical :: lderiv, latmo
       integer :: ksaha
       double precision :: hydrogen_fraction, metal_fraction, log10_pressure, &

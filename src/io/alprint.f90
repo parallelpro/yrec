@@ -16,14 +16,6 @@ subroutine alprint
       use luout_lib
       implicit none
       integer, parameter :: nta = 250, nga = 25
-
-
-
-
-
-
-      save
-
       integer :: i, j
 
       atm_table%allard_teffl_min = atm_table%allard_teffl_grid(1) - &

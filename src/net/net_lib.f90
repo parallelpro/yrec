@@ -134,8 +134,6 @@ subroutine nulosses(temp,den,snu,xmass,ymass,aion,zion, &
                      dsnudt,dsnudd)
 
       implicit none
-      save
-
 !..tests the neutrino loss rate routine
 
 !..ionmax  = number of isotopes in the network
@@ -171,8 +169,6 @@ end subroutine nulosses
 subroutine azbar(xmass,aion,zion,ionmax, &
                  ymass,abar,zbar)
       implicit none
-      save
-
 !..input
 !..mass fractions     = xmass(1:ionmax)
 !..number of nucleons = aion(1:ionmax)
@@ -222,9 +218,6 @@ end subroutine azbar
 subroutine sneut(temp,den,abar,zbar, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
 implicit none
-save
-
-
 !..this routine computes neutrino losses from the analytic fits of
 !..itoh et al. apjs 102, 411, 1996, and also returns their derivatives.
 
@@ -1842,7 +1835,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          -1.36/,z86/1.630,5.917,5.917,8.302,8.302,9.520,10.716,16.192, &
          20.978,16.192,18.606,16.192,45.6635/, &
          c21/5.240358E-8/
-      save
 ! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
 !  ISOTOPES.
 ! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
@@ -2307,8 +2299,6 @@ double precision function ifermi12(fermi_half_integral)
            coef_num_large(12), coef_den_large(12), numerator, denominator, &
            scaled_arg
 !     unused in the original: z,drn
-      save
-
 !..load the coefficients of the expansion
       data  fd_order,deg_num_small,deg_den_small,deg_num_large,deg_den_large &
            /0.5d0, 4, 3, 6, 5/
@@ -2377,8 +2367,6 @@ double precision function zfermim12(degeneracy_parameter)
       double precision :: coef_num_small(12), coef_den_small(12), &
            coef_num_large(12), coef_den_large(12), numerator, denominator, &
            scaled_arg
-      save
-
 !..load the coefficients of the expansion
 !       data  fd_order,deg_num_small,deg_den_small,deg_num_large,deg_den_large /-0.5d0, 7, 7, 11, 11/  ! KC 2025-05-31
       data  deg_num_small,deg_den_small,deg_num_large,deg_den_large /7, 7, 11, 11/

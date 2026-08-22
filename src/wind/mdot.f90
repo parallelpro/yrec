@@ -55,21 +55,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
            mean_thermal_energy
       double precision, intent(in) :: cz_total_mass_below_fitting
       double precision, intent(out) :: old_log_envelope_mass_fraction
-
-
-
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: omega_ratio_sq, omega_max_ratio_sq
       double precision :: mass_loss_rate_cgs

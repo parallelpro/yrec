@@ -36,16 +36,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       integer, intent(in) :: num_zones, run_index
       double precision, intent(inout) :: star_mass
       logical, intent(in) :: convective_flag(json)
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: x_rescale_factor
       integer :: zone_idx, species_idx, error_species_index, icomp

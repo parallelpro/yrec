@@ -52,8 +52,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
       double precision :: species_sum(15)
       integer :: zone_bounds(24)
-      save
-
       integer :: j_idx, num_zones_plus1, zone_idx, zone_start, zone_end, &
            species_idx, inner_idx, num_species
       double precision :: weight_sum

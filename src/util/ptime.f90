@@ -36,15 +36,6 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
            log_radius(json), log_temperature(json)
       integer, intent(in) :: num_points
       double precision, intent(out) :: struct_dt
-
-
-
-
-
-
-
-      save
-
 ! max_change: maximum absolute time differences for each quantity
 ! (1 = P, 2 = T, 3 = R, 4 = L). max_change_index is the model point at
 ! which each maximum occurred; it is assigned but (as in the original)

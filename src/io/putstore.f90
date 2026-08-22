@@ -68,11 +68,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 !      CHARACTER*256 FOPALE,FOPALE01,FOPALE06  ! FcondOpacP
 ! former common/i2o/: initial_composition_code now use-associated from
 ! run_diag_lib.
-
-
-
-      save
-
 ! --- locals ---
       integer :: i, j, k, ii, zone_sign_index, idm
       integer :: id(json)

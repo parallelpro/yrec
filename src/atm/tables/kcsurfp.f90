@@ -23,10 +23,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
 
       double precision, intent(in) :: log10_teff, log10_gravity
       logical, intent(in) :: print_flag
-
-
-      save
-
 ! --- locals ---
       double precision :: teff_nodes(4), gravity_nodes(4), &
            pressure_at_nodes(4), unused_deriv(3), gravity_weights(3), &

@@ -67,10 +67,6 @@ subroutine putmodel2(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
       character(len=4), intent(in) :: initial_composition_code
       double precision, intent(in) :: disk_pressure, disk_temperature, &
            wind_saturation_omega
-
-
-      save
-
 ! --- locals ---
       integer :: i, j, zone_sign_index
       double precision :: max_luminosity_component

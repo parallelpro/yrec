@@ -33,17 +33,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       double precision, intent(in) :: omega_surface, total_mass_msun, log_teff, &
            cz_moment_of_inertia
       double precision, intent(inout) :: specific_angular_momentum(json)
-
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: omega_saturation
       double precision :: gravity_cgs, log10_radius, total_radius_cm

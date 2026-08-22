@@ -43,8 +43,6 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 
 
       double precision :: interp_factors(4), deriv_factors(4), radius_table(4)
-      save
-
       double precision :: total_radius_span, min_radius_spacing
       integer :: zone_index
       integer :: interp_search_index

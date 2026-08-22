@@ -51,7 +51,6 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 
 ! JvS 09/25 CHANGED CPM --> CPMI TO AVOID CONFLICT IN MDPHY
       double precision :: specific_heat_interface(json), opacity_interface(json)
-      save
 !   THE PROCEDURE FOR CALCULATING STABILITY AGAINST ROTATIONALLY INDUCED
 !   MIXING IS AS FOLLOWS:
 !      STABILITY IS CALCULATED FOR THE I/I-1 INTERFACE; QUANTITIES RELATED

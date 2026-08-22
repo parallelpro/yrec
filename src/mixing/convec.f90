@@ -67,11 +67,6 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
       integer, intent(out) :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
-
-
-
-      save
-
       integer :: j_idx, zone_idx, zone_start, k_idx, pair_idx
       logical :: in_convection_zone
 

@@ -38,8 +38,6 @@ subroutine setscv
            boltzmann_constant
       data hydrogen_atom_mass, helium_atom_mass, boltzmann_constant &
            /1.67357d-24, 6.646442d-24, 1.380658d-16/
-      save
-
 ! --- locals ---
       integer :: t_idx, p_idx, k_idx, ii, jj
 ! log_t_work/log_p_work are reused as scratch across the file: log10

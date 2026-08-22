@@ -64,17 +64,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
       double precision, intent(out) :: max_domega_frac
       integer, intent(in) :: h_shell_zone_begin
       double precision, intent(in) :: log_teff
-
-
-
-
-
-
-
-
-
-      save
-
       double precision :: structure_dt, rotation_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
       double precision :: energy_gen_terms(6)

@@ -14,9 +14,6 @@ subroutine zero(array, array_size)
       double precision, intent(out) :: array(array_size)
 
       integer :: index
-
-      save
-
       do index=1,array_size
          array(index)=0.d0
     1 continue

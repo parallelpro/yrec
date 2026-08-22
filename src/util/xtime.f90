@@ -45,14 +45,6 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
            rate_triple_alpha(json), rate_zero13(json)
       double precision, intent(out) :: frac_c12_alpha(json), &
            frac_be7_electron(json)
-
-
-
-
-
-
-      save
-
 ! delta_x: hydrogen mass-fraction change budget for the current
 ! branch (core-burning limit in the first branch, whole-star shell-
 ! burning limit in the second -- a single reused scratch variable in

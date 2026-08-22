@@ -97,8 +97,6 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
       logical :: convective_state_changed(json)
 ! added vector for deuterium burning
       double precision :: deuterium_rate_mid(json), deuterium_rate_mid_start(json)
-      save
-
       integer :: num_species_tracked
       integer :: i, j, k, ii
       double precision :: step_fraction_ratio

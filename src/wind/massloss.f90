@@ -92,8 +92,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! OF ACCRETED MATTER.
       double precision :: accretion_efficiency
       data accretion_efficiency/1.0d0/
-      save
-
 ! --- locals ---
       double precision :: mass_loss_rate_msun_yr
       logical :: apply_mass_change

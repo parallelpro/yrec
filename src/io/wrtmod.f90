@@ -83,9 +83,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 ! here.
       integer :: pulsation_point_id(json)
       integer :: num_pulsation_points
-
-      save
-
 ! --- locals ---
       integer :: i
       double precision :: fr, fm, xx1, xxx, xx2, xx3, xx4, xx5, sound_velocity

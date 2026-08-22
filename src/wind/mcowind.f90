@@ -60,16 +60,6 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       double precision, intent(in) :: omega_old
       double precision, intent(out) :: domega_start
       double precision, intent(inout) :: domega_end
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: omega_first, omega_now, current_turnover_timescale, &
            omega_saturation, wind_coefficient, gl, fsun, log10_radius, &

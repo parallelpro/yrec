@@ -82,8 +82,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       double precision :: species_sum(15)
       integer :: radiative_zone_bounds(13,2)
       logical :: deep_mix_flag(json)
-      save
-
       integer :: num_species
       double precision :: max_mixed_mass
       integer :: zone_idx, copy_idx, clear_idx

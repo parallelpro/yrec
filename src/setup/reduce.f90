@@ -49,8 +49,6 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
 
 
       double precision :: q(4,4)
-      save
-
       double precision :: half_delta_log_mass, pivot, pivotb, div
       integer :: j
 

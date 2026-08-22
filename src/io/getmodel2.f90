@@ -82,9 +82,6 @@ subroutine getmodel2(log_luminosity_lsun, envelope_fit_coeffs, &
 
 
       character*5 :: header_keyword
-
-      save
-
       integer :: envelope_record_number
       integer :: i, j, k
       double precision :: max_luminosity_component

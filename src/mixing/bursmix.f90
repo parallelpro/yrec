@@ -63,8 +63,6 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       integer :: burn_rate_sequence(11)
       double precision :: composition_kept(3,json)
       data burn_rate_sequence/1,2,4,6,8,10,12,14,16,18,20/
-      save
-
 ! equally_spaced_diffusion_coeff/equally_spaced_mass (originally ECOD2/
 ! EM) are scratch arrays for ndifcom's internal equally-spaced-grid
 ! solve; zone_begin/zone_end (originally IBEG/IEND) are scratch

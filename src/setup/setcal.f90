@@ -24,15 +24,6 @@ subroutine setcal(age_scale_factor)
       implicit none
 
       double precision, intent(in) :: age_scale_factor
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       integer :: i, j
 

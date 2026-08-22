@@ -45,15 +45,6 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
       double precision, intent(out) :: frac_c12_alpha(json), &
            frac_be7_electron(json)
       integer, intent(in) :: h_shell_zone_begin
-
-
-
-
-
-
-
-      save
-
       double precision :: max_temp, local_log_density, local_log_temperature
       integer :: max_temp_zone, zone_idx, engeb_zone
       double precision :: hydrogen_fraction, helium_fraction, &

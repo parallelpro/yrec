@@ -74,8 +74,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
       double precision :: system_matrix(56), correction(7)
       equivalence (system_matrix(50),correction(1))
       double precision :: abundance(7), avg_abundance(11)
-      save
-
       double precision :: total_shell_mass
       integer :: species_idx, zone_idx, write_zone_idx
       double precision :: timestep_gyr, timestep_gyr_3, timestep_gyr_4, &

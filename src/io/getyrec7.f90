@@ -83,9 +83,6 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
       character*4 :: header_keyword
 
       double precision :: omega_log10(json)
-
-      save
-
 ! --- locals ---
       integer :: i, j, ix, iz
       integer :: envelope_record_number

@@ -61,8 +61,6 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
       double precision :: half_surface_x, luminosity_end_threshold
       integer :: i
       data luminosity_change_tol,hydrogen_surface_tol/1.0d-5,1.0d-5/
-      save
-
 !ccc h-shell values
       shell_begin = 1
       shell_mid = 1

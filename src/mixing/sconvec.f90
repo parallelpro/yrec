@@ -63,8 +63,6 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
 
 
       double precision :: ion_fraction(3)
-      save
-
       logical :: only_check_core
       integer :: loop_upper_bound, zone_idx, edge_side
       logical :: up_semiconv_flag, down_semiconv_flag

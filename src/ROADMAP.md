@@ -825,3 +825,43 @@ eos 43/162, rotation 40/90, numerics 34/118, kap 36/79):
   structured replacements opportunistically, whenever a file is
   already open for edits, verified by the byte-diff -- never as a
   standalone sweep of hot kernels.
+
+---
+
+STATUS (2026-08-22, the legacy-construct campaign -- measured limits):
+
+User directive: remove all goto/save, batch + regression. Executed
+until the byte-diff drew the real boundary:
+
+- **Wave 1 done (commit 21f5355): all 504 numbered DO loops are
+  block DO** -- loop structure is explicit everywhere; remaining
+  labels are formats, kept terminators, and genuine jump targets.
+- **Save campaign: 65 blanket saves removed** (util, io, net, atm,
+  wind, mixing, setup -- every batch gated byte-identical on BOTH
+  the rotating and non-rotating solar cases), plus
+  -finit-local-zero in the base flags (gated no-op that pins the
+  static-zero first-call semantics for de-saved locals).
+- **The boundary, measured not asserted**: the remaining ~150
+  blanket saves in eos, kap, numerics, rotation, and core are LOAD-
+  BEARING HIDDEN STATE, not style -- three independent lines of
+  evidence: (1) removing eos/kap table caches crashed first-load
+  paths (esac's table-Z memory, the conductive-opacity table);
+  (2) removing rotation/core saves changed the rotating case's
+  physics (carriers found at every bisection level: getw, ccoeft,
+  fpft, and more); (3) numerics' NR-derived kernels carry genuine
+  algorithm state (bsstep's step-size memory, trapzd's refinement
+  sum, lir's index memory, the spline warm-caches), where zeroing
+  changes iteration paths and therefore bytes. Deleting these
+  without state migration produces wrong results, demonstrated
+  empirically (three distinct crash signatures and one runaway
+  826k-line divergence during the bulk attempt).
+- **The honest path to zero saves** is the one already used for
+  table_metal_fraction-style promotions: migrate each carrier into
+  named state (opal_eos%, star%, evo%) file by file under the
+  byte-diff, i.e. the same audited method as phases 4-6 -- a
+  campaign of its own, not a batch.
+- goto statements: 698 remain after wave 1 (unchanged by it --
+  wave 1 removed the *implicit* jumps by making loops explicit).
+  Their elimination is the same file-by-file restructuring economy;
+  the ierr funnels and step_status contract already removed the
+  cross-routine ones.
