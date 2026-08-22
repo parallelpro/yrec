@@ -42,7 +42,7 @@ def transform(path):
     i = 0
     while i < n:
         c = code(lines[i])
-        m = re.match(r"^(\s*)do\s+(\w+)\s*=\s*([\w\d+-]+)\s*,\s*(\w+)\s*$", c)
+        m = re.match(r"^(\s*)do\s+(\w+)\s*=\s*([\w%()+\- ]+?)\s*,\s*(\w+)\s*$", c)
         if not m or lines[i].lstrip().startswith("!"):
             i += 1
             continue

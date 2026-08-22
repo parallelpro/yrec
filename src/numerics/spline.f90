@@ -54,105 +54,70 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
       integer, intent(in) :: spline_case
       double precision :: linear_interp_frac
 
+! (Restructured 2026 from the original arithmetic-IF goto fans at
+! labels 10-100; arithmetic is unchanged.)
       if (.not. (spline_case .eq. 4)) then
 !
 ! CASES 1,2, OR 3.
 !
 ! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE KNOT.
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-!       IF (Z1 - XVALS) 10,20,30
       if (z1 .lt. eval_point) then
-         goto 10
+         if(x_right.ne.z1)then
+         spline=(z2*(x_right-eval_point)**2+w2*2.d0*(eval_point-z1)*(x_right-eval_point) &
+                 +y_right*(eval_point-z1)**2)/(x_right-z1)**2
+         else
+          linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+          spline = y_left + linear_interp_frac*(y_right - y_left)
+         end if
       else if (z1 .eq. eval_point) then
          spline=z2
-         return
       else
-         goto 30
-      end if
-!
-  10  continue
-      if(x_right.ne.z1)then
-      spline=(z2*(x_right-eval_point)**2+w2*2.d0*(eval_point-z1)*(x_right-eval_point) &
-              +y_right*(eval_point-z1)**2)/(x_right-z1)**2
-      else
-       linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
-       spline = y_left + linear_interp_frac*(y_right - y_left)
+         if(z1.ne.x_left)then
+         spline=(y_left*(z1-eval_point)**2+v2*2.d0*(eval_point-x_left)*(z1-eval_point)+ &
+                 z2*(eval_point-x_left)**2)/(z1-x_left)**2
+         else
+          linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+          spline = y_left + linear_interp_frac*(y_right - y_left)
+         end if
       end if
       return
-!
-  20  spline=z2
-      return
-!
-  30  continue
-      if(z1.ne.x_left)then
-      spline=(y_left*(z1-eval_point)**2+v2*2.d0*(eval_point-x_left)*(z1-eval_point)+ &
-              z2*(eval_point-x_left)**2)/(z1-x_left)**2
-      else
-       linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
-       spline = y_left + linear_interp_frac*(y_right - y_left)
       end if
-      return
 !
 ! CASE 4.
 !
 ! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE FIRST KNOT.
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-!   40  IF (Y1 - XVALS) 70,60,50
-      end if
-  40  if (y1 .lt. eval_point) then
-         goto 70
-      else if (y1 .eq. eval_point) then
-         spline=y2
-         return
-      else
-         goto 50
-      end if
-!
-  50  continue
-      if(y1.ne.x_left)then
-      spline=(y_left*(y1-eval_point)**2+v2*2.d0*(eval_point-x_left)*(y1-eval_point)+ &
-              y2*(eval_point-x_left)**2)/(y1-x_left)**2
-      else
-       linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
-       spline = y_left + linear_interp_frac*(y_right - y_left)
-      end if
-      return
-!
-  60  spline=y2
-      return
+      if (y1 .lt. eval_point) then
 !
 ! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE SECOND KNOT.
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-!   70  IF (Z1 - XVALS) 100,90,80
-  70  if (z1 .lt. eval_point) then
-         goto 100
-      else if (z1 .eq. eval_point) then
-         spline=z2
-         return
+         if (z1 .lt. eval_point) then
+            if(x_right.ne.z1)then
+            spline=(z2*(x_right-eval_point)**2+w2*2.d0*(eval_point-z1)*(x_right-eval_point) &
+                    +y_right*(eval_point-z1)**2)/(x_right-z1)**2
+            else
+             linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+             spline = y_left + linear_interp_frac*(y_right - y_left)
+            end if
+         else if (z1 .eq. eval_point) then
+            spline=z2
+         else
+            if(z1.ne.y1)then
+            spline=(y2*(z1-eval_point)**2+e2*2.d0*(eval_point-y1)*(z1-eval_point)+z2*(eval_point &
+                    -y1)**2)/(z1-y1)**2
+            else
+             linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+             spline = y_left + linear_interp_frac*(y_right - y_left)
+            end if
+         end if
+      else if (y1 .eq. eval_point) then
+         spline=y2
       else
-         goto 80
-      end if
-!
-  80  continue
-      if(z1.ne.y1)then
-      spline=(y2*(z1-eval_point)**2+e2*2.d0*(eval_point-y1)*(z1-eval_point)+z2*(eval_point &
-              -y1)**2)/(z1-y1)**2
-      else
-       linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
-       spline = y_left + linear_interp_frac*(y_right - y_left)
-      end if
-      return
-!
-  90  spline=z2
-      return
-!
-  100 continue
-      if(x_right.ne.z1)then
-      spline=(z2*(x_right-eval_point)**2+w2*2.d0*(eval_point-z1)*(x_right-eval_point) &
-              +y_right*(eval_point-z1)**2)/(x_right-z1)**2
-      else
-       linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
-       spline = y_left + linear_interp_frac*(y_right - y_left)
+         if(y1.ne.x_left)then
+         spline=(y_left*(y1-eval_point)**2+v2*2.d0*(eval_point-x_left)*(y1-eval_point)+ &
+                 y2*(eval_point-x_left)**2)/(y1-x_left)**2
+         else
+          linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+          spline = y_left + linear_interp_frac*(y_right - y_left)
+         end if
       end if
       return
 end function spline

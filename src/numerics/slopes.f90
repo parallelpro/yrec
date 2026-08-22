@@ -70,30 +70,33 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
       slope2=y_diff2/(table_x(3)-table_x(2))
       slope2_saved=slope2
 !
+! MAIN LOOP OVER THE INTERIOR POINTS. (Restructured 2026 from the
+! original goto flow at labels 10-50; arithmetic is unchanged.)
+!
 ! IF ONE OF THE PRECEDING SLOPES IS ZERO OR IF THEY HAVE OPPOSITE SIGN,
 ! ASSIGN THE VALUE ZERO TO THE DERIVATIVE AT THE MIDDLE POINT.
-  10  if(slope1.eq.0.d0 .or. slope2.eq.0.d0 .or. (slope1*slope2).le.0.d0) go to 20
-      if (abs(slope1) .gt. abs(slope2)) go to 30
-      go to 40
-  20  first_derivs(idx)= 0.d0
-      go to 50
+      do
+      if (slope1.eq.0.d0 .or. slope2.eq.0.d0 .or. (slope1*slope2).le.0.d0) then
+         first_derivs(idx)= 0.d0
+      else if (abs(slope1) .gt. abs(slope2)) then
 !
 ! CALCULATE THE SLOPE BY EXTENDING THE LINE WITH SLOPE M1.
-  30  x_bar=(y_diff2/slope1) + table_x(idx)
-      x_hat= (x_bar + table_x(next_idx))/2.d0
-      first_derivs(idx)=y_diff2/(x_hat - table_x(idx))
-      go to 50
+         x_bar=(y_diff2/slope1) + table_x(idx)
+         x_hat= (x_bar + table_x(next_idx))/2.d0
+         first_derivs(idx)=y_diff2/(x_hat - table_x(idx))
+      else
 !
 ! CALCULATE THE SLOPE BY EXTENDING THE LINE WITH SLOPE M2.
-  40  x_bar=(-y_diff1/slope2) + table_x(idx)
-      x_hat=(table_x(prev_idx) + x_bar)/2.d0
-      first_derivs(idx)=y_diff1/(table_x(idx) - x_hat)
+         x_bar=(-y_diff1/slope2) + table_x(idx)
+         x_hat=(table_x(prev_idx) + x_bar)/2.d0
+         first_derivs(idx)=y_diff1/(table_x(idx) - x_hat)
+      end if
 !
 ! INCREMENT COUNTERS
-  50  prev_idx=idx
+      prev_idx=idx
       idx=next_idx
       next_idx=next_idx+1
-      if (.not. (idx .gt. num_points_m1)) then
+      if (idx .gt. num_points_m1) exit
 !
 ! CALCULATE THE SLOPES OF THE TWO LINES JOINING THREE CONSECUTIVE DATA
 ! POINTS.
@@ -103,36 +106,35 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
 ! KC 2025-05-31 PREVENT FLOATING POINT EXCEPTION
 !       M2=YDIF2/(XTAB(I1) - XTAB(I))
       call safedivide(y_diff2, (table_x(next_idx) - table_x(idx)), slope2)
-      go to 10
+      end do
 !
 ! CALCULATE THE SLOPE AT THE LAST POINT, XTAB(NUM).
-      end if
-  60  if ((slope1*slope2) .lt. 0.d0) go to 80
-      x_mid= (table_x(num_points_m1)+table_x(num_points))/2.d0
-      y_x_mid=first_derivs(num_points_m1)*(x_mid - table_x(num_points_m1)) + &
-           table_y(num_points_m1)
+      if ((slope1*slope2) .lt. 0.d0) then
+         first_derivs(num_points)=2.d0*slope2
+      else
+         x_mid= (table_x(num_points_m1)+table_x(num_points))/2.d0
+         y_x_mid=first_derivs(num_points_m1)*(x_mid - table_x(num_points_m1)) + &
+              table_y(num_points_m1)
 ! KC 2025-05-31 PREVENT FLOATING POINT EXCEPTION
 !       MTAB(NUM)=(YTAB(NUM)-YXMID)/(XTAB(NUM)-XMID)
-      call safedivide((table_y(num_points)-y_x_mid), &
-           (table_x(num_points)-x_mid), first_derivs(num_points))
-      if (.not. ((first_derivs(num_points)*slope2) .lt. 0.d0)) then
-      go to 90
+         call safedivide((table_y(num_points)-y_x_mid), &
+              (table_x(num_points)-x_mid), first_derivs(num_points))
+         if ((first_derivs(num_points)*slope2) .lt. 0.d0) then
+            first_derivs(num_points)=0.d0
+         end if
       end if
-  70  first_derivs(num_points)=0.d0
-      go to 90
-  80  first_derivs(num_points)=2.d0*slope2
 !
 ! CALCULATE THE SLOPE AT THE FIRST POINT, XTAB(1).
-  90  if((slope1_saved*slope2_saved) .lt. 0.d0) go to 110
+      if ((slope1_saved*slope2_saved) .lt. 0.d0) then
+         first_derivs(1)=2.d0*slope1_saved
+         return
+      end if
       x_mid=(table_x(1) + table_x(2))/2.d0
       y_x_mid=first_derivs(2)*(x_mid - table_x(2)) + table_y(2)
       first_derivs(1)=(y_x_mid - table_y(1))/(x_mid - table_x(1))
-      if (.not. ((first_derivs(1) * slope1_saved) .lt. 0.d0)) then
-      return
+      if ((first_derivs(1) * slope1_saved) .lt. 0.d0) then
+         first_derivs(1)=0.d0
       end if
-  100 first_derivs(1)=0.d0
-      return
-  110 first_derivs(1)=2.d0*slope1_saved
       return
 !
 end subroutine slopes
