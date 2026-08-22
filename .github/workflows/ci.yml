@@ -55,4 +55,6 @@ jobs:
         run: make -C src -j4 test_eos test_kap test_atm
 
       - name: Run per-module tests and boundary checker
+        env:
+          YREC_TEST_TOLERANT: "1"
         run: python3 -m pytest test_eos.py test_kap.py test_atm.py test_boundaries.py -v

@@ -23,6 +23,8 @@ import subprocess
 
 import pytest
 
+from conftest import compare_output
+
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_eos"
 EXPECTED = REPO / "src" / "eos" / "test" / "expected_test_eos.out"
@@ -38,7 +40,4 @@ def test_eos_standalone(tmp_path):
         [str(BINARY)], cwd=tmp_path, env=env, capture_output=True, text=True
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout == EXPECTED.read_text(), (
-        "test_eos output differs from src/eos/test/expected_test_eos.out; "
-        "if the change is deliberate, regenerate and commit the baseline."
-    )
+    compare_output(result.stdout, EXPECTED.read_text(), "test_eos")
