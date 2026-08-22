@@ -568,3 +568,21 @@ stage 3's ierr plumbing and this phase's star_info; the driver-side
 `if (jerr /= 0) stop` sites are the seams. Folds in the
 library-based yrec link and the SAVE cleanup (module state must be
 resettable for re-entrancy).
+
+STATUS (2026-08-22): **phase A (first carve) done.** The entire body
+of `program main` -- controls read (parmin), setup, and the
+Monte-Carlo/run loop with the full evolution driver -- moved verbatim
+into core/run_yrec.f90 as `subroutine run_yrec(ierr)`; main is now a
+ten-line CLI wrapper (`call run_yrec(ierr); if (ierr /= 0) stop 1`).
+The blanket `save` in run_yrec is load-bearing and documented:
+program-unit variables were implicitly static, so the moved locals
+(data statements, rescale bookkeeping) keep exactly their old
+semantics -- and, equally, run_yrec is NOT yet re-entrant; that is
+phase C's job. ierr is wired but always 0 in phase A: the body's own
+stops and the stage-3 driver seams remain, and converting them into
+error returns is phase B. The finer split (read_controls /
+star_setup / evolve_step) deliberately waits for phase B: the setup
+section's locals (table paths, mixture weights) and the evolution
+loop's label structure (15/100/110/200/250) want a controls
+structure ("star_job") to carve against, not another blind
+mechanical cut -- design that belongs with the ierr work.
