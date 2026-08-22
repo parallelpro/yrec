@@ -28,6 +28,8 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
+! the shape integrand passed to numerics' qgauss (phase four, step 2)
+      external func
 
       double precision, intent(in) :: log_density(json), log_radius(json), &
            log_mass(json)
@@ -109,8 +111,9 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
    40    continue
    50    aint = prev_aint + aint1
 ! FIND <G> AND <G-1> ACROSS THE SHELL BY GAUSSIAN QUADRATURE
-         call qgauss(g0, ginv0, sphi, b_coefficient, r0, log_mass, aint, &
-              q, omega_sq, distortion_a, i)
+! (func is passed as the integrand -- 2026, phase four step 2)
+         call qgauss(func, g0, ginv0, sphi, b_coefficient, r0, log_mass, &
+              aint, q, omega_sq, distortion_a, i)
          mean_gravity(i) = g0/sphi
          ginv = dlog10(ginv0)
          f0 = c4pil + 4.0d0*log_radius(i) - ginv

@@ -1732,13 +1732,29 @@ end subroutine trapzd
 ! integral of s, where (g,s) and (g2,s2) are func's outputs at the
 ! two symmetric abscissas about the interval midpoint. r0, hs, aint,
 ! q, w2, a, and i are passed through unchanged to func on each call.
-subroutine qgauss(g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
+subroutine qgauss(integrand, g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
 
       use const_lib
       implicit none
       integer, parameter :: json = 5000
 
-
+! 2026 (phase four, step 2 -- ROADMAP.md): the integrand used to be a
+! hard-coded call to rotation's shape-integrand `func`, the one
+! backwards dependency that kept numerics from being a pure leaf. It
+! is now a procedure dummy; rotation/shape/fpft.f90 passes `func` at
+! the call site. Same argument protocol as before (assumed-size for
+! the two model-shaped arrays, matching the historical implicit
+! interface).
+      interface
+         subroutine integrand(colatitude, local_gravity, area_element, &
+              r0, log_mass, aint, q, w2, a, i)
+            double precision, intent(in) :: colatitude
+            double precision, intent(out) :: local_gravity, area_element
+            double precision, intent(in) :: r0(*), log_mass(*)
+            double precision, intent(in) :: aint, q, w2, a
+            integer, intent(in) :: i
+         end subroutine integrand
+      end interface
 
       double precision, intent(out) :: g0g, ginvg, sphig
       double precision, intent(in) :: b
@@ -1763,8 +1779,8 @@ subroutine qgauss(g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
       sphig = 0.0d0
       do j = 1, 5
        dx = xr*x(j)
-       call func(xm+dx, g, s, r0, hs, aint, q, w2, a, i)
-       call func(xm-dx, g2, s2, r0, hs, aint, q, w2, a, i)
+       call integrand(xm+dx, g, s, r0, hs, aint, q, w2, a, i)
+       call integrand(xm-dx, g2, s2, r0, hs, aint, q, w2, a, i)
        g0g = g0g+w(j)*(g*s+g2*s2)
        ginvg = ginvg+w(j)*(s/g+s2/g2)
        sphig = sphig+w(j)*(s+s2)
