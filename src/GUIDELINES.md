@@ -544,6 +544,33 @@ documented dead code, not an accident, and the project isn't treating
 Verification: full clean build + Stage-0 byte-identical regression
 after the relocations.
 
+**`mixing` needed no facade, only relocation (2026-08-21)**: `mix.f90`
+is already the clean top-level orchestrator (its own header literally
+outlines the 6-step call sequence: `convec` -> rate calc -> `kemcom`
+-> burning -> `sconvec` -> diffusion), and `convec`/`mixcz`'s several
+external callers (`core/main.f90`, `rotation/ovrot.f90`,
+`rotation/getw.f90`, `rotation/seculr.f90`) all do plain, uniform
+calls -- no `eos`-style duplicated dispatch anywhere. `bursmix.f90`,
+`hsubp.f90`, `oversh.f90`, `sconvec.f90` are all genuine
+mixing-domain content (convective-zone boundaries, composition
+homogenization, overshoot/pressure-scale-height, semi-convection,
+burn-mix coupling), correctly filed even where callers span
+`core/`/`rotation/` -- same multi-domain-caller shape as
+`eos_get`/`kap_get`.
+
+Found and relocated `mixcom.f90`/`mixgrid.f90` -> `rotation/` by the
+same test as `wczimp.f90`/`viscos.f90`: both called only from
+`rotation/ndifcom.f90`, zero callers within `mixing/` itself, and
+`mixcom`'s own header states its actual job is "diffusion of
+composition due to **angular momentum transport**" (its original name
+was `DIFCOM`) -- rotation-transport physics using composition-diffusion
+as its numerical mechanism, not convective mixing. `mixgrid.f90` is
+`mixcom`'s dedicated grid-setup helper, tightly coupled to it, moved
+alongside it.
+
+Verification: full clean build + Stage-0 byte-identical regression
+after the relocations.
+
 ## Build mechanics
 
 - Any file introducing `module ... contains` must be added to the
