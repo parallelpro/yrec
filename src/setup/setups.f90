@@ -34,6 +34,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       use star_info_lib, only: star
       use luout_lib
       use const_lib
+      use yale_eos_lib
       implicit none
       integer, intent(out) :: ierr
       integer, parameter :: json = 5000

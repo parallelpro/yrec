@@ -28,6 +28,9 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       use const_lib
       use luout_lib
       use star_info_lib, only: star
+      use opacity_table_lib
+      use yale_eos_lib
+      use scv_eos_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts=63, nps=76

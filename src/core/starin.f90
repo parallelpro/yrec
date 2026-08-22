@@ -115,6 +115,9 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       use const_lib
       use eos_lib
       use kap_lib
+      use opacity_table_lib
+      use yale_eos_lib
+      use scv_eos_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts = 63, nps = 76

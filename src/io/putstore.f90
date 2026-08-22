@@ -33,6 +33,9 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       use star_info_lib, only: star
       use luout_lib
       use const_lib
+      use opacity_table_lib
+      use yale_eos_lib
+      use scv_eos_lib
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts=63, nps=76

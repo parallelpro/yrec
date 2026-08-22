@@ -28,6 +28,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       use star_info_lib, only: star
       use luout_lib
       use const_lib
+      use yale_eos_lib
       implicit none
       integer, parameter :: json = 5000
 

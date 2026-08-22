@@ -39,6 +39,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       use const_lib
       use star_info_lib, only: star
       use luout_lib
+      use scv_eos_lib
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -308,6 +309,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       use star_info_lib, only: star
       use luout_lib
       use const_lib
+      use scv_eos_lib
       implicit none
 
       integer, parameter :: nts = 63, nps = 76

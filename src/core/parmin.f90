@@ -40,6 +40,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use const_lib
       use luout_lib
       use intpar_lib
+      use atm_table_lib
+      use opacity_table_lib
+      use yale_eos_lib
+      use scv_eos_lib
       implicit none
 
 ! PARAMETERS for Allard model surface pressures (n_allard_teff/
@@ -2365,6 +2369,10 @@ end subroutine parmin
 ! that environment variable is not set).
 subroutine expand_value(path_value)
 
+      use atm_table_lib
+      use opacity_table_lib
+      use yale_eos_lib
+      use scv_eos_lib
       implicit none
 
       integer, parameter :: n_env_vars = 3  ! Number of possible env. vars.

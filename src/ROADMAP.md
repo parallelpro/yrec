@@ -700,3 +700,43 @@ job, evo, and true constants -- physics domains opaque behind their
 facades, and phase C's reset implementable by enumerating those
 roots. Verification discipline unchanged (the phase-five codegen
 lesson applies doubly here: eqstat2's hot loops read env_comp).
+
+STATUS (2026-08-22): **PHASE 6 COMPLETE.**
+- Step 1 done (commit 7594654): nine model-state modules folded into
+  star_info; 57 files; module-library Makefile prerequisites updated
+  to match their actual star_info use (kap_lib raced star_info.mod
+  under -j4 until then).
+- Step 2 done by classification: envstruct/atmstruct recorded as
+  atm-domain state, peers of atm_table_lib; no move needed.
+- Step 3 done: const_lib is now a compatibility umbrella
+  (use-and-reexport of the two new homes; every existing
+  `use const_lib` unchanged):
+    * const/phys_const_lib.f90 -- const1/2/3 physical constants and
+      the version string (cmixl's per-kind-card caveat documented);
+    * const/controls_lib.f90 -- every namelist-target block (~60
+      former COMMONs) with original commentary, documented as
+      read-only after read_controls, with the mixed-in stragglers
+      (zramp's nk run index, computed members, working scalars)
+      listed as the remaining member-level cleanup;
+    * evictions to owners, NOT re-exported (users reference the
+      domain modules directly): Kurucz/Castelli surface-pressure
+      tables -> atm_table_lib; the LAOL pure-Z table block ->
+      opacity_table_lib; the SCV EOS tables -> new
+      state/scv_eos_lib.f90; the Debye-Huckel working members ->
+      yale_eos_lib. Control flags that rode along in those blocks
+      (use_pure_z_table, use_scv_eos, use_debye_huckel_correction)
+      currently live with their tables -- functional, documented
+      stragglers for the member-level pass.
+  Execution facts: the model-file I/O routines (getyrec7/getmodel2/
+  putmodel2) have DUMMY ARGUMENTS named after control flags
+  (use_pure_z_table...); a blanket `use` of the new homes collides
+  (gfortran rejects a dummy redeclaring a use-associated name), so
+  those files keep only-clause uses -- the reason they had
+  only-clause const uses all along. An only-clause through the
+  umbrella (use const_lib, only: x) still works, so re-export is
+  fully transparent.
+End state reached: star / job / evo / phys_const as the four roots,
+controls_lib as the job's control surface behind the const_lib
+umbrella, physics tables in domain state. Remaining (recorded, not
+phase-6): member-level eviction of the documented stragglers, and
+per-file migration off the umbrella.

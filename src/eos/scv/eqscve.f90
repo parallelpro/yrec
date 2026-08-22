@@ -26,6 +26,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       use const_lib
       use star_info_lib, only: star
       use numerics_lib
+      use scv_eos_lib
       implicit none
 
       integer, parameter :: nts = 63, nps = 76

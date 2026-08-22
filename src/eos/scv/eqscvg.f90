@@ -21,6 +21,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
       use const_lib
       use envelope_comp_lib
       use numerics_lib
+      use scv_eos_lib
       implicit none
 
       integer, parameter :: nts = 63, nps = 76

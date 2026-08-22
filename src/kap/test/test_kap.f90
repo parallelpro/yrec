@@ -16,6 +16,8 @@ program test_kap
       use luout_lib
       use star_info_lib, only: star
       use kap_lib
+      use opacity_table_lib
+      use scv_eos_lib
       implicit none
 
       character(len=256) :: yrec_input

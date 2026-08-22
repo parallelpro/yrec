@@ -23,6 +23,8 @@ program test_atm
       use luout_lib
       use atm_table_lib
       use atm_lib
+      use opacity_table_lib
+      use scv_eos_lib
       implicit none
 
       character(len=256) :: yrec_input

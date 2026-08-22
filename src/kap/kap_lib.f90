@@ -15,6 +15,7 @@
 ! hosting a real callable subroutine." kap_get's body, dispatch logic,
 ! and argument list are otherwise unchanged from getopac.
 module kap_lib
+      use opacity_table_lib
       implicit none
 contains
 
@@ -28,6 +29,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
       use const_lib
       use star_info_lib, only: star
       use luout_lib
+      use opacity_table_lib
       implicit none
 
       double precision, intent(in) :: log10_density, log10_temperature, &
@@ -359,6 +361,7 @@ subroutine kap_init(envelope_hydrogen_fraction, laol_work_array, &
      opal92_table_path, opal92_table2_path, pure_z_table_path, &
      alex95_table_paths, ierr)
 
+      use opacity_table_lib
       implicit none
 
       double precision, intent(in) :: envelope_hydrogen_fraction
@@ -403,6 +406,7 @@ end subroutine kap_init
 ! legitimate lifecycle operation that simply had no facade name.
 subroutine kap_update_surface_tables(hydrogen_fraction)
 
+      use opacity_table_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction

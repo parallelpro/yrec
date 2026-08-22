@@ -16,6 +16,7 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
       use opacity_table_lib
       use const_lib
       use luout_lib
+      use yale_eos_lib
       implicit none
       integer, intent(out) :: ierr
       double precision, intent(inout) :: laol_work_array(12)

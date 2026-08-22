@@ -17,6 +17,7 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
      alex95_table_paths, ierr)
 
       use const_lib
+      use opacity_table_lib
       implicit none
 
       double precision, intent(in) :: envelope_hydrogen_fraction

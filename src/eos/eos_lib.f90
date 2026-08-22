@@ -47,6 +47,8 @@
 ! 1) it goes through eos_get_gamma1 below instead, which preserves
 ! that same deliberate dispatch inside the facade boundary.
 module eos_lib
+      use scv_eos_lib
+      use yale_eos_lib
       implicit none
 contains
 
@@ -61,6 +63,7 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
 
       use const_lib
+      use scv_eos_lib
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -180,6 +183,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       use yale_eos_lib
       use luout_lib
       use const_lib
+      use scv_eos_lib
       implicit none
       integer, parameter :: nts = 63
 
@@ -307,6 +311,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
 
       use opal_eos_lib
       use const_lib
+      use scv_eos_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, metal_fraction, &

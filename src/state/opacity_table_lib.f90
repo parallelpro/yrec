@@ -205,4 +205,23 @@ module opacity_table_lib
 
       type(opacity_table_state), public :: opacity_table
 
+
+! 2026 (phase six, step 3 -- ROADMAP.md): evicted here from
+! const_lib, where this table/working data had landed during the
+! phase-one COMMON conversion; it belongs with this domain's state.
+! former common/nwlaol/: the LAOL pure-Z opacity table (olaol/oxa/ot/
+! orho/tollaol/iolaol/numofxyz/numrho/numt/llaol/iopurez) is spelled
+! identically to its canonical name everywhere -- use-associated
+! directly. tollaol/llaol's DATA defaults moved here from
+! core/parmin.f90 since DATA can no longer target use-associated
+! entities. use_pure_z_table (originally lpurez) is a NAMELIST value
+! with a different canonical spelling, kept local in core/parmin.f90
+! and copy-assigned.
+      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104)
+      double precision :: tollaol = 10.0d0
+      integer :: iolaol, numofxyz, numrho, numt, iopurez
+      logical :: llaol = .false.
+      logical :: use_pure_z_table
+
+
 end module opacity_table_lib

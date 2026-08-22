@@ -23,6 +23,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       use envstruct_lib
       use star_info_lib, only: star
       use const_lib
+      use yale_eos_lib
       implicit none
       integer, parameter :: json = 5000
 

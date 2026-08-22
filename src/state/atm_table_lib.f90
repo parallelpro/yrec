@@ -67,4 +67,26 @@ module atm_table_lib
 
       type(atm_table_state), public :: atm_table
 
+
+! 2026 (phase six, step 3 -- ROADMAP.md): evicted here from
+! const_lib, where this table/working data had landed during the
+! phase-one COMMON conversion; it belongs with this domain's state.
+! former common/atmos2/: the Kurucz surface-pressure table
+! (kurucz_log10_pressure_table/kurucz_teff_table/kurucz_logg_table/
+! kurucz_table_z, originally atmpl/atmtl/atmgl/atmz) and
+! atm_table_file_unit (originally ioatm) are spelled identically to
+! their canonical names -- use-associated directly.
+      double precision :: kurucz_log10_pressure_table(57,11), &
+           kurucz_teff_table(57), kurucz_logg_table(11), kurucz_table_z
+      integer :: atm_table_file_unit
+
+! former common/atmos2c/: the Kurucz/Castelli surface-pressure table
+! (kurucz_castelli_log10_pressure_table/kurucz_castelli_teff_table/
+! kurucz_castelli_logg_table, originally atmplc/atmtlc/atmglc) is
+! spelled identically to its canonical name everywhere -- use-associated
+! directly. Unused in core/parmin.f90.
+      double precision :: kurucz_castelli_log10_pressure_table(76,11), &
+           kurucz_castelli_teff_table(76), kurucz_castelli_logg_table(11)
+
+
 end module atm_table_lib
