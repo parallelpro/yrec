@@ -97,7 +97,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
          mid_idx = (hi_idx+lo_idx)/2
          if (t6_temperature.eq.opal_eos%t6_list(1,mid_idx)) then
             lo_idx = mid_idx
-            go to 14
+            exit
          end if
          if (t6_temperature.le.opal_eos%t6_list(1,mid_idx)) then
             hi_idx = mid_idx
@@ -105,7 +105,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
             lo_idx = mid_idx
          end if
    end do
-   14 t6_bisect_idx = lo_idx
+      t6_bisect_idx = lo_idx
 
       pressure_max = opal_eos%eos_table(x_bisect_idx,1,t6_bisect_idx, &
            density_index_edge(t6_bisect_idx))*t6_temperature* &
@@ -167,7 +167,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       end if
 
       refine_count = 0
-    1 continue
+      refine: do
       refine_count = refine_count + 1
       density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
            (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
@@ -190,7 +190,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       if (pressure_trial3.gt.pressure_no_rad) then
          density_trial2 = density_trial3
          pressure_trial2 = pressure_trial3
-         if (refine_count.lt.11) go to 1
+         if (refine_count.lt.11) cycle refine
 !        WRITE(ISHORT,'("NO CONVERGENCE AFTER 10 TRIES")')
          continue
          rhoofp = -999.0d0
@@ -200,7 +200,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
-         if (refine_count.lt.11) go to 1
+         if (refine_count.lt.11) cycle refine
 !        WRITE(ISHORT,'("NO CONVERGENCE AFTER 10 TRIES")')
          continue
          rhoofp = -999.0d0
@@ -208,6 +208,7 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
          return
 !        STOP
       end if
+      end do refine
   999 continue
       rhoofp = -999.0d0
 !      WRITE(ISHORT,'("FAIL TO FIND RHO")')

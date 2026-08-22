@@ -102,7 +102,7 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
 !  ZONE ABOVE THE LAST NON-ZERO V.
          unstable_region_active = .false.
          search_start = zone_min
-   60    continue
+         region_loop: do
          unstable_zone_found = .false.
          do zone_idx = search_start,zone_max
             if (velocity(zone_idx).gt.0.0d0) then
@@ -139,9 +139,9 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
 !  SKIP IF THIS OCCURS.
          if (two_zone_region) then
             if (search_start.le.zone_max) then
-               goto 60
+               cycle region_loop
             else
-               goto 90
+               exit region_loop
             end if
          end if
 !  PERFORM COMPOSITION DIFFUSION.
@@ -153,9 +153,11 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end)
 !  RETURN FOR NEXT REGION IF APPLICABLE
-         if (search_start.le.zone_max) goto 60
+         if (.not. (search_start.le.zone_max)) exit region_loop
+         else
+         exit region_loop
          end if
-   90    continue
+         end do region_loop
       end if
       return
 end subroutine ndifcom

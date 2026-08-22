@@ -91,11 +91,10 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
                     then
                   num_varying_species = num_varying_species + 1
                   varying_species_id(num_varying_species) = j_idx
-                  goto 20
+                  exit
                end if
             end do
          end if
-   20    continue
       end do
       if (.not. (num_varying_species.eq.0)) then
 ! NOW SOLVE FOR DIFFUSION OF ALL SPECIES THAT VARY OVER THE
@@ -144,11 +143,10 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
             do zone_idx = zone_begin-1, 1, -1
                if (.not.convective_flag(zone_idx)) then
                   i0 = zone_idx + 1
-                  goto 90
+                  exit
                end if
             end do
-            i0 = 1
-   90       continue
+            if (zone_idx .lt. 1) i0 = 1
          else
             i0 = zone_begin
          end if
@@ -157,11 +155,10 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
             do zone_idx = zone_end+1, num_zones
                if (.not.convective_flag(zone_idx)) then
                   i1 = zone_idx - 1
-                  goto 97
+                  exit
                end if
             end do
-            i1 = num_zones
-   97       continue
+            if (zone_idx .gt. num_zones) i1 = num_zones
          end if
          dcomp2 = 0.0d0
 ! COMPUTE SUM OF SPECIES MASS

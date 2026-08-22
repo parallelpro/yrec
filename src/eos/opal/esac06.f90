@@ -183,7 +183,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
          mid_idx = (hi_idx+lo_idx)/2
          if (density_value.eq.opal_eos%density_grid_06(mid_idx)) then
             hi_idx = mid_idx
-            go to 13
+            exit
          end if
          if (density_value.le.opal_eos%density_grid_06(mid_idx)) then
             hi_idx = mid_idx
@@ -191,7 +191,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
             lo_idx = mid_idx
          end if
    end do
-   13 result_idx = hi_idx
+      result_idx = hi_idx
       opal_eos%density_index_1_06 = result_idx - 2
       opal_eos%density_index_2_06 = result_idx - 1
       opal_eos%density_index_3_06 = result_idx
@@ -205,7 +205,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
          mid_idx = (hi_idx+lo_idx)/2
          if (t6_temperature.eq.opal_eos%t6_list_06(1,mid_idx)) then
             lo_idx = mid_idx
-            go to 14
+            exit
          end if
          if (t6_temperature.le.opal_eos%t6_list_06(1,mid_idx)) then
             hi_idx = mid_idx
@@ -213,7 +213,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
             lo_idx = mid_idx
          end if
    end do
-   14 result_idx = lo_idx
+      result_idx = lo_idx
       opal_eos%t6_index_1_06 = result_idx - 2
       opal_eos%t6_index_2_06 = result_idx - 1
       opal_eos%t6_index_3_06 = result_idx
@@ -276,14 +276,13 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
             opal_eos%density_index_1_06 = opal_eos%density_index_3_06 - 3
             opal_eos%density_index_2_06 = opal_eos%density_index_1_06 + 1
             opal_eos%density_index_3_06 = opal_eos%density_index_2_06 + 1
-            go to 15
          else
             write(short_file_unit,*) routine_id, "T6/log rho in empty region of table (65)"
             write(short_file_unit,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, &
             t6_temperature, density
             return 1
          end if
-      end if
+      else
       if (table_sum_3x4.lt.1.0d+30) opal_eos%t6_interp_order_06 = 3
       if (table_sum_4x4.lt.1.0d+30) opal_eos%density_interp_order_06 = 3
 
@@ -295,7 +294,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
          opal_eos%t6_interp_order_06 = 2
       end if
 
-   15 continue
+      end if
       do eos_var_idx = 1, deriv_order
       do x_loop_index_06 = opal_eos%x_index_lo_06, x_index_hi
 

@@ -157,7 +157,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY OVERSHOOT.
       if (.not. (num_mixed_zones.eq.1)) then
       j_idx = 1
-   85 continue
+      merge_scan: do
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
       if (mixed_zone_bounds(j_idx,2).ge.mixed_zone_bounds(j_idx+1,1)) then
 !  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
@@ -177,16 +177,17 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
          end do
          num_mixed_zones = num_mixed_zones - 1
          if (j_idx.le.num_mixed_zones-1) then
-            goto 85
+            cycle merge_scan
          else
-            goto 100
+            exit merge_scan
          end if
       end if
       j_idx = j_idx + 1
-      if (j_idx.le.num_mixed_zones-1) goto 85
+      if (.not. (j_idx.le.num_mixed_zones-1)) exit merge_scan
+      end do merge_scan
       end if
       end if
-  100 continue
+
 ! NOW DETERMINE THE NUMBER OF RADIATIVE REGIONS.
 ! CHECK FOR A RADIATIVE REGION BELOW THE FIRST CONVECTION ZONE.
       if (mixed_zone_bounds(1,1).gt.1) then

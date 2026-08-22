@@ -459,9 +459,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
       if (diffuse_helium_active) then
+      settling: do
          if (star%composition(1,1).lt.hydrogen_diffusion_floor) then
             diffuse_helium_active = .false.
-            goto 170
+            exit settling
          end if
          total_mass_unlogged = exp(ln10*star%log_total_mass)
          do zone_idx = 1, star%num_zones
@@ -481,7 +482,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             write(short_file_unit,911)
 ! DBG 2/92 CHANGED STOP TO JUST A WARNING MESSAGE, EXECUTION CONTINUES
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL')
-            goto 170
+            exit settling
          end if
          do search_idx = envelope_cz_edge, 1, -1
             if (star%composition(2,search_idx).gt.helium_diffusion_min) exit
@@ -489,7 +490,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
          if (search_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
-         goto 170
+         exit settling
          end if
   150    continue
 !  FM IS THE MASS FRACTION ABOVE THE OUTER POINT.
@@ -521,7 +522,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             end if
   160    continue
          end do
-  170    continue
+      exit settling
+      end do settling
       end if
 ! RENORMALIZE COMPOSITION TO GUARD AGAINST ANOMALIES (I.E. SMALL NEGATIVE
 ! ABUNDANCES...).

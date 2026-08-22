@@ -92,7 +92,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          mid_idx = (hi_idx+lo_idx)/2
          if (t6_temperature.eq.opal_eos%t6_list_06(1,mid_idx)) then
             lo_idx = mid_idx
-            go to 14
+            exit
          end if
          if (t6_temperature.le.opal_eos%t6_list_06(1,mid_idx)) then
             hi_idx = mid_idx
@@ -100,7 +100,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
             lo_idx = mid_idx
          end if
    end do
-   14 t6_bisect_idx = lo_idx
+      t6_bisect_idx = lo_idx
 
       pressure_max = opal_eos%eos_table_06(x_bisect_idx,1,t6_bisect_idx, &
            opal_eos%density_index_edge_06(t6_bisect_idx))*t6_temperature* &
@@ -158,7 +158,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       end if
 
       refine_count = 0
-    1 continue
+      refine: do
       refine_count = refine_count + 1
       density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
            (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)  ! KC 2025-05-31
@@ -181,7 +181,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       if (pressure_trial3.gt.pressure_no_rad) then
          density_trial2 = density_trial3
          pressure_trial2 = pressure_trial3
-         if (refine_count.lt.11) go to 1
+         if (refine_count.lt.11) cycle refine
 !        write (ISHORT,'("Rhoofp06: No convergence after 10 tries")')
          continue
          rhoofp06 = -999.0d0
@@ -191,7 +191,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
-         if (refine_count.lt.11) go to 1
+         if (refine_count.lt.11) cycle refine
 !        write (ISHORT,'("RHOOFP06: No convergence after 10 tries")')
          continue
          rhoofp06 = -999.0d0
@@ -199,6 +199,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          return
 !        stop
       end if
+      end do refine
 
   999 continue
       rhoofp06 = -999.0d0
