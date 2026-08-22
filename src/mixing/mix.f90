@@ -28,11 +28,10 @@
 ! The rate subroutine called by mix is a stripped-down version of engeb
 ! (called nrate) which has no derivatives or energy yields. it does
 ! contain neutrino fluxes for solar neutrino calculations.
-subroutine mix(timestep, composition, log_density, log_luminosity, &
-     log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
-     log_total_mass, log_temperature, iteration_level, convective_flag, &
-     num_zones, timestep_years, core_cz_edge, envelope_cz_edge, &
-     mixed_zone_bounds, mixed_zone_bounds_no_overshoot, log_teff, ierr)
+subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
+     timestep_years, core_cz_edge, envelope_cz_edge, &
+     mixed_zone_bounds_no_overshoot, log_teff, ierr)
+      use star_info_lib, only: star
 
       use rotdiff_lib
       use run_diag_lib
@@ -46,21 +45,11 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
       integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
-      double precision, intent(inout) :: composition(15,json)
-      double precision, intent(inout) :: log_density(json)
-      double precision, intent(in) :: log_luminosity(json)
-      double precision, intent(inout) :: log_pressure(json), log_radius(json)
-      double precision, intent(in) :: log_mass(json)
-      double precision, intent(inout) :: enclosed_mass(json)
-      double precision, intent(in) :: shell_mass(json)
       double precision, intent(in) :: log_total_mass
-      double precision, intent(inout) :: log_temperature(json)
       integer, intent(in) :: iteration_level
-      logical, intent(inout) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(out) :: timestep_years
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
-      integer, intent(inout) :: mixed_zone_bounds(12,2)
       integer, intent(inout) :: mixed_zone_bounds_no_overshoot(12,2)
       double precision, intent(in) :: log_teff
 
@@ -141,9 +130,9 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 ! MIX FROM CENTER TO A FIXED MASS FRACTION
          max_mixed_mass = dpenv*exp(ln10*log_total_mass)
          do zone_idx = 1, num_zones
-            if (enclosed_mass(zone_idx).gt.max_mixed_mass) then
+            if (star%enclosed_mass(zone_idx).gt.max_mixed_mass) then
                do copy_idx = zone_idx, num_zones
-                  deep_mix_flag(copy_idx) = convective_flag(copy_idx)
+                  deep_mix_flag(copy_idx) = star%convective_flag(copy_idx)
                end do
                goto 5
             else
@@ -174,48 +163,48 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
     5    continue
       else
          do copy_idx = 1, num_zones
-            deep_mix_flag(copy_idx) = convective_flag(copy_idx)
+            deep_mix_flag(copy_idx) = star%convective_flag(copy_idx)
          end do
       end if
 
-      call convec(composition, log_density, log_pressure, log_radius, &
-           log_mass, log_temperature, deep_mix_flag, num_zones, &
-           radiative_zone_bounds, mixed_zone_bounds, &
+      call convec(star%composition, star%log_density, star%log_pressure, star%log_radius, &
+           star%log_mass, star%log_temperature, deep_mix_flag, num_zones, &
+           radiative_zone_bounds, star%mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
            num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot)
 
 ! FIND BURNING RATES (HR1- HR13,HF1,HF2).
       if (use_mass_accretion .and. mass_accretion_rate.gt.0.0d0) then
-         deuterium_test = max(composition(12,num_zones), &
+         deuterium_test = max(star%composition(12,num_zones), &
               accreted_composition(12))
       else
-         deuterium_test = composition(12,num_zones)
+         deuterium_test = star%composition(12,num_zones)
       end if
       do 10 zone_idx = 1, num_zones
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-         if (log_temperature(zone_idx).le.tcut(1)) goto 20
+         if (star%log_temperature(zone_idx).le.tcut(1)) goto 20
 ! SCALAR VARIABLES ARE USED IN THE CALLS TO THE ENERGY GENERATION ROUTINES.
 ! SET SCALARS EQUAL TO THE GLOBAL ARRAYS FOR THE VARIABLES OF INTEREST.
 ! DL-LOG(DENSITY),TL-LOG TEMPERATURE,X***-MASS FRACTION OF SPECIES ***,
 ! WITH HYDROGEN,HELIUM,AND METALS DENOTED AS USUAL BY X,Y,Z.
-         log_density_zone = log_density(zone_idx)
-         log_temperature_zone = log_temperature(zone_idx)
-         hydrogen_fraction = composition(1,zone_idx)
-         helium_fraction = composition(2,zone_idx)
-         metal_fraction = composition(3,zone_idx)
-         he3_fraction = composition(4,zone_idx)
-         c12_fraction = composition(5,zone_idx)
-         c13_fraction = composition(6,zone_idx)
-         n14_fraction = composition(7,zone_idx)
-         n15_fraction = composition(8,zone_idx)
-         o16_fraction = composition(9,zone_idx)
-         o17_fraction = composition(10,zone_idx)
-         o18_fraction = composition(11,zone_idx)
-         deuterium_fraction = composition(12,zone_idx)
-         li6_fraction = composition(13,zone_idx)
-         li7_fraction = composition(14,zone_idx)
-         be9_fraction = composition(15,zone_idx)
+         log_density_zone = star%log_density(zone_idx)
+         log_temperature_zone = star%log_temperature(zone_idx)
+         hydrogen_fraction = star%composition(1,zone_idx)
+         helium_fraction = star%composition(2,zone_idx)
+         metal_fraction = star%composition(3,zone_idx)
+         he3_fraction = star%composition(4,zone_idx)
+         c12_fraction = star%composition(5,zone_idx)
+         c13_fraction = star%composition(6,zone_idx)
+         n14_fraction = star%composition(7,zone_idx)
+         n15_fraction = star%composition(8,zone_idx)
+         o16_fraction = star%composition(9,zone_idx)
+         o17_fraction = star%composition(10,zone_idx)
+         o18_fraction = star%composition(11,zone_idx)
+         deuterium_fraction = star%composition(12,zone_idx)
+         li6_fraction = star%composition(13,zone_idx)
+         li7_fraction = star%composition(14,zone_idx)
+         be9_fraction = star%composition(15,zone_idx)
 ! SETUP NUCLEAR ENERGY TERMS
          call rates(log_density_zone, log_temperature_zone, &
               hydrogen_fraction, helium_fraction, he3_fraction, &
@@ -265,14 +254,14 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
          do 30 inner_zone_idx = radiative_zone_bounds(radiative_region_idx,1), &
               radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (log_temperature(inner_zone_idx).le.tcut(1)) goto 45
+            if (star%log_temperature(inner_zone_idx).le.tcut(1)) goto 45
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
-            call kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
+            call kemcom(star%log_temperature, zone_begin, zone_end, rate_pp, &
                  rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
                  rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
                  rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
-                 shell_mass, composition, timestep_years, ierr)
+                 star%shell_mass, star%composition, timestep_years, ierr)
             if (ierr /= 0) return
    30    continue
    40 continue
@@ -282,13 +271,13 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
 !
       do 50 mixed_zone_idx = 1, num_mixed_zones
-         zone_begin = mixed_zone_bounds(mixed_zone_idx,1)
-         zone_end = mixed_zone_bounds(mixed_zone_idx,2)
-         call kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
+         zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
+         zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
+         call kemcom(star%log_temperature, zone_begin, zone_end, rate_pp, &
               rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
               rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
               rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
-              shell_mass, composition, timestep_years, ierr)
+              star%shell_mass, star%composition, timestep_years, ierr)
          if (ierr /= 0) return
    50 continue
       do zone_idx = 1, num_zones
@@ -329,28 +318,28 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (log_temperature(inner_zone_idx).le.tcut(1)) goto 60
+               if (star%log_temperature(inner_zone_idx).le.tcut(1)) goto 60
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call eqburn(rate_pp, rate_he3_he3, rate_he3_he4, &
                     rate_c12_p, rate_c13_p, rate_n14_p, rate_o16_p, &
-                    rate_c12_alpha, rate_triple_alpha, shell_mass, &
-                    log_temperature, zone_begin, zone_end, dc_dt, do_dt, &
+                    rate_c12_alpha, rate_triple_alpha, star%shell_mass, &
+                    star%log_temperature, zone_begin, zone_end, dc_dt, do_dt, &
                     dx_dt, dy_dt, c12_fraction, o16_fraction, &
                     hydrogen_fraction, metal_fraction)
 !  USE THE EXPLICIT HYDROGEN BURNING RATE.
                if (dx_dt.ne.0.0d0) then
-                  composition(1,inner_zone_idx) = hydrogen_fraction + &
+                  star%composition(1,inner_zone_idx) = hydrogen_fraction + &
                        dx_dt*dt_gyr
                end if
 !  USE THE HELIUM BURNING RATE FROM EQBURN AND THE CARBON,ALPHA
 !  BURNING RATE
                if (dy_dt.ne.0.0d0) then
-                  composition(3,inner_zone_idx) = metal_fraction - &
+                  star%composition(3,inner_zone_idx) = metal_fraction - &
                        dy_dt*dt_gyr
-                  composition(5,inner_zone_idx) = c12_fraction + &
+                  star%composition(5,inner_zone_idx) = c12_fraction + &
                        dc_dt*dt_gyr
-                  composition(9,inner_zone_idx) = o16_fraction + &
+                  star%composition(9,inner_zone_idx) = o16_fraction + &
                        do_dt*dt_gyr
                end if
             end do
@@ -361,11 +350,11 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
 !
          do mixed_zone_idx = 1, num_mixed_zones
-            zone_begin = mixed_zone_bounds(mixed_zone_idx,1)
-            zone_end = mixed_zone_bounds(mixed_zone_idx,2)
+            zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
+            zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
             call eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
                  rate_c13_p, rate_n14_p, rate_o16_p, rate_c12_alpha, &
-                 rate_triple_alpha, shell_mass, log_temperature, &
+                 rate_triple_alpha, star%shell_mass, star%log_temperature, &
                  zone_begin, zone_end, dc_dt, do_dt, dx_dt, dy_dt, &
                  c12_fraction, o16_fraction, hydrogen_fraction, &
                  metal_fraction)
@@ -373,7 +362,7 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
             if (dx_dt.ne.0.0d0) then
                hydrogen_fraction = hydrogen_fraction + dx_dt*dt_gyr
                do zone_idx = zone_begin, zone_end
-                  composition(1,zone_idx) = hydrogen_fraction
+                  star%composition(1,zone_idx) = hydrogen_fraction
                end do
             end if
 !  USE THE HELIUM BURNING RATE FROM EQBURN AND THE CARBON,ALPHA
@@ -383,9 +372,9 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
                c12_fraction = c12_fraction + dc_dt*dt_gyr
                o16_fraction = o16_fraction + do_dt*dt_gyr
                do zone_idx = zone_begin, zone_end
-                  composition(3,zone_idx) = metal_fraction
-                  composition(5,zone_idx) = c12_fraction
-                  composition(9,zone_idx) = o16_fraction
+                  star%composition(3,zone_idx) = metal_fraction
+                  star%composition(5,zone_idx) = c12_fraction
+                  star%composition(9,zone_idx) = o16_fraction
                end do
             end if
          end do
@@ -395,9 +384,9 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 !
       if (lsemic) then
          if (iteration_level.gt.1) &
-              call sconvec(timestep, composition, log_density, &
-              log_luminosity, log_pressure, log_radius, log_mass, &
-              log_temperature, num_zones, mixed_zone_bounds, &
+              call sconvec(timestep, star%composition, star%log_density, &
+              star%luminosity_lsun, star%log_pressure, star%log_radius, star%log_mass, &
+              star%log_temperature, num_zones, star%mixed_zone_bounds, &
               num_mixed_zones, log_teff, ierr)
               if (ierr /= 0) return
       end if
@@ -412,8 +401,8 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 ! IN THE JTH CONVECTION ZONE.
          do 100 mixed_zone_idx = 1, num_mixed_zones
 ! I1 AND I2 ARE THE FIRST AND LAST CONVECTIVE SHELLS IN THE GIVEN REGION.
-            mix_start = mixed_zone_bounds(mixed_zone_idx,1)
-            mix_end = mixed_zone_bounds(mixed_zone_idx,2)
+            mix_start = star%mixed_zone_bounds(mixed_zone_idx,1)
+            mix_end = star%mixed_zone_bounds(mixed_zone_idx,2)
             if (mix_start.ne.1 .and. mix_start.ge.mix_end) goto 100
 ! INITIALIZE SUMS.
             weight_sum = 0.0d0
@@ -423,10 +412,10 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 !  ADD UP THE TOTAL MASS OF EACH SPECIES IN THE CONVECTIVE REGION.
 !  (HS2 IS THE MASS CONTAINED WITHIN A SHELL IN GRAMS).
             do 65 shell_idx = mix_start, mix_end
-               weight_sum = weight_sum + shell_mass(shell_idx)
+               weight_sum = weight_sum + star%shell_mass(shell_idx)
                do 61 species_idx = 1, num_species
                   species_sum(species_idx) = species_sum(species_idx) + &
-                       composition(species_idx,shell_idx)*shell_mass(shell_idx)
+                       star%composition(species_idx,shell_idx)*star%shell_mass(shell_idx)
    61          continue
    65       continue
 !  DIVIDE BY THE TOTAL MASS TO FIND THE MEAN MASS FRACTION IN THE REGION.
@@ -436,14 +425,14 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 !  APPLY THE MEAN MASS FRACTION OF ALL SPECIES THROUGHOUT THE CZ.
             do 90 shell_idx = mix_start, mix_end
                do 80 species_idx = 1, num_species
-                  composition(species_idx,shell_idx) = species_sum(species_idx)
+                  star%composition(species_idx,shell_idx) = species_sum(species_idx)
    80          continue
    90       continue
   100    continue
       end if
 !  WRITE OUT THE LOCATIONS OF MIXED REGIONS.
       if (num_mixed_zones.ge.1) then
-         write(short_file_unit,110) ((mixed_zone_bounds(zone_idx,inner_zone_idx), &
+         write(short_file_unit,110) ((star%mixed_zone_bounds(zone_idx,inner_zone_idx), &
               inner_zone_idx=1,2),zone_idx=1,num_mixed_zones)
   110    format(' ZONES MIXED IN ORDER--',12('(',i5,',',i5,') ') )
       end if
@@ -456,15 +445,15 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
       if (diffuse_helium_active) then
-         if (composition(1,1).lt.hydrogen_diffusion_floor) then
+         if (star%composition(1,1).lt.hydrogen_diffusion_floor) then
             diffuse_helium_active = .false.
             goto 170
          end if
          total_mass_unlogged = exp(ln10*log_total_mass)
          do 130 zone_idx = 1, num_zones
-            dlnp_dr(zone_idx) = -exp(ln10*(log_density(zone_idx)+cgl+ &
-                 log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
-                 log_pressure(zone_idx)))
+            dlnp_dr(zone_idx) = -exp(ln10*(star%log_density(zone_idx)+cgl+ &
+                 star%log_mass(zone_idx)-2.0d0*star%log_radius(zone_idx)- &
+                 star%log_pressure(zone_idx)))
   130    continue
 ! MHP 6/90 CHANGE ADDED : THE TIMESTEP FOR SETTLING IS RESTRICTED TO
 !   A FRACTION OF THE TIMESCALE FOR SETTLING AT THE OUTER BOUNDARY.
@@ -473,25 +462,25 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 !   MINIMUM VALUE (YMIN).
 !
 !   LOCATE OUTER BOUNDARY.
-         if (.not.convective_flag(num_zones)) then
+         if (.not.star%convective_flag(num_zones)) then
             write(short_file_unit,911)
 ! DBG 2/92 CHANGED STOP TO JUST A WARNING MESSAGE, EXECUTION CONTINUES
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL')
             goto 170
          end if
          do 140 search_idx = envelope_cz_edge, 1, -1
-            if (composition(2,search_idx).gt.helium_diffusion_min) goto 150
+            if (star%composition(2,search_idx).gt.helium_diffusion_min) goto 150
   140    continue
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
          goto 170
   150    continue
 !  FM IS THE MASS FRACTION ABOVE THE OUTER POINT.
          mass_fraction_above = (total_mass_unlogged- &
-              enclosed_mass(search_idx))/total_mass_unlogged
+              star%enclosed_mass(search_idx))/total_mass_unlogged
 !  TSCALE IS THE TIMESCALE FOR SETTLING OF HELIUM AT THE OUTER
 !  BOUNDARY (MICHAUD ET AL 1984, APJ V.282,P.206)
          settling_timescale = 4.348d21*seconds_per_year*mass_fraction_above/ &
-              exp(ln10*1.5d0*log_temperature(search_idx))
+              exp(ln10*1.5d0*star%log_temperature(search_idx))
 !  RESTRICT TIMESTEP TO THE MINIMUM OF THE MODEL TIMESTEP AND
 !  A USER SPECIFIED FRACTION (DT_GS) OF THE SETTLING TIMESCALE.
          max_settling_dt = settling_timestep_fraction*settling_timescale
@@ -503,13 +492,13 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 ! PERFORM GRAVITATIONAL SETTLING. IF LNEWDIF = TRUE, USE THE NEW ROUTINES
 ! IN MICRODIFF. ELSE, USE THE OLD ROUTINES IN GRSETT.
             if (use_new_diffusion_routines) then
-               call microdiff(settling_dt, composition, dlnp_dr, &
-                    log_radius, log_density, enclosed_mass, &
-                    log_temperature, deep_mix_flag, num_zones, &
+               call microdiff(settling_dt, star%composition, dlnp_dr, &
+                    star%log_radius, star%log_density, star%enclosed_mass, &
+                    star%log_temperature, deep_mix_flag, num_zones, &
                     total_mass_unlogged)
             else
-               call grsett(settling_dt, composition, dlnp_dr, log_radius, &
-                    log_density, enclosed_mass, log_temperature, &
+               call grsett(settling_dt, star%composition, dlnp_dr, star%log_radius, &
+                    star%log_density, star%enclosed_mass, star%log_temperature, &
                     deep_mix_flag, num_zones, total_mass_unlogged)
             end if
   160    continue
@@ -519,21 +508,21 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 ! ABUNDANCES...).
       do 180 zone_idx = 1, num_zones
          do 175 species_idx = 1, num_species
-            composition(species_idx,zone_idx) = &
-                 max(composition(species_idx,zone_idx),0.0d0)
-            composition(species_idx,zone_idx) = &
-                 min(composition(species_idx,zone_idx),1.0d0)
+            star%composition(species_idx,zone_idx) = &
+                 max(star%composition(species_idx,zone_idx),0.0d0)
+            star%composition(species_idx,zone_idx) = &
+                 min(star%composition(species_idx,zone_idx),1.0d0)
   175    continue
-         composition(3,zone_idx) = min(composition(3,zone_idx), &
-              1.0d0-composition(1,zone_idx)-composition(4,zone_idx))
-         composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
-              composition(3,zone_idx) - composition(4,zone_idx)
+         star%composition(3,zone_idx) = min(star%composition(3,zone_idx), &
+              1.0d0-star%composition(1,zone_idx)-star%composition(4,zone_idx))
+         star%composition(2,zone_idx) = 1.0d0 - star%composition(1,zone_idx) - &
+              star%composition(3,zone_idx) - star%composition(4,zone_idx)
   180 continue
 ! MHP 1/95 ADDED CALL TO RESET JENV,JCORE FOR DEEP MIXING.
       if (dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
-         call convec(composition, log_density, log_pressure, log_radius, &
-              log_mass, log_temperature, convective_flag, num_zones, &
-              radiative_zone_bounds, mixed_zone_bounds, &
+         call convec(star%composition, star%log_density, star%log_pressure, star%log_radius, &
+              star%log_mass, star%log_temperature, star%convective_flag, num_zones, &
+              radiative_zone_bounds, star%mixed_zone_bounds, &
               mixed_zone_bounds_no_overshoot, core_cz_edge, &
               envelope_cz_edge, num_radiative_zones, num_mixed_zones, &
               num_mixed_zones_no_overshoot)
@@ -548,11 +537,11 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (log_temperature(inner_zone_idx).le.tcut(1)) goto 190
+               if (star%log_temperature(inner_zone_idx).le.tcut(1)) goto 190
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
-               call dburn(zone_begin, zone_end, num_zones, shell_mass, &
-                    composition, dt_gyr)
+               call dburn(zone_begin, zone_end, num_zones, star%shell_mass, &
+                    star%composition, dt_gyr)
             end do
          end do
   190    continue
@@ -561,10 +550,10 @@ subroutine mix(timestep, composition, log_density, log_luminosity, &
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
 !
          do mixed_zone_idx = 1, num_mixed_zones
-            zone_begin = mixed_zone_bounds(mixed_zone_idx,1)
-            zone_end = mixed_zone_bounds(mixed_zone_idx,2)
-            call dburn(zone_begin, zone_end, num_zones, shell_mass, &
-                 composition, dt_gyr)
+            zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
+            zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
+            call dburn(zone_begin, zone_end, num_zones, star%shell_mass, &
+                 star%composition, dt_gyr)
          end do
       end if
       return

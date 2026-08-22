@@ -12,19 +12,13 @@
 ! last converged model, and (every nprtmod models or when a store is
 ! otherwise due) dispatches to putstore/wrtmod/wrtmil for the verbose
 ! .store/.pmod/.penv/.patm output.
-subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
-     log_radius, log_mass, mass_coordinate, log_temperature, convective_flag, &
-     num_shells, model_number, age_gyr, timestep_yr, total_mass_msun, log_teff, &
-     log_luminosity_lsun, log_gravity, h_shell_present_flag, h_shell_begin_index, &
-     h_shell_mid_index, h_shell_end_index, core_cz_top_index, &
-     envelope_cz_bottom_index, luminosity_breakdown, trial_log_temperature, &
-     trial_log_luminosity, fit_point_pressure, fit_point_temperature, &
-     fit_point_radius, envelope_fit_coeffs, trial_sign_flag, log_total_mass, &
-     omega, punch_pending_flag, &
-!      * FP,FT,ETA2,R0,HJM,HI,SJTOT,SKEROT,HS2,NKK)  ! KC 2025-05-31
-     shape_factor_fp, shape_factor_ft, rotation_eta2, radius_ratio_r0, &
-     specific_angular_momentum, shell_moment_of_inertia, total_angular_momentum, &
-     total_rotational_kinetic_energy, shell_mass_increment)
+subroutine wrtout(num_shells, model_number, age_gyr, timestep_yr, &
+     total_mass_msun, log_teff, log_luminosity_lsun, log_gravity, &
+     h_shell_present_flag, h_shell_begin_index, h_shell_mid_index, &
+     h_shell_end_index, core_cz_top_index, envelope_cz_bottom_index, &
+     trial_sign_flag, log_total_mass, punch_pending_flag, &
+     total_angular_momentum, total_rotational_kinetic_energy)
+      use star_info_lib, only: star
       use rotdiff_lib
       use run_diag_lib
       use temp2_lib
@@ -40,10 +34,6 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       implicit none
       integer, parameter :: json = 5000
 
-      double precision, intent(inout) :: composition(15,json), log_density(json), &
-           log_luminosity(json), log_pressure(json), log_radius(json), &
-           log_mass(json), mass_coordinate(json), log_temperature(json)
-      logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_shells, model_number
       double precision, intent(in) :: age_gyr, timestep_yr, total_mass_msun, &
            log_teff
@@ -52,18 +42,10 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       logical, intent(in) :: h_shell_present_flag
       integer, intent(in) :: h_shell_begin_index, h_shell_mid_index, &
            h_shell_end_index, core_cz_top_index, envelope_cz_bottom_index
-      double precision, intent(inout) :: luminosity_breakdown(8)
-      double precision, intent(in) :: trial_log_temperature(3), &
-           trial_log_luminosity(3), fit_point_pressure(3), &
-           fit_point_temperature(3), fit_point_radius(3), &
-           envelope_fit_coeffs(9), trial_sign_flag, log_total_mass
-      double precision, intent(inout) :: omega(json)
+      double precision, intent(in) :: trial_sign_flag, log_total_mass
       logical, intent(inout) :: punch_pending_flag
-      double precision, intent(inout) :: shape_factor_fp(json), &
-           shape_factor_ft(json), rotation_eta2(json), radius_ratio_r0(json), &
-           specific_angular_momentum(json), shell_moment_of_inertia(json)
       double precision, intent(in) :: total_angular_momentum, &
-           total_rotational_kinetic_energy, shell_mass_increment(json)
+           total_rotational_kinetic_energy
 
 ! G Somers END
 
@@ -147,12 +129,12 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
       time_scaling_disabled=.false.
 !  RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH
       if(.not.helium_flash_active) then
-       total_luminosity_sum = luminosity_breakdown(1)+luminosity_breakdown(2)+ &
-            luminosity_breakdown(3)+luminosity_breakdown(4)+luminosity_breakdown(5)+ &
-            luminosity_breakdown(6)+luminosity_breakdown(7)+luminosity_breakdown(8)
-       temp_value = log_luminosity(num_shells)/total_luminosity_sum
+       total_luminosity_sum = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &
+            star%luminosity_breakdown(3)+star%luminosity_breakdown(4)+star%luminosity_breakdown(5)+ &
+            star%luminosity_breakdown(6)+star%luminosity_breakdown(7)+star%luminosity_breakdown(8)
+       temp_value = star%luminosity_lsun(num_shells)/total_luminosity_sum
        do 10 i = 1,8
-          luminosity_breakdown(i) = luminosity_breakdown(i)*temp_value
+          star%luminosity_breakdown(i) = star%luminosity_breakdown(i)*temp_value
    10    continue
       endif
 !  WRITE HEADER FILE DESCRIBING THE GLOBAL PROPERTIES OF THE STAR
@@ -176,7 +158,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !  CALCULATE MASS OF CENTRAL AND SURFACE CONVECTION ZONES
 !  THESE MASSES ARE IN SOLAR UNITS
       if(core_cz_top_index.gt.1) then
-       core_mass = mass_coordinate(core_cz_top_index)/solar_mass_cgs
+       core_mass = star%enclosed_mass(core_cz_top_index)/solar_mass_cgs
       else
        core_mass = 0.0D0
       endif
@@ -192,8 +174,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! the original wrtout.f, preserved exactly, not fixed.
        core_boundary_fx2 = (shell_diag%del_grad(3,core_cz_top_index+1)-shell_diag%del_grad(1,core_cz_top_index))/ &
              (shell_diag%del_grad(3,core_cz_top_index+1)-shell_diag%del_grad(1,core_cz_top_index))
-       core_boundary_log_radius = log_radius(core_cz_top_index)+envelope_boundary_fx* &
-            (log_radius(core_cz_top_index+1)-log_radius(core_cz_top_index))-log10_solar_radius
+       core_boundary_log_radius = star%log_radius(core_cz_top_index)+envelope_boundary_fx* &
+            (star%log_radius(core_cz_top_index+1)-star%log_radius(core_cz_top_index))-log10_solar_radius
        core_boundary_radius = dexp(ln10*core_boundary_log_radius)
       else
        core_boundary_radius = 0.0D0
@@ -207,14 +189,14 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
 !  CENTRAL ETA AND BETA ARE ALSO CALCULATED.
 !  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
-      temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+log_density(1)-log_mass(1))+log_density(1)+cgl+log_mass(1)))
-      pressure_linear = dexp(ln10*log_pressure(1))
+      temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+star%log_density(1)-star%log_mass(1))+star%log_density(1)+cgl+star%log_mass(1)))
+      pressure_linear = dexp(ln10*star%log_pressure(1))
       log_pressure_center = dlog10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-      log_temperature_center = log_temperature(1) + dlog10(1.0D0+ temp_value*shell_diag%del_grad(2,1)/pressure_linear)
-      log_density_center = log_density(1)
-      hydrogen_fraction_center = composition(1,1)
-      metal_fraction_center = composition(3,1)
+      log_temperature_center = star%log_temperature(1) + dlog10(1.0D0+ temp_value*shell_diag%del_grad(2,1)/pressure_linear)
+      log_density_center = star%log_density(1)
+      hydrogen_fraction_center = star%composition(1,1)
+      metal_fraction_center = star%composition(3,1)
       is_atmosphere_point = .true.
       compute_derivatives = .false.
 !  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
@@ -223,7 +205,7 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
            beta_center,beta_inverse_center,beta14_center,fxion,mean_molecular_weight_center, &
            amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
            qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center, &
-           compute_derivatives,is_atmosphere_point,ksaha_center,composition_at_zone=composition(:,1))
+           compute_derivatives,is_atmosphere_point,ksaha_center,composition_at_zone=star%composition(:,1))
 ! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
 ! STORE CENTRAL RHO,P,T FOR LATER USE
       run_diag%central_log10_pressure = log_pressure_center
@@ -242,24 +224,24 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             dd1 = shell_diag%del_grad(1,envelope_cz_bottom_index)-shell_diag%del_grad(3,envelope_cz_bottom_index)
             envelope_boundary_fx = dd2/(dd2-dd1)
 !            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
-            cz_base_mass = mass_coordinate(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (mass_coordinate(envelope_cz_bottom_index)-mass_coordinate(envelope_cz_bottom_index-1))
+            cz_base_mass = star%enclosed_mass(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%enclosed_mass(envelope_cz_bottom_index)-star%enclosed_mass(envelope_cz_bottom_index-1))
             run_diag%envelope_mass = (exp(ln10*log_total_mass) - cz_base_mass)/solar_mass_cgs
 !           ENVLM = SMASS-HS1(JENV-1)/CMSUN
 !          HSR = 0.5D0*(10.0D0**HR(JENV)+10.0D0**HR(JENV-1))
 !          ENVX = HSR/(10.0D0**RL)
 ! MHP 2/98 FIND RADIUS OF CZ BASE
-            envelope_cz_log_radius = log_radius(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (log_radius(envelope_cz_bottom_index)-log_radius(envelope_cz_bottom_index-1))-log10_solar_radius
+            envelope_cz_log_radius = star%log_radius(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%log_radius(envelope_cz_bottom_index)-star%log_radius(envelope_cz_bottom_index-1))-log10_solar_radius
             run_diag%envelope_radius = exp(ln10*envelope_cz_log_radius)
             envelope_cz_o16 = shell_diag%so(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (shell_diag%so(envelope_cz_bottom_index)-shell_diag%so(envelope_cz_bottom_index-1))
-            envelope_cz_log_temperature = log_temperature(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (log_temperature(envelope_cz_bottom_index)-log_temperature(envelope_cz_bottom_index-1))
-            envelope_cz_log_density = log_density(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (log_density(envelope_cz_bottom_index)-log_density(envelope_cz_bottom_index-1))
-            envelope_cz_log_pressure = log_pressure(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (log_pressure(envelope_cz_bottom_index)-log_pressure(envelope_cz_bottom_index-1))
+            envelope_cz_log_temperature = star%log_temperature(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%log_temperature(envelope_cz_bottom_index)-star%log_temperature(envelope_cz_bottom_index-1))
+            envelope_cz_log_density = star%log_density(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%log_density(envelope_cz_bottom_index)-star%log_density(envelope_cz_bottom_index-1))
+            envelope_cz_log_pressure = star%log_pressure(envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%log_pressure(envelope_cz_bottom_index)-star%log_pressure(envelope_cz_bottom_index-1))
             envelope_cz_temperature = exp(ln10*envelope_cz_log_temperature)
             envelope_cz_density = exp(ln10*envelope_cz_log_density)
             envelope_cz_pressure = exp(ln10*envelope_cz_log_pressure)
@@ -321,11 +303,11 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !     *LATMO,KSAHA)
 !      END IF
       write(short_file_unit,70)log_pressure_center,log_temperature_center,log_density_center,beta_center, &
-           degeneracy_eta_center,hydrogen_fraction_center,metal_fraction_center,composition(9,1)
+           degeneracy_eta_center,hydrogen_fraction_center,metal_fraction_center,star%composition(9,1)
    70 format(1X,'CENTER: LOG P=',F10.7,' LOG T=',F10.8,' LOG D=', &
        F10.6,' BETA=',F9.7,' ETA=',0PF10.5,'  X=',0PF9.7,' Z=',F9.7, &
        ' O16=',F9.7)
-      write(short_file_unit,80)(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(6),luminosity_breakdown(7)
+      write(short_file_unit,80)(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(8),star%luminosity_breakdown(6),star%luminosity_breakdown(7)
    80 format(1X,'ENERGY: PPI',1PE13.6,'  PPII',E13.6,'  PPIII',E13.6, &
        '  CNO',E13.6,/,9X,'TRIPLE ALPHA',E13.6,'  HE-C',E13.6, &
        '  NEUTRINOS',E13.6,'  GRAV',E13.6)
@@ -335,23 +317,23 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! H-SHELL VALUES PRINTED OUT - MASSES IN SOLAR UNITS
 ! SS1 - MASS INTERIOR TO CENTER OF H SHELL; SS2 = MASS OF H SHELL;
 ! SS3 = HE CORE MASS; SS4 = MASS INTERIOR TO SHELL WITH MAXIMUM T
-       fit_point_mass = mass_coordinate(h_shell_mid_index)/solar_mass_cgs
-       h_shell_total_mass = (mass_coordinate(h_shell_end_index) - mass_coordinate(h_shell_begin_index-1))/solar_mass_cgs
-       he_core_mass = mass_coordinate(h_shell_begin_index-1)/solar_mass_cgs
+       fit_point_mass = star%enclosed_mass(h_shell_mid_index)/solar_mass_cgs
+       h_shell_total_mass = (star%enclosed_mass(h_shell_end_index) - star%enclosed_mass(h_shell_begin_index-1))/solar_mass_cgs
+       he_core_mass = star%enclosed_mass(h_shell_begin_index-1)/solar_mass_cgs
        max_log_temperature = log_temperature_center
 ! LOCATE MAXIMUM T - NOTE DIFFERENT METHOD USED FOR HE FLASH
        if(.not.helium_flash_active) then
           do 100 i = 2,num_shells
-             if(log_temperature(i).lt.log_temperature(i-1))goto 110
+             if(star%log_temperature(i).lt.star%log_temperature(i-1))goto 110
   100       continue
           i = num_shells + 1
   110       max_temp_index = i - 1
           if(max_temp_index.gt.1) then
-             h_shell_mid_mass = mass_coordinate(max_temp_index)/solar_mass_cgs
-             max_log_temperature = log_temperature(max_temp_index)
+             h_shell_mid_mass = star%enclosed_mass(max_temp_index)/solar_mass_cgs
+             max_log_temperature = star%log_temperature(max_temp_index)
           else
              h_shell_mid_mass = 0.0D0
-             max_log_temperature = log_temperature(1)
+             max_log_temperature = star%log_temperature(1)
           endif
           write(short_file_unit,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
   120       format(1X,'H-SHELL MID-PT=',F10.7,' MASS TOTAL=', &
@@ -360,16 +342,16 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
        else
 !  HE FLASH
           do 130 i = 2,num_shells
-             if(log_temperature(i).lt.log_temperature(i-1) .and. log_temperature(i-1).gt.7.98D0) goto 140
+             if(star%log_temperature(i).lt.star%log_temperature(i-1) .and. star%log_temperature(i-1).gt.7.98D0) goto 140
   130       continue
           i = num_shells + 1
   140       max_temp_index = i - 1
           if(max_temp_index.gt.1) then
-             h_shell_mid_mass = mass_coordinate(max_temp_index)/solar_mass_cgs
-             max_log_temperature = log_temperature(max_temp_index)
+             h_shell_mid_mass = star%enclosed_mass(max_temp_index)/solar_mass_cgs
+             max_log_temperature = star%log_temperature(max_temp_index)
 !  ADDITIONAL OUTPUT FOR HE FLASH
-             max_temp_log_radius = log_radius(max_temp_index)
-             max_temp_convective_flag = convective_flag(max_temp_index)
+             max_temp_log_radius = star%log_radius(max_temp_index)
+             max_temp_convective_flag = star%convective_flag(max_temp_index)
              write(short_file_unit,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
              write(short_file_unit,150)max_temp_convective_flag,max_temp_log_radius
   150          format(1X,'CONVECTION = ',L1,5X,'LOG(R) MAX-T =',F8.5)
@@ -404,8 +386,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
  2160 format(1X,'NEUTRINO ENERGIES (1.E-36ERG): 7Li=', 1PE9.2, &
        ' 37Cl=',1PE9.2,' 71Ga=',1PE9.2,' 81Br=',1PE9.2,' 98Mo=', &
        1PE9.2, ' 115In=', 1PE9.2)
-      fit_point_mass = mass_coordinate(num_shells)/solar_mass_cgs
-      write(short_file_unit,170)fit_point_mass,log_pressure(num_shells),log_temperature(num_shells),log_radius(num_shells)
+      fit_point_mass = star%enclosed_mass(num_shells)/solar_mass_cgs
+      write(short_file_unit,170)fit_point_mass,star%log_pressure(num_shells),star%log_temperature(num_shells),star%log_radius(num_shells)
   170 format(1X,'FIT-POINT    M/MSUN=',F16.12,5X,'(P,T,R) =',3F12.7)
       write(short_file_unit,20)
       if(ltrack) then
@@ -419,11 +401,11 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
          total_moment_of_inertia = 0.0D0
          if(.not.rotation_active)then
             do i = 1,num_shells
-               total_moment_of_inertia = total_moment_of_inertia + cc23*shell_mass_increment(i)*exp(2.0D0*ln10*log_radius(i))
+               total_moment_of_inertia = total_moment_of_inertia + cc23*star%shell_mass(i)*exp(2.0D0*ln10*star%log_radius(i))
             end do
          else
             do i = 1,num_shells
-               total_moment_of_inertia = total_moment_of_inertia + shell_moment_of_inertia(i)
+               total_moment_of_inertia = total_moment_of_inertia + star%moment_of_inertia(i)
             end do
          endif
 ! MHP 12/09 NEW OPTION TO OUTPUT TRACK INFORMATION IN ONE LINE PER MODEL FORMAT.
@@ -447,11 +429,11 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! ROTATION I/O
             cz_moment_of_inertia = 0.0D0
             if(rotation_active) then
-               rotation_period_days = min(9999.0D0,0.5D0*c4pi/omega(num_shells)/8.64D4)
-               equatorial_velocity_kms = omega(num_shells)*exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
+               rotation_period_days = min(9999.0D0,0.5D0*c4pi/star%omega(num_shells)/8.64D4)
+               equatorial_velocity_kms = star%omega(num_shells)*exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
                if(envelope_cz_bottom_index.lt.num_shells)then
                   do k = envelope_cz_bottom_index,num_shells
-                     cz_moment_of_inertia = cz_moment_of_inertia + shell_moment_of_inertia(k)
+                     cz_moment_of_inertia = cz_moment_of_inertia + star%moment_of_inertia(k)
                   end do
                endif
             else
@@ -459,19 +441,19 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
                equatorial_velocity_kms = 0.0D0
                if(envelope_cz_bottom_index.lt.num_shells)then
                   do k = envelope_cz_bottom_index,num_shells
-                     cz_moment_of_inertia = cz_moment_of_inertia + cc23*shell_mass_increment(k)*exp(2.0D0*ln10*log_radius(k))
+                     cz_moment_of_inertia = cz_moment_of_inertia + cc23*star%shell_mass(k)*exp(2.0D0*ln10*star%log_radius(k))
                   end do
                endif
             endif
 ! END CHANGED SECTION
 !        Get location of bottom, middle, top of B burning shell.
             if(h_shell_present_flag) then
-             h_shell_begin_mass = mass_coordinate(h_shell_begin_index)/solar_mass_cgs
-             h_shell_mid_mass2 = mass_coordinate(h_shell_mid_index)/solar_mass_cgs
-             h_shell_end_mass = mass_coordinate(h_shell_end_index)/solar_mass_cgs
-             h_shell_begin_radius = exp(ln10*(log_radius(h_shell_begin_index)-radius_log_surface-log10_solar_radius))
-             h_shell_mid_radius = exp(ln10*(log_radius(h_shell_mid_index)-radius_log_surface-log10_solar_radius))
-             h_shell_end_radius = exp(ln10*(log_radius(h_shell_end_index)-radius_log_surface-log10_solar_radius))
+             h_shell_begin_mass = star%enclosed_mass(h_shell_begin_index)/solar_mass_cgs
+             h_shell_mid_mass2 = star%enclosed_mass(h_shell_mid_index)/solar_mass_cgs
+             h_shell_end_mass = star%enclosed_mass(h_shell_end_index)/solar_mass_cgs
+             h_shell_begin_radius = exp(ln10*(star%log_radius(h_shell_begin_index)-radius_log_surface-log10_solar_radius))
+             h_shell_mid_radius = exp(ln10*(star%log_radius(h_shell_mid_index)-radius_log_surface-log10_solar_radius))
+             h_shell_end_radius = exp(ln10*(star%log_radius(h_shell_end_index)-radius_log_surface-log10_solar_radius))
           else
              h_shell_begin_mass = 0.0D0
              h_shell_mid_mass2 = h_shell_begin_mass
@@ -550,18 +532,18 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! G Somers 3/17, ADDED CALL TO NEW TAUCZ AND PPHOT CALCULATION ROUTINE.
 
 !       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
-      call gettau(composition,log_radius,log_pressure,log_density,mass_coordinate,log_temperature,shape_factor_fp,shape_factor_ft,log_teff, &
-                  log_total_mass,log_luminosity_lsun,num_shells,convective_flag,run_diag%envelope_radius)
+      call gettau(star%composition,star%log_radius,star%log_pressure,star%log_density,star%enclosed_mass,star%log_temperature,star%pressure_rotation_factor,star%temperature_rotation_factor,log_teff, &
+                  log_total_mass,log_luminosity_lsun,num_shells,star%convective_flag,run_diag%envelope_radius)
       turnover%convective_turnover_timescale_old = turnover%convective_turnover_timescale
       turnover%pphot0 = turnover%pphot
 
 ! JVS 02/12 Added PPHOT and SMASS to the output
             write(itrack, 1499) model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,run_diag%envelope_mass, &
-            run_diag%envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16,log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,composition(1,1),composition(2,1), &
-            composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
-            flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
-            (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
-            total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,omega(num_shells),omega(1),rotation_period_days,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
+            run_diag%envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16,log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,star%composition(1,1),star%composition(2,1), &
+            star%composition(3,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(8),star%luminosity_breakdown(7),star%luminosity_breakdown(6), &
+            flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10),(star%composition(i,1),i=4,11), &
+            (star%composition(i,num_shells),i=4,15),(star%composition(i,num_shells),i=1,3),star%composition(3,num_shells)/star%composition(1,num_shells), &
+            total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,star%omega(num_shells),star%omega(1),rotation_period_days,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius,turnover%pphot,total_mass_msun
 ! MHP 9/25 added more columns to cz depth to avoid overflow
 !     1499       FORMAT(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3,41E16.8)
@@ -571,12 +553,12 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             write(itrack,1500)model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,run_diag%envelope_mass, &
                            run_diag%envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16
  1500       format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4)
-            write(itrack,1509)log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,composition(1,1),composition(2,1), &
-                           composition(3,1),total_moment_of_inertia
+            write(itrack,1509)log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,star%composition(1,1),star%composition(2,1), &
+                           star%composition(3,1),total_moment_of_inertia
  1509       format(1X,1P9E16.8)
  1510       format(1X,1P8E16.8)
-            write(itrack,1510)(luminosity_breakdown(i),i = 1,5), &
-                           luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6)
+            write(itrack,1510)(star%luminosity_breakdown(i),i = 1,5), &
+                           star%luminosity_breakdown(8),star%luminosity_breakdown(7),star%luminosity_breakdown(6)
 
 ! MHP 8/96 ADD LINE TO COMPUTE SNU's for Cl37 and Ga71.
             flux_diag%cl37_snu_rate = 0.0D0
@@ -587,21 +569,21 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             end do
           write(itrack, 1515) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10)
  1515       format(1X,2F8.3,1P10E10.3)
-            write(itrack,1510)(composition(i,1),i=4,11)
+            write(itrack,1510)(star%composition(i,1),i=4,11)
 ! ADD SURFACE X,Y,Z,Z/X.
-            write(itrack,1520)(composition(i,num_shells),i=4,15), &
-              (composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells)
+            write(itrack,1520)(star%composition(i,num_shells),i=4,15), &
+              (star%composition(i,num_shells),i=1,3),star%composition(3,num_shells)/star%composition(1,num_shells)
  1520       format(1X,1P8E16.8,/,1X,1P8E16.8)
 ! ROTATION I/O
             if(rotation_active) then
 ! MHP 8/25 removed limit on rotation period output
 !     ROTP = MIN(9999.0D0,0.5D0*C4PI/OMEGA(M)/8.64D4)
-               rotation_period_days = 0.5D0*c4pi/omega(num_shells)/8.64D4
-               equatorial_velocity_kms = omega(num_shells)*exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
+               rotation_period_days = 0.5D0*c4pi/star%omega(num_shells)/8.64D4
+               equatorial_velocity_kms = star%omega(num_shells)*exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
                cz_moment_of_inertia = 0.0D0
-               if(convective_flag(num_shells))then
+               if(star%convective_flag(num_shells))then
                   do k = envelope_cz_bottom_index,num_shells
-                     cz_moment_of_inertia = cz_moment_of_inertia + shell_moment_of_inertia(k)
+                     cz_moment_of_inertia = cz_moment_of_inertia + star%moment_of_inertia(k)
                   end do
                else
                   cz_moment_of_inertia = 0.0D0
@@ -609,12 +591,12 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
             endif
 !        Get location of bottom, middle, top of B burning shell.
             if(h_shell_present_flag) then
-             h_shell_begin_mass = mass_coordinate(h_shell_begin_index)/solar_mass_cgs
-             h_shell_mid_mass2 = mass_coordinate(h_shell_mid_index)/solar_mass_cgs
-             h_shell_end_mass = mass_coordinate(h_shell_end_index)/solar_mass_cgs
-             h_shell_begin_radius = exp(ln10*(log_radius(h_shell_begin_index)-radius_log_surface-log10_solar_radius))
-             h_shell_mid_radius = exp(ln10*(log_radius(h_shell_mid_index)-radius_log_surface-log10_solar_radius))
-             h_shell_end_radius = exp(ln10*(log_radius(h_shell_end_index)-radius_log_surface-log10_solar_radius))
+             h_shell_begin_mass = star%enclosed_mass(h_shell_begin_index)/solar_mass_cgs
+             h_shell_mid_mass2 = star%enclosed_mass(h_shell_mid_index)/solar_mass_cgs
+             h_shell_end_mass = star%enclosed_mass(h_shell_end_index)/solar_mass_cgs
+             h_shell_begin_radius = exp(ln10*(star%log_radius(h_shell_begin_index)-radius_log_surface-log10_solar_radius))
+             h_shell_mid_radius = exp(ln10*(star%log_radius(h_shell_mid_index)-radius_log_surface-log10_solar_radius))
+             h_shell_end_radius = exp(ln10*(star%log_radius(h_shell_end_index)-radius_log_surface-log10_solar_radius))
              else
              h_shell_begin_mass = 0.0D0
              h_shell_mid_mass2 = h_shell_begin_mass
@@ -630,8 +612,8 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! 4/09 ADDED TAUCZ TO ROTATION INFORMATION
          if (track_file_version .eq. 2) then
 
-            write(itrack,1540)total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,omega(num_shells), &
-                           omega(1),rotation_period_days,equatorial_velocity_kms,turnover%convective_turnover_timescale
+            write(itrack,1540)total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,star%omega(num_shells), &
+                           star%omega(1),rotation_period_days,equatorial_velocity_kms,turnover%convective_turnover_timescale
  1540       format(1X, 1P6E13.5,0P,2F11.5,1E13.5)
          end if
          if (track_file_version .eq. 3) then
@@ -655,9 +637,9 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
           radius_cm = radius_cm*solar_radius_cgs
         teff_k = 10.0D0**log_teff
         gravity_cgs = 10.0D0**log_gravity
-        ycenter_local = composition(2,1)
+        ycenter_local = star%composition(2,1)
         if (h_shell_present_flag) then
-           he_core_mass_grams = mass_coordinate(h_shell_begin_index-1)
+           he_core_mass_grams = star%enclosed_mass(h_shell_begin_index-1)
         else
            he_core_mass_grams = 0.0D0
         end if
@@ -684,37 +666,37 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 !  IF LSTORE = T, STORE EVERY NPUNCH MODELS IN LOGICAL UNIT ISTOR
 !  IF LSTPCH = T, STORE THE LAST MODEL CALCULATED IN A RUN
       iwrite = ilast
-      call wrtlst(iwrite,composition,log_density,log_luminosity,log_pressure,log_radius,log_mass,log_temperature,convective_flag,trial_log_temperature,trial_log_luminosity,fit_point_pressure, &
-           fit_point_temperature,fit_point_radius,envelope_fit_coeffs,trial_sign_flag,luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun,log_total_mass, &
-           age_gyr,timestep_yr,omega)
+      call wrtlst(iwrite,star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
+           star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun,log_total_mass, &
+           age_gyr,timestep_yr,star%omega)
 !
 !  PRINT OUT MODEL DETAILS IF REQUESTED FOR THIS MODEL. THIS IS ALL DONE
 !  IN THE SR PUTSTORE.
 !
       if(lstore.and.mod(model_number,nprtmod).eq.0) then
-       call putstore(composition,log_density,log_luminosity,log_pressure,log_radius,log_mass,log_temperature,convective_flag,trial_log_temperature,trial_log_luminosity,fit_point_pressure, &
-         fit_point_temperature,fit_point_radius,envelope_fit_coeffs,trial_sign_flag,luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun, &
-         log_total_mass,age_gyr,timestep_yr,omega,mass_coordinate,rotation_eta2,radius_ratio_r0,shape_factor_fp,shape_factor_ft,specific_angular_momentum,shell_moment_of_inertia)
+       call putstore(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
+         star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun, &
+         log_total_mass,age_gyr,timestep_yr,star%omega,star%enclosed_mass,star%eta_squared,star%mean_radius,star%pressure_rotation_factor,star%temperature_rotation_factor,star%specific_angular_momentum,star%moment_of_inertia)
        punch_pending_flag = .false.
       endif
 ! the call to putstore above creates the necessary pulsation output for LPULSE.
 ! however, in the event that the above block is not executed and pulsation
 ! output is desired, call wrtmod.
       if(.not.(lstore.and.mod(model_number,nprtmod).eq.0) .and. pulsation_output_active) then
-       if(lmilne) call wrtmil(composition,log_density,log_luminosity,log_pressure,log_radius,mass_coordinate,num_shells,model_number)
+       if(lmilne) call wrtmil(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%enclosed_mass,num_shells,model_number)
 !        CALL WRTMOD(M,LSHELL,JXBEG,JXEND,JCORE,JENV,HCOMP,HS1,HD,HL,
 !      *   HP,HR,HT,LC,MODEL,BL,TEFFL,OMEGA,FP,FT,ETA2,R0,HJM,HI,HS,
 !      *   DAGE)  ! KC 2025-05-31
-       call wrtmod(num_shells,envelope_cz_bottom_index,composition,mass_coordinate,log_density,log_luminosity, &
-         log_pressure,log_radius,log_temperature,model_number,log_luminosity_lsun,log_teff,shape_factor_fp,shape_factor_ft,log_mass,age_gyr)
+       call wrtmod(num_shells,envelope_cz_bottom_index,star%composition,star%enclosed_mass,star%log_density,star%luminosity_lsun, &
+         star%log_pressure,star%log_radius,star%log_temperature,model_number,log_luminosity_lsun,log_teff,star%pressure_rotation_factor,star%temperature_rotation_factor,star%log_mass,age_gyr)
       endif
 ! G Somers END
 ! new (2026): GYRE-format periodic pulsation output, independent of
 ! the LPULSE/pulsation_output_active mechanism above -- see
 ! core/parmin.f90 and io/write_gyre_pulse.f90.
       if (pulse_gyre_interval.gt.0 .and. mod(model_number,pulse_gyre_interval).eq.0) then
-         call write_gyre_pulse(num_shells,model_number,mass_coordinate,log_density,log_luminosity, &
-              log_pressure,log_radius,log_temperature,omega)
+         call write_gyre_pulse(num_shells,model_number,star%enclosed_mass,star%log_density,star%luminosity_lsun, &
+              star%log_pressure,star%log_radius,star%log_temperature,star%omega)
       endif
 
 ! JVS 01/11 Added new track file output format, +manipulations for stitching
@@ -722,30 +704,30 @@ subroutine wrtout(composition, log_density, log_luminosity, log_pressure, &
 ! acoustic depth, depth to CZ and acoustic crossing time, respectively.
         if (acoustic_depth_output) then
             if(envelope_cz_bottom_index.gt.1 .and. compute_acoustic_depth) then
-                  call calcad(log_radius, envelope_cz_log_radius, num_shells, log_density, log_pressure,log_temperature,log_luminosity_lsun, shape_factor_fp, shape_factor_ft, log_total_mass, &
+                  call calcad(star%log_radius, envelope_cz_log_radius, num_shells, star%log_density, star%log_pressure,star%log_temperature,log_luminosity_lsun, star%pressure_rotation_factor, star%temperature_rotation_factor, log_total_mass, &
 !      *            LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
-                  log_teff, composition, age_gyr, envelope_cz_bottom_index)
+                  log_teff, star%composition, age_gyr, envelope_cz_bottom_index)
             else if (envelope_cz_bottom_index.eq.1) then
                   taucz_placeholder=0.0D0
             endif
-            if (convective_flag(num_shells)) then
+            if (star%convective_flag(num_shells)) then
                   icheck=1
-            else if (.not. convective_flag(num_shells)) then
+            else if (.not. star%convective_flag(num_shells)) then
                   icheck = 0
             endif
 
         if (ljlast_placeholder) then
          iwrite = ijlast_placeholder
-         call wrtlst(iwrite,composition,log_density,log_luminosity,log_pressure,log_radius,log_mass,log_temperature,convective_flag,trial_log_temperature,trial_log_luminosity,fit_point_pressure, &
-         fit_point_temperature,fit_point_radius,envelope_fit_coeffs,trial_sign_flag,luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun,log_total_mass, &
-         age_gyr,timestep_yr,omega)
+         call wrtlst(iwrite,star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
+         star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_shells,total_mass_msun,log_teff,log_luminosity_lsun,log_total_mass, &
+         age_gyr,timestep_yr,star%omega)
         endif
 
             write(itrack, 1800) model_number,num_shells,age_gyr,log_luminosity_lsun,radius_log_surface,log_gravity,log_teff,core_mass,run_diag%envelope_mass, &
-            run_diag%envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16,log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,composition(1,1),composition(2,1), &
-            composition(3,1),(luminosity_breakdown(i),i = 1,5),luminosity_breakdown(8),luminosity_breakdown(7),luminosity_breakdown(6), &
-            flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10),(composition(i,1),i=4,11), &
-            (composition(i,num_shells),i=4,15),(composition(i,num_shells),i=1,3),composition(3,num_shells)/composition(1,num_shells), &
+            run_diag%envelope_radius,envelope_cz_temperature,envelope_cz_density,envelope_cz_pressure,envelope_cz_o16,log_temperature_center,log_density_center,log_pressure_center,beta_center,degeneracy_eta_center,star%composition(1,1),star%composition(2,1), &
+            star%composition(3,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(8),star%luminosity_breakdown(7),star%luminosity_breakdown(6), &
+            flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10),(star%composition(i,1),i=4,11), &
+            (star%composition(i,num_shells),i=4,15),(star%composition(i,num_shells),i=1,3),star%composition(3,num_shells)/star%composition(1,num_shells), &
             total_angular_momentum,taucz_placeholder,tcz_placeholder,tnorm_placeholder,tauhe_placeholder,whe_placeholder,tatmos_placeholder,equatorial_velocity_kms,turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck
  1800      format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3, &

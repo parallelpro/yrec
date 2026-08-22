@@ -17,13 +17,13 @@
 ! Henyey structure solve for one time step. Each pass through the
 ! main DO 100 loop calls coefft to linearize the structure equations
 ! at every mesh point, builds the outer (surface) boundary-condition
-! row from the envelope-fit coefficients (envelope_coeffs, from
+! row from the envelope-fit coefficients (star%envelope_fit_coeffs, from
 ! surfbc), calls hsolve to back-solve the block-tridiagonal system for
 ! the P/T/R/L corrections, checks those corrections against the
 ! convergence/divergence tolerances in common/ctol/, applies them, and
 ! (if rotation is active) updates the rotation curve and rotational
 ! kinetic energy via getrot/fpft. surfbc (envelope/atmosphere fit) and
-! mix (convective mixing/composition update) are called once near the
+! mix (convective mixing/star%composition update) are called once near the
 ! top, ahead of the correction loop, on the iteration levels where
 ! they are needed.
 !
@@ -40,7 +40,7 @@
 !     inherited from that file's own earlier conversion; out of scope
 !     to fix here.
 !   - HL is the linear luminosity (L/Lsun); DLOG10(HL(M)) above proves
-!     it is not itself a log quantity. Named luminosity_lsun (matches
+!     it is not itself a log quantity. Named star%luminosity_lsun (matches
 !     coefft.f90's slot name for it). mix.f90's slot name for this
 !     same array is "log_luminosity", which is the same kind of
 !     misnomer as the BL case above; also out of scope to fix here.
@@ -57,17 +57,17 @@
 !     coefft.f90/fpft.f90); mix.f90/getrot.f90 call the same count
 !     "num_zones", hsolve.f90 calls it "num_shells", surfbc.f90 calls
 !     it "zone_index" (there it is the single index M, not a count).
-!   - HS1 is named enclosed_mass; coefft.f90's slot name for the same
+!   - HS1 is named star%enclosed_mass; coefft.f90's slot name for the same
 !     array is "mass_weight_ln". Not read directly in this file
 !     (only passed through to mix/coefft), so the more physically
 !     transparent of the two established names was kept.
 !   - FP/FT (rotational P/T correction factors) are named
-!     pressure_rotation_factor/temperature_rotation_factor (matches
+!     star%pressure_rotation_factor/star%temperature_rotation_factor (matches
 !     fpft.f90, which computes them); coefft.f90's slot names for the
 !     same arrays are rotation_p_factor/rotation_t_factor.
-!   - R0 is named mean_radius (matches getrot.f90, which computes it);
+!   - R0 is named star%mean_radius (matches getrot.f90, which computes it);
 !     fpft.f90's slot name for the same array is "r0".
-!   - ETA2 is named eta_squared (matches getrot.f90); fpft.f90's slot
+!   - ETA2 is named star%eta_squared (matches getrot.f90); fpft.f90's slot
 !     name for the same array is "eta2".
 !   - The Debye-Huckel hydrogen-fraction common/debhu/ member (XXDH in
 !     the original) is named debye_huckel_x here to match coefft.f90 (this
@@ -84,20 +84,11 @@
 !          corrections_too_large = .T. IF CORRECTIONS ARE TOO LARGE
 subroutine crrect(delta_time, num_points, max_iterations, converged, &
      corrections_too_large, start_new_triangle, reset_triangle, &
-     recompute_surface_bc, &
-     tri_teffl, tri_logl, envelope_coeffs, vtx_logp, vtx_logt, vtx_logr, &
-     tri_orientation, stored_vertex_index, stored_envelope_state, &
-     log_total_mass, log10_luminosity, log_teff, &
-     log_density, elim_coeff, elim_rhs, gravitational_luminosity, &
-     luminosity_lsun, max_residual, log_pressure, log_pressure_delta, &
-     log_radius, log_mass, enclosed_mass, shell_mass, surface_bc, &
-     log_temperature, log_temperature_delta, composition, convective_flag, &
-     max_correction_index, luminosity_terms, in_atmosphere, want_derivatives, &
-     mixing_active, conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, &
-     pressure_rotation_factor, temperature_rotation_factor, eta_squared, &
-     omega, mean_radius, iterations_done, mean_gravity, moment_of_inertia, &
-     specific_angular_momentum, iteration_level, am_transport_convective_flag, &
-     mixed_zone_bounds, qiw, kinetic_energy_rot, kinetic_energy_rot_old)
+     recompute_surface_bc, tri_orientation, stored_vertex_index, &
+     log_total_mass, log10_luminosity, log_teff, in_atmosphere, &
+     want_derivatives, mixing_active, conductive_opacity_flag, &
+     dlnrho_dlnt, dlnrho_dlnp, iterations_done, iteration_level)
+      use star_info_lib, only: star
 
       use envelope_comp_lib
       use oldmod_lib
@@ -113,50 +104,15 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       logical, intent(out) :: corrections_too_large
       logical, intent(inout) :: start_new_triangle, reset_triangle
       logical, intent(inout) :: recompute_surface_bc
-      double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
-           envelope_coeffs(9)
-      double precision, intent(inout) :: vtx_logp(3), vtx_logt(3), &
-           vtx_logr(3)
       double precision, intent(inout) :: tri_orientation
       integer, intent(inout) :: stored_vertex_index
-      double precision, intent(inout) :: stored_envelope_state(4)
       double precision, intent(in) :: log_total_mass
       double precision, intent(inout) :: log10_luminosity, log_teff
-      double precision, intent(inout) :: log_density(json)
-      double precision, intent(inout) :: elim_coeff(4,2,json), &
-           elim_rhs(4,json)
-      double precision, intent(inout) :: gravitational_luminosity(json)
-      double precision, intent(inout) :: luminosity_lsun(json)
-      double precision, intent(inout) :: max_residual(4)
-      double precision, intent(inout) :: log_pressure(json), &
-           log_pressure_delta(json), log_radius(json)
-      double precision, intent(in) :: log_mass(json)
-      double precision, intent(inout) :: enclosed_mass(json)
-      double precision, intent(in) :: shell_mass(json)
-      double precision, intent(inout) :: surface_bc(6)
-      double precision, intent(inout) :: log_temperature(json), &
-           log_temperature_delta(json)
-      double precision, intent(inout) :: composition(15,json)
-      logical, intent(inout) :: convective_flag(json)
-      integer, intent(out) :: max_correction_index(4)
-      double precision, intent(inout) :: luminosity_terms(8)
       logical, intent(out) :: in_atmosphere, want_derivatives, &
            mixing_active, conductive_opacity_flag
       double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
-      double precision, intent(inout) :: pressure_rotation_factor(json), &
-           temperature_rotation_factor(json)
-      double precision, intent(inout) :: eta_squared(json), omega(json), &
-           mean_radius(json)
       integer, intent(inout) :: iterations_done
-      double precision, intent(out) :: mean_gravity(json)
-      double precision, intent(inout) :: moment_of_inertia(json), &
-           specific_angular_momentum(json)
       integer, intent(in) :: iteration_level
-      logical, intent(in) :: am_transport_convective_flag(json)
-      integer, intent(inout) :: mixed_zone_bounds(12,2)
-      double precision, intent(inout) :: qiw(json)
-      double precision, intent(inout) :: kinetic_energy_rot(json)
-      double precision, intent(in) :: kinetic_energy_rot_old(json)
 
 
 
@@ -197,19 +153,19 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       integer :: jerr
 
       if (max_iterations.le.0) return
-      log10_luminosity = dlog10(luminosity_lsun(num_points))
+      log10_luminosity = dlog10(star%luminosity_lsun(num_points))
 ! ZERO COUNTERS
       kenv = 0
       katm = 0
       ksaha = 0
-      env_comp%senv = log_mass(num_points) - log_total_mass
+      env_comp%senv = star%log_mass(num_points) - log_total_mass
       if (start_new_triangle.or.reset_triangle .and.iteration_level.eq.2) &
            recompute_surface_bc = .true.
 !  FIND NEW FP AND FT IF MODEL IS ROTATING
       if (rotation_active.and.recompute_surface_bc) then
-       surface_pressure_rotation_factor = pressure_rotation_factor(num_points)
+       surface_pressure_rotation_factor = star%pressure_rotation_factor(num_points)
        surface_temperature_rotation_factor = &
-            temperature_rotation_factor(num_points)
+            star%temperature_rotation_factor(num_points)
       else
        surface_pressure_rotation_factor = 1.0d0
        surface_temperature_rotation_factor = 1.0d0
@@ -219,19 +175,19 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       if (recompute_surface_bc) then
        hydrogen_fraction = env_comp%xnew
        metal_fraction = env_comp%znew
-       log10_pressure_limit = log_pressure(num_points)
+       log10_pressure_limit = star%log_pressure(num_points)
        if (use_debye_huckel_correction) then
-          debye_huckel_x = composition(1,num_points)
-          debye_huckel_y = composition(2,num_points)+composition(4,num_points)
-          debye_huckel_z_total = composition(3,num_points)
-          debye_huckel_z(1) = composition(5,num_points)+composition(6,num_points)
-          debye_huckel_z(2) = composition(7,num_points)+composition(8,num_points)
-          debye_huckel_z(3) = composition(9,num_points)+composition(10,num_points)+ &
-               composition(11,num_points)
+          debye_huckel_x = star%composition(1,num_points)
+          debye_huckel_y = star%composition(2,num_points)+star%composition(4,num_points)
+          debye_huckel_z_total = star%composition(3,num_points)
+          debye_huckel_z(1) = star%composition(5,num_points)+star%composition(6,num_points)
+          debye_huckel_z(2) = star%composition(7,num_points)+star%composition(8,num_points)
+          debye_huckel_z(3) = star%composition(9,num_points)+star%composition(10,num_points)+ &
+               star%composition(11,num_points)
        end if
-       call surfbc(tri_teffl,tri_logl,envelope_coeffs,vtx_logp,vtx_logt, &
-            vtx_logr,tri_orientation,stored_vertex_index, &
-            stored_envelope_state, &
+       call surfbc(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
+            star%fit_point_radius,tri_orientation,stored_vertex_index, &
+            star%stored_envelope_state, &
 !               LNEW,LRESET,LSBC,KSAHA,KENV,KATM,HSTOT,BL,  ! KC 2025-05-31
 !               (recompute_surface_bc/LSBC removed from this call site)
             start_new_triangle,reset_triangle,ksaha,kenv,katm, &
@@ -239,7 +195,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
             log_teff,hydrogen_fraction,metal_fraction, &
             surface_pressure_rotation_factor, &
             surface_temperature_rotation_factor,envelope_recomputed_flag, &
-            log10_pressure_limit,convective_flag,num_points)
+            log10_pressure_limit,star%convective_flag,num_points)
       endif
 ! 7/91 ADD CALL TO MIX
       if (iteration_level.gt.2 .and. delta_time.gt.0.0d0) then
@@ -247,16 +203,13 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
          if (use_extended_composition) num_species = 15
          do 2 i = 1,num_points
             do 1 j = 1,num_species
-               composition(j,i) = prev_model%old_composition(j,i)
+               star%composition(j,i) = prev_model%old_composition(j,i)
     1       continue
     2    continue
-         call mix(delta_time,composition,log_density,luminosity_lsun, &
-              log_pressure,log_radius,log_mass,enclosed_mass,shell_mass, &
-              log_total_mass, &
-!        *        HT,ITLVL,LC,M,QDT,QDP,DDAGE,JCORE,JENV,  ! KC 2025-05-31
-              log_temperature,iteration_level,convective_flag,num_points, &
-              timestep_years,core_cz_edge,envelope_zone_index, &
-              mixed_zone_bounds,mixed_zone_bounds_no_overshoot,log_teff, jerr)
+         call mix(delta_time, log_total_mass, iteration_level, &
+              num_points, timestep_years, core_cz_edge, &
+              envelope_zone_index, mixed_zone_bounds_no_overshoot, &
+              log_teff, jerr)
          if (jerr /= 0) stop
       endif
 !      IF(LROT)THEN
@@ -270,42 +223,42 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       converged = .false.
       do 100 iter = 1,max_iterations
 ! DO HENYEY REDUCTION
-       max_residual(1) = 0.0d0
-       max_residual(2) = 0.0d0
-       max_residual(3) = 0.0d0
-       max_residual(4) = 0.0d0
-       call coefft(delta_time,num_points,log_density,elim_coeff,elim_rhs, &
-            gravitational_luminosity,luminosity_lsun,max_residual, &
-            log_pressure,log_pressure_delta,log_radius,log_mass, &
-            enclosed_mass,shell_mass,log_temperature,log_temperature_delta, &
-            composition,convective_flag,luminosity_terms,in_atmosphere, &
+       star%max_residual(1) = 0.0d0
+       star%max_residual(2) = 0.0d0
+       star%max_residual(3) = 0.0d0
+       star%max_residual(4) = 0.0d0
+       call coefft(delta_time,num_points,star%log_density,star%elim_coeff,star%elim_rhs, &
+            star%gravitational_luminosity,star%luminosity_lsun,star%max_residual, &
+            star%log_pressure,star%log_pressure_delta,star%log_radius,star%log_mass, &
+            star%enclosed_mass,star%shell_mass,star%log_temperature,star%log_temperature_delta, &
+            star%composition,star%convective_flag,star%luminosity_breakdown,in_atmosphere, &
             want_derivatives,mixing_active,conductive_opacity_flag, &
             dlnrho_dlnt,dlnrho_dlnp, &
 !      *   KSAHA,MODEL,FP,FT,HKEROT,HKEROT0,JENV,TEFFL)  ! KC 2025-05-31
-            ksaha,pressure_rotation_factor,temperature_rotation_factor, &
-            kinetic_energy_rot,kinetic_energy_rot_old,envelope_zone_index, &
+            ksaha,star%pressure_rotation_factor,star%temperature_rotation_factor, &
+            star%kinetic_energy_rot,star%kinetic_energy_rot_old,envelope_zone_index, &
             log_teff, jerr)
        if (jerr /= 0) stop
 ! RENORMALIZE TLUMX-S
 !CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
-       total_luminosity_terms = luminosity_terms(1)+luminosity_terms(2)+ &
-            luminosity_terms(3)+luminosity_terms(4)+luminosity_terms(5)+ &
-            luminosity_terms(6)+luminosity_terms(7)+luminosity_terms(8)
+       total_luminosity_terms = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &
+            star%luminosity_breakdown(3)+star%luminosity_breakdown(4)+star%luminosity_breakdown(5)+ &
+            star%luminosity_breakdown(6)+star%luminosity_breakdown(7)+star%luminosity_breakdown(8)
        if (.not.helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
-          temp = luminosity_lsun(num_points)/total_luminosity_terms
+          temp = star%luminosity_lsun(num_points)/total_luminosity_terms
           do 10 j = 1,8
-             luminosity_terms(j) = luminosity_terms(j)*temp
+             star%luminosity_breakdown(j) = star%luminosity_breakdown(j)*temp
    10       continue
        endif
 ! CHECK ON SIGNIFICANCE OF R.H.S. EQUATIONS FOR P AND T
 ! N.B.  DOES NOT CHECK DIFFERENCES IN BOUNDARY EQUATIONS
        if (iter.gt.1) then
-          if (max_residual(1).le.htoler(5,1) .and. &
-               max_residual(2).le.htoler(5,2) .and. &
-               max_residual(3).le.htoler(5,1) .and. &
-               max_residual(4).le. htoler(5,2)) then
-             write(short_file_unit,20) (max_residual(j),j=1,4)
+          if (star%max_residual(1).le.htoler(5,1) .and. &
+               star%max_residual(2).le.htoler(5,2) .and. &
+               star%max_residual(3).le.htoler(5,1) .and. &
+               star%max_residual(4).le. htoler(5,2)) then
+             write(short_file_unit,20) (star%max_residual(j),j=1,4)
    20          format(' R.H.S. BELOW TOLERANCES--P',1PE9.2,'  T ',E9.2, &
              '  R ',E9.2,'  L ',E9.2)
              write(short_file_unit,75) iterations_done+1
@@ -314,62 +267,62 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
           endif
        endif
 ! SET UP HENYEY COEFFICIENTS FOR SURFACE
-       surface_bc(1) = -envelope_coeffs(1)
-       surface_bc(2) = -envelope_coeffs(2)
-       surface_bc(3) = envelope_coeffs(1)*log_pressure(num_points) + &
-            envelope_coeffs(2)*log_temperature(num_points) + &
-            envelope_coeffs(3) - log_radius(num_points)
-       temp = ln10*luminosity_lsun(num_points)
-       surface_bc(4) =-temp*envelope_coeffs(4)
-       surface_bc(5) =-temp*envelope_coeffs(5)
-       surface_bc(6) = temp*(envelope_coeffs(4)*log_pressure(num_points)+ &
-            envelope_coeffs(5)*log_temperature(num_points)+ &
-            envelope_coeffs(6)-log10_luminosity)
+       star%surface_bc(1) = -star%envelope_fit_coeffs(1)
+       star%surface_bc(2) = -star%envelope_fit_coeffs(2)
+       star%surface_bc(3) = star%envelope_fit_coeffs(1)*star%log_pressure(num_points) + &
+            star%envelope_fit_coeffs(2)*star%log_temperature(num_points) + &
+            star%envelope_fit_coeffs(3) - star%log_radius(num_points)
+       temp = ln10*star%luminosity_lsun(num_points)
+       star%surface_bc(4) =-temp*star%envelope_fit_coeffs(4)
+       star%surface_bc(5) =-temp*star%envelope_fit_coeffs(5)
+       star%surface_bc(6) = temp*(star%envelope_fit_coeffs(4)*star%log_pressure(num_points)+ &
+            star%envelope_fit_coeffs(5)*star%log_temperature(num_points)+ &
+            star%envelope_fit_coeffs(6)-log10_luminosity)
 ! DO BACK SOLUTION FOR CORRECTIONS
-       call hsolve(num_points,elim_coeff,elim_rhs,surface_bc)
+       call hsolve(num_points,star%elim_coeff,star%elim_rhs,star%surface_bc)
 ! CHECK ON MAXIMUM CORRECTIONS
        do 30 j = 1,4
-          max_residual(j) = dabs(elim_rhs(j,1))
-          max_correction_index(j) = 1
+          star%max_residual(j) = dabs(star%elim_rhs(j,1))
+          star%max_correction_index(j) = 1
    30    continue
        do 40 i = 2,num_points
-          test = dabs(elim_rhs(1,i))
-          if (max_residual(1).le.test) then
-             max_residual(1) = test
-             max_correction_index(1) = i
+          test = dabs(star%elim_rhs(1,i))
+          if (star%max_residual(1).le.test) then
+             star%max_residual(1) = test
+             star%max_correction_index(1) = i
           endif
-          test = dabs(elim_rhs(2,i))
-          if (max_residual(2).le.test) then
-             max_residual(2) = test
-             max_correction_index(2) = i
+          test = dabs(star%elim_rhs(2,i))
+          if (star%max_residual(2).le.test) then
+             star%max_residual(2) = test
+             star%max_correction_index(2) = i
           endif
-          test = dabs(elim_rhs(3,i))
-          if (max_residual(3).le.test) then
-             max_residual(3) = test
-             max_correction_index(3) = i
+          test = dabs(star%elim_rhs(3,i))
+          if (star%max_residual(3).le.test) then
+             star%max_residual(3) = test
+             star%max_correction_index(3) = i
           endif
-          test = dmin1(dabs(elim_rhs(4,i)),dabs(elim_rhs(4,i)/luminosity_lsun(i)))
-          if (max_residual(4).le.test) then
-             max_residual(4) = test
-             max_correction_index(4) = i
+          test = dmin1(dabs(star%elim_rhs(4,i)),dabs(star%elim_rhs(4,i)/star%luminosity_lsun(i)))
+          if (star%max_residual(4).le.test) then
+             star%max_residual(4) = test
+             star%max_correction_index(4) = i
           endif
    40    continue
 !CC   HE FLASH -- OK FOR ALL
-       luminosity_correction_max = max_residual(4)
+       luminosity_correction_max = star%max_residual(4)
 ! LFINI = T IF MAX CORRECTIONS LESS THAN CONVERGENCE CRITERIA SET IN
 ! HTOLER. LARGE = T IF MAX CORRECTIONS GREATER THAN LARGEST CORRECTIONS
 ! ALLOWED, ALSO SET IN HTOLER
-       converged = max_residual(1).lt.htoler(1,1) .and. &
-            max_residual(2).lt.htoler(2,1) &
-         .and. max_residual(3).lt.htoler(3,1) .and. &
-         max_residual(4).lt.htoler(4,1)
-       corrections_too_large = max_residual(1).gt.htoler(1,2) .or. &
-            max_residual(2).gt.htoler(2,2) &
-         .or. max_residual(3).gt.htoler(3,2) .or. &
-         max_residual(4).gt.htoler(4,2)
+       converged = star%max_residual(1).lt.htoler(1,1) .and. &
+            star%max_residual(2).lt.htoler(2,1) &
+         .and. star%max_residual(3).lt.htoler(3,1) .and. &
+         star%max_residual(4).lt.htoler(4,1)
+       corrections_too_large = star%max_residual(1).gt.htoler(1,2) .or. &
+            star%max_residual(2).gt.htoler(2,2) &
+         .or. star%max_residual(3).gt.htoler(3,2) .or. &
+         star%max_residual(4).gt.htoler(4,2)
        do 50 j = 1,4
-          max_correction_pos = max_correction_index(j)
-          max_residual(j) = elim_rhs(j,max_correction_pos)
+          max_correction_pos = star%max_correction_index(j)
+          star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
    50    continue
        if (fcorr0.gt.0.0d0) fcorr = dmin1(1.d0,fcorr+fcorri)
 ! HE FLASH CHANGE
@@ -378,16 +331,16 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
        endif
-       hydrogen_burn_luminosity = luminosity_terms(1) + luminosity_terms(2) &
-            + luminosity_terms(3) + luminosity_terms(4)
-       helium_burn_luminosity= luminosity_terms(5) + luminosity_terms(8)
+       hydrogen_burn_luminosity = star%luminosity_breakdown(1) + star%luminosity_breakdown(2) &
+            + star%luminosity_breakdown(3) + star%luminosity_breakdown(4)
+       helium_burn_luminosity= star%luminosity_breakdown(5) + star%luminosity_breakdown(8)
        if (lcorr) then
-          write (short_file_unit,60) converged,max_residual(4), &
-               htoler(4,1),max_correction_index(4)
+          write (short_file_unit,60) converged,star%max_residual(4), &
+               htoler(4,1),star%max_correction_index(4)
    60       format (1X,'DEL-L/L  ',L2,1P2E12.4,5X,I5)
-          write(short_file_unit,70)(max_correction_index(j),max_residual(j), &
+          write(short_file_unit,70)(star%max_correction_index(j),star%max_residual(j), &
                j=1,4),correction_factor,hydrogen_burn_luminosity, &
-               helium_burn_luminosity,(luminosity_terms(j),j=6,7)
+               helium_burn_luminosity,(star%luminosity_breakdown(j),j=6,7)
    70       format(' CORR',I5,'P',1PE9.2,I5,'T',E9.2,I5,'R',E9.2,I5,'L', &
             E9.2,'  F=',0PF5.3,'  E-HY',1PE10.3,' HE',E10.3,' NU',E10.3, &
             ' G',E10.3)
@@ -404,31 +357,31 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
          endif
 ! APPLY CORRECTIONS
        do 90 i = 1,num_points
-          temp = correction_factor*elim_rhs(1,i)
-          log_pressure(i) = log_pressure(i) + temp
-          log_pressure_delta(i) = log_pressure_delta(i) + temp
-          temp = correction_factor*elim_rhs(2,i)
-          log_temperature(i) = log_temperature(i) + temp
-          log_temperature_delta(i) = log_temperature_delta(i) + temp
-          log_radius(i) = log_radius(i) + correction_factor*elim_rhs(3,i)
-          luminosity_lsun(i) = luminosity_lsun(i) + &
-               correction_factor*elim_rhs(4,i)
+          temp = correction_factor*star%elim_rhs(1,i)
+          star%log_pressure(i) = star%log_pressure(i) + temp
+          star%log_pressure_delta(i) = star%log_pressure_delta(i) + temp
+          temp = correction_factor*star%elim_rhs(2,i)
+          star%log_temperature(i) = star%log_temperature(i) + temp
+          star%log_temperature_delta(i) = star%log_temperature_delta(i) + temp
+          star%log_radius(i) = star%log_radius(i) + correction_factor*star%elim_rhs(3,i)
+          star%luminosity_lsun(i) = star%luminosity_lsun(i) + &
+               correction_factor*star%elim_rhs(4,i)
    90    continue
-       log10_luminosity = dlog10(luminosity_lsun(num_points))
-       log_teff = envelope_coeffs(7)*log_pressure(num_points) + &
-            envelope_coeffs(8)*log_temperature(num_points) + &
-            envelope_coeffs(9)
+       log10_luminosity = dlog10(star%luminosity_lsun(num_points))
+       log_teff = star%envelope_fit_coeffs(7)*star%log_pressure(num_points) + &
+            star%envelope_fit_coeffs(8)*star%log_temperature(num_points) + &
+            star%envelope_fit_coeffs(9)
          if (rotation_active) then
-            call getrot(log_density,specific_angular_momentum,log_radius, &
-                 log_mass,shell_mass,am_transport_convective_flag, &
-                 num_points,eta_squared,moment_of_inertia,omega,qiw, &
-                 mean_radius)
-            call fpft(log_density,log_radius,log_mass,num_points,omega, &
-                 eta_squared,pressure_rotation_factor, &
-                 temperature_rotation_factor,mean_gravity,mean_radius)
+            call getrot(star%log_density,star%specific_angular_momentum,star%log_radius, &
+                 star%log_mass,star%shell_mass,star%am_transport_convective_flag, &
+                 num_points,star%eta_squared,star%moment_of_inertia,star%omega,star%qiw, &
+                 star%mean_radius)
+            call fpft(star%log_density,star%log_radius,star%log_mass,num_points,star%omega, &
+                 star%eta_squared,star%pressure_rotation_factor, &
+                 star%temperature_rotation_factor,star%mean_gravity,star%mean_radius)
             do i = 1,num_points
-               shell_angular_momentum = specific_angular_momentum(i)*shell_mass(i)
-               kinetic_energy_rot(i) = 0.5d0*omega(i)*shell_angular_momentum
+               shell_angular_momentum = star%specific_angular_momentum(i)*star%shell_mass(i)
+               star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum
             end do
          endif
        iterations_done = iterations_done + 1

@@ -17,19 +17,17 @@
 ! locates the outer edge of a central convection zone and the inner
 ! edge of a surface C.Z., and determines the mass and moment of
 ! inertia of the surface C.Z.
-subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
-     log_density,hg,specific_angular_momentum,log_luminosity,log_pressure, &
-     log_radius,log_mass,enclosed_mass, &
-! HS2,HSTOT,HT,LC,LCZ,LFIRST,M,ETA2M,HDM,HGM,HICZ,HIM,  ! KC 2025-05-31
-     shell_mass,log_total_mass,log_temperature,convective_flag,first_call, &
-     num_zones,eta_squared_mid,log_density_mid,hg_mid,moment_of_inertia_cz, &
-     moment_of_inertia_mid, &
-     log_luminosity_mid,log_pressure_mid,log_radius_mid,cz_mass_bottom, &
-     cz_mass_top,log_temperature_mid,core_boundary_zone, &
-     envelope_boundary_zone,fully_convective_flag,convective_flag_mid, &
-     am_transport_convective_flag_mid,surface_cz_active,omega_mid, &
-     mean_radius_mid,qiw_mid,radiative_zone_bounds,convective_zone_bounds, &
-     num_radiative_zones,num_convective_zones, ierr)
+subroutine midmod(full_timestep, sub_timestep, time_fraction, &
+     log_total_mass, first_call, num_zones, eta_squared_mid, &
+     log_density_mid, hg_mid, moment_of_inertia_cz, &
+     moment_of_inertia_mid, log_luminosity_mid, log_pressure_mid, &
+     log_radius_mid, cz_mass_bottom, cz_mass_top, log_temperature_mid, &
+     core_boundary_zone, envelope_boundary_zone, fully_convective_flag, &
+     convective_flag_mid, am_transport_convective_flag_mid, &
+     surface_cz_active, omega_mid, mean_radius_mid, qiw_mid, &
+     radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
+     num_convective_zones, ierr)
+      use star_info_lib, only: star
 
       use nuclear_lib
       use rotdiff_lib
@@ -46,16 +44,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 
       double precision, intent(in) :: full_timestep, sub_timestep
       double precision, intent(inout) :: time_fraction
-      double precision, intent(inout) :: composition(15,json)
-      double precision, intent(in) :: log_density(json), hg(json)
-      double precision, intent(inout) :: specific_angular_momentum(json)
-      double precision, intent(in) :: log_luminosity(json), &
-           log_pressure(json), log_radius(json), log_mass(json)
-      double precision, intent(in) :: enclosed_mass(json), shell_mass(json)
       double precision, intent(in) :: log_total_mass
-      double precision, intent(in) :: log_temperature(json)
 ! LC(JSON),LCZ(JSON),ETA2M(JSON),HDM(JSON),HGM(JSON),  ! KC 2025-05-31
-      logical, intent(in) :: convective_flag(json)
       logical, intent(in) :: first_call
       integer, intent(in) :: num_zones
       double precision, intent(out) :: eta_squared_mid(json), &
@@ -157,7 +147,7 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
             rot_diff%del_grad_diff_prev(j) = rot_diff%old_del_adiabatic_mix(j)-rot_diff%old_del_radiative_mix(j)
             mix_phys%amum(j) = rot_diff%old_amu(j)
             do 10 i = 1,num_species_tracked
-               composition(i,j) = prev_model%old_composition(i,j)
+               star%composition(i,j) = prev_model%old_composition(i,j)
    10       continue
    20    continue
       else
@@ -172,20 +162,20 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       step_fraction_ratio = sub_timestep/full_timestep
       do 40 j = 1,num_zones
          log_density_mid(j) = prev_model%old_density(j) + &
-              time_fraction*(log_density(j)-prev_model%old_density(j))
+              time_fraction*(star%log_density(j)-prev_model%old_density(j))
          log_luminosity_mid(j) = prev_model%old_luminosity(j) + &
-              time_fraction*(log_luminosity(j)-prev_model%old_luminosity(j))
+              time_fraction*(star%luminosity_lsun(j)-prev_model%old_luminosity(j))
          log_pressure_mid(j) = prev_model%old_pressure(j) + &
-              time_fraction*(log_pressure(j)-prev_model%old_pressure(j))
+              time_fraction*(star%log_pressure(j)-prev_model%old_pressure(j))
          log_radius_mid(j) = prev_model%old_radius(j) + &
-              time_fraction*(log_radius(j)-prev_model%old_radius(j))
+              time_fraction*(star%log_radius(j)-prev_model%old_radius(j))
          log_temperature_mid(j) = prev_model%old_temperature(j) + &
-              time_fraction*(log_temperature(j)-prev_model%old_temperature(j))
+              time_fraction*(star%log_temperature(j)-prev_model%old_temperature(j))
 !        DO 30 I = 1,IEND
 !           HCOMP(I,J)=HCOMP(I,J)+FAC2*HCOMPM(I,J)
 !           HCOMPP(I,J) = HCOMP(I,J)
 !  30    CONTINUE
-         hg_mid(j) = run_diag%old_hg(j) + time_fraction*(hg(j) - run_diag%old_hg(j))
+         hg_mid(j) = run_diag%old_hg(j) + time_fraction*(star%mean_gravity(j) - run_diag%old_hg(j))
          mix_phys%del_adiabatic_mix(j) = rot_diff%old_del_adiabatic_mix(j) + &
               time_fraction*(shell_diag%del_grad(3,j)-rot_diff%old_del_adiabatic_mix(j))
          mix_phys%delm(j) = rot_diff%old_delm(j) + time_fraction*(shell_diag%del_grad(2,j) - rot_diff%old_delm(j))
@@ -208,8 +198,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 !  TIMESTEP.
       do 50 i = 1,num_zones
          rot_diff%del_grad_diff_new(i) = mix_phys%del_adiabatic_mix(i)-mix_phys%del_radiative_mix(i)
-         if (convective_flag(i).eqv.rot_diff%convective_flag_prev(i)) then
-            convective_flag_mid(i) = convective_flag(i)
+         if (star%convective_flag(i).eqv.rot_diff%convective_flag_prev(i)) then
+            convective_flag_mid(i) = star%convective_flag(i)
             mix_phys%velm(i) = rot_diff%old_vel(i) + time_fraction*(shell_diag%svel(i)-rot_diff%old_vel(i))
             convective_state_changed(i) = .false.
          else
@@ -293,35 +283,35 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = cz_zone_bottom,j-1
                         radius_interp = rot_diff%radius_prev(ii)+ &
-                             convective_fraction*(log_radius(ii)-prev_model%old_radius(ii))
+                             convective_fraction*(star%log_radius(ii)-prev_model%old_radius(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
-                             cc23*shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
+                             cc23*star%shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
-                             specific_angular_momentum(ii)*shell_mass(ii)
+                             star%specific_angular_momentum(ii)*star%shell_mass(ii)
                      end do
 ! GET THE CZ MOMENT OF INERTIA AND TOTAL J AT THE TIME THE
 ! SHELL WAS RELEASED; THIS GIVES A CORRECTED VALUE FOR
 ! J/M.  REDISTRIBUTE THE DIFFERENCE IN J BACK INTO THE CZ.
                      radius_shell_factor = 2.0D0*(rot_diff%radius_prev(j)+ &
-                          convective_fraction*(log_radius(j)-rot_diff%radius_prev(j)))
+                          convective_fraction*(star%log_radius(j)-rot_diff%radius_prev(j)))
                      specific_angular_momentum_corrected = &
                           cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
                           10.0D0**radius_shell_factor
                      delta_angular_momentum = &
-                          (specific_angular_momentum(j)- &
-                          specific_angular_momentum_corrected)*shell_mass(j)
+                          (star%specific_angular_momentum(j)- &
+                          specific_angular_momentum_corrected)*star%shell_mass(j)
                      angular_momentum_ratio = &
                           (cz_angular_momentum-delta_angular_momentum)/ &
                           cz_angular_momentum
-                     specific_angular_momentum(j)=specific_angular_momentum_corrected
+                     star%specific_angular_momentum(j)=specific_angular_momentum_corrected
                      angular_momentum_check_ratio = &
                           specific_angular_momentum_corrected/ &
-                          specific_angular_momentum(j)
+                          star%specific_angular_momentum(j)
                      write(*,*)j,time_fraction,angular_momentum_check_ratio, &
                           delta_angular_momentum,angular_momentum_ratio
                      do ii = cz_zone_bottom,j-1
-                        specific_angular_momentum(ii) = &
-                             specific_angular_momentum(ii)*angular_momentum_ratio
+                        star%specific_angular_momentum(ii) = &
+                             star%specific_angular_momentum(ii)*angular_momentum_ratio
                      end do
                   end do
                else
@@ -347,35 +337,35 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = j+1,cz_zone_top
                         radius_interp = rot_diff%radius_prev(ii)+ &
-                             convective_fraction*(log_radius(ii)-prev_model%old_radius(ii))
+                             convective_fraction*(star%log_radius(ii)-prev_model%old_radius(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
-                             cc23*shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
+                             cc23*star%shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
-                             specific_angular_momentum(ii)*shell_mass(ii)
+                             star%specific_angular_momentum(ii)*star%shell_mass(ii)
                      end do
 ! GET THE CZ MOMENT OF INERTIA AND TOTAL J AT THE TIME THE
 ! SHELL WAS RELEASED; THIS GIVES A CORRECTED VALUE FOR
 ! J/M.  REDISTRIBUTE THE DIFFERENCE IN J BACK INTO THE CZ.
                      radius_shell_factor = 2.0D0*(rot_diff%radius_prev(j)+ &
-                          convective_fraction*(log_radius(j)-rot_diff%radius_prev(j)))
+                          convective_fraction*(star%log_radius(j)-rot_diff%radius_prev(j)))
                      specific_angular_momentum_corrected = &
                           cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
                           10.0D0**radius_shell_factor
                      delta_angular_momentum = &
-                          (specific_angular_momentum(j)- &
-                          specific_angular_momentum_corrected)*shell_mass(j)
+                          (star%specific_angular_momentum(j)- &
+                          specific_angular_momentum_corrected)*star%shell_mass(j)
                      angular_momentum_ratio = &
                           (cz_angular_momentum-delta_angular_momentum)/ &
                           cz_angular_momentum
-                     specific_angular_momentum(j)=specific_angular_momentum_corrected
+                     star%specific_angular_momentum(j)=specific_angular_momentum_corrected
                      angular_momentum_check_ratio = &
                           specific_angular_momentum_corrected/ &
-                          specific_angular_momentum(j)
+                          star%specific_angular_momentum(j)
                      write(*,*)j,time_fraction,angular_momentum_check_ratio, &
                           delta_angular_momentum,angular_momentum_ratio
                      do ii = j+1,num_zones
-                        specific_angular_momentum(ii) = &
-                             specific_angular_momentum(ii)*angular_momentum_ratio
+                        star%specific_angular_momentum(ii) = &
+                             star%specific_angular_momentum(ii)*angular_momentum_ratio
                      end do
                   end do
                endif
@@ -384,23 +374,23 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
          end do
       endif
 !  CONVECTIVE OVERSHOOT APPLIED TO NORMAL CONVECTION ZONES.
-      call ovrot(composition,log_density_mid,log_pressure_mid,log_radius_mid, &
-           log_mass,log_temperature_mid,convective_flag_mid,num_zones, &
+      call ovrot(star%composition,log_density_mid,log_pressure_mid,log_radius_mid, &
+           star%log_mass,log_temperature_mid,convective_flag_mid,num_zones, &
            am_transport_convective_flag_mid,radiative_zone_bounds, &
            convective_zone_bounds,num_radiative_zones,num_convective_zones)
 !  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
 ! MHP 6/00 - FOR THERMODYNAMIC CONSISTENCY USE CURRENT T, NOT END OF
 ! TIMESTEP T (REPLACED HT IN CALL WITH HTM)
 !       CALL ROTMIX(DT,HCOMP,HS2,HTM,5,M,MRZONE,MXZONE,  ! KC 2025-05-31
-      call rotmix(sub_timestep,composition,shell_mass,log_temperature_mid, &
+      call rotmix(sub_timestep,star%composition,star%shell_mass,log_temperature_mid, &
            num_zones,radiative_zone_bounds,convective_zone_bounds, &
            num_radiative_zones,num_convective_zones &
-           ,log_total_mass,log_density_mid,log_mass,log_radius_mid, &
-           log_pressure_mid,am_transport_convective_flag_mid,enclosed_mass, ierr)
+           ,log_total_mass,log_density_mid,star%log_mass,log_radius_mid, &
+           log_pressure_mid,am_transport_convective_flag_mid,star%enclosed_mass, ierr)
       if (ierr /= 0) return
       do i = 1,num_zones
          do j = 1,num_species_tracked
-            rot_diff%composition_snapshot(j,i) = composition(j,i)
+            rot_diff%composition_snapshot(j,i) = star%composition(j,i)
          end do
       end do
 ! MHP 05/02 ADDED DEUTERIUM BURNING
@@ -429,8 +419,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
                if (log_temperature_mid(j).le.tcut(1)) goto 190
                burn_zone_begin = j
                burn_zone_end = j
-               call dburnm(burn_zone_begin,burn_zone_end,num_zones,shell_mass, &
-                    composition,sub_timestep,deuterium_rate_mid, &
+               call dburnm(burn_zone_begin,burn_zone_end,num_zones,star%shell_mass, &
+                    star%composition,sub_timestep,deuterium_rate_mid, &
                     deuterium_rate_mid_start,step_fraction_ratio)
            end do
         end do
@@ -442,8 +432,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
          do k = 1,num_convective_zones
             burn_zone_begin = convective_zone_bounds(k,1)
             burn_zone_end = convective_zone_bounds(k,2)
-            call dburnm(burn_zone_begin,burn_zone_end,num_zones,shell_mass, &
-                 composition,sub_timestep,deuterium_rate_mid, &
+            call dburnm(burn_zone_begin,burn_zone_end,num_zones,star%shell_mass, &
+                 star%composition,sub_timestep,deuterium_rate_mid, &
                  deuterium_rate_mid_start,step_fraction_ratio)
          end do
       endif
@@ -474,8 +464,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 !  HSBOT IS THE MASS AT THE BOTTOM OF THE C.Z.
          cz_mass_top = exp(ln10*log_total_mass)
          if (envelope_boundary_zone.gt.1) then
-            cz_mass_bottom = 0.5D0*(enclosed_mass(envelope_boundary_zone)+ &
-                 enclosed_mass(envelope_boundary_zone-1))
+            cz_mass_bottom = 0.5D0*(star%enclosed_mass(envelope_boundary_zone)+ &
+                 star%enclosed_mass(envelope_boundary_zone-1))
          else
             cz_mass_bottom = 0.0D0
          endif
@@ -570,14 +560,14 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
 !  I/M = 2/3 R**2.
          do i = 1,num_zones
             moment_of_inertia_mid(i) = cc23*exp(ln10*2.0D0*log_radius_mid(i))
-            omega_mid(i) = specific_angular_momentum(i)/moment_of_inertia_mid(i)
-            moment_of_inertia_mid(i) = shell_mass(i)*moment_of_inertia_mid(i)
+            omega_mid(i) = star%specific_angular_momentum(i)/moment_of_inertia_mid(i)
+            moment_of_inertia_mid(i) = star%shell_mass(i)*moment_of_inertia_mid(i)
          end do
 !  SOLVE FOR THE ANGULAR VELOCITIES OF THE SHELLS GIVEN THE SPECIFIC
 !  ANGULAR MOMENTUM (HJM) AND A FIRST GUESS AT THE ANGULAR VELOCITY(OMEGAM)
 !  AND MOMENT OF INERTIA (HIM).
-         call getrot(log_density_mid,specific_angular_momentum,log_radius_mid, &
-              log_mass,shell_mass,am_transport_convective_flag_mid,num_zones, &
+         call getrot(log_density_mid,star%specific_angular_momentum,log_radius_mid, &
+              star%log_mass,star%shell_mass,am_transport_convective_flag_mid,num_zones, &
               eta_squared_mid,moment_of_inertia_mid,omega_mid,qiw_mid, &
               mean_radius_mid)
 !  FIND TOTAL MOMENT OF INERTIA OF THE SURFACE C.Z. IF APPLICABLE.
@@ -592,8 +582,8 @@ subroutine midmod(full_timestep,sub_timestep,time_fraction,composition, &
       else
          solid_zone_start = 1
          solid_zone_end = num_zones
-         call solid(log_density_mid,specific_angular_momentum,log_radius_mid, &
-              log_mass,shell_mass,solid_zone_start,solid_zone_end, &
+         call solid(log_density_mid,star%specific_angular_momentum,log_radius_mid, &
+              star%log_mass,star%shell_mass,solid_zone_start,solid_zone_end, &
               eta_squared_mid,moment_of_inertia_mid,omega_mid,qiw_mid, &
               mean_radius_mid,num_zones)
          if (surface_cz_active) then
