@@ -3,21 +3,21 @@
 !----------------------------------------------------------------------
 ! Added 2026 (physics-purity pass -- ROADMAP.md "Decoupling the
 ! physics domains from the model"). The BURN DRIVERS, split out of
-! nuclear_lib: the routines that advance the model's composition and
+! net_lib: the routines that advance the model's composition and
 ! diagnostics over a timestep -- engeb (the per-zone energy-generation
 ! driver, with its eqburn equilibrium helper), the deuterium drivers
 ! dburn/dburnm and rate bookkeeping deutrate, and the light-element
 ! drivers liburn/liburn2 with lirate88. All of them read/write
 ! star_info (the previous model, the light-burn rate store, the flux
 ! and energy diagnostics), which is exactly why they are STAR-LAYER
-! code: in MESA terms these are struct_burn_mix, not net. nuclear_lib
+! code: in MESA terms these are struct_burn_mix, not net. net_lib
 ! keeps the pure kernels (rates, sneut, nulosses, neutrino, azbar,
 ! safedivexp, the Fermi inverses), which are functions of
 ! (logRho, logT, composition, controls) only -- the surface
 ! test_nuclear pins. Procedure bodies are unchanged; only the module
 ! boundary moved.
 module burn_lib
-      use nuclear_lib
+      use net_lib
       implicit none
 contains
 
@@ -2072,7 +2072,7 @@ end subroutine engeb
 ! rotation/getw.f90 -- one of this routine's two callers -- had
 ! declared its own shell_mass intent(in) and needed widening to
 ! intent(inout) to match, once this routine gained an explicit
-! interface (moved into nuclear_lib.f90).
+! interface (moved into net_lib.f90).
 subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use star_info_lib, only: star

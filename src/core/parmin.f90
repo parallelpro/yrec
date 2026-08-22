@@ -532,7 +532,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! copied into const_lib's use_itoh_neutrino_loss after the namelist
 ! read below. dsnudt/dsnudd (former common/nuloss/'s other two
 ! members) are unused in this file and confirmed dead everywhere else
-! too (nuclear_lib.f90's engeb's neutrino_dlnq_dlnt/neutrino_dlnq_dlnd,
+! too (net_lib.f90's engeb's neutrino_dlnq_dlnt/neutrino_dlnq_dlnd,
 ! which shared this block only by position, are genuinely local to
 ! that routine and were made plain locals there), so they're dropped
 ! entirely rather than carried forward.

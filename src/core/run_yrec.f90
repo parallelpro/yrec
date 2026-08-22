@@ -25,7 +25,7 @@ subroutine run_yrec(ierr)
 ! the array size, i.e. max # of shells is specified in the parameter
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
-      use nuclear_lib
+      use net_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
       use star_info_lib, only: star

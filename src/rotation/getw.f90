@@ -30,7 +30,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use nuclear_lib
+      use net_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
       use star_info_lib, only: star

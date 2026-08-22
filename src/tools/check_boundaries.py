@@ -25,7 +25,7 @@ import collections
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
 
-DOMAINS = ["eos", "kap", "atm", "nuclear", "wind", "mixing",
+DOMAINS = ["eos", "kap", "atm", "net", "wind", "mixing",
            "rotation", "numerics"]
 
 # domain -> names callable from outside that domain.
@@ -40,8 +40,8 @@ PUBLIC = {
     # diagnostics consumed by core/io/rotation (calcad, gettau).
     "atm": {"atm_get", "atm_get_surface_pt", "atm_init",
             "surfbc", "calcad", "gettau"},
-    # Every nuclear_lib module procedure is public by construction.
-    "nuclear": {"neutrino", "nulosses", "azbar", "sneut", "rates",
+    # Every net_lib module procedure is public by construction.
+    "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
                 "eqburn", "dburn", "dburnm", "deutrate", "engeb",
                 "liburn", "liburn2", "lirate88", "safedivexp",
                 "ifermi12", "zfermim12"},

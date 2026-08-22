@@ -29,7 +29,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
       use star_info_lib, only: star
       use star_info_lib, only: star
 
-      use nuclear_lib
+      use net_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
       use star_info_lib, only: star

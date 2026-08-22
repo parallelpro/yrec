@@ -23,7 +23,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
      zone_min, env_cz_zone_old, env_cz_zone, final_iteration_flag, &
      convective_flag, num_zones, radiative_zone_bounds, mixed_zone_bounds, &
      num_radiative_zones, num_zones_mixed, ierr)
-      use nuclear_lib
+      use net_lib
       use const_lib
       use star_info_lib, only: star
       use star_info_lib, only: star

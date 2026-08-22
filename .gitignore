@@ -14,6 +14,6 @@ src/test_atm
 src/test_eos.short
 src/test_kap.short
 src/test_atm.short
-src/test_nuclear
+src/test_net
 src/test_reentry
-src/test_nuclear.short
+src/test_net.short

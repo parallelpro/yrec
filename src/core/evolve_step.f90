@@ -22,7 +22,7 @@
 ! phase-C reset audit covers them alongside evolve_state.
 subroutine evolve_step(model_iteration, step_status, ierr)
 
-      use nuclear_lib
+      use net_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
       use star_info_lib, only: star

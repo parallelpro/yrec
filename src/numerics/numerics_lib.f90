@@ -11,11 +11,11 @@
 ! Callers use this via `use numerics_lib`.
 !
 ! lir and ratext (below, at the end of this module) were moved in
-! (2026) from nuclear_lib.f90, where they'd originally been filed
-! (along with the rest of nuclear/) purely because nuclear_lib.f90's
+! (2026) from net_lib.f90, where they'd originally been filed
+! (along with the rest of nuclear/) purely because net_lib.f90's
 ! own liburn is one of their callers -- both are generic numerics with no
 ! nuclear-physics content, and this module's own bsstep/intpt already
-! called them via an errant `use nuclear_lib` (ratext is in fact the
+! called them via an errant `use net_lib` (ratext is in fact the
 ! textbook Numerical-Recipes companion to bsstep/mmid above). See
 ! GUIDELINES.md's rule that folder/module placement should track
 ! function, not caller.
@@ -1919,10 +1919,10 @@ end subroutine intpt
 ! were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! Moved here (2026) from nuclear_lib.f90: a generic table-lookup
+! Moved here (2026) from net_lib.f90: a generic table-lookup
 ! interpolation/extrapolation routine with no nuclear-physics content
 ! -- called by this module's own intpt above, and by eos/mhd/mhdpx1.f90;
-! it was mis-homed in nuclear_lib purely because its own liburn
+! it was mis-homed in net_lib purely because its own liburn
 ! also happens to use it (see ratext below, which shares that
 ! history). Naming/module placement follows GUIDELINES.md's rule that
 ! folder/module placement should track function, not caller.
@@ -2125,12 +2125,12 @@ end subroutine lir
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! Moved here (2026) from nuclear_lib.f90: a diagonal rational-function
+! Moved here (2026) from net_lib.f90: a diagonal rational-function
 ! extrapolator, the textbook companion to this module's own bsstep/
 ! mmid Bulirsch-Stoer stepper above (same algorithm as subroutine
 ! RZEXTR in Numerical Recipes, p.566) -- bsstep already called it via
-! an errant `use nuclear_lib`. Also called directly by
-! nuclear_lib.f90's own liburn to extrapolate a sequence of sub-stepped
+! an errant `use net_lib`. Also called directly by
+! net_lib.f90's own liburn to extrapolate a sequence of sub-stepped
 ! lithium/beryllium burning-rate estimates (indexed by decreasing step
 ! size) to the zero-step-size limit as the sub-stepping is refined.
 subroutine ratext(est_index, x_est, y_est, y_extrap, y_err, num_vars, &

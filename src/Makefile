@@ -63,7 +63,7 @@ OBJS := $(patsubst %.f90,%.o,$(SRCS))
 # statement. The order-only prerequisite below (declared once all module
 # sources are known) ensures every module object is built first, safely
 # under parallel (-j) builds, without forcing spurious rebuilds.
-MODULE_SRCS := const/phys_const_lib.f90 const/controls_lib.f90 const/controls_reset_lib.f90 const/const_lib.f90 const/luout_lib.f90 const/intpar_lib.f90 state/oldmod_lib.f90 state/scrtch_lib.f90 state/turnover_lib.f90 state/light_burn_lib.f90 state/engeb_diag_lib.f90 state/fluxes_lib.f90 state/mdphy_lib.f90 state/envelope_comp_lib.f90 state/temp_lib.f90 state/envstruct_lib.f90 state/pulse_diag_lib.f90 state/atmstruct_lib.f90 state/temp2_lib.f90 state/run_diag_lib.f90 state/rotdiff_lib.f90 state/scv_eos_lib.f90 state/eos_mixture_lib.f90 state/star_info_lib.f90 state/star_job_lib.f90 state/evolve_state_lib.f90 state/atm_table_lib.f90 state/mhd_eos_lib.f90 state/opacity_table_lib.f90 state/opal_eos_lib.f90 state/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 nuclear/nuclear_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/yrec_reset.f90
+MODULE_SRCS := const/phys_const_lib.f90 const/controls_lib.f90 const/controls_reset_lib.f90 const/const_lib.f90 const/luout_lib.f90 const/intpar_lib.f90 state/oldmod_lib.f90 state/scrtch_lib.f90 state/turnover_lib.f90 state/light_burn_lib.f90 state/engeb_diag_lib.f90 state/fluxes_lib.f90 state/mdphy_lib.f90 state/envelope_comp_lib.f90 state/temp_lib.f90 state/envstruct_lib.f90 state/pulse_diag_lib.f90 state/atmstruct_lib.f90 state/temp2_lib.f90 state/run_diag_lib.f90 state/rotdiff_lib.f90 state/scv_eos_lib.f90 state/eos_mixture_lib.f90 state/star_info_lib.f90 state/star_job_lib.f90 state/evolve_state_lib.f90 state/atm_table_lib.f90 state/mhd_eos_lib.f90 state/opacity_table_lib.f90 state/opal_eos_lib.f90 state/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/yrec_reset.f90
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
@@ -74,7 +74,7 @@ $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 # objects relative to each other, and MODULE_SRCS list position alone
 # does not guarantee build order under parallel (-j) builds.
 const/const_lib.o: | const/phys_const_lib.o const/controls_lib.o
-nuclear/nuclear_lib.o: | const/const_lib.o state/oldmod_lib.o \
+net/net_lib.o: | const/const_lib.o state/oldmod_lib.o \
 	state/star_info_lib.o \
 	state/engeb_diag_lib.o state/fluxes_lib.o state/light_burn_lib.o \
 	const/luout_lib.o state/mdphy_lib.o numerics/numerics_lib.o \
@@ -91,7 +91,7 @@ state/star_info_lib.o: | state/oldmod_lib.o state/scrtch_lib.o \
 	state/fluxes_lib.o state/engeb_diag_lib.o state/mdphy_lib.o \
 	state/temp_lib.o state/temp2_lib.o state/pulse_diag_lib.o
 const/controls_reset_lib.o: | const/controls_lib.o const/phys_const_lib.o
-core/burn_lib.o: | nuclear/nuclear_lib.o state/star_info_lib.o \
+core/burn_lib.o: | net/net_lib.o state/star_info_lib.o \
 	const/const_lib.o const/luout_lib.o
 core/yrec_reset.o: | state/star_info_lib.o state/star_job_lib.o \
 	state/evolve_state_lib.o const/controls_reset_lib.o
@@ -171,7 +171,7 @@ endif
 # builds all of them; the yrec executable itself still links the flat
 # object list (the transition to library-based linking can go domain
 # by domain). Standalone per-domain test programs link against these.
-DOMAIN_DIRS := eos kap atm nuclear wind mixing rotation numerics \
+DOMAIN_DIRS := eos kap atm net wind mixing rotation numerics \
 	const state setup io core util
 
 define LIB_template
@@ -206,12 +206,12 @@ test_reentry: FFLAGS += $(REL_FFLAGS)
 test_reentry: core/test/test_reentry.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^
 
-test_nuclear: FFLAGS += $(REL_FFLAGS)
-test_nuclear: nuclear/test/test_nuclear.o $(filter-out core/main.o,$(OBJS))
+test_net: FFLAGS += $(REL_FFLAGS)
+test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^
 
 .PHONY: tests
-tests: test_eos test_kap test_atm test_nuclear test_reentry
+tests: test_eos test_kap test_atm test_net test_reentry
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
