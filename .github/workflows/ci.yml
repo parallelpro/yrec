@@ -30,6 +30,7 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /src/
+            /conftest.py
             /test_eos.py
             /test_kap.py
             /test_atm.py
