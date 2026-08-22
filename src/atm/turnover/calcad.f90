@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use eos_lib
       use atm_lib
       use atm_table_lib
       use run_diag_lib
@@ -148,17 +149,10 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       logical :: print_flag, surface_bc_flag, pulsation_output_flag
       double precision :: spot_adjusted_teff
 
-      integer :: eos_interp_order, eos_rad_flag
-      double precision :: star_x_local, star_t_local, star_d_local
-      double precision :: star_logd_local, star_z_local, star_logt_local, &
-           star_p_local, star_logp_local
-      logical :: lcalcj_unused
-      logical :: eos_deriv_flag, eos_atmosphere_flag
-      double precision :: beta_local, beta_ion_local, beta14_local, &
-           ion_fraction_local(3), mean_molecular_weight_eos, amu_eos, &
-           emu_eos, eta_eos, qdt_eos, qdp_eos, qcp_eos, dela_eos, &
-           qdtt_eos, qdtp_eos, qat_eos, qap_eos, qcpt_eos, qcpp_eos
-      double precision :: chi_rho, chi_t, specific_heat_cv
+! (The per-zone eos scratch locals that used to live here -- the
+! star_*_local copies, the eqstat2 output block, and the Cox & Giuli
+! chi/cv intermediates -- moved into eos_lib.f90's eos_get_gamma1
+! along with the dispatch itself; 2026, ROADMAP.md stage 1.)
 
 ! Initialize values:
       taucz_placeholder = 0.0d0
@@ -247,60 +241,21 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 35      continue
 
 
-! Call EOS interpolator: Takes OPAL2006 EOS if possible. If OPAL06 is off, uses SCV
-! For OPAL 2006 EOS:
-      if (use_opal2006_eos) then
-            eos_interp_order=9
-            eos_rad_flag=1
-            do 36, zone_idx=1,num_shells+env_struct%num_env_points-1
-                  star_x_local=star_hydrogen_fraction(zone_idx)
-                  star_t_local=star_temperature_1e6k(zone_idx)
-                  star_d_local=star_density_cgs(zone_idx)
-!                   CALL ESAC06(STX,ZTAB,STT,STD,IORDER,IRAD,*999)  ! KC 2025-05-31
-                  call esac06(star_x_local,star_t_local,star_d_local, &
-                       eos_interp_order,eos_rad_flag,*999)
-999                  continue
-                  star_inverse_sound_speed(zone_idx)=1.0d0/ &
-                       sqrt(atm_table%eos_output(8)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
-                  deladj_placeholder(zone_idx)=1.0d0/atm_table%eos_output(9)
-                  local_gamma1(zone_idx) = atm_table%eos_output(8)
-36            continue
-      endif
-! For SCV EOS: (when OPAL06 is turned off, SCV on for backup, Yale if SCV is off)
-      if ( .not. use_opal2006_eos) then
-            do 41, zone_idx=1,num_shells+env_struct%num_env_points-1
-                  star_x_local=star_hydrogen_fraction(zone_idx)
-                  star_t_local=star_temperature_1e6k(zone_idx)*1.0d6
-                  star_d_local=star_density_cgs(zone_idx)
-                  star_logd_local=dlog10(star_density_cgs(zone_idx))
-                  star_z_local=star_metal_fraction(zone_idx)
-                  star_logt_local=dlog10(star_t_local)
-                  star_p_local=star_pressure_cgs(zone_idx)
-                  star_logp_local=dlog10(star_p_local)
-                  lcalcj_unused = .true.
-!                  CALL EQSCVE(STTL,STT,STPL,STP,STDL,STD,STX,STZ,BETAJ,BETAIJ,BET14J,FXIONJ,RMUJ,
-!     *                       AMUJ,EMUJ,ETAJ,QDTJ,QDPJ,QCPJ,DELAJ,LCALCJ)
-                  eos_deriv_flag = .false.
-                  eos_atmosphere_flag = .true.
-                  call eqstat2(star_logt_local,star_t_local,star_logp_local, &
-                       star_p_local,star_logd_local,star_d_local,star_x_local, &
-                       star_z_local,beta_local,beta_ion_local,beta14_local, &
-                       ion_fraction_local,mean_molecular_weight_eos,amu_eos, &
-                       emu_eos,eta_eos,qdt_eos,qdp_eos,qcp_eos,dela_eos, &
-                       qdtt_eos,qdtp_eos,qat_eos,qap_eos,qcpt_eos,qcpp_eos, &
-                       eos_deriv_flag,eos_atmosphere_flag,ksaha)
-
-!                  calculate gamma1 (taken from envint example, eqns in chap. 9 of Cox& Giuli):
-                  chi_rho = 1.0d0/qdp_eos
-                   chi_t = -chi_rho*qdt_eos
-                  specific_heat_cv = qcp_eos-exp(ln10*(star_logp_local-star_logd_local- &
-                       star_logt_local))*chi_t**2/chi_rho
-                  local_gamma1(zone_idx) = chi_rho*qcp_eos/specific_heat_cv
-                  star_inverse_sound_speed(zone_idx)=1.0d0/ &
-                       sqrt(local_gamma1(zone_idx)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
-                  deladj_placeholder(zone_idx) = dela_eos
-41            continue
-      endif
+! Call EOS interpolator via eos_lib's eos_get_gamma1, which performs
+! the OPAL2006-vs-Yale/SCV dispatch (and the Cox & Giuli gamma1
+! construction on the Yale/SCV path) that historically lived here as
+! direct esac06/eqstat2 calls -- see eos_lib.f90 (2026, phase three,
+! ROADMAP.md stage 1).
+      do 36, zone_idx=1,num_shells+env_struct%num_env_points-1
+            call eos_get_gamma1(star_hydrogen_fraction(zone_idx), &
+                 star_metal_fraction(zone_idx), &
+                 star_temperature_1e6k(zone_idx), &
+                 star_density_cgs(zone_idx),star_pressure_cgs(zone_idx), &
+                 local_gamma1(zone_idx),deladj_placeholder(zone_idx), &
+                 ksaha)
+            star_inverse_sound_speed(zone_idx)=1.0d0/ &
+                 sqrt(local_gamma1(zone_idx)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
+36      continue
 
 
 

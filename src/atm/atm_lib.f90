@@ -944,4 +944,58 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       return
 end subroutine atm_get
 
+!----------------------------------------------------------------------
+! atm_init
+!----------------------------------------------------------------------
+! Added 2026 (phase three, ROADMAP.md stage 1): the atm domain's
+! startup-time table-load lifecycle entry, following MESA's
+! <mod>_init convention. Currently covers the Allard NextGen
+! atmosphere tables (tables/alfilein.f90); the atm_choice gate
+! previously lived at the call site (setup/setups.f90) -- moved
+! inside so the caller needs no knowledge of which atmosphere option
+! requires which tables. NOTE (recorded in ROADMAP.md): the
+! Kurucz/Castelli surface-pressure tables (atm_choice 3 and 5) are
+! still read by inline open/read blocks in setup/setups.f90 rather
+! than through this entry -- extracting those is future stage-1
+! work, deliberately not bundled with this first step.
+subroutine atm_init(allard_table_path)
+
+      use const_lib
+      implicit none
+
+      character(len=256), intent(in) :: allard_table_path
+
+      if (atm_choice .eq. 4) then
+         call alfilein(allard_table_path)
+      end if
+
+      return
+end subroutine atm_init
+
+!----------------------------------------------------------------------
+! atm_get_surface_pt
+!----------------------------------------------------------------------
+! Added 2026 (phase three, ROADMAP.md stage 1): public accessor for
+! the Allard-atmosphere surface lookup, created so wind/massloss.f90
+! (previously the last file calling tables/alsurfp.f90 directly) can
+! go through the facade. Given log10(Teff) and log10(g), performs the
+! Allard table interpolation; results land in atm_table state
+! (atm_table%atm_log10_pressure/atm_log10_temperature), exactly as
+! alsurfp has always delivered them. lookup_failed is set when the
+! requested point falls outside the Allard tables (the caller then
+! falls back per its own policy -- see alsurfp.f90's header).
+subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
+     lookup_failed)
+
+      implicit none
+
+      double precision, intent(in) :: log_teff, log_g
+      logical, intent(in) :: print_to_files
+      logical, intent(out) :: lookup_failed
+
+      call alsurfp(log_teff, log_g, print_to_files, lookup_failed)
+
+      return
+end subroutine atm_get_surface_pt
+
 end module atm_lib

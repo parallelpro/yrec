@@ -27,6 +27,9 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
      centre5_table_path, opal92_table2_path, pure_z_table_path, &
      scv_h_table_path, scv_he_table_path, scv_z_table_path, &
      alex95_table_paths)
+      use eos_lib
+      use kap_lib
+      use atm_lib
       use atm_table_lib
       use envelope_comp_lib
       use luout_lib
@@ -169,7 +172,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      call setupopac(env_comp%envelope_hydrogen_fraction, laol_work_array, &
+      call kap_init(env_comp%envelope_hydrogen_fraction, laol_work_array, &
            alex06_table_path,kurucz_table_path,kurucz_table2_path, &
            laol_table_path,laol_table2_path, &
            opal95_table_path,opal92_table_path,opal92_table2_path, &
@@ -179,11 +182,11 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! MHP 8/25 Passed file names directly instead of through common, as
 ! character strings in common blocks can cause problems
-      if(use_mhd_eos) then
-           call mhdtbl(zams_a_table_path,zams_b_table_path, &
-                zams_c_table_path,centre1_table_path,centre2_table_path, &
-                centre3_table_path,centre4_table_path,centre5_table_path)
-      endif
+! 2026 (ROADMAP.md stage 1): the use_mhd_eos gate moved inside
+! eos_lib's eos_init; a no-op when MHD is off, exactly as before.
+      call eos_init(zams_a_table_path,zams_b_table_path, &
+           zams_c_table_path,centre1_table_path,centre2_table_path, &
+           centre3_table_path,centre4_table_path,centre5_table_path)
 !
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -275,10 +278,11 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !        G Somers 5/15 END
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES; USED INSTEAD OF
 ! KURUCZ FOR TEFF < 10,000 K.
-         if(atm_choice .eq. 4)then
 !            ATMZA = 0.02D0
-          call alfilein(allard_table_path)      ! Get Allard Atmospheres files and
-         endif                  ! initialize tables. 9/23/08 LLP
+! 2026 (ROADMAP.md stage 1): the atm_choice.eq.4 gate moved inside
+! atm_lib's atm_init; a no-op for other atmosphere options, exactly
+! as the gated alfilein call was. 9/23/08 LLP
+          call atm_init(allard_table_path)
 
 
 ! JNT 6/14 ADD OPTION FOR NEW KURUCZ/CASTELLI ATMOSHPERES

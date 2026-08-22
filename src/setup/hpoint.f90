@@ -26,6 +26,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
 ! BL,DELTS,FP,FT,HG,QIW,SMASS,TEFFL)  ! KC 2025-05-31
      fp,ft,hg,qiw,log_teff)
 
+      use kap_lib
       use rotdiff_lib
       use run_diag_lib
       use temp_lib
@@ -933,7 +934,7 @@ subroutine hpoint(num_zones,log_total_mass,log_mass,enclosed_mass, &
       if (dabs(env_comp%xnew-composition(1,num_zones)).gt.1.0D-8) then
                env_comp%xnew = composition(1,num_zones)
                env_comp%znew = composition(3,num_zones)
-               call surfopac(env_comp%xnew)
+               call kap_update_surface_tables(env_comp%xnew)
 
       end if
 

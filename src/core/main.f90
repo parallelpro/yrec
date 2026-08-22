@@ -151,7 +151,6 @@ program main
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
       use nuclear_lib
-      use opacity_table_lib
       use run_diag_lib
       use fluxes_lib
       use engeb_diag_lib

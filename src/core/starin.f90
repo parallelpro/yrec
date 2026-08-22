@@ -1106,7 +1106,7 @@ subroutine starin(log10_luminosity, envelope_fit_coeffs, age_gyr, &
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
  630  continue
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
-      call surfopac(env_comp%envelope_hydrogen_fraction)
+      call kap_update_surface_tables(env_comp%envelope_hydrogen_fraction)
       if (use_scv_eos) then
          call setscv
       endif

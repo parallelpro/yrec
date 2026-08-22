@@ -303,4 +303,59 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
       return
 end subroutine kap_get
 
+!----------------------------------------------------------------------
+! kap_init
+!----------------------------------------------------------------------
+! Added 2026 (phase three, ROADMAP.md stage 1): the kap domain's
+! startup-time table-load lifecycle entry, following MESA's
+! <mod>_init convention. Wraps setupopac.f90 (which reads whichever
+! opacity tables the use_*_tables flags select and builds their
+! interpolation splines); setup/setups.f90 previously called
+! setupopac directly, making a de-facto-public entry of what is
+! really internal loader machinery.
+subroutine kap_init(envelope_hydrogen_fraction, laol_work_array, &
+     alex06_table_path, kurucz_table_path, kurucz_table2_path, &
+     laol_table_path, laol_table2_path, opal95_table_path, &
+     opal92_table_path, opal92_table2_path, pure_z_table_path, &
+     alex95_table_paths)
+
+      implicit none
+
+      double precision, intent(in) :: envelope_hydrogen_fraction
+      double precision, intent(inout) :: laol_work_array(12)
+      character(len=256), intent(in) :: alex06_table_path, &
+           kurucz_table_path, kurucz_table2_path, laol_table_path, &
+           laol_table2_path, opal95_table_path, opal92_table_path, &
+           opal92_table2_path, pure_z_table_path
+      character(len=256), intent(in) :: alex95_table_paths(7)
+
+      call setupopac(envelope_hydrogen_fraction, laol_work_array, &
+           alex06_table_path, kurucz_table_path, kurucz_table2_path, &
+           laol_table_path, laol_table2_path, opal95_table_path, &
+           opal92_table_path, opal92_table2_path, pure_z_table_path, &
+           alex95_table_paths)
+
+      return
+end subroutine kap_init
+
+!----------------------------------------------------------------------
+! kap_update_surface_tables
+!----------------------------------------------------------------------
+! Added 2026 (phase three, ROADMAP.md stage 1): public lifecycle entry
+! for refreshing the cached surface-composition opacity-table slices
+! (OPAL95/OPAL92/ALEX95 fixed-X tables) when the envelope hydrogen
+! fraction changes. Wraps surfopac.f90; core/starin.f90 and
+! setup/hpoint.f90 previously called surfopac directly -- a
+! legitimate lifecycle operation that simply had no facade name.
+subroutine kap_update_surface_tables(hydrogen_fraction)
+
+      implicit none
+
+      double precision, intent(in) :: hydrogen_fraction
+
+      call surfopac(hydrogen_fraction)
+
+      return
+end subroutine kap_update_surface_tables
+
 end module kap_lib

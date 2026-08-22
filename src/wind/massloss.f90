@@ -46,6 +46,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed)
+      use atm_lib
       use atm_table_lib
       use rotdiff_lib
       use light_burn_lib
@@ -242,7 +243,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          log10_gravity = cgl+log_total_mass-2.0d0*log10_radius
 ! This is experimental code and valid for Allard atmospheres only.
 !   llp  06/15/2009
-         call alsurfp(log_teff,log10_gravity,print_flag,allard_surface_failed)
+         call atm_get_surface_pt(log_teff,log10_gravity,print_flag, &
+              allard_surface_failed)
          temperature_local = 10.0d0**atm_table%atm_log10_temperature
          pressure_local = 10.0d0**atm_table%atm_log10_pressure
          log10_temperature_local = atm_table%atm_log10_temperature
