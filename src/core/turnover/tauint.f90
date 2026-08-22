@@ -60,9 +60,10 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
       if (convective_flag(num_points) .or. convective_flag(num_points-1)) then
 !  SURFACE C.Z. EXISTS.  FIND LOWEST SHELL (IMAX), WHICH IS ALSO THE
 !  UPPERMOST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONALLY INDUCED MIXING.
-         do 71 i = num_points-1,1,-1
+         do i = num_points-1,1,-1
             if (.not.convective_flag(i)) goto 81
    71    continue
+         end do
          fully_convective_flag = .true.
          i = 0
    81    cz_base_index = i + 1

@@ -61,13 +61,14 @@ subroutine yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
          single_x_table = .true.
          go to 131
       endif
-      do 130 im1 = 1,num_x
+      do im1 = 1,num_x
          if (dabs(opacity_table%opal92_grid_x(im1)-hydrogen_fraction).le.1.0d-5) then
             opacity_table%abund_index = im1
             single_x_table = .true.
             go to 131
          endif
  130  continue
+      end do
       call findex(opacity_table%opal92_grid_x, num_x, hydrogen_fraction, opacity_table%abund_index)
       if (opacity_table%abund_index.lt.0) opacity_table%abund_index = -opacity_table%abund_index
       if (opacity_table%abund_index.le.1.and.rhot3.gt.-1.0d0) opacity_table%abund_index = 2

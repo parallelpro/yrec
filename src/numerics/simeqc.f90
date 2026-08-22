@@ -28,17 +28,18 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       ierr = 0
 
       jj=-num_unknowns
-      do 65 j=1,num_unknowns
+      do j=1,num_unknowns
       jy=j+1
       jj=jj+num_unknowns+1
       biga=0.0d0
       it=jj-j
-      do 30 i=j,num_unknowns
+      do i=j,num_unknowns
       ij=it+i
       if(dabs(biga).ge.dabs(system_matrix(ij))) go to 30
       biga=system_matrix(ij)
       imax=i
    30 continue
+      end do
       if(dabs(biga).eq.0.0d0) goto 1010
       goto 1012
  1010 write (5,1011)
@@ -50,7 +51,7 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       return
  1012 ia=j+num_unknowns*(j-2)
       it=imax-j
-      do 50 i=j,num_cols
+      do i=j,num_cols
       ia=ia+num_unknowns
       ib=ia+it
       swap_val=system_matrix(ia)
@@ -58,25 +59,29 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       system_matrix(ib)=swap_val
       system_matrix(ia)=system_matrix(ia)/biga
    50 continue
+      end do
       if(j.eq.num_unknowns) go to 70
       ia=num_unknowns*(j-1)
-      do 64 ix=jy,num_unknowns
+      do ix=jy,num_unknowns
       ib=ia+ix
       it=j-ix
-      do 60 jx=jy,num_cols
+      do jx=jy,num_cols
       ic=num_unknowns*(jx-1)+ix
       id=ic+it
       system_matrix(ic)=system_matrix(ic)-system_matrix(ib)*system_matrix(id)
    60 continue
+      end do
    64 continue
+      end do
    65 continue
+      end do
    70 ny=num_unknowns-1
       it=num_unknowns*num_unknowns
-      do 85 j=1,ny
+      do j=1,ny
       ia=it-j
       ic=num_unknowns*num_cols
       ib=ic-j
-      do 80 i=1,j
+      do i=1,j
       system_matrix(ib)=system_matrix(ib)-system_matrix(ia)*system_matrix(ic)
       n1=num_cols-1
       ig=ib
@@ -90,6 +95,8 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
    78 ia=ia-num_unknowns
       ic=ic-1
    80 continue
+      end do
    85 continue
+      end do
       return
 end subroutine simeqc

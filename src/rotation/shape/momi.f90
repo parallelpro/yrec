@@ -71,7 +71,7 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
          end if
          return
       end if
-      do 20 zone_idx = zone_start,zone_end
+      do zone_idx = zone_start,zone_end
 !  QR0R = D LN R0/ D LN R
 !
          dlnr0_dlnr = 1.0d0
@@ -96,6 +96,7 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
          prev_log_mean_radius = dlog(mean_radius(zone_idx))
          prev_log_true_radius = ln10*log_radius(zone_idx)
    20 continue
+      end do
 
       return
 end subroutine momi

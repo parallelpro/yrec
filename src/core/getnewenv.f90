@@ -346,7 +346,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 ! GIVEN OMEGA AND I, FIND ANGULAR MOMENTUM AND ROTATIONAL K.E.
        sum_angular_momentum = 0.0D0
        sum_rotational_ke = 0.0D0
-       do 550 zone_index = 1,num_zones
+       do zone_index = 1,num_zones
 ! MHP 10/02 logic reversed!
 !          HJM(I) = HJ/HS2(I)
           angular_momentum_shell = specific_angular_momentum(zone_index)*shell_mass(zone_index)
@@ -354,6 +354,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + rotational_kinetic_energy(zone_index)
  550     continue
+       end do
        total_angular_momentum = sum_angular_momentum
        total_rotational_ke = sum_rotational_ke
       endif

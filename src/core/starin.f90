@@ -415,15 +415,17 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        if (lwnew) then
 ! GENERATE A SOLID BODY ROTATION CURVE WITH OMEGA = WNEW;
 ! THIS IS DONE TO CONVERT A NON-ROTATING MODEL TO A ROTATING ONE.
-          do 540 i = 1,star%num_zones
+          do i = 1,star%num_zones
              star%omega(i) = wnew
  540        continue
+          end do
        endif
       else
-         do 570 i = 1,json
+         do i = 1,json
             star%pressure_rotation_factor(i) = 1.0d0
             star%temperature_rotation_factor(i) = 1.0d0
  570     continue
+         end do
       endif
 ! KEEP IREAD OPEN
       rewind iread
@@ -672,9 +674,10 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        if (requested_envelope_mass.lt.star%env_comp%senv) then
 ! NEW ENVELOPE DEEPER THAN THE OLD ONE
           target_log_mass_at_fit = star%log_total_mass+requested_envelope_mass
-          do 575 i = star%num_zones-1,1,-1
+          do i = star%num_zones-1,1,-1
              if (star%log_mass(i).lt.target_log_mass_at_fit) goto 580
  575        continue
+          end do
 ! ENVELOPE MASS DESIRED WITHIN FIRST POINT;PRINT NASTY MESSAGE
 ! AND ABORT.
           write(short_file_unit,576)requested_envelope_mass
@@ -699,9 +702,10 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
           star%log_temperature(star%num_zones) = star%log_temperature(i) + &
                interior_interp_fraction*(star%log_temperature(i+1) - &
                star%log_temperature(i))
-          do 585 j = 1,num_species
+          do j = 1,num_species
              star%composition(j,star%num_zones) = star%composition(j,i)
  585        continue
+          end do
           star%env_comp%xnew = star%composition(1,star%num_zones)
           star%env_comp%znew = star%composition(3,star%num_zones)
           if (rotation_active) star%omega(star%num_zones) = star%omega(i) + &
@@ -729,9 +733,10 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
              point_pressure_rotation_factor = 1.0d0
              point_temperature_rotation_factor = 1.0d0
              idt = 15
-             do 588 kk = 1,4
+             do kk = 1,4
               idd(kk) = 5
  588           continue
+             end do
                call eos_get(log10_temperature,temperature,log10_pressure, &
                     pressure,log10_density,density,hydrogen_fraction, &
                     metal_fraction,beta,beta_inverse,beta14,ion_fraction, &
@@ -1015,13 +1020,14 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! HS1 IS THE UNLOGGED HS; HS2 IS THE MASS OF THE SHELL(ALSO NOT LOG).
       next_mass = dexp(ln10*star%log_mass(1))
       curr_mass = - next_mass
-      do 120 i = 2,star%num_zones
+      do i = 2,star%num_zones
        prev_mass = curr_mass
        curr_mass = next_mass
        next_mass = dexp(ln10*star%log_mass(i))
        star%enclosed_mass(i-1) = curr_mass
        star%shell_mass(i-1) = 0.5d0*(next_mass-prev_mass)
  120  continue
+      end do
       star%enclosed_mass(star%num_zones) = next_mass
       star%shell_mass(star%num_zones) = dexp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
            next_mass)
@@ -1038,13 +1044,14 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! GIVEN OMEGA AND I, FIND ANGULAR MOMENTUM AND ROTATIONAL K.E.
        angular_momentum_sum = 0.0d0
        rotational_ke_sum = 0.0d0
-       do 550 i = 1,star%num_zones
+       do i = 1,star%num_zones
           shell_angular_momentum = star%omega(i)*star%moment_of_inertia(i)
           star%specific_angular_momentum(i) = shell_angular_momentum/star%shell_mass(i)
           star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum
           angular_momentum_sum = angular_momentum_sum+shell_angular_momentum
           rotational_ke_sum = rotational_ke_sum + star%kinetic_energy_rot(i)
  550     continue
+       end do
        write(short_file_unit,560)total_angular_momentum, &
             angular_momentum_sum,total_rotational_ke,rotational_ke_sum
  560     format(1x,'TOTAL J OF STAR - PREVIOUS ',1pe21.13,' NEW ', &
@@ -1092,18 +1099,20 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       species_mix_weights(12) = (1.0d0-star%env_comp%envelope_hydrogen_fraction- &
            star%env_comp%envelope_metal_fraction)/mixture_scale_factor
       mixture_weight_sum = 0.0d0
-      do 610 i = 1,12
+      do i = 1,12
        species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
             atomic_weight(i)
        mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
  610  continue
+      end do
       star%env_comp%amuenv = mixture_weight_sum
       mixture_scale_factor = 1.0d0/star%env_comp%amuenv
 ! DBG 1/96 FXENV ARE NUMBER FRACTIONS OF ELEMENTS REQURIED
 ! BY EOS ROUTINES (SEE EQSTAT AND EQSAHA)
-      do 620 i = 1,12
+      do i = 1,12
        star%env_comp%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
  620  continue
+      end do
 ! push the recomputed mixture to the eos domain (physics-purity pass)
       call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
            star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
@@ -1120,7 +1129,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! CLONE P,T,R,L ARRAY TO DUMMY ARRAY HPOLD.
 ! HPOLD IS USED TO LIMIT THE TIMESTEP BASED ON CHANGES FROM
 ! MODEL TO MODEL IN P,T,R,L.
-      do 710 i = 1,star%num_zones
+      do i = 1,star%num_zones
          star%prev%old_pressure(i) = star%log_pressure(i)
          star%prev%old_temperature(i) = star%log_temperature(i)
          star%prev%old_radius(i) = star%log_radius(i)
@@ -1130,10 +1139,12 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 !  JVS 05/25 Added model number to list of saved values
        star%prev%old_num_zones = star%num_zones
  710  continue
+      end do
       if (rotation_active) then
-         do 720 i = 1,star%num_zones
+         do i = 1,star%num_zones
           star%run%old_omega(i) = star%omega(i)
  720     continue
+         end do
       endif
 
 ! 8/17 G Somers

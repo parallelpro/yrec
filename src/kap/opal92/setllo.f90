@@ -41,7 +41,7 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
 
 !     OPEN TABLE
       open(unit=laol_table_unit,file=opal92_table_path)
-      do 10 i=1,num_x
+      do i=1,num_x
 !        READ GRID POINT FOR ABUNDANCE
 !        READ NUMBER OF GRIDS FOR DENSITY, AND TEMPERATURE
         read(laol_table_unit,190,end=97) opacity_table%opal92_grid_x(i), local_grid_z(i)
@@ -52,15 +52,17 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
             read(laol_table_unit, 200) (opacity_table%opal92_grid_logr(density_index), density_index=1, num_d)
   200   format (6x, 17f7.1)
 !        READ GRID VALUES FOR TEMPERATURE, AND OPACITY TABLE
-         do 20 k=1, num_t
+         do k=1, num_t
          read(laol_table_unit,196,end=93) grid_temp_k, &
               (opacity_table%opal92_log10_opacity(k+(i-1)*num_t,density_index),density_index=1,num_d)
          opacity_table%opal92_grid_logt(k)=dlog10(grid_temp_k)
    20    continue
+         end do
    93    num_temps_read=k-1
   196    format(18f7.3)
 !
    10 continue
+      end do
 !     CLOSE THE TABLE WE HAVE READ
    97 close(laol_table_unit,err=99)
       opacity_table%opal92_num_temps = num_temps_read
@@ -69,18 +71,20 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
 ! DBG 5/94 Second Opacity Table read here
       if (use_two_z_tables) then
          open(unit=ioopal2,file=opal92_table2_path)
-         do 510 i=1,num_x
+         do i=1,num_x
             read(ioopal2,190,end=597) opacity_table%opal92_grid_x_z2(i), local_grid_z(i)
             local_grid_y(i)=1.0d0-opacity_table%opal92_grid_x_z2(i)-local_grid_z(i)
             read(ioopal2,'()')
             read(ioopal2, 200) (opacity_table%opal92_grid_logr_z2(density_index), density_index=1, num_d)
-            do 520 k=1, num_t
+            do k=1, num_t
                read(ioopal2,196,end=593) grid_temp_k, &
                     (opacity_table%opal92_log10_opacity_z2(k+(i-1)*num_t,density_index),density_index=1,num_d)
                opacity_table%opal92_grid_logt_z2(k)=dlog10(grid_temp_k)
   520       continue
+            end do
   593       num_temps_read=k-1
   510    continue
+         end do
   597    close(ioopal2,err=99)
          opacity_table%opal92_num_temps_z2 = num_temps_read
          opacity_table%opal92_num_x_z2=i-1

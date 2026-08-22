@@ -225,13 +225,14 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            num_zones,radius_unlogged,dynamical_shear_omega_limit)
       total_luminosity = solar_luminosity_cgs*luminosity(num_zones)
 !  COMPUTE ANGULAR VELOCITY GRADIENTS
-      do 10 i = zone_min,zone_max
+      do i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
          log_radius_center = log10(star%rot%interface_radius(i))
          dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
               1.0D0/ln10/(log_radius_center-log_radius(i-1))
          dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
    10 continue
+      end do
       call getqua(log_density,local_gravity,radius_unlogged,omega,num_zones)
       do i = 1,num_zones
          vfc(i) = 0.0D0
@@ -249,10 +250,11 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            call getfc(log_density,radius_unlogged,diffusion_velocity, &
            zone_min,zone_max,omega)
 !  STORE INITIAL ANGULAR MOMENTUM DISTRIBUTION.
-      do 20 i =1,num_zones
+      do i =1,num_zones
          specific_angular_momentum_prev(i) = specific_angular_momentum_saved(i)
          omega_start(i) = omega(i)
    20 continue
+      end do
 !  STORE INITIAL SURFACE ANGULAR VELOCITY FOR USE IN ANGULAR MOMENTUM
 !  LOSS CALCULATIONS.
 !      WBEG = OMEGA(M)
@@ -264,7 +266,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  ITERATION IS USED TO GET THE VELOCITIES.  THIS 'NEW' VELOCITY IS THEN
 !  AVERAGED WITH THE VELOCITY FOUND IN THE PREVIOUS ITERATION TO GET A
 !  CORRECTED V AND THUS A MORE ACCURATE RUN OF DIFFUSION COEFFICIENTS.
-      do 100 iteration = 1,itdif2
+      do iteration = 1,itdif2
          omega_surface = omega(num_zones)
          if(iteration.gt.1)then
 !  COMPUTE NEW RUN OF ANGULAR VELOCITIES (AVERAGE OF INITIAL AND
@@ -273,13 +275,14 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                omega(i) = 0.5D0*(omega(i)+omega_start(i))
             end do
 !  COMPUTE NEW RUN OF ANGULAR VELOCITY GRADIENTS.
-            do 30 i = zone_min,zone_max
+            do i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
                log_radius_center = log10(star%rot%interface_radius(i))
                dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
                     1.0D0/ln10/(log_radius_center-log_radius(i-1))
                dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
    30       continue
+            end do
 !  ON 2ND AND SUBSEQUENT ITERATIONS,COMPUTE CHARACTERISTIC VELOCITIES
 !  FOR THE NEW RUN OF OMEGA AND COMPOSITION FOUND IN THE PREVIOUS
 !  ITERATION.
@@ -293,12 +296,14 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                  zone_min,zone_max,omega)
 !  NOW THAT THE NEW DIFFUSION VELOCITIES HAVE BEEN COMPUTED, RESET THE
 !  ANGULAR MOMENTUM AND COMPOSITION ARRAYS TO THEIR ORIGINAL VALUES.
-            do 50 i = 1,num_zones
+            do i = 1,num_zones
                specific_angular_momentum(i) = specific_angular_momentum_saved(i)
-               do 40 j = 1,4
+               do j = 1,4
                   composition(j,i) = star%rot%composition_snapshot(j,i)
    40          continue
+               end do
    50       continue
+            end do
 ! MHP 10/91 CHANGED TO REMIX CZ'S TO THEIR PROPER DEPTH!
 ! OTHERWISE, DRASTIC ERRORS OCCUR IN THE PRESENCE OF A DEEPENING CZ
 ! (THE LOCAL ABUNDANCE AT THE CZ BASE PRIOR TO THE DEEPENING OF THE
@@ -324,9 +329,10 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
               .and. .not.disk_lock_active)then
 !  FIND MOMENT OF INERTIA OF THE SURFACE C.Z.
             cz_moment_of_inertia = 0.0D0
-            do 55 i = zone_max,num_zones
+            do i = zone_max,num_zones
                cz_moment_of_inertia = cz_moment_of_inertia + moment_of_inertia(i)
    55       continue
+            end do
             wind_loss_active = ljdot0
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
             call mwind(log_luminosity_lsun,sub_timestep,cz_mass_bottom, &
@@ -382,7 +388,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             scan_start_zone = zone_max + 1
             goto 80
          endif
-         do 70 j = scan_start_zone,zone_max
+         do j = scan_start_zone,zone_max
             if(diffusion_velocity(j).gt.0.0D0) then
                unstable_zone_found = .true.
                if(.not.in_unstable_region) then
@@ -398,6 +404,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                goto 80
             endif
    70    continue
+         end do
 !  IF THE LAST INTERFACE IS UNSTABLE (NON-ZERO V) ENSURE THAT IEND IS SET
 !  PROPERLY.
          if(in_unstable_region) zone_end = zone_max
@@ -546,6 +553,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 ! IF LREDO=T, A PROBLEM REQUIRES TIMESTEP CUTTING.
          if(redo_flag)goto 9999
   100 continue
+      end do
       diffusion_solve_ok = .true.
   200 continue
 ! PERFORM COMPOSITION DIFFUSION OF REMAINING SPECIES.

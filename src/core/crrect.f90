@@ -204,11 +204,13 @@ subroutine crrect(delta_time, max_iterations, converged, &
       if (iteration_level.gt.2 .and. delta_time.gt.0.0d0) then
          num_species = 11
          if (use_extended_composition) num_species = 15
-         do 2 i = 1,star%num_zones
-            do 1 j = 1,num_species
+         do i = 1,star%num_zones
+            do j = 1,num_species
                star%composition(j,i) = star%prev%old_composition(j,i)
     1       continue
+            end do
     2    continue
+         end do
          call mix(delta_time, iteration_level, timestep_years, &
               core_cz_edge, envelope_zone_index, &
               mixed_zone_bounds_no_overshoot, jerr)
@@ -227,7 +229,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
       if (recompute_surface_bc .and. .not.envelope_recomputed_flag .and. &
            converged) return
       converged = .false.
-      do 100 iter = 1,max_iterations
+      do iter = 1,max_iterations
 ! DO HENYEY REDUCTION
        star%max_residual(1) = 0.0d0
        star%max_residual(2) = 0.0d0
@@ -257,9 +259,10 @@ subroutine crrect(delta_time, max_iterations, converged, &
        if (.not.helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
           temp = star%luminosity_lsun(star%num_zones)/total_luminosity_terms
-          do 10 j = 1,8
+          do j = 1,8
              star%luminosity_breakdown(j) = star%luminosity_breakdown(j)*temp
    10       continue
+          end do
        endif
 ! CHECK ON SIGNIFICANCE OF R.H.S. EQUATIONS FOR P AND T
 ! N.B.  DOES NOT CHECK DIFFERENCES IN BOUNDARY EQUATIONS
@@ -291,11 +294,12 @@ subroutine crrect(delta_time, max_iterations, converged, &
 ! DO BACK SOLUTION FOR CORRECTIONS
        call hsolve(star%num_zones,star%elim_coeff,star%elim_rhs,star%surface_bc)
 ! CHECK ON MAXIMUM CORRECTIONS
-       do 30 j = 1,4
+       do j = 1,4
           star%max_residual(j) = dabs(star%elim_rhs(j,1))
           star%max_correction_index(j) = 1
    30    continue
-       do 40 i = 2,star%num_zones
+       end do
+       do i = 2,star%num_zones
           test = dabs(star%elim_rhs(1,i))
           if (star%max_residual(1).le.test) then
              star%max_residual(1) = test
@@ -317,6 +321,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
              star%max_correction_index(4) = i
           endif
    40    continue
+       end do
 !CC   HE FLASH -- OK FOR ALL
        luminosity_correction_max = star%max_residual(4)
 ! LFINI = T IF MAX CORRECTIONS LESS THAN CONVERGENCE CRITERIA SET IN
@@ -330,10 +335,11 @@ subroutine crrect(delta_time, max_iterations, converged, &
             star%max_residual(2).gt.htoler(2,2) &
          .or. star%max_residual(3).gt.htoler(3,2) .or. &
          star%max_residual(4).gt.htoler(4,2)
-       do 50 j = 1,4
+       do j = 1,4
           max_correction_pos = star%max_correction_index(j)
           star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
    50    continue
+       end do
        if (fcorr0.gt.0.0d0) fcorr = dmin1(1.d0,fcorr+fcorri)
 ! HE FLASH CHANGE
        correction_factor = fcorr
@@ -366,7 +372,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
             return
          endif
 ! APPLY CORRECTIONS
-       do 90 i = 1,star%num_zones
+       do i = 1,star%num_zones
           temp = correction_factor*star%elim_rhs(1,i)
           star%log_pressure(i) = star%log_pressure(i) + temp
           star%log_pressure_delta(i) = star%log_pressure_delta(i) + temp
@@ -377,6 +383,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
           star%luminosity_lsun(i) = star%luminosity_lsun(i) + &
                correction_factor*star%elim_rhs(4,i)
    90    continue
+       end do
        star%log10_luminosity = dlog10(star%luminosity_lsun(star%num_zones))
        star%log_teff = star%envelope_fit_coeffs(7)*star%log_pressure(star%num_zones) + &
             star%envelope_fit_coeffs(8)*star%log_temperature(star%num_zones) + &
@@ -397,6 +404,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
        iterations_done = iterations_done + 1
        if (converged) return
   100 continue
+      end do
 
       return
 end subroutine crrect

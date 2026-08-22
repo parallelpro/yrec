@@ -187,9 +187,10 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
        max_log_temperature = star%run%central_log10_temperature
 ! LOCATE MAXIMUM T - NOTE DIFFERENT METHOD USED FOR HE FLASH
        if(.not.helium_flash_active) then
-          do 100 i = 2,star%num_zones
+          do i = 2,star%num_zones
              if(star%log_temperature(i).lt.star%log_temperature(i-1))goto 110
   100       continue
+          end do
           i = star%num_zones + 1
   110       max_temp_index = i - 1
           if(max_temp_index.gt.1) then
@@ -205,9 +206,10 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
                 ' (MASS=',F9.7,')')
        else
 !  HE FLASH
-          do 130 i = 2,star%num_zones
+          do i = 2,star%num_zones
              if(star%log_temperature(i).lt.star%log_temperature(i-1) .and. star%log_temperature(i-1).gt.7.98D0) goto 140
   130       continue
+          end do
           i = star%num_zones + 1
   140       max_temp_index = i - 1
           if(max_temp_index.gt.1) then

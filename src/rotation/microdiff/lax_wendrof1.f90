@@ -45,11 +45,12 @@ subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
       delta_abundance_mid = dt_half*diffusion_coeff1(2)/zone_mass
       diffused_abundance_mid(1) = delta_abundance_mid
 ! general case
-      do 10 i = 2,num_eq_points-2
+      do i = 2,num_eq_points-2
          zone_mass = eq_mass(i+1)-eq_mass(i)
          delta_abundance_mid = dt_half*(diffusion_coeff1(i+1)-diffusion_coeff1(i))/zone_mass
          diffused_abundance_mid(i) = delta_abundance_mid
    10 continue
+      end do
 ! surface boundary condition.
       zone_mass = total_mass-eq_mass(num_eq_points-1)
       delta_abundance_mid = -dt_half*diffusion_coeff1(num_eq_points-1)/zone_mass

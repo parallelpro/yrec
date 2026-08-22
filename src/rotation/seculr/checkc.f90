@@ -89,10 +89,10 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
          num_diffused_species = 4
       endif
       redo_flag = .false.
-      do 20 species_index = 1,num_diffused_species
+      do species_index = 1,num_diffused_species
 !  composition(3,...) IS Z, WHICH IS NOT DIFFUSED AS A UNIT.
          if(species_index.eq.3)goto 20
-         do 10 zone_index = 2,num_zones-1
+         do zone_index = 2,num_zones-1
             if(composition(species_index,zone_index).lt.0.0d0.or. &
                  composition(species_index,zone_index).gt.1.0d0)then
 !  SOME SPECIES CAN BE MIXED INTO REGIONS WHERE THEY ARE DESTROYED VERY
@@ -141,18 +141,20 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                endif
             endif
    10    continue
+         end do
    20 continue
+      end do
       if(iteration_number.eq.itdif2.and.print_flag) then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN COMPOSITION AND PRINT IT OUT.
          max_fractional_comp_change = 0.0d0
          max_change_zone = 0
          max_change_species = 0
-         do 40 species_index = 1,num_diffused_species
+         do species_index = 1,num_diffused_species
             if(species_index.eq.3)goto 40
 ! min_comp_for_check IS USED TO GUARD AGAINST DIVISION BY ZERO.
             min_comp_for_check = max(1.0d-6* &
                  composition(species_index,num_zones),1.0d-20)
-            do 30 zone_index = 1,num_zones
+            do zone_index = 1,num_zones
                if(star%prev%old_composition(species_index,zone_index).lt. &
                     min_comp_for_check)goto 30
                fractional_comp_change = &
@@ -166,7 +168,9 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                   max_change_species = species_index
                endif
    30       continue
+            end do
    40    continue
+         end do
          write(*,50)max_fractional_comp_change,max_change_species, &
               max_change_zone
    50 format(' MAX FRAC.COMP.CHANGE',1pe12.3,' SPECIES',i2, &
@@ -179,7 +183,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
 !  CORRECTION FOR PARTIAL IONIZATION NEEDED IN MASSIVE STARS.
       if(iteration_number.gt.1)then
-         do 90 zone_index = 1,num_zones
+         do zone_index = 1,num_zones
             delta_hydrogen = composition(1,zone_index)- &
                  star%env_comp%envelope_hydrogen_fraction
             delta_helium = composition(2,zone_index)- &
@@ -202,6 +206,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                  electron_mean_weight_inverse/ &
                  (ion_mean_weight_inverse+electron_mean_weight_inverse)
    90    continue
+         end do
       endif
   100 continue
 

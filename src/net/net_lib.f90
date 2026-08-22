@@ -1903,13 +1903,14 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       mu_e_inv = 0.
       xtr = 0.
       zeta0 = 0.
-      do 10 i = 1,num_isotopes
+      do i = 1,num_isotopes
          trm = mass_frac(i)/atomic_mass(i)
          mu_ion_inv = mu_ion_inv+trm
          mu_e_inv = mu_e_inv+trm*atomic_charge(i)
          xtr = xtr+trm*atomic_charge(i)**1.58
          zeta0 = zeta0+trm*atomic_charge(i)**2
    10 continue
+      end do
 ! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
 !  THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
 !  GM PER CM^3 .
@@ -1926,9 +1927,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       log_rho_local = log_density
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
       if(log_temperature.le.tcut(1)) then
-         do 20 i = 1,num_reactions
+         do i = 1,num_reactions
             rate(i) = 0.
    20    continue
+         end do
          go to 200
       endif
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
@@ -2009,7 +2011,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       z_bar_13=z_bar**cc13
       lambda0_zcurl=lambda0*z_curl
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
-      do 30 i=1,num_reactions
+      do i=1,num_reactions
          weak_screening_u=lambda0_zcurl*charge_product(i)
          if(weak_screening_u.le.weak_screening_threshold) then
 ! WEAKSCREENING IS A NUMERICAL PARAMETER PASSED IN THE FLUX COMMON
@@ -2038,6 +2040,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
             endif
          endif
    30 continue
+      end do
 ! ****************************************************************
 ! END OF SCREENING CALCULATION. WEAK AND INTERMEDIATE SCREENING FORMS
 !  ARE GIVEN CORRECTLY.  STRONG SCREENING WAS NOT CHECKED BECAUSE IT IS
@@ -2065,7 +2068,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  MULTIPLIED BY T9**(-1/7). THIS FACTOR IS INCORRECT AND HAS BEEN
 !  REMOVED; IT APPEARED BEFORE AS AN IF STATEMENT REFERRING ONLY TO
 !  RATE(7).
-      do 40 i=1,7
+      do i=1,7
 !         R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
 ! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
 ! RATE DERIVATIVES
@@ -2075,6 +2078,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          rate(i) = rate(i)*cross_section_scale(i)
          if(rate(i).lt.1.E-30) rate(i)=0.0d0
    40 continue
+      end do
 ! ***************************************************************
 ! END OF CALCULATION OF REACTION RATES FOR FIRST 7 REACTIONS.
 ! ***************************************************************
@@ -2225,9 +2229,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       rate(9) = 0.0d0
       rate(13) = 0.0d0
 ! END OF XEROING OUT OF REACTIONS 9 AND 13.
-      do 130 i=1,num_reactions
+      do i=1,num_reactions
          if(rate(i).le.1.E-5) rate(i) = 0.0
   130 continue
+      end do
 ! ******************************************************
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
 ! ******************************************************

@@ -74,7 +74,7 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
        half_surface_x = 0.50d0*composition(1,num_points)
        luminosity_end_threshold = luminosity_change_tol*luminosity(num_points)
 !  find beginning(shell_begin), middle(shell_mid) and end(shell_end) of h shell
-       do 10 i = 1,num_points
+       do i = 1,num_points
 !          IF(HCOMP(1,I).LE.1.0D-10) THEN  ! Changed after discussion with Marc
           if(composition(1,i).le.atime(1)) then ! to force consistency with above LLP 9/24/08
              shell_begin = shell_begin+1
@@ -89,22 +89,25 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
              goto 20
           endif
    10    continue
+       end do
        i = num_points
    20    shell_end = i
       endif
 !ccc find boundary of central convection zone.
-      do 30 i = 1,num_points
+      do i = 1,num_points
        if(.not.is_convective(i)) goto 40
    30 continue
+      end do
    40 if(i.gt.1) then
        core_edge = i-1
       else
        core_edge = 1
       endif
 !ccc find boundary of surface c.z.
-      do 50 i = num_points,1,-1
+      do i = num_points,1,-1
        if(.not.is_convective(i)) goto 60
    50 continue
+      end do
    60 if(i.lt.num_points) then
        envelope_edge = i+1
       else

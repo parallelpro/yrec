@@ -189,20 +189,22 @@ subroutine findex(grid_x, n_grid, x_eval, index)
       if(index.lt.1.or.index.gt.n_grid)index=1
       found_index=index
       if(x_eval.lt.grid_x(found_index))then
-         do 211 j=found_index-1,1,-1
+         do j=found_index-1,1,-1
             if(grid_x(j).le.x_eval)then
                found_index=j
                goto 213
             endif
  211     continue
+         end do
          found_index=-1
       else
-         do 212 j=found_index,n_grid-1
+         do j=found_index,n_grid-1
             if(grid_x(j+1).gt.x_eval)then
                found_index=j
                goto 213
             endif
  212     continue
+         end do
          found_index = -n_grid
       endif
  213  index=found_index
@@ -1837,10 +1839,11 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
       double precision :: p_min, p_max
       integer :: lir_num_vars, lir_leading_dim, lir_num_points, lir_interp_mode
 
-      do 100 n=1,num_t
+      do n=1,num_t
          if(table_log10t(n).ge.log10_temperature) goto 101
          t_indices(1)=n
  100  continue
+      end do
  101  if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1
       t_idx_max=num_t-3
       if(t_indices(1).gt.t_idx_max) t_indices(1)=t_idx_max
@@ -1855,10 +1858,11 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
          if(log10_pressure.gt.p_max) then
             return
          end if
-         do 200 m=1,num_r
+         do m=1,num_r
             if(table_data(t_idx,m,2).ge.log10_pressure) goto 201
             r_lo_guess(i)=m
  200     continue
+         end do
  201     if(r_lo_guess(i).ge.2) r_lo_guess(i)=r_lo_guess(i)-1
          r_idx_max=num_r-3
          if(r_lo_guess(i).gt.r_idx_max) r_lo_guess(i)=r_idx_max
@@ -2017,13 +2021,14 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       go to 2
 ! SET Y WHEN Z LIES ON A MESH POINT
     6 base_idx=(search_idx-1)*y_stride
-      do 7 y_idx=1,num_y_strided
+      do y_idx=1,num_y_strided
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !       Y(I)=YI(I+J)
 !     7 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
          result_y(y_idx)=table_y(y_idx+base_idx)
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
     7 continue
+      end do
       go to 30
 ! CONTROL WHEN Z DOES NOT LIE ON A MESH POINT
     8 interp_flag=0
@@ -2065,7 +2070,7 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
 !    16 M=(M-1)/IR-3
       pivot=(pivot-1)/stride-3
       pivot=pivot*y_strided
-      do 18 y_idx=1,num_y_strided
+      do y_idx=1,num_y_strided
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !       K=I+M
 !       YY=0.D0
@@ -2077,14 +2082,16 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
 !    18 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
          k=y_idx+pivot
          yy=0.d0
-         do 17 j=1,4
+         do j=1,4
             k=k+y_strided
             diff=table_y(k)
             yy=yy+weight(j)*diff
    17    continue
+         end do
          result_y(y_idx)=yy
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
    18 continue
+      end do
       go to 30
 ! LINEAR INTERPOLATION/EXTRAPOLATION
    20 if(search_idx.eq.1) search_idx=1+stride
@@ -2094,13 +2101,14 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       y2=1.0d0-y1
       base_idx=(search_idx-1)*y_stride
       pivot=base_idx-y_strided
-      do 21 y_idx=1,num_y_strided,stride
+      do y_idx=1,num_y_strided,stride
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !       Y(I)=Y1*YI(I+M)+Y2*YI(I+J)
 !    21 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
          result_y(y_idx)=y1*table_y(y_idx+pivot)+y2*table_y(y_idx+base_idx)
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
    21 continue
+      end do
 ! RESET N
    30 search_idx=(search_idx+stride-1)/stride
       return

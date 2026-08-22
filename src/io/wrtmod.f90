@@ -240,7 +240,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
                 ' MIXING LENGTH PARAMETER=', 0PF16.10,/, &
                 ' ZAMS (X,Z)=', 2F18.10)
       end if
-      do 220 j = 1,num_pulsation_points
+      do j = 1,num_pulsation_points
        i = pulsation_point_id(j)
        fs = fsi*mass_coordinate(i)
 !
@@ -278,6 +278,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       end if
 ! DBG END
   220 continue
+      end do
 !
 ! G Somers 11/14 REMOVED LONG BLOCK
 !

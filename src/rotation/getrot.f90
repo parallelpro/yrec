@@ -31,7 +31,7 @@ subroutine getrot(log_density, specific_angular_momentum, log_radius, &
       integer :: zone_index, zone_start, zone_end
 
       in_convection_zone = .false.
-      do 20 zone_index = 1,num_zones
+      do zone_index = 1,num_zones
          if (.not.in_convection_zone) then
             if (.not.am_transport_convective_flag(zone_index)) then
 ! RADIATIVE SHELL
@@ -70,5 +70,6 @@ subroutine getrot(log_density, specific_angular_momentum, log_radius, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
          endif
    20 continue
+      end do
       return
 end subroutine getrot

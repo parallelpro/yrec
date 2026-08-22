@@ -54,7 +54,7 @@ subroutine yllo2d(temperature, density, abund_index, temp_index, &
          mm1 = opacity_table%opal92_surface_x_index
       endif
       jt = 0
-      do 300 it = its,itf
+      do it = its,itf
          index1 = it + (mm1-1)*opacity_table%opal92_num_temps
          ndss = opacity_table%opal92_density_start_index(index1)
          if (ndss.ne.1) stop ' OPAL95 2D CHECK NDSS '
@@ -103,6 +103,7 @@ subroutine yllo2d(temperature, density, abund_index, temp_index, &
          yto(jt) = ol0
          aqod(jt) = qodi
  300  continue
+      end do
       if (xt(1).gt.temperature.or.xt(jt).lt.temperature) stop ' EXTRAPOLATION FAILS '
 !! INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.
 !! GET THE PARTIAL DERIVATIVE OF OL WRT T.

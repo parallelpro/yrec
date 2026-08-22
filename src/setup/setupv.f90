@@ -80,14 +80,16 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
            qdr_local, f1_local, f2_local, f3_local, v0_local
 
 !  FIND UNLOGGED RADII OF THE MODEL POINTS.
-      do 5 zone_idx = 1,num_zones
+      do zone_idx = 1,num_zones
          radius_unlogged(zone_idx) = exp(ln10*log_radius(zone_idx))
     5 continue
+      end do
 !  FIND LOCATION (IN RADIUS) OF THE MIDPOINTS OF THE INTERFACES.
-      do 10 zone_idx = 2,num_zones
+      do zone_idx = 2,num_zones
          star%rot%interface_radius(zone_idx) = 0.5d0*(radius_unlogged(zone_idx) + &
               radius_unlogged(zone_idx-1))
    10 continue
+      end do
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS FOR ALL INTERFACES.
 !  INTERFACE BETWEEN FIRST AND SECOND POINT USES THE FIRST 4 POINTS FOR
 !  INTERPOLATION; BETWEEN LAST AND SECOND TO LAST USES THE LAST FOUR POINTS
@@ -229,7 +231,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
          interior_end = transport_zone_end
       endif
 !  COMPUTE INTERPOLATION FACTORS FOR ALL OTHER POINTS.
-      do 20 zone_idx = interior_begin,interior_end
+      do zone_idx = interior_begin,interior_end
          dr43 = radius_unlogged(zone_idx+1) - radius_unlogged(zone_idx)
          dr42 = radius_unlogged(zone_idx+1) - radius_unlogged(zone_idx-1)
          dr41 = radius_unlogged(zone_idx+1) - radius_unlogged(zone_idx-2)
@@ -249,9 +251,10 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
          star%rot%lagrange_interp_weights(3,zone_idx) = (lag_x1*lag_x2*lag_x4)/lag_denom3
          star%rot%lagrange_interp_weights(4,zone_idx) = (lag_x1*lag_x2*lag_x3)/lag_denom4
    20 continue
+      end do
       grav_const = exp(ln10*cgl)
       grav_const_sq = grav_const**2
-      do 30 zone_idx = interior_begin,interior_end
+      do zone_idx = interior_begin,interior_end
 !  USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND PHYSICAL VARIABLES
 !  AT THE INTERFACES.
 !  PRESSURE.
@@ -316,9 +319,11 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               star%mix_phys%cpm(zone_idx)*star%rot%lagrange_interp_weights(3,zone_idx)+ &
               star%mix_phys%cpm(zone_idx+1)*star%rot%lagrange_interp_weights(4,zone_idx)
    30 continue
-      do 35 zone_idx = transport_zone_begin,transport_zone_end
+      end do
+      do zone_idx = transport_zone_begin,transport_zone_end
          star%rot%delmi(zone_idx) = min(star%rot%delmi(zone_idx),star%rot%delami(zone_idx))
    35 continue
+      end do
       do zone_idx = 1,num_zones
          star%rot%es_velocity_coeff1(zone_idx) = 0.0d0
          star%rot%es_velocity_coeff2(zone_idx) = 0.0d0
@@ -345,7 +350,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 !  NOW COMPUTE STRUCTURAL QUANTITIES NEEDED TO EVALUATE VELOCITIES AT
 !  ALL INTERFACES.
       cpigi_const = 4.0d0/c4pi/grav_const
-      do 40 zone_idx = transport_zone_begin,transport_zone_end
+      do zone_idx = transport_zone_begin,transport_zone_end
          if(.not.use_diffusion_advection_transport)then
             dlnmu_dlnp = (log10(star%mix_phys%amum(zone_idx))-log10(star%mix_phys%amum(zone_idx-1)))/ &
                  (log_pressure(zone_idx)-log_pressure(zone_idx-1))
@@ -444,6 +449,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 ! MHP 3/92 ADD VECTOR FOR LOCAL KELVIN-HELMHOLTZ TIME SCALE.
 !         TKH(I) = CG*HS3(I)**2/ABS(ALM(I))/RM(I)
    40 continue
+      end do
 ! MHP 06/02 ADDED TERMS OF ORDER DW/DR FROM ZAH&MAEDER 1998
       if(use_diffusion_advection_transport)then
          ht_temp_scale_prev = exp(ln10*(log_pressure(transport_zone_begin-1)+ &

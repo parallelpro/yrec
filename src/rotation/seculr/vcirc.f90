@@ -94,12 +94,13 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
       any_transport_active = .false.
 !  STORE THE OLD VELOCITY ESTIMATES FOR LATER USE.
       if (iteration.gt.1) then
-         do 5 i = zone_min,zone_max
+         do i = zone_min,zone_max
             star%rot%mu_gradient_velocity_prev(i) = star%circ%mu_gradient_velocity(i)
             star%circ%gsf_circulation_velocity_prev(i) = star%circ%gsf_circulation_velocity(i)
             star%circ%es_circulation_velocity_prev(i) = star%circ%es_circulation_velocity(i)
             star%circ%secular_shear_velocity_prev(i) = star%circ%secular_shear_velocity(i)
     5    continue
+         end do
          if (use_diffusion_advection_transport) then
             do i = zone_min,zone_max
                star%rot%es_advective_velocity_prev(i) = star%rot%es_advective_velocity(i)
@@ -107,13 +108,14 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             end do
          end if
       end if
-      do 10 i = 1,num_zones
+      do i = 1,num_zones
          total_circulation_velocity(i) = 0.0d0
          star%circ%es_circulation_velocity(i) = 0.0d0
          star%circ%gsf_circulation_velocity(i) = 0.0d0
          star%circ%secular_shear_velocity(i) = 0.0d0
          star%circ%mu_gradient_velocity(i) = 0.0d0
    10 continue
+      end do
 !  MEAN MOLECULAR WEIGHT (AS WELL AS QUANTITIES WHICH DEPEND ON IT) AND
 !  THE ANGULAR VELOCITY DISTRIBUTION CHANGE DURING A DIFFUSION TIMESTEP.
 !  FIND THE NEW VALUES AT THE MIDPOINT IN RADIUS BETWEEN MASS SHELLS
@@ -153,7 +155,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          i1=zone_max
       end if
 !  GENERAL CASE.
-      do 20 i = i0,i1
+      do i = i0,i1
          star%rot%kinematic_viscosity_interface(i)=exp(log(star%mix_phys%viscm(i-2))* &
               star%rot%lagrange_interp_weights(1,i)+log(star%mix_phys%viscm(i-1)) &
               *star%rot%lagrange_interp_weights(2,i)+log(star%mix_phys%viscm(i))* &
@@ -165,6 +167,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
               star%rot%lagrange_interp_weights(3,i)+log(star%mix_phys%thdifm(i+1)) &
               *star%rot%lagrange_interp_weights(4,i))
    20 continue
+      end do
 ! USE LINEAR INTERPOLATION FOR OMEGA AND MU.
       do i = 2,num_zones
          star%rot%mean_molecular_weight_interface(i) = 0.5d0*(star%mix_phys%amum(i)+star%mix_phys%amum(i-1))
@@ -201,7 +204,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !   30    CONTINUE
 !      ELSE
 ! ZAHN (1991) VELOCITY ESTIMATE.
-      do 31 i = zone_min,zone_max
+      do i = zone_min,zone_max
          if (am_transport_convective_flag(i).and. &
               am_transport_convective_flag(i-1)) goto 31
 ! ORIGINAL ESTIMATE,USING DG/G = W**2 R**3 / GM.
@@ -259,6 +262,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  star%rot%second_deriv_geom_factor(i)*star%rot%omega_interface(i)
          end if
    31 continue
+      end do
 !      ENDIF
 ! INHIBITION CAUSED BY GRADIENTS IN MEAN MOLECULAR WEIGHT.
 ! INCLUDE ONLY THE ZAHN & MAEDER 1998 TREATMENT, WHERE (DEL - DEL AD) IS
@@ -332,7 +336,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! THE INHIBITION FACTORS COME FROM SUBSEQUENT WORK BY SPRUIT.
 !      IF(IGSF.EQ.0 .OR. IGSF.EQ.2 .OR. IGSF.EQ.1)THEN
 ! KIPPENHAHN (1980) ESTIMATE
-      do 40 i = zone_min,zone_max
+      do i = zone_min,zone_max
          if (am_transport_convective_flag(i).and. &
               am_transport_convective_flag(i-1)) goto 40
 ! MHP 8/93 STABILITY CONDITION ADDED, NEGLECTING THE EFFECTS OF
@@ -395,6 +399,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          end if
          star%circ%gsf_circulation_velocity(i) = abs(fxx*star%circ%gsf_circulation_velocity(i))
    40 continue
+      end do
 ! OMIT JAMES AND KAHN ESTIMATE
 !      ELSE
 ! JAMES AND KAHN (1971) ESTIMATE.
@@ -428,7 +433,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !   41    CONTINUE
 !      ENDIF
 !  DIFFUSIVE AND DYNAMICAL SHEAR INSTABILITIES - REF. ENDAL&SOFIA PAPER II.
-      do 60 i = zone_min,zone_max
+      do i = zone_min,zone_max
 !  CHECK FOR OPERATION OF DYNAMICAL SHEAR.
 !  IF DYNAMICAL SHEAR IS OPERATING,SET SECULAR SHEAR VELOCITY TO MAXIMUM
 !  VALUE AND COMPUTE (LARGE) DYNAMICAL SHEAR VELOCITY.
@@ -527,6 +532,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             end if
          end if
    60 continue
+      end do
 !  NOW DETERMINE WHETHER OR NOT MU GRADIENTS ARE STEEP ENOUGH TO
 !  INHIBIT TRANSPORT.  MULTIPLY THE RESULTING VELOCITY ESTIMATES
 !  BY THE USER DEFINED PARAMETERS FES AND FGSF.
@@ -649,7 +655,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
       end if
 !  AVERAGE PREVIOUS AND NEW VELOCITY ESTIMATES AFTER THE FIRST ITERATION.
       if (iteration.gt.1) then
-         do 70 i = zone_min,zone_max
+         do i = zone_min,zone_max
             star%circ%gsf_circulation_velocity(i) = 0.5d0*(star%circ%gsf_circulation_velocity(i) &
                  + star%circ%gsf_circulation_velocity_prev(i))
             star%circ%es_circulation_velocity(i) = 0.5d0*(star%circ%es_circulation_velocity(i) &
@@ -657,6 +663,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             star%circ%secular_shear_velocity(i) = 0.5d0*(star%circ%secular_shear_velocity(i) &
                  + star%circ%secular_shear_velocity_prev(i))
    70    continue
+         end do
 ! MHP 11/94
          if (use_diffusion_advection_transport) then
             do i = zone_min,zone_max
@@ -667,13 +674,14 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             end do
          end if
       end if
-      do 80 i =zone_min,zone_max
+      do i =zone_min,zone_max
          total_circulation_velocity(i) = star%circ%gsf_circulation_velocity(i) + &
               star%circ%es_circulation_velocity(i) + star%circ%secular_shear_velocity(i)
          if (total_circulation_velocity(i).lt.1.0d-20) &
               total_circulation_velocity(i)=0.0d0
          if (total_circulation_velocity(i).gt.0.0d0) any_transport_active=.true.
    80 continue
+      end do
 ! 9/93 MIXING WITHOUT TRANSPORT ADDED.
 ! ZERO OUT COEFFICIENTS IN CORE TO AVOID NUMERICAL PROBLEMS IN
 ! THE H-BURNING SHELL.

@@ -53,18 +53,19 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       double precision :: viscosity_endal_sofia
 
 !  SKIP CONVECTIVE ZONES
-      do 100 shell_idx = 1,num_zones
+      do shell_idx = 1,num_zones
 !  COMPUTE THE KINEMATIC MICROSCOPIC VISCOSITY DUE TO RADIATION AND IONS
 !  CONVERT TO NUMBER DENSITIES AND FIND MEAN CHARGE PER ION(ZF) AND NE.
          opacity_local = star%diag%so(shell_idx)
          mean_charge = 0.0d0
          number_density_sum = 0.0d0
-         do 10 species_idx = 1,11
+         do species_idx = 1,11
             number_density(species_idx) = composition(species_idx,shell_idx)/ &
                  weight(species_idx)
             number_density_sum = number_density_sum+number_density(species_idx)
             mean_charge = mean_charge+number_density(species_idx)*z(species_idx)
    10    continue
+         end do
          mean_charge = mean_charge/number_density_sum
          temperature_cgs = dexp(ln10*log_temperature(shell_idx))
          temperature_sq = temperature_cgs**2
@@ -89,31 +90,33 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          molecular_coeff = 3.125d-15*dsqrt(temperature_cgs)*temperature_sq
          viscosity_molecular = 0.0d0
 !  VISCX(I) IS THE MOLECULAR VISCOSITY OF SPECIES I.
-         do 30 species_idx = 1,11
+         do species_idx = 1,11
             if(species_idx.eq.3) goto 30
             species_coeff = molecular_coeff*number_density(species_idx)* &
                  dsqrt(weight(species_idx))/ &
                  ((coulomb_log_factor-dlog(z(species_idx)))*z(species_idx)**2)
             species_sum = 0.0d0
-            do 20 species_idx2 = 1,11
+            do species_idx2 = 1,11
                if(species_idx2.eq.3) goto 20
                species_sum = species_sum+number_density(species_idx2)* &
                     z(species_idx2)**2* &
                     dsqrt((weight(species_idx)+weight(species_idx2))/ &
                     weight(species_idx2))
    20       continue
+            end do
             if(dabs(species_sum).lt.1.0d-38) goto 30
             viscosity_molecular_species(species_idx) = species_coeff/species_sum
             if(viscosity_molecular_species(species_idx).gt.0.0d0) &
                  viscosity_molecular = viscosity_molecular+ &
                  viscosity_molecular_species(species_idx)
    30    continue
+         end do
          viscosity_molecular = viscosity_molecular/density_cgs
          star%thermo%visc(shell_idx) = viscosity_radiative+viscosity_molecular
 !  NOW COMPUTE USING ENDAL-SOFIA METHOD
          viscosity_molecular_endal_sofia = 0.0d0
          endal_sofia_coeff = 2.21d-15*dsqrt(temperature_cgs)*temperature_sq
-         do 40 species_idx = 1,11
+         do species_idx = 1,11
             if(species_idx.eq.3) goto 40
             viscosity_endal_sofia_species(species_idx) = endal_sofia_coeff* &
                  composition(species_idx,shell_idx)/ &
@@ -123,6 +126,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
                  viscosity_molecular_endal_sofia = viscosity_molecular_endal_sofia+ &
                  viscosity_endal_sofia_species(species_idx)
    40    continue
+         end do
          viscosity_molecular_endal_sofia = viscosity_molecular_endal_sofia/ &
               density_cgs/number_density_sum
          viscosity_endal_sofia = viscosity_radiative_endal_sofia+ &
@@ -133,6 +137,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          star%thermo%thdif(shell_idx) = 1.6d1*cc13*5.669d-5*temperature_cgs* &
               temperature_sq/(opacity_local*density_cgs**2*star%thermo%cp(shell_idx))
   100 continue
+      end do
 
       return
 end subroutine viscos

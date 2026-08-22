@@ -113,7 +113,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
       else
          loop_upper_bound = num_zones_mixed
       end if
-      do 210 zone_idx = 1, loop_upper_bound
+      do zone_idx = 1, loop_upper_bound
 
 ! DETERMINE IF THIS REGION IS A CORE CONVECTION ZONE, SURFACE CZ,
 ! OR INTERMEDIATE CZ.
@@ -135,7 +135,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
             down_semiconv_flag = .true.
          end if
 ! CHECK SEMICONVECTION BELOW (K=1) AND ABOVE (K=2) THE CZ.
-         do 200 edge_side = 1, 2
+         do edge_side = 1, 2
 ! SKIP SEMI-CONVECTION BELOW A CENTRAL CZ AND ABOVE A SURFACE ONE.
             if (edge_side.eq.1.and..not.down_semiconv_flag) goto 200
             if (edge_side.eq.2.and..not.up_semiconv_flag) goto 200
@@ -262,7 +262,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                search_end = num_zones
                search_step = 1
             end if
-            do 32 search_zone_idx = search_begin, search_end, search_step
+            do search_zone_idx = search_begin, search_end, search_step
 ! TEST ON MAXIMUM OVERSHOOTING LIMIT IN RADIUS
                if (edge_side.eq.1) radius_curr = &
                     exp(ln10*log_radius(search_zone_idx+1))
@@ -320,6 +320,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) &
                     goto 34
    32       continue
+            end do
             if (edge_side.eq.1) search_zone_idx = 0
             if (edge_side.eq.2) search_zone_idx = num_zones + 1
    33       reached_max_extent = .true.
@@ -338,7 +339,9 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
   601       format(1x,'CZ OLD EDGE ',i3,' EXTENDED TO-', &
                  i3,' LIMIT=',l1,' RAD.GRADS-IN/OUT',2f8.4)
   200    continue
+         end do
   210 continue
+      end do
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY SEMI-CONVECTION.
       if (num_zones_mixed.le.1) return
       k_idx = 1
@@ -353,12 +356,14 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
               /2x,'OLD',2('[',i3,'-',i3,']'), &
               ' NEW','[',i3,'-',i3,']')
          mixed_zone_bounds(k_idx+1,1) = mixed_zone_bounds(k_idx,1)
-         do 90 zone_idx = k_idx, num_zones_mixed-1
-            do 95 pair_idx = 1, 2
+         do zone_idx = k_idx, num_zones_mixed-1
+            do pair_idx = 1, 2
                mixed_zone_bounds(zone_idx,pair_idx) = &
                     mixed_zone_bounds(zone_idx+1,pair_idx)
    95       continue
+            end do
    90    continue
+         end do
          num_zones_mixed = num_zones_mixed - 1
          if (k_idx.le.num_zones_mixed-1) then
             goto 85

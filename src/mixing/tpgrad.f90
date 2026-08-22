@@ -185,7 +185,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
       a3 = 0.75d0*phi2*phiphi/a1
       a3p = 3.0d0*a3
       if(a3.gt.1.0d+3) v = a3**(-0.333333333d0)
-      do 10 iter = 1,25
+      do iter = 1,25
        v = dmin1(v,1.0d0)
        vp = a1 + v*(2.0d0 + v*a3p)
        vd = (-1.0d0 + v*(a1 + v*(1.0d0 + v*a3)))/vp
@@ -193,6 +193,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
        v = v - vd
        if(dabs(vd).lt.vtol) goto 30
    10 continue
+      end do
 !  15   CONTINUE
       write(short_file_unit,20) log_pressure,log_temperature,opacity, &
            specific_heat_cp,dlnrho_dlnt

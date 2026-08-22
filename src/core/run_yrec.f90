@@ -197,7 +197,7 @@ subroutine run_yrec(ierr)
       call star_setup(ierr)
       if (ierr /= 0) return
 
-      do 500 monte_carlo_run_number = job%mc_run_start,job%mc_run_end
+      do monte_carlo_run_number = job%mc_run_start,job%mc_run_end
 ! for monte carlo run, input values of parameters being changed.
       if (lmonte) then
          cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
@@ -244,7 +244,7 @@ subroutine run_yrec(ierr)
 !**********
 !     RUN THROUGH THE KIND CARDS IN ORDER
 !**********
-      do 200 nk = 1, num_runs
+      do nk = 1, num_runs
          star%run%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
          initial_envelope_x = initial_x_array(nk)
@@ -453,12 +453,13 @@ subroutine run_yrec(ierr)
 
        evo%delta_time_saved = evo%delta_time
 ! zero out entropy terms.
-         do 99 i = 1,star%num_zones
+         do i = 1,star%num_zones
             star%run%temperature_entropy_term(i) = 0.0D0
             star%run%pressure_entropy_term(i) = 0.0D0
             star%run%luminosity_entropy_term(i) = 0.0D0
             star%run%radius_entropy_term(i) = 0.0D0
    99    continue
+         end do
 
 ! zero out light element burning rates in the surface CZ.
          if (use_extended_composition) then
@@ -470,7 +471,7 @@ subroutine run_yrec(ierr)
 ! for a given kind card, evolve NMODLS(NK) times
 ! if rescaling is being performed, NMODLS(NK) is the number of times
 ! the new model is being relaxed
-       do 100 model_iteration = 1,num_models(nk)
+       do model_iteration = 1,num_models(nk)
 ! 2026 (phase five): one model advance per iteration, extracted to
 ! core/evolve_step.f90 (see its header for the step_status contract).
        call evolve_step(model_iteration, step_status, ierr)
@@ -478,6 +479,7 @@ subroutine run_yrec(ierr)
        if (step_status == 1) goto 110
        if (step_status == 2) goto 200
   100    continue
+       end do
 
 ! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
 ! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
@@ -537,6 +539,7 @@ subroutine run_yrec(ierr)
 
 ! END RUN LOOP
  200  continue
+      end do
 ! EXIT RUN LOOP
  250  continue
 

@@ -42,7 +42,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! adiabatic extension.
       iov1 = -1
       iov2 = -1
-      do 100 zone_idx = 1, num_mixed_zones
+      do zone_idx = 1, num_mixed_zones
 ! DETERMINE IF THIS REGION IS A CORE CONVECTION ZONE, SURFACE CZ,
 ! OR INTERMEDIATE CZ. THERE ARE SEPARATE FLAGS GOVERNING WHETHER
 ! OVERSHOOT WILL BE PERFORMED IN EACH CASE, AND SEPARATE USER
@@ -113,10 +113,11 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! THE OVERSHOOT REGION IS EXTENDED THE RADIAL DISTANCE PSCALD DOWN; THE
 ! LAST POINT LESS THAN PSCALD FROM THE FORMAL EDGE OF THE CZ IS DEFINED
 ! AS THE NEW EDGE OF THE MIXED REGION.
-            do 10 j_idx = edge_idx-1, 1, -1
+            do j_idx = edge_idx-1, 1, -1
                radius = exp(ln10*log_radius(j_idx))
                if (radius.lt.overshoot_radius) goto 20
    10       continue
+            end do
 ! IF THE CODE GETS HERE, THE OVERSHOOT REGION EXTENDS BELOW THE FIRST POINT.
 ! THE CODE WILL ASSIGN THE FIRST POINT AS THE LOWER EDGE(I.E. THE CZ WILL
 ! EXTEND TO THE CENTER).
@@ -143,10 +144,11 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! THE OVERSHOOT REGION IS EXTENDED THE RADIAL DISTANCE PSCALU UP; THE
 ! LAST POINT LESS THAN PSCALU FROM THE FORMAL EDGE OF THE CZ IS DEFINED
 ! AS THE NEW EDGE OF THE MIXED REGION.
-            do 30 j_idx = edge_idx+1, num_zones
+            do j_idx = edge_idx+1, num_zones
                radius = exp(ln10*log_radius(j_idx))
                if (radius.gt.overshoot_radius) goto 40
    30       continue
+            end do
 ! IF THE CODE GETS HERE, THE OVERSHOOT REGION EXTENDS ABOVE THE LAST POINT.
 ! THE CODE WILL ASSIGN THE LAST POINT AS THE UPPER EDGE(I.E. THE CZ WILL
 ! EXTEND TO THE SURFACE).
@@ -161,6 +163,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
                  mixed_zone_bounds(zone_idx,2) + 1
          end if
   100 continue
+      end do
 ! OUTPUT : THE OLD AND NEW MIXED REGIONS ARE PRINTED OUT IN ISHORT.
       write(short_file_unit,200) ((mixed_zone_bounds_no_overshoot( &
            zone_idx,j_idx), j_idx=1,2), zone_idx=1,num_mixed_zones)

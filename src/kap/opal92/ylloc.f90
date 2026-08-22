@@ -31,13 +31,13 @@ subroutine ylloc
       integer :: ix, it, index1, jd, ids, idf, id, index2, j, i
       double precision :: chkd, chko
 
-      do 1 ix = 1,opacity_table%opal92_num_x
-      do 2 it = 1,opacity_table%opal92_num_temps
+      do ix = 1,opacity_table%opal92_num_x
+      do it = 1,opacity_table%opal92_num_temps
        index1 = it + (ix-1)*opacity_table%opal92_num_temps
        jd = 0
         ids = 1
         idf = num_d
-        do 3 id = ids,idf
+        do id = ids,idf
           chkd = opacity_table%opal92_grid_logr(id)
           chko = opacity_table%opal92_log10_opacity(it+num_t*(ix-1),id)
 !>>>> CHECK THE EMPTY REGION
@@ -51,17 +51,22 @@ subroutine ylloc
 !>>>> CHECK THE OPACITY VALUE IN THE TABLE
           spline_work(1,jd) = chko
     3   continue
+        end do
         opacity_table%opal92_density_count(index1) = jd
         if (jd.le.1) go to 2
         call ysplin(density_nodes, spline_work, jd)
-        do 100 j = 1,jd
-        do 200 i = 1,4
+        do j = 1,jd
+        do i = 1,4
          index2 = i + (j-1)*4
          opacity_table%opal92_spline_coeffs(index1,index2) = spline_work(i,j)
   200   continue
+        end do
   100   continue
+        end do
     2 continue
+      end do
     1 continue
+      end do
 !
 ! DBG 5/94 ZRAMP stuff
       if (use_two_z_tables) then

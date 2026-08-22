@@ -61,17 +61,18 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
          cz_total_mass = dexp(ln10*walpcz*log_radius(istart))* &
               moment_of_inertia(istart)
-         do 30 zone_idx = istart+1,iend
+         do zone_idx = istart+1,iend
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + &
                  dexp(ln10*walpcz*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
    30    continue
+         end do
 
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
          power_law_norm = cz_total_am/cz_total_mass
-         do 31 zone_idx = istart,iend
+         do zone_idx = istart,iend
             omega(zone_idx) = power_law_norm*dexp(ln10*walpcz* &
                  log_radius(zone_idx))
             specific_angular_momentum(zone_idx) = omega(zone_idx)* &
@@ -82,6 +83,7 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
    31    continue
+         end do
          if (istart.gt.1) then
             call solid(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,1,istart-1,eta_squared, &
@@ -95,25 +97,27 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
          cz_total_mass = dexp(ln10*walpcz*log_radius(istart))* &
               moment_of_inertia(1)
          if (istart.gt.1) then
-            do 32 zone_idx = 2,istart
+            do zone_idx = 2,istart
                cz_total_am = cz_total_am + &
                     specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
                cz_total_mass = cz_total_mass + &
                     dexp(ln10*walpcz*log_radius(istart))* &
                     moment_of_inertia(zone_idx)
    32       continue
+            end do
          endif
-         do 33 zone_idx = (istart+1),iend
+         do zone_idx = (istart+1),iend
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + &
                  dexp(ln10*walpcz*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
    33    continue
+         end do
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
 
          power_law_norm = cz_total_am/cz_total_mass
-         do 34 zone_idx = istart,iend
+         do zone_idx = istart,iend
             omega(zone_idx) = power_law_norm*dexp(ln10*walpcz* &
                  log_radius(zone_idx))
             specific_angular_momentum(zone_idx) = omega(zone_idx)* &
@@ -124,12 +128,14 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
    34    continue
+         end do
          if (istart.gt.1) then
-            do 35 zone_idx = 1,(istart-1)
+            do zone_idx = 1,(istart-1)
                omega(zone_idx) = omega(istart)
                specific_angular_momentum(zone_idx) = omega(zone_idx)* &
                     moment_of_inertia(zone_idx)/shell_mass(zone_idx)
    35       continue
+            end do
             call solid(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,1,istart-1,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
@@ -140,14 +146,15 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
 !  FIND TOTAL MASS AND ANGULAR MOMENTUM OF C.Z.
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
          cz_total_mass = shell_mass(istart)
-         do 36 zone_idx = istart+1,iend
+         do zone_idx = istart+1,iend
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + shell_mass(zone_idx)
    36    continue
+         end do
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
          power_law_norm = cz_total_am/cz_total_mass
-         do 40 zone_idx = istart,iend
+         do zone_idx = istart,iend
             specific_angular_momentum(zone_idx) = power_law_norm
             omega(zone_idx) = power_law_norm*shell_mass(zone_idx)/ &
                  moment_of_inertia(zone_idx)
@@ -157,6 +164,7 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
    40    continue
+         end do
       else
 !  GENERAL LAW FOR OMEGA IN C.Z.: OMEGA = C*R**WALPCZ,WHERE C IS A CONSTANT
 !  FOR THE ENTIRE C.Z. IF THIS HOLDS, THE RUN OF J/M CAN BE FOUND BY
@@ -167,16 +175,17 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
          cz_total_mass = dexp(ln10*walpcz*log_radius(istart))* &
               moment_of_inertia(istart)
-         do 50 zone_idx = istart+1,iend
+         do zone_idx = istart+1,iend
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + &
                  dexp(ln10*walpcz*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
    50    continue
+         end do
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
          power_law_norm = cz_total_am/cz_total_mass
-         do 60 zone_idx = istart,iend
+         do zone_idx = istart,iend
             omega(zone_idx) = power_law_norm*dexp(ln10*walpcz* &
                  log_radius(zone_idx))
             specific_angular_momentum(zone_idx) = omega(zone_idx)* &
@@ -187,6 +196,7 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
    60    continue
+         end do
       endif
       return
 end subroutine wczimp

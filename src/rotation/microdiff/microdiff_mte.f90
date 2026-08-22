@@ -64,9 +64,10 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       drmin = drtot
 !  ID THE MINIMUM SPACING IN THE 20 LAYERS BELOW THE SURFACE CZ.
       ii = max(zone_end-20,zone_begin+1)
-      do 7 i = ii,zone_end
+      do i = ii,zone_end
          drmin=min(drmin,radius_bl(i)-radius_bl(i-1))
     7 continue
+      end do
 !  ASSIGN THE MINIMUM NUMBER OF EQUALLY SPACED GRID POINTS SUCH THAT
 !  DR <= DRMIN.
       num_eq_points=int(drtot/drmin)
@@ -84,19 +85,21 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       if (num_eq_points .eq. 2) then
          eq_radius_mid(2)=eq_radius_mid(1)+grid_spacing
       else
-         do 10 i = 2,num_eq_points-1 ! old piece
+         do i = 2,num_eq_points-1! old piece
             if(i-1 .eq. 0) print*, 'mte line 47'
             eq_radius_mid(i)=eq_radius_mid(i-1)+grid_spacing  ! old piece
    10    continue          ! old piece
+         end do
       endif
 
 !  NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
 !  AT EQUALLY SPACED ZONE MIDPOINTS.
 !
 !  FIRST POINT : LINEAR INTERPOLATION BETWEEN STARTING POINT AND 2ND PT.
-      do 15 iu=2,num_eq_points
+      do iu=2,num_eq_points
          if(radius_bl(iu).ge.eq_radius_mid(1))goto 17
    15 continue
+      end do
       iu=num_eq_points
    17 continue
       fx=(eq_radius_mid(1)-radius_bl(iu-1))/(radius_bl(iu)-radius_bl(iu-1))
@@ -123,8 +126,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  JMIN IS THE UPPERMOST MODEL POINT ABOVE THE PREVIOUS EQUALLY SPACED
 !  GRID POINT (IN RADIUS).
       jmin=zone_begin+1
-      do 50 i=2,num_eq_points-1
-         do 20 j = jmin,zone_end
+      do i=2,num_eq_points-1
+         do j = jmin,zone_end
 !  FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
             if(radius_bl(j).ge.eq_radius_mid(i))then
 !  ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
@@ -135,12 +138,14 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                goto 30
             endif
    20    continue
+         end do
          k0 = num_zones-3
          jmin=num_zones
    30    continue
-         do 40 k=1,4
+         do k=1,4
             tabler(k)=radius_bl(k0+k-1)
    40    continue
+         end do
          gridrad=eq_radius_mid(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
 !  FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
@@ -185,12 +190,14 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
             end do
          endif
    50 continue
+      end do
 
 !  SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE CENTERS.
       eq_radius(1)=radius_bl(zone_begin)
-      do 60 i = 2,num_eq_points
+      do i = 2,num_eq_points
          eq_radius(i)=eq_radius(i-1)+grid_spacing
    60 continue
+      end do
 
 !  NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
 !  AT EQUALLY SPACED ZONE CENTERS.
@@ -217,8 +224,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  JMIN IS THE UPPERMOST MODEL POINT ABOVE THE PREVIOUS EQUALLY SPACED
 !  GRID POINT (IN RADIUS).
       jmin=zone_begin+1
-      do 70 i=2,num_eq_points-1
-         do 80 j = jmin,zone_end
+      do i=2,num_eq_points-1
+         do j = jmin,zone_end
 !  FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
             if(radius_bl(j).ge.eq_radius(i))then
 !  ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
@@ -229,12 +236,14 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                goto 90
             endif
    80    continue
+         end do
          k0 = num_zones-3
          jmin=num_zones
    90    continue
-         do 100 k=1,4
+         do k=1,4
             tabler(k)=radius_bl(k0+k-1)
   100    continue
+         end do
          gridrad=eq_radius(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
 !  FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
@@ -274,6 +283,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
             end do
          endif
    70 continue
+      end do
 !  LAST POINT : BY DEFINITION, AT ENDING POINT.
       eq_mass(num_eq_points) = enclosed_mass(zone_end)
       eq_density(num_eq_points) = density_orig(zone_end)

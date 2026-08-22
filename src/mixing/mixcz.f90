@@ -87,32 +87,39 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       num_species = 11
       if (use_extended_composition) num_species = 15
 ! MIX ALL CONVECTIVE ZONES
-      do 100 j_idx = 1, 24, 2
+      do j_idx = 1, 24, 2
          if (zone_bounds(j_idx).le.0) goto 110
          zone_start = zone_bounds(j_idx)
          zone_end = min0(num_zones, zone_bounds(j_idx+1))
          if (zone_start.ne.1 .and. zone_start.ge.zone_end) goto 100
 ! INITIALIZE SUMS
          weight_sum = 0.0d0
-         do 40 species_idx = 1, num_species
+         do species_idx = 1, num_species
             species_sum(species_idx) = 0.0d0
    40    continue
-         do 60 inner_idx = zone_start, zone_end
+         end do
+         do inner_idx = zone_start, zone_end
             weight_sum = weight_sum + shell_mass(inner_idx)
-            do 50 species_idx = 1, num_species
+            do species_idx = 1, num_species
                species_sum(species_idx) = species_sum(species_idx) + &
                     composition(species_idx,inner_idx)*shell_mass(inner_idx)
    50       continue
+            end do
    60    continue
-         do 70 species_idx = 1, num_species
+         end do
+         do species_idx = 1, num_species
             species_sum(species_idx) = species_sum(species_idx)/weight_sum
    70    continue
-         do 90 inner_idx = zone_start, zone_end
-            do 80 species_idx = 1, num_species
+         end do
+         do inner_idx = zone_start, zone_end
+            do species_idx = 1, num_species
                composition(species_idx,inner_idx) = species_sum(species_idx)
    80       continue
+            end do
    90    continue
+         end do
   100 continue
+      end do
   110 continue
 ! RENORMALIZE COMPOSITION IF NECESSARY
       do zone_idx = 1, num_zones

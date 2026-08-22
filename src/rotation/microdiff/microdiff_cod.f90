@@ -82,7 +82,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
       bl_radius_scale_local=1.0d0/6.9598d10
       bl_temp_scale_local=1.0d-7
 ! CALCULATE DIFFUSION COEFFICIENTS FOR EACH LAYER.
-      do 5 i = 1,num_eq_points
+      do i = 1,num_eq_points
          mass_frac(1) = species_fraction(1,i)
          mass_frac(2) = species_fraction(2,i)
          mass_frac(3) = species_fraction(3,i)
@@ -174,7 +174,8 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          hydrogen_term(i) = ah
          diffusion_term(i) = ad
     5 continue
-      do 10 i = 1,num_eq_points
+      end do
+      do i = 1,num_eq_points
          fac = coeff_scale(i)
          ap = pressure_term(i)
          at = temp_term(i)
@@ -222,5 +223,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
               species_fraction(species_col,i)
          diffusion_coeff2(i) = fac*ad
    10 continue
+      end do
       return
 end subroutine microdiff_cod

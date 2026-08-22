@@ -163,7 +163,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       enddo
       alpha(num_eq_points) = fac/(total_mass-eq_mass_mid(num_eq_points-1))
 !  START ITERATION LOOP FOR THE NEW RUN OF ABUNDANCES.
-      do 100 iter=1,settling_num_iterations
+      do iter=1,settling_num_iterations
 !  FIND CHANGE IN D AT THE ZONE MIDPOINTS, GIVEN CHANGE IN D AT
 !  THE ZONE CENTERS.
          do i = 2,num_eq_points
@@ -208,6 +208,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
          if(max_abundance_change.lt.settling_tolerance)goto 120
   100 continue
+      end do
       write(iowr,110)settling_tolerance,settling_num_iterations, &
            max_abundance_change,max_change_zone
       write(short_file_unit,110)settling_tolerance,settling_num_iterations, &

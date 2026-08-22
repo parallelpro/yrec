@@ -368,9 +368,10 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 ! G Somers END
 !  NOW SOLVE FOR LONG-TIMESCALE(SECULAR) INSTABILITIES.
 !  THESE ARE TREATED USING DIFFUSION EQUATIONS.
-         do 60 zone_index = 1,star%num_zones
+         do zone_index = 1,star%num_zones
             specific_angular_momentum_saved(zone_index) = star%specific_angular_momentum(zone_index)
    60    continue
+         end do
 ! MHP 6/00 ADDED COD2,HV TO LIST RETURNED FROM SECULR
 ! FOR THE BUR-ST MIXING ROUTINES
 !          CALL SECULR(DELTS,DT,HDM,HGM,HIM,HLM,HPM,HRM,HS,HS1,HS2,
@@ -396,13 +397,15 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          if(redo_needed_flag)then
             fx = 2.0D0*sub_timestep/full_timestep
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
-            do 80 zone_index = 1,star%num_zones
+            do zone_index = 1,star%num_zones
                star%specific_angular_momentum(zone_index) = specific_angular_momentum_saved(zone_index)
                star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%thermo%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
-               do 70 species_index = 1,num_species_tracked
+               do species_index = 1,num_species_tracked
                   star%composition(species_index,zone_index) = star%prev%old_composition(species_index,zone_index)
    70          continue
+               end do
    80       continue
+            end do
             goto 40
          endif
       endif
@@ -453,11 +456,12 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
                  envelope_boundary_zone_prev,star%num_zones)
             envelope_boundary_zone_prev = envelope_boundary_zone_cur
             star%light_burn%pressure_scale_height_start = star%light_burn%pressure_scale_height_end
-            do 155 zone_index = 1,star%num_zones
+            do zone_index = 1,star%num_zones
                star%light_burn%rate_li6_start(zone_index) = star%light_burn%rate_li6(zone_index)
                star%light_burn%rate_li7_start(zone_index) = star%light_burn%rate_li7(zone_index)
                star%light_burn%rate_be9_start(zone_index) = star%light_burn%rate_be9(zone_index)
   155       continue
+            end do
          else
 ! COMPUTE BURNING.
 !             CALL LIBURN2(DT,HCOMP,HDM,HRM,HS1,HS2,HTM,JENV1,JENV0,M)  ! KC 2025-05-31
@@ -477,11 +481,13 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
           call mixcz(star%composition,star%shell_mass,am_transport_convective_flag_mid,star%num_zones)
 ! G Somers END
 !  ZERO OUT LOW ABUNDANCES.
-         do 100 zone_index = 1,star%num_zones
-            do 90 species_index = 12,15
+         do zone_index = 1,star%num_zones
+            do species_index = 12,15
                if(star%composition(species_index,zone_index).lt.1.0D-24)star%composition(species_index,zone_index)=0.0D0
    90       continue
+            end do
   100   continue
+         end do
 ! MHP 6/00 ADDED OVERWRITE OF HCOMPP FOR LIGHT ELEMENTS
 ! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
 ! BURNING - ONLY UPDATED IF NOT USED
@@ -515,9 +521,10 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 !  RETURN FOR NEXT SMALL DIFFUSION TIMESTEP IF NEEDED.
       if(elapsed_substep_time.lt.full_timestep)goto 30
 !  UPDATE OMEGA ARRAY TO REFLECT NEW ANGULAR MOMENTUM DISTRIBUTION.
-      do 110 zone_index = 1,star%num_zones
+      do zone_index = 1,star%num_zones
          star%omega(zone_index) = omega_mid(zone_index)
   110 continue
+      end do
 ! MHP 3/96 ADDED CALL TO RECOMPUTE SELF-CONSISTENT SET OF OMEGAS
       call getrot(star%log_density,star%specific_angular_momentum,star%log_radius,star%log_mass, &
            star%shell_mass,am_transport_convective_flag,star%num_zones,star%eta_squared, &

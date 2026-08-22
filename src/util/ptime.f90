@@ -68,7 +68,7 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
       else
        max_change(4) = 0.0d0
       endif
-      do 40 i = 2,num_points
+      do i = 2,num_points
        test_p = abs(star%prev%old_pressure(i)-log_pressure(i))
        if(max_change(1).le.test_p) then
           max_change(1) = test_p
@@ -94,6 +94,7 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
           max_change_index(4) = i
        endif
    40 continue
+      end do
 ! now actually limit the timestep by a factor that reduces the
 ! time changes in all quantities to the ps values or less
       dt_factor = max_change(1)/atime(9)

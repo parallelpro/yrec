@@ -94,9 +94,10 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! and interior together.
 !
 ! Determine where the BCZ is.
-      do 71 zone_index = num_zones-1,1,-1
+      do zone_index = num_zones-1,1,-1
          if (.not.convective_flag(zone_index)) goto 81
    71 continue
+      end do
       fully_convective_flag = .true.
       zone_index = 0
    81 bcz_top_zone = zone_index + 1

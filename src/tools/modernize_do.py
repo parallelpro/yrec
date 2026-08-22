@@ -47,6 +47,8 @@ def convert(path):
         if lm and stack and lm.group(2) == stack[-1][0]:
             label = lm.group(2)
             out.append(line)
+            if re.match(r"end\s*do\b", lm.group(3), re.I):
+                stack.pop()   # labeled `end do` closes its own loop
             while stack and stack[-1][0] == label:
                 _, indent = stack.pop()
                 out.append(f"{indent}end do\n")

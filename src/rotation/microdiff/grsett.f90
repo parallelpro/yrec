@@ -140,9 +140,10 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
 ! INTERPOLATED BACK TO THE ORIGINAL GRID AT THE END OF THE ROUTINE; THE
 ! CHANGE IN ABUNDANCE (RATHER THAN THE NEW RUN OF ABUNDANCE) IS USED TO
 ! MINIMIZE ERRORS ARISING FROM THE INTERPOLATION.
-      do 5 eq_idx = 1,num_equal_points
+      do eq_idx = 1,num_equal_points
          hydrogen_x_orig(eq_idx) = equal_hydrogen_fraction(eq_idx)
     5 continue
+      end do
 ! MHP 3/94 METAL DIFFUSION
       if(use_diffusion_z)then
          do eq_idx = 1,num_equal_points
@@ -171,11 +172,12 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
 ! ALSO DEFINE VECTOR hydrogen_x_prev_iter, WHICH IS THE HYDROGEN
 ! ABUNDANCE AT THE END OF THE PREVIOUS ITERATION.
 !
-      do 10 eq_idx=1,num_equal_points-1
+      do eq_idx=1,num_equal_points-1
          equal_diffusion_coeff1_mid(eq_idx)=equal_diffusion_coeff1_mid(eq_idx)+ &
               equal_hydrogen_fraction_mid(eq_idx)*equal_diffusion_coeff1_dx_mid(eq_idx)
          hydrogen_x_prev_iter(eq_idx) = hydrogen_x_orig(eq_idx)
  10   continue
+      end do
       hydrogen_x_prev_iter(num_equal_points) = hydrogen_x_orig(num_equal_points)
 ! MHP 3/94 METAL DIFFUSION
       if(use_diffusion_z)then
@@ -201,33 +203,37 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
 !  DERIVATIVE OF THE COMPOSITION GRADIENT).
 !  hydrogen_x_prime IS THE HYDROGEN ABUNDANCE ONE WOULD HAVE IN THE
 !  ABSENCE OF THE SECOND TERM IN THE DIFFUSION EQUATION.
-      do 15 eq_idx = 1,num_equal_points
+      do eq_idx = 1,num_equal_points
          hydrogen_x_prime(eq_idx) = equal_hydrogen_fraction(eq_idx)
  15   continue
+      end do
 !  alpha IS THE NUMERICAL FACTOR IN FRONT OF THE DIFFUSION COEFFICIENTS.
       alpha_prefactor = c4pi*timestep/grid_spacing
       alpha(1) = alpha_prefactor/equal_mass_mid(1)
-      do 20 eq_idx = 2,num_equal_points-1
+      do eq_idx = 2,num_equal_points-1
          alpha(eq_idx) = alpha_prefactor/(equal_mass_mid(eq_idx)-equal_mass_mid(eq_idx-1))
  20   continue
+      end do
       alpha(num_equal_points) = alpha_prefactor/ &
            (total_mass-equal_mass_mid(num_equal_points-1))
 !  START ITERATION LOOP FOR THE NEW RUN OF HYDROGEN.
-      do 100 iter_count=1,settling_num_iterations
+      do iter_count=1,settling_num_iterations
 !  FIND CHANGE IN X AT THE ZONE MIDPOINTS, GIVEN CHANGE IN X AT
 !  THE ZONE CENTERS.
-         do 30 eq_idx = 2,num_equal_points
+         do eq_idx = 2,num_equal_points
             equal_hydrogen_fraction_mid(eq_idx) = 0.5d0*(equal_hydrogen_fraction(eq_idx)+ &
                  equal_hydrogen_fraction(eq_idx-1)-hydrogen_x_prev_iter(eq_idx)- &
                  hydrogen_x_prev_iter(eq_idx-1))
  30      continue
+         end do
 !  STORE CURRENT RUN OF HYDROGEN ABUNDANCES IN VECTOR hydrogen_x_prev_iter.
 !  THE ITERATION LOOP IS COMPLETED ONCE equal_hydrogen_fraction -
 !  hydrogen_x_prev_iter IS EVERYWHERE LESS THAN THE TOLERANCE
 !  settling_tolerance.
-         do 40 eq_idx = 1,num_equal_points
+         do eq_idx = 1,num_equal_points
             hydrogen_x_prev_iter(eq_idx) = equal_hydrogen_fraction(eq_idx)
  40      continue
+         end do
 !  GET NEW DIFFUSION COEFFICIENTS, TAKING INTO ACCOUNT THE CHANGE IN X
 !  FROM THE PREVIOUS ITERATION.
 !
@@ -244,19 +250,21 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
 !  ENOUGH TO EXIT.
          max_delta_x = 0.0d0
          max_delta_x_zone = 0
-         do 50 eq_idx = 1,num_equal_points
+         do eq_idx = 1,num_equal_points
             delta_x_local = equal_hydrogen_fraction(eq_idx)-hydrogen_x_prev_iter(eq_idx)
             if(delta_x_local.gt.max_delta_x)then
                max_delta_x = delta_x_local
                max_delta_x_zone = eq_idx
             endif
  50      continue
+         end do
 !         WRITE(IOWR,90)ITER,DXMAX,IMAX
          write(short_file_unit,90)iter_count,max_delta_x,max_delta_x_zone
  90      format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
          if(max_delta_x.lt.settling_tolerance)goto 120
  100  continue
+      end do
       write(iowr,110)settling_tolerance,settling_num_iterations,max_delta_x, &
            max_delta_x_zone
       write(short_file_unit,110)settling_tolerance,settling_num_iterations, &
@@ -266,9 +274,10 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
            ' IN EQUALLY SPACED SHELL ',i5)
  120  continue
 !  FIND RUN OF CHANGES IN X.
-      do 130 eq_idx = 1,num_equal_points
+      do eq_idx = 1,num_equal_points
          equal_hydrogen_fraction(eq_idx) = equal_hydrogen_fraction(eq_idx)-hydrogen_x_orig(eq_idx)
  130  continue
+      end do
 ! MHP 3/94 ADDED METAL DIFFUSION
       if(use_diffusion_z)then
          z_change_first=star%rot%metal_abundance_change(1)-metal_x_orig(1)

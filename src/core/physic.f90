@@ -96,10 +96,11 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       local_conductive_opacity_flag = .false.
       in_atmosphere = .false.
       idt = 15
-      do 25 i = 1,4
+      do i = 1,4
          idd(i) = 5
    25 continue
-      do 30 im = 1,num_zones
+      end do
+      do im = 1,num_zones
          log10_mass = log_mass(im)
          log10_temperature = log_temperature(im)
          log10_pressure = log_pressure(im)
@@ -168,6 +169,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 !            SVEL(IM) = 0.0D0
 !         ENDIF
    30 continue
+      end do
 !  FIND THE THERMOMETRIC DIFFUSIVITY AND KINEMATIC VISCOSITY.
 !       CALL VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
       call viscos(composition, log_density, log_temperature, num_zones)
@@ -176,7 +178,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 !  IF THE GRADIENT OF OMEGA EXCEEDS THE CRITICAL VALUE FOR THE SHEAR
 !  INSTABILITY, A SHORT TIMESCALE INSTABILITY OCCURS.  MIX ALL ADJACENT
 !  UNSTABLE ZONES TO A MARGINALLY STABLE STATE.
-      do 100 im = 2,num_zones
+      do im = 2,num_zones
 !  SKIP CONVECTIVE REGIONS
          if (convective_flag(im).and.convective_flag(im-1)) then
             star%rot%max_domega_dr(im) = 0.0d0
@@ -192,9 +194,10 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
          else
             k = im - 2
          end if
-         do 90 i = 1, 4
+         do i = 1, 4
             log_mass_nodes(i) = log_mass(i+k-1)
    90    continue
+         end do
 !  USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND PHYSICAL VARIABLES
 !  AT THE INTERFACE BEING TESTED.
          log_mass_mid = 0.5d0*(log_mass(im) + log_mass(im-1))
@@ -225,6 +228,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
             star%rot%max_domega_dr(im) = 0.0d0
          end if
   100 continue
+      end do
 
       return
 end subroutine physic

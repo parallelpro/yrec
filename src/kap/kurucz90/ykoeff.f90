@@ -31,12 +31,12 @@ subroutine ykoeff
       integer :: it, index1, jd, ids, idf, id, index2, j, i
       double precision :: chkd, chko
 
-      do 102 it = 1,opacity_table%kurucz_num_temps
+      do it = 1,opacity_table%kurucz_num_temps
          index1 = it
          jd = 0
          ids = 1
          idf = num_d
-         do 103 id = ids,idf
+         do id = ids,idf
             chkd = opacity_table%kurucz_log10_rho(it,id)
             chko = opacity_table%kurucz_log10_opacity(it,id)
             if (chko.le.0.0d0) go to 103
@@ -45,6 +45,7 @@ subroutine ykoeff
             density_nodes(jd) = chkd
             spline_work(1,jd) = dlog10(chko)
  103     continue
+         end do
          opacity_table%kurucz_density_count(index1) = jd
          if (opacity_table%kurucz_density_start_index(index1).ne.1) stop ' ERROR KURUCZ OPACITY NDS'
          if (opacity_table%kurucz_density_count(index1).lt.25) stop ' ERROR KURUCZ OPACITY NDD'
@@ -57,17 +58,18 @@ subroutine ykoeff
             end do
          end do
  102  continue
+      end do
 !
 !
 !
 ! DBG 12/95 second Z table
       if (use_two_z_tables) then
-         do 202 it = 1,opacity_table%kurucz2_num_temps
+         do it = 1,opacity_table%kurucz2_num_temps
             index1 = it
             jd = 0
             ids = 1
             idf = num_d
-            do 203 id = ids,idf
+            do id = ids,idf
                chkd = opacity_table%kurucz2_log10_rho(it,id)
                chko = opacity_table%kurucz2_log10_opacity(it,id)
                if (chko.le.0.0d0) go to 203
@@ -76,6 +78,7 @@ subroutine ykoeff
                density_nodes(jd) = chkd
                spline_work(1,jd) = dlog10(chko)
  203        continue
+            end do
             opacity_table%kurucz2_density_count(index1) = jd
             if (opacity_table%kurucz2_density_start_index(index1).ne.1) stop ' NDS2'
             if (opacity_table%kurucz2_density_count(index1).lt.25) stop ' NDD2'
@@ -88,6 +91,7 @@ subroutine ykoeff
                end do
             end do
  202     continue
+         end do
       end if
 
       return

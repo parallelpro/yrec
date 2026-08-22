@@ -37,37 +37,41 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
        if (print_point_interval.lt.jxbeg) then
           ibeg = max(2,print_point_interval)
           iend = int(jxbeg/print_point_interval)*print_point_interval
-          do 10 j = ibeg,iend,print_point_interval
+          do j = ibeg,iend,print_point_interval
              id(idm) = j
              idm = idm + 1
    10       continue
+          end do
        end if
        if (iend .eq. jxbeg) then
            ixbeg = jxbeg + 1
        else
            ixbeg = jxbeg
        end if
-       do 20 j = ixbeg,jxend
+       do j = ixbeg,jxend
           id(idm) = j
           idm = idm + 1
    20    continue
+       end do
        if (print_point_interval.lt.m) then
           ibeg = int(jxend/print_point_interval+1)*print_point_interval
           iend = int(m/print_point_interval)*print_point_interval
-          do 30 j = ibeg,iend,print_point_interval
+          do j = ibeg,iend,print_point_interval
              id(idm) = j
              idm = idm + 1
    30       continue
+          end do
        end if
       else if (print_point_interval.lt.m) then
 !  GENERAL CASE; PRINT OUT EVERY NPRTPT POINTS.
        ibeg = max(2,print_point_interval)
        iend = int(m/print_point_interval)*print_point_interval
        if (iend .eq. m) iend = iend - print_point_interval
-       do 40 j = ibeg,iend,print_point_interval
+       do j = ibeg,iend,print_point_interval
           id(idm) = j
           idm = idm + 1
    40    continue
+       end do
       end if
       id(idm) = m
       return

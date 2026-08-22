@@ -118,7 +118,7 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !         WRITE(*,3)NSTEP
 !    3    FORMAT(5X,I5)
          omega_substep_start = omega_surface
-         do 100 substep_idx = 1,num_substeps
+         do substep_idx = 1,num_substeps
 ! THE CONSTANT AND EXPONENTS ARE SET IN PARMIN BASED ON THE INPUT
 ! INDEX ALFA;SEE PARMIN FOR DETAILS ON THE DEPENDENCE OF EACH ON ALFA.
 ! ITERATIVE SOLUTION : FOR FIRST GUESS, USE OMEGA=INITIAL OMEGA IN
@@ -147,6 +147,7 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             endif
             omega_substep_start = omega_iter_new
   100    continue
+         end do
 !        CON = DELTS*CONSTFACTOR*(DMDOT/1.0D-14)**EXMD*OMEGAS**(EXW-1.0D0)
 !    *           *(RTOT/CRSUN)**EXR*SMASS**EXM
 !        FJDOT = CON*OMEGAS/(1.0D0+(EXW*CON/HICZ))
@@ -160,10 +161,11 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !   11    FORMAT(5X,1P3E14.6)
 !        FJDOM=FJDOT/DM
 !        TAUJ=SJTOT/(FJDOT/DELTS)/CSECYR
-         do 10 zone_idx = start_zone,end_zone
+         do zone_idx = start_zone,end_zone
             specific_angular_momentum(zone_idx) = &
                  specific_angular_momentum(zone_idx) - delta_j_per_mass
   10     continue
+         end do
       endif
       return
 end subroutine wind

@@ -155,9 +155,10 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       ierr = 0
 
       if (lsnu) then
-         do 5 j = 1,10
+         do j = 1,10
             star%flux%neutrino_flux_total(j) = 0.0d0
    5     continue
+         end do
       end if
 ! MHP 10/02 QFPR,QFTR NOT USED - OMIT
 !      IF(.NOT.LROT) THEN
@@ -174,14 +175,16 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
        one_year_sec = 3.1558d7
        one_year_sec_inv = 3.1688d-8
       end if
-      do 10 j = 1,8
+      do j = 1,8
        luminosity_terms(j) = 0.0d0
    10 continue
+      end do
       idt = 15
-      do 15 j = 1,4
+      do j = 1,4
        idd(j) = 5
    15 continue
-      do 30 im = 1,num_points
+      end do
+      do im = 1,num_points
 ! SET UP LOCAL VARIABLES FOR CALLS TO BASIC PHYSICS ROUTINES
        zone_energy_luminosity = 0.0d0
        zone_log_mass = log_mass(im)
@@ -315,12 +318,13 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
             if (lsnu) then
-               do 17 j = 1,10
+               do j = 1,10
                   star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) + &
                        star%flux%neutrino_flux(j)*shell_mass(im)
  17            continue
+               end do
             end if
-            do 20 j = 1,6
+            do j = 1,6
                luminosity_terms(j) = luminosity_terms(j) + &
                     (shell_mass(im)/solar_luminosity_cgs)* &
                     energy_gen_component(j)
@@ -328,6 +332,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                     (shell_mass(im)/solar_luminosity_cgs)* &
                     energy_gen_component(j)
  20         continue
+            end do
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
             star%engeb%he3_he3_rate_placeholder(im) = (shell_mass(im)/ &
                  solar_luminosity_cgs)*star%engeb%he3_luminosity_placeholder
@@ -553,6 +558,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          star%rot%vphmlt(im) = star%rot%phmlt
          star%rot%vcmxmlt(im) = star%rot%cmxmlt
  30   continue
+      end do
 
       return
 end subroutine coefft

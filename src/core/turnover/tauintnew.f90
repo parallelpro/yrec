@@ -71,13 +71,14 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
       search_start_index = 1
    50 in_radiative_zone = .true.
       if (convective_flag(search_start_index)) in_radiative_zone = .false.
-      do 60 i = search_start_index,num_points,1
+      do i = search_start_index,num_points,1
          if (.not.in_radiative_zone.and..not.convective_flag(i)) then
             core_cz_top_index = i-1
             in_radiative_zone = .true.
          endif
          if (in_radiative_zone.and.convective_flag(i)) goto 70
    60 continue
+      end do
 ! IF THE CODE GETS HERE, EITHER THE STAR IS FULLY CONVECTIVE, OR
 ! HAS A COMPLETELY RADIATIVE ENVLOPE, MAYBE WITH A CONVECTIVE CORE.
       if (in_radiative_zone) then ! RADIATIVE ENVELOPE
@@ -99,9 +100,10 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
 ! FIND THE BASE OF THE UPPER-MOST CONVECTION ZONE
 ! JvS 02/2026: ADDED LCZ(J+1) TO TRAP OUT CASES WHERE THE LAST (FEW) POINT(S) IN
 ! THE MODEL IS(ARE) ALREADY RADIATIVE
-      do 80 j = num_points-1,1,-1
+      do j = num_points-1,1,-1
          if (convective_flag(j+1) .and. .not.convective_flag(j)) goto 90
    80 continue
+      end do
    90 cz_base_index = i
       upper_cz_base_index = j + 1
       index_gap = upper_cz_base_index-cz_base_index

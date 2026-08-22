@@ -30,21 +30,23 @@ subroutine get_imp_diffco(alpha, diffusion_coeff_mid, delta_abundance_mid, &
       integer :: i
 
 ! CORRECT DIFFUSION COEFFICEINTS FOR CHANGE IN X IN THE PREVIOUS ITERATION.
-      do 10 i=1,npt-1
+      do i=1,npt-1
          diffusion_coeff_mid(i)=diffusion_coeff_mid(i)+ &
               diffusion_coeff_deriv_mid(i)*delta_abundance_mid(i)
    10 continue
+      end do
 ! NOW RECOMPUTE ELEMENTS OF THE TRIDIAGONAL MATRIX SYSTEM.
       sub_diag(1) = 0.0d0
       diag(1) = 1.0d0 + alpha(1)*diffusion_coeff_mid(1)
       super_diag(1) = -alpha(1)*diffusion_coeff_mid(1)
 !   911 FORMAT(5X,I5,1P3E10.2)
-      do 20 i=2,npt-1
+      do i=2,npt-1
          sub_diag(i) = -alpha(i)*diffusion_coeff_mid(i-1)
          diag(i) = 1.0d0 + alpha(i)*(diffusion_coeff_mid(i-1)+ &
               diffusion_coeff_mid(i))
          super_diag(i) = -alpha(i)*diffusion_coeff_mid(i)
    20 continue
+      end do
       sub_diag(npt) = -alpha(npt)*diffusion_coeff_mid(npt-1)
       diag(npt) = 1.0d0 + alpha(npt)*diffusion_coeff_mid(npt-1)
       super_diag(npt) = 0.0d0

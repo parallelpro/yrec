@@ -87,7 +87,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       if (temp_index_end.gt.opacity_table%kurucz2_num_temps) temp_index_end = opacity_table%kurucz2_num_temps
   333 continue
       num_valid_temps = 0
-      do 300 temp_index = temp_index_start, temp_index_end
+      do temp_index = temp_index_start, temp_index_end
          t_row_index = temp_index
          row_density_start = opacity_table%kurucz2_density_start_index(t_row_index)
          row_density_end = row_density_start + &
@@ -97,22 +97,24 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
               opacity_table%kurucz2_ix_rho.gt.row_density_end) opacity_table%kurucz2_ix_rho = row_density_end
          density_pointer = opacity_table%kurucz2_ix_rho
          if (local_logrho.lt.opacity_table%kurucz2_log10_rho(temp_index, density_pointer)) then
-            do 211 density_scan_index = density_pointer-1, row_density_start, -1
+            do density_scan_index = density_pointer-1, row_density_start, -1
                if (opacity_table%kurucz2_log10_rho(temp_index, density_scan_index).le. &
                     local_logrho) then
                   density_pointer = density_scan_index
                   goto 213
                endif
   211       continue
+            end do
             go to 300
          else
-            do 212 density_scan_index = density_pointer, row_density_end-1
+            do density_scan_index = density_pointer, row_density_end-1
                if (opacity_table%kurucz2_log10_rho(temp_index, density_scan_index+1).gt. &
                     local_logrho) then
                   density_pointer = density_scan_index
                   goto 213
                endif
   212       continue
+            end do
             if (opacity_table%kurucz2_log10_rho(temp_index, row_density_end).ge. &
                  local_logrho) then
                density_pointer = row_density_end
@@ -140,6 +142,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
          temp_subset_log10_opacity(num_valid_temps) = log10_opacity_at_rho
          temp_subset_dlnkap_dlnrho(num_valid_temps) = dlnkap_dlnrho_at_rho
   300 continue
+      end do
       if (num_valid_temps.le.3) then
          if (search_full_range) then
             temp_index_start = 1

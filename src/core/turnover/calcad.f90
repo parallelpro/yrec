@@ -224,7 +224,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 ! Stitch interior and envelope together, convert into ESAC06 units
-      do 34, zone_idx=1,num_shells
+      do zone_idx=1,num_shells
             star_radius_cm(zone_idx)=dexp(ln10*log_radius(zone_idx))            ! get unlogged units
             star_temperature_1e6k(zone_idx)=dexp(ln10*log_temperature(zone_idx))/1.0d6      ! ESAC06 takes T in units of 10^6K
             star_density_cgs(zone_idx)=dexp(ln10*log_density(zone_idx))
@@ -232,7 +232,8 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
             star_hydrogen_fraction(zone_idx)=composition(1,zone_idx)
             star_metal_fraction(zone_idx)=composition(3,num_shells)
 34      continue
-      do 35, zone_idx=1,env_struct%num_env_points-1
+      end do
+      do zone_idx=1,env_struct%num_env_points-1
             star_radius_cm(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_radius(zone_idx+1))
             star_temperature_1e6k(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_temperature(zone_idx+1))/1.0d6
             star_density_cgs(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_density(zone_idx+1))
@@ -240,6 +241,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
             star_hydrogen_fraction(num_shells+zone_idx)=composition(1,num_shells)
             star_metal_fraction(num_shells+zone_idx)=composition(3,num_shells)
 35      continue
+      end do
 
 
 ! Call EOS interpolator via eos_lib's eos_get_gamma1, which performs
@@ -247,7 +249,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 ! construction on the Yale/SCV path) that historically lived here as
 ! direct esac06/eqstat2 calls -- see eos_lib.f90 (2026, phase three,
 ! ROADMAP.md stage 1).
-      do 36, zone_idx=1,num_shells+env_struct%num_env_points-1
+      do zone_idx=1,num_shells+env_struct%num_env_points-1
             call eos_get_gamma1(star_hydrogen_fraction(zone_idx), &
                  star_metal_fraction(zone_idx), &
                  star_temperature_1e6k(zone_idx), &
@@ -257,6 +259,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
             star_inverse_sound_speed(zone_idx)=1.0d0/ &
                  sqrt(local_gamma1(zone_idx)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
 36      continue
+      end do
 
 
 
@@ -289,7 +292,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 !      get the location of the convection zone, and count nonzero entries:
                   iendj_unused=0
                   first_match_flag=0
-                  do 22, zone_idx=1,integration_count
+                  do zone_idx=1,integration_count
                         if (star_radius_cm(zone_idx).le.cz_radius_cm(1) .and. &
                              star_radius_cm(zone_idx+1).ge.cz_radius_cm(1)) then
                               cz_zone_index = zone_idx
@@ -299,12 +302,13 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                         if (zone_idx.eq.cz_zone_index .and. first_match_flag.eq.0 .and. &
                              cz_zone_index.gt.3) then
                               first_match_flag=1
-                              do 26 neighborhood_idx=1,7
+                              do neighborhood_idx=1,7
                                     spline_radius_neighborhood(neighborhood_idx)= &
                                          star_radius_cm(cz_zone_index-4+neighborhood_idx)
                                     spline_speed_neighborhood(neighborhood_idx)= &
                                          star_inverse_sound_speed(cz_zone_index-4+neighborhood_idx)
 26                              continue
+                              end do
                               call splinj(spline_radius_neighborhood, &
                                    spline_speed_neighborhood,spline_second_deriv,7)
                               call splint(spline_radius_neighborhood, &
@@ -320,12 +324,13 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                                     cz_radius_cm(1) = star_radius_cm(cz_zone_index)
                                     spline_interp_value(1) = star_inverse_sound_speed(cz_zone_index)
                               else
-                                    do 66 neighborhood_idx=1,7
+                                    do neighborhood_idx=1,7
                                           spline_radius_neighborhood(neighborhood_idx)= &
                                                star_radius_cm(cz_zone_index-2+neighborhood_idx)
                                           spline_speed_neighborhood(neighborhood_idx)= &
                                                star_inverse_sound_speed(cz_zone_index-2+neighborhood_idx)
 66                                    continue
+                                    end do
                                     call splinj(spline_radius_neighborhood, &
                                          spline_speed_neighborhood,spline_second_deriv,7)
                                     call splint(spline_radius_neighborhood, &
@@ -337,11 +342,13 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                         endif
 
 22                   continue
-                  do 27, zone_idx=1,integration_count-cz_zone_index+1
+                  end do
+                  do zone_idx=1,integration_count-cz_zone_index+1
                         star_radius_to_cz(zone_idx)=star_radius_cm(cz_zone_index-1+zone_idx)
                         star_inverse_sound_speed_to_cz(zone_idx)= &
                              star_inverse_sound_speed(cz_zone_index-1+zone_idx)
 27                  continue
+                  end do
 ! Then call Boole from surface to cz:
             remainder=mod((integration_count-cz_zone_index+1),4)
             cz_segment_count=integration_count-cz_zone_index+1
@@ -429,7 +436,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      'Number of points in interior:',I5,2X,'Index near Rcz:' &
      ,I5,2X)
 
-                  do 1505 zone_idx=1,num_shells+env_struct%num_env_points-1
+                  do zone_idx=1,num_shells+env_struct%num_env_points-1
                         if (zone_idx .le. integration_count-cz_zone_index+1) then
 !                         WRITE(UNIT=ICLCD,FMT=1504),DAGE, STARR(I), STARC(I),
                         write(unit=iclcd_placeholder,fmt=1504) age_gyr, &
@@ -449,6 +456,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 1505                  continue
+                  end do
 1504                  format(1X,11E16.8)
 !                  DO 1520 I=1,IATCNT
 !                        WRITE(UNIT=IACAT,FMT=1521),DAGE, ATMOSR(I), ATMOSC(I),

@@ -179,7 +179,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       else
          deuterium_test = star%composition(12,star%num_zones)
       end if
-      do 10 zone_idx = 1, star%num_zones
+      do zone_idx = 1, star%num_zones
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
          if (star%log_temperature(zone_idx).le.tcut(1)) goto 20
 ! SCALAR VARIABLES ARE USED IN THE CALLS TO THE ENERGY GENERATION ROUTINES.
@@ -220,9 +220,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             star%light_burn%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
    10 continue
+      end do
       zone_idx = star%num_zones + 1
    20 continue
-      do 21 clear_idx = zone_idx, star%num_zones
+      do clear_idx = zone_idx, star%num_zones
          rate_pp(clear_idx) = 0.0d0
          rate_he3_he3(clear_idx) = 0.0d0
          rate_he3_he4(clear_idx) = 0.0d0
@@ -241,6 +242,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
          star%light_burn%deuterium_burning_rate(clear_idx) = 0.0d0
    21 continue
+      end do
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
 !  TIMESTEP.  THIS IS DONE SHELL BY SHELL FOR RADIATIVE REGIONS,
@@ -248,8 +250,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !
 ! RADIATIVE ZONES.
 !
-      do 40 radiative_region_idx = 1, num_radiative_zones
-         do 30 inner_zone_idx = radiative_zone_bounds(radiative_region_idx,1), &
+      do radiative_region_idx = 1, num_radiative_zones
+         do inner_zone_idx = radiative_zone_bounds(radiative_region_idx,1), &
               radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
             if (star%log_temperature(inner_zone_idx).le.tcut(1)) goto 45
@@ -262,13 +264,15 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  star%shell_mass, star%composition, timestep_years, ierr)
             if (ierr /= 0) return
    30    continue
+         end do
    40 continue
+      end do
    45 continue
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
 !
-      do 50 mixed_zone_idx = 1, num_mixed_zones
+      do mixed_zone_idx = 1, num_mixed_zones
          zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
          zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
          call kemcom(star%log_temperature, zone_begin, zone_end, rate_pp, &
@@ -278,6 +282,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               star%shell_mass, star%composition, timestep_years, ierr)
          if (ierr /= 0) return
    50 continue
+      end do
       do zone_idx = 1, star%num_zones
          star%rot%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
          star%rot%reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
@@ -397,36 +402,43 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! NZONE IS THE NUMBER OF DISTINCT CONVECTION ZONES.
 ! MXZONE(J,1) AND MXZONE(J,2) ARE THE FIRST AND LAST SHELLS CONTAINED
 ! IN THE JTH CONVECTION ZONE.
-         do 100 mixed_zone_idx = 1, num_mixed_zones
+         do mixed_zone_idx = 1, num_mixed_zones
 ! I1 AND I2 ARE THE FIRST AND LAST CONVECTIVE SHELLS IN THE GIVEN REGION.
             mix_start = star%mixed_zone_bounds(mixed_zone_idx,1)
             mix_end = star%mixed_zone_bounds(mixed_zone_idx,2)
             if (mix_start.ne.1 .and. mix_start.ge.mix_end) goto 100
 ! INITIALIZE SUMS.
             weight_sum = 0.0d0
-            do 55 species_idx = 1, num_species
+            do species_idx = 1, num_species
                species_sum(species_idx) = 0.0d0
    55       continue
+            end do
 !  ADD UP THE TOTAL MASS OF EACH SPECIES IN THE CONVECTIVE REGION.
 !  (HS2 IS THE MASS CONTAINED WITHIN A SHELL IN GRAMS).
-            do 65 shell_idx = mix_start, mix_end
+            do shell_idx = mix_start, mix_end
                weight_sum = weight_sum + star%shell_mass(shell_idx)
-               do 61 species_idx = 1, num_species
+               do species_idx = 1, num_species
                   species_sum(species_idx) = species_sum(species_idx) + &
                        star%composition(species_idx,shell_idx)*star%shell_mass(shell_idx)
    61          continue
+               end do
    65       continue
+            end do
 !  DIVIDE BY THE TOTAL MASS TO FIND THE MEAN MASS FRACTION IN THE REGION.
-            do 70 species_idx = 1, num_species
+            do species_idx = 1, num_species
                species_sum(species_idx) = species_sum(species_idx)/weight_sum
    70       continue
+            end do
 !  APPLY THE MEAN MASS FRACTION OF ALL SPECIES THROUGHOUT THE CZ.
-            do 90 shell_idx = mix_start, mix_end
-               do 80 species_idx = 1, num_species
+            do shell_idx = mix_start, mix_end
+               do species_idx = 1, num_species
                   star%composition(species_idx,shell_idx) = species_sum(species_idx)
    80          continue
+               end do
    90       continue
+            end do
   100    continue
+         end do
       end if
 !  WRITE OUT THE LOCATIONS OF MIXED REGIONS.
       if (num_mixed_zones.ge.1) then
@@ -448,11 +460,12 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             goto 170
          end if
          total_mass_unlogged = exp(ln10*star%log_total_mass)
-         do 130 zone_idx = 1, star%num_zones
+         do zone_idx = 1, star%num_zones
             dlnp_dr(zone_idx) = -exp(ln10*(star%log_density(zone_idx)+cgl+ &
                  star%log_mass(zone_idx)-2.0d0*star%log_radius(zone_idx)- &
                  star%log_pressure(zone_idx)))
   130    continue
+         end do
 ! MHP 6/90 CHANGE ADDED : THE TIMESTEP FOR SETTLING IS RESTRICTED TO
 !   A FRACTION OF THE TIMESCALE FOR SETTLING AT THE OUTER BOUNDARY.
 !   THE OUTER BOUNDARY IS EITHER THE SURFACE CONVECTION ZONE OR THE
@@ -466,9 +479,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL')
             goto 170
          end if
-         do 140 search_idx = envelope_cz_edge, 1, -1
+         do search_idx = envelope_cz_edge, 1, -1
             if (star%composition(2,search_idx).gt.helium_diffusion_min) goto 150
   140    continue
+         end do
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
          goto 170
   150    continue
@@ -486,7 +500,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          if (mod(max_settling_dt,timestep).ne.0.0d0) num_settling_steps = &
               num_settling_steps + 1
          settling_dt = timestep/dfloat(num_settling_steps)
-         do 160 substep_idx = 1, num_settling_steps
+         do substep_idx = 1, num_settling_steps
 ! PERFORM GRAVITATIONAL SETTLING. IF LNEWDIF = TRUE, USE THE NEW ROUTINES
 ! IN MICRODIFF. ELSE, USE THE OLD ROUTINES IN GRSETT.
             if (use_new_diffusion_routines) then
@@ -500,22 +514,25 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                     deep_mix_flag, star%num_zones, total_mass_unlogged)
             end if
   160    continue
+         end do
   170    continue
       end if
 ! RENORMALIZE COMPOSITION TO GUARD AGAINST ANOMALIES (I.E. SMALL NEGATIVE
 ! ABUNDANCES...).
-      do 180 zone_idx = 1, star%num_zones
-         do 175 species_idx = 1, num_species
+      do zone_idx = 1, star%num_zones
+         do species_idx = 1, num_species
             star%composition(species_idx,zone_idx) = &
                  max(star%composition(species_idx,zone_idx),0.0d0)
             star%composition(species_idx,zone_idx) = &
                  min(star%composition(species_idx,zone_idx),1.0d0)
   175    continue
+         end do
          star%composition(3,zone_idx) = min(star%composition(3,zone_idx), &
               1.0d0-star%composition(1,zone_idx)-star%composition(4,zone_idx))
          star%composition(2,zone_idx) = 1.0d0 - star%composition(1,zone_idx) - &
               star%composition(3,zone_idx) - star%composition(4,zone_idx)
   180 continue
+      end do
 ! MHP 1/95 ADDED CALL TO RESET JENV,JCORE FOR DEEP MIXING.
       if (dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
          call convec(star%composition, star%log_density, star%log_pressure, star%log_radius, &

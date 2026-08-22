@@ -128,9 +128,10 @@ subroutine update_output_diagnostics(ierr)
             star%luminosity_breakdown(3)+star%luminosity_breakdown(4)+star%luminosity_breakdown(5)+ &
             star%luminosity_breakdown(6)+star%luminosity_breakdown(7)+star%luminosity_breakdown(8)
        temp_value = star%luminosity_lsun(star%num_zones)/total_luminosity_sum
-       do 10 i = 1,8
+       do i = 1,8
           star%luminosity_breakdown(i) = star%luminosity_breakdown(i)*temp_value
    10    continue
+       end do
       endif
 
 !  CALCULATE MASS OF CENTRAL AND SURFACE CONVECTION ZONES

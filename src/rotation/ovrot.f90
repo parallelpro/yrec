@@ -43,17 +43,21 @@ subroutine ovrot(composition, log_density, log_pressure, log_radius, &
            convective_zone_bounds_raw, &
            core_zone_boundary,envelope_zone_boundary,num_radiative_zones, &
            num_convective_zones,num_convective_zones_raw)
-      do 10 j = 1,num_radiative_zones
-         do 5 i = radiative_zone_bounds(j,1),radiative_zone_bounds(j,2)
+      do j = 1,num_radiative_zones
+         do i = radiative_zone_bounds(j,1),radiative_zone_bounds(j,2)
 ! KC 2025-05-30 ADDED IF CHECK TO AVOID RUNTIME ERROR.
             if (i .gt. 0) am_transport_convective_flag(i) = .false.
     5    continue
+         end do
    10 continue
-      do 20 j = 1,num_convective_zones
-         do 15 i = convective_zone_bounds(j,1),convective_zone_bounds(j,2)
+      end do
+      do j = 1,num_convective_zones
+         do i = convective_zone_bounds(j,1),convective_zone_bounds(j,2)
             am_transport_convective_flag(i) = .true.
    15    continue
+         end do
    20 continue
+      end do
 
       return
 end subroutine ovrot

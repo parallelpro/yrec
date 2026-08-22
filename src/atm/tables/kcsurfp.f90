@@ -69,7 +69,7 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
       end do
       atm_table%teff_interp_start_index = row_base
 ! GRAVITY INTERPOLATION FACTORS.
-      do 20 row = row_base,row_base+3
+      do row = row_base,row_base+3
          node = row-row_base+1
 ! CHECK IF 4 LOG VALUES AVAILABLE - OTHERWISE, USE 3 POINT LAGRANGIAN
 ! OR LINEAR INTERPOLATION.
@@ -152,6 +152,7 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
          pressure_at_nodes(node) = interpolated_value
          atm_table%gravity_interp_indices(node) = atm_table%castelli_gmin_index(row)
    20 continue
+      end do
 ! INTERPOLATE IN TEMPERATURE TO FIND CORRECT LOG P.
       call kspline(teff_nodes, pressure_at_nodes, teff_spline_deriv)
       call ksplint(teff_nodes, pressure_at_nodes, teff_spline_deriv, &

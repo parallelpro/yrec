@@ -68,13 +68,14 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
          fact = 5.0d0*cc13*omega(1)**2/(gm*(2.0d0+eta2(1)))
-         do 10 j = 1,itfp2
+         do j = 1,itfp2
             a_param = fact*r0_cubed
             delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
             (1.0d0 + c3*a_param**2 - c4*a_param**3)
             r0_cubed = r0_cubed + delta_r0_cubed
             if(dabs(delta_r0_cubed/r0_cubed).le.acfpft)goto 20
    10    continue
+         end do
    20    r0(1) = r0_cubed**cc13
          if (zone_end.eq.1) goto 9999
          rho_bar_prev = rho_bar
@@ -88,7 +89,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          rho_prev = dexp(ln10*log_density(zone_start-1))
       end if
 !  CALCULATE ETA2 AND R0 FOR REMAINING POINTS
-      do 100 i = j_begin,zone_end
+      do i = j_begin,zone_end
          rho_bar = dexp(ln10*(log_mass(i) - c4pi3l - 3.0d0*log_radius(i)))
          density = dexp(ln10*log_density(i))
          r_phi = dexp(ln10*log_radius(i))
@@ -127,18 +128,19 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r0_estimate = r_phi
          acc_tol = acfpft**cc13
 ! ITERATE BETWEEN SOLUTION FOR ETA2 AND SOLUTION FOR R0 ITFP1 TIMES.
-         do 60 k = 1,itfp1
+         do k = 1,itfp1
             fact = 5.0d0*cc13*omega(i)**2/(gm*(2.0d0+eta2(i)))
 ! NOW ITERATE FOR R0 GIVEN RPHI AND ETA2, USING THE RELATION
 ! RPHI**3 = R0**3(1.0 + 3/5A**2 - 2/35A**3)
 ! WHERE A = OMEGA**2*R0**3*5/3GM(2+ETA2))
-            do 40 j = 1,itfp2
+            do j = 1,itfp2
                a_param = fact*r0_cubed
                delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
                (1.0d0 + c3*a_param**2 - c4*a_param**3)
                r0_cubed = r0_cubed + delta_r0_cubed
                if(dabs(delta_r0_cubed/r0_cubed).lt.acfpft)goto 50
    40       continue
+            end do
    50       r0(i) = r0_cubed**cc13
             err = r0(i) - r0_estimate
 !  ETA2 IS A FUNCTION OF R0, AND R0=RPHI WAS USED TO CALCULATE ETA2
@@ -166,11 +168,13 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             if(dabs(err).le.acc_tol) goto 70
             r0_estimate = r0(i)
    60    continue
+         end do
    70    continue
          rho_prev = density
          rho_bar_prev = rho_bar
          r_phi_prev = r_phi
   100 continue
+      end do
  9999 continue
       return
 end subroutine shape

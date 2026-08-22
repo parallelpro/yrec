@@ -280,8 +280,8 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       end if
 
    15 continue
-      do 124 eos_var_idx = 1, deriv_order
-      do 123 x_loop_index_06 = opal_eos%x_index_lo_06, x_index_hi
+      do eos_var_idx = 1, deriv_order
+      do x_loop_index_06 = opal_eos%x_index_lo_06, x_index_hi
 
       recompute_flag = 0
 !__________
@@ -293,6 +293,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
          end do
       end do
   123 continue
+      end do
       if ((opal_eos%z_table_06(x_index_2).ne.opal_eos%z_table_06(opal_eos%x_index_lo_06)) .or. &
            (opal_eos%z_table_06(x_index_3).ne.opal_eos%z_table_06(opal_eos%x_index_lo_06))) then
          write(short_file_unit,'(A,"Z does not match Z in OEOS06 files you are" &
@@ -305,7 +306,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       if (table_metal_fraction.ne.opal_eos%z_table_06(opal_eos%x_index_lo_06)) go to 66
       recompute_flag = 0
       cache_slot = 1
-      do 45 density_scan_idx = opal_eos%density_index_1_06, opal_eos%density_index_1_06+opal_eos%density_interp_order_06
+      do density_scan_idx = opal_eos%density_index_1_06, opal_eos%density_index_1_06+opal_eos%density_interp_order_06
          do t6_scan_idx = opal_eos%t6_index_1_06, opal_eos%t6_index_1_06+opal_eos%t6_interp_order_06
             if (x_index_hi.eq.1) then
                opal_eos%x_interp_result_06(t6_scan_idx,density_scan_idx) = &
@@ -331,13 +332,14 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
    46       continue
          end do
    45 continue
+      end do
 
       if (x_index_4.eq.x_index_hi) then  ! interpolate between quadratics
       recompute_flag = 0
       cache_slot = 1
       x_interp_weight = (opal_eos%x_grid_copy_06(x_index_3) - hydrogen_fraction)* &
            opal_eos%x_grid_spacing_inv_06(x_index_3)
-      do 47 density_scan_idx = opal_eos%density_index_1_06, opal_eos%density_index_1_06+opal_eos%density_interp_order_06
+      do density_scan_idx = opal_eos%density_index_1_06, opal_eos%density_index_1_06+opal_eos%density_interp_order_06
          do t6_scan_idx = opal_eos%t6_index_1_06, opal_eos%t6_index_1_06+opal_eos%t6_interp_order_06
             opal_eos%x_interp_result_alt_06(t6_scan_idx,density_scan_idx) = &
                  quadeos06(recompute_flag, cache_slot, hydrogen_fraction, &
@@ -361,6 +363,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
             recompute_flag = 1
          end do
    47 continue
+      end do
 
 
       end if
@@ -376,6 +379,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       if (ierr /= 0) return
       opal_eos%eos_output_06(eos_var_idx) = opal_eos%esact_06
   124 continue
+      end do
       pressure_scale = t6_temperature*density
       opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1))* &
            pressure_scale   ! interpolated in p/po

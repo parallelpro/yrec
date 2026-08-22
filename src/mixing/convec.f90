@@ -80,7 +80,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
       j_idx = 1
       in_convection_zone = .false.
       convective_flag(num_zones+1) = .false.
-      do 11 zone_idx = 1, num_zones + 1
+      do zone_idx = 1, num_zones + 1
          if (.not.convective_flag(zone_idx)) goto 10
 ! CONVECTION ZONE
          if (in_convection_zone) goto 11
@@ -101,6 +101,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
   661    format(' -----TOO MANY MIX ZONES')
          goto 12
    11 continue
+      end do
    12 continue
 
 ! MHP 5/91 LOGIC CHANGE TO AVOID PROBLEMS IF NO CZ IN MODEL(NZONE=0)
@@ -116,12 +117,13 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
          goto 9999
       end if
       num_mixed_zones = j_idx - 1
-      do 20 zone_idx = 1, num_mixed_zones
+      do zone_idx = 1, num_mixed_zones
          mixed_zone_bounds_no_overshoot(zone_idx,1) = &
               mixed_zone_bounds(zone_idx,1)
          mixed_zone_bounds_no_overshoot(zone_idx,2) = &
               mixed_zone_bounds(zone_idx,2)
    20 continue
+      end do
       num_mixed_zones_no_overshoot = num_mixed_zones
 ! FIND OUTER EDGE OF THE CONVECTIVE CORE (JCORE) AND INNER EDGE OF THE
 ! CONVECTIVE ENVELOPE (JENV) BEFORE OVERSHOOT.
@@ -166,12 +168,14 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
    93    format(2x,'CONVECTION ZONES MERGED DUE TO OVERSHOOT'/2x, &
               'OLD',2('[',i3,'-',i3,']'),' NEW','[',i3,'-',i3,']')
          mixed_zone_bounds(j_idx+1,1) = mixed_zone_bounds(j_idx,1)
-         do 90 k_idx = j_idx, num_mixed_zones-1
-            do 95 pair_idx = 1, 2
+         do k_idx = j_idx, num_mixed_zones-1
+            do pair_idx = 1, 2
                mixed_zone_bounds(k_idx,pair_idx) = &
                     mixed_zone_bounds(k_idx+1,pair_idx)
    95       continue
+            end do
    90    continue
+         end do
          num_mixed_zones = num_mixed_zones - 1
          if (j_idx.le.num_mixed_zones-1) then
             goto 85
@@ -193,13 +197,14 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
       end if
 ! LOCATE ALL RADIATIVE REGIONS BETWEEN CONVECTION ZONES.
       if (num_mixed_zones.gt.1) then
-         do 110 zone_idx = 1, num_mixed_zones-1
+         do zone_idx = 1, num_mixed_zones-1
             num_radiative_zones = num_radiative_zones + 1
             radiative_zone_bounds(num_radiative_zones,1) = &
                  mixed_zone_bounds(zone_idx,2) + 1
             radiative_zone_bounds(num_radiative_zones,2) = &
                  mixed_zone_bounds(zone_idx+1,1) - 1
   110    continue
+         end do
       end if
 ! CHECK FOR A RADIATIVE REGION ABOVE THE LAST CONVECTION ZONE.
       if (mixed_zone_bounds(num_mixed_zones,2).lt.num_zones) then

@@ -87,9 +87,10 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       fully_convective_flag=.false.
 !     CHECK FOR CONVECTIVE CORE.
       if(convective_flag(1))then
-         do 10 i=2,num_zones
+         do i=2,num_zones
             if(.not.convective_flag(i))goto 20
    10    continue
+         end do
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
          fully_convective_flag=.true.
          write(short_file_unit,15)
@@ -102,9 +103,10 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          zone_begin = 1
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
-      do 23 i = zone_begin,num_zones
+      do i = zone_begin,num_zones
          if(composition(1,i).gt.hydrogen_diffusion_floor)goto 25
    23 continue
+      end do
 !     HYDROGEN-FREE MODEL - EXIT.
       write(short_file_unit,16)hydrogen_diffusion_floor
    16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
@@ -114,9 +116,10 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       zone_begin = i
 !     CHECK FOR CONVECTIVE ENVELOPE.
       if(convective_flag(num_zones))then
-         do 30 i=num_zones-1,2,-1
+         do i=num_zones-1,2,-1
             if(.not.convective_flag(i))goto 40
    30    continue
+         end do
    40    continue
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_end = i+1
@@ -125,9 +128,10 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       endif
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
-      do 45 i=zone_end,1,-1
+      do i=zone_end,1,-1
          if(composition(2,i).gt.helium_diffusion_min) goto 47
    45 continue
+      end do
 !     HYDROGEN-FREE MODEL - EXIT.
       write(short_file_unit,17)helium_diffusion_min
    17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
@@ -146,13 +150,14 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       star%rot%bl_time_scale=2.7d13*csecyr_bah
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
-      do 50 i=1,num_zones
+      do i=1,num_zones
          radius_bl(i)=exp(ln10*log_radius(i))*star%rot%bl_radius_scale
          temperature_bl(i)=exp(ln10*log_temperature(i))*star%rot%bl_temp_scale
          enclosed_mass(i)=enclosed_mass(i)*star%rot%bl_mass_scale
          dlnp_dr(i)=dlnp_dr(i)/star%rot%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
    50 continue
+      end do
       timestep=timestep/star%rot%bl_time_scale
       total_mass=total_mass*star%rot%bl_mass_scale
 !

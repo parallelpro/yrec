@@ -40,13 +40,14 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       max_domega_frac = 2.0d0*abs(omega(start_index)-star%run%old_omega(start_index))/ &
            (omega(start_index)+star%run%old_omega(start_index))
       max_index = start_index
-      do 50 i = start_index+1,num_points
+      do i = start_index+1,num_points
          test_domega=2.0d0*abs(omega(i)-star%run%old_omega(i))/(omega(i)+star%run%old_omega(i))
          if(test_domega.gt.max_domega_frac) then
             max_domega_frac = test_domega
             max_index = i
          endif
  50   continue
+      end do
       dt_factor = max_domega_frac/max_domega_global
 ! if no change from previous model,set rotation_dt to timestep
 ! stored in the previous model.

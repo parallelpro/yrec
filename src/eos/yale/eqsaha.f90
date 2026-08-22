@@ -139,7 +139,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
 ! COMPUTE SAHA K'S
       stemp = 2.50d0*log10_temperature - log10_pressure + cmkh
       nz1 = 1
-      do 11 i=1,nz
+      do i=1,nz
          ionization_temp_over_t(i) = ionization_temp(i)*temperature_inverse
          saha_ratio(i) = ln10*(saha_weight_term(i) + stemp) - &
               ionization_temp_over_t(i)
@@ -150,6 +150,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
  10      saha_ratio(i) = 1.0d16
          nz1 = i + 1
  11   continue
+      end do
       i = nz + 1
  12   nz0 = i - 1
       nz1 = min0(nz,nz1)
@@ -171,7 +172,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
  14   helium_ion_fraction_2 = 0.0d0
  15   continue
 ! BEGIN ITERATIONS FOR SOLUTION OF E
-      do 28 isaha=1,max_saha_iterations
+      do isaha=1,max_saha_iterations
          saha_state = saha_state + 1
          ep1 = 1.0d0/(1.0d0 + mean_electrons_per_ion)
          ep1e = ep1/mean_electrons_per_ion
@@ -180,7 +181,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          c33 = -mean_electrons_per_ion*(1.0d0 + mean_electrons_per_ion)
          r3 = mean_electrons_per_ion
          if(nz0.le.0) go to 22
-         do 21 i=1,nz0
+         do i=1,nz0
             div = 1.0d0/(saha_ratio(i) + eep1)
             temp8 = saha_ratio(i)*div
             species_ion_fraction(i) = temp8
@@ -190,6 +191,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
             c33 = c33 - temp8
             species_weighted_term(i) = temp8
  21      continue
+         end do
  22      c33 = c33*ep1e
          r3 = r3 - helium_mass_fraction*(helium_ion_fraction_1 + &
               helium_ion_fraction_2+helium_ion_fraction_2)
@@ -272,6 +274,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          converged = converged .and. dabs(delta_electrons_per_ion).lt.saha_convergence_tol
          if(converged) go to 29
  28   continue
+      end do
       write(short_file_unit,99) log10_temperature,log10_pressure, &
            mean_electrons_per_ion,delta_electrons_per_ion
  99   format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
@@ -291,12 +294,13 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       r3t = 0.0d0
       r3p = 0.0d0
       if(nz0.le.0) go to 31
-      do 30 i=nz1,nz0
+      do i=nz1,nz0
          r3p = r3p - species_weighted_term(i)
 !  30   R3T = R3T -FXS(I)*(2.5D0 + BETA14 + SAHATT(I))
          r3t = r3t -species_weighted_term(i)*(2.5d0 + beta14 + &
               ionization_temp_over_t(i))
  30   continue
+      end do
       r3p = -beta_inverse*r3p
  31   if(skip_helium_i) go to 33
       helium_neutral_fraction = 1.0d0 - helium_ion_fraction_1 - helium_ion_fraction_2
@@ -335,12 +339,13 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
            sx2qt*(helium_ionization_temp_1 + helium_ionization_temp_2))
  35   if(nz0.le.0) go to 37
       stemp = 2.50d0 + beta14 - ep1e*sqet
-      do 36 i=nz1,nz0
+      do i=nz1,nz0
          species_temp_deriv_term(i) = species_weighted_term(i)*(stemp + &
               ionization_temp_over_t(i))
 !  36   USUM = USUM + FXT(I)*SAHAT(I)
          usum = usum + species_temp_deriv_term(i)*ionization_temp(i)
  36   continue
+      end do
  37   continue
       betaut = 0.75d0*(2.0d0 + beta14)
       ramu = gas_constant*ion_mean_weight_inverse
@@ -366,7 +371,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       stemp2 = -beta_inverse - sqep*ep1e
       stemp3 = etemp*sqep*sqet - beta_inverse*beta14
       stemp4 = etemp*sqet**2 + beta16
-      do 41 i=nz1,nz0
+      do i=nz1,nz0
          stemp5 = (stemp1 + ionization_temp_over_t(i))* &
               (1.0d0 - 2.0d0*species_ion_fraction(i))
          stemp6 = species_weighted_term(i)*(stemp4 - ionization_temp_over_t(i)) &
@@ -378,6 +383,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
 !  41   UPSUM = UPSUM + SAHAT(I)*STEMP7
          upsum = upsum + ionization_temp(i)*stemp7
  41   continue
+      end do
  42   continue
       if(skip_helium_i) go to 44
       stemp = 2.0d0*helium_ion_fraction_1*ep1*sqet
@@ -408,11 +414,12 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       if(nz0.le.0) go to 46
       stemp = ep1e*sqett
       stemp1 = ep1e*sqetp
-      do 45 i=nz1,nz0
+      do i=nz1,nz0
          utsum = utsum - species_weighted_term(i)*ionization_temp(i)*stemp
 !  45   UPSUM = UPSUM - FXS(I)*SAHAT(I)*STEMP1
          upsum = upsum - species_weighted_term(i)*ionization_temp(i)*stemp1
  45   continue
+      end do
  46   continue
       if(skip_helium_i) go to 48
       sx1qtt = (r2t - c23*sqett)/c22

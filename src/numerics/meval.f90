@@ -85,11 +85,12 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 
 ! Determine if eval_x is nondecreasing.
       loop_bound = num_eval_points - 1
-      do 10 i = 1, loop_bound
+      do i = 1, loop_bound
         if (eval_x(i+1) .ge. eval_x(i)) go to 10
         err_code = 2
         go to 230
   10  continue
+      end do
 
 ! If eval_x(i) .lt. table_x(1), then eval_x(i)=table_y(1).
 ! If eval_x(i) .gt. table_x(num_table_points), then
@@ -106,11 +107,12 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 
 ! Determine if any of the points in eval_x are greater than the
 ! abscissa of the last data point.
-      do 50 i = 1, num_eval_points
+      do i = 1, num_eval_points
         ind = loop_bound - i
         if (eval_x(ind) .le. table_x(num_table_points)) go to 60
         end_idx = ind - 1
   50  continue
+      end do
 
 ! Calculate the images of points of evaluation whose abscissas are
 ! less than the abscissa of the first data point.
@@ -124,11 +126,12 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            spline_v2, spline_w1, spline_w2, spline_z1, spline_z2, &
            spline_y1, spline_y2, spline_case)
       start_idx1 = start_idx - 1
-      do 70 i = 1, start_idx1
+      do i = 1, start_idx1
        eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, table_x(1), &
             table_y(1), table_x(2), table_y(2), spline_y1, spline_y2, &
             spline_e2, spline_w2, spline_v2, spline_case)
   70  continue
+      end do
       if (num_eval_points .eq. 1) go to 230
 
 ! search locates the interval in which the first in-range point of
@@ -261,13 +264,14 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            spline_case)
  210  end_idx1 = end_idx + 1
       num_minus1 = max(num_table_points - 1, 1)
-      do 220 i = end_idx1, num_eval_points
+      do i = end_idx1, num_eval_points
        eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, &
             table_x(num_minus1), table_y(num_minus1), &
             table_x(num_table_points), table_y(num_table_points), &
             spline_y1, spline_y2, spline_e2, spline_w2, spline_v2, &
             spline_case)
  220  continue
+      end do
 
  230  return
 end subroutine meval

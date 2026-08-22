@@ -54,11 +54,12 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       iteration_count = 0
 !  FIND THE TOTAL ANGULAR MOMENTUM OF SHELLS JSTART TO JEND.
 !  ALSO MAKE A FIRST GUESS AT OMEGA BY AVERAGING THE PREVIOUS VALUES.
-      do 10 zone_idx = zone_start,zone_end
+      do zone_idx = zone_start,zone_end
          total_angular_momentum = total_angular_momentum + &
               shell_mass(zone_idx)*specific_angular_momentum(zone_idx)
          omega_sum = omega_sum + omega(zone_idx)
    10 continue
+      end do
 !  MHP 9/94 OPTION ADDED TO ENFORCE DISK LOCKING UP TO A GIVEN AGE IN
 !  THE SURFACE C.Z. ONLY.
       disk_locked = .false.
@@ -83,11 +84,12 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       total_moment_of_inertia = 0.0d0
       total_di_domega = 0.0d0
 !  FIND TOTAL MOMENT OF INERTIA(CZI) AND TOTAL DI/DOMEGA (CZQIW)
-      do 40 zone_idx = zone_start,zone_end
+      do zone_idx = zone_start,zone_end
          total_moment_of_inertia = total_moment_of_inertia + &
               moment_of_inertia(zone_idx)
          total_di_domega = total_di_domega + di_domega(zone_idx)
    40 continue
+      end do
       new_angular_momentum = omega_guess*total_moment_of_inertia
 !  CHECK IF THE TOTAL ANGULAR MOMENTUM FOUND WITH OMEGA = WGUESS IS CLOS
 !  ENOUGH.  IF NOT, CALCULATE DELTA OMEGA AND TRY AGAIN WITH A NEW WGUES
@@ -104,10 +106,11 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
          end if
       end if
  45   continue
-      do 50 zone_idx = zone_start,zone_end
+      do zone_idx = zone_start,zone_end
          specific_angular_momentum(zone_idx) = &
               moment_of_inertia(zone_idx)*omega(zone_idx)/shell_mass(zone_idx)
    50 continue
+      end do
 
       return
 end subroutine solid

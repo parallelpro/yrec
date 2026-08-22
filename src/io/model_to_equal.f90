@@ -57,9 +57,10 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 
       total_radius_span = radius(zone_end)-radius(zone_begin)
       min_radius_spacing = total_radius_span
-      do 7 zone_index = zone_begin+1,zone_end
+      do zone_index = zone_begin+1,zone_end
          min_radius_spacing=min(min_radius_spacing,radius(zone_index)-radius(zone_index-1))
     7 continue
+      end do
 ! ASSIGN THE MINIMUM NUMBER OF EQUALLY SPACED GRID POINTS SUCH THAT
 ! DR <= DRMIN.
       num_equal_points=int(total_radius_span/min_radius_spacing)
@@ -77,19 +78,21 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       if (num_equal_points .eq. 2) then
             equal_radius(2)=equal_radius(1)+grid_spacing
       else
-            do 10 zone_index = 2,num_equal_points-1 ! old piece
+            do zone_index = 2,num_equal_points-1! old piece
             if(zone_index-1 .eq. 0) print*, 'mte line 47'
                equal_radius(zone_index)=equal_radius(zone_index-1)+grid_spacing  ! old piece
   10             continue          ! old piece
+            end do
       endif
 
 ! NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
 ! AT EQUALLY SPACED ZONE MIDPOINTS.
 !
 ! FIRST POINT : LINEAR INTERPOLATION BETWEEN STARTING POINT AND 2ND PT.
-      do 15 interp_search_index=2,num_equal_points
+      do interp_search_index=2,num_equal_points
          if(radius(interp_search_index).ge.equal_radius(1))goto 17
    15 continue
+      end do
       interp_search_index=num_equal_points
    17 continue
       interp_fraction=(equal_radius(1)-radius(interp_search_index-1))/ &
@@ -150,8 +153,8 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 ! JMIN IS THE UPPERMOST MODEL POINT ABOVE THE PREVIOUS EQUALLY SPACED
 ! GRID POINT (IN RADIUS).
       search_start_index=zone_begin+1
-      do 50 zone_index=2,num_equal_points-1
-         do 20 j = search_start_index,zone_end
+      do zone_index=2,num_equal_points-1
+         do j = search_start_index,zone_end
 ! FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
             if(radius(j).ge.equal_radius(zone_index))then
 ! ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
@@ -162,12 +165,14 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
                goto 30
             endif
    20    continue
+         end do
          k0 = num_zones-3
          search_start_index=num_zones
    30    continue
-         do 40 k=1,4
+         do k=1,4
             radius_table(k)=radius(k0+k-1)
    40    continue
+         end do
          target_radius=equal_radius(zone_index)
 ! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
 ! FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
@@ -237,12 +242,14 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
               interp_factors(4)*composition(8,k0+3)
          endif
    50 continue
+      end do
 ! SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE CENTERS.
 
       equal_radius(1)=radius(zone_begin)
-      do 60 zone_index = 2,num_equal_points
+      do zone_index = 2,num_equal_points
          equal_radius(zone_index)=equal_radius(zone_index-1)+grid_spacing
    60 continue
+      end do
 
 
 ! NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
@@ -262,8 +269,8 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 ! JMIN IS THE UPPERMOST MODEL POINT ABOVE THE PREVIOUS EQUALLY SPACED
 ! GRID POINT (IN RADIUS).
       search_start_index=zone_begin+1
-      do 70 zone_index=2,num_equal_points-1
-         do 80 j = search_start_index,zone_end
+      do zone_index=2,num_equal_points-1
+         do j = search_start_index,zone_end
 ! FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
             if(radius(j).ge.equal_radius(zone_index))then
 ! ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
@@ -274,12 +281,14 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
                goto 90
             endif
    80    continue
+         end do
          k0 = num_zones-3
          search_start_index=num_zones
    90    continue
-         do 100 k=1,4
+         do k=1,4
             radius_table(k)=radius(k0+k-1)
   100    continue
+         end do
 
          target_radius=equal_radius(zone_index)
 
@@ -319,6 +328,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
               interp_factors(4)*composition(8,k0+3)
          endif
    70 continue
+      end do
 ! LAST POINT : BY DEFINITION, AT ENDING POINT.
 
       equal_mass(num_equal_points) = enclosed_mass(zone_end)

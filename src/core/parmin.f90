@@ -1957,13 +1957,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
        if(atmp.eq.'ABS') value_relative_to_h = .false.
 ! DECIDE WHICH ELEMENT IN ARRAY HCOMP TO BE RESCALED
 ! USING CHARACTER ARRAY AID AND INPUT CHARACTER VARIABLE ANEWCP
-       do 10 i = 1,12
+       do i = 1,12
           if(anewcp.eq.element_id(i)) then
 ! INEWCP IS THE INDEX OF THE ELEMENT BEING ALTERED
             new_species_index = i + 3
             goto 30
           endif
       10    continue
+       end do
 ! ANEWCP NOT A RECOGNIZED ELEMENT
        lnewcp = .false.
        write(short_file_unit,20) anewcp
@@ -2256,7 +2257,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       lfirst(1) = .true.
 
 !     RUN LOOP
-      do 1000 nkind=1, numrun
+      do nkind=1, numrun
 ! READ IN NMODLS AND MODEL SOURCE(MEMORY OR FIRST MODEL)-SAME FOR ALL
        rescale_kind(nkind) = kindrn(nkind)
        if(kindrn(nkind).eq.1) then
@@ -2355,6 +2356,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
               star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
               star%env_comp%fxenv)
       1000 continue
+      end do
       return
 
 end subroutine parmin
@@ -2407,7 +2409,7 @@ subroutine expand_value(path_value)
       placeholder_names(3) = "{YREC_OUTPUT}"
       default_values(3) = "output"
 
-      do 5000 i=1, n_env_vars
+      do i=1, n_env_vars
         placeholder_len = len_trim(placeholder_names(i))
         default_len = len_trim(default_values(i))
         placeholder = placeholder_names(i)(1:placeholder_len)
@@ -2427,5 +2429,6 @@ subroutine expand_value(path_value)
             path_value = temp_value
         end if
       5000 continue
+      end do
 
 end subroutine expand_value

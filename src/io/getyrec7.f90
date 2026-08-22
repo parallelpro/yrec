@@ -172,7 +172,7 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
 ! FTRI is 1,normally.  It is set to -1  if any of the record numbers
 ! for the envelope triangle records was set to -1 by WRTLST.
       trial_sign_flag = 1D0
-      do 80 i = 1,3
+      do i = 1,3
        read(iread,70) envelope_record_number,trial_log_temperature(i), &
             trial_log_luminosity(i),fit_point_pressure(i), &
             fit_point_temperature(i),fit_point_radius(i), &
@@ -180,11 +180,12 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
  70      format(3X,I2,F7.5,4F8.5,3E12.5)
        if(envelope_record_number.lt.0) trial_sign_flag = -1D0
  80   continue
+      end do
 
 ! READ IN HENYEY POINTS IN 4 PARTS
 !
 ! Read FIRST PART:M,R,L,P,T,RHO,CONV(T/F),X,Y,AND Z - one line per shell
-      do 110 i = 1,num_shells
+      do i = 1,num_shells
        read(iread,100) log_mass(i),log_radius(i),log_luminosity(i), &
             log_pressure(i),log_temperature(i),log_density(i),convective_flag(i), &
             ix,iz
@@ -203,6 +204,7 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
        composition(1,i) = 1.0D-6*dfloat(ix)
        composition(3,i) = 1.0D-6*dfloat(iz)
  110  continue
+      end do
 
 ! Read SECOND PART:ELEMENT ABUNDANCES: HE3,CNO CYCLE ELEMENTS.
 ! ABUNDANCES IN SURFACE AND CENTRAL CONVECTION ZONES STORED WITH 1
@@ -211,32 +213,38 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
        read(iread,200)(composition(i,core_cz_top_index),i=4,11)
        read(iread,200)(composition(i,envelope_cz_bottom_index),i=4,11)
       else
-       do 210 j = core_cz_top_index,envelope_cz_bottom_index
+       do j = core_cz_top_index,envelope_cz_bottom_index
           read(iread,200) (composition(i,j),i = 4,11)
  200        format(8(1PE9.3,1X))
  210     continue
+       end do
       endif
       if(core_cz_top_index.gt.1) then
 ! CONVECTIVE CORE- ASSIGN FIRST COMPOSITION VALUE TO SHELLS 1-JCORE
-       do 230 j = 1,core_cz_top_index-1
-          do 220 i = 4,11
+       do j = 1,core_cz_top_index-1
+          do i = 4,11
              composition(i,j) = composition(i,core_cz_top_index)
  220        continue
+          end do
  230     continue
+       end do
       endif
       if(envelope_cz_bottom_index.lt.num_shells) then
 ! CONVECTIVE SURFACE- ASSIGN LAST COMPOSITION TO SHELLS JENV-M
-       do 250 j = envelope_cz_bottom_index+1,num_shells
-          do 240 i = 4,11
+       do j = envelope_cz_bottom_index+1,num_shells
+          do i = 4,11
              composition(i,j) = composition(i,envelope_cz_bottom_index)
  240        continue
+          end do
  250     continue
+       end do
       endif
 ! DEFINE HE4 = 1 - X - Z - HE3.
-      do 260 i = 1,num_shells
+      do i = 1,num_shells
        composition(2,i) = 1.0D0 - composition(1,i) - composition(3,i) - &
             composition(4,i)
  260  continue
+      end do
 
 ! READ IN H2,LI6,LI7,BE9 (EXTENDED COMPOSITION)
 
@@ -245,37 +253,44 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
 ! FULLY CONVECTIVE MODEL
           read(iread,300)(composition(i,1),i=12,15)
  300        format(4(1PE9.3,1X))
-          do 310 j = 1,num_shells
-             do 305 i = 12,15
+          do j = 1,num_shells
+             do i = 12,15
               composition(i,j) = composition(i,1)
  305           continue
+             end do
  310        continue
+          end do
        else
 ! GENERAL CASE
 ! THESE ABUNDANCES ARE READ IN WITH 2 SHELLS PER LINE
-          do 315 pair_start_index = core_cz_top_index,envelope_cz_bottom_index-1,2
+          do pair_start_index = core_cz_top_index,envelope_cz_bottom_index-1,2
              read(iread,200)((composition(i,j),i = 12,15), &
                   j = pair_start_index,pair_start_index+1)
  315        continue
+          end do
 ! IF AN ODD NUMBER OF ABUNDANCES STORED, READ IN LAST VALUE
           parity_test = envelope_cz_bottom_index-1 - core_cz_top_index
           if(mod(parity_test,2).ne.0) &
                read(iread,300)(composition(i,pair_start_index),i = 12,15)
           if(core_cz_top_index.gt.1) then
 ! CONVECTIVE CORE- ASSIGN FIRST VALUE TO SHELLS 1-JCORE
-             do 330 j = 1,core_cz_top_index-1
-              do 320 i = 12,15
+             do j = 1,core_cz_top_index-1
+              do i = 12,15
                  composition(i,j) = composition(i,core_cz_top_index)
  320              continue
+              end do
  330           continue
+             end do
           endif
           if(envelope_cz_bottom_index.lt.num_shells) then
 ! CONVECTIVE SURFACE- ASSIGN LAST VALUE TO SHELLS JENV - M
-             do 350 j = envelope_cz_bottom_index+1,num_shells
-              do 340 i = 12,15
+             do j = envelope_cz_bottom_index+1,num_shells
+              do i = 12,15
                  composition(i,j) = composition(i,envelope_cz_bottom_index)
  340              continue
+              end do
  350           continue
+             end do
           endif
        endif
       endif
@@ -286,13 +301,14 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
 ! READ OMEGA IN. If OMEGA records are missing go to OMEGA BYPASS below
       read(iread,500,end=9999)(omega_log10(ii),ii = 1,num_shells)
  500    format(0P8F10.7)
-      do 510 i = 1,num_shells
+      do i = 1,num_shells
            if(omega_log10(i) .lt. 58.9D0) then
               omega(i) = 10D0**(-omega_log10(i))
            else
               omega(i) = 0D0
            endif
  510    continue
+      end do
       endif
 
 ! KEEP iread OPEN

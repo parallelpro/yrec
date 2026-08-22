@@ -119,9 +119,10 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       fully_convective_flag=.false.
 !     CHECK FOR CONVECTIVE CORE.
       if(convective_flag(1))then
-         do 10 zone_idx=2,num_zones
+         do zone_idx=2,num_zones
             if(.not.convective_flag(zone_idx))goto 20
    10    continue
+         end do
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
          fully_convective_flag=.true.
          write(short_file_unit,15)
@@ -134,9 +135,10 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
          zone_begin = 1
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
-      do 23 zone_idx = zone_begin,num_zones
+      do zone_idx = zone_begin,num_zones
          if(composition(1,zone_idx).gt.hydrogen_diffusion_floor)goto 25
    23 continue
+      end do
 !     HYDROGEN-FREE MODEL - EXIT.
       write(short_file_unit,16)hydrogen_diffusion_floor
    16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
@@ -146,9 +148,10 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       zone_begin = zone_idx
 !     CHECK FOR CONVECTIVE ENVELOPE.
       if(convective_flag(num_zones))then
-         do 30 zone_idx=num_zones-1,2,-1
+         do zone_idx=num_zones-1,2,-1
             if(.not.convective_flag(zone_idx))goto 40
    30    continue
+         end do
    40    continue
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_end = zone_idx+1
@@ -157,9 +160,10 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       endif
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
-      do 45 zone_idx=zone_end,1,-1
+      do zone_idx=zone_end,1,-1
          if(composition(2,zone_idx).gt.helium_diffusion_min) goto 47
    45 continue
+      end do
 !     HYDROGEN-FREE MODEL - EXIT.
       write(short_file_unit,17)helium_diffusion_min
    17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
@@ -178,7 +182,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       star%rot%bl_time_scale=2.7d13*seconds_per_year_bl
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
-      do 50 zone_idx=1,num_zones
+      do zone_idx=1,num_zones
 
          radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*star%rot%bl_radius_scale
          temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*star%rot%bl_temp_scale
@@ -186,6 +190,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
          dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/star%rot%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
    50 continue
+      end do
       timestep_seconds=timestep_seconds/star%rot%bl_time_scale
       total_mass=total_mass*star%rot%bl_mass_scale
 !     SET UP DIFFUSION COEFFICIENTS.
@@ -195,7 +200,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !     D1 = R**2/LN LAMBDA  * X  * T**5/2 * (DLNP/DR) * (1-X) *
 !          [5/4 + DEL*6*(X-0.32)/(5.4+6.3X-4.5X**2)]
 !     D2 = R**2/LN LAMBDA * T**5/2 * (X+3)/(X+1)/(3+5X)
-      do 60 zone_idx = 1,num_zones
+      do zone_idx = 1,num_zones
 
          hydrogen_fraction = composition(1,zone_idx)
 ! MHP 10/02 INITIALIZED X - WAS NOT DONE PRIOR TO USAGE IN SHELL 1
@@ -349,6 +354,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
            (ln_lambda*(3.0d0*hydrogen_fraction+1.0d0))
        end if
    60 continue
+      end do
  9999 continue
       return
 end subroutine setup_grsett

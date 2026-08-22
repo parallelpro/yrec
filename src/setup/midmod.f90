@@ -140,15 +140,17 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 ! MHP 06/02 SAVE CHANGES IN R, CZ DEPTH, DELAD-DELRAD FROM THE
 ! PRIOR STEP.
       if (first_call) then
-         do 20 j = 1,star%num_zones
+         do j = 1,star%num_zones
             star%rot%convective_flag_prev(j) = star%prev%old_convective_flag(j)
             star%rot%radius_prev(j) = star%prev%old_radius(j)
             star%rot%del_grad_diff_prev(j) = star%rot%old_del_adiabatic_mix(j)-star%rot%old_del_radiative_mix(j)
             star%mix_phys%amum(j) = star%rot%old_amu(j)
-            do 10 i = 1,num_species_tracked
+            do i = 1,num_species_tracked
                star%composition(i,j) = star%prev%old_composition(i,j)
    10       continue
+            end do
    20    continue
+         end do
       else
          do j = 1,star%num_zones
             star%rot%radius_prev(j) = log_radius_mid(j)
@@ -159,7 +161,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
       new_cz_detected = .false.
 !  INTERPOLATE IN THE MODEL VARIABLES AND AUXILLARY PHYSICS.
       step_fraction_ratio = sub_timestep/full_timestep
-      do 40 j = 1,star%num_zones
+      do j = 1,star%num_zones
          log_density_mid(j) = star%prev%old_density(j) + &
               time_fraction*(star%log_density(j)-star%prev%old_density(j))
          log_luminosity_mid(j) = star%prev%old_luminosity(j) + &
@@ -191,11 +193,12 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          total_epsilon = star%diag%sesum(j)+star%diag%seg(6,j)+star%diag%seg(7,j)
          star%mix_phys%epsm(j) = star%rot%old_eps(j)+time_fraction*(total_epsilon-star%rot%old_eps(j))
    40 continue
+      end do
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
 !  RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS TO DETERMINE WHETHER
 !  OR NOT A ZONE IS CONVECTIVE IF IT CHANGES STATE OVER THE COURSE OF A
 !  TIMESTEP.
-      do 50 i = 1,star%num_zones
+      do i = 1,star%num_zones
          star%rot%del_grad_diff_new(i) = star%mix_phys%del_adiabatic_mix(i)-star%mix_phys%del_radiative_mix(i)
          if (star%convective_flag(i).eqv.star%rot%convective_flag_prev(i)) then
             convective_flag_mid(i) = star%convective_flag(i)
@@ -213,6 +216,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
             endif
          endif
    50 continue
+      end do
       new_cz_detected = .false.
 ! MHP 06/02 IF THE CZ DEPTHS HAVE CHANGED, RESOLVE
 ! OUT WHEN A GIVEN ZONE "DROPPED OUT" OF THE CONVECTION
@@ -440,9 +444,10 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !  IMIN IS THE FIRST ZONE ABOVE A CENTRAL CONVECTION ZONE, AND THUS THE
 !  FIRST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONAL INSTABILITIES.
       if (am_transport_convective_flag_mid(1)) then
-         do 60 i = 2,star%num_zones
+         do i = 2,star%num_zones
             if (.not.am_transport_convective_flag_mid(i)) goto 65
    60    continue
+         end do
          i = star%num_zones + 1
    65    core_boundary_zone = max(2,i-1)
       else
@@ -453,9 +458,10 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
       if (am_transport_convective_flag_mid(star%num_zones)) then
 !  SURFACE C.Z. EXISTS.  FIND LOWEST SHELL (IMAX), WHICH IS ALSO THE
 !  UPPERMOST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONALLY INDUCED MIXING.
-         do 70 i = star%num_zones-1,1,-1
+         do i = star%num_zones-1,1,-1
             if (.not.am_transport_convective_flag_mid(i)) goto 80
    70    continue
+         end do
          fully_convective_flag = .true.
          i = 0
    80    envelope_boundary_zone = i + 1

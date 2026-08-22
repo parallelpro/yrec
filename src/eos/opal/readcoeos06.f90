@@ -78,7 +78,7 @@ subroutine readcoeos06(ierr)
       close (2)
 ! .....read  tables
 ! MHP 8/25 Moved opening of file to parmin
-      do 3 x_loop_index_06 = 1, mx
+      do x_loop_index_06 = 1, mx
          read (iopale,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
               opal_eos%hydrogen_fraction_header_06(x_loop_index_06), &
               opal_eos%z_table_06(x_loop_index_06), &
@@ -88,7 +88,7 @@ subroutine readcoeos06(ierr)
               &4X,E11.4)') (opal_eos%species_fraction_header_06(x_loop_index_06,species_read_idx), &
               species_read_idx=1,6)
          read (iopale,'(A)') blank_line
-         do 2 density_row = 1, nr
+         do density_row = 1, nr
             read (iopale,'(2I5,2F12.7,17X,E15.7)') record_number, &
                  opal_eos%temperature_count_used_06(x_loop_index_06,density_row), &
                  unused_field, unused_field, &
@@ -129,8 +129,10 @@ subroutine readcoeos06(ierr)
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
     2    continue
+         end do
          read(iopale,'(A)') blank_line
     3 continue
+      end do
 
       do t6_scan_idx = 1, nt
          if (opal_eos%t6_list_06(1,t6_scan_idx).eq.0.0d0) then
@@ -143,14 +145,15 @@ subroutine readcoeos06(ierr)
          end if
          opal_eos%t6_grid_06(t6_scan_idx) = opal_eos%t6_list_06(1,t6_scan_idx)
       end do
-      do 12 t6_idx = 2, nt
+      do t6_idx = 2, nt
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !    12 dfs(i)=1D0/(t6a(i)-t6a(i-1))
          opal_eos%t6_grid_spacing_inv_06(t6_idx) = 1.0d0/(opal_eos%t6_grid_06(t6_idx) - &
               opal_eos%t6_grid_06(t6_idx-1))
    12 continue
+      end do
       opal_eos%density_grid_06(1) = opal_eos%density_grid_table_06(1,1)
-      do 13 r_idx = 2, nr
+      do r_idx = 2, nr
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !       rho(i)=rhogr(1,i)
 !    13 dfsr(i)=1D0/(rho(i)-rho(i-1))
@@ -158,6 +161,7 @@ subroutine readcoeos06(ierr)
          opal_eos%density_grid_spacing_inv_06(r_idx) = 1.0d0/(opal_eos%density_grid_06(r_idx) - &
               opal_eos%density_grid_06(r_idx-1))
    13 continue
+      end do
       do x_idx = 2, mx
          opal_eos%x_grid_spacing_inv_06(x_idx) = 1.0d0/(opal_eos%x_grid_copy_06(x_idx) - opal_eos%x_grid_copy_06(x_idx-1))
       end do

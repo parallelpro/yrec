@@ -59,7 +59,7 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       if(print_point_interval.le.m) then
        ibeg = max(2,print_point_interval)
        iend = m - mod(m,print_point_interval)
-       do 20 i = ibeg,iend,print_point_interval
+       do i = ibeg,iend,print_point_interval
           d = dexp(ln10*hd(i))
           p = dexp(ln10*hp(i))
           r = dexp(ln10*hr(i))
@@ -70,6 +70,7 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
           write(imilne,10)i,hs1(i),r,p,d,hcomp(1,i),hl(i), &
                             u,v,w,np1
    20    continue
+       end do
       endif
       if(iend.lt.m) then
 !  PRINT OUT LAST POINT IF NPRTPT DOESNT DIVIDE EVENLY INTO M.

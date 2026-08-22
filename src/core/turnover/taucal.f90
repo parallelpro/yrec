@@ -82,7 +82,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
         exiting_cz_flag = .false.
         two_cz_flag = .false.
         cz_exists_flag = .false. ! Flag for the existence of a CZ
-        do 71 i = num_points-1,1,-1
+        do i = num_points-1,1,-1
             if (.not.convective_flag(i) .and. .not. exiting_cz_flag .and. cz_exists_flag) then ! EXITING CZ
                   cz_base_index = i+1
                   exiting_cz_flag = .true.
@@ -94,6 +94,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
                   cz_exists_flag = .true.
             endif
    71    continue
+        end do
          if (cz_base_index .lt. 1) then
               fully_convective_flag = .true.
          endif

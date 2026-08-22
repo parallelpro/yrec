@@ -156,7 +156,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       else
 ! CHECK TRIANGULATION OF POINT (TEFFL,BL)
  10      continue
-       do 20 i1 = 1,3
+       do i1 = 1,3
           i2 = mod(i1,3) + 1
           i3 = mod(i2,3) + 1
           temp = tri_orientation*((tri_logl(i2)-tri_logl(i3))*(log10_teff-tri_teffl(i2)) + &
@@ -170,10 +170,11 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
              goto 10
           endif
  20      continue
+       end do
       endif
 ! COMPUTE NEW ENVELOPES IF NECESSARY
       envelope_needs_recompute = .false.
-      do 40 i = 1,3
+      do i = 1,3
        if (.not.tri_vertex_valid(i)) then
 ! NEW ENVELOPE NEEDED
           envelope_recomputed_flag = .true.
@@ -214,6 +215,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           envelope_needs_recompute = .true.
        endif
  40   continue
+      end do
       if (envelope_needs_recompute) then
 ! RECOMPUTE COEFFICIENTS
        temp = 1.0d0/(vtx_logt(2)-vtx_logt(1))

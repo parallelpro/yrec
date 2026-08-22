@@ -207,11 +207,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! STORE COMPOSITION MATRIX AT THE BEGINNING OF THE TIMESTEP.
                num_species = 11
                if (use_extended_composition) num_species=15
-               do 33 i = 1,star%num_zones
-                  do 32 j = 1,num_species
+               do i = 1,star%num_zones
+                  do j = 1,num_species
                      star%prev%old_composition(j,i) = star%composition(j,i)
    32             continue
+                  end do
    33          continue
+               end do
                iteration_level=1
 ! mixed_zone_bounds_no_overshoot stays an ARGUMENT of mix (not read as
 ! star% inside it) because crrect passes its own local array there --
@@ -305,7 +307,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             evo%model_diverged_flag = .false.
             converged = .false.
             if (.not.lnews .or. evo%delta_time.le.0.0D0) then
-               do 20 i = 1,star%num_zones
+               do i = 1,star%num_zones
 ! zero entropy terms
                   star%log_temperature_delta(i) = 0.0D0
                   star%log_pressure_delta(i) = 0.0D0
@@ -316,10 +318,11 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! zero gravitational energy terms.
                   star%gravitational_luminosity(i) = 0.0D0
  20            continue
+               end do
             else
 ! use the rate of change in the previous model to estimate the new
 ! run of structure variables.
-               do 30 i = 1,star%num_zones
+               do i = 1,star%num_zones
                   delta_temp_step = star%run%temperature_entropy_term(i)*evo%delta_time
                   delta_pressure_step = star%run%pressure_entropy_term(i)*evo%delta_time
                   delta_lum_step = star%luminosity_lsun(i)*star%run%luminosity_entropy_term(i)*evo%delta_time
@@ -333,6 +336,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! zero gravitational energy terms.
                   star%gravitational_luminosity(i) = 0.0D0
  30            continue
+               end do
             endif
 
 ! FIRST LEVEL OF ITERATIONS
@@ -366,12 +370,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
 ! IMPROVED FIRST GUESS AT THE STRUCTURE FOR THE NEXT MODEL IF LNEWS=T.
             if (evo%delta_time.gt.0.0D0) then
-               do 27 ii = 1,star%num_zones
+               do ii = 1,star%num_zones
                   star%run%temperature_entropy_term(ii)=star%log_temperature_delta(ii)/evo%delta_time
                   star%run%pressure_entropy_term(ii)=star%log_pressure_delta(ii)/evo%delta_time
                   star%run%luminosity_entropy_term(ii)=2.0D0*(star%luminosity_lsun(ii)-star%prev%old_luminosity(ii))/(star%luminosity_lsun(ii)+star%prev%old_luminosity(ii))/evo%delta_time
                   star%run%radius_entropy_term(ii)=(star%log_radius(ii)-star%prev%old_radius(ii))/evo%delta_time
  27            continue
+               end do
             endif
 ! THIRD LEVEL OF ITERATIONS
             recompute_surface_bc = .false.

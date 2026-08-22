@@ -226,7 +226,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
   160 format(2i5,5f12.7)
       rewind fermi_unit
       bin_start = 1
-      do 180 grid_idx=1,41
+      do grid_idx=1,41
 ! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
        if (yale_eos%fermi_table_x_grid(grid_idx+1).le.yale_eos%fermi_table_x_grid(grid_idx)) then
 !       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
@@ -240,11 +240,13 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
        bin_width = int((yale_eos%fermi_table_x_grid(grid_idx+1) - yale_eos%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
        bin_end = bin_start + bin_width - 1
        if (grid_idx.eq.41)  bin_end = 261
-       do 170 iden_idx=bin_start,bin_end
+       do iden_idx=bin_start,bin_end
           yale_eos%fermi_table_x_lookup(iden_idx) = grid_idx
   170    continue
+       end do
        bin_start = bin_end + 1
   180 continue
+      end do
 
 !  CLOSE EQUATION OF STATE FILE.
       close(fermi_unit)

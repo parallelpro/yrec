@@ -214,9 +214,10 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! Start gray atmosphere bounary conditions
 ! GUESS THE TEMPERATURE FOR AN OPTICAL DEPTH NEAR ZERO.
       idt = 15
-      do 5 jj = 1,4
+      do jj = 1,4
        idd(jj) = 5
     5 continue
+      end do
       err_sum(1) = 0.0d0
       if(atm_choice .eq. 0) then
             log10_temperature = log10_teff - 0.031235d0 + 0.25d0*dlog10(cc23)
@@ -343,11 +344,12 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       num_bad = 0
 
 ! INTEGRATION LOOP.
-      do 40 step_index = 1,maxstp
+      do step_index = 1,maxstp
 ! YSCAL IS THE ARRAY THAT THE NUMERICAL ERRORS ARE SCALED AGAINST.
-       do 30 i = 1,num_eqs
+       do i = 1,num_eqs
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
    30    continue
+       end do
 ! ENSURE THAT STEP DOESN'T EXCEED MAXIMUM STEP SIZE OR GO PAST
 ! THE LIMIT OF THE INTEGRATION.
        if((indep_var-x_limit)*(indep_var+h_step-x_limit).lt.0.0d0) h_step = x_limit - indep_var
@@ -456,6 +458,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
        if(h_next.lt.h_min) h_next = h_min
        h_step = h_next
 40    continue
+      end do
 ! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
 ! PRINT NASTY MESSAGE AND QUIT.
       write(iowr,50)
@@ -511,9 +514,10 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       endif
 !  INITIALIZE VARIABLES AND SET NUMERICAL PARAMETERS.
       in_atmosphere = .false.
-      do 235 i = 1,3
+      do i = 1,3
        err_sum(i) = 0.0d0
  235  continue
+      end do
       num_ok = 0
       num_bad = 0
       indep_var = atm_table%atm_log10_pressure
@@ -634,12 +638,13 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       unused_chdeld = star%pulse%qdela
       if(env_struct%env_convective_flag(1))cz_in_envelope = .true.
       env_struct%num_env_points = 1
-      do 220 step_index = 1,maxstp
+      do step_index = 1,maxstp
        x_start = indep_var
-       do 210 i = 1,num_eqs
+       do i = 1,num_eqs
           y_start(i) = y(i)
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
  210     continue
+       end do
        swap_temp = y(1) + h_step*dydx(1)
        if(star%env_comp%senv - y(1).gt.0.0d0 .or. star%env_comp%senv - swap_temp.gt.0.0d0) then
 !  IF THE INTEGRATION HAS OVERSHOT THE FITTING POINT, OR THE NEXT
@@ -671,9 +676,10 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
               log10_gravity,in_atmosphere,want_derivatives,conductive_opacity_flag, &
               print_flag,log10_radius,log10_teff,hydrogen_fraction,metal_fraction, &
               env_call_count,saha_state,step_err)
-       do 255 i = 1,3
+       do i = 1,3
           err_sum(i) = err_sum(i) + step_err(i)
  255     continue
+       end do
 !  FIND DY/DX AT THE START OF THE NEXT STEP.
        call qenv(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
@@ -797,6 +803,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
        if(h_next.lt.h_min) h_next = h_min
        h_step = h_next
  220  continue
+      end do
 ! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
 ! PRINT NASTY MESSAGE AND QUIT.
       write(iowr,911)
