@@ -205,19 +205,17 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  SOLID-BODY ROTATION IN THE OFFENDING PAIR OF ZONES.
       zone_index = num_zones
       zone_bottom = num_zones
-   20 continue
+! (Restructured 2026: the label 20/130 zone scan became the named
+! zone_scan loop; the label-70 redo loop a plain do.)
+      zone_scan: do
 !  POSITIVE OMEGA GRADIENT ENCOUNTERED.
       if(omega(zone_index)-omega(zone_index-1).gt.1.0d0)then
 !  IF PREVIOUS GRADIENT WAS POSITIVE, LEAVE ALONE.
          if(star%run%old_omega(zone_index)-star%run%old_omega(zone_index-1).gt.1.0d-15)then
             zone_index = zone_bottom-1
             zone_bottom = zone_index
-            if(zone_index.gt.1)then
-               goto 20
-            else
-               goto 130
-            endif
-         endif
+            if(zone_index.gt.1) cycle zone_scan
+         else
 !  SIGN OF D OMEGA/DR HAS CHANGED,INDICATING AN ERROR IN DIFFUSION.
 !  MIX THE OFFENDING ZONES TO SOLID BODY ROTATION.
 !  ITOP IS THE UPPERMOST UNSTABLE SHELL.
@@ -244,7 +242,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                     shell_mass,zone_bottom,zone_top,eta_squared, &
                     moment_of_inertia,omega,qiw,mean_radius,num_zones)
 !  NOW CHECK TO SEE IF THE REDISTRIBUTION HAS GENERATED ANY NEW REVERSALS.
-   70    continue
+         do
          redo_flag = .false.
 !  CHECK FOR GRADIENT REVERSALS BELOW ZONE IBOT.
          if(zone_bottom.gt.1) then
@@ -281,22 +279,22 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  IF LREDO=T THEN THE REDISTRIBUTION OF ANGULAR MOMENTUM IN A REVERSED
 !  REGION HAS EFFECTED A CHANGE IN OMEGA AT ONE OF BOTH OF THE BOUNDARIES
 !  THAT HAS CAUSED A NEW GRADIENT REVERSAL AT THE BOUNDARY.
-         if(redo_flag) then
+         if(.not. redo_flag) exit
             call solid(log_density,specific_angular_momentum,log_radius,log_mass, &
                        shell_mass,zone_bottom,zone_top,eta_squared, &
                        moment_of_inertia,omega,qiw,mean_radius,num_zones)
-            goto 70
-         endif
+         end do
          if(iteration_number.eq.itdif2.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number
   120    format(5x,'OMEGA GRADIENT REVERSAL BETWEEN ZONES ', &
                  i5,' AND ',i5,' ITERATION ',i5)
+         endif
       endif
-  130 continue
-!  RETURN FOR NEXT ZONE.
+!  RETURN FOR NEXT ZONE. (was label 130)
       zone_index = zone_bottom - 1
       zone_bottom = zone_index
-      if(zone_index.gt.1) goto 20
+      if(.not. (zone_index.gt.1)) exit zone_scan
+      end do zone_scan
 !  I/O FOR END OF DIFFUSION STEP.
       if(iteration_number.eq.itdif2.or.converged_flag)then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN J/M OVER TIMESTEP.

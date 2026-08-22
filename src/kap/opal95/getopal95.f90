@@ -143,10 +143,8 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 !     LOW X, POSTPONE UNTIL YOU KNOW IF IT IS A 2D, 3D, OR 4D INTERPOLATION.
       if (hydrogen_fraction.lt.0.2d0 .and. opacity_table%opal95_index_t .le. 5) then
          low_regime_flag = .true.
-         goto 60
       else
          low_regime_flag = .false.
-      endif
 !     CHECK HIGH RHO, HIGH T REGIME(BECAUSE OF THE TABLE GEOMETRY, THE
 !     POINT WILL FALL OUTSIDE THE TABLE FIRST AT THE HIGHEST T).
       density_shifted = .false.
@@ -188,7 +186,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             endif
          end do
       endif
-   60 continue
+      endif
 !     GET INTERPOLATION FACTORS IN RHO FOR EACH OF THE 4 T VALUES.
 !     ASSIGN ALL THE SAME VALUES IF GRID IN R IS SAME FOR ALL T.
       if (.not.density_shifted) then
@@ -245,20 +243,18 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             do i = opacity_table%opal95_index_x(1,1)+3,num_x-1
                if (hydrogen_fraction.lt.opacity_table%opal95_grid_x(i)) then
                   opacity_table%opal95_index_x(1,1) = i - 2
-                  goto 70
+                  exit
                endif
             end do
-            opacity_table%opal95_index_x(1,1) = num_x - 3
-   70       continue
+            if (i .gt. num_x-1) opacity_table%opal95_index_x(1,1) = num_x - 3
          else
             do i = opacity_table%opal95_index_x(1,1)+1,2,-1
                if (hydrogen_fraction.ge.opacity_table%opal95_grid_x(i)) then
                   opacity_table%opal95_index_x(1,1) = i - 1
-                  goto 80
+                  exit
                endif
             end do
-            opacity_table%opal95_index_x(1,1) = 1
-   80       continue
+            if (i .lt. 2) opacity_table%opal95_index_x(1,1) = 1
          endif
 !        CHECK FOR ABSENT TABLES AT HIGH X.
          if (opacity_table%opal95_fixed_z.ge.0.04d0) then
@@ -354,20 +350,18 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             do i = opacity_table%opal95_index_x(k,1)+3,num_x-1
                if (hydrogen_fraction.lt.opacity_table%opal95_grid_x(i)) then
                   opacity_table%opal95_index_x(k,1) = i - 2
-                  goto 75
+                  exit
                endif
             end do
-            opacity_table%opal95_index_x(k,1) = num_x - 3
-   75       continue
+            if (i .gt. num_x-1) opacity_table%opal95_index_x(k,1) = num_x - 3
          else
             do i = opacity_table%opal95_index_x(k,1)+1,2,-1
                if (hydrogen_fraction.ge.opacity_table%opal95_grid_x(i)) then
                   opacity_table%opal95_index_x(k,1) = i - 1
-                  goto 85
+                  exit
                endif
             end do
-            opacity_table%opal95_index_x(k,1) = 1
-   85       continue
+            if (i .lt. 2) opacity_table%opal95_index_x(k,1) = 1
          endif
 !        CHECK FOR ABSENT TABLES AT HIGH X.
          if (z_at_table.ge.0.04d0) then

@@ -268,13 +268,12 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                   do ii = change_region_start-1,1,-1
                      if (.not.convective_flag_mid(ii)) then
                         cz_zone_bottom = ii + 1
-                        goto 11
+                        exit
                      endif
                   end do
-                  cz_zone_bottom = 1
- 11               continue
+                  if (ii .lt. 1) cz_zone_bottom = 1
                   do j = change_region_end,change_region_start,-1
-                     if (star%rot%del_grad_diff_new(j).lt.0.0D0) goto 13
+                     if (star%rot%del_grad_diff_new(j).lt.0.0D0) exit
                      cz_moment_of_inertia = 0.0D0
                      cz_angular_momentum = 0.0D0
 ! FRACTION OF THE TIMESTEP SHELL WAS RADIATIVE
@@ -322,13 +321,12 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                   do ii = change_region_end+2,star%num_zones
                      if (.not.convective_flag_mid(ii)) then
                         cz_zone_top = ii - 1
-                        goto 12
+                        exit
                      endif
                   end do
-                  cz_zone_top = star%num_zones
- 12               continue
+                  if (ii .gt. star%num_zones) cz_zone_top = star%num_zones
                   do j = change_region_start,change_region_end
-                     if (star%rot%del_grad_diff_new(j).lt.0.0D0) goto 13
+                     if (star%rot%del_grad_diff_new(j).lt.0.0D0) exit
                      cz_moment_of_inertia = 0.0D0
                      cz_angular_momentum = 0.0D0
 ! FRACTION OF THE TIMESTEP SHELL WAS RADIATIVE
@@ -370,7 +368,6 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                      end do
                   end do
                endif
- 13            continue
             endif
          end do
       endif

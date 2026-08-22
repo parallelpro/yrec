@@ -163,6 +163,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       integer :: iread
       double precision :: mixing_length0
       logical :: mixing_length_matches
+      logical :: mixture_ok
 ! NOTE: LEXCP0 in the original source is never assigned before use
 ! (line "WRITE(ISHORT,1040) CMIXL,CMIXL0,LEXCOM,LEXCP0" below); it
 ! appears to be a pre-existing bug (likely meant to read
@@ -278,9 +279,9 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
               star%composition,star%log_mass,star%log_total_mass,star%num_zones,run_index, &
               star%total_mass_msun,star%convective_flag, ierr)
          if (ierr /= 0) return
-! Now skip over the reading and processing of an input model file
-         goto 3000
-      endif
+! The reading and processing of an input model file is skipped
+! (the else branch below).
+      else
 
 
 !     Read in the starting model from LU IFIRST and process it.
@@ -433,12 +434,13 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 !     THIS IS ONLY DONE if the first MODEL IS being READ IN, AND ONLY FOR A
 ! CHEMICALLY HOMOGENEOUS MODEL. IT CAN OVER-WRITE MASS FRACTIONS 4-15 WITH USER-SPECIFIED VALUES
 ! ISETMIX=1 -> CAN ADJUST CNO FRACTIONS ISETISO=1-> CHANGE ISOTOPE RATIOS
+      mixture_ok = .true.
       if (change_cno_mixture_active .or. change_isotope_ratios_active) then
 ! ENSURE STARTING MODEL IS HOMOGENEOUS BEFORE EITHER IS CHANGED
          do i = 1,15
             reference_composition(i)=star%composition(i,1)
          end do
-         do j = 2,star%num_zones
+         homogeneity: do j = 2,star%num_zones
             do i = 1,15
                fraction_diff = abs(star%composition(i,j)-reference_composition(i))
                if (fraction_diff.gt.1.0d-6) then
@@ -447,11 +449,13 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
  592              format('SPECIES ',i3,' IN SHELL ',i5, &
                     ' DIFFERS FROM CENTER BY ',e12.4, &
                     ' MIX NOT MODIFIED IN EVOLVED MODEL')
-                  goto 602
+                  mixture_ok = .false.
+                  exit homogeneity
                endif
             end do
-         end do
+         end do homogeneity
       endif
+      if (mixture_ok) then
 ! LOOP FOR CHANGING CNO MIX
       if (change_cno_mixture_active) then
 !     INFER CURRENT TOTAL CNO FRACTIONS AND SCALE ALL ISOTOPES BY THE RATIO BETWEEN
@@ -520,9 +524,9 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
               'STARIN. OLD HE3 C12 C13 N14 N15 O16 O17 O18 H2 LI6 ', &
                'LI7 BE9',12e12.4,' NEW ',12e12.4)
       endif
- 602  continue
       end if
- 3000 continue
+      end if
+      endif
 
 !     The following code enables us to extend the model from the current
 !     inner most shell to a point ncloser to center, if flag LCORE is set.
@@ -657,6 +661,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! 1 NEW POINT IS ADDED, AND THE COMPOSITION OF THE NEW POINT
 ! IS ASSUMED EQUAL TO THAT OF THE LAST OLD POINT.
       if (change_envelope_mass_flag) then
+      envelope_rescale: do
        if (requested_envelope_mass.gt.0.0d0) requested_envelope_mass = &
             -requested_envelope_mass
 ! DBG 2/92 CHANGED MINIMUM FROM 1.0D-10 TO 1.0D-12
@@ -666,7 +671,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
             -1.d-12
        star%env_comp%senv = star%log_mass(star%num_zones) - star%log_total_mass
        old_senv = star%env_comp%senv
-       if (star%env_comp%senv.eq.requested_envelope_mass) goto 599
+       if (star%env_comp%senv.eq.requested_envelope_mass) exit envelope_rescale
        num_species = 11
        if (use_extended_composition) num_species = 15
        if (requested_envelope_mass.lt.star%env_comp%senv) then
@@ -683,7 +688,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
  576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
-          goto 599
+          exit envelope_rescale
           end if
  580        star%num_zones = i + 1
           star%env_comp%senv = requested_envelope_mass
@@ -974,12 +979,15 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                      endif
                   endif
                   star%num_zones = j
-                  goto 587
+                  exit
                endif
             end do
 ! ASSIGN THE BOUNDARY AT THE PHOTOSPHERE FOR ENVELOPE MASS BELOW 1.0D-12.
+! (On the exit path above num_zones was just set to j, so this guard is
+! false there; on fall-through num_zones is unchanged and it is true.)
+            if (j .gt. star%num_zones + env_struct%num_env_points) then
             star%num_zones = star%num_zones + env_struct%num_env_points
- 587        continue
+            end if
             if (rotation_active) then
                do j = old_last_shell+1,star%num_zones
                   star%omega(j) = star%omega(old_last_shell)
@@ -1013,7 +1021,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        write(short_file_unit,597)old_senv,star%env_comp%senv
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
- 599     continue
+      exit envelope_rescale
+      end do envelope_rescale
       endif
 
 ! SET UP WEIGHTS AND MASSES
