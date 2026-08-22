@@ -35,7 +35,7 @@
 ! names were fixed by earlier batches). Judgment calls made below, all
 ! verified against the actual physics/usage in this file and cross-
 ! checked against each callee's current signature:
-!   - BL (log10 L/Lsun, surface value) is named log10_luminosity,
+!   - BL (log10 L/Lsun, surface value) is named star%log10_luminosity,
 !     matching crrect.f90/starin.f90/chkcal.f90/chkscal.f90's own
 !     slot names for this exact scalar; wrtlst.f90/massloss.f90/
 !     getnewenv.f90/putstore.f90/wrtout.f90 instead call the same
@@ -47,20 +47,20 @@
 !     "log_luminosity" (or plain "luminosity"/"star%luminosity_lsun" in
 !     findsh.f90's own case) -- a misnomer inherited from those files'
 !     own earlier conversions in most cases; out of scope to fix here.
-!   - M (number of mass zones) is named num_zones, the majority
+!   - M (number of mass zones) is named star%num_zones, the majority
 !     spelling among callees (massloss/mix/hpoint/getw/convec/
 !     lirate88/liburn/getnewenv/mixcz); starin.f90/wrtlst.f90/
 !     wrtout.f90/putstore.f90 instead call it num_shells,
 !     crrect.f90/fpft.f90/findsh.f90/htimer.f90 call it num_points,
 !     wrtmonte.f90 keeps it cryptic as "m".
 !   - JENV (envelope CZ base zone index) is named
-!     envelope_cz_bottom_index, matching wrtlst.f90/wrtout.f90/
+!     star%envelope_cz_bottom_index, matching wrtlst.f90/wrtout.f90/
 !     putstore.f90/wrtmonte.f90 (majority); findsh.f90 calls it
 !     envelope_edge, convec.f90/mix.f90 call it envelope_cz_edge,
 !     hpoint.f90 calls it convective_envelope_edge_zone,
 !     massloss.f90 calls it envelope_boundary_zone, starin.f90 calls
 !     it envelope_zone_index.
-!   - JCORE (core CZ top zone index) is named core_cz_top_index,
+!   - JCORE (core CZ top zone index) is named star%core_cz_top_index,
 !     matching wrtlst.f90/wrtout.f90/putstore.f90/wrtmonte.f90
 !     (majority); findsh.f90 calls it core_edge, convec.f90/mix.f90
 !     call it core_cz_edge, hpoint.f90 calls it
@@ -261,14 +261,10 @@ program main
       double precision :: initial_x_guess, initial_alpha_guess
       logical :: saved_use_structure_dt_limits
       integer :: saved_atm_choice
-      integer :: num_zones
       logical :: reset_triangle, model_diverged_flag
       double precision :: total_angular_momentum, total_rotational_ke
-      double precision :: log10_luminosity, log_teff
-      integer :: ikut_flag, istore_flag, envelope_cz_bottom_index, &
-           model_number
+      integer :: ikut_flag, istore_flag
       double precision :: delta_time, hydrogen_dt, timestep_yr
-      double precision :: total_mass_msun, log_total_mass
       double precision :: convective_velocity
       logical :: compute_neutrino_fluxes
       double precision :: prev_mass_bound, curr_mass_bound, next_mass_bound
@@ -287,7 +283,7 @@ program main
            zone_mass_fraction, zone_radius_fraction
       double precision :: prev_log_l, prev_log_teff, prev_age, path_length_sq
       integer :: wrtlst_unit, model_iteration
-      integer :: core_cz_top_index, h_shell_zone_begin, h_shell_midpoint_zone, &
+      integer :: h_shell_zone_begin, h_shell_midpoint_zone, &
            h_shell_end_index
       logical :: has_h_shell
       double precision :: delta_time_saved
@@ -437,13 +433,11 @@ program main
 ! read in the initial model here
 ! STARIN also calls RSCALE to perform rescaling if requested
 !        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-       call starin(log10_luminosity, star%run%dage, timestep_yr, &
-            delta_time, hydrogen_dt, trial_sign_flag, log_total_mass, &
-            ikut_flag, istore_flag, envelope_cz_bottom_index, &
-            model_diverged_flag, recompute_envelope_triangle, num_zones, &
-            model_number, nk, dlnrho_dlnp, dlnrho_dlnt, &
-            total_angular_momentum, total_rotational_ke, total_mass_msun, &
-            log_teff, convective_velocity, mixture_weights)
+       call starin(timestep_yr, delta_time, hydrogen_dt, trial_sign_flag, &
+            ikut_flag, istore_flag, model_diverged_flag, &
+            recompute_envelope_triangle, nk, dlnrho_dlnp, dlnrho_dlnt, &
+            total_angular_momentum, total_rotational_ke, &
+            convective_velocity, mixture_weights)
 
       if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
 
@@ -489,25 +483,25 @@ program main
 ! HS2 = MASS IN GM OF EACH SHELL.
       curr_mass_bound = exp(ln10*star%log_mass(1))
       prev_mass_bound = - curr_mass_bound
-      do i = 2,num_zones
+      do i = 2,star%num_zones
          next_mass_bound = prev_mass_bound
          prev_mass_bound = curr_mass_bound
          curr_mass_bound = exp(ln10*star%log_mass(i))
          star%enclosed_mass(i-1) = prev_mass_bound
          star%shell_mass(i-1) = 0.5D0*(curr_mass_bound-next_mass_bound)
       end do
-      star%enclosed_mass(num_zones) = curr_mass_bound
-      star%shell_mass(num_zones) = exp(ln10*log_total_mass) - 0.5D0*(prev_mass_bound+curr_mass_bound)
+      star%enclosed_mass(star%num_zones) = curr_mass_bound
+      star%shell_mass(star%num_zones) = exp(ln10*star%log_total_mass) - 0.5D0*(prev_mass_bound+curr_mass_bound)
       dlnrho_dlnt_unused = -1.0D0
       dlnrho_dlnp_unused = 1.0D0
       do j = 1,10
          flux_diag%neutrino_flux_total(j) = 0.0D0
-         do k = 1,num_zones
+         do k = 1,star%num_zones
             star%neutrino_flux_zone(j,k) = 0.0D0
          end do
       end do
 ! ASSIGN LOCAL VARIABLES FOR SR CALL FROM GLOBAL VECTORS.
-      do i = 1,num_zones
+      do i = 1,star%num_zones
          shell_log_density = star%log_density(i)
          shell_log_temperature = star%log_temperature(i)
 ! SKIP CALCULATIONS FOR LOW TEMPERATURES.
@@ -554,11 +548,11 @@ program main
       write(76,222)(flux_diag%neutrino_flux_total(i),i=1,10)
 ! NORMALIZE FLUXES.
       do j = 1,10
-         do i = 1,num_zones
+         do i = 1,star%num_zones
             star%neutrino_flux_zone(j,i) = star%neutrino_flux_zone(j,i)/flux_diag%neutrino_flux_total(j)
          end do
       end do
-      do i = 1,num_zones
+      do i = 1,star%num_zones
 ! TEMPERATURE IN UNITS OF 10**6 K.
          t6_million_k = exp(ln10*(star%log_temperature(i)-6.0D0))
          if (t6_million_k.lt.5.0D0) goto 141
@@ -582,16 +576,16 @@ program main
 !         IF(M.GT.1)STOP999
       endif
 ! save mass in solar units
-         pulsation_mass_msun=total_mass_msun
+         pulsation_mass_msun=star%total_mass_msun
 ! MHP 08/02 STORE STARTING CZ PROPERTIES
-         light_burn%jcz = envelope_cz_bottom_index
+         light_burn%jcz = star%envelope_cz_bottom_index
          turnover%convective_turnover_timescale = 0.0D0
 ! write out headers of the appropriate output files
-      call wrthead(total_mass_msun)
+      call wrthead(star%total_mass_msun)
 ! DBG PULSE OUT 7/92
 ! initialize variables for calculating when to dump pulse output
-         prev_log_l = log10_luminosity
-         prev_log_teff = log_teff
+         prev_log_l = star%log10_luminosity
+         prev_log_teff = star%log_teff
          prev_age = star%run%dage
          path_length_sq = 0.0D0
 
@@ -604,31 +598,31 @@ program main
                   star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag, &
                   star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
                   star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
-                  trial_sign_flag,star%luminosity_breakdown,core_cz_top_index, &
-                  envelope_cz_bottom_index,model_number,num_zones, &
-                  total_mass_msun,log_teff,log10_luminosity,log_total_mass,star%run%dage, &
+                  trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
+                  star%envelope_cz_bottom_index,star%model_number,star%num_zones, &
+                  star%total_mass_msun,star%log_teff,star%log10_luminosity,star%log_total_mass,star%run%dage, &
                   timestep_yr,star%omega)
           endif
        endif
 
 ! locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if applicable).
-         call findsh(star%composition,star%luminosity_lsun,star%convective_flag,num_zones, &
-              core_cz_top_index,envelope_cz_bottom_index,h_shell_zone_begin, &
+         call findsh(star%composition,star%luminosity_lsun,star%convective_flag,star%num_zones, &
+              star%core_cz_top_index,star%envelope_cz_bottom_index,h_shell_zone_begin, &
               h_shell_end_index,h_shell_midpoint_zone,has_h_shell)
 ! determine timestep for model
 ! JVS 04/14 Added Teffl to passed variables
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(delta_time,hydrogen_dt,num_zones,star%log_density,star%luminosity_lsun, &
-            star%enclosed_mass,star%shell_mass,star%log_temperature,star%composition,core_cz_top_index, &
+       call htimer(delta_time,hydrogen_dt,star%num_zones,star%log_density,star%luminosity_lsun, &
+            star%enclosed_mass,star%shell_mass,star%log_temperature,star%composition,star%core_cz_top_index, &
             h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,timestep_yr,nk, &
             star%log_pressure,star%log_radius,star%omega,max_domega_frac,h_shell_zone_begin, &
-            log_teff)
+            star%log_teff)
 
        delta_time_saved = delta_time
 ! zero out entropy terms.
-         do 99 i = 1,num_zones
+         do 99 i = 1,star%num_zones
             star%run%temperature_entropy_term(i) = 0.0D0
             star%run%pressure_entropy_term(i) = 0.0D0
             star%run%luminosity_entropy_term(i) = 0.0D0
@@ -712,21 +706,19 @@ program main
 !FD end
             if (po_output_enabled) then
 ! MHP 8/25 changed to add file names as declared variables
-             call pdist(prev_log_l,prev_log_teff,prev_age,path_length_sq,log10_luminosity,log_teff,model_iteration,pulse_atm_path, &
+             call pdist(prev_log_l,prev_log_teff,prev_age,path_length_sq,star%log10_luminosity,star%log_teff,model_iteration,pulse_atm_path, &
              pulse_env_path,pulse_mod_path)
           endif
 
 ! STARIN called here for timestep cutting
    15       if (model_diverged_flag) then
 !              CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-             call starin(log10_luminosity, star%run%dage, timestep_yr, &
-                  delta_time, hydrogen_dt, trial_sign_flag, &
-                  log_total_mass, ikut_flag, istore_flag, &
-                  envelope_cz_bottom_index, model_diverged_flag, &
-                  recompute_envelope_triangle, num_zones, model_number, &
-                  nk, dlnrho_dlnp, dlnrho_dlnt, total_angular_momentum, &
-                  total_rotational_ke, total_mass_msun, log_teff, &
-                  convective_velocity, mixture_weights)
+             call starin(timestep_yr, delta_time, hydrogen_dt, &
+                  trial_sign_flag, ikut_flag, istore_flag, &
+                  model_diverged_flag, recompute_envelope_triangle, nk, &
+                  dlnrho_dlnp, dlnrho_dlnt, total_angular_momentum, &
+                  total_rotational_ke, convective_velocity, &
+                  mixture_weights)
              if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
 18               format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
                         ' Initialize rotation rates or set LROT to', &
@@ -741,9 +733,9 @@ program main
 ! MHP 7/98
 ! need to add logic to permit resacling + time evolution for
 ! pre-main sequence models
-            if (rescale_kind(nk).ne.2 .and. model_number.ge.0) then
+            if (rescale_kind(nk).ne.2 .and. star%model_number.ge.0) then
                evolve_model_flag = .true.
-            else if (model_number.ge.0 .and. star%log_temperature(1).lt.6.6D0) then
+            else if (star%model_number.ge.0 .and. star%log_temperature(1).lt.6.6D0) then
                evolve_model_flag = .true.
             else
                evolve_model_flag = .false.
@@ -751,13 +743,13 @@ program main
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! ADD MASS LOSS CALCULATION
-               call massloss(log10_luminosity,star%run%dage,delta_time,star%composition,star%log_density,star%specific_angular_momentum,star%log_pressure,star%log_radius, &
-                             star%log_mass,star%enclosed_mass,star%shell_mass,log_total_mass,star%log_temperature,envelope_cz_bottom_index,recompute_envelope_triangle, &
-                             num_zones,star%omega,total_mass_msun,log_teff,target_envelope_mass,new_atmosphere_fit_needed)
+               call massloss(star%log10_luminosity,star%run%dage,delta_time,star%composition,star%log_density,star%specific_angular_momentum,star%log_pressure,star%log_radius, &
+                             star%log_mass,star%enclosed_mass,star%shell_mass,star%log_total_mass,star%log_temperature,star%envelope_cz_bottom_index,recompute_envelope_triangle, &
+                             star%num_zones,star%omega,star%total_mass_msun,star%log_teff,target_envelope_mass,new_atmosphere_fit_needed)
 ! STORE COMPOSITION MATRIX AT THE BEGINNING OF THE TIMESTEP.
                num_species = 11
                if (use_extended_composition) num_species=15
-               do 33 i = 1,num_zones
+               do 33 i = 1,star%num_zones
                   do 32 j = 1,num_species
                      star%prev%old_composition(j,i) = star%composition(j,i)
    32             continue
@@ -767,10 +759,9 @@ program main
 ! star% inside it) because crrect passes its own local array there --
 ! storage deliberately separate from main's. main passes the star copy
 ! explicitly.
-               call mix(delta_time, log_total_mass, iteration_level, &
-                    num_zones, timestep_yr, core_cz_top_index, &
-                    envelope_cz_bottom_index, &
-                    star%mixed_zone_bounds_no_overshoot, log_teff, jerr)
+               call mix(delta_time, iteration_level, timestep_yr, &
+                    star%core_cz_top_index, star%envelope_cz_bottom_index, &
+                    star%mixed_zone_bounds_no_overshoot, jerr)
                if (jerr /= 0) stop
              timestep_yr = delta_time/seconds_per_year
              star%run%dage = star%run%dage + 1.0D-9*timestep_yr
@@ -797,16 +788,14 @@ program main
 !*** END TEST
 ! rezone new model, except rezoning not performed for He flash calculations
           if (.not.helium_flash_active) then
-             call hpoint(num_zones, log_total_mass, istore_flag, &
-                  reset_triangle, h_shell_zone_begin, model_number, &
-                  has_h_shell, core_cz_top_index, &
-                  envelope_cz_bottom_index, total_angular_momentum, &
-                  total_rotational_ke, log_teff)
+             call hpoint(istore_flag, reset_triangle, h_shell_zone_begin, &
+                  has_h_shell, total_angular_momentum, &
+                  total_rotational_ke)
 ! STORE NEW CZ BASE
-               light_burn%jcz = envelope_cz_bottom_index
+               light_burn%jcz = star%envelope_cz_bottom_index
             else
 ! save old model for PTIME
-               do i=1, num_zones
+               do i=1, star%num_zones
                   star%prev%old_pressure(i) = star%log_pressure(i)
                   star%prev%old_temperature(i) = star%log_temperature(i)
                   star%prev%old_radius(i) = star%log_radius(i)
@@ -814,14 +803,14 @@ program main
                   star%prev%old_density(i) = star%log_density(i)
                end do
 ! JVS 04/14 Save Teff as well
-               star%prev%old_teff = log_teff
+               star%prev%old_teff = star%log_teff
 !  JVS 05/25 Added model number to list of saved values
-           star%prev%old_num_zones = num_zones
+           star%prev%old_num_zones = star%num_zones
 
           endif
 ! store starting distribution of rotational kinetic energy.
             if (rotation_active) then
-               do i = 1,num_zones
+               do i = 1,star%num_zones
                   star%kinetic_energy_rot_old(i) = star%kinetic_energy_rot(i)
                end do
             endif
@@ -829,15 +818,15 @@ program main
 ! store starting depth of C.Z. for light element burning.
             if (use_extended_composition) then
                light_burn%cz_base_radius_prev = 0.0D0
-               envelope_cz_zone_prev = envelope_cz_bottom_index
+               envelope_cz_zone_prev = star%envelope_cz_bottom_index
                if (envelope_overshoot_active) then
-                  light_burn%pressure_scale_height_start = alphae*exp(clndp*(star%log_pressure(envelope_cz_bottom_index)+2.0D0*star%log_radius(envelope_cz_bottom_index) &
-                           -star%log_density(envelope_cz_bottom_index)-cgl-star%log_mass(envelope_cz_bottom_index)))
+                  light_burn%pressure_scale_height_start = alphae*exp(clndp*(star%log_pressure(star%envelope_cz_bottom_index)+2.0D0*star%log_radius(star%envelope_cz_bottom_index) &
+                           -star%log_density(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
                   light_burn%pressure_scale_height_start = 0.0D0
                endif
 ! find burning rates at the beginning of the time step.
-               call lirate88(star%composition,star%log_density,star%log_temperature,num_zones,1)
+               call lirate88(star%composition,star%log_density,star%log_temperature,star%num_zones,1)
             endif
 ! begin correction routines
 ! set flags for CRRECT
@@ -853,7 +842,7 @@ program main
             model_diverged_flag = .false.
             converged = .false.
             if (.not.lnews .or. delta_time.le.0.0D0) then
-               do 20 i = 1,num_zones
+               do 20 i = 1,star%num_zones
 ! zero entropy terms
                   star%log_temperature_delta(i) = 0.0D0
                   star%log_pressure_delta(i) = 0.0D0
@@ -867,7 +856,7 @@ program main
             else
 ! use the rate of change in the previous model to estimate the new
 ! run of structure variables.
-               do 30 i = 1,num_zones
+               do 30 i = 1,star%num_zones
                   delta_temp_step = star%run%temperature_entropy_term(i)*delta_time
                   delta_pressure_step = star%run%pressure_entropy_term(i)*delta_time
                   delta_lum_step = star%luminosity_lsun(i)*star%run%luminosity_entropy_term(i)*delta_time
@@ -890,31 +879,29 @@ program main
             recompute_surface_bc = .false.
 ! CALL TO CRRECT - ADDED ITERATION LEVEL
             iteration_level = 1
-            call crrect(delta_time, num_zones, max_iterations, converged, &
+            call crrect(delta_time, max_iterations, converged, &
                  model_diverged_flag, recompute_envelope_triangle, &
                  reset_triangle, recompute_surface_bc, trial_sign_flag, &
-                 istore_flag, log_total_mass, log10_luminosity, log_teff, &
-                 in_atmosphere, want_derivatives, mixing_active, &
-                 conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, &
-                 iterations_done, iteration_level)
+                 istore_flag, in_atmosphere, want_derivatives, &
+                 mixing_active, conductive_opacity_flag, dlnrho_dlnt, &
+                 dlnrho_dlnp, iterations_done, iteration_level)
 ! SECOND LEVEL OF ITERATIONS
 ! CHECK ENVELOPE TRIANGLE BEFORE ITERATING FOR SOLUTION
             if (model_diverged_flag) goto 15
             recompute_surface_bc = .true.
             max_iterations = niter2
             iteration_level = 2
-            call crrect(delta_time, num_zones, max_iterations, converged, &
+            call crrect(delta_time, max_iterations, converged, &
                  model_diverged_flag, recompute_envelope_triangle, &
                  reset_triangle, recompute_surface_bc, trial_sign_flag, &
-                 istore_flag, log_total_mass, log10_luminosity, log_teff, &
-                 in_atmosphere, want_derivatives, mixing_active, &
-                 conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, &
-                 iterations_done, iteration_level)
+                 istore_flag, in_atmosphere, want_derivatives, &
+                 mixing_active, conductive_opacity_flag, dlnrho_dlnt, &
+                 dlnrho_dlnp, iterations_done, iteration_level)
             if (model_diverged_flag) goto 15
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
 ! IMPROVED FIRST GUESS AT THE STRUCTURE FOR THE NEXT MODEL IF LNEWS=T.
             if (delta_time.gt.0.0D0) then
-               do 27 ii = 1,num_zones
+               do 27 ii = 1,star%num_zones
                   star%run%temperature_entropy_term(ii)=star%log_temperature_delta(ii)/delta_time
                   star%run%pressure_entropy_term(ii)=star%log_pressure_delta(ii)/delta_time
                   star%run%luminosity_entropy_term(ii)=2.0D0*(star%luminosity_lsun(ii)-star%prev%old_luminosity(ii))/(star%luminosity_lsun(ii)+star%prev%old_luminosity(ii))/delta_time
@@ -925,13 +912,12 @@ program main
             recompute_surface_bc = .false.
             max_iterations = niter3
             iteration_level = 3
-            call crrect(delta_time, num_zones, max_iterations, converged, &
+            call crrect(delta_time, max_iterations, converged, &
                  model_diverged_flag, recompute_envelope_triangle, &
                  reset_triangle, recompute_surface_bc, trial_sign_flag, &
-                 istore_flag, log_total_mass, log10_luminosity, log_teff, &
-                 in_atmosphere, want_derivatives, mixing_active, &
-                 conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, &
-                 iterations_done, iteration_level)
+                 istore_flag, in_atmosphere, want_derivatives, &
+                 mixing_active, conductive_opacity_flag, dlnrho_dlnt, &
+                 dlnrho_dlnp, iterations_done, iteration_level)
             if (model_diverged_flag) goto 15
             if (.not.rotation_active) then
                itdif1 = 1
@@ -942,7 +928,7 @@ program main
 ! HCOMPP (COMPOSITION) AND HJMSAV (ANGULAR MOMENTUM) ARE ONLY
 ! OVERWRITTEN ON THE LAST RUN THROUGH.
             if (itdif1.gt.1) then
-               do i = 1,num_zones
+               do i = 1,star%num_zones
                   star%run%orig_specific_angular_momentum(i) = star%specific_angular_momentum(i)
                   do j = 1,15
                      star%run%orig_composition(j,i) = star%prev%old_composition(j,i)
@@ -953,7 +939,7 @@ program main
 ! MHP 05/02 RESTORE ORIGINAL "START OF TIMESTEP"
 ! VALUES FOR THE COMPOSITION MATRIX
                if (itrot.gt.1) then
-                  do i = 1,num_zones
+                  do i = 1,star%num_zones
                      do j = 1,15
                         star%prev%old_composition(j,i) = star%run%orig_composition(j,i)
                      end do
@@ -970,13 +956,12 @@ program main
             max_iterations = niter4
             recompute_surface_bc=.false.
             iteration_level = 4
-            call crrect(delta_time, num_zones, max_iterations, converged, &
+            call crrect(delta_time, max_iterations, converged, &
                  model_diverged_flag, recompute_envelope_triangle, &
                  reset_triangle, recompute_surface_bc, trial_sign_flag, &
-                 istore_flag, log_total_mass, log10_luminosity, log_teff, &
-                 in_atmosphere, want_derivatives, mixing_active, &
-                 conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, &
-                 iterations_done, iteration_level)
+                 istore_flag, in_atmosphere, want_derivatives, &
+                 mixing_active, conductive_opacity_flag, dlnrho_dlnt, &
+                 dlnrho_dlnp, iterations_done, iteration_level)
 !  25         CONTINUE
             if (.not.converged) then
 ! MODEL FAILED TO CONVERGE WITHIN(NITER1+NITER2+NITER3+NITER4)ITERATIONS
@@ -995,7 +980,7 @@ program main
 ! G Somers 6/14, SET LIMIX = .TRUE. SO THE CORRECT GRADS ARE USED.
       use_correct_gradients = .true.
 !       CALL MIXCZ(HCOMP,HS2,HS1,LC,HR,HP,HD,HG,M,LIMIX)  ! KC 2025-05-31
-      call mixcz(star%composition,star%shell_mass,star%convective_flag,num_zones)
+      call mixcz(star%composition,star%shell_mass,star%convective_flag,star%num_zones)
 ! G Somers END
 
 ! MHP 9/94 STORE TOTAL AGE IN SAGE
@@ -1004,7 +989,7 @@ program main
 ! RESTORE ORIGINAL START OF TIMESTEP VALUES
 ! TO THE ANGULAR MOMENTUM DISTRIBUTION
                if (itrot.gt.1) then
-                  do i = 1,num_zones
+                  do i = 1,star%num_zones
                      star%specific_angular_momentum(i) = star%run%orig_specific_angular_momentum(i)
                   end do
                endif
@@ -1021,39 +1006,37 @@ program main
 ! FIND THE NEW RUN OF OMEGA
 ! JENV0 ADDED TO SR CALL.
                wind_loss_active = ljdot0
-               call getw(log10_luminosity, delta_time, max_domega_frac, &
-                    log_total_mass, wind_loss_active, num_zones, &
-                    total_mass_msun, log_teff, envelope_cz_zone_prev, &
-                    jerr)
+               call getw(delta_time, max_domega_frac, wind_loss_active, &
+                    envelope_cz_zone_prev, jerr)
                if (jerr /= 0) stop
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
-               call fpft(star%log_density,star%log_radius,star%log_mass,num_zones,star%omega,star%eta_squared,star%pressure_rotation_factor,star%temperature_rotation_factor,star%mean_gravity,star%mean_radius)
+               call fpft(star%log_density,star%log_radius,star%log_mass,star%num_zones,star%omega,star%eta_squared,star%pressure_rotation_factor,star%temperature_rotation_factor,star%mean_gravity,star%mean_radius)
             endif
             end do
 ! LOCATE THE HYDROGEN-BURNING SHELL AND THE BOUNDARIES OF THE CENTRAL
 ! AND SURFACE CONVECTION ZONES (IF APPLICABLE).
-       call findsh(star%composition,star%luminosity_lsun,star%convective_flag,num_zones, &
-              core_cz_top_index,envelope_cz_bottom_index,h_shell_zone_begin,h_shell_end_index,h_shell_midpoint_zone, &
+       call findsh(star%composition,star%luminosity_lsun,star%convective_flag,star%num_zones, &
+              star%core_cz_top_index,star%envelope_cz_bottom_index,h_shell_zone_begin,h_shell_end_index,h_shell_midpoint_zone, &
               has_h_shell)
 ! PERFORM LIGHT ELEMENT BURNING
-         if (use_extended_composition .and. model_number.ge.0 .and. delta_time.gt.0.0D0) then
+         if (use_extended_composition .and. star%model_number.ge.0 .and. delta_time.gt.0.0D0) then
 ! ONLY FOR MODELS WITHOUT ROTATION, OR WITHOUT ROTATIONAL MIXING.
             if (.not.rotation_active .or. .not.instability_transport_active) then
 ! FIND CONVECTION ZONE DEPTH AT THE END OF THE TIME STEP.
-               call convec(star%composition,star%log_density,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,num_zones,star%radiative_zone_bounds,star%mixed_zone_bounds, &
-                            star%mixed_zone_bounds_no_overshoot,core_cz_top_index,envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot)
+               call convec(star%composition,star%log_density,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%num_zones,star%radiative_zone_bounds,star%mixed_zone_bounds, &
+                            star%mixed_zone_bounds_no_overshoot,star%core_cz_top_index,star%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot)
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
-               envelope_cz_zone_end = envelope_cz_bottom_index
+               envelope_cz_zone_end = star%envelope_cz_bottom_index
                if (envelope_overshoot_active) then
-                  light_burn%pressure_scale_height_end = alphae*exp(clndp*(star%log_pressure(envelope_cz_bottom_index)+2.0D0*star%log_radius(envelope_cz_bottom_index) &
-                           -star%log_density(envelope_cz_bottom_index)-cgl-star%log_mass(envelope_cz_bottom_index)))
+                  light_burn%pressure_scale_height_end = alphae*exp(clndp*(star%log_pressure(star%envelope_cz_bottom_index)+2.0D0*star%log_radius(star%envelope_cz_bottom_index) &
+                           -star%log_density(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
                   light_burn%pressure_scale_height_end = 0.0D0
                endif
 ! FIND BURNING RATES AT THE END OF THE TIME STEP.
-               call lirate88(star%composition,star%log_density,star%log_temperature,num_zones,2)
+               call lirate88(star%composition,star%log_density,star%log_temperature,star%num_zones,2)
 !                CALL LIBURN(DELTS,HCOMP,HD,HR,HS1,HS2,HT,JENV1,JENV0,M)  ! KC 2025-05-31
-               call liburn(delta_time,star%composition,star%log_radius,star%enclosed_mass,star%shell_mass,star%log_temperature,envelope_cz_zone_end,envelope_cz_zone_prev,num_zones)
+               call liburn(delta_time,star%composition,star%log_radius,star%enclosed_mass,star%shell_mass,star%log_temperature,envelope_cz_zone_end,envelope_cz_zone_prev,star%num_zones)
             endif
          endif
 ! MHP 07/02 RESTORE PRIOR FITTING POINT IF MASS ACCRETION IS BEING
@@ -1061,10 +1044,10 @@ program main
          if (new_atmosphere_fit_needed) then
             call getnewenv(target_envelope_mass,star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%enclosed_mass,star%shell_mass, &
 !     *                     HSTOT,HT,LC,ETA2,HG,HI,HJM,QIW,R0,  ! KC 2025-05-31
-                            log_total_mass,star%log_temperature,star%convective_flag,star%eta_squared,star%moment_of_inertia,star%specific_angular_momentum,star%qiw,star%mean_radius, &
-                            star%kinetic_energy_rot,log10_luminosity,total_angular_momentum,total_rotational_ke,log_teff,num_zones,recompute_envelope_triangle)
+                            star%log_total_mass,star%log_temperature,star%convective_flag,star%eta_squared,star%moment_of_inertia,star%specific_angular_momentum,star%qiw,star%mean_radius, &
+                            star%kinetic_energy_rot,star%log10_luminosity,total_angular_momentum,total_rotational_ke,star%log_teff,star%num_zones,recompute_envelope_triangle)
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
-            call fpft(star%log_density,star%log_radius,star%log_mass,num_zones,star%omega,star%eta_squared,star%pressure_rotation_factor,star%temperature_rotation_factor,star%mean_gravity,star%mean_radius)
+            call fpft(star%log_density,star%log_radius,star%log_mass,star%num_zones,star%omega,star%eta_squared,star%pressure_rotation_factor,star%temperature_rotation_factor,star%mean_gravity,star%mean_radius)
             new_atmosphere_fit_needed = .false.
          endif
 ! DETERMINE TIMESTEP FOR NEXT MODEL
@@ -1074,9 +1057,9 @@ program main
        delta_time_saved = delta_time
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *        JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(delta_time,hydrogen_dt,num_zones,star%log_density,star%luminosity_lsun,star%enclosed_mass,star%shell_mass,star%log_temperature,star%composition,core_cz_top_index, &
+       call htimer(delta_time,hydrogen_dt,star%num_zones,star%log_density,star%luminosity_lsun,star%enclosed_mass,star%shell_mass,star%log_temperature,star%composition,star%core_cz_top_index, &
               h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,timestep_yr,nk,star%log_pressure,star%log_radius,star%omega, &
-              max_domega_frac,h_shell_zone_begin,log_teff)
+              max_domega_frac,h_shell_zone_begin,star%log_teff)
 ! IF EVOLVING TO A GIVEN AGE AND KIND CARD IS DONE, AVOID ZEROING OUT
 ! TIMESTEP WRITTEN TO MODEL (AS THIS MAKES CONTINUING A SEQUENCE AWKWARD.)
 !     INSTEAD WRITE THE PREVIOUS MODEL TIMESTEP TO MODEL.
@@ -1091,20 +1074,15 @@ program main
        else
           delta_time_saved = delta_time
        endif
-       if (rescale_kind(nk).ne.2) model_number = model_number+1
+       if (rescale_kind(nk).ne.2) star%model_number = star%model_number+1
 ! 2026 (phase four, step 5): compute the output diagnostics in the
 ! star layer (fills star%run%*, star%luminosity_breakdown
 ! renormalization, turnover% via gettau); wrtout below only reads.
-       call update_output_diagnostics(num_zones, core_cz_top_index, &
-            envelope_cz_bottom_index, log_total_mass, total_mass_msun, &
-            log_teff, log10_luminosity)
+       call update_output_diagnostics
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
-       call wrtout(num_zones, model_number, star%run%dage, timestep_yr, &
-            total_mass_msun, log_teff, log10_luminosity, log_gravity, &
-            has_h_shell, h_shell_zone_begin, h_shell_midpoint_zone, &
-            h_shell_end_index, core_cz_top_index, &
-            envelope_cz_bottom_index, trial_sign_flag, log_total_mass, &
-            punch_pending_flag, total_angular_momentum, &
+       call wrtout(timestep_yr, log_gravity, has_h_shell, &
+            h_shell_zone_begin, h_shell_midpoint_zone, h_shell_end_index, &
+            trial_sign_flag, punch_pending_flag, total_angular_momentum, &
             total_rotational_ke)
 
 ! MHP 10/24 GENERALIZED STOP CONDITIONS
@@ -1143,9 +1121,9 @@ program main
          if (calibrate_star_flag .and. .not. star_found_flag) then
             if (mod(nk,2).eq.0) then
              if (model_iteration.eq.1) then
-                teff_kelvin_unused = 10.0D0**log_teff
+                teff_kelvin_unused = 10.0D0**star%log_teff
              else
-                call chkscal(log10_luminosity, log_teff, star%run%dage, nk)
+                call chkscal(star%log10_luminosity, star%log_teff, star%run%dage, nk)
                 if (just_passed_target_radius_flag) goto 200
              end if
           endif
@@ -1158,7 +1136,7 @@ program main
 ! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
   110    if (lstore.and.lstpch.and.punch_pending_flag) then
           call putstore(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index,model_number,num_zones,total_mass_msun,log_teff,log10_luminosity,log_total_mass, &
+                 star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%num_zones,star%total_mass_msun,star%log_teff,star%log10_luminosity,star%log_total_mass, &
                  star%run%dage,timestep_yr,star%omega,star%enclosed_mass,star%eta_squared,star%mean_radius,star%pressure_rotation_factor,star%temperature_rotation_factor,star%specific_angular_momentum,star%moment_of_inertia)
             punch_pending_flag = .false.
        endif
@@ -1171,10 +1149,10 @@ program main
 ! JVS Turn off calcad - speeds things up
             compute_acoustic_depth=.false.
             if (mod(nk,3).eq.0) then
-               log_r_rsun = 0.5D0*(log10_luminosity+log10_solar_luminosity-c4pil-csigl-4.0D0*log_teff)-log10_solar_radius
+               log_r_rsun = 0.5D0*(star%log10_luminosity+log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_teff)-log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
-               current_zx = star%composition(3,num_zones)/star%composition(1,num_zones)
-               call chkcal(log10_luminosity,log_r_rsun,nk,current_zx)
+               current_zx = star%composition(3,star%num_zones)/star%composition(1,star%num_zones)
+               call chkcal(star%log10_luminosity,log_r_rsun,nk,current_zx)
 !               CALL CHKCAL(BL,RLL,NK)
                use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
@@ -1226,12 +1204,12 @@ program main
          rewind(short_file_unit)
          rewind(imodpt)
          rewind(istor)
-         write(neutrino_unit,1525)log10_luminosity,log_r_rsun
+         write(neutrino_unit,1525)star%log10_luminosity,log_r_rsun
  1525    format(5X,'DID NOT CONVERGE WITHIN 10 ATTEMPTS L,R',2F10.6)
 ! MONTE CARLO #, CONVERGED MIXING LENGTH AND INITIAL H, SURFACE X,
 ! SURFACE Z, Z/X, CENTRAL X, CENTRAL Z
-         write(neutrino_unit,1519) monte_carlo_run_number,mixing_length_array(nk),rescale_params(2,nk-2),star%composition(1,num_zones), &
-              star%composition(3,num_zones),surface_z_over_x,star%composition(1,1),star%composition(3,1)
+         write(neutrino_unit,1519) monte_carlo_run_number,mixing_length_array(nk),rescale_params(2,nk-2),star%composition(1,star%num_zones), &
+              star%composition(3,star%num_zones),surface_z_over_x,star%composition(1,1),star%composition(3,1)
  1519    format(1X,I5,3F10.6,4E10.3)
 ! NUMERICAL DATA : #OF RUNS NEEDED FOR A CONVERGED MODEL, INITIAL X
 ! AND ALPHA, FINAL DL/DX,DR/DX,DL/D ALPHA, DR/D ALPHA
@@ -1245,10 +1223,10 @@ program main
 !      *        DDAGE,SMASS,TEFFL,BL,GL,LSHELL,JXBEG,JXMID,
 !      *        JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
 !      *        CFENV,FTRI,HSTOT,OMEGA,RLL,ICONV,NK,NN)  ! KC 2025-05-31
-         call wrtmonte(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,num_zones,star%run%dage, &
-              timestep_yr,total_mass_msun,log_teff,log10_luminosity, &
-              core_cz_top_index,envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-              star%envelope_fit_coeffs,trial_sign_flag,log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
+         call wrtmonte(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%num_zones,star%run%dage, &
+              timestep_yr,star%total_mass_msun,star%log_teff,star%log10_luminosity, &
+              star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
+              star%envelope_fit_coeffs,trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
       else if (calibrate_solar_model .and. lsnu .and. star%run%solar_calibration_active) then
          rewind(ilast)
          rewind(first_unit)
@@ -1258,7 +1236,7 @@ program main
          rewind(imodpt)
          rewind(istor)
 
-         surface_z_over_x = star%composition(3,num_zones)/star%composition(1,num_zones)
+         surface_z_over_x = star%composition(3,star%num_zones)/star%composition(1,star%num_zones)
 ! HEADER FILE:  MONTE CARLO PARAMETERS
          if (lmonte) then
             write(neutrino_unit,1520)monte_carlo_run_number,star%run%s11_rate(monte_carlo_run_number),star%run%s33_rate(monte_carlo_run_number),star%run%s34_rate(monte_carlo_run_number),star%run%s17_rate(monte_carlo_run_number), &
@@ -1281,10 +1259,10 @@ program main
 ! INITIAL ALPHA,Y,Z,ALPHA; FINAL R, L
          initial_helium_fraction = 1.0D0 - rescale_params(2,nk-2) - rescale_params(3,nk-2)
          initial_metal_fraction = rescale_params(3,nk-2)
-         write(neutrino_unit,1521)mixing_length_array(nk),initial_helium_fraction,initial_metal_fraction,log10_luminosity,log_r_rsun
+         write(neutrino_unit,1521)mixing_length_array(nk),initial_helium_fraction,initial_metal_fraction,star%log10_luminosity,log_r_rsun
  1521    format(F7.4,2F8.5,1P2E10.3)
 ! CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)
-         write(neutrino_unit,1522)star%run%envelope_radius,star%run%envelope_mass,star%composition(2,num_zones),star%composition(3,num_zones),surface_z_over_x
+         write(neutrino_unit,1522)star%run%envelope_radius,star%run%envelope_mass,star%composition(2,star%num_zones),star%composition(3,star%num_zones),surface_z_over_x
  1522    format(F8.5,F9.6,2F8.5,F9.6)
 ! ENERGY GENERATION FRACTIONS PP I,II,III,CNO,EGRAV
          write(neutrino_unit,1523)(star%luminosity_breakdown(j),j=1,4),star%luminosity_breakdown(7)
@@ -1294,10 +1272,10 @@ program main
 !      *           DDAGE,SMASS,TEFFL,BL,GL,LSHELL,JXBEG,JXMID,
 !      *           JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
 !      *           CFENV,FTRI,HSTOT,OMEGA,RLL,ICONV,NK,NN)  ! KC 2025-05-31
-            call wrtmonte(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,num_zones,star%run%dage, &
-                 timestep_yr,total_mass_msun,log_teff,log10_luminosity, &
-                 core_cz_top_index,envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,trial_sign_flag,log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
+            call wrtmonte(star%composition,star%log_density,star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%num_zones,star%run%dage, &
+                 timestep_yr,star%total_mass_msun,star%log_teff,star%log10_luminosity, &
+                 star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
+                 star%envelope_fit_coeffs,trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
          endif
       endif
  500  end do

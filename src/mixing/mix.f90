@@ -28,9 +28,9 @@
 ! The rate subroutine called by mix is a stripped-down version of engeb
 ! (called nrate) which has no derivatives or energy yields. it does
 ! contain neutrino fluxes for solar neutrino calculations.
-subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
-     timestep_years, core_cz_edge, envelope_cz_edge, &
-     mixed_zone_bounds_no_overshoot, log_teff, ierr)
+subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
+     envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
+      use star_info_lib, only: star
       use star_info_lib, only: star
 
       use star_info_lib, only: star
@@ -45,13 +45,10 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
       integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
-      double precision, intent(in) :: log_total_mass
       integer, intent(in) :: iteration_level
-      integer, intent(in) :: num_zones
       double precision, intent(out) :: timestep_years
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
       integer, intent(inout) :: mixed_zone_bounds_no_overshoot(12,2)
-      double precision, intent(in) :: log_teff
 
 
 
@@ -128,10 +125,10 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
 !  E.G. DPENV = 0.7 MEANS THE OUTER .3 OF THE STAR IS MIXED
       if (dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
 ! MIX FROM CENTER TO A FIXED MASS FRACTION
-         max_mixed_mass = dpenv*exp(ln10*log_total_mass)
-         do zone_idx = 1, num_zones
+         max_mixed_mass = dpenv*exp(ln10*star%log_total_mass)
+         do zone_idx = 1, star%num_zones
             if (star%enclosed_mass(zone_idx).gt.max_mixed_mass) then
-               do copy_idx = zone_idx, num_zones
+               do copy_idx = zone_idx, star%num_zones
                   deep_mix_flag(copy_idx) = star%convective_flag(copy_idx)
                end do
                goto 5
@@ -162,13 +159,13 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
 !         END DO
     5    continue
       else
-         do copy_idx = 1, num_zones
+         do copy_idx = 1, star%num_zones
             deep_mix_flag(copy_idx) = star%convective_flag(copy_idx)
          end do
       end if
 
       call convec(star%composition, star%log_density, star%log_pressure, star%log_radius, &
-           star%log_mass, star%log_temperature, deep_mix_flag, num_zones, &
+           star%log_mass, star%log_temperature, deep_mix_flag, star%num_zones, &
            radiative_zone_bounds, star%mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
            num_radiative_zones, num_mixed_zones, &
@@ -176,12 +173,12 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
 
 ! FIND BURNING RATES (HR1- HR13,HF1,HF2).
       if (use_mass_accretion .and. mass_accretion_rate.gt.0.0d0) then
-         deuterium_test = max(star%composition(12,num_zones), &
+         deuterium_test = max(star%composition(12,star%num_zones), &
               accreted_composition(12))
       else
-         deuterium_test = star%composition(12,num_zones)
+         deuterium_test = star%composition(12,star%num_zones)
       end if
-      do 10 zone_idx = 1, num_zones
+      do 10 zone_idx = 1, star%num_zones
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
          if (star%log_temperature(zone_idx).le.tcut(1)) goto 20
 ! SCALAR VARIABLES ARE USED IN THE CALLS TO THE ENERGY GENERATION ROUTINES.
@@ -222,9 +219,9 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
             light_burn%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
    10 continue
-      zone_idx = num_zones + 1
+      zone_idx = star%num_zones + 1
    20 continue
-      do 21 clear_idx = zone_idx, num_zones
+      do 21 clear_idx = zone_idx, star%num_zones
          rate_pp(clear_idx) = 0.0d0
          rate_he3_he3(clear_idx) = 0.0d0
          rate_he3_he4(clear_idx) = 0.0d0
@@ -280,7 +277,7 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
               star%shell_mass, star%composition, timestep_years, ierr)
          if (ierr /= 0) return
    50 continue
-      do zone_idx = 1, num_zones
+      do zone_idx = 1, star%num_zones
          star%rot%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
          star%rot%reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
          star%rot%reaction_rate_by_zone(3,zone_idx) = rate_he3_he4(zone_idx)
@@ -386,8 +383,8 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
          if (iteration_level.gt.1) &
               call sconvec(timestep, star%composition, star%log_density, &
               star%luminosity_lsun, star%log_pressure, star%log_radius, star%log_mass, &
-              star%log_temperature, num_zones, star%mixed_zone_bounds, &
-              num_mixed_zones, log_teff, ierr)
+              star%log_temperature, star%num_zones, star%mixed_zone_bounds, &
+              num_mixed_zones, star%log_teff, ierr)
               if (ierr /= 0) return
       end if
       if (lsemic .or. (iteration_level .eq. 1)) then
@@ -449,8 +446,8 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
             diffuse_helium_active = .false.
             goto 170
          end if
-         total_mass_unlogged = exp(ln10*log_total_mass)
-         do 130 zone_idx = 1, num_zones
+         total_mass_unlogged = exp(ln10*star%log_total_mass)
+         do 130 zone_idx = 1, star%num_zones
             dlnp_dr(zone_idx) = -exp(ln10*(star%log_density(zone_idx)+cgl+ &
                  star%log_mass(zone_idx)-2.0d0*star%log_radius(zone_idx)- &
                  star%log_pressure(zone_idx)))
@@ -462,7 +459,7 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
 !   MINIMUM VALUE (YMIN).
 !
 !   LOCATE OUTER BOUNDARY.
-         if (.not.star%convective_flag(num_zones)) then
+         if (.not.star%convective_flag(star%num_zones)) then
             write(short_file_unit,911)
 ! DBG 2/92 CHANGED STOP TO JUST A WARNING MESSAGE, EXECUTION CONTINUES
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL')
@@ -494,19 +491,19 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
             if (use_new_diffusion_routines) then
                call microdiff(settling_dt, star%composition, dlnp_dr, &
                     star%log_radius, star%log_density, star%enclosed_mass, &
-                    star%log_temperature, deep_mix_flag, num_zones, &
+                    star%log_temperature, deep_mix_flag, star%num_zones, &
                     total_mass_unlogged)
             else
                call grsett(settling_dt, star%composition, dlnp_dr, star%log_radius, &
                     star%log_density, star%enclosed_mass, star%log_temperature, &
-                    deep_mix_flag, num_zones, total_mass_unlogged)
+                    deep_mix_flag, star%num_zones, total_mass_unlogged)
             end if
   160    continue
   170    continue
       end if
 ! RENORMALIZE COMPOSITION TO GUARD AGAINST ANOMALIES (I.E. SMALL NEGATIVE
 ! ABUNDANCES...).
-      do 180 zone_idx = 1, num_zones
+      do 180 zone_idx = 1, star%num_zones
          do 175 species_idx = 1, num_species
             star%composition(species_idx,zone_idx) = &
                  max(star%composition(species_idx,zone_idx),0.0d0)
@@ -521,7 +518,7 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
 ! MHP 1/95 ADDED CALL TO RESET JENV,JCORE FOR DEEP MIXING.
       if (dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
          call convec(star%composition, star%log_density, star%log_pressure, star%log_radius, &
-              star%log_mass, star%log_temperature, star%convective_flag, num_zones, &
+              star%log_mass, star%log_temperature, star%convective_flag, star%num_zones, &
               radiative_zone_bounds, star%mixed_zone_bounds, &
               mixed_zone_bounds_no_overshoot, core_cz_edge, &
               envelope_cz_edge, num_radiative_zones, num_mixed_zones, &
@@ -540,7 +537,7 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
                if (star%log_temperature(inner_zone_idx).le.tcut(1)) goto 190
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
-               call dburn(zone_begin, zone_end, num_zones, star%shell_mass, &
+               call dburn(zone_begin, zone_end, star%num_zones, star%shell_mass, &
                     star%composition, dt_gyr)
             end do
          end do
@@ -552,7 +549,7 @@ subroutine mix(timestep, log_total_mass, iteration_level, num_zones, &
          do mixed_zone_idx = 1, num_mixed_zones
             zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            call dburn(zone_begin, zone_end, num_zones, star%shell_mass, &
+            call dburn(zone_begin, zone_end, star%num_zones, star%shell_mass, &
                  star%composition, dt_gyr)
          end do
       end if

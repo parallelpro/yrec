@@ -17,9 +17,8 @@
 ! locates the outer edge of a central convection zone and the inner
 ! edge of a surface C.Z., and determines the mass and moment of
 ! inertia of the surface C.Z.
-subroutine midmod(full_timestep, sub_timestep, time_fraction, &
-     log_total_mass, first_call, num_zones, eta_squared_mid, &
-     log_density_mid, hg_mid, moment_of_inertia_cz, &
+subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
+     eta_squared_mid, log_density_mid, hg_mid, moment_of_inertia_cz, &
      moment_of_inertia_mid, log_luminosity_mid, log_pressure_mid, &
      log_radius_mid, cz_mass_bottom, cz_mass_top, log_temperature_mid, &
      core_boundary_zone, envelope_boundary_zone, fully_convective_flag, &
@@ -27,6 +26,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
      surface_cz_active, omega_mid, mean_radius_mid, qiw_mid, &
      radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
      num_convective_zones, ierr)
+      use star_info_lib, only: star
       use star_info_lib, only: star
 
       use nuclear_lib
@@ -44,10 +44,8 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 
       double precision, intent(in) :: full_timestep, sub_timestep
       double precision, intent(inout) :: time_fraction
-      double precision, intent(in) :: log_total_mass
 ! LC(JSON),LCZ(JSON),ETA2M(JSON),HDM(JSON),HGM(JSON),  ! KC 2025-05-31
       logical, intent(in) :: first_call
-      integer, intent(in) :: num_zones
       double precision, intent(out) :: eta_squared_mid(json), &
            log_density_mid(json), hg_mid(json)
       double precision, intent(out) :: moment_of_inertia_cz
@@ -141,7 +139,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 ! MHP 06/02 SAVE CHANGES IN R, CZ DEPTH, DELAD-DELRAD FROM THE
 ! PRIOR STEP.
       if (first_call) then
-         do 20 j = 1,num_zones
+         do 20 j = 1,star%num_zones
             star%rot%convective_flag_prev(j) = star%prev%old_convective_flag(j)
             star%rot%radius_prev(j) = star%prev%old_radius(j)
             star%rot%del_grad_diff_prev(j) = star%rot%old_del_adiabatic_mix(j)-star%rot%old_del_radiative_mix(j)
@@ -151,7 +149,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
    10       continue
    20    continue
       else
-         do j = 1,num_zones
+         do j = 1,star%num_zones
             star%rot%radius_prev(j) = log_radius_mid(j)
             star%rot%del_grad_diff_prev(j) = star%rot%del_grad_diff_new(j)
             star%rot%convective_flag_prev(j) = convective_flag_mid(j)
@@ -160,7 +158,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
       new_cz_detected = .false.
 !  INTERPOLATE IN THE MODEL VARIABLES AND AUXILLARY PHYSICS.
       step_fraction_ratio = sub_timestep/full_timestep
-      do 40 j = 1,num_zones
+      do 40 j = 1,star%num_zones
          log_density_mid(j) = star%prev%old_density(j) + &
               time_fraction*(star%log_density(j)-star%prev%old_density(j))
          log_luminosity_mid(j) = star%prev%old_luminosity(j) + &
@@ -196,7 +194,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 !  RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS TO DETERMINE WHETHER
 !  OR NOT A ZONE IS CONVECTIVE IF IT CHANGES STATE OVER THE COURSE OF A
 !  TIMESTEP.
-      do 50 i = 1,num_zones
+      do 50 i = 1,star%num_zones
          star%rot%del_grad_diff_new(i) = mix_phys%del_adiabatic_mix(i)-mix_phys%del_radiative_mix(i)
          if (star%convective_flag(i).eqv.star%rot%convective_flag_prev(i)) then
             convective_flag_mid(i) = star%convective_flag(i)
@@ -222,7 +220,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
       if (new_cz_detected) then
          cz_change_active = .false.
          redistribute_j_flag = .false.
-         do i = 1,num_zones-1
+         do i = 1,star%num_zones-1
             if (convective_state_changed(i)) then
                if (.not.cz_change_active) then
 ! START OF CHANGED REGION
@@ -318,13 +316,13 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 ! ENVELOPE CZ
 ! LOCATE EDGES OF CURRENT LOWER CZ
                   cz_zone_bottom = change_region_end + 1
-                  do ii = change_region_end+2,num_zones
+                  do ii = change_region_end+2,star%num_zones
                      if (.not.convective_flag_mid(ii)) then
                         cz_zone_top = ii - 1
                         goto 12
                      endif
                   end do
-                  cz_zone_top = num_zones
+                  cz_zone_top = star%num_zones
  12               continue
                   do j = change_region_start,change_region_end
                      if (star%rot%del_grad_diff_new(j).lt.0.0D0) goto 13
@@ -363,7 +361,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
                           star%specific_angular_momentum(j)
                      write(*,*)j,time_fraction,angular_momentum_check_ratio, &
                           delta_angular_momentum,angular_momentum_ratio
-                     do ii = j+1,num_zones
+                     do ii = j+1,star%num_zones
                         star%specific_angular_momentum(ii) = &
                              star%specific_angular_momentum(ii)*angular_momentum_ratio
                      end do
@@ -375,7 +373,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
       endif
 !  CONVECTIVE OVERSHOOT APPLIED TO NORMAL CONVECTION ZONES.
       call ovrot(star%composition,log_density_mid,log_pressure_mid,log_radius_mid, &
-           star%log_mass,log_temperature_mid,convective_flag_mid,num_zones, &
+           star%log_mass,log_temperature_mid,convective_flag_mid,star%num_zones, &
            am_transport_convective_flag_mid,radiative_zone_bounds, &
            convective_zone_bounds,num_radiative_zones,num_convective_zones)
 !  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
@@ -383,28 +381,28 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 ! TIMESTEP T (REPLACED HT IN CALL WITH HTM)
 !       CALL ROTMIX(DT,HCOMP,HS2,HTM,5,M,MRZONE,MXZONE,  ! KC 2025-05-31
       call rotmix(sub_timestep,star%composition,star%shell_mass,log_temperature_mid, &
-           num_zones,radiative_zone_bounds,convective_zone_bounds, &
+           star%num_zones,radiative_zone_bounds,convective_zone_bounds, &
            num_radiative_zones,num_convective_zones &
-           ,log_total_mass,log_density_mid,star%log_mass,log_radius_mid, &
+           ,star%log_total_mass,log_density_mid,star%log_mass,log_radius_mid, &
            log_pressure_mid,am_transport_convective_flag_mid,star%enclosed_mass, ierr)
       if (ierr /= 0) return
-      do i = 1,num_zones
+      do i = 1,star%num_zones
          do j = 1,num_species_tracked
             star%rot%composition_snapshot(j,i) = star%composition(j,i)
          end do
       end do
 ! MHP 05/02 ADDED DEUTERIUM BURNING
-      if (star%prev%old_composition(12,num_zones).gt.1.0D-14) then
+      if (star%prev%old_composition(12,star%num_zones).gt.1.0D-14) then
 ! INCREMENT THE TIMESTEP
          if (first_call) then
-            do i = 1,num_zones
+            do i = 1,star%num_zones
                deuterium_rate_mid(i) = light_burn%deuterium_burning_rate_start(i)+ &
                     step_fraction_ratio*(light_burn%deuterium_burning_rate(i)- &
                     light_burn%deuterium_burning_rate_start(i))
                deuterium_rate_mid_start(i) = light_burn%deuterium_burning_rate_start(i)
             end do
          else
-            do i = 1,num_zones
+            do i = 1,star%num_zones
                deuterium_rate_mid_start(i) = deuterium_rate_mid(i)
                deuterium_rate_mid(i) = deuterium_rate_mid(i)+ &
                     step_fraction_ratio*(light_burn%deuterium_burning_rate(i)- &
@@ -419,7 +417,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
                if (log_temperature_mid(j).le.tcut(1)) goto 190
                burn_zone_begin = j
                burn_zone_end = j
-               call dburnm(burn_zone_begin,burn_zone_end,num_zones,star%shell_mass, &
+               call dburnm(burn_zone_begin,burn_zone_end,star%num_zones,star%shell_mass, &
                     star%composition,sub_timestep,deuterium_rate_mid, &
                     deuterium_rate_mid_start,step_fraction_ratio)
            end do
@@ -432,7 +430,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
          do k = 1,num_convective_zones
             burn_zone_begin = convective_zone_bounds(k,1)
             burn_zone_end = convective_zone_bounds(k,2)
-            call dburnm(burn_zone_begin,burn_zone_end,num_zones,star%shell_mass, &
+            call dburnm(burn_zone_begin,burn_zone_end,star%num_zones,star%shell_mass, &
                  star%composition,sub_timestep,deuterium_rate_mid, &
                  deuterium_rate_mid_start,step_fraction_ratio)
          end do
@@ -441,20 +439,20 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 !  IMIN IS THE FIRST ZONE ABOVE A CENTRAL CONVECTION ZONE, AND THUS THE
 !  FIRST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONAL INSTABILITIES.
       if (am_transport_convective_flag_mid(1)) then
-         do 60 i = 2,num_zones
+         do 60 i = 2,star%num_zones
             if (.not.am_transport_convective_flag_mid(i)) goto 65
    60    continue
-         i = num_zones + 1
+         i = star%num_zones + 1
    65    core_boundary_zone = max(2,i-1)
       else
          core_boundary_zone = 2
       endif
 !  DETERMINE EXTENT OF SURFACE CONVECTION ZONE.
       fully_convective_flag = .false.
-      if (am_transport_convective_flag_mid(num_zones)) then
+      if (am_transport_convective_flag_mid(star%num_zones)) then
 !  SURFACE C.Z. EXISTS.  FIND LOWEST SHELL (IMAX), WHICH IS ALSO THE
 !  UPPERMOST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONALLY INDUCED MIXING.
-         do 70 i = num_zones-1,1,-1
+         do 70 i = star%num_zones-1,1,-1
             if (.not.am_transport_convective_flag_mid(i)) goto 80
    70    continue
          fully_convective_flag = .true.
@@ -462,7 +460,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
    80    envelope_boundary_zone = i + 1
 !  HSTOP IS THE MASS AT THE TOP OF THE C.Z.
 !  HSBOT IS THE MASS AT THE BOTTOM OF THE C.Z.
-         cz_mass_top = exp(ln10*log_total_mass)
+         cz_mass_top = exp(ln10*star%log_total_mass)
          if (envelope_boundary_zone.gt.1) then
             cz_mass_bottom = 0.5D0*(star%enclosed_mass(envelope_boundary_zone)+ &
                  star%enclosed_mass(envelope_boundary_zone-1))
@@ -477,7 +475,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
          endif
       else
 !  NO SURFACE C.Z.
-         envelope_boundary_zone = num_zones
+         envelope_boundary_zone = star%num_zones
          surface_cz_active = .false.
       endif
 ! MHP 3/09 ADD ABILITY TO COMPUTE THE CONVECTIVE OVERTURN TIMESCALE 'LOCALLY'.
@@ -558,7 +556,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 !  J/M = I/M * OMEGA.
 !  FIRST GUESS AT MOMENT OF INERTIA OF DISTORTED SPERICAL SHELLS:
 !  I/M = 2/3 R**2.
-         do i = 1,num_zones
+         do i = 1,star%num_zones
             moment_of_inertia_mid(i) = cc23*exp(ln10*2.0D0*log_radius_mid(i))
             omega_mid(i) = star%specific_angular_momentum(i)/moment_of_inertia_mid(i)
             moment_of_inertia_mid(i) = star%shell_mass(i)*moment_of_inertia_mid(i)
@@ -567,13 +565,13 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 !  ANGULAR MOMENTUM (HJM) AND A FIRST GUESS AT THE ANGULAR VELOCITY(OMEGAM)
 !  AND MOMENT OF INERTIA (HIM).
          call getrot(log_density_mid,star%specific_angular_momentum,log_radius_mid, &
-              star%log_mass,star%shell_mass,am_transport_convective_flag_mid,num_zones, &
+              star%log_mass,star%shell_mass,am_transport_convective_flag_mid,star%num_zones, &
               eta_squared_mid,moment_of_inertia_mid,omega_mid,qiw_mid, &
               mean_radius_mid)
 !  FIND TOTAL MOMENT OF INERTIA OF THE SURFACE C.Z. IF APPLICABLE.
          if (surface_cz_active) then
-            moment_of_inertia_cz = moment_of_inertia_mid(num_zones)
-            do i = num_zones-1,1,-1
+            moment_of_inertia_cz = moment_of_inertia_mid(star%num_zones)
+            do i = star%num_zones-1,1,-1
                if (.not.am_transport_convective_flag_mid(i)) goto 110
                moment_of_inertia_cz = moment_of_inertia_cz + moment_of_inertia_mid(i)
             end do
@@ -581,14 +579,14 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
          endif
       else
          solid_zone_start = 1
-         solid_zone_end = num_zones
+         solid_zone_end = star%num_zones
          call solid(log_density_mid,star%specific_angular_momentum,log_radius_mid, &
               star%log_mass,star%shell_mass,solid_zone_start,solid_zone_end, &
               eta_squared_mid,moment_of_inertia_mid,omega_mid,qiw_mid, &
-              mean_radius_mid,num_zones)
+              mean_radius_mid,star%num_zones)
          if (surface_cz_active) then
             moment_of_inertia_cz = moment_of_inertia_mid(1)
-            do i = 2,num_zones
+            do i = 2,star%num_zones
                moment_of_inertia_cz = moment_of_inertia_cz + moment_of_inertia_mid(i)
             end do
          endif

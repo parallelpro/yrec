@@ -79,6 +79,17 @@ module star_info_lib
                  reaction_rate_11(json), reaction_rate_12(json), &
                  reaction_rate_13(json), n15_alpha_branch_fraction(json), &
                  be7_electron_capture_fraction(json)
+! model-level scalars (2026, phase four follow-on): absorbed after the
+! per-call-site audit the star_info header called for -- every
+! converted routine receives exactly main's storage for these at every
+! call site. NOT absorbed, still arguments, because call sites pass
+! separate storage: mix's core_cz_edge/envelope_cz_edge (crrect passes
+! its own locals; mix writes them) and its
+! mixed_zone_bounds_no_overshoot (same reason, see step 3).
+            integer :: num_zones, model_number
+            integer :: core_cz_top_index, envelope_cz_bottom_index
+            double precision :: log_total_mass, total_mass_msun
+            double precision :: log_teff, log10_luminosity
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &
