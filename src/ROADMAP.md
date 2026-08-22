@@ -586,3 +586,22 @@ section's locals (table paths, mixture weights) and the evolution
 loop's label structure (15/100/110/200/250) want a controls
 structure ("star_job") to carve against, not another blind
 mechanical cut -- design that belongs with the ierr work.
+
+STATUS (2026-08-22): **phase B done.** Every driver-layer fatal
+condition returns through run_yrec's ierr, and the CLI wrapper exits
+1 -- the first time a pipeline can detect YREC failure by exit
+status (bare `stop` exits 0). Converted: parmin's config check,
+rscale (3), getyrec7's model-glitch check, starin (2 stops + the two
+formerly-silent `stop 9998`s, which now print), hpoint (2), the
+stage-3 jerr seams in starin/crrect/hpoint/run_yrec, and run_yrec's
+own rotation-config stops; its end-of-job stop became a clean
+return. update_output_diagnostics threads ierr into its eos_get
+call. New end-to-end test (test_error_exit.py, local -- needs the
+full input/ tree): a config error exits 1 cleanly with the
+diagnostic still printed. Remaining stops below run_yrec: the
+physics facades' opt-in funnels (callers that pass ierr already
+bypass them -- the driver chain now does), numerics' gates, qenv's
+callback residual, and io's writer stops (putstore/wrtmod family),
+which are next if full no-stop operation is wanted before phase C.
+The star_job controls structure and the evolve_step split remain
+the open design work of this phase.
