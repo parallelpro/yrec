@@ -13,7 +13,7 @@
 subroutine viscos(composition, log_density, log_temperature, num_zones)
 !       SUBROUTINE VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
       use temp_lib
-      use scrtch_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -56,7 +56,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       do 100 shell_idx = 1,num_zones
 !  COMPUTE THE KINEMATIC MICROSCOPIC VISCOSITY DUE TO RADIATION AND IONS
 !  CONVERT TO NUMBER DENSITIES AND FIND MEAN CHARGE PER ION(ZF) AND NE.
-         opacity_local = shell_diag%so(shell_idx)
+         opacity_local = star%diag%so(shell_idx)
          mean_charge = 0.0d0
          number_density_sum = 0.0d0
          do 10 species_idx = 1,11

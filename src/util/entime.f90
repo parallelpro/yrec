@@ -14,7 +14,7 @@
 subroutine entime(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
-      use oldmod_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -55,8 +55,8 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 ! luminosity
       dt_scale(2) = tri_delta_logl
 
-      teffl_change = abs(prev_model%old_teff - log_teff)
-      logl_change = abs(dlog10(prev_model%old_luminosity(prev_model%old_num_zones)) - &
+      teffl_change = abs(star%prev%old_teff - log_teff)
+      logl_change = abs(dlog10(star%prev%old_luminosity(star%prev%old_num_zones)) - &
            dlog10(luminosity(num_points)))
 
 ! now actually limit the timestep by a factor that reduces the

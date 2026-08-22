@@ -52,12 +52,12 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff, ierr)
 
       use nuclear_lib
-      use rotdiff_lib
-      use run_diag_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use pulse_diag_lib
       use fluxes_lib
       use engeb_diag_lib
-      use scrtch_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use eos_lib
@@ -349,9 +349,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             if (use_mass_accretion.and.mass_accretion_rate.gt.0.0d0) then
                if (im.ge.envelope_zone_index) then
                   zone_log_temperature_delta = log_temperature_delta(im)+ &
-                       rot_diff%delta_log_temperature
+                       star%rot%delta_log_temperature
                   zone_log_pressure_delta = log_pressure_delta(im)+ &
-                       rot_diff%delta_log_pressure
+                       star%rot%delta_log_pressure
                else
                   zone_log_temperature_delta = log_temperature_delta(im)
                   zone_log_pressure_delta = log_pressure_delta(im)
@@ -382,9 +382,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                  adiabatic_gradient_dt)
 ! 7/92 INCLUDE CHANGE IN ROTATIONAL KINETIC ENERGY IN ENERGY EQUATION.
             if (rotation_active) then
-               rot_diff%rotational_energy_term(im) = zone_dt*(kinetic_energy_rot(im)- &
+               star%rot%rotational_energy_term(im) = zone_dt*(kinetic_energy_rot(im)- &
                     kinetic_energy_rot_old(im))/shell_mass(im)
-               eq_l_val = eq_l_val - rot_diff%rotational_energy_term(im)
+               eq_l_val = eq_l_val - star%rot%rotational_energy_term(im)
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
 !            IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
@@ -437,7 +437,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! SUCH AS OPACITY ARE SAVED; PRIOR RESTRICTIONS WERE BASED ON OBSOLETE
 ! MEMORY RESTRICTIONS IN LEGACY CODE
 !         IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
-         shell_diag%svel(im) = convective_velocity
+         star%diag%svel(im) = convective_velocity
 !         ENDIF
 !  STORE VARIABLES FOR OUTPUT IN SCRIB2 IF MODEL IS TO BE PRINTED OUT
 ! DBG PULSE STORE VARIABLES FOR PULSATION OUPUT
@@ -447,26 +447,26 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !         LSHORT = .NOT.LONG .AND. MOD(MODEL,NPRT1).EQ.0
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
          if (log_temperature(im).lt.tcut(1)) then
-            shell_diag%sesum(im) = 0.0d0
-            shell_diag%seg(7,im) = gravitational_luminosity(im)
+            star%diag%sesum(im) = 0.0d0
+            star%diag%seg(7,im) = gravitational_luminosity(im)
             do j = 1,6
-               shell_diag%seg(j,im) = 0.0d0
+               star%diag%seg(j,im) = 0.0d0
            end do
          else
 !         ELSE IF(LONG) THEN
 !  LONG OUTPUT NEEDED
-            shell_diag%sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
+            star%diag%sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
                  energy_gen_component(3)+energy_gen_component(4)+ &
                  energy_gen_component(5)
-            shell_diag%seg(6,im) = energy_gen_component(6)
-            shell_diag%seg(7,im) = gravitational_luminosity(im)
-            if (shell_diag%sesum(im).gt.1.0d-22) then
-               energy_sum_inverse = 1.0d0/shell_diag%sesum(im)
+            star%diag%seg(6,im) = energy_gen_component(6)
+            star%diag%seg(7,im) = gravitational_luminosity(im)
+            if (star%diag%sesum(im).gt.1.0d-22) then
+               energy_sum_inverse = 1.0d0/star%diag%sesum(im)
             else
                energy_sum_inverse = 0.0d0
             end if
             do j = 1,5
-               shell_diag%seg(j,im) = energy_gen_component(j)*energy_sum_inverse
+               star%diag%seg(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
 !  SHORT OUTPUT ONLY
 !         ELSE
@@ -474,18 +474,18 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !            SEG(6,IM) = EG(6)
 !            SEG(7,IM) = HHC(IM)
          end if
-         shell_diag%sbeta(im) = beta
-         shell_diag%seta(im) = electron_degeneracy_parameter
-         shell_diag%locons(im) = conductive_opacity_flag
-         shell_diag%so(im) = opacity
-         shell_diag%del_grad(1,im) = radiative_gradient
-         shell_diag%del_grad(2,im) = actual_gradient
-         shell_diag%del_grad(3,im) = adiabatic_gradient
+         star%diag%sbeta(im) = beta
+         star%diag%seta(im) = electron_degeneracy_parameter
+         star%diag%locons(im) = conductive_opacity_flag
+         star%diag%so(im) = opacity
+         star%diag%del_grad(1,im) = radiative_gradient
+         star%diag%del_grad(2,im) = actual_gradient
+         star%diag%del_grad(3,im) = adiabatic_gradient
          do j = 1,3
-            shell_diag%sfxion(j,im) = ion_fraction(j)
+            star%diag%sfxion(j,im) = ion_fraction(j)
          end do
-         shell_diag%svel(im) = convective_velocity
-         shell_diag%scp(im) = specific_heat_cp
+         star%diag%svel(im) = convective_velocity
+         star%diag%scp(im) = specific_heat_cp
 ! MHP 02/12 COMMENTED CODE OUT, AS REPLICATED BELOW
 !         IF(LSOUND) THEN
 ! MHP 7/96 CALCULATION OF GAMMA1 FROM GUENTHER 1995 P.C.
@@ -501,7 +501,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             chi_t = -chi_rho*dlnrho_dlnt
             specific_heat_cv = specific_heat_cp - exp(ln10*(log_pressure(im)- &
                  log10_density(im)-log_temperature(im)))*chi_t**2/chi_rho
-            run_diag%adiabatic_index_gamma1(im) = chi_rho*specific_heat_cp/ &
+            star%run%adiabatic_index_gamma1(im) = chi_rho*specific_heat_cp/ &
                  specific_heat_cv
             pulse_diag%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
             pulse_diag%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
@@ -509,22 +509,22 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 
 
          if (rotation_active) then
-            rot_diff%dlnkappa_dlnrho(im) = dlnkap_dlnrho
-            rot_diff%dlnkappa_dlnt(im) = dlnkap_dlnt
+            star%rot%dlnkappa_dlnrho(im) = dlnkap_dlnrho
+            star%rot%dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error
-            if (shell_diag%sesum(im).gt.0.0d0) then
+            if (star%diag%sesum(im).gt.0.0d0) then
 !            IF(SESUM(I).GT.0.0D0)THEN
 !               ETOT = SESUM(I)
 !               EGNEUT = SEG(6,I)+SEG(7,I)
-               total_energy_sum = shell_diag%sesum(im)
-               neutrino_and_grav_sum = shell_diag%seg(6,im)+shell_diag%seg(7,im)
-               rot_diff%neutrino_loss_fraction(im) = (total_energy_sum - &
+               total_energy_sum = star%diag%sesum(im)
+               neutrino_and_grav_sum = star%diag%seg(6,im)+star%diag%seg(7,im)
+               star%rot%neutrino_loss_fraction(im) = (total_energy_sum - &
                     neutrino_and_grav_sum)/total_energy_sum
             else
-               rot_diff%neutrino_loss_fraction(im) = 0.0d0
+               star%rot%neutrino_loss_fraction(im) = 0.0d0
             end if
-            rot_diff%dlnepsilon_dlnrho(im) = zone_dlnepsilon_dlnrho
-            rot_diff%dlnepsilon_dlnt(im) = zone_dlnepsilon_dlnt
+            star%rot%dlnepsilon_dlnrho(im) = zone_dlnepsilon_dlnrho
+            star%rot%dlnepsilon_dlnt(im) = zone_dlnepsilon_dlnt
          end if
 ! DBG PULSE
 ! MHP 8/25 unconditional: previously gated on pulsation_output_active
@@ -548,9 +548,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          pulse_diag%pulse_electron_mean_molecular_weight(im) = &
               electron_mean_weight_inverse
          pulse_diag%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
-         rot_diff%valfmlt(im) = rot_diff%alfmlt
-         rot_diff%vphmlt(im) = rot_diff%phmlt
-         rot_diff%vcmxmlt(im) = rot_diff%cmxmlt
+         star%rot%valfmlt(im) = star%rot%alfmlt
+         star%rot%vphmlt(im) = star%rot%phmlt
+         star%rot%vcmxmlt(im) = star%rot%cmxmlt
  30   continue
 
       return

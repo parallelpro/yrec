@@ -179,7 +179,7 @@ module rotdiff_lib
                 wind_reference_omega, wind_max_omega
            logical :: use_rotation_scaled_solar_wind
       end type rotation_diffusion_state
-
-      type(rotation_diffusion_state), public :: rot_diff
-
+! 2026 (phase four, step 4 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module rotdiff_lib

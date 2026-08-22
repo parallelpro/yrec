@@ -44,7 +44,7 @@ module scrtch_lib
             double precision :: so(json), del_grad(3,json), &
                  sfxion(3,json), svel(json), scp(json)
       end type shell_diagnostics_state
-
-      type(shell_diagnostics_state), public :: shell_diag
-
+! 2026 (phase four, step 4 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module scrtch_lib

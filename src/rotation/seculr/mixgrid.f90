@@ -10,17 +10,17 @@
 ! Builds the equally-spaced-grid quantities needed by mixcom.f90's
 ! diffusive composition solve: given the first/last unstable zones of
 ! a region (zone_begin/zone_end), calls getgrid to lay down the
-! equally spaced coordinate rot_diff%chi, then computes the equally spaced grid
+! equally spaced coordinate star%rot%chi, then computes the equally spaced grid
 ! masses (equally_spaced_mass) and the geometrically weighted
 ! diffusion coefficients (equally_spaced_diffusion_coeff) at the zone
 ! edges, including the Jacobian factor for the transformation from
-! radius to the rot_diff%chi coordinate.
+! radius to the star%rot%chi coordinate.
 subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
-      use rotdiff_lib
+      use star_info_lib, only: star
       use mdphy_lib
       use const_lib
       use numerics_lib
@@ -68,8 +68,8 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 ! CENTERS:
 ! TOTAL ZONE MASSES
 ! INTERMEDIATE POINTS
-      do idx = 2, rot_diff%ntot-1
-         equally_spaced_mass(idx) = 0.5d0*(rot_diff%es1(idx+1) - rot_diff%es1(idx-1))
+      do idx = 2, star%rot%ntot-1
+         equally_spaced_mass(idx) = 0.5d0*(star%rot%es1(idx+1) - star%rot%es1(idx-1))
       end do
 ! SPECIAL TREATMENT OF THE BOUNDARIES; CAN BE CONVECTIVE.
 ! IF CONVECTIVE SUM OVER ALL SHELLS.  CARE IS NEEDED TO DO BOOK-KEEPING
@@ -77,7 +77,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 ! HALFWAY TO EDGE OF UNEQUALLY SPACED ORIGINAL SET OF POINTS.
 !
 ! CENTER
-      em_top = 0.5d0*(rot_diff%es1(2) + rot_diff%es1(1))
+      em_top = 0.5d0*(star%rot%es1(2) + star%rot%es1(1))
       if (zone_begin.gt.1) then
          em_bot = 0.5d0*(enclosed_mass(zone_begin) + &
               enclosed_mass(zone_begin-1))
@@ -100,21 +100,21 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          i0 = 1
       end if
 ! SURFACE
-      em_bot = 0.5d0*(rot_diff%es1(rot_diff%ntot) + rot_diff%es1(rot_diff%ntot-1))
+      em_bot = 0.5d0*(star%rot%es1(star%rot%ntot) + star%rot%es1(star%rot%ntot-1))
       if (zone_end.lt.num_zones) then
          em_top = 0.5d0*(enclosed_mass(zone_end) + &
               enclosed_mass(zone_end+1))
       else
          em_top = exp(ln10*log_total_mass)
       end if
-      equally_spaced_mass(rot_diff%ntot) = em_top - em_bot
+      equally_spaced_mass(star%rot%ntot) = em_top - em_bot
       if (zone_end.lt.num_zones) then
          do search_idx = zone_end+1, num_zones
             if (.not.convective_flag(search_idx)) then
                i1 = idx - 1
                goto 20
             end if
-            equally_spaced_mass(rot_diff%ntot) = equally_spaced_mass(rot_diff%ntot) + &
+            equally_spaced_mass(star%rot%ntot) = equally_spaced_mass(star%rot%ntot) + &
                  shell_mass(search_idx)
          end do
          i1 = num_zones
@@ -127,26 +127,26 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 ! GRID IN R, WE NEED TO INCLUDE A JACOBIAN TERM FOR THE TRANSFORMATION
 ! OF VARIABLES.
       ntab = zone_end - zone_begin + 1
-      rot_diff%xtab(1) = rot_diff%chi(1)
+      star%rot%xtab(1) = star%rot%chi(1)
       do idx = 2, ntab
-         rot_diff%xtab(idx) = 0.5d0*(rot_diff%chi(idx) + rot_diff%chi(idx-1))
+         star%rot%xtab(idx) = 0.5d0*(star%rot%chi(idx) + star%rot%chi(idx-1))
       end do
       ntabb = ntab + 1
-      rot_diff%xtab(ntabb) = rot_diff%chi(ntab)
+      star%rot%xtab(ntabb) = star%rot%chi(ntab)
 ! DIFFUSION COEFFICIENT FOR MIXING - ASSUME CONSTANT BELOW
 ! BOTTOM INTERFACE OR ABOVE TOP INTERFACE
-      rot_diff%ytab(1) = diffusion_coeff(zone_begin+1)
+      star%rot%ytab(1) = diffusion_coeff(zone_begin+1)
       do idx = 2, ntab
          search_idx = zone_begin + idx - 1
-         rot_diff%ytab(idx) = diffusion_coeff(search_idx)
+         star%rot%ytab(idx) = diffusion_coeff(search_idx)
       end do
-      rot_diff%ytab(ntabb) = diffusion_coeff(zone_end)
-      rot_diff%xval(1) = rot_diff%chi(1)
-      do idx = 2, rot_diff%ntot
-         rot_diff%xval(idx) = rot_diff%echi(idx) - 0.5d0*rot_diff%dchi
+      star%rot%ytab(ntabb) = diffusion_coeff(zone_end)
+      star%rot%xval(1) = star%rot%chi(1)
+      do idx = 2, star%rot%ntot
+         star%rot%xval(idx) = star%rot%echi(idx) - 0.5d0*star%rot%dchi
       end do
-      call osplin(rot_diff%xval, equally_spaced_diffusion_coeff, rot_diff%xtab, rot_diff%ytab, ntabb, &
-           rot_diff%ntot)
+      call osplin(star%rot%xval, equally_spaced_diffusion_coeff, star%rot%xtab, star%rot%ytab, ntabb, &
+           star%rot%ntot)
 ! PRODUCT OF RHO R^2 BY D CHI/DR
       mass_scale = chi_grid_scale(2)
       luminosity_scale = chi_grid_scale(9)*log_luminosity(num_zones)* &
@@ -154,7 +154,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
       pressure_scale = chi_grid_scale(11)
       do idx = 1, ntab
          search_idx = zone_begin + idx - 1
-         rot_diff%xtab(idx) = rot_diff%chi(idx)
+         star%rot%xtab(idx) = star%rot%chi(idx)
 ! D CHI/DR = 1/DM*( D LOG M/DR) + 1/DL*(DL/DR) - 1/DP*(D LOG P/DR)
 ! OR, USING FAC = 4*PI*RHO*R**2
 ! D CHI/DR = FAC/(LN 10 * DM * M) + FAC*EPSILON/DL + RHO*GM/(LN10*DP*R**2)
@@ -166,14 +166,14 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
               exp(ln10*(cgl + log_density(search_idx) + log_mass(search_idx) &
               - log_pressure(search_idx) - &
               2.0d0*log_radius(search_idx)))/(ln10*pressure_scale)
-         rot_diff%ytab(idx) = log_density(search_idx) + log10(dchidr) + &
+         star%rot%ytab(idx) = log_density(search_idx) + log10(dchidr) + &
               2.0d0*log_radius(search_idx)
       end do
-      call osplin(rot_diff%xval, rot_diff%yval, rot_diff%xtab, rot_diff%ytab, ntab, rot_diff%ntot)
+      call osplin(star%rot%xval, star%rot%yval, star%rot%xtab, star%rot%ytab, ntab, star%rot%ntot)
 ! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
-      do idx = 1, rot_diff%ntot
+      do idx = 1, star%rot%ntot
          equally_spaced_diffusion_coeff(idx) = &
-              equally_spaced_diffusion_coeff(idx)*exp(ln10*rot_diff%yval(idx))
+              equally_spaced_diffusion_coeff(idx)*exp(ln10*star%rot%yval(idx))
       end do
  9999 continue
       return

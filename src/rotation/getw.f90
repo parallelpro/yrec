@@ -31,14 +31,14 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, &
      log_teff, envelope_boundary_zone_prev, ierr)
       use star_info_lib, only: star
       use nuclear_lib
-      use rotdiff_lib
-      use run_diag_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use temp2_lib
       use temp_lib
       use mdphy_lib
       use light_burn_lib
       use turnover_lib
-      use oldmod_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -298,24 +298,24 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, &
 ! COPY OVER PRIOR THETA(TIME) TERM TO TEMPORARY SLOT
 ! FOR USE IN THE ADVECTION/DIFFUSION TREATMENT OF MAEDER&ZAHN 1998
       if(first_call)then
-         rot_diff%theta_prev(1) = rot_diff%tho(1)
-         rot_diff%wmst(1) = run_diag%old_omega(1)
+         star%rot%theta_prev(1) = star%rot%tho(1)
+         star%rot%wmst(1) = star%run%old_omega(1)
          do zone_index = 2,num_zones
-            rot_diff%qwrmst(zone_index) = rot_diff%qwrst(zone_index)
-            rot_diff%theta_prev(zone_index) = rot_diff%tho(zone_index)
-            rot_diff%wmst(zone_index) = run_diag%old_omega(zone_index)
+            star%rot%qwrmst(zone_index) = star%rot%qwrst(zone_index)
+            star%rot%theta_prev(zone_index) = star%rot%tho(zone_index)
+            star%rot%wmst(zone_index) = star%run%old_omega(zone_index)
          end do
 ! RECOMPUTE THETA
       else
-         rot_diff%wmst(1) = star%omega(1)
+         star%rot%wmst(1) = star%omega(1)
          do zone_index = 2,num_zones
             omega_avg = 0.5D0*(star%omega(zone_index)+star%omega(zone_index-1))
             delta_radius_step = 10.0D0**log_radius_mid(zone_index)- &
                  10.0D0**log_radius_mid(zone_index-1)
             domega_dr = (star%omega(zone_index)-star%omega(zone_index-1))/delta_radius_step
-            rot_diff%theta_prev(zone_index) = rot_diff%theta_mean(zone_index)*omega_avg*domega_dr
-            rot_diff%qwrmst(zone_index) = domega_dr
-            rot_diff%wmst(zone_index) = star%omega(zone_index)
+            star%rot%theta_prev(zone_index) = star%rot%theta_mean(zone_index)*omega_avg*domega_dr
+            star%rot%qwrmst(zone_index) = domega_dr
+            star%rot%wmst(zone_index) = star%omega(zone_index)
          end do
       endif
       fx = elapsed_substep_time/full_timestep
@@ -401,9 +401,9 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, &
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
             do 80 zone_index = 1,num_zones
                star%specific_angular_momentum(zone_index) = specific_angular_momentum_saved(zone_index)
-               mix_phys%amum(zone_index) = mix_phys%amum(zone_index) - fx*(shell_temp%mean_molecular_weight(zone_index)-rot_diff%old_amu(zone_index))
+               mix_phys%amum(zone_index) = mix_phys%amum(zone_index) - fx*(shell_temp%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
                do 70 species_index = 1,num_species_tracked
-                  star%composition(species_index,zone_index) = prev_model%old_composition(species_index,zone_index)
+                  star%composition(species_index,zone_index) = star%prev%old_composition(species_index,zone_index)
    70          continue
    80       continue
             goto 40
@@ -417,7 +417,7 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, &
       if(.not.burs_extrapolation_active)then
          do zone_index = 1,num_zones
             do species_index = 1,11
-                  prev_model%old_composition(species_index,zone_index) = star%composition(species_index,zone_index)
+                  star%prev%old_composition(species_index,zone_index) = star%composition(species_index,zone_index)
             end do
          end do
       endif
@@ -491,13 +491,13 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, &
          if(.not.instability_transport_active.or.fully_convective_flag)then
             do zone_index = 1,num_zones
                do species_index = 12,15
-                  prev_model%old_composition(species_index,zone_index) = star%composition(species_index,zone_index)
+                  star%prev%old_composition(species_index,zone_index) = star%composition(species_index,zone_index)
                end do
             end do
          else if(.not.burs_extrapolation_active)then
             do zone_index = 1,num_zones
                do species_index = 12,15
-                  prev_model%old_composition(species_index,zone_index) = star%composition(species_index,zone_index)
+                  star%prev%old_composition(species_index,zone_index) = star%composition(species_index,zone_index)
                end do
             end do
          endif
@@ -526,12 +526,12 @@ subroutine getw(log_luminosity_lsun, full_timestep, max_domega_step, &
            star%shell_mass,am_transport_convective_flag,num_zones,star%eta_squared, &
            star%moment_of_inertia,star%omega,star%qiw,star%mean_radius)
  9999 continue
-      if(run_diag%lprt0_placeholder)then
+      if(star%run%lprt0_placeholder)then
          log_luminosity_lsun = log10(star%luminosity_lsun(num_zones))
          log_radius_surface = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity &
               - 4.0D0*log_teff - c4pil - csigl)
          fx = exp(ln10*3.0D0*(star%log_radius(num_zones)-log_radius_surface))
-         surface_quad_term = fx*rot_diff%quadrupole_moment(num_zones)
+         surface_quad_term = fx*star%rot%quadrupole_moment(num_zones)
          surface_potential = exp(ln10*(cgl+log_total_mass-log_radius_surface))
          write(*,9911)surface_quad_term,surface_potential,-1.5D0*surface_quad_term/surface_potential
  9911    format(1X,'QUAD ',1PE12.3,' PHIS ',E12.3,' 3/2 QUAD/G ', &

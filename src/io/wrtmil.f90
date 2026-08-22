@@ -12,7 +12,7 @@
 subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 
       use envelope_comp_lib
-      use scrtch_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -50,8 +50,8 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       r = dexp(ln10*hr(1))
       u = c4pi*d*r**3/hs1(1)
       v = dexp(ln10*cgl)*hs1(1)*d/(p*r)
-      w = u*hs1(1)*(shell_diag%sesum(1)+shell_diag%seg(7,1))/(hl(1)*solar_luminosity_cgs)
-      np1 = 1.0d0/shell_diag%del_grad(2,1)
+      w = u*hs1(1)*(star%diag%sesum(1)+star%diag%seg(7,1))/(hl(1)*solar_luminosity_cgs)
+      np1 = 1.0d0/star%diag%del_grad(2,1)
       write(imilne,10)1,hs1(1),r,p,d,hcomp(1,1),hl(1),u,v,w,np1
    10 format(1X,I4,10(1PE11.3))
 !  PRINT OUT EVERY NPRTPT POINTS;LAST POINT ALWAYS PRINTED.
@@ -65,8 +65,8 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
           r = dexp(ln10*hr(i))
           u = c4pi*d*r**3/hs1(i)
           v = dexp(ln10*cgl)*hs1(i)*d/(p*r)
-          w = u*hs1(i)*(shell_diag%sesum(i)+shell_diag%seg(7,i))/(hl(i)*solar_luminosity_cgs)
-          np1 = 1.0d0/shell_diag%del_grad(2,i)
+          w = u*hs1(i)*(star%diag%sesum(i)+star%diag%seg(7,i))/(hl(i)*solar_luminosity_cgs)
+          np1 = 1.0d0/star%diag%del_grad(2,i)
           write(imilne,10)i,hs1(i),r,p,d,hcomp(1,i),hl(i), &
                             u,v,w,np1
    20    continue
@@ -78,8 +78,8 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
        r = dexp(ln10*hr(m))
        u = c4pi*d*r**3/hs1(m)
        v = dexp(ln10*cgl)*hs1(m)*d/(p*r)
-       w = u*hs1(m)*(shell_diag%sesum(m)+shell_diag%seg(7,m))/(hl(m)*solar_luminosity_cgs)
-       np1 = 1.0d0/shell_diag%del_grad(2,m)
+       w = u*hs1(m)*(star%diag%sesum(m)+star%diag%seg(7,m))/(hl(m)*solar_luminosity_cgs)
+       np1 = 1.0d0/star%diag%del_grad(2,m)
        write(imilne,10)m,hs1(m),r,p,d,hcomp(1,m),hl(m), &
                          u,v,w,np1
       endif

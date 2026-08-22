@@ -19,7 +19,7 @@
 subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
      log_luminosity, log_teff, model_number, pulse_atm_path, &
      pulse_env_path, pulse_mod_path)
-      use run_diag_lib
+      use star_info_lib, only: star
       use const_lib
       use luout_lib
       implicit none
@@ -40,7 +40,7 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
 
       delta_log_l = log_luminosity-prev_log_l
       delta_log_teff = log_teff-prev_log_teff
-      delta_age = run_diag%dage-prev_age
+      delta_age = star%run%dage-prev_age
       weighted_l_sq = po_weight_l*delta_log_l*po_weight_l*delta_log_l
       weighted_teff_sq = po_weight_teff*delta_log_teff*po_weight_teff* &
            delta_log_teff
@@ -49,7 +49,7 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
            weighted_age_sq
       prev_log_l = log_luminosity
       prev_log_teff = log_teff
-      prev_age = run_diag%dage
+      prev_age = star%run%dage
       if (path_length_sq .ge. po_max_len_sq) then
           pulsation_output_active = .true.
           path_length_sq = 0.0d0

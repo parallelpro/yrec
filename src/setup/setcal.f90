@@ -19,7 +19,7 @@
 ! points to iterate against.
 subroutine setcal(age_scale_factor)
 
-      use run_diag_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
 
@@ -83,6 +83,6 @@ subroutine setcal(age_scale_factor)
          timestep_override(i) = timestep_override(3)
          timestep_override_active(i) = timestep_override_active(3)
       end do
-      run_diag%solar_calibration_active = .false.
+      star%run%solar_calibration_active = .false.
       return
 end subroutine setcal

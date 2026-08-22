@@ -13,7 +13,7 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
 
-      use rotdiff_lib
+      use star_info_lib, only: star
       use const_lib
       use luout_lib
       implicit none
@@ -94,7 +94,7 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       delta_angular_momentum = total_angular_momentum - new_angular_momentum
       if(disk_locked)goto 45
       if(dabs(delta_angular_momentum/total_angular_momentum).gt. &
-           rot_diff%moment_of_inertia_tolerance) then
+           star%rot%moment_of_inertia_tolerance) then
          if(iteration_count.lt.20) then
             iteration_count = iteration_count + 1
             delta_omega = delta_angular_momentum/ &

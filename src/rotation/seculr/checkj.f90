@@ -72,8 +72,8 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
      already_converged_flag, ierr)
 
-      use rotdiff_lib
-      use run_diag_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use temp2_lib
       use const_lib
       use luout_lib
@@ -201,17 +201,17 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  ITERATIVELY.  BECAUSE THE ERROR IN THE DIFFUSION IS OF ORDER DJOK,
 !  RELAX TOLERANCE FOR MOMENT OF INERTIA ITERATION EXCEPT FOR THE
 !  FINAL STEP.
-      saved_tolerance = rot_diff%moment_of_inertia_tolerance
+      saved_tolerance = star%rot%moment_of_inertia_tolerance
       saved_acc_tolerance = acfpft
       if(iteration_number.lt.itdif2.and..not.converged_flag)then
-         rot_diff%moment_of_inertia_tolerance = &
+         star%rot%moment_of_inertia_tolerance = &
               max(convergence_tolerance*1.0d-2,saved_tolerance)
          acfpft = max(convergence_tolerance*1.0d-2,saved_acc_tolerance)
       endif
       call getrot(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius)
-      rot_diff%moment_of_inertia_tolerance = saved_tolerance
+      star%rot%moment_of_inertia_tolerance = saved_tolerance
       acfpft = saved_acc_tolerance
 !  SEARCH FOR REVERSAL OF OMEGA GRADIENTS.  IF ONE EXISTS, ENFORCE
 !  SOLID-BODY ROTATION IN THE OFFENDING PAIR OF ZONES.
@@ -221,7 +221,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  POSITIVE OMEGA GRADIENT ENCOUNTERED.
       if(omega(zone_index)-omega(zone_index-1).gt.1.0d0)then
 !  IF PREVIOUS GRADIENT WAS POSITIVE, LEAVE ALONE.
-         if(run_diag%old_omega(zone_index)-run_diag%old_omega(zone_index-1).gt.1.0d-15)then
+         if(star%run%old_omega(zone_index)-star%run%old_omega(zone_index-1).gt.1.0d-15)then
             zone_index = zone_bottom-1
             zone_bottom = zone_index
             if(zone_index.gt.1)then
@@ -259,7 +259,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  CHECK FOR GRADIENT REVERSALS BELOW ZONE IBOT.
          if(zone_bottom.gt.1) then
             if(omega(zone_bottom)-omega(zone_bottom-1).gt.1.0d-15)then
-               if(run_diag%old_omega(zone_bottom)-run_diag%old_omega(zone_bottom-1).lt.1.0d-15)then
+               if(star%run%old_omega(zone_bottom)-star%run%old_omega(zone_bottom-1).lt.1.0d-15)then
                   redo_flag = .true.
                   zone_bottom = zone_bottom - 1
                   if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
@@ -274,7 +274,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  CHECK FOR GRADIENT REVERSALS ABOVE ZONE ITOP.
          if(zone_top.lt.num_zones) then
             if(omega(zone_top+1)-omega(zone_top).gt.1.0d-15)then
-               if(run_diag%old_omega(zone_top+1)-run_diag%old_omega(zone_top).lt.1.0d-15)then
+               if(star%run%old_omega(zone_top+1)-star%run%old_omega(zone_top).lt.1.0d-15)then
                   redo_flag = .true.
                   zone_top = zone_top+1
                   if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
@@ -389,7 +389,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                  circ_vel%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
                  circ_vel%gsf_circulation_velocity(print_zone_id(zone_index)), &
                  circ_vel%secular_shear_velocity(print_zone_id(zone_index)), &
-                 rot_diff%circulation_correction_ratio(print_zone_id(zone_index)), &
+                 star%rot%circulation_correction_ratio(print_zone_id(zone_index)), &
                  diffusion_velocity(print_zone_id(zone_index)), &
                  circ_vel%hle(print_zone_id(zone_index)), &
                  circ_vel%mu_gradient_velocity(print_zone_id(zone_index))
@@ -402,41 +402,41 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !     *         ECOD(ID(I)),ECOD2(ID(I)),ECOD3(ID(I)),ECOD4(ID(I))
 ! 221           FORMAT(1X,I5,1P7E12.3)
 !            END DO
-            if(print_zone_count.eq.rot_diff%ntot)then
+            if(print_zone_count.eq.star%rot%ntot)then
             do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,rot_diff%chi(zone_index), &
+               write(imodpt,221)zone_index,star%rot%chi(zone_index), &
                     circ_vel%es_circulation_velocity(zone_index), &
-                    rot_diff%es_advective_velocity(zone_index), &
-                    rot_diff%es_diffusive_velocity(zone_index),rot_diff%echi(zone_index), &
-                    rot_diff%am_advective_coeff(zone_index),rot_diff%am_diffusive_coeff(zone_index)
+                    star%rot%es_advective_velocity(zone_index), &
+                    star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
+                    star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
  221           format(1x,i5,1p7e12.3)
             end do
-            else if(print_zone_count.lt.rot_diff%ntot)then
+            else if(print_zone_count.lt.star%rot%ntot)then
             do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,rot_diff%chi(zone_index), &
+               write(imodpt,221)zone_index,star%rot%chi(zone_index), &
                     circ_vel%es_circulation_velocity(zone_index), &
-                    rot_diff%es_advective_velocity(zone_index), &
-                    rot_diff%es_diffusive_velocity(zone_index),rot_diff%echi(zone_index), &
-                    rot_diff%am_advective_coeff(zone_index),rot_diff%am_diffusive_coeff(zone_index)
+                    star%rot%es_advective_velocity(zone_index), &
+                    star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
+                    star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
             end do
-            do zone_index = print_zone_count+1,rot_diff%ntot
-               write(imodpt,222)zone_index,rot_diff%echi(zone_index), &
-                    rot_diff%am_advective_coeff(zone_index),rot_diff%am_diffusive_coeff(zone_index)
+            do zone_index = print_zone_count+1,star%rot%ntot
+               write(imodpt,222)zone_index,star%rot%echi(zone_index), &
+                    star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
  222           format(1x,i5,48x,1p3e12.3)
             end do
             else
-            do zone_index = 1,rot_diff%ntot
-               write(imodpt,221)zone_index,rot_diff%chi(zone_index), &
+            do zone_index = 1,star%rot%ntot
+               write(imodpt,221)zone_index,star%rot%chi(zone_index), &
                     circ_vel%es_circulation_velocity(zone_index), &
-                    rot_diff%es_advective_velocity(zone_index), &
-                    rot_diff%es_diffusive_velocity(zone_index),rot_diff%echi(zone_index), &
-                    rot_diff%am_advective_coeff(zone_index),rot_diff%am_diffusive_coeff(zone_index)
+                    star%rot%es_advective_velocity(zone_index), &
+                    star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
+                    star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
             end do
-            do zone_index = rot_diff%ntot+1,print_zone_count
-               write(imodpt,223)zone_index,rot_diff%chi(zone_index), &
+            do zone_index = star%rot%ntot+1,print_zone_count
+               write(imodpt,223)zone_index,star%rot%chi(zone_index), &
                     circ_vel%es_circulation_velocity(zone_index), &
-                    rot_diff%es_advective_velocity(zone_index), &
-                    rot_diff%es_diffusive_velocity(zone_index)
+                    star%rot%es_advective_velocity(zone_index), &
+                    star%rot%es_diffusive_velocity(zone_index)
  223           format(1x,i5,1p4e12.3)
             end do
             endif

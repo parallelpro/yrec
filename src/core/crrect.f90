@@ -91,7 +91,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
       use star_info_lib, only: star
 
       use envelope_comp_lib
-      use oldmod_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -203,7 +203,7 @@ subroutine crrect(delta_time, num_points, max_iterations, converged, &
          if (use_extended_composition) num_species = 15
          do 2 i = 1,num_points
             do 1 j = 1,num_species
-               star%composition(j,i) = prev_model%old_composition(j,i)
+               star%composition(j,i) = star%prev%old_composition(j,i)
     1       continue
     2    continue
          call mix(delta_time, log_total_mass, iteration_level, &

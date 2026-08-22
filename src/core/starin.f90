@@ -106,12 +106,12 @@ subroutine starin(log10_luminosity, age_gyr, timestep_yr, delta_time, &
       use star_info_lib, only: star
 
       use atm_lib
-      use run_diag_lib
+      use star_info_lib, only: star
       use envstruct_lib
       use envelope_comp_lib
       use turnover_lib
-      use scrtch_lib
-      use oldmod_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use eos_lib
@@ -151,7 +151,7 @@ subroutine starin(log10_luminosity, age_gyr, timestep_yr, delta_time, &
 !      compostion (COMPMIX)
 ! former common/i2o/: compmix_code (passed to getyrec7/getmodel2) is
 ! now use-associated from run_diag_lib as
-! run_diag%initial_composition_code (io/wrtlst.f90's/io/putstore.f90's
+! star%run%initial_composition_code (io/wrtlst.f90's/io/putstore.f90's
 ! established name -- majority spelling wins over this file's own
 ! atm_code/eos_code/hik_code/alok_code-matching compmix_code).
       double precision :: atomic_weight(12)
@@ -308,7 +308,7 @@ subroutine starin(log10_luminosity, age_gyr, timestep_yr, delta_time, &
               disk_locking_active0,instability_transport_active0,ljdot00, &
               alok_code, &
               lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,run_diag%initial_composition_code,disk_pressure0, &
+              lsemic0,star%run%initial_composition_code,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0)
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons
@@ -330,7 +330,7 @@ subroutine starin(log10_luminosity, age_gyr, timestep_yr, delta_time, &
               disk_locking_active0,instability_transport_active0,ljdot00, &
               alok_code, &
               lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,run_diag%initial_composition_code,disk_pressure0, &
+              lsemic0,star%run%initial_composition_code,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0)
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons
@@ -1047,9 +1047,9 @@ subroutine starin(log10_luminosity, age_gyr, timestep_yr, delta_time, &
 ! FXENV = NUMBER DENSITY OF SPECIES .
       env_comp%envelope_hydrogen_fraction = env_comp%xnew
       env_comp%envelope_metal_fraction = env_comp%znew
-      run_diag%envelope_helium_fraction = 1.0d0 - env_comp%envelope_hydrogen_fraction - &
+      star%run%envelope_helium_fraction = 1.0d0 - env_comp%envelope_hydrogen_fraction - &
            env_comp%envelope_metal_fraction - star%composition(4,num_shells)
-      run_diag%envelope_he3_fraction = star%composition(4,num_shells)
+      star%run%envelope_he3_fraction = star%composition(4,num_shells)
 ! EVERYTHING BUT V(7)=H, AND V(12)=HE
       mixture_weight_sum = species_mix_weights(1)+species_mix_weights(2)+ &
            species_mix_weights(3)+species_mix_weights(4)+ &
@@ -1090,18 +1090,18 @@ subroutine starin(log10_luminosity, age_gyr, timestep_yr, delta_time, &
 ! HPOLD IS USED TO LIMIT THE TIMESTEP BASED ON CHANGES FROM
 ! MODEL TO MODEL IN P,T,R,L.
       do 710 i = 1,num_shells
-         prev_model%old_pressure(i) = star%log_pressure(i)
-         prev_model%old_temperature(i) = star%log_temperature(i)
-         prev_model%old_radius(i) = star%log_radius(i)
-         prev_model%old_luminosity(i) = star%luminosity_lsun(i)
+         star%prev%old_pressure(i) = star%log_pressure(i)
+         star%prev%old_temperature(i) = star%log_temperature(i)
+         star%prev%old_radius(i) = star%log_radius(i)
+         star%prev%old_luminosity(i) = star%luminosity_lsun(i)
 !  JVS 04/14 Added Teff to the list of saved values
-         prev_model%old_teff = log_teff
+         star%prev%old_teff = log_teff
 !  JVS 05/25 Added model number to list of saved values
-       prev_model%old_num_zones = num_shells
+       star%prev%old_num_zones = num_shells
  710  continue
       if (rotation_active) then
          do 720 i = 1,num_shells
-          run_diag%old_omega(i) = star%omega(i)
+          star%run%old_omega(i) = star%omega(i)
  720     continue
       endif
 

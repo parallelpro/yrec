@@ -31,6 +31,10 @@
 ! seculr/rotmix) are working state of the rotation pipeline, not the
 ! model; routines that receive those keep explicit arguments.
 module star_info_lib
+      use oldmod_lib,   only: prev_model_state
+      use scrtch_lib,   only: shell_diagnostics_state
+      use run_diag_lib, only: run_diagnostics_state
+      use rotdiff_lib,  only: rotation_diffusion_state
       implicit none
       private
       integer, parameter, public :: json = 5000
@@ -79,6 +83,20 @@ module star_info_lib
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &
                  radiative_zone_bounds(13,2)
+! 2026 (phase four, step 4): the former-COMMON model-state modules,
+! folded in as components -- their types stay defined in their own
+! state/ files, the single instances now live here. prev is the
+! previous-model store (former oldmod_lib prev_model), diag the
+! per-shell diagnostics (former scrtch_lib shell_diag), run the
+! run-level diagnostics (former run_diag_lib run_diag), rot the
+! rotation/diffusion working state (former rotdiff_lib rot_diff).
+! Physics-domain files (atm, nuclear, wind internals) that read these
+! now visibly reference star%... -- the remaining star-coupling inside
+! physics domains is grep-able as star% under those directories.
+            type(prev_model_state) :: prev
+            type(shell_diagnostics_state) :: diag
+            type(run_diagnostics_state) :: run
+            type(rotation_diffusion_state) :: rot
       end type star_info
 
 ! the one star this process evolves (no handles -- see header)

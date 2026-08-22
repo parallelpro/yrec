@@ -66,7 +66,7 @@ module run_diag_lib
 ! former common/i2o/
            character(len=4) :: initial_composition_code
       end type run_diagnostics_state
-
-      type(run_diagnostics_state), public :: run_diag
-
+! 2026 (phase four, step 4 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module run_diag_lib

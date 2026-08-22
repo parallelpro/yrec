@@ -30,7 +30,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
 
       use eos_lib
       use kap_lib
-      use run_diag_lib
+      use star_info_lib, only: star
       use pulse_diag_lib
       use envelope_comp_lib
       use const_lib
@@ -111,30 +111,30 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
            log10_density))*pressure_rotation_factor
       env_call_count = env_call_count + 1
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
-      run_diag%current_log10_pressure = log10_pressure
-      run_diag%current_log10_temperature = log10_temperature
-      run_diag%current_log10_mass = log10_mass - env_comp%stotal
-      run_diag%current_log10_radius = log10_radius
-      run_diag%current_log10_density = log10_density
-      run_diag%current_velocity = convective_velocity
+      star%run%current_log10_pressure = log10_pressure
+      star%run%current_log10_temperature = log10_temperature
+      star%run%current_log10_mass = log10_mass - env_comp%stotal
+      star%run%current_log10_radius = log10_radius
+      star%run%current_log10_density = log10_density
+      star%run%current_velocity = convective_velocity
 ! JVS 08/13 ALWAYS STORE GRADIENTS (FOR TRACKING CZ)
-       run_diag%current_gradients(1) = radiative_gradient
-       run_diag%current_gradients(2) = adiabatic_gradient
-       run_diag%current_gradients(3) = actual_gradient
-       run_diag%current_beta = beta ! added 03/14
+       star%run%current_gradients(1) = radiative_gradient
+       star%run%current_gradients(2) = adiabatic_gradient
+       star%run%current_gradients(3) = actual_gradient
+       star%run%current_beta = beta ! added 03/14
 ! JVS 08/25 ALSO ALWAYS SAVE ADDITIONAL INFO FOR PROFILE
-      run_diag%current_ion_fraction(1) = ion_fraction(1)
-      run_diag%current_ion_fraction(2) = ion_fraction(2)
-      run_diag%current_ion_fraction(3) = ion_fraction(3)
+      star%run%current_ion_fraction(1) = ion_fraction(1)
+      star%run%current_ion_fraction(2) = ion_fraction(2)
+      star%run%current_ion_fraction(3) = ion_fraction(3)
       pulse_diag%qqdp = dlnrho_dlnp
       pulse_diag%qqdt = dlnrho_dlnt
       pulse_diag%qqcp = specific_heat_cp
 
       if(print_flag .or. pulse_diag%lpumod) then
-       run_diag%current_opacity = opacity
-       run_diag%current_ion_fraction(1) = ion_fraction(1)
-       run_diag%current_ion_fraction(2) = ion_fraction(2)
-       run_diag%current_ion_fraction(3) = ion_fraction(3)
+       star%run%current_opacity = opacity
+       star%run%current_ion_fraction(1) = ion_fraction(1)
+       star%run%current_ion_fraction(2) = ion_fraction(2)
+       star%run%current_ion_fraction(3) = ion_fraction(3)
        pulse_diag%qtl = log10_temperature
        pulse_diag%qt = dexp(ln10*log10_temperature)
        pulse_diag%qpl = log10_pressure

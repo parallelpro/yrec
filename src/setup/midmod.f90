@@ -30,14 +30,14 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
       use star_info_lib, only: star
 
       use nuclear_lib
-      use rotdiff_lib
-      use run_diag_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use temp_lib
       use mdphy_lib
       use light_burn_lib
       use turnover_lib
-      use scrtch_lib
-      use oldmod_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -55,7 +55,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
       double precision, intent(out) :: log_luminosity_mid(json), &
            log_pressure_mid(json)
 ! log_radius_mid (HRM) is read here before being (re)computed in this
-! call, in the LFIRST=.false. branch below that seeds rot_diff%radius_prev from
+! call, in the LFIRST=.false. branch below that seeds star%rot%radius_prev from
 ! the previous MIDMOD call's log_radius_mid -- hence intent(inout)
 ! rather than intent(out).
       double precision, intent(inout) :: log_radius_mid(json)
@@ -142,72 +142,72 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 ! PRIOR STEP.
       if (first_call) then
          do 20 j = 1,num_zones
-            rot_diff%convective_flag_prev(j) = prev_model%old_convective_flag(j)
-            rot_diff%radius_prev(j) = prev_model%old_radius(j)
-            rot_diff%del_grad_diff_prev(j) = rot_diff%old_del_adiabatic_mix(j)-rot_diff%old_del_radiative_mix(j)
-            mix_phys%amum(j) = rot_diff%old_amu(j)
+            star%rot%convective_flag_prev(j) = star%prev%old_convective_flag(j)
+            star%rot%radius_prev(j) = star%prev%old_radius(j)
+            star%rot%del_grad_diff_prev(j) = star%rot%old_del_adiabatic_mix(j)-star%rot%old_del_radiative_mix(j)
+            mix_phys%amum(j) = star%rot%old_amu(j)
             do 10 i = 1,num_species_tracked
-               star%composition(i,j) = prev_model%old_composition(i,j)
+               star%composition(i,j) = star%prev%old_composition(i,j)
    10       continue
    20    continue
       else
          do j = 1,num_zones
-            rot_diff%radius_prev(j) = log_radius_mid(j)
-            rot_diff%del_grad_diff_prev(j) = rot_diff%del_grad_diff_new(j)
-            rot_diff%convective_flag_prev(j) = convective_flag_mid(j)
+            star%rot%radius_prev(j) = log_radius_mid(j)
+            star%rot%del_grad_diff_prev(j) = star%rot%del_grad_diff_new(j)
+            star%rot%convective_flag_prev(j) = convective_flag_mid(j)
          end do
       endif
       new_cz_detected = .false.
 !  INTERPOLATE IN THE MODEL VARIABLES AND AUXILLARY PHYSICS.
       step_fraction_ratio = sub_timestep/full_timestep
       do 40 j = 1,num_zones
-         log_density_mid(j) = prev_model%old_density(j) + &
-              time_fraction*(star%log_density(j)-prev_model%old_density(j))
-         log_luminosity_mid(j) = prev_model%old_luminosity(j) + &
-              time_fraction*(star%luminosity_lsun(j)-prev_model%old_luminosity(j))
-         log_pressure_mid(j) = prev_model%old_pressure(j) + &
-              time_fraction*(star%log_pressure(j)-prev_model%old_pressure(j))
-         log_radius_mid(j) = prev_model%old_radius(j) + &
-              time_fraction*(star%log_radius(j)-prev_model%old_radius(j))
-         log_temperature_mid(j) = prev_model%old_temperature(j) + &
-              time_fraction*(star%log_temperature(j)-prev_model%old_temperature(j))
+         log_density_mid(j) = star%prev%old_density(j) + &
+              time_fraction*(star%log_density(j)-star%prev%old_density(j))
+         log_luminosity_mid(j) = star%prev%old_luminosity(j) + &
+              time_fraction*(star%luminosity_lsun(j)-star%prev%old_luminosity(j))
+         log_pressure_mid(j) = star%prev%old_pressure(j) + &
+              time_fraction*(star%log_pressure(j)-star%prev%old_pressure(j))
+         log_radius_mid(j) = star%prev%old_radius(j) + &
+              time_fraction*(star%log_radius(j)-star%prev%old_radius(j))
+         log_temperature_mid(j) = star%prev%old_temperature(j) + &
+              time_fraction*(star%log_temperature(j)-star%prev%old_temperature(j))
 !        DO 30 I = 1,IEND
 !           HCOMP(I,J)=HCOMP(I,J)+FAC2*HCOMPM(I,J)
 !           HCOMPP(I,J) = HCOMP(I,J)
 !  30    CONTINUE
-         hg_mid(j) = run_diag%old_hg(j) + time_fraction*(star%mean_gravity(j) - run_diag%old_hg(j))
-         mix_phys%del_adiabatic_mix(j) = rot_diff%old_del_adiabatic_mix(j) + &
-              time_fraction*(shell_diag%del_grad(3,j)-rot_diff%old_del_adiabatic_mix(j))
-         mix_phys%delm(j) = rot_diff%old_delm(j) + time_fraction*(shell_diag%del_grad(2,j) - rot_diff%old_delm(j))
-         mix_phys%del_radiative_mix(j) = rot_diff%old_del_radiative_mix(j) + &
-              time_fraction*(shell_diag%del_grad(1,j) - rot_diff%old_del_radiative_mix(j))
-         mix_phys%esumm(j) = rot_diff%old_esum(j) + time_fraction*(shell_diag%sesum(j) - rot_diff%old_esum(j))
-         mix_phys%viscm(j) = rot_diff%old_visc(j) + time_fraction*(shell_temp%visc(j) - rot_diff%old_visc(j))
-         mix_phys%thdifm(j) = rot_diff%old_thdif(j) + time_fraction*(shell_temp%thdif(j) - rot_diff%old_thdif(j))
-         mix_phys%cpm(j) = rot_diff%old_cp(j) + time_fraction*(shell_temp%cp(j) - rot_diff%old_cp(j))
-         mix_phys%qdtm(j) = rot_diff%old_qdt(j) + time_fraction*(shell_temp%qdt(j) - rot_diff%old_qdt(j))
-         mix_phys%om(j) = rot_diff%old_om(j) + time_fraction*(shell_diag%so(j) - rot_diff%old_om(j))
-         mix_phys%amum(j) = mix_phys%amum(j) + step_fraction_ratio*(shell_temp%mean_molecular_weight(j) - rot_diff%old_amu(j))
+         hg_mid(j) = star%run%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%run%old_hg(j))
+         mix_phys%del_adiabatic_mix(j) = star%rot%old_del_adiabatic_mix(j) + &
+              time_fraction*(star%diag%del_grad(3,j)-star%rot%old_del_adiabatic_mix(j))
+         mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%diag%del_grad(2,j) - star%rot%old_delm(j))
+         mix_phys%del_radiative_mix(j) = star%rot%old_del_radiative_mix(j) + &
+              time_fraction*(star%diag%del_grad(1,j) - star%rot%old_del_radiative_mix(j))
+         mix_phys%esumm(j) = star%rot%old_esum(j) + time_fraction*(star%diag%sesum(j) - star%rot%old_esum(j))
+         mix_phys%viscm(j) = star%rot%old_visc(j) + time_fraction*(shell_temp%visc(j) - star%rot%old_visc(j))
+         mix_phys%thdifm(j) = star%rot%old_thdif(j) + time_fraction*(shell_temp%thdif(j) - star%rot%old_thdif(j))
+         mix_phys%cpm(j) = star%rot%old_cp(j) + time_fraction*(shell_temp%cp(j) - star%rot%old_cp(j))
+         mix_phys%qdtm(j) = star%rot%old_qdt(j) + time_fraction*(shell_temp%qdt(j) - star%rot%old_qdt(j))
+         mix_phys%om(j) = star%rot%old_om(j) + time_fraction*(star%diag%so(j) - star%rot%old_om(j))
+         mix_phys%amum(j) = mix_phys%amum(j) + step_fraction_ratio*(shell_temp%mean_molecular_weight(j) - star%rot%old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
-         total_epsilon = shell_diag%sesum(j)+shell_diag%seg(6,j)+shell_diag%seg(7,j)
-         mix_phys%epsm(j) = rot_diff%old_eps(j)+time_fraction*(total_epsilon-rot_diff%old_eps(j))
+         total_epsilon = star%diag%sesum(j)+star%diag%seg(6,j)+star%diag%seg(7,j)
+         mix_phys%epsm(j) = star%rot%old_eps(j)+time_fraction*(total_epsilon-star%rot%old_eps(j))
    40 continue
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
 !  RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS TO DETERMINE WHETHER
 !  OR NOT A ZONE IS CONVECTIVE IF IT CHANGES STATE OVER THE COURSE OF A
 !  TIMESTEP.
       do 50 i = 1,num_zones
-         rot_diff%del_grad_diff_new(i) = mix_phys%del_adiabatic_mix(i)-mix_phys%del_radiative_mix(i)
-         if (star%convective_flag(i).eqv.rot_diff%convective_flag_prev(i)) then
+         star%rot%del_grad_diff_new(i) = mix_phys%del_adiabatic_mix(i)-mix_phys%del_radiative_mix(i)
+         if (star%convective_flag(i).eqv.star%rot%convective_flag_prev(i)) then
             convective_flag_mid(i) = star%convective_flag(i)
-            mix_phys%velm(i) = rot_diff%old_vel(i) + time_fraction*(shell_diag%svel(i)-rot_diff%old_vel(i))
+            mix_phys%velm(i) = star%rot%old_vel(i) + time_fraction*(star%diag%svel(i)-star%rot%old_vel(i))
             convective_state_changed(i) = .false.
          else
             convective_state_changed(i) = .true.
             new_cz_detected = .true.
             if (mix_phys%del_adiabatic_mix(i).lt.mix_phys%del_radiative_mix(i)) then
                convective_flag_mid(i) = .true.
-               mix_phys%velm(i) = max(rot_diff%old_vel(i),shell_diag%svel(i))
+               mix_phys%velm(i) = max(star%rot%old_vel(i),star%diag%svel(i))
             else
                convective_flag_mid(i) = .false.
                mix_phys%velm(i) = 0.0D0
@@ -237,17 +237,17 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
                cz_change_active = .false.
                redistribute_j_flag = .true.
                write(*,*)change_region_start,change_region_end, &
-                    rot_diff%del_grad_diff_new(change_region_start), &
-                    rot_diff%del_grad_diff_new(change_region_start-1), &
-                    rot_diff%del_grad_diff_new(change_region_end+1)
+                    star%rot%del_grad_diff_new(change_region_start), &
+                    star%rot%del_grad_diff_new(change_region_start-1), &
+                    star%rot%del_grad_diff_new(change_region_end+1)
 ! ONLY CHANGE IF THERE IS A RECEDING CONVECTION ZONE;
 ! WE CAN ASSUME LOCAL CONSERVATION OF J PRIOR TO HAVING
 ! A SHELL INCORPORATED INTO A CZ.
-               if (rot_diff%del_grad_diff_new(change_region_start).gt.0.0D0) then
-                  if (rot_diff%del_grad_diff_new(change_region_start-1).lt.0.0D0) then
+               if (star%rot%del_grad_diff_new(change_region_start).gt.0.0D0) then
+                  if (star%rot%del_grad_diff_new(change_region_start-1).lt.0.0D0) then
 ! SUBTRACTED FROM A CORE CZ
                      cz_direction_flag = -1
-                  else if (rot_diff%del_grad_diff_new(change_region_end+1).lt.0.0D0) then
+                  else if (star%rot%del_grad_diff_new(change_region_end+1).lt.0.0D0) then
 ! SUBTRACTED FROM AN ENVELOPE CZ
                      cz_direction_flag = 1
                   else
@@ -273,17 +273,17 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
                   cz_zone_bottom = 1
  11               continue
                   do j = change_region_end,change_region_start,-1
-                     if (rot_diff%del_grad_diff_new(j).lt.0.0D0) goto 13
+                     if (star%rot%del_grad_diff_new(j).lt.0.0D0) goto 13
                      cz_moment_of_inertia = 0.0D0
                      cz_angular_momentum = 0.0D0
 ! FRACTION OF THE TIMESTEP SHELL WAS RADIATIVE
-                     time_fraction = rot_diff%del_grad_diff_new(j)/ &
-                          (rot_diff%del_grad_diff_new(j)-rot_diff%del_grad_diff_prev(j))
+                     time_fraction = star%rot%del_grad_diff_new(j)/ &
+                          (star%rot%del_grad_diff_new(j)-star%rot%del_grad_diff_prev(j))
 ! FRACTION OF THE TIMESTEP THAT THE SHELL WAS CONVECTIVE
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = cz_zone_bottom,j-1
-                        radius_interp = rot_diff%radius_prev(ii)+ &
-                             convective_fraction*(star%log_radius(ii)-prev_model%old_radius(ii))
+                        radius_interp = star%rot%radius_prev(ii)+ &
+                             convective_fraction*(star%log_radius(ii)-star%prev%old_radius(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*star%shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
@@ -292,8 +292,8 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 ! GET THE CZ MOMENT OF INERTIA AND TOTAL J AT THE TIME THE
 ! SHELL WAS RELEASED; THIS GIVES A CORRECTED VALUE FOR
 ! J/M.  REDISTRIBUTE THE DIFFERENCE IN J BACK INTO THE CZ.
-                     radius_shell_factor = 2.0D0*(rot_diff%radius_prev(j)+ &
-                          convective_fraction*(star%log_radius(j)-rot_diff%radius_prev(j)))
+                     radius_shell_factor = 2.0D0*(star%rot%radius_prev(j)+ &
+                          convective_fraction*(star%log_radius(j)-star%rot%radius_prev(j)))
                      specific_angular_momentum_corrected = &
                           cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
                           10.0D0**radius_shell_factor
@@ -327,17 +327,17 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
                   cz_zone_top = num_zones
  12               continue
                   do j = change_region_start,change_region_end
-                     if (rot_diff%del_grad_diff_new(j).lt.0.0D0) goto 13
+                     if (star%rot%del_grad_diff_new(j).lt.0.0D0) goto 13
                      cz_moment_of_inertia = 0.0D0
                      cz_angular_momentum = 0.0D0
 ! FRACTION OF THE TIMESTEP SHELL WAS RADIATIVE
-                     time_fraction = rot_diff%del_grad_diff_new(j)/ &
-                          (rot_diff%del_grad_diff_new(j)-rot_diff%del_grad_diff_prev(j))
+                     time_fraction = star%rot%del_grad_diff_new(j)/ &
+                          (star%rot%del_grad_diff_new(j)-star%rot%del_grad_diff_prev(j))
 ! FRACTION OF THE TIMESTEP THAT THE SHELL WAS CONVECTIVE
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = j+1,cz_zone_top
-                        radius_interp = rot_diff%radius_prev(ii)+ &
-                             convective_fraction*(star%log_radius(ii)-prev_model%old_radius(ii))
+                        radius_interp = star%rot%radius_prev(ii)+ &
+                             convective_fraction*(star%log_radius(ii)-star%prev%old_radius(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*star%shell_mass(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
@@ -346,8 +346,8 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
 ! GET THE CZ MOMENT OF INERTIA AND TOTAL J AT THE TIME THE
 ! SHELL WAS RELEASED; THIS GIVES A CORRECTED VALUE FOR
 ! J/M.  REDISTRIBUTE THE DIFFERENCE IN J BACK INTO THE CZ.
-                     radius_shell_factor = 2.0D0*(rot_diff%radius_prev(j)+ &
-                          convective_fraction*(star%log_radius(j)-rot_diff%radius_prev(j)))
+                     radius_shell_factor = 2.0D0*(star%rot%radius_prev(j)+ &
+                          convective_fraction*(star%log_radius(j)-star%rot%radius_prev(j)))
                      specific_angular_momentum_corrected = &
                           cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
                           10.0D0**radius_shell_factor
@@ -390,11 +390,11 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, &
       if (ierr /= 0) return
       do i = 1,num_zones
          do j = 1,num_species_tracked
-            rot_diff%composition_snapshot(j,i) = star%composition(j,i)
+            star%rot%composition_snapshot(j,i) = star%composition(j,i)
          end do
       end do
 ! MHP 05/02 ADDED DEUTERIUM BURNING
-      if (prev_model%old_composition(12,num_zones).gt.1.0D-14) then
+      if (star%prev%old_composition(12,num_zones).gt.1.0D-14) then
 ! INCREMENT THE TIMESTEP
          if (first_call) then
             do i = 1,num_zones

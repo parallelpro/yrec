@@ -24,8 +24,8 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
 
-      use rotdiff_lib
-      use scrtch_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -167,27 +167,27 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       goto 9999
    47 continue
       zone_end = zone_idx
-!     rot_diff%bl_mass_scale=CONVERSION FACTOR FOR MASS.
+!     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.
 !     CON_RADIUS=CONVERSION FACTOR FOR RADIUS.
-!     rot_diff%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
-!     rot_diff%bl_time_scale=CONVERSION FACTOR FOR TIME.
-      rot_diff%bl_radius_scale=1.0d0/solar_radius_bl
-      rot_diff%bl_mass_scale=1.0d-2*rot_diff%bl_radius_scale**3
-      rot_diff%bl_temp_scale=1.0d-7
+!     star%rot%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
+!     star%rot%bl_time_scale=CONVERSION FACTOR FOR TIME.
+      star%rot%bl_radius_scale=1.0d0/solar_radius_bl
+      star%rot%bl_mass_scale=1.0d-2*star%rot%bl_radius_scale**3
+      star%rot%bl_temp_scale=1.0d-7
 !     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
-      rot_diff%bl_time_scale=2.7d13*seconds_per_year_bl
+      star%rot%bl_time_scale=2.7d13*seconds_per_year_bl
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do 50 zone_idx=1,num_zones
 
-         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*rot_diff%bl_radius_scale
-         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*rot_diff%bl_temp_scale
-         mass_grams(zone_idx)=mass_grams(zone_idx)*rot_diff%bl_mass_scale
-         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/rot_diff%bl_radius_scale
+         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*star%rot%bl_radius_scale
+         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*star%rot%bl_temp_scale
+         mass_grams(zone_idx)=mass_grams(zone_idx)*star%rot%bl_mass_scale
+         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/star%rot%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
    50 continue
-      timestep_seconds=timestep_seconds/rot_diff%bl_time_scale
-      total_mass=total_mass*rot_diff%bl_mass_scale
+      timestep_seconds=timestep_seconds/star%rot%bl_time_scale
+      total_mass=total_mass*star%rot%bl_mass_scale
 !     SET UP DIFFUSION COEFFICIENTS.
 !     MODIFIED BY BC MAY/90 -- VALID FOR ALL X WITH VARIABLE LN LAMBDA
 !     GENERAL EQUATION IS
@@ -223,14 +223,14 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
             diffusion_coeff1(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  (hydrogen_fraction - hydrogen_fraction_sq - hydrogen_metal_product)*(1.25d0+ &
-                 shell_diag%del_grad(2,zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
+                 star%diag%del_grad(2,zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
             diffusion_coeff2(zone_idx)=settling_prefactor*(hydrogen_fraction+3.0d0)/ &
                  (5.0d0*hydrogen_fraction_sq + 8.0d0*hydrogen_fraction + 3.0d0)
             diffusion_coeff1_dx(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  ( (1.0d0-2.0d0*hydrogen_fraction-metal_fraction_total)*(1.25d0+ &
-                 (6.0d0*shell_diag%del_grad(2,zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
+                 (6.0d0*star%diag%del_grad(2,zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
                  (hydrogen_fraction-hydrogen_fraction_sq-hydrogen_metal_product)*6.0d0* &
-                 shell_diag%del_grad(2,zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
+                 star%diag%del_grad(2,zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
                  thoul_denominator**2 )
             diffusion_coeff2_dx(zone_idx)=-settling_prefactor*(5.0d0*hydrogen_fraction_sq + &
                  3.0d1*hydrogen_fraction + 2.1d1)/ &
@@ -293,14 +293,14 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
                call thdiff(num_species,atomic_weight,atomic_charge, &
                     species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac)
                settling_coeff_p = -settling_ap(1)
-               settling_coeff_t = -shell_diag%del_grad(2,zone_idx)*settling_at(1)
+               settling_coeff_t = -star%diag%del_grad(2,zone_idx)*settling_at(1)
             else
                settling_coeff_p = 1.58d0 - 2.42d0*hydrogen_fraction + 0.844d0*hydrogen_fraction_sq
-               settling_coeff_t = shell_diag%del_grad(2,zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
+               settling_coeff_t = star%diag%del_grad(2,zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
             endif
             ac_scratch = 1.15d0 - 1.42d0*hydrogen_fraction + 0.647d0*hydrogen_fraction_sq
             dap_dx = -2.42d0 + 1.688d0*hydrogen_fraction
-            dat_dx = shell_diag%del_grad(2,zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
+            dat_dx = star%diag%del_grad(2,zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
             dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
 !CFD 10/09 Mimic Mixing to reduce settling.
 !            COD1(I) = FAC*HQPR(I)*X*(AP+AT)
@@ -319,26 +319,26 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             if(lthoul)then
                if(use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq
-                  settling_coeff_t = shell_diag%del_grad(2,zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
+                  settling_coeff_t = star%diag%del_grad(2,zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
                        0.549d0*hydrogen_fraction_sq)
                else
                   settling_coeff_p = -settling_ap(3)
-                  settling_coeff_t = -shell_diag%del_grad(2,zone_idx)*settling_at(3)
+                  settling_coeff_t = -star%diag%del_grad(2,zone_idx)*settling_at(3)
                endif
                iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
 !CFD 10/09 Mimic Mixing to reduce settling (cstmixing)
 !         and add the uncertainties of differential mixing (cstdiffmix).
 !
 ! old ver      COD1Z(I) = FAC*HQPR(I)*ZZ*(AP+AT)
-               rot_diff%src_grid_metal_diffusion_coeff1(zone_idx) = cstdiffmix*cstmixing* &
+               star%rot%src_grid_metal_diffusion_coeff1(zone_idx) = cstdiffmix*cstmixing* &
                     settling_prefactor*dlnp_dr(zone_idx)*iron_fraction*(settling_coeff_p+settling_coeff_t)
 !              POSITIVE DIFFUSION COEFFICIENTS NEEDED!
 ! old ver.     COD2Z(I) = ABS(FAC*AH)
 ! old ver.     QCOD1Z(I) = FAC*HQPR(I)*(AP+AT)
-               rot_diff%src_grid_metal_diffusion_coeff2(zone_idx) = cstmixing*abs(settling_prefactor*iron_settling_ah)
-               rot_diff%src_grid_metal_diffusion_coeff1_dz(zone_idx) = cstmixing*settling_prefactor* &
+               star%rot%src_grid_metal_diffusion_coeff2(zone_idx) = cstmixing*abs(settling_prefactor*iron_settling_ah)
+               star%rot%src_grid_metal_diffusion_coeff1_dz(zone_idx) = cstmixing*settling_prefactor* &
                     dlnp_dr(zone_idx)*(settling_coeff_p+settling_coeff_t)
-               rot_diff%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
+               star%rot%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
             endif
          endif
 !

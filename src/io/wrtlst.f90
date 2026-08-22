@@ -27,7 +27,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 !     WRITE MODEL OUT IN ASCII FORMAT
       use const_lib
       use luout_lib
-      use run_diag_lib
+      use star_info_lib, only: star
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts=63, nps=76
@@ -128,7 +128,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
            diffuse_helium_active,use_diffusion_z,disk_locking_active, &
            instability_transport_active,ljdot0,low_temp_opacity_flag,lovstc, &
            envelope_overshoot_active,lovstm,use_pure_z_table,lsemic, &
-           run_diag%initial_composition_code,disk_pressure,disk_temperature, &
+           star%run%initial_composition_code,disk_pressure,disk_temperature, &
            wind_saturation_omega)
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons

@@ -18,7 +18,7 @@ subroutine lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
      diffused_abundance, num_eq_points, total_mass, &
      use_generic_diffusion_vectors)
 
-      use rotdiff_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -56,18 +56,18 @@ subroutine lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
 ! mhp 3/94 added metal diffusion.
       if(use_diffusion_z.and..not.use_generic_diffusion_vectors)then
          zone_mass = eq_mass_mid(1)
-         delta_metal_abundance = dt_full*rot_diff%metal_diffusion_coeff1_mid(1)/zone_mass
-         rot_diff%metal_abundance_change(1) = rot_diff%metal_abundance_change(1)+delta_metal_abundance
+         delta_metal_abundance = dt_full*star%rot%metal_diffusion_coeff1_mid(1)/zone_mass
+         star%rot%metal_abundance_change(1) = star%rot%metal_abundance_change(1)+delta_metal_abundance
 ! general case
          do i = 2,num_eq_points-1
             zone_mass = eq_mass_mid(i)-eq_mass_mid(i-1)
-            delta_metal_abundance = dt_full*(rot_diff%metal_diffusion_coeff1_mid(i)-rot_diff%metal_diffusion_coeff1_mid(i-1))/zone_mass
-            rot_diff%metal_abundance_change(i) = rot_diff%metal_abundance_change(i)+delta_metal_abundance
+            delta_metal_abundance = dt_full*(star%rot%metal_diffusion_coeff1_mid(i)-star%rot%metal_diffusion_coeff1_mid(i-1))/zone_mass
+            star%rot%metal_abundance_change(i) = star%rot%metal_abundance_change(i)+delta_metal_abundance
          end do
 ! surface boundary condition.
          zone_mass = total_mass-eq_mass_mid(num_eq_points-1)
-         delta_metal_abundance = -dt_full*rot_diff%metal_diffusion_coeff1_mid(num_eq_points-1)/zone_mass
-         rot_diff%metal_abundance_change(num_eq_points) = rot_diff%metal_abundance_change(num_eq_points)+delta_metal_abundance
+         delta_metal_abundance = -dt_full*star%rot%metal_diffusion_coeff1_mid(num_eq_points-1)/zone_mass
+         star%rot%metal_abundance_change(num_eq_points) = star%rot%metal_abundance_change(num_eq_points)+delta_metal_abundance
       endif
       return
 end subroutine lax_wendrof2

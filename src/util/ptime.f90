@@ -14,7 +14,7 @@
 subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
      log_temperature, num_points, struct_dt)
 
-      use oldmod_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -57,35 +57,35 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
 
 ! find maximum absolute time differences for each quantity
 ! pressure
-      max_change(1)=abs(prev_model%old_pressure(1)-log_pressure(1))
+      max_change(1)=abs(star%prev%old_pressure(1)-log_pressure(1))
 ! temperature
-      max_change(2)=abs(prev_model%old_temperature(1)-log_temperature(1))
+      max_change(2)=abs(star%prev%old_temperature(1)-log_temperature(1))
 ! radius
-      max_change(3)=abs(prev_model%old_radius(1)-log_radius(1))
+      max_change(3)=abs(star%prev%old_radius(1)-log_radius(1))
 ! luminosity
       if(luminosity(1)+luminosity(2).gt.0.0d0) then
-       max_change(4)=abs((prev_model%old_luminosity(1)-luminosity(1))*2.d0/(luminosity(2)+luminosity(1)))
+       max_change(4)=abs((star%prev%old_luminosity(1)-luminosity(1))*2.d0/(luminosity(2)+luminosity(1)))
       else
        max_change(4) = 0.0d0
       endif
       do 40 i = 2,num_points
-       test_p = abs(prev_model%old_pressure(i)-log_pressure(i))
+       test_p = abs(star%prev%old_pressure(i)-log_pressure(i))
        if(max_change(1).le.test_p) then
           max_change(1) = test_p
           max_change_index(1) = i
        endif
-       test_t = abs(prev_model%old_temperature(i)-log_temperature(i))
+       test_t = abs(star%prev%old_temperature(i)-log_temperature(i))
        if(max_change(2).le.test_t) then
           max_change(2) = test_t
           max_change_index(2) = i
        endif
-       test_r = abs(prev_model%old_radius(i)-log_radius(i))
+       test_r = abs(star%prev%old_radius(i)-log_radius(i))
        if(max_change(3).le.test_r) then
           max_change(3) = test_r
           max_change_index(3) = i
        endif
        if(luminosity(i)+luminosity(i-1).gt.0.0d0) then
-          test_l = abs((prev_model%old_luminosity(i)-luminosity(i))*2.0d0/(luminosity(i)+luminosity(i-1)))
+          test_l = abs((star%prev%old_luminosity(i)-luminosity(i))*2.0d0/(luminosity(i)+luminosity(i-1)))
        else
           test_l = 0.0d0
        endif

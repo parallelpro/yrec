@@ -27,10 +27,10 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
-      use rotdiff_lib
-      use run_diag_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use temp2_lib
-      use scrtch_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -160,7 +160,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
           ! write physics flags:
             write(istor,29) core_cz_top_index,envelope_cz_bottom_index,cmixl, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
-           use_pure_z_table,run_diag%initial_composition_code,use_extended_composition, &
+           use_pure_z_table,star%run%initial_composition_code,use_extended_composition, &
            diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
            envelope_overshoot_active,lovstm,rotation_active, &
            instability_transport_active,ljdot0,disk_locking_active, &
@@ -215,7 +215,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! write physics flags:
       write(istor,30) core_cz_top_index,envelope_cz_bottom_index,cmixl, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
-           use_pure_z_table,run_diag%initial_composition_code,use_extended_composition, &
+           use_pure_z_table,star%run%initial_composition_code,use_extended_composition, &
            diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
            envelope_overshoot_active,lovstm,rotation_active, &
            instability_transport_active,ljdot0,disk_locking_active, &
@@ -281,9 +281,9 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! write out additional physics if desired
             if(lstphys)then
              sg = dexp(ln10*(cgl - 2.0D0*log_radius(i)))*mass_coordinate(i)
-               write(istor,63,advance='no') shell_diag%so(i),sg,shell_diag%del_grad(1,i),shell_diag%del_grad(2,i), &
-                 shell_diag%del_grad(3,i),shell_diag%svel(i),run_diag%adiabatic_index_gamma1(i),0.0,0.0,0.0,shell_diag%sbeta(i),shell_diag%seta(i), &
-                 (shell_diag%seg(k,i),k=1,5),shell_diag%sesum(i),shell_diag%seg(6,i),shell_diag%seg(7,i)
+               write(istor,63,advance='no') star%diag%so(i),sg,star%diag%del_grad(1,i),star%diag%del_grad(2,i), &
+                 star%diag%del_grad(3,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i),0.0,0.0,0.0,star%diag%sbeta(i),star%diag%seta(i), &
+                 (star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(6,i),star%diag%seg(7,i)
 !               WRITE(ISTOR,63,ADVANCE='no') SO(I),SG,SDEL(1,I),SDEL(2,I),
 !     *           SDEL(3,I),SVEL(I),GAM1(I),SFXION(1,I),SFXION(2,I),SFXION(3,I),
 !     *           SBETA(I),SETA(I),(SEG(K,I),K=1,5),SESUM(I),SEG(6,I),SEG(7,I)
@@ -300,7 +300,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
                vtot = circ_vel%es_circulation_velocity(i)+circ_vel%gsf_circulation_velocity(i)+circ_vel%secular_shear_velocity(i)
                write(istor,64) oblateness_a,pole_to_equator_ratio,shape_factor_fp(i), &
                   shape_factor_ft(i),specific_angular_momentum(i),shell_moment_of_inertia(i), &
-                  rot_diff%rotational_energy_term(i),circ_vel%es_circulation_velocity(i), &
+                  star%rot%rotational_energy_term(i),circ_vel%es_circulation_velocity(i), &
                   circ_vel%gsf_circulation_velocity(i),circ_vel%secular_shear_velocity(i),vtot
             else
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

@@ -22,11 +22,11 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
 
-      use rotdiff_lib
-      use run_diag_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use temp_lib
       use envelope_comp_lib
-      use scrtch_lib
+      use star_info_lib, only: star
       use const_lib
       use eos_lib
       use kap_lib
@@ -139,15 +139,15 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               temperature_rotation_factor, log_teff, ierr)
          if (ierr /= 0) return
          convective_flag(im) = is_convective
-         shell_diag%del_grad(1,im) = radiative_gradient
-         shell_diag%del_grad(2,im) = actual_gradient
-         shell_diag%del_grad(3,im) = adiabatic_gradient
+         star%diag%del_grad(1,im) = radiative_gradient
+         star%diag%del_grad(2,im) = actual_gradient
+         star%diag%del_grad(3,im) = adiabatic_gradient
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
          dfx1 = composition(1,im) - env_comp%envelope_hydrogen_fraction
-         dfx2 = composition(2,im) - run_diag%envelope_helium_fraction
+         dfx2 = composition(2,im) - star%run%envelope_helium_fraction
          dfx3 = composition(3,im) - env_comp%envelope_metal_fraction
-         dfx4 = composition(4,im) - run_diag%envelope_he3_fraction
+         dfx4 = composition(4,im) - star%run%envelope_he3_fraction
          temp_scratch = env_comp%amuenv + dfx1/atomic_weight(1) + &
               dfx2/atomic_weight(2) + dfx3/atomic_weight(3) + &
               dfx4/atomic_weight(4)
@@ -157,11 +157,11 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               composition(2,im)/atomic_weight(2)) + 0.5d0*composition(3,im)
          emu2 = 1.0d0/temp_scratch
          shell_temp%mean_molecular_weight(im) = amu2*emu2/(amu2+emu2)
-         shell_diag%so(im) = opacity
+         star%diag%so(im) = opacity
          shell_temp%cp(im) = specific_heat_cp
          shell_temp%qdt(im) = dlnrho_dlnt
 ! JVS 10/13 Always want SVEL
-         shell_diag%svel(im) = convective_velocity
+         star%diag%svel(im) = convective_velocity
 !         IF(LC(IM))THEN
 !            SVEL(IM) = VEL
 !         ELSE
@@ -179,7 +179,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       do 100 im = 2,num_zones
 !  SKIP CONVECTIVE REGIONS
          if (convective_flag(im).and.convective_flag(im-1)) then
-            rot_diff%max_domega_dr(im) = 0.0d0
+            star%rot%max_domega_dr(im) = 0.0d0
             goto 100
          end if
 !  NOW CHECK FOR SHEAR INSTABILITY -REF.ENDAL&SOFIA APJ 220:279(1978)
@@ -207,22 +207,22 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               log_density(k+1)*interp_weights(2) + &
               log_density(k+2)*interp_weights(3) + &
               log_density(k+3)*interp_weights(4)
-         actual_grad_mid = shell_diag%del_grad(2,k)*interp_weights(1) + &
-              shell_diag%del_grad(2,k+1)*interp_weights(2) + &
-              shell_diag%del_grad(2,k+2)*interp_weights(3) + &
-              shell_diag%del_grad(2,k+3)*interp_weights(4)
-         adiabatic_grad_mid = shell_diag%del_grad(3,k)*interp_weights(1) + &
-              shell_diag%del_grad(3,k+1)*interp_weights(2) + &
-              shell_diag%del_grad(3,k+2)*interp_weights(3) + &
-              shell_diag%del_grad(3,k+3)*interp_weights(4)
+         actual_grad_mid = star%diag%del_grad(2,k)*interp_weights(1) + &
+              star%diag%del_grad(2,k+1)*interp_weights(2) + &
+              star%diag%del_grad(2,k+2)*interp_weights(3) + &
+              star%diag%del_grad(2,k+3)*interp_weights(4)
+         adiabatic_grad_mid = star%diag%del_grad(3,k)*interp_weights(1) + &
+              star%diag%del_grad(3,k+1)*interp_weights(2) + &
+              star%diag%del_grad(3,k+2)*interp_weights(3) + &
+              star%diag%del_grad(3,k+3)*interp_weights(4)
          gravity_mid = hg(k)*interp_weights(1) + hg(k+1)*interp_weights(2) + &
               hg(k+2)*interp_weights(3) + hg(k+3)*interp_weights(4)
          temp_scratch = dexp(ln10*(density_mid - pressure_mid))* &
               (adiabatic_grad_mid - actual_grad_mid)*gravity_mid**2
          if (temp_scratch.gt.0.0d0) then
-            rot_diff%max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)
+            star%rot%max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)
          else
-            rot_diff%max_domega_dr(im) = 0.0d0
+            star%rot%max_domega_dr(im) = 0.0d0
          end if
   100 continue
 

@@ -15,7 +15,7 @@
 subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
      zone_max, angular_velocity)
 
-      use rotdiff_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -62,45 +62,45 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
               radius(zone_index)**2-angular_velocity(zone_index-1)* &
               radius(zone_index-1)**2)/ &
               (radius(zone_index)-radius(zone_index-1))/ &
-              (omega_mid*rot_diff%interface_radius(zone_index))
+              (omega_mid*star%rot%interface_radius(zone_index))
       end do
 ! DETERMINE 2V.
-      interp_weight = (radius(zone_min)-rot_diff%interface_radius(zone_min))/ &
-           (rot_diff%interface_radius(zone_min+1)-rot_diff%interface_radius(zone_min))
+      interp_weight = (radius(zone_min)-star%rot%interface_radius(zone_min))/ &
+           (star%rot%interface_radius(zone_min+1)-star%rot%interface_radius(zone_min))
       v_minus = diffusion_velocity(zone_min)+interp_weight* &
            (diffusion_velocity(zone_min+1)-diffusion_velocity(zone_min))
       density_r2_v_minus = exp(ln10*log_density(zone_min))* &
            radius(zone_min)**2*v_minus
       do zone_index = zone_min + 1, zone_max - 1
-         interp_weight = (radius(zone_index)-rot_diff%interface_radius(zone_index))/ &
-              (rot_diff%interface_radius(zone_index+1)-rot_diff%interface_radius(zone_index))
+         interp_weight = (radius(zone_index)-star%rot%interface_radius(zone_index))/ &
+              (star%rot%interface_radius(zone_index+1)-star%rot%interface_radius(zone_index))
          v_plus = diffusion_velocity(zone_index)+interp_weight* &
               (diffusion_velocity(zone_index+1)-diffusion_velocity(zone_index))
          density_r2_v_plus = exp(ln10*log_density(zone_index))* &
               radius(zone_index)**2*v_plus
-         density_radius = rot_diff%dm(zone_index)*rot_diff%interface_radius(zone_index)
+         density_radius = star%rot%dm(zone_index)*star%rot%interface_radius(zone_index)
          circ_velocity(zone_index) = cc13*(density_r2_v_plus-density_r2_v_minus)/ &
               density_radius/(radius(zone_index)-radius(zone_index-1))
          density_r2_v_minus = density_r2_v_plus
       end do
 ! FOR FIRST AND LAST SHELLS, CALCULATE U*D/DR(RHO*R**2) AND ASSUME
 ! DU/DR = VALUE DERIVED FROM THE LAST NEIGHBOR SHELL WITH NONZERO V.
-      density_radius = rot_diff%dm(zone_min)*rot_diff%interface_radius(zone_min)
+      density_radius = star%rot%dm(zone_min)*star%rot%interface_radius(zone_min)
       d_density_r2 = (exp(ln10*log_density(zone_min))*radius(zone_min)**2 - &
            exp(ln10*log_density(zone_min-1))*radius(zone_min-1)**2)/ &
            (radius(zone_min) - radius(zone_min-1))
       du_dr = (diffusion_velocity(zone_min+1)-diffusion_velocity(zone_min))/ &
-           (rot_diff%interface_radius(zone_min+1)-rot_diff%interface_radius(zone_min))
+           (star%rot%interface_radius(zone_min+1)-star%rot%interface_radius(zone_min))
       circ_velocity(zone_min) = cc13*(diffusion_velocity(zone_min)*d_density_r2/ &
-           density_radius + rot_diff%interface_radius(zone_min)*du_dr)
-      density_radius = rot_diff%dm(zone_max)*rot_diff%interface_radius(zone_max)
+           density_radius + star%rot%interface_radius(zone_min)*du_dr)
+      density_radius = star%rot%dm(zone_max)*star%rot%interface_radius(zone_max)
       d_density_r2 = (exp(ln10*log_density(zone_max))*radius(zone_max)**2 - &
            exp(ln10*log_density(zone_max-1))*radius(zone_max-1)**2)/ &
            (radius(zone_max) - radius(zone_max-1))
       du_dr = (diffusion_velocity(zone_max)-diffusion_velocity(zone_max-1))/ &
-           (rot_diff%interface_radius(zone_max)-rot_diff%interface_radius(zone_max-1))
+           (star%rot%interface_radius(zone_max)-star%rot%interface_radius(zone_max-1))
       circ_velocity(zone_max) = cc13*(diffusion_velocity(zone_max)*d_density_r2/ &
-           density_radius + rot_diff%interface_radius(zone_max)*du_dr)
+           density_radius + star%rot%interface_radius(zone_max)*du_dr)
 ! NOW COMPUTE RUN OF FC; THIS ASSUMES THAT FC = SAME FOR ALL
 ! MECHANISMS AND IS LIMITED TO A MAXIMUM OF 1.
       do zone_index = zone_min, zone_max

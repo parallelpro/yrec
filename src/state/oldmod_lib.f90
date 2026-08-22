@@ -44,7 +44,7 @@ module oldmod_lib
             double precision :: old_teff
             integer :: old_num_zones
       end type prev_model_state
-
-      type(prev_model_state), public :: prev_model
-
+! 2026 (phase four, step 4 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module oldmod_lib

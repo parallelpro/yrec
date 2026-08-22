@@ -40,7 +40,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
      convective_velocity, want_derivatives, is_convective, &
      pressure_rotation_factor, temperature_rotation_factor, log_teff, ierr)
 
-      use rotdiff_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -88,9 +88,9 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 
       ierr = 0
 
-      rot_diff%alfmlt=0.0d0
-      rot_diff%phmlt=0.0d0
-      rot_diff%cmxmlt=0.0d0
+      star%rot%alfmlt=0.0d0
+      star%rot%phmlt=0.0d0
+      star%rot%cmxmlt=0.0d0
       radiative_gradient = opacity*luminosity_lsun*dexp(ln10*(log_pressure - &
            log_mass - 4d0*log_temperature + log10_solar_luminosity - cgl + &
            cdelrl))* &

@@ -29,7 +29,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       use atm_lib
       use envstruct_lib
       use turnover_lib
-      use scrtch_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -169,9 +169,9 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
               exp(ln10*(cgl-2.0D0*log_radius(zone_index)))
          combined_temperature(zone_index) = log_temperature(zone_index)
 
-         combined_velocity(zone_index) = shell_diag%svel(zone_index)
-         combined_grad1(zone_index) = shell_diag%del_grad(1,zone_index)
-         combined_grad2(zone_index) = shell_diag%del_grad(3,zone_index)
+         combined_velocity(zone_index) = star%diag%svel(zone_index)
+         combined_grad1(zone_index) = star%diag%del_grad(1,zone_index)
+         combined_grad2(zone_index) = star%diag%del_grad(3,zone_index)
          combined_convective_flag(zone_index) = convective_flag(zone_index)
       enddo
 !

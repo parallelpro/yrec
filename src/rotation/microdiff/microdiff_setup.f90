@@ -40,8 +40,8 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
      zone_end, fully_convective_flag, density_orig, temperature_orig)
 
-      use rotdiff_lib
-      use scrtch_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -135,26 +135,26 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       goto 9999
    47 continue
       zone_end = i
-!     rot_diff%bl_mass_scale=CONVERSION FACTOR FOR MASS.
-!     rot_diff%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
-!     rot_diff%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
-!     rot_diff%bl_time_scale=CONVERSION FACTOR FOR TIME.
-      rot_diff%bl_radius_scale=1.0d0/crsun_bah
-      rot_diff%bl_mass_scale=1.0d-2*rot_diff%bl_radius_scale**3
-      rot_diff%bl_temp_scale=1.0d-7
+!     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.
+!     star%rot%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
+!     star%rot%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
+!     star%rot%bl_time_scale=CONVERSION FACTOR FOR TIME.
+      star%rot%bl_radius_scale=1.0d0/crsun_bah
+      star%rot%bl_mass_scale=1.0d-2*star%rot%bl_radius_scale**3
+      star%rot%bl_temp_scale=1.0d-7
 !     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
-      rot_diff%bl_time_scale=2.7d13*csecyr_bah
+      star%rot%bl_time_scale=2.7d13*csecyr_bah
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do 50 i=1,num_zones
-         radius_bl(i)=exp(ln10*log_radius(i))*rot_diff%bl_radius_scale
-         temperature_bl(i)=exp(ln10*log_temperature(i))*rot_diff%bl_temp_scale
-         enclosed_mass(i)=enclosed_mass(i)*rot_diff%bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)/rot_diff%bl_radius_scale
+         radius_bl(i)=exp(ln10*log_radius(i))*star%rot%bl_radius_scale
+         temperature_bl(i)=exp(ln10*log_temperature(i))*star%rot%bl_temp_scale
+         enclosed_mass(i)=enclosed_mass(i)*star%rot%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)/star%rot%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
    50 continue
-      timestep=timestep/rot_diff%bl_time_scale
-      total_mass=total_mass*rot_diff%bl_mass_scale
+      timestep=timestep/star%rot%bl_time_scale
+      total_mass=total_mass*star%rot%bl_mass_scale
 !
 ! COLLECT THE NECESSARY QUANTITIES (NAMELY RHO AND T) FOR LATER
 ! TRANSFORMATION TO THE EQUALLY SPACED GRID.

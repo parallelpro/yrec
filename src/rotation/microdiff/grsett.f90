@@ -55,7 +55,7 @@
 subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
      mass_grams, log_temperature, convective_flag, num_zones, total_mass)
 
-      use rotdiff_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use numerics_lib
@@ -146,7 +146,7 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
 ! MHP 3/94 METAL DIFFUSION
       if(use_diffusion_z)then
          do eq_idx = 1,num_equal_points
-            metal_x_orig(eq_idx) = rot_diff%metal_abundance_change(eq_idx)
+            metal_x_orig(eq_idx) = star%rot%metal_abundance_change(eq_idx)
          end do
       endif
 !  FIRST STEP OF TWO STEP LAX-WENDROFF METHOD.   COMPUTE NEW X'S AT ZONE
@@ -180,8 +180,8 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
 ! MHP 3/94 METAL DIFFUSION
       if(use_diffusion_z)then
          do eq_idx=1,num_equal_points-1
-            rot_diff%metal_diffusion_coeff1_mid(eq_idx)=rot_diff%metal_diffusion_coeff1_mid(eq_idx)+ &
-                 rot_diff%metal_abundance_change_mid(eq_idx)*rot_diff%eq_metal_diffusion_coeff1_mid(eq_idx)
+            star%rot%metal_diffusion_coeff1_mid(eq_idx)=star%rot%metal_diffusion_coeff1_mid(eq_idx)+ &
+                 star%rot%metal_abundance_change_mid(eq_idx)*star%rot%eq_metal_diffusion_coeff1_mid(eq_idx)
             metal_x_prev_iter(eq_idx) = metal_x_orig(eq_idx)
          end do
          metal_x_prev_iter(num_equal_points) = metal_x_orig(num_equal_points)
@@ -271,11 +271,11 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
  130  continue
 ! MHP 3/94 ADDED METAL DIFFUSION
       if(use_diffusion_z)then
-         z_change_first=rot_diff%metal_abundance_change(1)-metal_x_orig(1)
-         z_change_last=rot_diff%metal_abundance_change(num_equal_points)- &
+         z_change_first=star%rot%metal_abundance_change(1)-metal_x_orig(1)
+         z_change_last=star%rot%metal_abundance_change(num_equal_points)- &
               metal_x_orig(num_equal_points)
          do eq_idx = 1,num_equal_points
-            rot_diff%metal_abundance_change(eq_idx) = rot_diff%metal_abundance_change(eq_idx) - &
+            star%rot%metal_abundance_change(eq_idx) = star%rot%metal_abundance_change(eq_idx) - &
                  metal_x_orig(eq_idx)
          end do
       endif
