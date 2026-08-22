@@ -157,7 +157,7 @@ endif
 # object list (the transition to library-based linking can go domain
 # by domain). Standalone per-domain test programs link against these.
 DOMAIN_DIRS := eos kap atm nuclear wind mixing rotation numerics \
-	const state misc setup io core util
+	const state setup io core util
 
 define LIB_template
 lib$(1).a: $$(filter $(1)/%,$$(OBJS))

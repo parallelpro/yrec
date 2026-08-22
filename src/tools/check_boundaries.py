@@ -47,16 +47,22 @@ PUBLIC = {
                 "ifermi12", "zfermim12"},
     # mixing has no facade module (phase-two finding: mix.f90 is
     # already the orchestrator); these are its de-facto public surface.
+    # tpgrad joined when phase four's step 1 moved it here from misc/
+    # (it is MLT convection physics): it is legitimately called from
+    # core (physic/coefft/starin) and atm (qenv) pending the
+    # star-layer consolidation.
     "mixing": {"mix", "mixcz", "convec", "bursmix", "rotmix", "hsubp",
-               "oversh", "sconvec"},
+               "oversh", "sconvec", "tpgrad"},
     # rotation deliberately has no facade (multi-primitive surface,
-    # user decision during the phase-two sweep). NOTE: "func" is only
-    # here because numerics_lib's qgauss hard-codes a call to it (the
-    # F77 fixed-name-integrand idiom) -- a pre-existing backwards
-    # numerics->rotation dependency, recorded in ROADMAP.md.
+    # user decision during the phase-two sweep). "func" was here
+    # because numerics' qgauss hard-coded a call to it; phase four's
+    # step 2 made it a procedure argument, but func stays public since
+    # fpft passes it across the module boundary into numerics. solid
+    # joined when step 1 moved it here from misc/ (rotation geometry,
+    # legitimately called from setup/midmod and wind/wcz).
     "rotation": {"getw", "getrot", "fpft", "momi", "ovrot", "viscos",
                  "wczimp", "grsett", "microdiff", "ndifcom", "mixcom",
-                 "mixgrid", "func"},
+                 "mixgrid", "func", "solid"},
     "wind": {"massloss", "mwind", "mcowind"},
     # numerics is the shared numerics library: all-public by design.
     "numerics": None,
