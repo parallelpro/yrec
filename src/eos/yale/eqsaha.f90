@@ -165,15 +165,20 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       helium_saha_ratio_1 = beta_inverse*dexp(helium_saha_ratio_1)
       helium_saha_ratio_2 = ln10*(saha_weight_term(13) + stemp) - &
            helium_ionization_temp_2/temperature
-      if(helium_saha_ratio_2.lt.-saha_exponent_tol) go to 14
+      if(helium_saha_ratio_2.lt.-saha_exponent_tol) then
+      helium_ion_fraction_2 = 0.0d0
+      else
       skip_helium_ii= .false.
       helium_saha_ratio_2 = beta_inverse*dexp(helium_saha_ratio_2)
-      go to 15
       end if
+      else
+      helium_ion_fraction_1 = 0.0d0
+      helium_ion_fraction_2 = 0.0d0
       end if
- 13   helium_ion_fraction_1 = 0.0d0
- 14   helium_ion_fraction_2 = 0.0d0
- 15   continue
+      else
+      helium_ion_fraction_1 = 0.0d0
+      helium_ion_fraction_2 = 0.0d0
+      end if
 ! BEGIN ITERATIONS FOR SOLUTION OF E
       do isaha=1,max_saha_iterations
          saha_state = saha_state + 1
@@ -261,12 +266,12 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          if (.not. (fact1.ge.-38.0d0)) then
          fact1=-38.0d0
          fact1=dexp(ln10*fact1)*dsign(1.0d0,c12)*dsign(1.0d0,deltx1)
-         go to 105
-         end if
-         end if
- 100     continue
+         else
          fact1=c12*deltx1
- 105     continue
+         end if
+         else
+         fact1=c12*deltx1
+         end if
          if (.not. (c13.eq.0.d0 .or. delta_electrons_per_ion.eq.0.d0)) then
          c13l=dlog10(dabs(c13))
          deltel=dlog10(dabs(delta_electrons_per_ion))
@@ -274,12 +279,12 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          if (.not. (fact2.ge.-38.0d0)) then
          fact2=-38.0d0
          fact2=dexp(ln10*fact2)*dsign(1.0d0,c13)*dsign(1.0d0,delta_electrons_per_ion)
-         go to 115
-         end if
-         end if
- 110     continue
+         else
          fact2=c13*delta_electrons_per_ion
- 115     continue
+         end if
+         else
+         fact2=c13*delta_electrons_per_ion
+         end if
          deltx2=(r1-fact1-fact2)/c11
          helium_ion_fraction_2 = helium_ion_fraction_2 + deltx2
          helium_ion_fraction_2 = dmax1(0.0d0,dmin1(1.0d0,helium_ion_fraction_2))
@@ -289,14 +294,16 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          mean_electrons_per_ion = dmax1(1.0d-11,dmin1(max_electrons_per_ion, &
               mean_electrons_per_ion))
          converged = converged .and. dabs(delta_electrons_per_ion).lt.saha_convergence_tol
-         if(converged) go to 29
+         if(converged) exit
  28   continue
       end do
+      if (isaha .gt. max_saha_iterations) then
       write(short_file_unit,99) log10_temperature,log10_pressure, &
            mean_electrons_per_ion,delta_electrons_per_ion
  99   format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
+      end if
 ! SYSTEM HAS BEEN SOLVED FOR E
- 29   electron_mean_weight_inverse = mean_electrons_per_ion*ion_mean_weight_inverse
+      electron_mean_weight_inverse = mean_electrons_per_ion*ion_mean_weight_inverse
       specific_gas_constant = gas_constant*(electron_mean_weight_inverse + &
            ion_mean_weight_inverse)
       density = beta*pressure/(specific_gas_constant*temperature)
@@ -324,7 +331,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       end do
       r3p = -beta_inverse*r3p
       end if
- 31   if(skip_helium_i) go to 33
+      if (.not. skip_helium_i) then
       helium_neutral_fraction = 1.0d0 - helium_ion_fraction_1 - helium_ion_fraction_2
       sk0qt = 2.5d0 + beta14 + helium_ionization_temp_1*temperature_inverse
       temp = helium_saha_ratio_1*helium_neutral_fraction
@@ -342,7 +349,8 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       end if
  32   r3t = r3t + cr23*r2t
       r3p = r3p + cr23*r2p
- 33   sqet = r3t/c33
+      end if
+      sqet = r3t/c33
       sqep = r3p/c33
       dlnrho_dlnt = -1.0d0 - beta14 - ep1*sqet
       dlnrho_dlnp = beta_inverse - ep1*sqep
@@ -362,7 +370,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       usum = helium_mass_fraction*(sx1qt*helium_ionization_temp_1 + &
            sx2qt*(helium_ionization_temp_1 + helium_ionization_temp_2))
       end if
- 35   if(nz0.le.0) go to 37
+      if (.not. (nz0.le.0)) then
       stemp = 2.50d0 + beta14 - ep1e*sqet
       do i=nz1,nz0
          species_temp_deriv_term(i) = species_weighted_term(i)*(stemp + &
@@ -371,7 +379,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          usum = usum + species_temp_deriv_term(i)*ionization_temp(i)
  36   continue
       end do
- 37   continue
+      end if
       betaut = 0.75d0*(2.0d0 + beta14)
       ramu = gas_constant*ion_mean_weight_inverse
       qut =ramu*((1d0+mean_electrons_per_ion)*(betaut+3d0*beta_inverse*beta14) &

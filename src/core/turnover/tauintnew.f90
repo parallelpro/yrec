@@ -60,39 +60,42 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
       double precision :: pressure_scale_height, convective_velocity_bcz
       double precision :: log10_radius_interp, radius_top_cz, cz_width, &
            radius_test
+      logical :: spline_taucz_done
 
 ! DETERMINE EXTENT OF SURFACE CONVECTION ZONE.
       fully_convective_flag = .false.
 ! FIND THE TOP OF THE MAIN INTERNAL CONVECTION ZONE.
       search_start_index = 1
-   50 in_radiative_zone = .true.
+! (Restructured 2026: the label-50 retry became the named search loop;
+! the label 70/90/100 jumps became the if/else chain below; the label
+! 140 jump became the spline_taucz_done flag.)
+      search: do
+      in_radiative_zone = .true.
       if (convective_flag(search_start_index)) in_radiative_zone = .false.
       do i = search_start_index,num_points,1
          if (.not.in_radiative_zone.and..not.convective_flag(i)) then
             core_cz_top_index = i-1
             in_radiative_zone = .true.
          endif
-         if (in_radiative_zone.and.convective_flag(i)) goto 70
+         if (in_radiative_zone.and.convective_flag(i)) exit
    60 continue
       end do
-! IF THE CODE GETS HERE, EITHER THE STAR IS FULLY CONVECTIVE, OR
+! IF THE SCAN COMPLETES, EITHER THE STAR IS FULLY CONVECTIVE, OR
 ! HAS A COMPLETELY RADIATIVE ENVLOPE, MAYBE WITH A CONVECTIVE CORE.
-      if (in_radiative_zone) then ! RADIATIVE ENVELOPE
+      if (i .gt. num_points .and. in_radiative_zone) then ! RADIATIVE ENVELOPE
          fully_convective_flag = .false.
          surface_cz_deep_enough = .false.
          cz_base_index = num_points
          upper_cz_base_index = num_points
          core_cz_top_index = num_points
-         goto 100
-      else ! FULLY CONVECTIVE
+      else
+      if (i .gt. num_points) then ! FULLY CONVECTIVE
          fully_convective_flag = .true.
          surface_cz_deep_enough = .true.
          i = 1
          j = 0
          core_cz_top_index = 1
-       goto 90
-      endif
-   70 continue
+      else
 ! FIND THE BASE OF THE UPPER-MOST CONVECTION ZONE
 ! JvS 02/2026: ADDED LCZ(J+1) TO TRAP OUT CASES WHERE THE LAST (FEW) POINT(S) IN
 ! THE MODEL IS(ARE) ALREADY RADIATIVE
@@ -100,7 +103,8 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
          if (convective_flag(j+1) .and. .not.convective_flag(j)) exit
    80 continue
       end do
-   90 cz_base_index = i
+      endif
+      cz_base_index = i
       upper_cz_base_index = j + 1
       index_gap = upper_cz_base_index-cz_base_index
 ! LOCATING THE CORRECT CZ INCURES VARIOUS PATHOLOGIES. TRAP THEM OUT.
@@ -112,7 +116,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
          if (num_points.ne.num_interior_points .and. &
               log10_pressure(core_cz_top_index)-log10_pressure(cz_base_index).lt.1) then
             search_start_index = cz_base_index+1
-            goto 50
+            cycle search
          endif
       endif
 ! ENSURE THIS CZ IS AT LEAST 3 SHELLS THICK. IF NOT, WE ARE LIKELY SNAGGED
@@ -125,7 +129,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
          else
             search_start_index = cz_base_index+2
          endif
-         goto 50
+         cycle search
       endif
 ! IN THE CASE WHERE ONLY THE INTERIOR MODEL IS CONSIDERED, USE JMAX.
       if (index_gap.ne.0.and.num_points.eq.num_interior_points) then
@@ -146,7 +150,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
       else
          surface_cz_deep_enough= .false.
       endif
-  100 continue
+      end if
 
 ! CALCULATE TAUCZ TOP DOWN FOR FULLY AND PARTIALLY CONVECTIVE. FOR A FULLY
 ! RADIATIVE ENVELOPE, SET TAUCZ = 0.0.
@@ -167,6 +171,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
          radius_at_bcz = exp(ln10*radius_at_bcz)
 !        IF THERE ARE MULTIPLE CONVECTION CELLS IN THE PREDOMINATELY
 !        RADIATIVE ENVELOPE, USE AVERAGING METHOD.
+         spline_taucz_done = .false.
          if (.not. (index_gap.ne.0)) then
 ! CALCULATE HP
          pressure_scale_height2 = exp(ln10*(log10_pressure(cz_base_index)- &
@@ -220,13 +225,14 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
                   call ksplint(spline_x_delta,spline_y_radius,spline_deriv,0.0d0,log10_radius_interp)
 ! DEFINE TAUCZ
                   star%turnover%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
-                  goto 140
+                  spline_taucz_done = .true.
+                  exit
                endif
             end do
 ! KC 2025-05-31 MOVED ENDIF HERE TO AVOID BLOCK MISMATCH.
          endif
          end if
-  110       continue
+         if (.not. spline_taucz_done) then
 ! IF CODE GETS HERE, THEN 1 PSCA ABOVE THE BCZ IS OUTSIDE OF THE STAR,
 ! OR MULTIPLE CONVECTION CELLS RESIDE WITHIN THE RADIATIVE ENVELOPE.
 ! IN THIS CASE, EVALUATE CVEL AT CENTER OF BOTTOM CZ. FIRST, FIND UPPER EDGE.
@@ -265,7 +271,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
             call ksplint(spline_x_radius,spline_y_velocity,spline_deriv,radius_test,convective_velocity_bcz)
 ! DEFINE TAUCZ
             star%turnover%convective_turnover_timescale = cz_width/convective_velocity_bcz
-  140       continue
+         end if
 ! KC 2025-05-31 MOVED ENDIF ABOVE TO AVOID BLOCK MISMATCH.
 !          ENDIF
 !        CONVERT CORE RADIUS INTO SOLAR UNITS
@@ -278,7 +284,9 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
 !     DEEP IN THE STELLAR INTERIOR. IF YES, REDO CALCULATION.
       if (star%turnover%convective_turnover_timescale.gt.1.0e20) then
          search_start_index = cz_base_index + 1
-       goto 50
+         cycle search
       endif
+      exit search
+      end do search
       return
 end subroutine tauintnew

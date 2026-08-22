@@ -341,7 +341,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !            WRITE(*,*)OMEGA(1),OMEGA(M)
          endif
 !  IF LDO=F,NO INSTABILITIES OCCUR (STABLE AGAINST ALL MECHANISMS).
-         if(.not.unstable_zone_found) goto 9999
+         if(.not.unstable_zone_found) return   ! (label 9999 was a bare return)
 !  TREAT CENTRAL AND SURFACE ZONES AS ALWAYS CONVECTIVE
 !  (SHOULD BE FIXED TO GIVE BETTER CENTRAL/SURFACE B.C.)
          am_transport_convective_flag(1) = .true.
@@ -356,7 +356,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  THE LAST NON-ZERO V.
          in_unstable_region = .false.
          scan_start_zone = zone_min
-   60    continue
+         region_loop: do
          unstable_zone_found = .false.
 ! MHP 8/13 TREAT ENTIRE DOMAIN AS UNSTABLE IF A CONSTANT DIFFUSION
 ! COEFFICIENT IS BEING ADDED
@@ -365,8 +365,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             zone_begin = zone_min - 1
             zone_end = zone_max
             scan_start_zone = zone_max + 1
-            goto 80
-         endif
+         else
          do j = scan_start_zone,zone_max
             if(diffusion_velocity(j).gt.0.0D0) then
                unstable_zone_found = .true.
@@ -380,17 +379,19 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                zone_end = j - 1
                in_unstable_region = .false.
                scan_start_zone = j + 1
-               goto 80
+               exit
             endif
    70    continue
          end do
+         if (j .gt. zone_max) then
 !  IF THE LAST INTERFACE IS UNSTABLE (NON-ZERO V) ENSURE THAT IEND IS SET
 !  PROPERLY.
          if(in_unstable_region) zone_end = zone_max
          scan_start_zone = zone_max + 1
-   80    continue
+         end if
+         endif
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
-         if(.not.unstable_zone_found) goto 90
+         if(.not.unstable_zone_found) exit region_loop
 ! MHP 08/03 REMOVED OBSOLETE EQUAL ROUTINE
 !         IF(M.GT.1)THEN
 !  TRANSFORM TO EQUAL GRID SPACING IN CHI FOR THE REGION.
@@ -415,9 +416,9 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  SKIP IF THIS OCCURS.
          if(single_interface_flag) then
             if(scan_start_zone.le.zone_max) then
-               goto 60
+               cycle region_loop
             else
-               goto 90
+               exit region_loop
             endif
          endif
 ! MHP 3/09 SKIP ANGULAR MOMENTUM EVOLUTION FOR SOLID BODY MODELS
@@ -504,8 +505,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !     *               IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP)
 !         ENDIF
 !  RETURN FOR NEXT REGION IF APPLICABLE
-         if(scan_start_zone.le.zone_max) goto 60
-   90    continue
+         if(.not. (scan_start_zone.le.zone_max)) exit region_loop
+         end do region_loop
 ! CHECK SOLUTION,UPDATE OMEGA,AND SEE IF ANOTHER ITERATION IS NEEDED.
          am_transport_convective_flag(1) = lcz_first_zone
          am_transport_convective_flag(num_zones) = lcz_last_zone
@@ -528,13 +529,12 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 ! MHP 9/93
          if(no_am_transport_in_core)diffusion_solve_ok = .true.
 ! IF LOK=T,CONVERGED.
-         if(diffusion_solve_ok)goto 200
+         if(diffusion_solve_ok)exit   ! the post-loop reassignment is a no-op here
 ! IF LREDO=T, A PROBLEM REQUIRES TIMESTEP CUTTING.
-         if(redo_flag)goto 9999
+         if(redo_flag)return   ! (label 9999 was a bare return)
   100 continue
       end do
       diffusion_solve_ok = .true.
-  200 continue
 ! PERFORM COMPOSITION DIFFUSION OF REMAINING SPECIES.
       am_transport_convective_flag(1) = .true.
       am_transport_convective_flag(num_zones) = .true.
@@ -586,7 +586,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
  199     format(I5,1P7E10.3)
       end do
       endif
- 9999 continue
 ! MHP 8/03 - OMITTED I/O, COULD REINTRODUCE IN ANOTHER FILE
 !  DETERMINE COUPLING FACTOR (I.E. THE FRACTION OF THE TOTAL ANGULAR
 !  MOMENTUM LOST FROM THE CORE RELATIVE TO ITS FRACTION OF THE TOTAL
