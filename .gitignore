@@ -9,3 +9,5 @@ src/yrec
 **/standard/
 src/*.a
 src/test_eos
+src/test_kap
+src/test_atm

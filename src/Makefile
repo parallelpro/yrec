@@ -179,8 +179,16 @@ test_eos: FFLAGS += $(REL_FFLAGS)
 test_eos: eos/test/test_eos.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^
 
+test_kap: FFLAGS += $(REL_FFLAGS)
+test_kap: kap/test/test_kap.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^
+
+test_atm: FFLAGS += $(REL_FFLAGS)
+test_atm: atm/test/test_atm.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^
+
 .PHONY: tests
-tests: test_eos
+tests: test_eos test_kap test_atm
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)

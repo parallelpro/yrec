@@ -130,6 +130,27 @@ enforcement (private objects simply are not exported).
 - Add the boundary-checker script from stage 1 to the test suite so
   facade bypasses fail CI rather than accumulating again.
 
+STATUS (2026-08-21): stage 2 substantially complete. Delivered:
+per-domain library targets (`make libs`, 15 archives; the yrec
+executable still links the flat object list -- the library-based
+yrec link remains open, transitional by design); the boundary checker
+enforced via `pytest test_boundaries.py`; and three standalone test
+programs with pinned baselines wired into pytest --
+`eos/test/test_eos.f90` (eos_get over an 8-point solar-track grid
+with derivatives, both eos_get_gamma1 branches including the
+Yale/SCV branch no Stage-0 configuration reaches, MHD as
+skip-unless-tables infrastructure), `kap/test/test_kap.f90` (kap_get
+over 7 points on the OPAL95/GS98 table), and
+`atm/test/test_atm.f90` (all three tabulated atmosphere options --
+Kurucz via surfp, Castelli/Kurucz via kcsurfp, Allard via the
+atm_get_surface_pt facade -- whose mutual ~0.01-0.05 dex agreement at
+matching (Teff, g) doubles as a cross-validation). Open items carried
+forward: the MHD data half (above), the library-based yrec link, and
+a full `atm_get` envelope-integration test (needs the entire
+eos+kap+solver state booted -- effectively a full-model concern,
+currently covered by Stage-0; revisit if the envelope integrator
+ever needs pointwise pinning).
+
 ## Stage 3 -- the ierr-not-stop error discipline
 
 Inventory (2026-08-21): 90 `stop` statements in library domains --
