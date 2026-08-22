@@ -85,9 +85,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       external hra
       integer :: teff_idx, logg_idx
       logical :: found_valid_pressure
-      double precision :: scvhe_dummy_val, scvz_dummy_val
-      integer :: scvhe_dummy_npts, scvz_dummy_npts
-      integer :: t_idx, p_idx, col_idx
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! SETUP CONSTANTS
@@ -185,7 +182,8 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! eos_lib's eos_init; a no-op when MHD is off, exactly as before.
 ! eos_init also reads the Fermi-Dirac degenerate-electron table
 ! (the F-tables block that used to sit inline just below).
-      call eos_init(fermi_table_path,zams_a_table_path,zams_b_table_path, &
+      call eos_init(fermi_table_path,scv_h_table_path,scv_he_table_path, &
+           scv_z_table_path,zams_a_table_path,zams_b_table_path, &
            zams_c_table_path,centre1_table_path,centre2_table_path, &
            centre3_table_path,centre4_table_path,centre5_table_path)
 !
@@ -203,32 +201,9 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! loads that lived inline here moved into atm_lib's atm_init.
       call atm_init(atm_table_path,allard_table_path)
 
-! MHP 5/97 ADDED OPTION FOR NEW SCV EQUATION OF STATE TABLES.
-      if(use_scv_eos)then
-         open(unit=scv_h_unit,file=scv_h_table_path,status='OLD')
-         open(unit=scv_he_unit,file=scv_he_table_path,status='OLD')
-         open(unit=scv_z_unit,file=scv_z_table_path,status='OLD')
-!  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
-         do t_idx = 1, nts
-            read(scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
-            read(scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
-            read(scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
-    1       format(f5.2,i4)
-! TABLE GRID POINTS IN T, P(T) ARE THE SAME - NPTSY AND TLOGX
-! READ IN TO RETAIN PARALLEL COMMON BLOCK STRUCTURE.
-            do p_idx = 1, nptsx(t_idx)
-               read(scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
-               read(scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
-    2          format(f6.2,1p2e13.5,0p,8f9.4)
-            end do
-!  READ IN METAL EQUATION OF STATE TABLE; COMPUTED USING THE PRATHER
-! EQUATION OF STATE IN THE OLD YALE CODE.
-            do p_idx = nptsx(t_idx),1,-1
-               read(scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
- 3             format(f6.2,12f9.4)
-            end do
-         end do
-      endif
+! (The SCV equation-of-state table reads that lived here moved into
+! eos_lib's eos_init -- 2026, ROADMAP.md stage 1 -- alongside the
+! Fermi-Dirac table read.)
 
       return
 end subroutine setups

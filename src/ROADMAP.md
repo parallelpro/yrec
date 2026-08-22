@@ -87,8 +87,15 @@ the `fermi_table_*` members moved to a new `state/yale_eos_lib.f90`
 (the Yale/Prather EOS's own state module) and the load into
 `eos_init`; the Kurucz/Castelli/Allard surface-table loads (the
 inline reads noted under item 3) moved into a full `atm_init` at the
-same time. **Stage 1 is complete**: every inventoried bypass and both
-execution-time discoveries are resolved, each verified byte-identical.
+same time; and the SCV EOS table reads (a third inline setups.f90
+block, spotted last) moved into `eos_init` as well -- order-safe
+since the SCV read shares no file units or state with the atm reads
+it now precedes, and directly regression-verified since the Stage-0
+OPALSCV cases exercise the SCV tables. **Stage 1 is complete**:
+every inventoried bypass and all three execution-time discoveries
+are resolved, each verified byte-identical. `setup/setups.f90` now
+performs no domain table I/O at all -- it computes constants and
+calls `kap_init`/`eos_init`/`atm_init`.
 
 ## Stage 2 -- per-module standalone builds and tests
 

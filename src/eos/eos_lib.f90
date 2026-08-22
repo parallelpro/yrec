@@ -138,8 +138,15 @@ end subroutine eos_get
 ! and that check's `stop`, which ROADMAP.md stage 3 will convert to
 ! ierr). The OPAL 1995/2001/2006 EOS tables are not loaded here:
 ! they are lazily read on first use inside esac/esac01/esac06 via
-! their lreadco guards.
-subroutine eos_init(fermi_table_path, zams_a_table_path, &
+! their lreadco guards. The SCV (Saumon-Chabrier-Van Horn) EOS tables
+! are also read here (gated on use_scv_eos, into const_lib's former
+! common/scveos/ state consumed by eos/scv/eqscve+eqscvg and the io
+! writers) -- another inline setups.f90 block moved in verbatim; its
+! read is provably independent of the atm tables read later in
+! startup (separate file units, disjoint state), so absorbing it here
+! is order-safe.
+subroutine eos_init(fermi_table_path, scv_h_table_path, &
+     scv_he_table_path, scv_z_table_path, zams_a_table_path, &
      zams_b_table_path, zams_c_table_path, centre1_table_path, &
      centre2_table_path, centre3_table_path, centre4_table_path, &
      centre5_table_path)
@@ -148,8 +155,11 @@ subroutine eos_init(fermi_table_path, zams_a_table_path, &
       use luout_lib
       use const_lib
       implicit none
+      integer, parameter :: nts = 63
 
       character(len=256), intent(in) :: fermi_table_path
+      character(len=256), intent(in) :: scv_h_table_path, &
+           scv_he_table_path, scv_z_table_path
       character(len=256), intent(in) :: zams_a_table_path, &
            zams_b_table_path, zams_c_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
@@ -157,6 +167,9 @@ subroutine eos_init(fermi_table_path, zams_a_table_path, &
 
       integer :: grid_idx, iden_idx, col_idx, card_idx
       integer :: bin_start, bin_width, bin_end
+      integer :: t_idx, p_idx
+      double precision :: scvhe_dummy_val, scvz_dummy_val
+      integer :: scvhe_dummy_npts, scvz_dummy_npts
 
       if (use_mhd_eos) then
          call mhdtbl(zams_a_table_path, zams_b_table_path, &
@@ -195,6 +208,33 @@ subroutine eos_init(fermi_table_path, zams_a_table_path, &
 
 !  CLOSE EQUATION OF STATE FILE.
       close(fermi_unit)
+
+! MHP 5/97 ADDED OPTION FOR NEW SCV EQUATION OF STATE TABLES.
+      if(use_scv_eos)then
+         open(unit=scv_h_unit,file=scv_h_table_path,status='OLD')
+         open(unit=scv_he_unit,file=scv_he_table_path,status='OLD')
+         open(unit=scv_z_unit,file=scv_z_table_path,status='OLD')
+!  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
+         do t_idx = 1, nts
+            read(scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
+            read(scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
+            read(scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
+    1       format(f5.2,i4)
+! TABLE GRID POINTS IN T, P(T) ARE THE SAME - NPTSY AND TLOGX
+! READ IN TO RETAIN PARALLEL COMMON BLOCK STRUCTURE.
+            do p_idx = 1, nptsx(t_idx)
+               read(scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
+               read(scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
+    2          format(f6.2,1p2e13.5,0p,8f9.4)
+            end do
+!  READ IN METAL EQUATION OF STATE TABLE; COMPUTED USING THE PRATHER
+! EQUATION OF STATE IN THE OLD YALE CODE.
+            do p_idx = nptsx(t_idx),1,-1
+               read(scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
+ 3             format(f6.2,12f9.4)
+            end do
+         end do
+      endif
 
       return
 end subroutine eos_init
