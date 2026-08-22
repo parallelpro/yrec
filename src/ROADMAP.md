@@ -58,10 +58,12 @@ them. Current inventory of bypasses (verified by grep, 2026-08-21):
 5. `setup/grsett.f90` / `setup_grsett.f90` call
    `rotation/microdiff/` internals (`lax_wendrof1/2`,
    `get_imp_diffco`, `thdiff`). This is the legacy
-   backwards-compatibility diffusion path. Either route it through a
-   small rotation facade entry or declare it a documented exception
-   like `wcz.f90` -- decide when reached; the legacy path may not be
-   worth new API surface.
+   backwards-compatibility diffusion path. RESOLVED (2026-08-21, user
+   choice): a third option beat the two anticipated here -- the pair
+   is settling physics that lived in `setup/` only by name, so it was
+   relocated into `rotation/microdiff/` itself, dissolving the bypass
+   (the calls became intra-folder, symmetric with `microdiff`'s own
+   use of the same kernels).
 6. `core/main.f90` does `use opacity_table_lib` directly -- check
    what it touches and either route through `kap_lib` or drop the
    use-statement if vestigial.

@@ -617,11 +617,13 @@ The remaining 36 files split into 3 pipeline subfolders plus root:
 - `rotation/microdiff/` (10 files): the element-settling pipeline --
   `microdiff` (dispatcher) + its 5 pipeline stages (`_setup`, `_mte`,
   `_cod`, `_run`, `_etm`), `lax_wendrof1`/`2`, `get_imp_diffco`,
-  `thdiff` (the Thoul et al. 1994 Burgers-equation solver). Note
-  `lax_wendrof*`/`get_imp_diffco`/`thdiff` are also called from
-  `setup/grsett.f90`/`setup_grsett.f90` (the legacy diffusion path
-  retained for backwards compatibility) -- multi-consumer, not
-  misplaced.
+  `thdiff` (the Thoul et al. 1994 Burgers-equation solver). At the
+  time of this split, `lax_wendrof*`/`get_imp_diffco`/`thdiff` were
+  also called from `setup/grsett.f90`/`setup_grsett.f90` (the legacy
+  Bahcall-Loeb settling path retained for backwards compatibility);
+  during ROADMAP.md stage 1 (same day) that pair was itself relocated
+  into `rotation/microdiff/`, making those calls intra-folder --
+  grsett is settling physics that lived in `setup/` only by name.
 - `rotation/shape/` (4 files): the rotational-distortion group --
   `fpft`, `func`, `momi`, `intmom` (Kippenhahn-Thomas/Endal-Sofia
   shape formalism and Law-thesis moment-of-inertia expansion).
