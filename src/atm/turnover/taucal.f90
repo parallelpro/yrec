@@ -17,9 +17,9 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
       use const_lib
-      use envelope_comp_lib
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       implicit none
       integer, parameter :: json=5000
 
@@ -167,7 +167,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
                              (convective_velocity(j)+convective_velocity(j+1))*delta_mass(j)
                   enddo
                   avg_convective_velocity = velocity_mass_sum/mass_sum
-                  turnover%convective_turnover_timescale = cz_width/avg_convective_velocity
+                  star%turnover%convective_turnover_timescale = cz_width/avg_convective_velocity
             else
 !             (ORIGINAL ROUTINE)
 !             FIND V
@@ -183,7 +183,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
                     convective_velocity_bcz = convective_velocity(num_points)
  85                continue
 !                  DEFINE TAUCZ
-                  turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+                  star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
             endif
 
 ! JVS 10/11/13
@@ -228,7 +228,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
 !            ENDIF
 !         ENDIF
       else
-         turnover%convective_turnover_timescale = 0.0d0
+         star%turnover%convective_turnover_timescale = 0.0d0
       endif
       print*, 'TauCal'
 

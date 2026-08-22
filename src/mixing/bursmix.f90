@@ -25,7 +25,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
      num_radiative_zones, num_zones_mixed, ierr)
       use nuclear_lib
       use const_lib
-      use light_burn_lib
+      use star_info_lib, only: star
       use star_info_lib, only: star
       implicit none
       integer, parameter :: json = 5000
@@ -171,12 +171,12 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       end do
       if (use_extended_composition) then
          do zone_idx = 1, num_zones
-            light_burn%rate_li6_start(zone_idx) = light_burn%rate_li6(zone_idx)
-            light_burn%rate_li7_start(zone_idx) = light_burn%rate_li7(zone_idx)
-            light_burn%rate_be9_start(zone_idx) = light_burn%rate_be9(zone_idx)
+            star%light_burn%rate_li6_start(zone_idx) = star%light_burn%rate_li6(zone_idx)
+            star%light_burn%rate_li7_start(zone_idx) = star%light_burn%rate_li7(zone_idx)
+            star%light_burn%rate_be9_start(zone_idx) = star%light_burn%rate_be9(zone_idx)
          end do
          env_cz_zone_old = env_cz_zone
-         light_burn%pressure_scale_height_start = light_burn%pressure_scale_height_end
+         star%light_burn%pressure_scale_height_start = star%light_burn%pressure_scale_height_end
       end if
       return
 end subroutine bursmix

@@ -47,8 +47,8 @@
 subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end, ierr)
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -96,8 +96,8 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 ! ADD ROSSBY SCALING TO WMAX = CRITICAL W FOR THE SUN.
       if(scale_by_rossby_number)then
 ! MHP 8/17 CORRECTED TAUCZ CALCULATION TO INTERPOLATE PROPERLY IN TIMESTEP
-         current_turnover_timescale = turnover%convective_turnover_timescale_old+ &
-              turnover%fracstep*(turnover%convective_turnover_timescale-turnover%convective_turnover_timescale_old)
+         current_turnover_timescale = star%turnover%convective_turnover_timescale_old+ &
+              star%turnover%fracstep*(star%turnover%convective_turnover_timescale-star%turnover%convective_turnover_timescale_old)
          omega_saturation = wind_saturation_omega*pmm_solar_turnover_timescale/ &
               current_turnover_timescale
 ! G Somers 08/17 IF ADDING ADDITIONAL B SCALING, ADD ADDITIONAL TAUCZ TERM.

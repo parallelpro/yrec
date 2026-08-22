@@ -19,7 +19,7 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
      electron_mean_weight_inverse, beta)
 
       use const_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
       implicit none
 
       double precision, intent(in) :: temperature, pressure, density, &
@@ -40,18 +40,18 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
       double precision :: dfx1, dfx12, dfx4, ee
 
 ! SET UP FRACTIONAL ABUNDANCES
-      dfx1 = (hydrogen_fraction - env_comp%envelope_hydrogen_fraction)
-      dfx12 = (metal_fraction - env_comp%envelope_metal_fraction)
+      dfx1 = (hydrogen_fraction - star%env_comp%envelope_hydrogen_fraction)
+      dfx12 = (metal_fraction - star%env_comp%envelope_metal_fraction)
       if (dabs(dfx1) + dabs(dfx12) .lt. 1.0d-5) then
 ! USE ENVELOPE ABUNDANCES
-         ion_mean_weight_inverse = env_comp%amuenv
+         ion_mean_weight_inverse = star%env_comp%amuenv
       else
          dfx1 = dfx1*atomic_weights(1)
          dfx12 = dfx12*atomic_weights(3)
-         dfx4 = (env_comp%envelope_hydrogen_fraction + env_comp%envelope_metal_fraction - &
+         dfx4 = (star%env_comp%envelope_hydrogen_fraction + star%env_comp%envelope_metal_fraction - &
               hydrogen_fraction - metal_fraction)*atomic_weights(2)
 ! ASSUME EXCESS Z(METALS) IS IN THE FORM OF CARBON(12)
-         ion_mean_weight_inverse = env_comp%amuenv + dfx1 + dfx4 + dfx12
+         ion_mean_weight_inverse = star%env_comp%amuenv + dfx1 + dfx4 + dfx12
       end if
       ee = ((beta*pressure)/(density*temperature*gas_constant* &
            ion_mean_weight_inverse)) - 1.0d0

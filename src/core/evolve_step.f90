@@ -23,10 +23,10 @@
 subroutine evolve_step(model_iteration, step_status, ierr)
 
       use nuclear_lib
-      use fluxes_lib
-      use engeb_diag_lib
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use star_info_lib, only: star
@@ -218,7 +218,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                   evo%total_rotational_ke, ierr)
              if (ierr /= 0) return
 ! STORE NEW CZ BASE
-               light_burn%jcz = star%envelope_cz_bottom_index
+               star%light_burn%jcz = star%envelope_cz_bottom_index
             else
 ! save old model for PTIME
                do i=1, star%num_zones
@@ -243,13 +243,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! changed for lithium burning with overshoot.
 ! store starting depth of C.Z. for light element burning.
             if (use_extended_composition) then
-               light_burn%cz_base_radius_prev = 0.0D0
+               star%light_burn%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = star%envelope_cz_bottom_index
                if (envelope_overshoot_active) then
-                  light_burn%pressure_scale_height_start = alphae*exp(clndp*(star%log_pressure(star%envelope_cz_bottom_index)+2.0D0*star%log_radius(star%envelope_cz_bottom_index) &
+                  star%light_burn%pressure_scale_height_start = alphae*exp(clndp*(star%log_pressure(star%envelope_cz_bottom_index)+2.0D0*star%log_radius(star%envelope_cz_bottom_index) &
                            -star%log_density(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
-                  light_burn%pressure_scale_height_start = 0.0D0
+                  star%light_burn%pressure_scale_height_start = 0.0D0
                endif
 ! find burning rates at the beginning of the time step.
                call lirate88(star%composition,star%log_density,star%log_temperature,star%num_zones,1)
@@ -462,10 +462,10 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index
                if (envelope_overshoot_active) then
-                  light_burn%pressure_scale_height_end = alphae*exp(clndp*(star%log_pressure(star%envelope_cz_bottom_index)+2.0D0*star%log_radius(star%envelope_cz_bottom_index) &
+                  star%light_burn%pressure_scale_height_end = alphae*exp(clndp*(star%log_pressure(star%envelope_cz_bottom_index)+2.0D0*star%log_radius(star%envelope_cz_bottom_index) &
                            -star%log_density(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
-                  light_burn%pressure_scale_height_end = 0.0D0
+                  star%light_burn%pressure_scale_height_end = 0.0D0
                endif
 ! FIND BURNING RATES AT THE END OF THE TIME STEP.
                call lirate88(star%composition,star%log_density,star%log_temperature,star%num_zones,2)
@@ -511,7 +511,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        if (rescale_kind(nk).ne.2) star%model_number = star%model_number+1
 ! 2026 (phase four, step 5): compute the output diagnostics in the
 ! star layer (fills star%run%*, star%luminosity_breakdown
-! renormalization, turnover% via gettau); wrtout below only reads.
+! renormalization, star%turnover% via gettau); wrtout below only reads.
        call update_output_diagnostics(ierr)
        if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE

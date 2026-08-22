@@ -32,10 +32,10 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
       use nuclear_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use temp_lib
-      use mdphy_lib
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use star_info_lib, only: star
       use const_lib
@@ -143,7 +143,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
             star%rot%convective_flag_prev(j) = star%prev%old_convective_flag(j)
             star%rot%radius_prev(j) = star%prev%old_radius(j)
             star%rot%del_grad_diff_prev(j) = star%rot%old_del_adiabatic_mix(j)-star%rot%old_del_radiative_mix(j)
-            mix_phys%amum(j) = star%rot%old_amu(j)
+            star%mix_phys%amum(j) = star%rot%old_amu(j)
             do 10 i = 1,num_species_tracked
                star%composition(i,j) = star%prev%old_composition(i,j)
    10       continue
@@ -174,41 +174,41 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !           HCOMPP(I,J) = HCOMP(I,J)
 !  30    CONTINUE
          hg_mid(j) = star%run%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%run%old_hg(j))
-         mix_phys%del_adiabatic_mix(j) = star%rot%old_del_adiabatic_mix(j) + &
+         star%mix_phys%del_adiabatic_mix(j) = star%rot%old_del_adiabatic_mix(j) + &
               time_fraction*(star%diag%del_grad(3,j)-star%rot%old_del_adiabatic_mix(j))
-         mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%diag%del_grad(2,j) - star%rot%old_delm(j))
-         mix_phys%del_radiative_mix(j) = star%rot%old_del_radiative_mix(j) + &
+         star%mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%diag%del_grad(2,j) - star%rot%old_delm(j))
+         star%mix_phys%del_radiative_mix(j) = star%rot%old_del_radiative_mix(j) + &
               time_fraction*(star%diag%del_grad(1,j) - star%rot%old_del_radiative_mix(j))
-         mix_phys%esumm(j) = star%rot%old_esum(j) + time_fraction*(star%diag%sesum(j) - star%rot%old_esum(j))
-         mix_phys%viscm(j) = star%rot%old_visc(j) + time_fraction*(shell_temp%visc(j) - star%rot%old_visc(j))
-         mix_phys%thdifm(j) = star%rot%old_thdif(j) + time_fraction*(shell_temp%thdif(j) - star%rot%old_thdif(j))
-         mix_phys%cpm(j) = star%rot%old_cp(j) + time_fraction*(shell_temp%cp(j) - star%rot%old_cp(j))
-         mix_phys%qdtm(j) = star%rot%old_qdt(j) + time_fraction*(shell_temp%qdt(j) - star%rot%old_qdt(j))
-         mix_phys%om(j) = star%rot%old_om(j) + time_fraction*(star%diag%so(j) - star%rot%old_om(j))
-         mix_phys%amum(j) = mix_phys%amum(j) + step_fraction_ratio*(shell_temp%mean_molecular_weight(j) - star%rot%old_amu(j))
+         star%mix_phys%esumm(j) = star%rot%old_esum(j) + time_fraction*(star%diag%sesum(j) - star%rot%old_esum(j))
+         star%mix_phys%viscm(j) = star%rot%old_visc(j) + time_fraction*(star%thermo%visc(j) - star%rot%old_visc(j))
+         star%mix_phys%thdifm(j) = star%rot%old_thdif(j) + time_fraction*(star%thermo%thdif(j) - star%rot%old_thdif(j))
+         star%mix_phys%cpm(j) = star%rot%old_cp(j) + time_fraction*(star%thermo%cp(j) - star%rot%old_cp(j))
+         star%mix_phys%qdtm(j) = star%rot%old_qdt(j) + time_fraction*(star%thermo%qdt(j) - star%rot%old_qdt(j))
+         star%mix_phys%om(j) = star%rot%old_om(j) + time_fraction*(star%diag%so(j) - star%rot%old_om(j))
+         star%mix_phys%amum(j) = star%mix_phys%amum(j) + step_fraction_ratio*(star%thermo%mean_molecular_weight(j) - star%rot%old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
          total_epsilon = star%diag%sesum(j)+star%diag%seg(6,j)+star%diag%seg(7,j)
-         mix_phys%epsm(j) = star%rot%old_eps(j)+time_fraction*(total_epsilon-star%rot%old_eps(j))
+         star%mix_phys%epsm(j) = star%rot%old_eps(j)+time_fraction*(total_epsilon-star%rot%old_eps(j))
    40 continue
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
 !  RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS TO DETERMINE WHETHER
 !  OR NOT A ZONE IS CONVECTIVE IF IT CHANGES STATE OVER THE COURSE OF A
 !  TIMESTEP.
       do 50 i = 1,star%num_zones
-         star%rot%del_grad_diff_new(i) = mix_phys%del_adiabatic_mix(i)-mix_phys%del_radiative_mix(i)
+         star%rot%del_grad_diff_new(i) = star%mix_phys%del_adiabatic_mix(i)-star%mix_phys%del_radiative_mix(i)
          if (star%convective_flag(i).eqv.star%rot%convective_flag_prev(i)) then
             convective_flag_mid(i) = star%convective_flag(i)
-            mix_phys%velm(i) = star%rot%old_vel(i) + time_fraction*(star%diag%svel(i)-star%rot%old_vel(i))
+            star%mix_phys%velm(i) = star%rot%old_vel(i) + time_fraction*(star%diag%svel(i)-star%rot%old_vel(i))
             convective_state_changed(i) = .false.
          else
             convective_state_changed(i) = .true.
             new_cz_detected = .true.
-            if (mix_phys%del_adiabatic_mix(i).lt.mix_phys%del_radiative_mix(i)) then
+            if (star%mix_phys%del_adiabatic_mix(i).lt.star%mix_phys%del_radiative_mix(i)) then
                convective_flag_mid(i) = .true.
-               mix_phys%velm(i) = max(star%rot%old_vel(i),star%diag%svel(i))
+               star%mix_phys%velm(i) = max(star%rot%old_vel(i),star%diag%svel(i))
             else
                convective_flag_mid(i) = .false.
-               mix_phys%velm(i) = 0.0D0
+               star%mix_phys%velm(i) = 0.0D0
             endif
          endif
    50 continue
@@ -396,17 +396,17 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 ! INCREMENT THE TIMESTEP
          if (first_call) then
             do i = 1,star%num_zones
-               deuterium_rate_mid(i) = light_burn%deuterium_burning_rate_start(i)+ &
-                    step_fraction_ratio*(light_burn%deuterium_burning_rate(i)- &
-                    light_burn%deuterium_burning_rate_start(i))
-               deuterium_rate_mid_start(i) = light_burn%deuterium_burning_rate_start(i)
+               deuterium_rate_mid(i) = star%light_burn%deuterium_burning_rate_start(i)+ &
+                    step_fraction_ratio*(star%light_burn%deuterium_burning_rate(i)- &
+                    star%light_burn%deuterium_burning_rate_start(i))
+               deuterium_rate_mid_start(i) = star%light_burn%deuterium_burning_rate_start(i)
             end do
          else
             do i = 1,star%num_zones
                deuterium_rate_mid_start(i) = deuterium_rate_mid(i)
                deuterium_rate_mid(i) = deuterium_rate_mid(i)+ &
-                    step_fraction_ratio*(light_burn%deuterium_burning_rate(i)- &
-                    light_burn%deuterium_burning_rate_start(i))
+                    step_fraction_ratio*(star%light_burn%deuterium_burning_rate(i)- &
+                    star%light_burn%deuterium_burning_rate_start(i))
             end do
          endif
 ! RADIATIVE ZONES.

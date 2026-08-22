@@ -29,7 +29,7 @@ module mdphy_lib
             double precision :: thdifm(json), velm(json), viscm(json)
             double precision :: epsm(json)
       end type mdphy_state
-
-      type(mdphy_state), public :: mix_phys
-
+! 2026 (phase six, step 1 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module mdphy_lib

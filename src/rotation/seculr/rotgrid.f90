@@ -27,7 +27,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
      eq_mixing_diffusion_coeff, eq_moment_of_inertia, eq_angular_momentum, &
      eq_mass, eq_omega, single_interface_flag)
       use star_info_lib, only: star
-      use mdphy_lib
+      use star_info_lib, only: star
       use const_lib
       use numerics_lib
       implicit none
@@ -265,7 +265,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
 ! STORED IN YVAL
          scale_factor = c4pi*exp(ln10*(log_density(ii)+2.0d0*log_radius(ii)))
          dchi_dr = scale_factor/(ln10*mass_scale_factor*enclosed_mass(ii))+ &
-              scale_factor*mix_phys%epsm(ii)/luminosity_scale_factor+ &
+              scale_factor*star%mix_phys%epsm(ii)/luminosity_scale_factor+ &
               exp(ln10*(cgl+log_density(ii)+log_mass(ii)-log_pressure(ii)- &
               2.0d0*log_radius(ii)))/(ln10*pressure_scale_factor)
          star%rot%ytab(i) = log_density(ii) + log10(dchi_dr) + 2.0d0*log_radius(ii)

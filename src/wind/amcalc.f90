@@ -15,7 +15,7 @@
 ! pressure, and (optionally) convective-turnover-timescale (Rossby)
 ! scaling, each raised to its own calibrated exponent.
 subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
-      use turnover_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
 
@@ -46,12 +46,12 @@ subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
 !     LUMINOSITY
       luminosity_lsun = 10.**log_luminosity_lsun
 !     PHOTOSPHERIC PRESSURE
-      photospheric_pressure_ratio = 10.**(turnover%pphot0+turnover%fracstep*(turnover%pphot-turnover%pphot0))/ &
+      photospheric_pressure_ratio = 10.**(star%turnover%pphot0+star%turnover%fracstep*(star%turnover%pphot-star%turnover%pphot0))/ &
            (10.**pmm_solar_pressure)
 !     CONVECTIVE OVERTURN TIMESCALE
       if(scale_by_rossby_number)then
-         turnover_ratio = (turnover%convective_turnover_timescale_old+turnover%fracstep* &
-              (turnover%convective_turnover_timescale-turnover%convective_turnover_timescale_old))/ &
+         turnover_ratio = (star%turnover%convective_turnover_timescale_old+star%turnover%fracstep* &
+              (star%turnover%convective_turnover_timescale-star%turnover%convective_turnover_timescale_old))/ &
               pmm_solar_turnover_timescale
       else
          turnover_ratio = 1.

@@ -20,7 +20,7 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       use eos_lib
       use kap_lib
       use atm_table_lib
-      use pulse_diag_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -97,30 +97,30 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       atm_call_count = atm_call_count + 1
       atm_table%atm_log10_pressure = log10_pressure
       atm_table%atm_log10_temperature = log10_temperature
-      if (print_flag .or. pulse_diag%lpumod) then
+      if (print_flag .or. star%pulse%lpumod) then
        atm_table%atm_log10_density = log10_density
        atm_table%atm_opacity = opacity
        atm_table%atm_ion_fraction(1) = fxion(1)
        atm_table%atm_ion_fraction(2) = fxion(2)
        atm_table%atm_ion_fraction(3) = fxion(3)
-       pulse_diag%qtl = log10_temperature
-       pulse_diag%qt = dexp(ln10*log10_temperature)
-       pulse_diag%qpl = log10_pressure
-       pulse_diag%qp = dexp(ln10*log10_pressure)
-       pulse_diag%qdl = log10_density
-       pulse_diag%qd = dexp(ln10*log10_density)
-       pulse_diag%qo = opacity
-       pulse_diag%qol = log10_opacity
-       pulse_diag%qqdp = dlnrho_dlnp
-       pulse_diag%qqed = 0.0d0
-       pulse_diag%qqod = dlnkap_dlnrho
-       pulse_diag%qqot = dlnkap_dlnt
-       pulse_diag%qdel = 0.0d0
-       pulse_diag%qqdt = dlnrho_dlnt
-       pulse_diag%qdela = adiabatic_gradient
-       pulse_diag%qqcp = specific_heat_cp
-       pulse_diag%qrmu = specific_gas_constant
-       pulse_diag%qemu = electron_mean_weight_inverse
+       star%pulse%qtl = log10_temperature
+       star%pulse%qt = dexp(ln10*log10_temperature)
+       star%pulse%qpl = log10_pressure
+       star%pulse%qp = dexp(ln10*log10_pressure)
+       star%pulse%qdl = log10_density
+       star%pulse%qd = dexp(ln10*log10_density)
+       star%pulse%qo = opacity
+       star%pulse%qol = log10_opacity
+       star%pulse%qqdp = dlnrho_dlnp
+       star%pulse%qqed = 0.0d0
+       star%pulse%qqod = dlnkap_dlnrho
+       star%pulse%qqot = dlnkap_dlnt
+       star%pulse%qdel = 0.0d0
+       star%pulse%qqdt = dlnrho_dlnt
+       star%pulse%qdela = adiabatic_gradient
+       star%pulse%qqcp = specific_heat_cp
+       star%pulse%qrmu = specific_gas_constant
+       star%pulse%qemu = electron_mean_weight_inverse
       endif
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.

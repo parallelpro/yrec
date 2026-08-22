@@ -23,7 +23,7 @@ module temp_lib
             double precision :: cp(json), mean_molecular_weight(json)
             double precision :: qdt(json), thdif(json), visc(json)
       end type shell_temp_state
-
-      type(shell_temp_state), public :: shell_temp
-
+! 2026 (phase six, step 1 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module temp_lib

@@ -27,7 +27,7 @@
 ! OUTPUT VARIABLES:
 ! dt : DIFFUSION TIMESTEP, WHICH CAN BE CUT IF ERRORS IN THE
 !    COMPOSITION DIFFUSION ARE DISCOVERED.
-! mix_phys%amum (former common/mdphy/) : NEW RUN OF MEAN MOLECULAR WEIGHT.
+! star%mix_phys%amum (former common/mdphy/) : NEW RUN OF MEAN MOLECULAR WEIGHT.
 ! cut_count : NUMBER OF TIMES DIFFUSION TIMESTEP HAS BEEN CUT.
 ! converged_flag : SET F IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 ! redo_flag : SET T IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
@@ -36,8 +36,8 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 
       use star_info_lib, only: star
       use const_lib
-      use envelope_comp_lib
-      use mdphy_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       implicit none
@@ -181,14 +181,14 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       if(iteration_number.gt.1)then
          do 90 zone_index = 1,num_zones
             delta_hydrogen = composition(1,zone_index)- &
-                 env_comp%envelope_hydrogen_fraction
+                 star%env_comp%envelope_hydrogen_fraction
             delta_helium = composition(2,zone_index)- &
                  star%run%envelope_helium_fraction
             delta_metal = composition(3,zone_index)- &
-                 env_comp%envelope_metal_fraction
+                 star%env_comp%envelope_metal_fraction
             delta_helium3 = composition(4,zone_index)- &
                  star%run%envelope_he3_fraction
-            amu_calc_temp = env_comp%amuenv + delta_hydrogen/atomic_weight(1) + &
+            amu_calc_temp = star%env_comp%amuenv + delta_hydrogen/atomic_weight(1) + &
                  delta_helium/atomic_weight(2) + &
                  delta_metal/atomic_weight(3) + &
                  delta_helium3/atomic_weight(4)
@@ -198,7 +198,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                  + composition(2,zone_index)/atomic_weight(2)) + &
                  0.5d0*composition(3,zone_index)
             electron_mean_weight_inverse = 1.0d0/amu_calc_temp
-            mix_phys%amum(zone_index) = ion_mean_weight_inverse* &
+            star%mix_phys%amum(zone_index) = ion_mean_weight_inverse* &
                  electron_mean_weight_inverse/ &
                  (ion_mean_weight_inverse+electron_mean_weight_inverse)
    90    continue

@@ -28,7 +28,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
      log_luminosity_lsun, num_zones, convective_flag, radius_at_bcz)
       use atm_lib
       use envstruct_lib
-      use turnover_lib
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -84,8 +84,8 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       integer :: combined_num_points
 
 ! TAUCZ = 0.0
-      turnover%convective_turnover_timescale = 0.0
-      turnover%pphot = 0.0
+      star%turnover%convective_turnover_timescale = 0.0
+      star%turnover%pphot = 0.0
 
 ! Check if 1 PSCA above BCZ is within envelope. If so, only the interior
 ! model should be considered for TAUCZ. Set LCALCENV = .FALSE.. If not,
@@ -152,7 +152,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! TOP OF THE INTERIOR MODEL IS RADIATIVE. CHECK IF TAUCZ = 0.0. IF NOT,
 ! THEN GO TO THE END.
 !
-      if (turnover%convective_turnover_timescale.ne.0.0) goto 100
+      if (star%turnover%convective_turnover_timescale.ne.0.0) goto 100
 !
 ! COLLECT THE NECESSARY STRUCTURE VARIABLES INTO DUMMY VECTORS.
       combined_num_points = num_zones

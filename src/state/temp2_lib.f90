@@ -29,7 +29,7 @@ module temp2_lib
                  gsf_circulation_velocity_prev(json)
             double precision :: mu_gradient_velocity(json)
       end type circulation_velocity_state
-
-      type(circulation_velocity_state), public :: circ_vel
-
+! 2026 (phase six, step 1 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module temp2_lib

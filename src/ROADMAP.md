@@ -645,3 +645,58 @@ nk stayed const_lib module state (former common/zramp/), not an
 argument. Phase C (reset/re-entrancy) is next: its reset surface is
 now enumerable -- evolve_state, evolve_step's saved locals, star,
 and the domains' table/lazy-init state.
+---
+
+# Phase six: one state taxonomy (finishing the MESA shape)
+
+Added 2026-08-22 after the phase-five evolve_step extraction, from a
+survey of the eleven remaining shared state/ modules plus const_lib.
+Design question (user): group run-lifetime state under state/ and
+move structure/current-step variables into star_info? Sharpened by
+the survey into ownership + lifetime, with per-module verdicts:
+
+| module (instance)             | contents                            | verdict |
+|-------------------------------|-------------------------------------|---------|
+| envelope_comp (env_comp)      | surface X/Z, mixture, stotal/senv   | star%env_comp |
+| turnover (turnover)           | convective turnover time, pphot     | star%turnover |
+| light_burn (light_burn)       | Li/Be/D burn rates + prev trackers  | star%light_burn |
+| fluxes (flux_diag)            | neutrino fluxes, SNU rates          | star%flux |
+| engeb_diag (engeb_diag)       | nuclear-energy diagnostics          | star%engeb |
+| mdphy (mix_phys)              | per-zone mixing/diffusion physics   | star%mix_phys |
+| temp (shell_temp)             | per-zone cp/mu/qdt/thdif/visc       | star%thermo |
+| temp2 (circ_vel)              | per-zone circulation velocities     | star%circ |
+| pulse_diag (pulse_diag)       | pulsation-output diagnostics        | star%pulse |
+| envstruct (env_struct)        | envelope-integration profile        | stays: atm-owned (like atm_table) |
+| atmstruct (atmo_struct)       | atmosphere-integration profile      | stays: atm-owned |
+
+A correction from the survey: temp/temp2 looked like dissolvable
+scratch by name, but their arrays are cross-routine carriers (physic
+fills them, rotation/microdiff read them) -- per-step derived model
+state, so they fold into star_info rather than into locals. The
+genuinely-scratch lesson (delta_*_step, phase five) stands: scratch
+lives in locals, never in structs.
+
+Steps:
+1. Fold the nine model-state modules into star_info (step-4
+   mechanics: instance moves in as a component, type stays; users'
+   `inst%` -> `star%comp%`). Physics-domain files that read these
+   (eos's env_comp use is the deepest) gain visible star% references
+   -- the same deliberate, grep-able coupling as the step-4 folds.
+2. envstruct/atmstruct stay standalone modules, reclassified as
+   atm-domain state alongside atm_table_lib.
+3. Split const_lib -- the real remaining mess, three things in one
+   name: physical constants (immutable), the ~200 namelist targets
+   (controls, read-only after parmin), and stray mutable working
+   state (debye_huckel_*, the zramp rescale state including nk, the
+   SCV EOS tables, which belong in an scv_eos state module). Target:
+   phys_const_lib (parameters) / controls as part of star_job (the
+   MESA inlist->s% pattern) / strays to their owners. This is what
+   makes "read-only after setup" checkable, and it defines the
+   reset boundary for phase C (controls survive a reset, working
+   state does not).
+
+End state: everything about a run reachable from four roots -- star,
+job, evo, and true constants -- physics domains opaque behind their
+facades, and phase C's reset implementable by enumerating those
+roots. Verification discipline unchanged (the phase-five codegen
+lesson applies doubly here: eqstat2's hot loops read env_comp).

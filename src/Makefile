@@ -74,16 +74,21 @@ $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 # objects relative to each other, and MODULE_SRCS list position alone
 # does not guarantee build order under parallel (-j) builds.
 nuclear/nuclear_lib.o: | const/const_lib.o state/oldmod_lib.o \
+	state/star_info_lib.o \
 	state/engeb_diag_lib.o state/fluxes_lib.o state/light_burn_lib.o \
 	const/luout_lib.o state/mdphy_lib.o numerics/numerics_lib.o \
 	state/scrtch_lib.o state/turnover_lib.o
 eos/eos_lib.o: | const/const_lib.o state/opal_eos_lib.o \
 	state/yale_eos_lib.o const/luout_lib.o
-kap/kap_lib.o: | const/const_lib.o state/envelope_comp_lib.o \
+kap/kap_lib.o: | const/const_lib.o state/star_info_lib.o \
 	const/luout_lib.o
 state/star_info_lib.o: | state/oldmod_lib.o state/scrtch_lib.o \
-	state/run_diag_lib.o state/rotdiff_lib.o
+	state/run_diag_lib.o state/rotdiff_lib.o \
+	state/envelope_comp_lib.o state/turnover_lib.o state/light_burn_lib.o \
+	state/fluxes_lib.o state/engeb_diag_lib.o state/mdphy_lib.o \
+	state/temp_lib.o state/temp2_lib.o state/pulse_diag_lib.o
 atm/atm_lib.o: | state/atm_table_lib.o state/atmstruct_lib.o \
+	state/star_info_lib.o \
 	const/const_lib.o state/envelope_comp_lib.o state/envstruct_lib.o \
 	eos/eos_lib.o const/intpar_lib.o kap/kap_lib.o \
 	state/light_burn_lib.o const/luout_lib.o numerics/numerics_lib.o \

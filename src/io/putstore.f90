@@ -29,7 +29,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 !     WRITE MODEL OUT IN ASCII FORMAT
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use temp2_lib
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -297,11 +297,11 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
              duma = cc13*omega(i)**2/(local_g_const*fm)*5.D0/(2.D0+rotation_eta2(i))
              oblateness_a = duma * radius_ratio_r0(i)**3
              pole_to_equator_ratio = (1.0D0 - oblateness_a)/(1.0D0 + 0.5D0*oblateness_a)
-               vtot = circ_vel%es_circulation_velocity(i)+circ_vel%gsf_circulation_velocity(i)+circ_vel%secular_shear_velocity(i)
+               vtot = star%circ%es_circulation_velocity(i)+star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i)
                write(istor,64) oblateness_a,pole_to_equator_ratio,shape_factor_fp(i), &
                   shape_factor_ft(i),specific_angular_momentum(i),shell_moment_of_inertia(i), &
-                  star%rot%rotational_energy_term(i),circ_vel%es_circulation_velocity(i), &
-                  circ_vel%gsf_circulation_velocity(i),circ_vel%secular_shear_velocity(i),vtot
+                  star%rot%rotational_energy_term(i),star%circ%es_circulation_velocity(i), &
+                  star%circ%gsf_circulation_velocity(i),star%circ%secular_shear_velocity(i),vtot
             else
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
             endif

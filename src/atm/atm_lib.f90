@@ -46,11 +46,11 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       use star_info_lib, only: star
       use star_info_lib, only: star
       use atmstruct_lib
-      use pulse_diag_lib
+      use star_info_lib, only: star
       use envstruct_lib
-      use envelope_comp_lib
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use intpar_lib
@@ -169,11 +169,11 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 
 ! DBG PULSE TURN ON DERIVATIVE CALCULATOR
       if (pulse_print_flag.and.print_flag) then
-          pulse_diag%lpumod = .true.
+          star%pulse%lpumod = .true.
           want_derivatives = .true.
           in_atmosphere = .false.
       else
-          pulse_diag%lpumod = .false.
+          star%pulse%lpumod = .false.
           want_derivatives = .false.
           in_atmosphere = .true.
       end if
@@ -289,10 +289,10 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       endif
 ! DBG PULSE INITIAL POINT FOR PULSATION
       if (pulse_print_flag.and.print_flag) then
-        pulse_diag%qqed = 0.0d0
+        star%pulse%qqed = 0.0d0
         pulse_energy_sum = 0.0d0
-        pulse_diag%qqet = 0.0d0
-        pulse_diag%qfs = 1.0d0
+        star%pulse%qqet = 0.0d0
+        star%pulse%qfs = 1.0d0
         prev_tau = dexp(ln10*indep_var)
         prev_opacity = opacity
         prev_density = dexp(ln10*log10_density)
@@ -309,15 +309,15 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
         if(pulsation_file_version.eq.1) then
 ! MHP 10/02 TYPO - QED SHOULD HAVE BEEN QQED
 !     *         PL, QESUM,O,QDP,QED,
-           write(opal_atm_unit,5001)delta_tau_step,pulse_diag%qfs,luminosity_linear,log10_temperature,log10_density, &
-               log10_pressure, pulse_energy_sum,opacity,dlnrho_dlnp,pulse_diag%qqed, &
-               pulse_diag%qqet,dlnkap_dlnrho,dlnkap_dlnt,pulse_gradient,adiabatic_gradient, &
+           write(opal_atm_unit,5001)delta_tau_step,star%pulse%qfs,luminosity_linear,log10_temperature,log10_density, &
+               log10_pressure, pulse_energy_sum,opacity,dlnrho_dlnp,star%pulse%qqed, &
+               star%pulse%qqet,dlnkap_dlnrho,dlnkap_dlnt,pulse_gradient,adiabatic_gradient, &
                specific_heat_cp,specific_gas_constant,dlnrho_dlnt,electron_pressure
 !     *         PL, TAUP ,O,QDP,QED,
           else if (pulsation_file_version.eq.2 .or. pulsation_file_version.eq.3) then
-           write(opal_atm_unit,6001)delta_tau_step,pulse_diag%qfs,luminosity_linear,log10_temperature,log10_density, &
-               log10_pressure, prev_tau ,opacity,dlnrho_dlnp,pulse_diag%qqed, &
-               pulse_diag%qqet,dlnkap_dlnrho,dlnkap_dlnt,pulse_gradient,adiabatic_gradient, &
+           write(opal_atm_unit,6001)delta_tau_step,star%pulse%qfs,luminosity_linear,log10_temperature,log10_density, &
+               log10_pressure, prev_tau ,opacity,dlnrho_dlnp,star%pulse%qqed, &
+               star%pulse%qqet,dlnkap_dlnrho,dlnkap_dlnt,pulse_gradient,adiabatic_gradient, &
                specific_heat_cp,specific_gas_constant,dlnrho_dlnt,electron_pressure
           end if
 
@@ -383,14 +383,14 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! G Somers 11/14 ADDED I/O FLAG AND CHANGED WRITE OUTS TO .STORE.
        if(print_flag.and.lstatm) then
             beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_table%atm_log10_temperature-atm_table%atm_log10_pressure))
-            chi_rho = 1.0d0/pulse_diag%qqdp
-            chi_t = -chi_rho*pulse_diag%qqdt
-            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(atm_table%atm_log10_pressure-atm_table%atm_log10_density-atm_table%atm_log10_temperature))*chi_t**2/chi_rho
-            gamma1 = chi_rho*pulse_diag%qqcp/specific_heat_cv
+            chi_rho = 1.0d0/star%pulse%qqdp
+            chi_t = -chi_rho*star%pulse%qqdt
+            specific_heat_cv = star%pulse%qqcp - exp(ln10*(atm_table%atm_log10_pressure-atm_table%atm_log10_density-atm_table%atm_log10_temperature))*chi_t**2/chi_rho
+            gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
           if(.not.lstch)then
             write(istor,20)atm_table%atm_tau,atm_table%atm_log10_pressure,atm_table%atm_log10_temperature,atm_table%atm_log10_density,atm_table%atm_opacity, &
                      (atm_table%atm_ion_fraction(i),i=1,3), &
-                     saha_state,atm_call_count,gamma1,pulse_diag%qqdp,pulse_diag%qqdt,beta,pulse_diag%qqcp,specific_heat_cv
+                     saha_state,atm_call_count,gamma1,star%pulse%qqdp,star%pulse%qqdt,beta,star%pulse%qqcp,specific_heat_cv
           endif
 ! JvS: SAVE STRUCTURE TO COMMON BLOCK
           atmo_struct%atmo_log10_pressure(step_index) = atm_table%atm_log10_pressure
@@ -398,12 +398,12 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
           atmo_struct%atmo_log10_density(step_index) = atm_table%atm_log10_density
           atmo_struct%atmo_beta(step_index) = beta
           atmo_struct%atmo_gamma1(step_index) = gamma1
-          atmo_struct%atmo_dlnrho_dlnt(step_index) = pulse_diag%qqdt
+          atmo_struct%atmo_dlnrho_dlnt(step_index) = star%pulse%qqdt
           atmo_struct%atmo_ion_fraction(1,step_index) = atm_table%atm_ion_fraction(1)
           atmo_struct%atmo_ion_fraction(2,step_index) = atm_table%atm_ion_fraction(2)
           atmo_struct%atmo_ion_fraction(3,step_index) = atm_table%atm_ion_fraction(3)
           atmo_struct%atmo_opacity(step_index) = atm_table%atm_opacity
-          atmo_struct%atmo_specific_heat_cp(step_index) = pulse_diag%qqcp
+          atmo_struct%atmo_specific_heat_cp(step_index) = star%pulse%qqcp
        endif
        if(h_did.eq.h_step) then
           num_ok = num_ok + 1
@@ -413,43 +413,43 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! DBG PULSE ATMOSPHERE VALUES FOR PULSATION
 ! JVS 02/11 - Added LCLCD option to IF statement
        if ((pulse_print_flag.and.print_flag) .or. lclcd_placeholder .or. lstch) then
-          pulse_diag%qqed = 0.0d0
+          star%pulse%qqed = 0.0d0
           pulse_energy_sum = 0.0d0
-          pulse_diag%qqet = 0.0d0
-          pulse_diag%qfs = 1.0d0
-          opacity_now = pulse_diag%qo
-          density_now = dexp(ln10*pulse_diag%qdl)
+          star%pulse%qqet = 0.0d0
+          star%pulse%qfs = 1.0d0
+          opacity_now = star%pulse%qo
+          density_now = dexp(ln10*star%pulse%qdl)
           tau_now = dexp(ln10*atm_table%atm_tau)
 ! SEE J.P. COX PRINC. OF STELL. STRUC. P590
           delta_tau_step =  (tau_now - prev_tau)/(((density_now*opacity_now)+(prev_density*prev_opacity))/2)
-          electron_pressure = gas_constant * pulse_diag%qt * pulse_diag%qd * pulse_diag%qemu
+          electron_pressure = gas_constant * star%pulse%qt * star%pulse%qd * star%pulse%qemu
           prev_opacity = opacity_now
 !FROM FIRST LINES OF TPGRAD
-          pulse_radiative_gradient = pulse_diag%qo*luminosity_linear*dexp(ln10*(pulse_diag%qpl-log10_star_mass-4.0d0*pulse_diag%qtl+log10_solar_luminosity-cgl+ &
+          pulse_radiative_gradient = star%pulse%qo*luminosity_linear*dexp(ln10*(star%pulse%qpl-log10_star_mass-4.0d0*star%pulse%qtl+log10_solar_luminosity-cgl+ &
                  cdelrl))*temperature_rotation_factor/pressure_rotation_factor
-          if (pulse_radiative_gradient-pulse_diag%qdela .le. 1.0d-6) then
+          if (pulse_radiative_gradient-star%pulse%qdela .le. 1.0d-6) then
             pulse_gradient = pulse_radiative_gradient
           else
-            pulse_gradient = pulse_diag%qdela
+            pulse_gradient = star%pulse%qdela
           end if
           if (pulse_print_flag.and.print_flag) then
                 if (pulsation_file_version.eq.1) then
-                         write(opal_atm_unit,5001)delta_tau_step,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl, &
-                           pulse_diag%qpl, pulse_energy_sum ,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed, &
-                           pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_gradient,pulse_diag%qdela, &
-                           pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
+                         write(opal_atm_unit,5001)delta_tau_step,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+                           star%pulse%qpl, pulse_energy_sum ,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
+                           star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,pulse_gradient,star%pulse%qdela, &
+                           star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
                         else if (pulsation_file_version.eq.2.or.pulsation_file_version.eq.3) then
-                         write(opal_atm_unit,6001)delta_tau_step,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl, &
-                           pulse_diag%qpl, tau_now ,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed, &
-                           pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_gradient,pulse_diag%qdela, &
-                           pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
+                         write(opal_atm_unit,6001)delta_tau_step,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+                           star%pulse%qpl, tau_now ,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
+                           star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,pulse_gradient,star%pulse%qdela, &
+                           star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
                        end if
             end if
 ! JvS SAVE TO COMMON ATMSTRUCT COMMON BLOCK
           atmo_struct%atmo_delta_depth(step_index) = delta_tau_step
           atmo_struct%atmo_gradients(1,step_index) = pulse_radiative_gradient
           atmo_struct%atmo_gradients(2,step_index) = pulse_gradient
-          atmo_struct%atmo_gradients(3,step_index) = pulse_diag%qdela
+          atmo_struct%atmo_gradients(3,step_index) = star%pulse%qdela
           atmo_struct%num_atm_points = step_index
 
           prev_tau = tau_now
@@ -487,7 +487,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
   200 continue   ! Kurucz and Allard (KTTAU=3 and 4) bypass atmosphere
                  !  integration and come here
 ! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
-      turnover%pphot = atm_table%atm_log10_pressure
+      star%turnover%pphot = atm_table%atm_log10_pressure
       if(.not.calc_envelope_flag) goto 555
 
 ! G Somers 11/14 WRITE ENVELOPE HEADER
@@ -510,13 +510,13 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! DBG
 !  IF ENVELOPE MASS(SENV) SMALL ENOUGH,SKIP ENVELOPE INTEGRATION.
 ! DBG 2/92 CHANGED FROM 1.0D-10 to 1.0D-12
-      if(env_comp%senv.gt.-1.0d-12) then
+      if(star%env_comp%senv.gt.-1.0d-12) then
        if(save_boundary_flag) then
           vtx_logp(vertex_index) = atm_table%atm_log10_pressure
           vtx_logr(vertex_index) = log10_radius
           vtx_logt(vertex_index) = atm_table%atm_log10_temperature
           if(print_flag)then
-            if(.not.lstch)write(istor,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),env_comp%senv
+            if(.not.lstch)write(istor,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%env_comp%senv
           endif
        endif
  230     format(4X,3F16.12,8X,F16.12)
@@ -539,7 +539,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       h_max = env_step_max
       h_min = env_step_min
       h_step = env_step_begin
-      step_tolerance = dabs(tolerance_fraction*env_comp%senv)
+      step_tolerance = dabs(tolerance_fraction*star%env_comp%senv)
       surface_radius_linear = dexp(ln10*log10_radius)
       if(stored_vertex_index.eq.vertex_index) stored_vertex_index = 0
       store_flag_set = .false.
@@ -556,26 +556,26 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! DBG PULSE WRITE FIRST POINT OF ENVELOPE
       if (pulse_print_flag.and.print_flag) then
 !         REWIND IOPENV
-         pulse_diag%qqed = 0.0d0
+         star%pulse%qqed = 0.0d0
          pulse_energy_sum = 0.0d0
-         pulse_diag%qqet = 0.0d0
-         electron_pressure = gas_constant * pulse_diag%qt * pulse_diag%qd * pulse_diag%qemu
+         star%pulse%qqet = 0.0d0
+         electron_pressure = gas_constant * star%pulse%qt * star%pulse%qd * star%pulse%qemu
          if(pulsation_file_version.eq.1) then
-          write(opal_envelope_unit,5001)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl, &
-                 pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed, &
-                 pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela, &
-                 pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
+          write(opal_envelope_unit,5001)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+                 star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
+                 star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela, &
+                 star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
          else if (pulsation_file_version.eq.2) then
-          write(opal_envelope_unit,6001)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl, &
-                 pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed, &
-                 pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela, &
-                 pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
+          write(opal_envelope_unit,6001)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+                 star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
+                 star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela, &
+                 star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
          else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Appended mixing length info at end of first three lines
-          write(opal_envelope_unit,6003)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl,star%rot%alfmlt, &
-                 pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed,star%rot%phmlt, &
-                 pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela,star%rot%cmxmlt, &
-                 pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
+          write(opal_envelope_unit,6003)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%rot%alfmlt, &
+                 star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed,star%rot%phmlt, &
+                 star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela,star%rot%cmxmlt, &
+                 star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
          end if
       end if   !uncertain!
 ! DBG
@@ -598,16 +598,16 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
        depth_fraction = (surface_radius_linear-radius_linear)/surface_radius_linear
        local_log10_gravity = cgl+log10_star_mass-2.0d0*log10_radius
        local_gravity_linear = dexp(ln10*local_log10_gravity)
-         chi_rho = 1.0d0/pulse_diag%qqdp
-         chi_t = -chi_rho*pulse_diag%qqdt
-         specific_heat_cv = pulse_diag%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
+         chi_rho = 1.0d0/star%pulse%qqdp
+         chi_t = -chi_rho*star%pulse%qqdt
+         specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
               star%run%current_log10_temperature))*chi_t**2/chi_rho
-         gamma1 = chi_rho*pulse_diag%qqcp/specific_heat_cv
+         gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
        if(.not.lstch) write(istor,260)local_gravity_linear,star%run%current_log10_pressure, &
             star%run%current_log10_temperature,depth_fraction,star%run%current_log10_mass, &
               star%run%current_log10_density,star%run%current_opacity,star%run%current_beta,(star%run%current_gradients(i),i=1,3), &
                    (star%run%current_ion_fraction(i),i=1,3),star%run%current_velocity, &
-              gamma1,pulse_diag%qqdp
+              gamma1,star%pulse%qqdp
       endif
 ! STORE STARTING VALUES OF THE INTEGRATION
 ! 07/02 INITIALIZE NUMBER OF STORED ENVELOPE POINTS TO 1
@@ -630,21 +630,21 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! JVS end
 ! JVS 08/25
 ! Always save these
-      chi_rho = 1.0d0/pulse_diag%qqdp
-      chi_t = -chi_rho*pulse_diag%qqdt
-      specific_heat_cv = pulse_diag%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
+      chi_rho = 1.0d0/star%pulse%qqdp
+      chi_t = -chi_rho*star%pulse%qqdt
+      specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
            star%run%current_log10_temperature))*chi_t**2/chi_rho
-      env_struct%env_gamma1(1) = chi_rho*pulse_diag%qqcp/specific_heat_cv
-      env_struct%env_specific_heat_cp(1) = pulse_diag%qqcp
+      env_struct%env_gamma1(1) = chi_rho*star%pulse%qqcp/specific_heat_cv
+      env_struct%env_specific_heat_cp(1) = star%pulse%qqcp
       env_struct%env_ion_fraction(1,1) = star%run%current_ion_fraction(1)
       env_struct%env_ion_fraction(2,1) = star%run%current_ion_fraction(2)
       env_struct%env_ion_fraction(3,1) = star%run%current_ion_fraction(3)
       env_struct%env_opacity(1) = star%run%current_opacity
       env_struct%env_luminosity(1) = luminosity_linear
-      env_struct%env_dlnrho_dlnt(1) = pulse_diag%qqdt
+      env_struct%env_dlnrho_dlnt(1) = star%pulse%qqdt
 ! JVS 10/10
       unused_chdelj = star%run%current_gradients(2)
-      unused_chdeld = pulse_diag%qdela
+      unused_chdeld = star%pulse%qdela
       if(env_struct%env_convective_flag(1))cz_in_envelope = .true.
       env_struct%num_env_points = 1
       do 220 step_index = 1,maxstp
@@ -654,11 +654,11 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
  210     continue
        swap_temp = y(1) + h_step*dydx(1)
-       if(env_comp%senv - y(1).gt.0.0d0 .or. env_comp%senv - swap_temp.gt.0.0d0) then
+       if(star%env_comp%senv - y(1).gt.0.0d0 .or. star%env_comp%senv - swap_temp.gt.0.0d0) then
 !  IF THE INTEGRATION HAS OVERSHOT THE FITTING POINT, OR THE NEXT
 !  STEP WILL DO SO,LIMIT STEP SIZE OR INTEGRATE BACKWARDS TO THE
 !  CORRECT MASS.
-          h_step = (env_comp%senv - y(1))/dydx(1)
+          h_step = (star%env_comp%senv - y(1))/dydx(1)
        endif
 !  ENSURE THAT STEP DOESN'T EXCEED MAXIMUM STEP SIZE
        if(h_step.lt.0.0d0) then
@@ -694,26 +694,26 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
               log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state)
 ! DBG PULSE
          if (pulse_print_flag.and.print_flag) then
-          pulse_diag%qqed = 0.0d0
+          star%pulse%qqed = 0.0d0
           pulse_energy_sum = 0.0d0
-          pulse_diag%qqet = 0.0d0
-          electron_pressure = gas_constant * pulse_diag%qt * pulse_diag%qd * pulse_diag%qemu
+          star%pulse%qqet = 0.0d0
+          electron_pressure = gas_constant * star%pulse%qt * star%pulse%qd * star%pulse%qemu
           if(pulsation_file_version.eq.1) then
-               write(opal_envelope_unit,5001)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl, &
-                    pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed, &
-                    pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela, &
-                    pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
+               write(opal_envelope_unit,5001)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+                    star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
+                    star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela, &
+                    star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
             else if (pulsation_file_version.eq.2) then
-               write(opal_envelope_unit,6001)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl, &
-                    pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed, &
-                    pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela, &
-                    pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
+               write(opal_envelope_unit,6001)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+                    star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
+                    star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela, &
+                    star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
             else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Appended mixing length info at end of first three lines
-               write(opal_envelope_unit,6003)log10_radius,pulse_diag%qfs,luminosity_linear,pulse_diag%qtl,pulse_diag%qdl,star%rot%alfmlt, &
-                    pulse_diag%qpl, pulse_energy_sum,pulse_diag%qo,pulse_diag%qqdp,pulse_diag%qqed,star%rot%phmlt, &
-                    pulse_diag%qqet,pulse_diag%qqod,pulse_diag%qqot,pulse_diag%qdel,pulse_diag%qdela,star%rot%cmxmlt, &
-                    pulse_diag%qqcp,pulse_diag%qrmu,pulse_diag%qqdt,electron_pressure
+               write(opal_envelope_unit,6003)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%rot%alfmlt, &
+                    star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed,star%rot%phmlt, &
+                    star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela,star%rot%cmxmlt, &
+                    star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
             end if
          end if
 ! DBG END
@@ -723,16 +723,16 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
           depth_fraction = (surface_radius_linear-radius_linear)/surface_radius_linear
           local_log10_gravity = cgl+log10_star_mass-2.0d0*log10_radius
           local_gravity_linear = dexp(ln10*local_log10_gravity)
-            chi_rho = 1.0d0/pulse_diag%qqdp
-            chi_t = -chi_rho*pulse_diag%qqdt
-            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
+            chi_rho = 1.0d0/star%pulse%qqdp
+            chi_t = -chi_rho*star%pulse%qqdt
+            specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
                  star%run%current_log10_temperature))*chi_t**2/chi_rho
-            gamma1 = chi_rho*pulse_diag%qqcp/specific_heat_cv
+            gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
           if(.not.lstch) write(istor,260)local_gravity_linear,star%run%current_log10_pressure, &
                star%run%current_log10_temperature,depth_fraction,star%run%current_log10_mass, &
                  star%run%current_log10_density,star%run%current_opacity,star%run%current_beta,(star%run%current_gradients(i),i=1,3), &
                       (star%run%current_ion_fraction(i),i=1,3),star%run%current_velocity, &
-                 gamma1,pulse_diag%qqdp
+                 gamma1,star%pulse%qqdp
  260        format(1X,1PE10.3,0P2F10.7,1P2E14.7,0P1F10.7, &
                  1PE10.2,0PF7.3,1PE9.2,0P3F6.3,2F6.3,1PE9.2, &
                  0P2F12.8)
@@ -743,7 +743,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
           num_bad = num_bad + 1
        endif
 !  CHECK IF INTEGRATION COMPLETE
-       mass_diff_remaining = env_comp%senv - y(1)
+       mass_diff_remaining = star%env_comp%senv - y(1)
 ! 07/02 STORE ENVELOPE TERMS IF THE INTEGRATION
 ! HAS NOT OVERSHOT THE FITTING POINT.
          if(mass_diff_remaining.le.step_tolerance)then
@@ -764,18 +764,18 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
             env_struct%env_beta(env_struct%num_env_points) = star%run%current_beta
 ! JVS 08/25
 ! Always save these
-            chi_rho = 1.0d0/pulse_diag%qqdp
-            chi_t = -chi_rho*pulse_diag%qqdt
-            specific_heat_cv = pulse_diag%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
+            chi_rho = 1.0d0/star%pulse%qqdp
+            chi_t = -chi_rho*star%pulse%qqdt
+            specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
                  star%run%current_log10_temperature))*chi_t**2/chi_rho
-            env_struct%env_gamma1(env_struct%num_env_points) = chi_rho*pulse_diag%qqcp/specific_heat_cv
-            env_struct%env_specific_heat_cp(env_struct%num_env_points) = pulse_diag%qqcp
+            env_struct%env_gamma1(env_struct%num_env_points) = chi_rho*star%pulse%qqcp/specific_heat_cv
+            env_struct%env_specific_heat_cp(env_struct%num_env_points) = star%pulse%qqcp
             env_struct%env_ion_fraction(1,env_struct%num_env_points) = star%run%current_ion_fraction(1)
             env_struct%env_ion_fraction(2,env_struct%num_env_points) = star%run%current_ion_fraction(2)
             env_struct%env_ion_fraction(3,env_struct%num_env_points) = star%run%current_ion_fraction(3)
             env_struct%env_opacity(env_struct%num_env_points) = star%run%current_opacity
             env_struct%env_luminosity(env_struct%num_env_points) = luminosity_linear
-            env_struct%env_dlnrho_dlnt(env_struct%num_env_points) = pulse_diag%qqdt
+            env_struct%env_dlnrho_dlnt(env_struct%num_env_points) = star%pulse%qqdt
 
             if(.not.cz_in_envelope)then
                if(env_struct%env_convective_flag(env_struct%num_env_points))then
@@ -794,7 +794,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
              vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)
              vtx_logr(vertex_index) = y(3) + interp_weight*(y_start(3) - y(3))
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
-             if(print_flag)write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),env_comp%senv
+             if(print_flag)write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%env_comp%senv
           endif
           goto 300
        else if(.not.store_flag_set) then
@@ -821,7 +821,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       go to 900
  300  continue
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR.
-      if(env_comp%senv.lt.-1.0d-12)then
+      if(star%env_comp%senv.lt.-1.0d-12)then
          do i = 1,env_struct%num_env_points
             inversion_index1 = i
             inversion_index2 = env_struct%num_env_points - i + 1

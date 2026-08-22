@@ -16,12 +16,12 @@
 ! completes du/dt and the entropy-of-mixing correction (smix) on the
 ! native H/He table grid, then combines the three species by the
 ! additive-volume rule at the envelope composition (X=envelope_hydrogen_
-! fraction, Z=env_comp%envelope_metal_fraction) to fill tablenv columns 1-6,
+! fraction, Z=star%env_comp%envelope_metal_fraction) to fill tablenv columns 1-6,
 ! then numerically differentiates those columns (in log T and log P)
 ! to fill tablenv columns 7-12.
 subroutine setscv
 
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use const_lib
       use numerics_lib
       implicit none
@@ -79,7 +79,7 @@ subroutine setscv
                  tlogx(t_idx)))*tabley(t_idx,p_idx,7)**2/tabley(t_idx,p_idx,8)
 ! COMPUTE THE ENTROPY OF MIXING.
 ! NUMBER DENSITY OF HYDROGEN AND HELIUM
-            helium_fraction_local = 1.0d0-env_comp%envelope_hydrogen_fraction
+            helium_fraction_local = 1.0d0-star%env_comp%envelope_hydrogen_fraction
             one_minus_y_local = 1.0d0 - helium_fraction_local
             density_h = exp(ln10*tablex(t_idx,p_idx,4))
             density_he = exp(ln10*tabley(t_idx,p_idx,4))
@@ -157,8 +157,8 @@ subroutine setscv
          do p_idx=1,nptsx(t_idx)
             log_p_work = tablex(t_idx,p_idx,1)
             log_rho_mix = tablex(t_idx,p_idx,4)
-            hydrogen_fraction_local = env_comp%envelope_hydrogen_fraction
-            metal_fraction_local = env_comp%envelope_metal_fraction
+            hydrogen_fraction_local = star%env_comp%envelope_hydrogen_fraction
+            metal_fraction_local = star%env_comp%envelope_metal_fraction
             helium_fraction_local = 1.0d0 - hydrogen_fraction_local - &
                  metal_fraction_local
             pressure_value = (10.0d0**log_p_work)

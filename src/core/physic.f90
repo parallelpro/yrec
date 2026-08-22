@@ -24,8 +24,8 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use temp_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use const_lib
       use eos_lib
@@ -144,11 +144,11 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
          star%diag%del_grad(3,im) = adiabatic_gradient
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
-         dfx1 = composition(1,im) - env_comp%envelope_hydrogen_fraction
+         dfx1 = composition(1,im) - star%env_comp%envelope_hydrogen_fraction
          dfx2 = composition(2,im) - star%run%envelope_helium_fraction
-         dfx3 = composition(3,im) - env_comp%envelope_metal_fraction
+         dfx3 = composition(3,im) - star%env_comp%envelope_metal_fraction
          dfx4 = composition(4,im) - star%run%envelope_he3_fraction
-         temp_scratch = env_comp%amuenv + dfx1/atomic_weight(1) + &
+         temp_scratch = star%env_comp%amuenv + dfx1/atomic_weight(1) + &
               dfx2/atomic_weight(2) + dfx3/atomic_weight(3) + &
               dfx4/atomic_weight(4)
          amu2 = 1.0d0/temp_scratch
@@ -156,10 +156,10 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               2.0d0*(composition(4,im)/atomic_weight(4) + &
               composition(2,im)/atomic_weight(2)) + 0.5d0*composition(3,im)
          emu2 = 1.0d0/temp_scratch
-         shell_temp%mean_molecular_weight(im) = amu2*emu2/(amu2+emu2)
+         star%thermo%mean_molecular_weight(im) = amu2*emu2/(amu2+emu2)
          star%diag%so(im) = opacity
-         shell_temp%cp(im) = specific_heat_cp
-         shell_temp%qdt(im) = dlnrho_dlnt
+         star%thermo%cp(im) = specific_heat_cp
+         star%thermo%qdt(im) = dlnrho_dlnt
 ! JVS 10/13 Always want SVEL
          star%diag%svel(im) = convective_velocity
 !         IF(LC(IM))THEN

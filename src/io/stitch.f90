@@ -33,11 +33,11 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       use atm_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use temp2_lib
+      use star_info_lib, only: star
       use atmstruct_lib
-      use pulse_diag_lib
+      use star_info_lib, only: star
       use envstruct_lib
-      use turnover_lib
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -115,20 +115,20 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
                  star%diag%del_grad(3,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i), &
                  star%diag%sfxion(1,i),star%diag%sfxion(2,i),star%diag%sfxion(3,i), &
                  star%diag%sbeta(i),star%diag%seta(i),(star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(6,i),star%diag%seg(7,i), &
-                 star%diag%scp(i),pulse_diag%pulse_dlnrho_dlnt(i)
+                 star%diag%scp(i),star%pulse%pulse_dlnrho_dlnt(i)
 ! write out additional rotation info if rotation is on
             if(rotation_active)then
               fm = dexp(ln10*log_mass(i))
               duma = cc13*omega(i)**2/(cg*fm)*5.d0/(2.d0+rotation_eta2(i))
               a_val = duma * radius_ratio_r0(i)**3
               rpoleq = (1.0d0 - a_val)/(1.0d0 + 0.5d0*a_val)
-              vtot = circ_vel%es_circulation_velocity(i)+circ_vel%gsf_circulation_velocity(i)+ &
-                   circ_vel%secular_shear_velocity(i)
+              vtot = star%circ%es_circulation_velocity(i)+star%circ%gsf_circulation_velocity(i)+ &
+                   star%circ%secular_shear_velocity(i)
               write(istor,64) a_val,rpoleq,shape_factor_fp(i), &
                    shape_factor_ft(i),specific_angular_momentum(i), &
                    shell_moment_of_inertia(i),star%rot%rotational_energy_term(i), &
-                   circ_vel%es_circulation_velocity(i),circ_vel%gsf_circulation_velocity(i), &
-                   circ_vel%secular_shear_velocity(i),vtot
+                   star%circ%es_circulation_velocity(i),star%circ%gsf_circulation_velocity(i), &
+                   star%circ%secular_shear_velocity(i),vtot
             else
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
             end if

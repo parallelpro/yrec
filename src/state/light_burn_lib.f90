@@ -49,7 +49,7 @@ module light_burn_lib
             double precision :: accreted_mass_fraction
             integer :: jcz
       end type light_element_burn_state
-
-      type(light_element_burn_state), public :: light_burn
-
+! 2026 (phase six, step 1 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module light_burn_lib

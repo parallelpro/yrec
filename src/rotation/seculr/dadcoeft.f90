@@ -64,8 +64,8 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged, ierr)
       use star_info_lib, only: star
       use const_lib
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       implicit none
       integer, parameter :: json = 5000, nmax = 8000
 
@@ -201,7 +201,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 ! leave in them rather than the intended global Rossby-scaling flag.
             if (lrossby) then
                wind_saturation_threshold = wind_saturation_omega* &
-                    pmmsoltau/turnover%convective_turnover_timescale
+                    pmmsoltau/star%turnover%convective_turnover_timescale
             else
                wind_saturation_threshold = wind_saturation_omega
             end if

@@ -60,7 +60,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       use atm_table_lib
       use run_diag_lib
       use envstruct_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use scrtch_lib
       use luout_lib
       use const_lib
@@ -198,7 +198,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       metal_fraction = composition(3,num_shells)
       log10_radius_local = 0.5d0*(log_luminosity_lsun+log10_solar_luminosity- &
            4.0d0*log_teff-c4pil-csigl)
-      log10_gravity = cgl+env_comp%stotal-log10_radius_local-log10_radius_local
+      log10_gravity = cgl+star%env_comp%stotal-log10_radius_local-log10_radius_local
       log10_pressure_limit = log_pressure(num_shells)
 !      IF (KTTAU .EQ. 0) LAOLY = .TRUE.
 !      IF (KTTAU .EQ. 3) LAOLY = .FALSE.      ! for grey atm intergration: stores values in common block

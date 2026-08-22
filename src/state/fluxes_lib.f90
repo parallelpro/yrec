@@ -25,7 +25,7 @@ module fluxes_lib
             double precision :: neutrino_flux(10), neutrino_flux_total(10)
             double precision :: cl37_snu_rate, ga71_snu_rate
       end type neutrino_flux_state
-
-      type(neutrino_flux_state), public :: flux_diag
-
+! 2026 (phase six, step 1 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module fluxes_lib

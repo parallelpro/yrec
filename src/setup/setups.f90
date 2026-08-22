@@ -31,7 +31,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       use kap_lib
       use atm_lib
       use atm_table_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -170,7 +170,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ierr = 0
-      call kap_init(env_comp%envelope_hydrogen_fraction, laol_work_array, &
+      call kap_init(star%env_comp%envelope_hydrogen_fraction, laol_work_array, &
            alex06_table_path,kurucz_table_path,kurucz_table2_path, &
            laol_table_path,laol_table2_path, &
            opal95_table_path,opal92_table_path,opal92_table2_path, &

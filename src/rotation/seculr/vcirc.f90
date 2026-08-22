@@ -16,10 +16,10 @@
 !       MULTIPLIED BY A GRADIENT BETWEEN THE SHELLS MUST BE LESS THAN
 !       SOME CRITICAL NUMBER.
 ! Computes, at each unstable interface, the Eddington-Sweet meridional
-! circulation velocity (circ_vel%es_circulation_velocity, Zahn 1991/1992, with
+! circulation velocity (star%circ%es_circulation_velocity, Zahn 1991/1992, with
 ! a quadrupole correction), the GSF-instability circulation velocity
-! (circ_vel%gsf_circulation_velocity, Kippenhahn 1980 estimate), and the
-! diffusive/dynamical shear velocity (circ_vel%secular_shear_velocity), then
+! (star%circ%gsf_circulation_velocity, Kippenhahn 1980 estimate), and the
+! diffusive/dynamical shear velocity (star%circ%secular_shear_velocity), then
 ! combines them into total_circulation_velocity (HV).
 !
 !       SUBROUTINE VCIRC(HJM,HR,HRU,IMIN,IMAX,IT,LCZ,M,OMEGA,LDO,  ! KC 2025-05-31
@@ -30,8 +30,8 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
      total_luminosity, timestep, log_pressure)
 
       use star_info_lib, only: star
-      use temp2_lib
-      use mdphy_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -95,10 +95,10 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  STORE THE OLD VELOCITY ESTIMATES FOR LATER USE.
       if (iteration.gt.1) then
          do 5 i = zone_min,zone_max
-            star%rot%mu_gradient_velocity_prev(i) = circ_vel%mu_gradient_velocity(i)
-            circ_vel%gsf_circulation_velocity_prev(i) = circ_vel%gsf_circulation_velocity(i)
-            circ_vel%es_circulation_velocity_prev(i) = circ_vel%es_circulation_velocity(i)
-            circ_vel%secular_shear_velocity_prev(i) = circ_vel%secular_shear_velocity(i)
+            star%rot%mu_gradient_velocity_prev(i) = star%circ%mu_gradient_velocity(i)
+            star%circ%gsf_circulation_velocity_prev(i) = star%circ%gsf_circulation_velocity(i)
+            star%circ%es_circulation_velocity_prev(i) = star%circ%es_circulation_velocity(i)
+            star%circ%secular_shear_velocity_prev(i) = star%circ%secular_shear_velocity(i)
     5    continue
          if (use_diffusion_advection_transport) then
             do i = zone_min,zone_max
@@ -109,10 +109,10 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
       end if
       do 10 i = 1,num_zones
          total_circulation_velocity(i) = 0.0d0
-         circ_vel%es_circulation_velocity(i) = 0.0d0
-         circ_vel%gsf_circulation_velocity(i) = 0.0d0
-         circ_vel%secular_shear_velocity(i) = 0.0d0
-         circ_vel%mu_gradient_velocity(i) = 0.0d0
+         star%circ%es_circulation_velocity(i) = 0.0d0
+         star%circ%gsf_circulation_velocity(i) = 0.0d0
+         star%circ%secular_shear_velocity(i) = 0.0d0
+         star%circ%mu_gradient_velocity(i) = 0.0d0
    10 continue
 !  MEAN MOLECULAR WEIGHT (AS WELL AS QUANTITIES WHICH DEPEND ON IT) AND
 !  THE ANGULAR VELOCITY DISTRIBUTION CHANGE DURING A DIFFUSION TIMESTEP.
@@ -121,15 +121,15 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  FOR THE KINEMATIC VISCOSITY AND THERMAL DIFFUSIVITY.
 !  TREATMENT OF FIRST INTERFACE.
       if (zone_min.lt.3) then
-         star%rot%kinematic_viscosity_interface(2)=exp(log(mix_phys%viscm(1))* &
-              star%rot%lagrange_interp_weights(1,2)+log(mix_phys%viscm(2))* &
+         star%rot%kinematic_viscosity_interface(2)=exp(log(star%mix_phys%viscm(1))* &
+              star%rot%lagrange_interp_weights(1,2)+log(star%mix_phys%viscm(2))* &
               star%rot%lagrange_interp_weights(2,2)+ &
-              log(mix_phys%viscm(3))*star%rot%lagrange_interp_weights(3,2)+log(mix_phys%viscm(4))* &
+              log(star%mix_phys%viscm(3))*star%rot%lagrange_interp_weights(3,2)+log(star%mix_phys%viscm(4))* &
               star%rot%lagrange_interp_weights(4,2))
-         star%rot%thermal_diffusivity_interface(2)=exp(log(mix_phys%thdifm(1))* &
-              star%rot%lagrange_interp_weights(1,2)+log(mix_phys%thdifm(2))* &
+         star%rot%thermal_diffusivity_interface(2)=exp(log(star%mix_phys%thdifm(1))* &
+              star%rot%lagrange_interp_weights(1,2)+log(star%mix_phys%thdifm(2))* &
               star%rot%lagrange_interp_weights(2,2) &
-              +log(mix_phys%thdifm(3))*star%rot%lagrange_interp_weights(3,2)+log(mix_phys%thdifm(4))* &
+              +log(star%mix_phys%thdifm(3))*star%rot%lagrange_interp_weights(3,2)+log(star%mix_phys%thdifm(4))* &
               star%rot%lagrange_interp_weights(4,2))
          i0=3
       else
@@ -138,36 +138,36 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  TREATMENT OF LAST INTERFACE.
       if (zone_max.eq.num_zones) then
          star%rot%kinematic_viscosity_interface(num_zones)= &
-              exp(log(mix_phys%viscm(num_zones-3))*star%rot%lagrange_interp_weights(1,num_zones)+ &
-              log(mix_phys%viscm(num_zones-2))*star%rot%lagrange_interp_weights(2,num_zones) &
-              +log(mix_phys%viscm(num_zones-1))*star%rot%lagrange_interp_weights(3,num_zones)+ &
-              log(mix_phys%viscm(num_zones))*star%rot%lagrange_interp_weights(4,num_zones))
+              exp(log(star%mix_phys%viscm(num_zones-3))*star%rot%lagrange_interp_weights(1,num_zones)+ &
+              log(star%mix_phys%viscm(num_zones-2))*star%rot%lagrange_interp_weights(2,num_zones) &
+              +log(star%mix_phys%viscm(num_zones-1))*star%rot%lagrange_interp_weights(3,num_zones)+ &
+              log(star%mix_phys%viscm(num_zones))*star%rot%lagrange_interp_weights(4,num_zones))
          star%rot%thermal_diffusivity_interface(num_zones)= &
-              exp(log(mix_phys%thdifm(num_zones-3))* &
-              star%rot%lagrange_interp_weights(1,num_zones)+log(mix_phys%thdifm(num_zones-2))* &
-              star%rot%lagrange_interp_weights(2,num_zones)+log(mix_phys%thdifm(num_zones-1))* &
+              exp(log(star%mix_phys%thdifm(num_zones-3))* &
+              star%rot%lagrange_interp_weights(1,num_zones)+log(star%mix_phys%thdifm(num_zones-2))* &
+              star%rot%lagrange_interp_weights(2,num_zones)+log(star%mix_phys%thdifm(num_zones-1))* &
               star%rot%lagrange_interp_weights(3,num_zones)+ &
-              log(mix_phys%thdifm(num_zones))*star%rot%lagrange_interp_weights(4,num_zones))
+              log(star%mix_phys%thdifm(num_zones))*star%rot%lagrange_interp_weights(4,num_zones))
          i1=num_zones-1
       else
          i1=zone_max
       end if
 !  GENERAL CASE.
       do 20 i = i0,i1
-         star%rot%kinematic_viscosity_interface(i)=exp(log(mix_phys%viscm(i-2))* &
-              star%rot%lagrange_interp_weights(1,i)+log(mix_phys%viscm(i-1)) &
-              *star%rot%lagrange_interp_weights(2,i)+log(mix_phys%viscm(i))* &
-              star%rot%lagrange_interp_weights(3,i)+log(mix_phys%viscm(i+1)) &
+         star%rot%kinematic_viscosity_interface(i)=exp(log(star%mix_phys%viscm(i-2))* &
+              star%rot%lagrange_interp_weights(1,i)+log(star%mix_phys%viscm(i-1)) &
+              *star%rot%lagrange_interp_weights(2,i)+log(star%mix_phys%viscm(i))* &
+              star%rot%lagrange_interp_weights(3,i)+log(star%mix_phys%viscm(i+1)) &
               *star%rot%lagrange_interp_weights(4,i))
-         star%rot%thermal_diffusivity_interface(i)=exp(log(mix_phys%thdifm(i-2))* &
-              star%rot%lagrange_interp_weights(1,i)+log(mix_phys%thdifm(i-1)) &
-              *star%rot%lagrange_interp_weights(2,i)+log(mix_phys%thdifm(i))* &
-              star%rot%lagrange_interp_weights(3,i)+log(mix_phys%thdifm(i+1)) &
+         star%rot%thermal_diffusivity_interface(i)=exp(log(star%mix_phys%thdifm(i-2))* &
+              star%rot%lagrange_interp_weights(1,i)+log(star%mix_phys%thdifm(i-1)) &
+              *star%rot%lagrange_interp_weights(2,i)+log(star%mix_phys%thdifm(i))* &
+              star%rot%lagrange_interp_weights(3,i)+log(star%mix_phys%thdifm(i+1)) &
               *star%rot%lagrange_interp_weights(4,i))
    20 continue
 ! USE LINEAR INTERPOLATION FOR OMEGA AND MU.
       do i = 2,num_zones
-         star%rot%mean_molecular_weight_interface(i) = 0.5d0*(mix_phys%amum(i)+mix_phys%amum(i-1))
+         star%rot%mean_molecular_weight_interface(i) = 0.5d0*(star%mix_phys%amum(i)+star%mix_phys%amum(i-1))
          star%rot%omega_interface(i) = 0.5d0*(omega(i)+omega(i-1))
       end do
 ! MHP 8/03 OMITTED OLD KM1974 MERIDIONAL CIRCULATION VELOCITY ESTIMATE.
@@ -205,7 +205,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          if (am_transport_convective_flag(i).and. &
               am_transport_convective_flag(i-1)) goto 31
 ! ORIGINAL ESTIMATE,USING DG/G = W**2 R**3 / GM.
-         circ_vel%es_circulation_velocity(i) = star%rot%omega_interface(i)**2* &
+         star%circ%es_circulation_velocity(i) = star%rot%omega_interface(i)**2* &
               (star%rot%es_velocity_coeff1(i)+star%rot%omega_interface(i)**2*star%rot%es_velocity_coeff2(i))
 ! QUADRUPOLE TERM ADDED, DG/G COMPUTED AS PER ZAHN 1992.
          dr = radius(i) - radius(i-1)
@@ -226,8 +226,8 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  3e10.3/' QUA,G,R ',6e12.3)
          end if
          if (.not.use_diffusion_advection_transport) then
-            circ_vel%es_circulation_velocity(i) = &
-                 abs(star%rot%circulation_correction_ratio(i)*circ_vel%es_circulation_velocity(i)- &
+            star%circ%es_circulation_velocity(i) = &
+                 abs(star%rot%circulation_correction_ratio(i)*star%circ%es_circulation_velocity(i)- &
                  star%rot%es_shear_coeff(i)*qw)
          else
 ! MHP 05/02 ADD FACTOR OF 1/5 HERE
@@ -237,7 +237,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             star%rot%theta_new(i) = star%rot%es_relaxation_factor(i)*(star%rot%theta_mean(i)*qw- &
                  star%rot%theta_prev(i))/timestep
             star%rot%es_advective_velocity(i) = 0.2d0* &
-                 (star%rot%circulation_correction_ratio(i)*circ_vel%es_circulation_velocity(i)+ &
+                 (star%rot%circulation_correction_ratio(i)*star%circ%es_circulation_velocity(i)+ &
                  star%rot%theta_new(i))
             q1 = star%rot%difad_shear_coeff1(i)*star%rot%omega_interface(i)**2
             q2 = star%rot%difad_shear_coeff2(i)*qw
@@ -250,8 +250,8 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! THIRD ORDER TERM
             star%rot%vesd3(i) = 0.2d0*star%rot%facd3(i)*star%rot%omega_interface(i)
 !               VES(I) = ABS(RAT(I)*VES(I)+THN(I)-FES3(I)*QW)
-            circ_vel%es_circulation_velocity(i) = &
-                 star%rot%circulation_correction_ratio(i)*circ_vel%es_circulation_velocity(i)+ &
+            star%circ%es_circulation_velocity(i) = &
+                 star%rot%circulation_correction_ratio(i)*star%circ%es_circulation_velocity(i)+ &
                  star%rot%theta_new(i)+ &
                  (star%rot%es_shear_coeff(i)+star%rot%difad_shear_coeff1(i))*qw+ &
                  star%rot%difad_shear_coeff2(i)*((omega(i)-omega(i-1))/dr)**2
@@ -279,13 +279,13 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !      ELSE IF(IMU.EQ.2)THEN
 ! MHP 06/02 REPLACE WITH THE ZAHN&MAEDER 1998 PRESCRIPTION
        do i = zone_min,zone_max
-          qmu = log(mix_phys%amum(i))-log(mix_phys%amum(i-1))
+          qmu = log(star%mix_phys%amum(i))-log(star%mix_phys%amum(i-1))
           qp = ln10*(log_pressure(i)-log_pressure(i-1))
           ddel=star%rot%del_grad_diff_interface(i)+ qmu/qp
           ddtest = max(star%rot%del_grad_diff_interface(i),1.0d-3)
           ddtest2 = max(ddel,1.0d-3)
           qqq = ddtest/ddtest2
-          circ_vel%es_circulation_velocity(i) = circ_vel%es_circulation_velocity(i)*qqq
+          star%circ%es_circulation_velocity(i) = star%circ%es_circulation_velocity(i)*qqq
           if (use_diffusion_advection_transport) then
              star%rot%es_advective_velocity(i) = star%rot%es_advective_velocity(i)*qqq
              star%rot%es_diffusive_velocity(i) = star%rot%es_diffusive_velocity(i)*qqq
@@ -341,7 +341,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             qwrmx = 2.0d0*sqrt(star%rot%kinematic_viscosity_interface(i)/ &
                  star%rot%thermal_diffusivity_interface(i))*dlnomega_dlnr_max(i)
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
-               circ_vel%gsf_circulation_velocity(i) = 0.0d0
+               star%circ%gsf_circulation_velocity(i) = 0.0d0
                goto 40
             else
               fxx = sqrt((abs(dlnomega_dlnr(i))-qwrmx)/qwrmx)
@@ -352,10 +352,10 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          dr = radius(i)-radius(i-1)
          if (gsf_inhibition_mode.eq.0) then
             qwrmx=2.0d0*sqrt(star%rot%interface_gravity_factor(i)* &
-                 abs(mix_phys%amum(i)-mix_phys%amum(i-1)) &
+                 abs(star%mix_phys%amum(i)-star%mix_phys%amum(i-1)) &
                  /dr/star%rot%mean_molecular_weight_interface(i))
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
-               circ_vel%gsf_circulation_velocity(i) = 0.0d0
+               star%circ%gsf_circulation_velocity(i) = 0.0d0
                goto 40
             else
 ! MHP 05/02 ADDED TESTS TO AVOID DIVIDE BY ZERO
@@ -386,14 +386,14 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
 ! FACTOR OF R IN THE DENOMINATOR OCCURS BECAUSE ALL THE CIRCULATION
 ! VELOCITIES ARE LATER MULTIPLIED BY R (THE "LENGTH SCALE").
-            circ_vel%gsf_circulation_velocity(i) = star%rot%gsf_kippenhahn_coeff(i)*fx* &
+            star%circ%gsf_circulation_velocity(i) = star%rot%gsf_kippenhahn_coeff(i)*fx* &
                  star%rot%thermal_diffusivity_interface(i)*star%rot%omega_interface(i)**2/rmid
          else
-            circ_vel%gsf_circulation_velocity(i)=0.25d0*star%rot%gsf_kippenhahn_coeff(i)* &
+            star%circ%gsf_circulation_velocity(i)=0.25d0*star%rot%gsf_kippenhahn_coeff(i)* &
                  star%rot%thermal_diffusivity_interface(i)*dlnwdr* &
                  star%rot%omega_interface(i)**2/rmid
          end if
-         circ_vel%gsf_circulation_velocity(i) = abs(fxx*circ_vel%gsf_circulation_velocity(i))
+         star%circ%gsf_circulation_velocity(i) = abs(fxx*star%circ%gsf_circulation_velocity(i))
    40 continue
 ! OMIT JAMES AND KAHN ESTIMATE
 !      ELSE
@@ -434,7 +434,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  VALUE AND COMPUTE (LARGE) DYNAMICAL SHEAR VELOCITY.
          if (abs(dlnomega_dlnr(i)).gt.dlnomega_dlnr_max(i)) then
             qwr = abs(dlnomega_dlnr(i))
-            circ_vel%secular_shear_velocity(i)=8.0d0/4.5d1* &
+            star%circ%secular_shear_velocity(i)=8.0d0/4.5d1* &
                  star%rot%thermal_diffusivity_interface(i)* &
                  (qwr/dlnomega_dlnr_max(i))**2/star%rot%interface_radius(i)
 !  CORRECT GSF VELOCITY AS WELL.
@@ -464,10 +464,10 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             if (omega(i)*radius(i)**2.lt.wmin*radius(i-1)**2) then
                fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
                qwrmx_dyn = max(2.0d0*dlnjmdr0,0.25d0*dlnwdr0)
-               circ_vel%gsf_circulation_velocity(i) = circ_vel%gsf_circulation_velocity(i)* &
+               star%circ%gsf_circulation_velocity(i) = star%circ%gsf_circulation_velocity(i)* &
                     fx/qwrmx_dyn
             else
-               circ_vel%gsf_circulation_velocity(i)=circ_vel%gsf_circulation_velocity(i)* &
+               star%circ%gsf_circulation_velocity(i)=star%circ%gsf_circulation_velocity(i)* &
                     dlnwdr/dlnwdr0
             end if
 !            ELSE IF(IGSF.EQ.3)THEN
@@ -498,11 +498,11 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
               dlnomega_dlnr_max(i)
          if (abs(dlnomega_dlnr(i)).gt.qwrmx) then
 !  UNSTABLE; CHECK FOR MU GRADIENTS.
-            if (abs((mix_phys%amum(i)-mix_phys%amum(i-1))/star%rot%mean_molecular_weight_interface(i)) &
+            if (abs((star%mix_phys%amum(i)-star%mix_phys%amum(i-1))/star%rot%mean_molecular_weight_interface(i)) &
                  .lt.1.0d-10) then
                qwrmx2 = 0.0d0
                qwr = abs(dlnomega_dlnr(i)) - qwrmx
-               circ_vel%secular_shear_velocity(i)=8.0d0/4.5d1* &
+               star%circ%secular_shear_velocity(i)=8.0d0/4.5d1* &
                     star%rot%thermal_diffusivity_interface(i)* &
                     (qwr/dlnomega_dlnr_max(i))**2/star%rot%interface_radius(i)
             else
@@ -512,7 +512,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  GIVEN (1 - CON)P = CGAS*RHO*T/MU
 !      FACT = (RHOM/PM)*QTMU*DMU/AMUMI/DP*HGM**2
                qwrmx2 = 2.0d0*sqrt(max(1.0d-20,star%rot%mu_gradient_richardson_coeff(i)* &
-                        abs((mix_phys%amum(i)-mix_phys%amum(i-1))/ &
+                        abs((star%mix_phys%amum(i)-star%mix_phys%amum(i-1))/ &
                         star%rot%mean_molecular_weight_interface(i))))
                if (abs(dlnomega_dlnr(i)).gt.qwrmx2) then
 !  INTERFACE UNSTABLE WITH RESPECT TO BOTH CONDITIONS; CHOOSE THE
@@ -520,7 +520,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  THAN THE FIRST(I.E. IF A MU GRADIENT IS SLOWING J TRANSPORT).
                   qwrmx = max(qwrmx2,qwrmx)
                   qwr = abs(dlnomega_dlnr(i)) - qwrmx
-            circ_vel%secular_shear_velocity(i)=8.0d0/4.5d1* &
+            star%circ%secular_shear_velocity(i)=8.0d0/4.5d1* &
                  star%rot%thermal_diffusivity_interface(i)* &
                  (qwr/dlnomega_dlnr_max(i))**2/star%rot%interface_radius(i)
                end if
@@ -586,12 +586,12 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! MHP 8/03 MULTIPLY VELOCITY ESTIMATES BY USER PARAMETER
 ! SCALE FACTORS
       do i = zone_min,zone_max
-         circ_vel%es_circulation_velocity(i)=abs(es_velocity_scale* &
-              circ_vel%es_circulation_velocity(i))
-         circ_vel%gsf_circulation_velocity(i) = gsf_velocity_scale* &
-              circ_vel%gsf_circulation_velocity(i)
-         circ_vel%secular_shear_velocity(i)= secular_shear_velocity_scale* &
-              circ_vel%secular_shear_velocity(i)
+         star%circ%es_circulation_velocity(i)=abs(es_velocity_scale* &
+              star%circ%es_circulation_velocity(i))
+         star%circ%gsf_circulation_velocity(i) = gsf_velocity_scale* &
+              star%circ%gsf_circulation_velocity(i)
+         star%circ%secular_shear_velocity(i)= secular_shear_velocity_scale* &
+              star%circ%secular_shear_velocity(i)
       end do
 ! MHP 11/94
 ! REPEAT FOR DIF+AD
@@ -626,12 +626,12 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! IT AS AN ENTRY IN THE DIFFUSION EQUATION.
          do i = zone_min,zone_max
             star%rot%es_diffusive_velocity(i) = star%rot%es_diffusive_velocity(i)+ &
-                 star%rot%interface_radius(i)*(abs(circ_vel%gsf_circulation_velocity(i))+ &
-                 abs(circ_vel%secular_shear_velocity(i)))
+                 star%rot%interface_radius(i)*(abs(star%circ%gsf_circulation_velocity(i))+ &
+                 abs(star%circ%secular_shear_velocity(i)))
             star%rot%shear_diffusion_coeff(i) = star%rot%interface_radius(i)* &
-                 abs(circ_vel%secular_shear_velocity(i))
+                 abs(star%circ%secular_shear_velocity(i))
             star%rot%gsf_diffusion_coeff(i) = star%rot%interface_radius(i)* &
-                 abs(circ_vel%gsf_circulation_velocity(i))
+                 abs(star%circ%gsf_circulation_velocity(i))
 !            IF(VGSF(I).GT.0.0D0)THEN
 ! D LN W/DR
 !               DR = HRU(I) - HRU(I-1)
@@ -650,12 +650,12 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  AVERAGE PREVIOUS AND NEW VELOCITY ESTIMATES AFTER THE FIRST ITERATION.
       if (iteration.gt.1) then
          do 70 i = zone_min,zone_max
-            circ_vel%gsf_circulation_velocity(i) = 0.5d0*(circ_vel%gsf_circulation_velocity(i) &
-                 + circ_vel%gsf_circulation_velocity_prev(i))
-            circ_vel%es_circulation_velocity(i) = 0.5d0*(circ_vel%es_circulation_velocity(i) &
-                 + circ_vel%es_circulation_velocity_prev(i))
-            circ_vel%secular_shear_velocity(i) = 0.5d0*(circ_vel%secular_shear_velocity(i) &
-                 + circ_vel%secular_shear_velocity_prev(i))
+            star%circ%gsf_circulation_velocity(i) = 0.5d0*(star%circ%gsf_circulation_velocity(i) &
+                 + star%circ%gsf_circulation_velocity_prev(i))
+            star%circ%es_circulation_velocity(i) = 0.5d0*(star%circ%es_circulation_velocity(i) &
+                 + star%circ%es_circulation_velocity_prev(i))
+            star%circ%secular_shear_velocity(i) = 0.5d0*(star%circ%secular_shear_velocity(i) &
+                 + star%circ%secular_shear_velocity_prev(i))
    70    continue
 ! MHP 11/94
          if (use_diffusion_advection_transport) then
@@ -668,8 +668,8 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          end if
       end if
       do 80 i =zone_min,zone_max
-         total_circulation_velocity(i) = circ_vel%gsf_circulation_velocity(i) + &
-              circ_vel%es_circulation_velocity(i) + circ_vel%secular_shear_velocity(i)
+         total_circulation_velocity(i) = star%circ%gsf_circulation_velocity(i) + &
+              star%circ%es_circulation_velocity(i) + star%circ%secular_shear_velocity(i)
          if (total_circulation_velocity(i).lt.1.0d-20) &
               total_circulation_velocity(i)=0.0d0
          if (total_circulation_velocity(i).gt.0.0d0) any_transport_active=.true.
@@ -682,9 +682,9 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             dell = star%rot%interface_luminosity(i)/total_luminosity
             if (dell.lt.9.9d-1) then
                total_circulation_velocity(i) = 0.0d0
-               circ_vel%gsf_circulation_velocity(i) = 0.0d0
-               circ_vel%es_circulation_velocity(i) = 0.0d0
-               circ_vel%secular_shear_velocity(i) = 0.0d0
+               star%circ%gsf_circulation_velocity(i) = 0.0d0
+               star%circ%es_circulation_velocity(i) = 0.0d0
+               star%circ%secular_shear_velocity(i) = 0.0d0
 ! MHP 11/94
                star%rot%es_advective_velocity(i) = 0.0d0
                star%rot%es_diffusive_velocity(i) = 0.0d0

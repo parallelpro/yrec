@@ -21,7 +21,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       use atm_lib
       use run_diag_lib
       use envstruct_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -111,7 +111,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       target_envelope_mass = min(target_envelope_mass,-1.0D-12)
 ! SAVE CURRENT VALUES OF THE TOTAL NUMBER OF POINTS AND ENVELOPE MASS.
       old_num_zones = num_zones
-      envelope_mass_before = env_comp%senv
+      envelope_mass_before = star%env_comp%senv
 ! SET NUMERICAL PARAMETERS OF THE ENVELOPE INTEGRATION
       env_max_saved = env_step_max
       env_min_saved = env_step_min
@@ -131,7 +131,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       log_radius_surface = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity &
            - 4.0D0*log_teff - c4pil - csigl)
 ! SURFACE GRAVITY
-      log_gravity_surface = cgl + env_comp%stotal - log_radius_surface - log_radius_surface
+      log_gravity_surface = cgl + star%env_comp%stotal - log_radius_surface - log_radius_surface
 ! COMPOSITION
       hydrogen_fraction = composition(1,num_zones)
       metal_fraction = composition(3,num_zones)
@@ -178,7 +178,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       env_step_max = env_max_saved
       env_step_min = env_min_saved
       env_step_begin = env_begin_saved
-      env_comp%senv = target_envelope_mass
+      star%env_comp%senv = target_envelope_mass
 ! STOP IF THE DESIRED NUMBER OF POINTS EXCEEDS THE ARRAY DIMENSIONS
       if(num_zones+env_struct%num_env_points.ge.json) stop 9999
 ! THE FIRST POINT IN THE ENVELOPE SOLUTION IS THE SET OF PROPERTIES
@@ -193,7 +193,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       mass_test = log_mass(num_zones)
       num_new_env_points = 0
       do zone_index = 1,env_struct%num_env_points - 1
-         mass_test2 = env_comp%stotal+env_struct%env_log10_mass(zone_index+1)
+         mass_test2 = star%env_comp%stotal+env_struct%env_log10_mass(zone_index+1)
          if(mass_test2-mass_test.gt.1.0D-10)then
             env_struct%env_log10_density(zone_index) = env_struct%env_log10_density(zone_index+1)+density_offset
             env_struct%env_log10_pressure(zone_index) = env_struct%env_log10_pressure(zone_index+1)+pressure_offset
@@ -213,11 +213,11 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 ! LUMINOSITY ASSUMED CONSTANT
          log_luminosity(zone_index) = log_luminosity(num_zones)
 ! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
-         if(env_struct%env_log10_mass(species_index).lt.env_comp%senv)then
+         if(env_struct%env_log10_mass(species_index).lt.star%env_comp%senv)then
             log_density(zone_index) = env_struct%env_log10_density(species_index)
             log_pressure(zone_index) = env_struct%env_log10_pressure(species_index)
             log_radius(zone_index) = env_struct%env_log10_radius(species_index)
-            log_mass(zone_index) = env_struct%env_log10_mass(species_index) + env_comp%stotal
+            log_mass(zone_index) = env_struct%env_log10_mass(species_index) + star%env_comp%stotal
             log_temperature(zone_index) = env_struct%env_log10_temperature(species_index)
             composition(1,zone_index) = env_struct%env_hydrogen_fraction(species_index)
             composition(3,zone_index) = env_struct%env_metal_fraction(species_index)
@@ -233,8 +233,8 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
             if(species_index.eq.1)then
 ! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
                mass_interp_x0 = log_mass(num_zones)
-               mass_interp_x1 = env_comp%stotal + env_comp%senv
-               mass_interp_x2 = env_struct%env_log10_mass(species_index) + env_comp%stotal
+               mass_interp_x1 = star%env_comp%stotal + star%env_comp%senv
+               mass_interp_x2 = env_struct%env_log10_mass(species_index) + star%env_comp%stotal
                if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) stop 9998
                interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
                     (mass_interp_x2-mass_interp_x0)
@@ -263,9 +263,9 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
                endif
             else
 ! INTERPOLATE BETWEEN THE LAST 2 ENVELOPE POINTS
-               mass_interp_x0 = env_struct%env_log10_mass(species_index-1) + env_comp%stotal
-               mass_interp_x1 = env_comp%stotal + env_comp%senv
-               mass_interp_x2 = env_struct%env_log10_mass(species_index) + env_comp%stotal
+               mass_interp_x0 = env_struct%env_log10_mass(species_index-1) + star%env_comp%stotal
+               mass_interp_x1 = star%env_comp%stotal + star%env_comp%senv
+               mass_interp_x2 = env_struct%env_log10_mass(species_index) + star%env_comp%stotal
                if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) stop 9998
                interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
                     (mass_interp_x2-mass_interp_x0)
@@ -360,12 +360,12 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
      ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
       write(*,911)(zone_index,log_density(zone_index),log_luminosity(zone_index), &
            log_pressure(zone_index),log_radius(zone_index), &
-           log_mass(zone_index)-env_comp%stotal, &
+           log_mass(zone_index)-star%env_comp%stotal, &
            log_temperature(zone_index),convective_flag(zone_index), &
            zone_index = old_num_zones,num_zones)
  911  format(I5,1P6E16.8,L2)
       new_points_added_flag = .true.
-       write(*,597)envelope_mass_before,env_comp%senv
+       write(*,597)envelope_mass_before,star%env_comp%senv
  597  format(5X,'***** NEW ENVELOPE MASS CALCULATED *****'/8X, &
      'OLD SENV ',1PE22.13,'  NEW SENV',E22.13)
       return

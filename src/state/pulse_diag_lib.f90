@@ -43,7 +43,7 @@ module pulse_diag_lib
             double precision :: qrmu, qtl, qpl, qdl, qo, qol, qt, qp
             double precision :: qqdt, qemu, qd, qfs
       end type pulsation_diagnostics_state
-
-      type(pulsation_diagnostics_state), public :: pulse_diag
-
+! 2026 (phase six, step 1 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module pulse_diag_lib

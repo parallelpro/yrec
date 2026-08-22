@@ -35,8 +35,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use envelope_comp_lib
-      use light_burn_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -216,7 +216,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             call deutrate(log_density_zone, log_temperature_zone, &
                  hydrogen_fraction, zone_idx, iteration_level)
          else
-            light_burn%deuterium_burning_rate(zone_idx) = 0.0d0
+            star%light_burn%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
    10 continue
       zone_idx = star%num_zones + 1
@@ -238,7 +238,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          frac_c12_alpha(clear_idx) = 0.0d0
          frac_be7_electron(clear_idx) = 0.0d0
 ! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
-         light_burn%deuterium_burning_rate(clear_idx) = 0.0d0
+         star%light_burn%deuterium_burning_rate(clear_idx) = 0.0d0
    21 continue
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE

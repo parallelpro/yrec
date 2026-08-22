@@ -49,8 +49,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       use atm_lib
       use atm_table_lib
       use star_info_lib, only: star
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use const_lib
       use eos_lib
@@ -163,12 +163,12 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 !               TAUCZ = TAUCZ + DR/V
 !            ENDIF
 !         END DO
-         write(*,*)turnover%convective_turnover_timescale/seconds_per_year, &
+         write(*,*)star%turnover%convective_turnover_timescale/seconds_per_year, &
               total_radius_cm/solar_radius_cgs
-         light_burn%jcz = envelope_boundary_zone
+         star%light_burn%jcz = envelope_boundary_zone
       else
-         turnover%convective_turnover_timescale = 0.0d0
-         light_burn%jcz = num_zones
+         star%turnover%convective_turnover_timescale = 0.0d0
+         star%light_burn%jcz = num_zones
       endif
 ! MHP 8/10
 ! THE RUNNING TOTAL OF THE MASS OF THE

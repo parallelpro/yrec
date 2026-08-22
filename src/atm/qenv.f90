@@ -31,8 +31,8 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       use eos_lib
       use kap_lib
       use star_info_lib, only: star
-      use pulse_diag_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -77,7 +77,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       integer :: jerr
 
       log10_pressure = log10_pressure_indep
-      log10_mass = y(1) + env_comp%stotal
+      log10_mass = y(1) + star%env_comp%stotal
       log10_temperature = y(2)
       log10_radius = y(3)
       call eos_get(log10_temperature,temperature,log10_pressure,pressure, &
@@ -113,7 +113,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
       star%run%current_log10_pressure = log10_pressure
       star%run%current_log10_temperature = log10_temperature
-      star%run%current_log10_mass = log10_mass - env_comp%stotal
+      star%run%current_log10_mass = log10_mass - star%env_comp%stotal
       star%run%current_log10_radius = log10_radius
       star%run%current_log10_density = log10_density
       star%run%current_velocity = convective_velocity
@@ -126,34 +126,34 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       star%run%current_ion_fraction(1) = ion_fraction(1)
       star%run%current_ion_fraction(2) = ion_fraction(2)
       star%run%current_ion_fraction(3) = ion_fraction(3)
-      pulse_diag%qqdp = dlnrho_dlnp
-      pulse_diag%qqdt = dlnrho_dlnt
-      pulse_diag%qqcp = specific_heat_cp
+      star%pulse%qqdp = dlnrho_dlnp
+      star%pulse%qqdt = dlnrho_dlnt
+      star%pulse%qqcp = specific_heat_cp
 
-      if(print_flag .or. pulse_diag%lpumod) then
+      if(print_flag .or. star%pulse%lpumod) then
        star%run%current_opacity = opacity
        star%run%current_ion_fraction(1) = ion_fraction(1)
        star%run%current_ion_fraction(2) = ion_fraction(2)
        star%run%current_ion_fraction(3) = ion_fraction(3)
-       pulse_diag%qtl = log10_temperature
-       pulse_diag%qt = dexp(ln10*log10_temperature)
-       pulse_diag%qpl = log10_pressure
-       pulse_diag%qp = dexp(ln10*log10_pressure)
-       pulse_diag%qdl = log10_density
-       pulse_diag%qd = dexp(ln10*log10_density)
-       pulse_diag%qo = opacity
-       pulse_diag%qol = log10_opacity
-       pulse_diag%qfs = dexp(ln10*(log10_mass-env_comp%stotal))
-       pulse_diag%qqdp = dlnrho_dlnp
-       pulse_diag%qqed = 0.0d0
-       pulse_diag%qqod = dlnkap_dlnrho
-       pulse_diag%qqot = dlnkap_dlnt
-       pulse_diag%qdel = actual_gradient
-       pulse_diag%qqdt = dlnrho_dlnt
-       pulse_diag%qdela = adiabatic_gradient
-       pulse_diag%qqcp = specific_heat_cp
-       pulse_diag%qrmu = specific_gas_constant
-       pulse_diag%qemu = electron_mean_weight_inverse
+       star%pulse%qtl = log10_temperature
+       star%pulse%qt = dexp(ln10*log10_temperature)
+       star%pulse%qpl = log10_pressure
+       star%pulse%qp = dexp(ln10*log10_pressure)
+       star%pulse%qdl = log10_density
+       star%pulse%qd = dexp(ln10*log10_density)
+       star%pulse%qo = opacity
+       star%pulse%qol = log10_opacity
+       star%pulse%qfs = dexp(ln10*(log10_mass-star%env_comp%stotal))
+       star%pulse%qqdp = dlnrho_dlnp
+       star%pulse%qqed = 0.0d0
+       star%pulse%qqod = dlnkap_dlnrho
+       star%pulse%qqot = dlnkap_dlnt
+       star%pulse%qdel = actual_gradient
+       star%pulse%qqdt = dlnrho_dlnt
+       star%pulse%qdela = adiabatic_gradient
+       star%pulse%qqcp = specific_heat_cp
+       star%pulse%qrmu = specific_gas_constant
+       star%pulse%qemu = electron_mean_weight_inverse
       endif
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.

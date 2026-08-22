@@ -27,10 +27,10 @@ subroutine run_yrec(ierr)
 ! change on "JSON=2000" or whatever.
       use nuclear_lib
       use star_info_lib, only: star
-      use fluxes_lib
-      use engeb_diag_lib
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -320,7 +320,7 @@ subroutine run_yrec(ierr)
       dlnrho_dlnt_unused = -1.0D0
       dlnrho_dlnp_unused = 1.0D0
       do j = 1,10
-         flux_diag%neutrino_flux_total(j) = 0.0D0
+         star%flux%neutrino_flux_total(j) = 0.0D0
          do k = 1,star%num_zones
             star%neutrino_flux_zone(j,k) = 0.0D0
          end do
@@ -357,12 +357,12 @@ subroutine run_yrec(ierr)
               star%reaction_rate_13,star%n15_alpha_branch_fraction, &
               star%be7_electron_capture_fraction)
 ! BE7 MASS FRACTION.
-         star%be7_mass_fraction_zone(i) = engeb_diag%be7_mass_fraction
+         star%be7_mass_fraction_zone(i) = star%engeb%be7_mass_fraction
 ! CONVERT FROM ERG/GM/S TO ERG/S FOR EACH SHELL BY MULTIPLYING
 ! BY THE MASS OF EACH SHELL IN GM (HS2).
          do j = 1,10
-            star%neutrino_flux_zone(j,i) = flux_diag%neutrino_flux(j)*star%shell_mass(i)
-            flux_diag%neutrino_flux_total(j) = flux_diag%neutrino_flux_total(j) + star%neutrino_flux_zone(j,i)
+            star%neutrino_flux_zone(j,i) = star%flux%neutrino_flux(j)*star%shell_mass(i)
+            star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) + star%neutrino_flux_zone(j,i)
          end do
          write(*,911)i,star%shell_mass(i),(star%neutrino_flux_zone(j,i),j=1,10)
  911     format(I5,1P11E10.3)
@@ -370,11 +370,11 @@ subroutine run_yrec(ierr)
   666 continue
 ! WRITE OUT TOTAL NEUTRINO FLUXES.
 ! ***NOTE THAT THESE ARE IN UNITS OF 10**10. ***
-      write(76,222)(flux_diag%neutrino_flux_total(i),i=1,10)
+      write(76,222)(star%flux%neutrino_flux_total(i),i=1,10)
 ! NORMALIZE FLUXES.
       do j = 1,10
          do i = 1,star%num_zones
-            star%neutrino_flux_zone(j,i) = star%neutrino_flux_zone(j,i)/flux_diag%neutrino_flux_total(j)
+            star%neutrino_flux_zone(j,i) = star%neutrino_flux_zone(j,i)/star%flux%neutrino_flux_total(j)
          end do
       end do
       do i = 1,star%num_zones
@@ -403,8 +403,8 @@ subroutine run_yrec(ierr)
 ! save mass in solar units
          pulsation_mass_msun=star%total_mass_msun
 ! MHP 08/02 STORE STARTING CZ PROPERTIES
-         light_burn%jcz = star%envelope_cz_bottom_index
-         turnover%convective_turnover_timescale = 0.0D0
+         star%light_burn%jcz = star%envelope_cz_bottom_index
+         star%turnover%convective_turnover_timescale = 0.0D0
 ! write out headers of the appropriate output files
       call wrthead(star%total_mass_msun)
 ! DBG PULSE OUT 7/92
@@ -456,9 +456,9 @@ subroutine run_yrec(ierr)
 
 ! zero out light element burning rates in the surface CZ.
          if (use_extended_composition) then
-            light_burn%log_rate_li6_prev = 0.0D0
-            light_burn%log_rate_li7_prev = 0.0D0
-            light_burn%log_rate_be9_prev = 0.0D0
+            star%light_burn%log_rate_li6_prev = 0.0D0
+            star%light_burn%log_rate_li7_prev = 0.0D0
+            star%light_burn%log_rate_be9_prev = 0.0D0
          endif
 
 ! for a given kind card, evolve NMODLS(NK) times
@@ -559,7 +559,7 @@ subroutine run_yrec(ierr)
          write(neutrino_unit, 1517)star%run%central_log10_temperature,star%run%central_log10_pressure,star%run%central_log10_density, &
               star%composition(1,1),star%composition(3,1)
 ! NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
-         write(neutrino_unit, 1516) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,8)
+         write(neutrino_unit, 1516) star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(i),i=1,8)
 !          CALL WRTMONTE(HCOMP,HD,HL,HP,HR,HS,HT,LC,M,MODEL,DAGE,
 !      *        DDAGE,SMASS,TEFFL,BL,GL,LSHELL,JXBEG,JXMID,
 !      *        JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
@@ -589,7 +589,7 @@ subroutine run_yrec(ierr)
          write(neutrino_unit,1518)convergence_iterations,initial_x_guess,initial_alpha_guess,star%run%dlum_dx,star%run%drad_dx,star%run%dlum_dalpha,star%run%drad_dalpha
  1518    format(1X,I2,2F10.6,1P4E11.4)
 ! NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
-         write(neutrino_unit, 1516) flux_diag%cl37_snu_rate,flux_diag%ga71_snu_rate,(flux_diag%neutrino_flux_total(i),i=1,10)
+         write(neutrino_unit, 1516) star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(i),i=1,10)
  1516    format(1X,2F8.3,1P10E10.3)
 ! SUMMARY OF STRUCTURE : TC, RHOC, PC, XC, ZC (ADD MU C)
          central_temperature_mk = 10.0D0**(star%run%central_log10_temperature-6.0D0)

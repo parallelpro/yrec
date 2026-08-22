@@ -19,8 +19,8 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
      specific_angular_momentum, ierr)
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -80,8 +80,8 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! ADD ROSSBY SCALING IF DESIRED.
       if(scale_by_rossby_number)then
 ! MHP 8/17 CORRECTED TAUCZ CALCULATION TO INTERPOLATE PROPERLY IN TIMESTEP
-         current_turnover_timescale = turnover%convective_turnover_timescale_old+ &
-              turnover%fracstep*(turnover%convective_turnover_timescale-turnover%convective_turnover_timescale_old)
+         current_turnover_timescale = star%turnover%convective_turnover_timescale_old+ &
+              star%turnover%fracstep*(star%turnover%convective_turnover_timescale-star%turnover%convective_turnover_timescale_old)
          if(scale_by_b_field)then
 ! G Somers 8/17 CREATE ROTATION DUMMY VARIABLES.
             omega_now = omega_surface*current_turnover_timescale/ &

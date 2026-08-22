@@ -33,11 +33,11 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       use nuclear_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use temp2_lib
-      use temp_lib
-      use mdphy_lib
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -220,7 +220,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
 ! MHP 10/17 timestep average loss rate
 !            FRACSTEP = 1.
-            turnover%fracstep = 0.5
+            star%turnover%fracstep = 0.5
             call mwind(star%log10_luminosity,full_timestep,cz_mass_bottom, &
                  cz_mass_top,envelope_boundary_zone,star%num_zones,wind_loss_active, &
                  omega_surface, &
@@ -315,7 +315,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          end do
       endif
       fx = elapsed_substep_time/full_timestep
-      turnover%fracstep = fx
+      star%turnover%fracstep = fx
 ! INTERPOLATE LINEARLY IN TIME FOR THE MODEL STRUCTURE BETWEEN THE
 ! START AND END OF THE TIMESTEP.
 ! JVS
@@ -397,7 +397,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
             do 80 zone_index = 1,star%num_zones
                star%specific_angular_momentum(zone_index) = specific_angular_momentum_saved(zone_index)
-               mix_phys%amum(zone_index) = mix_phys%amum(zone_index) - fx*(shell_temp%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
+               star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%thermo%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
                do 70 species_index = 1,num_species_tracked
                   star%composition(species_index,zone_index) = star%prev%old_composition(species_index,zone_index)
    70          continue
@@ -432,11 +432,11 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
               num_convective_zones_burn)
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
          if(lovstm .and. convective_flag_mid(star%num_zones))then
-            light_burn%pressure_scale_height_end = alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
+            star%light_burn%pressure_scale_height_end = alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
                  2.0D0*log_radius_mid(envelope_boundary_zone_cur) &
                  -log_density_mid(envelope_boundary_zone_cur)-cgl-star%log_mass(envelope_boundary_zone_cur)))
          else
-            light_burn%pressure_scale_height_end = 0.0D0
+            star%light_burn%pressure_scale_height_end = 0.0D0
          endif
 ! FIND LIGHT ELEMENT BURNING RATES AT THE END OF THE TIME STEP.
          call lirate88(star%composition,log_density_mid,log_temperature_mid,star%num_zones,2)
@@ -451,11 +451,11 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
                  star%shell_mass,log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%num_zones)
             envelope_boundary_zone_prev = envelope_boundary_zone_cur
-            light_burn%pressure_scale_height_start = light_burn%pressure_scale_height_end
+            star%light_burn%pressure_scale_height_start = star%light_burn%pressure_scale_height_end
             do 155 zone_index = 1,star%num_zones
-               light_burn%rate_li6_start(zone_index) = light_burn%rate_li6(zone_index)
-               light_burn%rate_li7_start(zone_index) = light_burn%rate_li7(zone_index)
-               light_burn%rate_be9_start(zone_index) = light_burn%rate_be9(zone_index)
+               star%light_burn%rate_li6_start(zone_index) = star%light_burn%rate_li6(zone_index)
+               star%light_burn%rate_li7_start(zone_index) = star%light_burn%rate_li7(zone_index)
+               star%light_burn%rate_be9_start(zone_index) = star%light_burn%rate_be9(zone_index)
   155       continue
          else
 ! COMPUTE BURNING.

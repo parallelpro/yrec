@@ -36,7 +36,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
      fscvz, opecalex, ierr)
 
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use const_lib
       use luout_lib
       use intpar_lib
@@ -2344,7 +2344,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             write(short_file_unit,452) nmodls(nkind), &
            &       (rescale_params(i,nkind),i = 1,4)
        end if
-         if(rescale_params(3,nkind).ge.0.0d0)  env_comp%envelope_metal_fraction=rescale_params(3,nkind)
+         if(rescale_params(3,nkind).ge.0.0d0)  star%env_comp%envelope_metal_fraction=rescale_params(3,nkind)
       1000 continue
       return
 

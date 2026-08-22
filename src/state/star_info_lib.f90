@@ -35,6 +35,15 @@ module star_info_lib
       use scrtch_lib,   only: shell_diagnostics_state
       use run_diag_lib, only: run_diagnostics_state
       use rotdiff_lib,  only: rotation_diffusion_state
+      use envelope_comp_lib, only: envelope_composition_state
+      use turnover_lib, only: turnover_state
+      use light_burn_lib, only: light_element_burn_state
+      use fluxes_lib, only: neutrino_flux_state
+      use engeb_diag_lib, only: engeb_diagnostics_state
+      use mdphy_lib, only: mdphy_state
+      use temp_lib, only: shell_temp_state
+      use temp2_lib, only: circulation_velocity_state
+      use pulse_diag_lib, only: pulsation_diagnostics_state
       implicit none
       private
       integer, parameter, public :: json = 5000
@@ -108,6 +117,20 @@ module star_info_lib
             type(shell_diagnostics_state) :: diag
             type(run_diagnostics_state) :: run
             type(rotation_diffusion_state) :: rot
+! 2026 (phase six, step 1): the nine remaining model-state modules,
+! folded in the same way as prev/diag/run/rot -- types stay in their
+! own files, the single instances live here. See ROADMAP.md phase six
+! for the per-module classification (envstruct/atmstruct deliberately
+! stay atm-domain state and are NOT here).
+            type(envelope_composition_state) :: env_comp
+            type(turnover_state) :: turnover
+            type(light_element_burn_state) :: light_burn
+            type(neutrino_flux_state) :: flux
+            type(engeb_diagnostics_state) :: engeb
+            type(mdphy_state) :: mix_phys
+            type(shell_temp_state) :: thermo
+            type(circulation_velocity_state) :: circ
+            type(pulsation_diagnostics_state) :: pulse
       end type star_info
 
 ! the one star this process evolves (no handles -- see header)

@@ -21,7 +21,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
       use star_info_lib, only: star
-      use mdphy_lib
+      use star_info_lib, only: star
       use const_lib
       use numerics_lib
       implicit none
@@ -162,7 +162,7 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          four_pi_rho_r2 = c4pi*exp(ln10*(log_density(search_idx) + &
               2.0d0*log_radius(search_idx)))
          dchidr = four_pi_rho_r2/(ln10*mass_scale*enclosed_mass(search_idx)) &
-              + four_pi_rho_r2*mix_phys%epsm(search_idx)/luminosity_scale + &
+              + four_pi_rho_r2*star%mix_phys%epsm(search_idx)/luminosity_scale + &
               exp(ln10*(cgl + log_density(search_idx) + log_mass(search_idx) &
               - log_pressure(search_idx) - &
               2.0d0*log_radius(search_idx)))/(ln10*pressure_scale)

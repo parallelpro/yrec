@@ -26,7 +26,7 @@ module envelope_comp_lib
             double precision :: zenvm, amuenv, fxenv(12)
             double precision :: xnew, znew, stotal, senv
       end type envelope_composition_state
-
-      type(envelope_composition_state), public :: env_comp
-
+! 2026 (phase six, step 1 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module envelope_comp_lib

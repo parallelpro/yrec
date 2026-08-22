@@ -74,7 +74,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use temp2_lib
+      use star_info_lib, only: star
       use const_lib
       use luout_lib
       implicit none
@@ -384,15 +384,15 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
               'VSS',9x,'RAT',8x,'VTOT',7x,'LENGTH',8x,'VMU')
          do 230 zone_index = 1,print_zone_count
             write(imodpt,220)print_zone_id(zone_index), &
-                 circ_vel%es_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 circ_vel%es_circulation_velocity(print_zone_id(zone_index)), &
-                 circ_vel%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 circ_vel%gsf_circulation_velocity(print_zone_id(zone_index)), &
-                 circ_vel%secular_shear_velocity(print_zone_id(zone_index)), &
+                 star%circ%es_circulation_velocity_prev(print_zone_id(zone_index)), &
+                 star%circ%es_circulation_velocity(print_zone_id(zone_index)), &
+                 star%circ%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
+                 star%circ%gsf_circulation_velocity(print_zone_id(zone_index)), &
+                 star%circ%secular_shear_velocity(print_zone_id(zone_index)), &
                  star%rot%circulation_correction_ratio(print_zone_id(zone_index)), &
                  diffusion_velocity(print_zone_id(zone_index)), &
-                 circ_vel%hle(print_zone_id(zone_index)), &
-                 circ_vel%mu_gradient_velocity(print_zone_id(zone_index))
+                 star%circ%hle(print_zone_id(zone_index)), &
+                 star%circ%mu_gradient_velocity(print_zone_id(zone_index))
   220 format(1x,i5,1p10e12.3)
   230    continue
          if(use_diffusion_advection_transport)then
@@ -405,7 +405,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             if(print_zone_count.eq.star%rot%ntot)then
             do zone_index = 1,print_zone_count
                write(imodpt,221)zone_index,star%rot%chi(zone_index), &
-                    circ_vel%es_circulation_velocity(zone_index), &
+                    star%circ%es_circulation_velocity(zone_index), &
                     star%rot%es_advective_velocity(zone_index), &
                     star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
                     star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
@@ -414,7 +414,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             else if(print_zone_count.lt.star%rot%ntot)then
             do zone_index = 1,print_zone_count
                write(imodpt,221)zone_index,star%rot%chi(zone_index), &
-                    circ_vel%es_circulation_velocity(zone_index), &
+                    star%circ%es_circulation_velocity(zone_index), &
                     star%rot%es_advective_velocity(zone_index), &
                     star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
                     star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
@@ -427,14 +427,14 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             else
             do zone_index = 1,star%rot%ntot
                write(imodpt,221)zone_index,star%rot%chi(zone_index), &
-                    circ_vel%es_circulation_velocity(zone_index), &
+                    star%circ%es_circulation_velocity(zone_index), &
                     star%rot%es_advective_velocity(zone_index), &
                     star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
                     star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
             end do
             do zone_index = star%rot%ntot+1,print_zone_count
                write(imodpt,223)zone_index,star%rot%chi(zone_index), &
-                    circ_vel%es_circulation_velocity(zone_index), &
+                    star%circ%es_circulation_velocity(zone_index), &
                     star%rot%es_advective_velocity(zone_index), &
                     star%rot%es_diffusive_velocity(zone_index)
  223           format(1x,i5,1p4e12.3)

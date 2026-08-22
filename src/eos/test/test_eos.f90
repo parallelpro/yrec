@@ -38,7 +38,7 @@
 program test_eos
       use const_lib
       use luout_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use eos_lib
       implicit none
 
@@ -128,29 +128,29 @@ program test_eos
       atm_choice = 0
 
 ! envelope composition state, per starin.f90's mixture algorithm
-      env_comp%xnew = 0.70d0
-      env_comp%znew = 0.016492d0
-      env_comp%envelope_hydrogen_fraction = env_comp%xnew
-      env_comp%envelope_metal_fraction = env_comp%znew
+      star%env_comp%xnew = 0.70d0
+      star%env_comp%znew = 0.016492d0
+      star%env_comp%envelope_hydrogen_fraction = star%env_comp%xnew
+      star%env_comp%envelope_metal_fraction = star%env_comp%znew
       do i = 1, 12
          w(i) = vnew(i)
       end do
       wsum = w(1)+w(2)+w(3)+w(4)+w(5)+w(6)+w(8)+w(9)+w(10)+w(11)
-      env_comp%zenvm = env_comp%envelope_metal_fraction* &
+      star%env_comp%zenvm = star%env_comp%envelope_metal_fraction* &
            (wsum - w(6) - w(8) - w(9))/wsum
-      scale = env_comp%envelope_metal_fraction/wsum
-      w(7) = env_comp%envelope_hydrogen_fraction/scale
-      w(12) = (1.0d0 - env_comp%envelope_hydrogen_fraction - &
-           env_comp%envelope_metal_fraction)/scale
+      scale = star%env_comp%envelope_metal_fraction/wsum
+      w(7) = star%env_comp%envelope_hydrogen_fraction/scale
+      w(12) = (1.0d0 - star%env_comp%envelope_hydrogen_fraction - &
+           star%env_comp%envelope_metal_fraction)/scale
       wsum = 0.0d0
       do i = 1, 12
          w(i) = scale*w(i)/atomic_weight(i)
          wsum = wsum + w(i)
       end do
-      env_comp%amuenv = wsum
-      scale = 1.0d0/env_comp%amuenv
+      star%env_comp%amuenv = wsum
+      scale = 1.0d0/star%env_comp%amuenv
       do i = 1, 12
-         env_comp%fxenv(i) = w(i)*scale
+         star%env_comp%fxenv(i) = w(i)*scale
       end do
 
 ! constants + Fermi/SCV table loads (real setups + eos_init inside it)

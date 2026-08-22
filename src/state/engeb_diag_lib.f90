@@ -37,7 +37,7 @@ module engeb_diag_lib
             double precision :: he3_he3_rate_placeholder(json), &
                  he3_he4_rate_placeholder(json)
       end type engeb_diagnostics_state
-
-      type(engeb_diagnostics_state), public :: engeb_diag
-
+! 2026 (phase six, step 1 -- ROADMAP.md): the instance moved into
+! star_info (state/star_info_lib.f90); this module now only defines
+! the type.
 end module engeb_diag_lib

@@ -14,7 +14,7 @@
 program test_kap
       use const_lib
       use luout_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use kap_lib
       implicit none
 
@@ -74,8 +74,8 @@ program test_kap
       use_opal2006_eos = .false.
       atm_choice = 0
 
-      env_comp%envelope_hydrogen_fraction = 0.70d0
-      env_comp%envelope_metal_fraction = 0.016232d0
+      star%env_comp%envelope_hydrogen_fraction = 0.70d0
+      star%env_comp%envelope_metal_fraction = 0.016232d0
 
 ! constants + table loads (real setups; kap_init inside it reads the
 ! OPAL95 table and builds the surface-X slice)

@@ -24,10 +24,10 @@
 subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
       use const_lib
-      use envelope_comp_lib
-      use mdphy_lib
-      use light_burn_lib
-      use turnover_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       implicit none
       integer, parameter :: json = 5000
@@ -120,7 +120,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
          composition(3,zone_idx) = dmin1(composition(3,zone_idx), &
               1.0d0-composition(1,zone_idx))
          composition(9,zone_idx) = dmax1(composition(9,zone_idx), &
-              0.99d-3*(composition(3,zone_idx)-env_comp%zenvm))
+              0.99d-3*(composition(3,zone_idx)-star%env_comp%zenvm))
       end do
 
 ! G Somers 3/17, commented out this taucz calculation. It is now
@@ -144,7 +144,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !   81    imax = i + 1
 !  hstop is the mass at the top of the c.z.
 !  hsbot is the mass at the bottom of the c.z.
-!         hstop = exp(cln*env_comp%stotal)
+!         hstop = exp(cln*star%env_comp%stotal)
 !         if(imax.gt.1)then
 !            hsbot = 0.5d0*(hs1(imax)+hs1(imax-1))
 !         else

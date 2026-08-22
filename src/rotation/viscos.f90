@@ -12,7 +12,7 @@
 ! rotational-mixing/instability diffusion routines.
 subroutine viscos(composition, log_density, log_temperature, num_zones)
 !       SUBROUTINE VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
-      use temp_lib
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use const_lib
       implicit none
@@ -109,7 +109,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
                  viscosity_molecular_species(species_idx)
    30    continue
          viscosity_molecular = viscosity_molecular/density_cgs
-         shell_temp%visc(shell_idx) = viscosity_radiative+viscosity_molecular
+         star%thermo%visc(shell_idx) = viscosity_radiative+viscosity_molecular
 !  NOW COMPUTE USING ENDAL-SOFIA METHOD
          viscosity_molecular_endal_sofia = 0.0d0
          endal_sofia_coeff = 2.21d-15*dsqrt(temperature_cgs)*temperature_sq
@@ -130,8 +130,8 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 !  THERMAL DIFFUSIVITY(THDIF) DUE TO RADIATION IS CALCULATED
 !  COMPONENT DUE TO THERMAL CONDUCTION OF MATTER IS NEGLECTED
 !  RADIATIVE DIFFUSIVITY = K*T**3/(O*RHO**2*CP)
-         shell_temp%thdif(shell_idx) = 1.6d1*cc13*5.669d-5*temperature_cgs* &
-              temperature_sq/(opacity_local*density_cgs**2*shell_temp%cp(shell_idx))
+         star%thermo%thdif(shell_idx) = 1.6d1*cc13*5.669d-5*temperature_cgs* &
+              temperature_sq/(opacity_local*density_cgs**2*star%thermo%cp(shell_idx))
   100 continue
 
       return

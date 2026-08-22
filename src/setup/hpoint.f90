@@ -23,9 +23,9 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       use kap_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use temp_lib
-      use envelope_comp_lib
-      use light_burn_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
@@ -142,7 +142,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
              write(short_file_unit,10) star%num_zones,i
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              star%num_zones = i
-             env_comp%senv = star%log_mass(star%num_zones) - star%log_total_mass
+             star%env_comp%senv = star%log_mass(star%num_zones) - star%log_total_mass
              point_reset_flag = .true.
              goto 40
           endif
@@ -161,8 +161,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       else if (star%log_temperature(star%num_zones).gt.tenv1.and. &
            envelope_store_index.ne.0) then
        star%num_zones = star%num_zones + 1
-       env_comp%senv = star%stored_envelope_state(4)
-       star%log_mass(star%num_zones) = star%log_total_mass + env_comp%senv
+       star%env_comp%senv = star%stored_envelope_state(4)
+       star%log_mass(star%num_zones) = star%log_total_mass + star%env_comp%senv
        star%log_pressure(star%num_zones) = star%log_pressure(star%num_zones-1) + &
             (star%stored_envelope_state(1) - star%fit_point_pressure(envelope_store_index))
        star%log_temperature(star%num_zones) = star%log_temperature(star%num_zones-1) + &
@@ -691,12 +691,12 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       if (use_extended_composition .and. &
            star%composition(12,star%num_zones).ge.1.0D-14) then
          do j = 1,star%num_zones
-            star%prev%old_pressure(j) = light_burn%deuterium_burning_rate_start(j)
+            star%prev%old_pressure(j) = star%light_burn%deuterium_burning_rate_start(j)
          end do
          call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
               old_point_count,new_point_count)
          do j = 1,new_num_zones
-            light_burn%deuterium_burning_rate_start(j) = star%prev%old_temperature(j)
+            star%light_burn%deuterium_burning_rate_start(j) = star%prev%old_temperature(j)
          end do
       endif
 ! NOW FIND RUN OF P,R,L,T,AND RHO IN THAT ORDER FOR THE NEW POINTS.
@@ -896,13 +896,13 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
             star%rot%old_del_radiative_mix(zone_index) = star%diag%del_grad(1,zone_index)
             star%rot%old_delm(zone_index) = star%diag%del_grad(2,zone_index)
             star%rot%old_del_adiabatic_mix(zone_index) = star%diag%del_grad(3,zone_index)
-            star%rot%old_amu(zone_index) = shell_temp%mean_molecular_weight(zone_index)
+            star%rot%old_amu(zone_index) = star%thermo%mean_molecular_weight(zone_index)
             star%rot%old_om(zone_index) = star%diag%so(zone_index)
-            star%rot%old_cp(zone_index) = shell_temp%cp(zone_index)
-            star%rot%old_qdt(zone_index) = shell_temp%qdt(zone_index)
+            star%rot%old_cp(zone_index) = star%thermo%cp(zone_index)
+            star%rot%old_qdt(zone_index) = star%thermo%qdt(zone_index)
             star%rot%old_vel(zone_index) = star%diag%svel(zone_index)
-            star%rot%old_visc(zone_index) = shell_temp%visc(zone_index)
-            star%rot%old_thdif(zone_index) = shell_temp%thdif(zone_index)
+            star%rot%old_visc(zone_index) = star%thermo%visc(zone_index)
+            star%rot%old_thdif(zone_index) = star%thermo%thdif(zone_index)
 ! MHP 06/02
             star%rot%del_grad_diff_interface(zone_index) = &
                  star%rot%old_del_adiabatic_mix(zone_index) - star%rot%old_delm(zone_index)
@@ -923,10 +923,10 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
          end do
       endif
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.
-      if (dabs(env_comp%xnew-star%composition(1,star%num_zones)).gt.1.0D-8) then
-               env_comp%xnew = star%composition(1,star%num_zones)
-               env_comp%znew = star%composition(3,star%num_zones)
-               call kap_update_surface_tables(env_comp%xnew)
+      if (dabs(star%env_comp%xnew-star%composition(1,star%num_zones)).gt.1.0D-8) then
+               star%env_comp%xnew = star%composition(1,star%num_zones)
+               star%env_comp%znew = star%composition(3,star%num_zones)
+               call kap_update_surface_tables(star%env_comp%xnew)
 
       end if
 

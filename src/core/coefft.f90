@@ -24,7 +24,7 @@
 ! output (common/scrtch/, common/pulse1/, common/sound/, common/
 ! rotder/, common/roten/).
 !
-! Three dummy arguments below (pulse_diag%qt, pulse_diag%qp, pulse_diag%qtl -- see common/pulse2/) are
+! Three dummy arguments below (star%pulse%qt, star%pulse%qp, star%pulse%qtl -- see common/pulse2/) are
 ! simultaneously common-block storage: COMMON/PULSE2/ was first
 ! declared (unused, as placeholders) in an earlier-converted file
 ! (wrtmod.f90) with generic member names kept close to the original;
@@ -32,7 +32,7 @@
 ! live temperature/pressure Henyey-equation scratch terms (they also
 ! double as the eq_t_val/eq_p_val/dqt_dl arguments passed to reduce),
 ! so per the project's COMMON-block-reuse rule they keep the
-! wrtmod.f90 names (pulse_diag%qt/pulse_diag%qp/pulse_diag%qtl) here too, despite those names no
+! wrtmod.f90 names (star%pulse%qt/star%pulse%qp/star%pulse%qtl) here too, despite those names no
 ! longer being very descriptive of their role in this file.
 !
 ! KC 2025-05-31 removed the unused MODEL argument and reordered the
@@ -54,9 +54,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       use nuclear_lib
       use star_info_lib, only: star
       use star_info_lib, only: star
-      use pulse_diag_lib
-      use fluxes_lib
-      use engeb_diag_lib
+      use star_info_lib, only: star
+      use star_info_lib, only: star
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -155,7 +155,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 
       if (lsnu) then
          do 5 j = 1,10
-            flux_diag%neutrino_flux_total(j) = 0.0d0
+            star%flux%neutrino_flux_total(j) = 0.0d0
    5     continue
       end if
 ! MHP 10/02 QFPR,QFTR NOT USED - OMIT
@@ -267,26 +267,26 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
        dqr_dr = - eq_r_val - eq_r_val - eq_r_val
        dqr_dp = -eq_r_val*dlnrho_dlnp
        dqr_dt = -eq_r_val*dlnrho_dlnt
-       pulse_diag%qp =-dexp(ln10*(cgl + zone_log_mass + zone_log_mass - &
+       star%pulse%qp =-dexp(ln10*(cgl + zone_log_mass + zone_log_mass - &
             zone_log_pressure - qtemp - zone_log_radius ))*rotation_p_factor(im)
 !       QPR = -QP - QP - QP - QP*(1.0D0 - QFPR)
-       dqp_dr = -pulse_diag%qp - pulse_diag%qp - pulse_diag%qp - pulse_diag%qp
-       dqp_dp = -pulse_diag%qp
+       dqp_dr = -star%pulse%qp - star%pulse%qp - star%pulse%qp - star%pulse%qp
+       dqp_dp = -star%pulse%qp
        convective_flag(im) = is_convective
-       pulse_diag%qt = actual_gradient*pulse_diag%qp
-       dqt_dr = -pulse_diag%qt - pulse_diag%qt - pulse_diag%qt - pulse_diag%qt
+       star%pulse%qt = actual_gradient*star%pulse%qp
+       dqt_dr = -star%pulse%qt - star%pulse%qt - star%pulse%qt - star%pulse%qt
 !       QTR = -QT - QT - QT - QT*(1.0D0 - QFTR)
        if (.not.is_convective) then
 ! TEMPERATURE GRADIENT IS RADIATIVE
-          pulse_diag%qtl = clni*pulse_diag%qt/zone_luminosity_lsun
-          dqt_dp = pulse_diag%qt*dlnkap_dlnrho*dlnrho_dlnp
-          dqt_dt = pulse_diag%qt*(-4.0d0 + dlnkap_dlnt + dlnkap_dlnrho*dlnrho_dlnt)
+          star%pulse%qtl = clni*star%pulse%qt/zone_luminosity_lsun
+          dqt_dp = star%pulse%qt*dlnkap_dlnrho*dlnrho_dlnp
+          dqt_dt = star%pulse%qt*(-4.0d0 + dlnkap_dlnt + dlnkap_dlnrho*dlnrho_dlnt)
        else
 ! TEMPERATURE GRADIENT IS CONVECTIVE
-          pulse_diag%qtl = 0.0d0
-          dqt_dp = pulse_diag%qt*(-1.0d0 + dgrad_dp_component)
-          dqt_dt = pulse_diag%qt*dgrad_dt_component
-          dqt_dr = dqt_dr + pulse_diag%qt*dgrad_dr_component
+          star%pulse%qtl = 0.0d0
+          dqt_dp = star%pulse%qt*(-1.0d0 + dgrad_dp_component)
+          dqt_dt = star%pulse%qt*dgrad_dt_component
+          dqt_dr = dqt_dr + star%pulse%qt*dgrad_dr_component
        end if
        eq_l_val = 0.0d0
        dql_dt = 0.0d0
@@ -308,15 +308,15 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             energy_gen_component(3) = he3he4_be7_proton_gen
             energy_gen_component(4) = cno_gen
             energy_gen_component(5) = triple_alpha_gen
-            energy_gen_component(6) = engeb_diag%neutrino_loss_rate
-            alpha_capture_energy_zone = engeb_diag%alpha_capture_energy
+            energy_gen_component(6) = star%engeb%neutrino_loss_rate
+            alpha_capture_energy_zone = star%engeb%alpha_capture_energy
 ! 7/91 MHP
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
             if (lsnu) then
                do 17 j = 1,10
-                  flux_diag%neutrino_flux_total(j) = flux_diag%neutrino_flux_total(j) + &
-                       flux_diag%neutrino_flux(j)*shell_mass(im)
+                  star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) + &
+                       star%flux%neutrino_flux(j)*shell_mass(im)
  17            continue
             end if
             do 20 j = 1,6
@@ -328,10 +328,10 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                     energy_gen_component(j)
  20         continue
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
-            engeb_diag%he3_he3_rate_placeholder(im) = (shell_mass(im)/ &
-                 solar_luminosity_cgs)*engeb_diag%he3_luminosity_placeholder
-            engeb_diag%he3_he4_rate_placeholder(im) = (shell_mass(im)/ &
-                 solar_luminosity_cgs)*engeb_diag%he3_total_placeholder
+            star%engeb%he3_he3_rate_placeholder(im) = (shell_mass(im)/ &
+                 solar_luminosity_cgs)*star%engeb%he3_luminosity_placeholder
+            star%engeb%he3_he4_rate_placeholder(im) = (shell_mass(im)/ &
+                 solar_luminosity_cgs)*star%engeb%he3_total_placeholder
 ! JVS end
             luminosity_terms(8)=luminosity_terms(8)+(shell_mass(im)/ &
                  solar_luminosity_cgs)*alpha_capture_energy_zone
@@ -404,8 +404,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             im1 = im
             call reduce(im1,elim_coeff,elim_rhs,luminosity_lsun,max_residual, &
                  log_pressure,log_radius,log_mass,log_temperature, &
-                 eq_p_val0,pulse_diag%qp,dqp_dr0,dqp_dr,dqp_dp0,dqp_dp,eq_t_val0,pulse_diag%qt, &
-                 dqt_dr0,dqt_dr,dqt_dl0,pulse_diag%qtl,dqt_dp0,dqt_dp,dqt_dt0,dqt_dt, &
+                 eq_p_val0,star%pulse%qp,dqp_dr0,dqp_dr,dqp_dp0,dqp_dp,eq_t_val0,star%pulse%qt, &
+                 dqt_dr0,dqt_dr,dqt_dl0,star%pulse%qtl,dqt_dp0,dqt_dp,dqt_dt0,dqt_dt, &
                  eq_r_val0,eq_r_val,dqr_dr0,dqr_dr,dqr_dp0,dqr_dp,dqr_dt0, &
                  dqr_dt,eq_l_val0,eq_l_val,dql_dp0,dql_dp,dql_dt0,dql_dt)
          else
@@ -418,12 +418,12 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             elim_coeff(4,2,1) = -dql_dt
             elim_rhs(4,1) = clni*eq_l_val - zone_luminosity_lsun
          end if
-         eq_p_val0 = pulse_diag%qp
+         eq_p_val0 = star%pulse%qp
          dqp_dr0 = dqp_dr
          dqp_dp0 = dqp_dp
-         eq_t_val0 = pulse_diag%qt
+         eq_t_val0 = star%pulse%qt
          dqt_dr0 = dqt_dr
-         dqt_dl0 = pulse_diag%qtl
+         dqt_dl0 = star%pulse%qtl
          dqt_dp0 = dqt_dp
          dqt_dt0 = dqt_dt
          eq_r_val0 = eq_r_val
@@ -503,8 +503,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                  log10_density(im)-log_temperature(im)))*chi_t**2/chi_rho
             star%run%adiabatic_index_gamma1(im) = chi_rho*specific_heat_cp/ &
                  specific_heat_cv
-            pulse_diag%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-            pulse_diag%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+            star%pulse%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
+            star%pulse%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
 ! JVS END
 
 
@@ -538,16 +538,16 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! copying them into the pulse1/mixing-length output arrays -- no
 ! change to any existing output (.short/.track/.store/.pmod/.penv/
 ! .patm) values, since none of those read from these arrays.
-         pulse_diag%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-         pulse_diag%pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
-         pulse_diag%pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
-         pulse_diag%pulse_dlnkap_dlnrho(im) = dlnkap_dlnrho
-         pulse_diag%pulse_dlnkap_dlnt(im) = dlnkap_dlnt
-         pulse_diag%pulse_specific_heat(im) = specific_heat_cp
-         pulse_diag%pulse_mean_molecular_weight(im) = specific_gas_constant
-         pulse_diag%pulse_electron_mean_molecular_weight(im) = &
+         star%pulse%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
+         star%pulse%pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
+         star%pulse%pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
+         star%pulse%pulse_dlnkap_dlnrho(im) = dlnkap_dlnrho
+         star%pulse%pulse_dlnkap_dlnt(im) = dlnkap_dlnt
+         star%pulse%pulse_specific_heat(im) = specific_heat_cp
+         star%pulse%pulse_mean_molecular_weight(im) = specific_gas_constant
+         star%pulse%pulse_electron_mean_molecular_weight(im) = &
               electron_mean_weight_inverse
-         pulse_diag%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+         star%pulse%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
          star%rot%valfmlt(im) = star%rot%alfmlt
          star%rot%vphmlt(im) = star%rot%phmlt
          star%rot%vcmxmlt(im) = star%rot%cmxmlt

@@ -26,7 +26,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction, ierr)
       use const_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use luout_lib
       implicit none
 
@@ -181,7 +181,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
          dlnkap_dlnt = purez_dlnkap_dlnt + (metal_fraction - 1.0d0)*slope
 
       else if ((metal_fraction.gt.0.12d0) .or. &
-           ((abs(metal_fraction - env_comp%envelope_metal_fraction).gt. &
+           ((abs(metal_fraction - star%env_comp%envelope_metal_fraction).gt. &
            metal_fraction_match_tolerance) .and. .not.use_two_z_tables &
            .and. .not.use_opal95_tables)) then
 !        JCZ 211125 changed to 10^7 K in message to reflect above
@@ -189,7 +189,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
          write(short_file_unit,*) ' Z>0.12 T < 10^7 K', &
               ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z', &
               ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=', &
-              metal_fraction, env_comp%envelope_metal_fraction, log10_temperature
+              metal_fraction, star%env_comp%envelope_metal_fraction, log10_temperature
          jerr = 1
          go to 900
 

@@ -24,7 +24,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
      adiabatic_gradient, valid_table_point)
 
       use const_lib
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use numerics_lib
       implicit none
 
@@ -80,8 +80,8 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
 
       save
 
-      if (abs(hydrogen_fraction-env_comp%envelope_hydrogen_fraction).gt.1.0d-5 &
-           .or. abs(metal_fraction-env_comp%envelope_metal_fraction).gt.1.0d-5) then
+      if (abs(hydrogen_fraction-star%env_comp%envelope_hydrogen_fraction).gt.1.0d-5 &
+           .or. abs(metal_fraction-star%env_comp%envelope_metal_fraction).gt.1.0d-5) then
 !          CALL EQSCVG(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
 !      *               AMU,EMU,ETA,QDT,QDP,QCP,DELA,LCALC)  ! KC 2025-05-31
          call eqscvg(log10_temperature, temperature, pressure, &

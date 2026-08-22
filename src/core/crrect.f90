@@ -91,7 +91,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
       use star_info_lib, only: star
       use star_info_lib, only: star
 
-      use envelope_comp_lib
+      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -160,7 +160,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
       kenv = 0
       katm = 0
       ksaha = 0
-      env_comp%senv = star%log_mass(star%num_zones) - star%log_total_mass
+      star%env_comp%senv = star%log_mass(star%num_zones) - star%log_total_mass
       if (start_new_triangle.or.reset_triangle .and.iteration_level.eq.2) &
            recompute_surface_bc = .true.
 !  FIND NEW FP AND FT IF MODEL IS ROTATING
@@ -175,8 +175,8 @@ subroutine crrect(delta_time, max_iterations, converged, &
 ! SET UP SURFACE BOUNDARY CONDITIONS-2ND AND 3RD LEVELS OF ITER ONLY
 ! FIND ENVELOPE MASS AND SET X AND Z TO ENVELOPE VALUES
       if (recompute_surface_bc) then
-       hydrogen_fraction = env_comp%xnew
-       metal_fraction = env_comp%znew
+       hydrogen_fraction = star%env_comp%xnew
+       metal_fraction = star%env_comp%znew
        log10_pressure_limit = star%log_pressure(star%num_zones)
        if (use_debye_huckel_correction) then
           debye_huckel_x = star%composition(1,star%num_zones)
