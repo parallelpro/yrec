@@ -113,13 +113,20 @@ enforcement (private objects simply are not exported).
   against stored expected output. Same pattern for kap
   (`kap_get` over a T/rho/composition grid) and atm (`atm_get` for a
   few (Teff, L) vertices).
-- **This is what finally closes the LMHD coverage gap.** No Stage-0
-  case sets LMHD, so the MHD path of `eos_get` (including the
+- **This is what finally closes the LMHD coverage gap** -- with one
+  caveat found during execution (2026-08-21): **no MHD table files
+  ship with the repository** (`find` turns up only source/objects
+  under `eos/mhd/`), so the gap splits into an infrastructure half
+  and a data half. `test_eos` implements the infrastructure half: its
+  MHD section runs `eos_get` under `use_mhd_eos` when the
+  `YREC_MHD_TABLES` environment variable points at the 8 table files,
+  and self-reports SKIPPED otherwise. The pinned baseline covers the
+  shipped-data configuration only; actually pinning the MHD path
+  needs tables obtained from outside the repo. No Stage-0 case sets
+  LMHD, so until then the MHD path of `eos_get` (including the
   starin.f90 bug fix and the hsubp/sconvec/massloss MHD extension
-  from the eos sweep) has never been regression-verifiable. A
-  standalone eos test can load the MHD tables and pin that path's
-  outputs directly, without needing a full stellar model that
-  converges under MHD.
+  from the eos sweep) remains verifiable only in structure, not in
+  numbers.
 - Add the boundary-checker script from stage 1 to the test suite so
   facade bypasses fail CI rather than accumulating again.
 

@@ -49,7 +49,11 @@ PREFIX ?= /usr/local/bin
 # Compose list of all object files to produce. Sources are organized into
 # subdirectories by physics domain (eos/, kap/, rotation/, etc.) -- find
 # every .f90 file recursively and keep each .o alongside its source.
-SRCS := $(shell find . -name '*.f90' | sed 's|^\./||')
+# Per-domain test/ directories hold standalone test PROGRAMs (phase
+# three, ROADMAP.md stage 2) and are excluded here so the yrec link
+# never sees a second `program` unit; they build via their own targets
+# below.
+SRCS := $(shell find . -name '*.f90' -not -path '*/test/*' | sed 's|^\./||')
 OBJS := $(patsubst %.f90,%.o,$(SRCS))
 
 # Files that define a Fortran MODULE must be compiled before anything that
@@ -165,6 +169,18 @@ LIBS := $(foreach d,$(DOMAIN_DIRS),lib$(d).a)
 
 .PHONY: libs
 libs: $(LIBS)
+
+# Standalone per-domain test programs (phase three, ROADMAP.md stage
+# 2). Each links the full object set minus core/main.o (the flat-link
+# transitional form; library-based linking can follow the yrec
+# executable's own transition). Compiled with the release flags so
+# pinned expected outputs are flag-stable.
+test_eos: FFLAGS += $(REL_FFLAGS)
+test_eos: eos/test/test_eos.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^
+
+.PHONY: tests
+tests: test_eos
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)

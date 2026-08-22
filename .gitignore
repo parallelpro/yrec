@@ -8,3 +8,4 @@ src/yrec
 **/output/
 **/standard/
 src/*.a
+src/test_eos
