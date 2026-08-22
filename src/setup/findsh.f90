@@ -81,14 +81,16 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
              shell_mid = shell_mid+1
           else if(luminosity(i) - luminosity(i-1).lt.luminosity_end_threshold) then
 !               write(*,*)'luminosity criteria'
-             goto 20
+             exit
           else if(composition(1,num_points) - composition(1,i).lt.hydrogen_surface_tol) then
 !               write(*,*)'composition criteria'
-             goto 20
+             exit
           endif
    10    continue
        end do
+       if (i > num_points) then
        i = num_points
+       end if
    20    shell_end = i
       endif
 !ccc find boundary of central convection zone.

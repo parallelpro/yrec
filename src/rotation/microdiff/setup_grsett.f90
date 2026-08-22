@@ -118,15 +118,17 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !     CHECK FOR CONVECTIVE CORE.
       if(convective_flag(1))then
          do zone_idx=2,num_zones
-            if(.not.convective_flag(zone_idx))goto 20
+            if(.not.convective_flag(zone_idx))exit
    10    continue
          end do
+         if (zone_idx > num_zones) then
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
          fully_convective_flag=.true.
          write(short_file_unit,15)
    15    format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
          continue
          return
+         end if
    20    continue
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_begin = zone_idx-1
@@ -135,15 +137,17 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do zone_idx = zone_begin,num_zones
-         if(composition(1,zone_idx).gt.hydrogen_diffusion_floor)goto 25
+         if(composition(1,zone_idx).gt.hydrogen_diffusion_floor)exit
    23 continue
       end do
+      if (zone_idx > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
       write(short_file_unit,16)hydrogen_diffusion_floor
    16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
       continue
       return
+      end if
    25 continue
       zone_begin = zone_idx
 !     CHECK FOR CONVECTIVE ENVELOPE.

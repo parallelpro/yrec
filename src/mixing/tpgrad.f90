@@ -193,9 +193,10 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
        vd = (-1.0d0 + v*(a1 + v*(1.0d0 + v*a3)))/vp
        vd = vd*(1.0d0 + vd*(1.0d0 + v*a3p)/vp)
        v = v - vd
-       if(dabs(vd).lt.vtol) goto 30
+       if(dabs(vd).lt.vtol) exit
    10 continue
       end do
+      if (iter > 25) then
 !  15   CONTINUE
       write(short_file_unit,20) log_pressure,log_temperature,opacity, &
            specific_heat_cp,dlnrho_dlnt
@@ -212,6 +213,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
       continue
       
       return
+      end if
    30 ddel = deldel*v*(v+a1)
       actual_gradient = adiabatic_gradient + ddel
 ! CALCULATE CONVECTIVE VELOCITY

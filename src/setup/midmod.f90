@@ -417,7 +417,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          do k = 1,num_radiative_zones
             do j = radiative_zone_bounds(k,1),radiative_zone_bounds(k,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (log_temperature_mid(j).le.tcut(1)) goto 190
+               if (log_temperature_mid(j).le.tcut(1)) exit
                burn_zone_begin = j
                burn_zone_end = j
                call dburnm(burn_zone_begin,burn_zone_end,star%num_zones,star%shell_mass, &
@@ -425,6 +425,8 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                     deuterium_rate_mid_start,step_fraction_ratio)
            end do
         end do
+         if (k > num_radiative_zones) then
+         end if
  190    continue
 !
 ! CONVECTION ZONES.

@@ -85,10 +85,12 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
          do i = zone_end+1, num_points
             if (.not.convective_flag(i)) then
                i1 = i - 1
-               goto 20
+               exit
             end if
          end do
+         if (i > num_points) then
          i1 = num_points
+         end if
    20    continue
       end if
 ! INTERPOLATE IN DJ/J AS A FUNCTION OF ECHI

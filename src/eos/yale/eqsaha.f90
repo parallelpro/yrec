@@ -141,7 +141,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          ionization_temp_over_t(i) = ionization_temp(i)*temperature_inverse
          saha_ratio(i) = ln10*(saha_weight_term(i) + stemp) - &
               ionization_temp_over_t(i)
-         if(saha_ratio(i).lt.-saha_exponent_tol) go to 12
+         if(saha_ratio(i).lt.-saha_exponent_tol) exit
          if (.not. (saha_ratio(i).gt.+saha_exponent_tol)) then
          saha_ratio(i) = beta_inverse*dexp(saha_ratio(i))
          cycle
@@ -150,7 +150,9 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
          nz1 = i + 1
  11   continue
       end do
+      if (i > nz) then
       i = nz + 1
+      end if
  12   nz0 = i - 1
       nz1 = min0(nz,nz1)
       skip_helium_i = .true.

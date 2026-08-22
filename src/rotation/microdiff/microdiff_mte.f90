@@ -95,10 +95,12 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !
 !  FIRST POINT : LINEAR INTERPOLATION BETWEEN STARTING POINT AND 2ND PT.
       do iu=2,num_eq_points
-         if(radius_bl(iu).ge.eq_radius_mid(1))goto 17
+         if(radius_bl(iu).ge.eq_radius_mid(1))exit
    15 continue
       end do
+      if (iu > num_eq_points) then
       iu=num_eq_points
+      end if
    17 continue
       fx=(eq_radius_mid(1)-radius_bl(iu-1))/(radius_bl(iu)-radius_bl(iu-1))
       eq_mass_mid(1) = enclosed_mass(iu-1)+fx*(enclosed_mass(iu)-enclosed_mass(iu-1))
@@ -133,12 +135,14 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
                k0 = min(k0,num_zones-3)
                jmin=j
-               goto 30
+               exit
             endif
    20    continue
          end do
+         if (j > zone_end) then
          k0 = num_zones-3
          jmin=num_zones
+         end if
    30    continue
          do k=1,4
             tabler(k)=radius_bl(k0+k-1)
@@ -231,12 +235,14 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
                k0 = min(k0,num_zones-3)
                jmin=j
-               goto 90
+               exit
             endif
    80    continue
          end do
+         if (j > zone_end) then
          k0 = num_zones-3
          jmin=num_zones
+         end if
    90    continue
          do k=1,4
             tabler(k)=radius_bl(k0+k-1)

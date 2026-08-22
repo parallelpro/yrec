@@ -114,10 +114,12 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          do i = idtt+2, nts
             if (log10_temperature.lt.tlogx(i)) then
                ii = i - 2
-               goto 20
+               exit
             end if
          end do
+         if (i > nts) then
          ii = nts - 3
+         end if
   20     continue
       end if
       idtt = max(1,ii)

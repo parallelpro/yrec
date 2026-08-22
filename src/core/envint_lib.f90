@@ -179,7 +179,13 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! KURUCZ ATMOSPHERES
          if(lstch) lstatm=.false.
          call surfp(log10_teff,log10_gravity,print_flag.and.lstatm,jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
          goto 200
 ! JNT 06/14
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPLC.
@@ -187,14 +193,26 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! KURUCZ ATMOSPHERES
          if(lstch) lstatm=.false.
          call kcsurfp(log10_teff,log10_gravity,print_flag.and.lstatm,jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
          goto 200
 ! We have Kurucz atmosphere boundary conditions
       else if (atm_choice .eq. 4) then
 ! ALLARD & HAUSCHILDT ATMOSPHERES
          if(lstch) lstatm=.false.
          call alsurfp(log10_teff,log10_gravity,print_flag.and.lstatm,allard_lookup_failed,jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
 ! Changed to Allard atmosphere code
          if(allard_lookup_failed) then
             atm_choice=0
@@ -465,7 +483,11 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
              'INTEGRATIONS.I QUIT.')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
       jerr = 1
-      go to 900
+      if (present(ierr)) then
+         ierr = jerr
+         return
+      end if
+      stop
 ! ENVELOPE INTEGRATION
 ! HERE P IS THE INDEPENDENT VARIABLE AND M,R,AND T ARE
 ! DEPENDENT VARIABLES.  INTEGRATE FROM TAU = 2/3 TO THE LAST
@@ -813,7 +835,11 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            'I QUIT')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
       jerr = 1
-      go to 900
+      if (present(ierr)) then
+         ierr = jerr
+         return
+      end if
+      stop
  300  continue
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR.
       if(star%env_comp%senv.lt.-1.0d-12)then
@@ -963,12 +989,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! present the caller takes responsibility; without it, preserve the
 ! historical stop (the diagnostic already printed at the point of
 ! failure).
-  900 continue
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
 end subroutine atm_get
 
 end module envint_lib

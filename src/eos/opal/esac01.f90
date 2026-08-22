@@ -330,7 +330,7 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
          ierr = 1
          return
       end if
-      if (opal_eos%table_metal_fraction_01.ne.opal_eos%z_table_01(opal_eos%x_index_lo_01)) go to 66
+      if (opal_eos%table_metal_fraction_01.ne.opal_eos%z_table_01(opal_eos%x_index_lo_01)) exit
       recompute_flag = 0
       cache_slot = 1
       do density_scan_idx = opal_eos%density_index_1_01, opal_eos%density_index_1_01+opal_eos%density_interp_order_01
@@ -407,6 +407,7 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
       opal_eos%eos_output_01(eos_var_idx) = opal_eos%esact_01
   124 continue
       end do
+      if (eos_var_idx > deriv_order) then
 
       pressure_scale = t6_temperature*density
       opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(1)) = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(1))* &
@@ -444,6 +445,7 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
       write(short_file_unit,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, &
            t6_temperature, density
       return 1
+      end if
    66 write(short_file_unit,*) routine_id, " Z does not match Z in OPAL 2001 EOS files", &
            " you are using (66)"
       write(short_file_unit,'("mf,zz(mf)=",I5,E12.4)') opal_eos%x_index_lo_01, &

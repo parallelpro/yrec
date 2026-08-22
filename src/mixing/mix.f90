@@ -252,7 +252,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          do inner_zone_idx = radiative_zone_bounds(radiative_region_idx,1), &
               radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (star%log_temperature(inner_zone_idx).le.tcut(1)) goto 45
+            if (star%log_temperature(inner_zone_idx).le.tcut(1)) exit
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
             call kemcom(star%log_temperature, zone_begin, zone_end, rate_pp, &
@@ -265,6 +265,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
    40 continue
       end do
+      if (radiative_region_idx > num_radiative_zones) then
+      end if
    45 continue
 !
 ! CONVECTION ZONES.
@@ -319,7 +321,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%log_temperature(inner_zone_idx).le.tcut(1)) goto 60
+               if (star%log_temperature(inner_zone_idx).le.tcut(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call eqburn(rate_pp, rate_he3_he3, rate_he3_he4, &
@@ -345,6 +347,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                end if
             end do
          end do
+         if (radiative_region_idx > num_radiative_zones) then
+         end if
    60    continue
 !
 ! CONVECTION ZONES.
@@ -550,13 +554,15 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%log_temperature(inner_zone_idx).le.tcut(1)) goto 190
+               if (star%log_temperature(inner_zone_idx).le.tcut(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call dburn(zone_begin, zone_end, star%num_zones, star%shell_mass, &
                     star%composition, dt_gyr)
             end do
          end do
+         if (radiative_region_idx > num_radiative_zones) then
+         end if
   190    continue
 !
 ! CONVECTION ZONES.

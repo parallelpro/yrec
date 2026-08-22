@@ -2290,16 +2290,18 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 !                 WRITE(ISHORT,912)I,J,(YEXT(K2)K2=1,3)
 !   912             FORMAT(1X,'CONVERGED',I5,' LEVEL ',I2,' LI6 ',1P,
 !      *            E12.5,' LI7 ',E12.5,' BE9 ',E12.5)
-                  goto 45
+                  exit
                endif
             endif
    40    continue
          end do
+         if (refine_idx > 11) then
 ! IF THE PROGRAM GETS HERE THEN IT FAILED TO CONVERGE TO WITHIN
 ! THE SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
          write(short_file_unit,911)zone_idx,(extrap_err(species_idx),species_idx=1,3)
   911    format(1x,'***LIBURN CONVERGENCE FAILURE IN SHELL ',i4, &
          'ERRORS '/1p3e10.3)
+         end if
    45    continue
 ! WRITE NEW ABUNDANCES AND EXIT.
          composition(13,zone_idx)=extrap_result(1)

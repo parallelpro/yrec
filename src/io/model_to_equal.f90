@@ -88,10 +88,12 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 !
 ! FIRST POINT : LINEAR INTERPOLATION BETWEEN STARTING POINT AND 2ND PT.
       do interp_search_index=2,num_equal_points
-         if(radius(interp_search_index).ge.equal_radius(1))goto 17
+         if(radius(interp_search_index).ge.equal_radius(1))exit
    15 continue
       end do
+      if (interp_search_index > num_equal_points) then
       interp_search_index=num_equal_points
+      end if
    17 continue
       interp_fraction=(equal_radius(1)-radius(interp_search_index-1))/ &
            (radius(interp_search_index)-radius(interp_search_index-1))
@@ -160,12 +162,14 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 ! ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
                k0 = min(k0,num_zones-3)
                search_start_index=j
-               goto 30
+               exit
             endif
    20    continue
          end do
+         if (j > zone_end) then
          k0 = num_zones-3
          search_start_index=num_zones
+         end if
    30    continue
          do k=1,4
             radius_table(k)=radius(k0+k-1)
@@ -276,12 +280,14 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 ! ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
                k0 = min(k0,num_zones-3)
                search_start_index=j
-               goto 90
+               exit
             endif
    80    continue
          end do
+         if (j > zone_end) then
          k0 = num_zones-3
          search_start_index=num_zones
+         end if
    90    continue
          do k=1,4
             radius_table(k)=radius(k0+k-1)

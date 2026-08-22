@@ -204,9 +204,10 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
          write(short_file_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
-         if(max_abundance_change.lt.settling_tolerance)goto 120
+         if(max_abundance_change.lt.settling_tolerance)exit
   100 continue
       end do
+      if (iter > settling_num_iterations) then
       write(iowr,110)settling_tolerance,settling_num_iterations, &
            max_abundance_change,max_change_zone
       write(short_file_unit,110)settling_tolerance,settling_num_iterations, &
@@ -214,6 +215,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
   110 format(1x,'MICRODIFF FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
            'ITERATIONS'/1x,'LAST ITERATION CHANGE IN D ',1pe9.3, &
            ' IN EQUALLY SPACED SHELL ',i5)
+      end if
   120 continue
 !
 !  STORE THE RUN OF CHANGES IN THE DIFFUSED ELEMENT.

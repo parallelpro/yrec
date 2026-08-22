@@ -112,7 +112,13 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
               adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
               adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp, jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
       else
          if (present(composition_at_zone) .and. use_debye_huckel_correction) then
             debye_huckel_x = composition_at_zone(1)
@@ -133,7 +139,13 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
               adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
               in_atmosphere, saha_state, jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
       end if
 
       return
@@ -142,12 +154,6 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
 ! ierr present the caller takes responsibility; without it, preserve
 ! the historical stop (the diagnostic already printed at the point of
 ! failure).
-  900 continue
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
 end subroutine eos_get
 
 !----------------------------------------------------------------------
@@ -212,7 +218,13 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
               zams_c_table_path, centre1_table_path, centre2_table_path, &
               centre3_table_path, centre4_table_path, centre5_table_path, &
               jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
       end if
 
 !  INPUT F-TABLES FOR DEGENERATE EQUATION OF STATE
@@ -235,7 +247,11 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
            1x,'GLITCH IN FERMI TABLE ELEMENT',i4/1x,'RUN STOPPED')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
           jerr = 1
-          go to 900
+          if (present(ierr)) then
+             ierr = jerr
+             return
+          end if
+          stop
        endif
        bin_width = int((yale_eos%fermi_table_x_grid(grid_idx+1) - yale_eos%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
        bin_end = bin_start + bin_width - 1
@@ -281,12 +297,6 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       return
 
 ! error funnel: same contract as eos_get's.
-  900 continue
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
 end subroutine eos_init
 
 !----------------------------------------------------------------------
@@ -354,7 +364,13 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          d_local = density
          call esac06(x_local, t6_local, d_local, eos_interp_order, &
               eos_rad_flag, jerr, *100)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
   100    continue
          gamma1 = opal_eos%eos_output_06(8)
          adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(9)
@@ -377,7 +393,13 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
               qdt_eos, qdp_eos, qcp_eos, dela_eos, qdtt_eos, qdtp_eos, &
               qat_eos, qap_eos, qcpt_eos, qcpp_eos, eos_deriv_flag, &
               eos_atmosphere_flag, saha_state, jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
          chi_rho = 1.0d0/qdp_eos
          chi_t = -chi_rho*qdt_eos
          specific_heat_cv = qcp_eos - exp(ln10*(log10_pressure - &
@@ -389,12 +411,6 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       return
 
 ! error funnel: same contract as eos_get's.
-  900 continue
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
 end subroutine eos_get_gamma1
 
 

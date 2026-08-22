@@ -163,13 +163,15 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
                           interp_fraction*(pressure_scale_height2-pressure_scale_height1)
 ! DEFINE TAUCZ
                      star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
-                     goto 95
+                     exit
                   endif
                end do
+               if (k > num_points) then
                k = num_points
                convective_velocity_bcz = convective_velocity(num_points)
                pressure_scale_height_bcz = pressure_scale_height2
                star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+               end if
  95            continue
             endif
          endif

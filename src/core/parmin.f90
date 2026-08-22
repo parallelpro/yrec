@@ -1959,15 +1959,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
           if(anewcp.eq.element_id(i)) then
 ! INEWCP IS THE INDEX OF THE ELEMENT BEING ALTERED
             new_species_index = i + 3
-            goto 30
+            exit
           endif
       10    continue
        end do
+       if (i > 12) then
 ! ANEWCP NOT A RECOGNIZED ELEMENT
        lnewcp = .false.
        write(short_file_unit,20) anewcp
       20    format(1x,'VARIABLE',a4,1x,'NOT A RECOGNIZED ELEMENT'/1x, &
            &    'RESCALING NOT PERFORMED')
+       end if
       30    continue
       endif
       change_cno_mixture_active = .false.

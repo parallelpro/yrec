@@ -112,7 +112,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          do zone_idx = radiative_zone_bounds(region_idx,1), &
               radiative_zone_bounds(region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (log_temperature(zone_idx).le.tcut(1)) goto 45
+            if (log_temperature(zone_idx).le.tcut(1)) exit
             burn_zone_start = zone_idx
             burn_zone_end = zone_idx
             call kemcom(log_temperature,burn_zone_start,burn_zone_end, &
@@ -128,6 +128,8 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          end do
    40 continue
       end do
+      if (region_idx > num_radiative_zones) then
+      end if
    45 continue
 !
 ! CONVECTION ZONES.

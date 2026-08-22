@@ -260,9 +260,10 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
          write(short_file_unit,90)iter_count,max_delta_x,max_delta_x_zone
  90      format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
-         if(max_delta_x.lt.settling_tolerance)goto 120
+         if(max_delta_x.lt.settling_tolerance)exit
  100  continue
       end do
+      if (iter_count > settling_num_iterations) then
       write(iowr,110)settling_tolerance,settling_num_iterations,max_delta_x, &
            max_delta_x_zone
       write(short_file_unit,110)settling_tolerance,settling_num_iterations, &
@@ -270,6 +271,7 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
  110  format(1x,'GRSETT FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
            'ITERATIONS'/1x,'LAST ITERATION CHANGE IN X ',1pe9.3, &
            ' IN EQUALLY SPACED SHELL ',i5)
+      end if
  120  continue
 !  FIND RUN OF CHANGES IN X.
       do eq_idx = 1,num_equal_points

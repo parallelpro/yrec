@@ -174,10 +174,12 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
                                            (log10_radius(k)-log10_radius(k-1))
                                       convective_velocity_bcz = convective_velocity(k-1)+ &
                                            interp_fraction*(convective_velocity(k)-convective_velocity(k-1))
-                                      goto 85
+                                      exit
                            endif
                     end do
+                       if (k > num_points) then
                     convective_velocity_bcz = convective_velocity(num_points)
+                       end if
  85                continue
 !                  DEFINE TAUCZ
                   star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz

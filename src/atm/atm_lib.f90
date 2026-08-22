@@ -129,7 +129,13 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
          if(atm_choice .eq. 4)then
 !            ATMZA = 0.02D0
           call alfilein(allard_table_path, jerr)      ! Get Allard Atmospheres files and
-          if (jerr /= 0) go to 900
+          if (jerr /= 0) then
+             if (present(ierr)) then
+                ierr = jerr
+                return
+             end if
+             stop
+          end if
          endif                  ! initialize tables. 9/23/08 LLP
 
 
@@ -188,12 +194,6 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
       return
 
 ! error funnel: same contract as atm_get's.
-  900 continue
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
 end subroutine atm_init
 
 !----------------------------------------------------------------------
@@ -231,12 +231,6 @@ subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
 
 ! error funnel: same contract as atm_get's.
       end if
-  900 continue
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
 end subroutine atm_get_surface_pt
 
 end module atm_lib

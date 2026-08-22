@@ -154,13 +154,15 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
                        composition(species_idx,zone_idx)
                end do
             end do
-            goto 10
+            exit
          end if
       end do
+      if (extrap_idx > num_substeps) then
 ! FAILED TO CONVERGE; PRINT WARNING
 ! IN THIS CASE THE UNEXTRAPOLATED FINAL COMPOSITION IS USED.
       write(*,5)
     5 format(' WARNING - EXTRAPOLATION IN BSBURN DID NOT CONVERGE')
+      end if
    10 continue
       do zone_idx = 1, num_zones
          composition(1,zone_idx) = composition_kept(1,zone_idx)

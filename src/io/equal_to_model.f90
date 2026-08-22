@@ -86,12 +86,14 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! JVS fix for NPT = 3?
                if (k0 .eq. 0) k0=1
                search_start_index=j
-               goto 40
+               exit
             endif
    30    continue
          end do
+         if (j > num_equal_points) then
          k0 = num_equal_points-3
          search_start_index=num_equal_points
+         end if
    40    continue
 
          do k=1,4

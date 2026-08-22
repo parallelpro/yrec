@@ -578,7 +578,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          diffusion_converged = .false.
 !      WRITE(*,920)((AA(I,J),J=1,10),B(I),C(I),D(I),I=1,NM)
 !  920  FORMAT(1P13E10.3)
-         goto 950
+         exit
       else if (abs(max_omega_change).lt.1.0d-2) then
          damping_factor = 1.0d0
       else
@@ -659,6 +659,8 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
               omega_working(k-1))/grid_spacing
       end do
       end do
+      if (substep_idx > num_substeps) then
+      end if
  950  continue
       if (.not.diffusion_converged) then
          timestep_cut_count = timestep_cut_count + 1

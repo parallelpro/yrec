@@ -117,13 +117,15 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
                zone_end = zone_idx - 1
                unstable_region_active = .false.
                search_start = zone_idx + 1
-               goto 80
+               exit
             end if
          end do
+         if (zone_idx > zone_max) then
 !  IF THE LAST INTERFACE IS UNSTABLE (NON-ZERO V) ENSURE THAT zone_end
 !  IS SET PROPERLY.
          if (unstable_region_active) zone_end = zone_max
          search_start = zone_max + 1
+         end if
    80    continue
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
          if (.not. (.not.unstable_zone_found)) then

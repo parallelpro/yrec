@@ -85,7 +85,13 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
                  hydrogen_fraction, metal_fraction, atm_opacity, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt, &
                  jerr)
-            if (jerr /= 0) go to 900
+            if (jerr /= 0) then
+               if (present(ierr)) then
+                  ierr = jerr
+                  return
+               end if
+               stop
+            end if
             got_atmosphere_opacity = .true.
          else if (use_alex95_tables) then
             call yalo3d(log10_density, log10_temperature, &
@@ -96,12 +102,24 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
             call kurucz(log10_density, log10_temperature, atm_opacity, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt, &
                  jerr, *100)
-            if (jerr /= 0) go to 900
+            if (jerr /= 0) then
+               if (present(ierr)) then
+                  ierr = jerr
+                  return
+               end if
+               stop
+            end if
             if (use_two_z_tables) then
                call kurucz2(log10_density, log10_temperature, &
                     atm_opacity_2, atm_log10_opacity_2, &
                     atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2, jerr, *100)
-               if (jerr /= 0) go to 900
+               if (jerr /= 0) then
+                  if (present(ierr)) then
+                     ierr = jerr
+                     return
+                  end if
+                  stop
+               end if
                slope = (atm_log10_opacity - atm_log10_opacity_2) / &
                     (kurucz_table_z1 - kurucz_table_z2)
                atm_log10_opacity = atm_log10_opacity_2 + &
@@ -138,19 +156,35 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
                  ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=', &
                  metal_fraction, log10_temperature
             jerr = 1
-            go to 900
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
          end if
          call gtpurz(log10_density, log10_temperature, purez_opacity, &
               purez_log10_opacity, purez_dlnkap_dlnrho, purez_dlnkap_dlnt, &
               jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
          if (use_opal95_tables) then
 !           mhp 7/12 interpolate to maximum z in table
             table_metal_fraction = 0.1d0
             call getopal95(log10_density, log10_temperature, &
                  hydrogen_fraction, table_metal_fraction, opacity, &
                  log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
-            if (jerr /= 0) go to 900
+            if (jerr /= 0) then
+               if (present(ierr)) then
+                  ierr = jerr
+                  return
+               end if
+               stop
+            end if
          else if (use_opal92_tables) then
             call yllo3d(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
@@ -160,7 +194,13 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
             call gtlaol(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt, jerr)
-            if (jerr /= 0) go to 900
+            if (jerr /= 0) then
+               if (present(ierr)) then
+                  ierr = jerr
+                  return
+               end if
+               stop
+            end if
             table_metal_fraction = laol_table_z1
          end if
          slope = (log10_opacity - purez_log10_opacity) / &
@@ -186,8 +226,11 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
               ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=', &
               metal_fraction, kap_envelope_metal_fraction, log10_temperature
          jerr = 1
-         go to 900
-
+         if (present(ierr)) then
+            ierr = jerr
+            return
+         end if
+         stop
 !     NOT HELIUM BURNING REGION (HB EVOLUTION) OR L2Z=T AND
 !     Z STILL NOT TOO LARGE IN CORE (<.15) SO CAN USE
 !     SECOND Z TABLE RATHER THAN PURE Z TABLE
@@ -196,7 +239,13 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
          call getopal95(log10_density, log10_temperature, &
               hydrogen_fraction, metal_fraction, opacity, log10_opacity, &
               dlnkap_dlnrho, dlnkap_dlnt, jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
       else if (use_opal92_tables) then
          call yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
@@ -221,12 +270,24 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
       else if (use_laol89_tables) then
          call gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
          if (use_two_z_tables) then
             call gtlaol2(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)
-            if (jerr /= 0) go to 900
+            if (jerr /= 0) then
+               if (present(ierr)) then
+                  ierr = jerr
+                  return
+               end if
+               stop
+            end if
             slope = (log10_opacity - log10_opacity_2) / &
                  (laol_table_z1 - laol_table_z2)
             log10_opacity = log10_opacity_2 + &
@@ -248,7 +309,11 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
               ' RUN STOPPED. X Z TL=', hydrogen_fraction, metal_fraction, &
               log10_temperature
          jerr = 1
-         go to 900
+         if (present(ierr)) then
+            ierr = jerr
+            return
+         end if
+         stop
       end if
 
       end if
@@ -282,7 +347,13 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
               conductive_log10_opacity, conductive_dlnkap_dlnrho, &
               conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, &
               jerr)
-         if (jerr /= 0) go to 900
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
       else
          got_conductive_opacity = .false.
       end if
@@ -331,12 +402,6 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
 ! for whatever failed has already been written at the point of
 ! failure; here we either hand the error to a caller that asked for
 ! it, or preserve the historical stop.
-  900 continue
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
 end subroutine kap_get
 
 !----------------------------------------------------------------------

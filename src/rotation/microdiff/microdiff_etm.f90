@@ -99,12 +99,14 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
 ! JVS fix for NPT = 3?
                if (k0 .eq. 0) k0=1
                jmin=j
-               goto 40
+               exit
             endif
    30    continue
          end do
+         if (j > num_eq_points) then
          k0 = num_eq_points-3
          jmin=num_eq_points
+         end if
    40    continue
 
          do k=1,4

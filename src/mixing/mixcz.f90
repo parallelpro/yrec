@@ -78,10 +78,12 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
          zone_bounds(j_idx+1) = zone_idx - 1
          j_idx = j_idx + 2
          if (j_idx.lt.24) cycle
-         goto 12
+         exit
    11    continue
       end do
+      if (zone_idx > num_zones_plus1) then
       zone_bounds(j_idx) = 0
+      end if
    12 continue
       num_species = 11
       if (use_extended_composition) num_species = 15
