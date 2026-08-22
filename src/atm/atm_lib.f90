@@ -38,7 +38,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      stored_envelope_state, stored_vertex_index, atm_call_count, &
      env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
-     pulse_print_flag)
+     pulse_print_flag, ierr)
 
       use eos_lib
       use kap_lib
@@ -93,6 +93,13 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       integer, intent(inout) :: atm_call_count, env_call_count, saha_state
       double precision, intent(inout) :: vtx_logp(3), vtx_logr(3), vtx_logt(3)
       logical, intent(in) :: pulse_print_flag
+! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, the transitional form of
+! MESA's ierr-not-stop discipline (same contract as kap_lib's and
+! eos_lib's facades). Passed: any error that used to stop inside the
+! atm internals is returned here instead, ierr /= 0, no stop. Omitted:
+! exactly the historical diagnostics, then a stop -- now in the funnel
+! at the end of this subroutine rather than at the point of failure.
+      integer, intent(out), optional :: ierr
 
 ! DBG CHANGED MAXSTEP FROM 200 TO 2000 TO GIVE ATMOSPHERE INTEGRATER A CHANCE.
       integer, parameter :: maxstp = 2000
@@ -119,7 +126,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere, conductive_opacity_flag
       logical :: allard_lookup_failed
-      integer :: jj
+      integer :: jj, jerr
       double precision :: log10_temperature, temperature, log10_pressure, &
            pressure, log10_density, density
       double precision :: atm_density_guess
@@ -157,6 +164,9 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            local_gravity_linear
       double precision :: x_start, taucz_env_accum, delta_radius_cz
 
+      if (present(ierr)) ierr = 0
+      jerr = 0
+
 ! DBG PULSE TURN ON DERIVATIVE CALCULATOR
       if (pulse_print_flag.and.print_flag) then
           pulse_diag%lpumod = .true.
@@ -183,20 +193,23 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       if (atm_choice .eq. 3) then
 ! KURUCZ ATMOSPHERES
          if(lstch) lstatm=.false.
-         call surfp(log10_teff,log10_gravity,print_flag.and.lstatm)
+         call surfp(log10_teff,log10_gravity,print_flag.and.lstatm,jerr)
+         if (jerr /= 0) go to 900
          goto 200
 ! JNT 06/14
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPLC.
       else if (atm_choice .eq. 5) then
 ! KURUCZ ATMOSPHERES
          if(lstch) lstatm=.false.
-         call kcsurfp(log10_teff,log10_gravity,print_flag.and.lstatm)
+         call kcsurfp(log10_teff,log10_gravity,print_flag.and.lstatm,jerr)
+         if (jerr /= 0) go to 900
          goto 200
 ! We have Kurucz atmosphere boundary conditions
       else if (atm_choice .eq. 4) then
 ! ALLARD & HAUSCHILDT ATMOSPHERES
          if(lstch) lstatm=.false.
-         call alsurfp(log10_teff,log10_gravity,print_flag.and.lstatm,allard_lookup_failed)
+         call alsurfp(log10_teff,log10_gravity,print_flag.and.lstatm,allard_lookup_failed,jerr)
+         if (jerr /= 0) go to 900
 ! Changed to Allard atmosphere code
          if(allard_lookup_failed) then
             atm_choice=0
@@ -462,7 +475,9 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       write(short_file_unit,50)
    50 format(5X,'ATMOSPHERE INTEGRATION FAILED AFTER MAXSTP',1X, &
              'INTEGRATIONS.I QUIT.')
-      stop
+! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
+      jerr = 1
+      go to 900
 ! ENVELOPE INTEGRATION
 ! HERE P IS THE INDEPENDENT VARIABLE AND M,R,AND T ARE
 ! DEPENDENT VARIABLES.  INTEGRATE FROM TAU = 2/3 TO THE LAST
@@ -801,7 +816,9 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       write(short_file_unit,911)
  911  format(5X,'ENVELOPE INTEGRATION FAILED AFTER MAXSTP TRIES.',1X, &
            'I QUIT')
-      stop
+! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
+      jerr = 1
+      go to 900
  300  continue
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR.
       if(env_comp%senv.lt.-1.0d-12)then
@@ -942,6 +959,18 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 
 555      continue
       return
+
+! error funnel: reached only when a callee (or one of the two
+! integration-failure checks above) reported jerr /= 0. With ierr
+! present the caller takes responsibility; without it, preserve the
+! historical stop (the diagnostic already printed at the point of
+! failure).
+  900 continue
+      if (present(ierr)) then
+         ierr = jerr
+         return
+      end if
+      stop
 end subroutine atm_get
 
 !----------------------------------------------------------------------
@@ -959,7 +988,7 @@ end subroutine atm_get
 ! including the G Somers 5/15 invalid-pressure-edge catches and the
 ! preserved use of `ng` (not `ngc`) in the Castelli branch's final
 ! failsafe (harmless, both are 11; not "fixed").
-subroutine atm_init(atm_table_path, allard_table_path)
+subroutine atm_init(atm_table_path, allard_table_path, ierr)
 
       use atm_table_lib
       use const_lib
@@ -972,13 +1001,19 @@ subroutine atm_init(atm_table_path, allard_table_path)
 
       character(len=256), intent(in) :: atm_table_path
       character(len=256), intent(in) :: allard_table_path
+! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as atm_get's.
+      integer, intent(out), optional :: ierr
 
+      integer :: jerr
       integer :: teff_idx, logg_idx
       logical :: found_valid_pressure
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! INPUT PRESSURE TABLE FOR SURFACE BOUNDARY CONDITIONS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      if (present(ierr)) ierr = 0
+      jerr = 0
+
       if ((atm_choice .eq. 3) .or. (atm_choice .eq. 4)) then
 ! OPEN SURFACE PRESSURE TABLE
         open(atm_table_file_unit,file=atm_table_path, status='OLD')
@@ -1033,7 +1068,8 @@ subroutine atm_init(atm_table_path, allard_table_path)
 ! KURUCZ FOR TEFF < 10,000 K.
          if(atm_choice .eq. 4)then
 !            ATMZA = 0.02D0
-          call alfilein(allard_table_path)      ! Get Allard Atmospheres files and
+          call alfilein(allard_table_path, jerr)      ! Get Allard Atmospheres files and
+          if (jerr /= 0) go to 900
          endif                  ! initialize tables. 9/23/08 LLP
 
 
@@ -1089,6 +1125,14 @@ subroutine atm_init(atm_table_path, allard_table_path)
       endif
 
       return
+
+! error funnel: same contract as atm_get's.
+  900 continue
+      if (present(ierr)) then
+         ierr = jerr
+         return
+      end if
+      stop
 end subroutine atm_init
 
 !----------------------------------------------------------------------
@@ -1104,17 +1148,33 @@ end subroutine atm_init
 ! requested point falls outside the Allard tables (the caller then
 ! falls back per its own policy -- see alsurfp.f90's header).
 subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
-     lookup_failed)
+     lookup_failed, ierr)
 
       implicit none
 
       double precision, intent(in) :: log_teff, log_g
       logical, intent(in) :: print_to_files
       logical, intent(out) :: lookup_failed
+! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as atm_get's.
+      integer, intent(out), optional :: ierr
 
-      call alsurfp(log_teff, log_g, print_to_files, lookup_failed)
+      integer :: jerr
+
+      if (present(ierr)) ierr = 0
+      jerr = 0
+
+      call alsurfp(log_teff, log_g, print_to_files, lookup_failed, jerr)
+      if (jerr /= 0) go to 900
 
       return
+
+! error funnel: same contract as atm_get's.
+  900 continue
+      if (present(ierr)) then
+         ierr = jerr
+         return
+      end if
+      stop
 end subroutine atm_get_surface_pt
 
 end module atm_lib

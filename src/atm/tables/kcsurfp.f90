@@ -10,7 +10,7 @@
 ! JNT 06/2014: same interpolation as SURFP, but reads the newer
 ! Kurucz/Castelli surface-pressure table (ATMOS2C, sized NTC x NGC)
 ! rather than the original Kurucz table (ATMOS2, sized NT x NG).
-subroutine kcsurfp(log10_teff, log10_gravity, print_flag)
+subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
 
       use atm_table_lib
       use const_lib
@@ -42,12 +42,19 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag)
 !
 ! CHECK TO ENSURE THAT DATA IS WITHIN TABLE.
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (log10_teff.lt.3.5d0 .or. log10_gravity.lt.-0.5d0) then
          write(iowr,911) log10_teff, log10_gravity
          write(short_file_unit,911) log10_teff, log10_gravity
   911    format(1X,'DESIRED ATMOSPHERE OUTSIDE TABLE RANGE'/ &
               ' LOG TEFF',F10.6,' LOG G',F10.6/' RUN STOPPED')
-         stop
+         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
+         ! facades stop when their caller passes no ierr.
+         ierr = 1
+         return
       endif
 ! TEMPERATURE INTERPOLATION FACTORS.
       do row = 1,ntc

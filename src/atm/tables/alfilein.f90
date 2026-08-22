@@ -31,7 +31,7 @@
 ! vacant entries in the table with -999.0. A value of -999. in the table
 ! identifies the entry as "invalid." In addition, key auxililiary arrays, as
 ! described below, are created.
-subroutine alfilein(allard_table_path)
+subroutine alfilein(allard_table_path, ierr)
 !
 ! Parameters NTA and NGA are respectively the maximum expected numbers
 ! of Teff's and GL's we expect to encounter, even in future tables
@@ -83,6 +83,10 @@ subroutine alfilein(allard_table_path)
       logical :: latmtptau100
 
 !     set output arrays to invalid values
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       do i = 1,nta
          atm_table%allard_teffl_grid(i) = -999.d0
          do j = 1,nga
@@ -318,7 +322,8 @@ subroutine alfilein(allard_table_path)
 
   500      continue  ! We heve finished with the input file and entered all inputs
 
-      call altabinit   ! Initialize Allard tables
+      call altabinit(ierr)   ! Initialize Allard tables
+      if (ierr /= 0) return
 
        return
 
@@ -335,7 +340,10 @@ subroutine alfilein(allard_table_path)
             '@ 9999 *************'
        write(short_file_unit,*)
        write(short_file_unit,*)
-      stop 9999
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
+      ! facades stop when their caller passes no ierr.
+      ierr = 1
+      return
 
 end subroutine alfilein      ! END OF ALINITTAB
 

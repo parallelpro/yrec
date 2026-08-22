@@ -13,4 +13,7 @@ al   1 F   5.445134865852557E+00   3.600000000000000E+00
 al   2 F   5.087716067772349E+00   3.700000000000000E+00
 al   3 F   4.934188143691458E+00   3.762000000000000E+00
 al   4 F   4.119419786392197E+00   3.900000000000000E+00
+# test_atm: error paths via ierr
+err out-of-table   ierr =    1
+err facade-success ierr =    0
 test_atm: done

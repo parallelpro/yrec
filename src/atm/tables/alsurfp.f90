@@ -83,7 +83,7 @@
 !     T100L.
 !
 !       If LPRT  is .TRUE. print Log(P) at the associated Log(Teff) to ISHORT and IMODPT.
-subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
+subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
       use atm_table_lib
       use const_lib
@@ -118,6 +118,10 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
 !    max of all table TL's or GL is greater than the max or less than the min. Under these
 !    circumstances we want to switch to another kind of atmosphere by changing KTTAU. Most likely
 !    the calling routine should set KTTAU to 0, to specify a gray atmosphere.
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       bad_point = .false.       ! presume we have started at a good point
 
@@ -290,7 +294,10 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed)
        write(short_file_unit,*)
        write(short_file_unit,*)'******** ALSURF: Program Terminated ********'
        write(short_file_unit,*)
-       stop     ! eliminate for testing
+       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
+       ! facades stop when their caller passes no ierr.
+       ierr = 1
+       return
 
 end subroutine alsurfp
 

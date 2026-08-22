@@ -31,7 +31,7 @@ program test_atm
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-      integer :: ipt
+      integer :: ipt, atm_ierr
       double precision :: teffl, gl
       logical :: failed
 
@@ -59,6 +59,11 @@ program test_atm
       atm_table_file_unit = 38
       allard_table_unit = 66
       open(short_file_unit, file="test_atm.short", status="replace")
+! surfp/kcsurfp write their out-of-table diagnostic to iowr (the main
+! output unit in production, per parmin) as well as short_file_unit;
+! point both at the scratch .short file so the byte-compared stdout
+! stays deterministic when the error paths below fire.
+      iowr = short_file_unit
 
 ! everything else gated off (setups calls eos_init/kap_init/atm_init
 ! unconditionally; only the Fermi table is a hard requirement)
@@ -94,7 +99,7 @@ program test_atm
       do ipt = 1, npts
          teffl = grid_teffl(ipt)
          gl = grid_gl(ipt)
-         call surfp(teffl, gl, .false.)
+         call surfp(teffl, gl, .false., atm_ierr)
          write(*,'(a,i2,2(1pe24.15))') "krz ", ipt, &
               atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
       end do
@@ -107,7 +112,7 @@ program test_atm
       do ipt = 1, npts
          teffl = grid_teffl(ipt)
          gl = grid_gl(ipt)
-         call kcsurfp(teffl, gl, .false.)
+         call kcsurfp(teffl, gl, .false., atm_ierr)
          write(*,'(a,i2,2(1pe24.15))') "ck  ", ipt, &
               atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
       end do
@@ -124,6 +129,22 @@ program test_atm
          write(*,'(a,i2,l2,2(1pe24.15))') "al  ", ipt, failed, &
               atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
       end do
+
+! Error paths (2026, ROADMAP.md stage 3): surfp's out-of-table check
+! (logTeff < 3.5 or logG < -0.5) used to stop the run; with the new
+! required ierr it returns 1 -- diagnostics go to iowr/short_file_unit
+! as always (both pointed at the scratch .short file here). The
+! facade check asserts the optional-ierr success path threads
+! ierr = 0 end to end (atm_get_surface_pt -> alsurfp).
+      write(*,'(a)') "# test_atm: error paths via ierr"
+      teffl = 3.40d0
+      gl = 4.5d0
+      call surfp(teffl, gl, .false., atm_ierr)
+      write(*,'(a,i4)') "err out-of-table   ierr = ", atm_ierr
+      teffl = grid_teffl(1)
+      gl = grid_gl(1)
+      call atm_get_surface_pt(teffl, gl, .false., failed, ierr=atm_ierr)
+      write(*,'(a,i4)') "err facade-success ierr = ", atm_ierr
 
       close(short_file_unit)
       write(*,'(a)') "test_atm: done"

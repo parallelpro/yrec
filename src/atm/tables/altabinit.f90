@@ -27,7 +27,7 @@
 !    and iGLmax. This check is made for every TEFFL. (b) Ensure that
 !    every row has at least 4 valid entries and that there are at least
 !    4 columns.
-subroutine altabinit
+subroutine altabinit(ierr)
 
       use atm_table_lib
       use const_lib
@@ -48,6 +48,10 @@ subroutine altabinit
 !     1. Find the minimum (TEFFLmin) and maximum (TEFFLmax) permissable values of TEFFL. These are
 !        one row's width below the bottom and above the top of the table. Because the first level
 !        of interpolation is in GL, only a single minimum and maximum value of TEFFL are needed.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       atm_table%allard_al_teffl_min = atm_table%allard_teffl_grid(1)
       atm_table%allard_al_teffl_max = atm_table%allard_teffl_grid(atm_table%allard_num_teff)
       atm_table%allard_teffl_min = atm_table%allard_teffl_grid(1) - (atm_table%allard_teffl_grid(2)-atm_table%allard_teffl_grid(1))
@@ -137,6 +141,9 @@ subroutine altabinit
        write(short_file_unit,*)'******** ALTABINIT: Program Terminated ********'
        write(short_file_unit,*)
        call alprint
-       stop
+       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
+       ! facades stop when their caller passes no ierr.
+       ierr = 1
+       return
 
 end subroutine altabinit

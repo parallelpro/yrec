@@ -11,3 +11,6 @@ src/*.a
 src/test_eos
 src/test_kap
 src/test_atm
+src/test_eos.short
+src/test_kap.short
+src/test_atm.short

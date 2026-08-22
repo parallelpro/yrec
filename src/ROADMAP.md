@@ -212,6 +212,27 @@ the success path threads ierr = 0 end to end through the facade, and
 a white-box call into esac06 with an invalid rad_flag returns ierr=1
 with no crash. Remaining: atm (7), then the facade-less domains.
 
+STATUS (2026-08-21): **atm converted** -- all 7 stops: the table
+leaves surfp/kcsurfp (out-of-table below logTeff 3.5 / logG -0.5,
+historically always fatal here, unlike the recoverable channels
+elsewhere), alsurfp's 9999 fatal exit (its lookup_failed flag stays
+the recoverable channel), and the Allard load chain
+alfilein -> altabinit gained required ierr; atm_get's own two
+integration-failure stops (atmosphere and envelope MAXSTP exhaustion)
+became jerr -> funnel. All three facades -- atm_get, atm_init,
+atm_get_surface_pt -- carry the OPTIONAL ierr contract; 3 funnel
+stops stand where 7 did. atm_get's internal calls into eos_get /
+kap_get deliberately do NOT yet pass ierr: each domain's funnel
+preserves the historical stop for callers that haven't opted in, and
+threading the cross-domain calls is the natural follow-on once the
+solver itself can consume ierr. test_atm asserts surfp's
+out-of-table error returns ierr=1 without crashing and that the
+facade success path threads ierr=0 (its own iowr now points at the
+scratch .short file so the diagnostics stay off the byte-compared
+stdout). Remaining: the facade-less domains (rotation 5, numerics 5,
+wind 2, mixing 1, misc 2), where the surfacing decision is per
+public entry rather than per facade.
+
 ## Stage 4 -- named-index result arrays
 
 `eos_get` currently has 27 positional arguments; MESA's `eosDT_get`
