@@ -42,11 +42,11 @@ def transform(path):
     i = 0
     while i < n:
         c = code(lines[i])
-        m = re.match(r"^(\s*)do\s+(\w+)\s*=\s*([\w%()+\- ]+?)\s*,\s*(\w+)\s*$", c)
+        m = re.match(r"^(\s*)do\s+(\w+)\s*=\s*([\w%()+\- ]+?)\s*,\s*([\w%()+\- ]+?)\s*(,\s*-1\s*)?$", c)
         if not m or lines[i].lstrip().startswith("!"):
             i += 1
             continue
-        indent, var, e1, e2 = m.groups()
+        indent, var, e1, e2, downstep = m.groups()
         # find matching end do
         depth = 1
         j = i + 1
@@ -81,12 +81,15 @@ def transform(path):
         if -1 in rl or any(r < i or r > end_do for r in rl):
             i = end_do + 1
             continue
-        # e2 must not be assigned in body or S; var not assigned in S
+        # e2's operands must not be assigned in body or S
         span_text = "".join(code(lines[k]) for k in range(i + 1, tgt))
-        if not re.match(r"^\d+$", e2):
-            if re.search(r"(?<![%\w])" + re.escape(e2) + r"\s*=[^=]", span_text):
-                i = end_do + 1
-                continue
+        bad = False
+        for ident in re.findall(r"[A-Za-z_][\w%]*", e2):
+            if re.search(r"(?<![%\w])" + re.escape(ident) + r"\s*=[^=]", span_text):
+                bad = True
+        if bad:
+            i = end_do + 1
+            continue
         if re.search(r"(?<![%\w])" + re.escape(var) + r"\s*=[^=]",
                      "".join(code(lines[k]) for k in range(end_do + 1, tgt))):
             pass  # var assigned in S is fine (guard evaluated first)
@@ -124,7 +127,8 @@ def transform(path):
             lines[k] = re.sub(r"\bgo\s*to\s+" + lab + r"\b", "exit", lines[k],
                               flags=re.I)
         lines.insert(tgt, f"{indent}end if\n")
-        lines.insert(end_do + 1, f"{indent}if ({var} > {e2}) then\n")
+        cmp = "<" if downstep else ">"
+        lines.insert(end_do + 1, f"{indent}if ({var} {cmp} ({e2})) then\n")
         changed += len(body_gotos)
         # indices shifted; write and let the caller re-invoke
         path.write_text("".join(lines))

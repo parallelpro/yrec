@@ -186,10 +186,12 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! LOCATE MAXIMUM T - NOTE DIFFERENT METHOD USED FOR HE FLASH
        if(.not.helium_flash_active) then
           do i = 2,star%num_zones
-             if(star%log_temperature(i).lt.star%log_temperature(i-1))goto 110
+             if(star%log_temperature(i).lt.star%log_temperature(i-1))exit
   100       continue
           end do
+          if (i > (star%num_zones)) then
           i = star%num_zones + 1
+          end if
   110       max_temp_index = i - 1
           if(max_temp_index.gt.1) then
              h_shell_mid_mass = star%enclosed_mass(max_temp_index)/solar_mass_cgs
@@ -205,10 +207,12 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
        else
 !  HE FLASH
           do i = 2,star%num_zones
-             if(star%log_temperature(i).lt.star%log_temperature(i-1) .and. star%log_temperature(i-1).gt.7.98D0) goto 140
+             if(star%log_temperature(i).lt.star%log_temperature(i-1) .and. star%log_temperature(i-1).gt.7.98D0) exit
   130       continue
           end do
+          if (i > (star%num_zones)) then
           i = star%num_zones + 1
+          end if
   140       max_temp_index = i - 1
           if(max_temp_index.gt.1) then
              h_shell_mid_mass = star%enclosed_mass(max_temp_index)/solar_mass_cgs

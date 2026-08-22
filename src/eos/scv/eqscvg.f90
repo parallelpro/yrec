@@ -79,10 +79,12 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          do i = idtt, 1, -1
             if (log10_temperature.gt.tlogx(i)) then
                ii = i - 1
-               goto 10
+               exit
             end if
          end do
+         if (i < (1)) then
          ii = 1
+         end if
   10     continue
          idtt = max(1,ii)
          idtt = min(nts-3,idtt)
@@ -108,10 +110,12 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          do j = jjj, 1, -1
             if (log10_gas_pressure.gt.tablenv(idtt,j,1)) then
                jj = j - 1
-               goto 30
+               exit
             end if
          end do
+         if (j < (1)) then
          jj = 1
+         end if
   30     continue
          idp = max(1,jj)
          idp = min(nptsx(idtt)-3, &
@@ -122,13 +126,15 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          do j = jjj+2, nptsx(idtt)
             if (log10_gas_pressure.lt.tablenv(idtt,j,1)) then
                jj = j - 2
-               goto 40
+               exit
             end if
          end do
+         if (j > (nptsx(idtt))) then
 ! point is outside table; return.
 !         WRITE(*,5)TL,PL
          valid_table_point = .false.
          return
+         end if
   40     continue
          idp = min(nptsx(idtt)-3, jj)
       end if

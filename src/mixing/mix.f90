@@ -179,7 +179,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       end if
       do zone_idx = 1, star%num_zones
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-         if (star%log_temperature(zone_idx).le.tcut(1)) goto 20
+         if (star%log_temperature(zone_idx).le.tcut(1)) exit
 ! SCALAR VARIABLES ARE USED IN THE CALLS TO THE ENERGY GENERATION ROUTINES.
 ! SET SCALARS EQUAL TO THE GLOBAL ARRAYS FOR THE VARIABLES OF INTEREST.
 ! DL-LOG(DENSITY),TL-LOG TEMPERATURE,X***-MASS FRACTION OF SPECIES ***,
@@ -219,7 +219,9 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end if
    10 continue
       end do
+      if (zone_idx > (star%num_zones)) then
       zone_idx = star%num_zones + 1
+      end if
    20 continue
       do clear_idx = zone_idx, star%num_zones
          rate_pp(clear_idx) = 0.0d0
@@ -482,11 +484,13 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             goto 170
          end if
          do search_idx = envelope_cz_edge, 1, -1
-            if (star%composition(2,search_idx).gt.helium_diffusion_min) goto 150
+            if (star%composition(2,search_idx).gt.helium_diffusion_min) exit
   140    continue
          end do
+         if (search_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
          goto 170
+         end if
   150    continue
 !  FM IS THE MASS FRACTION ABOVE THE OUTER POINT.
          mass_fraction_above = (total_mass_unlogged- &

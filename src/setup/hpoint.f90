@@ -142,10 +142,11 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
              star%num_zones = i
              star%env_comp%senv = star%log_mass(star%num_zones) - star%log_total_mass
              point_reset_flag = .true.
-             goto 40
+             exit
           endif
    20    continue
        end do
+       if (i < (1)) then
 !  ENTIRE MODEL HAS T<TENV0 - UNLIKELY - BUT STOP IF TRUE
        write(short_file_unit,30)
        write(iowr,30)
@@ -155,6 +156,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        ! returns the error and the CLI wrapper (main) stops.
        ierr = 1
        return
+       end if
    40    continue
 !  CHECK IF OUTER POINT T < MAXIMUM ENVELOPE T
       else if (star%log_temperature(star%num_zones).gt.tenv1.and. &
@@ -225,10 +227,11 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        if (flag_count.ge.100) then
           write(short_file_unit,110)
   110       format(1X,'MORE THAN 100 FLAG POINTS-FIRST 100 RETAINED')
-          goto 130
+          exit
        endif
   120 continue
       end do
+      if (i > (star%num_zones)) then
 !  PMAX1 = MAX DEL LOG P BELOW SURFACE C.Z. AND BELOW FINELY ZONED
 !  REGION AROUND IT.
 !  PMAX2 = MAX DEL LOG P BETWEEN LOWER EDGE OF FINELY ZONED REGION
@@ -304,6 +307,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
   198       continue
        endif
       endif
+      end if
   130 flag_point(flag_count) = star%num_zones
 ! ARRANGE THE FLAG POINTS IN ASCENDING ORDER
       if (.not. (flag_count.eq.1)) then

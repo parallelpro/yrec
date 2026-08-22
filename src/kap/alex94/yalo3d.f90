@@ -55,20 +55,24 @@ subroutine yalo3d(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%alex95_index_t+1,2,-1
             if (log10_temperature.gt.opacity_table%alex95_grid_logt(i)) then
                opacity_table%alex95_index_t = i - 1
-               goto 10
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%alex95_index_t = 1
+         end if
    10    continue
       else
          do i = opacity_table%alex95_index_t+3,num_t
             if (log10_temperature.lt.opacity_table%alex95_grid_logt(i)) then
                opacity_table%alex95_index_t = i - 2
                opacity_table%alex95_index_t = min(num_t-3,opacity_table%alex95_index_t)
-               goto 20
+               exit
             endif
          end do
+         if (i > num_t) then
          opacity_table%alex95_index_t = num_t - 3
+         end if
    20    continue
       endif
 !     INTERPOLATION FACTORS IN LOG T
@@ -81,20 +85,24 @@ subroutine yalo3d(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%alex95_index_r+1,2,-1
             if (logr.gt.opacity_table%alex95_grid_logr(i)) then
                opacity_table%alex95_index_r = i - 1
-               goto 30
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%alex95_index_r = 1
+         end if
    30    continue
       else
          do i = opacity_table%alex95_index_r+3,num_d
             if (logr.lt.opacity_table%alex95_grid_logr(i)) then
                opacity_table%alex95_index_r = i - 2
                opacity_table%alex95_index_r = min(num_d-3,opacity_table%alex95_index_r)
-               goto 40
+               exit
             endif
          end do
+         if (i > num_d) then
          opacity_table%alex95_index_r = num_d - 3
+         end if
    40    continue
       endif
 !     INTERPOLATION FACTORS IN LOG R

@@ -104,10 +104,12 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          do i = idtt, 1, -1
             if (log10_temperature.gt.tlogx(i)) then
                ii = i - 1
-               goto 10
+               exit
             end if
          end do
+         if (i < (1)) then
          ii = 1
+         end if
   10     continue
       else
 ! search up for nearest 4 table elements
@@ -152,10 +154,12 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          do j = jjj, 1, -1
             if (log10_gas_pressure.gt.tablenv(idtt,j,1)) then
                jj = j - 1
-               goto 30
+               exit
             end if
          end do
+         if (j < (1)) then
          jj = 1
+         end if
   30     continue
          idp = max(1,jj)
          idp = min(nptsx(idtt)-3, &
@@ -166,12 +170,14 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          do j = jjj+2, nptsx(idtt)
             if (log10_gas_pressure.lt.tablenv(idtt,j,1)) then
                jj = j - 2
-               goto 40
+               exit
             end if
          end do
+         if (j > (nptsx(idtt))) then
 ! point is outside table; return.
          valid_table_point = .false.   ! Error exit - no valid table entry
          return
+         end if
   40     continue
          idp = min(nptsx(idtt)-3, jj)
       end if

@@ -34,9 +34,10 @@ subroutine op95ztab(metal_fraction, ierr)
       do i = 3,num_z-1
          if (opacity_table%opal95_grid_z(i).ge.metal_fraction) then
             z_table_index = i - 2
-            goto 10
+            exit
          endif
       end do
+      if (i > (num_z-1)) then
 ! DESIRED Z > 0.1D0; STOP
       write(*,5)metal_fraction
     5 format(1x,'DESIRED Z',f10.6,'OUTSIDE OP95 TABLE RANGE'/ &
@@ -44,6 +45,7 @@ subroutine op95ztab(metal_fraction, ierr)
       ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
       ierr = 1
       return
+      end if
    10 continue
 !  FIND INTERPOLATION FACTORS IN Z.
       do i = 1,4

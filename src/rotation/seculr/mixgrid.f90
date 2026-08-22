@@ -80,12 +80,14 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          do search_idx = zone_begin-1, 1, -1
             if (.not.convective_flag(search_idx)) then
                i0 = idx + 1
-               goto 10
+               exit
             end if
             equally_spaced_mass(1) = equally_spaced_mass(1) + &
                  shell_mass(search_idx)
          end do
+         if (search_idx < (1)) then
          i0 = 1
+         end if
    10    continue
       else
          i0 = 1

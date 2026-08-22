@@ -673,9 +673,10 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! NEW ENVELOPE DEEPER THAN THE OLD ONE
           target_log_mass_at_fit = star%log_total_mass+requested_envelope_mass
           do i = star%num_zones-1,1,-1
-             if (star%log_mass(i).lt.target_log_mass_at_fit) goto 580
+             if (star%log_mass(i).lt.target_log_mass_at_fit) exit
  575        continue
           end do
+          if (i < (1)) then
 ! ENVELOPE MASS DESIRED WITHIN FIRST POINT;PRINT NASTY MESSAGE
 ! AND ABORT.
           write(short_file_unit,576)requested_envelope_mass
@@ -683,6 +684,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
           goto 599
+          end if
  580        star%num_zones = i + 1
           star%env_comp%senv = requested_envelope_mass
           interior_interp_fraction = (target_log_mass_at_fit-star%log_mass(i))/ &

@@ -73,10 +73,12 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
          do i = zone_begin - 1, 1, -1
             if (.not.convective_flag(i)) then
                i0 = i + 1
-               goto 10
+               exit
             end if
          end do
+         if (i < (1)) then
          i0 = 1
+         end if
    10    continue
       end if
       if (.not.convective_flag(zone_end) .or. zone_end.eq.num_points) then

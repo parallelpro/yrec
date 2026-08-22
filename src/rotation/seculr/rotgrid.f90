@@ -149,7 +149,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
          do ii = zone_begin-1,1,-1
             if (.not.am_transport_convective_flag(ii)) then
                i0 = i + 1
-               goto 10
+               exit
             end if
             eq_mass(1) = eq_mass(1)+shell_mass(ii)
             eq_moment_of_inertia(1) = eq_moment_of_inertia(1)+ &
@@ -157,7 +157,9 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
             eq_angular_momentum(1) = eq_angular_momentum(1)+ &
                  specific_angular_momentum(ii)*shell_mass(ii)
          end do
+         if (ii < (1)) then
          i0 = 1
+         end if
  10      continue
       else
          i0 = 1

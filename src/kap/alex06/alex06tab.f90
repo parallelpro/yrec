@@ -55,24 +55,28 @@ subroutine alex06tab(ierr)
       do i = 3,num_z-2
          if (opacity_table%alex06_cached_z.le.opacity_table%alex06_grid_z(i)) then
             iz = i - 2
-            goto 7
+            exit
          endif
       end do
+      if (i > (num_z-2)) then
       iz = num_z - 3
+      end if
     7 continue
 !     FIND 4 NEAREST TABLES IN X.
       do i = 3,num_x-2
          if (opacity_table%alex06_cached_x.le.opacity_table%alex06_grid_x(i)) then
             opacity_table%alex06_index_x = i - 2
-            goto 10
+            exit
          endif
       end do
+      if (i > (num_x-2)) then
 !     NO TABLE FOR X > 0.9 IF Z =0.10 OR MORE
       if (opacity_table%alex06_cached_z.ge.0.1d0) then
          opacity_table%alex06_index_x = num_x - 4
       else
          opacity_table%alex06_index_x = num_x - 3
       endif
+      end if
    10 continue
 !     INTERPOLATION FACTORS FOR Z
       do i = 1,4

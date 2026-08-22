@@ -83,19 +83,23 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%opal95_index_t+3,num_t-1
             if (log10_temperature.lt.opacity_table%opal95_grid_logt(i)) then
                opacity_table%opal95_index_t = i - 2
-               goto 10
+               exit
             endif
          end do
+         if (i > (num_t-1)) then
          opacity_table%opal95_index_t = num_t - 3
+         end if
    10    continue
       else
          do i = opacity_table%opal95_index_t+1,2,-1
             if (log10_temperature.gt.opacity_table%opal95_grid_logt(i)) then
                opacity_table%opal95_index_t = i - 1
-               goto 20
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%opal95_index_t = 1
+         end if
    20    continue
       endif
 !     T INTERPOLATION FACTORS
@@ -113,19 +117,23 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%opal95_index_rho(1)+3,num_d-1
             if (opacity_table%opal95_logr.lt.opacity_table%opal95_grid_logr(i)) then
                opacity_table%opal95_index_rho(1) = i - 2
-               goto 30
+               exit
             endif
          end do
+         if (i > (num_d-1)) then
          opacity_table%opal95_index_rho(1) = num_d - 3
+         end if
    30    continue
       else
          do i = opacity_table%opal95_index_rho(1)+1,2,-1
             if (opacity_table%opal95_logr.gt.opacity_table%opal95_grid_logr(i)) then
                opacity_table%opal95_index_rho(1) = i - 1
-               goto 40
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%opal95_index_rho(1) = 1
+         end if
    40    continue
       endif
 !     NOW CHECK IF WITHIN PORTION OF TABLE WITH DATA.
@@ -308,19 +316,23 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%opal95_index_z+3,num_z-1
             if (metal_fraction.lt.opacity_table%opal95_grid_z(i)) then
                opacity_table%opal95_index_z = i - 2
-               goto 110
+               exit
             endif
          end do
+         if (i > (num_z-1)) then
          opacity_table%opal95_index_z = num_z - 3
+         end if
   110    continue
       else
          do i = opacity_table%opal95_index_z+1,2,-1
             if (metal_fraction.ge.opacity_table%opal95_grid_z(i)) then
                opacity_table%opal95_index_z = i - 1
-               goto 120
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%opal95_index_z = 1
+         end if
   120    continue
       endif
 !     mhp 7/12 added failsafe

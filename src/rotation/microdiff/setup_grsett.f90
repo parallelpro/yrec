@@ -165,15 +165,17 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do zone_idx=zone_end,1,-1
-         if(composition(2,zone_idx).gt.helium_diffusion_min) goto 47
+         if(composition(2,zone_idx).gt.helium_diffusion_min) exit
    45 continue
       end do
+      if (zone_idx < (1)) then
 !     HYDROGEN-FREE MODEL - EXIT.
       write(short_file_unit,17)helium_diffusion_min
    17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
       continue
       return
+      end if
    47 continue
       zone_end = zone_idx
 !     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.

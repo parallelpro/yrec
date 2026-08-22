@@ -185,11 +185,13 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          if (.not. (convective_zone_bounds(num_convective_zones,1).le.2 .and. convective_zone_bounds(num_convective_zones,2).eq.num_zones)) then
          outer_boundary_zone = radiative_zone_bounds(num_radiative_zones,2)
          do zone_idx = outer_boundary_zone,1,-1
-            if (composition(2,zone_idx).gt.helium_diffusion_min) goto 150
+            if (composition(2,zone_idx).gt.helium_diffusion_min) exit
   140    continue
          end do
+         if (zone_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
          goto 170
+         end if
   150    continue
          total_mass=exp(ln10*log_total_mass)
          do zone_idx = 1,num_zones

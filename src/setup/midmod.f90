@@ -445,10 +445,12 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !  FIRST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONAL INSTABILITIES.
       if (am_transport_convective_flag_mid(1)) then
          do i = 2,star%num_zones
-            if (.not.am_transport_convective_flag_mid(i)) goto 65
+            if (.not.am_transport_convective_flag_mid(i)) exit
    60    continue
          end do
+         if (i > (star%num_zones)) then
          i = star%num_zones + 1
+         end if
    65    core_boundary_zone = max(2,i-1)
       else
          core_boundary_zone = 2
@@ -459,11 +461,13 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !  SURFACE C.Z. EXISTS.  FIND LOWEST SHELL (IMAX), WHICH IS ALSO THE
 !  UPPERMOST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONALLY INDUCED MIXING.
          do i = star%num_zones-1,1,-1
-            if (.not.am_transport_convective_flag_mid(i)) goto 80
+            if (.not.am_transport_convective_flag_mid(i)) exit
    70    continue
          end do
+         if (i < (1)) then
          fully_convective_flag = .true.
          i = 0
+         end if
    80    envelope_boundary_zone = i + 1
 !  HSTOP IS THE MASS AT THE TOP OF THE C.Z.
 !  HSBOT IS THE MASS AT THE BOTTOM OF THE C.Z.
