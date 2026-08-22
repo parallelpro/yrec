@@ -157,7 +157,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       end do
       num_equations = 4*num_eq_points-2
 ! LOOP FOR TIMESTEP CUTTING
- 5    continue
+      timestep_cut: do   ! (was label 5)
       substep_time_sum = 0.0d0
 ! STORE START OF TIMESTEP OMEGA VALUES
       wind_loss_implicit = wind_loss_implicit_initial
@@ -675,8 +675,10 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          else
             write(*,*) 'TIMESTEP CUT #',timestep_cut_count,' IN DADCOEFT'
          end if
-         goto 5
+         cycle timestep_cut
       end if
+      exit timestep_cut
+      end do timestep_cut
       write(*,914) rhs(1),eq_omega(1),rhs(2),rhs(3),rhs(4)
  914  format(1p5e12.3)
       do i = 2,num_eq_points

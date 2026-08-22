@@ -106,7 +106,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !                 if so, set IMIN.
                   if(found_valid_pressure)then
                      atm_table%kurucz_gmin_index(teff_idx) = logg_idx + 1
-                     goto 5
+                     exit
                   endif
                else
 !                 if we have reached a non-negative pressure value,
@@ -116,8 +116,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
                   found_valid_pressure = .true.
                endif
             end do
-            atm_table%kurucz_gmin_index(teff_idx) = 1
-    5       continue
+            if (logg_idx .lt. 1) atm_table%kurucz_gmin_index(teff_idx) = 1
 !           if all of the P values at a given T are -999, set IMIN
 !           to the number of gravity terms. in responce, the code
 !           should break when trying to find surface P.
@@ -171,7 +170,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !                if so, set IMIN2.
                  if(found_valid_pressure)then
                     atm_table%castelli_gmin_index(teff_idx) = logg_idx + 1
-                    goto 6
+                    exit
                  endif
               else
 !                if we have reached a non-negative pressure value,
@@ -181,8 +180,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
                  found_valid_pressure = .true.
               endif
            end do
-           atm_table%castelli_gmin_index(teff_idx) = 1
-    6      continue
+           if (logg_idx .lt. 1) atm_table%castelli_gmin_index(teff_idx) = 1
 !          if all of the P values at a given T are -999, set IMIN
 !          to the number of gravity terms. in responce, the code
 !          should break when trying to find surface P.

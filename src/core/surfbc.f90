@@ -152,7 +152,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
        start_new_triangle = .false.
       else
 ! CHECK TRIANGULATION OF POINT (TEFFL,BL)
- 10      continue
+       tri_scan: do
        do i1 = 1,3
           i2 = mod(i1,3) + 1
           i3 = mod(i2,3) + 1
@@ -164,10 +164,12 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
              tri_logl(i1) = tri_logl(i2) + tri_logl(i3) - tri_logl(i1)
              tri_vertex_valid(i1) = .false.
              tri_err = 0.0d0
-             goto 10
+             cycle tri_scan
           endif
  20      continue
        end do
+       exit tri_scan
+       end do tri_scan
       endif
 ! COMPUTE NEW ENVELOPES IF NECESSARY
       envelope_needs_recompute = .false.

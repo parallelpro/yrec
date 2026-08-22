@@ -494,8 +494,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
               dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp)
-         goto 200
-      end if
+      else
 !     CHECK IF SAUMON, CHABRIER, AND VAN HORN EQUATION OF STATE NEEDED.
 !     THIS EOS REPLACES THE CALL TO EQSAHA, EXCEPT FOR DERIVATIVE PURPOSES.
       if (use_scv_eos) then
@@ -669,7 +668,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               ramp_factor*saha_adiabatic_gradient_dp
       end if
       end if
-  200 continue
+      end if
 
 !     1995 OPAL eqos
       if (use_opal95_eos) then

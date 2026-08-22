@@ -891,5 +891,37 @@ solar cases (rot + norot), the deeper regression, and re-entrancy:
   means restructuring NR internals or growing evo -- deliberately
   deferred, documented at each site.
 
-goto count stands at 698 statements (wave 1 made all loops block-DO;
-statement-level elimination is the remaining file-by-file work).
+STATUS (2026-08-22, goto campaign COMPLETE): from 698 goto statements
+to ZERO across every domain, all gated byte-identical (dual solar
+gates per batch; final battery: fast suite 6/6, test_reentry, full
+Stage-0 with only the 5 pinned version-line "failures", 81/81 strict
+byte-diff over both example dirs).
+
+- Automated passes (src/tools/): goto_cycle_exit (loop-control ->
+  cycle/exit), goto_fwd_wrap (forward skip -> inverted if, applied
+  target-descending with crossing-span rejection), goto_backloop,
+  goto_hub_expand (terminal hubs inlined), goto_funnel (stage-3 ierr
+  funnels expanded at 25 sites), goto_searchloop (search-or-insert
+  scans -> exit + loop-index guard; handles member/expr bounds and
+  -1 steps -- the do-variable's defined exit/completion values make
+  the guard exact), goto_selfloop (label-if-goto-self -> do while,
+  label refs scoped per procedure). Together ~480 sites.
+- Hand restructures (~220 sites): the osculatory-spline family
+  (meval/choose/slopes/search/spline), numerics_lib (bsstep retry,
+  intpol, lir/lir1 ENTRY -> lir_impl wrappers), alfilein (iostat
+  read loops + internal fail_9999), burn_lib/envint_lib, seculr/
+  ndifcom/mixcom/checkj region loops, eqsaha, tauint(new), parmin,
+  evolve_step (named retry_step loop), starin, getopal95/kurucz*/
+  condopacp-hunt, sconvec/convec/mix/rotmix/oversh/kemcom, esac*/
+  rhoofp* families, eqstat/eqrelv, run_yrec (named run_loop), getw,
+  solid, dadcoeft, wind/mwind, setkrz/ll95tbl/yllo3d*, surfp/
+  kcsurfp/alsurfp, hpoint, net_lib, htimer, surfbc, chkcal (dead
+  bypassed block deleted), getnewenv.
+- Idioms that recur: named loops for backward retries; exit + index
+  guard for search loops; if/else re-nesting for skip jumps; small
+  flag locals only where a join genuinely merges paths (meval,
+  tauintnew, kurucz, starin). err=/end= specifiers became iostat
+  tests where they fed goto webs (alfilein, setkrz, ll95tbl).
+- Remaining `goto`-family constructs: none. A few alternate returns
+  (`return 1`) and unreferenced numeric labels remain untouched --
+  separate, lower-value cleanups.

@@ -58,6 +58,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
       character(len=132) :: header_line
 
       integer :: fmt_start, iz, ix, nn, n, i, j, nmax
+      integer :: read_status
       double precision :: xx, zz, xxt, target_z
 
 !     READ IN OPACITY TABLES, SKIPPING HEADER.  HEY, IT WORKS.
@@ -75,7 +76,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
       ix = 1
       nn = 1
 !     ENTRY POINT FOR GETTING NEW TABLES.
-   15 continue
+      table_loop: do
       n = opacity_table%opal95_table_start_index(iz)+ix
       if (ix.lt.num_x) then
          xxt = opacity_table%opal95_grid_x(ix)
@@ -90,7 +91,9 @@ subroutine ll95tbl(opal95_table_path, ierr)
       endif
 
 !     READ IN HEADER INFO: GRID IN RHO/T6**3
-      read(opal95_table_unit,20,end=1000) (opacity_table%opal95_grid_logr(i),i=1,num_d)
+      read(opal95_table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,num_d)
+      if (read_status .lt. 0) exit table_loop   ! was end=1000
+      if (read_status .gt. 0) stop 'OPAL95 TABLE READ ERROR'
    20 format(///,4x,19f7.1,/)
 !     READ IN FULL TABLE: LOG CAPPA AS A FUNCTION OF LOG T AND
 !     LOG R = RHO/T6**3
@@ -160,9 +163,10 @@ subroutine ll95tbl(opal95_table_path, ierr)
 !     RETURN TO READ IN NEXT TABLE.
       read(opal95_table_unit,900) xx,zz
   900 format(/36x,f7.4,11x,f7.4)
-      goto 15
+      cycle table_loop
       end if
- 1000 continue
+      exit table_loop
+      end do table_loop
 
       close(opal95_table_unit)
 !     NOW GENERATE A TABLE AT A FIXED VALUE OF Z.

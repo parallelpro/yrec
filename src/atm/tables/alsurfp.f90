@@ -167,7 +167,17 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
          write(*,*)'ALSURFP: TEFFL less than TEFFLmin: '
         write(*,*)'    TEFFLmin,TEFFL,TEFFLmax; ', &
                atm_table%allard_teffl_min,log_teff,atm_table%allard_teffl_max
-        go to 9999        ! End program at Error Exit
+!       End program at Error Exit (was go to 9999)
+        write(*,*)
+        write(*,*)'******** ALSURFP: Program Terminated ********'
+        write(*,*)
+        write(short_file_unit,*)
+        write(short_file_unit,*)'******** ALSURF: Program Terminated ********'
+        write(short_file_unit,*)
+        ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
+        ! facades stop when their caller passes no ierr.
+        ierr = 1
+        return
       endif
 
 ! II      Locate TEFFL and GL in table. This gives us a column index, iGL, and a row index, iTEFFL. The
@@ -283,18 +293,6 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
 
       return
-
- 9999      continue
-       write(*,*)
-       write(*,*)'******** ALSURFP: Program Terminated ********'
-       write(*,*)
-       write(short_file_unit,*)
-       write(short_file_unit,*)'******** ALSURF: Program Terminated ********'
-       write(short_file_unit,*)
-       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
-       ! facades stop when their caller passes no ierr.
-       ierr = 1
-       return
 
 end subroutine alsurfp
 

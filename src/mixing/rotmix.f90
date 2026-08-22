@@ -158,9 +158,10 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
       if (diffuse_helium_active) then
+      settling: do
          if (composition(1,1).lt.hydrogen_diffusion_floor) then
             diffuse_helium_active=.false.
-            goto 170
+            exit settling
          end if
 ! MHP 6/90 CHANGE ADDED : THE TIMESTEP FOR SETTLING IS RESTRICTED TO
 !   A FRACTION OF THE TIMESCALE FOR SETTLING AT THE OUTER BOUNDARY.
@@ -190,7 +191,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          end do
          if (zone_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
-         goto 170
+         exit settling
          end if
   150    continue
          total_mass=exp(ln10*log_total_mass)
@@ -259,7 +260,8 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             star%diag%del_grad(2,zone_idx) = del_grad2_save(zone_idx)
          end do
          end if
-  170    continue
+      exit settling
+      end do settling
       end if
 ! END OF GRAVITATIONAL SETTLING
 !

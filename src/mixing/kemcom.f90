@@ -266,7 +266,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
 !
 !  iteration for new abundances.
 !
-   10 continue
+      newton_iter: do   ! (was label 10)
 !  functions to be minimized. these are of the form
 !  system_matrix(#)=abundance(end step)-abundance (start step)-timestep*(d(species)/dt)
 !  because the burning rates d(species)/dt use the abundances at the
@@ -416,9 +416,11 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             ierr = 1
             return
          else
-            goto 10
+            cycle newton_iter
          endif
       endif
+      exit newton_iter
+      end do newton_iter
 !  system has converged.
 !  update composition matrix.
 !  update o18.

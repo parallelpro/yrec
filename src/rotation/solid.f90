@@ -65,7 +65,8 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       else
          omega_guess = disk_pressure
       end if
-   20 do zone_idx = zone_start,zone_end
+      omega_iter: do
+      do zone_idx = zone_start,zone_end
          omega(zone_idx) = omega_guess
    30 continue
    end do
@@ -89,7 +90,7 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
 !  CHECK IF THE TOTAL ANGULAR MOMENTUM FOUND WITH OMEGA = WGUESS IS CLOS
 !  ENOUGH.  IF NOT, CALCULATE DELTA OMEGA AND TRY AGAIN WITH A NEW WGUES
       delta_angular_momentum = total_angular_momentum - new_angular_momentum
-      if(disk_locked)goto 45
+      if(.not.disk_locked)then
       if(dabs(delta_angular_momentum/total_angular_momentum).gt. &
            star%rot%moment_of_inertia_tolerance) then
          if(iteration_count.lt.20) then
@@ -97,10 +98,12 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
             delta_omega = delta_angular_momentum/ &
                  (total_moment_of_inertia + omega_guess*total_di_domega)
             omega_guess = omega_guess + delta_omega
-            goto 20
+            cycle omega_iter
          end if
       end if
- 45   continue
+      end if
+      exit omega_iter
+      end do omega_iter
       do zone_idx = zone_start,zone_end
          specific_angular_momentum(zone_idx) = &
               moment_of_inertia(zone_idx)*omega(zone_idx)/shell_mass(zone_idx)

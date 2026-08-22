@@ -105,8 +105,8 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
          cmfdh0 = 2.0d0*debye_huckel_x+1.5d0*debye_huckel_y+0.5d0*(debye_huckel_z_total+almix)
          cmfdh1 = debye_huckel_x+debye_huckel_y+0.5d0*almix
       end if
-   10 continue
-! BEGIN ITERATION LOOP FOR CORRECT DENSITY
+      density_iter: do
+! BEGIN ITERATION LOOP FOR CORRECT DENSITY (was label 10)
 !  FIND INDEX (ID1,ID2,ID3) FOR 3-PT INTERPOLATION IN X
       xx = dml - 1.50d0*tl8
       pr6= 20.0d0*(xx - yale_eos%fermi_table_x_grid(1)) + 1.0d0
@@ -201,7 +201,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       if(dabs(corr).ge.1.0d-08) then
        dml = dml + corr
        nden = nden + 1
-       if(nden.le.20) go to 10
+       if(nden.le.20) cycle density_iter
        write(short_file_unit,40) log10_temperature,log10_pressure,ptl,dml,corr
    40    format('EQRELV: Did not Converge: T,P,Pcalc,Dcalc,CORR', &
                 4F10.6,F20.12)
@@ -209,6 +209,8 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
        return
 !         STOP 'ERRELV failed'
       end if
+      exit density_iter
+      end do density_iter
       log10_density = dl8
       density = d8
       do kk = 2,5

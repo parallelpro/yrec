@@ -244,7 +244,7 @@ subroutine run_yrec(ierr)
 !**********
 !     RUN THROUGH THE KIND CARDS IN ORDER
 !**********
-      do nk = 1, num_runs
+      run_loop: do nk = 1, num_runs
          star%run%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
          initial_envelope_x = initial_x_array(nk)
@@ -477,7 +477,7 @@ subroutine run_yrec(ierr)
        call evolve_step(model_iteration, step_status, ierr)
        if (ierr /= 0) return
        if (step_status == 1) exit
-       if (step_status == 2) goto 200
+       if (step_status == 2) cycle run_loop   ! (was goto 200, the run-loop terminator)
   100    continue
        end do
 
@@ -538,8 +538,7 @@ subroutine run_yrec(ierr)
          if (calibrate_star_flag .and. star_found_flag.and.(mod(nk,2).eq.0)) exit
 
 ! END RUN LOOP
- 200  continue
-      end do
+      end do run_loop
 ! EXIT RUN LOOP
  250  continue
 

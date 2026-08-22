@@ -1923,8 +1923,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
             rate(i) = 0.
    20    continue
          end do
-         go to 200
-      endif
+      else
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
 !  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
 !  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
@@ -2042,8 +2041,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       if(hydrogen_fraction.eq.0.0) then
          be7_electron_frac=0.
          c12_alpha_frac=0.
-         goto 50
-      endif
+      else
       nz=8
 ! **************************************************************
 !  CALCULATE REACTION RATES FOR THE THREE PRINCIPAL REACTIONS OF
@@ -2176,7 +2174,8 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
       o16_gamma_frac = 1.0d0 - c12_alpha_frac
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
-   50 do i=nz,num_reactions
+      endif
+      do i=nz,num_reactions
          rate(i)=0.
    60 continue
    end do
@@ -2236,7 +2235,8 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
 ! C21 IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*(1 ATOMIC MASS UNIT/1
 !  GRAM). I HAVE USED HERE SIDEREAL YEAR IN CONVERTING TO SECONDS.
-  200 rate_pp(zone_idx)=rate(1)*c21
+      endif
+      rate_pp(zone_idx)=rate(1)*c21
       rate_he3_he3(zone_idx)=rate(2)*c21
       rate_he3_he4(zone_idx)=rate(3)*c21
       rate_c12_p(zone_idx)=rate(4)*c21

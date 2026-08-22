@@ -45,22 +45,24 @@ subroutine yllo3d2(log10_density, log10_temperature, hydrogen_fraction, &
       if (dabs(opacity_table%opal92_surface_x_z2-hydrogen_fraction).le.1.0d-5) then
          opacity_table%abund_index_z2 = 4
          single_x_table = .true.
-         go to 131
       endif
+      if (.not. single_x_table) then
       do im1 = 1,num_x
          if (dabs(opacity_table%opal92_grid_x_z2(im1)-hydrogen_fraction).le.1.0d-5) then
             opacity_table%abund_index_z2 = im1
             single_x_table = .true.
-            go to 131
+            exit
          endif
  130  continue
       end do
+      end if
+      if (.not. single_x_table) then
       call findex(opacity_table%opal92_grid_x_z2, num_x, hydrogen_fraction, opacity_table%abund_index_z2)
       if (opacity_table%abund_index_z2.lt.0) opacity_table%abund_index_z2 = -opacity_table%abund_index_z2
       if (opacity_table%abund_index_z2.le.1.and.rhot3.gt.-1.0d0) opacity_table%abund_index_z2 = 2
       if (opacity_table%abund_index_z2.ge.3) opacity_table%abund_index_z2 = 2
       if (opacity_table%abund_index_z2.le.0) stop ' ERROR IN X2 GRID'
- 131  continue
+      end if
       call findex(opacity_table%opal92_grid_logt_z2, opacity_table%opal92_num_temps_z2, t6, opacity_table%temp_index_z2)
       if (opacity_table%temp_index_z2.lt.0.and.opacity_table%opal92_grid_logt_z2(opacity_table%opal92_num_temps_z2).eq.t6) opacity_table%temp_index_z2 = -opacity_table%temp_index_z2
       if (opacity_table%temp_index_z2.lt.0) stop ' T OUT OF TABLE '

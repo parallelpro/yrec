@@ -108,14 +108,13 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! AS THE NEW EDGE OF THE MIXED REGION.
             do j_idx = edge_idx-1, 1, -1
                radius = exp(ln10*log_radius(j_idx))
-               if (radius.lt.overshoot_radius) goto 20
+               if (radius.lt.overshoot_radius) exit
    10       continue
             end do
-! IF THE CODE GETS HERE, THE OVERSHOOT REGION EXTENDS BELOW THE FIRST POINT.
-! THE CODE WILL ASSIGN THE FIRST POINT AS THE LOWER EDGE(I.E. THE CZ WILL
-! EXTEND TO THE CENTER).
-            j_idx = 0
-   20       continue
+! IF THE LOOP COMPLETES, THE OVERSHOOT REGION EXTENDS BELOW THE FIRST
+! POINT AND THE CZ WILL EXTEND TO THE CENTER: natural completion of the
+! downward loop already leaves j_idx = 0 (the old explicit assignment
+! before label 20 was redundant).
 ! FOR ROTATING MODELS, ENSURE THAT THERE IS AT LEAST ONE RADIATIVE POINT
 ! IN THE OVERSHOOT REGION.
             mixed_zone_bounds(zone_idx,1) = j_idx + 1
@@ -139,14 +138,13 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! AS THE NEW EDGE OF THE MIXED REGION.
             do j_idx = edge_idx+1, num_zones
                radius = exp(ln10*log_radius(j_idx))
-               if (radius.gt.overshoot_radius) goto 40
+               if (radius.gt.overshoot_radius) exit
    30       continue
             end do
-! IF THE CODE GETS HERE, THE OVERSHOOT REGION EXTENDS ABOVE THE LAST POINT.
-! THE CODE WILL ASSIGN THE LAST POINT AS THE UPPER EDGE(I.E. THE CZ WILL
-! EXTEND TO THE SURFACE).
-            j_idx = num_zones + 1
-   40       continue
+! IF THE LOOP COMPLETES, THE OVERSHOOT REGION EXTENDS ABOVE THE LAST
+! POINT AND THE CZ WILL EXTEND TO THE SURFACE: natural completion of
+! the upward loop already leaves j_idx = num_zones + 1 (the old
+! explicit assignment before label 40 was redundant).
             mixed_zone_bounds(zone_idx,2) = j_idx - 1
 ! 11/91 MHP CHANGED TO REQUIRE AN OVERSHOOT ZONE ONLY IF LINSTB=T.
             if (rotation_active .and. instability_transport_active .and. &

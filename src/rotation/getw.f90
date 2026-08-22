@@ -204,8 +204,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
                  star%log_mass,star%shell_mass,envelope_boundary_zone,iend,star%eta_squared, &
                  star%moment_of_inertia,star%omega,star%qiw,star%mean_radius,star%num_zones)
          endif
-         goto 9999
-      endif
+      else
 !  GETROT TAKES THE ANGULAR MOMENTUM DISTRIBUTION AND FINDS THE
 !  ROTATION CURVE THAT CORRESPONDS TO IT.  CONVECTIVE REGIONS HAVE
 !  SOLID BODY ROTATION ENFORCED ON THEM.
@@ -251,7 +250,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          continue
       redo_count = 0
 !  ENTRY FOR DIFFUSION TIMESTEP CUTTING.
-   40 continue
+      retry: do
 ! MHP 06/02 CHANGED TO ELIMINATE OCCASIONAL
 ! ALMOST ZERO TIMESTEP FROM ROUNDOFF ERROR
       delts_test = full_timestep - full_timestep*1.0D-6
@@ -375,7 +374,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
                end do
    80       continue
             end do
-            goto 40
+            cycle retry
          endif
       endif
 ! MHP 05/02 TAKEN OUT OF LOOP SO THAT NUCLEAR BURNING
@@ -487,6 +486,8 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
         if (ierr /= 0) return
          endif
       endif
+      exit retry
+      end do retry
 !  RETURN FOR NEXT SMALL DIFFUSION TIMESTEP IF NEEDED.
       if (.not. (elapsed_substep_time.lt.full_timestep)) exit
       end do
@@ -500,7 +501,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
            star%shell_mass,am_transport_convective_flag,star%num_zones,star%eta_squared, &
            star%moment_of_inertia,star%omega,star%qiw,star%mean_radius)
       end if
- 9999 continue
+      endif
       if(star%run%lprt0_placeholder)then
          star%log10_luminosity = log10(star%luminosity_lsun(star%num_zones))
          log_radius_surface = 0.5D0*(star%log10_luminosity + log10_solar_luminosity &

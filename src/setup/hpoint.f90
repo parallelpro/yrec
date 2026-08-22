@@ -282,8 +282,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! NOW LOCATE BASE OF FINELY ZONED REGION.
           if (overshoot_base_zone.eq.1) then
              fine_zone_base = 1
-             goto 198
-          endif
+          else
           do fine_zone_base = overshoot_base_zone-1,1,-1
              if (star%log_pressure(fine_zone_base) - &
                   star%log_pressure(star%envelope_cz_bottom_index).gt.chi_grid_scale(7)) &
@@ -304,7 +303,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
                flag_count = flag_count + 1
             endif
           end if
-  198       continue
+          end if
        endif
       endif
       end if

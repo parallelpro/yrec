@@ -117,7 +117,7 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             iter_count = 0
             omega_iter = omega_substep_start
             omega_iter_prev = omega_substep_start
-    5       continue
+   omega_fixed_point: do   ! (was label 5)
             iter_count = iter_count + 1
             omega_iter_new = omega_substep_start - (sub_timestep/ &
                  cz_moment_of_inertia)*constfactor* &
@@ -132,8 +132,10 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             if(domega_relative_change.gt.1.0d-6)then
                omega_iter = 0.5d0*(omega_substep_start+omega_iter_new)
                omega_iter_prev = omega_iter_new
-               if(iter_count.le.20)goto 5
+               if(iter_count.le.20)cycle omega_fixed_point
             endif
+            exit omega_fixed_point
+            end do omega_fixed_point
             omega_substep_start = omega_iter_new
   100    continue
          end do

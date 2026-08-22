@@ -294,12 +294,15 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
                endif
             endif
             num_zones = zone_index
-            goto 587
+            exit
          endif
       end do
 ! ASSIGN THE BOUNDARY AT THE PHOTOSPHERE FOR ENVELOPE MASS BELOW 1.0D-12.
+! (On the exit path above num_zones was just set to zone_index, so this
+! guard is false there; on fall-through num_zones is unchanged.)
+      if (zone_index .gt. num_zones + env_struct%num_env_points) then
       num_zones = num_zones + env_struct%num_env_points
- 587  continue
+      end if
 ! ADD THE UNLOGGED MASSES OF THE NEW SHELLS (HS1) AND COMPUTE THE
 ! MASS CONTENTS OF THE NEW SHELLS (HS2).
       do zone_index = old_num_zones,num_zones
