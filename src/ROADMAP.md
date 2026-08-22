@@ -740,3 +740,24 @@ controls_lib as the job's control surface behind the const_lib
 umbrella, physics tables in domain state. Remaining (recorded, not
 phase-6): member-level eviction of the documented stragglers, and
 per-file migration off the umbrella.
+
+
+---
+
+STATUS (2026-08-22, night): **phase-5 step C COMPLETE + nuclear test.**
+Re-entrancy achieved (commit d5798fd): run_yrec is re-enterable via
+pristine snapshot (core/yrec_reset.f90 + the GENERATED
+const/controls_reset_lib.f90 mirroring every control AND phys_const
+member), with flag-gated SAVEd-local re-initialization in evolve_step
+/ update_output_diagnostics and a unit-closing sweep. Acceptance test
+(test_reentry + test_reentry.py): the second of two in-process calls
+is byte-identical to a fresh process, on the solar case. Two findings
+the test forced: (1) cases that historically TERMINATE via opt-in
+numerics-gate stops (m0030's BSSTEP ending) kill the process mid-call
+and are not re-enterable until their callers pass ierr -- documented
+residual; (2) cmixl (the const3 caveat member) leaked run-1's
+calibrated mixing length into run-2's startup echo until phys_const
+joined the snapshot. Nuclear (commit 3e8b544): module map added and
+the fourth per-module standalone test (rates/sneut/azbar/deutrate +
+remap's SFII cross-section scales) pinned, in `make tests` and CI.
+Next milestone unchanged: libyrec + the Python binding.
