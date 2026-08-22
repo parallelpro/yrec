@@ -1,0 +1,58 @@
+# CI for the YREC modernization (added 2026, phase four).
+#
+# Scope: full build + the per-module test suite (phase-three stage 2):
+#   - boundary checker (no data needed)
+#   - standalone eos/kap/atm table tests (need ~17 MB of input tables,
+#     pulled via sparse checkout so CI never downloads the full 3.1 GB
+#     input/ tree)
+#
+# Deliberately NOT here (yet): the Stage-0 full-model byte-identical
+# regression -- its reference outputs (examples/*/standard/) are
+# largely untracked (gitignored), so it remains a local/manual gate.
+# If the standalone numeric baselines (pinned on macOS/arm64) prove
+# platform-sensitive on the Linux runners' last printed digit, the
+# right fix is per-platform baselines or a ULP-tolerant comparator --
+# not loosening the local byte-exact discipline.
+name: CI
+
+on:
+  push:
+    branches: [modernize-readable-refactor, main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/
+            /test_eos.py
+            /test_kap.py
+            /test_atm.py
+            /test_boundaries.py
+            /input/eos/yale/FERMI.TAB
+            /input/eos/scv/
+            /input/eos/opal2006/EOSOPAL06Z0.016492
+            /input/opacity/atomic/legacy/opal95/GS98.OP17
+            /input/atmos/kurucz/atmk1990p00.tab
+            /input/atmos/CastelliKurucz/atmk2004p00.tab
+            /input/atmos/allard/Nextgen2.all
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran
+          python3 -m pip install --upgrade pip pytest
+
+      - name: Build yrec
+        run: make -C src -j4
+
+      - name: Build standalone test programs
+        run: make -C src -j4 test_eos test_kap test_atm
+
+      - name: Run per-module tests and boundary checker
+        run: python3 -m pytest test_eos.py test_kap.py test_atm.py test_boundaries.py -v
