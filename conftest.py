@@ -6,12 +6,12 @@ tiny relative tolerance -- the standalone baselines are pinned on
 macOS/arm64, and x86_64 gfortran rounds the last printed digit
 differently in a handful of values (FMA/codegen ULP differences, seen
 on the first CI run). Everything non-numeric, and the line structure,
-must still match exactly; the tolerance is far below anything a real
+must still match exactly; the tolerance (5e-12, sized by the worst observed CI difference, a cancellation-amplified 6e-13) is far below anything a real
 physics or refactor bug would produce.
 """
 import os
 
-REL_TOL = 5.0e-13
+REL_TOL = 5.0e-12
 
 
 def _to_float(tok):
