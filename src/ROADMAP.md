@@ -533,3 +533,38 @@ STATUS (2026-08-21): **steps 1-4 COMPLETE, step 5 partial.**
   running in print mode -- io orchestrates, atm computes-and-prints;
   arguably correct as is. Neither was attempted mechanically after
   the step-3 lesson; both are bounded, described here, and next.
+
+
+FOLLOW-ONS COMPLETED SAME DAY (2026-08-21/22):
+
+- **Model scalars absorbed into star_info** (the deferral in
+  star_info_lib's original header, resolved by the per-call-site
+  audit it called for): num_zones, model_number, core_cz_top_index,
+  envelope_cz_bottom_index, log_total_mass, total_mass_msun,
+  log_teff, log10_luminosity. Kept as arguments (separate storage at
+  some call site): mix's core_cz_edge/envelope_cz_edge (crrect
+  passes its own locals, mix writes them) and
+  mixed_zone_bounds_no_overshoot. Signatures now: starin 15, crrect
+  17, wrtout 10, mix 7, hpoint 6, getw 5 (from 50-60 at phase-four
+  start); update_output_diagnostics takes no arguments. Call-site
+  slimming is now positional with per-site argument-count
+  assertions (the step-3 lesson, made structural).
+- **CI** (.github/workflows/ci.yml): build + the three standalone
+  table tests + boundary checker on every push/PR; sparse blob-less
+  checkout pulls only src/ + ~17 MB of tables. First runs surfaced
+  and fixed two real portability gaps: gfortran 13 hard-errors on
+  >132-column free-form lines (now -ffree-line-length-none), and
+  the macOS/arm64-pinned baselines differ from x86_64 in the last
+  printed digit -- amplified to ~1e-11 relative by the eos grid's
+  differenced second derivatives -- handled by a CI-only 1e-9
+  relative tolerance (conftest.compare_output; local runs remain
+  byte-exact, structure and non-numeric tokens exact everywhere).
+  The Stage-0 byte regression remains a local/manual gate (its
+  standards are largely untracked).
+
+Next milestone (per the phase-four discussion): the embeddable
+evolve-one-star entry -- run_star(controls, star, ierr) -- built on
+stage 3's ierr plumbing and this phase's star_info; the driver-side
+`if (jerr /= 0) stop` sites are the seams. Folds in the
+library-based yrec link and the SAVE cleanup (module state must be
+resettable for re-entrancy).
