@@ -1092,6 +1092,12 @@ program main
           delta_time_saved = delta_time
        endif
        if (rescale_kind(nk).ne.2) model_number = model_number+1
+! 2026 (phase four, step 5): compute the output diagnostics in the
+! star layer (fills star%run%*, star%luminosity_breakdown
+! renormalization, turnover% via gettau); wrtout below only reads.
+       call update_output_diagnostics(num_zones, core_cz_top_index, &
+            envelope_cz_bottom_index, log_total_mass, total_mass_msun, &
+            log_teff, log10_luminosity)
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
        call wrtout(num_zones, model_number, star%run%dage, timestep_yr, &
             total_mass_msun, log_teff, log10_luminosity, log_gravity, &

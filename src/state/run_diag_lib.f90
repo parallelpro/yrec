@@ -46,6 +46,13 @@ module run_diag_lib
 ! former common/cent/
            double precision :: central_log10_temperature, central_log10_pressure, &
                 central_log10_density, envelope_mass, envelope_radius
+! 2026 (phase four, step 5): output diagnostics formerly computed as
+! locals inside io/wrtout.f90, now filled by the star layer
+! (core/update_output_diagnostics.f90) and only READ by the writers.
+           double precision :: central_beta, central_degeneracy_eta
+           double precision :: core_cz_mass
+           double precision :: envelope_cz_temperature, envelope_cz_density, &
+                envelope_cz_pressure, envelope_cz_o16, envelope_cz_log_radius
 ! former common/origstart/
            double precision :: orig_specific_angular_momentum(run_diag_json), &
                 orig_composition(15,run_diag_json)

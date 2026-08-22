@@ -499,9 +499,28 @@ STATUS (2026-08-21): **steps 1-4 COMPLETE, step 5 partial.**
   internals (atm, nuclear, wind) that read these former COMMONs now
   reference star% visibly -- the remaining physics-domain
   star-coupling is grep-able, deliberately.
-- Step 5 PARTIAL: getnewenv (model construction -- moves the outer
+- Step 5 SUBSTANTIALLY COMPLETE (2026-08-21, second pass): the
+  state-computing blocks moved out of wrtout into
+  core/update_output_diagnostics.f90, called by main immediately
+  before wrtout: the luminosity-breakdown renormalization (which
+  MUTATES the model), the core-CZ mass (with the preserved FX/FX2
+  stale-SAVE bug carried along intact), the central-conditions
+  eos_get evaluation, and the surface-CZ base interpolation -- all
+  results now stored in star%run% (8 new fields) and only READ by
+  the writers. Three documented residuals remain in io: (1) gettau
+  stays at its original wrtout position because its atm-side
+  integration prints progress lines into the .short stream --
+  hoisting it reorders the stream (values identical, layout not), a
+  fact discovered by the byte-diff, so it is blocked by print
+  interleaving, not data flow; (2) wrtmod/putstore's print-mode
+  envelope integration (the atm profile printer -- io orchestrates,
+  atm computes-and-prints); (3) wrtout's own display-only
+  derivations (SNU sums, H-shell locations, moments of inertia,
+  rotation period), which are history-column evaluations in the
+  MESA sense and legitimately live with the writer. Also from the
+  first pass: getnewenv (model construction -- moves the outer
   fitting point under mass loss -- misfiled in io/) relocated to
-  core/. The rest is measured and deferred: wrtout is not a
+  core/. Original deferral analysis, kept for the record: wrtout is not a
   formatter with two stray calls -- it has a compute PROLOGUE (a
   central-point eos_get evaluation plus the CZ-base interpolation
   that fills star%run%envelope_mass/envelope_radius/central_* and
