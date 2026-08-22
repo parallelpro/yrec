@@ -473,3 +473,44 @@ Verification discipline unchanged: full clean build + Stage-0
 byte-identical diff per commit, standalone tests, boundary checker;
 re-verify this section's inventory against the then-current source
 before each step's first commit.
+
+STATUS (2026-08-21): **steps 1-4 COMPLETE, step 5 partial.**
+
+- Step 1 done: misc/ dissolved (17 relocations incl. spline/splinnr,
+  dead but kept per the standing decision), kemcom -> mixing,
+  rtab/rabu -> eos/mhd; tpgrad and solid added to the boundary
+  checker's mixing/rotation allowlists as deliberate public entries.
+- Step 2 done: qgauss takes its integrand as a procedure dummy
+  (fpft passes func); numerics' matrix row now has zero outgoing
+  edges.
+- Step 3 done: star_info introduced; main owns no model arrays;
+  crrect 60->21 args, starin 50->23, midmod 43->31, wrtout 43->19,
+  hpoint 35->12, getw 29->10, mix 21->10. Two separate-storage traps
+  found and preserved as arguments: mix's
+  mixed_zone_bounds_no_overshoot (crrect passes its own local) and
+  getw's local radiative_zone_bounds at the midmod call. The first
+  of these was initially missed and caught ONLY by the Stage-0
+  byte-diff (a 1e-9 drift in the solar cases; the short m0030 run
+  stayed identical) -- the standing lesson: argument-count audits at
+  every call site are necessary, and the byte-diff is the last line
+  of defense that actually caught it.
+- Step 4 done: prev_model -> star%prev, shell_diag -> star%diag,
+  run_diag -> star%run, rot_diff -> star%rot (61 files). Physics
+  internals (atm, nuclear, wind) that read these former COMMONs now
+  reference star% visibly -- the remaining physics-domain
+  star-coupling is grep-able, deliberately.
+- Step 5 PARTIAL: getnewenv (model construction -- moves the outer
+  fitting point under mass loss -- misfiled in io/) relocated to
+  core/. The rest is measured and deferred: wrtout is not a
+  formatter with two stray calls -- it has a compute PROLOGUE (a
+  central-point eos_get evaluation plus the CZ-base interpolation
+  that fills star%run%envelope_mass/envelope_radius/central_* and
+  the envelope_cz_* track columns) whose values feed gettau and
+  calcad mid-routine, so the pure-reader refactor means extracting
+  that prologue into a star-layer update_output_diagnostics that
+  stores its results in star (star%run has most fields; the
+  envelope_cz_* column values need new ones) with wrtout reading
+  only. wrtmod/putstore's atm_get calls are the atm profile printer
+  running in print mode -- io orchestrates, atm computes-and-prints;
+  arguably correct as is. Neither was attempted mechanically after
+  the step-3 lesson; both are bounded, described here, and next.
