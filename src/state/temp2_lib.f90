@@ -5,7 +5,7 @@
 ! GUIDELINES.md). Replaces common/temp2/: per-shell rotational
 ! circulation/shear velocities (Eddington-Sweet, GSF-instability,
 ! secular-shear, mu-gradient) and their previous-iteration
-! counterparts, computed by rotation/vcirc.f90 (see that file's own
+! counterparts, computed by rotation/seculr/vcirc.f90 (see that file's own
 ! header for the physics) and read broadly across rotation/ and the
 ! output writers.
 !

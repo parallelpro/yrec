@@ -506,7 +506,7 @@ fixes) + Stage-0 byte-identical regression.
 found no `eos`-style duplicated dispatch -- `mwind.f90` and
 `mcowind.f90` each already internally dispatch Kawaler-type
 (`wind.f90`/`cowind.f90`) vs. Matt-type angular-momentum-loss physics,
-and where `rotation/seculr.f90` calls both `mwind` and `mcowind`, it's
+and where `rotation/seculr/seculr.f90` calls both `mwind` and `mcowind`, it's
 for genuinely different rotation-model branches (differential vs.
 solid-body, different `fix_omega_at_surface` cases), not repeated
 duplication of the same choice. `amcalc.f90`, `cowind.f90`/
@@ -549,7 +549,7 @@ is already the clean top-level orchestrator (its own header literally
 outlines the 6-step call sequence: `convec` -> rate calc -> `kemcom`
 -> burning -> `sconvec` -> diffusion), and `convec`/`mixcz`'s several
 external callers (`core/main.f90`, `rotation/ovrot.f90`,
-`rotation/getw.f90`, `rotation/seculr.f90`) all do plain, uniform
+`rotation/getw.f90`, `rotation/seculr/seculr.f90`) all do plain, uniform
 calls -- no `eos`-style duplicated dispatch anywhere. `bursmix.f90`,
 `hsubp.f90`, `oversh.f90`, `sconvec.f90` are all genuine
 mixing-domain content (convective-zone boundaries, composition
@@ -560,7 +560,7 @@ burn-mix coupling), correctly filed even where callers span
 
 Found and relocated `mixcom.f90`/`mixgrid.f90` -> `rotation/` by the
 same test as `wczimp.f90`/`viscos.f90`: both called only from
-`rotation/ndifcom.f90`, zero callers within `mixing/` itself, and
+`rotation/seculr/ndifcom.f90`, zero callers within `mixing/` itself, and
 `mixcom`'s own header states its actual job is "diffusion of
 composition due to **angular momentum transport**" (its original name
 was `DIFCOM`) -- rotation-transport physics using composition-diffusion
@@ -570,6 +570,69 @@ alongside it.
 
 Verification: full clean build + Stage-0 byte-identical regression
 after the relocations.
+
+**`rotation`, the last phase-two domain (2026-08-21)**: unlike
+`eos`/`kap`/`atm`'s single-primitive shape, `rotation/` has *several*
+genuine external entry points -- `getw.f90` (the top-level
+"evolve angular momentum over a timestep" driver, sole caller
+`core/main.f90`), plus `fpft.f90` (rotational distortion factors),
+`getrot.f90` (angular momentum -> rotation curve), `momi.f90`
+(moments of inertia), and `ovrot.f90` (overshoot-extended convective
+flags), each independently consumed from `core/`/`setup/`/`io/`/
+`misc/`. Per explicit user choice, **no facade rename was done**:
+singling out `getw` as "the" facade would misrepresent the domain's
+real multi-primitive surface (the same reasoning that left
+`surfbc.f90` unrenamed in `atm/`, extended to a domain where there are
+five such peers). No `eos`-style duplicated dispatch exists anywhere
+in the domain.
+
+Three files were relocated *out* by the usual test:
+- `tpgrad.f90` -> `misc/`. The radiative/convective temperature-
+  gradient (mixing-length) primitive -- a core structure-equation
+  quantity called from 5 files across `misc`/`core`/`mixing`/`atm`,
+  zero `rotation/`-internal callers. Borderline case: rotation
+  genuinely enters its formula (the FP/FT distortion factors), but
+  its purpose is structure, not rotation evolution -- user ruled
+  `misc/`, alongside its most central caller `coefft.f90`.
+- `rotmix.f90` -> `mixing/`. Its job (implicit abundance solve, CZ
+  burning, composition renormalization) matches `mixing/mix.f90`'s
+  almost verbatim -- the rotating-model counterpart of `mix`, called
+  only from `mixing/bursmix.f90` and `setup/midmod.f90`.
+- `bsrotmix.f90` -> `mixing/`. Burn+mix Richardson/Bulirsch-Stoer
+  substep extrapolation, zero rotation-specific content, sole caller
+  `mixing/bursmix.f90`.
+
+The remaining 36 files split into 3 pipeline subfolders plus root:
+- `rotation/seculr/` (16 files): the instability-transport diffusion
+  solver family -- `seculr` (dispatcher), `checkc`/`checkj`
+  (convergence/timestep control), `codiff` (diffusion coefficients),
+  `vcirc` (circulation velocities), `getfc`/`getqua` (Zahn FC /
+  quadrupole moment), `dcoeft`/`dadcoeft`/`bandw`/`ccoeft`
+  (tridiagonal/4-band matrix setup+solve), `eq2mod` (grid-to-model
+  back-transform), `rotgrid`/`mixgrid` (equal-grid builders), and
+  `ndifcom`/`mixcom` (the composition-transport wrappers relocated
+  here from `mixing/` earlier the same day). `getgrid` deliberately
+  stayed at `rotation/` root since both `mixgrid` and `rotgrid` call
+  it.
+- `rotation/microdiff/` (10 files): the element-settling pipeline --
+  `microdiff` (dispatcher) + its 5 pipeline stages (`_setup`, `_mte`,
+  `_cod`, `_run`, `_etm`), `lax_wendrof1`/`2`, `get_imp_diffco`,
+  `thdiff` (the Thoul et al. 1994 Burgers-equation solver). Note
+  `lax_wendrof*`/`get_imp_diffco`/`thdiff` are also called from
+  `setup/grsett.f90`/`setup_grsett.f90` (the legacy diffusion path
+  retained for backwards compatibility) -- multi-consumer, not
+  misplaced.
+- `rotation/shape/` (4 files): the rotational-distortion group --
+  `fpft`, `func`, `momi`, `intmom` (Kippenhahn-Thomas/Endal-Sofia
+  shape formalism and Law-thesis moment-of-inertia expansion).
+- `rotation/` root (6 files): `getw`, `getrot`, `ovrot`, `wczimp`,
+  `viscos` (the externally-consumed state/profile routines) and
+  `getgrid` (the equal-spacing grid primitive shared by both
+  `seculr/mixgrid` and `seculr/rotgrid`).
+
+Verification: full clean build + Stage-0 byte-identical regression,
+checked after the tpgrad/rotmix moves, after the bsrotmix move, and
+after the subfolder split.
 
 ## Build mechanics
 
@@ -670,7 +733,7 @@ saves re-deriving the fix from scratch:
   `polint`'s dummy is `xa(20)`/`ya(20)`). Tell: "Actual argument
   contains too few elements." Fix: widen the caller's declared array
   size to match the callee's real contract (check other correct
-  callers, e.g. `rotation/fpft.f90`, to confirm the right size) --
+  callers, e.g. `rotation/shape/fpft.f90`, to confirm the right size) --
   never shrink the callee's dummy to match the caller.
 - **Scalar vs. length-1 array.** Caller passes a `(1)`-dimensioned
   array where the callee's dummy is a plain scalar, or vice versa
