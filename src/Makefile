@@ -147,6 +147,25 @@ endif
 %.o: %.f90
 	$(FC) $(FFLAGS) -c $< -o $@
 
+# Per-domain static libraries (phase three, ROADMAP.md stage 2),
+# following MESA's one-library-per-module convention. `make libs`
+# builds all of them; the yrec executable itself still links the flat
+# object list (the transition to library-based linking can go domain
+# by domain). Standalone per-domain test programs link against these.
+DOMAIN_DIRS := eos kap atm nuclear wind mixing rotation numerics \
+	const state misc setup io core util
+
+define LIB_template
+lib$(1).a: $$(filter $(1)/%,$$(OBJS))
+	ar rcs $$@ $$^
+endef
+$(foreach d,$(DOMAIN_DIRS),$(eval $(call LIB_template,$(d))))
+
+LIBS := $(foreach d,$(DOMAIN_DIRS),lib$(d).a)
+
+.PHONY: libs
+libs: $(LIBS)
+
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
 default: $(NAME)
@@ -168,10 +187,11 @@ prof: $(NAME)
 $(NAME): $(OBJS)
 	$(FC) $(LDFLAGS) -o $(NAME) $(OBJS)
 
-# Remove all object files and executable
+# Remove all object files, libraries, and executable
 clean:
 	@rm -f $(NAME)
 	@rm -f $(OBJS)
+	@rm -f $(LIBS)
 
 install:
 	install -d $(PREFIX)
