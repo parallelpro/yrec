@@ -49,6 +49,23 @@ module opal_eos_lib
 ! former common/lreadco/: shared by COMMON block name across all three
 ! years' readers/interpolators in the original.
            integer :: table_loaded_flag
+! save-migration campaign (2026): lazy-load guards and first-load
+! table-Z memory, promoted from SAVEd locals
+            integer :: readco_init_flag = 0
+            integer :: readcoeos01_init_flag = 0
+            integer :: readcoeos06_init_flag = 0
+            double precision :: table_metal_fraction = 0.0d0
+            double precision :: table_metal_fraction_01 = 0.0d0
+            double precision :: table_metal_fraction_06 = 0.0d0
+! quad/quadeos01/quadeos06's per-slot Lagrange-coefficient caches
+! (recomputed when recompute_flag==0, read on every other call) --
+! promoted from SAVEd function locals in the save-migration campaign
+            double precision :: quad_x12_inv(30), quad_x13_inv(30), &
+                 quad_x23_inv(30), quad_x1_squared(30), quad_x1_plus_x2(30)
+            double precision :: quad01_x12_inv(30), quad01_x13_inv(30), &
+                 quad01_x23_inv(30), quad01_x1_squared(30), quad01_x1_plus_x2(30)
+            double precision :: quad06_x12_inv(30), quad06_x13_inv(30), &
+                 quad06_x23_inv(30), quad06_x1_squared(30), quad06_x1_plus_x2(30)
 
 ! ==================== 1995 (unsuffixed) ====================
 ! former common/a/

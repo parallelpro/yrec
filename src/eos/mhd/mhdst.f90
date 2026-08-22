@@ -52,7 +52,6 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
            mass_fraction_down(nchem0)
       double precision :: atomic_weight_up(nchem0), number_abundance_up(nchem0), &
            mass_fraction_up(nchem0)
-      save
 !
 !     DEFINE, WITH UNUSED STATEMENTS, STORAGE FOR VARIABLES
 !     THAT WOULD OTHERWISE ONLY APPEAR AS FORMAL PARAMETERS

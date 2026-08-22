@@ -51,8 +51,6 @@ subroutine alxtbl(alex95_table_paths, ierr)
 ! alex95_cached_x/alex95_cached_z/alex95_index_x/alex95_index_t/
 ! alex95_index_r defaults moved to opacity_table_lib.f90: DATA can no
 ! longer target them here now that they're use-associated.
-      save
-
       integer :: table_index, i, ii, j, k, row_density_count
       double precision :: header_x, header_z, row_temp, row_logr0
       double precision :: target_z

@@ -62,14 +62,10 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
 ! x_grid_06/eos_var_order_06/t6_index_lo_06/density_index_edge_06
 ! defaults moved to opal_eos_lib.f90: DATA can no longer target them
 ! here now that they're use-associated.
-
-      save
-
 ! --- locals ---
       integer :: x_loop_index_06
       double precision :: hydrogen_fraction_copy, density_copy   ! xxi/ri: assigned but not used further
       double precision :: t6_value, density_value   ! working copies (slt/slr)
-      double precision :: table_metal_fraction   ! z: set once, save'd across calls
       integer :: species_idx, index_idx
       integer :: lo_idx, hi_idx, mid_idx, result_idx
       integer :: x_index_2, x_index_3, x_index_4, x_index_hi
@@ -121,9 +117,9 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
 ! ..... read the data files
          call readcoeos06(ierr)
          if (ierr /= 0) return
-         table_metal_fraction = opal_eos%z_table_06(1)
+         opal_eos%table_metal_fraction_06 = opal_eos%z_table_06(1)
 
-         if (table_metal_fraction+hydrogen_fraction-1.0d-6.gt.1) go to 61
+         if (opal_eos%table_metal_fraction_06+hydrogen_fraction-1.0d-6.gt.1) go to 61
       end if
 !
 !
@@ -303,7 +299,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
          ierr = 1
          return
       end if
-      if (table_metal_fraction.ne.opal_eos%z_table_06(opal_eos%x_index_lo_06)) go to 66
+      if (opal_eos%table_metal_fraction_06.ne.opal_eos%z_table_06(opal_eos%x_index_lo_06)) go to 66
       recompute_flag = 0
       cache_slot = 1
       do density_scan_idx = opal_eos%density_index_1_06, opal_eos%density_index_1_06+opal_eos%density_interp_order_06
@@ -385,7 +381,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
            pressure_scale   ! interpolated in p/po
       opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2))* &
            t6_temperature   ! interpolated in E/T6
-      mean_molecular_weight = gmass06(hydrogen_fraction, table_metal_fraction, &
+      mean_molecular_weight = gmass06(hydrogen_fraction, opal_eos%table_metal_fraction_06, &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_mass_fraction)
       if (rad_flag.eq.1) then
@@ -398,7 +394,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       return
 
    61 write(short_file_unit,*) routine_id, "Mass fractions exceed unity (61)"
-      write(short_file_unit,*) 'Z, XH', table_metal_fraction, hydrogen_fraction
+      write(short_file_unit,*) 'Z, XH', opal_eos%table_metal_fraction_06, hydrogen_fraction
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
@@ -419,7 +415,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
            opal_eos%z_table_06(opal_eos%x_index_lo_06)
       write(short_file_unit,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') &
            opal_eos%t6_interp_order_06, opal_eos%density_interp_order_06, opal_eos%t6_index_3_06, opal_eos%density_index_3_06, &
-           hydrogen_fraction, t6_temperature, density, table_metal_fraction
+           hydrogen_fraction, t6_temperature, density, opal_eos%table_metal_fraction_06
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1

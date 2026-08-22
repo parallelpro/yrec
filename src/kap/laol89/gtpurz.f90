@@ -27,14 +27,6 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
            row_d2opacity(104), dlnkap_dlnrho_by_t(52)
       double precision :: logt_interp_opacity(52), logt_values(52), &
            logt_d2opacity(52)
-
-
-
-
-
-
-      save
-
       double precision :: log_extrap_tolerance, local_logt, local_logrho
       integer :: t_locate_guess, t_index, t_range_lo, t_range_hi, &
            num_valid_t, num_valid_rho, rho_loop_index, spline_index_lo, &

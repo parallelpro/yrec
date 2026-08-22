@@ -38,8 +38,6 @@ subroutine yllo2d2(temperature, density, abund_index, temp_index, &
       double precision :: aqod(num_t)
       integer :: jt, it, its, itf
       logical :: lmore
-      save
-
       integer :: mm1, index1, ndss, ndf, knot, index2
       double precision :: dx, c1, c2, c3, c4, ol0, qodi
       double precision :: ol00, unused_ddensity_dtemp

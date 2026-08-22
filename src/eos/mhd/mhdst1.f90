@@ -43,8 +43,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
            mass_fraction_down(nchem0)
       double precision :: atomic_weight_up(nchem0), number_abundance_up(nchem0), &
            mass_fraction_up(nchem0)
-      save
-
       integer :: num_composition_reads, composition_pass, num_vars_read, &
            table_kind_read, composition_flag_read, composition_flag_expected
       double precision :: delta_x, composition_tolerance

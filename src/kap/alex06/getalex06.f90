@@ -34,8 +34,6 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
 
       double precision :: interp_nodes(4), weight_t(4), dweight_t(4), &
            weight_r(4), dweight_r(4), opacity_row(4), dlnkap_dlnr_row(4)
-      save
-
       double precision :: delta_z, delta_x, logr, saved_r
       logical :: extrapolate_linear
       integer :: i, ii

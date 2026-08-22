@@ -25,8 +25,6 @@ subroutine op95ztab(metal_fraction, ierr)
       double precision, intent(in) :: metal_fraction
 
       double precision :: table_z_nodes(4), z_weight(4), z_weight_hix(4)
-      save
-
       integer :: i, j, k, z_table_index, z_table_index2
       integer :: table1_index, table2_index, table3_index, table4_index
 

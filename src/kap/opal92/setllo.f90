@@ -27,14 +27,6 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
 
 ! MHP 8/25 removed variables not used in subroutine
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
-
-
-
-
-
-
-      save
-
       double precision :: local_grid_y(num_x), local_grid_z(num_x)
       integer :: i, k, density_index, num_temps_read
       double precision :: grid_temp_k

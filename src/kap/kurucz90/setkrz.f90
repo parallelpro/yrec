@@ -21,14 +21,6 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 
 ! MHP 8/25 Remove unused variables
       character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
-
-
-
-
-
-
-      save
-
       integer :: x_table_count, num_read, density_index
       double precision :: prev_grid_temp, grid_temp, pressure, &
            log10_opacity0, log10_opacity1, log10_opacity2, &

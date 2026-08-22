@@ -18,13 +18,6 @@ subroutine rdzlaol(pure_z_table_path, ierr)
       implicit none
       integer, intent(out) :: ierr
       character(len=256), intent(in) :: pure_z_table_path
-
-
-
-
-
-      save
-
       integer :: n, i, ii, ir, it
       double precision :: dummy(104)
 

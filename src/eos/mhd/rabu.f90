@@ -20,10 +20,6 @@ subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
       double precision, intent(out) :: atomic_weight(nchem0), &
            number_abundance(nchem0), mass_fraction(nchem0)
       double precision, intent(out) :: mean_molecular_weight
-
-
-      save
-
       integer, intent(out) :: ierr
 
       integer :: ic

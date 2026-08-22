@@ -26,8 +26,6 @@ subroutine ll4th(hydrogen_fraction)
       double precision, intent(in) :: hydrogen_fraction
 
       double precision :: coeff(4,np)
-      save
-
       integer :: x_index, temp_index, rho_search_index, im2, im3, &
            row_index, coeff_base_index, density_start, density_end, j, i
       double precision :: temp6, density_rhot3, opacity0, log10_opacity0, &

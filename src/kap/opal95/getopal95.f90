@@ -44,8 +44,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 
 ! END JVS
       double precision :: interp_nodes(4), weight(4), dweight(4)
-      save
-
       integer :: i, k, j
       logical :: low_regime_flag, density_shifted
       integer :: x_table_index, density_base_index, temp_row_index, x_shift_base

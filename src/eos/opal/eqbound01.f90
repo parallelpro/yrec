@@ -22,11 +22,6 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
       double precision, intent(in) :: temperature, log10_density
       double precision, intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
-
-
-
-      save
-
 ! --- locals ---
       double precision :: t6, table_edge_density, ramp_start_density
       double precision :: t6_top_of_table, t_fraction

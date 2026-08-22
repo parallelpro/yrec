@@ -26,8 +26,6 @@ subroutine op953d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       double precision :: logcappa_at_t(4), dlogcappa_dlogr_at_t(4)
       double precision :: logcappa_at_x(4), dlogcappa_dlogt_at_x(4), &
            dlogcappa_dlogr_at_x(4)
-      save
-
       integer :: i, j, x_table_index, temp_index, density_index
       double precision :: delta_logr
 

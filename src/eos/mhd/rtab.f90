@@ -26,9 +26,6 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
 !     NT IS INPUT; NR,TL,TDVAR ARE OUTPUT
       double precision, intent(out) :: log_t(max_t_points), &
            table_data(max_t_points,max_rho_points,num_vars)
-
-      save
-
 ! --- locals ---
       integer :: t_idx, rho_idx, var_idx, rho_count_read
 

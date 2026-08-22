@@ -59,8 +59,6 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
 ! kurucz_ix_x/kurucz_ix_t/kurucz_ix_rho defaults moved to
 ! opacity_table_lib.f90: DATA can no longer target them here now that
 ! they're use-associated.
-      save
-
 ! --- locals ---
       double precision :: local_logt, local_logrho
       integer :: t_row_index, row_density_start, row_density_end, &

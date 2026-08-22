@@ -56,15 +56,11 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
       double precision :: species_mass_fraction(7)
       double precision :: molar_gas_constant_mbcc
       data molar_gas_constant_mbcc/83.1446304d0/
-
-      save
-
 ! --- locals ---
       integer :: x_loop_index
       character(len=1) :: blank_line   ! assigned but never read again
       double precision :: t6_value, density_value   ! working copies (SLT/SLR)
       double precision :: hydrogen_fraction_copy, density_copy   ! XXI/RI: assigned but not used further
-      double precision :: table_metal_fraction   ! Z: set once, SAVE'd across calls
       integer :: species_idx, index_idx
       integer :: lo_idx, hi_idx, mid_idx, result_idx
       integer :: x_index_2, x_index_3, x_index_4, x_index_hi
@@ -116,9 +112,9 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
 ! ..... read the data files
          call readco(ierr)
          if (ierr /= 0) return
-         table_metal_fraction = opal_eos%z_table(1)
+         opal_eos%table_metal_fraction = opal_eos%z_table(1)
 
-         if (table_metal_fraction + hydrogen_fraction - 1.0d-6.gt.1.0d0) &
+         if (opal_eos%table_metal_fraction + hydrogen_fraction - 1.0d-6.gt.1.0d0) &
               go to 61
       end if
 !
@@ -283,7 +279,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
          ierr = 1
          return
       end if
-      if (table_metal_fraction.ne.opal_eos%z_table(opal_eos%x_index_lo)) go to 66
+      if (opal_eos%table_metal_fraction.ne.opal_eos%z_table(opal_eos%x_index_lo)) go to 66
       recompute_flag = 0
       cache_slot = 1
       do density_scan_idx = opal_eos%density_index_1, opal_eos%density_index_1+opal_eos%density_interp_order
@@ -367,7 +363,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
       opal_eos%eos_output(opal_eos%eos_index_inverse(2)) = opal_eos%eos_output(opal_eos%eos_index_inverse(2))* &
            t6_temperature   ! interpolated in E/T6
 ! YCK >    EOS(IRI(4))=EOS(IRI(4))/SQRT(R*T6) ! INTERP DE/DR/SQRT(R/T6)
-      mean_molecular_weight = gmass(hydrogen_fraction, table_metal_fraction, &
+      mean_molecular_weight = gmass(hydrogen_fraction, opal_eos%table_metal_fraction, &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_mass_fraction)
       if (rad_flag.eq.1) then
@@ -380,7 +376,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
       return
 
    61 write(short_file_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
-      write(short_file_unit,*) table_metal_fraction, hydrogen_fraction
+      write(short_file_unit,*) opal_eos%table_metal_fraction, hydrogen_fraction
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
@@ -401,7 +397,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
            opal_eos%z_table(opal_eos%x_index_lo)
       write(short_file_unit,'("  IQ,IP,K3,L3,XH,T6,R,Z= ",4I5,4E12.4)') &
            opal_eos%t6_interp_order, opal_eos%density_interp_order, opal_eos%t6_index_3, opal_eos%density_index_3, &
-           hydrogen_fraction, t6_temperature, density, table_metal_fraction
+           hydrogen_fraction, t6_temperature, density, opal_eos%table_metal_fraction
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1

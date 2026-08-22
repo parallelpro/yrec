@@ -40,7 +40,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 ! LIR's "type" flag; the file's own IMPLICIT LOGICAL*4(L) rule is
 ! overridden below by an explicit INTEGER*4 declaration for L.
       integer :: lir_type_flag
-      save
 !     READ FROM APPROPRIATE TABLES
 !     AND FILL ARRAYS VAROUT AND XC
 !     CAN WE DO IT?

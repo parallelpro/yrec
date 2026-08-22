@@ -29,8 +29,6 @@ subroutine yllo3d2(log10_density, log10_temperature, hydrogen_fraction, &
 ! former common/kipmll2/: abund_index/temp_index/dens_index now
 ! use-associated from opacity_table_lib as abund_index_z2/
 ! temp_index_z2/dens_index_z2.
-      save
-
       logical :: single_x_table
       double precision :: t6, rhot3
       integer :: im1

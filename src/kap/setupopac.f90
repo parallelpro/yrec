@@ -28,13 +28,6 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
            opal92_table2_path, pure_z_table_path
       character(len=256), intent(in) :: alex95_table_paths(7)
       integer, intent(out) :: ierr
-
-
-
-
-
-      save
-
 !     THIS SUBROUTINE READS IN SPECIFIED OPACITY TABLES AND
 !     SET UP SPLINES FOR THE TABLES.
 !     WHEN LZRAMP=T OR LDIFZ=T THEN READ IN SECOND SET OF

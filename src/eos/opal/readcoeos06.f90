@@ -45,21 +45,17 @@ subroutine readcoeos06(ierr)
 
 ! --- locals ---
       integer :: x_loop_index_06
-      integer :: table_init_flag
       integer :: x_idx, var_idx, t6_idx, r_idx, t6_scan_idx
       integer :: density_row, t6_row, record_number
       integer :: species_read_idx, table_var_idx
       double precision :: unused_field
-
-      save
-
       integer, intent(out) :: ierr
 
       ierr = 0
 
       blank_line = ' '
 
-      if (table_init_flag.ne.12345678) then
+      if (opal_eos%readcoeos06_init_flag.ne.12345678) then
          do x_idx = 1, mx
             do var_idx = 1, mv
                do t6_idx = 1, nt
@@ -72,7 +68,7 @@ subroutine readcoeos06(ierr)
          do var_idx = 1, mv
             opal_eos%eos_output_06(var_idx) = 1.0d0
          end do
-         table_init_flag = 12345678
+         opal_eos%readcoeos06_init_flag = 12345678
       end if
 
       close (2)

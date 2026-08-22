@@ -78,9 +78,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       logical :: temp_needs_smoothing, press_needs_smoothing
       integer :: temp_smooth_direction, press_smooth_direction
       integer :: i, ii, j, jj, jjj, k
-
-      save
-
       if (abs(hydrogen_fraction-eos_mix%envelope_hydrogen_fraction).gt.1.0d-5 &
            .or. abs(metal_fraction-eos_mix%envelope_metal_fraction).gt.1.0d-5) then
 !          CALL EQSCVG(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,

@@ -129,8 +129,6 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
       data mean_electrons_per_ion, helium_ion_fraction_1, &
            helium_ion_fraction_2/0.1D0,0.0D0,0.0D0/
       data saha_convergence_tol/1.0D-09/
-      save
-
 !  1    FXHE = FX(12)
       helium_mass_fraction = saha_mass_fractions(12)
       max_electrons_per_ion = 1.0d0 + helium_mass_fraction

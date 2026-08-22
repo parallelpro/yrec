@@ -25,8 +25,6 @@ subroutine op95xtab(hydrogen_fraction)
       double precision, intent(in) :: hydrogen_fraction
 
       double precision :: table_x_nodes(4), x_weight(4)
-      save
-
       integer :: i, j, k, x_table_index
       integer :: table1_index, table2_index, table3_index, table4_index
 

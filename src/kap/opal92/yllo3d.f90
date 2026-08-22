@@ -41,8 +41,6 @@ subroutine yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
 ! abund_index/temp_index/dens_index defaults moved to
 ! opacity_table_lib.f90: DATA can no longer target them here now that
 ! they're use-associated.
-      save
-
       logical :: single_x_table
       double precision :: t6, rhot3
       integer :: im1

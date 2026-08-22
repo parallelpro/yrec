@@ -40,9 +40,6 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
       double precision, intent(in) :: log10_pressure, log10_temperature, &
            hydrogen_fraction
       double precision, intent(out) :: log10_density
-
-      save
-
       integer, intent(out) :: ierr
 
       ierr = 0

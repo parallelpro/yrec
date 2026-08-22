@@ -29,8 +29,6 @@ subroutine alex06tab(ierr)
 
       double precision :: interp_nodes(4), weight_z(4)
       double precision :: opacity_by_x(4,num_t,num_d)
-      save
-
       double precision :: x_max, z_max, interp_target
       integer :: i, j, iz, k, kk, kk2, kk3, kk4
 

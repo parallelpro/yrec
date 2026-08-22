@@ -34,8 +34,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
       double precision, intent(in) :: log10_pressure, log10_temperature
       double precision, intent(inout) :: table_vars(ndimt,ivarx), &
            table_hfrac(ndimt)
-
-      save
 !     NOMENCLATURE FOR ACCESSING THE TABLES
 !     ZAMS TABLES
 !     ITBL = -1   : TDVR1A

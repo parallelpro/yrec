@@ -17,11 +17,6 @@ subroutine zsulaol
       implicit none
       double precision :: row_log10_opacity(104), row_log_rho(104), &
            row_d2opacity(104)
-
-
-
-      save
-
       integer :: it, ir, num_valid_rho
 
       do it=1, opacity_table%zlaol_num_t

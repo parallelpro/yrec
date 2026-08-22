@@ -26,8 +26,6 @@ subroutine ykoeff
       integer, parameter :: np = 100
 
       double precision :: spline_work(4,np), density_nodes(num_d)
-      save
-
       integer :: it, index1, jd, ids, idf, id, index2, j, i
       double precision :: chkd, chko
 

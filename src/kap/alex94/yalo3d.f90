@@ -35,8 +35,6 @@ subroutine yalo3d(log10_density, log10_temperature, hydrogen_fraction, &
            weight_r(4), dweight_r(4), weight_x(4), opacity_row(4), &
            dlnkap_dlnr_row(4), opacity_x(4), dlnkap_dlnt_x(4), &
            dlnkap_dlnr_x(4)
-      save
-
       double precision :: delta_z, logr, saved_r
       logical :: extrapolate_linear
       integer :: i, j, jj, ii

@@ -37,9 +37,6 @@ subroutine radsub01(t6_temperature, density, total_moles, &
 ! and then widened to double precision, which is NOT bit-identical to
 ! the correctly-rounded double values.
       data rad_const_over_c/1.8914785e-3/, molar_gas_constant_mbcc/83.14510/
-
-      save
-
 ! --- locals ---
       double precision :: rat
       double precision :: moles_per_ev, radiation_pressure, &

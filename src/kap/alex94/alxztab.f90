@@ -27,8 +27,6 @@ subroutine alxztab(metal_fraction)
 
 
       double precision :: interp_z(4), weight_z(4)
-      save
-
       integer :: i, jj, kk, idz, ii1, ii2, ii3, ii4
 
 !     LOCATE FOUR NEAREST TABLES IN Z

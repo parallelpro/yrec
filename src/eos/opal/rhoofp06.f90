@@ -39,9 +39,6 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
 ! rounded double value.
       data rad_const_over_c/1.8914785e-3/
 !--------------------------------------------------------------------
-
-      save
-
 ! --- locals ---
       double precision :: rat, radiation_pressure, pressure_no_rad
       double precision :: hydrogen_fraction_dbg, t6_dbg, density_dbg

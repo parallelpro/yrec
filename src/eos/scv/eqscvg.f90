@@ -64,9 +64,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
       double precision :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, &
            xtf_he_e, xtf_hepp, xhp, xhep, xhepp
       integer :: i, ii, j, jj, jjj, k
-
-      save
-
       beta_complement = 1.0d0 - beta
       log10_gas_pressure = dlog10(beta*pressure)
 ! check if the point is within the table

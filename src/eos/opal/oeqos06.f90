@@ -42,16 +42,6 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       integer, parameter :: ivarx = 25
       double precision, parameter :: cnvs = 0.434294481d0
       double precision, parameter :: zero = 0.0d0
-
-
-
-
-
-
-
-
-      save
-
       double precision :: t_million_k, p_e12
       double precision :: hydrogen_fraction_work, metal_fraction_table
       double precision :: density_cgs

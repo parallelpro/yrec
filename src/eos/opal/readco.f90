@@ -33,23 +33,19 @@ subroutine readco(ierr)
 
 ! --- locals ---
       integer :: x_loop_index
-      integer :: table_init_flag
       integer :: x_idx, var_idx, t6_idx, r_idx, t6_scan_idx
       integer :: density_row, t6_row, record_number, t6_count_used
       double precision :: unused_field
 
 ! density_index_edge_at_t's default moved to opal_eos_lib.f90: DATA can
 ! no longer target it here now that it's use-associated.
-
-      save
-
       integer, intent(out) :: ierr
 
       ierr = 0
 
       blank_line = ' '
 
-      if (table_init_flag.ne.12345678) then
+      if (opal_eos%readco_init_flag.ne.12345678) then
          do x_idx = 1, mx
             do var_idx = 1, mv
                do t6_idx = 1, nt
@@ -59,7 +55,7 @@ subroutine readco(ierr)
                end do
             end do
          end do
-         table_init_flag = 12345678
+         opal_eos%readco_init_flag = 12345678
       end if
 
 ! ..... read  tables

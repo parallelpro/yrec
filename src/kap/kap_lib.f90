@@ -49,15 +49,6 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
 ! message, then a stop -- now located in this facade rather than the
 ! leaf. Existing call sites need no change.
       integer, intent(out), optional :: ierr
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       logical :: got_atmosphere_opacity, got_conductive_opacity
       double precision :: atm_opacity, atm_log10_opacity, &

@@ -40,9 +40,6 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
 
       double precision :: rad_const_over_c, molar_gas_constant_mbcc
       data rad_const_over_c/1.8914785d-3/, molar_gas_constant_mbcc/83.14510d0/
-
-      save
-
 ! --- locals ---
       double precision :: rat, moles_per_ev
       double precision :: radiation_pressure, radiation_energy, radiation_entropy

@@ -55,9 +55,6 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
            /7*77, 2*76, 2*74, 2*72, 2*70, 68, 67, 66, 65, 64, 63, 61, &
            60, 59, 58, 57, 55, 54, 53, 52, 51, 2*49, 48, 2*47, 46, &
            2*45, 15*44, 2*37/
-
-      save
-
       integer, intent(out) :: ierr
 
       ierr = 0

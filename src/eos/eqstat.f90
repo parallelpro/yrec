@@ -65,12 +65,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       integer, intent(inout) :: saha_state
 
       integer, parameter :: nts = 63, nps = 76
-
-
-
-
-      save
-
 !  want_derivatives: if true, provide derivatives needed for
 !  relaxation, else don't
 !
@@ -336,12 +330,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            specific_heat_cp_dt, specific_heat_cp_dp
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
-
-
-
-
-      save
-
 ! --- locals ---
       integer :: num_species, species_idx
       double precision :: atomic_weights(4), atomic_weights_full(12)

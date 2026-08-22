@@ -48,14 +48,6 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
            dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, &
            dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
            adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp
-
-
-
-
-
-
-      save
-
 ! --- locals ---
 ! Scratch algebra kept close to the original short names (rather than
 ! invented descriptive names) given the density of unlabeled physics
