@@ -30,12 +30,6 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
       double precision, intent(inout) :: omega(json), qiw(json), &
            mean_radius(json)
       integer, intent(in) :: num_zones
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: cz_total_am, cz_total_mass, power_law_norm
       integer :: zone_idx, zone_start, zone_end

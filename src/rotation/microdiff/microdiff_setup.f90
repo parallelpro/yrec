@@ -61,20 +61,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       logical, intent(out) :: fully_convective_flag
       double precision, intent(out) :: density_orig(json), &
            temperature_orig(json)
-
-
-
-
-
-
-
-
-
-
-
-
-      save
-
       integer :: i
       double precision :: crsun_bah, csecyr_bah
 

@@ -101,27 +101,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       double precision, intent(inout) :: mixing_diffusion_coeff(json)
       double precision, intent(inout) :: diffusion_velocity(json)
       logical, intent(inout) :: diffusion_solve_ok
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      save
 ! MHP 6/00 added MRZONE,MXZONE for BS mixing plus burning (no longer
 ! part of the active call list).
 

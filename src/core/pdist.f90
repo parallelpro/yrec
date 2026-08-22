@@ -32,8 +32,6 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
            pulse_mod_path
 
       character(len=256) :: output_path, temp_string
-      save
-
       double precision :: delta_log_l, delta_log_teff, delta_age
       double precision :: weighted_l_sq, weighted_teff_sq, weighted_age_sq
       integer :: trim_col

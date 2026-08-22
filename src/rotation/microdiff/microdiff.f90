@@ -104,8 +104,6 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       data light_element_id/13,14,15/
       data light_element_weight/6.015d0,7.016d0,9.012d0/
       data light_element_charge/3.0d0,3.0d0,4.0d0/
-      save
-
       integer :: i, ii, zone_begin, zone_end, num_eq_points, species_col
       logical :: fully_convective_flag
       double precision :: grid_spacing, atomic_weight_diffused, &

@@ -25,8 +25,6 @@ subroutine get_imp_diffco(alpha, diffusion_coeff_mid, delta_abundance_mid, &
       double precision, intent(out) :: sub_diag(json), diag(json), &
            super_diag(json)
       integer, intent(in) :: npt
-      save
-
       integer :: i
 
 ! CORRECT DIFFUSION COEFFICEINTS FOR CHANGE IN X IN THE PREVIOUS ITERATION.

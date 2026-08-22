@@ -32,9 +32,6 @@ subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
       double precision, intent(in) :: total_mass
       double precision, intent(out) :: diffused_abundance_mid(json)
       logical, intent(in) :: use_generic_diffusion_vectors
-
-      save
-
       double precision :: dt_half, zone_mass, delta_abundance_mid, &
            delta_metal_abundance_mid
       integer :: i

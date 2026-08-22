@@ -54,7 +54,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       data nao/1/
 ! load-bearing: see header
       save
-
+   ! INTENTIONAL: cross-step driver state; reset via evolve_step_reset_pending
       step_status = 0
       ierr = 0
 

@@ -31,8 +31,6 @@ subroutine intmom(rotation_param, eta_squared, dlnr0_dlnr, r0_geom_factor, &
       double precision :: series_coeff(5)
       data series_coeff/0.6D0,0.72857142857143D0,0.50884115884115D0, &
            0.49728653699242D0,0.42852079651326D0/
-      save
-
       integer :: term_idx
       double precision :: leading_factor, series_sum, series_sum_domega
 

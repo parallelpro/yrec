@@ -128,7 +128,6 @@ subroutine cspline(x, y, n, yp1, ypn, y2)
       double precision :: u(json)
       integer :: i, k
       double precision :: sig, p, qn, un
-      save
 
       if (yp1 .gt. 0.99d30) then
          y2(1) = 0.0d0
@@ -183,7 +182,6 @@ subroutine findex(grid_x, n_grid, x_eval, index)
       integer, intent(inout) :: index
 
       integer :: found_index, j
-      save
 
 ! find the 'index'
       if(index.lt.1.or.index.gt.n_grid)index=1
@@ -238,7 +236,6 @@ subroutine inter3(x_nodes, weight, dweight, x_eval)
       double precision :: diff32, diff31, diff21
       double precision :: denom1, denom2, denom3
       double precision :: dx1, dx2, dx3
-      save
 
 ! inter3 is the interpolation routine for density in the livermore
 ! opacity tables, and it uses a 3-point lagrangian interpolation scheme.
@@ -287,7 +284,6 @@ subroutine interp(x_nodes, weight, dweight, x_eval)
       double precision :: diff43, diff42, diff41, diff32, diff31, diff21
       double precision :: denom1, denom2, denom3, denom4
       double precision :: dx1, dx2, dx3, dx4
-      save
 
       diff43 = x_nodes(4) - x_nodes(3)
       diff42 = x_nodes(4) - x_nodes(2)
@@ -340,7 +336,6 @@ subroutine intrp2(x_nodes, weight, x_eval)
       double precision :: diff43, diff42, diff41, diff32, diff31, diff21
       double precision :: denom1, denom2, denom3, denom4
       double precision :: dx1, dx2, dx3, dx4
-      save
 
 ! interp is the interpolation routine for the VandenBerg
 ! opacity tables(CAPPA), and it uses a 4-point Lagrangian
@@ -387,7 +382,6 @@ subroutine kspline(x, y, y2)
 
       double precision :: u(nm), sig, qn, un, p
       integer :: n, i, k
-      save
 
       n = nm
 ! natural spline
@@ -430,7 +424,6 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
 
       double precision :: h, a, b
       integer :: klo, khi, k
-      save
 
       integer, intent(out), optional :: ierr
 
@@ -489,7 +482,6 @@ subroutine locate(xx, n, x, j)
       integer, intent(out) :: j
 
       integer :: jl, ju, jm
-      save
 
       jl = 0
       ju = n+1
@@ -534,7 +526,6 @@ subroutine lubksb(a, n, np, indx, b)
 
       integer :: i, ii, j, ll
       double precision :: sum
-      save
 
       ii = 0
       do i = 1, n
@@ -593,7 +584,6 @@ subroutine ludcmp(a, n, np, indx, d)
       integer :: i, imax, j, k
       double precision :: vv(nmax)
       double precision :: aamax, dum, sum
-      save
 
       d = 1.d0
       do i = 1, n
@@ -704,7 +694,6 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
       double precision :: y_mid(3), y_new(3)
       double precision :: h_sub, h_sub2, x_current, y_swap
       integer :: i, step_index
-      save
 
       h_sub = h_total/dfloat(n_step)
 ! first step
@@ -774,7 +763,6 @@ subroutine osplin(xval, yval, xtab, ytab, n, k)
 
       double precision :: first_derivs(json), eps
       integer :: err
-      save
 
 ! calculate the slopes at each data point.
       call slopes(xtab, ytab, first_derivs, n)
@@ -812,7 +800,6 @@ subroutine polint(xa, ya, n, x, y, dy)
       double precision :: c(20), d(20)
       integer :: ns, i, j
       double precision :: dif, dift, ho, hp, w, den
-      save
 
       ns = 1
       dif = dabs(x-xa(1))
@@ -866,7 +853,6 @@ subroutine quint(x, x0, h, y0, y1, y2, y)
       double precision, intent(out) :: y
 
       double precision :: d1, d2, t
-      save
 
       d1 = y1 - y0
       d2 = y2 - 2.d0*y1 + y0
@@ -898,7 +884,6 @@ subroutine splinc(x, y, y2, n)
       double precision :: u(json)
       integer :: i, k
       double precision :: sig, p, qn, un
-      save
 
 ! natural spline
       y2(1) = 0.0d0
@@ -1038,7 +1023,6 @@ subroutine tridiag_gs(a, b, c, ex_prime, npt, ex)
       double precision :: gama(json)
       integer :: j
       double precision :: bet
-      save
 
       bet = b(1)
       ex(1) = ex_prime(1)/bet
@@ -1080,7 +1064,6 @@ subroutine ysplin(xi, c, n)
       double precision :: f(np), h(np), d(np), g, d3
       double precision :: const1, const2, const3, const4
       integer :: i
-      save
 
 ! set the divided difference at each subinterval.
       do i = 2, n
@@ -1179,7 +1162,7 @@ subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
 ! from the original common-block version though nothing here actually
 ! depends on it persisting across calls.
       double precision :: gamma_elim(json)
-      save
+      save   ! INTENTIONAL: tridiagonal solver carry (empirically load-bearing); byte-pinned by Stage-0
 
       double precision :: bet
       integer :: j
@@ -1258,7 +1241,6 @@ subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
       double precision :: rhs_orig(json)
       integer :: i, j
       double precision :: bet, fj
-      save
 
       dj(n) = dj_n_seed
       do i = 1, n
@@ -1335,7 +1317,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
       integer :: substep_sequence(11)
       double precision :: h, x_sav, x_est, err_max
       integer :: i, j
-      save
+      save   ! INTENTIONAL: NR step-size memory (epsold/step tables) -- algorithm state; byte-pinned by Stage-0
       data substep_sequence /2,4,6,8,12,16,24,32,48,64,96/
 
       integer, intent(out), optional :: ierr
@@ -1437,7 +1419,6 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       double precision :: interp_value, interp_deriv
       integer :: i, k_lo, k_hi, k_mid
       data spline_coeff/400*0.0d0/
-      save
 
 ! the coefficients for the zero-th order term
       integer, intent(out), optional :: ierr
@@ -1529,7 +1510,6 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
 
       integer :: k
       double precision :: h, a, b
-      save
 
       integer, intent(out), optional :: ierr
 
@@ -1596,7 +1576,6 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
 
       integer :: k
       double precision :: h, a, b
-      save
 
       integer, intent(out), optional :: ierr
 
@@ -1672,7 +1651,7 @@ subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
       double precision, intent(in) :: qp
 
       integer :: it
-      save
+      save   ! INTENTIONAL: NR refinement accumulator carried between successive calls; byte-pinned by Stage-0
 
       double precision :: r0, r03, tnm, dr, del, y, sum, drho, dm, &
            deta2, dw2, r03t, rhot, smt, w2t, eta22t, q0
@@ -1772,7 +1751,7 @@ subroutine qgauss(integrand, g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
 
       double precision :: xm, xr, dx, g, s, g2, s2
       integer :: j
-      save
+      save   ! INTENTIONAL: quadrature state (empirically load-bearing); byte-pinned by Stage-0
 
       xm = 0.5d0*b
       xr = xm
@@ -1833,7 +1812,6 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
 ! to the external routine lir; its exact meaning there is not
 ! established from this file alone.
       integer :: lir_order
-      save
 
       integer :: n, i, m, j, t_col, iv, t_idx, r_idx, t_idx_max, r_idx_max
       double precision :: p_min, p_max
@@ -1960,7 +1938,7 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       double precision :: weight(4)
       integer :: search_idx
       data search_idx/-1/
-      save
+      save   ! INTENTIONAL: last-index interpolation memory; byte-pinned by Stage-0
 
       integer :: linear_mode
       integer :: stride, stride_m1, y_strided, num_y_strided, table_end
@@ -2152,7 +2130,7 @@ subroutine ratext(est_index, x_est, y_est, y_extrap, y_err, num_vars, &
       double precision, intent(out) :: y_extrap(num_vars), y_err(num_vars)
 
       double precision :: x_hist(imax), tableau(nmax,ncol), fx(ncol)
-      save
+      save   ! INTENTIONAL: rational-extrapolation state; byte-pinned by Stage-0
 
 ! SAME AS SR RZEXTR FROM NUMERICAL RECIPES, P.566.
 !

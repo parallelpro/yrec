@@ -36,8 +36,6 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
 
 
       double precision :: half_dlnj_dlnr(json), circ_velocity(json)
-      save
-
       integer :: zone_index
       double precision :: omega_mid
       double precision :: interp_weight

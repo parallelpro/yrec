@@ -53,8 +53,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 
 
       integer :: half_json
-      save
-
       integer :: i, ii, iu, j, jmin, k, k0, kk
       double precision :: drtot, drmin, fx, tabler(4), gridrad, &
            facinterp(4), facderiv(4)

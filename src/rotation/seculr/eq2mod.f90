@@ -63,10 +63,6 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
       integer, intent(in) :: num_points
       double precision, intent(in) :: total_delta_angular_momentum
       double precision, intent(inout) :: specific_angular_momentum(json)
-
-
-      save
-
       integer :: i0, i1, i, nmod, ii
       double precision :: sumjmod, sumdjmod, test, val, ratio
 

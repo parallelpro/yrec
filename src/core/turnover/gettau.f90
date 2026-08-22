@@ -66,10 +66,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       double precision :: atm_get_dummy1(4), atm_get_dummy2(3), &
            atm_get_dummy3(3), atm_get_dummy4(3)
       integer :: katm, kenv, ksaha
-
-
-      save
-
       integer :: zone_index, species_index, bcz_top_zone
       logical :: fully_convective_flag
       double precision :: pressure_diff_check

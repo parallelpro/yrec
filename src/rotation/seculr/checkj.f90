@@ -103,21 +103,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       integer, intent(inout) :: print_zone_count
 !     ECOD(JSON),ECOD2(JSON)
       logical, intent(in) :: already_converged_flag
-
-
-
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! locals
       double precision :: max_delta_j_by_iter(16)
       integer :: max_delta_j_zone_by_iter(16)

@@ -71,8 +71,6 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
 
       double precision :: equally_spaced_composition(json)
       integer :: varying_species_id(15)
-      save
-
       integer :: num_varying_species, j_idx, zone_idx, ntab, species_num, &
            orig_zone_idx, i0, i1
       double precision :: test_value, dcomp, dcomp2, sum_species_orig, &

@@ -63,8 +63,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
            atm_get_dummy3(3), atm_get_dummy4(3)
 
 ! G Somers END
-      save
-
       integer :: species_end_index
       integer :: old_num_zones
       double precision :: envelope_mass_before

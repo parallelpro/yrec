@@ -61,10 +61,6 @@ subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
       integer, intent(in) :: num_eq_points
       double precision, intent(out) :: sub_diag(json), diag(json), &
            super_diag(json), rhs(json)
-
-
-      save
-
       integer :: i
       double precision :: fact0, fact
 

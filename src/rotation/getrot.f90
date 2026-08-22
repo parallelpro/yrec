@@ -24,9 +24,6 @@ subroutine getrot(log_density, specific_angular_momentum, log_radius, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: eta_squared(json), &
            moment_of_inertia(json), omega(json), qiw(json), mean_radius(json)
-
-      save
-
       logical :: in_convection_zone
       integer :: zone_index, zone_start, zone_end
 

@@ -75,9 +75,6 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       integer :: start_idx, start_idx1, end_idx, end_idx1, found_flag
       integer :: i, ind, loop_bound, table_idx, table_idx1, spline_case, &
            num_minus1
-
-      save
-
       start_idx = 1
       end_idx = num_eval_points
       err_code = 0

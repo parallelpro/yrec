@@ -52,9 +52,6 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
       double precision, intent(in) :: eval_point, z1, z2, x_left, y_left, &
            x_right, y_right, y1, y2, e2, w2, v2
       integer, intent(in) :: spline_case
-
-      save
-
       double precision :: linear_interp_frac
 
       if (spline_case .eq. 4) go to 40

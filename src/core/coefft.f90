@@ -145,8 +145,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       double precision :: energy_sum_inverse
       double precision :: chi_rho, chi_t, specific_heat_cv
       double precision :: total_energy_sum, neutrino_and_grav_sum
-      save
-
 ! 7/91 MHP
 ! ZERO OUT SOLAR NEUTRINO FLUXES.
 ! FLUXTOT = TOTAL FLUX OF EACH OF THE NEUTRINOS PRODUCED IN THE SUN

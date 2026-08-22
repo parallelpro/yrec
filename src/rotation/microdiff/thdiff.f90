@@ -74,8 +74,6 @@ subroutine thdiff(num_species, atomic_weight, charge, mass_fraction, &
       double precision :: alpha(nmax), gamma(nmax,nmax), delta(nmax,nmax), &
            ga(nmax)
       double precision :: ko
-      save
-
       integer :: i, j, l, n
       double precision :: cc, ac, temp, d
 

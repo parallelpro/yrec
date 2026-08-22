@@ -114,8 +114,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
            omega_mid_init(json), domega_dr_init(json)
       double precision :: residual_check(nmax), rhs_orig(nmax), &
            coeff_matrix_orig(nmax,10), omega_curvature(json)
-      save
-
 ! locals
       integer :: timestep_cut_count, num_substeps, substep_idx, &
            theta_iter_idx, coeff_iter_idx, num_equations, i, j, ii, k

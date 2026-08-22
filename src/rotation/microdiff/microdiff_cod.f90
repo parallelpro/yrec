@@ -61,8 +61,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
       integer :: num_species
       data num_species/4/
 !       DATA FGRLI/1.0,1.0,1.0,1.0/
-      save
-
       integer :: i, ii, jj
       double precision :: bl_radius_scale_local, bl_temp_scale_local, &
            hru_i, htu_i, fac, ap, at, ah, ad, dlncdr, coni, conip1, conim1, &

@@ -84,9 +84,6 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: species_begin, species_end
-
-      save
-
       logical :: unstable_region_active, unstable_zone_found, &
            two_zone_region
       integer :: search_start, zone_idx

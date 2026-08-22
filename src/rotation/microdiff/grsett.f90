@@ -97,8 +97,6 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
            equal_diffusion_coeff1_dx_mid(json), &
            equal_diffusion_coeff2_dx_mid(json)
       double precision :: metal_x_orig(json), metal_x_prev_iter(json)
-      save
-
       integer :: zone_begin, zone_end
       logical :: fully_convective_flag
       integer :: eq_idx

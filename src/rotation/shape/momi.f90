@@ -28,14 +28,6 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
       integer, intent(in) :: zone_start, zone_end
       double precision, intent(in) :: omega(json), mean_radius(json)
       double precision, intent(out) :: moment_of_inertia(json), di_domega(json)
-
-
-
-
-
-
-      save
-
       integer :: zone_idx
       double precision :: prev_log_mean_radius, prev_log_true_radius, &
            rotation_param_const, mean_zone_radius, dlnr0_dlnr, &

@@ -108,8 +108,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! VECTOR FROM SCALAR
       double precision :: xyz(22)
       data xyz/22*99.99d0/
-      save
-
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere, conductive_opacity_flag
       logical :: allard_lookup_failed

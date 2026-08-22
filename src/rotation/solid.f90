@@ -30,12 +30,6 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       double precision, intent(out) :: di_domega(json)
       double precision, intent(out) :: mean_radius(json)
       integer, intent(in) :: num_zones
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: total_angular_momentum, omega_sum
       integer :: iteration_count

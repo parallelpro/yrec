@@ -64,8 +64,6 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
 
 
       double precision :: zone_avg_abundance(11)
-      save
-
       double precision :: total_shell_mass
       integer :: species_idx, zone_idx
       double precision :: pp_rate, he3_he3_rate, he3_he4_rate, c12_p_rate, &
@@ -282,13 +280,6 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(in) :: shell_mass(json)
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: timestep
-
-
-
-
-
-      save
-
       double precision :: hydrogen_fraction, deuterium_fraction, &
            helium3_fraction, rate_start, rate_end
       double precision :: total_shell_mass, rate_start_sum, rate_end_sum
@@ -461,14 +452,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(in) :: deuterium_rate_end(json), &
            deuterium_rate_start(json)
       double precision, intent(in) :: step_fraction
-
-
-
-
-
-
-      save
-
       double precision :: hydrogen_fraction, deuterium_fraction, &
            helium3_fraction, rate_start, rate_end
       double precision :: total_shell_mass, rate_start_sum, rate_end_sum
@@ -638,8 +621,6 @@ subroutine deutrate(dl,tl,x,i,itlvl)
 
       double precision :: c21
       data c21/5.240358E-8/
-      save
-
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
 !  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
 !  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
@@ -1150,8 +1131,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            z86/1.630,5.917,5.917,8.302,8.302,9.520,10.716,16.192,20.978, &
            16.192,18.606,16.192,45.6635/, &
            years_per_sec_over_amu/5.240358d-8/
-      save
-
       double precision :: term, ion_mean_weight_inverse, &
            electron_mean_weight_inverse, xtr, zeta_sum, &
            electron_number_density_na, dd, density, t9, t9_p13, t9_p23, &
@@ -2121,8 +2100,6 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
            extrap_result(3)
       data substep_counts/2,4,6,8,12,16,24,32,48,64,96/
       data extrap_tol/1.0d-6,1.0d-6,1.0d-6/
-      save
-
       integer :: zone_idx, refine_idx, substep_idx, species_idx
       integer :: cz_base_zone, cz_base_zone_old, min_zone, max_zone
       double precision :: del_diff, del_diff_below, cz_base_frac
@@ -2672,8 +2649,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 
       double precision :: li6_substep_depletion(json), &
            li7_substep_depletion(json), be9_substep_depletion(json)
-      save
-
       integer :: zone_idx, min_zone, max_zone
       double precision :: del_diff, del_diff_below, cz_base_frac
       double precision :: search_radius, shell_radius, delta_radius, &
@@ -3011,8 +2986,6 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
 
       double precision :: tlim
       data tlim/6.0d0/
-      save
-
       integer :: zone_idx, tail_idx
       double precision :: rhox, t9, t913, t923, t943, t953, t932, t934
       double precision :: fli6, fli7, fbe91, fbe92, fbe93, fx, ex, fsbe9

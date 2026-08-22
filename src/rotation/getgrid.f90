@@ -34,8 +34,6 @@ subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
 
 
       double precision :: log_mass_table(json)
-      save
-
       integer :: num_points_in_range, zone_index, range_index
       double precision :: mass_scale, luminosity_scale, pressure_scale
 

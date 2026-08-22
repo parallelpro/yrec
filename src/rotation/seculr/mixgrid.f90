@@ -38,16 +38,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
       double precision, intent(out) :: equally_spaced_diffusion_coeff(json), &
            equally_spaced_mass(json)
       logical, intent(out) :: single_interface_flag
-
-
-
-
-
-
-
-
-      save
-
       integer :: idx, search_idx, i0, i1, ntab, ntabb
       double precision :: em_top, em_bot
       double precision :: mass_scale, luminosity_scale, pressure_scale

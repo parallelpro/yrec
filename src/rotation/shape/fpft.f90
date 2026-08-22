@@ -47,8 +47,6 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
 
       double precision :: extrap_step(20), xa(20), ya(20), aint0(10)
       double precision :: previous_shell_mass
-      save
-
       double precision :: b_coefficient, newton_g, eps
       integer :: jmax, k, km
       double precision :: prev_eta22, prev_omega_sq, prev_density, prev_r0, &

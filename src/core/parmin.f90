@@ -799,8 +799,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! genuinely used in this file -- renamed in place to their canonical
 ! const_lib names (yrec_version_string/git_hash_string), now
 ! use-associated rather than locally declared.
-
-      save
 !
 !
 ! SPLIT NAMELIST INTO TWO: CONTROL and PHYSICS

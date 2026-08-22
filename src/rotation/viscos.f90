@@ -33,8 +33,6 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
            17.99491d0/
       data z/1.0d0,2.0d0,0.0d0,2.0d0,6.0d0,6.0d0,7.0d0,7.0d0,8.0d0, &
            8.0d0,8.0d0/
-      save
-
 ! --- locals ---
       integer :: shell_idx, species_idx, species_idx2
       double precision :: opacity_local, mean_charge, number_density_sum

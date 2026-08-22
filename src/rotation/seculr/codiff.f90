@@ -59,19 +59,6 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
       double precision, intent(out) :: radius_mid(json)
       double precision, intent(out) :: am_diffusion_coeff(json), &
            mixing_diffusion_coeff(json)
-
-
-
-
-
-
-
-
-
-
-
-      save
-
       integer :: i
       double precision :: con1, con2
 

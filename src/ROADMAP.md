@@ -865,3 +865,31 @@ until the byte-diff drew the real boundary:
   Their elimination is the same file-by-file restructuring economy;
   the ierr funnels and step_status contract already removed the
   cross-routine ones.
+
+
+STATUS (2026-08-22, save-migration campaign COMPLETE): from 249
+blanket saves to 10, every removal gated byte-identical on both
+solar cases (rot + norot), the deeper regression, and re-entrancy:
+
+- Migrated to named state: readco*/esac* lazy-load guards and
+  table-Z memories (opal_eos%), the quad* Lagrange slot caches
+  (opal_eos%), the Potekhin conductive table (new
+  state/conductive_table_lib.f90).
+- Removed outright after clean-build re-testing: everything else in
+  eos, kap, rotation, core (minus drivers), numerics (minus six),
+  mixing, setup, atm, net, io, util, wind. The dramatic finding: the
+  earlier "carriers at every bisection level" in rotation/core/kap
+  were ALL stale-.mod artifacts of the bulk attempt's incremental
+  builds -- under clean builds those 67 saves removed without a
+  byte of drift. The campaign's two hard rules: clean build after
+  any state-TYPE change, and per-line quote-guarded renames.
+- The 10 that remain are annotated INTENTIONAL in place: the three
+  driver files (run_yrec, evolve_step, update_output_diagnostics --
+  designed cross-step/run state, reset-covered) and six numerics
+  kernels with genuine algorithm memory (bsstep, trapzd, lir,
+  ratext, ctridi, qgauss), byte-pinned by Stage-0. Migrating those
+  means restructuring NR internals or growing evo -- deliberately
+  deferred, documented at each site.
+
+goto count stands at 698 statements (wave 1 made all loops block-DO;
+statement-level elimination is the remaining file-by-file work).

@@ -43,10 +43,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
       double precision, intent(in) :: radiative_gradient(json), &
            adiabatic_gradient(json)
       double precision, intent(out) :: radius_at_bcz
-
-
-      save
-
 ! --- locals ---
 ! G Somers; Adding vectors for cubic spline int.
       double precision :: spline_x_delta(4), spline_x_radius(4), &

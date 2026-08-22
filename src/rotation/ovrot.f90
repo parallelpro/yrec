@@ -31,8 +31,6 @@ subroutine ovrot(composition, log_density, log_pressure, log_radius, &
       integer, intent(out) :: num_radiative_zones, num_convective_zones
 
       integer :: convective_zone_bounds_raw(12,2)
-      save
-
       integer :: i, j, core_zone_boundary, envelope_zone_boundary, &
            num_convective_zones_raw
 

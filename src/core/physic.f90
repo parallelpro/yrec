@@ -59,8 +59,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       double precision :: atomic_weight(4)
       double precision :: log_mass_nodes(4), interp_weights(4)
       data atomic_weight /1.007825d0, 4.002603d0, 12.0d0, 3.01603d0/
-      save
-
 ! --- locals ---
       logical :: want_derivatives, local_conductive_opacity_flag, &
            in_atmosphere

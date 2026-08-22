@@ -63,8 +63,6 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
            diffusion_coeff2_deriv_mid(json)
       double precision :: alpha(json), sub_diag(json), diag(json), &
            super_diag(json)
-      save
-
       integer :: i, iter, num_mid_points, max_change_zone
 ! use_generic_diffusion_vectors (originally LDOLI): set true so that
 ! the Lax-Wendroff routines (lax_wendrof1.f/lax_wendrof2.f, not part

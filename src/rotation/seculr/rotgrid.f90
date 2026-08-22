@@ -63,8 +63,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
 
 
       double precision :: eq_reduced_moment_of_inertia(json)
-      save
-
       integer :: ntab, i, ii, i0, i1, ntabb
       double precision :: emtop, embot, mass_scale_factor, &
            luminosity_scale_factor, pressure_scale_factor, scale_factor, &

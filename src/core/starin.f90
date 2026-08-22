@@ -233,9 +233,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
            use_pure_z_table0, lsemic0
       double precision :: disk_pressure0, disk_temperature0, &
            wind_saturation_omega0
-
-      save
-
 ! If flag LARGE is set, model has failed to converge.  Terminate the run.
       ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
       ! this driver-side call site preserves the historical stop.

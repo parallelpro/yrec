@@ -31,10 +31,6 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
       double precision, intent(in) :: convective_velocity(json)
       double precision, intent(in) :: radiative_gradient(json), &
            adiabatic_gradient(json)
-
-
-      save
-
 ! --- locals ---
       logical :: fully_convective_flag, exiting_cz_flag, two_cz_flag, &
            cz_exists_flag, surface_cz_deep_enough

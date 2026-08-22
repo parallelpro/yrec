@@ -45,8 +45,6 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
 
 
       double precision :: tabler(4), facinterp(4)
-      save
-
       integer :: i, ii, j, jmin, k, k0, kk
       double precision :: x_min_floor, z_max, zz, zz2, radmod, dxmod, &
            x_max, dzmod

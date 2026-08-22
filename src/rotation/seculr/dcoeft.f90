@@ -86,8 +86,6 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
 
 
       logical, intent(in) :: fix_omega_at_surface
-      save
-
       integer :: i
       double precision :: fact0, fact, facta
 

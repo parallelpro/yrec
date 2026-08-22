@@ -32,9 +32,6 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
 
 !      COMMON/CALS2/TOLL,TOLR,LCALS
-
-
-      save
 !     DATA TOLL,TOLR/1.0D-5,1.0D-4/
 
 ! locals -- log_zx_mismatch/delta_z/log_zx_mismatch_prev (originally

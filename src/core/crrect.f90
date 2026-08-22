@@ -144,9 +144,6 @@ subroutine crrect(delta_time, max_iterations, converged, &
            luminosity_correction_max, correction_factor
       double precision :: hydrogen_burn_luminosity, helium_burn_luminosity
       double precision :: shell_angular_momentum
-
-      save
-
       ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
       ! this driver-side call site preserves the historical stop.
       integer :: jerr

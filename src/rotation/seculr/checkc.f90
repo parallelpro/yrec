@@ -61,8 +61,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 
       double precision :: atomic_weight(4)
       data atomic_weight/1.007825d0,4.002603d0,12.0d0,3.01603d0/
-      save
-
 ! locals
       integer :: num_diffused_species, species_index, zone_index
       double precision :: max_fractional_comp_change

@@ -16,9 +16,6 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
 
       double precision, intent(inout) :: system_matrix(56)
       integer, intent(in) :: num_cols, num_unknowns
-
-      save
-
       integer :: jj, j, jy, it, i, ij, imax, ia, ib, ic, id, ix, jx, ny, &
            n1, ig, ih
       double precision :: biga, swap_val

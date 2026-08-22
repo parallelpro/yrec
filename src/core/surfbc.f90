@@ -75,9 +75,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       data numenv/0/
 
 ! G Somers END
-
-      save
-
 ! --- locals ---
       integer :: i1, i2, i3, i, vertex_being_computed, j
       double precision :: temp, temp1, temp2, tri_err

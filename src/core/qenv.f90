@@ -49,9 +49,6 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       integer, intent(inout) :: env_call_count, saha_state
 
       double precision :: ion_fraction(3)
-
-      save
-
 ! --- locals ---
       double precision :: log10_pressure, log10_mass, log10_temperature
       double precision :: temperature, pressure, log10_density, density

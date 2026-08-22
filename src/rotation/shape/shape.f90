@@ -25,12 +25,6 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
       double precision, intent(in) :: omega(json)
       double precision, intent(inout) :: eta2(json)
       double precision, intent(out) :: r0(json)
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: cg, c1, c2, c3, c4
       integer :: j_begin, i, j, k

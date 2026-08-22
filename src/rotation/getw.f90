@@ -70,38 +70,6 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       integer :: convective_zone_bounds(12,2), &
            convective_zone_bounds_burn(12,2), radiative_zone_bounds(13,2)
       double precision :: cz_mass_bottom, cz_mass_top
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! LBURS is hardcoded .FALSE. here (preserved exactly, per project
 ! notes -- this permanently disables the BUR-ST extrapolation branch
 ! near the end of this routine regardless of LINSTB/LALLCZ).

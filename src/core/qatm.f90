@@ -42,9 +42,6 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
 !      CHARACTER*256 FLAOL, FPUREZ
 ! MHP 8/25 Removed character file names from common block
       double precision :: fxion(3)
-
-      save
-
 ! --- locals ---
       double precision :: effective_gravity, optical_depth
       double precision :: log10_temperature, temperature, log10_pressure, &

@@ -168,7 +168,7 @@ subroutine run_yrec(ierr)
       double precision :: monte_helium_diffusion_fraction
 
       save
-
+   ! INTENTIONAL: run-level state across MC runs; reset via yrec_reset
 !*******
 ! START
 !*******
@@ -178,7 +178,7 @@ subroutine run_yrec(ierr)
       integer, intent(out) :: ierr
 ! load-bearing: see header
       save
-
+   ! INTENTIONAL: run-level state across MC runs; reset via yrec_reset
       ierr = 0
 
 ! 2026 (phase five, step C): fresh-process semantics for repeated

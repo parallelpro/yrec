@@ -74,8 +74,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 
 ! SPEED OF LIGHT.
 !       DATA CC/2.99792458D10/
-      save
-
       integer :: i, i0, i1
       double precision :: dr, gmid, phistd, phis2, phi2, qw, &
            q1, q2, q0, qmu, qp, ddel, ddtest, ddtest2, qqq, v2, &

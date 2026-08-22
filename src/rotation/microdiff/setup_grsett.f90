@@ -81,8 +81,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       data atomic_charge/1.0d0,2.0d0,26.0d0,-1.0d0/
       integer :: num_species
       data num_species/4/
-      save
-
 ! --- locals ---
       double precision :: solar_radius_bl, seconds_per_year_bl
       integer :: zone_idx

@@ -29,9 +29,6 @@ subroutine func(colatitude, local_gravity, area_element, r0, log_mass, &
       double precision, intent(in) :: r0(json), log_mass(json)
       double precision, intent(in) :: aint, q, w2, a
       integer, intent(in) :: i
-
-      save
-
       double precision :: cs, ss, p2, qr0r, qr0t, r, r2, const, qphir, qphith
 
       cs = dcos(colatitude)*dsin(colatitude)

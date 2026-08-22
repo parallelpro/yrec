@@ -50,9 +50,6 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
            mbar1, mbar2, mbar3, c1, d1, h1, j1, knot_y_x, knot_y_y, &
            k1, ztwo
       integer :: spline_case
-
-      save
-
       if ((spline_case .eq. 3).or.(spline_case .eq. 4)) go to 20
       if (spline_case .eq. 2) go to 10
 

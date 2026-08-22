@@ -52,9 +52,6 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
       double precision, intent(in) :: table_x(json), table_y(json)
       double precision, intent(out) :: first_derivs(json)
       integer, intent(in) :: num_points
-
-      save
-
       integer :: num_points_m1, prev_idx, idx, next_idx
       double precision :: slope1, slope2, x_bar, x_hat, y_diff1, y_diff2, &
            y_x_mid, x_mid, slope1_saved, slope2_saved

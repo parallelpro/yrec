@@ -33,10 +33,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
       double precision, intent(in) :: convective_velocity(json)
       double precision, intent(in) :: radiative_gradient(json), &
            adiabatic_gradient(json)
-
-
-      save
-
 ! --- locals ---
       logical :: fully_convective_flag, surface_cz_deep_enough
       integer :: i, cz_base_index, k

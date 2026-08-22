@@ -113,8 +113,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 ! G Somers END
-      save
-
 ! --- locals ---
       double precision :: spline_radius_neighborhood(7), &
            spline_speed_neighborhood(7), spline_second_deriv(7), &

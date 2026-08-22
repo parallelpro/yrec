@@ -52,9 +52,6 @@ subroutine search(table_x, num_table_points, eval_point, table_idx, &
       double precision, intent(in) :: table_x(json), eval_point
       integer, intent(in) :: num_table_points
       integer, intent(out) :: table_idx, found_flag
-
-      save
-
       integer :: first_idx, last_idx, middle_idx
 
       first_idx=1

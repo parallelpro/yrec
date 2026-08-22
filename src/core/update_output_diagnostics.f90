@@ -68,7 +68,7 @@ subroutine update_output_diagnostics(ierr)
 ! previous-call value (the documented bug above) and ksaha_center's
 ! saha-table state continuity across calls.
       save
-
+   ! INTENTIONAL: incl. the documented FX/FX2 stale carry; reset via output_diag_reset_pending
 !  RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH
       integer, intent(out) :: ierr
 

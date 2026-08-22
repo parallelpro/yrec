@@ -36,8 +36,6 @@ subroutine bandw(coeff_matrix, nm, rhs, ierr)
       double precision, parameter :: tiny = 1.d-20
 
       integer :: i, j, k, imj, imj5, ii, jj
-      save
-
 ! INITIAL STEP: DIAGONALIZE TERMS INVOLVING OMEGA(1)
 ! AND THEN STEP THROUGH ITS FIRST THROUGH THIRD
 ! DERIVATIVES.  THEN PROCEED TO THE SECOND SHELL AND

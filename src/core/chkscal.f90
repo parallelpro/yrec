@@ -29,12 +29,6 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 
 
 !      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
-
-
-
-
-      save
-
 ! locals
       double precision :: teff_current, log_r_rsun_current
       double precision :: dlogl_dlogr, dage_dlogr
