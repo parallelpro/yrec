@@ -74,6 +74,8 @@ $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 # objects relative to each other, and MODULE_SRCS list position alone
 # does not guarantee build order under parallel (-j) builds.
 const/const_lib.o: | const/phys_const_lib.o const/controls_lib.o
+numerics/numerics_lib.o: | const/const_lib.o const/intpar_lib.o \
+	const/luout_lib.o
 net/net_lib.o: | const/const_lib.o state/oldmod_lib.o \
 	state/star_info_lib.o \
 	state/engeb_diag_lib.o state/fluxes_lib.o state/light_burn_lib.o \
