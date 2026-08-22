@@ -129,6 +129,13 @@ module opal_eos_lib
                 t6_index_4_01, t6_interp_order_01, density_interp_order_01
 ! former common/eeos/
            double precision :: esact_01, eos_output_01(n_eos_mv)
+! former common/eeos06/ (the 2006 analogue of common/eeos/ above):
+! relocated here from atm_table_lib in 2026 (ROADMAP.md stage 1) --
+! it had landed there through phase one purely as an accident of the
+! original COMMON grouping, and its only non-eos reader
+! (atm/turnover/calcad.f90's direct eos_output(8)/(9) reads) was
+! absorbed into eos_lib's eos_get_gamma1 first.
+           double precision :: esact_06, eos_output_06(n_eos_mv)
 ! former common/eeeos/
            double precision :: x_interp_workspace_01(n_eos_mx,n_eos01_nt,n_eos01_nr), &
                 x_grid_copy_01(n_eos_mx)

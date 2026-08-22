@@ -76,6 +76,17 @@ Deliverable: zero cross-domain calls that do not go through a
 `<domain>_lib` facade, verified by a grep-based checker script (see
 stage 2 for making that enforcement automatic).
 
+Found during stage-1 execution (2026-08-21), remaining for a later
+stage-1 pass alongside the Kurucz inline reads already noted above:
+`setup/setups.f90` also reads the **Fermi-Dirac table** (the
+degenerate-electron EOS table, former `common/ccr/`) inline, into
+members that live in `atm_table_lib` but are consumed only by
+`eos/yale/eqrelv.f90` -- the same two-part pattern as the OPAL-2006
+oddity (eos state in atm's module + an eos table load outside
+`eos_init`). Fixing it means moving the `fermi_table_*` members to an
+eos-side state module and the load into `eos_init`; deliberately not
+bundled into the first stage-1 commits.
+
 ## Stage 2 -- per-module standalone builds and tests
 
 MESA compiles each module into its own static library and ships a

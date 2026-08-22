@@ -13,7 +13,7 @@
 !
 ! NOTE: preserved verbatim from the original -- var_idx (the "j" loop
 ! variable used to zero opal_eos%eos_table_06's variable dimension and to reset
-! atm_table%eos_output to 1.0 during the one-time init block below) is reused,
+! opal_eos%eos_output_06 to 1.0 during the one-time init block below) is reused,
 ! stale, as the column index into log10_ne_grid in the per-row READ
 ! statement further down. Since var_idx is SAVE'd and the init block
 ! only runs once, var_idx is left sitting at mv+1 (its value just
@@ -27,7 +27,6 @@
 subroutine readcoeos06
 
       use opal_eos_lib
-      use atm_table_lib
       use const_lib
       use luout_lib
       implicit none
@@ -67,7 +66,7 @@ subroutine readcoeos06
             end do
          end do
          do var_idx = 1, mv
-            atm_table%eos_output(var_idx) = 1.0d0
+            opal_eos%eos_output_06(var_idx) = 1.0d0
          end do
          table_init_flag = 12345678
       end if

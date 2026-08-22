@@ -14,13 +14,12 @@
 ! flag (not rad_flag) -- only the very first, table-priming call
 ! passes rad_flag through; (3) the convergence tolerance was loosened
 ! from 0.5d-7 to 1.0d-5 (see the dated comment below) to stop
-! atm_table%eos_output(5) from growing without bound and crashing some model
+! opal_eos%eos_output_06(5) from growing without bound and crashing some model
 ! runs.
 double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag)
 
       use opal_eos_lib
-      use atm_table_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -115,21 +114,21 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       density_trial1 = opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx))* &
            pressure_no_rad/pressure_max
       call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, *999)
-      pressure_trial1 = atm_table%eos_output(1)
+      pressure_trial1 = opal_eos%eos_output_06(1)
       if (pressure_trial1.gt.pressure_no_rad) then
          pressure_trial2 = pressure_trial1
          density_trial2 = density_trial1
          density_trial1 = 0.2d0*density_trial1
          if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
          call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, *999)
-         pressure_trial1 = atm_table%eos_output(1)
+         pressure_trial1 = opal_eos%eos_output_06(1)
       else
          density_trial2 = 5.0d0*density_trial1
 !          if(rhog2 .gt. rho(klo)) rhog2=rho(klo)  ! Corrected below   llp  8/19/08
          if (density_trial2.gt.opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx))) &
               density_trial2 = opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx)) ! Had wrong pointer, see rhog1= ten lines up
          call esac06(hydrogen_fraction, t6_temperature, density_trial2, 1, 0, *999)
-         pressure_trial2 = atm_table%eos_output(1)
+         pressure_trial2 = opal_eos%eos_output_06(1)
       end if
 
       refine_count = 0
@@ -138,7 +137,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
            (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)  ! KC 2025-05-31
       call esac06(hydrogen_fraction, t6_temperature, density_trial3, 1, 0, *999)
-      pressure_trial3 = atm_table%eos_output(1)
+      pressure_trial3 = opal_eos%eos_output_06(1)
 ! Changed the comparison below to use the commented-out value 1.D-5
 ! found here to prevent array value eos(5) from growing without bound
 ! and crashing the program during certain model runs. - MR 2025-10-10

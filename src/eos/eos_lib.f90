@@ -39,11 +39,13 @@
 ! an acknowledged numerics change for use_mhd_eos=.true. runs, which
 ! the Stage-0 regression suite cannot verify (no test case sets LMHD).
 !
-! atm/turnover/calcad.f90 is NOT migrated: it calls esac06 directly (bypassing
-! eqstat2's boundary-ramping) under its own use_opal2006_eos check for
-! a self-contained acoustic-depth diagnostic, and never checks
-! use_mhd_eos at all -- confirmed to match the original F77 exactly,
-! a deliberate design choice, not part of this dispatch pattern.
+! atm/turnover/calcad.f90 (the acoustic-depth diagnostic) was NOT
+! migrated to eos_get during phase two: it deliberately bypasses
+! eqstat2's boundary-ramping, calling esac06 directly under its own
+! use_opal2006_eos check, confirmed to match the original F77 -- not
+! part of this dispatch pattern. As of phase three (ROADMAP.md stage
+! 1) it goes through eos_get_gamma1 below instead, which preserves
+! that same deliberate dispatch inside the facade boundary.
 module eos_lib
       implicit none
 contains
@@ -175,7 +177,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
      saha_state)
 
-      use atm_table_lib
+      use opal_eos_lib
       use const_lib
       implicit none
 
@@ -208,8 +210,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          call esac06(x_local, t6_local, d_local, eos_interp_order, &
               eos_rad_flag, *100)
   100    continue
-         gamma1 = atm_table%eos_output(8)
-         adiabatic_gradient = 1.0d0/atm_table%eos_output(9)
+         gamma1 = opal_eos%eos_output_06(8)
+         adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(9)
       else
          x_local = hydrogen_fraction
          temperature_local = temperature_1e6k*1.0d6

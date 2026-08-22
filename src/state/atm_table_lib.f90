@@ -33,9 +33,11 @@ module atm_table_lib
            double precision :: atm_tau, atm_log10_pressure, &
                 atm_log10_temperature, atm_log10_density, atm_opacity
            double precision :: atm_ion_fraction(3)
-! former common/eeos06/: OPAL 2006 EOS interpolator result.
-           double precision :: esact
-           double precision :: eos_output(10)
+! (former common/eeos06/ -- the OPAL 2006 EOS interpolator result,
+! esact + eos_output(10) -- lived here through phase one purely as an
+! accident of the original COMMON grouping; relocated to
+! opal_eos_lib as esact_06/eos_output_06 in 2026, ROADMAP.md stage 1,
+! so eos state lives in eos's state module.)
 ! former common/alatm01/: the Allard NextGen/BT-Settl model-atmosphere
 ! surface-pressure table.
            double precision :: allard_teffl_grid(atm_table_nta), &

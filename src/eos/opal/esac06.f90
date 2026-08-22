@@ -11,20 +11,19 @@
 ! structure is otherwise identical to esac01.f90 (same iorder cap of
 ! 9, same iqu/ipu pre-checks, same l3==nr .or. k3==nt boundary reset).
 !
-!   atm_table%eos_output(1) pressure, in megabars (1e12 dyne/cm**2)
-!   atm_table%eos_output(2) energy, in 1e12 erg/gm (zero at T6=0)
-!   atm_table%eos_output(3) entropy, in units of energy/T6
-!   atm_table%eos_output(4) dE/dRho at constant T6
-!   atm_table%eos_output(5) specific heat, dE/dT6 at constant volume
-!   atm_table%eos_output(6) dlogP/dlogRho at constant T6 (Cox & Guili eq 9.82)
-!   atm_table%eos_output(7) dlogP/dlogT6 at constant Rho (Cox & Guili eq 9.81)
-!   atm_table%eos_output(8) gamma1 (Cox & Guili eq 9.88)
-!   atm_table%eos_output(9) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
+!   opal_eos%eos_output_06(1) pressure, in megabars (1e12 dyne/cm**2)
+!   opal_eos%eos_output_06(2) energy, in 1e12 erg/gm (zero at T6=0)
+!   opal_eos%eos_output_06(3) entropy, in units of energy/T6
+!   opal_eos%eos_output_06(4) dE/dRho at constant T6
+!   opal_eos%eos_output_06(5) specific heat, dE/dT6 at constant volume
+!   opal_eos%eos_output_06(6) dlogP/dlogRho at constant T6 (Cox & Guili eq 9.82)
+!   opal_eos%eos_output_06(7) dlogP/dlogT6 at constant Rho (Cox & Guili eq 9.81)
+!   opal_eos%eos_output_06(8) gamma1 (Cox & Guili eq 9.88)
+!   opal_eos%eos_output_06(9) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
 subroutine esac06(hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, *)
 
       use opal_eos_lib
-      use atm_table_lib
       use luout_lib
       implicit none
 
@@ -363,12 +362,12 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
 !
 !
       call t6rinteos06(density_value, t6_value)
-      atm_table%eos_output(eos_var_idx) = atm_table%esact
+      opal_eos%eos_output_06(eos_var_idx) = opal_eos%esact_06
   124 continue
       pressure_scale = t6_temperature*density
-      atm_table%eos_output(opal_eos%eos_index_inverse_06(1)) = atm_table%eos_output(opal_eos%eos_index_inverse_06(1))* &
+      opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1))* &
            pressure_scale   ! interpolated in p/po
-      atm_table%eos_output(opal_eos%eos_index_inverse_06(2)) = atm_table%eos_output(opal_eos%eos_index_inverse_06(2))* &
+      opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2))* &
            t6_temperature   ! interpolated in E/T6
       mean_molecular_weight = gmass06(hydrogen_fraction, table_metal_fraction, &
            total_moles, ground_state_energy, metal_mole_fraction, &
@@ -377,7 +376,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
          call radsub06(rad_flag, t6_temperature, density, total_moles, &
               mean_molecular_weight)
       else
-         atm_table%eos_output(opal_eos%eos_index_inverse_06(5)) = atm_table%eos_output(opal_eos%eos_index_inverse_06(5))* &
+         opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5))* &
               total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return

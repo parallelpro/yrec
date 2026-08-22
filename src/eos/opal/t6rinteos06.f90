@@ -13,7 +13,6 @@
 recursive subroutine t6rinteos06(slr, slt)
 
       use opal_eos_lib
-      use atm_table_lib
       use luout_lib
       implicit none
 
@@ -61,7 +60,7 @@ recursive subroutine t6rinteos06(slr, slt)
       recompute_flag = 0
       cache_slot = 1
 ! ..... eos(i) in lower-right 3x3(i=i1,i1+2 j=j1,j1+2)
-      atm_table%esact = quadeos06(recompute_flag, cache_slot, slt, opal_eos%rho_interp_lo_06(1), &
+      opal_eos%esact_06 = quadeos06(recompute_flag, cache_slot, slt, opal_eos%rho_interp_lo_06(1), &
            opal_eos%rho_interp_lo_06(2), opal_eos%rho_interp_lo_06(3), opal_eos%t6_grid_06(opal_eos%t6_index_1_06), &
            opal_eos%t6_grid_06(opal_eos%t6_index_2_06), opal_eos%t6_grid_06(opal_eos%t6_index_3_06))
       if (opal_eos%density_interp_order_06.eq.3) then
@@ -77,7 +76,7 @@ recursive subroutine t6rinteos06(slr, slt)
               opal_eos%t6_grid_06(opal_eos%t6_index_3_06), opal_eos%t6_grid_06(opal_eos%t6_index_4_06))
 ! .....    eos(i) smoothed in left 3x4
          dix = (opal_eos%t6_grid_06(opal_eos%t6_index_3_06) - slt)*opal_eos%t6_grid_spacing_inv_06(opal_eos%t6_index_3_06)
-         atm_table%esact = atm_table%esact*dix + esact2*(1.0d0 - dix)
+         opal_eos%esact_06 = opal_eos%esact_06*dix + esact2*(1.0d0 - dix)
 ! endif   ! moved to loc a
          if (opal_eos%density_interp_order_06.eq.3) then
 
@@ -95,10 +94,10 @@ recursive subroutine t6rinteos06(slr, slt)
               opal_eos%density_grid_spacing_inv_06(opal_eos%density_index_3_06)
          if (opal_eos%t6_interp_order_06.eq.3) then
 ! .....        eos(i) smoothed in both log(T6) and log(R)
-            atm_table%esact = atm_table%esact*dix2 + esactq*(1.0d0 - dix2)
+            opal_eos%esact_06 = opal_eos%esact_06*dix2 + esactq*(1.0d0 - dix2)
          end if
       end if
-      if (atm_table%esact.gt.1.0d+15) then
+      if (opal_eos%esact_06.gt.1.0d+15) then
          write(short_file_unit,'("T6RINTEOS06: Interpolation indices out", &
               &" of range;please report conditions.")')
          stop

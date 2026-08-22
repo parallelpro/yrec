@@ -23,7 +23,7 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
      dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, *)
 
-      use atm_table_lib
+      use opal_eos_lib
       use const_lib
       use envelope_comp_lib
       use luout_lib
@@ -90,13 +90,13 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
 !         STOP ' ERROR IN OEQOS06 PTOT'
 !      ENDIF
 
-      dlnrho_dlnp = 1.0d0/atm_table%eos_output(6)               ! O2006 EOS(6) is dlogP/dlogRho at const T6
-      dlnrho_dlnt = -atm_table%eos_output(7)/atm_table%eos_output(6)       ! O2006 EOS(7) is dlogp/dlogT6 at const Rho
-      specific_heat_cp = 1.0d6*atm_table%eos_output(5)*atm_table%eos_output(8)/atm_table%eos_output(6)
+      dlnrho_dlnp = 1.0d0/opal_eos%eos_output_06(6)               ! O2006 EOS(6) is dlogP/dlogRho at const T6
+      dlnrho_dlnt = -opal_eos%eos_output_06(7)/opal_eos%eos_output_06(6)       ! O2006 EOS(7) is dlogp/dlogT6 at const Rho
+      specific_heat_cp = 1.0d6*opal_eos%eos_output_06(5)*opal_eos%eos_output_06(8)/opal_eos%eos_output_06(6)
                                       ! O2006 EOS(5) is the specific heat. dE/dT6
                                       !              at const Vol
                                       ! O2006 EOS(8) is gamma1
-      adiabatic_gradient = 1.0d0/atm_table%eos_output(9)         ! O2006 EOS(9) is gamma2/(gamma2-1)
+      adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(9)         ! O2006 EOS(9) is gamma2/(gamma2-1)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)
