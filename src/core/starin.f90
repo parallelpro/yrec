@@ -105,6 +105,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       use star_info_lib, only: star
 
       use atm_lib
+
+      use envint_lib, only: atm_get
       use star_info_lib, only: star
       use envstruct_lib
       use star_info_lib, only: star

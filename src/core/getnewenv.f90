@@ -19,6 +19,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag)
       use atm_lib
+      use envint_lib, only: atm_get
       use run_diag_lib
       use envstruct_lib
       use star_info_lib, only: star

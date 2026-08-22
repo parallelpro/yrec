@@ -27,6 +27,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
      enclosed_mass, log_temperature, fp, ft, log_teff, log_total_mass, &
      log_luminosity_lsun, num_zones, convective_flag, radius_at_bcz)
       use atm_lib
+      use envint_lib, only: atm_get
       use envstruct_lib
       use star_info_lib, only: star
       use star_info_lib, only: star

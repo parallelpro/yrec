@@ -31,6 +31,8 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      model)
 
       use atm_lib
+
+      use envint_lib, only: atm_get
       use star_info_lib, only: star
       use star_info_lib, only: star
       use star_info_lib, only: star

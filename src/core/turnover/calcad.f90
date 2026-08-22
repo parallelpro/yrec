@@ -57,6 +57,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
       use eos_lib
       use atm_lib
+      use envint_lib, only: atm_get
       use atm_table_lib
       use run_diag_lib
       use envstruct_lib
