@@ -34,6 +34,53 @@
 ! already `use nuclear_lib` (setup/midmod.f90, misc/coefft.f90,
 ! core/main.f90, util/ytime.f90, rotation/getw.f90,
 ! mixing/bursmix.f90) had it added.
+! ---------------------------------------------------------------------
+! MAP OF THE MODULE (2026, added with the standalone test -- see
+! nuclear/test/test_nuclear.f90 and test_nuclear.py). Fourteen
+! procedures in five functional groups; "pure" below means a function
+! of its arguments plus controls (no model state), which is what the
+! standalone test can pin.
+!
+!   Reaction rates (pure once remap has set the cross-section scales):
+!     rates      13 reaction rates + branching fractions at one
+!                (logRho, logT, composition) point, filling element
+!                zone_idx of its output arrays. Consumes
+!                cross_section_scale (computed by setup/remap.f90 from
+!                the newcross S-factors; Solar Fusion II defaults live
+!                in core/parmin.f90). Uses ifermi12/zfermim12 below
+!                for electron-capture screening.
+!     deutrate   deuterium burning rate at one zone; result stored in
+!                star%light_burn%deuterium_burning_rate.
+!     lirate88   Li/Be burn rates (Caughlan & Fowler 1988) per zone.
+!
+!   Energy generation (model-coupled; covered by Stage-0, not the
+!   standalone test):
+!     engeb      the per-zone energy-generation driver: burns the
+!                composition over the timestep, fills the luminosity
+!                breakdown, neutrino fluxes (star%flux), and
+!                diagnostics (star%engeb); reads the previous model
+!                (star%prev).
+!     eqburn     equilibrium-burning helper used by engeb.
+!
+!   Deuterium / light elements (model-coupled):
+!     dburn      deuterium burning over a zone range.
+!     dburnm     near-duplicate of dburn, deliberately kept separate
+!                (different rate data, timestep units, convergence
+!                threshold, accretion weighting -- see note above).
+!     liburn     Li6/Li7/Be9 depletion over the timestep.
+!     liburn2    companion form of liburn (separate calling context).
+!     safedivexp division-with-exponent guard used by liburn*.
+!
+!   Neutrino losses:
+!     sneut      Itoh et al. (1996) analytic fits (pure; initializes
+!                its own coefficients on first call).
+!     nulosses   wrapper: azbar + sneut for a full mixture.
+!     neutrino   legacy interface to the loss rates.
+!     azbar      abar/zbar/molar-abundance bookkeeping (pure).
+!
+!   Private helpers:
+!     ifermi12, zfermim12   Fermi-Dirac integral inverses (rates only).
+! ---------------------------------------------------------------------
 module nuclear_lib
 contains
 

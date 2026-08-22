@@ -32,6 +32,7 @@ jobs:
             /src/
             /conftest.py
             /test_eos.py
+            /test_nuclear.py
             /test_kap.py
             /test_atm.py
             /test_boundaries.py
@@ -53,9 +54,9 @@ jobs:
         run: make -C src -j4
 
       - name: Build standalone test programs
-        run: make -C src -j4 test_eos test_kap test_atm
+        run: make -C src -j4 test_eos test_kap test_atm test_nuclear
 
       - name: Run per-module tests and boundary checker
         env:
           YREC_TEST_TOLERANT: "1"
-        run: python3 -m pytest test_eos.py test_kap.py test_atm.py test_boundaries.py -v
+        run: python3 -m pytest test_eos.py test_kap.py test_atm.py test_nuclear.py test_boundaries.py -v

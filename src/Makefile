@@ -209,7 +209,7 @@ test_nuclear: nuclear/test/test_nuclear.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^
 
 .PHONY: tests
-tests: test_eos test_kap test_atm
+tests: test_eos test_kap test_atm test_nuclear test_reentry
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
