@@ -87,7 +87,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
      recompute_surface_bc, tri_orientation, stored_vertex_index, &
      in_atmosphere, want_derivatives, mixing_active, &
      conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, iterations_done, &
-     iteration_level)
+     iteration_level, ierr)
       use star_info_lib, only: star
       use star_info_lib, only: star
 
@@ -150,6 +150,10 @@ subroutine crrect(delta_time, max_iterations, converged, &
       ! this driver-side call site preserves the historical stop.
       integer :: jerr
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (max_iterations.le.0) return
       star%log10_luminosity = dlog10(star%luminosity_lsun(star%num_zones))
 ! ZERO COUNTERS
@@ -207,7 +211,11 @@ subroutine crrect(delta_time, max_iterations, converged, &
          call mix(delta_time, iteration_level, timestep_years, &
               core_cz_edge, envelope_zone_index, &
               mixed_zone_bounds_no_overshoot, jerr)
-         if (jerr /= 0) stop
+         if (jerr /= 0) then
+         ! 2026 (phase five, step B): propagate instead of stopping
+            ierr = jerr
+            return
+         end if
       endif
 !      IF(LROT)THEN
 !         CALL OVROT(HCOMP,HD,HP,HR,HS,HT,LC,M,LCZ,MRZONE,MXZONE,
@@ -235,7 +243,11 @@ subroutine crrect(delta_time, max_iterations, converged, &
             ksaha,star%pressure_rotation_factor,star%temperature_rotation_factor, &
             star%kinetic_energy_rot,star%kinetic_energy_rot_old,envelope_zone_index, &
             star%log_teff, jerr)
-       if (jerr /= 0) stop
+       if (jerr /= 0) then
+       ! 2026 (phase five, step B): propagate instead of stopping
+          ierr = jerr
+          return
+       end if
 ! RENORMALIZE TLUMX-S
 !CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
        total_luminosity_terms = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &

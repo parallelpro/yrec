@@ -27,7 +27,7 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
      atm_code, eos_code, hik_code, use_diffusion_y, use_diffusion_z, &
      disk_locking_active, instability_transport_active, ljdot0, alok_code, &
      lovstc, envelope_overshoot_active, lovstm, use_pure_z_table, lsemic, &
-     compmix_code, disk_pressure, disk_temperature, wind_saturation_omega)
+     compmix_code, disk_pressure, disk_temperature, wind_saturation_omega, ierr)
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons
 
@@ -98,6 +98,10 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
 ! Zero the composition arrays (composition) and the omega array.
 ! This is agreed upon protection in case they are inadvertently used in
 ! the program, but not present in the old YREC input data.
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       do i  = 1, json
          omega(i) = 0d0
        do j = 1, 15
@@ -191,7 +195,10 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
  1000       format(1X,39('>'),40('<')/1X,'RUN STOPPED')
  1050       format(' ERROR IN SUBROUTINE GETY7'/1X,'GLITCH IN SHELL', &
            I3,', SHELL MASS LESS THAN ZERO OR GREATER THAN STAR MASS')
-          stop
+          ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+          ! returns the error and the CLI wrapper (main) stops.
+          ierr = 1
+          return
        endif
        composition(1,i) = 1.0D-6*dfloat(ix)
        composition(3,i) = 1.0D-6*dfloat(iz)

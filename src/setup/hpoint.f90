@@ -16,7 +16,7 @@
 ! consistent with the new mesh.
 subroutine hpoint(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
-     total_rotational_ke)
+     total_rotational_ke, ierr)
       use star_info_lib, only: star
       use star_info_lib, only: star
 
@@ -127,6 +127,10 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       ! this driver-side call site preserves the historical stop.
       integer :: jerr
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       point_reset_flag = .false.
 !  IEND IS THE NUMBER OF SPECIES THE PROGRAM IS KEEPING TRACK OF
       num_species_tracked = 11
@@ -148,7 +152,10 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        write(iowr,30)
    30    format(1X,39('>'),40('<')/1X,'ERROR IN HPOINT'/ &
      1X,'MAX. STAR T LESS THAN MINIMUM ENVELOPE T.RUN STOPPED')
-       stop
+       ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+       ! returns the error and the CLI wrapper (main) stops.
+       ierr = 1
+       return
    40    continue
 !  CHECK IF OUTER POINT T < MAXIMUM ENVELOPE T
       else if (star%log_temperature(star%num_zones).gt.tenv1.and. &
@@ -401,7 +408,10 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
             write(*,101) new_num_zones+segment_point_count,json
  101        format(' DESIRED NUMBER OF POINTS ',I6,'EXCEEEDS JSON ', &
      I6/' RUN STOPPED')
-            stop 9999
+            ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+            ! returns the error and the CLI wrapper (main) stops.
+            ierr = 1
+            return
          endif
          dchi = delta_chi/dfloat(segment_point_count)
 ! ASSIGN NEW POINTS
@@ -873,7 +883,11 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        call physic(star%pressure_rotation_factor,star%temperature_rotation_factor,star%composition,star%log_density,star%mean_gravity,star%luminosity_lsun, &
             star%log_pressure,star%log_radius,star%log_mass,star%log_temperature, &
             star%convective_flag,star%num_zones,star%log_teff, jerr)
-       if (jerr /= 0) stop
+       if (jerr /= 0) then
+       ! 2026 (phase five, step B): propagate instead of stopping
+          ierr = jerr
+          return
+       end if
 !   FOR DIFFUSION STORE THE AUXILLARY QUANTITIES NEEDED TO CALCULATE
 !   VELOCITIES AT THE START OF THE TIMESTEP WITH THE NEW POINT DISTRIBUTION
 !   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN

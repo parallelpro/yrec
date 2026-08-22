@@ -26,7 +26,7 @@
 !      by print interleaving, not by data flow. Documented residual.
 ! Called from core/main.f90 immediately before wrtout, once per
 ! output model, exactly the cadence the blocks had inside wrtout.
-subroutine update_output_diagnostics()
+subroutine update_output_diagnostics(ierr)
       use star_info_lib, only: star
 
       use star_info_lib, only: star
@@ -69,6 +69,10 @@ subroutine update_output_diagnostics()
       save
 
 !  RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if(.not.helium_flash_active) then
        total_luminosity_sum = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &
             star%luminosity_breakdown(3)+star%luminosity_breakdown(4)+star%luminosity_breakdown(5)+ &
@@ -126,7 +130,9 @@ subroutine update_output_diagnostics()
            beta_center,beta_inverse_center,beta14_center,fxion,mean_molecular_weight_center, &
            amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
            qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center, &
-           compute_derivatives,is_atmosphere_point,ksaha_center,composition_at_zone=star%composition(:,1))
+           compute_derivatives,is_atmosphere_point,ksaha_center, &
+           composition_at_zone=star%composition(:,1), ierr=ierr)
+      if (ierr /= 0) return
 ! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
 ! STORE CENTRAL RHO,P,T FOR LATER USE
       star%run%central_log10_pressure = log_pressure_center

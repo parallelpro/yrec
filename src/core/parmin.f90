@@ -34,7 +34,7 @@
 subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      flaol2, fliv95, flldat, fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, &
      fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
-     fscvz, opecalex)
+     fscvz, opecalex, ierr)
 
       use envelope_comp_lib
       use const_lib
@@ -799,6 +799,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !
 !
 ! SPLIT NAMELIST INTO TWO: CONTROL and PHYSICS
+      integer, intent(out) :: ierr
+
       namelist /control/ &
            &    cmixla, calsolage, calsolzx, &
            &    descrip, &
@@ -901,6 +903,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    tol_dx_max,tol_dz_max,time_max_dt_frac,lnewvars, &
 ! G Somers 3/17 USE NEW OVERTURN TIMESCALE CALC?
            &    lnewtcz, lcalcenv
+
+      ierr = 0
 !
 ! DBG DATA CARDS FOR THE RUN PARAMETERS
 ! MHP DATA FOR MONTE CARLO OPTION, ETC
@@ -1811,7 +1815,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       2       format(1x,'ERROR IN SUBROUTINE PARMIN'/'SEMI-CONVECTION', &
            &  ' AND OVERSHOOT FLAGS BOTH TURNED ON'/'FLAGS LSEMIC',l2, &
            &  ' OVERSHOOT - CORE,ENVELOPE,INTERMEDIATE-',3l2/'RUN STOPPED')
-            stop
+            ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+            ! returns the error and the CLI wrapper (main) stops.
+            ierr = 1
+            return
          endif
       endif
       write(short_file_unit,1)(chi_grid_scale(i),i=1,12),alphae,alphac,linstb,ljdot0, &

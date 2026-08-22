@@ -100,7 +100,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
      trial_sign_flag, ikut_flag, istore_flag, model_failed_flag, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
-     species_mix_weights)
+     species_mix_weights, ierr)
       use star_info_lib, only: star
       use star_info_lib, only: star
 
@@ -236,13 +236,20 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       ! this driver-side call site preserves the historical stop.
       integer :: jerr
 
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
       if (model_failed_flag) then
           write(short_file_unit,1000)
  1000       format(1x,39('>'),40('<')/, &
                   "STARIN:        ***** RUN STOPPED *****")
           write(short_file_unit,1010)
  1010       format("STARIN: ***** MODEL FAILED TO CONVERGE *****")
-            stop
+            ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+            ! returns the error and the CLI wrapper (main) stops.
+            ierr = 1
+            return
       endif
 
 ! THIS SUBROUTINE READS IN THE INITIAL STELLAR MODEL
@@ -267,7 +274,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! DBG 2/92 CHANGED SO WILL RESCALE ENVELOPE MASS ON EACH NEW RUN
          if (rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
               star%composition,star%log_mass,star%log_total_mass,star%num_zones,run_index, &
-              star%total_mass_msun,star%convective_flag)
+              star%total_mass_msun,star%convective_flag, ierr)
+         if (ierr /= 0) return
 ! Now skip over the reading and processing of an input model file
          goto 3000
       endif
@@ -302,7 +310,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
               alok_code, &
               lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
               lsemic0,star%run%initial_composition_code,disk_pressure0, &
-              disk_temperature0,wind_saturation_omega0)
+              disk_temperature0,wind_saturation_omega0, ierr)
+         if (ierr /= 0) return
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons
 
@@ -332,7 +341,10 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
          write(short_file_unit,20)
  20      format('STARIN: ***** RUN TERMINATED, INVALID INPUT', &
                 ' MODEL FILE.  *****')
-         stop
+         ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+         ! returns the error and the CLI wrapper (main) stops.
+         ierr = 1
+         return
       endif
 
 ! Model has now been read in. Some post-processing is required.
@@ -621,7 +633,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! PERFORM RESCALING OF FIRST MODEL IF REQUIRED
       if (rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
            star%composition,star%log_mass,star%log_total_mass,star%num_zones,run_index, &
-           star%total_mass_msun,star%convective_flag)
+           star%total_mass_msun,star%convective_flag, ierr)
+      if (ierr /= 0) return
 
 ! What is the metallicity of your model? (surface X and Z)
 ! put in SETUPOPAC here, and take out of setups.
@@ -741,7 +754,11 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                     convective_velocity,want_derivatives,is_convective, &
                     point_pressure_rotation_factor, &
                     point_temperature_rotation_factor,star%log_teff, jerr)
-               if (jerr /= 0) stop
+               if (jerr /= 0) then
+               ! 2026 (phase five, step B): propagate instead of stopping
+                  ierr = jerr
+                  return
+               end if
                star%log_density(star%num_zones) = log10_density
                star%convective_flag(star%num_zones) = is_convective
           endif
@@ -853,8 +870,14 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                      target_mass_coord = env_comp%stotal + env_comp%senv
                      upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
                           env_comp%stotal
-                     if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) &
-                          stop 9998
+                     if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
+! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
+! returns the error (run_yrec propagates, the CLI wrapper stops).
+                        write(short_file_unit,*) 'STARIN: degenerate', &
+                             ' envelope interpolation interval (was STOP 9998)'
+                        ierr = 1
+                        return
+                     end if
                      envelope_interp_fraction = (target_mass_coord- &
                           lower_mass_coord)/(upper_mass_coord- &
                           lower_mass_coord)
@@ -895,8 +918,14 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                      target_mass_coord = env_comp%stotal + env_comp%senv
                      upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
                           env_comp%stotal
-                     if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) &
-                          stop 9998
+                     if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
+! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
+! returns the error (run_yrec propagates, the CLI wrapper stops).
+                        write(short_file_unit,*) 'STARIN: degenerate', &
+                             ' envelope interpolation interval (was STOP 9998)'
+                        ierr = 1
+                        return
+                     end if
                      envelope_interp_fraction = (target_mass_coord- &
                           lower_mass_coord)/(upper_mass_coord- &
                           lower_mass_coord)
@@ -1157,7 +1186,11 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
            star%composition,star%log_density,star%mean_gravity,star%luminosity_lsun,star%log_pressure, &
            star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%num_zones, &
            star%log_teff, jerr)
-      if (jerr /= 0) stop
+      if (jerr /= 0) then
+      ! 2026 (phase five, step B): propagate instead of stopping
+         ierr = jerr
+         return
+      end if
       call ovrot(star%composition,star%log_density,star%log_pressure,star%log_radius,star%log_mass, &
                  star%log_temperature,star%convective_flag,star%num_zones, &
                  am_transport_convective_flag,radiative_zone_bounds, &

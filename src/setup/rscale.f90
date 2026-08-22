@@ -20,7 +20,7 @@
 ! species (common/newcmp/) and ramps interior Z toward a target core
 ! value (common/zramp/).
 subroutine rscale(luminosity_array, composition, shell_mass_log, &
-     total_mass_log, num_zones, run_index, star_mass, convective_flag)
+     total_mass_log, num_zones, run_index, star_mass, convective_flag, ierr)
 ! DBG 5/94 Added rescaling of Z in core ZRAMP stuff.
       use const_lib
       use envelope_comp_lib
@@ -63,6 +63,10 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 !      write(*,*)
 !      write(*,*)'Entering rscale ',HSTOT-HS(M)
 ! ************
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       if(rescale_params(2,run_index).gt.0.0d0) then
 !  RESCALE X BY MULTIPLYING ALL SHELL X VALUES BY THE RATIO (XNEW/XOLD)
@@ -224,7 +228,10 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
            'DESIRED NEW ENVELOPE MASS LESS THAN ZERO'/1x, &
            'OLD ENVELOPE MASS ',1pe9.2,' NEW ENVELOPE ',e9.2, &
            ' NEW AND OLD TOTAL MASS ',2e10.2)
-               stop
+               ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+               ! returns the error and the CLI wrapper (main) stops.
+               ierr = 1
+               return
             endif
 
 ! ***** Calculate scale factor for mass rescaling *****
@@ -271,7 +278,10 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             env_mass_check = ((10**total_mass_log)/solar_mass_cgs)-core_mass_old
             if(env_mass_check.le.0.0d0)then
                write(short_file_unit,69)env_mass_old,env_mass_old+delta_env_mass,rescale_params(1,run_index),star_mass
-               stop
+               ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+               ! returns the error and the CLI wrapper (main) stops.
+               ierr = 1
+               return
             endif
 
 ! **** Calculate scale factor *****
@@ -324,7 +334,10 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
            ' RESCALING'/1x, &
            'OLD ENVELOPE MASS ',1pe10.2,' NEW ENVELOPE ',e10.2, &
            ' NEW AND OLD CORE MASS ',2e10.2)
-               stop
+               ! 2026 (phase five, step B): stop converted to ierr; run_yrec
+               ! returns the error and the CLI wrapper (main) stops.
+               ierr = 1
+               return
             endif
             log_mass_shift = dlog10(rescale_params(4,run_index)/core_mass_old)
             do 80 zone_idx = 1,shell_begin-1

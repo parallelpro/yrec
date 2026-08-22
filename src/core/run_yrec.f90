@@ -223,7 +223,8 @@ subroutine run_yrec(ierr)
 ! read in user parameters
       call parmin(alex06_table_path,allard_table_path,atm_table_path,fermi_table_path,kurucz_table_path,kurucz_table2_path,laol_table_path, &
            laol_table2_path,opal95_table_path,opal92_table_path,zams_a_table_path,zams_b_table_path,zams_c_table_path,centre1_table_path,centre2_table_path,centre3_table_path,centre4_table_path, &
-           centre5_table_path,opal92_table2_path,pulse_atm_path,pulse_env_path,pulse_mod_path,pure_z_table_path,scv_h_table_path,scv_he_table_path,scv_z_table_path,alex95_table_paths)
+           centre5_table_path,opal92_table2_path,pulse_atm_path,pulse_env_path,pulse_mod_path,pure_z_table_path,scv_h_table_path,scv_he_table_path,scv_z_table_path,alex95_table_paths, ierr)
+      if (ierr /= 0) return
 ! set up constants and read in tabular data
 ! MHP 8/25 directly pass file names instead of using common blocks
       call setups(mixture_weights,alex06_table_path,allard_table_path,atm_table_path,fermi_table_path,kurucz_table_path,kurucz_table2_path, &
@@ -318,7 +319,8 @@ subroutine run_yrec(ierr)
             ikut_flag, istore_flag, model_diverged_flag, &
             recompute_envelope_triangle, nk, dlnrho_dlnp, dlnrho_dlnt, &
             total_angular_momentum, total_rotational_ke, &
-            convective_velocity, mixture_weights)
+            convective_velocity, mixture_weights, ierr)
+       if (ierr /= 0) return
 
       if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
 
@@ -326,7 +328,10 @@ subroutine run_yrec(ierr)
                  ' Initialize rotation rates or set LROT to', &
                  ' FALSE.')
           print 1611
-          stop
+          ! 2026 (phase five, step B): configuration error returns to the
+          ! CLI wrapper (which stops) instead of stopping here.
+          ierr = 1
+          return
       endif
 !     MHP 10/24 CHECK STOP CONDITIONS AND DISABLE THEM IF THE STARTING VALUES ARE BELOW THE TARGET THRESHOLD
          if (end_age_stop_active(nk)) then
@@ -599,13 +604,17 @@ subroutine run_yrec(ierr)
                   model_diverged_flag, recompute_envelope_triangle, nk, &
                   dlnrho_dlnp, dlnrho_dlnt, total_angular_momentum, &
                   total_rotational_ke, convective_velocity, &
-                  mixture_weights)
+                  mixture_weights, ierr)
+             if (ierr /= 0) return
              if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
 18               format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
                         ' Initialize rotation rates or set LROT to', &
                         ' FALSE.')
                  print 18
-                 stop
+                 ! 2026 (phase five, step B): configuration error returns to the
+                 ! CLI wrapper (which stops) instead of stopping here.
+                 ierr = 1
+                 return
              endif
           endif
           punch_pending_flag = .true.
@@ -643,7 +652,11 @@ subroutine run_yrec(ierr)
                call mix(delta_time, iteration_level, timestep_yr, &
                     star%core_cz_top_index, star%envelope_cz_bottom_index, &
                     star%mixed_zone_bounds_no_overshoot, jerr)
-               if (jerr /= 0) stop
+               if (jerr /= 0) then
+               ! 2026 (phase five, step B): propagate instead of stopping
+                  ierr = jerr
+                  return
+               end if
              timestep_yr = delta_time/seconds_per_year
              star%run%dage = star%run%dage + 1.0D-9*timestep_yr
             endif
@@ -671,7 +684,8 @@ subroutine run_yrec(ierr)
           if (.not.helium_flash_active) then
              call hpoint(istore_flag, reset_triangle, h_shell_zone_begin, &
                   has_h_shell, total_angular_momentum, &
-                  total_rotational_ke)
+                  total_rotational_ke, ierr)
+             if (ierr /= 0) return
 ! STORE NEW CZ BASE
                light_burn%jcz = star%envelope_cz_bottom_index
             else
@@ -765,7 +779,8 @@ subroutine run_yrec(ierr)
                  reset_triangle, recompute_surface_bc, trial_sign_flag, &
                  istore_flag, in_atmosphere, want_derivatives, &
                  mixing_active, conductive_opacity_flag, dlnrho_dlnt, &
-                 dlnrho_dlnp, iterations_done, iteration_level)
+                 dlnrho_dlnp, iterations_done, iteration_level, ierr)
+            if (ierr /= 0) return
 ! SECOND LEVEL OF ITERATIONS
 ! CHECK ENVELOPE TRIANGLE BEFORE ITERATING FOR SOLUTION
             if (model_diverged_flag) goto 15
@@ -777,7 +792,8 @@ subroutine run_yrec(ierr)
                  reset_triangle, recompute_surface_bc, trial_sign_flag, &
                  istore_flag, in_atmosphere, want_derivatives, &
                  mixing_active, conductive_opacity_flag, dlnrho_dlnt, &
-                 dlnrho_dlnp, iterations_done, iteration_level)
+                 dlnrho_dlnp, iterations_done, iteration_level, ierr)
+            if (ierr /= 0) return
             if (model_diverged_flag) goto 15
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
 ! IMPROVED FIRST GUESS AT THE STRUCTURE FOR THE NEXT MODEL IF LNEWS=T.
@@ -798,7 +814,8 @@ subroutine run_yrec(ierr)
                  reset_triangle, recompute_surface_bc, trial_sign_flag, &
                  istore_flag, in_atmosphere, want_derivatives, &
                  mixing_active, conductive_opacity_flag, dlnrho_dlnt, &
-                 dlnrho_dlnp, iterations_done, iteration_level)
+                 dlnrho_dlnp, iterations_done, iteration_level, ierr)
+            if (ierr /= 0) return
             if (model_diverged_flag) goto 15
             if (.not.rotation_active) then
                itdif1 = 1
@@ -842,7 +859,8 @@ subroutine run_yrec(ierr)
                  reset_triangle, recompute_surface_bc, trial_sign_flag, &
                  istore_flag, in_atmosphere, want_derivatives, &
                  mixing_active, conductive_opacity_flag, dlnrho_dlnt, &
-                 dlnrho_dlnp, iterations_done, iteration_level)
+                 dlnrho_dlnp, iterations_done, iteration_level, ierr)
+            if (ierr /= 0) return
 !  25         CONTINUE
             if (.not.converged) then
 ! MODEL FAILED TO CONVERGE WITHIN(NITER1+NITER2+NITER3+NITER4)ITERATIONS
@@ -889,7 +907,11 @@ subroutine run_yrec(ierr)
                wind_loss_active = ljdot0
                call getw(delta_time, max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
-               if (jerr /= 0) stop
+               if (jerr /= 0) then
+               ! 2026 (phase five, step B): propagate instead of stopping
+                  ierr = jerr
+                  return
+               end if
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
                call fpft(star%log_density,star%log_radius,star%log_mass,star%num_zones,star%omega,star%eta_squared,star%pressure_rotation_factor,star%temperature_rotation_factor,star%mean_gravity,star%mean_radius)
             endif
@@ -959,7 +981,8 @@ subroutine run_yrec(ierr)
 ! 2026 (phase four, step 5): compute the output diagnostics in the
 ! star layer (fills star%run%*, star%luminosity_breakdown
 ! renormalization, turnover% via gettau); wrtout below only reads.
-       call update_output_diagnostics
+       call update_output_diagnostics(ierr)
+       if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
        call wrtout(timestep_yr, log_gravity, has_h_shell, &
             h_shell_zone_begin, h_shell_midpoint_zone, h_shell_end_index, &
@@ -1161,7 +1184,7 @@ subroutine run_yrec(ierr)
       endif
  500  end do
 
-      stop
-
+! 2026 (phase five, step B): the normal end-of-job stop became this
+! clean return (ierr stays 0); the CLI wrapper simply ends.
       return
 end subroutine run_yrec
