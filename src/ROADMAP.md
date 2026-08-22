@@ -334,3 +334,142 @@ additionally from stage 2 on, and the boundary-checker keeps stage
 1's win locked in. As with phase two, investigate before assuming:
 each stage's first commit should re-verify this roadmap's inventory
 against the then-current source rather than trusting these counts.
+
+---
+
+# Phase four: the star layer (star_info)
+
+Added 2026-08-21, after stage 3 completed, from a measured
+investigation of the non-physics folders (core, io, misc, mixing,
+nuclear, numerics, rotation, setup, util). Question asked: are they
+modular or intertwined? Answer: the physics domains that phases 1-3
+worked on are now genuinely modular -- entered only through facades,
+calling only downward, owning their state, standalone-tested. The
+star-level folders are not, and the entanglement has one root cause:
+**the stellar model has no single owner or representation.**
+
+## Evidence (2026-08-21 dependency scan)
+
+Cross-domain call counts (rows call into columns; facade calls
+included -- the point is which edges exist at all):
+
+```
+          atm  core eos  io   kap  misc mix  nuc  num  rot  setup util wind
+atm       -    .    4    1    3    1    .    .    42   .    .     .    .
+core      3    -    1    9    2    6    4    4    .    8    10    3    1
+eos       .    .    -    .    .    .    .    .    33   .    5     4    .
+io        4    .    1    -    .    2    .    .    3    1    .     .    .
+kap       .    .    .    .    -    .    .    .    62   .    .     3    .
+misc      1    .    2    .    2    -    .    1    1    2    1     .    .
+mixing    .    .    4    .    3    3    -    7    .    5    .     4    .
+nuclear   .    .    .    .    .    .    .    -    2    .    .     .    .
+numerics  .    .    .    .    .    10   .    .    -    2    .     .    .
+rotation  1    .    .    2    .    14   6    3    30   -    2     .    5
+setup     1    .    1    .    2    2    1    2    31   7    -     .    .
+wind      1    .    2    .    .    3    .    .    .    .    .     .    -
+```
+
+The four concrete mechanisms of entanglement:
+
+1. **The model is smeared across ~40 arrays declared in
+   `program main`** (`composition(15,json)`, `log_mass`, `omega`,
+   `moment_of_inertia`, ..., `json=5000`) **and threaded through
+   giant positional argument lists**: `crrect` 60 arguments,
+   `starin` 50, `midmod`/`wrtout` 43, `seculr` 37, `hpoint` 35,
+   `engeb` 35, `coefft` 33, `getw` 29. Every signature is a
+   hand-maintained slice of the model vector; every intent bug
+   phases 2-3 surfaced (3 of them) was an argument-list mismatch.
+
+2. **The other half of the model lives in ~10 shared mutable
+   state modules** (former COMMONs in `state/`): `oldmod_lib` IS the
+   previous model (`old_pressure`, `old_temperature`,
+   `old_composition`, ...); `rotdiff_lib`, `turnover_lib`,
+   `run_diag_lib`, `scrtch_lib` are each read by 6-9 domains. Two
+   representations, no owner.
+
+3. **`misc/` is a grab-bag, not a domain**, manufacturing fake
+   dependency edges (rotation->misc 14, numerics->misc 10):
+   `tpgrad` is convection/atm physics, `coefft` is the Henyey
+   matrix builder (core), `physic` is the all-zones thermo driver
+   (core), `solid`/`shape` are rotation geometry,
+   `spline`/`splinnr`/`slopes`/`search`/`choose`/`cases`/`simeqc`
+   are numerics, `chkcal`/`chkscal`/`pdist` are core diagnostics,
+   `stitch` is a core/model operation.
+
+4. **Cycles and layering violations**: rotation<->mixing is a true
+   cycle (`getw` -> `bursmix`/`mixcz`/`convec`; `rotmix`/`mix` ->
+   `microdiff`/`grsett`/`ndifcom`) -- rotational mixing genuinely
+   couples them. `io` COMPUTES at write time (`wrtout` ->
+   `calcad`/`gettau`, `wrtmod`/`getnewenv` -> `atm_get`), and
+   rotation calls io's `model_to_equal`/`equal_to_model` to copy
+   model state. `numerics` is not a leaf (`qgauss`'s hard-coded
+   call into rotation's `func`; `meval` -> misc's
+   `choose`/`cases`/`search`). `setup/hpoint` and `setup/midmod`
+   are solver orchestration living under a "setup" name.
+
+## Target architecture
+
+Three layers (MESA's shape, adapted to the single-star,
+no-handles decision):
+
+- **Drivers** (`main`, and the stage-3 driver-side stop sites):
+  policy -- when to step, when to stop.
+- **Star layer** (core solver, setup's stepping routines, io,
+  mixing, rotation): owns `type(star_info) :: star` -- the model
+  arrays, one instance, modified in place through the run. The
+  rotation<->mixing cycle stops being an architectural problem
+  here: both are star-layer routines operating on the same struct,
+  which is exactly how MESA treats rotational mixing.
+- **Physics services** (eos/kap/atm/nuclear/wind facades +
+  numerics as a pure leaf): take plain arguments, return results,
+  NEVER see star_info. This is MESA's boundary too (star_def is
+  unknown to eos/kap/net), and it preserves the standalone
+  testability stage 2 built. The phase-one single-instance
+  decision stands: one module-level `star`, no handles;
+  `oldmod_lib` becomes simply a second instance (`prev`).
+
+## Steps (each byte-identical-verifiable, in order)
+
+1. **Dissolve `misc/`** -- pure `git mv` relocations per the
+   phase-two misplaced-file test: `tpgrad` -> atm (or a convection
+   home decided on investigation), `coefft`/`physic`/`stitch`/
+   `chkcal`/`chkscal`/`pdist` -> core, `solid`/`shape` -> rotation,
+   `spline`/`splinnr`/`slopes`/`search`/`choose`/`cases`/`simeqc`
+   -> numerics. Also `rtab`/`rabu` -> eos/mhd (queued since stage
+   3). Removes the fake edges so the real graph is visible.
+2. **Make numerics a pure leaf**: the misc spline helpers move in
+   (step 1); `qgauss`'s hard-coded call to rotation `func` becomes
+   a procedure dummy argument (F2003 procedure interface), passed
+   by rotation at the call site. After this, numerics' column in
+   the matrix has no outgoing edges.
+3. **Introduce `star_info`** (`state/star_info_lib.f90` or a new
+   `star/` home): fields = exactly `program main`'s model arrays,
+   same names, same shapes. `main` declares `star` and passes it;
+   convert the worst signatures top-down -- `crrect` (60),
+   `starin` (50), `midmod` (43), `wrtout` (43), `hpoint` (35),
+   `getw` (29), `mix` (21) -- each routine replacing its model-
+   slice arguments with `star`, one routine per commit,
+   byte-identical each time. Non-model arguments (tolerances,
+   flags, per-call scalars) stay as arguments.
+4. **Fold the `state/` model modules into star_info**:
+   `oldmod_lib` -> `type(star_info) :: prev` (model save/restore
+   becomes a struct copy); `scrtch_lib`/`run_diag_lib` ->
+   `star%diag...`; `rotdiff_lib` -> `star%rot...`; decided
+   member-by-member with the same relocation discipline as the
+   OPAL-2006/Fermi state moves in stage 1.
+5. **Make io a pure reader**: the quantities `wrtout`/`wrtmod`
+   recompute at write time get computed in the star layer, stored
+   in `star`, and io only formats. Kills the io -> atm edges and
+   the rotation -> io state-copy calls.
+
+Relation to the phase-three stages: stage 4 (named-index result
+arrays) concerns the physics facades' result vectors and is
+orthogonal -- it can interleave; stage 5 (other/ hooks) remains
+optional and independent. The blanket-SAVE cleanup interleaves as
+before -- note `program main`'s arrays and the star-layer SAVEs are
+exactly the files steps 3-4 will have open.
+
+Verification discipline unchanged: full clean build + Stage-0
+byte-identical diff per commit, standalone tests, boundary checker;
+re-verify this section's inventory against the then-current source
+before each step's first commit.
