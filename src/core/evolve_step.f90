@@ -165,7 +165,10 @@ subroutine evolve_step(model_iteration, step_status, ierr)
           endif
 
 ! STARIN called here for timestep cutting
-   15       if (evo%model_diverged_flag) then
+! (Restructured 2026: the backward goto 15 retry became the named
+! retry_step loop; divergence bailouts cycle it.)
+      retry_step: do
+            if (evo%model_diverged_flag) then
 !              CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
              call starin(evo%timestep_yr, evo%delta_time, evo%hydrogen_dt, &
                   evo%trial_sign_flag, evo%ikut_flag, evo%istore_flag, &
@@ -355,7 +358,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             if (ierr /= 0) return
 ! SECOND LEVEL OF ITERATIONS
 ! CHECK ENVELOPE TRIANGLE BEFORE ITERATING FOR SOLUTION
-            if (evo%model_diverged_flag) goto 15
+            if (evo%model_diverged_flag) cycle retry_step
             recompute_surface_bc = .true.
             max_iterations = niter2
             iteration_level = 2
@@ -366,7 +369,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                  mixing_active, conductive_opacity_flag, evo%dlnrho_dlnt, &
                  evo%dlnrho_dlnp, iterations_done, iteration_level, ierr)
             if (ierr /= 0) return
-            if (evo%model_diverged_flag) goto 15
+            if (evo%model_diverged_flag) cycle retry_step
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
 ! IMPROVED FIRST GUESS AT THE STRUCTURE FOR THE NEXT MODEL IF LNEWS=T.
             if (evo%delta_time.gt.0.0D0) then
@@ -389,7 +392,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                  mixing_active, conductive_opacity_flag, evo%dlnrho_dlnt, &
                  evo%dlnrho_dlnp, iterations_done, iteration_level, ierr)
             if (ierr /= 0) return
-            if (evo%model_diverged_flag) goto 15
+            if (evo%model_diverged_flag) cycle retry_step
             if (.not.rotation_active) then
                itdif1 = 1
             endif
@@ -438,7 +441,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             if (.not.converged) then
 ! MODEL FAILED TO CONVERGE WITHIN(NITER1+NITER2+NITER3+NITER4)ITERATIONS
                evo%model_diverged_flag = .true.
-               goto 15
+               cycle retry_step
             endif
 
 ! MODEL HAS CONVERGED
@@ -489,6 +492,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                call fpft(star%log_density,star%log_radius,star%log_mass,star%num_zones,star%omega,star%eta_squared,star%pressure_rotation_factor,star%temperature_rotation_factor,star%mean_gravity,star%mean_radius)
             endif
             end do
+      exit retry_step
+      end do retry_step
 ! LOCATE THE HYDROGEN-BURNING SHELL AND THE BOUNDARIES OF THE CENTRAL
 ! AND SURFACE CONVECTION ZONES (IF APPLICABLE).
        call findsh(star%composition,star%luminosity_lsun,star%convective_flag,star%num_zones, &

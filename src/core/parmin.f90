@@ -1982,26 +1982,28 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 !         ENDIF
 ! FOR A CUSTOM MIX,DISABLE IF THE SUM OF CNO MASS FRACTIONS EXCEEDS ONE
 ! OR IF ANY MASS FRACTION IS NEGATIVE
+! (Restructured 2026: the goto 602/606 aborts left
+! change_cno_mixture_active false, which already suppresses the
+! label-606 print, so structured fall-through is equivalent.)
          if(amix.eq.'CUS')then
             if(frac_c.lt.0.0d0.or.frac_n.lt.0.0d0.or.frac_o.lt.0.0d0)then
                write(*,591)frac_c,frac_n,frac_o
                write(short_file_unit,591)frac_c,frac_n,frac_o
       591          format('NEGATIVE INPUT CNO FRACTION ',3e12.4, &
            &              ' MIX NOT MODIFIED')
-               goto 602
-            endif
+            else
             sum_frac=frac_c+frac_n+frac_o
             if(sum_frac.ge.1.0d0)then
                write(*,598)frac_c,frac_n,frac_o
                write(short_file_unit,598)frac_c,frac_n,frac_o
       598          format('INPUT CNO FRACTION ',3e12.4, &
            &              ' EXCEEDS 1. MIX NOT MODIFIED')
-               goto 602
-            endif
+            else
 ! VALID MIXTURE, USE CUSTOM ENTRIES FROM .NML1
             change_cno_mixture_active = .true.
-            goto 606
-         endif
+            endif
+            endif
+         else
 ! SEARCH THROUGH OTHER VALID MIXTURE ENTRIES;IF FOUND,ASSIGN
 !         DO I = 2,4
          do i = 1,4
@@ -2011,22 +2013,25 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
                frac_n = frac_n_table(i)
                frac_o = frac_o_table(i)
                change_cno_mixture_active = .true.
-               goto 606
+               exit
             endif
          end do
+         if (.not. change_cno_mixture_active) then
 !     NO VALID MIX SPECIFIED
          write(*,589)amix
          write(short_file_unit,589)amix
       589    format('DESIRED CNO MIXTURE ',a8,' NOT FOUND. MIX NOT ALTERED.')
+         end if
       endif
-      606 if(change_cno_mixture_active)then
+      endif
+      if(change_cno_mixture_active)then
          write(*,604)amix,frac_c,frac_n,frac_o
          write(short_file_unit,604)amix,frac_c,frac_n,frac_o
       604    format('CNO MIXTURE ',a8,' C ',e12.4,' N ',e12.4,' O ', &
            &         e12.4,' APPLIED TO STARTING MODEL.')
       endif
 !     CHECK IF ISOTOPE RATIOS NEED TO BE ALTERED
-      602 if(isetiso.eq.1)then
+      if(isetiso.eq.1)then
 ! FOR A CUSTOM MIX,DISABLE IF THE SUM OF CNO MASS FRACTIONS EXCEEDS ONE
 ! OR IF ANY MASS FRACTION IS NEGATIVE
          if(aiso.eq.'CUS')then
@@ -2041,8 +2046,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       596          format('NEGATIVE INPUT ISOTOPE RATIO OR LIGHT ELEMENT' &
            &   ' MASS FRACTION ',11e12.4, &
            &              ' MIX NOT MODIFIED')
-               goto 603
-            endif
+            else
             sum_frac= xh2_ini+xhe3_ini+xli6_ini+xli7_ini+xbe9_ini+ &
            &                 xb10_ini+xb11_ini
             if(sum_frac.ge.1.0d0)then
@@ -2052,15 +2056,17 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &  xbe9_ini,xb10_ini,xb11_ini
       595          format('SUM OF LIGHT ELEMENT MASS FRACTIONS EXCEEDS 1', &
            &  11e12.4,' MIX NOT MODIFIED')
-               goto 603
+            else
+!     PASSED ALL CHECKS - THE CUSTOM SETTINGS WILL BE APPLIED
+            change_isotope_ratios_active = .true.
+            endif
             endif
 !     CURRENTLY THERE ARE ONLY 2 VALID OPTIONS - THE DEFAULT (L21) OR
 ! A CUSTOM MIXTURE (CUS) - IF NEITHER IS TRUE, EXIT
-         else if(aiso.ne.'L21')then
-            goto 603
+         else if(aiso.eq.'L21')then
+!     THE DEFAULT SETTINGS WILL BE APPLIED
+            change_isotope_ratios_active = .true.
          endif
-!     PASSED ALL CHECKS - EITHER THE DEFAULT OR THE CUSTOM SETTINGS WILL BE APPLIED
-         change_isotope_ratios_active = .true.
       endif
       if(change_isotope_ratios_active)then
          write(*,605)aiso,r12_13,r16_18, &
@@ -2072,7 +2078,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    e12.4,' LI7 ',e12.4,' BE9 ',e12.4,' APPLIED TO STARTING MODEL.')
       endif
 ! DBG 12/95 ENSURE CORRECT PARAMETERS FOR Z DIFFUSION
-      603 if (ldifz) then
+      if (ldifz) then
            ldify=.true.
          lthoul=.true.
       end if
