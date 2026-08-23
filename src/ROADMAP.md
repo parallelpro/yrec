@@ -120,6 +120,28 @@ MESA-style null-default procedure pointers (other_eos_get, ...)
 checked before standard dispatch. Lowest value; only if a concrete
 A/B use case appears.
 
+## MESA-style output (in progress; user direction 2026-08-23)
+
+use_legacy_output landed (path-dependent default: legacy decks
+.true., new-style inlists .false.) with the first MESA-mode stream:
+CASE.history in MESA's history.data layout, .track v0's 83 columns
+under MESA vocabulary, numerically interchangeable with the track
+(test_mesa_output.py). Remaining, in order:
+
+- Profile files: MESA-format profileN.data + profiles.index from
+  putstore's per-shell quantity set (putstore is suppressed in MESA
+  mode until then).
+- Column customization: history_columns.list / profile_columns.list
+  (subset + order against the writer's name table; unknown name ->
+  error listing valid names).
+- MESA-style terminal output behind a control; quiet the .short
+  config echo in MESA mode at the same time.
+- FGONG pulse writer beside the existing GYRE one (port MESA's
+  pulse_fgong.f90 formulas, same pattern as write_gyre_pulse).
+- Cosmetics: in MESA mode the parmin-opened legacy files (.track
+  header block, .short echo) still exist; silence those opens once
+  the terminal step lands.
+
 ## Science wiring (sg-rotation side)
 
 Wire pyyrec into the fit_*_mcmc.py workflow: a YREC rotational-
