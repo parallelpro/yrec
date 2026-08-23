@@ -27,6 +27,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use luout_lib
       use const_lib
       use burn_lib
+      use yrec_output, only: output_write_model
       implicit none
 
 ! nk (the run index) is const_lib module state (former common/zramp/),
@@ -551,7 +552,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        call update_output_diagnostics(ierr)
        if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
-       call wrtout(star%evo%timestep_yr, log_gravity, star%evo%has_h_shell, &
+       call output_write_model(star%evo%timestep_yr, log_gravity, star%evo%has_h_shell, &
             star%evo%h_shell_zone_begin, star%evo%h_shell_midpoint_zone, star%evo%h_shell_end_index, &
             star%evo%trial_sign_flag, star%evo%punch_pending_flag, star%evo%total_angular_momentum, &
             star%evo%total_rotational_ke)

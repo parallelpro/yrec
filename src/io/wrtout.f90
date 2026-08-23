@@ -395,14 +395,6 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
       star%turnover%pphot0 = star%turnover%pphot
 
 ! JVS 02/12 Added PPHOT and SMASS to the output
-            if (.not. use_legacy_output) then
-            call write_history(itrack, radius_log_surface, log_gravity, &
-                 total_angular_momentum, total_rotational_kinetic_energy, &
-                 total_moment_of_inertia, cz_moment_of_inertia, &
-                 rotation_period_days, equatorial_velocity_kms, &
-                 h_shell_begin_mass, h_shell_mid_mass2, h_shell_end_mass, &
-                 h_shell_begin_radius, h_shell_mid_radius, h_shell_end_radius)
-            else
             write(itrack, 1499) star%model_number,star%nz,star%run%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%run%core_cz_mass,star%run%envelope_mass, &
             star%run%envelope_radius,star%run%envelope_cz_temperature,star%run%envelope_cz_density,star%run%envelope_cz_pressure,star%run%envelope_cz_o16,star%run%central_log10_temperature,star%run%central_log10_density,star%run%central_log10_pressure,star%run%central_beta,star%run%central_degeneracy_eta,star%xa(1,1),star%xa(2,1), &
             star%xa(3,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(8),star%luminosity_breakdown(7),star%luminosity_breakdown(6), &
@@ -414,7 +406,6 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !     1499       FORMAT(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3,41E16.8)
 ! MCR 12/25 Preserve precision and 'E' for values w/ 3-digit exponents
  1499       format(1X,2I8,1P7E17.8E3,1P5E12.4,16E17.8E3,12E10.3,41E17.8E3)
-            end if
          else if(track_file_version .eq.1 .or. track_file_version .eq.2) then
             write(itrack,1500)star%model_number,star%nz,star%run%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%run%core_cz_mass,star%run%envelope_mass, &
                            star%run%envelope_radius,star%run%envelope_cz_temperature,star%run%envelope_cz_density,star%run%envelope_cz_pressure,star%run%envelope_cz_o16

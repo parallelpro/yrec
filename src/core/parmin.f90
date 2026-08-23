@@ -41,6 +41,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use const_lib
       use luout_lib
       use intpar_lib
+      use yrec_output, only: output_init_mesa
       use atm_table_lib
       use opacity_table_lib
       use yale_eos_lib
@@ -1362,22 +1363,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       close(standard_unit)
       close(run_unit)
       end if
-! 2026 MESA-style output: in MESA mode the legacy per-model streams
-! are off wholesale -- not just putstore's blocks (guarded there) but
-! the envint-driven atmosphere/envelope profile blocks appended to
-! the .store unit (lstatm/lstenv/...) and the legacy OPAL-format
-! pulsation files (lpulse; the GYRE writer, gated by
-! pulse_gyre_interval, is the MESA-mode pulsation mechanism).
-! MESA-format profile files are the queued successor (ROADMAP).
-      if (.not. use_legacy_output) then
-         lstore = .false.
-         lstatm = .false.
-         lstenv = .false.
-         lstmod = .false.
-         lstphys = .false.
-         lstrot = .false.
-         lpulse = .false.
-      end if
 ! stolr0/imax/nuse must keep their exact NAMELIST /physics/ spelling
 ! (see this file's naming note at the top), so intpar_lib's
 ! canonically-named variables are set by copying from them here,
@@ -1618,8 +1603,20 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       atm_choice_initial = kttau
       use_ttau_relation = .false.
 ! DBG WRITE OUT ENTIRE NAMELIST TO ISHORT
+! Historically these echoes run BEFORE the .short open below, so they
+! land in the unit's default file (fort.NN) -- preserved bug-for-bug
+! on the legacy path, skipped entirely in MESA mode.
+! Monte-Carlo mode is legacy-file machinery through and through (the
+! run loop rewinds the legacy units per realization); force legacy
+! output rather than crash on unopened units.
+      if (lmonte .and. .not. use_legacy_output) then
+         write(*,*) 'LMONTE requires legacy output; setting use_legacy_output = .true.'
+         use_legacy_output = .true.
+      end if
+      if (use_legacy_output) then
       write(short_file_unit,nml=physics)
       write(short_file_unit,nml=control)
+      end if
 
 ! Post-process all CONTROL namelist vars that hold path values.
 ! Expand any placeholders found in the string with the value taken from a
@@ -1666,7 +1663,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! JVS 02/11 Acoustic depth/ Asteroseismic glitch output. Puts output
 ! in the same directory as all other output, and names it with the
 ! same conventions
-      if (acoustic_depth_output) then
+      if (acoustic_depth_output .and. use_legacy_output) then
             iclcd_placeholder = 91
             short_prefix_len=index(fshort,'short')
             fcalcad=fshort(1:short_prefix_len-1)//'calcad'
@@ -1768,6 +1765,10 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       use_alex95_tables = lalex95
       use_kurucz90_tables = lkur90
 
+! 2026 MESA-style output: every legacy output-file open below is
+! legacy-mode only; MESA mode opens no legacy files (see the else
+! branch after the pulse opens).
+      if (use_legacy_output) then
       open(istor,file=fstor,form='FORMATTED',status='UNKNOWN')
       rewind(istor)
 ! G Somers 11/14 write the new header for the .store file, if LSTORE = TRUE.
@@ -1827,17 +1828,38 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
          open(unit=imilne,file=fmilne,form='FORMATTED', &
            &      status='UNKNOWN',access='APPEND')
       endif
+      end if
 !     MHP 10/02 LBNIN never set, ignore loop
 !      IF (.NOT.LBNIN) THEN
          open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD')
 !      END IF
+! ilast doubles as the helium-flash timestep-cutting restore file --
+! a functional mechanism, not just output -- so it stays open in MESA
+! mode when that machinery is active (lkuthe).
+      if (use_legacy_output .or. lkuthe) then
       open(unit=ilast,file=flast,form='FORMATTED',status='UNKNOWN')
+      end if
+      if (use_legacy_output) then
       open(unit=imodpt,file=fmodpt,form='FORMATTED',status='UNKNOWN')
 !     OPEN ALL PULSE FILES
       if(lpulse) then
       open(opal_model_unit, file=fpmod,status='UNKNOWN',form='FORMATTED')
       open(opal_envelope_unit, file=fpenv,status='UNKNOWN',form='FORMATTED')
       open(opal_atm_unit, file=fpatm,status='UNKNOWN',form='FORMATTED')
+      end if
+      else
+! MESA mode: retarget the shared diagnostics unit to CASE.log and
+! force off the flags behind physics-time legacy streams (envint's
+! atmosphere/envelope profile blocks, the legacy OPAL pulse files;
+! GYRE under pulse_gyre_interval is the MESA-mode pulse mechanism).
+         call output_init_mesa(fshort)
+         lstore = .false.
+         lstatm = .false.
+         lstenv = .false.
+         lstmod = .false.
+         lstphys = .false.
+         lstrot = .false.
+         lpulse = .false.
       end if
 ! MHP 6/98
 ! MHP 8/25 Moved call from main to here for opening dynamics_unit
@@ -1850,7 +1872,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       if(lcondopacp)then
          open(icondopacp,file=fcondopacp,status='OLD')
       endif
-      if(liso) then
+      if(liso .and. use_legacy_output) then
          open(isochrone_file_unit, file=fiso,status='UNKNOWN', form='FORMATTED')
       endif
       if(lsemic)then

@@ -64,7 +64,9 @@ def test_mesa_history_matches_legacy_track(tmp_path):
     base = NML1.rsplit(".", 1)[0]
     track = legacy_out / f"{base}.track"
     history = mesa_out / f"{base}.history"
-    assert history.exists(), sorted(p.name for p in mesa_out.iterdir())
+    # MESA mode writes EXACTLY history + log -- no legacy files, no stubs.
+    produced = sorted(p.name for p in mesa_out.iterdir())
+    assert produced == [f"{base}.history", f"{base}.log"], produced
 
     # legacy .track rows (skip # comments and the header-name row)
     track_rows = [l.split() for l in track.read_text().splitlines()
@@ -88,10 +90,6 @@ def test_mesa_history_matches_legacy_track(tmp_path):
             a, b = float(hr[icol[name]]), float(tr[j])
             assert abs(a - b) <= 1e-7 * max(1.0, abs(b)), (name, a, b)
 
-    # MESA mode suppresses the legacy per-shell stream
-    store = mesa_out / f"{base}.store"
-    if store.exists():
-        body = [l for l in store.read_text().splitlines()
-                if l.strip() and not l.startswith("#")]
-        assert not any(l.startswith("MOD") for l in body), \
-            ".store still receiving per-model blocks in MESA mode"
+    # the log carries the diagnostics stream (config tables etc.)
+    log = mesa_out / f"{base}.log"
+    assert log.stat().st_size > 0

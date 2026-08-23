@@ -27,6 +27,7 @@ subroutine run_yrec(ierr)
 ! change on "JSON=2000" or whatever.
       use net_lib
       use star_info_lib, only: star
+      use yrec_output, only: output_run_header
       use luout_lib
       use const_lib
       use yrec_reset_lib, only: yrec_run_prologue
@@ -402,7 +403,7 @@ subroutine run_yrec(ierr)
          star%light_burn%jcz = star%envelope_cz_bottom_index
          star%turnover%convective_turnover_timescale = 0.0D0
 ! write out headers of the appropriate output files
-      call wrthead(star%star_mass)
+      call output_run_header(star%star_mass)
 ! DBG PULSE OUT 7/92
 ! initialize variables for calculating when to dump pulse output
          star%evo%prev_log_l = star%log_L
@@ -532,6 +533,11 @@ subroutine run_yrec(ierr)
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
 ! MODEL PARAMTERS TO AN OUTPUT FILE.
 ! RUN FAILED TO CONVERGE.  WRITE FINAL INFO WITH WARNING NOTE.
+! 2026 MESA-style output: this whole chain is legacy-file machinery
+! (it rewinds the legacy units between calibration/MC cycles and
+! writes the .snu summaries) -- legacy mode only. In MESA mode the
+! history file simply accumulates every calibration cycle instead.
+      if (use_legacy_output) then
       if (lmonte .and. convergence_iterations.ge.11 .and. .not.star%run%solar_calibration_active) then
          rewind(ilast)
          rewind(first_unit)
@@ -614,6 +620,7 @@ subroutine run_yrec(ierr)
                  star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
          endif
       endif
+      end if
       end do
 
 ! 2026 (phase five, step B): the normal end-of-job stop became this
