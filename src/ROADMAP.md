@@ -138,9 +138,14 @@ under MESA vocabulary, numerically interchangeable with the track
   config echo in MESA mode at the same time.
 - FGONG pulse writer beside the existing GYRE one (port MESA's
   pulse_fgong.f90 formulas, same pattern as write_gyre_pulse).
-- Cosmetics: in MESA mode the parmin-opened legacy files (.track
-  header block, .short echo) still exist; silence those opens once
-  the terminal step lands.
+- DONE (2026-08-23): output I/O centralized in io/yrec_output.f90;
+  MESA mode produces exactly CASE.history + CASE.log (short_file_unit
+  retargeted to the log; no legacy opens, no stubs). Special rules:
+  LMONTE forces legacy; helium-flash keeps ilast (restore file);
+  calibration-summary/rewind chain is legacy-only, so MESA-mode
+  history accumulates calibration cycles.
+- Log verbosity: CASE.log currently carries the full solver
+  iteration traces; add a verbosity control with the terminal step.
 
 ## Science wiring (sg-rotation side)
 
