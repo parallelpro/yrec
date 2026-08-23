@@ -141,10 +141,16 @@ under MESA vocabulary, numerically interchangeable with the track
   star_info; test_mesa_output.py pins the whole contract.
 - MESA-style terminal output behind a control; quiet the .short
   config echo / log verbosity control at the same time.
-- Pulse follow-ups: GYRE-HDF5 needs an HDF5 dependency (deliberately
-  not added); FGONG glob(6) mixing-length alpha and the central
-  d2P/d2rho globals are currently zero -- fill if a consumer needs
-  them.
+- DONE (2026-08-23): GYRE-HDF5 (GSM) pulse writer behind an optional
+  HDF5 dependency (make USE_HDF5=1, MESA SDK static libs); profiles
+  AND pulse files now cover the full extended model -- interior +
+  re-integrated envelope + atmosphere (build_extended in
+  io/yrec_output.f90, stitch's recipe), photospheric M/R/L globals;
+  fixed the dead-code stray RETURN that zeroed all 12 MESA history
+  star%run% sources (log_R, log_g, inertias, rotation, snu, h-shell).
+- Pulse follow-ups: FGONG glob(6) mixing-length alpha and the
+  central d2P/d2rho globals are currently zero -- fill if a consumer
+  needs them.
 - DONE (2026-08-23): output I/O centralized in io/yrec_output.f90;
   MESA mode produces exactly CASE.history + CASE.log (short_file_unit
   retargeted to the log; no legacy opens, no stubs). Special rules:
@@ -153,6 +159,20 @@ under MESA vocabulary, numerically interchangeable with the track
   history accumulates calibration cycles.
 - Log verbosity: CASE.log currently carries the full solver
   iteration traces; add a verbosity control with the terminal step.
+
+## Readability (DONE 2026-08-23)
+
+Four-item program, all landed with byte-identical gates:
+double negatives flipped (88 sites, 7 kept where the .not.(...)
+conjunction is the semantic condition); named indices for the
+positional arrays (488 sites: xa species / del_grad / seg /
+luminosity_breakdown / neutrino flux, parameters in star_info_lib);
+commented-out F77 code deleted (813 lines, lineage notes kept);
+giant procedures decomposed into contains-based named phases --
+parmin (6), starin (3), hpoint (5), atm_get (4), engeb (3; its
+reaction-rate/screening core stays inline because extraction
+perturbs FP scheduling by 1 ulp -- documented in the code). sneut
+untouched by design.
 
 ## Science wiring (sg-rotation side)
 
