@@ -131,91 +131,27 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !  surface c.z. exists.  find lowest shell (imax), which is also the
 !  uppermost zone considered for stability against rotationally induced mixing.
 !         do 71 i = m-1,1,-1
-!            if(.not.lcz(i)) goto 81
-!   71    continue
-!         lallcz = .true.
-!         i = 0
 !   81    imax = i + 1
 !  hstop is the mass at the top of the c.z.
 !  hsbot is the mass at the bottom of the c.z.
-!         hstop = exp(cln*star%env_comp%stotal)
-!         if(imax.gt.1)then
-!            hsbot = 0.5d0*(hs1(imax)+hs1(imax-1))
-!         else
-!            hsbot = 0.0d0
-!         endif
 !  lczsur=t if a surface c.z.deep enough for angular momentum loss exists
-!         if((hstop-hsbot)/cmsun.gt.0.0d0)then
-!            lczsur = .true.
-!         else
-!            lczsur= .false.
-!         endif
-!      else
 !  no surface c.z.
-!         imax = m
-!         lczsur = .false.
-!      endif
 !
-!      if(lczsur)then
-!         if(.not.lallcz)then
-!            if(.not.lrot)then
-!               hg(imax)=hs1(imax)*exp(cln*(cgl-2.0d0*hr(imax)))
-!               hg(imax-1)=hs1(imax-1)*exp(cln*(cgl-2.0d0*hr(imax-1)))
-!            endif
 !  pinpoint rcz
 !  g somers 6/14, check whether this run of mixcz occured before
 !  or after midmod. if before, use sdel. if after, use the updated
 !  variables delrm and delam.
-!            if(ifstcl.eq..true.)then
-!               dd2 = sdel(1,imax-1)-sdel(3,imax-1)
-!               dd1 = sdel(1,imax)-sdel(3,imax)
-!            else
-!               dd2 = delrm(imax-1)-delam(imax-1)
-!               dd1 = delrm(imax)-delam(imax)
-!            endif
 !  g somers end
 !            fx = dd2/(dd2-dd1)
 !  infer hp
-!            envrl = hr(imax-1)+fx*(hr(imax)-hr(imax-1))
-!            envr = exp(cln*envrl)
-!            ps2 = exp(cln*(hp(imax)-hd(imax)))/hg(imax)
-!            ps1 = exp(cln*(hp(imax-1)-hd(imax-1)))/hg(imax-1)
-!            psca = ps1 + fx*(ps2-ps1)
-!            rtestl = dlog10(envr+psca)
 !  find v
 !            do k = imax+1,m
-!               if(hr(k).gt.rtestl)then
-!                  fx = (rtestl-hr(k-1))/(hr(k)-hr(k-1))
-!                  cvel = star%diag%svel(k-1)+fx*(star%diag%svel(k)-star%diag%svel(k-1))
-!                  goto 85
-!               endif
-!            end do
-!            cvel = star%diag%svel(m)
-! 85         continue
 !  define taucz
 !            taucz = psca/cvel
 !         else
 !  infer hp
-!            if(.not.lrot)then
-!               hg(1)=hs1(1)*exp(cln*(cgl-2.0d0*hr(1)))
-!            endif
-!            psca2 = exp(cln*(hp(1)-hd(1)))/hg(1)
-!            rtest2 = exp(cln*hr(1))
-!            if(psca2.le.rtest2)then
 !  hp < r at the first point.  assume v constant inside and hp = k/r for
 !  slowly varying density and pressure near the center.
-!               cvel = star%diag%svel(1)
-!               psca = (psca2*rtest2)**0.5d0
-!               taucz = psca/cvel
-!            else
-!               do k = 2,m
-!                  psca1 = psca2
-!                  rtest1 = rtest2
-!                  if(.not.lrot)then
-!                     hg(k)=hs1(k)*exp(cln*(cgl-2.0d0*hr(k)))
-!                  endif
-!                  psca2 = exp(cln*(hp(k)-hd(k)))/hg(k)
-!                  rtest2 = exp(cln*hr(k))
 !  find location where hp = r
 !                  if(psca2.le.rtest2)then
 !                     fx = (rtest1-psca1)/((psca2-rtest2)-(psca1-rtest1))
@@ -223,20 +159,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !                     cvel = star%diag%svel(k-1)+fx*(star%diag%svel(k)-star%diag%svel(k-1))
 !                     psca = psca1+fx*(psca2-psca1)
 !  define taucz
-!                     taucz = psca/cvel
-!                     goto 95
-!                  endif
-!               end do
-!               k = m
-!               cvel = star%diag%svel(m)
-!               psca = psca2
-!               taucz = psca/cvel
-! 95            continue
-!            endif
-!         endif
-!      else
-!         taucz = 0.0d0
-!      endif
 
 ! end jvs
 

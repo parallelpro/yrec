@@ -90,9 +90,6 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !
 ! FIND TOTAL RADIUS OF STAR.
 ! G Somers - CGRAV, RTOT not used, so blacking out.
-!         CGRAV = DEXP(CLN*CGL)
-!         RL=0.5D0*(BL+CLSUNL-C4PIL-CSIGL-4.D0*TEFFL)
-!         RTOT = DEXP(CLN*RL)
 ! DMDOT IS THE MASS LOSS RATE IN SOLAR MASSES PER YEAR.
 ! G Somers - Don't need DMDOT anymore.
 !         DMDOT = 2.0D-14
@@ -197,10 +194,6 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! NUMBER FROM THE J/M OF EACH SHELL IN THE SURFACE CONVECTION ZONE.
       delta_j_per_mass = (omega_surface-omega_iter_new)*cz_moment_of_inertia/ &
            cz_mass
-!      WRITE(*,11)FJDOM,HJM(JSTART),HJM(JEND)
-!   11 FORMAT(5X,1P3E14.6)
-!     FJDOM=FJDOT/DM
-!     TAUJ=SJTOT/(FJDOT/DELTS)/CSECYR
       do zone_idx = start_zone,end_zone
          specific_angular_momentum(zone_idx) = &
               specific_angular_momentum(zone_idx) - delta_j_per_mass

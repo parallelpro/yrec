@@ -380,11 +380,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! ENVELOPE DATA (Now bypassed)
 ! LNEW0 HAS BEEN READ IN, IF TRUE THEN RECOMPUTE ENVELOPE EVERY MODEL
 ! STORED ENVELOPE RECORDS ONLY USED FOR HE FLASH CALCS
-!      IF(LNEW0) THEN
-!       LNEW = .TRUE.
-!      ELSE
-!       LNEW = .NOT.LKUTHE
-!      ENDIF
 !      DO 80 I = 1,3
 !       IF((.NOT.LNEW).AND.IABS(IO).NE.I) LNEW = .TRUE.
 ! 80   CONTINUE
@@ -605,21 +600,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                 star%xa(j,i) = star%xa(j,first_original_shell)
              end do
 ! CALL EQUATION OF STATE TO GET CONSISTENT DENSITY
-!           LDERIV = .FALSE.
-!           LOCOND = .FALSE.
-!           LATMO = .FALSE.
-!             KSAHA = 0
-!           X = HCOMP(1,I)
-!           Z = HCOMP(3,I)
-!           PL = HP(I)
-!             P = EXP(CLN*PL)
-!             TL = HT(I)
-!             T = EXP(CLN*TL)
-!           DL = HD(I+1)
-!             D = EXP(CLN*DL)
-!           FPL = 1.0D0
-!           FTL = 1.0D0
-!           CALL EQSTAT(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,
 !     *                   RMU,AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,
 !     *                   QAT,QAP,QCPT,QCPP,LDERIV,LATMO,KSAHA)
 !             HD(I) = DL
@@ -991,20 +971,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                    star%logR(j),star%log_mass(j)-star%env_comp%stotal, &
                    star%logT(j),star%convective_flag(j), j = old_last_shell,star%nz)
  911  format(i5,1p6e16.8,l2)
-!          M = M + 1
-!          HS(M) = HSTOT + SENV
-!          HD(M) = ED
-!          HL(M) = HL(M-1)
-!          HP(M) = EP
-!          HR(M) = ER
-!          HT(M) = ET
-!          LC(M) = EVEL.GT.0.0D0
 !          DO 590 J = 1,JEND
-!             HCOMP(J,M) = HCOMP(J,M-1)
-! 590        CONTINUE
-!          XNEW = HCOMP(1,M)
-!          ZNEW = HCOMP(3,M)
-!          IF(LROT) OMEGA(M) = OMEGA(I) + FS*(OMEGA(I+1)-OMEGA(I))
        endif
        envelope_recomputed_flag = .true.
        write(short_file_unit,597)old_senv,star%env_comp%senv
@@ -1143,55 +1110,20 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 !  FIND BASIC PHYSICAL QUANTITIES. THIS CODE STOLEN FROM PHYSIC
 !  FIND ACTUAL AND ADIABATIC TEMPERATURE GRADIENTS,OPACITY,AND
 !  MEAN MOLECULAR WEIGHT FOR ALL RADIATIVE SHELLS.
-!      if(.False.)then
-!      LDERIV = .FALSE.
-!      LOCOND = .FALSE.
-!      LATMO = .FALSE.
-!      IDT = 15
 !      DO 725 I = 1,4
 !         IDD(I) = 5
 ! 725  CONTINUE
 !      DO 730 IM = 1,M
-!         SL = HS(IM)
-!         TL = HT(IM)
-!         PL = HP(IM)
-!         RL = HR(IM)
-!         B = HL(IM)
-!         X = HCOMP(1,IM)
-!         Z = HCOMP(3,IM)
-!         DL = HD(IM)
-!         FPL = FP(IM)
-!         FTL = FT(IM)
 !
 !         IF(LMHD) THEN
 !            CALL MEQOS(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
 !     *           AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,
 !     *           QCPP,LDERIV,LATMO,KSAHA)
-!         ELSE
-!            IF (LDH) THEN
-!               XXDH = HCOMP(1,IM)
-!               YYDH = HCOMP(2,IM)+HCOMP(4,IM)
-!               ZZDH = HCOMP(3,IM)
-!               ZDH(1) = HCOMP(5,IM)+HCOMP(6,IM)
-!               ZDH(2) = HCOMP(7,IM)+HCOMP(8,IM)
-!               ZDH(3) = HCOMP(9,IM)+HCOMP(10,IM)+HCOMP(11,IM)
-!            END IF
-!            CALL EQSTAT(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
 !     *           AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,
 !     *           QCPP,LDERIV,LATMO,KSAHA)
-!         ENDIF
-!         CALL GETOPAC (DL,TL,X,Z,O,OL,QOD,QOT,FXION)
-!         IOVIM=IM
-!         CALL TPGRAD(TL,T,PL,P,D,RL,SL,B,O,QDT,QDP,QOT,QOD,QCP,DEL,
 !     *        DELR,DELA,QDTT,QDTP,QAT,QAP,QACT,QACP,QACR,QCPT,QCPP,
 !     *        VEL,LDERIV,LCONV,FPL,FTL,TEFFL)
-!         SDEL(1,IM) = DELR
-!         SDEL(2,IM) = DEL
-!         SDEL(3,IM) = DELA
 !C JVS 10/13 Always want SVEL
-!       SVEL(IM) = VEL
-! 730  CONTINUE
-!      endif
 
 !       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
       call physic(star%fp_rot,star%ft_rot, &

@@ -204,17 +204,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 ! COMMENT OUT OLD WMAX STUFF
 !C MHP 3/09 IF WMAX > 1 THEN ASSUME THAT THE PARAMETER WMAX IS DEFINED BY
 !C WMAX = WMAX(SUN)*TAUCZ(SUN) AND THE SATURATION THRESHOLD WSAT = WMAX/TAUCZ(STAR)
-!            IF(WMAX.GT.1.0D0)THEN
-!               IF(TAUCZ.GT.1.0D0)THEN
-!                  WSAT = WMAX/TAUCZ
-!               ELSE
-!                  WRITE(*,912)WMAX,TAUCZ
-! 912      FORMAT('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
-!                  STOP
-!               ENDIF
-!            ELSE
-!               WSAT = WMAX
-!            ENDIF
             omega_capped = min(eq_omega(num_eq_points), &
                  wind_saturation_threshold)
             omega_prev_capped = min(omega_working(num_eq_points), &
@@ -266,9 +255,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
               omega_mid(i)**2*star%rot%eq_velocity_coeff1b(i))
 !         VTH = FW*(ETHVN(I)*WM(I)*QWR2-ETHVP(I))/DT
          theta_term_n = 0.0d0
-!         VTHN = FW*ETHVN(I)*WM(I)**2/DT
-!         VTHP = -FW*ETHVP(I)/DT
-!          VTHP = FW/DT0*(ETHVN(I)*WMI*QWRI-ETHVP(I))
 !C          VTHP0 = FW/DT0*(ETHVN(I)*WM0(I)*QWR(I)-ETHVP(I))
 !C          VTHP1 = FW/DT*ETHVN(I)*(WMI*QWRI-WMP(I)*QWRP(I))
 !C          IF(NSTEP.LE.2)THEN
@@ -425,9 +411,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       facta_half_dt_over_ei_dr = 0.5d0*timestep/ &
            eq_moment_of_inertia(num_eq_points)/grid_spacing
       i = 4*num_eq_points - 3
-!      A(I-1,3) = 0.0D0
-!      A(I-1,7) = 0.0D0
-!      A(I-1,1) = -1.0D0/3.0D0
 ! ZERO OUT TERMS RELATED TO D2W/DR2 AT THE EDGES
       coeff_matrix(i-4,10) = 0.0d0
       coeff_matrix(5,2) = 0.0d0
@@ -475,10 +458,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 !      WRITE(*,909)(ECOD3(I),ECOD4(I),ECOD5(I),ECOD6(I),
 !     *             EV0(I),EV1A(I),EV1B(I),EV2A(I),
 !     *             EV2B(I),I=1,NTOT)
-! 909  FORMAT(1P9E12.3)
-!      WRITE(*,910)((A(J,I),I=1,10),J=1,NM)
-!  910  FORMAT(1P10E12.3)
-!       CALL BANDW(A,NM,M1,M2,B)  ! KC 2025-05-31
       call bandw(coeff_matrix,num_equations,rhs, ierr)
       if (ierr /= 0) return
 ! CHECK ON MATRIX INVERSION
@@ -607,10 +586,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
               eq_delta_angular_momentum(i)
       end do
       write(*,*) sum_delta_angular_momentum,wind_loss_delta
-!      WRITE(*,912)FX,DWMAX,SUMDJ
-! 912  FORMAT(1P2E12.3)
-!      WRITE(*,913)(EW(I),EWPREV(I),DJ(I),I=1,NTOT)
-! 913  FORMAT(1P6E12.3)
       max_omega_change_history(coeff_iter_idx) = max_omega_change
       max_omega_change_zone_history(coeff_iter_idx) = max_omega_change_zone
 ! DETERMINE IF RUN HAS CONVERGED
@@ -717,13 +692,5 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       timestep = full_timestep
       wind_loss_delta_full_step = wind_loss_delta/substep_frac
       write(*,*) sum_delta_angular_momentum,wind_loss_delta_full_step
-!      IF(.NOT.LOKAD)THEN
-!         SUMDJ = 0.0D0
-!         DO I = 1,NTOT
-!            DJ(I) = (EWPREV(I)-EW(I))*EI(I)
-!            SUMDJ = SUMDJ + DJ(I)
-!         END DO
-!      ENDIF
-!      LOKAD = .TRUE.
       return
 end subroutine dadcoeft

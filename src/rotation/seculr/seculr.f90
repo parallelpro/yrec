@@ -173,12 +173,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 ! WILL NO LONGER REPORT THE CHANGES TO J AT EACH POINT, BECAUSE
 ! THIS CAN BE EASILY INFERRED FROM THE EXTENDED SHORT FILE. IF
 ! DESIRED, THIS OUTPUT CAN BE RETURNED.
-!      IF(.NOT.LPRT0)THEN
-!         LPRT = MOD(MODEL+1,NPRTMOD).EQ.0
-!      ELSE
-!         LPRT = .TRUE.
-!      ENDIF
-!      IF(.NOT.LSCRIB.OR..NOT.LPRTIN) LPRT = .FALSE.
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -470,9 +464,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             call eq2mod(eq_delta_angular_momentum,eq_angular_momentum, &
                  shell_mass,zone_begin,zone_end,am_transport_convective_flag, &
                  num_zones,sum_delta_angular_momentum,specific_angular_momentum)
-!         ELSE
-!         CALL EQUAL2(DJ,EJ,EM,ES1,HS1,IBEG,IEND,LCZ,M,NTOT,HJM)
-!         ENDIF
 !  PERFORM COMPOSITION DIFFUSION.
 !  UNTIL THE FINAL ITERATION, ONLY COMPOSITION DIFFUSION OF SPECIES WHICH
 !  AFFECT GRADIENTS IN MEAN MOLECULAR WEIGHT IS COMPUTED (H,HE3,HE4).
@@ -526,9 +517,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       am_transport_convective_flag(1) = .true.
       am_transport_convective_flag(num_zones) = .true.
 ! MHP 6/00 ADDED OPTION OF BS EXTRAPOLATION FOR HE3, CNO
-!      LBSMIX=.TRUE.
-!      IF(LBSMIX)THEN
-!         CALL BSCOMP(DR,DT,COD2,ECOD2,EM,ES1,HRU,HS,HS1,HS2,
 !     *               IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP,HV,
 !     *           HD,HP,HR,HT,MRZONE,MXZONE,NRZONE,NZONE,HSTOT)
 !      ELSE
@@ -577,28 +565,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  DETERMINE COUPLING FACTOR (I.E. THE FRACTION OF THE TOTAL ANGULAR
 !  MOMENTUM LOST FROM THE CORE RELATIVE TO ITS FRACTION OF THE TOTAL
 !  MOMENT OF INERTIA).
-!      DJCORE = 0.0D0
-!      HICORE = 0.0D0
-!      HJTOT = 0.0D0
-!      DO I = 1,IMAX-1
-!         DJCORE = DJCORE + (HJM(I)-HJMSAV(I))*HS2(I)
-!         HICORE = HICORE + HI(I)
-!         HJTOT = HJTOT + HJM(I)*HS2(I)
-!      END DO
-!      HIENV = 0.0D0
-!      DJENV = 0.0D0
-!      DO I = IMAX,M
-!         DJENV = DJENV + (HJM(I)-HJMSAV(I))*HS2(I)
-!         HIENV = HIENV + HI(I)
-!         HJTOT = HJTOT + HJM(I)*HS2(I)
-!      END DO
-!      FI = HICORE/(HICORE+HIENV)
-!      IF(ABS(DJCORE+DJENV).GT.1.0D-32)THEN
-!         FJ = DJCORE/(DJCORE+DJENV)
-!      ELSE
-!         FJ = 1.0D0
-!      ENDIF
-!      WRITE(88,709)SAGE,HJTOT,OMEGA(M),FJ,FJ/FI,
 !     *               HCOMP(14,M),HCOMP(15,M)
 !  709 FORMAT(1P7E11.3)
       return

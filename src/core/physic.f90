@@ -156,11 +156,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
          star%thermo%qdt(im) = dlnrho_dlnt
 ! JVS 10/13 Always want SVEL
          star%diag%svel(im) = convective_velocity
-!         IF(LC(IM))THEN
-!            SVEL(IM) = VEL
-!         ELSE
-!            SVEL(IM) = 0.0D0
-!         ENDIF
       end do
 !  FIND THE THERMOMETRIC DIFFUSIVITY AND KINEMATIC VISCOSITY.
 !       CALL VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31

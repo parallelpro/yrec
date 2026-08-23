@@ -150,9 +150,6 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
               star%log_mass,star%dm,am_transport_convective_flag,star%nz, &
               star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
 !  ANGULAR MOMENTUM LOSS WITHOUT INTERNAL ANGULAR MOMENTUM TRANSPORT.
-!         DO I = 1,M
-!            WOLD(I) = OMEGA(I)
-!         END DO
          if(.not.disk_lock_engaged .and. ljdot0 .and. star%convective_flag(star%nz)) then
 !  FIND MOMENT OF INERTIA OF THE SURFACE C.Z.
             moment_of_inertia_cz = 0.0D0

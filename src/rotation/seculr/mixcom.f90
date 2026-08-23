@@ -202,15 +202,6 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
             end do
          end if
 ! CHECK FOR CONSERVATION OF SPECIES
-!         TEST = ABS(SUMSPEC-SUMSPEC2)
-!         WRITE(*,911)ID(N),DCOMP,DCOMP2,SUMSPEC
-! 911     FORMAT(I5,1P3E10.2)
-!         IF(TEST.GT.1.0D-10*SUMSPEC)THEN
-!            RATIO = SUMSPEC/SUMSPEC2
-!            DO I = I0,I1
-!               HCOMP(ID(N),I)=RATIO*HCOMP(ID(N),I)
-!            END DO
-!         ENDIF
       end do
 ! ADJUST HE4 FOR CHANGES IN X, Z, AND HE3.
       if (.not.final_iteration_flag) then

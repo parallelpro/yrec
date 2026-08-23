@@ -146,10 +146,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! NUMBER FROM THE J/M OF EACH SHELL IN THE SURFACE CONVECTION ZONE.
          delta_j_per_mass = (omega_surface-omega_iter_new)*cz_moment_of_inertia/ &
               cz_mass
-!         WRITE(*,11)FJDOM,HJM(JSTART),HJM(JEND)
-!   11    FORMAT(5X,1P3E14.6)
-!        FJDOM=FJDOT/DM
-!        TAUJ=SJTOT/(FJDOT/DELTS)/CSECYR
          do zone_idx = start_zone,end_zone
             specific_angular_momentum(zone_idx) = &
                  specific_angular_momentum(zone_idx) - delta_j_per_mass

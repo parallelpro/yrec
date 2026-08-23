@@ -208,9 +208,6 @@ subroutine update_output_diagnostics(ierr)
             cz_base_mass = star%m(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%m(star%envelope_cz_bottom_index)-star%m(star%envelope_cz_bottom_index-1))
             star%run%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/solar_mass_cgs
-!           ENVLM = SMASS-HS1(JENV-1)/CMSUN
-!          HSR = 0.5D0*(10.0D0**HR(JENV)+10.0D0**HR(JENV-1))
-!          ENVX = HSR/(10.0D0**RL)
 ! MHP 2/98 FIND RADIUS OF CZ BASE
             star%run%envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logR(star%envelope_cz_bottom_index)-star%logR(star%envelope_cz_bottom_index-1))-log10_solar_radius

@@ -2037,10 +2037,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       change_isotope_ratios_active = .false.
       if(isetmix.eq.1)then
 ! IF DEFAULT MIX (GS98) CNOFRACS ARE ALREADY SET.
-!         IF(AMIX.EQ.'GS98')THEN
-!            LMIXTURE = .TRUE.
-!            GOTO 606
-!         ENDIF
 ! FOR A CUSTOM MIX,DISABLE IF THE SUM OF CNO MASS FRACTIONS EXCEEDS ONE
 ! OR IF ANY MASS FRACTION IS NEGATIVE
 ! (Restructured 2026: the goto 602/606 aborts left

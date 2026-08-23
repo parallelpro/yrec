@@ -137,9 +137,6 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
 ! USED HERE BECAUSE DUMDJ SHOULD BE ZERO IN MODELS WITHOUT LOSS.
       test = abs(sumdjmod - total_delta_angular_momentum)
       val = 1.0d-5*abs(total_delta_angular_momentum)
-!      WRITE(*,*)SUMDJ,SUMDJMOD,SUMJMOD
-!      WRITE(*,911)(DJ(I)/EJ(I),I=1,NTOT)
-!  911  FORMAT(1P8E10.2)
 ! IF THE TEST SUM IS NOT THE SAME WITHIN THE RELATIVE TOLERANCE VAL,
 ! ADJUST THE TOTAL ANGULAR MOMENTUM OF THE ENTIRE REGION BY A CONSTANT
 ! FACTOR TO ENFORCE ANGULAR MOMENTUM CONSERVATION.

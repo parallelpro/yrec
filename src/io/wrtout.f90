@@ -127,32 +127,13 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
 !  CENTRAL ETA AND BETA ARE ALSO CALCULATED.
 !  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
-!      TEMP =0.5D0*DEXP(CLN*(CC13*(C4PI3L+HD(1)-HS(1))+HD(1)+CGL+HS(1)))
-!      P = DEXP(CLN*HP(1))
-!      PL = DLOG10(P + TEMP)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-!      TL = HT(1) + DLOG10(1.0D0+ TEMP*SDEL(2,1)/P)
-!      DL = HD(1)
-!      X = HCOMP(1,1)
-!      Z = HCOMP(3,1)
-!      LATMO = .TRUE.
-!      LDERIV = .FALSE.
 !  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
 ! YC  If LMHD then use MHD equation of state.
 !      IF (LMHD) THEN
 !         CALL MEQOS(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
 !     *   AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,
 !     *   LDERIV,LATMO,KSAHA)
-!      ELSE
-!      IF (LDH) THEN
-!         XXDH = HCOMP(1,1)
-!         YYDH = HCOMP(2,1)+HCOMP(4,1)
-!         ZZDH = HCOMP(3,1)
-!         ZDH(1) = HCOMP(5,1)+HCOMP(6,1)
-!         ZDH(2) = HCOMP(7,1)+HCOMP(8,1)
-!         ZDH(3) = HCOMP(9,1)+HCOMP(10,1)+HCOMP(11,1)
-!      END IF
-!      CALL EQSTAT(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
 !     *AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,LDERIV,
 !     *LATMO,KSAHA)
 !      END IF
@@ -252,9 +233,6 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
 ! MHP 8/96
 ! STORE CENTRAL RHO,P,T FOR LATER USE
-!         PCENTER = PL
-!         TCENTER = TL
-!         DCENTER = DL
 !  Total moment of inertia
          total_moment_of_inertia = 0.0D0
          if(.not.rotation_active)then
@@ -321,42 +299,9 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
              h_shell_end_radius = h_shell_begin_mass
              endif
 ! JVS 0712 Drop sinkline to get pressure at photosphere (updates PPHOT)
-!             ABEG0 = ATMBEG
-!            AMIN0 = ATMMIN
-!            AMAX0 = ATMMAX
-!            EBEG0 = ENVBEG
-!            EMIN0 = ENVMIN
-!            EMAX0 = ENVMAX
-!            ATMBEG = ATMSTP
-!            ATMMIN = ATMSTP
-!            ATMMAX = ATMSTP
-!            ENVBEG = ENVSTP
-!            ENVMIN = ENVSTP
-!            ENVMAX = ENVSTP
-!            IDUM = 0
-!            B = DEXP(CLN*BL)
-!            FPL = FP(M)
-!             FTL = FT(M)
-!            KATM = 0
-!             KENV = 0
-!             KSAHA = 0
 !CCCC            LPULPT=.FALSE.
-!            IXX=0
-!            LPRT=.FALSE.
-!            LSBC0 = .FALSE.
-!            X = HCOMP(1,M)
-!             Z = HCOMP(3,M)
-!            RLL = 0.5D0*(BL + CLSUNL - 4.0D0*TEFFL - C4PIL - CSIGL)
-!            GL = CGL + HSTOT - RLL - RLL
-!            PLIM = HP(M)
 !! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 !! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-!            IF(JENV.EQ.M.AND.SPOTF.NE.0.0.AND.SPOTX.NE.1.0)THEN
-!                   ATEFFL = TEFFL - 0.25*LOG10(SPOTF*SPOTX**4.0+1.0-SPOTF)
-!            ELSE
-!               ATEFFL = TEFFL
-!            ENDIF
-!            CALL ENVINT(B,FPL,FTL,GL,HSTOT,IXX,LPRT,LSBC0,
 !     *            PLIM,RLL,ATEFFL,X,Z,DUM1,IDUM,KATM,KENV,KSAHA,
 !     *            DUM2,DUM3,DUM4,LPULPT)
 !! G Somers END
@@ -365,27 +310,6 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !      IF(JENV.GE.M .AND. .NOT. LC(M)) THEN
 !            ENVR = ENVRCZ
 !      ELSE IF(JENV.GE.M .AND. LC(M)) THEN
-!            DO I=1,M
-!                  DEL1(I) = SDEL(1,I)
-!                  DEL2(I) = SDEL(3,I)
-!            ENDDO
-!                  LJVS = .TRUE.
-!                  CALL TAUINT(HCOMP,HS2,HS1,LC,HR,HP,HD,HG,M,SVEL,DEL1,DEL2)
-!                  LJVS = .FALSE.
-!                  DD2 = DEL1(JENV-1)-DEL2(JENV-1)
-!                  DD1 = DEL1(JENV)-DEL2(JENV)
-!                  FX = DD2/(DD2-DD1)
-!                  ENVCZL = HR(JENV-1)+FX*(HR(JENV)-HR(JENV-1))
-!                  ENVR = EXP(CLN*ENVCZL)/CRSUN
-!      ELSE
-!            DO I=1,M
-!                  DEL1(I) = SDEL(1,I)
-!                  DEL2(I) = SDEL(3,I)
-!            ENDDO
-!                  LJVS = .TRUE.
-!                  CALL TAUINT(HCOMP,HS2,HS1,LC,HR,HP,HD,HG,M,SVEL,DEL1,DEL2)
-!                  LJVS = .FALSE.
-!      ENDIF
 !
 
 ! G Somers 3/17, ADDED CALL TO NEW TAUCZ AND PPHOT CALCULATION ROUTINE.
@@ -513,9 +437,6 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !     *        STATUS='UNKNOWN',ACCESS='APPEND')
 !       WRITE(ISCOMP,235)MODEL,DAGE,HCOMP(4,M),HCOMP(5,M),HCOMP(6,M),
 !     *                HCOMP(7,M),HCOMP(14,M),HCOMP(15,M)
-!  235    FORMAT(I4,F13.9,1P6E10.3)
-!       CLOSE(ISCOMP)
-!      ENDIF
 !
 ! G Somers 11/14, WRITE THE LAST MODEL TO .LAST, AND IF LSTORE=T AND WE'RE ON
 ! A STORING TIMESTEP, WRITE THE EXTENDED INFORMATION TO LSTORE. IF NOT, GRAB

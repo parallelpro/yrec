@@ -492,18 +492,9 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 !         FACT8(I)=V0*((QHTR-QCHIT)*C1+HTSC*2.0D0*QC1R)
 !     *            - F1*EPSILM(I)*HTSC*C1
 ! Q variables not used
-!         Q1 = -V0*(QQCHITR*C1)
-!         Q2 = -F1*C1*FNU*QETM
-!         Q3 = -F1*C1*EPSILM(I)*(1.0D0 - FNU - QCHIT)
-!         Q4 = F1*FL*QCHIT
-!         Q5 = -F1*EPSILM(I)*HTSC
          local_flux_factor = star%rot%interface_luminosity(zone_idx)/c4pi/star%rot%dm(zone_idx)/star%rot%interface_radius(zone_idx)**2
          star%rot%facd2(zone_idx) = f1_local*(local_flux_factor*qchit - star%rot%epsilm(zone_idx)*temp_scale_factor)
          star%rot%facd3(zone_idx) = -f1_local*local_flux_factor
-!         WRITE(*,911)I,V0,FES3(I),FACT7(I),FACD2(I),FACD3(I),DDELM(I)
-!         WRITE(*,912)Q1,Q2,Q3,Q4,Q5
-! 911     FORMAT(I5,1P6E12.3)
-! 912     FORMAT(5X,1P5E12.3)
          end do
       endif
       return

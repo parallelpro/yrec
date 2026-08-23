@@ -295,9 +295,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 ! MHP 10/02 ICRIT REMOVED
 !         IF(ICRIT.EQ.0)THEN
            loop_start = 1
-!         ELSE
-!           II = ICRIT
-!         ENDIF
          do zone_index = loop_start,num_zones
             delta_j_fraction = &
                  (specific_angular_momentum(zone_index)- &

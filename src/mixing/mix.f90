@@ -131,25 +131,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
 ! MHP 1/95 CHANGE - DPENV MIXES TO A FIXED FRACTION OF THE MAXIMUM
 ! LUMINOSITY.
-!         HLMAX = HL(1)
-!         IMAX = 1
-!         DO I = 2,M
-!            IF(HL(I).GT.HLMAX)THEN
-!               HLMAX = HL(I)
-!               IMAX = I
-!            ENDIF
-!         END DO
-!         HLTEST = HLMAX*DPENV
-!         DO I = 1,M
-!            IF(HL(I).LE.HLTEST)THEN
-!               LCC(I) = LC(I)
-!            ELSE
-!               DO J = I,M
-!                  LCC(J) = .TRUE.
-!               END DO
-!               GOTO 5
-!            ENDIF
-!         END DO
       else
          do copy_idx = 1, star%nz
             deep_mix_flag(copy_idx) = star%convective_flag(copy_idx)

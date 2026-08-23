@@ -189,10 +189,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !            PHISTD = 2.0D0*CC23*WM(I)**2*RM(I)/GMID
 !            PHIS2 = CC13*WM(I)**2*(HRU(I)**2/GG(I)-
 !     *              HRU(I-1)**2/GG(I-1))/DR
-!            PHI2 = (QUAD(I-1)/GG(I-1)-QUAD(I)/GG(I))/DR
-!            RAT(I) = (PHIS2+PHI2)/PHISTD
-!            RAT(I) = PHIS2/PHISTD
-!            VES(I) = ABS(FACT1(I)*(FACT2(I)*RAT(I)*WM(I)**2
 !     *               +FACT6(I)*DV))
 !   30    CONTINUE
 !      ELSE
@@ -265,11 +261,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !            IF(LCZ(I).AND.LCZ(I-1))GOTO 32
 ! SQUARE ROOT OF TKH*,KIPPENHAHN,IAU#66,P.23,USING EQ.(12)FOR D ON P.25.
 ! NOTE FACTOR OF G IS SUBSUMED IN FACT4.
-!            TKHS = SQRT(VISCMI(I)*CC/THDIFMI(I))
-!            QMU = (AMUM(I)-AMUM(I-1))/(HRU(I)-HRU(I-1))
-!            VMU(I) = ABS(FMU*FACT1(I)*FACT4(I)*AMUMI(I)*QMU/TKHS)
-!            VMU2(I)=FMU*HGM(I)*ABS(QMU)/AMUMI(I)/WM(I)**2
-!   32    CONTINUE
 ! LOCAL TIMESCALE ESTIMATE FOR MU INHIBITION.
 ! ASSUMES V/L = OMEGA.
 !      ELSE IF(IMU.EQ.2)THEN
@@ -299,9 +290,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! 911           FORMAT(I5,1P8E12.3)
        end do
 !         DO 33 I = IMIN,IMAX
-!            IF(LCZ(I).AND.LCZ(I-1))GOTO 33
-!            DR = HRU(I) - HRU(I-1)
-!            VMU(I)=FMU*HGM(I)*ABS(AMUM(I)-AMUM(I-1))/DR/AMUMI(I)
 !     *             /WM(I)**2
 !   33    CONTINUE
 ! ALTERNATE EXPRESSION : D = D0/(1+R*DEL MU/MU)
@@ -309,12 +297,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! SHOULD HAVE PUBLISHED IT - OH WELL.
 !      ELSE
 !         DO 34 I = IMIN,IMAX
-!            IF(LCZ(I).AND.LCZ(I-1))GOTO 34
-!            DR = HRU(I) - HRU(I-1)
-!            DDEL = DELAMI(I)/MAX(1.0D-6,DELAMI(I)-DELMI(I))
-!            VMU(I)=FMU*RM(I)*DDEL*ABS(AMUM(I)-AMUM(I-1))/DR/AMUMI(I)
-! 34         CONTINUE
-!      ENDIF
 !  GSF INSTABILITY.  VELOCITY DEFINED IN SR SETUPV.
 ! OMIT ALL BUT THE KIPPENHAHN 1980 ESTIMATE.
 ! IGSF IS RETAINED, AND THE VALUE DETERMINES WHAT IS PERMITTED TO
@@ -400,29 +382,8 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !            IF(LCZ(I).AND.LCZ(I-1))GOTO 41
 ! MHP 8/93 STABILITY CONDITION ADDED, NEGLECTING THE EFFECTS OF
 ! MU GRADIENTS.
-!            QWRMX = 2.0D0*SQRT(VISCMI(I)/THDIFMI(I))*QWRMAX(I)
-!            IF(ABS(QWLNR(I)).LT.QWRMX)THEN
-!               VGSF(I) = 0.0D0
-!               GOTO 41
-!            ELSE
-!               FXX = SQRT((ABS(QWLNR(I))-QWRMX)/QWRMX)
-!            ENDIF
-!            DR = HRU(I)-HRU(I-1)
-!            RMID = 0.5D0*(HRU(I)+HRU(I-1))
-!            DLNJMDR = ABS(2.0D0/RMID+(LOG(OMEGA(I))-
 !     *                LOG(OMEGA(I-1)))/DR)
-!            IF(IGSF.EQ.3)THEN
-!               DWDR = abs(OMEGA(I)-OMEGA(I-1))/DR
-!               VGSF(I) = 2.0D0*FGSFJ(I)*DWDR**2
-!               VGSF(I) = ABS(VGSF(I))
 !            ELSE IF(IES.EQ.2)THEN
-!               VGSF(I) = 2.0D0*VES(I)*FACT3(I)*DLNJMDR**2
-!            ELSE
-!               VGSF(I) = 2.0D0*FGSFJ(I)*(DLNJMDR*WM(I))**2
-!               VGSF(I) = ABS(FXX*VGSF(I))
-!            ENDIF
-!   41    CONTINUE
-!      ENDIF
 !  DIFFUSIVE AND DYNAMICAL SHEAR INSTABILITIES - REF. ENDAL&SOFIA PAPER II.
       do i = zone_min,zone_max
 !  CHECK FOR OPERATION OF DYNAMICAL SHEAR.
@@ -467,15 +428,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                     dlnwdr/dlnwdr0
             end if
 !            ELSE IF(IGSF.EQ.3)THEN
-!               DWDR = abs(OMEGA(I)-WMIN)/DR
-!               DWDR0 = ABS(OMEGA(I)-OMEGA(I-1))/DR
-!               VGSF(I) = VGSF(I)*(DWDR/DWDR0)**2
 !            ELSE IF(IES.EQ.2)THEN
-!               VGSF(I) = VGSF(I)*(DLNJMDR/DLNJMDR0)**2
-!            ELSE
-!               WMID0 = 0.5D0*(OMEGA(I)+OMEGA(I-1))
-!               VGSF(I) = VGSF(I)*(DLNJMDR*WMID/DLNJMDR0/WMID0)**2
-!            ENDIF
             write(6,9911) i,omega(i),omega(i-1),wmin
  9911       format(1x,'DYNAMICAL SHEAR-SHELL',i5,1p,' WTOP',e11.3, &
                  ' WBOT',e11.3,' LIMIT',e11.3)
@@ -529,56 +482,11 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 !  IMU=3 KIPPENHAHN AND MOLLENHOF(1974)METHOD;IMU=2 LOCAL DAMPING
 !  FACTOR METHOD.
 ! AGAIN, OMIT OBSOLETE MU GRADIENT TREATMENTS.
-!      IF(IMU.EQ.3)THEN
-!         IF(IT.GT.1)THEN
-!            DO I = 1,M
-!               VMU(I) = 0.5D0*(VMU(I)+VMUP(I))
-!            END DO
-!         ENDIF
-!         DO I = IMIN,IMAX
-!            FM = 1.0D0+VMU2(I)
-!            RMID = 0.5D0*(HRU(I)+HRU(I-1))
-!            FCC = SQRT(FC*FESC)
-!            VEST=MAX(0.0D0,FES*VES(I)-SQRT(FES*VES(I)*RMID)
 !     *               *FCC*VMU(I))
-!            IF(VEST.LE.0.0D0)THEN
-!               VES(I) = ABS(FES*VES(I)/FM)
-!            ELSE
-!               VES(I) = VEST
-!            ENDIF
-!            FCC = SQRT(FC*FGSFC)
-!            IF(VGSF(I).GT.0.0D0)THEN
-!               VGSFT=MAX(0.0D0,FGSF*VGSF(I)-SQRT(FGSF*VGSF(I)*RMID)
 !     *               *FCC*VMU(I))
-!            ELSE
-!               VGSFT = 0.0D0
-!            ENDIF
-!            IF(VGSFT.LE.0.0D0)THEN
-!               VGSF(I) = ABS(FES*VGSF(I)/FM)
-!            ELSE
-!               VGSF(I) = VGSFT
-!            ENDIF
-!            VSS(I)=MAX(0.0D0,FSS*VSS(I))
-!         END DO
-!      ELSE
-!            IF(IMU.NE.2)THEN
-!               FM = 1.0D0+VMU(I)
-!            ELSE
-!               FM = 1.0D0
-!            ENDIF
-!            VES(I)=ABS(FES*VES(I)/FM)
 ! MHP 05/02 ONLY DO THIS IF MU GRADIENTS NOT
 ! ALREADY ACCOUNTED FOR
-!            VGSF(I)=ABS(FGSF*VGSF(I)/FM)
-!            IF(IGSF.NE.0)THEN
-!               VGSF(I)=ABS(FGSF*VGSF(I)/FM)
-!            ELSE
-!               VGSF(I) = FGSF*VGSF(I)
-!            ENDIF
 ! ALREADY INCLUDED - ONLY USE SCALE FACTOR
-!            VSS(I)=ABS(FSS*VSS(I)/FM)
-!            VSS(I)= FSS*VSS(I)
-!         END DO
 ! MHP 8/03 MULTIPLY VELOCITY ESTIMATES BY USER PARAMETER
 ! SCALE FACTORS
       do i = zone_min,zone_max
@@ -599,17 +507,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                     star%rot%es_advective_velocity(i)
          end do
       end if
-!               IF(IMU.NE.2)THEN
-!                  FM = 1.0D0+VMU(I)
-!               ELSE
-!                  FM = 1.0D0
-!               ENDIF
-!               FM = 1.0D0+VMU(I)
-!               VESD(I)=ABS(FES*VESD(I)/FM)
-!               VESA(I)=FES*VESA(I)/FM
-!            END DO
-!         ENDIF
-!      ENDIF
       if (use_diffusion_advection_transport) then
 ! MHP 05/02
 ! CHANGED TO REFLECT THE DIFFERENT TREATMENT OF THE GSF INSTABILITY.
@@ -635,12 +532,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! CEILING SET BY DYNAMICAL SHEAR
 !               QLNWRMAX = ABS(QWRMAX(I)/(WM(I)*RM(I)))
 ! TAKE THE SMALLER OF THE TWO
-!               QLNWR = MIN(QLNWR,QLNWRMAX)
-!               IF(QLNWR.GT.1.0D-32)VESD(I) = VESD(I)+ABS(VGSF(I)/QLNWR)
-!            ENDIF
-!            IF(VSS(I).GT.0.0D0)THEN
-!               VESD(I) = VESD(I)+ABS(VSS(I)*RM(I))
-!            ENDIF
          end do
       end if
 !  AVERAGE PREVIOUS AND NEW VELOCITY ESTIMATES AFTER THE FIRST ITERATION.

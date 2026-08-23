@@ -190,10 +190,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
                log_radius(zone_idx) = log10(radius_after_cm)
             end do
          endif
-!         DO J = JENV,M
-!            HT(J) = HT(J) + FAC
-!         END DO
-!         WRITE(*,*)HT(15),HT(16),HT(17)
       endif
 ! FOR MODELS WITH ROTATION AND MASS LOSS REMOVE ANGULAR MOMENTUM.
 ! IN THIS CASE WE ASSUME A THERMAL WIND WHERE THE SURFACE MATTER

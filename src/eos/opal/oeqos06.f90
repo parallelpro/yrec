@@ -79,9 +79,6 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
            deriv_order, rad_flag, ierr, *999)
       if (ierr /= 0) return
 
-!      IF(ABS((P12-EOS(1))/P12).GT.0.5D-6)THEN
-!         WRITE(ISHORT,*)'***** RUN TERMINATED --ERROR IN OEQOS06 PTOT'
-!         WRITE(ISHORT,*) 'P12,EOS(1) Differ: P12,EOS(1),T6,R,X,ZTAB=',
 !     *         P12,EOS(1),T6,R,X,ZTAB
 !         STOP ' ERROR IN OEQOS06 PTOT'
 !      ENDIF

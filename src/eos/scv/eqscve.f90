@@ -199,14 +199,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             end if
          end if
       end if
-!      DO K = 1,4
-!         QR(K) = TLOGX(K+IDT-1)
-!      END DO
-!      CALL INTERP(QR,FT,FTD,TL)
-!      DO K = 1,4
-!         QR(K) = TABLENV(IDT,IDP+K-1,1)
-!      END DO
-!      CALL INTERP(QR,FP,FPD,PP)
       helium_fraction = 1.0d0 - hydrogen_fraction - metal_fraction
 ! include radiation pressure in the equation of state.
       radiation_pressure = beta_complement*pressure
@@ -385,14 +377,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       if (temp_needs_smoothing) then
 ! add changes for both t and p interpolation
          if (press_needs_smoothing) then
-!            WRITE(*,911)(TEMPT(J),J=1,5)
-!  911        FORMAT(1X,'ORIG ',1P5E16.7)
-!            WRITE(*,912)(TEMPT1(J)-TEMPT(J),J=1,5)
-!  912        FORMAT(1X,'INT T',1P5E16.7)
-!            WRITE(*,913)(TEMPT2(J)-TEMPT(J),J=1,5)
-!  913        FORMAT(1X,'INT P',1P5E16.7)
-!            WRITE(*,914)(TEMPT3(J)-TEMPT(J),J=1,5)
-!  914        FORMAT(1X,'INT PT',1P5E16.7)
             do j = 1,5
                if (temp_smooth_direction.eq.-1) then
 ! interpolate in t at fixed p

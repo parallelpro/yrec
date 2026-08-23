@@ -84,9 +84,6 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
               total_pressure
          chi_t6 = (opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1))*opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(7)) &
               + 4.0d0*radiation_pressure)/total_pressure
-!     gam1t(jcs,i)=(p(jcs,i)*gam1(jcs,i)+4D0/3D0*pr)/pt(jcs,i)
-!     gam2pt(jcs,i)=(gam2p(jcs,i)*p(jcs,i)+4D0*pr)/pt(jcs,i)
-!     gam3pt(jcs,i)=gam1t(jcs,i)/gam2pt(jcs,i)
          molar_specific_heat = (opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5))*moles_per_ev/ &
               mean_molecular_weight + 4.0d0*radiation_energy/t6_temperature)
          gamma3_minus1 = total_pressure*chi_t6/(molar_specific_heat*density* &

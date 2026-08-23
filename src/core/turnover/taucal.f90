@@ -66,10 +66,6 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
 !  SURFACE C.Z. EXISTS.  FIND LOWEST SHELL (IMAX), WHICH IS ALSO THE
 !  UPPERMOST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONALLY INDUCED MIXING.
 !         DO 71 I = M-1,1,-1
-!            IF(.NOT.LCZ(I)) GOTO 81
-!   71    CONTINUE
-!         LALLCZ = .TRUE.
-!         I = 0
 !   81    IMAX = I + 1
 
 ! DEAL THE POSSIBILITY OF TWO OR MORE SURFACE CONVECTION ZONES IN THE ENVELOPE
@@ -184,26 +180,8 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
 ! JVS 10/11/13
 !         ELSE
 !C INFER HP
-!            IF(.NOT.LROT)THEN
-!               HG(1)=HS1(1)*EXP(CLN*(CGL-2.0D0*HR(1)))
-!            ENDIF
-!            PSCA2 = EXP(CLN*(HP(1)-HD(1)))/HG(1)
-!            RTEST2 = EXP(CLN*HR(1))
-!            IF(PSCA2.LE.RTEST2)THEN
 !C HP < R AT THE FIRST POINT.  ASSUME V CONSTANT INSIDE AND HP = K/R FOR
 !C SLOWLY VARYING DENSITY AND PRESSURE NEAR THE CENTER.
-!               CVEL = SVEL(1)
-!               PSCA = (PSCA2*RTEST2)**0.5D0
-!               TAUCZ = PSCA/CVEL
-!            ELSE
-!               DO K = 2,M
-!                  PSCA1 = PSCA2
-!                  RTEST1 = RTEST2
-!                  IF(.NOT.LROT)THEN
-!                     HG(K)=HS1(K)*EXP(CLN*(CGL-2.0D0*HR(K)))
-!                  ENDIF
-!                  PSCA2 = EXP(CLN*(HP(K)-HD(K)))/HG(K)
-!                  RTEST2 = EXP(CLN*HR(K))
 !C FIND LOCATION WHERE HP = R
 !                  IF(PSCA2.LE.RTEST2)THEN
 !                     FX = (RTEST1-PSCA1)/((PSCA2-RTEST2)-(PSCA1-RTEST1))
@@ -211,14 +189,6 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
 !                     CVEL = SVEL(K-1)+FX*(SVEL(K)-SVEL(K-1))
 !                     PSCA = PSCA1+FX*(PSCA2-PSCA1)
 !C DEFINE TAUCZ
-!                     TAUCZ = PSCA/CVEL
-!                     GOTO 95
-!                  ENDIF
-!               END DO
-!               K = M
-!               CVEL = SVEL(M)
-!               PSCA = PSCA2
-!               TAUCZ = PSCA/CVEL
 !C 95            CONTINUE
 !            ENDIF
 !         ENDIF

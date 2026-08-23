@@ -59,11 +59,6 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
       end do
       end do
       return
-! 1001  FORMAT(I5,E16.8)
-! 1002  FORMAT(5E16.8)
-! 1011  FORMAT(I5,1PE16.8)
-! 1012  FORMAT(1P5E16.8)
-! 9001  FORMAT(' ERROR IN RTAB. TOO SMALL PARAMETERS: ',
 !      1 /' NT,NR,NTM,NRM = ',4I5)
 ! 9011  FORMAT(' ERROR IN RTAB. WRONG DENSITY CONSTRUCTION: ',
 !      1 /' N,NR,NRR = ',3I5)

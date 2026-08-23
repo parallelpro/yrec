@@ -142,9 +142,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
               num_vars, var_leading_dim, num_points, lir_type_flag, interp_mode)
       end if
       return
-!1000  FORMAT(' RESULTS FROM MHDPX2, ITBL,X = ',I6,1PE15.7/)
-! 1001  FORMAT(12(/1X,1P5E15.6))
-! 5001  FORMAT(1X,'******* WARNING: EXTRAPOLATION IN X (QUINT) ',
 !      1          'PL,TL,X = ',3F12.6)
 ! 5011  FORMAT(1X,'******* WARNING: EXTRAPOLATION IN X (LIR) ',
 !      1          'PL,TL,X = ',3F12.6)

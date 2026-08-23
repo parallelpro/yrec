@@ -160,9 +160,6 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          log_temperature_mid(j) = star%prev%logT_start(j) + &
               time_fraction*(star%logT(j)-star%prev%logT_start(j))
 !        DO 30 I = 1,IEND
-!           HCOMP(I,J)=HCOMP(I,J)+FAC2*HCOMPM(I,J)
-!           HCOMPP(I,J) = HCOMP(I,J)
-!  30    CONTINUE
          hg_mid(j) = star%run%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%run%old_hg(j))
          star%mix_phys%del_adiabatic_mix(j) = star%rot%old_del_adiabatic_mix(j) + &
               time_fraction*(star%diag%del_grad(i_grad_ad,j)-star%rot%old_del_adiabatic_mix(j))
@@ -478,49 +475,21 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !      IF(LCZSUR)THEN
 !         IF(.NOT.LALLCZ)THEN
 !C PINPOINT RCZ
-!            DD2 = DELRM(IMAX-1)-DELAM(IMAX-1)
-!            DD1 = DELRM(IMAX)-DELAM(IMAX)
-!            FX = DD2/(DD2-DD1)
 !C            WRITE(*,911)IMAX,FX,DD2,DD1
 !C 911        FORMAT(I5,1P3E12.3)
 !C INFER HP
-!            ENVRL = HRM(IMAX-1)+FX*(HRM(IMAX)-HRM(IMAX-1))
-!            ENVR = EXP(CLN*ENVRL)
-!            PS2 = EXP(CLN*(HPM(IMAX)-HDM(IMAX)))/HGM(IMAX)
-!            PS1 = EXP(CLN*(HPM(IMAX-1)-HDM(IMAX-1)))/HGM(IMAX-1)
-!            PSCA = PS1 + FX*(PS2-PS1)
-!            RTESTL = DLOG10(ENVR+PSCA)
 !C FIND V
 !            DO K = IMAX+1,M
-!               IF(HRM(K).GT.RTESTL)THEN
-!                  FX = (RTESTL-HRM(K-1))/(HRM(K)-HRM(K-1))
-!                  CVEL = VELM(K-1)+FX*(VELM(K)-VELM(K-1))
-!                  GOTO 85
-!               ENDIF
-!            END DO
-!            CVEL = VELM(M)
 !C 85         CONTINUE
 !C DEFINE TAUCZ
 !            TAUCZ = PSCA/CVEL
 !C            WRITE(*,911)K,PSCA,CVEL,TAUCZ
 !         ELSE
 !C INFER HP
-!            PSCA2 = EXP(CLN*(HPM(1)-HDM(1)))/HGM(1)
-!            RTEST2 = EXP(CLN*HR(1))
-!            IF(PSCA2.LE.RTEST2)THEN
 !C HP < R AT THE FIRST POINT.  ASSUME V CONSTANT INSIDE AND HP = K/R FOR
 !C SLOWLY VARYING DENSITY AND PRESSURE NEAR THE CENTER.
-!               CVEL = VELM(1)
-!               PSCA = (PSCA2*RTEST2)**0.5D0
-!               TAUCZ = PSCA/CVEL
 !C               WRITE(*,912)PSCA2,RTEST2,PSCA,CVEL,TAUCZ
 !C 912           FORMAT(1P5E12.3)
-!            ELSE
-!               DO K = 2,M
-!                  PSCA1 = PSCA2
-!                  RTEST1 = RTEST2
-!                  PSCA2 = EXP(CLN*(HPM(K)-HDM(K)))/HGM(K)
-!                  RTEST2 = EXP(CLN*HR(K))
 !C FIND LOCATION WHERE HP = R
 !                  IF(PSCA2.LE.RTEST2)THEN
 !                     FX = (RTEST1-PSCA1)/((PSCA2-RTEST2)-(PSCA1-RTEST1))
@@ -528,19 +497,8 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !                     CVEL = VELM(K-1)+FX*(VELM(K)-VELM(K-1))
 !                     PSCA = PSCA1+FX*(PSCA2-PSCA1)
 !C DEFINE TAUCZ
-!                     TAUCZ = PSCA/CVEL
-!                     GOTO 95
-!                  ENDIF
-!               END DO
-!               K = M
-!               CVEL = VELM(M)
-!               PSCA = PSCA2
-!               TAUCZ = PSCA/CVEL
 !C 95            CONTINUE
 !C               WRITE(*,911)K,PSCA,CVEL,TAUCZ
-!            ENDIF
-!         ENDIF
-!      ENDIF
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
       if (.not.force_solid_body_rotation .and. (solid_body_mode_flag.ne.1)) then
 !  NOW FIND THE RUN OF ROTATION VARIABLES THAT ARE CONSISTENT WITH THE

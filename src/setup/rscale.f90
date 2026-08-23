@@ -248,11 +248,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             end do
             env_mass_old = env_mass_new
 ! *****
-!            write(*,*)'Mass difference ',DENV
-!            write(*,*)'HSTOT1 ',HSTOT1
-!            write(*,*)'SFACTOR ',DLOG10(SFACTOR)
-! ************
-!      write(*,*)'leaving old method ',HSTOT-HS(M)
 ! ************
 
          else
@@ -264,12 +259,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       write(*,*)'Envelope ',10**shell_mass_log(num_zones) - 10**shell_mass_log(shell_begin-1)
 ! ************
 !           *** print debug info ***
-!            write(*,*)JXBEG-1,JXMID,JXEND,M
-!            write(*,*)(10**HS(JXBEG-1))/CMSUN,' core'
-!            write(*,*)(10**HS(JXMID))/CMSUN,' mid'
-!            write(*,*)(10**HS(JXEND))/CMSUN,' end'
-!            write(*,*)(10**HS(M))/CMSUN,' M'
-!            write(*,*)(10**HSTOT)/CMSUN,' total'
             env_mass_check = ((10**total_mass_log)/solar_mass_cgs)-core_mass_old
             if(env_mass_check.le.0.0d0)then
                write(short_file_unit,69)env_mass_old,env_mass_old+delta_env_mass,rescale_params(1,run_index),star_mass
@@ -299,9 +288,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             end do
             env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/solar_mass_cgs
             env_mass_total_check=(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_begin-1)))/solar_mass_cgs
-!            write(*,*)'total envelope ',ENVTOTAL
-!            write(*,*)'HSTOT1 ',HSTOT1
-!            write(*,*)'SFACTOR ',DLOG10(SFACTOR)
 
 ! ************
 !      write(*,*)'leaving new method ',HSTOT-HS(M)
@@ -401,8 +387,5 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             enddo
       end if
 ! ************
-!      write(*,*)'Leaving rscale ',HSTOT-HS(M)
-! ************
-!      IF(HSTOT.LT.HS(M)) STOP
       return
 end subroutine rscale

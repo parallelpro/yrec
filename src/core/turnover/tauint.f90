@@ -183,9 +183,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
 !--------------------------------------------------------------
 !                  OPEN(UNIT=100,FILE='diagnostic.out',STATUS='OLD')
 !                  DO 1505 I=1,M
-!                  IF (LCZ(I)) HOLD = 1.0
-!                  IF (.NOT.LCZ(I)) HOLD = 0.0
-!                              WRITE(100,1504), HS2(I), HS1(I), HR(I),HOLD,
 !     *                  DEL1(I), DEL2(I), SVEL(I),
 !1505                  CONTINUE
 !1504                  FORMAT(1X,7E16.8)

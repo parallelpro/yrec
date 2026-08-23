@@ -56,15 +56,8 @@ subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
 ! EQUALLY SPACED SHELLS AS 3.
       star%rot%ntot = max(star%rot%ntot,3)
 ! EQUALLY SPACED INCREMENT IN CHI
-!      CHT = 0.5D0*(CHI(NTAB)+CHI(NTAB-1))
-!      CHB = 0.5D0*(CHI(2)+CHI(1))
-!      DCHI = (CHT-CHB)/FLOAT(NTOT-2)
       star%rot%dchi = (star%rot%chi(num_points_in_range)-star%rot%chi(1))/dfloat(star%rot%ntot-1)
 ! ASSIGN VECTOR OF EQUALLY SPACED CHI
-!       ECHI(1) = CHB - 0.5D0*DCHI
-!       DO I = 2,NTOT
-!          ECHI(I) = ECHI(I-1)+DCHI
-!       END DO
       star%rot%echi(1) = star%rot%chi(1)
       do zone_index = 2, star%rot%ntot
          star%rot%echi(zone_index) = star%rot%echi(zone_index-1)+star%rot%dchi

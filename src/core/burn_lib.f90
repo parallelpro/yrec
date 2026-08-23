@@ -946,11 +946,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !
 ! BY COMPARISON WITH EQUATION 3.14 OF NEUTRINO ASTROPHYSICS, WE SEE THAT
 !
-!  Q1 = (5/(12*TAU))*T_9^(-1/3) .
-!  Q2 = (S'/S)(E_0))*T_9^(-2/3) .
-!  Q3 = (S'/S)(35/36)(K*10^9 K)
-!  Q4 = (S''/2S)(E_0^2)(T_9^(-4/3)
-!  Q5 = (89/72)(S''/S)(E_0)(KT)(T_9^(-5/3)
 !
 ! EACH OF THE Q'S IS INDEPENDENT OF TEMPERATURE (T), AS CAN BE SEEN FROM
 !  EQUATIONS 3.10 AND 3.11 .
@@ -1717,10 +1712,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          sum3=sum3+reaction_energy_gen(i)*dlnrate_dlnt(i)
       end do
 ! MHP 5/02 ADD DEUTERIUM BURNING
-!      IF(IU.LE.10)THEN
-!         WRITE(*,911)IU,SUM1,DGDEUT,SUM2,SUM3,QRTDEUT
-!      ENDIF
-! 911  FORMAT(I5,1P5E13.3)
       total_energy_gen_rate = total_energy_gen_rate + dgdeut
       sum2 = sum2 + dgdeut
       sum3 = sum3 + dgdeut*qrtdeut
@@ -1739,10 +1730,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  WITH RESPECT TO DENSITY AND TEMPERATURE.
 ! MHP 5/90 CHANGE DERIVATIVES TO BE D LN EPS/D LN RHO AND D LN EPS/D LN T
 ! TO PUT THEM IN THE SAME FORM AS PRATHER DERIVATIVES.
-!        EN=DLOG10(SUM1)
-!        PEPD=SUM2/SUM1
-!        PEP=PDP*PEPD
-!        PET=SUM3/SUM1+PDT*PEPD
          dlnepsilon_dlnrho = sum2
          dlnepsilon_dlnt = sum3
       end if

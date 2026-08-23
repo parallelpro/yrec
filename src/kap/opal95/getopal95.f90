@@ -72,9 +72,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       endif
 !     THIS SECTION IS REPLACED BY LINEAR EXTRAPOLATION IN R FROM THE
 !     LAST TWO OPACITY VALUES.
-!      IF(RL.LT.(R0GR(1)-4.0D0) .OR. RL.GT.(R0GR(NUMD)+1.0D0))THEN
-!         WRITE(*,7)RL,TL
-! 7       FORMAT(' LOG R OF',F11.6,' OUT OF OPAL 95 TABLE RANGE;TL'
 !     *          ,F11.6)
 !         STOP
 !      ENDIF

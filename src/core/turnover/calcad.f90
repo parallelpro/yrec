@@ -359,11 +359,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 ! Determine length of Atmosphere vector:
 !      IATCNT=0
 !      DO 56, I=1,JSON-1
-!            IF(ACATMR(I) .NE. 0.0 .AND. ACATMR(I+1) .LE. 1.0D-7) THEN
-!                   IATCNT=I
-!                  GOTO 56
-!            END IF
-!56      CONTINUE
 
 
 ! Put the atmosphere in actual units, not differential
@@ -375,32 +370,14 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 !40      CONTINUE
 
 !      DO 37,I=1,IATCNT
-!            ATMOSD(I)=DEXP(CLN*ACATMD(IATCNT+1-I))
-!            ATMOST(I)=DEXP(CLN*ACATMT(IATCNT+1-I))/1.0D6
-!            ATMOSP(I)=DEXP(CLN*ACATMP(IATCNT+1-I))
-!            ATMOSR(I)=ACATMR(IATCNT+1-I)
-!37      CONTINUE
 
 !      Pass atm vectors to ESAC06
 !      IORDER=9
 !      IRAD=1
 !      DO 38, I=1,IATCNT
-!            CALL ESAC06(ATMOSX,ZTAB,ATMOST(I),ATMOSD(I),IORDER,IRAD,*998)
-!998            CONTINUE
-!            ATMOSC(I)=1.0D0/SQRT(eos(8)*ATMOSP(I)/ATMOSD(I))
-!            ADELAD(I)=1.0D0/eos(9)
-!            ATGAM1(I)= eos(8)
-!38      CONTINUE
 
 
 !       Then call Boole to do the integration:
-!      U=MOD((IATCNT),4)
-!      V=IATCNT
-!      IF (U.NE.0) THEN
-!            NN=V+4-U+1
-!      ELSE
-!            NN=V+1
-!      ENDIF
 !
 !      CALL BOOLE(ATMOSR,ATMOSC,V,NN,TATMOS)
 
@@ -458,11 +435,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 
 !      DO 444, I=1,JSON
-!            ACATMR(I) =0.0d0
-!            ACATMP(I) =0.0d0
-!            ACATMT(I) =0.0d0
-!            ACATMD(I) =0.0d0
-!444      CONTINUE
 
 
 

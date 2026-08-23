@@ -199,10 +199,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       ! facades stop when their caller passes no ierr.
       ierr = 1
       return
-!  98   FORMAT(1X,3I5,F13.5)
-!  99   FORMAT(1X,I5,(/1X,3E15.7))
-! 1001  FORMAT(2I5,2F10.6)
-! 8001  FORMAT(' CORRECT TABLE CONSTRUCTION FOR X-DERIVATIVES.',
 !      1       ' CENTROID COMPOSITION IS:'//)
 ! 8002  FORMAT('      AT. WEIGHT     NUMBER ',
 !      1 'ABUNDANCE  MASS FRACTION',(/1X,1P3G16.7))
@@ -218,9 +214,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !      1 ' IDX,NT1,NT2 ',/1X,3I8)
 ! 9800  FORMAT(' ERROR IN TABLE CONSTRUCTION FOR X-DERIVATIVES',
 !      1       ' CENTRAL, LOWER, UPPER TABLE: N(ELEMENT),ABFRCS(N)'//)
-! 9810  FORMAT(1X,I5,F15.9)
-! 9820  FORMAT(/)
-! 9850  FORMAT(' ERROR IN TABLE CONSTRUCTION FOR X-DERIVATIVES:',
 !      1       ' TEMPERATURES WRONG: J,TLOW(J),TCENT(J),TUPP(J)'//)
 ! 9860  FORMAT(1X,I5,3F15.9)
 ! 9900  FORMAT(' EOF REACHED IN INPUT FILE. ERROR STOP. IR,IDX = ',2I5)

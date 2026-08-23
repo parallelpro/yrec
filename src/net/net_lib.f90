@@ -1725,11 +1725,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !
 ! BY COMPARISON WITH EQUATION 3.14 OF NEUTRINO ASTROPHYSICS, WE SEE THAT
 !
-!  Q1 = (5/(12*TAU))*T_9^(-1/3) .
-!  Q2 = (S'/S)(E_0))*T_9^(-2/3) .
-!  Q3 = (S'/S)(35/36)(K*10^9 K)
-!  Q4 = (S''/2S)(E_0^2)(T_9^(-4/3)
-!  Q5 = (89/72)(S''/S)(E_0)(KT)(T_9^(-5/3)
 !
 ! EACH OF THE Q'S IS INDEPENDENT OF TEMPERATURE (T), AS CAN BE SEEN FROM
 !  EQUATIONS 3.10 AND 3.11 .

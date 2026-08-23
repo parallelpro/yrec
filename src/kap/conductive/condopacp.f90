@@ -89,9 +89,6 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
          close(file_unit)
          cond_table%table_loaded_flag=12345
 ! KC 2025-05-30 fixed -Winteger-division
-!          IZ=MAXZ/2+1
-!          IT=MAXT/2+1
-!          IR=MAXR/2+1
          z_index=int(n_z_grid/2.)+1
          t_index=int(n_temp_grid/2.)+1
          r_index=int(n_rho_grid/2.)+1

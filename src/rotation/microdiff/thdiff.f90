@@ -121,11 +121,6 @@ subroutine thdiff(num_species, atomic_weight, charge, mass_fraction, &
       mass_fraction(num_species)=atomic_weight(num_species)/ac
 
 ! Calculate the coefficients of the burgers equations
-!      do I = 1,M
-!         DO J = 1,M
-!            CL(I,J) = 2.2D0
-!         END DO
-!      END DO
       do i=1,num_species
          do j=1,num_species
             xx(i,j)=atomic_weight(j)/(atomic_weight(i)+atomic_weight(j))

@@ -36,18 +36,7 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
            table_hfrac(ndimt)
 !     NOMENCLATURE FOR ACCESSING THE TABLES
 !     ZAMS TABLES
-!     ITBL = -1   : TDVR1A
-!     ITBL =  1   : TDVR2A
-!     ITBL = -2   : TDVR1B
-!     ITBL =  2   : TDVR2B
-!     ITBL = -3   : TDVR1C
-!     ITBL =  3   : TDVR2C
 !     CONTRAL (VARIABLE X) TABLES
-!     ITBL =  4   : TDVRX1
-!     ITBL =  5   : TDVRX2
-!     ITBL =  6   : TDVRX3
-!     ITBL =  7   : TDVRX4
-!     ITBL =  8   : TDVRX5
 !     NOTE: THE SAME OUTPUT VARIABLES VAROUT(ITBL,.) IS USED
 !           FOR ITBL=1 AND -1, 2 AND -2, 3 AND -3, RESPECTIVELY.
       double precision :: intpt_work1(ivarx,4), intpt_work2(ivarx,4), &

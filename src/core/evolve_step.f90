@@ -227,24 +227,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
              star%run%dage = star%run%dage + 1.0D-9*star%evo%timestep_yr
             endif
 !***MHP 1/04 OPACITY TEST
-!      IDT = 15
-!      DO JJJ = 1,4
-!         IDD(JJJ) = 5
-!      END DO
-!      XXX = 0.7D0
-!      ZZZ = 0.02D0
-!      Do JJJ = 1,2000
-!         READ(75,*)TL,DL,XX,ZZ,OO
-!         IF(TT.GT.1.0D9)STOP911
-!         TL = LOG10(TT)
-!         DL = LOG10(DD)
 ! DBG 12/95 GET OPACITY
-!         CALL GETOPAC(DL, TL,XXX,ZZZ, O, OL, QOD, QOT)
-!         DIFF = (O-OO)/O
-!         RL = DL - 3*TL +18.0D0
-!         WRITE(76,1554)TL,RL,XXX,ZZZ,O,OO,DIFF
-! 1554    format(4f11.6,3e20.10)
-!      END DO
 !*** END TEST
 ! rezone new model, except rezoning not performed for He flash calculations
           if (.not.helium_flash_active) then

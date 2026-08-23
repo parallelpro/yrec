@@ -181,11 +181,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           numenv = numenv + 1
 ! G Somers 11/14, LPENV FUNCTIONALITY NOW INCLUDED IN LSTENV.
             print_envelope_flag = .false.
-!          LPENV = MOD(NUMENV,NPENV).EQ.0
-!          IF(.NOT.LSTORE) LPENV = .FALSE.
-!          IF(LPENV) THEN
-!             WRITE(ISHORT,30) I,TRIT(I),TRIL(I)
-! 30            FORMAT(/,' NEW ENVELOPE NO.',I2,' LOG(TE) =',F9.5,
 !     *              '  LOG(L) =',F8.5)
 !          ENDIF
 ! G Somers END

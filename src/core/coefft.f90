@@ -153,10 +153,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          end do
       end if
 ! MHP 10/02 QFPR,QFTR NOT USED - OMIT
-!      IF(.NOT.LROT) THEN
-!       QFPR = 0.0D0
-!       QFTR = 0.0D0
-!      ENDIF
       conductive_opacity_flag = .true.
       want_derivatives = .true.
       in_atmosphere = .false.
@@ -237,9 +233,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! COMPUTE DERIVATIVES
 !       IF(LROT) THEN
 !  CALCULATE D(LOG FP)/D(LOG R) AND D(LOG FT)/D(LOG R)
-!            IF(IM.GT.1) THEN
-!             IF(IM.LT.M) THEN
-!              QFPR = (DLOG(FP(IM+1)) - DLOG(FP(IM-1)))/
 !     *                 (CLN*(HR(IM+1) - HR(IM-1)))
 !              QFTR = (DLOG(FT(IM+1)) - DLOG(FT(IM-1)))/
 !     *                 (CLN*(HR(IM+1) - HR(IM-1)))
@@ -248,9 +241,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !     *                 (CLN*(HR(M) - HR(M-1)))
 !              QFTR = (DLOG(FT(M)) - DLOG(FT(M-1)))/
 !     *                 (CLN*(HR(M) - HR(M-1)))
-!             ENDIF
-!          ELSE
-!             QFPR = (DLOG(FP(2)) - DLOG(FP(1)))/
 !     *              (CLN*(HR(2) - HR(1)))
 !             QFTR = (DLOG(FT(2)) - DLOG(FT(1)))/
 !     *              (CLN*(HR(2) - HR(1)))
@@ -381,13 +371,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                eq_l_val = eq_l_val - star%rot%rotational_energy_term(im)
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
-!            IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
-!               IF(IM.GE.JENV)THEN
-!                  QACC = - T*SCEN*DMDT0/CSECYR/SMASS0
-!                  WRITE(*,*)QL,QACC
-!                  QL = QL + QACC
-!               ENDIF
-!            ENDIF
          end if
          cccql = ln_solar_luminosity*mass_weight_ln(im)
          eq_l_val = cccql*eq_l_val
@@ -463,10 +446,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                star%diag%seg(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
 !  SHORT OUTPUT ONLY
-!         ELSE
-!            SESUM(IM) = EG(1)+EG(2)+EG(3)+EG(4)+EG(5)
-!            SEG(6,IM) = EG(6)
-!            SEG(7,IM) = HHC(IM)
          end if
          star%diag%sbeta(im) = beta
          star%diag%seta(im) = electron_degeneracy_parameter
@@ -483,12 +462,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! MHP 02/12 COMMENTED CODE OUT, AS REPLICATED BELOW
 !         IF(LSOUND) THEN
 ! MHP 7/96 CALCULATION OF GAMMA1 FROM GUENTHER 1995 P.C.
-!            CHRH = 1.0D0/QDP
-!            CHT = -CHRH*QDT
-!            CV = QCP - EXP(CLN*(HP(IM)-HD(IM)-HT(IM)))*CHT**2/CHRH
-!            GAM1(IM) = CHRH*QCP/CV
-!            PQDP(IM) = QDP
-!         ENDIF
 
 ! JVS 01/11 always want gamma:
             chi_rho = 1.0d0/dlnrho_dlnp
@@ -507,9 +480,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             star%rot%dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error
             if (star%diag%sesum(im).gt.0.0d0) then
-!            IF(SESUM(I).GT.0.0D0)THEN
-!               ETOT = SESUM(I)
-!               EGNEUT = SEG(6,I)+SEG(7,I)
                total_energy_sum = star%diag%sesum(im)
                neutrino_and_grav_sum = star%diag%seg(i_eps_neu,im)+star%diag%seg(i_eps_grav,im)
                star%rot%neutrino_loss_fraction(im) = (total_energy_sum - &
