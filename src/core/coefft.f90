@@ -52,7 +52,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff, ierr)
 
       use net_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad
       use luout_lib
       use const_lib
       use eos_lib
@@ -442,7 +442,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
          if (log_temperature(im).lt.tcut(1)) then
             star%diag%sesum(im) = 0.0d0
-            star%diag%seg(7,im) = gravitational_luminosity(im)
+            star%diag%seg(i_eps_grav,im) = gravitational_luminosity(im)
             do j = 1,6
                star%diag%seg(j,im) = 0.0d0
            end do
@@ -452,8 +452,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             star%diag%sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
                  energy_gen_component(3)+energy_gen_component(4)+ &
                  energy_gen_component(5)
-            star%diag%seg(6,im) = energy_gen_component(6)
-            star%diag%seg(7,im) = gravitational_luminosity(im)
+            star%diag%seg(i_eps_neu,im) = energy_gen_component(6)
+            star%diag%seg(i_eps_grav,im) = gravitational_luminosity(im)
             if (star%diag%sesum(im).gt.1.0d-22) then
                energy_sum_inverse = 1.0d0/star%diag%sesum(im)
             else
@@ -472,9 +472,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          star%diag%seta(im) = electron_degeneracy_parameter
          star%diag%locons(im) = conductive_opacity_flag
          star%diag%so(im) = opacity
-         star%diag%del_grad(1,im) = radiative_gradient
-         star%diag%del_grad(2,im) = actual_gradient
-         star%diag%del_grad(3,im) = adiabatic_gradient
+         star%diag%del_grad(i_grad_rad,im) = radiative_gradient
+         star%diag%del_grad(i_grad_actual,im) = actual_gradient
+         star%diag%del_grad(i_grad_ad,im) = adiabatic_gradient
          do j = 1,3
             star%diag%sfxion(j,im) = ion_fraction(j)
          end do
@@ -511,7 +511,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !               ETOT = SESUM(I)
 !               EGNEUT = SEG(6,I)+SEG(7,I)
                total_energy_sum = star%diag%sesum(im)
-               neutrino_and_grav_sum = star%diag%seg(6,im)+star%diag%seg(7,im)
+               neutrino_and_grav_sum = star%diag%seg(i_eps_neu,im)+star%diag%seg(i_eps_grav,im)
                star%rot%neutrino_loss_fraction(im) = (total_energy_sum - &
                     neutrino_and_grav_sum)/total_energy_sum
             else

@@ -28,6 +28,7 @@ subroutine getmodel2(log_luminosity_lsun, envelope_fit_coeffs, &
      disk_locking_active, instability_transport_active, ljdot0, alok_code, &
      lovstc, envelope_overshoot_active, lovstm, use_pure_z_table, lsemic, &
      compmix_code, disk_pressure, disk_temperature, wind_saturation_omega)
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons
 ! MHP 4/25 chanted LOK to ALOK to avoid variable name conflicts
@@ -114,10 +115,10 @@ subroutine getmodel2(log_luminosity_lsun, envelope_fit_coeffs, &
 
 ! If TLUMX are in ergs, convert to solar units.  Decide by
 ! comparing to 10**20.  IF larger, divide by CLSUN.
-      max_luminosity_component = dmax1(luminosity_breakdown(1), &
-           luminosity_breakdown(2),luminosity_breakdown(3), &
-           luminosity_breakdown(4),luminosity_breakdown(5), &
-           dabs(luminosity_breakdown(6)),luminosity_breakdown(7))
+      max_luminosity_component = dmax1(luminosity_breakdown(i_lum_pp1), &
+           luminosity_breakdown(i_lum_pp2),luminosity_breakdown(i_lum_pp3), &
+           luminosity_breakdown(i_lum_cno),luminosity_breakdown(i_lum_3alpha), &
+           dabs(luminosity_breakdown(i_lum_neu)),luminosity_breakdown(i_lum_grav))
       if (max_luminosity_component.gt.1.0D20) then
        do j = 1,7
           luminosity_breakdown(j) = luminosity_breakdown(j)/solar_luminosity_cgs

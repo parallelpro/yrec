@@ -17,6 +17,7 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
      model_number, omega, fit_point_pressure, fit_point_radius, &
      total_mass_msun, log_teff, luminosity_breakdown, trial_log_luminosity, &
      trial_log_temperature, fit_point_temperature)
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
 !      & ATM,EOS,HIK,LDIFY,LDIFZ,LDISK,LINSTB,LJDOT0,ALOK,
 !      & LOVSTC,LOVSTE,LOVSTM,LPUREZ,LSEMIC,COMPMIX,PDISK,TDISK,WMAX)  ! KC 2025-05-31
 ! First three lines above are YREC7 inputs
@@ -90,10 +91,10 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 ! write LUMINOSITIES
 ! If TLUMX are in solar units, convert to ergs.  Decide by
 ! comparing to 10**20.  If smaller, multiply by CLSUN.
-      max_luminosity_component = dmax1(luminosity_breakdown(1), &
-           luminosity_breakdown(2),luminosity_breakdown(3), &
-           luminosity_breakdown(4),luminosity_breakdown(5), &
-           dabs(luminosity_breakdown(6)),luminosity_breakdown(7))
+      max_luminosity_component = dmax1(luminosity_breakdown(i_lum_pp1), &
+           luminosity_breakdown(i_lum_pp2),luminosity_breakdown(i_lum_pp3), &
+           luminosity_breakdown(i_lum_cno),luminosity_breakdown(i_lum_3alpha), &
+           dabs(luminosity_breakdown(i_lum_neu)),luminosity_breakdown(i_lum_grav))
       if(max_luminosity_component.le.1.0D20) then
        do j = 1,7
           luminosity_breakdown(j) = luminosity_breakdown(j) * solar_luminosity_cgs

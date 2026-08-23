@@ -101,7 +101,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       use atm_lib
       use envint_lib, only: atm_get
       use envstruct_lib
@@ -398,8 +398,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 
 ! GET XNEW AND ZNEW FROM HENYEY POINTS
 
-      star%env_comp%xnew = star%xa(1,star%nz)
-      star%env_comp%znew = star%xa(3,star%nz)
+      star%env_comp%xnew = star%xa(i_h1,star%nz)
+      star%env_comp%znew = star%xa(i_metals,star%nz)
 
 ! FOURTH PART:  - LOG J/M STORED
 
@@ -493,20 +493,20 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 !     AT PRESENT B10,B11,N15,O17 ARE NOT USED AND THUS NOT ALTERED.
 !     START WITH LIGHT ELEMENTS
       if (change_isotope_ratios_active) then
-         sum_c12_c13 = star%xa(5,1)+star%xa(6,1)
-         sum_o16_o18 = star%xa(9,1)+star%xa(11,1)
+         sum_c12_c13 = star%xa(i_c12,1)+star%xa(i_c13,1)
+         sum_o16_o18 = star%xa(i_o16,1)+star%xa(i_o18,1)
          do j = 1,star%nz
-            star%xa(4,j)=initial_he3_fraction
-            star%xa(5,j)= c12_to_c13_ratio*sum_c12_c13/ &
+            star%xa(i_he3,j)=initial_he3_fraction
+            star%xa(i_c12,j)= c12_to_c13_ratio*sum_c12_c13/ &
                  (1.0d0+c12_to_c13_ratio)
-            star%xa(6,j)= sum_c12_c13/(1.0d0+c12_to_c13_ratio)
-            star%xa(9,j)= o16_to_o18_ratio*sum_o16_o18/ &
+            star%xa(i_c13,j)= sum_c12_c13/(1.0d0+c12_to_c13_ratio)
+            star%xa(i_o16,j)= o16_to_o18_ratio*sum_o16_o18/ &
                  (1.0d0+o16_to_o18_ratio)
-            star%xa(11,j)= sum_o16_o18/(1.0d0+o16_to_o18_ratio)
-            star%xa(12,j)=initial_h2_fraction
-            star%xa(13,j)=initial_li6_fraction
-            star%xa(14,j)=initial_li7_fraction
-            star%xa(15,j)=initial_be9_fraction
+            star%xa(i_o18,j)= sum_o16_o18/(1.0d0+o16_to_o18_ratio)
+            star%xa(i_h2,j)=initial_h2_fraction
+            star%xa(i_li6,j)=initial_li6_fraction
+            star%xa(i_li7,j)=initial_li7_fraction
+            star%xa(i_be9,j)=initial_be9_fraction
          end do
          write(*,593)(reference_composition(k),k=4,15), &
               (star%xa(k,1),k=4,15)
@@ -701,8 +701,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
           do j = 1,num_species
              star%xa(j,star%nz) = star%xa(j,i)
           end do
-          star%env_comp%xnew = star%xa(1,star%nz)
-          star%env_comp%znew = star%xa(3,star%nz)
+          star%env_comp%xnew = star%xa(i_h1,star%nz)
+          star%env_comp%znew = star%xa(i_metals,star%nz)
           if (rotation_active) star%omega(star%nz) = star%omega(i) + &
                interior_interp_fraction*(star%omega(i+1)-star%omega(i))
           if (star%convective_flag(i).and.star%convective_flag(i+1)) then
@@ -717,8 +717,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
              local_conductive_opacity_flag = .false.
              in_atmosphere = .true.
              saha_state = 0
-             hydrogen_fraction = star%xa(1,star%nz)
-             metal_fraction = star%xa(3,star%nz)
+             hydrogen_fraction = star%xa(i_h1,star%nz)
+             metal_fraction = star%xa(i_metals,star%nz)
              log10_pressure = star%logP(star%nz)
              log10_temperature = star%logT(star%nz)
              log10_density = star%logRho(star%nz)
@@ -785,8 +785,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
           log10_radius = 0.5d0*(star%log_L + solar_luminosity_cgs - &
                4.0d0*star%log_Teff - c4pil - csigl)
           log10_gravity = cgl + star%env_comp%stotal - log10_radius - log10_radius
-          hydrogen_fraction = star%xa(1,star%nz)
-          metal_fraction = star%xa(3,star%nz)
+          hydrogen_fraction = star%xa(i_h1,star%nz)
+          metal_fraction = star%xa(i_metals,star%nz)
           point_pressure_rotation_factor = 1.0d0
           point_temperature_rotation_factor = 1.0d0
           vertex_index=0
@@ -794,13 +794,13 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! DBG PULSE: DO NOT DO PULSE OUTPUT
             pulse_print_flag = .false.
             if (use_debye_huckel_correction) then
-               debye_huckel_x = star%xa(1,star%nz)
-               debye_huckel_y = star%xa(2,star%nz)+star%xa(4,star%nz)
-               debye_huckel_z_total = star%xa(3,star%nz)
-               debye_huckel_z(1) = star%xa(5,star%nz)+star%xa(6,star%nz)
-               debye_huckel_z(2) = star%xa(7,star%nz)+star%xa(8,star%nz)
-               debye_huckel_z(3) = star%xa(9,star%nz)+star%xa(10,star%nz)+ &
-                    star%xa(11,star%nz)
+               debye_huckel_x = star%xa(i_h1,star%nz)
+               debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
+               debye_huckel_z_total = star%xa(i_metals,star%nz)
+               debye_huckel_z(1) = star%xa(i_c12,star%nz)+star%xa(i_c13,star%nz)
+               debye_huckel_z(2) = star%xa(i_n14,star%nz)+star%xa(i_n15,star%nz)
+               debye_huckel_z(3) = star%xa(i_o16,star%nz)+star%xa(i_o17,star%nz)+ &
+                    star%xa(i_o18,star%nz)
             end if
 ! MHP 10/02  define ISTORE - used in ENVINT
             atm_get_unused_flag = 0
@@ -857,13 +857,13 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                   star%logR(j) = env_struct%env_log10_radius(env_point_index)
                   star%log_mass(j) = env_struct%env_log10_mass(env_point_index) + star%env_comp%stotal
                   star%logT(j) = env_struct%env_log10_temperature(env_point_index)
-                  star%xa(1,j) = env_struct%env_hydrogen_fraction(env_point_index)
-                  star%xa(3,j) = env_struct%env_metal_fraction(env_point_index)
+                  star%xa(i_h1,j) = env_struct%env_hydrogen_fraction(env_point_index)
+                  star%xa(i_metals,j) = env_struct%env_metal_fraction(env_point_index)
                   do k = 4,num_species
                      star%xa(k,j) = star%xa(k,star%nz)
                   end do
-                  star%xa(2,j)=1.0d0-star%xa(1,j)-star%xa(3,j)- &
-                       star%xa(4,j)
+                  star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)-star%xa(i_metals,j)- &
+                       star%xa(i_he3,j)
                   star%convective_flag(j) = env_struct%env_convective_flag(env_point_index)
                else
 ! POINTS BEYOND THIS ARE ABOVE THE NEW DESIRED FITTING POINT;
@@ -898,17 +898,17 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                      star%logT(j) = star%logT(star%nz)+ &
                           envelope_interp_fraction*(env_struct%env_log10_temperature( &
                           env_point_index)-star%logT(star%nz))
-                     star%xa(1,j) = star%xa(1,star%nz)+ &
-                          envelope_interp_fraction*(star%xa(1,star%nz) &
+                     star%xa(i_h1,j) = star%xa(i_h1,star%nz)+ &
+                          envelope_interp_fraction*(star%xa(i_h1,star%nz) &
                           -env_struct%env_hydrogen_fraction(env_point_index))
-                     star%xa(3,j) = star%xa(3,star%nz)+ &
-                          envelope_interp_fraction*(star%xa(3,star%nz) &
+                     star%xa(i_metals,j) = star%xa(i_metals,star%nz)+ &
+                          envelope_interp_fraction*(star%xa(i_metals,star%nz) &
                           -env_struct%env_metal_fraction(env_point_index))
                      do k = 4,num_species
                         star%xa(k,j) = star%xa(k,star%nz)
                      end do
-                     star%xa(2,j)=1.0d0-star%xa(1,j)- &
-                          star%xa(3,j)-star%xa(4,j)
+                     star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)- &
+                          star%xa(i_metals,j)-star%xa(i_he3,j)
                      if (env_struct%env_convective_flag(env_point_index).or. &
                           star%convective_flag(star%nz)) then
                         star%convective_flag(j) = .true.
@@ -947,19 +947,19 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                           env_point_index-1)+envelope_interp_fraction*( &
                           env_struct%env_log10_temperature(env_point_index)- &
                           env_struct%env_log10_temperature(env_point_index-1))
-                     star%xa(1,j) = env_struct%env_hydrogen_fraction( &
+                     star%xa(i_h1,j) = env_struct%env_hydrogen_fraction( &
                           env_point_index-1)+envelope_interp_fraction*( &
                           env_struct%env_hydrogen_fraction(env_point_index)- &
                           env_struct%env_hydrogen_fraction(env_point_index-1))
-                     star%xa(3,j) = env_struct%env_metal_fraction( &
+                     star%xa(i_metals,j) = env_struct%env_metal_fraction( &
                           env_point_index-1)+envelope_interp_fraction*( &
                           env_struct%env_metal_fraction(env_point_index)- &
                           env_struct%env_metal_fraction(env_point_index-1))
                      do k = 4,num_species
                         star%xa(k,j) = star%xa(k,star%nz)
                      end do
-                     star%xa(2,j)=1.0d0-star%xa(1,j)- &
-                          star%xa(3,j)-star%xa(4,j)
+                     star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)- &
+                          star%xa(i_metals,j)-star%xa(i_he3,j)
                      if (env_struct%env_convective_flag(env_point_index).or. &
                           env_struct%env_convective_flag(env_point_index-1)) then
                         star%convective_flag(j) = .true.
@@ -1078,8 +1078,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       star%env_comp%envelope_hydrogen_fraction = star%env_comp%xnew
       star%env_comp%envelope_metal_fraction = star%env_comp%znew
       star%run%envelope_helium_fraction = 1.0d0 - star%env_comp%envelope_hydrogen_fraction - &
-           star%env_comp%envelope_metal_fraction - star%xa(4,star%nz)
-      star%run%envelope_he3_fraction = star%xa(4,star%nz)
+           star%env_comp%envelope_metal_fraction - star%xa(i_he3,star%nz)
+      star%run%envelope_he3_fraction = star%xa(i_he3,star%nz)
 ! EVERYTHING BUT V(7)=H, AND V(12)=HE
       mixture_weight_sum = species_mix_weights(1)+species_mix_weights(2)+ &
            species_mix_weights(3)+species_mix_weights(4)+ &

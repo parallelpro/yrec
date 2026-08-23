@@ -22,7 +22,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_actual, i_grad_ad, i_grad_rad
       use const_lib
       use eos_lib
       use kap_lib
@@ -133,9 +133,9 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               temperature_rotation_factor, log_teff, ierr)
          if (ierr /= 0) return
          convective_flag(im) = is_convective
-         star%diag%del_grad(1,im) = radiative_gradient
-         star%diag%del_grad(2,im) = actual_gradient
-         star%diag%del_grad(3,im) = adiabatic_gradient
+         star%diag%del_grad(i_grad_rad,im) = radiative_gradient
+         star%diag%del_grad(i_grad_actual,im) = actual_gradient
+         star%diag%del_grad(i_grad_ad,im) = adiabatic_gradient
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
          dfx1 = composition(1,im) - star%env_comp%envelope_hydrogen_fraction
@@ -201,14 +201,14 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               log_density(k+1)*interp_weights(2) + &
               log_density(k+2)*interp_weights(3) + &
               log_density(k+3)*interp_weights(4)
-         actual_grad_mid = star%diag%del_grad(2,k)*interp_weights(1) + &
-              star%diag%del_grad(2,k+1)*interp_weights(2) + &
-              star%diag%del_grad(2,k+2)*interp_weights(3) + &
-              star%diag%del_grad(2,k+3)*interp_weights(4)
-         adiabatic_grad_mid = star%diag%del_grad(3,k)*interp_weights(1) + &
-              star%diag%del_grad(3,k+1)*interp_weights(2) + &
-              star%diag%del_grad(3,k+2)*interp_weights(3) + &
-              star%diag%del_grad(3,k+3)*interp_weights(4)
+         actual_grad_mid = star%diag%del_grad(i_grad_actual,k)*interp_weights(1) + &
+              star%diag%del_grad(i_grad_actual,k+1)*interp_weights(2) + &
+              star%diag%del_grad(i_grad_actual,k+2)*interp_weights(3) + &
+              star%diag%del_grad(i_grad_actual,k+3)*interp_weights(4)
+         adiabatic_grad_mid = star%diag%del_grad(i_grad_ad,k)*interp_weights(1) + &
+              star%diag%del_grad(i_grad_ad,k+1)*interp_weights(2) + &
+              star%diag%del_grad(i_grad_ad,k+2)*interp_weights(3) + &
+              star%diag%del_grad(i_grad_ad,k+3)*interp_weights(4)
          gravity_mid = hg(k)*interp_weights(1) + hg(k+1)*interp_weights(2) + &
               hg(k+2)*interp_weights(3) + hg(k+3)*interp_weights(4)
          temp_scratch = dexp(ln10*(density_mid - pressure_mid))* &

@@ -126,9 +126,9 @@ subroutine update_output_diagnostics(ierr)
       end if
 
       if(.not.helium_flash_active) then
-       total_luminosity_sum = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &
-            star%luminosity_breakdown(3)+star%luminosity_breakdown(4)+star%luminosity_breakdown(5)+ &
-            star%luminosity_breakdown(6)+star%luminosity_breakdown(7)+star%luminosity_breakdown(8)
+       total_luminosity_sum = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
+            star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
+            star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
        temp_value = star%luminosity_lsun(star%nz)/total_luminosity_sum
        do i = 1,8
           star%luminosity_breakdown(i) = star%luminosity_breakdown(i)*temp_value
@@ -152,8 +152,8 @@ subroutine update_output_diagnostics(ierr)
 ! subroutine. core_boundary_fx2 (FX2) is computed just above but is
 ! NOT what is used here -- this looks like a bug (FX2 vs FX typo) in
 ! the original wrtout.f, preserved exactly, not fixed.
-       core_boundary_fx2 = (star%diag%del_grad(3,star%core_cz_top_index+1)-star%diag%del_grad(1,star%core_cz_top_index))/ &
-             (star%diag%del_grad(3,star%core_cz_top_index+1)-star%diag%del_grad(1,star%core_cz_top_index))
+       core_boundary_fx2 = (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))/ &
+             (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))
        core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
             (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-log10_solar_radius
        core_boundary_radius = dexp(ln10*core_boundary_log_radius)
@@ -170,10 +170,10 @@ subroutine update_output_diagnostics(ierr)
       pressure_linear = dexp(ln10*star%logP(1))
       log_pressure_center = dlog10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%diag%del_grad(2,1)/pressure_linear)
+      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%diag%del_grad(i_grad_actual,1)/pressure_linear)
       log_density_center = star%logRho(1)
-      hydrogen_fraction_center = star%xa(1,1)
-      metal_fraction_center = star%xa(3,1)
+      hydrogen_fraction_center = star%xa(i_h1,1)
+      metal_fraction_center = star%xa(i_metals,1)
       is_atmosphere_point = .true.
       compute_derivatives = .false.
 !  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
@@ -201,8 +201,8 @@ subroutine update_output_diagnostics(ierr)
 ! JVS 10/11/13 SDEL(1,JENV) IN DENOMINATOR WAS A TYPO. CHANGED TO SDEL(3,JENV)
 !            FX = (SDEL(3,JENV)-SDEL(1,JENV-1))/
 !     *           (SDEL(3,JENV)-SDEL(1,JENV-1))
-            dd2 = star%diag%del_grad(1,star%envelope_cz_bottom_index-1)-star%diag%del_grad(3,star%envelope_cz_bottom_index-1)
-            dd1 = star%diag%del_grad(1,star%envelope_cz_bottom_index)-star%diag%del_grad(3,star%envelope_cz_bottom_index)
+            dd2 = star%diag%del_grad(i_grad_rad,star%envelope_cz_bottom_index-1)-star%diag%del_grad(i_grad_ad,star%envelope_cz_bottom_index-1)
+            dd1 = star%diag%del_grad(i_grad_rad,star%envelope_cz_bottom_index)-star%diag%del_grad(i_grad_ad,star%envelope_cz_bottom_index)
             envelope_boundary_fx = dd2/(dd2-dd1)
 !            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
             cz_base_mass = star%m(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &

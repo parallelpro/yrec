@@ -18,7 +18,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
      omega, local_log_radius, convergence_iterations, run_index, &
      monte_carlo_run_number)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_lum_grav
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -103,7 +103,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
            hcomp(3,m),surface_z_over_x
  60   format(F8.5,F9.6,2F8.5,F9.6)
 !  ENERGY GENERATION FRACTIONS PP I,II,III,CNO,EGRAV
-      write(monte_carlo_unit1,70)(luminosity_breakdown(j),j=1,4),luminosity_breakdown(7)
+      write(monte_carlo_unit1,70)(luminosity_breakdown(j),j=1,4),luminosity_breakdown(i_lum_grav)
  70   format(1P5E10.3)
       return
 end subroutine wrtmonte

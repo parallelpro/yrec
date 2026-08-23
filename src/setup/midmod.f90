@@ -26,7 +26,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
      surface_cz_active, omega_mid, mean_radius_mid, qiw_mid, &
      radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
      num_convective_zones, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad
       use net_lib
       use const_lib
       use burn_lib
@@ -165,10 +165,10 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !  30    CONTINUE
          hg_mid(j) = star%run%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%run%old_hg(j))
          star%mix_phys%del_adiabatic_mix(j) = star%rot%old_del_adiabatic_mix(j) + &
-              time_fraction*(star%diag%del_grad(3,j)-star%rot%old_del_adiabatic_mix(j))
-         star%mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%diag%del_grad(2,j) - star%rot%old_delm(j))
+              time_fraction*(star%diag%del_grad(i_grad_ad,j)-star%rot%old_del_adiabatic_mix(j))
+         star%mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%diag%del_grad(i_grad_actual,j) - star%rot%old_delm(j))
          star%mix_phys%del_radiative_mix(j) = star%rot%old_del_radiative_mix(j) + &
-              time_fraction*(star%diag%del_grad(1,j) - star%rot%old_del_radiative_mix(j))
+              time_fraction*(star%diag%del_grad(i_grad_rad,j) - star%rot%old_del_radiative_mix(j))
          star%mix_phys%esumm(j) = star%rot%old_esum(j) + time_fraction*(star%diag%sesum(j) - star%rot%old_esum(j))
          star%mix_phys%viscm(j) = star%rot%old_visc(j) + time_fraction*(star%thermo%visc(j) - star%rot%old_visc(j))
          star%mix_phys%thdifm(j) = star%rot%old_thdif(j) + time_fraction*(star%thermo%thdif(j) - star%rot%old_thdif(j))
@@ -177,7 +177,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          star%mix_phys%om(j) = star%rot%old_om(j) + time_fraction*(star%diag%so(j) - star%rot%old_om(j))
          star%mix_phys%amum(j) = star%mix_phys%amum(j) + step_fraction_ratio*(star%thermo%mean_molecular_weight(j) - star%rot%old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
-         total_epsilon = star%diag%sesum(j)+star%diag%seg(6,j)+star%diag%seg(7,j)
+         total_epsilon = star%diag%sesum(j)+star%diag%seg(i_eps_neu,j)+star%diag%seg(i_eps_grav,j)
          star%mix_phys%epsm(j) = star%rot%old_eps(j)+time_fraction*(total_epsilon-star%rot%old_eps(j))
       end do
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED

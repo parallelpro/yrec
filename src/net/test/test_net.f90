@@ -155,7 +155,7 @@ program test_net
 
 ! deuterium burning rate (result lands in star%light_burn)
       write(*,'(a)') "# test_net: deutrate"
-      star%xa(12,1) = 2.0d-5
+      star%xa(i_h2,1) = 2.0d-5
       call deutrate(1.5d0, 6.2d0, 0.70d0, 1, 1)
       write(*,'(1pe20.12)') star%light_burn%deuterium_burning_rate(1)
 

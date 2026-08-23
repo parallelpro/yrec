@@ -88,7 +88,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
      in_atmosphere, want_derivatives, mixing_active, &
      conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, iterations_done, &
      iteration_level, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       use luout_lib
       use const_lib
       use yale_eos_lib
@@ -174,13 +174,13 @@ subroutine crrect(delta_time, max_iterations, converged, &
        metal_fraction = star%env_comp%znew
        log10_pressure_limit = star%logP(star%nz)
        if (use_debye_huckel_correction) then
-          debye_huckel_x = star%xa(1,star%nz)
-          debye_huckel_y = star%xa(2,star%nz)+star%xa(4,star%nz)
-          debye_huckel_z_total = star%xa(3,star%nz)
-          debye_huckel_z(1) = star%xa(5,star%nz)+star%xa(6,star%nz)
-          debye_huckel_z(2) = star%xa(7,star%nz)+star%xa(8,star%nz)
-          debye_huckel_z(3) = star%xa(9,star%nz)+star%xa(10,star%nz)+ &
-               star%xa(11,star%nz)
+          debye_huckel_x = star%xa(i_h1,star%nz)
+          debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
+          debye_huckel_z_total = star%xa(i_metals,star%nz)
+          debye_huckel_z(1) = star%xa(i_c12,star%nz)+star%xa(i_c13,star%nz)
+          debye_huckel_z(2) = star%xa(i_n14,star%nz)+star%xa(i_n15,star%nz)
+          debye_huckel_z(3) = star%xa(i_o16,star%nz)+star%xa(i_o17,star%nz)+ &
+               star%xa(i_o18,star%nz)
        end if
        call surfbc(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
             star%fit_point_radius,tri_orientation,stored_vertex_index, &
@@ -245,9 +245,9 @@ subroutine crrect(delta_time, max_iterations, converged, &
        end if
 ! RENORMALIZE TLUMX-S
 !CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
-       total_luminosity_terms = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &
-            star%luminosity_breakdown(3)+star%luminosity_breakdown(4)+star%luminosity_breakdown(5)+ &
-            star%luminosity_breakdown(6)+star%luminosity_breakdown(7)+star%luminosity_breakdown(8)
+       total_luminosity_terms = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
+            star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
+            star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
        if (.not.helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
           temp = star%luminosity_lsun(star%nz)/total_luminosity_terms
@@ -335,9 +335,9 @@ subroutine crrect(delta_time, max_iterations, converged, &
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
        endif
-       hydrogen_burn_luminosity = star%luminosity_breakdown(1) + star%luminosity_breakdown(2) &
-            + star%luminosity_breakdown(3) + star%luminosity_breakdown(4)
-       helium_burn_luminosity= star%luminosity_breakdown(5) + star%luminosity_breakdown(8)
+       hydrogen_burn_luminosity = star%luminosity_breakdown(i_lum_pp1) + star%luminosity_breakdown(i_lum_pp2) &
+            + star%luminosity_breakdown(i_lum_pp3) + star%luminosity_breakdown(i_lum_cno)
+       helium_burn_luminosity= star%luminosity_breakdown(i_lum_3alpha) + star%luminosity_breakdown(i_lum_he_c)
        if (lcorr) then
           write (short_file_unit,60) converged,star%max_residual(4), &
                htoler(4,1),star%max_correction_index(4)

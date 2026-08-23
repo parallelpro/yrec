@@ -27,7 +27,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
       use luout_lib
       use const_lib
       use opacity_table_lib
@@ -225,10 +225,10 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! If TLUMX are in solar units, convert to ergs.  Decide by
 ! comparing to 10**20, if smaller, multiply by CLSUN
 
-      max_luminosity_component = dmax1(luminosity_breakdown(1), &
-           luminosity_breakdown(2),luminosity_breakdown(3), &
-           luminosity_breakdown(4),luminosity_breakdown(5), &
-           dabs(luminosity_breakdown(6)),luminosity_breakdown(7))
+      max_luminosity_component = dmax1(luminosity_breakdown(i_lum_pp1), &
+           luminosity_breakdown(i_lum_pp2),luminosity_breakdown(i_lum_pp3), &
+           luminosity_breakdown(i_lum_cno),luminosity_breakdown(i_lum_3alpha), &
+           dabs(luminosity_breakdown(i_lum_neu)),luminosity_breakdown(i_lum_grav))
       if(max_luminosity_component.le.1.0D20) then
        do j = 1,7
           luminosity_breakdown(j) = luminosity_breakdown(j) * solar_luminosity_cgs
@@ -278,9 +278,9 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! write out additional physics if desired
             if(lstphys)then
              sg = dexp(ln10*(cgl - 2.0D0*log_radius(i)))*mass_coordinate(i)
-               write(istor,63,advance='no') star%diag%so(i),sg,star%diag%del_grad(1,i),star%diag%del_grad(2,i), &
-                 star%diag%del_grad(3,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i),0.0,0.0,0.0,star%diag%sbeta(i),star%diag%seta(i), &
-                 (star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(6,i),star%diag%seg(7,i)
+               write(istor,63,advance='no') star%diag%so(i),sg,star%diag%del_grad(i_grad_rad,i),star%diag%del_grad(i_grad_actual,i), &
+                 star%diag%del_grad(i_grad_ad,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i),0.0,0.0,0.0,star%diag%sbeta(i),star%diag%seta(i), &
+                 (star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(i_eps_neu,i),star%diag%seg(i_eps_grav,i)
 !               WRITE(ISTOR,63,ADVANCE='no') SO(I),SG,SDEL(1,I),SDEL(2,I),
 !     *           SDEL(3,I),SVEL(I),GAM1(I),SFXION(1,I),SFXION(2,I),SFXION(3,I),
 !     *           SBETA(I),SETA(I),(SEG(K,I),K=1,5),SESUM(I),SEG(6,I),SEG(7,I)

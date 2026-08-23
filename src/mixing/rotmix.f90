@@ -22,7 +22,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass, ierr)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_actual
       use luout_lib
       use const_lib
       implicit none
@@ -188,8 +188,8 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          end if
          total_mass=exp(ln10*log_total_mass)
          do zone_idx = 1,num_zones
-            del_grad2_save(zone_idx) = star%diag%del_grad(2,zone_idx)
-            star%diag%del_grad(2,zone_idx) = star%mix_phys%delm(zone_idx)
+            del_grad2_save(zone_idx) = star%diag%del_grad(i_grad_actual,zone_idx)
+            star%diag%del_grad(i_grad_actual,zone_idx) = star%mix_phys%delm(zone_idx)
             dlnp_dr_settling(zone_idx)=-exp(ln10*(log_density(zone_idx)+ &
                  cgl+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
                  log_pressure(zone_idx)))
@@ -247,7 +247,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             end if
          end do
          do zone_idx = 1,num_zones
-            star%diag%del_grad(2,zone_idx) = del_grad2_save(zone_idx)
+            star%diag%del_grad(i_grad_actual,zone_idx) = del_grad2_save(zone_idx)
          end do
          end if
       exit settling

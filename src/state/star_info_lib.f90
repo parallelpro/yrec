@@ -35,6 +35,40 @@ module star_info_lib
       private
       integer, parameter, public :: json = 5000
 
+! ---- named indices for the positional array slots (2026) ----
+! The composition array xa(15,json): species slot per row. Slot 3 is
+! the TOTAL metal mass fraction Z (YREC evolves Z as one species);
+! the heavy elements in slots 5..11,13..15 are diffusion/burning
+! tracers carried inside Z, not independent contributions to it.
+      integer, parameter, public :: &
+           i_h1  = 1,  i_he4 = 2,  i_metals = 3,  i_he3 = 4, &
+           i_c12 = 5,  i_c13 = 6,  i_n14 = 7,     i_n15 = 8, &
+           i_o16 = 9,  i_o17 = 10, i_o18 = 11,    i_h2  = 12, &
+           i_li6 = 13, i_li7 = 14, i_be9 = 15
+
+! del_grad(3,json): the three temperature gradients per zone.
+      integer, parameter, public :: &
+           i_grad_rad = 1, i_grad_actual = 2, i_grad_ad = 3
+
+! diag%seg(7,json): specific energy generation channels [erg/g/s].
+      integer, parameter, public :: &
+           i_eps_pp1 = 1, i_eps_pp2 = 2, i_eps_pp3 = 3, &
+           i_eps_cno = 4, i_eps_he3 = 5, i_eps_neu = 6, &
+           i_eps_grav = 7
+
+! luminosity_breakdown(8): integrated luminosity per channel [Lsun].
+      integer, parameter, public :: &
+           i_lum_pp1 = 1, i_lum_pp2 = 2, i_lum_pp3 = 3, &
+           i_lum_cno = 4, i_lum_3alpha = 5, i_lum_neu = 6, &
+           i_lum_grav = 7, i_lum_he_c = 8
+
+! flux%neutrino_flux / neutrino_flux_total(10) and
+! neutrino_flux_zone(10,json): solar-neutrino source per slot
+! (wrtout's SNU tables); slots 9-10 are spares.
+      integer, parameter, public :: &
+           i_nu_pp = 1, i_nu_pep = 2, i_nu_hep = 3, i_nu_be7 = 4, &
+           i_nu_b8 = 5, i_nu_n13 = 6, i_nu_o15 = 7, i_nu_f17 = 8
+
 ! 2026 state consolidation: the sub-struct TYPE definitions moved
 ! here from their former one-type-per-file modules in state/ --
 ! the instances have lived inside star_info since the phase-6 and

@@ -32,7 +32,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
       use atm_lib
       use envint_lib, only: atm_get
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad
       use atmstruct_lib
       use envstruct_lib
       use luout_lib
@@ -88,10 +88,10 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
                  log_density(i),omega(i),convective_flag(i),.true.,.false., &
                  .false.,(composition(j,i),j=1,15)
 ! write out additional physics if desired
-            write(istor,63,advance='no') star%diag%so(i),sg,star%diag%del_grad(1,i),star%diag%del_grad(2,i), &
-                 star%diag%del_grad(3,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i), &
+            write(istor,63,advance='no') star%diag%so(i),sg,star%diag%del_grad(i_grad_rad,i),star%diag%del_grad(i_grad_actual,i), &
+                 star%diag%del_grad(i_grad_ad,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i), &
                  star%diag%sfxion(1,i),star%diag%sfxion(2,i),star%diag%sfxion(3,i), &
-                 star%diag%sbeta(i),star%diag%seta(i),(star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(6,i),star%diag%seg(7,i), &
+                 star%diag%sbeta(i),star%diag%seta(i),(star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(i_eps_neu,i),star%diag%seg(i_eps_grav,i), &
                  star%diag%scp(i),star%pulse%pulse_dlnrho_dlnt(i)
 ! write out additional rotation info if rotation is on
             if(rotation_active)then

@@ -24,7 +24,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_actual
       use luout_lib
       use const_lib
       implicit none
@@ -225,14 +225,14 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
             diffusion_coeff1(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  (hydrogen_fraction - hydrogen_fraction_sq - hydrogen_metal_product)*(1.25d0+ &
-                 star%diag%del_grad(2,zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
+                 star%diag%del_grad(i_grad_actual,zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
             diffusion_coeff2(zone_idx)=settling_prefactor*(hydrogen_fraction+3.0d0)/ &
                  (5.0d0*hydrogen_fraction_sq + 8.0d0*hydrogen_fraction + 3.0d0)
             diffusion_coeff1_dx(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  ( (1.0d0-2.0d0*hydrogen_fraction-metal_fraction_total)*(1.25d0+ &
-                 (6.0d0*star%diag%del_grad(2,zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
+                 (6.0d0*star%diag%del_grad(i_grad_actual,zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
                  (hydrogen_fraction-hydrogen_fraction_sq-hydrogen_metal_product)*6.0d0* &
-                 star%diag%del_grad(2,zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
+                 star%diag%del_grad(i_grad_actual,zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
                  thoul_denominator**2 )
             diffusion_coeff2_dx(zone_idx)=-settling_prefactor*(5.0d0*hydrogen_fraction_sq + &
                  3.0d1*hydrogen_fraction + 2.1d1)/ &
@@ -295,14 +295,14 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
                call thdiff(num_species,atomic_weight,atomic_charge, &
                     species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac)
                settling_coeff_p = -settling_ap(1)
-               settling_coeff_t = -star%diag%del_grad(2,zone_idx)*settling_at(1)
+               settling_coeff_t = -star%diag%del_grad(i_grad_actual,zone_idx)*settling_at(1)
             else
                settling_coeff_p = 1.58d0 - 2.42d0*hydrogen_fraction + 0.844d0*hydrogen_fraction_sq
-               settling_coeff_t = star%diag%del_grad(2,zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
+               settling_coeff_t = star%diag%del_grad(i_grad_actual,zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
             endif
             ac_scratch = 1.15d0 - 1.42d0*hydrogen_fraction + 0.647d0*hydrogen_fraction_sq
             dap_dx = -2.42d0 + 1.688d0*hydrogen_fraction
-            dat_dx = star%diag%del_grad(2,zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
+            dat_dx = star%diag%del_grad(i_grad_actual,zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
             dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
 !CFD 10/09 Mimic Mixing to reduce settling.
 !            COD1(I) = FAC*HQPR(I)*X*(AP+AT)
@@ -321,11 +321,11 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             if(lthoul)then
                if(use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq
-                  settling_coeff_t = star%diag%del_grad(2,zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
+                  settling_coeff_t = star%diag%del_grad(i_grad_actual,zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
                        0.549d0*hydrogen_fraction_sq)
                else
                   settling_coeff_p = -settling_ap(3)
-                  settling_coeff_t = -star%diag%del_grad(2,zone_idx)*settling_at(3)
+                  settling_coeff_t = -star%diag%del_grad(i_grad_actual,zone_idx)*settling_at(3)
                endif
                iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
 !CFD 10/09 Mimic Mixing to reduce settling (cstmixing)

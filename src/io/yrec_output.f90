@@ -315,7 +315,7 @@ subroutine history_column_names(names)
 end subroutine history_column_names
 
 subroutine history_values(vals, iprof)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_lum_he_c, i_lum_neu, i_metals
       double precision, intent(out) :: vals(n_hist_cols)
       integer, intent(in) :: iprof
       integer :: i
@@ -339,15 +339,15 @@ subroutine history_values(vals, iprof)
       vals(17) = star%run%central_log10_pressure
       vals(18) = star%run%central_beta
       vals(19) = star%run%central_degeneracy_eta
-      vals(20) = star%xa(1,1)
-      vals(21) = star%xa(2,1)
-      vals(22) = star%xa(3,1)
+      vals(20) = star%xa(i_h1,1)
+      vals(21) = star%xa(i_he4,1)
+      vals(22) = star%xa(i_metals,1)
       do i = 1, 5
          vals(22+i) = star%luminosity_breakdown(i)
       end do
-      vals(28) = star%luminosity_breakdown(8)
-      vals(29) = star%luminosity_breakdown(7)
-      vals(30) = star%luminosity_breakdown(6)
+      vals(28) = star%luminosity_breakdown(i_lum_he_c)
+      vals(29) = star%luminosity_breakdown(i_lum_grav)
+      vals(30) = star%luminosity_breakdown(i_lum_neu)
       vals(31) = star%flux%cl37_snu_rate
       vals(32) = star%flux%ga71_snu_rate
       do i = 1, 10
@@ -359,10 +359,10 @@ subroutine history_values(vals, iprof)
       do i = 4, 15
          vals(47+i) = star%xa(i,star%nz)
       end do
-      vals(63) = star%xa(1,star%nz)
-      vals(64) = star%xa(2,star%nz)
-      vals(65) = star%xa(3,star%nz)
-      vals(66) = star%xa(3,star%nz)/star%xa(1,star%nz)
+      vals(63) = star%xa(i_h1,star%nz)
+      vals(64) = star%xa(i_he4,star%nz)
+      vals(65) = star%xa(i_metals,star%nz)
+      vals(66) = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
       vals(67) = star%evo%total_angular_momentum
       vals(68) = star%evo%total_rotational_ke
       vals(69) = star%run%total_moment_of_inertia
@@ -384,7 +384,7 @@ subroutine history_values(vals, iprof)
 end subroutine history_values
 
 subroutine write_history_row(iprof)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_metals
       integer, intent(in) :: iprof
       character(len=24) :: names(n_hist_cols)
       double precision :: vals(n_hist_cols)
@@ -402,7 +402,7 @@ subroutine write_history_row(iprof)
               adjustr('initial_mass'), adjustr('initial_z')
          write(hist_unit, '(1x,a40,2(1x,es40.16e3))') &
               adjustr('"' // trim(yrec_version_string) // '"'), &
-              star%star_mass, star%xa(3,star%nz)
+              star%star_mass, star%xa(i_metals,star%nz)
          write(hist_unit, '(a)') ''
          write(hist_unit, '(999(1x,i40))') (k, k = 1, hist_nsel)
          write(hist_unit, '(999(1x,a40))') &
@@ -486,7 +486,7 @@ end subroutine profile_column_names
 ! (1 = center .. nz = surface). Sources match putstore's per-shell
 ! block and the pulse arrays coefft fills every model.
 double precision function profile_value(icol, k)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       integer, intent(in) :: icol, k
 
       select case (icol)
@@ -506,37 +506,37 @@ double precision function profile_value(icol, k)
          end if
       case (10); profile_value = star%run%adiabatic_index_gamma1(k)
       case (11); profile_value = star%diag%so(k)
-      case (12); profile_value = star%diag%del_grad(1,k)
-      case (13); profile_value = star%diag%del_grad(2,k)
-      case (14); profile_value = star%diag%del_grad(3,k)
+      case (12); profile_value = star%diag%del_grad(i_grad_rad,k)
+      case (13); profile_value = star%diag%del_grad(i_grad_actual,k)
+      case (14); profile_value = star%diag%del_grad(i_grad_ad,k)
       case (15); profile_value = star%diag%svel(k)
       case (16); profile_value = star%diag%sbeta(k)
       case (17); profile_value = star%diag%seta(k)
       case (18)
          profile_value = exp(ln10*(cgl - 2.0d0*star%logR(k)))*star%m(k)
-      case (19); profile_value = star%diag%seg(1,k)
-      case (20); profile_value = star%diag%seg(2,k)
-      case (21); profile_value = star%diag%seg(3,k)
-      case (22); profile_value = star%diag%seg(4,k)
-      case (23); profile_value = star%diag%seg(5,k)
+      case (19); profile_value = star%diag%seg(i_eps_pp1,k)
+      case (20); profile_value = star%diag%seg(i_eps_pp2,k)
+      case (21); profile_value = star%diag%seg(i_eps_pp3,k)
+      case (22); profile_value = star%diag%seg(i_eps_cno,k)
+      case (23); profile_value = star%diag%seg(i_eps_he3,k)
       case (24); profile_value = star%diag%sesum(k)
-      case (25); profile_value = star%diag%seg(6,k)
-      case (26); profile_value = star%diag%seg(7,k)
-      case (27); profile_value = star%xa(1,k)
-      case (28); profile_value = star%xa(12,k)
-      case (29); profile_value = star%xa(4,k)
-      case (30); profile_value = star%xa(2,k)
-      case (31); profile_value = star%xa(13,k)
-      case (32); profile_value = star%xa(14,k)
-      case (33); profile_value = star%xa(15,k)
-      case (34); profile_value = star%xa(5,k)
-      case (35); profile_value = star%xa(6,k)
-      case (36); profile_value = star%xa(7,k)
-      case (37); profile_value = star%xa(8,k)
-      case (38); profile_value = star%xa(9,k)
-      case (39); profile_value = star%xa(10,k)
-      case (40); profile_value = star%xa(11,k)
-      case (41); profile_value = star%xa(3,k)
+      case (25); profile_value = star%diag%seg(i_eps_neu,k)
+      case (26); profile_value = star%diag%seg(i_eps_grav,k)
+      case (27); profile_value = star%xa(i_h1,k)
+      case (28); profile_value = star%xa(i_h2,k)
+      case (29); profile_value = star%xa(i_he3,k)
+      case (30); profile_value = star%xa(i_he4,k)
+      case (31); profile_value = star%xa(i_li6,k)
+      case (32); profile_value = star%xa(i_li7,k)
+      case (33); profile_value = star%xa(i_be9,k)
+      case (34); profile_value = star%xa(i_c12,k)
+      case (35); profile_value = star%xa(i_c13,k)
+      case (36); profile_value = star%xa(i_n14,k)
+      case (37); profile_value = star%xa(i_n15,k)
+      case (38); profile_value = star%xa(i_o16,k)
+      case (39); profile_value = star%xa(i_o17,k)
+      case (40); profile_value = star%xa(i_o18,k)
+      case (41); profile_value = star%xa(i_metals,k)
       case (42); profile_value = star%omega(k)
       case (43); profile_value = star%j_rot(k)
       case (44); profile_value = star%i_rot(k)
@@ -568,7 +568,7 @@ end function profile_value
 ! what io/stitch.f90 does for the legacy .store profiles, with the
 ! same fixed output step sizes).
 subroutine build_extended
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
       use envint_lib, only: atm_get
@@ -626,7 +626,7 @@ subroutine build_extended
       jerr = 0
       call atm_get(b, star%fp_rot(star%nz), star%ft_rot(star%nz), gl, &
            star%log_total_mass, ixx, lprt, lsbc0, plim, rl, ateffl, &
-           star%xa(1,star%nz), star%xa(3,star%nz), dum1, idum, katm, &
+           star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), dum1, idum, katm, &
            kenv, ksaha, dum2, dum3, dum4, lpulpt, jerr)
 
       atm_step_begin = atm_beg0
@@ -664,7 +664,7 @@ end subroutine build_extended
 ! (per-species abundances beyond X/Z, burning terms, rotation
 ! internals) are zero, as io/stitch.f90 also writes them.
 double precision function ext_profile_value(icol, j)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
       integer, intent(in) :: icol, j
@@ -717,8 +717,8 @@ double precision function ext_profile_value(icol, j)
          case (13); ext_profile_value = atmo_struct%atmo_gradients(2,i)
          case (14); ext_profile_value = atmo_struct%atmo_gradients(3,i)
          case (16); ext_profile_value = atmo_struct%atmo_beta(i)
-         case (27); ext_profile_value = star%xa(1,star%nz)
-         case (41); ext_profile_value = star%xa(3,star%nz)
+         case (27); ext_profile_value = star%xa(i_h1,star%nz)
+         case (41); ext_profile_value = star%xa(i_metals,star%nz)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = atmo_struct%atmo_specific_heat_cp(i)
          case (51); ext_profile_value = -atmo_struct%atmo_dlnrho_dlnt(i)
@@ -784,7 +784,7 @@ end subroutine write_profile
 ! composition above the fitting point is the surface composition, as
 ! io/stitch.f90 also writes.
 subroutine build_pulse_points(pts)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_eps_grav, i_grad_actual, i_grad_ad, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
       double precision, intent(out) :: pts(35, n_ext)
@@ -802,8 +802,8 @@ subroutine build_pulse_points(pts)
             T = exp(ln10*star%logT(i))
             rho = exp(ln10*star%logRho(i))
             delta = -star%pulse%pulse_dlnrho_dlnt(i)
-            nab = star%diag%del_grad(2,i)
-            nab_ad = star%diag%del_grad(3,i)
+            nab = star%diag%del_grad(i_grad_actual,i)
+            nab_ad = star%diag%del_grad(i_grad_ad,i)
             pts(3,j) = star%luminosity_lsun(i)*solar_luminosity_cgs
             pts(9,j) = star%run%adiabatic_index_gamma1(i)
             pts(12,j) = star%diag%so(i)
@@ -817,12 +817,12 @@ subroutine build_pulse_points(pts)
             if (star%pulse%pulse_electron_mean_molecular_weight(i) &
                  > 0.0d0) pts(20,j) = &
                  1.0d0/star%pulse%pulse_electron_mean_molecular_weight(i)
-            pts(21,j) = star%xa(1,i)
-            pts(22,j) = star%xa(3,i)
+            pts(21,j) = star%xa(i_h1,i)
+            pts(22,j) = star%xa(i_metals,i)
             do k = 1, 11
                pts(22+k,j) = star%xa(species_slot(k),i)
             end do
-            pts(34,j) = star%diag%seg(7,i)
+            pts(34,j) = star%diag%seg(i_eps_grav,i)
          case (2)
             r = exp(ln10*env_struct%env_log10_radius(i))
             m = exp(ln10*(env_struct%env_log10_mass(i) + &
@@ -859,8 +859,8 @@ subroutine build_pulse_points(pts)
             pts(12,j) = atmo_struct%atmo_opacity(i)
             pts(18,j) = star%omega(star%nz)
             pts(19,j) = atmo_struct%atmo_specific_heat_cp(i)
-            pts(21,j) = star%xa(1,star%nz)
-            pts(22,j) = star%xa(3,star%nz)
+            pts(21,j) = star%xa(i_h1,star%nz)
+            pts(22,j) = star%xa(i_metals,star%nz)
             do k = 1, 11
                pts(22+k,j) = star%xa(species_slot(k),star%nz)
             end do
@@ -880,12 +880,15 @@ subroutine build_pulse_points(pts)
       end do
 end subroutine build_pulse_points
 
-! star%xa slot for pulse column 22+k (k = 1..11): the FGONG species
-! order he3, c12, c13, n14, o16, h2, he4, li7, n15, o17, o18
-! (column 34 is eps_grav, not a species; be9 has no FGONG column).
+! star%xa slot for pulse column 22+k (k = 1..11), in FGONG species
+! order (column 34 is eps_grav, not a species; be9 has no FGONG
+! column).
 integer function species_slot(k)
+      use star_info_lib, only: i_he3, i_c12, i_c13, i_n14, i_o16, &
+           i_h2, i_he4, i_li7, i_n15, i_o17, i_o18
       integer, intent(in) :: k
-      integer, parameter :: slots(11) = [4,5,6,7,9,12,2,14,8,10,11]
+      integer, parameter :: slots(11) = [i_he3, i_c12, i_c13, i_n14, &
+           i_o16, i_h2, i_he4, i_li7, i_n15, i_o17, i_o18]
       species_slot = slots(k)
 end function species_slot
 

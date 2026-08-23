@@ -832,7 +832,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      reaction_rate_13, n15_alpha_branch_fraction, &
      be7_electron_capture_fraction)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp
       use luout_lib
       use const_lib
       implicit none
@@ -1835,23 +1835,23 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! DEFINE 4*PI*(AU)**2 .
          fourpiau2 = 2.812295e+27
 ! FLUX OF PP NEUTRINOS.
-         star%flux%neutrino_flux(1) = eg(1)/fourpiau2
+         star%flux%neutrino_flux(i_nu_pp) = eg(1)/fourpiau2
 ! FLUX OF PEP NEUTRINOS. USE EQUATION 3.17 OF NEUTRINO ASTROPHYSICS.
 ! Note that should not change SStandard(14) unless the ratio of pep to pp
 !  is changed.  Pep rate is explicitly scaled here with respect to the pp
 !  rate.
-         star%flux%neutrino_flux(2) = (3.4848e-6)*electron_number_density_na*t9_m12* &
+         star%flux%neutrino_flux(i_nu_pep) = (3.4848e-6)*electron_number_density_na*t9_m12* &
               (1.0 + 20.*t9)*eg(1)
-         star%flux%neutrino_flux(2) = star%flux%neutrino_flux(2)*cross_section_scale(14)/fourpiau2
+         star%flux%neutrino_flux(i_nu_pep) = star%flux%neutrino_flux(i_nu_pep)*cross_section_scale(14)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
          q6hep = -6.1399
 ! Q6 IS THE NEGATIVE OF THE COEFFICIENT OF T9M13 IN TAU, EQUATION 3.10.
-         star%flux%neutrino_flux(3) = (1.71724e+11)*density*t9_m23*exp(q6hep*t9_m13)
+         star%flux%neutrino_flux(i_nu_hep) = (1.71724e+11)*density*t9_m23*exp(q6hep*t9_m13)
 ! THE DERIVATIVES OF THE CROSS SECTION FACTOR ARE NOT KNOWN AND ARE
 !  TAKEN TO BE ZERO.  THE ONLY TERM FROM EQUATION 3.14 THAT SURVIVES
 !  IS 5/(12*TAU).
-         star%flux%neutrino_flux(3) = (1.0 + 0.067862*t9_p13)*cross_section_scale(17)* &
-              star%flux%neutrino_flux(3)
+         star%flux%neutrino_flux(i_nu_hep) = (1.0 + 0.067862*t9_p13)*cross_section_scale(17)* &
+              star%flux%neutrino_flux(i_nu_hep)
 ! CALCULATE WEAK OR INTERMEDIATE SCREENING FOR HEP NEUTRINOS.
          zprdhe3p = 2.0
          z86he3p = 3.08687
@@ -1863,8 +1863,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
             utothe3p = uint
          end if
 ! END OF CALCULATION OF SCREENING CORRECTION FOR HE3 + P REACTION.
-         star%flux%neutrino_flux(3) = star%flux%neutrino_flux(3)*exp(utothe3p)
-         star%flux%neutrino_flux(3) = star%flux%neutrino_flux(3)*hydrogen_fraction*he3_fraction/ &
+         star%flux%neutrino_flux(i_nu_hep) = star%flux%neutrino_flux(i_nu_hep)*exp(utothe3p)
+         star%flux%neutrino_flux(i_nu_hep) = star%flux%neutrino_flux(i_nu_hep)*hydrogen_fraction*he3_fraction/ &
               fourpiau2
 ! COMPUTE BE7MASSFRACTION. THIS IS NOT REQUIRED FOR THE NEUTRINO
 !  FLUXES SINCE BE7 IS ALWAYS IN EQUILIBRIUM WITH THE SLOWER PRODUCTION
@@ -1874,15 +1874,15 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          star%engeb%be7_mass_fraction = eg(3)/(be7proton + be7electron)
 ! END OF NOVEMBER 6, 1990  ADDITION.
 ! FLUX OF BE7 NEUTRINOS.
-         star%flux%neutrino_flux(4) = eg(3)*f1/fourpiau2
+         star%flux%neutrino_flux(i_nu_be7) = eg(3)*f1/fourpiau2
 ! FLUX OF B8 NEUTRINOS.
-         star%flux%neutrino_flux(5) = eg(3)*f2/fourpiau2
+         star%flux%neutrino_flux(i_nu_b8) = eg(3)*f2/fourpiau2
 ! FLUX OF N13 NEUTRINOS.
-         star%flux%neutrino_flux(6) = eg(4)/fourpiau2
+         star%flux%neutrino_flux(i_nu_n13) = eg(4)/fourpiau2
 ! FLUX OF O15 NEUTRINOS.
-         star%flux%neutrino_flux(7) = eg(6)/fourpiau2
+         star%flux%neutrino_flux(i_nu_o15) = eg(6)/fourpiau2
 ! FLUX OF F17 NEUTRINOS.
-         star%flux%neutrino_flux(8) = eg(7)/fourpiau2
+         star%flux%neutrino_flux(i_nu_f17) = eg(7)/fourpiau2
 ! FLUX OF FICTIONAL HE3 + HE3 NEUTRINOS.
          star%flux%neutrino_flux(9) = eg(2)/fourpiau2
 ! FLUX OF FICTIONAL HE3 + HE4 NEUTRINOS.
@@ -2050,7 +2050,7 @@ end subroutine engeb
 ! interface (moved into net_lib.f90).
 subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_ad, i_grad_rad
       use luout_lib
       use const_lib
       use numerics_lib
@@ -2131,8 +2131,8 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
-            del_diff = star%diag%del_grad(3,env_cz_zone)-star%diag%del_grad(1,env_cz_zone)
-            del_diff_below = star%diag%del_grad(3,env_cz_zone-1)-star%diag%del_grad(1,env_cz_zone-1)
+            del_diff = star%diag%del_grad(i_grad_ad,env_cz_zone)-star%diag%del_grad(i_grad_rad,env_cz_zone)
+            del_diff_below = star%diag%del_grad(i_grad_ad,env_cz_zone-1)-star%diag%del_grad(i_grad_rad,env_cz_zone-1)
          endif
 ! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
 ! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
@@ -2594,7 +2594,7 @@ end subroutine liburn
 ! code, even though the net effect on the caller's array is zero.
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_ad, i_grad_rad
       use luout_lib
       use const_lib
       implicit none
@@ -2654,8 +2654,8 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
-            del_diff = star%diag%del_grad(3,env_cz_zone)-star%diag%del_grad(1,env_cz_zone)
-            del_diff_below = star%diag%del_grad(3,env_cz_zone-1)-star%diag%del_grad(1,env_cz_zone-1)
+            del_diff = star%diag%del_grad(i_grad_ad,env_cz_zone)-star%diag%del_grad(i_grad_rad,env_cz_zone)
+            del_diff_below = star%diag%del_grad(i_grad_ad,env_cz_zone-1)-star%diag%del_grad(i_grad_rad,env_cz_zone-1)
          endif
 ! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
 ! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE

@@ -23,7 +23,7 @@
 subroutine evolve_step(model_iteration, step_status, ierr)
 
       use net_lib
-      use star_info_lib, only: star, evolve_step_reset_pending
+      use star_info_lib, only: star, evolve_step_reset_pending, i_h1, i_h2, i_he4
       use luout_lib
       use const_lib
       use burn_lib
@@ -567,20 +567,20 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! MHP 10/24 CHECK ALL STOP CONDITIONS, EXIT IF ANY SATISFIED
          end_kind_flag = .false.
          if (end_age_stop_active(nk).and.central_deuterium_stop(nk).gt.0.0D0 .and. &
-              star%xa(12,1).lt.central_deuterium_stop(nk)) then
-            write(*,104)star%xa(12,1),central_deuterium_stop(nk)
+              star%xa(i_h2,1).lt.central_deuterium_stop(nk)) then
+            write(*,104)star%xa(i_h2,1),central_deuterium_stop(nk)
  104        format('CENTRAL D ',E12.4,' BELOW STOP VALUE ',E12.4)
             end_kind_flag =.true.
          endif
          if (end_age_stop_active(nk).and.central_hydrogen_stop(nk).gt.0.0D0 .and. &
-              star%xa(1,1).lt.central_hydrogen_stop(nk)) then
-            write(*,105)star%xa(1,1),central_hydrogen_stop(nk)
+              star%xa(i_h1,1).lt.central_hydrogen_stop(nk)) then
+            write(*,105)star%xa(i_h1,1),central_hydrogen_stop(nk)
  105        format('CENTRAL X ',E12.4,' BELOW STOP VALUE ',E12.4)
             end_kind_flag =.true.
          endif
          if (end_age_stop_active(nk).and.central_helium_stop(nk).gt.0.0D0 .and. &
-              star%xa(2,1).lt.central_helium_stop(nk)) then
-            write(*,106)star%xa(2,1),central_helium_stop(nk)
+              star%xa(i_he4,1).lt.central_helium_stop(nk)) then
+            write(*,106)star%xa(i_he4,1),central_helium_stop(nk)
  106        format('CENTRAL Y ',E12.4,' BELOW STOP VALUE ',E12.4)
             end_kind_flag =.true.
          endif

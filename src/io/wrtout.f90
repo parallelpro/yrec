@@ -16,7 +16,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
      h_shell_begin_index, h_shell_mid_index, h_shell_end_index, &
      trial_sign_flag, punch_pending_flag, total_angular_momentum, &
      total_rotational_kinetic_energy)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_lum_he_c, i_lum_neu, i_metals, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_o16
       use luout_lib
       use const_lib
       use eos_lib
@@ -157,11 +157,11 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !     *LATMO,KSAHA)
 !      END IF
       write(short_file_unit,70)star%run%central_log10_pressure,star%run%central_log10_temperature,star%run%central_log10_density,star%run%central_beta, &
-           star%run%central_degeneracy_eta,star%xa(1,1),star%xa(3,1),star%xa(9,1)
+           star%run%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_metals,1),star%xa(i_o16,1)
    70 format(1X,'CENTER: LOG P=',F10.7,' LOG T=',F10.8,' LOG D=', &
        F10.6,' BETA=',F9.7,' ETA=',0PF10.5,'  X=',0PF9.7,' Z=',F9.7, &
        ' O16=',F9.7)
-      write(short_file_unit,80)(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(8),star%luminosity_breakdown(6),star%luminosity_breakdown(7)
+      write(short_file_unit,80)(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_neu),star%luminosity_breakdown(i_lum_grav)
    80 format(1X,'ENERGY: PPI',1PE13.6,'  PPII',E13.6,'  PPIII',E13.6, &
        '  CNO',E13.6,/,9X,'TRIPLE ALPHA',E13.6,'  HE-C',E13.6, &
        '  NEUTRINOS',E13.6,'  GRAV',E13.6)
@@ -222,24 +222,24 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
   160 format(1X,'NEUTRINOS 1E10ERG/CM^2 PP,PEP,HEP,BE7,', &
          'B8,N13,O15,F17:', 1P8E9.2)
 ! DBG 7/93 from Bahcall's book p 207 table 8.2
-      fl7li = 0.0D0*star%flux%neutrino_flux_total(1)+665.0D0*star%flux%neutrino_flux_total(2)+8.4D4*star%flux%neutrino_flux_total(3)+ &
-              9.6D0*star%flux%neutrino_flux_total(4)+3.9D4*star%flux%neutrino_flux_total(5)+42.4D0*star%flux%neutrino_flux_total(6)+ &
-              246.0D0*star%flux%neutrino_flux_total(7)+249.0D0*star%flux%neutrino_flux_total(8)
-      fl37cl = 0.0D0*star%flux%neutrino_flux_total(1)+16.0D0*star%flux%neutrino_flux_total(2)+4.26D4*star%flux%neutrino_flux_total(3)+ &
-              2.4D0*star%flux%neutrino_flux_total(4)+1.09D4*star%flux%neutrino_flux_total(5)+1.7D0*star%flux%neutrino_flux_total(6)+ &
-              6.8D0*star%flux%neutrino_flux_total(7)+6.9D0*star%flux%neutrino_flux_total(8)
-      fl71ga = 11.8D0*star%flux%neutrino_flux_total(1)+215.0D0*star%flux%neutrino_flux_total(2)+7.3D4*star%flux%neutrino_flux_total(3)+ &
-              73.2D0*star%flux%neutrino_flux_total(4)+2.43D4*star%flux%neutrino_flux_total(5)+61.8D0*star%flux%neutrino_flux_total(6)+ &
-              116.0D0*star%flux%neutrino_flux_total(7)+117.0D0*star%flux%neutrino_flux_total(8)
-      fl81br = 0.0D0*star%flux%neutrino_flux_total(1)+75.0D0*star%flux%neutrino_flux_total(2)+9.0D4*star%flux%neutrino_flux_total(3)+ &
-              18.3D0*star%flux%neutrino_flux_total(4)+2.7D4*star%flux%neutrino_flux_total(5)+14.5D0*star%flux%neutrino_flux_total(6)+ &
-              36.7D0*star%flux%neutrino_flux_total(7)+37.0D0*star%flux%neutrino_flux_total(8)
-      fl98mo = 0.0D0*star%flux%neutrino_flux_total(1)+0.0D0*star%flux%neutrino_flux_total(2)+10.0D4*star%flux%neutrino_flux_total(3)+ &
-              0.0D0*star%flux%neutrino_flux_total(4)+3.0D4*star%flux%neutrino_flux_total(5)+0.0D0*star%flux%neutrino_flux_total(6)+ &
-              0.0D0*star%flux%neutrino_flux_total(7)+0.0D0*star%flux%neutrino_flux_total(8)
-      fl115in = 78.0D0*star%flux%neutrino_flux_total(1)+576.0D0*star%flux%neutrino_flux_total(2)+6.1D4*star%flux%neutrino_flux_total(3)+ &
-              248.0D0*star%flux%neutrino_flux_total(4)+2.5D4*star%flux%neutrino_flux_total(5)+224.0D0*star%flux%neutrino_flux_total(6)+ &
-              355.0D0*star%flux%neutrino_flux_total(7)+356.0D0*star%flux%neutrino_flux_total(8)
+      fl7li = 0.0D0*star%flux%neutrino_flux_total(i_nu_pp)+665.0D0*star%flux%neutrino_flux_total(i_nu_pep)+8.4D4*star%flux%neutrino_flux_total(i_nu_hep)+ &
+              9.6D0*star%flux%neutrino_flux_total(i_nu_be7)+3.9D4*star%flux%neutrino_flux_total(i_nu_b8)+42.4D0*star%flux%neutrino_flux_total(i_nu_n13)+ &
+              246.0D0*star%flux%neutrino_flux_total(i_nu_o15)+249.0D0*star%flux%neutrino_flux_total(i_nu_f17)
+      fl37cl = 0.0D0*star%flux%neutrino_flux_total(i_nu_pp)+16.0D0*star%flux%neutrino_flux_total(i_nu_pep)+4.26D4*star%flux%neutrino_flux_total(i_nu_hep)+ &
+              2.4D0*star%flux%neutrino_flux_total(i_nu_be7)+1.09D4*star%flux%neutrino_flux_total(i_nu_b8)+1.7D0*star%flux%neutrino_flux_total(i_nu_n13)+ &
+              6.8D0*star%flux%neutrino_flux_total(i_nu_o15)+6.9D0*star%flux%neutrino_flux_total(i_nu_f17)
+      fl71ga = 11.8D0*star%flux%neutrino_flux_total(i_nu_pp)+215.0D0*star%flux%neutrino_flux_total(i_nu_pep)+7.3D4*star%flux%neutrino_flux_total(i_nu_hep)+ &
+              73.2D0*star%flux%neutrino_flux_total(i_nu_be7)+2.43D4*star%flux%neutrino_flux_total(i_nu_b8)+61.8D0*star%flux%neutrino_flux_total(i_nu_n13)+ &
+              116.0D0*star%flux%neutrino_flux_total(i_nu_o15)+117.0D0*star%flux%neutrino_flux_total(i_nu_f17)
+      fl81br = 0.0D0*star%flux%neutrino_flux_total(i_nu_pp)+75.0D0*star%flux%neutrino_flux_total(i_nu_pep)+9.0D4*star%flux%neutrino_flux_total(i_nu_hep)+ &
+              18.3D0*star%flux%neutrino_flux_total(i_nu_be7)+2.7D4*star%flux%neutrino_flux_total(i_nu_b8)+14.5D0*star%flux%neutrino_flux_total(i_nu_n13)+ &
+              36.7D0*star%flux%neutrino_flux_total(i_nu_o15)+37.0D0*star%flux%neutrino_flux_total(i_nu_f17)
+      fl98mo = 0.0D0*star%flux%neutrino_flux_total(i_nu_pp)+0.0D0*star%flux%neutrino_flux_total(i_nu_pep)+10.0D4*star%flux%neutrino_flux_total(i_nu_hep)+ &
+              0.0D0*star%flux%neutrino_flux_total(i_nu_be7)+3.0D4*star%flux%neutrino_flux_total(i_nu_b8)+0.0D0*star%flux%neutrino_flux_total(i_nu_n13)+ &
+              0.0D0*star%flux%neutrino_flux_total(i_nu_o15)+0.0D0*star%flux%neutrino_flux_total(i_nu_f17)
+      fl115in = 78.0D0*star%flux%neutrino_flux_total(i_nu_pp)+576.0D0*star%flux%neutrino_flux_total(i_nu_pep)+6.1D4*star%flux%neutrino_flux_total(i_nu_hep)+ &
+              248.0D0*star%flux%neutrino_flux_total(i_nu_be7)+2.5D4*star%flux%neutrino_flux_total(i_nu_b8)+224.0D0*star%flux%neutrino_flux_total(i_nu_n13)+ &
+              355.0D0*star%flux%neutrino_flux_total(i_nu_o15)+356.0D0*star%flux%neutrino_flux_total(i_nu_f17)
       write(short_file_unit,2160) fl7li,fl37cl,fl71ga,fl81br,fl98mo,fl115in
  2160 format(1X,'NEUTRINO ENERGIES (1.E-36ERG): 7Li=', 1PE9.2, &
        ' 37Cl=',1PE9.2,' 71Ga=',1PE9.2,' 81Br=',1PE9.2,' 98Mo=', &
@@ -398,10 +398,10 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 
 ! JVS 02/12 Added PPHOT and SMASS to the output
             write(itrack, 1499) star%model_number,star%nz,star%run%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%run%core_cz_mass,star%run%envelope_mass, &
-            star%run%envelope_radius,star%run%envelope_cz_temperature,star%run%envelope_cz_density,star%run%envelope_cz_pressure,star%run%envelope_cz_o16,star%run%central_log10_temperature,star%run%central_log10_density,star%run%central_log10_pressure,star%run%central_beta,star%run%central_degeneracy_eta,star%xa(1,1),star%xa(2,1), &
-            star%xa(3,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(8),star%luminosity_breakdown(7),star%luminosity_breakdown(6), &
+            star%run%envelope_radius,star%run%envelope_cz_temperature,star%run%envelope_cz_density,star%run%envelope_cz_pressure,star%run%envelope_cz_o16,star%run%central_log10_temperature,star%run%central_log10_density,star%run%central_log10_pressure,star%run%central_beta,star%run%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
+            star%xa(i_metals,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_grav),star%luminosity_breakdown(i_lum_neu), &
             star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(i),i=1,10),(star%xa(i,1),i=4,11), &
-            (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(3,star%nz)/star%xa(1,star%nz), &
+            (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz), &
             total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,star%omega(star%nz),star%omega(1),rotation_period_days,equatorial_velocity_kms,star%turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius,star%turnover%pphot,star%star_mass
 ! MHP 9/25 added more columns to cz depth to avoid overflow
@@ -412,12 +412,12 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
             write(itrack,1500)star%model_number,star%nz,star%run%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%run%core_cz_mass,star%run%envelope_mass, &
                            star%run%envelope_radius,star%run%envelope_cz_temperature,star%run%envelope_cz_density,star%run%envelope_cz_pressure,star%run%envelope_cz_o16
  1500       format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4)
-            write(itrack,1509)star%run%central_log10_temperature,star%run%central_log10_density,star%run%central_log10_pressure,star%run%central_beta,star%run%central_degeneracy_eta,star%xa(1,1),star%xa(2,1), &
-                           star%xa(3,1),total_moment_of_inertia
+            write(itrack,1509)star%run%central_log10_temperature,star%run%central_log10_density,star%run%central_log10_pressure,star%run%central_beta,star%run%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
+                           star%xa(i_metals,1),total_moment_of_inertia
  1509       format(1X,1P9E16.8)
  1510       format(1X,1P8E16.8)
             write(itrack,1510)(star%luminosity_breakdown(i),i = 1,5), &
-                           star%luminosity_breakdown(8),star%luminosity_breakdown(7),star%luminosity_breakdown(6)
+                           star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_grav),star%luminosity_breakdown(i_lum_neu)
 
 ! MHP 8/96 ADD LINE TO COMPUTE SNU's for Cl37 and Ga71.
             star%flux%cl37_snu_rate = 0.0D0
@@ -431,7 +431,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
             write(itrack,1510)(star%xa(i,1),i=4,11)
 ! ADD SURFACE X,Y,Z,Z/X.
             write(itrack,1520)(star%xa(i,star%nz),i=4,15), &
-              (star%xa(i,star%nz),i=1,3),star%xa(3,star%nz)/star%xa(1,star%nz)
+              (star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
  1520       format(1X,1P8E16.8,/,1X,1P8E16.8)
 ! ROTATION I/O
             if(rotation_active) then
@@ -496,7 +496,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
           radius_cm = radius_cm*solar_radius_cgs
         teff_k = 10.0D0**star%log_Teff
         gravity_cgs = 10.0D0**log_gravity
-        ycenter_local = star%xa(2,1)
+        ycenter_local = star%xa(i_he4,1)
         if (h_shell_present_flag) then
            he_core_mass_grams = star%m(h_shell_begin_index-1)
         else
@@ -585,10 +585,10 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
         endif
 
             write(itrack, 1800) star%model_number,star%nz,star%run%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%run%core_cz_mass,star%run%envelope_mass, &
-            star%run%envelope_radius,star%run%envelope_cz_temperature,star%run%envelope_cz_density,star%run%envelope_cz_pressure,star%run%envelope_cz_o16,star%run%central_log10_temperature,star%run%central_log10_density,star%run%central_log10_pressure,star%run%central_beta,star%run%central_degeneracy_eta,star%xa(1,1),star%xa(2,1), &
-            star%xa(3,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(8),star%luminosity_breakdown(7),star%luminosity_breakdown(6), &
+            star%run%envelope_radius,star%run%envelope_cz_temperature,star%run%envelope_cz_density,star%run%envelope_cz_pressure,star%run%envelope_cz_o16,star%run%central_log10_temperature,star%run%central_log10_density,star%run%central_log10_pressure,star%run%central_beta,star%run%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
+            star%xa(i_metals,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_grav),star%luminosity_breakdown(i_lum_neu), &
             star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(i),i=1,10),(star%xa(i,1),i=4,11), &
-            (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(3,star%nz)/star%xa(1,star%nz), &
+            (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz), &
             total_angular_momentum,taucz_placeholder,tcz_placeholder,tnorm_placeholder,tauhe_placeholder,whe_placeholder,tatmos_placeholder,equatorial_velocity_kms,star%turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck
  1800      format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3, &

@@ -30,7 +30,7 @@
 ! contain neutrino fluxes for solar neutrino calculations.
 subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       use luout_lib
       use const_lib
       use net_lib
@@ -165,10 +165,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 
 ! FIND BURNING RATES (HR1- HR13,HF1,HF2).
       if (use_mass_accretion .and. mass_accretion_rate.gt.0.0d0) then
-         deuterium_test = max(star%xa(12,star%nz), &
+         deuterium_test = max(star%xa(i_h2,star%nz), &
               accreted_composition(12))
       else
-         deuterium_test = star%xa(12,star%nz)
+         deuterium_test = star%xa(i_h2,star%nz)
       end if
       do zone_idx = 1, star%nz
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
@@ -179,21 +179,21 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! WITH HYDROGEN,HELIUM,AND METALS DENOTED AS USUAL BY X,Y,Z.
          log_density_zone = star%logRho(zone_idx)
          log_temperature_zone = star%logT(zone_idx)
-         hydrogen_fraction = star%xa(1,zone_idx)
-         helium_fraction = star%xa(2,zone_idx)
-         metal_fraction = star%xa(3,zone_idx)
-         he3_fraction = star%xa(4,zone_idx)
-         c12_fraction = star%xa(5,zone_idx)
-         c13_fraction = star%xa(6,zone_idx)
-         n14_fraction = star%xa(7,zone_idx)
-         n15_fraction = star%xa(8,zone_idx)
-         o16_fraction = star%xa(9,zone_idx)
-         o17_fraction = star%xa(10,zone_idx)
-         o18_fraction = star%xa(11,zone_idx)
-         deuterium_fraction = star%xa(12,zone_idx)
-         li6_fraction = star%xa(13,zone_idx)
-         li7_fraction = star%xa(14,zone_idx)
-         be9_fraction = star%xa(15,zone_idx)
+         hydrogen_fraction = star%xa(i_h1,zone_idx)
+         helium_fraction = star%xa(i_he4,zone_idx)
+         metal_fraction = star%xa(i_metals,zone_idx)
+         he3_fraction = star%xa(i_he3,zone_idx)
+         c12_fraction = star%xa(i_c12,zone_idx)
+         c13_fraction = star%xa(i_c13,zone_idx)
+         n14_fraction = star%xa(i_n14,zone_idx)
+         n15_fraction = star%xa(i_n15,zone_idx)
+         o16_fraction = star%xa(i_o16,zone_idx)
+         o17_fraction = star%xa(i_o17,zone_idx)
+         o18_fraction = star%xa(i_o18,zone_idx)
+         deuterium_fraction = star%xa(i_h2,zone_idx)
+         li6_fraction = star%xa(i_li6,zone_idx)
+         li7_fraction = star%xa(i_li7,zone_idx)
+         be9_fraction = star%xa(i_be9,zone_idx)
 ! SETUP NUCLEAR ENERGY TERMS
          call rates(log_density_zone, log_temperature_zone, &
               hydrogen_fraction, helium_fraction, he3_fraction, &
@@ -320,17 +320,17 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                     hydrogen_fraction, metal_fraction)
 !  USE THE EXPLICIT HYDROGEN BURNING RATE.
                if (dx_dt.ne.0.0d0) then
-                  star%xa(1,inner_zone_idx) = hydrogen_fraction + &
+                  star%xa(i_h1,inner_zone_idx) = hydrogen_fraction + &
                        dx_dt*dt_gyr
                end if
 !  USE THE HELIUM BURNING RATE FROM EQBURN AND THE CARBON,ALPHA
 !  BURNING RATE
                if (dy_dt.ne.0.0d0) then
-                  star%xa(3,inner_zone_idx) = metal_fraction - &
+                  star%xa(i_metals,inner_zone_idx) = metal_fraction - &
                        dy_dt*dt_gyr
-                  star%xa(5,inner_zone_idx) = c12_fraction + &
+                  star%xa(i_c12,inner_zone_idx) = c12_fraction + &
                        dc_dt*dt_gyr
-                  star%xa(9,inner_zone_idx) = o16_fraction + &
+                  star%xa(i_o16,inner_zone_idx) = o16_fraction + &
                        do_dt*dt_gyr
                end if
             end do
@@ -354,7 +354,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             if (dx_dt.ne.0.0d0) then
                hydrogen_fraction = hydrogen_fraction + dx_dt*dt_gyr
                do zone_idx = zone_begin, zone_end
-                  star%xa(1,zone_idx) = hydrogen_fraction
+                  star%xa(i_h1,zone_idx) = hydrogen_fraction
                end do
             end if
 !  USE THE HELIUM BURNING RATE FROM EQBURN AND THE CARBON,ALPHA
@@ -364,9 +364,9 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                c12_fraction = c12_fraction + dc_dt*dt_gyr
                o16_fraction = o16_fraction + do_dt*dt_gyr
                do zone_idx = zone_begin, zone_end
-                  star%xa(3,zone_idx) = metal_fraction
-                  star%xa(5,zone_idx) = c12_fraction
-                  star%xa(9,zone_idx) = o16_fraction
+                  star%xa(i_metals,zone_idx) = metal_fraction
+                  star%xa(i_c12,zone_idx) = c12_fraction
+                  star%xa(i_o16,zone_idx) = o16_fraction
                end do
             end if
          end do
@@ -438,7 +438,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
       if (diffuse_helium_active) then
       settling: do
-         if (star%xa(1,1).lt.hydrogen_diffusion_floor) then
+         if (star%xa(i_h1,1).lt.hydrogen_diffusion_floor) then
             diffuse_helium_active = .false.
             exit settling
          end if
@@ -462,7 +462,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             exit settling
          end if
          do search_idx = envelope_cz_edge, 1, -1
-            if (star%xa(2,search_idx).gt.helium_diffusion_min) exit
+            if (star%xa(i_he4,search_idx).gt.helium_diffusion_min) exit
          end do
          if (search_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
@@ -508,10 +508,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             star%xa(species_idx,zone_idx) = &
                  min(star%xa(species_idx,zone_idx),1.0d0)
          end do
-         star%xa(3,zone_idx) = min(star%xa(3,zone_idx), &
-              1.0d0-star%xa(1,zone_idx)-star%xa(4,zone_idx))
-         star%xa(2,zone_idx) = 1.0d0 - star%xa(1,zone_idx) - &
-              star%xa(3,zone_idx) - star%xa(4,zone_idx)
+         star%xa(i_metals,zone_idx) = min(star%xa(i_metals,zone_idx), &
+              1.0d0-star%xa(i_h1,zone_idx)-star%xa(i_he3,zone_idx))
+         star%xa(i_he4,zone_idx) = 1.0d0 - star%xa(i_h1,zone_idx) - &
+              star%xa(i_metals,zone_idx) - star%xa(i_he3,zone_idx)
       end do
 ! MHP 1/95 ADDED CALL TO RESET JENV,JCORE FOR DEEP MIXING.
       if (dpenv.lt.1.0d0 .and. iteration_level.gt.1) then

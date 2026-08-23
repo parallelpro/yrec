@@ -17,7 +17,7 @@
 subroutine hpoint(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_metals, i_o16
       use kap_lib
       use luout_lib
       use const_lib
@@ -196,11 +196,11 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       endif
       do i = 2,star%nz
 ! TEST FOR FLAGGING DUE TO X GRADIENT
-       if (dabs(star%xa(1,i)-star%xa(1,i-1)).gt.chi_grid_scale(3)) then
+       if (dabs(star%xa(i_h1,i)-star%xa(i_h1,i-1)).gt.chi_grid_scale(3)) then
           flag_point(flag_count) = i
           flag_count = flag_count + 1
 ! TEST FOR FLAGGING DUE TO Z GRADIENT
-       else if (dabs(star%xa(3,i)-star%xa(3,i-1)).gt. &
+       else if (dabs(star%xa(i_metals,i)-star%xa(i_metals,i-1)).gt. &
             chi_grid_scale(4)) then
           flag_point(flag_count) = i
           flag_count = flag_count + 1
@@ -340,8 +340,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       star%prev%old_shell_mass(1) = star%log_mass(1)
       star%prev%logP_start(1) = star%logP(1)
       star%prev%luminosity_lsun_start(1) = star%luminosity_lsun(1)
-      x_new(1) = star%xa(1,1)
-      z_new(1) = star%xa(3,1)
+      x_new(1) = star%xa(i_h1,1)
+      z_new(1) = star%xa(i_metals,1)
       luminosity_max = star%luminosity_lsun(star%nz)
 !       JVS 04/14 added Teff to saved variables
         star%prev%log_Teff_start = star%log_Teff
@@ -437,7 +437,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN X.
       do j = 1,star%nz
          spline_x(j) = star%log_mass(j)
-         spline_y(j) = star%xa(1,j)
+         spline_y(j) = star%xa(i_h1,j)
       end do
 ! GET SPLINE COEFFICIENTS
       call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
@@ -488,7 +488,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN Z.
       do j = 1,star%nz
          spline_x(j) = star%log_mass(j)
-         spline_y(j) = star%xa(3,j)
+         spline_y(j) = star%xa(i_metals,j)
       end do
 ! GET SPLINE COEFFICIENTS
       call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
@@ -687,7 +687,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! THRESHOLD (1.0D-14) FIND THE NEW RUN OF
 ! DEUTERIUM BURNING RATES
       if (use_extended_composition .and. &
-           star%xa(12,star%nz).ge.1.0D-14) then
+           star%xa(i_h2,star%nz).ge.1.0D-14) then
          do j = 1,star%nz
             star%prev%logP_start(j) = star%light_burn%deuterium_burning_rate_start(j)
          end do
@@ -737,23 +737,23 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
      8X,'P',7X,'T',7X,'R',8X,'L',7X,'X',4X,'Z',3X,'O16',1X) )
          write(idebug,920) (i,star%log_mass(i),star%logP(i), &
               star%logT(i),star%logR(i),star%luminosity_lsun(i), &
-              x_new(i),z_new(i),star%xa(9,i),i,star%prev%old_shell_mass(i), &
+              x_new(i),z_new(i),star%xa(i_o16,i),i,star%prev%old_shell_mass(i), &
               star%prev%logP_start(i),star%prev%logT_start(i),star%prev%logR_start(i), &
-              star%prev%luminosity_lsun_start(i),star%xa(1,i),star%xa(3,i), &
-              star%xa(9,i), i = 1,min_common_count)
+              star%prev%luminosity_lsun_start(i),star%xa(i_h1,i),star%xa(i_metals,i), &
+              star%xa(i_o16,i), i = 1,min_common_count)
   920    format( 2(1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3) )
          if (star%nz.gt.min_common_count) then
             min_common_count = min_common_count + 1
             write(idebug,930) (i,star%log_mass(i),star%logP(i), &
                  star%logT(i),star%logR(i),star%luminosity_lsun(i), &
-                 x_new(i),z_new(i),star%xa(9,i),i=min_common_count, &
+                 x_new(i),z_new(i),star%xa(i_o16,i),i=min_common_count, &
                  star%nz)
   930       format( 1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
          else if (new_num_zones.gt.min_common_count) then
             min_common_count = min_common_count + 1
             write(idebug,940)(i,star%prev%old_shell_mass(i),star%prev%logP_start(i), &
                  star%prev%logT_start(i),star%prev%logR_start(i),star%prev%luminosity_lsun_start(i), &
-                 star%xa(1,i),star%xa(3,i),star%xa(9,i), &
+                 star%xa(i_h1,i),star%xa(i_metals,i),star%xa(i_o16,i), &
                  i=min_common_count,new_num_zones)
   940       format(65X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
          endif
@@ -786,8 +786,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
          call osplin(star%prev%old_shell_mass,star%rot%old_esum,star%log_mass,star%diag%sesum, &
               old_point_count,new_point_count)
          do zone_index = 1,star%nz
-            spline_y(zone_index) = star%diag%sesum(zone_index)+star%diag%seg(6,zone_index)+ &
-                 star%diag%seg(7,zone_index)
+            spline_y(zone_index) = star%diag%sesum(zone_index)+star%diag%seg(i_eps_neu,zone_index)+ &
+                 star%diag%seg(i_eps_grav,zone_index)
          end do
          call osplin(star%prev%old_shell_mass,star%rot%old_eps,star%log_mass,spline_y, &
               old_point_count,new_point_count)
@@ -891,9 +891,9 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 !   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN
 !   ONE LARGE EVOLUTIONARY TIMESTEP.
          do zone_index = 1,star%nz
-            star%rot%old_del_radiative_mix(zone_index) = star%diag%del_grad(1,zone_index)
-            star%rot%old_delm(zone_index) = star%diag%del_grad(2,zone_index)
-            star%rot%old_del_adiabatic_mix(zone_index) = star%diag%del_grad(3,zone_index)
+            star%rot%old_del_radiative_mix(zone_index) = star%diag%del_grad(i_grad_rad,zone_index)
+            star%rot%old_delm(zone_index) = star%diag%del_grad(i_grad_actual,zone_index)
+            star%rot%old_del_adiabatic_mix(zone_index) = star%diag%del_grad(i_grad_ad,zone_index)
             star%rot%old_amu(zone_index) = star%thermo%mean_molecular_weight(zone_index)
             star%rot%old_om(zone_index) = star%diag%so(zone_index)
             star%rot%old_cp(zone_index) = star%thermo%cp(zone_index)
@@ -921,9 +921,9 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
          end do
       endif
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.
-      if (dabs(star%env_comp%xnew-star%xa(1,star%nz)).gt.1.0D-8) then
-               star%env_comp%xnew = star%xa(1,star%nz)
-               star%env_comp%znew = star%xa(3,star%nz)
+      if (dabs(star%env_comp%xnew-star%xa(i_h1,star%nz)).gt.1.0D-8) then
+               star%env_comp%xnew = star%xa(i_h1,star%nz)
+               star%env_comp%znew = star%xa(i_metals,star%nz)
                call kap_update_surface_tables(star%env_comp%xnew)
 
       end if

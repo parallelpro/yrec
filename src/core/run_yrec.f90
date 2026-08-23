@@ -26,7 +26,7 @@ subroutine run_yrec(ierr)
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
       use net_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_lum_grav, i_metals, i_n14, i_n15, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_o16, i_o17, i_o18
       use yrec_output, only: output_run_header
       use luout_lib
       use const_lib
@@ -274,26 +274,26 @@ subroutine run_yrec(ierr)
 !     MHP 10/24 CHECK STOP CONDITIONS AND DISABLE THEM IF THE STARTING VALUES ARE BELOW THE TARGET THRESHOLD
          if (end_age_stop_active(nk)) then
             if (central_deuterium_stop(nk).gt.0.0D0 .and. &
-                 star%xa(12,1).lt.central_deuterium_stop(nk)) then
+                 star%xa(i_h2,1).lt.central_deuterium_stop(nk)) then
                central_deuterium_stop(nk)=-central_deuterium_stop(nk)
-               write(*,101)star%xa(12,1),central_deuterium_stop(nk)
-               write(short_file_unit,101)star%xa(12,1),central_deuterium_stop(nk)
+               write(*,101)star%xa(i_h2,1),central_deuterium_stop(nk)
+               write(short_file_unit,101)star%xa(i_h2,1),central_deuterium_stop(nk)
  101           format('STARTING D ',E12.4,' BELOW STOP VALUE ', &
                       E12.4,' STOP DISABLED.')
             endif
             if (central_hydrogen_stop(nk).gt.0.0D0 .and. &
-                 star%xa(1,1).lt.central_hydrogen_stop(nk)) then
+                 star%xa(i_h1,1).lt.central_hydrogen_stop(nk)) then
                central_deuterium_stop(nk)=-central_hydrogen_stop(nk)
-               write(*,102)star%xa(12,1),central_deuterium_stop(nk)
-               write(short_file_unit,102)star%xa(12,1),central_deuterium_stop(nk)
+               write(*,102)star%xa(i_h2,1),central_deuterium_stop(nk)
+               write(short_file_unit,102)star%xa(i_h2,1),central_deuterium_stop(nk)
  102           format('STARTING X ',E12.4,' BELOW STOP VALUE ', &
                       E12.4,' STOP DISABLED.')
             endif
             if (central_helium_stop(nk).gt.0.0D0 .and. &
-                 star%xa(2,1).lt.central_helium_stop(nk)) then
+                 star%xa(i_he4,1).lt.central_helium_stop(nk)) then
                central_helium_stop(nk)=-central_helium_stop(nk)
-               write(*,103)star%xa(12,1),central_deuterium_stop(nk)
-               write(short_file_unit,103)star%xa(12,1),central_deuterium_stop(nk)
+               write(*,103)star%xa(i_h2,1),central_deuterium_stop(nk)
+               write(short_file_unit,103)star%xa(i_h2,1),central_deuterium_stop(nk)
  103           format('STARTING Y ',E12.4,' BELOW STOP VALUE ', &
                       E12.4,' STOP DISABLED.')
             endif
@@ -330,17 +330,17 @@ subroutine run_yrec(ierr)
          shell_log_temperature = star%logT(i)
 ! SKIP CALCULATIONS FOR LOW TEMPERATURES.
          if (shell_log_temperature.lt.6.0D0) exit
-         hydrogen_fraction = star%xa(1,i)
-         helium_fraction = star%xa(2,i)
-         metal_fraction = star%xa(3,i)
-         he3_fraction = star%xa(4,i)
-         c12_fraction = star%xa(5,i)
-         c13_fraction = star%xa(6,i)
-         n14_fraction = star%xa(7,i)
-         n15_fraction = star%xa(8,i)
-         o16_fraction = star%xa(9,i)
-         o17_fraction = star%xa(10,i)
-         o18_fraction = star%xa(11,i)
+         hydrogen_fraction = star%xa(i_h1,i)
+         helium_fraction = star%xa(i_he4,i)
+         metal_fraction = star%xa(i_metals,i)
+         he3_fraction = star%xa(i_he3,i)
+         c12_fraction = star%xa(i_c12,i)
+         c13_fraction = star%xa(i_c13,i)
+         n14_fraction = star%xa(i_n14,i)
+         n15_fraction = star%xa(i_n15,i)
+         o16_fraction = star%xa(i_o16,i)
+         o17_fraction = star%xa(i_o17,i)
+         o18_fraction = star%xa(i_o18,i)
          call engeb(pp_chain_energy_gen,he3he4_be7_electron_energy_gen, &
               he3he4_be7_proton_energy_gen,cno_cycle_energy_gen, &
               triple_alpha_energy_gen,dlnepsilon_dlnrho,dlnepsilon_dlnt, &
@@ -380,18 +380,18 @@ subroutine run_yrec(ierr)
          t6_million_k = exp(ln10*(star%logT(i)-6.0D0))
          if (t6_million_k.lt.5.0D0) exit
 ! ELECTRON DENSITY.
-         log_electron_density = star%logRho(i)+log10((1.0D0+star%xa(1,i))/2.0D0)
+         log_electron_density = star%logRho(i)+log10((1.0D0+star%xa(i_h1,i))/2.0D0)
 ! MASS FRACTION.
          zone_mass_fraction = star%dm(i)/1.9891D33
 ! RADIUS FRACTION.
          zone_radius_fraction = exp(ln10*star%logR(i))/solar_radius_cgs
 ! FLUXES ARE PRINTED IN THE SAME ORDER AS BAHCALL AND PINSONNEAULT.
          write(76,145)zone_radius_fraction,t6_million_k,log_electron_density, &
-         zone_mass_fraction,star%be7_mass_fraction_zone(i),star%neutrino_flux_zone(1,i), &
-         star%neutrino_flux_zone(5,i), &
-         star%neutrino_flux_zone(6,i), &
-         star%neutrino_flux_zone(7,i),star%neutrino_flux_zone(8,i),star%neutrino_flux_zone(4,i), &
-         star%neutrino_flux_zone(2,i),star%neutrino_flux_zone(3,i)
+         zone_mass_fraction,star%be7_mass_fraction_zone(i),star%neutrino_flux_zone(i_nu_pp,i), &
+         star%neutrino_flux_zone(i_nu_b8,i), &
+         star%neutrino_flux_zone(i_nu_n13,i), &
+         star%neutrino_flux_zone(i_nu_o15,i),star%neutrino_flux_zone(i_nu_f17,i),star%neutrino_flux_zone(i_nu_be7,i), &
+         star%neutrino_flux_zone(i_nu_pep,i),star%neutrino_flux_zone(i_nu_hep,i)
   145    format(F9.5,F7.3,F6.3,1P10E10.3)
       end do
   222    format(1P10E10.3)
@@ -489,7 +489,7 @@ subroutine run_yrec(ierr)
             if (mod(nk,3).eq.0) then
                log_r_rsun = 0.5D0*(star%log_L+log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
-               current_zx = star%xa(3,star%nz)/star%xa(1,star%nz)
+               current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
                call chkcal(star%log_L,log_r_rsun,nk,current_zx)
 !               CALL CHKCAL(BL,RLL,NK)
                use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
@@ -550,15 +550,15 @@ subroutine run_yrec(ierr)
  1525    format(5X,'DID NOT CONVERGE WITHIN 10 ATTEMPTS L,R',2F10.6)
 ! MONTE CARLO #, CONVERGED MIXING LENGTH AND INITIAL H, SURFACE X,
 ! SURFACE Z, Z/X, CENTRAL X, CENTRAL Z
-         write(neutrino_unit,1519) monte_carlo_run_number,mixing_length_array(nk),rescale_params(2,nk-2),star%xa(1,star%nz), &
-              star%xa(3,star%nz),surface_z_over_x,star%xa(1,1),star%xa(3,1)
+         write(neutrino_unit,1519) monte_carlo_run_number,mixing_length_array(nk),rescale_params(2,nk-2),star%xa(i_h1,star%nz), &
+              star%xa(i_metals,star%nz),surface_z_over_x,star%xa(i_h1,1),star%xa(i_metals,1)
  1519    format(1X,I5,3F10.6,4E10.3)
 ! NUMERICAL DATA : #OF RUNS NEEDED FOR A CONVERGED MODEL, INITIAL X
 ! AND ALPHA, FINAL DL/DX,DR/DX,DL/D ALPHA, DR/D ALPHA
          write(neutrino_unit,1518)convergence_iterations,initial_x_guess,initial_alpha_guess,star%run%dlum_dx,star%run%drad_dx,star%run%dlum_dalpha,star%run%drad_dalpha
 ! SUMMARY OF STRUCTURE : TC, RHOC, PC
          write(neutrino_unit, 1517)star%run%central_log10_temperature,star%run%central_log10_pressure,star%run%central_log10_density, &
-              star%xa(1,1),star%xa(3,1)
+              star%xa(i_h1,1),star%xa(i_metals,1)
 ! NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
          write(neutrino_unit, 1516) star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(i),i=1,8)
 !          CALL WRTMONTE(HCOMP,HD,HL,HP,HR,HS,HT,LC,M,MODEL,DAGE,
@@ -578,7 +578,7 @@ subroutine run_yrec(ierr)
          rewind(imodpt)
          rewind(istor)
 
-         surface_z_over_x = star%xa(3,star%nz)/star%xa(1,star%nz)
+         surface_z_over_x = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
 ! HEADER FILE:  MONTE CARLO PARAMETERS
          if (lmonte) then
             write(neutrino_unit,1520)monte_carlo_run_number,star%run%s11_rate(monte_carlo_run_number),star%run%s33_rate(monte_carlo_run_number),star%run%s34_rate(monte_carlo_run_number),star%run%s17_rate(monte_carlo_run_number), &
@@ -596,7 +596,7 @@ subroutine run_yrec(ierr)
          central_temperature_mk = 10.0D0**(star%run%central_log10_temperature-6.0D0)
          central_pressure_scaled = 10.0D0**(star%run%central_log10_pressure-17.0D0)
          central_density_linear = 10.0D0**star%run%central_log10_density
-         write(neutrino_unit, 1517)central_temperature_mk,central_density_linear,central_pressure_scaled,star%xa(1,1),star%xa(3,1)
+         write(neutrino_unit, 1517)central_temperature_mk,central_density_linear,central_pressure_scaled,star%xa(i_h1,1),star%xa(i_metals,1)
  1517    format(1X,F7.3,F7.2,F6.3,2F8.5)
 ! INITIAL ALPHA,Y,Z,ALPHA; FINAL R, L
          initial_helium_fraction = 1.0D0 - rescale_params(2,nk-2) - rescale_params(3,nk-2)
@@ -604,10 +604,10 @@ subroutine run_yrec(ierr)
          write(neutrino_unit,1521)mixing_length_array(nk),initial_helium_fraction,initial_metal_fraction,star%log_L,log_r_rsun
  1521    format(F7.4,2F8.5,1P2E10.3)
 ! CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)
-         write(neutrino_unit,1522)star%run%envelope_radius,star%run%envelope_mass,star%xa(2,star%nz),star%xa(3,star%nz),surface_z_over_x
+         write(neutrino_unit,1522)star%run%envelope_radius,star%run%envelope_mass,star%xa(i_he4,star%nz),star%xa(i_metals,star%nz),surface_z_over_x
  1522    format(F8.5,F9.6,2F8.5,F9.6)
 ! ENERGY GENERATION FRACTIONS PP I,II,III,CNO,EGRAV
-         write(neutrino_unit,1523)(star%luminosity_breakdown(j),j=1,4),star%luminosity_breakdown(7)
+         write(neutrino_unit,1523)(star%luminosity_breakdown(j),j=1,4),star%luminosity_breakdown(i_lum_grav)
  1523    format(1P5E10.3)
          if (lmonte) then
 !             CALL WRTMONTE(HCOMP,HD,HL,HP,HR,HS,HT,LC,M,MODEL,DAGE,
