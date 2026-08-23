@@ -49,8 +49,6 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
 
 
       double precision :: q(4,4)
-      save
-
       double precision :: half_delta_log_mass, pivot, pivotb, div
       integer :: j
 
@@ -133,26 +131,26 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
       elim_rhs(2,zone_index) = elim_rhs(2,zone_index)*div
       elim_coeff(2,1,zone_index) = elim_coeff(2,1,zone_index)*div
       elim_coeff(2,2,zone_index) = elim_coeff(2,2,zone_index)*div
-      do 2 j=1,4
-      if (j.eq.2) go to 2
+      do j=1,4
+      if (j.eq.2) cycle
       q(j,1) = q(j,1) - q(j,2)*q(2,1)
       elim_rhs(j,zone_index) = elim_rhs(j,zone_index) - q(j,2)*elim_rhs(2,zone_index)
       elim_coeff(j,1,zone_index) = elim_coeff(j,1,zone_index) - &
            q(j,2)*elim_coeff(2,1,zone_index)
       elim_coeff(j,2,zone_index) = elim_coeff(j,2,zone_index) - &
            q(j,2)*elim_coeff(2,2,zone_index)
-    2 continue
+      end do
 ! PIVOT ON ROW-1 AND COLUMN-3
       div = 1.0D0/q(1,1)
       elim_rhs(1,zone_index) = elim_rhs(1,zone_index)*div
       elim_coeff(1,1,zone_index) = elim_coeff(1,1,zone_index)*div
       elim_coeff(1,2,zone_index) = elim_coeff(1,2,zone_index)*div
-      do 4 j=2,4
+      do j=2,4
       elim_rhs(j,zone_index) = elim_rhs(j,zone_index) - q(j,1)*elim_rhs(1,zone_index)
       elim_coeff(j,1,zone_index) = elim_coeff(j,1,zone_index) - &
            q(j,1)*elim_coeff(1,1,zone_index)
       elim_coeff(j,2,zone_index) = elim_coeff(j,2,zone_index) - &
            q(j,1)*elim_coeff(1,2,zone_index)
-    4 continue
+      end do
       return
 end subroutine reduce

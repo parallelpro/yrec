@@ -63,10 +63,6 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
       integer, intent(in) :: num_points
       double precision, intent(in) :: total_delta_angular_momentum
       double precision, intent(inout) :: specific_angular_momentum(json)
-
-
-      save
-
       integer :: i0, i1, i, nmod, ii
       double precision :: sumjmod, sumdjmod, test, val, ratio
 
@@ -77,11 +73,12 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
          do i = zone_begin - 1, 1, -1
             if (.not.convective_flag(i)) then
                i0 = i + 1
-               goto 10
+               exit
             end if
          end do
+         if (i < (1)) then
          i0 = 1
-   10    continue
+         end if
       end if
       if (.not.convective_flag(zone_end) .or. zone_end.eq.num_points) then
          i1 = zone_end
@@ -89,11 +86,12 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
          do i = zone_end+1, num_points
             if (.not.convective_flag(i)) then
                i1 = i - 1
-               goto 20
+               exit
             end if
          end do
+         if (i > num_points) then
          i1 = num_points
-   20    continue
+         end if
       end if
 ! INTERPOLATE IN DJ/J AS A FUNCTION OF ECHI
       nmod = zone_end - zone_begin + 1
@@ -139,9 +137,6 @@ subroutine eq2mod(delta_angular_momentum, angular_momentum, shell_mass, &
 ! USED HERE BECAUSE DUMDJ SHOULD BE ZERO IN MODELS WITHOUT LOSS.
       test = abs(sumdjmod - total_delta_angular_momentum)
       val = 1.0d-5*abs(total_delta_angular_momentum)
-!      WRITE(*,*)SUMDJ,SUMDJMOD,SUMJMOD
-!      WRITE(*,911)(DJ(I)/EJ(I),I=1,NTOT)
-!  911  FORMAT(1P8E10.2)
 ! IF THE TEST SUM IS NOT THE SAME WITHIN THE RELATIVE TOLERANCE VAL,
 ! ADJUST THE TOTAL ANGULAR MOMENTUM OF THE ENTIRE REGION BY A CONSTANT
 ! FACTOR TO ENFORCE ANGULAR MOMENTUM CONSERVATION.

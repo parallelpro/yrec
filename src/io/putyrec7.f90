@@ -17,6 +17,7 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
      model_number, omega, fit_point_pressure, fit_point_radius, &
      total_mass_msun, log_teff, luminosity_breakdown, trial_log_luminosity, &
      trial_log_temperature, fit_point_temperature)
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
 !      & ATM,EOS,HIK,LDIFY,LDIFZ,LDISK,LINSTB,LJDOT0,ALOK,
 !      & LOVSTC,LOVSTE,LOVSTM,LPUREZ,LSEMIC,COMPMIX,PDISK,TDISK,WMAX)  ! KC 2025-05-31
 ! First three lines above are YREC7 inputs
@@ -60,9 +61,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 !       CHARACTER*6 EOS
 
       double precision :: omega_log10(json)
-
-      save
-
 ! --- locals ---
       integer :: i, j, zone_sign_index, ix, iz, num_full_rows, &
            remainder_count, start_index
@@ -93,10 +91,10 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 ! write LUMINOSITIES
 ! If TLUMX are in solar units, convert to ergs.  Decide by
 ! comparing to 10**20.  If smaller, multiply by CLSUN.
-      max_luminosity_component = dmax1(luminosity_breakdown(1), &
-           luminosity_breakdown(2),luminosity_breakdown(3), &
-           luminosity_breakdown(4),luminosity_breakdown(5), &
-           dabs(luminosity_breakdown(6)),luminosity_breakdown(7))
+      max_luminosity_component = dmax1(luminosity_breakdown(i_lum_pp1), &
+           luminosity_breakdown(i_lum_pp2),luminosity_breakdown(i_lum_pp3), &
+           luminosity_breakdown(i_lum_cno),luminosity_breakdown(i_lum_3alpha), &
+           dabs(luminosity_breakdown(i_lum_neu)),luminosity_breakdown(i_lum_grav))
       if(max_luminosity_component.le.1.0D20) then
        do j = 1,7
           luminosity_breakdown(j) = luminosity_breakdown(j) * solar_luminosity_cgs
@@ -106,7 +104,7 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
    40 format('TLUMX',5X,1P7E10.3)
 
 ! write ENVELOPE DATA
-      do 60 i = 1,3
+      do i = 1,3
       zone_sign_index = i
       if(trial_sign_flag.lt.0D0) zone_sign_index = -i
       write(iwrite,50)zone_sign_index,trial_log_temperature(i), &
@@ -114,17 +112,17 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
            fit_point_temperature(i),fit_point_radius(i), &
            (envelope_fit_coeffs(3*i-3+j),j=1,3)
    50 format('ENV',I2,F7.5,4F8.5,1P3E12.5)
-   60 continue
+      end do
 
 ! write HENYEY POINTS, one line per shell
-      do 110 i = 1,num_shells
+      do i = 1,num_shells
        ix = idint(1.0D6*composition(1,i) + 0.50D0)
        iz = idint(1.0D6*composition(3,i) + 0.50D0)
        write(iwrite,100) log_mass(i),log_radius(i),log_luminosity(i), &
             log_pressure(i),log_temperature(i),log_density(i), &
             convective_flag(i),ix,iz
   100    format(0PF13.10,F10.7,1PE14.7,0PF10.7,2F10.7,L1,2I6)
-  110 continue
+      end do
 
 ! WRITE OUT COMPOSITION ARRAY - CENTRAL AND SURFACE
 ! CONVECTION ZONES HAVE ONLY 1 COMPOSITION STORED PER ZONE
@@ -133,10 +131,10 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
        write(iwrite,200)(composition(i,core_cz_top_index),i=4,11)
        write(iwrite,200)(composition(i,envelope_cz_bottom_index),i=4,11)
       else
-       do 210 j = core_cz_top_index,envelope_cz_bottom_index
+       do j = core_cz_top_index,envelope_cz_bottom_index
           write(iwrite,200) (composition(i,j),i = 4,11)
   200       format(8(1PE9.3,1X))
-  210    continue
+       end do
       endif
 ! EXTENDED COMP - WRITE OUT 1 ABUND IF FULLY CONVECTIVE,
 ! OTHERWISE WRITE OUT 2 POINTS PER LINE.
@@ -145,10 +143,10 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
           write(iwrite,220)(composition(i,envelope_cz_bottom_index),i=12,15)
   220       format(4(1PE9.3,1X))
        else
-          do 230 pair_start_index = core_cz_top_index,envelope_cz_bottom_index-1,2
+          do pair_start_index = core_cz_top_index,envelope_cz_bottom_index-1,2
              write(iwrite,200)((composition(species_index,shell_index), &
                   species_index = 12,15),shell_index = pair_start_index,pair_start_index+1)
-  230       continue
+          end do
 !   IF AN ODD NUMBER OF ABUNDANCES EXISTS, WRITE IN LAST VALUE
           parity_test = envelope_cz_bottom_index-1 - core_cz_top_index
           if(mod(parity_test,2).ne.0) &
@@ -159,18 +157,18 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 ! WRITE OUT RUN OF OMEGA,STORED 8 ELEMENTS PER LINE
 ! (- THE LOG OF OMEGA IS STORED)
       if(rotation_active) then
-       do 300 i = 1,num_shells
+       do i = 1,num_shells
           if (omega(i).le.1.D-59) omega(i)=1.D-59
           omega_log10(i) = dabs(dlog10(omega(i)))
-  300    continue
+       end do
        num_full_rows = int(num_shells/8)
        remainder_count = num_shells - num_full_rows*8
        start_index = 1
-       do 320 i = 1,num_full_rows
+       do i = 1,num_full_rows
           write(iwrite,310)(omega_log10(j),j = start_index,start_index + 7)
   310       format(0P8F10.7)
           start_index = start_index + 8
-  320    continue
+       end do
        if(remainder_count.gt.0) write(iwrite,310) &
             (omega_log10(j),j=start_index,start_index+remainder_count-1)
       endif

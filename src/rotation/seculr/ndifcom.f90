@@ -84,9 +84,6 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: species_begin, species_end
-
-      save
-
       logical :: unstable_region_active, unstable_zone_found, &
            two_zone_region
       integer :: search_start, zone_idx
@@ -105,7 +102,7 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
 !  ZONE ABOVE THE LAST NON-ZERO V.
          unstable_region_active = .false.
          search_start = zone_min
-   60    continue
+         region_loop: do
          unstable_zone_found = .false.
          do zone_idx = search_start,zone_max
             if (velocity(zone_idx).gt.0.0d0) then
@@ -120,16 +117,17 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
                zone_end = zone_idx - 1
                unstable_region_active = .false.
                search_start = zone_idx + 1
-               goto 80
+               exit
             end if
          end do
+         if (zone_idx > zone_max) then
 !  IF THE LAST INTERFACE IS UNSTABLE (NON-ZERO V) ENSURE THAT zone_end
 !  IS SET PROPERLY.
          if (unstable_region_active) zone_end = zone_max
          search_start = zone_max + 1
-   80    continue
+         end if
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
-         if (.not.unstable_zone_found) goto 90
+         if (unstable_zone_found) then
 !  TRANSFORM TO EQUAL GRID SPACING IN R FOR THE REGION.
          call mixgrid(diffusion_coeff, log_density, log_luminosity, &
               log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
@@ -140,9 +138,9 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
 !  SKIP IF THIS OCCURS.
          if (two_zone_region) then
             if (search_start.le.zone_max) then
-               goto 60
+               cycle region_loop
             else
-               goto 90
+               exit region_loop
             end if
          end if
 !  PERFORM COMPOSITION DIFFUSION.
@@ -154,8 +152,11 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end)
 !  RETURN FOR NEXT REGION IF APPLICABLE
-         if (search_start.le.zone_max) goto 60
-   90    continue
+         if (search_start.gt.zone_max) exit region_loop
+         else
+         exit region_loop
+         end if
+         end do region_loop
       end if
       return
 end subroutine ndifcom

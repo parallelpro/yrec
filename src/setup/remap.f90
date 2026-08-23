@@ -20,17 +20,6 @@ subroutine remap
       integer, parameter :: nta = 54, nga = 5
       integer, parameter :: nts = 63, nps = 76
       integer, parameter :: json = 5000
-
-
-
-
-
-
-
-
-
-      save
-
       integer :: i
 
       double precision :: s0_pp_ref, s0_he3he3_ref, s0_he3he4_ref, &

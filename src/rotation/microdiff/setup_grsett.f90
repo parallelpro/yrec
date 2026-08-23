@@ -24,8 +24,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
 
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_actual
       use luout_lib
       use const_lib
       implicit none
@@ -81,8 +80,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       data atomic_charge/1.0d0,2.0d0,26.0d0,-1.0d0/
       integer :: num_species
       data num_species/4/
-      save
-
 ! --- locals ---
       double precision :: solar_radius_bl, seconds_per_year_bl
       integer :: zone_idx
@@ -119,37 +116,40 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       fully_convective_flag=.false.
 !     CHECK FOR CONVECTIVE CORE.
       if(convective_flag(1))then
-         do 10 zone_idx=2,num_zones
-            if(.not.convective_flag(zone_idx))goto 20
-   10    continue
+         do zone_idx=2,num_zones
+            if(.not.convective_flag(zone_idx))exit
+         end do
+         if (zone_idx > num_zones) then
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
          fully_convective_flag=.true.
          write(short_file_unit,15)
    15    format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-         goto 9999
-   20    continue
+         continue
+         return
+         end if
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_begin = zone_idx-1
       else
          zone_begin = 1
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
-      do 23 zone_idx = zone_begin,num_zones
-         if(composition(1,zone_idx).gt.hydrogen_diffusion_floor)goto 25
-   23 continue
+      do zone_idx = zone_begin,num_zones
+         if(composition(1,zone_idx).gt.hydrogen_diffusion_floor)exit
+      end do
+      if (zone_idx > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
       write(short_file_unit,16)hydrogen_diffusion_floor
    16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
-      goto 9999
-   25 continue
+      continue
+      return
+      end if
       zone_begin = zone_idx
 !     CHECK FOR CONVECTIVE ENVELOPE.
       if(convective_flag(num_zones))then
-         do 30 zone_idx=num_zones-1,2,-1
-            if(.not.convective_flag(zone_idx))goto 40
-   30    continue
-   40    continue
+         do zone_idx=num_zones-1,2,-1
+            if(.not.convective_flag(zone_idx))exit
+         end do
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_end = zone_idx+1
       else
@@ -157,15 +157,17 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       endif
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
-      do 45 zone_idx=zone_end,1,-1
-         if(composition(2,zone_idx).gt.helium_diffusion_min) goto 47
-   45 continue
+      do zone_idx=zone_end,1,-1
+         if(composition(2,zone_idx).gt.helium_diffusion_min) exit
+      end do
+      if (zone_idx < (1)) then
 !     HYDROGEN-FREE MODEL - EXIT.
       write(short_file_unit,17)helium_diffusion_min
    17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
-      goto 9999
-   47 continue
+      continue
+      return
+      end if
       zone_end = zone_idx
 !     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.
 !     CON_RADIUS=CONVERSION FACTOR FOR RADIUS.
@@ -178,14 +180,14 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       star%rot%bl_time_scale=2.7d13*seconds_per_year_bl
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
-      do 50 zone_idx=1,num_zones
+      do zone_idx=1,num_zones
 
          radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*star%rot%bl_radius_scale
          temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*star%rot%bl_temp_scale
          mass_grams(zone_idx)=mass_grams(zone_idx)*star%rot%bl_mass_scale
          dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/star%rot%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
-   50 continue
+      end do
       timestep_seconds=timestep_seconds/star%rot%bl_time_scale
       total_mass=total_mass*star%rot%bl_mass_scale
 !     SET UP DIFFUSION COEFFICIENTS.
@@ -195,7 +197,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !     D1 = R**2/LN LAMBDA  * X  * T**5/2 * (DLNP/DR) * (1-X) *
 !          [5/4 + DEL*6*(X-0.32)/(5.4+6.3X-4.5X**2)]
 !     D2 = R**2/LN LAMBDA * T**5/2 * (X+3)/(X+1)/(3+5X)
-      do 60 zone_idx = 1,num_zones
+      do zone_idx = 1,num_zones
 
          hydrogen_fraction = composition(1,zone_idx)
 ! MHP 10/02 INITIALIZED X - WAS NOT DONE PRIOR TO USAGE IN SHELL 1
@@ -223,14 +225,14 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
             diffusion_coeff1(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  (hydrogen_fraction - hydrogen_fraction_sq - hydrogen_metal_product)*(1.25d0+ &
-                 star%diag%del_grad(2,zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
+                 star%diag%del_grad(i_grad_actual,zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
             diffusion_coeff2(zone_idx)=settling_prefactor*(hydrogen_fraction+3.0d0)/ &
                  (5.0d0*hydrogen_fraction_sq + 8.0d0*hydrogen_fraction + 3.0d0)
             diffusion_coeff1_dx(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  ( (1.0d0-2.0d0*hydrogen_fraction-metal_fraction_total)*(1.25d0+ &
-                 (6.0d0*star%diag%del_grad(2,zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
+                 (6.0d0*star%diag%del_grad(i_grad_actual,zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
                  (hydrogen_fraction-hydrogen_fraction_sq-hydrogen_metal_product)*6.0d0* &
-                 star%diag%del_grad(2,zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
+                 star%diag%del_grad(i_grad_actual,zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
                  thoul_denominator**2 )
             diffusion_coeff2_dx(zone_idx)=-settling_prefactor*(5.0d0*hydrogen_fraction_sq + &
                  3.0d1*hydrogen_fraction + 2.1d1)/ &
@@ -293,14 +295,14 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
                call thdiff(num_species,atomic_weight,atomic_charge, &
                     species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac)
                settling_coeff_p = -settling_ap(1)
-               settling_coeff_t = -star%diag%del_grad(2,zone_idx)*settling_at(1)
+               settling_coeff_t = -star%diag%del_grad(i_grad_actual,zone_idx)*settling_at(1)
             else
                settling_coeff_p = 1.58d0 - 2.42d0*hydrogen_fraction + 0.844d0*hydrogen_fraction_sq
-               settling_coeff_t = star%diag%del_grad(2,zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
+               settling_coeff_t = star%diag%del_grad(i_grad_actual,zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
             endif
             ac_scratch = 1.15d0 - 1.42d0*hydrogen_fraction + 0.647d0*hydrogen_fraction_sq
             dap_dx = -2.42d0 + 1.688d0*hydrogen_fraction
-            dat_dx = star%diag%del_grad(2,zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
+            dat_dx = star%diag%del_grad(i_grad_actual,zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
             dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
 !CFD 10/09 Mimic Mixing to reduce settling.
 !            COD1(I) = FAC*HQPR(I)*X*(AP+AT)
@@ -319,11 +321,11 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             if(lthoul)then
                if(use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq
-                  settling_coeff_t = star%diag%del_grad(2,zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
+                  settling_coeff_t = star%diag%del_grad(i_grad_actual,zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
                        0.549d0*hydrogen_fraction_sq)
                else
                   settling_coeff_p = -settling_ap(3)
-                  settling_coeff_t = -star%diag%del_grad(2,zone_idx)*settling_at(3)
+                  settling_coeff_t = -star%diag%del_grad(i_grad_actual,zone_idx)*settling_at(3)
                endif
                iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
 !CFD 10/09 Mimic Mixing to reduce settling (cstmixing)
@@ -348,7 +350,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
            diffusion_coeff1_dx(zone_idx)=diffusion_coeff1_dx(zone_idx) + diffusion_coeff1(zone_idx)*1.5d0/ &
            (ln_lambda*(3.0d0*hydrogen_fraction+1.0d0))
        end if
-   60 continue
- 9999 continue
+      end do
       return
 end subroutine setup_grsett

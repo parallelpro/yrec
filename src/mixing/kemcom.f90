@@ -17,7 +17,7 @@
 !  species. composition(1,..)=H; 2=He4; 3=Z; 4=He3; 5=C12; 6=C13;
 !  7=N14; 9=O16; 11=O18. Elements 8(N15) and 10(O17) not currently
 !  used; 12-15 are light elements whose burning is treated elsewhere.
-! star%prev%old_composition (common/oldmod/) - the array of abundances at the
+! star%prev%xa_start (common/oldmod/) - the array of abundances at the
 !  start of the timestep.
 ! shell_mass - run of mass contained in each shell.
 ! log_temperature - run of model temperature.
@@ -74,8 +74,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
       double precision :: system_matrix(56), correction(7)
       equivalence (system_matrix(50),correction(1))
       double precision :: abundance(7), avg_abundance(11)
-      save
-
       double precision :: total_shell_mass
       integer :: species_idx, zone_idx, write_zone_idx
       double precision :: timestep_gyr, timestep_gyr_3, timestep_gyr_4, &
@@ -104,33 +102,33 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
 !  total_shell_mass is the total mass of the cz.
 !  initialize sums.
          total_shell_mass = 0.0d0
-         do 1 species_idx = 1,11
+         do species_idx = 1,11
             avg_abundance(species_idx) = 0.0d0
-    1    continue
-         do 5 zone_idx = zone_begin,zone_end
+         end do
+         do zone_idx = zone_begin,zone_end
             total_shell_mass = total_shell_mass + shell_mass(zone_idx)
-            do 3 species_idx = 1,11
+            do species_idx = 1,11
                avg_abundance(species_idx) = avg_abundance(species_idx)+ &
-                    star%prev%old_composition(species_idx,zone_idx)*shell_mass(zone_idx)
-    3       continue
-    5    continue
-         do 7 species_idx = 1,11
+                    star%prev%xa_start(species_idx,zone_idx)*shell_mass(zone_idx)
+            end do
+         end do
+         do species_idx = 1,11
             avg_abundance(species_idx) = avg_abundance(species_idx)/total_shell_mass
-    7    continue
+         end do
       else
-         do 9 species_idx = 1,11
+         do species_idx = 1,11
             avg_abundance(species_idx) = &
-                 star%prev%old_composition(species_idx,zone_begin)
-    9    continue
+                 star%prev%xa_start(species_idx,zone_begin)
+         end do
       endif
 !  skip burning calculations if starting shell below t cutoff for reactions.
       if(log_temperature(zone_begin).lt.tcut(1)) then
-         do 13 zone_idx = zone_begin,zone_end
-            do 11 species_idx = 1,11
+         do zone_idx = zone_begin,zone_end
+            do species_idx = 1,11
                composition(species_idx,zone_idx) = avg_abundance(species_idx)
-   11       continue
-   13    continue
-         goto 200
+            end do
+         end do
+         return
       endif
 !
 !  set up numerical parameters.
@@ -198,7 +196,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
          gr_n14_alpha = 0.0d0
          gr_triple_alpha = 0.0d0
          branch_frac_c12 = 0.0d0
-         do 15 zone_idx = zone_begin,zone_end
+         do zone_idx = zone_begin,zone_end
             gr_pp = gr_pp + shell_mass(zone_idx)*rate_pp(zone_idx)
             gr_he3_he3 = gr_he3_he3 + shell_mass(zone_idx)*rate_he3_he3(zone_idx)
             gr_he3_he4 = gr_he3_he4 + shell_mass(zone_idx)*rate_he3_he4(zone_idx)
@@ -211,7 +209,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             gr_n14_alpha = gr_n14_alpha + shell_mass(zone_idx)*rate_n14_alpha(zone_idx)
             gr_triple_alpha = gr_triple_alpha + shell_mass(zone_idx)*rate_triple_alpha(zone_idx)
             branch_frac_c12 = branch_frac_c12 + shell_mass(zone_idx)*frac_c12_alpha(zone_idx)
-   15    continue
+         end do
          gr_pp = gr_pp/total_shell_mass
          gr_he3_he3 = gr_he3_he3/total_shell_mass
          gr_he3_he4 = gr_he3_he4/total_shell_mass
@@ -260,7 +258,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
 !
 !  iteration for new abundances.
 !
-   10 continue
+      newton_iter: do   ! (was label 10)
 !  functions to be minimized. these are of the form
 !  system_matrix(#)=abundance(end step)-abundance (start step)-timestep*(d(species)/dt)
 !  because the burning rates d(species)/dt use the abundances at the
@@ -368,7 +366,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
 !  abundances.
       any_nonzero_flag = 0
       rhs_column_idx = 1
-      do 20 mat_idx = 1,49
+      do mat_idx = 1,49
          if(mat_idx.eq.rhs_column_idx) then
             rhs_column_idx = rhs_column_idx+8
          else if(dabs(system_matrix(mat_idx)).lt.1.d-8) then
@@ -376,13 +374,13 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
          else
             any_nonzero_flag = 1
          endif
-   20 continue
+      end do
       if(any_nonzero_flag.ne.0) call simeqc(system_matrix,8,7, ierr)
       if (ierr /= 0) return
 !  check to see if the system has converged within the desired tolerances.
       max_abs_change = 0.d0
       max_relative_change = 0.d0
-      do 30 solved_species_idx = 1,7
+      do solved_species_idx = 1,7
          abundance(solved_species_idx) = abundance(solved_species_idx)-correction(solved_species_idx)
          if(dabs(correction(solved_species_idx)).ge.max_abs_change) max_abs_change = dabs(correction(solved_species_idx))
          if(abundance(solved_species_idx).lt.min_abundance_local) then
@@ -391,7 +389,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             relative_change = dabs(correction(solved_species_idx)/abundance(solved_species_idx))
             if(relative_change.ge.max_relative_change) max_relative_change = relative_change
          endif
-   30 continue
+      end do
       if(max_abs_change.ge.absolute_tolerance.or.max_relative_change.ge.relative_tolerance) then
 !  system not converged - see if maximum number of iterations exceeded.
          iteration_count = iteration_count+1
@@ -408,20 +406,22 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             ierr = 1
             return
          else
-            goto 10
+            cycle newton_iter
          endif
       endif
+      exit newton_iter
+      end do newton_iter
 !  system has converged.
 !  update composition matrix.
 !  update o18.
       o18_new = avg_abundance(11)+18.0d0*timestep_gyr*gr_n14_alpha*abundance(3)*abundance(6)
 !  change metal abundance if x<5.0d-7.
-      if(star%prev%old_composition(1,zone_end).lt.5.0d-7) then
+      if(star%prev%xa_start(1,zone_end).lt.5.0d-7) then
          new_metal_fraction = 1.0d0-abundance(1)-abundance(2)-abundance(3)
       else
          new_metal_fraction = avg_abundance(3)
       endif
-      do 40 write_zone_idx = zone_begin,zone_end
+      do write_zone_idx = zone_begin,zone_end
          composition(1,write_zone_idx) = abundance(1)
          composition(4,write_zone_idx) = abundance(2)
          composition(2,write_zone_idx) = abundance(3)
@@ -431,6 +431,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
          composition(9,write_zone_idx) = abundance(7)
          composition(3,write_zone_idx) = new_metal_fraction
          composition(11,write_zone_idx) = o18_new
-   40 continue
-  200 return
+      end do
+      return
 end subroutine kemcom

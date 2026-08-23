@@ -26,7 +26,6 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       use net_lib
       use const_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use burn_lib
       implicit none
       integer, parameter :: json = 5000
@@ -63,8 +62,6 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       integer :: burn_rate_sequence(11)
       double precision :: composition_kept(3,json)
       data burn_rate_sequence/1,2,4,6,8,10,12,14,16,18,20/
-      save
-
 ! equally_spaced_diffusion_coeff/equally_spaced_mass (originally ECOD2/
 ! EM) are scratch arrays for ndifcom's internal equally-spaced-grid
 ! solve; zone_begin/zone_end (originally IBEG/IEND) are scratch
@@ -95,7 +92,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       do zone_idx = 1, num_zones
          do species_idx = 1, num_species
             composition_saved(species_idx,zone_idx) = &
-                 star%prev%old_composition(species_idx,zone_idx)
+                 star%prev%xa_start(species_idx,zone_idx)
          end do
          do species_idx = 1, 3
             composition_kept(species_idx,zone_idx) = &
@@ -113,7 +110,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
             do species_idx = 1, num_species
                composition(species_idx,zone_idx) = &
                     composition_saved(species_idx,zone_idx)
-               star%prev%old_composition(species_idx,zone_idx) = &
+               star%prev%xa_start(species_idx,zone_idx) = &
                     composition_saved(species_idx,zone_idx)
             end do
          end do
@@ -142,7 +139,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
             end if
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species
-                  star%prev%old_composition(species_idx,zone_idx) = &
+                  star%prev%xa_start(species_idx,zone_idx) = &
                        composition(species_idx,zone_idx)
                end do
             end do
@@ -152,18 +149,19 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
          if (converged) then
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species
-                  star%prev%old_composition(species_idx,zone_idx) = &
+                  star%prev%xa_start(species_idx,zone_idx) = &
                        composition(species_idx,zone_idx)
                end do
             end do
-            goto 10
+            exit
          end if
       end do
+      if (extrap_idx > num_substeps) then
 ! FAILED TO CONVERGE; PRINT WARNING
 ! IN THIS CASE THE UNEXTRAPOLATED FINAL COMPOSITION IS USED.
       write(*,5)
     5 format(' WARNING - EXTRAPOLATION IN BSBURN DID NOT CONVERGE')
-   10 continue
+      end if
       do zone_idx = 1, num_zones
          composition(1,zone_idx) = composition_kept(1,zone_idx)
          composition(3,zone_idx) = composition_kept(3,zone_idx)

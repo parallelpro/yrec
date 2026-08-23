@@ -27,12 +27,6 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
       logical, intent(out) :: in_opal_table, needs_ramp
 
       integer :: t6_row, density_row
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: t6, density, density_ramp_factor, &
            t6_ramp_factor
@@ -42,12 +36,22 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 
 !     Exit if outside table in rho
       if ((density.lt.opal_eos%density_grid_06(1)) .or. (density.ge.opal_eos%density_grid_06(nr))) then
-         goto 9999        ! Out of Table in density. Go to out of table exit.
+         continue
+         in_opal_table = .false.
+         needs_ramp = .true.
+         ramp_factor = 0d0
+         
+         return
       end if
 
 !     Exit if outside table in T6
       if ((t6.gt.opal_eos%t6_grid_06(1)) .or. (t6.le.opal_eos%t6_grid_06(nt))) then
-         goto 9999        ! Out of Table in temperature. Go to out of table exit.
+         continue
+         in_opal_table = .false.
+         needs_ramp = .true.
+         ramp_factor = 0d0
+         
+         return
       end if
 
 !     Initialize
@@ -74,25 +78,21 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 !     The ESAC06 variables (k=)opal_eos%t6_index_3_06 and (l-)opal_eos%density_index_2_06 are
 !     close to what we need. A linear search will work fine.
       t6_row = opal_eos%t6_index_3_06
-   10 if (t6.le.opal_eos%t6_grid_06(t6_row)) then
+   do while (t6.le.opal_eos%t6_grid_06(t6_row))
         t6_row = t6_row+1
-        goto 10
-      end if
-   20 if (t6.gt.opal_eos%t6_grid_06(t6_row-1)) then
+   end do
+   do while (t6.gt.opal_eos%t6_grid_06(t6_row-1))
         t6_row = t6_row-1
-        goto 20
-      end if
+   end do
 !     We now have: opal_eos%t6_grid_06(t6_row-1) >= T6 > opal_eos%t6_grid_06(t6_row)
 
       density_row = opal_eos%density_index_2_06
-   30 if (density.gt.opal_eos%density_grid_06(density_row)) then
+   do while (density.gt.opal_eos%density_grid_06(density_row))
         density_row = density_row+1
-        goto 30
-      end if
-   40 if (density.le.opal_eos%density_grid_06(density_row-1)) then
+   end do
+   do while (density.le.opal_eos%density_grid_06(density_row-1))
         density_row = density_row-1
-        goto 40
-      end if
+   end do
 !     We now have: opal_eos%density_grid_06(density_row-1) < D <= opal_eos%density_grid_06(density_row)
 
 !     For a given temperature in array opal_eos%t6_grid_06 with index t6_row, e.g.,
@@ -104,7 +104,12 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 !     to opal_eos%density_index_edge_06(t6_row)
 
       if (density_row.gt.opal_eos%density_index_edge_06(t6_row)) then
-        goto 9999       ! Out of table exit in density.
+        continue
+        in_opal_table = .false.
+        needs_ramp = .true.
+        ramp_factor = 0d0
+        
+        return
       end if
       if (density_row.eq.opal_eos%density_index_edge_06(t6_row)) then
         needs_ramp = .true.
@@ -122,7 +127,12 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 !     equal to opal_eos%t6_index_lo_06(density_row).
 
       if (t6_row.gt.opal_eos%t6_index_lo_06(density_row)) then
-        goto 9999      ! Out of table exit in temperature
+        continue
+        in_opal_table = .false.
+        needs_ramp = .true.
+        ramp_factor = 0d0
+        
+        return
       end if
       if (t6_row.eq.opal_eos%t6_index_lo_06(density_row)) then
         needs_ramp = .true.
@@ -133,7 +143,6 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
       return
 
 !     OUT OF TABLE EXIT
- 9999 continue
       in_opal_table = .false.       ! Not in table
       needs_ramp = .true.           ! Turn on ramping
       ramp_factor = 0d0             ! Set ramping factor to zero

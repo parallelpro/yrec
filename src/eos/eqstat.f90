@@ -65,12 +65,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       integer, intent(inout) :: saha_state
 
       integer, parameter :: nts = 63, nps = 76
-
-
-
-
-      save
-
 !  want_derivatives: if true, provide derivatives needed for
 !  relaxation, else don't
 !
@@ -336,12 +330,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            specific_heat_cp_dt, specific_heat_cp_dp
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
-
-
-
-
-      save
-
 ! --- locals ---
       integer :: num_species, species_idx
       double precision :: atomic_weights(4), atomic_weights_full(12)
@@ -506,8 +494,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
               dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp)
-         goto 200
-      end if
+      else
 !     CHECK IF SAUMON, CHABRIER, AND VAN HORN EQUATION OF STATE NEEDED.
 !     THIS EOS REPLACES THE CALL TO EQSAHA, EXCEPT FOR DERIVATIVE PURPOSES.
       if (use_scv_eos) then
@@ -625,7 +612,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          saha_adiabatic_gradient_dp = adiabatic_gradient_dp
       end if
 !     Bypass relativistic EOS (eqrelv) if in low temperature region
-      if (skip_relativistic_eos) goto 200
+      if (.not. skip_relativistic_eos) then
 !     COMPUTE VALUES FOR FULLY IONIZED GAS
       electron_mean_weight_inverse = hydrogen_fraction*atomic_weights(1) + &
            (1.0d0 - hydrogen_fraction)*atomic_weights(4)
@@ -680,7 +667,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          adiabatic_gradient_dp = adiabatic_gradient_dp + &
               ramp_factor*saha_adiabatic_gradient_dp
       end if
-  200 continue
+      end if
+      end if
 
 !     1995 OPAL eqos
       if (use_opal95_eos) then
@@ -701,7 +689,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               in_opal_table, needs_ramp, ierr)
          if (ierr /= 0) return
 
-         if (.not.in_opal_table) goto 998  ! Point is not in OPAL 1995 EOS table, so exit.
+         if (.not.in_opal_table) then
+            continue
+            return
+         end if
 
          if (.not.needs_ramp) then
 !           No ramping needed between OPAL 1995 EOS and Yale/SCV. Result
@@ -765,7 +756,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !        eqbound01 determines whether or not the point is in the OPAL
 !        2001 EOS table
 
-         if (.not.in_opal_table) goto 998  ! Point is not in OPAL 2001 table, so exit.
+         if (.not.in_opal_table) then
+            continue
+            return
+         end if
 !        USE OPAL RESULTS IF NOT IN (RHO,T) REGIME WHERE RAMP NEEDED
          if (.not.needs_ramp) then
 !           No ramping needed between OPAL 2001 EOS and Yale/SCV. Result
@@ -834,7 +828,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !        Also, to eliminate a point, one can set needs_ramp to true and
 !        ramp_factor to zero.
 
-         if (.not.in_opal_table) goto 998  ! Point is not in OPAL 2006 EOS table, so exit.
+         if (.not.in_opal_table) then
+            continue
+            return
+         end if
 
 !        USE OPAL 2006 RESULTS ONLY IF NOT IN (RHO,T) REGIME WHERE
 !        RAMPING is NEEDED

@@ -22,11 +22,6 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       double precision, intent(in) :: temperature, log10_density
       double precision, intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
-
-
-
-      save
-
 ! --- locals ---
       double precision :: t6, table_edge_density, ramp_start_density
       double precision :: t6_top_of_table, t_fraction
@@ -39,16 +34,22 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       t6 = temperature*1.0d-6
 !     exit if outside table in rho
       if (log10_density.lt.-14d0 .or. log10_density.gt.5.0d0) then
-         goto 9999        ! Out of Table in density. Go to Error exit
+         continue
+         in_opal_table = .false.
+         needs_ramp = .true.
+         ramp_factor = 0d0
+         
+         return
       end if
 !     find nearest table element in t.
       if (t6.lt.opal_eos%t6_grid(opal_eos%t_row_index)) then
          do t6_scan_idx = opal_eos%t_row_index+1, nt
             if (t6.ge.opal_eos%t6_grid(t6_scan_idx)) then
                opal_eos%t_row_index = t6_scan_idx - 1
-               goto 10
+               exit
             end if
          end do
+         if (t6_scan_idx > nt) then
          t6_top_of_table = opal_eos%t6_grid(nt)
 !        sr call should have been stopped outside table bounds; stop code
          write(*,5) t6, t6_top_of_table, opal_eos%t_row_index
@@ -57,14 +58,15 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
-   10    continue
+         end if
       else
          do t6_scan_idx = opal_eos%t_row_index, 1, -1
             if (t6.le.opal_eos%t6_grid(t6_scan_idx)) then
                opal_eos%t_row_index = t6_scan_idx
-               goto 20
+               exit
             end if
          end do
+         if (t6_scan_idx < (1)) then
          t6_top_of_table = opal_eos%t6_grid(1)
 !        sr call should have been stopped outside table bounds; stop code
          write(*,5) t6, t6_top_of_table, opal_eos%t_row_index
@@ -72,7 +74,7 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
-   20    continue
+         end if
       end if
       t_fraction = (t6 - opal_eos%t6_grid(opal_eos%t_row_index+1))/ &
            (opal_eos%t6_grid(opal_eos%t_row_index)-opal_eos%t6_grid(opal_eos%t_row_index+1))
@@ -85,7 +87,12 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       ramp_start_density = log10(ramp_start_density)
 !     check if within table bounds in rho
       if (log10_density.gt.table_edge_density) then
-         goto 9999     ! Out of table in density. Go to error exit
+         continue
+         in_opal_table = .false.
+         needs_ramp = .true.
+         ramp_factor = 0d0
+         
+         return
       end if
 
 !     If we get here, the point is in the table.
@@ -113,7 +120,6 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       return
 
 !     Error Exit.
- 9999 continue
       in_opal_table = .false.       ! Not in table
       needs_ramp = .true.           ! Turn on ramping
       ramp_factor = 0d0             ! Set ramping factor to zero

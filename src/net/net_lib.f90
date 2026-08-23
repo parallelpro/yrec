@@ -134,8 +134,6 @@ subroutine nulosses(temp,den,snu,xmass,ymass,aion,zion, &
                      dsnudt,dsnudd)
 
       implicit none
-      save
-
 !..tests the neutrino loss rate routine
 
 !..ionmax  = number of isotopes in the network
@@ -171,8 +169,6 @@ end subroutine nulosses
 subroutine azbar(xmass,aion,zion,ionmax, &
                  ymass,abar,zbar)
       implicit none
-      save
-
 !..input
 !..mass fractions     = xmass(1:ionmax)
 !..number of nucleons = aion(1:ionmax)
@@ -222,9 +218,6 @@ end subroutine azbar
 subroutine sneut(temp,den,abar,zbar, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
 implicit none
-save
-
-
 !..this routine computes neutrino losses from the analytic fits of
 !..itoh et al. apjs 102, 411, 1996, and also returns their derivatives.
 
@@ -1732,11 +1725,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !
 ! BY COMPARISON WITH EQUATION 3.14 OF NEUTRINO ASTROPHYSICS, WE SEE THAT
 !
-!  Q1 = (5/(12*TAU))*T_9^(-1/3) .
-!  Q2 = (S'/S)(E_0))*T_9^(-2/3) .
-!  Q3 = (S'/S)(35/36)(K*10^9 K)
-!  Q4 = (S''/2S)(E_0^2)(T_9^(-4/3)
-!  Q5 = (89/72)(S''/S)(E_0)(KT)(T_9^(-5/3)
 !
 ! EACH OF THE Q'S IS INDEPENDENT OF TEMPERATURE (T), AS CAN BE SEEN FROM
 !  EQUATIONS 3.10 AND 3.11 .
@@ -1842,7 +1830,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          -1.36/,z86/1.630,5.917,5.917,8.302,8.302,9.520,10.716,16.192, &
          20.978,16.192,18.606,16.192,45.6635/, &
          c21/5.240358E-8/
-      save
 ! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
 !  ISOTOPES.
 ! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
@@ -1903,13 +1890,13 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       mu_e_inv = 0.
       xtr = 0.
       zeta0 = 0.
-      do 10 i = 1,num_isotopes
+      do i = 1,num_isotopes
          trm = mass_frac(i)/atomic_mass(i)
          mu_ion_inv = mu_ion_inv+trm
          mu_e_inv = mu_e_inv+trm*atomic_charge(i)
          xtr = xtr+trm*atomic_charge(i)**1.58
          zeta0 = zeta0+trm*atomic_charge(i)**2
-   10 continue
+      end do
 ! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
 !  THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
 !  GM PER CM^3 .
@@ -1926,11 +1913,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       log_rho_local = log_density
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
       if(log_temperature.le.tcut(1)) then
-         do 20 i = 1,num_reactions
+         do i = 1,num_reactions
             rate(i) = 0.
-   20    continue
-         go to 200
-      endif
+         end do
+      else
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
 !  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
 !  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
@@ -2009,7 +1995,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       z_bar_13=z_bar**cc13
       lambda0_zcurl=lambda0*z_curl
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
-      do 30 i=1,num_reactions
+      do i=1,num_reactions
          weak_screening_u=lambda0_zcurl*charge_product(i)
          if(weak_screening_u.le.weak_screening_threshold) then
 ! WEAKSCREENING IS A NUMERICAL PARAMETER PASSED IN THE FLUX COMMON
@@ -2037,7 +2023,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
                endif
             endif
          endif
-   30 continue
+      end do
 ! ****************************************************************
 ! END OF SCREENING CALCULATION. WEAK AND INTERMEDIATE SCREENING FORMS
 !  ARE GIVEN CORRECTLY.  STRONG SCREENING WAS NOT CHECKED BECAUSE IT IS
@@ -2047,8 +2033,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       if(hydrogen_fraction.eq.0.0) then
          be7_electron_frac=0.
          c12_alpha_frac=0.
-         goto 50
-      endif
+      else
       nz=8
 ! **************************************************************
 !  CALCULATE REACTION RATES FOR THE THREE PRINCIPAL REACTIONS OF
@@ -2065,7 +2050,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  MULTIPLIED BY T9**(-1/7). THIS FACTOR IS INCORRECT AND HAS BEEN
 !  REMOVED; IT APPEARED BEFORE AS AN IF STATEMENT REFERRING ONLY TO
 !  RATE(7).
-      do 40 i=1,7
+      do i=1,7
 !         R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
 ! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
 ! RATE DERIVATIVES
@@ -2074,7 +2059,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          rate(i)=density*r1*exp(q6(i)*t9m13+q7(i)+(q8(i)*t9)**2+screening_factor(i))
          rate(i) = rate(i)*cross_section_scale(i)
          if(rate(i).lt.1.E-30) rate(i)=0.0d0
-   40 continue
+      end do
 ! ***************************************************************
 ! END OF CALCULATION OF REACTION RATES FOR FIRST 7 REACTIONS.
 ! ***************************************************************
@@ -2180,9 +2165,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
       o16_gamma_frac = 1.0d0 - c12_alpha_frac
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
-   50 do 60 i=nz,num_reactions
+      endif
+      do i=nz,num_reactions
          rate(i)=0.
-   60 continue
+   end do
 !***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
 !   RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
 !   THE CONVERSION FACTOR IN THE FRONT OBTAINED FROM VANDENBERG'S
@@ -2191,7 +2177,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if(log_temperature.lt.tcut(4)) go to 100
+      if (log_temperature.ge.tcut(4)) then
 ! C13(ALPHA,N) O16
       r1=t9m23+0.0129d0*t9m13+2.04d0+0.184d0*t9p13
       a1 = 6.77d15*exp(-32.329d0*t9m13-(t9/1.284d0)**2)
@@ -2221,13 +2207,13 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! TRIPLE ALPHA
       rate(12) = 1.565315d21*density**2*t9m1*t9m2*2.79E-8* &
                  exp(-4.4027*t9m1+screening_factor(12))
-  100 continue
+      end if
       rate(9) = 0.0d0
       rate(13) = 0.0d0
 ! END OF XEROING OUT OF REACTIONS 9 AND 13.
-      do 130 i=1,num_reactions
+      do i=1,num_reactions
          if(rate(i).le.1.E-5) rate(i) = 0.0
-  130 continue
+      end do
 ! ******************************************************
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
 ! ******************************************************
@@ -2237,7 +2223,8 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
 ! C21 IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*(1 ATOMIC MASS UNIT/1
 !  GRAM). I HAVE USED HERE SIDEREAL YEAR IN CONVERTING TO SECONDS.
-  200 rate_pp(zone_idx)=rate(1)*c21
+      endif
+      rate_pp(zone_idx)=rate(1)*c21
       rate_he3_he3(zone_idx)=rate(2)*c21
       rate_he3_he4(zone_idx)=rate(3)*c21
       rate_c12_p(zone_idx)=rate(4)*c21
@@ -2302,8 +2289,6 @@ double precision function ifermi12(fermi_half_integral)
            coef_num_large(12), coef_den_large(12), numerator, denominator, &
            scaled_arg
 !     unused in the original: z,drn
-      save
-
 !..load the coefficients of the expansion
       data  fd_order,deg_num_small,deg_den_small,deg_num_large,deg_den_large &
            /0.5d0, 4, 3, 6, 5/
@@ -2372,8 +2357,6 @@ double precision function zfermim12(degeneracy_parameter)
       double precision :: coef_num_small(12), coef_den_small(12), &
            coef_num_large(12), coef_den_large(12), numerator, denominator, &
            scaled_arg
-      save
-
 !..load the coefficients of the expansion
 !       data  fd_order,deg_num_small,deg_den_small,deg_num_large,deg_den_large /-0.5d0, 7, 7, 11, 11/  ! KC 2025-05-31
       data  deg_num_small,deg_den_small,deg_num_large,deg_den_large /7, 7, 11, 11/

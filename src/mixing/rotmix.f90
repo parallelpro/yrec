@@ -22,9 +22,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass, ierr)
 
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_actual
       use luout_lib
       use const_lib
       implicit none
@@ -66,8 +64,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       double precision :: dlnp_dr_settling(json), del_grad2_save(json)
       logical :: am_transport_convective_flag(json)
       double precision :: total_mass
-      save
-
       integer :: zone_idx, region_idx, species_idx, burn_zone_start, &
            burn_zone_end, outer_boundary_zone, num_settling_substeps, &
            substep_idx
@@ -110,11 +106,11 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 !
 ! RADIATIVE ZONES.
 !
-      do 40 region_idx = 1,num_radiative_zones
-         do 30 zone_idx = radiative_zone_bounds(region_idx,1), &
+      do region_idx = 1,num_radiative_zones
+         do zone_idx = radiative_zone_bounds(region_idx,1), &
               radiative_zone_bounds(region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (log_temperature(zone_idx).le.tcut(1)) goto 45
+            if (log_temperature(zone_idx).le.tcut(1)) exit
             burn_zone_start = zone_idx
             burn_zone_end = zone_idx
             call kemcom(log_temperature,burn_zone_start,burn_zone_end, &
@@ -126,14 +122,15 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
                  rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
                  timestep_years, ierr)
             if (ierr /= 0) return
-   30    continue
-   40 continue
-   45 continue
+         end do
+      end do
+      if (region_idx > num_radiative_zones) then
+      end if
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
 !
-      do 50 region_idx = 1,num_convective_zones
+      do region_idx = 1,num_convective_zones
          burn_zone_start = convective_zone_bounds(region_idx,1)
          burn_zone_end = convective_zone_bounds(region_idx,2)
          call kemcom(log_temperature,burn_zone_start,burn_zone_end, &
@@ -145,7 +142,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
               rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
               timestep_years, ierr)
          if (ierr /= 0) return
-   50 continue
+      end do
 !
 ! MICROSCOPIC DIFFUSION OF HELIUM.
 !
@@ -155,9 +152,10 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
       if (diffuse_helium_active) then
+      settling: do
          if (composition(1,1).lt.hydrogen_diffusion_floor) then
             diffuse_helium_active=.false.
-            goto 170
+            exit settling
          end if
 ! MHP 6/90 CHANGE ADDED : THE TIMESTEP FOR SETTLING IS RESTRICTED TO
 !   A FRACTION OF THE TIMESCALE FOR SETTLING AT THE OUTER BOUNDARY.
@@ -179,24 +177,23 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          end if
 ! 7/92 MHP STATEMENT ADDED FOR EXIT IF OVERSHOOT CAUSES A FULLY CONVECTIVE
 ! CASE.  AVOIDS OCCASIONAL PRE-MS CRASH IN FIRST RADIATIVE MODEL.
-         if (convective_zone_bounds(num_convective_zones,1).le.2 .and. &
-              convective_zone_bounds(num_convective_zones,2).eq.num_zones) &
-              goto 170
+         if (convective_zone_bounds(num_convective_zones,1).gt.2 .or. convective_zone_bounds(num_convective_zones,2).ne.num_zones) then
          outer_boundary_zone = radiative_zone_bounds(num_radiative_zones,2)
-         do 140 zone_idx = outer_boundary_zone,1,-1
-            if (composition(2,zone_idx).gt.helium_diffusion_min) goto 150
-  140    continue
+         do zone_idx = outer_boundary_zone,1,-1
+            if (composition(2,zone_idx).gt.helium_diffusion_min) exit
+         end do
+         if (zone_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
-         goto 170
-  150    continue
+         exit settling
+         end if
          total_mass=exp(ln10*log_total_mass)
-         do 130 zone_idx = 1,num_zones
-            del_grad2_save(zone_idx) = star%diag%del_grad(2,zone_idx)
-            star%diag%del_grad(2,zone_idx) = star%mix_phys%delm(zone_idx)
+         do zone_idx = 1,num_zones
+            del_grad2_save(zone_idx) = star%diag%del_grad(i_grad_actual,zone_idx)
+            star%diag%del_grad(i_grad_actual,zone_idx) = star%mix_phys%delm(zone_idx)
             dlnp_dr_settling(zone_idx)=-exp(ln10*(log_density(zone_idx)+ &
                  cgl+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
                  log_pressure(zone_idx)))
-  130    continue
+         end do
 ! ***BC 6/92 only check for timestep cutting if JMAX is large
 !
          if (outer_boundary_zone.ge.2) then
@@ -236,7 +233,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
                am_transport_convective_flag(zone_idx) = .true.
             end do
          end do
-         do 160 substep_idx = 1,num_settling_substeps
+         do substep_idx = 1,num_settling_substeps
 ! PERFORM GRAVITATIONAL SETTLING. IF LNEWDIF = TRUE, USE THE NEW ROUTINES
 ! IN MICRODIFF. ELSE, USE THE OLD ROUTINES IN GRSETT.
             if (use_new_diffusion_routines) then
@@ -248,27 +245,29 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
                     am_transport_convective_flag,num_zones,total_mass)
             end if
-  160    continue
-         do zone_idx = 1,num_zones
-            star%diag%del_grad(2,zone_idx) = del_grad2_save(zone_idx)
          end do
-  170    continue
+         do zone_idx = 1,num_zones
+            star%diag%del_grad(i_grad_actual,zone_idx) = del_grad2_save(zone_idx)
+         end do
+         end if
+      exit settling
+      end do settling
       end if
 ! END OF GRAVITATIONAL SETTLING
 !
 ! RENORMALIZE COMPOSITION TO GUARD AGAINST ANOMALIES (I.E. SMALL NEGATIVE
 ! ABUNDANCES...).
-      do 180 zone_idx = 1,num_zones
-         do 175 species_idx = 1,num_species
+      do zone_idx = 1,num_zones
+         do species_idx = 1,num_species
             composition(species_idx,zone_idx) = &
                  max(composition(species_idx,zone_idx),0.0d0)
             composition(species_idx,zone_idx) = &
                  min(composition(species_idx,zone_idx),1.0d0)
-  175    continue
+         end do
          composition(3,zone_idx) = min(composition(3,zone_idx), &
               1.0d0-composition(1,zone_idx)-composition(4,zone_idx))
          composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
               composition(3,zone_idx) - composition(4,zone_idx)
-  180 continue
+      end do
       return
 end subroutine rotmix

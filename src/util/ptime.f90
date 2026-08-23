@@ -36,15 +36,6 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
            log_radius(json), log_temperature(json)
       integer, intent(in) :: num_points
       double precision, intent(out) :: struct_dt
-
-
-
-
-
-
-
-      save
-
 ! max_change: maximum absolute time differences for each quantity
 ! (1 = P, 2 = T, 3 = R, 4 = L). max_change_index is the model point at
 ! which each maximum occurred; it is assigned but (as in the original)
@@ -57,35 +48,35 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
 
 ! find maximum absolute time differences for each quantity
 ! pressure
-      max_change(1)=abs(star%prev%old_pressure(1)-log_pressure(1))
+      max_change(1)=abs(star%prev%logP_start(1)-log_pressure(1))
 ! temperature
-      max_change(2)=abs(star%prev%old_temperature(1)-log_temperature(1))
+      max_change(2)=abs(star%prev%logT_start(1)-log_temperature(1))
 ! radius
-      max_change(3)=abs(star%prev%old_radius(1)-log_radius(1))
+      max_change(3)=abs(star%prev%logR_start(1)-log_radius(1))
 ! luminosity
       if(luminosity(1)+luminosity(2).gt.0.0d0) then
-       max_change(4)=abs((star%prev%old_luminosity(1)-luminosity(1))*2.d0/(luminosity(2)+luminosity(1)))
+       max_change(4)=abs((star%prev%luminosity_lsun_start(1)-luminosity(1))*2.d0/(luminosity(2)+luminosity(1)))
       else
        max_change(4) = 0.0d0
       endif
-      do 40 i = 2,num_points
-       test_p = abs(star%prev%old_pressure(i)-log_pressure(i))
+      do i = 2,num_points
+       test_p = abs(star%prev%logP_start(i)-log_pressure(i))
        if(max_change(1).le.test_p) then
           max_change(1) = test_p
           max_change_index(1) = i
        endif
-       test_t = abs(star%prev%old_temperature(i)-log_temperature(i))
+       test_t = abs(star%prev%logT_start(i)-log_temperature(i))
        if(max_change(2).le.test_t) then
           max_change(2) = test_t
           max_change_index(2) = i
        endif
-       test_r = abs(star%prev%old_radius(i)-log_radius(i))
+       test_r = abs(star%prev%logR_start(i)-log_radius(i))
        if(max_change(3).le.test_r) then
           max_change(3) = test_r
           max_change_index(3) = i
        endif
        if(luminosity(i)+luminosity(i-1).gt.0.0d0) then
-          test_l = abs((star%prev%old_luminosity(i)-luminosity(i))*2.0d0/(luminosity(i)+luminosity(i-1)))
+          test_l = abs((star%prev%luminosity_lsun_start(i)-luminosity(i))*2.0d0/(luminosity(i)+luminosity(i-1)))
        else
           test_l = 0.0d0
        endif
@@ -93,7 +84,7 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
           max_change(4) = test_l
           max_change_index(4) = i
        endif
-   40 continue
+      end do
 ! now actually limit the timestep by a factor that reduces the
 ! time changes in all quantities to the ps values or less
       dt_factor = max_change(1)/atime(9)

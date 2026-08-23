@@ -29,9 +29,6 @@ subroutine hsolve(num_shells, elim_coeff, elim_rhs, surface_bc)
       double precision, intent(in) :: elim_coeff(4,2,json)
       double precision, intent(inout) :: elim_rhs(4,json)
       double precision, intent(in) :: surface_bc(6)
-
-      save
-
       double precision :: pivot_divisor, pivot_ratio, t_coupling_term
       double precision :: correction_p, correction_t
       double precision :: p_store, t_store

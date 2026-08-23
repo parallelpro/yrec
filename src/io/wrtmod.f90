@@ -20,15 +20,12 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
       use atm_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use envint_lib, only: atm_get
+      use star_info_lib, only: star, i_grad_actual, i_grad_ad
       use luout_lib
       use const_lib
       use yale_eos_lib
+
       implicit none
       integer, parameter :: json = 5000
 
@@ -81,9 +78,6 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 ! here.
       integer :: pulsation_point_id(json)
       integer :: num_pulsation_points
-
-      save
-
 ! --- locals ---
       integer :: i
       double precision :: fr, fm, xx1, xxx, xx2, xx3, xx4, xx5, sound_velocity
@@ -122,7 +116,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             xxx = -exp(ln10*(cgl+log_mass(i)+log_density(i)-log_pressure(i)-log_radius(i)))
             xx2 = -xxx/star%run%adiabatic_index_gamma1(i)
             xx3 = star%run%adiabatic_index_gamma1(i)
-            xx4 = -xx2-xxx*(star%pulse%pulse_dlnrho_dlnp(i)+star%diag%del_grad(2,i)*star%pulse%pulse_dlnrho_dlnt(i))
+            xx4 = -xx2-xxx*(star%pulse%pulse_dlnrho_dlnp(i)+star%diag%del_grad(i_grad_actual,i)*star%pulse%pulse_dlnrho_dlnt(i))
             xx5 = exp(ln10*(c4pil+log_density(i)+3.0D0*log_radius(i)-log_mass(i)))
             sound_velocity = 1.0D-5*sqrt(star%run%adiabatic_index_gamma1(i)*exp(ln10*(log_pressure(i)-log_density(i))))
             write(imodpt,123)fr,fm,xx1,xx2,xx3,xx4,xx5,sound_velocity
@@ -238,7 +232,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
                 ' MIXING LENGTH PARAMETER=', 0PF16.10,/, &
                 ' ZAMS (X,Z)=', 2F18.10)
       end if
-      do 220 j = 1,num_pulsation_points
+      do j = 1,num_pulsation_points
        i = pulsation_point_id(j)
        fs = fsi*mass_coordinate(i)
 !
@@ -250,32 +244,32 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 ! MHP 10/02 uncommented pelpf statement, used later in i/o
 !         PELPF = CGAS * DEXP(CLN*(HT(I) + HD(I)))* PEMU(I)
 !          ADDED X AND Z TO OUTPUT
-         if ((j.eq.2).and.(i.eq.1)) goto 5003
+         if (j.ne.2 .or. i.ne.1) then
          if(pulsation_file_version.eq.1) then
          pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* star%pulse%pulse_electron_mean_molecular_weight(i)
          write(opal_model_unit, 5052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
                 log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i), &
-                star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(2,i),star%diag%del_grad(3,i), &
+                star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i), &
                 star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), pelpf
          else if (pulsation_file_version.eq.2) then
          write(opal_model_unit, 6052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
             log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i), &
-            star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(2,i),star%diag%del_grad(3,i), &
+            star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i), &
             star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Modifed to include mixing length variables
          write(opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),star%rot%valfmlt(i), &
             log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i),star%rot%vphmlt(i), &
-            star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(2,i),star%diag%del_grad(3,i),star%rot%vcmxmlt(i), &
+            star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i),star%rot%vcmxmlt(i), &
             star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          end if
- 5003      continue
+         end if
  5052      format(5E16.9,/,5E16.9,/,5E16.9,/,5E16.9)
  6052      format(5E23.16,/,5E23.16,/,5E23.16,/,5E23.16)
  6053      format(6E23.16,/,6E23.16,/,6E23.16,/,5E23.16)
       end if
 ! DBG END
-  220 continue
+      end do
 !
 ! G Somers 11/14 REMOVED LONG BLOCK
 !

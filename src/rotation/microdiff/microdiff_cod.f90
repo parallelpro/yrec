@@ -28,12 +28,9 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col)
 
-      use run_diag_lib
-      use scrtch_lib
+      use star_info_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
-
       integer, intent(in) :: num_eq_points
       double precision, intent(in) :: species_fraction(3,json), &
            eq_radius(json), eq_density(json), eq_temperature(json), &
@@ -61,8 +58,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
       integer :: num_species
       data num_species/4/
 !       DATA FGRLI/1.0,1.0,1.0,1.0/
-      save
-
       integer :: i, ii, jj
       double precision :: bl_radius_scale_local, bl_temp_scale_local, &
            hru_i, htu_i, fac, ap, at, ah, ad, dlncdr, coni, conip1, conim1, &
@@ -82,7 +77,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
       bl_radius_scale_local=1.0d0/6.9598d10
       bl_temp_scale_local=1.0d-7
 ! CALCULATE DIFFUSION COEFFICIENTS FOR EACH LAYER.
-      do 5 i = 1,num_eq_points
+      do i = 1,num_eq_points
          mass_frac(1) = species_fraction(1,i)
          mass_frac(2) = species_fraction(2,i)
          mass_frac(3) = species_fraction(3,i)
@@ -107,7 +102,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          if(species_fraction(species_col,i).eq.0.0.and.i.ne.num_eq_points)then
             if(species_fraction(species_col,i+1).eq.0.0)then
                diffusion_term(i) = 0.0
-               goto 5
+               cycle
             endif
          endif
 !        set relevant physical variables.
@@ -173,8 +168,8 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          temp_term(i) = at
          hydrogen_term(i) = ah
          diffusion_term(i) = ad
-    5 continue
-      do 10 i = 1,num_eq_points
+      end do
+      do i = 1,num_eq_points
          fac = coeff_scale(i)
          ap = pressure_term(i)
          at = temp_term(i)
@@ -221,6 +216,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          diffusion_coeff1(i) = fac*(eq_dlnp_dr(i)*(ap+at)+dlncdr*ah)* &
               species_fraction(species_col,i)
          diffusion_coeff2(i) = fac*ad
-   10 continue
+      end do
       return
 end subroutine microdiff_cod

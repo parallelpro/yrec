@@ -45,15 +45,6 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
       double precision, intent(out) :: frac_c12_alpha(json), &
            frac_be7_electron(json)
       integer, intent(in) :: h_shell_zone_begin
-
-
-
-
-
-
-
-      save
-
       double precision :: max_temp, local_log_density, local_log_temperature
       integer :: max_temp_zone, zone_idx, engeb_zone
       double precision :: hydrogen_fraction, helium_fraction, &
@@ -72,12 +63,12 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
 !     search for temperature maximum
        max_temp = 0.0d0
        max_temp_zone = 1
-       do 210 zone_idx = 1,num_points
+       do zone_idx = 1,num_points
           if (log_temperature(zone_idx).gt.max_temp) then
              max_temp_zone = zone_idx
              max_temp = log_temperature(zone_idx)
           endif
-  210    continue
+       end do
 !     calculate helium burning rate at tmax
        local_log_density = log_density(max_temp_zone)
        local_log_temperature = log_temperature(max_temp_zone)

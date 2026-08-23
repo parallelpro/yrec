@@ -63,8 +63,6 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
 
 
       double precision :: ion_fraction(3)
-      save
-
       logical :: only_check_core
       integer :: loop_upper_bound, zone_idx, edge_side
       logical :: up_semiconv_flag, down_semiconv_flag
@@ -113,7 +111,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
       else
          loop_upper_bound = num_zones_mixed
       end if
-      do 210 zone_idx = 1, loop_upper_bound
+      do zone_idx = 1, loop_upper_bound
 
 ! DETERMINE IF THIS REGION IS A CORE CONVECTION ZONE, SURFACE CZ,
 ! OR INTERMEDIATE CZ.
@@ -135,10 +133,10 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
             down_semiconv_flag = .true.
          end if
 ! CHECK SEMICONVECTION BELOW (K=1) AND ABOVE (K=2) THE CZ.
-         do 200 edge_side = 1, 2
+         do edge_side = 1, 2
 ! SKIP SEMI-CONVECTION BELOW A CENTRAL CZ AND ABOVE A SURFACE ONE.
-            if (edge_side.eq.1.and..not.down_semiconv_flag) goto 200
-            if (edge_side.eq.2.and..not.up_semiconv_flag) goto 200
+            if (edge_side.eq.1.and..not.down_semiconv_flag) cycle
+            if (edge_side.eq.2.and..not.up_semiconv_flag) cycle
 ! JMC AND JMR ARE THE LOCATIONS OF THE EDGE OF THE CONVECTIVE ZONE
 ! AND THE FIRST RADIATIVE POINT OUTSIDE IT RESPECTIVELY.
             cz_edge_idx = mixed_zone_bounds(zone_idx,edge_side)
@@ -194,7 +192,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  temperature_rotation_factor, log_teff, ierr)
             if (ierr /= 0) return
 ! SKIP IF ZONE IS STABLE WITH THE CORE COMPOSITION.
-            if (radiative_gradient.lt.adiabatic_gradient) goto 200
+            if (radiative_gradient.lt.adiabatic_gradient) cycle
 ! STORE MEAN MOLECULAR WEIGHT, ADJUSTED RADIATIVE TEMPERATURE GRADIENT,
 ! AND THE QUANTITY (DELR - DELA)/DELR.
             boundary_mean_molecular_weight = ion_mean_weight_inverse + &
@@ -262,7 +260,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                search_end = num_zones
                search_step = 1
             end if
-            do 32 search_zone_idx = search_begin, search_end, search_step
+            do search_zone_idx = search_begin, search_end, search_step
 ! TEST ON MAXIMUM OVERSHOOTING LIMIT IN RADIUS
                if (edge_side.eq.1) radius_curr = &
                     exp(ln10*log_radius(search_zone_idx+1))
@@ -274,7 +272,10 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                     ion_mean_weight_inverse+electron_mean_weight_inverse))* &
                     radius_diff
                radius_prev = radius_curr
-               if (radius_sum.gt.max_overshoot_radius) goto 33
+               if (radius_sum.gt.max_overshoot_radius) then
+                  reached_max_extent = .true.
+                  exit
+               end if
 ! TEST ON RESCALED RAD. GRADIENT FOR CONVECTION
                log_luminosity_zone = log_luminosity(search_zone_idx)
                log_mass_zone = log_mass(search_zone_idx)
@@ -317,13 +318,15 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                if (ierr /= 0) return
                log_density(search_zone_idx) = log_density_zone
 ! EXIT IF ZONE IS RADIATIVELY STABLE.
-               if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) &
-                    goto 34
-   32       continue
-            if (edge_side.eq.1) search_zone_idx = 0
-            if (edge_side.eq.2) search_zone_idx = num_zones + 1
-   33       reached_max_extent = .true.
-   34       continue
+               if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) exit
+            end do
+! (Natural loop completion already leaves search_zone_idx at 0 for a
+! downward scan and num_zones+1 for an upward one -- the old explicit
+! resets before label 33 were redundant. Both fall-through paths set
+! reached_max_extent; the radiative-stability exit does not.)
+            if (search_zone_idx .lt. 1 .or. search_zone_idx .gt. num_zones) then
+               reached_max_extent = .true.
+            end if
 ! ASSIGN THE NEW EDGE LOCATION TO MXZONE.
             if (edge_side.eq.1) then
                mixed_zone_bounds(zone_idx,edge_side) = search_zone_idx + 1
@@ -337,12 +340,12 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  local_radiative_gradient
   601       format(1x,'CZ OLD EDGE ',i3,' EXTENDED TO-', &
                  i3,' LIMIT=',l1,' RAD.GRADS-IN/OUT',2f8.4)
-  200    continue
-  210 continue
+         end do
+      end do
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY SEMI-CONVECTION.
       if (num_zones_mixed.le.1) return
       k_idx = 1
-   85 continue
+      merge_scan: do
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
       if (mixed_zone_bounds(k_idx,2).gt.mixed_zone_bounds(k_idx+1,1)) then
 !  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
@@ -353,21 +356,22 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
               /2x,'OLD',2('[',i3,'-',i3,']'), &
               ' NEW','[',i3,'-',i3,']')
          mixed_zone_bounds(k_idx+1,1) = mixed_zone_bounds(k_idx,1)
-         do 90 zone_idx = k_idx, num_zones_mixed-1
-            do 95 pair_idx = 1, 2
+         do zone_idx = k_idx, num_zones_mixed-1
+            do pair_idx = 1, 2
                mixed_zone_bounds(zone_idx,pair_idx) = &
                     mixed_zone_bounds(zone_idx+1,pair_idx)
-   95       continue
-   90    continue
+            end do
+         end do
          num_zones_mixed = num_zones_mixed - 1
          if (k_idx.le.num_zones_mixed-1) then
-            goto 85
+            cycle merge_scan
          else
             return
          end if
       end if
       k_idx = k_idx + 1
-      if (k_idx.le.num_zones_mixed-1) goto 85
+      if (k_idx.gt.num_zones_mixed-1) exit merge_scan
+      end do merge_scan
 
       return
 end subroutine sconvec

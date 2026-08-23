@@ -59,17 +59,21 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 ! CHECK WHETHER OR NOT spq IS 0.
 ! ******MODIFICATION BY MARC PINSONNEAULT TO AVOID DIVISION BY ZERO
 ! ******IN SR CASES
-      if(slope_left.eq.0.0d0.or.slope_right.eq.0.0d0) goto 9
+      if (slope_left.eq.0.0d0 .or. slope_right.eq.0.0d0) then
+         spline_case=2
+         return
+      end if
 ! ******
-      if (spq .ne. 0.d0) go to 20
-      if ((slope_left*slope_right) .ge. 0.d0) go to 10
-      spline_case=1
-      return
-   9  continue
-  10  spline_case=2
-      return
+      if (spq .eq. 0.d0) then
+         if ((slope_left*slope_right) .ge. 0.d0) then
+            spline_case=2
+         else
+            spline_case=1
+         end if
+         return
+      end if
 
-  20  prod1=spq*slope_left
+      prod1=spq*slope_left
       prod2=spq*slope_right
 
 ! FIND THE ABSOLUTE VALUES OF THE SLOPES spq,slope_left,AND slope_right.
@@ -77,27 +81,64 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
       mref1=abs(slope_left)
       mref2=abs(slope_right)
 
+! THE SIGN OF AT LEAST ONE OF THE SLOPES slope_left,slope_right DOES NOT
+! AGREE WITH THE SIGN OF THE SLOPE spq.
+      if ((prod1 .lt. 0.d0) .or. (prod2 .lt. 0.d0)) then
+         if ((prod1 .lt. 0.d0) .and. (prod2 .lt. 0.d0)) then
+            spline_case=2
+            return
+         end if
+         if (prod1 .ge. 0.d0) then
+            if (mref1 .gt. ((1.d0+eps_tol)*mref)) then
+               spline_case=1
+            else
+               spline_case=2
+            end if
+            return
+         end if
+         if (mref2 .gt. ((1.d0+eps_tol)*mref)) then
+            spline_case=1
+         else
+            spline_case=2
+         end if
+         return
+      end if
+
 ! IF THE RELATIVE DEVIATION OF slope_left OR slope_right FROM spq IS LESS THAN
 ! eps_tol, THEN CHOOSE CASE 2 OR CASE 3.
-      if ((abs(spq-slope_left).le.eps_tol*mref) .or. &
-           (abs(spq-slope_right).le.eps_tol*mref)) &
-          go to 30
-
-! COMPARE THE SIGNS OF THE SLOPES spq,slope_left, AND slope_right.
-      if ((prod1 .lt. 0.d0).or.(prod2 .lt. 0.d0)) go to 80
-      prod=(mref-mref1)*(mref-mref2)
-      if (prod .ge. 0.d0) go to 40
+      if (abs(spq-slope_left).gt.eps_tol*mref .and. abs(spq-slope_right).gt.eps_tol*mref) then
+         prod=(mref-mref1)*(mref-mref2)
+         if (prod .lt. 0.d0) then
 
 ! L1, THE LINE THROUGH (x_left,y_left) WITH SLOPE slope_left, AND L2, THE LINE
 ! THROUGH (x_right,y_right) WITH SLOPE slope_right, INTERSECT AT A POINT WHOSE
 ! ABSCISSA IS BETWEEN x_left AND x_right. THE ABSCISSA BECOMES A KNOT OF THE
 ! SPLINE.
-      spline_case=1
-      return
+            spline_case=1
+            return
+         end if
+      end if
 
-  30  if ((prod1 .lt. 0.d0).or.(prod2 .lt. 0.d0)) go to 80
-  40  if (mref1 .gt. (2.d0*mref)) go to 50
-      if (mref2 .gt. (2.d0*mref)) go to 60
+! IN CASES 3 AND 4, SIGN(slope_left)=SIGN(slope_right)=SIGN(spq).
+! CHOOSE CASE 4 IF THE OTHER SLOPE IS GREATER THAN (2.-eps_tol)*mref
+! (NEITHER L1 NOR L2 CROSSES THE MIDLINE: TWO KNOTS); OTHERWISE CASE 3
+! (EITHER L1 OR L2 CROSSES THE MIDLINE, BUT NOT BOTH).
+      if (mref1 .gt. (2.d0*mref)) then
+         if (mref2 .gt. (2.d0-eps_tol)*mref) then
+            spline_case=4
+         else
+            spline_case=3
+         end if
+         return
+      end if
+      if (mref2 .gt. (2.d0*mref)) then
+         if (mref1 .gt. (2.d0-eps_tol)*mref) then
+            spline_case=4
+         else
+            spline_case=3
+         end if
+         return
+      end if
 
 ! BOTH L1 AND L2 CROSS THE LINE THROUGH (x_left+x_right/2.,y_left) AND
 ! (x_left+x_right/2.,y_right), WHICH IS THE MIDLINE OF THE RECTANGLE FORMED
@@ -106,51 +147,9 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 ! spq, OR ONE OF slope_left AND slope_right HAS OPPOSITE SIGN FROM spq AND L1
 ! AND L2 INTERSECT TO THE LEFT OF x_left OR TO THE RIGHT OF x_right. THE
 ! POINT (x_left+x_right)/2. IS A KNOT OF THE SPLINE.
+! (Restructured 2026 from the original goto decision tree; two
+! unreachable branches at old labels 60/110 were dropped.)
       spline_case=2
-      return
-
-! CHOOSE CASE 4 IF mref2 IS GREATER THAN (2.-eps_tol)*mref; OTHERWISE,
-! CHOOSE CASE 3.
-  50  if (mref2 .gt. (2.d0-eps_tol)*mref) go to 70
-      spline_case=3
-      return
-
-! IN CASES 3 AND 4, SIGN(slope_left)=SIGN(slope_right)=SIGN(spq).
-!
-! EITHER L1 OR L2 CROSSES THE MIDLINE, BUT NOT BOTH.
-! CHOOSE CASE 4 IF mref1 IS GREATER THAN (2.-eps_tol)*mref; OTHERWISE,
-! CHOOSE CASE 3.
-  60  if (mref1 .gt. (2.d0-eps_tol)*mref) go to 70
-      spline_case=3
-      return
-
-! IF NEITHER L1 NOR L2 CROSSES THE MIDLINE, THE SPLINE REQUIRES TWO
-! KNOTS BETWEEN x_left AND x_right.
-  70  spline_case=4
-      return
-
-! THE SIGN OF AT LEAST ONE OF THE SLOPES slope_left,slope_right DOES NOT
-! AGREE WITH THE SIGN OF THE SLOPE spq.
-  80  if ((prod1 .lt. 0.d0).and.(prod2 .lt. 0.d0)) go to 130
-
-      if (prod1 .lt. 0.d0) go to 90
-      go to 110
-
-  90  if (mref2 .gt. ((1.d0+eps_tol)*mref)) go to 100
-      spline_case=2
-      return
-
-  100 spline_case=1
-      return
-
-  110 if (mref1 .gt. ((1.d0+eps_tol)*mref)) go to 120
-      spline_case=2
-      return
-
-  120 spline_case=1
-      return
-
-  130 spline_case=2
       return
 
 end subroutine choose

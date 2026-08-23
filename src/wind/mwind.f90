@@ -20,7 +20,6 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      specific_angular_momentum, ierr)
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -32,18 +31,6 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       double precision, intent(in) :: omega_surface, total_mass_msun, log_teff, &
            cz_moment_of_inertia
       double precision, intent(inout) :: specific_angular_momentum(json)
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: current_turnover_timescale, omega_now, &
            omega_saturation
@@ -74,7 +61,8 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
               total_mass_msun,log_teff,cz_moment_of_inertia, &
               specific_angular_momentum, ierr)
          if (ierr /= 0) return
-         goto 9999
+         continue
+         return
       endif
 !
 ! ADD ROSSBY SCALING IF DESIRED.
@@ -102,9 +90,6 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !
 ! FIND TOTAL RADIUS OF STAR.
 ! G Somers - CGRAV, RTOT not used, so blacking out.
-!         CGRAV = DEXP(CLN*CGL)
-!         RL=0.5D0*(BL+CLSUNL-C4PIL-CSIGL-4.D0*TEFFL)
-!         RTOT = DEXP(CLN*RL)
 ! DMDOT IS THE MASS LOSS RATE IN SOLAR MASSES PER YEAR.
 ! G Somers - Don't need DMDOT anymore.
 !         DMDOT = 2.0D-14
@@ -153,7 +138,7 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !      WRITE(*,3)NSTEP
 !    3 FORMAT(5X,I5)
       omega_substep_start = omega_surface
-      do 100 substep_idx = 1,num_substeps
+      do substep_idx = 1,num_substeps
 ! THE CONSTANT AND EXPONENTS ARE SET IN PARMIN BASED ON THE INPUT
 ! INDEX ALFA;SEE PARMIN FOR DETAILS ON THE DEPENDENCE OF EACH ON ALFA.
 ! ITERATIVE SOLUTION : FOR FIRST GUESS, USE OMEGA=INITIAL OMEGA IN
@@ -163,7 +148,7 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          iter_count = 0
          omega_iter = omega_substep_start
          omega_iter_prev = omega_substep_start
-    5    continue
+         omega_fixed_point: do   ! (was label 5)
 ! G Somers 08/17 IF ADDING ADDITIONAL B SCALING, ADD ADDITIONAL TAUCZ TERM.
          if(scale_by_b_field)then
             omega_now = omega_iter*current_turnover_timescale/ &
@@ -194,10 +179,12 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          if(domega_relative_change.gt.1.0d-6)then
             omega_iter = 0.5d0*(omega_substep_start+omega_iter_new)
             omega_iter_prev = omega_iter_new
-            if(iter_count.le.20)goto 5
+            if(iter_count.le.20)cycle omega_fixed_point
          endif
+         exit omega_fixed_point
+         end do omega_fixed_point
          omega_substep_start = omega_iter_new
-  100 continue
+      end do
 !     CON = DELTS*FACTOR*(DMDOT/1.0D-14)**EXMD*OMEGAS**(EXW-1.0D0)
 !    *        *(RTOT/CRSUN)**EXR*SMASS**EXM
 !     FJDOT = CON*OMEGAS/(1.0D0+(EXW*CON/HICZ))
@@ -207,14 +194,9 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! NUMBER FROM THE J/M OF EACH SHELL IN THE SURFACE CONVECTION ZONE.
       delta_j_per_mass = (omega_surface-omega_iter_new)*cz_moment_of_inertia/ &
            cz_mass
-!      WRITE(*,11)FJDOM,HJM(JSTART),HJM(JEND)
-!   11 FORMAT(5X,1P3E14.6)
-!     FJDOM=FJDOT/DM
-!     TAUJ=SJTOT/(FJDOT/DELTS)/CSECYR
-      do 10 zone_idx = start_zone,end_zone
+      do zone_idx = start_zone,end_zone
          specific_angular_momentum(zone_idx) = &
               specific_angular_momentum(zone_idx) - delta_j_per_mass
-  10  continue
- 9999 continue
+      end do
       return
 end subroutine mwind

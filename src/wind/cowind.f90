@@ -40,7 +40,6 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end, ierr)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -52,15 +51,6 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       double precision, intent(in) :: omega_old
       double precision, intent(out) :: domega_start
       double precision, intent(inout) :: domega_end
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: omega_saturation, log10_radius, total_radius_cm, &
            mass_loss_rate_msun_yr, wind_coefficient, omega_old_capped, &

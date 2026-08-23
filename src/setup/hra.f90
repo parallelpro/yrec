@@ -18,8 +18,6 @@ double precision function hra(optical_depth)
       double precision :: log10_tau, log10_tau2, log10_tau3, log10_tau4, &
            log10_tau5, log10_tau6, log10_tau7, log10_tau8, log10_tau9
       double precision :: fit_value
-      save
-
       log10_tau = log10(optical_depth)
       fit_value = 3.81152046471d0
       fit_value = fit_value + 0.146133736471d0*log10_tau

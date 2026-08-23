@@ -50,9 +50,6 @@ double precision function gmass01(hydrogen_fraction, metal_fraction, &
            -76.1959403d0, -15.29409d0/
       data (atomic_number(species_idx), species_idx=1,6) &
            /10.0d0, 8.0d0, 7.0d0, 6.0d0, 2.0d0, 1.0d0/
-
-      save
-
       carbon_mix_fraction = 0.247137766d0
       nitrogen_mix_fraction = 0.0620782d0
       oxygen_mix_fraction = 0.52837118d0

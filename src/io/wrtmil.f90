@@ -11,8 +11,7 @@
 ! unit, printed every nprtpt points (plus the first and last points).
 subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_eps_grav, i_grad_actual
       use luout_lib
       use const_lib
       implicit none
@@ -21,16 +20,6 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       double precision, intent(in) :: hcomp(15,json), hd(json), hl(json), &
            hp(json), hr(json), hs1(json)
       integer, intent(in) :: m, model
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: np1
       double precision :: smtot, d, p, r, u, v, w
@@ -50,8 +39,8 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       r = dexp(ln10*hr(1))
       u = c4pi*d*r**3/hs1(1)
       v = dexp(ln10*cgl)*hs1(1)*d/(p*r)
-      w = u*hs1(1)*(star%diag%sesum(1)+star%diag%seg(7,1))/(hl(1)*solar_luminosity_cgs)
-      np1 = 1.0d0/star%diag%del_grad(2,1)
+      w = u*hs1(1)*(star%diag%sesum(1)+star%diag%seg(i_eps_grav,1))/(hl(1)*solar_luminosity_cgs)
+      np1 = 1.0d0/star%diag%del_grad(i_grad_actual,1)
       write(imilne,10)1,hs1(1),r,p,d,hcomp(1,1),hl(1),u,v,w,np1
    10 format(1X,I4,10(1PE11.3))
 !  PRINT OUT EVERY NPRTPT POINTS;LAST POINT ALWAYS PRINTED.
@@ -59,17 +48,17 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       if(print_point_interval.le.m) then
        ibeg = max(2,print_point_interval)
        iend = m - mod(m,print_point_interval)
-       do 20 i = ibeg,iend,print_point_interval
+       do i = ibeg,iend,print_point_interval
           d = dexp(ln10*hd(i))
           p = dexp(ln10*hp(i))
           r = dexp(ln10*hr(i))
           u = c4pi*d*r**3/hs1(i)
           v = dexp(ln10*cgl)*hs1(i)*d/(p*r)
-          w = u*hs1(i)*(star%diag%sesum(i)+star%diag%seg(7,i))/(hl(i)*solar_luminosity_cgs)
-          np1 = 1.0d0/star%diag%del_grad(2,i)
+          w = u*hs1(i)*(star%diag%sesum(i)+star%diag%seg(i_eps_grav,i))/(hl(i)*solar_luminosity_cgs)
+          np1 = 1.0d0/star%diag%del_grad(i_grad_actual,i)
           write(imilne,10)i,hs1(i),r,p,d,hcomp(1,i),hl(i), &
                             u,v,w,np1
-   20    continue
+       end do
       endif
       if(iend.lt.m) then
 !  PRINT OUT LAST POINT IF NPRTPT DOESNT DIVIDE EVENLY INTO M.
@@ -78,8 +67,8 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
        r = dexp(ln10*hr(m))
        u = c4pi*d*r**3/hs1(m)
        v = dexp(ln10*cgl)*hs1(m)*d/(p*r)
-       w = u*hs1(m)*(star%diag%sesum(m)+star%diag%seg(7,m))/(hl(m)*solar_luminosity_cgs)
-       np1 = 1.0d0/star%diag%del_grad(2,m)
+       w = u*hs1(m)*(star%diag%sesum(m)+star%diag%seg(i_eps_grav,m))/(hl(m)*solar_luminosity_cgs)
+       np1 = 1.0d0/star%diag%del_grad(i_grad_actual,m)
        write(imilne,10)m,hs1(m),r,p,d,hcomp(1,m),hl(m), &
                          u,v,w,np1
       endif

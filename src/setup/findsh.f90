@@ -61,8 +61,6 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
       double precision :: half_surface_x, luminosity_end_threshold
       integer :: i
       data luminosity_change_tol,hydrogen_surface_tol/1.0d-5,1.0d-5/
-      save
-
 !ccc h-shell values
       shell_begin = 1
       shell_mid = 1
@@ -74,7 +72,7 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
        half_surface_x = 0.50d0*composition(1,num_points)
        luminosity_end_threshold = luminosity_change_tol*luminosity(num_points)
 !  find beginning(shell_begin), middle(shell_mid) and end(shell_end) of h shell
-       do 10 i = 1,num_points
+       do i = 1,num_points
 !          IF(HCOMP(1,I).LE.1.0D-10) THEN  ! Changed after discussion with Marc
           if(composition(1,i).le.atime(1)) then ! to force consistency with above LLP 9/24/08
              shell_begin = shell_begin+1
@@ -83,29 +81,31 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
              shell_mid = shell_mid+1
           else if(luminosity(i) - luminosity(i-1).lt.luminosity_end_threshold) then
 !               write(*,*)'luminosity criteria'
-             goto 20
+             exit
           else if(composition(1,num_points) - composition(1,i).lt.hydrogen_surface_tol) then
 !               write(*,*)'composition criteria'
-             goto 20
+             exit
           endif
-   10    continue
+       end do
+       if (i > num_points) then
        i = num_points
-   20    shell_end = i
+       end if
+         shell_end = i
       endif
 !ccc find boundary of central convection zone.
-      do 30 i = 1,num_points
-       if(.not.is_convective(i)) goto 40
-   30 continue
-   40 if(i.gt.1) then
+      do i = 1,num_points
+       if(.not.is_convective(i)) exit
+      end do
+      if(i.gt.1) then
        core_edge = i-1
       else
        core_edge = 1
       endif
 !ccc find boundary of surface c.z.
-      do 50 i = num_points,1,-1
-       if(.not.is_convective(i)) goto 60
-   50 continue
-   60 if(i.lt.num_points) then
+      do i = num_points,1,-1
+       if(.not.is_convective(i)) exit
+      end do
+      if(i.lt.num_points) then
        envelope_edge = i+1
       else
        envelope_edge = num_points

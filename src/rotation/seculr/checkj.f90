@@ -73,8 +73,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      already_converged_flag, ierr)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       use luout_lib
       implicit none
@@ -103,21 +101,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       integer, intent(inout) :: print_zone_count
 !     ECOD(JSON),ECOD2(JSON)
       logical, intent(in) :: already_converged_flag
-
-
-
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! locals
       double precision :: max_delta_j_by_iter(16)
       integer :: max_delta_j_zone_by_iter(16)
@@ -141,7 +124,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
          converged_flag = .true.
          redo_flag = .false.
       endif
-      do 10 zone_index = 1,num_zones
+      do zone_index = 1,num_zones
          if(specific_angular_momentum(zone_index).le.0.0d0) then
             cut_count = cut_count + 1
 !  STOP IF TIMESTEP CUT MORE THAN 3 TIMES.
@@ -165,10 +148,11 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                write(short_file_unit,1005)cut_count,zone_index
  1005          format(5x,'ERROR IN SR CHECKJ'/5x,'TIMESTEP CUT,',1x, &
                        'NUMBER',i5,' DUE TO NEGATIVE J/M IN ZONE',i5)
-               goto 240
+               continue
+               return
             endif
          endif
-   10 continue
+      end do
 !  CHECK IF THE FRACTIONAL CHANGE IN OMEGA RELATIVE TO THE PREVIOUS
 !  ITERATION IS SMALL ENOUGH TO BE CONSIDERED CONVERGED.
 !  ALSO LOCATE THE ZONE WHERE THE MAXIMUM CHANGE OCCURS FOR I/O.
@@ -177,7 +161,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
            specific_angular_momentum_prev(1)
       specific_angular_momentum_prev(1) = specific_angular_momentum(1)
       max_delta_j_zone_by_iter(iteration_number) = 1
-      do 140 zone_index = 2,num_zones
+      do zone_index = 2,num_zones
          delta_j_fraction = &
               (specific_angular_momentum(zone_index)- &
               specific_angular_momentum_prev(zone_index))/ &
@@ -189,7 +173,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
          endif
          specific_angular_momentum_prev(zone_index) = &
               specific_angular_momentum(zone_index)
-  140 continue
+      end do
       if(abs(max_delta_j_by_iter(iteration_number)).le. &
            convergence_tolerance) then
 !         LOK = .FALSE.
@@ -217,44 +201,42 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  SOLID-BODY ROTATION IN THE OFFENDING PAIR OF ZONES.
       zone_index = num_zones
       zone_bottom = num_zones
-   20 continue
+! (Restructured 2026: the label 20/130 zone scan became the named
+! zone_scan loop; the label-70 redo loop a plain do.)
+      zone_scan: do
 !  POSITIVE OMEGA GRADIENT ENCOUNTERED.
       if(omega(zone_index)-omega(zone_index-1).gt.1.0d0)then
 !  IF PREVIOUS GRADIENT WAS POSITIVE, LEAVE ALONE.
          if(star%run%old_omega(zone_index)-star%run%old_omega(zone_index-1).gt.1.0d-15)then
             zone_index = zone_bottom-1
             zone_bottom = zone_index
-            if(zone_index.gt.1)then
-               goto 20
-            else
-               goto 130
-            endif
-         endif
+            if(zone_index.gt.1) cycle zone_scan
+         else
 !  SIGN OF D OMEGA/DR HAS CHANGED,INDICATING AN ERROR IN DIFFUSION.
 !  MIX THE OFFENDING ZONES TO SOLID BODY ROTATION.
 !  ITOP IS THE UPPERMOST UNSTABLE SHELL.
          zone_top = zone_index
 !  IF ADJACENT TO A CONVECTION ZONE, MIX THE CONVECTION ZONE AS WELL.
          if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
-            do 30 scan_index = zone_top + 1,num_zones
-               if(.not.am_transport_convective_flag(scan_index)) goto 40
-   30       continue
-   40       zone_top = scan_index - 1
+            do scan_index = zone_top + 1,num_zones
+               if(.not.am_transport_convective_flag(scan_index)) exit
+            end do
+            zone_top = scan_index - 1
          endif
 !  IBOT IS THE BOTTOM UNSTABLE ZONE. CHECK FOR ADJACENT CZ AS ABOVE.
          zone_bottom = zone_index - 1
          if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
-            do 50 scan_index = zone_bottom - 1,1,-1
-               if(.not.am_transport_convective_flag(scan_index)) goto 60
-   50       continue
-   60       zone_bottom = scan_index + 1
+            do scan_index = zone_bottom - 1,1,-1
+               if(.not.am_transport_convective_flag(scan_index)) exit
+            end do
+            zone_bottom = scan_index + 1
          endif
 !  ENFORCE A SOLID BODY ROTATION CURVE FROM IBOT TO ITOP.
          call solid(log_density,specific_angular_momentum,log_radius,log_mass, &
                     shell_mass,zone_bottom,zone_top,eta_squared, &
                     moment_of_inertia,omega,qiw,mean_radius,num_zones)
 !  NOW CHECK TO SEE IF THE REDISTRIBUTION HAS GENERATED ANY NEW REVERSALS.
-   70    continue
+         do
          redo_flag = .false.
 !  CHECK FOR GRADIENT REVERSALS BELOW ZONE IBOT.
          if(zone_bottom.gt.1) then
@@ -263,10 +245,10 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                   redo_flag = .true.
                   zone_bottom = zone_bottom - 1
                   if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
-                     do 80 scan_index = zone_bottom - 1,1,-1
-                        if(.not.am_transport_convective_flag(scan_index)) goto 90
-   80                continue
-   90                zone_bottom = scan_index + 1
+                     do scan_index = zone_bottom - 1,1,-1
+                        if(.not.am_transport_convective_flag(scan_index)) exit
+                     end do
+                     zone_bottom = scan_index + 1
                   endif
                endif
             endif
@@ -278,10 +260,10 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                   redo_flag = .true.
                   zone_top = zone_top+1
                   if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
-                     do 100 scan_index = zone_top+1,num_zones
-                        if(.not.am_transport_convective_flag(scan_index)) goto 110
-  100                continue
-  110                zone_top = scan_index - 1
+                     do scan_index = zone_top+1,num_zones
+                        if(.not.am_transport_convective_flag(scan_index)) exit
+                     end do
+                     zone_top = scan_index - 1
                   endif
                endif
             endif
@@ -289,22 +271,22 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  IF LREDO=T THEN THE REDISTRIBUTION OF ANGULAR MOMENTUM IN A REVERSED
 !  REGION HAS EFFECTED A CHANGE IN OMEGA AT ONE OF BOTH OF THE BOUNDARIES
 !  THAT HAS CAUSED A NEW GRADIENT REVERSAL AT THE BOUNDARY.
-         if(redo_flag) then
+         if(.not. redo_flag) exit
             call solid(log_density,specific_angular_momentum,log_radius,log_mass, &
                        shell_mass,zone_bottom,zone_top,eta_squared, &
                        moment_of_inertia,omega,qiw,mean_radius,num_zones)
-            goto 70
-         endif
+         end do
          if(iteration_number.eq.itdif2.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number
   120    format(5x,'OMEGA GRADIENT REVERSAL BETWEEN ZONES ', &
                  i5,' AND ',i5,' ITERATION ',i5)
+         endif
       endif
-  130 continue
-!  RETURN FOR NEXT ZONE.
+!  RETURN FOR NEXT ZONE. (was label 130)
       zone_index = zone_bottom - 1
       zone_bottom = zone_index
-      if(zone_index.gt.1) goto 20
+      if(zone_index.le.1) exit zone_scan
+      end do zone_scan
 !  I/O FOR END OF DIFFUSION STEP.
       if(iteration_number.eq.itdif2.or.converged_flag)then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN J/M OVER TIMESTEP.
@@ -313,10 +295,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 ! MHP 10/02 ICRIT REMOVED
 !         IF(ICRIT.EQ.0)THEN
            loop_start = 1
-!         ELSE
-!           II = ICRIT
-!         ENDIF
-         do 150 zone_index = loop_start,num_zones
+         do zone_index = loop_start,num_zones
             delta_j_fraction = &
                  (specific_angular_momentum(zone_index)- &
                  specific_angular_momentum_start(zone_index))/ &
@@ -325,7 +304,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                max_fractional_dj = delta_j_fraction
                max_dj_zone = zone_index
             endif
-  150    continue
+         end do
          if(.not.already_converged_flag)then
             write(*,160)max_fractional_dj,max_dj_zone, &
                  (max_delta_j_by_iter(scan_index), &
@@ -341,11 +320,17 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !
 ! SKIP OUTPUT IF NOT DESIRED.
 !         IF(.NOT.LPRT)GOTO 240
-         if(.true.)goto 240
+         if (.true.) then
+            continue
+            return
+         end if
 ! G Somers END
 !
 !  IF NPRTPT IS SET TO A LARGE NUMBER, SKIP DETAILED OUTPUT.
-         if(print_point_interval.gt.num_zones)goto 240
+         if (print_point_interval.gt.num_zones) then
+            continue
+            return
+         end if
          write(imodpt,170)
   170 format(' SHELL',3x,'OMEGA',5x,'DEL OMEGA',6x,'J/M',7x,'DEL J/M')
 !  DETERMINE WHICH SHELLS TO PRINT.
@@ -356,11 +341,11 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
          print_zone_end = min(zone_max, &
               int(zone_max/print_point_interval)*print_point_interval)
 ! PRINT OUT EVERY NPRTPT POINTS. WHEN V=0, SKIP POINTS.
-         do 180 scan_index = print_zone_begin,print_zone_end,print_point_interval
+         do scan_index = print_zone_begin,print_zone_end,print_point_interval
 !            IF(HV(J).EQ.0.0D0)GOTO 180
             print_zone_id(print_zone_count) = scan_index
             print_zone_count = print_zone_count + 1
-  180    continue
+         end do
 ! OUTERMOST MODEL POINT (OR POINT AT BASE OF SURFACE C.Z.)ALWAYS PRINTED.
          if(print_zone_id(print_zone_count-1).ne.zone_max)then
             print_zone_id(print_zone_count) = zone_max
@@ -368,7 +353,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             print_zone_count = print_zone_count-1
          endif
 !  I/O CONCERNING ANGULAR MOMENTUM TRANSPORT.
-         do 200 zone_index=1,print_zone_count
+         do zone_index=1,print_zone_count
             write(imodpt,190)print_zone_id(zone_index), &
                  omega(print_zone_id(zone_index)), &
                  omega(print_zone_id(zone_index))- &
@@ -377,12 +362,12 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                  specific_angular_momentum(print_zone_id(zone_index))- &
                  specific_angular_momentum_start(print_zone_id(zone_index))
   190 format(1x,i5,1p4e12.3)
-  200    continue
+         end do
 !  I/O CONCERNING DIFFUSION VELOCITIES AND SCALE LENGTHS.
          write(imodpt,210)
   210 format(1x,'SHELL',4x,'VES0',9x,'VES',7x,'VGSF0',8x,'VGSF',9x, &
               'VSS',9x,'RAT',8x,'VTOT',7x,'LENGTH',8x,'VMU')
-         do 230 zone_index = 1,print_zone_count
+         do zone_index = 1,print_zone_count
             write(imodpt,220)print_zone_id(zone_index), &
                  star%circ%es_circulation_velocity_prev(print_zone_id(zone_index)), &
                  star%circ%es_circulation_velocity(print_zone_id(zone_index)), &
@@ -394,7 +379,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                  star%circ%hle(print_zone_id(zone_index)), &
                  star%circ%mu_gradient_velocity(print_zone_id(zone_index))
   220 format(1x,i5,1p10e12.3)
-  230    continue
+         end do
          if(use_diffusion_advection_transport)then
 !            DO I = 1,IDM
 !               WRITE(IMODPT,221)ID(I),VES(ID(I)),VESA(ID(I)),
@@ -442,6 +427,5 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             endif
          endif
       endif
-  240 continue
       return
 end subroutine checkj

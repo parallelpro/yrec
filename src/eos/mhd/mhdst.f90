@@ -52,7 +52,6 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
            mass_fraction_down(nchem0)
       double precision :: atomic_weight_up(nchem0), number_abundance_up(nchem0), &
            mass_fraction_up(nchem0)
-      save
 !
 !     DEFINE, WITH UNUSED STATEMENTS, STORAGE FOR VARIABLES
 !     THAT WOULD OTHERWISE ONLY APPEAR AS FORMAL PARAMETERS
@@ -178,10 +177,7 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
          mhd_eos%zams_centre_boundary_log10t = mhd_eos%centre_log10t(  1)
          mhd_eos%table_log10t_max = mhd_eos%centre_log10t(mhd_eos%centre_num_t)
       end if
-      if (unit_centre1.le.0) goto 500
-  500 continue
-! 8002  FORMAT('      AT. WEIGHT     NUMBER ',
-!      & 'ABUNDANCE  MASS FRACTION',(/1X,1P3G16.7))
-! 8003  FORMAT(/' MEAN MOLECULAR WEIGHT = ',F12.7//)
+      if (unit_centre1.gt.0) then
+      end if
       return
 end subroutine mhdst

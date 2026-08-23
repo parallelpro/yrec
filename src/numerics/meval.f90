@@ -75,21 +75,19 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       integer :: start_idx, start_idx1, end_idx, end_idx1, found_flag
       integer :: i, ind, loop_bound, table_idx, table_idx1, spline_case, &
            num_minus1
-
-      save
-
+      logical :: recompute_tail_params
       start_idx = 1
       end_idx = num_eval_points
       err_code = 0
-      if (num_eval_points .eq. 1) go to 20
+      if (num_eval_points .ne. 1) then
 
 ! Determine if eval_x is nondecreasing.
       loop_bound = num_eval_points - 1
-      do 10 i = 1, loop_bound
-        if (eval_x(i+1) .ge. eval_x(i)) go to 10
+      do i = 1, loop_bound
+        if (eval_x(i+1) .ge. eval_x(i)) cycle
         err_code = 2
-        go to 230
-  10  continue
+        return
+      end do
 
 ! If eval_x(i) .lt. table_x(1), then eval_x(i)=table_y(1).
 ! If eval_x(i) .gt. table_x(num_table_points), then
@@ -97,24 +95,25 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 !
 ! Determine if any of the points in eval_x are less than the abscissa
 ! of the first data point.
-  20  do 30 i = 1, num_eval_points
-        if (eval_x(i) .ge. table_x(1)) go to 40
+      end if
+      do i = 1, num_eval_points
+        if (eval_x(i) .ge. table_x(1)) exit
         start_idx = i + 1
-  30  continue
+      end do
 
-  40  loop_bound = num_eval_points + 1
+      loop_bound = num_eval_points + 1
 
 ! Determine if any of the points in eval_x are greater than the
 ! abscissa of the last data point.
-      do 50 i = 1, num_eval_points
+      do i = 1, num_eval_points
         ind = loop_bound - i
-        if (eval_x(ind) .le. table_x(num_table_points)) go to 60
+        if (eval_x(ind) .le. table_x(num_table_points)) exit
         end_idx = ind - 1
-  50  continue
+      end do
 
 ! Calculate the images of points of evaluation whose abscissas are
 ! less than the abscissa of the first data point.
-  60  if (start_idx .eq. 1) go to 80
+      if (start_idx .ne. 1) then
 ! Set the error parameter to indicate that extrapolation has occurred.
       err_code = 1
       call choose(table_x(1), table_y(1), table_slope(1), table_slope(2), &
@@ -124,17 +123,21 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            spline_v2, spline_w1, spline_w2, spline_z1, spline_z2, &
            spline_y1, spline_y2, spline_case)
       start_idx1 = start_idx - 1
-      do 70 i = 1, start_idx1
+      do i = 1, start_idx1
        eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, table_x(1), &
             table_y(1), table_x(2), table_y(2), spline_y1, spline_y2, &
             spline_e2, spline_w2, spline_v2, spline_case)
-  70  continue
-      if (num_eval_points .eq. 1) go to 230
+      end do
+      if (num_eval_points .eq. 1) then
+         return
+      end if
+      end if
 
 ! search locates the interval in which the first in-range point of
-! evaluation lies.
-  80  if ((num_eval_points .eq. 1) .and. (end_idx .ne. num_eval_points)) &
-           go to 200
+! evaluation lies. The single-out-of-range-high case skips straight
+! to the high-extrapolation tail.
+      recompute_tail_params = .true.
+      if (num_eval_points .ne. 1 .or. end_idx .eq. num_eval_points) then
       call search(table_x, num_table_points, eval_x(start_idx), &
            table_idx, found_flag)
 
@@ -144,37 +147,43 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! data points, assign the appropriate value from table_y. Continue
 ! until a point of evaluation is found which is not equal to a data
 ! point.
-      if (found_flag .eq. 0) go to 130
-  90  eval_y(start_idx) = table_y(table_idx)
+      if (found_flag .ne. 0) then
+      do
+         eval_y(start_idx) = table_y(table_idx)
       start_idx1 = start_idx
       start_idx = start_idx + 1
-      if (start_idx .gt. num_eval_points) go to 230
-      if (eval_x(start_idx1) .eq. eval_x(start_idx)) go to 90
-
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-! 100 IF (XVAL(START) - XTAB(LCN1)) 130,110,120
- 100  if (eval_x(start_idx) .lt. table_x(table_idx1)) then
-         goto 130
-      else if (eval_x(start_idx) .eq. table_x(table_idx1)) then
-         goto 110
-      else
-         goto 120
+      if (start_idx .gt. num_eval_points) then
+         return
       end if
+      if (eval_x(start_idx1) .ne. eval_x(start_idx)) exit
+      end do
 
- 110  eval_y(start_idx) = table_y(table_idx1)
-      start_idx1 = start_idx
-      start_idx = start_idx + 1
-      if (start_idx .gt. num_eval_points) go to 230
-      if (eval_x(start_idx) .ne. eval_x(start_idx1)) go to 120
-      go to 110
-
- 120  table_idx = table_idx1
-      table_idx1 = table_idx1 + 1
-      go to 100
+! Advance the table pointers until the next point of evaluation lies
+! inside the current table interval, assigning images to any points
+! of evaluation that coincide with data points along the way.
+! (Restructured 2026 from the original arithmetic-IF web at labels
+! 100/110/120; comparisons and order of assignment are unchanged.)
+      do
+         if (eval_x(start_idx) .lt. table_x(table_idx1)) exit
+         if (eval_x(start_idx) .eq. table_x(table_idx1)) then
+            do
+               eval_y(start_idx) = table_y(table_idx1)
+               start_idx1 = start_idx
+               start_idx = start_idx + 1
+               if (start_idx .gt. num_eval_points) then
+                  return
+               end if
+               if (eval_x(start_idx) .ne. eval_x(start_idx1)) exit
+            end do
+         end if
+         table_idx = table_idx1
+         table_idx1 = table_idx1 + 1
+      end do
 
 ! Calculate the images of all the points which lie within range of
 ! the data.
- 130  if ((table_idx .eq. 1) .and. (err_code .eq. 1)) go to 140
+      end if
+      if (table_idx .ne. 1 .or. err_code .ne. 1) then
       call choose(table_x(table_idx), table_y(table_idx), &
            table_slope(table_idx), table_slope(table_idx1), &
            table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)
@@ -183,71 +192,61 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            table_x(table_idx1), table_y(table_idx1), spline_e1, spline_e2, &
            spline_v1, spline_v2, spline_w1, spline_w2, spline_z1, &
            spline_z2, spline_y1, spline_y2, spline_case)
-
- 140  do 190 i = start_idx, end_idx
-
-! If eval_x(i) - table_x(table_idx1) is negative, do not recalculate
-! the parameters for this section of the spline since they are
-! already known.
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-!       IF (XVAL(I) - XTAB(LCN1)) 150,160,170
-      if (eval_x(i) .lt. table_x(table_idx1)) then
-         goto 150
-      else if (eval_x(i) .eq. table_x(table_idx1)) then
-         goto 160
-      else
-         goto 170
       end if
 
- 150  eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, &
+      do i = start_idx, end_idx
+
+! If eval_x(i) is beyond the current table interval, advance the
+! pointers (and recompute the spline parameters) first; if it is a
+! data point, its image is known; otherwise evaluate the spline.
+! (Restructured 2026 from the original arithmetic-IF web at labels
+! 150/160/170/180; comparisons and evaluation order are unchanged.)
+      if (eval_x(i) .gt. table_x(table_idx1)) then
+         do
+            table_idx = table_idx1
+            table_idx1 = table_idx + 1
+            if (eval_x(i) .le. table_x(table_idx1)) exit
+         end do
+         if (eval_x(i) .lt. table_x(table_idx1)) then
+! Call choose to determine the appropriate case and then call cases
+! to compute the parameters of the spline.
+            call choose(table_x(table_idx), table_y(table_idx), &
+                 table_slope(table_idx), table_slope(table_idx1), &
+                 table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)
+            call cases(table_x(table_idx), table_y(table_idx), &
+                 table_slope(table_idx), table_slope(table_idx1), &
+                 table_x(table_idx1), table_y(table_idx1), spline_e1, spline_e2, &
+                 spline_v1, spline_v2, spline_w1, spline_w2, spline_z1, &
+                 spline_z2, spline_y1, spline_y2, spline_case)
+         end if
+      end if
+      if (eval_x(i) .eq. table_x(table_idx1)) then
+! If eval_x(i) is a data point, its image is known.
+         eval_y(i) = table_y(table_idx1)
+         cycle
+      end if
+      eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, &
            table_x(table_idx), table_y(table_idx), table_x(table_idx1), &
            table_y(table_idx1), spline_y1, spline_y2, spline_e2, &
            spline_w2, spline_v2, spline_case)
-      go to 190
-
-! If eval_x(i) is a data point, its image is known.
- 160  eval_y(i) = table_y(table_idx1)
-      go to 190
-
-! Increment the pointers which give the location in the data vector.
- 170  table_idx = table_idx1
-      table_idx1 = table_idx + 1
-
-! Determine that the routine is in the correct part of the spline.
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-!       IF (XVAL(I) - XTAB(LCN1)) 180,160,170
-      if (eval_x(i) .lt. table_x(table_idx1)) then
-         goto 180
-      else if (eval_x(i) .eq. table_x(table_idx1)) then
-         goto 160
-      else
-         goto 170
-      end if
-
-! Call choose to determine the appropriate case and then call cases
-! to compute the parameters of the spline.
- 180  call choose(table_x(table_idx), table_y(table_idx), &
-           table_slope(table_idx), table_slope(table_idx1), &
-           table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)
-      call cases(table_x(table_idx), table_y(table_idx), &
-           table_slope(table_idx), table_slope(table_idx1), &
-           table_x(table_idx1), table_y(table_idx1), spline_e1, spline_e2, &
-           spline_v1, spline_v2, spline_w1, spline_w2, spline_z1, &
-           spline_z2, spline_y1, spline_y2, spline_case)
-      go to 150
- 190  continue
+      end do
 
 ! Calculate the images of the points of evaluation whose abscissas
 ! are greater than the abscissa of the last data point.
-      if (end_idx .eq. num_eval_points) go to 230
-      if ((table_idx1 .eq. num_table_points) .and. &
-           (eval_x(end_idx) .ne. table_x(num_table_points))) go to 210
+      if (end_idx .eq. num_eval_points) then
+         return
+      end if
+      if ((table_idx1 .eq. num_table_points) .and. (eval_x(end_idx) .ne. table_x(num_table_points))) then
+         recompute_tail_params = .false.
+      end if
+      end if
 
 ! Previously, when we arrived at 200 or 210, NUM1 could be improperly
 ! set. The NUM1= lines below protect from that. llp 8/19/08
 
 ! Set the error parameter to indicate that extrapolation has occurred.
- 200  err_code = 1
+      if (recompute_tail_params) then
+      err_code = 1
       num_minus1 = max(num_table_points - 1, 1)
       call choose(table_x(num_minus1), table_y(num_minus1), &
            table_slope(num_minus1), table_slope(num_table_points), &
@@ -259,15 +258,16 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            spline_e1, spline_e2, spline_v1, spline_v2, spline_w1, &
            spline_w2, spline_z1, spline_z2, spline_y1, spline_y2, &
            spline_case)
- 210  end_idx1 = end_idx + 1
+      end if
+      end_idx1 = end_idx + 1
       num_minus1 = max(num_table_points - 1, 1)
-      do 220 i = end_idx1, num_eval_points
+      do i = end_idx1, num_eval_points
        eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, &
             table_x(num_minus1), table_y(num_minus1), &
             table_x(num_table_points), table_y(num_table_points), &
             spline_y1, spline_y2, spline_e2, spline_w2, spline_v2, &
             spline_case)
- 220  continue
+      end do
 
- 230  return
+      return
 end subroutine meval

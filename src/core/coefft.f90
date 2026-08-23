@@ -52,12 +52,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff, ierr)
 
       use net_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad
       use luout_lib
       use const_lib
       use eos_lib
@@ -145,8 +140,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       double precision :: energy_sum_inverse
       double precision :: chi_rho, chi_t, specific_heat_cv
       double precision :: total_energy_sum, neutrino_and_grav_sum
-      save
-
 ! 7/91 MHP
 ! ZERO OUT SOLAR NEUTRINO FLUXES.
 ! FLUXTOT = TOTAL FLUX OF EACH OF THE NEUTRINOS PRODUCED IN THE SUN
@@ -155,15 +148,11 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       ierr = 0
 
       if (lsnu) then
-         do 5 j = 1,10
+         do j = 1,10
             star%flux%neutrino_flux_total(j) = 0.0d0
-   5     continue
+         end do
       end if
 ! MHP 10/02 QFPR,QFTR NOT USED - OMIT
-!      IF(.NOT.LROT) THEN
-!       QFPR = 0.0D0
-!       QFTR = 0.0D0
-!      ENDIF
       conductive_opacity_flag = .true.
       want_derivatives = .true.
       in_atmosphere = .false.
@@ -174,14 +163,14 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
        one_year_sec = 3.1558d7
        one_year_sec_inv = 3.1688d-8
       end if
-      do 10 j = 1,8
+      do j = 1,8
        luminosity_terms(j) = 0.0d0
-   10 continue
+      end do
       idt = 15
-      do 15 j = 1,4
+      do j = 1,4
        idd(j) = 5
-   15 continue
-      do 30 im = 1,num_points
+      end do
+      do im = 1,num_points
 ! SET UP LOCAL VARIABLES FOR CALLS TO BASIC PHYSICS ROUTINES
        zone_energy_luminosity = 0.0d0
        zone_log_mass = log_mass(im)
@@ -244,9 +233,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! COMPUTE DERIVATIVES
 !       IF(LROT) THEN
 !  CALCULATE D(LOG FP)/D(LOG R) AND D(LOG FT)/D(LOG R)
-!            IF(IM.GT.1) THEN
-!             IF(IM.LT.M) THEN
-!              QFPR = (DLOG(FP(IM+1)) - DLOG(FP(IM-1)))/
 !     *                 (CLN*(HR(IM+1) - HR(IM-1)))
 !              QFTR = (DLOG(FT(IM+1)) - DLOG(FT(IM-1)))/
 !     *                 (CLN*(HR(IM+1) - HR(IM-1)))
@@ -255,9 +241,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !     *                 (CLN*(HR(M) - HR(M-1)))
 !              QFTR = (DLOG(FT(M)) - DLOG(FT(M-1)))/
 !     *                 (CLN*(HR(M) - HR(M-1)))
-!             ENDIF
-!          ELSE
-!             QFPR = (DLOG(FP(2)) - DLOG(FP(1)))/
 !     *              (CLN*(HR(2) - HR(1)))
 !             QFTR = (DLOG(FT(2)) - DLOG(FT(1)))/
 !     *              (CLN*(HR(2) - HR(1)))
@@ -315,19 +298,19 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
             if (lsnu) then
-               do 17 j = 1,10
+               do j = 1,10
                   star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) + &
                        star%flux%neutrino_flux(j)*shell_mass(im)
- 17            continue
+               end do
             end if
-            do 20 j = 1,6
+            do j = 1,6
                luminosity_terms(j) = luminosity_terms(j) + &
                     (shell_mass(im)/solar_luminosity_cgs)* &
                     energy_gen_component(j)
                zone_energy_luminosity = zone_energy_luminosity + &
                     (shell_mass(im)/solar_luminosity_cgs)* &
                     energy_gen_component(j)
- 20         continue
+            end do
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
             star%engeb%he3_he3_rate_placeholder(im) = (shell_mass(im)/ &
                  solar_luminosity_cgs)*star%engeb%he3_luminosity_placeholder
@@ -388,13 +371,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                eq_l_val = eq_l_val - star%rot%rotational_energy_term(im)
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
-!            IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
-!               IF(IM.GE.JENV)THEN
-!                  QACC = - T*SCEN*DMDT0/CSECYR/SMASS0
-!                  WRITE(*,*)QL,QACC
-!                  QL = QL + QACC
-!               ENDIF
-!            ENDIF
          end if
          cccql = ln_solar_luminosity*mass_weight_ln(im)
          eq_l_val = cccql*eq_l_val
@@ -449,7 +425,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
          if (log_temperature(im).lt.tcut(1)) then
             star%diag%sesum(im) = 0.0d0
-            star%diag%seg(7,im) = gravitational_luminosity(im)
+            star%diag%seg(i_eps_grav,im) = gravitational_luminosity(im)
             do j = 1,6
                star%diag%seg(j,im) = 0.0d0
            end do
@@ -459,8 +435,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             star%diag%sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
                  energy_gen_component(3)+energy_gen_component(4)+ &
                  energy_gen_component(5)
-            star%diag%seg(6,im) = energy_gen_component(6)
-            star%diag%seg(7,im) = gravitational_luminosity(im)
+            star%diag%seg(i_eps_neu,im) = energy_gen_component(6)
+            star%diag%seg(i_eps_grav,im) = gravitational_luminosity(im)
             if (star%diag%sesum(im).gt.1.0d-22) then
                energy_sum_inverse = 1.0d0/star%diag%sesum(im)
             else
@@ -470,18 +446,14 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                star%diag%seg(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
 !  SHORT OUTPUT ONLY
-!         ELSE
-!            SESUM(IM) = EG(1)+EG(2)+EG(3)+EG(4)+EG(5)
-!            SEG(6,IM) = EG(6)
-!            SEG(7,IM) = HHC(IM)
          end if
          star%diag%sbeta(im) = beta
          star%diag%seta(im) = electron_degeneracy_parameter
          star%diag%locons(im) = conductive_opacity_flag
          star%diag%so(im) = opacity
-         star%diag%del_grad(1,im) = radiative_gradient
-         star%diag%del_grad(2,im) = actual_gradient
-         star%diag%del_grad(3,im) = adiabatic_gradient
+         star%diag%del_grad(i_grad_rad,im) = radiative_gradient
+         star%diag%del_grad(i_grad_actual,im) = actual_gradient
+         star%diag%del_grad(i_grad_ad,im) = adiabatic_gradient
          do j = 1,3
             star%diag%sfxion(j,im) = ion_fraction(j)
          end do
@@ -490,12 +462,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! MHP 02/12 COMMENTED CODE OUT, AS REPLICATED BELOW
 !         IF(LSOUND) THEN
 ! MHP 7/96 CALCULATION OF GAMMA1 FROM GUENTHER 1995 P.C.
-!            CHRH = 1.0D0/QDP
-!            CHT = -CHRH*QDT
-!            CV = QCP - EXP(CLN*(HP(IM)-HD(IM)-HT(IM)))*CHT**2/CHRH
-!            GAM1(IM) = CHRH*QCP/CV
-!            PQDP(IM) = QDP
-!         ENDIF
 
 ! JVS 01/11 always want gamma:
             chi_rho = 1.0d0/dlnrho_dlnp
@@ -514,11 +480,8 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             star%rot%dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error
             if (star%diag%sesum(im).gt.0.0d0) then
-!            IF(SESUM(I).GT.0.0D0)THEN
-!               ETOT = SESUM(I)
-!               EGNEUT = SEG(6,I)+SEG(7,I)
                total_energy_sum = star%diag%sesum(im)
-               neutrino_and_grav_sum = star%diag%seg(6,im)+star%diag%seg(7,im)
+               neutrino_and_grav_sum = star%diag%seg(i_eps_neu,im)+star%diag%seg(i_eps_grav,im)
                star%rot%neutrino_loss_fraction(im) = (total_energy_sum - &
                     neutrino_and_grav_sum)/total_energy_sum
             else
@@ -552,7 +515,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          star%rot%valfmlt(im) = star%rot%alfmlt
          star%rot%vphmlt(im) = star%rot%phmlt
          star%rot%vcmxmlt(im) = star%rot%cmxmlt
- 30   continue
+      end do
 
       return
 end subroutine coefft

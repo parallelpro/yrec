@@ -47,8 +47,6 @@ subroutine getqua(log_density, gravity, radius, angular_velocity, num_zones)
 
 
       double precision :: density_omega2(json)
-      save
-
       integer :: zone_index, matrix_row
       double precision :: four_pi_g
       double precision :: dr, weight_plus, weight_minus, inv_dr2, dr_inv_r

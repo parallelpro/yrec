@@ -35,8 +35,6 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
 ! DATA NZP1/12/
       double precision :: atomic_weights(4)
       data atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
-      save
-
       double precision :: dfx1, dfx12, dfx4, ee
 
 ! SET UP FRACTIONAL ABUNDANCES

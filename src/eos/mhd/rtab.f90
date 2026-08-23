@@ -26,9 +26,6 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
 !     NT IS INPUT; NR,TL,TDVAR ARE OUTPUT
       double precision, intent(out) :: log_t(max_t_points), &
            table_data(max_t_points,max_rho_points,num_vars)
-
-      save
-
 ! --- locals ---
       integer :: t_idx, rho_idx, var_idx, rho_count_read
 
@@ -36,7 +33,7 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
 
       ierr = 0
 
-      do 10 t_idx = 1, num_t_points
+      do t_idx = 1, num_t_points
 !     READ(IR,1001) NRR,TL(N)
       read(file_unit     ) rho_count_read,log_t(t_idx)
       if(t_idx.eq.1) num_rho_points=rho_count_read
@@ -56,17 +53,12 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
 !     END CHECK ....................................................
 ! KC 2025-05-30 fixed "Shared DO termination label"
 !       DO 10 J = 1, NR
-      do 11 rho_idx = 1, num_rho_points
+      do rho_idx = 1, num_rho_points
 !     READ(IR,1002) (TDVAR(N,J,IV),IV=1,IVAR)
       read(file_unit     ) (table_data(t_idx,rho_idx,var_idx),var_idx=1,num_vars)
-11    continue
-10    continue
+      end do
+      end do
       return
-! 1001  FORMAT(I5,E16.8)
-! 1002  FORMAT(5E16.8)
-! 1011  FORMAT(I5,1PE16.8)
-! 1012  FORMAT(1P5E16.8)
-! 9001  FORMAT(' ERROR IN RTAB. TOO SMALL PARAMETERS: ',
 !      1 /' NT,NR,NTM,NRM = ',4I5)
 ! 9011  FORMAT(' ERROR IN RTAB. WRONG DENSITY CONSTRUCTION: ',
 !      1 /' N,NR,NRR = ',3I5)

@@ -20,15 +20,6 @@ subroutine sulaol
 ! MHP 8/25 Removed unused variables
       double precision :: row_log10_opacity(104), row_log_rho(104), &
            row_d2opacity(104)
-
-
-
-
-
-
-
-      save
-
       integer :: it, ix, ir, num_valid_rho
 
       do it=1, numt

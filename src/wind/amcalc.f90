@@ -21,15 +21,6 @@ subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
 
       double precision, intent(in) :: total_mass_msun, log_luminosity_lsun, &
            log_teff
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: mass_factor, log10_radius, total_radius_cm, &
            radius_rsun, luminosity_lsun, photospheric_pressure_ratio, &

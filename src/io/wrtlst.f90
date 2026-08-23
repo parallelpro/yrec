@@ -61,10 +61,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 !      CHARACTER*256 FOPALE,FOPALE01,FOPALE06  ! FcondOpacP
 ! former common/i2o/: initial_composition_code now use-associated from
 ! run_diag_lib.
-
-
-      save
-
 ! physics flags:
 ! Determine atmosphere flag, ATM
       if (atm_choice .eq. 0) then

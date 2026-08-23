@@ -128,7 +128,6 @@ subroutine cspline(x, y, n, yp1, ypn, y2)
       double precision :: u(json)
       integer :: i, k
       double precision :: sig, p, qn, un
-      save
 
       if (yp1 .gt. 0.99d30) then
          y2(1) = 0.0d0
@@ -183,29 +182,32 @@ subroutine findex(grid_x, n_grid, x_eval, index)
       integer, intent(inout) :: index
 
       integer :: found_index, j
-      save
 
 ! find the 'index'
       if(index.lt.1.or.index.gt.n_grid)index=1
       found_index=index
       if(x_eval.lt.grid_x(found_index))then
-         do 211 j=found_index-1,1,-1
+         do j=found_index-1,1,-1
             if(grid_x(j).le.x_eval)then
                found_index=j
-               goto 213
+               index=found_index
+               
+               return
             endif
- 211     continue
+         end do
          found_index=-1
       else
-         do 212 j=found_index,n_grid-1
+         do j=found_index,n_grid-1
             if(grid_x(j+1).gt.x_eval)then
                found_index=j
-               goto 213
+               index=found_index
+               
+               return
             endif
- 212     continue
+         end do
          found_index = -n_grid
       endif
- 213  index=found_index
+      index=found_index
 
       return
 end subroutine findex
@@ -236,7 +238,6 @@ subroutine inter3(x_nodes, weight, dweight, x_eval)
       double precision :: diff32, diff31, diff21
       double precision :: denom1, denom2, denom3
       double precision :: dx1, dx2, dx3
-      save
 
 ! inter3 is the interpolation routine for density in the livermore
 ! opacity tables, and it uses a 3-point lagrangian interpolation scheme.
@@ -285,7 +286,6 @@ subroutine interp(x_nodes, weight, dweight, x_eval)
       double precision :: diff43, diff42, diff41, diff32, diff31, diff21
       double precision :: denom1, denom2, denom3, denom4
       double precision :: dx1, dx2, dx3, dx4
-      save
 
       diff43 = x_nodes(4) - x_nodes(3)
       diff42 = x_nodes(4) - x_nodes(2)
@@ -338,7 +338,6 @@ subroutine intrp2(x_nodes, weight, x_eval)
       double precision :: diff43, diff42, diff41, diff32, diff31, diff21
       double precision :: denom1, denom2, denom3, denom4
       double precision :: dx1, dx2, dx3, dx4
-      save
 
 ! interp is the interpolation routine for the VandenBerg
 ! opacity tables(CAPPA), and it uses a 4-point Lagrangian
@@ -385,7 +384,6 @@ subroutine kspline(x, y, y2)
 
       double precision :: u(nm), sig, qn, un, p
       integer :: n, i, k
-      save
 
       n = nm
 ! natural spline
@@ -428,7 +426,6 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
 
       double precision :: h, a, b
       integer :: klo, khi, k
-      save
 
       integer, intent(out), optional :: ierr
 
@@ -436,16 +433,14 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
 
       klo = 1
       khi = nm
-    1 continue
-      if (khi-klo .gt. 1) then
+    do while (khi-klo .gt. 1)
          k = (khi+klo)/2
          if (xa(k) .gt. x) then
             khi = k
          else
             klo = k
          end if
-         goto 1
-      end if
+    end do
 !      write(*,*) khi, klo, xa(khi), xa(klo), x
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
@@ -487,19 +482,17 @@ subroutine locate(xx, n, x, j)
       integer, intent(out) :: j
 
       integer :: jl, ju, jm
-      save
 
       jl = 0
       ju = n+1
-   10 if (ju-jl.gt.1) then
+   do while (ju-jl.gt.1)
          jm = (ju+jl)/2
          if ((xx(n).gt.xx(1)).eqv.(x.gt.xx(jm))) then
             jl = jm
          else
             ju = jm
          end if
-         goto 10
-      end if
+   end do
       j = jl
       if ((j .eq. 0) .and. (x .gt. 0.99d0*xx(1))) then
          j = 1
@@ -532,7 +525,6 @@ subroutine lubksb(a, n, np, indx, b)
 
       integer :: i, ii, j, ll
       double precision :: sum
-      save
 
       ii = 0
       do i = 1, n
@@ -591,7 +583,6 @@ subroutine ludcmp(a, n, np, indx, d)
       integer :: i, imax, j, k
       double precision :: vv(nmax)
       double precision :: aamax, dum, sum
-      save
 
       d = 1.d0
       do i = 1, n
@@ -702,7 +693,6 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
       double precision :: y_mid(3), y_new(3)
       double precision :: h_sub, h_sub2, x_current, y_swap
       integer :: i, step_index
-      save
 
       h_sub = h_total/dfloat(n_step)
 ! first step
@@ -772,7 +762,6 @@ subroutine osplin(xval, yval, xtab, ytab, n, k)
 
       double precision :: first_derivs(json), eps
       integer :: err
-      save
 
 ! calculate the slopes at each data point.
       call slopes(xtab, ytab, first_derivs, n)
@@ -810,7 +799,6 @@ subroutine polint(xa, ya, n, x, y, dy)
       double precision :: c(20), d(20)
       integer :: ns, i, j
       double precision :: dif, dift, ho, hp, w, den
-      save
 
       ns = 1
       dif = dabs(x-xa(1))
@@ -864,7 +852,6 @@ subroutine quint(x, x0, h, y0, y1, y2, y)
       double precision, intent(out) :: y
 
       double precision :: d1, d2, t
-      save
 
       d1 = y1 - y0
       d2 = y2 - 2.d0*y1 + y0
@@ -896,7 +883,6 @@ subroutine splinc(x, y, y2, n)
       double precision :: u(json)
       integer :: i, k
       double precision :: sig, p, qn, un
-      save
 
 ! natural spline
       y2(1) = 0.0d0
@@ -1036,7 +1022,6 @@ subroutine tridiag_gs(a, b, c, ex_prime, npt, ex)
       double precision :: gama(json)
       integer :: j
       double precision :: bet
-      save
 
       bet = b(1)
       ex(1) = ex_prime(1)/bet
@@ -1078,7 +1063,6 @@ subroutine ysplin(xi, c, n)
       double precision :: f(np), h(np), d(np), g, d3
       double precision :: const1, const2, const3, const4
       integer :: i
-      save
 
 ! set the divided difference at each subinterval.
       do i = 2, n
@@ -1177,7 +1161,7 @@ subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
 ! from the original common-block version though nothing here actually
 ! depends on it persisting across calls.
       double precision :: gamma_elim(json)
-      save
+      save   ! INTENTIONAL: tridiagonal solver carry (empirically load-bearing); byte-pinned by Stage-0
 
       double precision :: bet
       integer :: j
@@ -1256,7 +1240,6 @@ subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
       double precision :: rhs_orig(json)
       integer :: i, j
       double precision :: bet, fj
-      save
 
       dj(n) = dj_n_seed
       do i = 1, n
@@ -1333,7 +1316,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
       integer :: substep_sequence(11)
       double precision :: h, x_sav, x_est, err_max
       integer :: i, j
-      save
+      save   ! INTENTIONAL: NR step-size memory (epsold/step tables) -- algorithm state; byte-pinned by Stage-0
       data substep_sequence /2,4,6,8,12,16,24,32,48,64,96/
 
       integer, intent(out), optional :: ierr
@@ -1346,7 +1329,8 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
        y_sav(i) = y(i)
        dy_sav(i) = dydx(i)
       end do
-   20 do i = 1,max_stage_index
+      do    ! step-halving retry loop (was label 20)
+      do i = 1,max_stage_index
        call mmid(y_sav, dy_sav, num_eqs, x_sav, h, substep_sequence(i), &
             y_seq, deriv, luminosity_linear, pressure_rotation_factor, &
             temperature_rotation_factor, log10_gravity, in_atmosphere, &
@@ -1389,7 +1373,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
        end if
        stop
       end if
-      goto 20
+      end do
 
 end subroutine bsstep
 
@@ -1435,7 +1419,6 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       double precision :: interp_value, interp_deriv
       integer :: i, k_lo, k_hi, k_mid
       data spline_coeff/400*0.0d0/
-      save
 
 ! the coefficients for the zero-th order term
       integer, intent(out), optional :: ierr
@@ -1453,24 +1436,20 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       if(x_grid(1).gt.x_eval)then
          k_lo=1
          k_hi=2
-         go to 522
-      endif
-      if(x_grid(n_grid).lt.x_eval)then
+      else if(x_grid(n_grid).lt.x_eval)then
          k_lo=n_grid-1
          k_hi=n_grid
-         go to 522
-      endif
+      else
       k_lo=1
       k_hi=n_grid
-    2 if((k_hi-k_lo).gt.1)then
+    do while ((k_hi-k_lo).gt.1)
          k_mid = (k_hi+k_lo)/2
          if(x_grid(k_mid).gt.x_eval_copy)then
             k_hi=k_mid
          else
             k_lo=k_mid
          endif
-         go to 2
-      endif
+    end do
       if((k_hi-k_lo).le.0)then
          write(iowr, *) 'ERROR COX OP: INTERPOLATION'
          write(short_file_unit, *) 'ERROR COX OP: INTERPOLATION'
@@ -1484,7 +1463,7 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
          end if
          stop
       endif
-  522 continue
+      end if
 ! now, (k_lo,k_hi) is sub-range of x_grid which contains x_eval_copy.
       dx_local=x_eval_copy-x_grid(k_lo)
 ! go on to the spline interpolation routine.
@@ -1527,7 +1506,6 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
 
       integer :: k
       double precision :: h, a, b
-      save
 
       integer, intent(out), optional :: ierr
 
@@ -1535,15 +1513,14 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
 
       klo = 1
       khi = n
-    1 if (khi-klo .gt. 1) then
+    do while (khi-klo .gt. 1)
          k = (khi+klo)/2
          if (xa(k) .gt. x) then
             khi = k
          else
             klo = k
          end if
-         goto 1
-      end if
+    end do
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
@@ -1594,7 +1571,6 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
 
       integer :: k
       double precision :: h, a, b
-      save
 
       integer, intent(out), optional :: ierr
 
@@ -1602,15 +1578,14 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
 
       klo = 1
       khi = n
-    1 if (khi-klo .gt. 1) then
+    do while (khi-klo .gt. 1)
          k = (khi+klo)/2
          if (xa(k) .gt. x) then
             khi = k
          else
             klo = k
          end if
-         goto 1
-      end if
+    end do
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
@@ -1670,7 +1645,7 @@ subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
       double precision, intent(in) :: qp
 
       integer :: it
-      save
+      save   ! INTENTIONAL: NR refinement accumulator carried between successive calls; byte-pinned by Stage-0
 
       double precision :: r0, r03, tnm, dr, del, y, sum, drho, dm, &
            deta2, dw2, r03t, rhot, smt, w2t, eta22t, q0
@@ -1770,7 +1745,7 @@ subroutine qgauss(integrand, g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
 
       double precision :: xm, xr, dx, g, s, g2, s2
       integer :: j
-      save
+      save   ! INTENTIONAL: quadrature state (empirically load-bearing); byte-pinned by Stage-0
 
       xm = 0.5d0*b
       xr = xm
@@ -1831,17 +1806,19 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
 ! to the external routine lir; its exact meaning there is not
 ! established from this file alone.
       integer :: lir_order
-      save
 
       integer :: n, i, m, j, t_col, iv, t_idx, r_idx, t_idx_max, r_idx_max
       double precision :: p_min, p_max
       integer :: lir_num_vars, lir_leading_dim, lir_num_points, lir_interp_mode
 
-      do 100 n=1,num_t
-         if(table_log10t(n).ge.log10_temperature) goto 101
+      do n=1,num_t
+         if (table_log10t(n).ge.log10_temperature) then
+            continue
+            return
+         end if
          t_indices(1)=n
- 100  continue
- 101  if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1
+      end do
+      if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1
       t_idx_max=num_t-3
       if(t_indices(1).gt.t_idx_max) t_indices(1)=t_idx_max
       do i=2,4
@@ -1855,11 +1832,11 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
          if(log10_pressure.gt.p_max) then
             return
          end if
-         do 200 m=1,num_r
-            if(table_data(t_idx,m,2).ge.log10_pressure) goto 201
+         do m=1,num_r
+            if(table_data(t_idx,m,2).ge.log10_pressure) exit
             r_lo_guess(i)=m
- 200     continue
- 201     if(r_lo_guess(i).ge.2) r_lo_guess(i)=r_lo_guess(i)-1
+         end do
+         if(r_lo_guess(i).ge.2) r_lo_guess(i)=r_lo_guess(i)-1
          r_idx_max=num_r-3
          if(r_lo_guess(i).gt.r_idx_max) r_lo_guess(i)=r_idx_max
       end do
@@ -1943,9 +1920,41 @@ end subroutine intpt
 ! MOST OF THE COMPUTATION IS PERFORMED IN SINGLE PRECISION
 subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
      num_points,continue_search,interp_flag)
+      implicit none
+      double precision, intent(in) :: target_z
+      double precision, intent(in) :: table_z(*)
+      double precision, intent(out) :: result_y(*)
+      double precision, intent(in) :: table_y(*)
+      integer, intent(in) :: num_y, y_stride, num_points, continue_search
+      integer, intent(out) :: interp_flag
+      call lir_impl(0, target_z, table_z, result_y, table_y, num_y, &
+           y_stride, num_points, continue_search, interp_flag)
+end subroutine lir
+
+! Always-linear entry; historically `ENTRY LIR1` inside LIR.
+subroutine lir1(target_z,table_z,result_y,table_y,num_y,y_stride, &
+     num_points,continue_search,interp_flag)
+      implicit none
+      double precision, intent(in) :: target_z
+      double precision, intent(in) :: table_z(*)
+      double precision, intent(out) :: result_y(*)
+      double precision, intent(in) :: table_y(*)
+      integer, intent(in) :: num_y, y_stride, num_points, continue_search
+      integer, intent(out) :: interp_flag
+      call lir_impl(1, target_z, table_z, result_y, table_y, num_y, &
+           y_stride, num_points, continue_search, interp_flag)
+end subroutine lir1
+
+! Shared implementation of LIR/LIR1 (restructured 2026: the ENTRY
+! statement became the two wrappers above, and the label 2-9 search
+! web became a structured loop; comparisons and arithmetic are
+! unchanged).
+subroutine lir_impl(linear_mode_in, target_z,table_z,result_y,table_y, &
+     num_y,y_stride,num_points,continue_search,interp_flag)
 
       implicit none
 
+      integer, intent(in) :: linear_mode_in
       double precision, intent(in) :: target_z
       double precision, intent(in) :: table_z(*)
       double precision, intent(out) :: result_y(*)
@@ -1956,7 +1965,7 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       double precision :: weight(4)
       integer :: search_idx
       data search_idx/-1/
-      save
+      save   ! INTENTIONAL: last-index interpolation memory; byte-pinned by Stage-0
 
       integer :: linear_mode
       integer :: stride, stride_m1, y_strided, num_y_strided, table_end
@@ -1966,15 +1975,12 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       integer :: y_idx, j, k, base_idx
       double precision :: yy
 
-      linear_mode=0
-      go to 1
-      entry lir1(target_z,table_z,result_y,table_y,num_y,y_stride, &
-           num_points,continue_search,interp_flag)
-      linear_mode=1
-    1 continue
+      linear_mode=linear_mode_in
       stride=1
 ! CHECK NT AND RESET IL IF NECESSARY
-      if(num_points.lt.2) go to 101
+      if (num_points.lt.2) then
+         return
+      end if
       if(num_points.lt.4) linear_mode=1
 ! ADDRESSING CONSTANTS
       interp_flag=1
@@ -1987,61 +1993,48 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       search_idx=(search_idx-2)*stride+1
       if(continue_search.le.1.or.search_idx.lt.1) search_idx=1
 ! DETERMINE POSITION OF target_z WITHIN table_z
-    2 if(search_idx.gt.table_end) go to 8
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-!       IF(DIFF) 4,102,3
-!     3 IF(ZI(N)-Z) 5,6,9
-!     4 IF(ZI(N)-Z) 9,6,5
-      if (diff .lt. 0.0) then
-         goto 4
-      else if (diff .eq. 0.0) then
-         goto 102
-      else
-         goto 3
-      end if
-    3 if (table_z(search_idx) .lt. target_z) then
-         goto 5
-      else if (table_z(search_idx) .eq. target_z) then
-         goto 6
-      else
-         goto 9
-      end if
-    4 if (table_z(search_idx) .lt. target_z) then
-         goto 9
-      else if (table_z(search_idx) .eq. target_z) then
-         goto 6
-      else
-         goto 5
-      end if
-    5 search_idx=search_idx+stride
-      go to 2
+      do
+         if(search_idx.gt.table_end) then
+            interp_flag=0
+            exit
+         end if
+         if (diff .eq. 0.0) then
+            return
+         end if
+         if (diff .lt. 0.0) then
+            if (table_z(search_idx) .lt. target_z) exit
+         else
+            if (table_z(search_idx) .gt. target_z) exit
+         end if
+         if (table_z(search_idx) .eq. target_z) then
 ! SET Y WHEN Z LIES ON A MESH POINT
-    6 base_idx=(search_idx-1)*y_stride
-      do 7 y_idx=1,num_y_strided
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       Y(I)=YI(I+J)
-!     7 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
-         result_y(y_idx)=table_y(y_idx+base_idx)
-         if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
-    7 continue
-      go to 30
+            base_idx=(search_idx-1)*y_stride
+            do y_idx=1,num_y_strided
+               result_y(y_idx)=table_y(y_idx+base_idx)
+               if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
+            end do
+            search_idx=(search_idx+stride-1)/stride
+            return
+         end if
+         search_idx=search_idx+stride
+      end do
 ! CONTROL WHEN Z DOES NOT LIE ON A MESH POINT
-    8 interp_flag=0
-    9 if(search_idx.le.1) interp_flag=0
-      if(linear_mode.eq.1) go to 20
+      if(search_idx.le.1) interp_flag=0
+      if (linear_mode.ne.1) then
 ! CUBIC INTERPOLATION/EXTRAPOLATION
 ! PIVOTAL POINT (M) AND POINT (K) CLOSEST TO Z
-!    10 M=N
       pivot=search_idx
       closest=3
-      if(search_idx.gt.1+stride) go to 11
+      if (search_idx.le.1+stride) then
       pivot=1+stride+stride
       closest=search_idx
-   11 if(search_idx.lt.table_end) go to 12
+      end if
+      if (search_idx.ge.table_end) then
       pivot=table_end-stride
       closest=4
+      end if
 ! WEIGHTING FACTORS
-   12 y1=table_z(pivot-stride*2)
+      y1=table_z(pivot-stride*2)
       y2=table_z(pivot-stride)
       y3=table_z(pivot)
       y4=table_z(pivot+stride)
@@ -2049,72 +2042,48 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       z2=target_z-y2
       z3=target_z-y3
       z4=target_z-y4
-!    13 Z12=Z1*Z2
       z12=z1*z2
       z34=z3*z4
-!    14 A(1)=Z2*Z34/((Y1-Y2)*(Y1-Y3)*(Y1-Y4))
       weight(1)=z2*z34/((y1-y2)*(y1-y3)*(y1-y4))
       weight(2)=z1*z34/((y2-y1)*(y2-y3)*(y2-y4))
       weight(3)=z12*z4/((y3-y1)*(y3-y2)*(y3-y4))
       weight(4)=z12*z3/((y4-y1)*(y4-y2)*(y4-y3))
 ! CORRECT A(K)
-!    15 DIFF=A(1)+A(2)+A(3)+A(4)
       diff=weight(1)+weight(2)+weight(3)+weight(4)
       weight(closest)=(1.d0+weight(closest))-diff
 ! COMPUTE Y
-!    16 M=(M-1)/IR-3
       pivot=(pivot-1)/stride-3
       pivot=pivot*y_strided
-      do 18 y_idx=1,num_y_strided
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       K=I+M
-!       YY=0.D0
-!       DO 17 J=1,4
-!       K=K+IRD
-!       DIFF=YI(K)
-!    17 YY=YY+A(J)*DIFF
-!       Y(I)=YY
-!    18 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
+      do y_idx=1,num_y_strided
          k=y_idx+pivot
          yy=0.d0
-         do 17 j=1,4
+         do j=1,4
             k=k+y_strided
             diff=table_y(k)
             yy=yy+weight(j)*diff
-   17    continue
+         end do
          result_y(y_idx)=yy
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
-   18 continue
-      go to 30
+      end do
+      search_idx=(search_idx+stride-1)/stride
+      return
 ! LINEAR INTERPOLATION/EXTRAPOLATION
-   20 if(search_idx.eq.1) search_idx=1+stride
+      end if
+      if(search_idx.eq.1) search_idx=1+stride
       if(search_idx.gt.table_end) search_idx=table_end
       z1=table_z(search_idx)
       y1=(z1-target_z)/(z1-table_z(search_idx-stride))
       y2=1.0d0-y1
       base_idx=(search_idx-1)*y_stride
       pivot=base_idx-y_strided
-      do 21 y_idx=1,num_y_strided,stride
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       Y(I)=Y1*YI(I+M)+Y2*YI(I+J)
-!    21 IF(Y(I).EQ.0.D0) Y(I+IR1)=0.D0
+      do y_idx=1,num_y_strided,stride
          result_y(y_idx)=y1*table_y(y_idx+pivot)+y2*table_y(y_idx+base_idx)
          if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
-   21 continue
+      end do
 ! RESET N
-   30 search_idx=(search_idx+stride-1)/stride
+      search_idx=(search_idx+stride-1)/stride
       return
-! DIAGNOSTICS
-  101 continue
-      return
-  102 continue
-      return
-!  1001 FORMAT(/1X,10('*'),5X,'THERE ARE FEWER THAN TWO DATA POINTS IN',
-!      *      ' LIR     NT =',I4,5X,10('*')/)
-!  1002 FORMAT(/1X,10('*'),5X,'EXTREME VALUES OF INDEPENDENT VARIABLE',
-!      *      ' EQUAL IN LIR',5X,10('*')/16X,'ZI(1) =',1PE13.5,',   ',
-!      *       'ZI(',I4,') =',1PE13.5/)
-end subroutine lir
+end subroutine lir_impl
 
 !----------------------------------------------------------------------
 ! ratext
@@ -2144,7 +2113,7 @@ subroutine ratext(est_index, x_est, y_est, y_extrap, y_err, num_vars, &
       double precision, intent(out) :: y_extrap(num_vars), y_err(num_vars)
 
       double precision :: x_hist(imax), tableau(nmax,ncol), fx(ncol)
-      save
+      save   ! INTENTIONAL: rational-extrapolation state; byte-pinned by Stage-0
 
 ! SAME AS SR RZEXTR FROM NUMERICAL RECIPES, P.566.
 !

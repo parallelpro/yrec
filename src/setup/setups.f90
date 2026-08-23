@@ -68,18 +68,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !     2    FSTOR, FPMOD, FPENV, FPATM, FDYN,
 !     3    FLLDAT, FSNU, FSCOMP, FKUR,
 !     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: speed_of_light, electron_mass, boltzmann_constant, &
            planck_constant, hydrogen_atom_mass, electron_charge_esu

@@ -19,7 +19,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
      adiabatic_gradient, valid_table_point)
 
       use const_lib
-      use envelope_comp_lib
+      use star_info_lib
       use numerics_lib
       use scv_eos_lib
       implicit none
@@ -64,9 +64,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
       double precision :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, &
            xtf_he_e, xtf_hepp, xhp, xhep, xhepp
       integer :: i, ii, j, jj, jjj, k
-
-      save
-
       beta_complement = 1.0d0 - beta
       log10_gas_pressure = dlog10(beta*pressure)
 ! check if the point is within the table
@@ -82,11 +79,12 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          do i = idtt, 1, -1
             if (log10_temperature.gt.tlogx(i)) then
                ii = i - 1
-               goto 10
+               exit
             end if
          end do
+         if (i < (1)) then
          ii = 1
-  10     continue
+         end if
          idtt = max(1,ii)
          idtt = min(nts-3,idtt)
       else
@@ -94,11 +92,12 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          do i = idtt+2, nts
             if (log10_temperature.lt.tlogx(i)) then
                ii = i - 2
-               goto 20
+               exit
             end if
          end do
+         if (i > nts) then
          ii = nts - 3
-  20     continue
+         end if
          idtt = max(1,ii)
          idtt = min(nts-3,idtt)
       end if
@@ -109,11 +108,12 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          do j = jjj, 1, -1
             if (log10_gas_pressure.gt.tablenv(idtt,j,1)) then
                jj = j - 1
-               goto 30
+               exit
             end if
          end do
+         if (j < (1)) then
          jj = 1
-  30     continue
+         end if
          idp = max(1,jj)
          idp = min(nptsx(idtt)-3, &
               idp)
@@ -123,14 +123,15 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          do j = jjj+2, nptsx(idtt)
             if (log10_gas_pressure.lt.tablenv(idtt,j,1)) then
                jj = j - 2
-               goto 40
+               exit
             end if
          end do
+         if (j > (nptsx(idtt))) then
 ! point is outside table; return.
 !         WRITE(*,5)TL,PL
          valid_table_point = .false.
          return
-  40     continue
+         end if
          idp = min(nptsx(idtt)-3, jj)
       end if
       valid_table_point = .true.

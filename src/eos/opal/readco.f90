@@ -33,23 +33,19 @@ subroutine readco(ierr)
 
 ! --- locals ---
       integer :: x_loop_index
-      integer :: table_init_flag
       integer :: x_idx, var_idx, t6_idx, r_idx, t6_scan_idx
       integer :: density_row, t6_row, record_number, t6_count_used
       double precision :: unused_field
 
 ! density_index_edge_at_t's default moved to opal_eos_lib.f90: DATA can
 ! no longer target it here now that it's use-associated.
-
-      save
-
       integer, intent(out) :: ierr
 
       ierr = 0
 
       blank_line = ' '
 
-      if (table_init_flag.ne.12345678) then
+      if (opal_eos%readco_init_flag.ne.12345678) then
          do x_idx = 1, mx
             do var_idx = 1, mv
                do t6_idx = 1, nt
@@ -59,12 +55,12 @@ subroutine readco(ierr)
                end do
             end do
          end do
-         table_init_flag = 12345678
+         opal_eos%readco_init_flag = 12345678
       end if
 
 ! ..... read  tables
 ! MHP 8/25 Moved opening of file to parmin
-      do 3 x_loop_index = 1, mx
+      do x_loop_index = 1, mx
 
          read (iopale,'(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)') &
               opal_eos%hydrogen_fraction_header(x_loop_index), &
@@ -75,7 +71,7 @@ subroutine readco(ierr)
               &4X,E11.4)') (opal_eos%species_fraction_header(x_loop_index,var_idx), &
               var_idx=1,6)
          read (iopale,'(A)') blank_line
-         do 2 density_row = 1, nr
+         do density_row = 1, nr
             read (iopale,'(2I5,2F12.7,17X,E15.7)') record_number, &
                  opal_eos%temperature_count_used(x_loop_index,density_row), &
                  unused_field, unused_field, &
@@ -103,46 +99,45 @@ subroutine readco(ierr)
             do t6_row = 1, opal_eos%temperature_count_used(x_loop_index,density_row)
                if (t6_row.gt.opal_eos%t6_index_lo(density_row)) then
                   read (iopale,'(A)') blank_line
-                  go to 4
+                  cycle
                end if
                read (iopale,'(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)') &
                     opal_eos%t6_list(density_row,t6_row), &
                     opal_eos%log10_r_value(density_row,t6_row), &
                     (opal_eos%eos_table(x_loop_index,opal_eos%eos_var_order(var_idx), &
                     t6_row,density_row), var_idx=1,10)
-    4          continue
             end do
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
-    2    continue
+         end do
          read(iopale,'(A)') blank_line
-    3 continue
+      end do
 
-      do 11 t6_scan_idx = 1, nt
+      do t6_scan_idx = 1, nt
          if (opal_eos%t6_list(1,t6_scan_idx).eq.0.0d0) then
             t6_count_used = t6_scan_idx
-            go to 14
+            exit
          end if
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !    11 T6A(I)=T6LIST(1,I)
          opal_eos%t6_grid(t6_scan_idx) = opal_eos%t6_list(1,t6_scan_idx)
-   11 continue
-   14 do 12 t6_idx = 2, nt
+      end do
+      do t6_idx = 2, nt
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !    12 DFS(I)=1.D0/(T6A(I)-T6A(I-1))
          opal_eos%t6_grid_spacing_inv(t6_idx) = 1.0d0/(opal_eos%t6_grid(t6_idx) - &
               opal_eos%t6_grid(t6_idx-1))
-   12 continue
+   end do
       opal_eos%density_grid(1) = opal_eos%density_grid_table(1,1)
-      do 13 r_idx = 2, nr
+      do r_idx = 2, nr
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !       RHO(I)=RHOGR(1,I)
 !    13 DFSR(I)=1.D0/(RHO(I)-RHO(I-1))
          opal_eos%density_grid(r_idx) = opal_eos%density_grid_table(1,r_idx)
          opal_eos%density_grid_spacing_inv(r_idx) = 1.0d0/(opal_eos%density_grid(r_idx) - &
               opal_eos%density_grid(r_idx-1))
-   13 continue
+      end do
       do x_idx = 2, mx
          opal_eos%x_grid_spacing_inv(x_idx) = 1.0d0/(opal_eos%x_grid_copy(x_idx) - opal_eos%x_grid_copy(x_idx-1))
       end do

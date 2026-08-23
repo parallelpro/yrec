@@ -26,8 +26,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -55,21 +53,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
            mean_thermal_energy
       double precision, intent(in) :: cz_total_mass_below_fitting
       double precision, intent(out) :: old_log_envelope_mass_fraction
-
-
-
-
-
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: omega_ratio_sq, omega_max_ratio_sq
       double precision :: mass_loss_rate_cgs
@@ -207,10 +190,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
                log_radius(zone_idx) = log10(radius_after_cm)
             end do
          endif
-!         DO J = JENV,M
-!            HT(J) = HT(J) + FAC
-!         END DO
-!         WRITE(*,*)HT(15),HT(16),HT(17)
       endif
 ! FOR MODELS WITH ROTATION AND MASS LOSS REMOVE ANGULAR MOMENTUM.
 ! IN THIS CASE WE ASSUME A THERMAL WIND WHERE THE SURFACE MATTER

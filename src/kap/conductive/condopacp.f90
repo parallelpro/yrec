@@ -38,6 +38,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
      log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, ierr)
 
       use const_lib
+      use conductive_table_lib, only: cond_table
       implicit none
 
       double precision, intent(in) :: ion_charge, log10_temperature, &
@@ -45,21 +46,14 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       double precision, intent(out) :: log10_conductivity, &
            dlnkappa_dlnrho, dlnkappa_dlnt
       integer, intent(out) :: ierr
-
-      save
       integer, parameter :: n_temp_grid=19, n_rho_grid=64, n_z_grid=15
 !!! NB: These parameters must be consistent with the table "condall.d"!!!
-      double precision :: temp_grid(n_temp_grid), rho_grid(n_rho_grid), &
-           z_grid(n_z_grid), &
-           log10_kappa_table(n_temp_grid,n_rho_grid,n_z_grid)
+! (table storage promoted to state/conductive_table_lib.f90 -- 2026
+! save-migration campaign)
 
 
 ! removed unused variables
 !     CHARACTER*256 FKUR2,FcondOpacP
-
-      integer :: table_loaded_flag
-      data table_loaded_flag/-1/
-
       integer :: file_unit, z_index, t_index, r_index
       double precision :: z_grid_value, log10_ion_charge
       integer :: t_index_lo, t_index_hi, r_index_lo, r_index_hi
@@ -78,26 +72,23 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       double precision :: cktp, drktp, dr2ktp
       double precision :: dt2k, drtk, drt2k, xt
 
-      if (table_loaded_flag.ne.12345) then   ! Reading
+      if (cond_table%table_loaded_flag.ne.12345) then   ! Reading
          file_unit = icondopacp
 ! MHP 8/25 file opening moved to parmin
 !         open(IP,file=FcondOpacP,status='OLD')
 !         print*,'Reading thermal conductivity data...'
          read(file_unit,'(A)') ! skip the first line
         do z_index=1,n_z_grid
-           read(file_unit,*) z_grid_value,(temp_grid(t_index),t_index=1,n_temp_grid)
-           z_grid(z_index)=dlog10(z_grid_value)
+           read(file_unit,*) z_grid_value,(cond_table%temp_grid(t_index),t_index=1,n_temp_grid)
+           cond_table%z_grid(z_index)=dlog10(z_grid_value)
           do r_index=1,n_rho_grid
-             read(file_unit,*) rho_grid(r_index), &
-                  (log10_kappa_table(t_index,r_index,z_index),t_index=1,n_temp_grid)
+             read(file_unit,*) cond_table%rho_grid(r_index), &
+                  (cond_table%log10_kappa_table(t_index,r_index,z_index),t_index=1,n_temp_grid)
           enddo
       enddo
          close(file_unit)
-         table_loaded_flag=12345
+         cond_table%table_loaded_flag=12345
 ! KC 2025-05-30 fixed -Winteger-division
-!          IZ=MAXZ/2+1
-!          IT=MAXT/2+1
-!          IR=MAXR/2+1
          z_index=int(n_z_grid/2.)+1
          t_index=int(n_temp_grid/2.)+1
          r_index=int(n_rho_grid/2.)+1
@@ -105,13 +96,13 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       endif
       ierr = 0
       log10_ion_charge=dlog10(ion_charge)
-      call hunt(z_grid,n_z_grid,log10_ion_charge,z_index)
+      call hunt(cond_table%z_grid,n_z_grid,log10_ion_charge,z_index)
       if (z_index.eq.0.or.z_index.eq.n_z_grid) stop 'CONINTER: Z out of range'
-      call hunt(temp_grid,n_temp_grid,log10_temperature,t_index)
+      call hunt(cond_table%temp_grid,n_temp_grid,log10_temperature,t_index)
 
 !      if (IT.eq.0.or.IT.eq.MAXT) stop 'CONINTER: T out of range'
       if (t_index.eq.0.or.t_index.eq.n_temp_grid) then
-                  print*, z_grid
+                  print*, cond_table%z_grid
                   print*, n_z_grid, log10_temperature, z_index
 ! 2026 (ROADMAP.md stage 3): stop 'CONINTER: T out of range'
 ! converted to ierr (see kap_lib's kap_get); message preserved.
@@ -120,7 +111,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
                   return
       endif
 
-      call hunt(rho_grid,n_rho_grid,log10_density,r_index)
+      call hunt(cond_table%rho_grid,n_rho_grid,log10_density,r_index)
       if (r_index.eq.0.or.r_index.eq.n_rho_grid) stop 'CONINTER: rho out of range'
       t_index_lo=max0(1,t_index-1)
       t_index_hi=min0(n_temp_grid,t_index+2)
@@ -128,65 +119,65 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       r_index_hi=min0(n_rho_grid,r_index+2)
 ! Cubic interpolation in RLG:
 ! Z0:
-      call cinterp3(rho_grid(r_index_lo),rho_grid(r_index),rho_grid(r_index+1), &
-           rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
-           log10_kappa_table(t_index_lo,r_index_lo,z_index), &
-           log10_kappa_table(t_index_lo,r_index,z_index), &
-           log10_kappa_table(t_index_lo,r_index+1,z_index), &
-           log10_kappa_table(t_index_lo,r_index_hi,z_index), &
+      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
+           cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
+           cond_table%log10_kappa_table(t_index_lo,r_index_lo,z_index), &
+           cond_table%log10_kappa_table(t_index_lo,r_index,z_index), &
+           cond_table%log10_kappa_table(t_index_lo,r_index+1,z_index), &
+           cond_table%log10_kappa_table(t_index_lo,r_index_hi,z_index), &
            cktmz0,drktmz0,dr2ktmz0,xr)
-      call cinterp3(rho_grid(r_index_lo),rho_grid(r_index),rho_grid(r_index+1), &
-           rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
-           log10_kappa_table(t_index,r_index_lo,z_index), &
-           log10_kappa_table(t_index,r_index,z_index), &
-           log10_kappa_table(t_index,r_index+1,z_index), &
-           log10_kappa_table(t_index,r_index_hi,z_index), &
+      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
+           cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
+           cond_table%log10_kappa_table(t_index,r_index_lo,z_index), &
+           cond_table%log10_kappa_table(t_index,r_index,z_index), &
+           cond_table%log10_kappa_table(t_index,r_index+1,z_index), &
+           cond_table%log10_kappa_table(t_index,r_index_hi,z_index), &
            ckt0z0,drkt0z0,dr2kt0z0,xr)
-      call cinterp3(rho_grid(r_index_lo),rho_grid(r_index),rho_grid(r_index+1), &
-           rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
-           log10_kappa_table(t_index+1,r_index_lo,z_index), &
-           log10_kappa_table(t_index+1,r_index,z_index), &
-           log10_kappa_table(t_index+1,r_index+1,z_index), &
-           log10_kappa_table(t_index+1,r_index_hi,z_index), &
+      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
+           cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
+           cond_table%log10_kappa_table(t_index+1,r_index_lo,z_index), &
+           cond_table%log10_kappa_table(t_index+1,r_index,z_index), &
+           cond_table%log10_kappa_table(t_index+1,r_index+1,z_index), &
+           cond_table%log10_kappa_table(t_index+1,r_index_hi,z_index), &
            ckt1z0,drkt1z0,dr2kt1z0,xr)
-      call cinterp3(rho_grid(r_index_lo),rho_grid(r_index),rho_grid(r_index+1), &
-           rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
-           log10_kappa_table(t_index_hi,r_index_lo,z_index), &
-           log10_kappa_table(t_index_hi,r_index,z_index), &
-           log10_kappa_table(t_index_hi,r_index+1,z_index), &
-           log10_kappa_table(t_index_hi,r_index_hi,z_index), &
+      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
+           cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
+           cond_table%log10_kappa_table(t_index_hi,r_index_lo,z_index), &
+           cond_table%log10_kappa_table(t_index_hi,r_index,z_index), &
+           cond_table%log10_kappa_table(t_index_hi,r_index+1,z_index), &
+           cond_table%log10_kappa_table(t_index_hi,r_index_hi,z_index), &
            cktpz0,drktpz0,dr2ktpz0,xr)
 ! Z1:
-      call cinterp3(rho_grid(r_index_lo),rho_grid(r_index),rho_grid(r_index+1), &
-           rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
-           log10_kappa_table(t_index_lo,r_index_lo,z_index+1), &
-           log10_kappa_table(t_index_lo,r_index,z_index+1), &
-           log10_kappa_table(t_index_lo,r_index+1,z_index+1), &
-           log10_kappa_table(t_index_lo,r_index_hi,z_index+1), &
+      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
+           cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
+           cond_table%log10_kappa_table(t_index_lo,r_index_lo,z_index+1), &
+           cond_table%log10_kappa_table(t_index_lo,r_index,z_index+1), &
+           cond_table%log10_kappa_table(t_index_lo,r_index+1,z_index+1), &
+           cond_table%log10_kappa_table(t_index_lo,r_index_hi,z_index+1), &
            cktmz1,drktmz1,dr2ktmz1,xr)
-      call cinterp3(rho_grid(r_index_lo),rho_grid(r_index),rho_grid(r_index+1), &
-           rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
-           log10_kappa_table(t_index,r_index_lo,z_index+1), &
-           log10_kappa_table(t_index,r_index,z_index+1), &
-           log10_kappa_table(t_index,r_index+1,z_index+1), &
-           log10_kappa_table(t_index,r_index_hi,z_index+1), &
+      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
+           cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
+           cond_table%log10_kappa_table(t_index,r_index_lo,z_index+1), &
+           cond_table%log10_kappa_table(t_index,r_index,z_index+1), &
+           cond_table%log10_kappa_table(t_index,r_index+1,z_index+1), &
+           cond_table%log10_kappa_table(t_index,r_index_hi,z_index+1), &
            ckt0z1,drkt0z1,dr2kt0z1,xr)
-      call cinterp3(rho_grid(r_index_lo),rho_grid(r_index),rho_grid(r_index+1), &
-           rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
-           log10_kappa_table(t_index+1,r_index_lo,z_index+1), &
-           log10_kappa_table(t_index+1,r_index,z_index+1), &
-           log10_kappa_table(t_index+1,r_index+1,z_index+1), &
-           log10_kappa_table(t_index+1,r_index_hi,z_index+1), &
+      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
+           cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
+           cond_table%log10_kappa_table(t_index+1,r_index_lo,z_index+1), &
+           cond_table%log10_kappa_table(t_index+1,r_index,z_index+1), &
+           cond_table%log10_kappa_table(t_index+1,r_index+1,z_index+1), &
+           cond_table%log10_kappa_table(t_index+1,r_index_hi,z_index+1), &
            ckt1z1,drkt1z1,dr2kt1z1,xr)
-      call cinterp3(rho_grid(r_index_lo),rho_grid(r_index),rho_grid(r_index+1), &
-           rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
-           log10_kappa_table(t_index_hi,r_index_lo,z_index+1), &
-           log10_kappa_table(t_index_hi,r_index,z_index+1), &
-           log10_kappa_table(t_index_hi,r_index+1,z_index+1), &
-           log10_kappa_table(t_index_hi,r_index_hi,z_index+1), &
+      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
+           cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
+           cond_table%log10_kappa_table(t_index_hi,r_index_lo,z_index+1), &
+           cond_table%log10_kappa_table(t_index_hi,r_index,z_index+1), &
+           cond_table%log10_kappa_table(t_index_hi,r_index+1,z_index+1), &
+           cond_table%log10_kappa_table(t_index_hi,r_index_hi,z_index+1), &
            cktpz1,drktpz1,dr2ktpz1,xr)
 ! Linear interpolation in ZLG:
-      xz1=(log10_ion_charge-z_grid(z_index))/(z_grid(z_index+1)-z_grid(z_index))
+      xz1=(log10_ion_charge-cond_table%z_grid(z_index))/(cond_table%z_grid(z_index+1)-cond_table%z_grid(z_index))
       xz0=1d0-xz1
       cktm=xz0*cktmz0+xz1*cktmz1
       drktm=xz0*drktmz0+xz1*drktmz1
@@ -201,12 +192,12 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       drktp=xz0*drktpz0+xz1*drktpz1
       dr2ktp=xz0*dr2ktpz0+xz1*dr2ktpz1
 ! Cubic interpolation in TLG:
-      call cinterp3(temp_grid(t_index_lo),temp_grid(t_index),temp_grid(t_index+1), &
-           temp_grid(t_index_hi),log10_temperature,t_index,n_temp_grid, &
+      call cinterp3(cond_table%temp_grid(t_index_lo),cond_table%temp_grid(t_index),cond_table%temp_grid(t_index+1), &
+           cond_table%temp_grid(t_index_hi),log10_temperature,t_index,n_temp_grid, &
            cktm,ckt0,ckt1,cktp, & ! input: values of lg kappa
            log10_conductivity,dlnkappa_dlnt,dt2k,xt) ! lg kappa, d lg k / d lg T, d2 lg k / d2 lg T
-      call cinterp3(temp_grid(t_index_lo),temp_grid(t_index),temp_grid(t_index+1), &
-           temp_grid(t_index_hi),log10_temperature,t_index,n_temp_grid, &
+      call cinterp3(cond_table%temp_grid(t_index_lo),cond_table%temp_grid(t_index),cond_table%temp_grid(t_index+1), &
+           cond_table%temp_grid(t_index_hi),log10_temperature,t_index,n_temp_grid, &
            drktm,drkt0,drkt1,drktp, & ! input: values of d lg k / d lg rho
            dlnkappa_dlnrho,drtk,drt2k,xt) ! d lg k / d lg rho, d2 lgk/(d lgT d lg rho)
       return
@@ -254,7 +245,7 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
          interp_value=val_lo1+v01*x+c2*interp_frac**2+c3*interp_frac**3
          interp_deriv=v01+(2d0*c2*interp_frac+3d0*c3*interp_frac**2)/h
          interp_deriv2=(2d0*c2+6d0*c3*interp_frac)/h**2
-         goto 10
+         return
       endif
       if (grid_index.eq.1) then   ! Quadratic interpolation
          c2=val_lo1-val_hi1+v11*h
@@ -267,7 +258,7 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
          interp_deriv=v01+2d0*c2*interp_frac/h
          interp_deriv2=2d0*c2/h**2
       endif
-   10 return
+      return
 end subroutine cinterp3
 
 !   W.H.Press, B.P.Flannery, S.A.Teukolsky, W.T.Vetterling
@@ -292,37 +283,46 @@ subroutine hunt(table,n,target_value,index)
       ascending=table(n).gt.table(1) ! true if ascending order, false otherwise
       if (index.le.0.or.index.gt.n) then ! Input guess not useful.
          index=0
-         index_hi=n+1
-         goto 3 ! go immediately to bisection
-      endif
+         index_hi=n+1  ! go immediately to bisection
+      else
       increment=1 ! set the hunting increment
       if (target_value.ge.table(index).eqv.ascending) then ! Hunt up:
-    1     index_hi=index+increment
+        do
+          index_hi=index+increment
         if (index_hi.gt.n) then ! Done hunting, since off end of table
            index_hi=n+1
+           exit
         elseif (target_value.ge.table(index_hi).eqv.ascending) then ! Not done hunting
            index=index_hi
            increment=increment+increment
-           goto 1
+        else
+           exit
         endif
+        end do
       else ! Hunt down:
          index_hi=index
-    2    index=index_hi-increment
+         do
+          index=index_hi-increment
         if (index.lt.1) then ! Done hunting, since off end of table
            index=0
+           exit
         elseif (target_value.lt.table(index).eqv.ascending) then ! Not done hunting
            index_hi=index
            increment=increment+increment ! so double the increment
-           goto 2      ! and try again
+        else
+           exit
         endif ! Done hunting, value bracketed
+         end do
+      endif
       endif
 !   Hunt is done, so begin the final bisection phase:
-    3 if (index_hi-index.eq.1) return
+      do
+      if (index_hi-index.eq.1) return
       index_mid=(index_hi+index)/2
       if (target_value.ge.table(index_mid).eqv.ascending) then
          index=index_mid
       else
          index_hi=index_mid
       endif
-      goto 3
+      end do
 end subroutine hunt

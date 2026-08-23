@@ -30,12 +30,6 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       double precision, intent(out) :: di_domega(json)
       double precision, intent(out) :: mean_radius(json)
       integer, intent(in) :: num_zones
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: total_angular_momentum, omega_sum
       integer :: iteration_count
@@ -54,11 +48,11 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       iteration_count = 0
 !  FIND THE TOTAL ANGULAR MOMENTUM OF SHELLS JSTART TO JEND.
 !  ALSO MAKE A FIRST GUESS AT OMEGA BY AVERAGING THE PREVIOUS VALUES.
-      do 10 zone_idx = zone_start,zone_end
+      do zone_idx = zone_start,zone_end
          total_angular_momentum = total_angular_momentum + &
               shell_mass(zone_idx)*specific_angular_momentum(zone_idx)
          omega_sum = omega_sum + omega(zone_idx)
-   10 continue
+      end do
 !  MHP 9/94 OPTION ADDED TO ENFORCE DISK LOCKING UP TO A GIVEN AGE IN
 !  THE SURFACE C.Z. ONLY.
       disk_locked = .false.
@@ -70,9 +64,10 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       else
          omega_guess = disk_pressure
       end if
-   20 do 30 zone_idx = zone_start,zone_end
+      omega_iter: do
+      do zone_idx = zone_start,zone_end
          omega(zone_idx) = omega_guess
-   30 continue
+   end do
 !  DETERMINE THE MOMENTS OF INERTIA OF SHELLS JSTART TO JEND WITH OMEGA
 !  EQUAL TO WGUESS.
       call shape(log_density,log_radius,log_mass,zone_start,zone_end,omega, &
@@ -83,16 +78,16 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
       total_moment_of_inertia = 0.0d0
       total_di_domega = 0.0d0
 !  FIND TOTAL MOMENT OF INERTIA(CZI) AND TOTAL DI/DOMEGA (CZQIW)
-      do 40 zone_idx = zone_start,zone_end
+      do zone_idx = zone_start,zone_end
          total_moment_of_inertia = total_moment_of_inertia + &
               moment_of_inertia(zone_idx)
          total_di_domega = total_di_domega + di_domega(zone_idx)
-   40 continue
+      end do
       new_angular_momentum = omega_guess*total_moment_of_inertia
 !  CHECK IF THE TOTAL ANGULAR MOMENTUM FOUND WITH OMEGA = WGUESS IS CLOS
 !  ENOUGH.  IF NOT, CALCULATE DELTA OMEGA AND TRY AGAIN WITH A NEW WGUES
       delta_angular_momentum = total_angular_momentum - new_angular_momentum
-      if(disk_locked)goto 45
+      if(.not.disk_locked)then
       if(dabs(delta_angular_momentum/total_angular_momentum).gt. &
            star%rot%moment_of_inertia_tolerance) then
          if(iteration_count.lt.20) then
@@ -100,14 +95,16 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
             delta_omega = delta_angular_momentum/ &
                  (total_moment_of_inertia + omega_guess*total_di_domega)
             omega_guess = omega_guess + delta_omega
-            goto 20
+            cycle omega_iter
          end if
       end if
- 45   continue
-      do 50 zone_idx = zone_start,zone_end
+      end if
+      exit omega_iter
+      end do omega_iter
+      do zone_idx = zone_start,zone_end
          specific_angular_momentum(zone_idx) = &
               moment_of_inertia(zone_idx)*omega(zone_idx)/shell_mass(zone_idx)
-   50 continue
+      end do
 
       return
 end subroutine solid

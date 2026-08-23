@@ -41,8 +41,6 @@ subroutine yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
 ! abund_index/temp_index/dens_index defaults moved to
 ! opacity_table_lib.f90: DATA can no longer target them here now that
 ! they're use-associated.
-      save
-
       logical :: single_x_table
       double precision :: t6, rhot3
       integer :: im1
@@ -59,21 +57,23 @@ subroutine yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
       if (dabs(opacity_table%opal92_surface_x-hydrogen_fraction).le.1.0d-5) then
          opacity_table%abund_index = 4
          single_x_table = .true.
-         go to 131
       endif
-      do 130 im1 = 1,num_x
+      if (.not. single_x_table) then
+      do im1 = 1,num_x
          if (dabs(opacity_table%opal92_grid_x(im1)-hydrogen_fraction).le.1.0d-5) then
             opacity_table%abund_index = im1
             single_x_table = .true.
-            go to 131
+            exit
          endif
- 130  continue
+      end do
+      end if
+      if (.not. single_x_table) then
       call findex(opacity_table%opal92_grid_x, num_x, hydrogen_fraction, opacity_table%abund_index)
       if (opacity_table%abund_index.lt.0) opacity_table%abund_index = -opacity_table%abund_index
       if (opacity_table%abund_index.le.1.and.rhot3.gt.-1.0d0) opacity_table%abund_index = 2
       if (opacity_table%abund_index.ge.3) opacity_table%abund_index = 2
       if (opacity_table%abund_index.le.0) stop ' ERROR IN X GRID'
- 131  continue
+      end if
       call findex(opacity_table%opal92_grid_logt, opacity_table%opal92_num_temps, t6, opacity_table%temp_index)
       if (opacity_table%temp_index.lt.0.and.opacity_table%opal92_grid_logt(opacity_table%opal92_num_temps).eq.t6) opacity_table%temp_index = -opacity_table%temp_index
       if (opacity_table%temp_index.lt.0) stop ' T OUT OF TABLE '

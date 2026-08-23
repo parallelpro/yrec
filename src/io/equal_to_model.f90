@@ -34,8 +34,6 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 
 
       double precision :: radius_table(4), interp_factors(4)
-      save
-
       double precision :: hydrogen_floor
       integer :: zone_index
       double precision :: metal_max, metal_new, metal_scale_ratio
@@ -47,10 +45,10 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! TRANSFORM BACK TO ORIGINAL GRID OF MODEL POINTS FROM EQUALLY
 ! SPACED GRID.
       hydrogen_floor = 0.0D0
-      do 10 zone_index = zone_begin,1,-1
+      do zone_index = zone_begin,1,-1
          composition(1,zone_index)=max(composition(1,zone_index) + &
               equal_hydrogen_fraction(1),hydrogen_floor)
-   10 continue
+      end do
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
 ! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
@@ -73,8 +71,8 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
          end do
       endif
       search_start_index=2
-      do 20 zone_index=zone_begin+1,zone_end-1
-         do 30 j=search_start_index,num_equal_points
+      do zone_index=zone_begin+1,zone_end-1
+         do j=search_start_index,num_equal_points
 
 ! FIND EQUALLY SPACED GRID POINTS CLOSEST TO THE MODEL POINT.
             if (j .eq. 0) print*, 'line 47 etm'
@@ -87,16 +85,17 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! JVS fix for NPT = 3?
                if (k0 .eq. 0) k0=1
                search_start_index=j
-               goto 40
+               exit
             endif
-   30    continue
+         end do
+         if (j > num_equal_points) then
          k0 = num_equal_points-3
          search_start_index=num_equal_points
-   40    continue
+         end if
 
-         do 50 k=1,4
+         do k=1,4
             radius_table(k)=equal_radius(k0+k-1)
-   50    continue
+         end do
          target_radius=radius(zone_index)
 ! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
          call intrp2(radius_table,interp_factors,target_radius)
@@ -126,12 +125,12 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
             composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
                  composition(3,zone_index)-composition(4,zone_index)
          endif
-   20 continue
-      do 60 zone_index = zone_end,num_zones
+      end do
+      do zone_index = zone_end,num_zones
          hydrogen_max = 1.0D0 - composition(3,zone_index) - composition(4,zone_index)
          composition(1,zone_index)=min(composition(1,zone_index) + &
               equal_hydrogen_fraction(num_equal_points),hydrogen_max)
-   60 continue
+      end do
 ! MHP 3/94 ADDED METAL DIFFUSION
       if(use_diffusion_z)then
          metal_floor = 0.0D0
@@ -152,13 +151,13 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
                  composition(3,zone_index)-composition(4,zone_index)
          end do
       endif
-      do 70 zone_index=1,num_zones
+      do zone_index=1,num_zones
 
          radius(zone_index)=radius(zone_index)/star%rot%bl_radius_scale
          temperature(zone_index)=temperature(zone_index)/star%rot%bl_temp_scale
          enclosed_mass(zone_index)=enclosed_mass(zone_index)/star%rot%bl_mass_scale
          aux_radial_quantity(zone_index)=aux_radial_quantity(zone_index)*star%rot%bl_radius_scale
-   70 continue
+      end do
       timestep=timestep*star%rot%bl_time_scale
       total_mass=total_mass/star%rot%bl_mass_scale
       return

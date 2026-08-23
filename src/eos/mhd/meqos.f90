@@ -24,7 +24,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
 ! LATMO,KSAHA NEEDED FOR EQSAHA
       use mhd_eos_lib
       use const_lib
-      use envelope_comp_lib
+      use star_info_lib
       use luout_lib
       implicit none
 
@@ -45,15 +45,6 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
       integer, parameter :: ivarx = 25
       double precision, parameter :: cnvs = 0.434294481d0
       double precision, parameter :: zero = 0.0d0
-
-
-
-
-
-
-
-      save
-
       integer :: ier_flag
       double precision :: mhdpx_r10
       double precision :: chi_rho, chi_t, log10_specific_heat_cp

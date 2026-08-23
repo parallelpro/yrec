@@ -53,9 +53,6 @@ subroutine alfilein(allard_table_path, ierr)
 
 
       external sort_shell
-
-      save
-
       integer :: i, j, nhdr, irecno, i1, j1
       double precision :: teff_value, gl_value, feh_value, alpha_value
       double precision :: pressure_value, pressure_tau100_value, temp_tau100_value
@@ -84,6 +81,16 @@ subroutine alfilein(allard_table_path, ierr)
 
 !     set output arrays to invalid values
       integer, intent(out) :: ierr
+      integer :: ios
+      logical :: found_first
+
+! Control flow restructured 2026 (goto campaign): the label-899/900
+! OPEN check became an iostat test, the 100/200 file-type dispatch an
+! if/else chain, the label-299/300/410 read loops iostat-driven do
+! loops (err= -> ios>0, end= -> ios<0), the search-or-insert scans
+! bounded do+exit loops, and the label-9999 error funnel the internal
+! procedure fail_9999 below. READ/FORMAT statements, comparisons, and
+! all output text are unchanged.
 
       ierr = 0
 
@@ -97,32 +104,24 @@ subroutine alfilein(allard_table_path, ierr)
          enddo
       enddo
 !     the input file name is in FALLARD and its unit number is IOATMA
-      open(allard_table_unit,file=allard_table_path,status='OLD',err= 899)
-      goto 900
-
-  899      continue
+      open(allard_table_unit,file=allard_table_path,status='OLD',iostat=ios)
+      if (ios .ne. 0) then
        write(*,*)
        write(*,*) 'ALFILEIN: Allard File OPEN Failure'
        write(*,*) '     Unit-Number, FIle-Name are: ', &
            allard_table_unit,allard_table_path
-       goto 9999      ! Error exit
+       call fail_9999
+       ierr = 1
+       return
+      end if
 
-  900      continue
 !     Decide what kind of input file
       read(allard_table_unit,901) first_record
   901  format(a)
       rewind(allard_table_unit)
-      if (first_record(4:7) .eq. '3.50') goto 100  ! Old NextGen file type
-      if (first_record(4:9) .eq. 'ALLARD') goto 200  ! Allard file type
-!     If we get here, the input file is invalid
-      write(short_file_unit,*)'*** Invalid Allard Atmosphere input file ***'
-      write(short_file_unit,*) "First record was '",first_record,"'"
-      write(*,*)'*** Invalid Allard Atmosphere input file ***'
-      write(*,*) "First record was '",first_record,"'"
-      goto 9999   ! The error exit
+      if (first_record(4:7) .eq. '3.50') then
 
 !     Process old-stype nextgen input file.
-  100      continue
        atm_table%allard_is_old_nextgen = .true.
        write(short_file_unit,*) 'ALFileIn: File Description: 1999 NEXTGEN', &
            ' (Old NEXTGEN)'
@@ -136,7 +135,9 @@ subroutine alfilein(allard_table_path, ierr)
          write(short_file_unit,*)
          write(short_file_unit,*) 'ALFileIN: Invalid old Allard input file ', &
                'for requested PT,TL at Tau=100'
-         goto 9999  ! The ERROR EXIT
+         call fail_9999
+         ierr = 1
+         return
       endif
 !     READ RANGE OF GRAVITIES
       atm_table%allard_num_teff = 54
@@ -152,11 +153,11 @@ subroutine alfilein(allard_table_path, ierr)
       read(allard_table_unit,909) ((atm_table%allard_log10_pressure(j,i),i=1,atm_table%allard_num_gl),j=1,atm_table%allard_num_teff)
   909  format(1p5e16.8)
       close(allard_table_unit)
-      goto 500      ! NORMAL EXIT
 !     Old Nextgen input file has been read an put into the proper arrays
 
+      else if (first_record(4:9) .eq. 'ALLARD') then
+
 !     Process new-style Allard Atmosphere file
-  200      continue
        atm_table%allard_is_old_nextgen = .false.
       read(allard_table_unit,911) nhdr, header_line  ! nhdr is number of header recoreds to skip over
   911      format(i2,x,a)
@@ -176,15 +177,29 @@ subroutine alfilein(allard_table_path, ierr)
 
 !     First we read the file to count the # of Teff,GL,Fe/H and Alpha's
 
-  299      read(allard_table_unit,915,end=400,err=399) teff_value,gl_value,feh_value,alpha_value ! Process first record(s)
+      found_first = .false.
+      do
+      read(allard_table_unit,915,iostat=ios) teff_value,gl_value,feh_value,alpha_value
   915      format(f6.0,3f6.2)
+      if (ios .gt. 0) then
+!     File Read error exit
+       write(*,*)
+       write(*,*)'AtTabInit Pass 1 File Error '
+       write(*,*)
+       call fail_9999
+       ierr = 1
+       return
+      end if
+      if (ios .lt. 0) exit
       irecno=irecno+1
 
 !     If the record does not have the correct FeH and Alpha, we skip it
       if ((dabs(feh_value-allard_target_feh).gt.1d-5) .or. &
              (dabs(alpha_value-allard_target_alpha).gt.0d0)) then
-         goto 299  ! On to next record. Stay in this part until we get an acceptable record
+         cycle  ! On to next record. Stay in this part until we get an acceptable record
       endif
+      if (.not. found_first) then
+      found_first = .true.
       atm_table%allard_num_teff = 1    ! Initialize counters and variables after reading first record
       atm_table%allard_num_gl = 1
       atm_table%allard_num_feh = 1
@@ -193,59 +208,49 @@ subroutine alfilein(allard_table_path, ierr)
       atm_table%allard_gl_grid(atm_table%allard_num_gl) = gl_value
       atm_table%allard_feh_grid(atm_table%allard_num_feh) = feh_value
       atm_table%allard_alpha_grid(atm_table%allard_num_alpha) = alpha_value
-
-  300      read(allard_table_unit,915,end=400,err=399) teff_value,gl_value,feh_value,alpha_value
-      irecno=irecno+1
-
-!     If the record does not have the correct FeH and Alpha, we skip it
-      if ((dabs(feh_value-allard_target_feh).gt.1d-5) .or. &
-             (dabs(alpha_value-allard_target_alpha).gt.0d0)) then
-         goto 316  ! On to next record
-      endif
+      cycle
+      end if
 
 !      Now check Teffs, increase counter if needed
        do i = 1,atm_table%allard_num_teff  ! Skip out if any old Teff is a match
-        if (dabs(teff_value-local_teffs(i)) .lt.1d-6) goto 310
+        if (dabs(teff_value-local_teffs(i)) .lt.1d-6) exit
       enddo
+      if (i .gt. atm_table%allard_num_teff) then
         atm_table%allard_num_teff = atm_table%allard_num_teff+1      ! count the nextTeff's
         local_teffs(atm_table%allard_num_teff) = teff_value  ! save the new Teff in array Teffs
-  310  continue
+      end if
 
 !     Now check GLs, increase counter if needed
       do i = 1,atm_table%allard_num_gl  ! Skip out if any old GL is a match
-        if (dabs(gl_value-atm_table%allard_gl_grid(i)) .lt.1d-6) goto 312
+        if (dabs(gl_value-atm_table%allard_gl_grid(i)) .lt.1d-6) exit
       enddo
+      if (i .gt. atm_table%allard_num_gl) then
         atm_table%allard_num_gl = atm_table%allard_num_gl+1      ! count the next GL
         atm_table%allard_gl_grid(atm_table%allard_num_gl) = gl_value  ! save the new GL in array GLs
-  312  continue
-
+      end if
 
 !     Now check FeHs, increase counter if needed
+!     (NOTE: these two scans are bounded by allard_num_gl in the
+!     original; preserved as-is.)
       do i = 1,atm_table%allard_num_gl  ! Skip out if any old FeH is a match
-        if (dabs(feh_value-atm_table%allard_feh_grid(i)) .lt.1d-6) goto 314
+        if (dabs(feh_value-atm_table%allard_feh_grid(i)) .lt.1d-6) exit
       enddo
+      if (i .gt. atm_table%allard_num_gl) then
         atm_table%allard_num_feh = atm_table%allard_num_feh+1      ! count the next FeH
         atm_table%allard_feh_grid(atm_table%allard_num_feh) = feh_value  ! save the new FeH in array FeHs
-  314  continue
+      end if
 
 !     Now check ALPHAs, increase counter if needed
       do i = 1,atm_table%allard_num_gl  ! Skip out if any old ALPHA is a match
-        if (dabs(alpha_value-atm_table%allard_alpha_grid(i)) .lt.1d-6) goto 316
+        if (dabs(alpha_value-atm_table%allard_alpha_grid(i)) .lt.1d-6) exit
       enddo
+      if (i .gt. atm_table%allard_num_gl) then
         atm_table%allard_num_alpha = atm_table%allard_num_alpha+1      ! count the next ALPHA
         atm_table%allard_alpha_grid(atm_table%allard_num_alpha) = alpha_value  ! save the new ALPHA in array ALPHAs
-  316  continue
+      end if
 
-      goto 300 ! go on to next record
+      end do ! go on to next record
 
-!     File Read error exit
-  399      continue
-       write(*,*)
-       write(*,*)'AtTabInit Pass 1 File Error '
-       write(*,*)
-       goto 9999
-
-  400      continue
 !       write(*,*) 'nTeff,nGL,nFeH,nALPHA: ',nTeff,nGL,nFeH,nALPHA
 
 !      Now we have unsorted Teff,GL,Fe/H and Alpha's.
@@ -263,43 +268,58 @@ subroutine alfilein(allard_table_path, ierr)
          read(allard_table_unit,*)
       enddo
 
-  410       read(allard_table_unit,920,end=500,err=499) teff_value,gl_value,feh_value,alpha_value, &
+      do
+      read(allard_table_unit,920,iostat=ios) teff_value,gl_value,feh_value,alpha_value, &
               pressure_value,pressure_tau100_value,temp_tau100_value
   920      format(f6.0,3f6.2,1p4d16.8)
+      if (ios .gt. 0) then
+       write(*,*)
+       write(*,*)'AtTabInit File Read error'
+       write(*,*)
+       call fail_9999
+       ierr = 1
+       return
+      end if
+      if (ios .lt. 0) exit  ! We heve finished with the input file and entered all inputs
 
 !     If the record does not have the correct FeH and Alpha, we skip it
       if ((dabs(feh_value-allard_target_feh).gt.1d-5) .or. &
              (dabs(alpha_value-allard_target_alpha).gt.0d0)) then
-         goto 440  ! On to next record
+         cycle  ! On to next record
       endif
 
       do i = 1,atm_table%allard_num_teff  ! Skip out when we find the matching Teff
         if (dabs(teff_value-local_teffs(i)) .lt.1d-6) then
            i1 = i
-           goto 420
+           exit
         endif
       enddo
+      if (i .gt. atm_table%allard_num_teff) then
       write(*,*) 'ALFilein: Impossible failure #1'
       write(*,*) 'Teff of ', teff_value, ' not in Teff table.'
-      goto 9999  ! The error exit
+      call fail_9999
+      ierr = 1
+      return
+      end if
 
-  420  continue
       do j = 1,atm_table%allard_num_gl  ! Skip out when we find the a matching GL
         if (dabs(gl_value-atm_table%allard_gl_grid(j)) .lt.1d-6) then
            j1 = j
-           goto 430
+           exit
         endif
       enddo
+      if (j .gt. atm_table%allard_num_gl) then
       write(*,*) 'ALFilein: Impossible failure #2'
       write(*,*) 'GL of ', gl_value, ' not in GL table.'
-      goto 9999  ! The error exit
-
-  430      continue
+      call fail_9999
+      ierr = 1
+      return
+      end if
 
 !     we now verify that we have the correct FeH and Alpha
 
-      if (dabs(feh_value -allard_target_feh) .ge. 1d-6)  goto 440     ! Wrong FeH, bypass item
-      if (dabs(alpha_value -allard_target_alpha) .ge. 1d-6)  goto 440 ! Wrong Alpha, bypass item
+      if (dabs(feh_value -allard_target_feh) .lt. 1d-6) then
+      if (dabs(alpha_value -allard_target_alpha) .lt. 1d-6) then
 
 
 !     We now have the correct indices for our tables, i1 for the Teff-direction
@@ -311,23 +331,31 @@ subroutine alfilein(allard_table_path, ierr)
        atm_table%allard_log10_pressure_tau100(i1,j1) = pressure_tau100_value
        atm_table%allard_log10_temp_tau100(i1,j1) = temp_tau100_value
 
-  440  continue
-       goto 410   ! Back to process the next record
+      end if
+      end if
+      end do   ! Back to process the next record
 
-  499      continue
-       write(*,*)
-       write(*,*)'AtTabInit File Read error'
-       write(*,*)
-       goto 9999
-
-  500      continue  ! We heve finished with the input file and entered all inputs
+      else
+!     If we get here, the input file is invalid
+      write(short_file_unit,*)'*** Invalid Allard Atmosphere input file ***'
+      write(short_file_unit,*) "First record was '",first_record,"'"
+      write(*,*)'*** Invalid Allard Atmosphere input file ***'
+      write(*,*) "First record was '",first_record,"'"
+      call fail_9999
+      ierr = 1
+      return
+      end if
 
       call altabinit(ierr)   ! Initialize Allard tables
       if (ierr /= 0) return
 
        return
 
- 9999      continue    ! THE ERROR EXIT
+contains
+
+! THE ERROR EXIT (was label 9999): announce termination; every caller
+! then sets ierr = 1 and returns.
+subroutine fail_9999
        write(*,*)
        write(*,*)
        write(*,*) '**************** PROGRAM ALFilein TERMINATED ', &
@@ -340,10 +368,7 @@ subroutine alfilein(allard_table_path, ierr)
             '@ 9999 *************'
        write(short_file_unit,*)
        write(short_file_unit,*)
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
-      ! facades stop when their caller passes no ierr.
-      ierr = 1
-      return
+end subroutine fail_9999
 
 end subroutine alfilein      ! END OF ALINITTAB
 
@@ -365,22 +390,25 @@ subroutine sort_shell(num_elements, values)
       if (num_elements .eq. 1) return                  ! Exit if only one element
       n=num_elements
       inc=1
-    1 inc=3*inc+1                         ! Determin starting increment
-      if (inc .le. n) goto 1
-    2      continue
+      do
+         inc=3*inc+1                         ! Determin starting increment
+      if (inc .gt. n) exit
+      end do
+      do
+         continue
          inc=inc/3                        ! Loop over the partial sorts
          do i=inc+1,n
             v=values(i)                        ! Outer loop of straight insertion
             j=i
-    3        if (values(j-inc) .gt. v) then      ! Inner loop of straight insertion
+    do while (values(j-inc) .gt. v)
                values(j)=values(j-inc)
                j=j-inc
-               if (j .le. inc) goto 4
-            goto 3
-            endif
-    4       values(j)=v
+               if (j .le. inc) exit
+    end do
+            values(j)=v
          enddo
-      if (inc .gt. 1) goto 2
+      if (inc .le. 1) exit
+      end do
       return
 end subroutine sort_shell
 

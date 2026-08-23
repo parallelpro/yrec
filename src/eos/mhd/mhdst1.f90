@@ -43,8 +43,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
            mass_fraction_down(nchem0)
       double precision :: atomic_weight_up(nchem0), number_abundance_up(nchem0), &
            mass_fraction_up(nchem0)
-      save
-
       integer :: num_composition_reads, composition_pass, num_vars_read, &
            table_kind_read, composition_flag_read, composition_flag_expected
       double precision :: delta_x, composition_tolerance
@@ -62,7 +60,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       else
           num_composition_reads = 3
       end if
-      do 400 composition_pass=1,num_composition_reads
+      do composition_pass=1,num_composition_reads
 !     READ(IR,98,END=1000) IVARR,IDXR,IRESCR,DDX
       read(table_unit,   end=1000) num_vars_read,table_kind_read,composition_flag_read,delta_x
       if (ivar1.lt.num_vars_read) then
@@ -117,33 +115,60 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
        call rtab(table_unit,nt2m,nr2m,ivar2,num_t2,num_r2,log10t2,table_vars2, ierr)
        if (ierr /= 0) return
       end if
- 400  continue
-      if (table_kind.eq.0) goto 450
+      end do
+      if (table_kind.ne.0) then
 !     IF IDX=1: CHECK TABLES FOR CORRECT COMPOSITION CONSTRUCTION
 !     AND PERFORM NUMERICAL DERIVATIVES W.R.T. X
       composition_tolerance = 0.05d0*abs(delta_x)
-      if ( abs(mass_fraction(1)-mass_fraction_down(1)-delta_x).gt.composition_tolerance  .or. &
-          abs(mass_fraction(1)-mass_fraction_up(1)+delta_x).gt.composition_tolerance  .or. &
-          abs(mass_fraction(2)-mass_fraction_down(2)+delta_x).gt.composition_tolerance  .or. &
-          abs(mass_fraction(2)-mass_fraction_up(2)-delta_x).gt.composition_tolerance )    goto 500
-      do 420 species_index=3,num_chem
-      if ( abs(mass_fraction(species_index)-mass_fraction_up(species_index)).gt.composition_tolerance )      goto 500
-      if ( abs(mass_fraction(species_index)-mass_fraction_down(species_index)).gt.composition_tolerance )      goto 500
- 420  continue
-      do 430 temp_check_index=1,num_t2
-      if (log10t2(temp_check_index).ne.log10t_down(temp_check_index)) goto 600
-      if (log10t2(temp_check_index).ne.log10t_up(temp_check_index)) goto 600
- 430  continue
+      if ( abs(mass_fraction(1)-mass_fraction_down(1)-delta_x).gt.composition_tolerance  .or. abs(mass_fraction(1)-mass_fraction_up(1)+delta_x).gt.composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_down(2)+delta_x).gt.composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_up(2)-delta_x).gt.composition_tolerance ) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
+      do species_index=3,num_chem
+      if ( abs(mass_fraction(species_index)-mass_fraction_up(species_index)).gt.composition_tolerance ) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
+      if ( abs(mass_fraction(species_index)-mass_fraction_down(species_index)).gt.composition_tolerance ) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
+      end do
+      do temp_check_index=1,num_t2
+      if (log10t2(temp_check_index).ne.log10t_down(temp_check_index)) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
+      if (log10t2(temp_check_index).ne.log10t_up(temp_check_index)) then
+         continue
+         
+         
+         ierr = 1
+         return
+      end if
+      end do
 !     NUMERICAL DERIVATIVES W.R.T. X
-      do 440 temp_deriv_index =1,num_t2
+      do temp_deriv_index =1,num_t2
 ! KC 2025-05-30 fixed "Shared DO termination label"
 !       DO 440 M =1,NR2
-      do 441 density_deriv_index =1,num_r2
-      do 435 var_index=1,ivar1
+      do density_deriv_index =1,num_r2
+      do var_index=1,ivar1
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 435   TDVAR2(N,M,IV)=TDDIF0(N,M,IV)
         table_vars2(temp_deriv_index,density_deriv_index,var_index)=table_vars_centroid(temp_deriv_index,density_deriv_index,var_index)
-435   continue
+      end do
 !
 !     EXTENDED SET OF VARIABLES (TDVAR2(N,M,IVAR1+1...IVAR2))
 !     FOR T-RHO REGIONS WITH INHOMOGENEOUS COMPOSITION.
@@ -155,18 +180,16 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       table_vars2(temp_deriv_index,density_deriv_index,24)=(table_vars_up(temp_deriv_index,density_deriv_index, 9)-table_vars_down(temp_deriv_index,density_deriv_index, 9))/(2.d0*delta_x)
 !     SPACE-HOLDER VARIABLE (LIKE VAR(20))
       table_vars2(temp_deriv_index,density_deriv_index,25)=8888844444.d0
-  441 continue
-  440 continue
+      end do
+      end do
 !     NORMAL EXIT
- 450  continue
+      end if
       return
 !     ERROR EXIT AND ERROR MESSAGES
-  500 continue
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
       return
- 600  continue
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
@@ -176,10 +199,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       ! facades stop when their caller passes no ierr.
       ierr = 1
       return
-!  98   FORMAT(1X,3I5,F13.5)
-!  99   FORMAT(1X,I5,(/1X,3E15.7))
-! 1001  FORMAT(2I5,2F10.6)
-! 8001  FORMAT(' CORRECT TABLE CONSTRUCTION FOR X-DERIVATIVES.',
 !      1       ' CENTROID COMPOSITION IS:'//)
 ! 8002  FORMAT('      AT. WEIGHT     NUMBER ',
 !      1 'ABUNDANCE  MASS FRACTION',(/1X,1P3G16.7))
@@ -195,9 +214,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !      1 ' IDX,NT1,NT2 ',/1X,3I8)
 ! 9800  FORMAT(' ERROR IN TABLE CONSTRUCTION FOR X-DERIVATIVES',
 !      1       ' CENTRAL, LOWER, UPPER TABLE: N(ELEMENT),ABFRCS(N)'//)
-! 9810  FORMAT(1X,I5,F15.9)
-! 9820  FORMAT(/)
-! 9850  FORMAT(' ERROR IN TABLE CONSTRUCTION FOR X-DERIVATIVES:',
 !      1       ' TEMPERATURES WRONG: J,TLOW(J),TCENT(J),TUPP(J)'//)
 ! 9860  FORMAT(1X,I5,3F15.9)
 ! 9900  FORMAT(' EOF REACHED IN INPUT FILE. ERROR STOP. IR,IDX = ',2I5)

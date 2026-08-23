@@ -32,9 +32,6 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
 
 !      COMMON/CALS2/TOLL,TOLR,LCALS
-
-
-      save
 !     DATA TOLL,TOLR/1.0D-5,1.0D-4/
 
 ! locals -- log_zx_mismatch/delta_z/log_zx_mismatch_prev (originally
@@ -52,12 +49,14 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
             log_zx_mismatch = log10(current_zx)-log10(target_solar_zx)
             if(abs(log_zx_mismatch).lt.zx_tolerance)then
                star%run%solar_calibration_active = .true.
-               goto 9999
+               continue
+               return
             endif
          else
 ! CALIBRATED SOLAR MODEL.  SET UP OUTPUT FLAGS AND EXIT
             star%run%solar_calibration_active = .true.
-            goto 9999
+            continue
+            return
          endif
       endif
 
@@ -66,73 +65,9 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
       star%run%drad_dx = -0.89d0             ! empirical result:  -0.890    RMS error .048
       star%run%dlum_dalpha = 0.0139d0            ! empirical result:  +0.139    RMS error .0022
       star%run%drad_dalpha = -0.050d0            ! empirical result:  -0.0504   RMS error .0059
-      goto 1234            ! Bypass partial derivative code
-! mhp 5/96 added change to compute solar calibration for 3 kind cards
-      if(run_index.eq.3)then
-!     SET UP RUN TO DETERMINE DERIVATIVE OF L AND R WITH RESPECT TO X.
-!
-!     3.7 is empirical average dL/dX, so trial DX is BL / (dL/dX)   ! llp 6/18/09
-!         DX = BL/3.7D0
-!         DX = +.01
-         rescale_params(2,run_index+1) = rescale_params(2,1)+star%run%delta_x
-! STORE PREVIOUS L AND R.
-         initial_x_array(run_index+1) = rescale_params(2,run_index+1)
-         initial_x_array(run_index+2)=initial_x_array(run_index+1)
-         initial_x_array(run_index+3)=initial_x_array(run_index+1)
-         star%run%log_l_prev = log_l_lsun
-         star%run%log_r_prev = log_r_rsun
-         goto 9999
-      else if(run_index.eq.6)then
-!     EVALUATE DERIVATIVE OF L AND R WITH RESPECT TO X.
-!         DLDX = (BL - BLP)/DX
-!         DRDX = (RL - RLP)/DX
-!         WRITE(IOWR,*) "DX,DLDX,BL,BLP,DRDX,RL,RLP: ",
-!    *      DX,DLDX,BL,BLP,DRDX,RL,RLP
-!     SET UP RUN TO DETERMINE DERIVATIVE OF L AND R WITH RESPECT TO ALPHA.
-
-!     .042 is typical average dR/dA, so trial DA is RL / (dR/dA)   ! llp 6/18/09
-!         DA = RL/0.042D0
-         mixing_length_array(run_index+1) = mixing_length_array(1)+star%run%delta_alpha
-         mixing_length_array(run_index+2) = mixing_length_array(run_index+1)
-         mixing_length_array(run_index+3) = mixing_length_array(run_index+1)
-         rescale_params(2,run_index+1) = rescale_params(2,1)
-         initial_x_array(run_index+1)=initial_x_array(1)
-         initial_x_array(run_index+2)=initial_x_array(run_index+1)
-         initial_x_array(run_index+3)=initial_x_array(run_index+1)
-         star%run%log_l_prev = log_l_lsun
-         star%run%log_r_prev = log_r_rsun
-         goto 9999
-      else if(run_index.eq.9)then
-!     EVALUATE DERIVATIVE OF L AND R WITH RESPECT TO ALPHA.
-         star%run%dlum_dalpha = (log_l_lsun - star%run%log_l_prev)/star%run%delta_alpha
-         star%run%drad_dalpha = (log_r_rsun - star%run%log_r_prev)/star%run%delta_alpha
-         write(iowr,*) "DA,DLDA,BL,BLP,DRDA,RL,RLP: ", &
-             star%run%delta_alpha,star%run%dlum_dalpha,log_l_lsun,star%run%log_l_prev,star%run%drad_dalpha, &
-             log_r_rsun,star%run%log_r_prev
-!     USE DERIVATIVES OF L AND R WITH RESPECT TO X AND ALPHA TO
-!     GET IMPROVED GUESSES FOR ALPHA AND X.
-         star%run%delta_alpha = ((log_l_lsun*star%run%drad_dx/star%run%dlum_dx-log_r_rsun)/ &
-              (star%run%drad_dalpha-star%run%dlum_dalpha*star%run%drad_dx/star%run%dlum_dx))
-         star%run%delta_x = -(log_l_lsun + star%run%dlum_dalpha*star%run%delta_alpha)/star%run%dlum_dx
-         mixing_length_array(run_index+1) = mixing_length_array(1)+star%run%delta_alpha
-         mixing_length_array(run_index+2) = mixing_length_array(run_index+1)
-         mixing_length_array(run_index+3) = mixing_length_array(run_index+1)
-         rescale_params(2,run_index+1) = rescale_params(2,1)+star%run%delta_x
-         initial_x_array(run_index+1) = rescale_params(2,run_index+1)
-         initial_x_array(run_index+2) = rescale_params(2,run_index+1)
-         initial_x_array(run_index+3) = rescale_params(2,run_index+1)
-         star%run%log_l_prev = log_l_lsun
-         star%run%log_r_prev = log_r_rsun
-         write(iowr,*) "New X, Old X, Calc DX: ", &
-             rescale_params(2,run_index+1), rescale_params(2,1), star%run%delta_x
-         write(iowr,*) "New A, Old A, Calc DA: ", &
-             mixing_length_array(run_index+1), mixing_length_array(1), &
-             star%run%delta_alpha
-         goto 9999
-!      ELSE
-      endif   ! terrminate old partial derivative code
-
- 1234 continue
+! (2026 goto campaign: an unconditional `goto 1234` here bypassed the
+! original run_index-based partial-derivative code, which was therefore
+! dead; it was removed. See git history for the bypassed block.)
 !     USE DERIVATIVES OF L AND R WITH RESPECT TO X AND ALPHA TO
 !     GET IMPROVED GUESSES FOR ALPHA AND X.
          star%run%delta_alpha = ((log_l_lsun*star%run%drad_dx/star%run%dlum_dx-log_r_rsun)/ &
@@ -173,8 +108,8 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
          star%run%log_l_prev = log_l_lsun
          star%run%log_r_prev = log_r_rsun
          log_zx_mismatch_prev = log_zx_mismatch
-         goto 9999
+         continue
+         return
 !      ENDIF
- 9999 continue
       return
 end subroutine chkcal

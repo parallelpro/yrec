@@ -48,7 +48,6 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end, ierr)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -60,16 +59,6 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       double precision, intent(in) :: omega_old
       double precision, intent(out) :: domega_start
       double precision, intent(inout) :: domega_end
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: omega_first, omega_now, current_turnover_timescale, &
            omega_saturation, wind_coefficient, gl, fsun, log10_radius, &
@@ -86,7 +75,8 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
               iteration_number,omega_surface,total_mass_msun,log_teff, &
               omega_old,domega_start,domega_end, ierr)
          if (ierr /= 0) return
-         goto 9999
+         continue
+         return
       endif
 !
 ! G Somers 8/17 CREATE ROTATION DUMMY VARIABLES.
@@ -167,6 +157,5 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       else
          domega_end = 0.5d0*(domega_end+domega_end_this_iter)
       endif
- 9999 continue
       return
 end subroutine mcowind

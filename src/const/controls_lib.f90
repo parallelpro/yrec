@@ -18,6 +18,24 @@
 module controls_lib
       implicit none
 
+! 2026 MESA-style output: .true. -> the historical per-model streams
+! (.track/.store); .false. -> MESA-format output (history.data-layout
+! .history file; profiles to follow). Compile default .true. keeps
+! every legacy deck byte-pinned; parmin's new-style inlist path
+! flips the default to .false. before the read (either format can set
+! it explicitly).
+      logical, public :: use_legacy_output = .true.
+! MESA-style output controls (new-format inlists only):
+      character(len=256), public :: star_history_name = 'history.data'
+      character(len=256), public :: history_columns_file = ' '
+      character(len=256), public :: profile_columns_file = ' '
+      integer, public :: profile_interval = 50
+      character(len=8), public :: pulse_format = 'GYRE'
+! Independent toggles: profiles only, pulse only, both, or neither
+! (cadence stays with profile_interval / pulse_gyre_interval):
+      logical, public :: write_profile_flag = .false.
+      logical, public :: write_pulse_flag = .false.
+
 ! former common/ctlim/. Defaults (previously two DATA statements in
 ! core/parmin.f90, now illegal there since these are use-associated
 ! rather than locally declared) moved here as declaration-time

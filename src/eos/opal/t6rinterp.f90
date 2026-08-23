@@ -21,15 +21,6 @@ subroutine t6rinterp(slr, slt, ierr)
       double precision, intent(in) :: slr, slt
 
       integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       integer :: hi_loop_count, recompute_flag, cache_slot, t6_grid_idx
       double precision :: esactq, esact2, esactq2, dix, dix2

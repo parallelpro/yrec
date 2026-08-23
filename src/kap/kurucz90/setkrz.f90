@@ -21,15 +21,8 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 
 ! MHP 8/25 Remove unused variables
       character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
-
-
-
-
-
-
-      save
-
       integer :: x_table_count, num_read, density_index
+      integer :: read_status
       double precision :: prev_grid_temp, grid_temp, pressure, &
            log10_opacity0, log10_opacity1, log10_opacity2, &
            log10_opacity4, log10_opacity8, electron_density, &
@@ -43,11 +36,13 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 
       num_read = 0
       prev_grid_temp = 0.0d0
-  110 continue
-      read(kurucz_table_unit,1,err=110,end=120) grid_temp, pressure, &
+      table_read: do
+      read(kurucz_table_unit,1,iostat=read_status) grid_temp, pressure, &
            log10_opacity0, log10_opacity1, log10_opacity2, &
            log10_opacity4, log10_opacity8, electron_density, &
            atom_density, density, unused_col
+      if (read_status .gt. 0) cycle table_read   ! was err=110: reread next record
+      if (read_status .lt. 0) exit table_read    ! was end=120
       if (prev_grid_temp.ne.grid_temp) then
          num_read = num_read+1
          if (num_read.gt.max_num_temps) stop ' KURUCZ INPUT ERROR'
@@ -59,9 +54,8 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
       opacity_table%kurucz_log10_rho(num_read, density_index) = density
       opacity_table%kurucz_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
       density_index = density_index+1
-      goto 110
+      end do table_read
 
-  120 continue
       opacity_table%kurucz_num_temps = num_read
 !     CLOSE THE TABLE WE HAVE READ
       close(kurucz_table_unit,err=99)
@@ -74,11 +68,13 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 
          num_read = 0
          prev_grid_temp = 0.0d0
-  210    continue
-         read(ikur2,1,err=210,end=220) grid_temp, pressure, &
+         table2_read: do
+         read(ikur2,1,iostat=read_status) grid_temp, pressure, &
               log10_opacity0, log10_opacity1, log10_opacity2, &
               log10_opacity4, log10_opacity8, electron_density, &
               atom_density, density, unused_col
+         if (read_status .gt. 0) cycle table2_read   ! was err=210
+         if (read_status .lt. 0) exit table2_read    ! was end=220
          if (prev_grid_temp.ne.grid_temp) then
             num_read = num_read+1
             if (num_read.gt.max_num_temps) stop ' KURUCZ INPUT ERROR'
@@ -90,9 +86,8 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
          opacity_table%kurucz2_log10_rho(num_read, density_index) = density
          opacity_table%kurucz2_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
          density_index = density_index+1
-         goto 210
+         end do table2_read
 
-  220    continue
          opacity_table%kurucz2_num_temps = num_read
 !        CLOSE THE TABLE WE HAVE READ
          close(ikur2,err=99)

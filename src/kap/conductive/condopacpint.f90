@@ -33,8 +33,6 @@ subroutine condopacpint(log10_density, log10_temperature, &
       double precision, intent(in) :: ion_fraction(3)
       logical, intent(out) :: got_conductive_opacity
       integer, intent(out) :: ierr
-
-      save
       double precision :: atomic_weight_h1, atomic_weight_he4, &
            atomic_weight_ox
       data atomic_weight_h1,atomic_weight_he4,atomic_weight_ox &

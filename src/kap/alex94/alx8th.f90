@@ -25,8 +25,6 @@ subroutine alx8th(hydrogen_fraction)
 
 
       double precision :: interp_x(4), weight_x(4)
-      save
-
       integer :: i, j
 
       opacity_table%alex95_cached_x = hydrogen_fraction

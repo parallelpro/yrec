@@ -38,8 +38,6 @@ subroutine yllo2d2(temperature, density, abund_index, temp_index, &
       double precision :: aqod(num_t)
       integer :: jt, it, its, itf
       logical :: lmore
-      save
-
       integer :: mm1, index1, ndss, ndf, knot, index2
       double precision :: dx, c1, c2, c3, c4, ol0, qodi
       double precision :: ol00, unused_ddensity_dtemp
@@ -56,7 +54,7 @@ subroutine yllo2d2(temperature, density, abund_index, temp_index, &
           mm1 = opacity_table%opal92_surface_x_index_z2
       endif
       jt = 0
-      do 300 it = its,itf
+      do it = its,itf
         index1 = it + (mm1-1)*opacity_table%opal92_num_temps_z2
         ndss = opacity_table%opal92_density_start_index_z2(index1)
         if (ndss.ne.1) stop ' OPAL95 2D2 CHECK NDSS '
@@ -104,7 +102,7 @@ subroutine yllo2d2(temperature, density, abund_index, temp_index, &
         xt(jt) = opacity_table%opal92_grid_logt_z2(it)
         yto(jt) = ol0
         aqod(jt) = qodi
-  300 continue
+      end do
       if (xt(1).gt.temperature.or.xt(jt).lt.temperature) stop ' EXTRAPOLATION FAILS '
 !! INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.
 !! GET THE PARTIAL DERIVATIVE OF OL WRT T.

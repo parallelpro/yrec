@@ -36,16 +36,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       integer, intent(in) :: num_zones, run_index
       double precision, intent(inout) :: star_mass
       logical, intent(in) :: convective_flag(json)
-
-
-
-
-
-
-
-
-      save
-
 ! --- locals ---
       double precision :: x_rescale_factor
       integer :: zone_idx, species_idx, error_species_index, icomp
@@ -75,10 +65,10 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 !  THIS METHOD OK FOR BOTH HORIZONTAL BRANCH AND MAIN SEQUENCE STARS
          if(rescale_params(2,run_index).le.1.0d0) then
             x_rescale_factor = rescale_params(2,run_index)/dmax1(star%env_comp%xnew,1.0d-20)
-            do 10 zone_idx = 1,num_zones
+            do zone_idx = 1,num_zones
                composition(1,zone_idx) = dmin1(rescale_params(2,run_index), &
                     composition(1,zone_idx)*x_rescale_factor)
-   10       continue
+            end do
             star%env_comp%xnew = rescale_params(2,run_index)
             initial_envelope_x = rescale_params(2,run_index)
 ! DBG 4/95 BUG FIX XENV IS USED IN SOME ROUTINES AND NOT XENV0 SO CHANGE
@@ -103,14 +93,14 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 !  DESIRED NEW Z TO THE OLD Z - LIGHT ELEMENT ABUNDANCES ARE LEFT ALONE
          if(rescale_params(3,run_index).le.1.0d0) then
             delta_z = rescale_params(3,run_index) - star%env_comp%znew
-            do 30 species_idx = 1,num_zones
+            do species_idx = 1,num_zones
                z_rescale_factor=dmax1(0.d0,composition(3,species_idx)+delta_z)/ &
                     (composition(3,species_idx)+1.d-30)
                composition(3,species_idx) = dmax1(0.0d0,composition(3,species_idx)+delta_z)
-               do 20 zone_idx = 5,11
+               do zone_idx = 5,11
                   composition(zone_idx,species_idx) = composition(zone_idx,species_idx)*z_rescale_factor
-   20          continue
-   30       continue
+               end do
+            end do
             star%env_comp%znew = rescale_params(3,run_index)
             initial_envelope_z = rescale_params(3,run_index)
 ! DBG 4/95 BUG FIX ZENV IS USED IN MANY ROUTINES AND NOT ZENV0 SO CHANGE
@@ -145,9 +135,9 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             if(value_relative_to_h) new_species_value = &
                  dexp(ln10*(new_species_value-12.0d0))*composition(1,num_zones)
             if(new_species_value.lt.1.0d0) then
-               do 35 zone_idx = 1,num_zones
+               do zone_idx = 1,num_zones
                   composition(new_species_index,zone_idx) = new_species_value
-   35          continue
+               end do
             else
 !  ERROR - RESCALED ABUNDANCE >100% - ABUNDANCE NOT CHANGED
 !               ACOMP = ANEWCP
@@ -165,9 +155,9 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             total_mass_log = total_mass_log + log_mass_shift
             star_mass = rescale_params(1,run_index)
             star%env_comp%stotal = total_mass_log
-            do 40 zone_idx = 1,num_zones
+            do zone_idx = 1,num_zones
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
-   40       continue
+            end do
          endif
       else
 !  HORIZONTAL BRANCH RESCALING;CORE MASS AND TOTAL MASS.
@@ -252,17 +242,12 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 
             star_mass = rescale_params(1,run_index)
             star%env_comp%stotal = total_mass_log
-            do 70 zone_idx = shell_end+1,num_zones
+            do zone_idx = shell_end+1,num_zones
         shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_end)+ &
              mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_end)))
-   70       continue
+            end do
             env_mass_old = env_mass_new
 ! *****
-!            write(*,*)'Mass difference ',DENV
-!            write(*,*)'HSTOT1 ',HSTOT1
-!            write(*,*)'SFACTOR ',DLOG10(SFACTOR)
-! ************
-!      write(*,*)'leaving old method ',HSTOT-HS(M)
 ! ************
 
          else
@@ -274,12 +259,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       write(*,*)'Envelope ',10**shell_mass_log(num_zones) - 10**shell_mass_log(shell_begin-1)
 ! ************
 !           *** print debug info ***
-!            write(*,*)JXBEG-1,JXMID,JXEND,M
-!            write(*,*)(10**HS(JXBEG-1))/CMSUN,' core'
-!            write(*,*)(10**HS(JXMID))/CMSUN,' mid'
-!            write(*,*)(10**HS(JXEND))/CMSUN,' end'
-!            write(*,*)(10**HS(M))/CMSUN,' M'
-!            write(*,*)(10**HSTOT)/CMSUN,' total'
             env_mass_check = ((10**total_mass_log)/solar_mass_cgs)-core_mass_old
             if(env_mass_check.le.0.0d0)then
                write(short_file_unit,69)env_mass_old,env_mass_old+delta_env_mass,rescale_params(1,run_index),star_mass
@@ -303,15 +282,12 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 
             star_mass = rescale_params(1,run_index)
             star%env_comp%stotal = total_mass_log
-            do 78 zone_idx = shell_begin,num_zones
+            do zone_idx = shell_begin,num_zones
       shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_begin-1)+ &
            mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_begin-1)))
- 78     continue
+            end do
             env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/solar_mass_cgs
             env_mass_total_check=(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_begin-1)))/solar_mass_cgs
-!            write(*,*)'total envelope ',ENVTOTAL
-!            write(*,*)'HSTOT1 ',HSTOT1
-!            write(*,*)'SFACTOR ',DLOG10(SFACTOR)
 
 ! ************
 !      write(*,*)'leaving new method ',HSTOT-HS(M)
@@ -345,27 +321,27 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
                return
             endif
             log_mass_shift = dlog10(rescale_params(4,run_index)/core_mass_old)
-            do 80 zone_idx = 1,shell_begin-1
+            do zone_idx = 1,shell_begin-1
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
-   80       continue
+            end do
 
 !  HOLD H-SHELL MASS CONSTANT;SHIFT IS THE CHANGE IN THE
 !  UNLOGGED MASS OF EACH POINT IN THE H SHELL.
             mass_shift_grams = delta_core_mass*solar_mass_cgs
-            do 90 zone_idx = shell_begin,shell_end
+            do zone_idx = shell_begin,shell_end
                unlogged_mass_temp = exp(ln10*shell_mass_log(zone_idx))
                shell_mass_log(zone_idx) = log10(unlogged_mass_temp + mass_shift_grams)
-   90       continue
+            end do
 !  NOW SHRINK OR EXPAND THE ENVELOPE MASS TO RETAIN TOTAL CONSTANT MASS.
 !
 
         mass_scale_factor =(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_end)))/ &
                           (exp(ln10*shell_mass_log(num_zones))-shell_mass_prev)
 
-            do 100 zone_idx = shell_end+1,num_zones
+            do zone_idx = shell_end+1,num_zones
         shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(num_zones)- &
              mass_scale_factor*(10**shell_mass_log(num_zones)-10**shell_mass_log(zone_idx)))
-  100       continue
+            end do
 
          endif
 
@@ -380,9 +356,9 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
          endif
       endif
 !  CHANGE Y TO REFLECT NEW X,Z, AND HE3 VALUES.
-      do 110 zone_idx = 1,num_zones
+      do zone_idx = 1,num_zones
          composition(2,zone_idx) = 1.0d0-composition(1,zone_idx)-composition(3,zone_idx)-composition(4,zone_idx)
-  110 continue
+      end do
 !
 ! DBG 5/94 rescale interior Z if LZRAMP flag is T.
 ! Z is linearly adjusted from RSCLZC at the center to surface Z at
@@ -411,8 +387,5 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             enddo
       end if
 ! ************
-!      write(*,*)'Leaving rscale ',HSTOT-HS(M)
-! ************
-!      IF(HSTOT.LT.HS(M)) STOP
       return
 end subroutine rscale

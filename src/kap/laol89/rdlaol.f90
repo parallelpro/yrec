@@ -29,8 +29,6 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 
 
       double precision :: work_array2(12), zdh2(18)
-      save
-
       integer :: ii, ix, ir, it
       double precision :: zlot, zhit, zlot2, zhit2
 

@@ -26,13 +26,11 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      eq_del_grad_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col)
 
-      use run_diag_lib
+      use star_info_lib
       use luout_lib
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
-
       double precision, intent(in) :: grid_spacing
       double precision, intent(in) :: timestep
       double precision, intent(in) :: total_mass
@@ -63,8 +61,6 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
            diffusion_coeff2_deriv_mid(json)
       double precision :: alpha(json), sub_diag(json), diag(json), &
            super_diag(json)
-      save
-
       integer :: i, iter, num_mid_points, max_change_zone
 ! use_generic_diffusion_vectors (originally LDOLI): set true so that
 ! the Lax-Wendroff routines (lax_wendrof1.f/lax_wendrof2.f, not part
@@ -163,7 +159,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       enddo
       alpha(num_eq_points) = fac/(total_mass-eq_mass_mid(num_eq_points-1))
 !  START ITERATION LOOP FOR THE NEW RUN OF ABUNDANCES.
-      do 100 iter=1,settling_num_iterations
+      do iter=1,settling_num_iterations
 !  FIND CHANGE IN D AT THE ZONE MIDPOINTS, GIVEN CHANGE IN D AT
 !  THE ZONE CENTERS.
          do i = 2,num_eq_points
@@ -206,8 +202,9 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
          write(short_file_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
-         if(max_abundance_change.lt.settling_tolerance)goto 120
-  100 continue
+         if(max_abundance_change.lt.settling_tolerance)exit
+      end do
+      if (iter > settling_num_iterations) then
       write(iowr,110)settling_tolerance,settling_num_iterations, &
            max_abundance_change,max_change_zone
       write(short_file_unit,110)settling_tolerance,settling_num_iterations, &
@@ -215,7 +212,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
   110 format(1x,'MICRODIFF FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
            'ITERATIONS'/1x,'LAST ITERATION CHANGE IN D ',1pe9.3, &
            ' IN EQUALLY SPACED SHELL ',i5)
-  120 continue
+      end if
 !
 !  STORE THE RUN OF CHANGES IN THE DIFFUSED ELEMENT.
       do i = 1,num_eq_points

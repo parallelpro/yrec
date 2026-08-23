@@ -71,8 +71,6 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
 
       double precision :: equally_spaced_composition(json)
       integer :: varying_species_id(15)
-      save
-
       integer :: num_varying_species, j_idx, zone_idx, ntab, species_num, &
            orig_zone_idx, i0, i1
       double precision :: test_value, dcomp, dcomp2, sum_species_orig, &
@@ -93,13 +91,12 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
                     then
                   num_varying_species = num_varying_species + 1
                   varying_species_id(num_varying_species) = j_idx
-                  goto 20
+                  exit
                end if
             end do
          end if
-   20    continue
       end do
-      if (num_varying_species.eq.0) goto 200
+      if (num_varying_species.ne.0) then
 ! NOW SOLVE FOR DIFFUSION OF ALL SPECIES THAT VARY OVER THE
 ! UNSTABLE REGION USING THE SAME DIFFUSION COEFFICIENTS.
       ntab = zone_end - zone_begin + 1
@@ -146,11 +143,10 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
             do zone_idx = zone_begin-1, 1, -1
                if (.not.convective_flag(zone_idx)) then
                   i0 = zone_idx + 1
-                  goto 90
+                  exit
                end if
             end do
-            i0 = 1
-   90       continue
+            if (zone_idx .lt. 1) i0 = 1
          else
             i0 = zone_begin
          end if
@@ -159,11 +155,10 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
             do zone_idx = zone_end+1, num_zones
                if (.not.convective_flag(zone_idx)) then
                   i1 = zone_idx - 1
-                  goto 97
+                  exit
                end if
             end do
-            i1 = num_zones
-   97       continue
+            if (zone_idx .gt. num_zones) i1 = num_zones
          end if
          dcomp2 = 0.0d0
 ! COMPUTE SUM OF SPECIES MASS
@@ -207,15 +202,6 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
             end do
          end if
 ! CHECK FOR CONSERVATION OF SPECIES
-!         TEST = ABS(SUMSPEC-SUMSPEC2)
-!         WRITE(*,911)ID(N),DCOMP,DCOMP2,SUMSPEC
-! 911     FORMAT(I5,1P3E10.2)
-!         IF(TEST.GT.1.0D-10*SUMSPEC)THEN
-!            RATIO = SUMSPEC/SUMSPEC2
-!            DO I = I0,I1
-!               HCOMP(ID(N),I)=RATIO*HCOMP(ID(N),I)
-!            END DO
-!         ENDIF
       end do
 ! ADJUST HE4 FOR CHANGES IN X, Z, AND HE3.
       if (.not.final_iteration_flag) then
@@ -224,6 +210,6 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
                  composition(3,zone_idx) - composition(4,zone_idx)
          end do
       end if
-  200 continue
+      end if
       return
 end subroutine mixcom

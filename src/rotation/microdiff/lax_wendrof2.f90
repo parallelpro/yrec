@@ -30,9 +30,6 @@ subroutine lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
       integer, intent(in) :: num_eq_points
       double precision, intent(in) :: total_mass
       logical, intent(in) :: use_generic_diffusion_vectors
-
-      save
-
       double precision :: dt_full, zone_mass, delta_abundance, &
            delta_metal_abundance
       integer :: i
@@ -44,11 +41,11 @@ subroutine lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
       diffused_abundance(1) = diffused_abundance(1)+delta_abundance
 !    99 format(5x,1p2e15.7)
 ! general case
-      do 10 i = 2,num_eq_points-1
+      do i = 2,num_eq_points-1
          zone_mass = eq_mass_mid(i)-eq_mass_mid(i-1)
          delta_abundance = dt_full*(diffusion_coeff1_mid(i)-diffusion_coeff1_mid(i-1))/zone_mass
          diffused_abundance(i) = diffused_abundance(i)+delta_abundance
-   10 continue
+      end do
 ! surface boundary condition.
       zone_mass = total_mass-eq_mass_mid(num_eq_points-1)
       delta_abundance = -dt_full*diffusion_coeff1_mid(num_eq_points-1)/zone_mass

@@ -23,10 +23,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
 
       double precision, intent(in) :: log10_teff, log10_gravity
       logical, intent(in) :: print_flag
-
-
-      save
-
 ! --- locals ---
       double precision :: teff_nodes(4), gravity_nodes(4), &
            pressure_at_nodes(4), unused_deriv(3), gravity_weights(3), &
@@ -58,10 +54,11 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
       endif
 ! TEMPERATURE INTERPOLATION FACTORS.
       do row = 1,ntc
-         if (log10_teff.le.kurucz_castelli_teff_table(row)) goto 10
+         if (log10_teff.le.kurucz_castelli_teff_table(row)) exit
       end do
+      if (row > ntc) then
       row = ntc
-   10 continue
+      end if
       row_base = max(1,row-2)
       row_base = min(ntc-3,row_base)
       do k = 1,4
@@ -69,7 +66,7 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
       end do
       atm_table%teff_interp_start_index = row_base
 ! GRAVITY INTERPOLATION FACTORS.
-      do 20 row = row_base,row_base+3
+      do row = row_base,row_base+3
          node = row-row_base+1
 ! CHECK IF 4 LOG VALUES AVAILABLE - OTHERWISE, USE 3 POINT LAGRANGIAN
 ! OR LINEAR INTERPOLATION.
@@ -100,7 +97,7 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                     gravity_weights(3)
                atm_table%gravity_interp_indices(node) = ngc-2
             endif
-            goto 20
+            cycle
          endif
          if (log10_gravity.ge.kurucz_castelli_logg_table(ngc-1)) then
 ! DESIRED LOG G ABOVE SECOND TO TOP TABLE LOG G - USE TOP 4 LOG G VALUES.
@@ -115,7 +112,7 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                  gravity_spline_deriv, log10_gravity, interpolated_value)
             pressure_at_nodes(node) = interpolated_value
             atm_table%gravity_interp_indices(node) = ngc-3
-            goto 20
+            cycle
          endif
 ! GENERAL CASE - FIND 4 NEAREST POINTS IN GRAVITY THAT ARE IN THE TABLE.
 ! G Somers, I changed NG to IMINMAX in the next line. This prevents the
@@ -136,9 +133,10 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                     gravity_spline_deriv, log10_gravity, interpolated_value)
                pressure_at_nodes(node) = interpolated_value
                atm_table%gravity_interp_indices(node) = kk
-               goto 20
+               exit
             endif
          end do
+         if (k .lt. atm_table%castelli_gmin_index(row)) then
 ! DESIRED LOG G BELOW 2ND TABLE ENTRY -USE FIRST 4 POINTS.
          do k = 1,4
             gravity_nodes(k) = &
@@ -151,7 +149,8 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
               gravity_spline_deriv, log10_gravity, interpolated_value)
          pressure_at_nodes(node) = interpolated_value
          atm_table%gravity_interp_indices(node) = atm_table%castelli_gmin_index(row)
-   20 continue
+         end if
+      end do
 ! INTERPOLATE IN TEMPERATURE TO FIND CORRECT LOG P.
       call kspline(teff_nodes, pressure_at_nodes, teff_spline_deriv)
       call ksplint(teff_nodes, pressure_at_nodes, teff_spline_deriv, &

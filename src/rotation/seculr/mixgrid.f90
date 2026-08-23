@@ -21,7 +21,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       use numerics_lib
       implicit none
@@ -38,16 +37,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
       double precision, intent(out) :: equally_spaced_diffusion_coeff(json), &
            equally_spaced_mass(json)
       logical, intent(out) :: single_interface_flag
-
-
-
-
-
-
-
-
-      save
-
       integer :: idx, search_idx, i0, i1, ntab, ntabb
       double precision :: em_top, em_bot
       double precision :: mass_scale, luminosity_scale, pressure_scale
@@ -56,7 +45,8 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
 ! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
       if (zone_end - zone_begin.le.1) then
          single_interface_flag = .true.
-         goto 9999
+         continue
+         return
       else
          single_interface_flag = .false.
       end if
@@ -89,13 +79,14 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          do search_idx = zone_begin-1, 1, -1
             if (.not.convective_flag(search_idx)) then
                i0 = idx + 1
-               goto 10
+               exit
             end if
             equally_spaced_mass(1) = equally_spaced_mass(1) + &
                  shell_mass(search_idx)
          end do
+         if (search_idx < (1)) then
          i0 = 1
-   10    continue
+         end if
       else
          i0 = 1
       end if
@@ -112,13 +103,14 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          do search_idx = zone_end+1, num_zones
             if (.not.convective_flag(search_idx)) then
                i1 = idx - 1
-               goto 20
+               exit
             end if
             equally_spaced_mass(star%rot%ntot) = equally_spaced_mass(star%rot%ntot) + &
                  shell_mass(search_idx)
          end do
+         if (search_idx > num_zones) then
          i1 = num_zones
-   20    continue
+         end if
       else
          i1 = num_zones
       end if
@@ -175,6 +167,5 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          equally_spaced_diffusion_coeff(idx) = &
               equally_spaced_diffusion_coeff(idx)*exp(ln10*star%rot%yval(idx))
       end do
- 9999 continue
       return
 end subroutine mixgrid

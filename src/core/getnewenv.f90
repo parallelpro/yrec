@@ -19,14 +19,12 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag)
       use atm_lib
-      use run_diag_lib
+      use envint_lib, only: atm_get
+      use star_info_lib
       use envstruct_lib
-      use star_info_lib, only: star
       use const_lib
       use yale_eos_lib
       implicit none
-      integer, parameter :: json = 5000
-
       double precision, intent(inout) :: target_envelope_mass
       double precision, intent(inout) :: composition(15,json), &
            log_density(json), log_luminosity(json), log_pressure(json), &
@@ -62,8 +60,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
            atm_get_dummy3(3), atm_get_dummy4(3)
 
 ! G Somers END
-      save
-
       integer :: species_end_index
       integer :: old_num_zones
       double precision :: envelope_mass_before
@@ -295,12 +291,15 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
                endif
             endif
             num_zones = zone_index
-            goto 587
+            exit
          endif
       end do
 ! ASSIGN THE BOUNDARY AT THE PHOTOSPHERE FOR ENVELOPE MASS BELOW 1.0D-12.
+! (On the exit path above num_zones was just set to zone_index, so this
+! guard is false there; on fall-through num_zones is unchanged.)
+      if (zone_index .gt. num_zones + env_struct%num_env_points) then
       num_zones = num_zones + env_struct%num_env_points
- 587  continue
+      end if
 ! ADD THE UNLOGGED MASSES OF THE NEW SHELLS (HS1) AND COMPUTE THE
 ! MASS CONTENTS OF THE NEW SHELLS (HS2).
       do zone_index = old_num_zones,num_zones
@@ -345,14 +344,14 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 ! GIVEN OMEGA AND I, FIND ANGULAR MOMENTUM AND ROTATIONAL K.E.
        sum_angular_momentum = 0.0D0
        sum_rotational_ke = 0.0D0
-       do 550 zone_index = 1,num_zones
+       do zone_index = 1,num_zones
 ! MHP 10/02 logic reversed!
 !          HJM(I) = HJ/HS2(I)
           angular_momentum_shell = specific_angular_momentum(zone_index)*shell_mass(zone_index)
           rotational_kinetic_energy(zone_index) = 0.5D0*omega(zone_index)*angular_momentum_shell
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + rotational_kinetic_energy(zone_index)
- 550     continue
+       end do
        total_angular_momentum = sum_angular_momentum
        total_rotational_ke = sum_rotational_ke
       endif

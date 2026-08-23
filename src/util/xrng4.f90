@@ -12,9 +12,6 @@ subroutine xrng4(grid_index, grid_size, window_start, window_end)
       implicit none
       integer, intent(in) :: grid_index, grid_size
       integer, intent(out) :: window_start, window_end
-
-      save
-
       if (grid_index.le.2) then
          window_start = 1
          window_end = 4

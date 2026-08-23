@@ -36,9 +36,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 
       use star_info_lib, only: star
       use const_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       implicit none
       integer, parameter :: json = 5000
@@ -61,8 +58,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 
       double precision :: atomic_weight(4)
       data atomic_weight/1.007825d0,4.002603d0,12.0d0,3.01603d0/
-      save
-
 ! locals
       integer :: num_diffused_species, species_index, zone_index
       double precision :: max_fractional_comp_change
@@ -89,10 +84,10 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
          num_diffused_species = 4
       endif
       redo_flag = .false.
-      do 20 species_index = 1,num_diffused_species
+      do species_index = 1,num_diffused_species
 !  composition(3,...) IS Z, WHICH IS NOT DIFFUSED AS A UNIT.
-         if(species_index.eq.3)goto 20
-         do 10 zone_index = 2,num_zones-1
+         if(species_index.eq.3)cycle
+         do zone_index = 2,num_zones-1
             if(composition(species_index,zone_index).lt.0.0d0.or. &
                  composition(species_index,zone_index).gt.1.0d0)then
 !  SOME SPECIES CAN BE MIXED INTO REGIONS WHERE THEY ARE DESTROYED VERY
@@ -109,7 +104,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                           (composition(species_index,zone_index+1)+ &
                           composition(species_index,zone_index-1)))
                   endif
-                  goto 10
+                  cycle
                endif
                cut_count = cut_count + 1
                if(cut_count.gt.3)then
@@ -137,49 +132,51 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
  1015 format(' ERROR IN SR CHECKC'/' TIMESTEP CUT NUMBER ',i2, &
               ' DUE TO ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5, &
               ' ABUNDANCE ',1pe12.3)
-                  goto 100
+                  continue
+                  
+                  return
                endif
             endif
-   10    continue
-   20 continue
+         end do
+      end do
       if(iteration_number.eq.itdif2.and.print_flag) then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN COMPOSITION AND PRINT IT OUT.
          max_fractional_comp_change = 0.0d0
          max_change_zone = 0
          max_change_species = 0
-         do 40 species_index = 1,num_diffused_species
-            if(species_index.eq.3)goto 40
+         do species_index = 1,num_diffused_species
+            if(species_index.eq.3)cycle
 ! min_comp_for_check IS USED TO GUARD AGAINST DIVISION BY ZERO.
             min_comp_for_check = max(1.0d-6* &
                  composition(species_index,num_zones),1.0d-20)
-            do 30 zone_index = 1,num_zones
-               if(star%prev%old_composition(species_index,zone_index).lt. &
-                    min_comp_for_check)goto 30
+            do zone_index = 1,num_zones
+               if(star%prev%xa_start(species_index,zone_index).lt. &
+                    min_comp_for_check)cycle
                fractional_comp_change = &
                     (composition(species_index,zone_index)- &
-                    star%prev%old_composition(species_index,zone_index))/ &
-                    star%prev%old_composition(species_index,zone_index)
+                    star%prev%xa_start(species_index,zone_index))/ &
+                    star%prev%xa_start(species_index,zone_index)
                if(abs(fractional_comp_change).gt. &
                     abs(max_fractional_comp_change)) then
                   max_fractional_comp_change = fractional_comp_change
                   max_change_zone = zone_index
                   max_change_species = species_index
                endif
-   30       continue
-   40    continue
+            end do
+         end do
          write(*,50)max_fractional_comp_change,max_change_species, &
               max_change_zone
    50 format(' MAX FRAC.COMP.CHANGE',1pe12.3,' SPECIES',i2, &
               ' AT PT.',i5)
          if(use_extended_composition)write(*,60) &
-              composition(14,num_zones),star%prev%old_composition(14,num_zones)
+              composition(14,num_zones),star%prev%xa_start(14,num_zones)
    60 format(5x,'NEW SURFACE LI',1pe14.4,'OLD VALUE',e14.4)
       endif
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
 !  CORRECTION FOR PARTIAL IONIZATION NEEDED IN MASSIVE STARS.
       if(iteration_number.gt.1)then
-         do 90 zone_index = 1,num_zones
+         do zone_index = 1,num_zones
             delta_hydrogen = composition(1,zone_index)- &
                  star%env_comp%envelope_hydrogen_fraction
             delta_helium = composition(2,zone_index)- &
@@ -201,9 +198,8 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
             star%mix_phys%amum(zone_index) = ion_mean_weight_inverse* &
                  electron_mean_weight_inverse/ &
                  (ion_mean_weight_inverse+electron_mean_weight_inverse)
-   90    continue
+         end do
       endif
-  100 continue
 
       return
 end subroutine checkc

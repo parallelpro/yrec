@@ -27,12 +27,6 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       double precision, intent(in) :: omega(json)
       double precision, intent(out) :: rotation_dt
       double precision, intent(out) :: max_domega_frac
-
-
-
-
-      save
-
       integer :: start_index, i, max_index
       double precision :: test_domega, dt_factor, dt_factor_limit
 
@@ -40,19 +34,20 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       max_domega_frac = 2.0d0*abs(omega(start_index)-star%run%old_omega(start_index))/ &
            (omega(start_index)+star%run%old_omega(start_index))
       max_index = start_index
-      do 50 i = start_index+1,num_points
+      do i = start_index+1,num_points
          test_domega=2.0d0*abs(omega(i)-star%run%old_omega(i))/(omega(i)+star%run%old_omega(i))
          if(test_domega.gt.max_domega_frac) then
             max_domega_frac = test_domega
             max_index = i
          endif
- 50   continue
+      end do
       dt_factor = max_domega_frac/max_domega_global
 ! if no change from previous model,set rotation_dt to timestep
 ! stored in the previous model.
       if (dt_factor.eq.0.d0)then
           rotation_dt = 1.0d20
-          goto 999
+          continue
+          return
       endif
 ! restrict change in timestep to no more than a factor of atime(14)%
 ! up or down.
@@ -61,6 +56,5 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit
       rotation_dt = previous_timestep/dt_factor
- 999  continue
       return
 end subroutine wtime

@@ -47,8 +47,6 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
 
       double precision :: extrap_step(20), xa(20), ya(20), aint0(10)
       double precision :: previous_shell_mass
-      save
-
       double precision :: b_coefficient, newton_g, eps
       integer :: jmax, k, km
       double precision :: prev_eta22, prev_omega_sq, prev_density, prev_r0, &
@@ -80,7 +78,7 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
       aintt = 0.0d0
       prev_q = 0.0d0
 ! NOW CALCULATE FP AND FT USING THE ETA2 AND R0 VALUES
-      do 100 i = 1,num_points
+      do i = 1,num_points
          density = exp(ln10*log_density(i))
          g_times_mass = newton_g*dexp(ln10*log_mass(i))
          centrifugal_factor = 5.0d0*cc13*omega(i)**2/ &
@@ -91,25 +89,25 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
          eta22 = eta2(i)+2.0d0
          omega_sq = omega(i)**2
          extrap_step(1) = 1.0d0
-         do 40 j = 1,jmax
+         do j = 1,jmax
 ! EVALUATE THE INTEGRAL AINT FROM 0 TO R0 USING THE TRAPEZOIDAL RULE
             call trapzd(prev_r0, r0(i), aint0(j), j, density, &
                  prev_density, shell_mass, previous_shell_mass, omega_sq, &
                  prev_omega_sq, eta22, prev_eta22, q, prev_q)
             if (j.ge.k) then
                n1 = j - km
-               do 35 j1 = 1,k
+               do j1 = 1,k
                   xa(j1) = extrap_step(n1)
                   ya(j1) = aint0(n1)
                   n1 = n1 + 1
-   35          continue
+               end do
                call polint(xa, ya, k, 0.0d0, aint1, dint)
-               if (dabs(dint).lt.eps*dabs(aint1)) goto 50
+               if (dabs(dint).lt.eps*dabs(aint1)) exit
             end if
             aint0(j+1) = aint0(j)
             extrap_step(j+1) = 0.25d0*extrap_step(j)
-   40    continue
-   50    aint = prev_aint + aint1
+         end do
+         aint = prev_aint + aint1
 ! FIND <G> AND <G-1> ACROSS THE SHELL BY GAUSSIAN QUADRATURE
 ! (func is passed as the integrand -- 2026, phase four step 2)
          call qgauss(func, g0, ginv0, sphi, b_coefficient, r0, log_mass, &
@@ -132,7 +130,7 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
          prev_omega_sq = omega_sq
          prev_density = density
          prev_r0 = r0(i)
-  100 continue
+      end do
 
       return
 end subroutine fpft

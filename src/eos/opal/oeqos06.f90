@@ -25,7 +25,7 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
 
       use opal_eos_lib
       use const_lib
-      use envelope_comp_lib
+      use star_info_lib
       use luout_lib
       implicit none
 
@@ -42,16 +42,6 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       integer, parameter :: ivarx = 25
       double precision, parameter :: cnvs = 0.434294481d0
       double precision, parameter :: zero = 0.0d0
-
-
-
-
-
-
-
-
-      save
-
       double precision :: t_million_k, p_e12
       double precision :: hydrogen_fraction_work, metal_fraction_table
       double precision :: density_cgs
@@ -89,9 +79,6 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
            deriv_order, rad_flag, ierr, *999)
       if (ierr /= 0) return
 
-!      IF(ABS((P12-EOS(1))/P12).GT.0.5D-6)THEN
-!         WRITE(ISHORT,*)'***** RUN TERMINATED --ERROR IN OEQOS06 PTOT'
-!         WRITE(ISHORT,*) 'P12,EOS(1) Differ: P12,EOS(1),T6,R,X,ZTAB=',
 !     *         P12,EOS(1),T6,R,X,ZTAB
 !         STOP ' ERROR IN OEQOS06 PTOT'
 !      ENDIF

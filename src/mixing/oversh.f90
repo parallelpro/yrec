@@ -26,13 +26,6 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
       integer, intent(inout) :: mixed_zone_bounds(12,2)
       integer, intent(in) :: mixed_zone_bounds_no_overshoot(12,2)
       integer, intent(in) :: num_mixed_zones
-
-
-
-
-
-      save
-
       logical :: up_overshoot_flag, down_overshoot_flag
       integer :: zone_idx, edge_idx, j_idx
       double precision :: pscale_up, pscale_down
@@ -42,7 +35,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! adiabatic extension.
       iov1 = -1
       iov2 = -1
-      do 100 zone_idx = 1, num_mixed_zones
+      do zone_idx = 1, num_mixed_zones
 ! DETERMINE IF THIS REGION IS A CORE CONVECTION ZONE, SURFACE CZ,
 ! OR INTERMEDIATE CZ. THERE ARE SEPARATE FLAGS GOVERNING WHETHER
 ! OVERSHOOT WILL BE PERFORMED IN EACH CASE, AND SEPARATE USER
@@ -58,7 +51,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
                return
             end if
 ! SKIP IF NO CORE OVERSHOOT IS DESIRED.
-            if (.not.lovstc) goto 100
+            if (.not.lovstc) cycle
             up_overshoot_flag = .true.
             down_overshoot_flag = .false.
             edge_idx = mixed_zone_bounds(zone_idx,2)
@@ -79,7 +72,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
          else if (mixed_zone_bounds(zone_idx,2).eq.num_zones) then
 ! CONVECTIVE ENVELOPE
 ! SKIP IF NO ENVELOPE OVERSHOOT IS DESIRED.
-            if (.not.envelope_overshoot_active) goto 100
+            if (.not.envelope_overshoot_active) cycle
             up_overshoot_flag = .false.
             down_overshoot_flag = .true.
             edge_idx = mixed_zone_bounds(zone_idx,1)
@@ -91,7 +84,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
          else
 ! INTERMEDIATE CONVECTION ZONE (NOT INCLUDING CENTRAL OR SURFACE POINT).
 ! SKIP IF NO INTERMEDIATE CONVECTION.
-            if (.not.lovstm) goto 100
+            if (.not.lovstm) cycle
             up_overshoot_flag = .true.
             down_overshoot_flag = .true.
 ! PSCALU AND PSCALD HAVE THE SAME MEANING AS ABOVE; OVERSHOOT BOTH BELOW
@@ -113,15 +106,14 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! THE OVERSHOOT REGION IS EXTENDED THE RADIAL DISTANCE PSCALD DOWN; THE
 ! LAST POINT LESS THAN PSCALD FROM THE FORMAL EDGE OF THE CZ IS DEFINED
 ! AS THE NEW EDGE OF THE MIXED REGION.
-            do 10 j_idx = edge_idx-1, 1, -1
+            do j_idx = edge_idx-1, 1, -1
                radius = exp(ln10*log_radius(j_idx))
-               if (radius.lt.overshoot_radius) goto 20
-   10       continue
-! IF THE CODE GETS HERE, THE OVERSHOOT REGION EXTENDS BELOW THE FIRST POINT.
-! THE CODE WILL ASSIGN THE FIRST POINT AS THE LOWER EDGE(I.E. THE CZ WILL
-! EXTEND TO THE CENTER).
-            j_idx = 0
-   20       continue
+               if (radius.lt.overshoot_radius) exit
+            end do
+! IF THE LOOP COMPLETES, THE OVERSHOOT REGION EXTENDS BELOW THE FIRST
+! POINT AND THE CZ WILL EXTEND TO THE CENTER: natural completion of the
+! downward loop already leaves j_idx = 0 (the old explicit assignment
+! before label 20 was redundant).
 ! FOR ROTATING MODELS, ENSURE THAT THERE IS AT LEAST ONE RADIATIVE POINT
 ! IN THE OVERSHOOT REGION.
             mixed_zone_bounds(zone_idx,1) = j_idx + 1
@@ -143,15 +135,14 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! THE OVERSHOOT REGION IS EXTENDED THE RADIAL DISTANCE PSCALU UP; THE
 ! LAST POINT LESS THAN PSCALU FROM THE FORMAL EDGE OF THE CZ IS DEFINED
 ! AS THE NEW EDGE OF THE MIXED REGION.
-            do 30 j_idx = edge_idx+1, num_zones
+            do j_idx = edge_idx+1, num_zones
                radius = exp(ln10*log_radius(j_idx))
-               if (radius.gt.overshoot_radius) goto 40
-   30       continue
-! IF THE CODE GETS HERE, THE OVERSHOOT REGION EXTENDS ABOVE THE LAST POINT.
-! THE CODE WILL ASSIGN THE LAST POINT AS THE UPPER EDGE(I.E. THE CZ WILL
-! EXTEND TO THE SURFACE).
-            j_idx = num_zones + 1
-   40       continue
+               if (radius.gt.overshoot_radius) exit
+            end do
+! IF THE LOOP COMPLETES, THE OVERSHOOT REGION EXTENDS ABOVE THE LAST
+! POINT AND THE CZ WILL EXTEND TO THE SURFACE: natural completion of
+! the upward loop already leaves j_idx = num_zones + 1 (the old
+! explicit assignment before label 40 was redundant).
             mixed_zone_bounds(zone_idx,2) = j_idx - 1
 ! 11/91 MHP CHANGED TO REQUIRE AN OVERSHOOT ZONE ONLY IF LINSTB=T.
             if (rotation_active .and. instability_transport_active .and. &
@@ -160,7 +151,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
                  mixed_zone_bounds(zone_idx,2) = &
                  mixed_zone_bounds(zone_idx,2) + 1
          end if
-  100 continue
+      end do
 ! OUTPUT : THE OLD AND NEW MIXED REGIONS ARE PRINTED OUT IN ISHORT.
       write(short_file_unit,200) ((mixed_zone_bounds_no_overshoot( &
            zone_idx,j_idx), j_idx=1,2), zone_idx=1,num_mixed_zones)

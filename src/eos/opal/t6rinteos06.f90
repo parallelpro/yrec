@@ -30,9 +30,6 @@ recursive subroutine t6rinteos06(slr, slt, ierr)
       integer :: hi_loop_count, recompute_flag, cache_slot, t6_grid_idx
       double precision :: esactq, esact2, esactq2, dix, dix2
       double precision, external :: quadeos06
-
-      save
-
       integer, intent(out) :: ierr
 
       ierr = 0

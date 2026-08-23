@@ -34,8 +34,6 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
 
       double precision :: interp_nodes(4), weight_t(4), dweight_t(4), &
            weight_r(4), dweight_r(4), opacity_row(4), dlnkap_dlnr_row(4)
-      save
-
       double precision :: delta_z, delta_x, logr, saved_r
       logical :: extrapolate_linear
       integer :: i, ii
@@ -60,21 +58,23 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%alex06_index_t+1,2,-1
             if (log10_temperature.gt.opacity_table%alex06_grid_logt(i)) then
                opacity_table%alex06_index_t = i - 1
-               goto 10
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%alex06_index_t = 1
-   10    continue
+         end if
       else
          do i = opacity_table%alex06_index_t+3,num_t
             if (log10_temperature.lt.opacity_table%alex06_grid_logt(i)) then
                opacity_table%alex06_index_t = i - 2
                opacity_table%alex06_index_t = min(num_t-3,opacity_table%alex06_index_t)
-               goto 20
+               exit
             endif
          end do
+         if (i > num_t) then
          opacity_table%alex06_index_t = num_t - 3
-   20    continue
+         end if
       endif
 !     INTERPOLATION FACTORS IN LOG T
       do i = 1,4
@@ -89,21 +89,23 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%alex06_index_r+1,2,-1
             if (logr.gt.opacity_table%alex06_grid_logr(i)) then
                opacity_table%alex06_index_r = i - 1
-               goto 30
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%alex06_index_r = 1
-   30    continue
+         end if
       else
          do i = opacity_table%alex06_index_r+3,num_d
             if (logr.lt.opacity_table%alex06_grid_logr(i)) then
                opacity_table%alex06_index_r = i - 2
                opacity_table%alex06_index_r = min(num_d-3,opacity_table%alex06_index_r)
-               goto 40
+               exit
             endif
          end do
+         if (i > num_d) then
          opacity_table%alex06_index_r = num_d - 3
-   40    continue
+         end if
       endif
 !     INTERPOLATION FACTORS IN LOG R
       if (logr.gt.opacity_table%alex06_grid_logr(num_d)) then

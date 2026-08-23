@@ -27,7 +27,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
      eq_mixing_diffusion_coeff, eq_moment_of_inertia, eq_angular_momentum, &
      eq_mass, eq_omega, single_interface_flag)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       use numerics_lib
       implicit none
@@ -63,8 +62,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
 
 
       double precision :: eq_reduced_moment_of_inertia(json)
-      save
-
       integer :: ntab, i, ii, i0, i1, ntabb
       double precision :: emtop, embot, mass_scale_factor, &
            luminosity_scale_factor, pressure_scale_factor, scale_factor, &
@@ -73,7 +70,8 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
 ! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
       if (zone_end-zone_begin.le.1) then
          single_interface_flag = .true.
-         goto 9999
+         continue
+         return
       else
          single_interface_flag = .false.
       end if
@@ -150,7 +148,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
          do ii = zone_begin-1,1,-1
             if (.not.am_transport_convective_flag(ii)) then
                i0 = i + 1
-               goto 10
+               exit
             end if
             eq_mass(1) = eq_mass(1)+shell_mass(ii)
             eq_moment_of_inertia(1) = eq_moment_of_inertia(1)+ &
@@ -158,8 +156,9 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
             eq_angular_momentum(1) = eq_angular_momentum(1)+ &
                  specific_angular_momentum(ii)*shell_mass(ii)
          end do
+         if (ii < (1)) then
          i0 = 1
- 10      continue
+         end if
       else
          i0 = 1
       end if
@@ -180,7 +179,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
          do ii = zone_end+1,num_zones
             if (.not.am_transport_convective_flag(ii)) then
                i1 = i -1
-               goto 20
+               exit
             end if
             eq_mass(star%rot%ntot) = eq_mass(star%rot%ntot)+shell_mass(ii)
             eq_moment_of_inertia(star%rot%ntot) = eq_moment_of_inertia(star%rot%ntot)+ &
@@ -188,8 +187,9 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
             eq_angular_momentum(star%rot%ntot) = eq_angular_momentum(star%rot%ntot)+ &
                  specific_angular_momentum(ii)*shell_mass(ii)
          end do
+         if (ii > num_zones) then
          i1 = num_zones
- 20      continue
+         end if
       else
          i1 = num_zones
       end if
@@ -299,6 +299,5 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
       end if
 ! REDEFINE DR AS DCHI
       grid_spacing = star%rot%dchi
- 9999 continue
       return
 end subroutine rotgrid

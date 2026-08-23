@@ -27,19 +27,18 @@ subroutine alxztab(metal_fraction)
 
 
       double precision :: interp_z(4), weight_z(4)
-      save
-
       integer :: i, jj, kk, idz, ii1, ii2, ii3, ii4
 
 !     LOCATE FOUR NEAREST TABLES IN Z
       do i=3,num_z-1
          if (metal_fraction.lt.opacity_table%alex95_grid_z(i)) then
             idz = i - 2
-            goto 10
+            exit
          endif
       end do
+      if (i > (num_z-1)) then
       idz = num_z - 3
-   10 continue
+      end if
       do i = 1,4
          interp_z(i) = opacity_table%alex95_grid_z(idz+i-1)
       end do

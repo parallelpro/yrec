@@ -49,9 +49,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       use atm_lib
       use atm_table_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       use eos_lib
       implicit none
@@ -92,8 +89,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! OF ACCRETED MATTER.
       double precision :: accretion_efficiency
       data accretion_efficiency/1.0d0/
-      save
-
 ! --- locals ---
       double precision :: mass_loss_rate_msun_yr
       logical :: apply_mass_change
@@ -132,7 +127,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       else
          apply_mass_change = .false.
          new_atmosphere_fit_needed = .false.
-         goto 9999
+         continue
+         return
       endif
 !      IF(.NOT.LDOMDOT)RETURN
 ! TEFFL IS THE BASE 10 LOG OF THE EFFECTIVE TEMPERATURE
@@ -157,12 +153,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       if(envelope_boundary_zone.lt.num_zones)then
 !         TAUCZ = 0.0D0
 !         DO I = JENV+1,M
-!            V = 0.5D0*(SVEL(I-1)+SVEL(I))
-!            DR = 10.0D0**(HR(I))-10.0D0**(HR(I-1))
-!            IF(V.GT.0.0D0)THEN
-!               TAUCZ = TAUCZ + DR/V
-!            ENDIF
-!         END DO
          write(*,*)star%turnover%convective_turnover_timescale/seconds_per_year, &
               total_radius_cm/solar_radius_cgs
          star%light_burn%jcz = envelope_boundary_zone
@@ -310,6 +300,5 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
            mean_molecular_weight_local,total_radius_cm,total_mass_msun, &
            mass_loss_rate_msun_yr,accretion_specific_energy,mean_thermal_energy, &
            cz_total_mass_below_fitting,old_log_envelope_mass_fraction)
- 9999 continue
       return
 end subroutine massloss

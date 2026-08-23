@@ -52,50 +52,46 @@ subroutine search(table_x, num_table_points, eval_point, table_idx, &
       double precision, intent(in) :: table_x(json), eval_point
       integer, intent(in) :: num_table_points
       integer, intent(out) :: table_idx, found_flag
-
-      save
-
       integer :: first_idx, last_idx, middle_idx
 
       first_idx=1
       last_idx=num_table_points
       found_flag=0
 !
-      if (table_x(1) .ne. eval_point) go to 10
-      table_idx=1
-      found_flag=1
-      return
+! (Restructured 2026 from the original goto binary search at labels
+! 10-60; comparisons are unchanged.)
+      if (table_x(1) .eq. eval_point) then
+         table_idx=1
+         found_flag=1
+         return
+      end if
+      if (table_x(num_table_points) .eq. eval_point) then
+         table_idx=num_table_points
+         found_flag=1
+         return
+      end if
 !
-  10  if (table_x(num_table_points) .ne. eval_point) go to 20
-      table_idx=num_table_points
-      found_flag=1
-      return
+      do
 !
 ! IF (LAST-FIRST) .EQ. 1, S IS NOT IN XTAB.  SET POSITION EQUAL TO
 ! FIRST.
-  20  if ((last_idx-first_idx) .eq. 1) go to 30
+      if ((last_idx-first_idx) .eq. 1) then
+         table_idx=first_idx
+         return
+      end if
 !
       middle_idx=(first_idx+last_idx)/2
 !
 ! CHECK IF S .EQ. XTAB(MIDDLE). IF NOT, CONTINUE THE SEARCH IN THE
 ! APPROPRIATE HALF OF THE VECTOR XTAB.
-! KC 2025-05-30 fixed "Arithmetic IF statement"
-!       IF (XTAB(MIDDLE) - S) 40,50,60
       if (table_x(middle_idx) .lt. eval_point) then
-         goto 40
+         first_idx=middle_idx
       else if (table_x(middle_idx) .eq. eval_point) then
-         goto 50
+         table_idx=middle_idx
+         found_flag =1
+         return
       else
-         goto 60
+         last_idx=middle_idx
       end if
-!
-  30  table_idx=first_idx
-      return
-  40  first_idx=middle_idx
-      go to 20
-  50  table_idx=middle_idx
-      found_flag =1
-      return
-  60  last_idx=middle_idx
-      go to 20
+      end do
 end subroutine search

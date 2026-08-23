@@ -25,7 +25,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
      eq_hydrogen_mid, eq_helium_mid, eq_metal_mid, eq_light_mid)
 
       use const_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_actual
       use numerics_lib
       implicit none
       integer, parameter :: json = 5000
@@ -53,8 +53,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 
 
       integer :: half_json
-      save
-
       integer :: i, ii, iu, j, jmin, k, k0, kk
       double precision :: drtot, drmin, fx, tabler(4), gridrad, &
            facinterp(4), facderiv(4)
@@ -64,9 +62,9 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       drmin = drtot
 !  ID THE MINIMUM SPACING IN THE 20 LAYERS BELOW THE SURFACE CZ.
       ii = max(zone_end-20,zone_begin+1)
-      do 7 i = ii,zone_end
+      do i = ii,zone_end
          drmin=min(drmin,radius_bl(i)-radius_bl(i-1))
-    7 continue
+      end do
 !  ASSIGN THE MINIMUM NUMBER OF EQUALLY SPACED GRID POINTS SUCH THAT
 !  DR <= DRMIN.
       num_eq_points=int(drtot/drmin)
@@ -84,28 +82,29 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       if (num_eq_points .eq. 2) then
          eq_radius_mid(2)=eq_radius_mid(1)+grid_spacing
       else
-         do 10 i = 2,num_eq_points-1 ! old piece
+         do i = 2,num_eq_points-1! old piece
             if(i-1 .eq. 0) print*, 'mte line 47'
             eq_radius_mid(i)=eq_radius_mid(i-1)+grid_spacing  ! old piece
-   10    continue          ! old piece
+         end do
       endif
 
 !  NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
 !  AT EQUALLY SPACED ZONE MIDPOINTS.
 !
 !  FIRST POINT : LINEAR INTERPOLATION BETWEEN STARTING POINT AND 2ND PT.
-      do 15 iu=2,num_eq_points
-         if(radius_bl(iu).ge.eq_radius_mid(1))goto 17
-   15 continue
+      do iu=2,num_eq_points
+         if(radius_bl(iu).ge.eq_radius_mid(1))exit
+      end do
+      if (iu > num_eq_points) then
       iu=num_eq_points
-   17 continue
+      end if
       fx=(eq_radius_mid(1)-radius_bl(iu-1))/(radius_bl(iu)-radius_bl(iu-1))
       eq_mass_mid(1) = enclosed_mass(iu-1)+fx*(enclosed_mass(iu)-enclosed_mass(iu-1))
       eq_density_mid(1) = density_orig(iu-1)+fx*(density_orig(iu)-density_orig(iu-1))
       eq_temperature_mid(1) = temperature_orig(iu-1)+ &
            fx*(temperature_orig(iu)-temperature_orig(iu-1))
       eq_dlnp_dr_mid(1) = dlnp_dr(iu-1)+fx*(dlnp_dr(iu)-dlnp_dr(iu-1))
-      eq_del_grad_mid(1) = star%diag%del_grad(2,iu-1)+fx*(star%diag%del_grad(2,iu)-star%diag%del_grad(2,iu-1))
+      eq_del_grad_mid(1) = star%diag%del_grad(i_grad_actual,iu-1)+fx*(star%diag%del_grad(i_grad_actual,iu)-star%diag%del_grad(i_grad_actual,iu-1))
       eq_hydrogen_mid(1) = composition(1,iu-1)+fx*(composition(1,iu)-composition(1,iu-1))
       eq_helium_mid(1) = composition(2,iu-1)+fx*(composition(2,iu)-composition(2,iu-1))
       eq_metal_mid(1) = composition(3,iu-1)+fx*(composition(3,iu)-composition(3,iu-1))
@@ -123,8 +122,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  JMIN IS THE UPPERMOST MODEL POINT ABOVE THE PREVIOUS EQUALLY SPACED
 !  GRID POINT (IN RADIUS).
       jmin=zone_begin+1
-      do 50 i=2,num_eq_points-1
-         do 20 j = jmin,zone_end
+      do i=2,num_eq_points-1
+         do j = jmin,zone_end
 !  FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
             if(radius_bl(j).ge.eq_radius_mid(i))then
 !  ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
@@ -132,15 +131,16 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
                k0 = min(k0,num_zones-3)
                jmin=j
-               goto 30
+               exit
             endif
-   20    continue
+         end do
+         if (j > zone_end) then
          k0 = num_zones-3
          jmin=num_zones
-   30    continue
-         do 40 k=1,4
+         end if
+         do k=1,4
             tabler(k)=radius_bl(k0+k-1)
-   40    continue
+         end do
          gridrad=eq_radius_mid(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
 !  FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
@@ -157,8 +157,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                    facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
          eq_dlnp_dr_mid(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
                    facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_del_grad_mid(i) = facinterp(1)*star%diag%del_grad(2,k0)+facinterp(2)*star%diag%del_grad(2,k0+1)+ &
-                   facinterp(3)*star%diag%del_grad(2,k0+2)+facinterp(4)*star%diag%del_grad(2,k0+3)
+         eq_del_grad_mid(i) = facinterp(1)*star%diag%del_grad(i_grad_actual,k0)+facinterp(2)*star%diag%del_grad(i_grad_actual,k0+1)+ &
+                   facinterp(3)*star%diag%del_grad(i_grad_actual,k0+2)+facinterp(4)*star%diag%del_grad(i_grad_actual,k0+3)
 !  MASS FRACTION OF HYDROGEN
          eq_hydrogen_mid(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
@@ -184,13 +184,13 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                        +facinterp(4)*composition(ii,k0+3)
             end do
          endif
-   50 continue
+      end do
 
 !  SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE CENTERS.
       eq_radius(1)=radius_bl(zone_begin)
-      do 60 i = 2,num_eq_points
+      do i = 2,num_eq_points
          eq_radius(i)=eq_radius(i-1)+grid_spacing
-   60 continue
+      end do
 
 !  NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
 !  AT EQUALLY SPACED ZONE CENTERS.
@@ -201,7 +201,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_density(1) = density_orig(zone_begin)
       eq_temperature(1) = temperature_orig(zone_begin)
       eq_dlnp_dr(1) = dlnp_dr(zone_begin)
-      eq_del_grad(1) = star%diag%del_grad(2,zone_begin)
+      eq_del_grad(1) = star%diag%del_grad(i_grad_actual,zone_begin)
       eq_hydrogen(1) = composition(1,zone_begin)
       eq_helium(1) = composition(2,zone_begin)
       eq_metal(1) = composition(3,zone_begin)
@@ -217,8 +217,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  JMIN IS THE UPPERMOST MODEL POINT ABOVE THE PREVIOUS EQUALLY SPACED
 !  GRID POINT (IN RADIUS).
       jmin=zone_begin+1
-      do 70 i=2,num_eq_points-1
-         do 80 j = jmin,zone_end
+      do i=2,num_eq_points-1
+         do j = jmin,zone_end
 !  FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
             if(radius_bl(j).ge.eq_radius(i))then
 !  ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
@@ -226,15 +226,16 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
                k0 = min(k0,num_zones-3)
                jmin=j
-               goto 90
+               exit
             endif
-   80    continue
+         end do
+         if (j > zone_end) then
          k0 = num_zones-3
          jmin=num_zones
-   90    continue
-         do 100 k=1,4
+         end if
+         do k=1,4
             tabler(k)=radius_bl(k0+k-1)
-  100    continue
+         end do
          gridrad=eq_radius(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
 !  FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
@@ -250,8 +251,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                    facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
          eq_dlnp_dr(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
                    facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_del_grad(i) = facinterp(1)*star%diag%del_grad(2,k0)+facinterp(2)*star%diag%del_grad(2,k0+1)+ &
-                   facinterp(3)*star%diag%del_grad(2,k0+2)+facinterp(4)*star%diag%del_grad(2,k0+3)
+         eq_del_grad(i) = facinterp(1)*star%diag%del_grad(i_grad_actual,k0)+facinterp(2)*star%diag%del_grad(i_grad_actual,k0+1)+ &
+                   facinterp(3)*star%diag%del_grad(i_grad_actual,k0+2)+facinterp(4)*star%diag%del_grad(i_grad_actual,k0+3)
          eq_hydrogen(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
               +facinterp(3)*composition(1,k0+2) &
@@ -273,13 +274,13 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                     +facinterp(4)*composition(ii,k0+3)
             end do
          endif
-   70 continue
+      end do
 !  LAST POINT : BY DEFINITION, AT ENDING POINT.
       eq_mass(num_eq_points) = enclosed_mass(zone_end)
       eq_density(num_eq_points) = density_orig(zone_end)
       eq_temperature(num_eq_points) = temperature_orig(zone_end)
       eq_dlnp_dr(num_eq_points) = dlnp_dr(zone_end)
-      eq_del_grad(num_eq_points) = star%diag%del_grad(2,zone_end)
+      eq_del_grad(num_eq_points) = star%diag%del_grad(i_grad_actual,zone_end)
       eq_hydrogen(num_eq_points) = composition(1,zone_end)
       eq_helium(num_eq_points) = composition(2,zone_end)
       eq_metal(num_eq_points) = composition(3,zone_end)

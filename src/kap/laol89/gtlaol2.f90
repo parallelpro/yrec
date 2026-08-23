@@ -27,15 +27,6 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
       double precision :: logt_interp_opacity(52), logt_values(52), &
            logt_d2opacity(52), dlnkap_dlnt_by_x(4)
       double precision :: opacity_by_x(4), x_values(4)
-
-
-
-
-
-
-
-      save
-
       double precision :: log_extrap_tolerance, local_x, local_logt, &
            local_logrho
       integer :: t_locate_guess, t_index, x_grid_index, x_grid_index_hi, &

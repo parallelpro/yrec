@@ -18,3 +18,5 @@ src/test_net
 src/test_reentry
 src/test_net.short
 COMMENTS.md
+src/libyrec.dylib
+src/libyrec.so

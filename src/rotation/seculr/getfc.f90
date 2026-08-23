@@ -36,8 +36,6 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
 
 
       double precision :: half_dlnj_dlnr(json), circ_velocity(json)
-      save
-
       integer :: zone_index
       double precision :: omega_mid
       double precision :: interp_weight
@@ -52,7 +50,9 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
          do zone_index = zone_min, zone_max
             vfc(zone_index) = 0.0D0
          end do
-         goto 9999
+         continue
+         
+         return
       endif
 ! DETERMINE ALPHA.
       do zone_index = zone_min, zone_max
@@ -113,7 +113,6 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
             vfc(zone_index) = mixing_velocity_scale/denom_test
          endif
       end do
- 9999 continue
 
       return
 end subroutine getfc

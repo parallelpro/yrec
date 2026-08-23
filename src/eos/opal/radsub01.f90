@@ -37,9 +37,6 @@ subroutine radsub01(t6_temperature, density, total_moles, &
 ! and then widened to double precision, which is NOT bit-identical to
 ! the correctly-rounded double values.
       data rad_const_over_c/1.8914785e-3/, molar_gas_constant_mbcc/83.14510/
-
-      save
-
 ! --- locals ---
       double precision :: rat
       double precision :: moles_per_ev, radiation_pressure, &
@@ -81,9 +78,6 @@ subroutine radsub01(t6_temperature, density, total_moles, &
            total_pressure
       chi_t6 = (opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(1))*opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(6)) &
            + 4.0d0*radiation_pressure)/total_pressure
-!     gam1t(jcs,i)=(p(jcs,i)*gam1(jcs,i)+4D0/3D0*pr)/pt(jcs,i)
-!     gam2pt(jcs,i)=(gam2p(jcs,i)*p(jcs,i)+4D0*pr)/pt(jcs,i)
-!     gam3pt(jcs,i)=gam1t(jcs,i)/gam2pt(jcs,i)
       molar_specific_heat = (opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(4))*moles_per_ev/ &
            mean_molecular_weight + 4.0d0*radiation_energy/t6_temperature)
       gamma3_minus1 = total_pressure*chi_t6/(molar_specific_heat*density* &

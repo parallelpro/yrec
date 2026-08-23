@@ -31,16 +31,6 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
       double precision, intent(in) :: log_teff
       integer, intent(in) :: num_points
       double precision, intent(out) :: envelope_dt
-
-
-
-
-
-
-
-
-      save
-
 ! dt_scale: maximum absolute time differences for each quantity
 ! (1 = Teff, 2 = L). Only elements 1-2 are ever set, matching the
 ! original DIMENSION HMAX(4) (element 3-4, and the commented-out
@@ -55,8 +45,8 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 ! luminosity
       dt_scale(2) = tri_delta_logl
 
-      teffl_change = abs(star%prev%old_teff - log_teff)
-      logl_change = abs(dlog10(star%prev%old_luminosity(star%prev%old_num_zones)) - &
+      teffl_change = abs(star%prev%log_Teff_start - log_teff)
+      logl_change = abs(dlog10(star%prev%luminosity_lsun_start(star%prev%nz_start)) - &
            dlog10(luminosity(num_points)))
 
 ! now actually limit the timestep by a factor that reduces the

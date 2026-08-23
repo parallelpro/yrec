@@ -31,8 +31,6 @@ subroutine bsrotmix(timestep, composition, extrapolation_order, num_zones, &
       integer :: active_species_id(15)
       logical :: species_active(15), use_cno_ratio_method(json), &
            he3_extrapolate_log(json), use_cno_ratio_species
-      save
-
       integer :: i, j, j1, species_count, num_active_species, k1, &
            max_error_zone, max_error_species
       double precision :: c12_abundance, c13_abundance, n14_abundance, &
@@ -48,10 +46,9 @@ subroutine bsrotmix(timestep, composition, extrapolation_order, num_zones, &
             do i = num_zones,1,-1
                if (composition(j,i).gt.1.0d-14) then
                   species_active(j) = .true.
-                  goto 5
+                  exit
                end if
             end do
-    5       continue
          end do
          if (species_active(4)) then
             do i = 1,num_zones

@@ -12,18 +12,14 @@
 double precision function quadeos01(recompute_flag, cache_slot, &
      eval_point, y1, y2, y3, x1, x2, x3)
 
+      use opal_eos_lib
       implicit none
 
       integer, intent(in) :: recompute_flag, cache_slot
       double precision, intent(in) :: eval_point, y1, y2, y3, x1, x2, x3
 
       double precision :: grid_x(3), grid_y(3)
-      double precision :: x12_inv(30), x13_inv(30), x23_inv(30), &
-           x1_squared(30), x1_plus_x2(30)
       double precision :: coef2, coef1, coef0
-
-      save
-
       grid_x(1) = x1
       grid_x(2) = x2
       grid_x(3) = x3
@@ -31,18 +27,18 @@ double precision function quadeos01(recompute_flag, cache_slot, &
       grid_y(2) = y2
       grid_y(3) = y3
       if (recompute_flag.eq.0) then
-         x12_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(2))
-         x13_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(3))
-         x23_inv(cache_slot) = 1.0d0/(grid_x(2) - grid_x(3))
-         x1_squared(cache_slot) = grid_x(1)*grid_x(1)
-         x1_plus_x2(cache_slot) = grid_x(1) + grid_x(2)
+         opal_eos%quad01_x12_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(2))
+         opal_eos%quad01_x13_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(3))
+         opal_eos%quad01_x23_inv(cache_slot) = 1.0d0/(grid_x(2) - grid_x(3))
+         opal_eos%quad01_x1_squared(cache_slot) = grid_x(1)*grid_x(1)
+         opal_eos%quad01_x1_plus_x2(cache_slot) = grid_x(1) + grid_x(2)
       end if
-      coef2 = (grid_y(1) - grid_y(2))*x12_inv(cache_slot)
-      coef2 = coef2 - (grid_y(2) - grid_y(3))*x23_inv(cache_slot)
-      coef2 = coef2*x13_inv(cache_slot)
-      coef1 = (grid_y(1) - grid_y(2))*x12_inv(cache_slot) - &
-           x1_plus_x2(cache_slot)*coef2
-      coef0 = grid_y(1) - grid_x(1)*coef1 - x1_squared(cache_slot)*coef2
+      coef2 = (grid_y(1) - grid_y(2))*opal_eos%quad01_x12_inv(cache_slot)
+      coef2 = coef2 - (grid_y(2) - grid_y(3))*opal_eos%quad01_x23_inv(cache_slot)
+      coef2 = coef2*opal_eos%quad01_x13_inv(cache_slot)
+      coef1 = (grid_y(1) - grid_y(2))*opal_eos%quad01_x12_inv(cache_slot) - &
+           opal_eos%quad01_x1_plus_x2(cache_slot)*coef2
+      coef0 = grid_y(1) - grid_x(1)*coef1 - opal_eos%quad01_x1_squared(cache_slot)*coef2
       quadeos01 = coef0 + eval_point*(coef1 + eval_point*coef2)
       return
 end function quadeos01

@@ -25,8 +25,6 @@ subroutine op95xtab(hydrogen_fraction)
       double precision, intent(in) :: hydrogen_fraction
 
       double precision :: table_x_nodes(4), x_weight(4)
-      save
-
       integer :: i, j, k, x_table_index
       integer :: table1_index, table2_index, table3_index, table4_index
 
@@ -37,11 +35,12 @@ subroutine op95xtab(hydrogen_fraction)
          do i = 3,num_x-1
             if (opacity_table%opal95_grid_x(i).ge.hydrogen_fraction) then
                x_table_index = i - 2
-               goto 10
+               exit
             endif
          end do
+         if (i > (num_x-1)) then
          x_table_index = num_x - 3
-   10    continue
+         end if
          do i = 1,4
             table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
          end do
@@ -50,11 +49,12 @@ subroutine op95xtab(hydrogen_fraction)
          do i = 3,num_x-1
             if (opacity_table%opal95_grid_x(i).ge.hydrogen_fraction) then
                x_table_index = i - 2
-               goto 20
+               exit
             endif
          end do
+         if (i > (num_x-1)) then
          x_table_index = num_x - 3
-   20    continue
+         end if
          do i = 1,4
             table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
          end do

@@ -19,17 +19,6 @@ subroutine setscal
       use luout_lib
       use const_lib
       implicit none
-
-
-
-
-
-
-
-
-
-
-      save
 !     LSTAR     T - have got a star at Teff and L
 !     LPASSR    T - on run have just passed Teff
 !     XLS       Luminosity (L/Lsun) wanted by adjusting Y

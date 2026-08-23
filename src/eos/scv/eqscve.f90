@@ -78,9 +78,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       logical :: temp_needs_smoothing, press_needs_smoothing
       integer :: temp_smooth_direction, press_smooth_direction
       integer :: i, ii, j, jj, jjj, k
-
-      save
-
       if (abs(hydrogen_fraction-eos_mix%envelope_hydrogen_fraction).gt.1.0d-5 &
            .or. abs(metal_fraction-eos_mix%envelope_metal_fraction).gt.1.0d-5) then
 !          CALL EQSCVG(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
@@ -107,21 +104,23 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          do i = idtt, 1, -1
             if (log10_temperature.gt.tlogx(i)) then
                ii = i - 1
-               goto 10
+               exit
             end if
          end do
+         if (i < (1)) then
          ii = 1
-  10     continue
+         end if
       else
 ! search up for nearest 4 table elements
          do i = idtt+2, nts
             if (log10_temperature.lt.tlogx(i)) then
                ii = i - 2
-               goto 20
+               exit
             end if
          end do
+         if (i > nts) then
          ii = nts - 3
-  20     continue
+         end if
       end if
       idtt = max(1,ii)
       idtt = min(nts-3,idtt)
@@ -153,11 +152,12 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          do j = jjj, 1, -1
             if (log10_gas_pressure.gt.tablenv(idtt,j,1)) then
                jj = j - 1
-               goto 30
+               exit
             end if
          end do
+         if (j < (1)) then
          jj = 1
-  30     continue
+         end if
          idp = max(1,jj)
          idp = min(nptsx(idtt)-3, &
               idp)
@@ -167,13 +167,14 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          do j = jjj+2, nptsx(idtt)
             if (log10_gas_pressure.lt.tablenv(idtt,j,1)) then
                jj = j - 2
-               goto 40
+               exit
             end if
          end do
+         if (j > (nptsx(idtt))) then
 ! point is outside table; return.
          valid_table_point = .false.   ! Error exit - no valid table entry
          return
-  40     continue
+         end if
          idp = min(nptsx(idtt)-3, jj)
       end if
       valid_table_point = .true.
@@ -198,14 +199,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             end if
          end if
       end if
-!      DO K = 1,4
-!         QR(K) = TLOGX(K+IDT-1)
-!      END DO
-!      CALL INTERP(QR,FT,FTD,TL)
-!      DO K = 1,4
-!         QR(K) = TABLENV(IDT,IDP+K-1,1)
-!      END DO
-!      CALL INTERP(QR,FP,FPD,PP)
       helium_fraction = 1.0d0 - hydrogen_fraction - metal_fraction
 ! include radiation pressure in the equation of state.
       radiation_pressure = beta_complement*pressure
@@ -384,14 +377,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       if (temp_needs_smoothing) then
 ! add changes for both t and p interpolation
          if (press_needs_smoothing) then
-!            WRITE(*,911)(TEMPT(J),J=1,5)
-!  911        FORMAT(1X,'ORIG ',1P5E16.7)
-!            WRITE(*,912)(TEMPT1(J)-TEMPT(J),J=1,5)
-!  912        FORMAT(1X,'INT T',1P5E16.7)
-!            WRITE(*,913)(TEMPT2(J)-TEMPT(J),J=1,5)
-!  913        FORMAT(1X,'INT P',1P5E16.7)
-!            WRITE(*,914)(TEMPT3(J)-TEMPT(J),J=1,5)
-!  914        FORMAT(1X,'INT PT',1P5E16.7)
             do j = 1,5
                if (temp_smooth_direction.eq.-1) then
 ! interpolate in t at fixed p

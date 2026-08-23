@@ -23,7 +23,7 @@
 ! convergence/divergence tolerances in common/ctol/, applies them, and
 ! (if rotation is active) updates the rotation curve and rotational
 ! kinetic energy via getrot/fpft. surfbc (envelope/atmosphere fit) and
-! mix (convective mixing/star%composition update) are called once near the
+! mix (convective mixing/star%xa update) are called once near the
 ! top, ahead of the correction loop, on the iteration levels where
 ! they are needed.
 !
@@ -35,7 +35,7 @@
 ! batches). Judgment calls made below, all verified against the
 ! actual physics/usage in this file:
 !   - BL is log10(L/Lsun) here (see BL = DLOG10(HL(M)) below), named
-!     star%log10_luminosity. It is passed into surfbc.f90's parameter
+!     star%log_L. It is passed into surfbc.f90's parameter
 !     named "luminosity_linear" -- that surfbc.f90 name is a misnomer
 !     inherited from that file's own earlier conversion; out of scope
 !     to fix here.
@@ -47,22 +47,22 @@
 !   - HSTOT (total stellar mass, log10(M/Msun)) is named
 !     star%log_total_mass (matches mix.f90's slot name); surfbc.f90's slot
 !     name for the same value is "log10_star_mass".
-!   - TEFFL (log10 Teff) is named star%log_teff (matches mix.f90/
+!   - TEFFL (log10 Teff) is named star%log_Teff (matches mix.f90/
 !     coefft.f90); surfbc.f90's slot name for the same value is
 !     "log10_teff".
 !   - DELTS (time step, seconds) is named delta_time (matches
 !     coefft.f90); mix.f90's slot name for the same value is
 !     "timestep".
-!   - M (number of mesh points) is named star%num_zones (matches
+!   - M (number of mesh points) is named star%nz (matches
 !     coefft.f90/fpft.f90); mix.f90/getrot.f90 call the same count
 !     "num_zones", hsolve.f90 calls it "num_shells", surfbc.f90 calls
 !     it "zone_index" (there it is the single index M, not a count).
-!   - HS1 is named star%enclosed_mass; coefft.f90's slot name for the same
+!   - HS1 is named star%m; coefft.f90's slot name for the same
 !     array is "mass_weight_ln". Not read directly in this file
 !     (only passed through to mix/coefft), so the more physically
 !     transparent of the two established names was kept.
 !   - FP/FT (rotational P/T correction factors) are named
-!     star%pressure_rotation_factor/star%temperature_rotation_factor (matches
+!     star%fp_rot/star%ft_rot (matches
 !     fpft.f90, which computes them); coefft.f90's slot names for the
 !     same arrays are rotation_p_factor/rotation_t_factor.
 !   - R0 is named star%mean_radius (matches getrot.f90, which computes it);
@@ -76,8 +76,8 @@
 !     same slot -- see hsubp.f90's own comment on this pre-existing
 !     inconsistency.
 !
-! INPUTS ASSUMES GIVEN LOG(TE) AS star%log_teff
-!        ASSUMES GIVEN LOG(L/LSUN) AS star%log10_luminosity
+! INPUTS ASSUMES GIVEN LOG(TE) AS star%log_Teff
+!        ASSUMES GIVEN LOG(L/LSUN) AS star%log_L
 !        delta_time = TIME STEP IN SECONDS
 !        max_iterations = ITERATION NUMBER
 ! OUTPUTS  converged = .T. IF MODEL HAS CONVERGED
@@ -88,14 +88,11 @@ subroutine crrect(delta_time, max_iterations, converged, &
      in_atmosphere, want_derivatives, mixing_active, &
      conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, iterations_done, &
      iteration_level, ierr)
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       use luout_lib
       use const_lib
       use yale_eos_lib
+
       implicit none
       integer, parameter :: json = 5000
 
@@ -144,9 +141,6 @@ subroutine crrect(delta_time, max_iterations, converged, &
            luminosity_correction_max, correction_factor
       double precision :: hydrogen_burn_luminosity, helium_burn_luminosity
       double precision :: shell_angular_momentum
-
-      save
-
       ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
       ! this driver-side call site preserves the historical stop.
       integer :: jerr
@@ -156,19 +150,19 @@ subroutine crrect(delta_time, max_iterations, converged, &
       ierr = 0
 
       if (max_iterations.le.0) return
-      star%log10_luminosity = dlog10(star%luminosity_lsun(star%num_zones))
+      star%log_L = dlog10(star%luminosity_lsun(star%nz))
 ! ZERO COUNTERS
       kenv = 0
       katm = 0
       ksaha = 0
-      star%env_comp%senv = star%log_mass(star%num_zones) - star%log_total_mass
+      star%env_comp%senv = star%log_mass(star%nz) - star%log_total_mass
       if (start_new_triangle.or.reset_triangle .and.iteration_level.eq.2) &
            recompute_surface_bc = .true.
 !  FIND NEW FP AND FT IF MODEL IS ROTATING
       if (rotation_active.and.recompute_surface_bc) then
-       surface_pressure_rotation_factor = star%pressure_rotation_factor(star%num_zones)
+       surface_pressure_rotation_factor = star%fp_rot(star%nz)
        surface_temperature_rotation_factor = &
-            star%temperature_rotation_factor(star%num_zones)
+            star%ft_rot(star%nz)
       else
        surface_pressure_rotation_factor = 1.0d0
        surface_temperature_rotation_factor = 1.0d0
@@ -178,15 +172,15 @@ subroutine crrect(delta_time, max_iterations, converged, &
       if (recompute_surface_bc) then
        hydrogen_fraction = star%env_comp%xnew
        metal_fraction = star%env_comp%znew
-       log10_pressure_limit = star%log_pressure(star%num_zones)
+       log10_pressure_limit = star%logP(star%nz)
        if (use_debye_huckel_correction) then
-          debye_huckel_x = star%composition(1,star%num_zones)
-          debye_huckel_y = star%composition(2,star%num_zones)+star%composition(4,star%num_zones)
-          debye_huckel_z_total = star%composition(3,star%num_zones)
-          debye_huckel_z(1) = star%composition(5,star%num_zones)+star%composition(6,star%num_zones)
-          debye_huckel_z(2) = star%composition(7,star%num_zones)+star%composition(8,star%num_zones)
-          debye_huckel_z(3) = star%composition(9,star%num_zones)+star%composition(10,star%num_zones)+ &
-               star%composition(11,star%num_zones)
+          debye_huckel_x = star%xa(i_h1,star%nz)
+          debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
+          debye_huckel_z_total = star%xa(i_metals,star%nz)
+          debye_huckel_z(1) = star%xa(i_c12,star%nz)+star%xa(i_c13,star%nz)
+          debye_huckel_z(2) = star%xa(i_n14,star%nz)+star%xa(i_n15,star%nz)
+          debye_huckel_z(3) = star%xa(i_o16,star%nz)+star%xa(i_o17,star%nz)+ &
+               star%xa(i_o18,star%nz)
        end if
        call surfbc(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
             star%fit_point_radius,tri_orientation,stored_vertex_index, &
@@ -194,21 +188,21 @@ subroutine crrect(delta_time, max_iterations, converged, &
 !               LNEW,LRESET,LSBC,KSAHA,KENV,KATM,HSTOT,BL,  ! KC 2025-05-31
 !               (recompute_surface_bc/LSBC removed from this call site)
             start_new_triangle,reset_triangle,ksaha,kenv,katm, &
-            star%log_total_mass,star%log10_luminosity, &
-            star%log_teff,hydrogen_fraction,metal_fraction, &
+            star%log_total_mass,star%log_L, &
+            star%log_Teff,hydrogen_fraction,metal_fraction, &
             surface_pressure_rotation_factor, &
             surface_temperature_rotation_factor,envelope_recomputed_flag, &
-            log10_pressure_limit,star%convective_flag,star%num_zones)
+            log10_pressure_limit,star%convective_flag,star%nz)
       endif
 ! 7/91 ADD CALL TO MIX
       if (iteration_level.gt.2 .and. delta_time.gt.0.0d0) then
          num_species = 11
          if (use_extended_composition) num_species = 15
-         do 2 i = 1,star%num_zones
-            do 1 j = 1,num_species
-               star%composition(j,i) = star%prev%old_composition(j,i)
-    1       continue
-    2    continue
+         do i = 1,star%nz
+            do j = 1,num_species
+               star%xa(j,i) = star%prev%xa_start(j,i)
+            end do
+         end do
          call mix(delta_time, iteration_level, timestep_years, &
               core_cz_edge, envelope_zone_index, &
               mixed_zone_bounds_no_overshoot, jerr)
@@ -227,23 +221,23 @@ subroutine crrect(delta_time, max_iterations, converged, &
       if (recompute_surface_bc .and. .not.envelope_recomputed_flag .and. &
            converged) return
       converged = .false.
-      do 100 iter = 1,max_iterations
+      do iter = 1,max_iterations
 ! DO HENYEY REDUCTION
        star%max_residual(1) = 0.0d0
        star%max_residual(2) = 0.0d0
        star%max_residual(3) = 0.0d0
        star%max_residual(4) = 0.0d0
-       call coefft(delta_time,star%num_zones,star%log_density,star%elim_coeff,star%elim_rhs, &
+       call coefft(delta_time,star%nz,star%logRho,star%elim_coeff,star%elim_rhs, &
             star%gravitational_luminosity,star%luminosity_lsun,star%max_residual, &
-            star%log_pressure,star%log_pressure_delta,star%log_radius,star%log_mass, &
-            star%enclosed_mass,star%shell_mass,star%log_temperature,star%log_temperature_delta, &
-            star%composition,star%convective_flag,star%luminosity_breakdown,in_atmosphere, &
+            star%logP,star%log_pressure_delta,star%logR,star%log_mass, &
+            star%m,star%dm,star%logT,star%log_temperature_delta, &
+            star%xa,star%convective_flag,star%luminosity_breakdown,in_atmosphere, &
             want_derivatives,mixing_active,conductive_opacity_flag, &
             dlnrho_dlnt,dlnrho_dlnp, &
 !      *   KSAHA,MODEL,FP,FT,HKEROT,HKEROT0,JENV,TEFFL)  ! KC 2025-05-31
-            ksaha,star%pressure_rotation_factor,star%temperature_rotation_factor, &
+            ksaha,star%fp_rot,star%ft_rot, &
             star%kinetic_energy_rot,star%kinetic_energy_rot_old,envelope_zone_index, &
-            star%log_teff, jerr)
+            star%log_Teff, jerr)
        if (jerr /= 0) then
        ! 2026 (phase five, step B): propagate instead of stopping
           ierr = jerr
@@ -251,15 +245,15 @@ subroutine crrect(delta_time, max_iterations, converged, &
        end if
 ! RENORMALIZE TLUMX-S
 !CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
-       total_luminosity_terms = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &
-            star%luminosity_breakdown(3)+star%luminosity_breakdown(4)+star%luminosity_breakdown(5)+ &
-            star%luminosity_breakdown(6)+star%luminosity_breakdown(7)+star%luminosity_breakdown(8)
+       total_luminosity_terms = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
+            star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
+            star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
        if (.not.helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
-          temp = star%luminosity_lsun(star%num_zones)/total_luminosity_terms
-          do 10 j = 1,8
+          temp = star%luminosity_lsun(star%nz)/total_luminosity_terms
+          do j = 1,8
              star%luminosity_breakdown(j) = star%luminosity_breakdown(j)*temp
-   10       continue
+          end do
        endif
 ! CHECK ON SIGNIFICANCE OF R.H.S. EQUATIONS FOR P AND T
 ! N.B.  DOES NOT CHECK DIFFERENCES IN BOUNDARY EQUATIONS
@@ -279,23 +273,23 @@ subroutine crrect(delta_time, max_iterations, converged, &
 ! SET UP HENYEY COEFFICIENTS FOR SURFACE
        star%surface_bc(1) = -star%envelope_fit_coeffs(1)
        star%surface_bc(2) = -star%envelope_fit_coeffs(2)
-       star%surface_bc(3) = star%envelope_fit_coeffs(1)*star%log_pressure(star%num_zones) + &
-            star%envelope_fit_coeffs(2)*star%log_temperature(star%num_zones) + &
-            star%envelope_fit_coeffs(3) - star%log_radius(star%num_zones)
-       temp = ln10*star%luminosity_lsun(star%num_zones)
+       star%surface_bc(3) = star%envelope_fit_coeffs(1)*star%logP(star%nz) + &
+            star%envelope_fit_coeffs(2)*star%logT(star%nz) + &
+            star%envelope_fit_coeffs(3) - star%logR(star%nz)
+       temp = ln10*star%luminosity_lsun(star%nz)
        star%surface_bc(4) =-temp*star%envelope_fit_coeffs(4)
        star%surface_bc(5) =-temp*star%envelope_fit_coeffs(5)
-       star%surface_bc(6) = temp*(star%envelope_fit_coeffs(4)*star%log_pressure(star%num_zones)+ &
-            star%envelope_fit_coeffs(5)*star%log_temperature(star%num_zones)+ &
-            star%envelope_fit_coeffs(6)-star%log10_luminosity)
+       star%surface_bc(6) = temp*(star%envelope_fit_coeffs(4)*star%logP(star%nz)+ &
+            star%envelope_fit_coeffs(5)*star%logT(star%nz)+ &
+            star%envelope_fit_coeffs(6)-star%log_L)
 ! DO BACK SOLUTION FOR CORRECTIONS
-       call hsolve(star%num_zones,star%elim_coeff,star%elim_rhs,star%surface_bc)
+       call hsolve(star%nz,star%elim_coeff,star%elim_rhs,star%surface_bc)
 ! CHECK ON MAXIMUM CORRECTIONS
-       do 30 j = 1,4
+       do j = 1,4
           star%max_residual(j) = dabs(star%elim_rhs(j,1))
           star%max_correction_index(j) = 1
-   30    continue
-       do 40 i = 2,star%num_zones
+       end do
+       do i = 2,star%nz
           test = dabs(star%elim_rhs(1,i))
           if (star%max_residual(1).le.test) then
              star%max_residual(1) = test
@@ -316,7 +310,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
              star%max_residual(4) = test
              star%max_correction_index(4) = i
           endif
-   40    continue
+       end do
 !CC   HE FLASH -- OK FOR ALL
        luminosity_correction_max = star%max_residual(4)
 ! LFINI = T IF MAX CORRECTIONS LESS THAN CONVERGENCE CRITERIA SET IN
@@ -330,10 +324,10 @@ subroutine crrect(delta_time, max_iterations, converged, &
             star%max_residual(2).gt.htoler(2,2) &
          .or. star%max_residual(3).gt.htoler(3,2) .or. &
          star%max_residual(4).gt.htoler(4,2)
-       do 50 j = 1,4
+       do j = 1,4
           max_correction_pos = star%max_correction_index(j)
           star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
-   50    continue
+       end do
        if (fcorr0.gt.0.0d0) fcorr = dmin1(1.d0,fcorr+fcorri)
 ! HE FLASH CHANGE
        correction_factor = fcorr
@@ -341,9 +335,9 @@ subroutine crrect(delta_time, max_iterations, converged, &
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
        endif
-       hydrogen_burn_luminosity = star%luminosity_breakdown(1) + star%luminosity_breakdown(2) &
-            + star%luminosity_breakdown(3) + star%luminosity_breakdown(4)
-       helium_burn_luminosity= star%luminosity_breakdown(5) + star%luminosity_breakdown(8)
+       hydrogen_burn_luminosity = star%luminosity_breakdown(i_lum_pp1) + star%luminosity_breakdown(i_lum_pp2) &
+            + star%luminosity_breakdown(i_lum_pp3) + star%luminosity_breakdown(i_lum_cno)
+       helium_burn_luminosity= star%luminosity_breakdown(i_lum_3alpha) + star%luminosity_breakdown(i_lum_he_c)
        if (lcorr) then
           write (short_file_unit,60) converged,star%max_residual(4), &
                htoler(4,1),star%max_correction_index(4)
@@ -366,37 +360,37 @@ subroutine crrect(delta_time, max_iterations, converged, &
             return
          endif
 ! APPLY CORRECTIONS
-       do 90 i = 1,star%num_zones
+       do i = 1,star%nz
           temp = correction_factor*star%elim_rhs(1,i)
-          star%log_pressure(i) = star%log_pressure(i) + temp
+          star%logP(i) = star%logP(i) + temp
           star%log_pressure_delta(i) = star%log_pressure_delta(i) + temp
           temp = correction_factor*star%elim_rhs(2,i)
-          star%log_temperature(i) = star%log_temperature(i) + temp
+          star%logT(i) = star%logT(i) + temp
           star%log_temperature_delta(i) = star%log_temperature_delta(i) + temp
-          star%log_radius(i) = star%log_radius(i) + correction_factor*star%elim_rhs(3,i)
+          star%logR(i) = star%logR(i) + correction_factor*star%elim_rhs(3,i)
           star%luminosity_lsun(i) = star%luminosity_lsun(i) + &
                correction_factor*star%elim_rhs(4,i)
-   90    continue
-       star%log10_luminosity = dlog10(star%luminosity_lsun(star%num_zones))
-       star%log_teff = star%envelope_fit_coeffs(7)*star%log_pressure(star%num_zones) + &
-            star%envelope_fit_coeffs(8)*star%log_temperature(star%num_zones) + &
+       end do
+       star%log_L = dlog10(star%luminosity_lsun(star%nz))
+       star%log_Teff = star%envelope_fit_coeffs(7)*star%logP(star%nz) + &
+            star%envelope_fit_coeffs(8)*star%logT(star%nz) + &
             star%envelope_fit_coeffs(9)
          if (rotation_active) then
-            call getrot(star%log_density,star%specific_angular_momentum,star%log_radius, &
-                 star%log_mass,star%shell_mass,star%am_transport_convective_flag, &
-                 star%num_zones,star%eta_squared,star%moment_of_inertia,star%omega,star%qiw, &
+            call getrot(star%logRho,star%j_rot,star%logR, &
+                 star%log_mass,star%dm,star%am_transport_convective_flag, &
+                 star%nz,star%eta_squared,star%i_rot,star%omega,star%qiw, &
                  star%mean_radius)
-            call fpft(star%log_density,star%log_radius,star%log_mass,star%num_zones,star%omega, &
-                 star%eta_squared,star%pressure_rotation_factor, &
-                 star%temperature_rotation_factor,star%mean_gravity,star%mean_radius)
-            do i = 1,star%num_zones
-               shell_angular_momentum = star%specific_angular_momentum(i)*star%shell_mass(i)
+            call fpft(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
+                 star%eta_squared,star%fp_rot, &
+                 star%ft_rot,star%mean_gravity,star%mean_radius)
+            do i = 1,star%nz
+               shell_angular_momentum = star%j_rot(i)*star%dm(i)
                star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum
             end do
          endif
        iterations_done = iterations_done + 1
        if (converged) return
-  100 continue
+      end do
 
       return
 end subroutine crrect

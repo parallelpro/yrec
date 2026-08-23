@@ -45,9 +45,9 @@
 !     conversions; out of scope to fix here. The scalar per-point
 !     value of this same array (originally B) is named
 !     shell_luminosity_lsun to avoid clashing with the array name.
-!   - HS1 is named star%enclosed_mass (matches crrect.f90's slot name for
+!   - HS1 is named star%m (matches crrect.f90's slot name for
 !     the same array, and gettau.f90's own parameter name for it).
-!   - HS2 is named star%shell_mass (matches crrect.f90/rscale.f90/
+!   - HS2 is named star%dm (matches crrect.f90/rscale.f90/
 !     momi.f90).
 !   - R0 is named star%mean_radius (matches momi.f90, which computes it,
 !     and crrect.f90); fpft.f90's own slot name for the same array is
@@ -56,15 +56,15 @@
 !     crrect.f90 instead keeps this slot named "qiw" verbatim.
 !   - HG is named star%mean_gravity (matches fpft.f90, which computes it);
 !     physic.f90's own slot name for the same array is "hg".
-!   - M (number of mesh points) is named star%num_zones (matches
+!   - M (number of mesh points) is named star%nz (matches
 !     getyrec7.f90/getmodel2.f90); physic.f90/ovrot.f90/gettau.f90/
 !     rscale.f90 call the same count "num_zones", momi.f90 calls it
 !     "zone_end", crrect.f90 calls it "num_points".
-!   - SMASS is named star%total_mass_msun (matches getyrec7.f90/
+!   - SMASS is named star%star_mass (matches getyrec7.f90/
 !     getmodel2.f90); rscale.f90's own slot name for the same value is
 !     "star_mass".
 !   - FP/FT (rotational P/T correction factors) are named
-!     star%pressure_rotation_factor/star%temperature_rotation_factor (matches
+!     star%fp_rot/star%ft_rot (matches
 !     crrect.f90); the per-point scalars used in the single-shell
 !     EQSTAT/TPGRAD physics block below (originally FPL/FTL) are named
 !     point_pressure_rotation_factor/point_temperature_rotation_factor
@@ -80,7 +80,7 @@
 !     these per-point scalars specifically so they do not collide with
 !     its "log_"-prefixed array dummy names; the same convention is
 !     used here for the same reason (this file's own array dummies are
-!     named star%log_pressure/star%log_temperature/star%log_density/star%log_radius/
+!     named star%logP/star%logT/star%logRho/star%logR/
 !     star%log_mass).
 !   - common/core/ (LCORE/MCORE/FCORE) and common/newmx/ (the CNO-
 !     mixture/isotope-ratio controls) are referenced only in
@@ -101,16 +101,10 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-
+      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       use atm_lib
-      use star_info_lib, only: star
+      use envint_lib, only: atm_get
       use envstruct_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use eos_lib
@@ -118,6 +112,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       use opacity_table_lib
       use yale_eos_lib
       use scv_eos_lib
+
+
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts = 63, nps = 76
@@ -161,6 +157,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       integer :: iread
       double precision :: mixing_length0
       logical :: mixing_length_matches
+      logical :: mixture_ok
 ! NOTE: LEXCP0 in the original source is never assigned before use
 ! (line "WRITE(ISHORT,1040) CMIXL,CMIXL0,LEXCOM,LEXCP0" below); it
 ! appears to be a pre-existing bug (likely meant to read
@@ -231,9 +228,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
            use_pure_z_table0, lsemic0
       double precision :: disk_pressure0, disk_temperature0, &
            wind_saturation_omega0
-
-      save
-
 ! If flag LARGE is set, model has failed to converge.  Terminate the run.
       ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
       ! this driver-side call site preserves the historical stop.
@@ -267,6 +261,51 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       dlnrho_dlnt = -1.0d0
       dlnrho_dlnp = 1.0d0
 
+      call acquire_starting_model
+      if (ierr /= 0) return
+      call extend_core_toward_center
+      if (ierr /= 0) return
+      call rescale_and_refit_envelope
+      if (ierr /= 0) return
+!       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
+      call physic(star%fp_rot,star%ft_rot, &
+           star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun,star%logP, &
+           star%logR,star%log_mass,star%logT,star%convective_flag,star%nz, &
+           star%log_Teff, jerr)
+      if (jerr /= 0) then
+      ! 2026 (phase five, step B): propagate instead of stopping
+         ierr = jerr
+         return
+      end if
+      call ovrot(star%xa,star%logRho,star%logP,star%logR,star%log_mass, &
+                 star%logT,star%convective_flag,star%nz, &
+                 am_transport_convective_flag,radiative_zone_bounds, &
+                 convective_zone_bounds,num_radiative_zones, &
+                 num_convective_zones)
+! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP
+!       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
+      call gettau(star%xa,star%logR,star%logP,star%logRho, &
+                  star%m,star%logT,star%fp_rot, &
+                  star%ft_rot,star%log_Teff, &
+                  star%log_total_mass,star%log_L,star%nz,star%convective_flag, &
+                  env_struct%env_log10_radius)
+      star%turnover%convective_turnover_timescale_old = star%turnover%convective_turnover_timescale
+      star%turnover%pphot0 = star%turnover%pphot
+      star%turnover%fracstep = 0.5
+
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Obtain the starting model: reuse the model in memory (rescaling
+! the envelope mass when requested), or read + process the input
+! model file (YREC7 or MODEL2 layout, detected from its keyword),
+! check its mixing length / surface BC / CZ settings against the
+! user parameters, set up the rotation curve, and -- first model
+! of a run only -- apply the heavy-element mixture / isotope-ratio
+! alterations (isetmix / isetiso). Sets ierr on failure.
+subroutine acquire_starting_model
 ! Flag LFIRST(NK) tells where to get the starting stellar model for the current
 ! step (step NK).  If LFIRST(NK) is true, read in the starting stellarmodel from
 ! the file specified by LU IFIRST.  If LFIRST(NK) is false, as starting model use
@@ -276,12 +315,12 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! Use the model currently in memory as the starting model.
 ! DBG 2/92 CHANGED SO WILL RESCALE ENVELOPE MASS ON EACH NEW RUN
          if (rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
-              star%composition,star%log_mass,star%log_total_mass,star%num_zones,run_index, &
-              star%total_mass_msun,star%convective_flag, ierr)
+              star%xa,star%log_mass,star%log_total_mass,star%nz,run_index, &
+              star%star_mass,star%convective_flag, ierr)
          if (ierr /= 0) return
-! Now skip over the reading and processing of an input model file
-         goto 3000
-      endif
+! The reading and processing of an input model file is skipped
+! (the else branch below).
+      else
 
 
 !     Read in the starting model from LU IFIRST and process it.
@@ -298,14 +337,14 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       if (format_tag .eq. 'NMOD') then
          write(short_file_unit,12)
  12      format('STARIN:  Input model has YREC7 format')
-         call getyrec7(star%log10_luminosity,star%envelope_fit_coeffs,mixing_length0, &
-              star%run%dage,timestep_yr,trial_sign_flag,star%composition,star%log_density, &
-              star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass, &
-              star%log_total_mass,star%log_temperature,iread,short_file_unit, &
+         call getyrec7(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
+              star%run%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
+              star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
+              star%log_total_mass,star%logT,iread,short_file_unit, &
               core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
-              use_extended_composition0,rotation_active0,star%num_zones, &
+              use_extended_composition0,rotation_active0,star%nz, &
               star%model_number,star%omega,star%fit_point_pressure,star%fit_point_radius, &
-              star%total_mass_msun,star%log_teff,star%luminosity_breakdown, &
+              star%star_mass,star%log_Teff,star%luminosity_breakdown, &
               star%trial_log_luminosity,star%trial_log_temperature, &
               star%fit_point_temperature, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
@@ -321,14 +360,14 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       else if (format_tag .eq. 'MOD2 ') then
          write(short_file_unit,16)
  16      format('STARIN:  Input model has MODEL2 format')
-         call getmodel2(star%log10_luminosity,star%envelope_fit_coeffs,mixing_length0, &
-              star%run%dage,timestep_yr,trial_sign_flag,star%composition,star%log_density, &
-              star%luminosity_lsun,star%log_pressure,star%log_radius,star%log_mass, &
-              star%log_total_mass,star%log_temperature,iread, &
+         call getmodel2(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
+              star%run%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
+              star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
+              star%log_total_mass,star%logT,iread, &
               core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
-              use_extended_composition0,rotation_active0,star%num_zones, &
+              use_extended_composition0,rotation_active0,star%nz, &
               star%model_number,star%omega,star%fit_point_pressure,star%fit_point_radius, &
-              star%total_mass_msun,star%log_teff,star%luminosity_breakdown, &
+              star%star_mass,star%log_Teff,star%luminosity_breakdown, &
               star%trial_log_luminosity,star%trial_log_temperature, &
               star%fit_point_temperature, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
@@ -386,11 +425,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! ENVELOPE DATA (Now bypassed)
 ! LNEW0 HAS BEEN READ IN, IF TRUE THEN RECOMPUTE ENVELOPE EVERY MODEL
 ! STORED ENVELOPE RECORDS ONLY USED FOR HE FLASH CALCS
-!      IF(LNEW0) THEN
-!       LNEW = .TRUE.
-!      ELSE
-!       LNEW = .NOT.LKUTHE
-!      ENDIF
 !      DO 80 I = 1,3
 !       IF((.NOT.LNEW).AND.IABS(IO).NE.I) LNEW = .TRUE.
 ! 80   CONTINUE
@@ -404,8 +438,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 
 ! GET XNEW AND ZNEW FROM HENYEY POINTS
 
-      star%env_comp%xnew = star%composition(1,star%num_zones)
-      star%env_comp%znew = star%composition(3,star%num_zones)
+      star%env_comp%xnew = star%xa(i_h1,star%nz)
+      star%env_comp%znew = star%xa(i_metals,star%nz)
 
 ! FOURTH PART:  - LOG J/M STORED
 
@@ -413,44 +447,47 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        if (lwnew) then
 ! GENERATE A SOLID BODY ROTATION CURVE WITH OMEGA = WNEW;
 ! THIS IS DONE TO CONVERT A NON-ROTATING MODEL TO A ROTATING ONE.
-          do 540 i = 1,star%num_zones
+          do i = 1,star%nz
              star%omega(i) = wnew
- 540        continue
+          end do
        endif
       else
-         do 570 i = 1,json
-            star%pressure_rotation_factor(i) = 1.0d0
-            star%temperature_rotation_factor(i) = 1.0d0
- 570     continue
+         do i = 1,json
+            star%fp_rot(i) = 1.0d0
+            star%ft_rot(i) = 1.0d0
+         end do
       endif
 ! KEEP IREAD OPEN
       rewind iread
 ! End of the reading and processing of an input model file.
-      if (.not.first_call_flag(run_index)) goto 3000
+      if (first_call_flag(run_index)) then
 !      IF(.NOT.LFIRST(NK).OR.NK.GT.1)GOTO 3000
 !     MHP 10/24 MACHINERY TO ALTER THE HEAVY ELEMENT MIXTURE
 !     THIS IS ONLY DONE if the first MODEL IS being READ IN, AND ONLY FOR A
 ! CHEMICALLY HOMOGENEOUS MODEL. IT CAN OVER-WRITE MASS FRACTIONS 4-15 WITH USER-SPECIFIED VALUES
 ! ISETMIX=1 -> CAN ADJUST CNO FRACTIONS ISETISO=1-> CHANGE ISOTOPE RATIOS
+      mixture_ok = .true.
       if (change_cno_mixture_active .or. change_isotope_ratios_active) then
 ! ENSURE STARTING MODEL IS HOMOGENEOUS BEFORE EITHER IS CHANGED
          do i = 1,15
-            reference_composition(i)=star%composition(i,1)
+            reference_composition(i)=star%xa(i,1)
          end do
-         do j = 2,star%num_zones
+         homogeneity: do j = 2,star%nz
             do i = 1,15
-               fraction_diff = abs(star%composition(i,j)-reference_composition(i))
+               fraction_diff = abs(star%xa(i,j)-reference_composition(i))
                if (fraction_diff.gt.1.0d-6) then
                   write(*,592)i,j,fraction_diff
                   write(short_file_unit,592)i,j,fraction_diff
  592              format('SPECIES ',i3,' IN SHELL ',i5, &
                     ' DIFFERS FROM CENTER BY ',e12.4, &
                     ' MIX NOT MODIFIED IN EVOLVED MODEL')
-                  goto 602
+                  mixture_ok = .false.
+                  exit homogeneity
                endif
             end do
-         end do
+         end do homogeneity
       endif
+      if (mixture_ok) then
 ! LOOP FOR CHANGING CNO MIX
       if (change_cno_mixture_active) then
 !     INFER CURRENT TOTAL CNO FRACTIONS AND SCALE ALL ISOTOPES BY THE RATIO BETWEEN
@@ -471,24 +508,24 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
          write(*,*)target_carbon_cno_fraction,target_nitrogen_cno_fraction, &
               target_oxygen_cno_fraction
          do i = 5,6
-            do j = 1,star%num_zones
-               star%composition(i,j)=carbon_scale_ratio*star%composition(i,j)
+            do j = 1,star%nz
+               star%xa(i,j)=carbon_scale_ratio*star%xa(i,j)
             end do
          end do
          do i = 7,8
-            do j = 1,star%num_zones
-               star%composition(i,j)=nitrogen_scale_ratio*star%composition(i,j)
+            do j = 1,star%nz
+               star%xa(i,j)=nitrogen_scale_ratio*star%xa(i,j)
             end do
          end do
          do i = 9,11
-            do j = 1,star%num_zones
-               star%composition(i,j)=oxygen_scale_ratio*star%composition(i,j)
+            do j = 1,star%nz
+               star%xa(i,j)=oxygen_scale_ratio*star%xa(i,j)
             end do
          end do
          write(*,594)(reference_composition(k),k=5,11), &
-              (star%composition(k,1),k=5,11)
+              (star%xa(k,1),k=5,11)
          write(short_file_unit,594)(reference_composition(k),k=5,11), &
-              (star%composition(k,1),k=5,11)
+              (star%xa(k,1),k=5,11)
  594     format('CNO MIX CHANGED IN STARIN. OLD C12 C13 N14' &
            ' N15 O16 O17 O18 ',7e12.4,' NEW ',7e12.4)
       endif
@@ -496,31 +533,39 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 !     AT PRESENT B10,B11,N15,O17 ARE NOT USED AND THUS NOT ALTERED.
 !     START WITH LIGHT ELEMENTS
       if (change_isotope_ratios_active) then
-         sum_c12_c13 = star%composition(5,1)+star%composition(6,1)
-         sum_o16_o18 = star%composition(9,1)+star%composition(11,1)
-         do j = 1,star%num_zones
-            star%composition(4,j)=initial_he3_fraction
-            star%composition(5,j)= c12_to_c13_ratio*sum_c12_c13/ &
+         sum_c12_c13 = star%xa(i_c12,1)+star%xa(i_c13,1)
+         sum_o16_o18 = star%xa(i_o16,1)+star%xa(i_o18,1)
+         do j = 1,star%nz
+            star%xa(i_he3,j)=initial_he3_fraction
+            star%xa(i_c12,j)= c12_to_c13_ratio*sum_c12_c13/ &
                  (1.0d0+c12_to_c13_ratio)
-            star%composition(6,j)= sum_c12_c13/(1.0d0+c12_to_c13_ratio)
-            star%composition(9,j)= o16_to_o18_ratio*sum_o16_o18/ &
+            star%xa(i_c13,j)= sum_c12_c13/(1.0d0+c12_to_c13_ratio)
+            star%xa(i_o16,j)= o16_to_o18_ratio*sum_o16_o18/ &
                  (1.0d0+o16_to_o18_ratio)
-            star%composition(11,j)= sum_o16_o18/(1.0d0+o16_to_o18_ratio)
-            star%composition(12,j)=initial_h2_fraction
-            star%composition(13,j)=initial_li6_fraction
-            star%composition(14,j)=initial_li7_fraction
-            star%composition(15,j)=initial_be9_fraction
+            star%xa(i_o18,j)= sum_o16_o18/(1.0d0+o16_to_o18_ratio)
+            star%xa(i_h2,j)=initial_h2_fraction
+            star%xa(i_li6,j)=initial_li6_fraction
+            star%xa(i_li7,j)=initial_li7_fraction
+            star%xa(i_be9,j)=initial_be9_fraction
          end do
          write(*,593)(reference_composition(k),k=4,15), &
-              (star%composition(k,1),k=4,15)
+              (star%xa(k,1),k=4,15)
          write(short_file_unit,593)(reference_composition(k),k=4,15), &
-              (star%composition(k,1),k=4,15)
+              (star%xa(k,1),k=4,15)
  593     format('CNO ISOTOPES AND LIGHT ELEMENTS CHANGED IN ', &
               'STARIN. OLD HE3 C12 C13 N14 N15 O16 O17 O18 H2 LI6 ', &
                'LI7 BE9',12e12.4,' NEW ',12e12.4)
       endif
- 602  continue
- 3000 continue
+      end if
+      end if
+      endif
+end subroutine acquire_starting_model
+
+! ---------------------------------------------------------------
+! If extend_core_inward is set, add central points inward of the
+! innermost shell using constant-epsilon, constant-density
+! stellar-structure estimates (spacing per hpttol).
+subroutine extend_core_toward_center
 
 !     The following code enables us to extend the model from the current
 !     inner most shell to a point ncloser to center, if flag LCORE is set.
@@ -542,7 +587,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                chi_grid_scale(2))+1
           core_mass_reduction_factor = dble(num_core_shells_added)* &
                chi_grid_scale(2)
-          num_shells_extended = star%num_zones + num_core_shells_added
+          num_shells_extended = star%nz + num_core_shells_added
           if (num_shells_extended .gt. json) then
              write(short_file_unit,476)"STARIN: Unable to extend core inward ", &
                    "- JSON too small"
@@ -555,88 +600,82 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
           endif
           core_shell_spacing = chi_grid_scale(2)
 ! shift data for remaining points by the required number
-          do i=star%num_zones,1, -1
+          do i=star%nz,1, -1
              star%log_mass(i+num_core_shells_added) = star%log_mass(i)
-             star%log_radius(i+num_core_shells_added) = star%log_radius(i)
+             star%logR(i+num_core_shells_added) = star%logR(i)
              star%luminosity_lsun(i+num_core_shells_added) = star%luminosity_lsun(i)
-             star%log_pressure(i+num_core_shells_added) = star%log_pressure(i)
-             star%log_temperature(i+num_core_shells_added) = star%log_temperature(i)
+             star%logP(i+num_core_shells_added) = star%logP(i)
+             star%logT(i+num_core_shells_added) = star%logT(i)
              star%convective_flag(i+num_core_shells_added) = star%convective_flag(i)
              do j=1, 15
-                star%composition(j,i+num_core_shells_added) = star%composition(j,i)
+                star%xa(j,i+num_core_shells_added) = star%xa(j,i)
              end do
              star%omega(i+num_core_shells_added) = star%omega(i)
           end do
           first_original_shell = num_core_shells_added+1
 ! MARCH INWARD IN MASS FROM THE INNERMOST MODEL POINT.
 ! ASSUME EPSILON=CONSTANT AND DEL=CONSTANT
-          central_log_density = star%log_density(1)
-          actual_gradient = (star%log_temperature(2)-star%log_temperature(1))/ &
-               (star%log_pressure(2)-star%log_pressure(1))
+          central_log_density = star%logRho(1)
+          actual_gradient = (star%logT(2)-star%logT(1))/ &
+               (star%logP(2)-star%logP(1))
           central_shell_luminosity = star%luminosity_lsun(1)
 ! MHP 4/12 FACTOR FOR ESTIMATING RHO FROM P AND T
-          density_estimate_offset = star%log_pressure(first_original_shell)- &
-               star%log_density(first_original_shell)- &
-               star%log_temperature(first_original_shell)
+          density_estimate_offset = star%logP(first_original_shell)- &
+               star%logRho(first_original_shell)- &
+               star%logT(first_original_shell)
           do i = num_core_shells_added,1,-1
              star%log_mass(i) = star%log_mass(i+1)-core_shell_spacing
 ! USE M  = 4PI/3*RHOC*R**3 TO GET R AS A FUNCTION OF M
-             star%log_radius(i) = cc13*(star%log_mass(i)-c4pi3l-central_log_density)
+             star%logR(i) = cc13*(star%log_mass(i)-c4pi3l-central_log_density)
 ! USE EPSILON=CONSTANT TO GET L
              star%luminosity_lsun(i) = exp(ln10*(star%log_mass(i)- &
                   star%log_mass(first_original_shell)))*central_shell_luminosity
 ! USE HYDROSTATIC EQUILIBRIUM TO GET P
-             trial_log_pressure = star%log_pressure(i+1)
+             trial_log_pressure = star%logP(i+1)
              temp_scratch = exp(ln10*(cgl+2.0d0*star%log_mass(i)-c4pil- &
-                  trial_log_pressure-4.0d0*star%log_radius(i)))
+                  trial_log_pressure-4.0d0*star%logR(i)))
              trial_log_pressure = trial_log_pressure+0.5d0*temp_scratch* &
                   core_shell_spacing
              temp_scratch = exp(ln10*(cgl+2.0d0*star%log_mass(i)-c4pil- &
-                  trial_log_pressure-4.0d0*star%log_radius(i)))
-             star%log_pressure(i) = star%log_pressure(i+1)+temp_scratch* &
+                  trial_log_pressure-4.0d0*star%logR(i)))
+             star%logP(i) = star%logP(i+1)+temp_scratch* &
                   core_shell_spacing
 ! ASSUME R/C FLAG IS THE SAME AS FOR THE FIRST POINT
              star%convective_flag(i) = star%convective_flag(first_original_shell)
 ! ASSUME DEL= CONSTANT IN THE CORE
-             star%log_temperature(i) = star%log_temperature(i+1)+temp_scratch* &
+             star%logT(i) = star%logT(i+1)+temp_scratch* &
                   actual_gradient*core_shell_spacing
 ! ASSUME OMEGA = CONSTANT
              star%omega(i) = star%omega(first_original_shell)
 ! ASSUME COMPOSITION IS UNIFORM
              do j=1, 15
-                star%composition(j,i) = star%composition(j,first_original_shell)
+                star%xa(j,i) = star%xa(j,first_original_shell)
              end do
 ! CALL EQUATION OF STATE TO GET CONSISTENT DENSITY
-!           LDERIV = .FALSE.
-!           LOCOND = .FALSE.
-!           LATMO = .FALSE.
-!             KSAHA = 0
-!           X = HCOMP(1,I)
-!           Z = HCOMP(3,I)
-!           PL = HP(I)
-!             P = EXP(CLN*PL)
-!             TL = HT(I)
-!             T = EXP(CLN*TL)
-!           DL = HD(I+1)
-!             D = EXP(CLN*DL)
-!           FPL = 1.0D0
-!           FTL = 1.0D0
-!           CALL EQSTAT(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,
 !     *                   RMU,AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,
 !     *                   QAT,QAP,QCPT,QCPP,LDERIV,LATMO,KSAHA)
 !             HD(I) = DL
 ! MHP 4/12 REPLACED (BROKEN) CALL TO EQSTAT WITH LOCAL ESTIMATE FOR RHO
-             star%log_density(i) = star%log_pressure(i) - star%log_temperature(i) - &
+             star%logRho(i) = star%logP(i) - star%logT(i) - &
                   density_estimate_offset
           end do
-          star%num_zones = num_shells_extended
+          star%nz = num_shells_extended
       end if
 ! End of code to extend core inward
+end subroutine extend_core_toward_center
+
+! ---------------------------------------------------------------
+! Rescale the first model when the kind card asks for it, then move
+! the envelope fitting point to the requested envelope mass --
+! deleting points (deeper new envelope) or integrating a fresh
+! envelope down to the new fitting mass (shallower), with EOS
+! re-evaluation at the surface point. Sets ierr on failure.
+subroutine rescale_and_refit_envelope
 
 ! PERFORM RESCALING OF FIRST MODEL IF REQUIRED
       if (rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
-           star%composition,star%log_mass,star%log_total_mass,star%num_zones,run_index, &
-           star%total_mass_msun,star%convective_flag, ierr)
+           star%xa,star%log_mass,star%log_total_mass,star%nz,run_index, &
+           star%star_mass,star%convective_flag, ierr)
       if (ierr /= 0) return
 
 ! What is the metallicity of your model? (surface X and Z)
@@ -655,6 +694,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! 1 NEW POINT IS ADDED, AND THE COMPOSITION OF THE NEW POINT
 ! IS ASSUMED EQUAL TO THAT OF THE LAST OLD POINT.
       if (change_envelope_mass_flag) then
+      envelope_rescale: do
        if (requested_envelope_mass.gt.0.0d0) requested_envelope_mass = &
             -requested_envelope_mass
 ! DBG 2/92 CHANGED MINIMUM FROM 1.0D-10 TO 1.0D-12
@@ -662,53 +702,55 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! FOR THIS PURPOSE(BASE OF ATMOSPHERE).
        if (requested_envelope_mass.gt.-1.0d-12) requested_envelope_mass = &
             -1.d-12
-       star%env_comp%senv = star%log_mass(star%num_zones) - star%log_total_mass
+       star%env_comp%senv = star%log_mass(star%nz) - star%log_total_mass
        old_senv = star%env_comp%senv
-       if (star%env_comp%senv.eq.requested_envelope_mass) goto 599
+       if (star%env_comp%senv.eq.requested_envelope_mass) exit envelope_rescale
        num_species = 11
        if (use_extended_composition) num_species = 15
        if (requested_envelope_mass.lt.star%env_comp%senv) then
 ! NEW ENVELOPE DEEPER THAN THE OLD ONE
           target_log_mass_at_fit = star%log_total_mass+requested_envelope_mass
-          do 575 i = star%num_zones-1,1,-1
-             if (star%log_mass(i).lt.target_log_mass_at_fit) goto 580
- 575        continue
+          do i = star%nz-1,1,-1
+             if (star%log_mass(i).lt.target_log_mass_at_fit) exit
+          end do
+          if (i < (1)) then
 ! ENVELOPE MASS DESIRED WITHIN FIRST POINT;PRINT NASTY MESSAGE
 ! AND ABORT.
           write(short_file_unit,576)requested_envelope_mass
  576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
-          goto 599
- 580        star%num_zones = i + 1
+          exit envelope_rescale
+          end if
+            star%nz = i + 1
           star%env_comp%senv = requested_envelope_mass
           interior_interp_fraction = (target_log_mass_at_fit-star%log_mass(i))/ &
                (star%log_mass(i+1) - star%log_mass(i))
-          star%log_mass(star%num_zones) = target_log_mass_at_fit
-          star%log_density(star%num_zones) = star%log_density(i) + &
-               interior_interp_fraction*(star%log_density(i+1) - star%log_density(i))
-          star%luminosity_lsun(star%num_zones) = star%luminosity_lsun(i) + &
+          star%log_mass(star%nz) = target_log_mass_at_fit
+          star%logRho(star%nz) = star%logRho(i) + &
+               interior_interp_fraction*(star%logRho(i+1) - star%logRho(i))
+          star%luminosity_lsun(star%nz) = star%luminosity_lsun(i) + &
                interior_interp_fraction*(star%luminosity_lsun(i+1) - &
                star%luminosity_lsun(i))
-          star%log_pressure(star%num_zones) = star%log_pressure(i) + &
-               interior_interp_fraction*(star%log_pressure(i+1) - star%log_pressure(i))
-          star%log_radius(star%num_zones) = star%log_radius(i) + &
-               interior_interp_fraction*(star%log_radius(i+1) - star%log_radius(i))
-          star%log_temperature(star%num_zones) = star%log_temperature(i) + &
-               interior_interp_fraction*(star%log_temperature(i+1) - &
-               star%log_temperature(i))
-          do 585 j = 1,num_species
-             star%composition(j,star%num_zones) = star%composition(j,i)
- 585        continue
-          star%env_comp%xnew = star%composition(1,star%num_zones)
-          star%env_comp%znew = star%composition(3,star%num_zones)
-          if (rotation_active) star%omega(star%num_zones) = star%omega(i) + &
+          star%logP(star%nz) = star%logP(i) + &
+               interior_interp_fraction*(star%logP(i+1) - star%logP(i))
+          star%logR(star%nz) = star%logR(i) + &
+               interior_interp_fraction*(star%logR(i+1) - star%logR(i))
+          star%logT(star%nz) = star%logT(i) + &
+               interior_interp_fraction*(star%logT(i+1) - &
+               star%logT(i))
+          do j = 1,num_species
+             star%xa(j,star%nz) = star%xa(j,i)
+          end do
+          star%env_comp%xnew = star%xa(i_h1,star%nz)
+          star%env_comp%znew = star%xa(i_metals,star%nz)
+          if (rotation_active) star%omega(star%nz) = star%omega(i) + &
                interior_interp_fraction*(star%omega(i+1)-star%omega(i))
           if (star%convective_flag(i).and.star%convective_flag(i+1)) then
-             star%convective_flag(star%num_zones) = .true.
+             star%convective_flag(star%nz) = .true.
           else if (.not.star%convective_flag(i).and. .not.star%convective_flag(i+1)) &
                then
-             star%convective_flag(star%num_zones) = .false.
+             star%convective_flag(star%nz) = .false.
           else
 ! CALL BASIC PHYSICS ROUTINES TO DETERMINE IF THE NEW LAST SHELL IS
 ! CONVECTIVE OR RADIATIVE.
@@ -716,20 +758,20 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
              local_conductive_opacity_flag = .false.
              in_atmosphere = .true.
              saha_state = 0
-             hydrogen_fraction = star%composition(1,star%num_zones)
-             metal_fraction = star%composition(3,star%num_zones)
-             log10_pressure = star%log_pressure(star%num_zones)
-             log10_temperature = star%log_temperature(star%num_zones)
-             log10_density = star%log_density(star%num_zones)
-             shell_luminosity_lsun = star%luminosity_lsun(star%num_zones)
-             log10_radius = star%log_radius(star%num_zones)
-             log10_mass = star%log_mass(star%num_zones)
+             hydrogen_fraction = star%xa(i_h1,star%nz)
+             metal_fraction = star%xa(i_metals,star%nz)
+             log10_pressure = star%logP(star%nz)
+             log10_temperature = star%logT(star%nz)
+             log10_density = star%logRho(star%nz)
+             shell_luminosity_lsun = star%luminosity_lsun(star%nz)
+             log10_radius = star%logR(star%nz)
+             log10_mass = star%log_mass(star%nz)
              point_pressure_rotation_factor = 1.0d0
              point_temperature_rotation_factor = 1.0d0
              idt = 15
-             do 588 kk = 1,4
+             do kk = 1,4
               idd(kk) = 5
- 588           continue
+             end do
                call eos_get(log10_temperature,temperature,log10_pressure, &
                     pressure,log10_density,density,hydrogen_fraction, &
                     metal_fraction,beta,beta_inverse,beta14,ion_fraction, &
@@ -740,7 +782,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                     dlnrho_dlnp_dt,adiabatic_gradient_dt, &
                     adiabatic_gradient_dp,specific_heat_cp_dt, &
                     specific_heat_cp_dp,want_derivatives,in_atmosphere, &
-                    saha_state,composition_at_zone=star%composition(:,star%num_zones))
+                    saha_state,composition_at_zone=star%xa(:,star%nz))
                call kap_get(log10_density, log10_temperature, &
                     hydrogen_fraction, metal_fraction, opacity, &
                     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)
@@ -756,18 +798,18 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                     specific_heat_cp_dt,specific_heat_cp_dp, &
                     convective_velocity,want_derivatives,is_convective, &
                     point_pressure_rotation_factor, &
-                    point_temperature_rotation_factor,star%log_teff, jerr)
+                    point_temperature_rotation_factor,star%log_Teff, jerr)
                if (jerr /= 0) then
                ! 2026 (phase five, step B): propagate instead of stopping
                   ierr = jerr
                   return
                end if
-               star%log_density(star%num_zones) = log10_density
-               star%convective_flag(star%num_zones) = is_convective
+               star%logRho(star%nz) = log10_density
+               star%convective_flag(star%nz) = is_convective
           endif
        else
 ! DESIRED ENVELOPE MASS LESS THAN CURRENT VALUE.
-            old_last_shell = star%num_zones
+            old_last_shell = star%nz
             saved_env_step_max = env_step_max
             saved_env_step_min = env_step_min
             saved_env_step_begin = env_step_begin
@@ -780,38 +822,38 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
           katm = 0
           kenv = 0
           saha_state = 0
-          shell_luminosity_lsun = dexp(ln10*star%log10_luminosity)
-          log10_radius = 0.5d0*(star%log10_luminosity + solar_luminosity_cgs - &
-               4.0d0*star%log_teff - c4pil - csigl)
+          shell_luminosity_lsun = dexp(ln10*star%log_L)
+          log10_radius = 0.5d0*(star%log_L + solar_luminosity_cgs - &
+               4.0d0*star%log_Teff - c4pil - csigl)
           log10_gravity = cgl + star%env_comp%stotal - log10_radius - log10_radius
-          hydrogen_fraction = star%composition(1,star%num_zones)
-          metal_fraction = star%composition(3,star%num_zones)
+          hydrogen_fraction = star%xa(i_h1,star%nz)
+          metal_fraction = star%xa(i_metals,star%nz)
           point_pressure_rotation_factor = 1.0d0
           point_temperature_rotation_factor = 1.0d0
           vertex_index=0
-          log10_pressure_limit = star%log_pressure(star%num_zones)
+          log10_pressure_limit = star%logP(star%nz)
 ! DBG PULSE: DO NOT DO PULSE OUTPUT
             pulse_print_flag = .false.
             if (use_debye_huckel_correction) then
-               debye_huckel_x = star%composition(1,star%num_zones)
-               debye_huckel_y = star%composition(2,star%num_zones)+star%composition(4,star%num_zones)
-               debye_huckel_z_total = star%composition(3,star%num_zones)
-               debye_huckel_z(1) = star%composition(5,star%num_zones)+star%composition(6,star%num_zones)
-               debye_huckel_z(2) = star%composition(7,star%num_zones)+star%composition(8,star%num_zones)
-               debye_huckel_z(3) = star%composition(9,star%num_zones)+star%composition(10,star%num_zones)+ &
-                    star%composition(11,star%num_zones)
+               debye_huckel_x = star%xa(i_h1,star%nz)
+               debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
+               debye_huckel_z_total = star%xa(i_metals,star%nz)
+               debye_huckel_z(1) = star%xa(i_c12,star%nz)+star%xa(i_c13,star%nz)
+               debye_huckel_z(2) = star%xa(i_n14,star%nz)+star%xa(i_n15,star%nz)
+               debye_huckel_z(3) = star%xa(i_o16,star%nz)+star%xa(i_o17,star%nz)+ &
+                    star%xa(i_o18,star%nz)
             end if
 ! MHP 10/02  define ISTORE - used in ENVINT
             atm_get_unused_flag = 0
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-          if (star%envelope_cz_bottom_index.eq.star%num_zones.and.spot_filling_factor.ne. &
+          if (star%envelope_cz_bottom_index.eq.star%nz.and.spot_filling_factor.ne. &
                0.0.and.spot_temp_contrast.ne.1.0) then
-               spot_adjusted_log_teff = star%log_teff - 0.25*log10(&
+               spot_adjusted_log_teff = star%log_Teff - 0.25*log10(&
                     spot_filling_factor * spot_temp_contrast**4.0 + 1.0 - &
                     spot_filling_factor)
           else
-             spot_adjusted_log_teff = star%log_teff
+             spot_adjusted_log_teff = star%log_Teff
           endif
           call atm_get(shell_luminosity_lsun,point_pressure_rotation_factor, &
                  point_temperature_rotation_factor,log10_gravity,star%env_comp%stotal, &
@@ -825,15 +867,15 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
             env_step_min = saved_env_step_min
             env_step_begin = saved_env_step_begin
           star%env_comp%senv = requested_envelope_mass
-            if (star%num_zones+env_struct%num_env_points.ge.json) stop 9999
+            if (star%nz+env_struct%num_env_points.ge.json) stop 9999
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
 ! ADJUST THE (P, RHO, T, R) POINTS TO BE CONSISTENT
 ! WITH THE LAST MODEL POINT.
-            pressure_offset = star%log_pressure(star%num_zones) - env_struct%env_log10_pressure(1)
-            density_offset = star%log_density(star%num_zones) - env_struct%env_log10_density(1)
-            temperature_offset = star%log_temperature(star%num_zones) - &
+            pressure_offset = star%logP(star%nz) - env_struct%env_log10_pressure(1)
+            density_offset = star%logRho(star%nz) - env_struct%env_log10_density(1)
+            temperature_offset = star%logT(star%nz) - &
                  env_struct%env_log10_temperature(1)
-            radius_offset = star%log_radius(star%num_zones) - env_struct%env_log10_radius(1)
+            radius_offset = star%logR(star%nz) - env_struct%env_log10_radius(1)
             do j = 1,env_struct%num_env_points - 1
                env_struct%env_log10_density(j) = env_struct%env_log10_density(j+1)+density_offset
                env_struct%env_log10_pressure(j) = env_struct%env_log10_pressure(j+1)+pressure_offset
@@ -845,31 +887,31 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                env_struct%env_metal_fraction(j) = env_struct%env_metal_fraction(j+1)
             end do
             env_struct%num_env_points = env_struct%num_env_points - 1
-            do j = star%num_zones+1,star%num_zones+env_struct%num_env_points
-               env_point_index = j-star%num_zones
+            do j = star%nz+1,star%nz+env_struct%num_env_points
+               env_point_index = j-star%nz
 ! LUMINOSITY ASSUMED CONSTANT
-               star%luminosity_lsun(j) = star%luminosity_lsun(star%num_zones)
+               star%luminosity_lsun(j) = star%luminosity_lsun(star%nz)
 ! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
                if (env_struct%env_log10_mass(env_point_index).le.star%env_comp%senv) then
-                  star%log_density(j) = env_struct%env_log10_density(env_point_index)
-                  star%log_pressure(j) = env_struct%env_log10_pressure(env_point_index)
-                  star%log_radius(j) = env_struct%env_log10_radius(env_point_index)
+                  star%logRho(j) = env_struct%env_log10_density(env_point_index)
+                  star%logP(j) = env_struct%env_log10_pressure(env_point_index)
+                  star%logR(j) = env_struct%env_log10_radius(env_point_index)
                   star%log_mass(j) = env_struct%env_log10_mass(env_point_index) + star%env_comp%stotal
-                  star%log_temperature(j) = env_struct%env_log10_temperature(env_point_index)
-                  star%composition(1,j) = env_struct%env_hydrogen_fraction(env_point_index)
-                  star%composition(3,j) = env_struct%env_metal_fraction(env_point_index)
+                  star%logT(j) = env_struct%env_log10_temperature(env_point_index)
+                  star%xa(i_h1,j) = env_struct%env_hydrogen_fraction(env_point_index)
+                  star%xa(i_metals,j) = env_struct%env_metal_fraction(env_point_index)
                   do k = 4,num_species
-                     star%composition(k,j) = star%composition(k,star%num_zones)
+                     star%xa(k,j) = star%xa(k,star%nz)
                   end do
-                  star%composition(2,j)=1.0d0-star%composition(1,j)-star%composition(3,j)- &
-                       star%composition(4,j)
+                  star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)-star%xa(i_metals,j)- &
+                       star%xa(i_he3,j)
                   star%convective_flag(j) = env_struct%env_convective_flag(env_point_index)
                else
 ! POINTS BEYOND THIS ARE ABOVE THE NEW DESIRED FITTING POINT;
 ! INTERPOLATE LINEARLY, SET NEW NUMBER OF TOTAL POINTS, AND EXIT
                   if (env_point_index.eq.1) then
 ! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
-                     lower_mass_coord = star%log_mass(star%num_zones)
+                     lower_mass_coord = star%log_mass(star%nz)
                      target_mass_coord = star%env_comp%stotal + star%env_comp%senv
                      upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
                           star%env_comp%stotal
@@ -884,32 +926,32 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                      envelope_interp_fraction = (target_mass_coord- &
                           lower_mass_coord)/(upper_mass_coord- &
                           lower_mass_coord)
-                     star%log_density(j) = star%log_density(star%num_zones)+ &
+                     star%logRho(j) = star%logRho(star%nz)+ &
                           envelope_interp_fraction*(env_struct%env_log10_density( &
-                          env_point_index)-star%log_density(star%num_zones))
-                     star%log_pressure(j) = star%log_pressure(star%num_zones)+ &
+                          env_point_index)-star%logRho(star%nz))
+                     star%logP(j) = star%logP(star%nz)+ &
                           envelope_interp_fraction*(env_struct%env_log10_pressure( &
-                          env_point_index)-star%log_pressure(star%num_zones))
-                     star%log_radius(j) = star%log_radius(star%num_zones)+ &
+                          env_point_index)-star%logP(star%nz))
+                     star%logR(j) = star%logR(star%nz)+ &
                           envelope_interp_fraction*(env_struct%env_log10_radius( &
-                          env_point_index)-star%log_radius(star%num_zones))
+                          env_point_index)-star%logR(star%nz))
                      star%log_mass(j) = target_mass_coord
-                     star%log_temperature(j) = star%log_temperature(star%num_zones)+ &
+                     star%logT(j) = star%logT(star%nz)+ &
                           envelope_interp_fraction*(env_struct%env_log10_temperature( &
-                          env_point_index)-star%log_temperature(star%num_zones))
-                     star%composition(1,j) = star%composition(1,star%num_zones)+ &
-                          envelope_interp_fraction*(star%composition(1,star%num_zones) &
+                          env_point_index)-star%logT(star%nz))
+                     star%xa(i_h1,j) = star%xa(i_h1,star%nz)+ &
+                          envelope_interp_fraction*(star%xa(i_h1,star%nz) &
                           -env_struct%env_hydrogen_fraction(env_point_index))
-                     star%composition(3,j) = star%composition(3,star%num_zones)+ &
-                          envelope_interp_fraction*(star%composition(3,star%num_zones) &
+                     star%xa(i_metals,j) = star%xa(i_metals,star%nz)+ &
+                          envelope_interp_fraction*(star%xa(i_metals,star%nz) &
                           -env_struct%env_metal_fraction(env_point_index))
                      do k = 4,num_species
-                        star%composition(k,j) = star%composition(k,star%num_zones)
+                        star%xa(k,j) = star%xa(k,star%nz)
                      end do
-                     star%composition(2,j)=1.0d0-star%composition(1,j)- &
-                          star%composition(3,j)-star%composition(4,j)
+                     star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)- &
+                          star%xa(i_metals,j)-star%xa(i_he3,j)
                      if (env_struct%env_convective_flag(env_point_index).or. &
-                          star%convective_flag(star%num_zones)) then
+                          star%convective_flag(star%nz)) then
                         star%convective_flag(j) = .true.
                      else
                         star%convective_flag(j) = .false.
@@ -932,33 +974,33 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                      envelope_interp_fraction = (target_mass_coord- &
                           lower_mass_coord)/(upper_mass_coord- &
                           lower_mass_coord)
-                     star%log_density(j) = env_struct%env_log10_density(env_point_index-1)+ &
+                     star%logRho(j) = env_struct%env_log10_density(env_point_index-1)+ &
                           envelope_interp_fraction*(env_struct%env_log10_density( &
                           env_point_index)-env_struct%env_log10_density(env_point_index-1))
-                     star%log_pressure(j) = env_struct%env_log10_pressure(env_point_index-1)+ &
+                     star%logP(j) = env_struct%env_log10_pressure(env_point_index-1)+ &
                           envelope_interp_fraction*(env_struct%env_log10_pressure( &
                           env_point_index)-env_struct%env_log10_pressure(env_point_index-1))
-                     star%log_radius(j) = env_struct%env_log10_radius(env_point_index-1)+ &
+                     star%logR(j) = env_struct%env_log10_radius(env_point_index-1)+ &
                           envelope_interp_fraction*(env_struct%env_log10_radius( &
                           env_point_index)-env_struct%env_log10_radius(env_point_index-1))
                      star%log_mass(j) = target_mass_coord
-                     star%log_temperature(j) = env_struct%env_log10_temperature( &
+                     star%logT(j) = env_struct%env_log10_temperature( &
                           env_point_index-1)+envelope_interp_fraction*( &
                           env_struct%env_log10_temperature(env_point_index)- &
                           env_struct%env_log10_temperature(env_point_index-1))
-                     star%composition(1,j) = env_struct%env_hydrogen_fraction( &
+                     star%xa(i_h1,j) = env_struct%env_hydrogen_fraction( &
                           env_point_index-1)+envelope_interp_fraction*( &
                           env_struct%env_hydrogen_fraction(env_point_index)- &
                           env_struct%env_hydrogen_fraction(env_point_index-1))
-                     star%composition(3,j) = env_struct%env_metal_fraction( &
+                     star%xa(i_metals,j) = env_struct%env_metal_fraction( &
                           env_point_index-1)+envelope_interp_fraction*( &
                           env_struct%env_metal_fraction(env_point_index)- &
                           env_struct%env_metal_fraction(env_point_index-1))
                      do k = 4,num_species
-                        star%composition(k,j) = star%composition(k,star%num_zones)
+                        star%xa(k,j) = star%xa(k,star%nz)
                      end do
-                     star%composition(2,j)=1.0d0-star%composition(1,j)- &
-                          star%composition(3,j)-star%composition(4,j)
+                     star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)- &
+                          star%xa(i_metals,j)-star%xa(i_he3,j)
                      if (env_struct%env_convective_flag(env_point_index).or. &
                           env_struct%env_convective_flag(env_point_index-1)) then
                         star%convective_flag(j) = .true.
@@ -966,83 +1008,74 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                         star%convective_flag(j) = .false.
                      endif
                   endif
-                  star%num_zones = j
-                  goto 587
+                  star%nz = j
+                  exit
                endif
             end do
 ! ASSIGN THE BOUNDARY AT THE PHOTOSPHERE FOR ENVELOPE MASS BELOW 1.0D-12.
-            star%num_zones = star%num_zones + env_struct%num_env_points
- 587        continue
+! (On the exit path above num_zones was just set to j, so this guard is
+! false there; on fall-through num_zones is unchanged and it is true.)
+            if (j .gt. star%nz + env_struct%num_env_points) then
+            star%nz = star%nz + env_struct%num_env_points
+            end if
             if (rotation_active) then
-               do j = old_last_shell+1,star%num_zones
+               do j = old_last_shell+1,star%nz
                   star%omega(j) = star%omega(old_last_shell)
-                  star%specific_angular_momentum(j) = cc23*star%omega(old_last_shell)* &
-                       10.0d0**(2.0d0*star%log_radius(j))
+                  star%j_rot(j) = cc23*star%omega(old_last_shell)* &
+                       10.0d0**(2.0d0*star%logR(j))
                end do
             endif
             write(*,910)
  910  format(1x,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
             ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
-      write(*,911)(j,star%log_density(j),star%luminosity_lsun(j),star%log_pressure(j), &
-                   star%log_radius(j),star%log_mass(j)-star%env_comp%stotal, &
-                   star%log_temperature(j),star%convective_flag(j), j = old_last_shell,star%num_zones)
+      write(*,911)(j,star%logRho(j),star%luminosity_lsun(j),star%logP(j), &
+                   star%logR(j),star%log_mass(j)-star%env_comp%stotal, &
+                   star%logT(j),star%convective_flag(j), j = old_last_shell,star%nz)
  911  format(i5,1p6e16.8,l2)
-!          M = M + 1
-!          HS(M) = HSTOT + SENV
-!          HD(M) = ED
-!          HL(M) = HL(M-1)
-!          HP(M) = EP
-!          HR(M) = ER
-!          HT(M) = ET
-!          LC(M) = EVEL.GT.0.0D0
 !          DO 590 J = 1,JEND
-!             HCOMP(J,M) = HCOMP(J,M-1)
-! 590        CONTINUE
-!          XNEW = HCOMP(1,M)
-!          ZNEW = HCOMP(3,M)
-!          IF(LROT) OMEGA(M) = OMEGA(I) + FS*(OMEGA(I+1)-OMEGA(I))
        endif
        envelope_recomputed_flag = .true.
        write(short_file_unit,597)old_senv,star%env_comp%senv
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
- 599     continue
+      exit envelope_rescale
+      end do envelope_rescale
       endif
 
 ! SET UP WEIGHTS AND MASSES
 ! HS1 IS THE UNLOGGED HS; HS2 IS THE MASS OF THE SHELL(ALSO NOT LOG).
       next_mass = dexp(ln10*star%log_mass(1))
       curr_mass = - next_mass
-      do 120 i = 2,star%num_zones
+      do i = 2,star%nz
        prev_mass = curr_mass
        curr_mass = next_mass
        next_mass = dexp(ln10*star%log_mass(i))
-       star%enclosed_mass(i-1) = curr_mass
-       star%shell_mass(i-1) = 0.5d0*(next_mass-prev_mass)
- 120  continue
-      star%enclosed_mass(star%num_zones) = next_mass
-      star%shell_mass(star%num_zones) = dexp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
+       star%m(i-1) = curr_mass
+       star%dm(i-1) = 0.5d0*(next_mass-prev_mass)
+      end do
+      star%m(star%nz) = next_mass
+      star%dm(star%nz) = dexp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
            next_mass)
 
       if (rotation_active) then
 ! CALCULATE FP,FT,R0 AND ETA2 GIVEN OMEGA
-       call fpft(star%log_density,star%log_radius,star%log_mass,star%num_zones,star%omega, &
-            star%eta_squared,star%pressure_rotation_factor,star%temperature_rotation_factor, &
+       call fpft(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
+            star%eta_squared,star%fp_rot,star%ft_rot, &
             star%mean_gravity,star%mean_radius)
 ! FIND MOMENT OF INERTIA(HI)
 !        CALL MOMI(ETA2,HD,HR,HS,HS2,1,M,OMEGA,R0,HI,QIW,M)  ! KC 2025-05-31
-       call momi(star%eta_squared,star%log_radius,star%log_mass,star%shell_mass,1,star%num_zones, &
-            star%omega,star%mean_radius,star%moment_of_inertia,star%qiw)
+       call momi(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &
+            star%omega,star%mean_radius,star%i_rot,star%qiw)
 ! GIVEN OMEGA AND I, FIND ANGULAR MOMENTUM AND ROTATIONAL K.E.
        angular_momentum_sum = 0.0d0
        rotational_ke_sum = 0.0d0
-       do 550 i = 1,star%num_zones
-          shell_angular_momentum = star%omega(i)*star%moment_of_inertia(i)
-          star%specific_angular_momentum(i) = shell_angular_momentum/star%shell_mass(i)
+       do i = 1,star%nz
+          shell_angular_momentum = star%omega(i)*star%i_rot(i)
+          star%j_rot(i) = shell_angular_momentum/star%dm(i)
           star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum
           angular_momentum_sum = angular_momentum_sum+shell_angular_momentum
           rotational_ke_sum = rotational_ke_sum + star%kinetic_energy_rot(i)
- 550     continue
+       end do
        write(short_file_unit,560)total_angular_momentum, &
             angular_momentum_sum,total_rotational_ke,rotational_ke_sum
  560     format(1x,'TOTAL J OF STAR - PREVIOUS ',1pe21.13,' NEW ', &
@@ -1052,7 +1085,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        total_rotational_ke = rotational_ke_sum
       endif
 
-      if (run_index.gt.1) goto 630
+      if (run_index.le.1) then
 ! SET UP MASS FRACTIONS AND NUMBER FRACTIONS OF ELEMENTS IN
 ! ENVELOPE.
 ! DBG 1/96 V (ENVELOPE MASS FRACTIONS WAS NORMALLY READ IN VIA
@@ -1073,8 +1106,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       star%env_comp%envelope_hydrogen_fraction = star%env_comp%xnew
       star%env_comp%envelope_metal_fraction = star%env_comp%znew
       star%run%envelope_helium_fraction = 1.0d0 - star%env_comp%envelope_hydrogen_fraction - &
-           star%env_comp%envelope_metal_fraction - star%composition(4,star%num_zones)
-      star%run%envelope_he3_fraction = star%composition(4,star%num_zones)
+           star%env_comp%envelope_metal_fraction - star%xa(i_he3,star%nz)
+      star%run%envelope_he3_fraction = star%xa(i_he3,star%nz)
 ! EVERYTHING BUT V(7)=H, AND V(12)=HE
       mixture_weight_sum = species_mix_weights(1)+species_mix_weights(2)+ &
            species_mix_weights(3)+species_mix_weights(4)+ &
@@ -1090,25 +1123,25 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       species_mix_weights(12) = (1.0d0-star%env_comp%envelope_hydrogen_fraction- &
            star%env_comp%envelope_metal_fraction)/mixture_scale_factor
       mixture_weight_sum = 0.0d0
-      do 610 i = 1,12
+      do i = 1,12
        species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
             atomic_weight(i)
        mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
- 610  continue
+      end do
       star%env_comp%amuenv = mixture_weight_sum
       mixture_scale_factor = 1.0d0/star%env_comp%amuenv
 ! DBG 1/96 FXENV ARE NUMBER FRACTIONS OF ELEMENTS REQURIED
 ! BY EOS ROUTINES (SEE EQSTAT AND EQSAHA)
-      do 620 i = 1,12
+      do i = 1,12
        star%env_comp%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
- 620  continue
+      end do
 ! push the recomputed mixture to the eos domain (physics-purity pass)
       call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
            star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
            star%env_comp%fxenv)
 !     FIND SURFACE COMPOSITION OPACITY TABLE
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
- 630  continue
+      end if
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
       call kap_update_surface_tables(star%env_comp%envelope_hydrogen_fraction)
       if (use_scv_eos) then
@@ -1118,101 +1151,41 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! CLONE P,T,R,L ARRAY TO DUMMY ARRAY HPOLD.
 ! HPOLD IS USED TO LIMIT THE TIMESTEP BASED ON CHANGES FROM
 ! MODEL TO MODEL IN P,T,R,L.
-      do 710 i = 1,star%num_zones
-         star%prev%old_pressure(i) = star%log_pressure(i)
-         star%prev%old_temperature(i) = star%log_temperature(i)
-         star%prev%old_radius(i) = star%log_radius(i)
-         star%prev%old_luminosity(i) = star%luminosity_lsun(i)
+      do i = 1,star%nz
+         star%prev%logP_start(i) = star%logP(i)
+         star%prev%logT_start(i) = star%logT(i)
+         star%prev%logR_start(i) = star%logR(i)
+         star%prev%luminosity_lsun_start(i) = star%luminosity_lsun(i)
 !  JVS 04/14 Added Teff to the list of saved values
-         star%prev%old_teff = star%log_teff
+         star%prev%log_Teff_start = star%log_Teff
 !  JVS 05/25 Added model number to list of saved values
-       star%prev%old_num_zones = star%num_zones
- 710  continue
+       star%prev%nz_start = star%nz
+      end do
       if (rotation_active) then
-         do 720 i = 1,star%num_zones
+         do i = 1,star%nz
           star%run%old_omega(i) = star%omega(i)
- 720     continue
+         end do
       endif
 
 ! 8/17 G Somers
 !  FIND BASIC PHYSICAL QUANTITIES. THIS CODE STOLEN FROM PHYSIC
 !  FIND ACTUAL AND ADIABATIC TEMPERATURE GRADIENTS,OPACITY,AND
 !  MEAN MOLECULAR WEIGHT FOR ALL RADIATIVE SHELLS.
-!      if(.False.)then
-!      LDERIV = .FALSE.
-!      LOCOND = .FALSE.
-!      LATMO = .FALSE.
-!      IDT = 15
 !      DO 725 I = 1,4
 !         IDD(I) = 5
 ! 725  CONTINUE
 !      DO 730 IM = 1,M
-!         SL = HS(IM)
-!         TL = HT(IM)
-!         PL = HP(IM)
-!         RL = HR(IM)
-!         B = HL(IM)
-!         X = HCOMP(1,IM)
-!         Z = HCOMP(3,IM)
-!         DL = HD(IM)
-!         FPL = FP(IM)
-!         FTL = FT(IM)
 !
 !         IF(LMHD) THEN
 !            CALL MEQOS(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
 !     *           AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,
 !     *           QCPP,LDERIV,LATMO,KSAHA)
-!         ELSE
-!            IF (LDH) THEN
-!               XXDH = HCOMP(1,IM)
-!               YYDH = HCOMP(2,IM)+HCOMP(4,IM)
-!               ZZDH = HCOMP(3,IM)
-!               ZDH(1) = HCOMP(5,IM)+HCOMP(6,IM)
-!               ZDH(2) = HCOMP(7,IM)+HCOMP(8,IM)
-!               ZDH(3) = HCOMP(9,IM)+HCOMP(10,IM)+HCOMP(11,IM)
-!            END IF
-!            CALL EQSTAT(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
 !     *           AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,
 !     *           QCPP,LDERIV,LATMO,KSAHA)
-!         ENDIF
-!         CALL GETOPAC (DL,TL,X,Z,O,OL,QOD,QOT,FXION)
-!         IOVIM=IM
-!         CALL TPGRAD(TL,T,PL,P,D,RL,SL,B,O,QDT,QDP,QOT,QOD,QCP,DEL,
 !     *        DELR,DELA,QDTT,QDTP,QAT,QAP,QACT,QACP,QACR,QCPT,QCPP,
 !     *        VEL,LDERIV,LCONV,FPL,FTL,TEFFL)
-!         SDEL(1,IM) = DELR
-!         SDEL(2,IM) = DEL
-!         SDEL(3,IM) = DELA
 !C JVS 10/13 Always want SVEL
-!       SVEL(IM) = VEL
-! 730  CONTINUE
-!      endif
 
-!       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
-      call physic(star%pressure_rotation_factor,star%temperature_rotation_factor, &
-           star%composition,star%log_density,star%mean_gravity,star%luminosity_lsun,star%log_pressure, &
-           star%log_radius,star%log_mass,star%log_temperature,star%convective_flag,star%num_zones, &
-           star%log_teff, jerr)
-      if (jerr /= 0) then
-      ! 2026 (phase five, step B): propagate instead of stopping
-         ierr = jerr
-         return
-      end if
-      call ovrot(star%composition,star%log_density,star%log_pressure,star%log_radius,star%log_mass, &
-                 star%log_temperature,star%convective_flag,star%num_zones, &
-                 am_transport_convective_flag,radiative_zone_bounds, &
-                 convective_zone_bounds,num_radiative_zones, &
-                 num_convective_zones)
-! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP
-!       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
-      call gettau(star%composition,star%log_radius,star%log_pressure,star%log_density, &
-                  star%enclosed_mass,star%log_temperature,star%pressure_rotation_factor, &
-                  star%temperature_rotation_factor,star%log_teff, &
-                  star%log_total_mass,star%log10_luminosity,star%num_zones,star%convective_flag, &
-                  env_struct%env_log10_radius)
-      star%turnover%convective_turnover_timescale_old = star%turnover%convective_turnover_timescale
-      star%turnover%pphot0 = star%turnover%pphot
-      star%turnover%fracstep = 0.5
+end subroutine rescale_and_refit_envelope
 
-      return
 end subroutine starin

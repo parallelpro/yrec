@@ -20,10 +20,6 @@ subroutine surfopac(hydrogen_fraction)
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction
-
-
-      save
-
 !     THIS SUBROUTINE SETS UP SURF OPACITY TABLES
 !     ASSUMES TABLES HAVE ALREADY BEEN READ IN
 

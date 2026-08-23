@@ -44,8 +44,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 
 ! END JVS
       double precision :: interp_nodes(4), weight(4), dweight(4)
-      save
-
       integer :: i, k, j
       logical :: low_regime_flag, density_shifted
       integer :: x_table_index, density_base_index, temp_row_index, x_shift_base
@@ -74,9 +72,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       endif
 !     THIS SECTION IS REPLACED BY LINEAR EXTRAPOLATION IN R FROM THE
 !     LAST TWO OPACITY VALUES.
-!      IF(RL.LT.(R0GR(1)-4.0D0) .OR. RL.GT.(R0GR(NUMD)+1.0D0))THEN
-!         WRITE(*,7)RL,TL
-! 7       FORMAT(' LOG R OF',F11.6,' OUT OF OPAL 95 TABLE RANGE;TL'
 !     *          ,F11.6)
 !         STOP
 !      ENDIF
@@ -85,20 +80,22 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%opal95_index_t+3,num_t-1
             if (log10_temperature.lt.opacity_table%opal95_grid_logt(i)) then
                opacity_table%opal95_index_t = i - 2
-               goto 10
+               exit
             endif
          end do
+         if (i > (num_t-1)) then
          opacity_table%opal95_index_t = num_t - 3
-   10    continue
+         end if
       else
          do i = opacity_table%opal95_index_t+1,2,-1
             if (log10_temperature.gt.opacity_table%opal95_grid_logt(i)) then
                opacity_table%opal95_index_t = i - 1
-               goto 20
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%opal95_index_t = 1
-   20    continue
+         end if
       endif
 !     T INTERPOLATION FACTORS
       do i = 1,4
@@ -115,20 +112,22 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%opal95_index_rho(1)+3,num_d-1
             if (opacity_table%opal95_logr.lt.opacity_table%opal95_grid_logr(i)) then
                opacity_table%opal95_index_rho(1) = i - 2
-               goto 30
+               exit
             endif
          end do
+         if (i > (num_d-1)) then
          opacity_table%opal95_index_rho(1) = num_d - 3
-   30    continue
+         end if
       else
          do i = opacity_table%opal95_index_rho(1)+1,2,-1
             if (opacity_table%opal95_logr.gt.opacity_table%opal95_grid_logr(i)) then
                opacity_table%opal95_index_rho(1) = i - 1
-               goto 40
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%opal95_index_rho(1) = 1
-   40    continue
+         end if
       endif
 !     NOW CHECK IF WITHIN PORTION OF TABLE WITH DATA.
 !     NOTE THAT A POINT CAN BE WITHIN THE TABLE AND STILL HAVE THE
@@ -137,10 +136,8 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 !     LOW X, POSTPONE UNTIL YOU KNOW IF IT IS A 2D, 3D, OR 4D INTERPOLATION.
       if (hydrogen_fraction.lt.0.2d0 .and. opacity_table%opal95_index_t .le. 5) then
          low_regime_flag = .true.
-         goto 60
       else
          low_regime_flag = .false.
-      endif
 !     CHECK HIGH RHO, HIGH T REGIME(BECAUSE OF THE TABLE GEOMETRY, THE
 !     POINT WILL FALL OUTSIDE THE TABLE FIRST AT THE HIGHEST T).
       density_shifted = .false.
@@ -173,16 +170,15 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
                   if (opacity_table%opal95_full_opacity(x_table_index,temp_row_index,j).le.9.9d0) then
                      opacity_table%opal95_index_rho(i) = j - 3
                      density_base_index = j - 3
-                     goto 50
+                     exit
                   endif
                end do
-   50          continue
             else
                opacity_table%opal95_index_rho(i) = density_base_index
             endif
          end do
       endif
-   60 continue
+      endif
 !     GET INTERPOLATION FACTORS IN RHO FOR EACH OF THE 4 T VALUES.
 !     ASSIGN ALL THE SAME VALUES IF GRID IN R IS SAME FOR ALL T.
       if (.not.density_shifted) then
@@ -225,12 +221,13 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 !     DETERMINE WHETHER A 2D (RHO,T); 3D (X,RHO,T); OR 4D (Z,X,RHO,T)
 !     INTERPOLATION IS NEEDED TO GET THE OPACITY.
 !     JVS 04/11 force 4d interpolation for acoustic depth calculations
-      if (compute_acoustic_depth .and. acoustic_depth_output) goto 153  ! If we're worrying about the acoustic depth, default to 4d interp
+      if (.not. (compute_acoustic_depth .and. acoustic_depth_output)) then
       if (abs(metal_fraction-opacity_table%opal95_fixed_z)/max(opacity_table%opal95_fixed_z,1.0d-6).le.1.0d-4) then
          if (abs(hydrogen_fraction-opacity_table%opal95_surface_x).le.1.0d-4) then
 !           2D INTERPOLATION IN SURFACE TABLE
             call op952d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-            goto 9999
+            continue
+            return
          else
 !           3D INTERPOLATION IN FIXED Z TABLE (X,T,RHO)
 !           GET INTERPOLATION FACTORS IN X.
@@ -238,20 +235,18 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             do i = opacity_table%opal95_index_x(1,1)+3,num_x-1
                if (hydrogen_fraction.lt.opacity_table%opal95_grid_x(i)) then
                   opacity_table%opal95_index_x(1,1) = i - 2
-                  goto 70
+                  exit
                endif
             end do
-            opacity_table%opal95_index_x(1,1) = num_x - 3
-   70       continue
+            if (i .gt. num_x-1) opacity_table%opal95_index_x(1,1) = num_x - 3
          else
             do i = opacity_table%opal95_index_x(1,1)+1,2,-1
                if (hydrogen_fraction.ge.opacity_table%opal95_grid_x(i)) then
                   opacity_table%opal95_index_x(1,1) = i - 1
-                  goto 80
+                  exit
                endif
             end do
-            opacity_table%opal95_index_x(1,1) = 1
-   80       continue
+            if (i .lt. 2) opacity_table%opal95_index_x(1,1) = 1
          endif
 !        CHECK FOR ABSENT TABLES AT HIGH X.
          if (opacity_table%opal95_fixed_z.ge.0.04d0) then
@@ -295,10 +290,11 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             opacity_table%opal95_weight_x(1,j) = weight(j)
          end do
          call op953d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-         goto 9999
+         continue
+         return
       endif
       endif
-  153 continue
+      end if
 !     4D INTERPOLATION IN Z,X,T,RHO
 !     GET NEAREST TABLES IN Z.
       if (metal_fraction.gt.opacity_table%opal95_grid_z(opacity_table%opal95_index_z+2)) then
@@ -307,20 +303,22 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          do i = opacity_table%opal95_index_z+3,num_z-1
             if (metal_fraction.lt.opacity_table%opal95_grid_z(i)) then
                opacity_table%opal95_index_z = i - 2
-               goto 110
+               exit
             endif
          end do
+         if (i > (num_z-1)) then
          opacity_table%opal95_index_z = num_z - 3
-  110    continue
+         end if
       else
          do i = opacity_table%opal95_index_z+1,2,-1
             if (metal_fraction.ge.opacity_table%opal95_grid_z(i)) then
                opacity_table%opal95_index_z = i - 1
-               goto 120
+               exit
             endif
          end do
+         if (i < (2)) then
          opacity_table%opal95_index_z = 1
-  120    continue
+         end if
       endif
 !     mhp 7/12 added failsafe
       opacity_table%opal95_index_z = min(opacity_table%opal95_index_z,num_z-3)
@@ -341,20 +339,18 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             do i = opacity_table%opal95_index_x(k,1)+3,num_x-1
                if (hydrogen_fraction.lt.opacity_table%opal95_grid_x(i)) then
                   opacity_table%opal95_index_x(k,1) = i - 2
-                  goto 75
+                  exit
                endif
             end do
-            opacity_table%opal95_index_x(k,1) = num_x - 3
-   75       continue
+            if (i .gt. num_x-1) opacity_table%opal95_index_x(k,1) = num_x - 3
          else
             do i = opacity_table%opal95_index_x(k,1)+1,2,-1
                if (hydrogen_fraction.ge.opacity_table%opal95_grid_x(i)) then
                   opacity_table%opal95_index_x(k,1) = i - 1
-                  goto 85
+                  exit
                endif
             end do
-            opacity_table%opal95_index_x(k,1) = 1
-   85       continue
+            if (i .lt. 2) opacity_table%opal95_index_x(k,1) = 1
          endif
 !        CHECK FOR ABSENT TABLES AT HIGH X.
          if (z_at_table.ge.0.04d0) then
@@ -399,6 +395,5 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          end do
       end do
       call op954d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
- 9999 continue
       return
 end subroutine getopal95

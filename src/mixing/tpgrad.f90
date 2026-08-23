@@ -76,8 +76,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 
 ! G Somers END
       double precision, parameter :: vtol=1.0d-10
-      save
-
       integer :: iter
       double precision :: deldel, g, presht, phi, phi2, phiphi, test, a1, &
            v, a3, a3p, vp, vd, ddel, delpm, rrr, qdelat, qdelap, tempot, &
@@ -105,7 +103,9 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
              .and. iovim.ne.-1) then
             actual_gradient = adiabatic_gradient
          end if
-       goto 200
+       continue
+       
+       return
       endif
 ! ZONE IS CONVECTIVE
       is_convective = .true.
@@ -119,7 +119,9 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
           dgrad_dp_component = adiabatic_gradient_dp
           dgrad_dr_component = 0.0d0
        endif
-       goto 200
+       continue
+       
+       return
       endif
 ! G Somers 9/14, Add the ability to include spots, which alter
 ! the radiative flux in the convective reigons. This is done by
@@ -185,14 +187,15 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
       a3 = 0.75d0*phi2*phiphi/a1
       a3p = 3.0d0*a3
       if(a3.gt.1.0d+3) v = a3**(-0.333333333d0)
-      do 10 iter = 1,25
+      do iter = 1,25
        v = dmin1(v,1.0d0)
        vp = a1 + v*(2.0d0 + v*a3p)
        vd = (-1.0d0 + v*(a1 + v*(1.0d0 + v*a3)))/vp
        vd = vd*(1.0d0 + vd*(1.0d0 + v*a3p)/vp)
        v = v - vd
-       if(dabs(vd).lt.vtol) goto 30
-   10 continue
+       if(dabs(vd).lt.vtol) exit
+      end do
+      if (iter > 25) then
 !  15   CONTINUE
       write(short_file_unit,20) log_pressure,log_temperature,opacity, &
            specific_heat_cp,dlnrho_dlnt
@@ -206,8 +209,11 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
          dgrad_dp_component = adiabatic_gradient_dp
          dgrad_dr_component = 0.0d0
       endif
-      goto 200
-   30 ddel = deldel*v*(v+a1)
+      continue
+      
+      return
+      end if
+      ddel = deldel*v*(v+a1)
       actual_gradient = adiabatic_gradient + ddel
 ! CALCULATE CONVECTIVE VELOCITY
       test = g*(-dlnrho_dlnt)*presht*deldel
@@ -250,7 +256,6 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
        dgrad_dp_component = (qdelap+qddelp*ddel+temp1*qvp+temp2*qa1p)*deli
        dgrad_dr_component = (temp1*qvr+temp2*qa1r)*deli
       endif
-  200 continue
 
       return
 end subroutine tpgrad

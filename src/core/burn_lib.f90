@@ -22,6 +22,7 @@ module burn_lib
 contains
 
 
+
 !----------------------------------------------------------------------
 ! eqburn
 !----------------------------------------------------------------------
@@ -64,8 +65,6 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
 
 
       double precision :: zone_avg_abundance(11)
-      save
-
       double precision :: total_shell_mass
       integer :: species_idx, zone_idx
       double precision :: pp_rate, he3_he3_rate, he3_he4_rate, c12_p_rate, &
@@ -103,7 +102,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
             do species_idx = 1, 11
                zone_avg_abundance(species_idx) = &
                     zone_avg_abundance(species_idx) + &
-                    star%prev%old_composition(species_idx,zone_idx)*shell_mass(zone_idx)
+                    star%prev%xa_start(species_idx,zone_idx)*shell_mass(zone_idx)
             end do
          end do
          do species_idx = 1, 11
@@ -113,7 +112,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       else
          do species_idx = 1, 11
             zone_avg_abundance(species_idx) = &
-                 star%prev%old_composition(species_idx,zone_begin)
+                 star%prev%xa_start(species_idx,zone_begin)
          end do
       end if
       if (zone_begin.eq.zone_end) then
@@ -205,10 +204,8 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
 !        PP BURNING.
          dx_dt = -3.0d0*pp_reaction_term + 2.0d0*he3_he3_rate*local_xhe3**2 &
               - he3_he4_reaction_term*local_xhe3
-      else
-         dx_dt = 0.0d0
-         goto 100
-      end if
+! (Restructured 2026: the CN block below runs only on the hydrogen-
+! burning branch; the old `goto 100` skipped it from the else.)
       if (shell_temperature(zone_begin).gt.tcut(3)) then
 !        FIND EQUILIBRIUM C12,C13,N14 ABUNDANCES TREATING CN PROCESSING AS
 !        A CLOSED LOOP.
@@ -233,7 +230,9 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
               2.0d0*n14_p_rate*hydrogen_fraction*local_xn14 - &
               2.0d0*o16_p_rate*hydrogen_fraction*equilibrium_xo16
       end if
-  100 continue
+      else
+         dx_dt = 0.0d0
+      end if
 !     HELIUM BURNING REACTIONS.
       if (helium_fraction.gt.1.0d-10 .and. &
            shell_temperature(zone_begin).gt.tcut(4)) then
@@ -273,7 +272,6 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -282,13 +280,6 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(in) :: shell_mass(json)
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: timestep
-
-
-
-
-
-      save
-
       double precision :: hydrogen_fraction, deuterium_fraction, &
            helium3_fraction, rate_start, rate_end
       double precision :: total_shell_mass, rate_start_sum, rate_end_sum
@@ -304,9 +295,9 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
            hydrogen_fraction_new, helium3_fraction_new, deuterium_change
 
       if (zone_begin.eq.zone_end) then
-         hydrogen_fraction = star%prev%old_composition(1,zone_begin)
-         deuterium_fraction = star%prev%old_composition(12,zone_begin)
-         helium3_fraction = star%prev%old_composition(4,zone_begin)
+         hydrogen_fraction = star%prev%xa_start(1,zone_begin)
+         deuterium_fraction = star%prev%xa_start(12,zone_begin)
+         helium3_fraction = star%prev%xa_start(4,zone_begin)
          rate_start = star%light_burn%deuterium_burning_rate_start(zone_begin)
          rate_end = star%light_burn%deuterium_burning_rate(zone_begin)
       else
@@ -323,11 +314,11 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
             rate_end_sum = rate_end_sum + &
                  shell_mass(zone_idx)*star%light_burn%deuterium_burning_rate(zone_idx)
             hydrogen_fraction = hydrogen_fraction + &
-                 star%prev%old_composition(1,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(1,zone_idx)*shell_mass(zone_idx)
             deuterium_fraction = deuterium_fraction + &
-                 star%prev%old_composition(12,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(12,zone_idx)*shell_mass(zone_idx)
             helium3_fraction = helium3_fraction + &
-                 star%prev%old_composition(4,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(4,zone_idx)*shell_mass(zone_idx)
          end do
          rate_start = rate_start_sum/total_shell_mass
          rate_end = rate_end_sum/total_shell_mass
@@ -347,7 +338,8 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          do zone_idx = zone_begin, zone_end
             composition(12,zone_idx) = 0.0d0
          end do
-         goto 9999
+         continue
+         return
       end if
 !     BURN DEUTERIUM IN A SERIES OF SMALL STEPS,
 !     INCREMENTING THE BURNING RATE FROM THE STARTING
@@ -422,7 +414,6 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          composition(4,zone_idx) = helium3_fraction_new
          composition(12,zone_idx) = deuterium_fraction_new
       end do
- 9999 continue
       return
 end subroutine dburn
 
@@ -449,7 +440,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep, deuterium_rate_end, deuterium_rate_start, &
      step_fraction)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -461,14 +451,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(in) :: deuterium_rate_end(json), &
            deuterium_rate_start(json)
       double precision, intent(in) :: step_fraction
-
-
-
-
-
-
-      save
-
       double precision :: hydrogen_fraction, deuterium_fraction, &
            helium3_fraction, rate_start, rate_end
       double precision :: total_shell_mass, rate_start_sum, rate_end_sum
@@ -488,9 +470,9 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
 ! the units used elsewhere for the burning rates.
       timestep_gyr = timestep*1.0d-9/seconds_per_year
       if(zone_begin.eq.zone_end)then
-         hydrogen_fraction = star%prev%old_composition(1,zone_begin)
-         deuterium_fraction = star%prev%old_composition(12,zone_begin)
-         helium3_fraction = star%prev%old_composition(4,zone_begin)
+         hydrogen_fraction = star%prev%xa_start(1,zone_begin)
+         deuterium_fraction = star%prev%xa_start(12,zone_begin)
+         helium3_fraction = star%prev%xa_start(4,zone_begin)
          rate_start = deuterium_rate_start(zone_begin)
          rate_end = deuterium_rate_end(zone_begin)
       else
@@ -507,11 +489,11 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
             rate_end_sum = rate_end_sum + &
                  shell_mass(zone_idx)*deuterium_rate_end(zone_idx)
             hydrogen_fraction = hydrogen_fraction + &
-                 star%prev%old_composition(1,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(1,zone_idx)*shell_mass(zone_idx)
             deuterium_fraction = deuterium_fraction + &
-                 star%prev%old_composition(12,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(12,zone_idx)*shell_mass(zone_idx)
             helium3_fraction = helium3_fraction + &
-                 star%prev%old_composition(4,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(4,zone_idx)*shell_mass(zone_idx)
          end do
          rate_start = rate_start_sum/total_shell_mass
          rate_end = rate_end_sum/total_shell_mass
@@ -523,7 +505,8 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
          do zone_idx = zone_begin,zone_end
             composition(12,zone_idx) = 0.0d0
          end do
-         goto 9999
+         continue
+         return
       endif
 ! BURN DEUTERIUM IN A SERIES OF SMALL STEPS,
 ! INCREMENTING THE BURNING RATE FROM THE STARTING
@@ -603,7 +586,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
          composition(4,zone_idx) = helium3_fraction_new
          composition(12,zone_idx) = deuterium_fraction_new
       end do
- 9999 continue
       return
 end subroutine dburnm
 
@@ -624,7 +606,6 @@ end subroutine dburnm
 ! proceed faster than the local convective overturn timescale.
 subroutine deutrate(dl,tl,x,i,itlvl)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -638,8 +619,6 @@ subroutine deutrate(dl,tl,x,i,itlvl)
 
       double precision :: c21
       data c21/5.240358E-8/
-      save
-
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
 !  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
 !  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
@@ -854,10 +833,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      reaction_rate_13, n15_alpha_branch_fraction, &
      be7_electron_capture_fraction)
 
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp
       use luout_lib
       use const_lib
       implicit none
@@ -971,11 +947,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !
 ! BY COMPARISON WITH EQUATION 3.14 OF NEUTRINO ASTROPHYSICS, WE SEE THAT
 !
-!  Q1 = (5/(12*TAU))*T_9^(-1/3) .
-!  Q2 = (S'/S)(E_0))*T_9^(-2/3) .
-!  Q3 = (S'/S)(35/36)(K*10^9 K)
-!  Q4 = (S''/2S)(E_0^2)(T_9^(-4/3)
-!  Q5 = (89/72)(S''/S)(E_0)(KT)(T_9^(-5/3)
 !
 ! EACH OF THE Q'S IS INDEPENDENT OF TEMPERATURE (T), AS CAN BE SEEN FROM
 !  EQUATIONS 3.10 AND 3.11 .
@@ -1150,8 +1121,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            z86/1.630,5.917,5.917,8.302,8.302,9.520,10.716,16.192,20.978, &
            16.192,18.606,16.192,45.6635/, &
            years_per_sec_over_amu/5.240358d-8/
-      save
-
       double precision :: term, ion_mean_weight_inverse, &
            electron_mean_weight_inverse, xtr, zeta_sum, &
            electron_number_density_na, dd, density, t9, t9_p13, t9_p23, &
@@ -1176,79 +1145,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            polx32, qedn, qetn, qetnx, qednx
       integer :: i, k, nz
 
-! ZERO OUT THE ENERGY YIELDS FROM NEUTRINOS(ENU) AND ALPHA CAPTURE
-! REACTIONS (EALPCA).
-      star%engeb%neutrino_loss_rate = 0.0d0
-      star%engeb%alpha_capture_energy = 0.0d0
-! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
-!  ISOTOPES.
-! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
-!  THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
-!  RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
-      mass_fraction(1) = 0.0
-      mass_fraction(2) = hydrogen_fraction
-! MHP 5/02 ADDED DEUTERIUM
-!      XFRAC(3) = 0.0
-      mass_fraction(3) = deuterium_fraction
-      mass_fraction(4) = 0.0
-      mass_fraction(5) = he3_fraction
-      mass_fraction(6) = helium_fraction
-      mass_fraction(7) = c12_fraction
-      mass_fraction(8) = c13_fraction
-      mass_fraction(9) = n14_fraction
-      mass_fraction(10) = o16_fraction
-      mass_fraction(11) = o18_fraction
-      mass_fraction(12) = 0.0
-      mass_fraction(13) = 0.0
-! *******************************************************************
-! BEGIN CALCULATION OF SCREENING CORRECTION.
-! *******************************************************************
-!  THE BASIC REFERENCES ARE SALPETER, AUSTRALIAN JOURNAL OF PHYSICS,
-!  VOL. 7, 373 (1954). THE FORMULA FOR WEAK SCREENING THAT IS BEING
-!  PROGRAMMED IS EQUATION (25) OF THIS PAPER. THE OTHER IMPORTANT
-!  REFERENCES ARE: DEWITT, GRABOSKE, AND COOPER, AP. J. 181, 439 (1973)
-!  AND GRABOSKE ET AL., AP. J. 181, 457 (1973). THE VALUES OF EMU AND
-!  ZET ARE ESSENTIAL FOR COMPUTING WEAK SCREENING; THE VALUE OF AMU IS
-!  USED IN AN NON-ESSENTIAL WAY IN THIS COMPUTATION. XTR IS USED IN
-!  COMPUTING INTERMEDIATE SCREENING.
-! AMU IS ONE OVER THE MEAN MOLECULAR WEIGHT OF THE IONS, MU SUB I .
-! EMU IS ONE OVER THE ELECTRON MEAN MOLECULAR WEIGHT, MU SUB E.
-!  EMU IS USED HERE AS THE NAME FOR THE SECOND PART OF THE ZETA FUNCTION
-!  IN THE SALPETER EXPRESSION FOR WEAK SCREENING.
-! XTR IS USED LATER IN THE INTERMEDIATE SCREENING CALCULATION.  THE AVERAGE
-!  OF THE QUANTITY Z**(3B -1) IS EQUAL TO XTR/AMU.
-! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
-! MU = SUM OVER I OF [X(I)/A(I)].
-! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
-      ion_mean_weight_inverse = 0.
-      electron_mean_weight_inverse = 0.
-      xtr = 0.
-      zeta_sum = 0.
-      do 10 i = 1,num_isotopes
-         term = mass_fraction(i)/atomic_mass_amu(i)
-         ion_mean_weight_inverse = ion_mean_weight_inverse+term
-         electron_mean_weight_inverse = electron_mean_weight_inverse+ &
-              term*atomic_number(i)
-         xtr = xtr+term*atomic_number(i)**1.58
-         zeta_sum = zeta_sum+term*atomic_number(i)**2
-   10 continue
-! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
-!  THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
-!  GM PER CM^3 .
-! PDT AND PDP ARE THE DERIVATIVES OF THE DENSITY WITH RESPECT TO
-!  TEMPERATURE AND DENSITY.
-! DD = LOG RHO TO THE BASE 10.
-! CLN = LN10.  CLN IS CONVERSION BETWEEN LOG10 AND LN.
-! CONVERT DENSITY TO UNLOGGED FORM.
-! RWE = RHO/(MU SUB E), I. E., THE NUMBER OF ELECTRONS DIVIDED BY
-!  AVOGADRO'S NUMBER.
-      electron_number_density_na = ( exp(ln10*log_density) )* &
-           electron_mean_weight_inverse
-! THE EXPRESSION FOR RWE WAS INCORRECT IN THE ORIGINAL YALE SUBROUTINE.
-!  THE ORIGINAL VERSION HAD ( EXP(CLN*DL) ) DIVIDED BY EMU INSTEAD OF
-!  MULTIPLIED BY EMU.  RWE IS USED LATER IN COMPUTING THE SCREENING
-!  CORRECTION.
-      dd = log_density
+      call setup_abundances_and_composition
+! The reaction-rate / screening / energy-release block below stays
+! inline: extracting it into internal subroutines perturbs the
+! compiler's floating-point instruction scheduling enough to shift
+! the last bit of the pp-chain rates, breaking the byte-identical
+! regression pin (measured, 2026). Sections that do split cleanly
+! (setup, energy totals, neutrino fluxes) are internal subroutines
+! under contains.
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < 6.0.
 ! REPLACED FIXED 1 MILLION K THRESHOLD WITH TCUT(1).
 !      IF(TL.LE.6.0) THEN
@@ -1259,12 +1163,13 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          en = -20.
          dlnepsilon_dlnrho = 0.
          dlnepsilon_dlnt = 0.
-         do 20 i = 1,nrxns
+         do i = 1,nrxns
             eg(i) = 0.
             reaction_rate(i) = 0.
             reaction_energy_gen(i) = 0.
-   20    continue
-         go to 200
+         end do
+         continue
+         return
       end if
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
 !  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
@@ -1379,7 +1284,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       z33=zbar**cc13
       tm1=xxl*zcurl
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
-      do 30 i=1,nrxns
+      do i=1,nrxns
          uwk=tm1*charge_product(i)
          if (uwk.le.weak_screening_threshold) then
 ! WEAKSCREENING IS A NUMERICAL PARAMETER PASSED IN THE FLUX COMMON
@@ -1421,7 +1326,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
                end if
             end if
          end if
-   30 continue
+      end do
 ! ****************************************************************
 ! END OF SCREENING CALCULATION. WEAK AND INTERMEDIATE SCREENING FORMS
 !  ARE GIVEN CORRECTLY.  STRONG SCREENING WAS NOT CHECKED BECAUSE IT IS
@@ -1433,8 +1338,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          f2=0.
          f3=0.
          f4=0.
-         goto 50
-      end if
+      else
       nz=8
 ! **************************************************************
 !  CALCULATE REACTION RATES FOR THE THREE PRINCIPAL RECTIONS OF
@@ -1456,7 +1360,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  MULTIPLIED BY T9**(-1/7). THIS FACTOR IS INCORRECT AND HAS BEEN
 !  REMOVED; IT APPEARED BEFORE AS AN IF STATEMENT REFERRING ONLY TO
 !  RATE(7).
-      do 40 i=1,7
+      do i=1,7
 !         R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
 ! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
 ! RATE DERIVATIVES
@@ -1474,7 +1378,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
             q1(i)*t9_m13-q3(i)*t9_p13-2.*q4(i)*t9_p23-3.*q5(i)*t9)/r1)/3.+ &
             2.*(q8(i)*t9)**2
          end if
-   40 continue
+      end do
 ! ***************************************************************
 ! END OF CALCULATION OF REACTION RATES FOR FIRST 7 REACTIONS.
 ! ***************************************************************
@@ -1578,11 +1482,12 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       f3 = c12alpha/(c12alpha + o16gamma)
       f4 = 1.0d0 - f3
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
-   50 do 60 i=nz,nrxns
+      end if
+      do i=nz,nrxns
          reaction_rate(i)=0.
          dlnrate_dlnrho(i)=0.
          dlnrate_dlnt(i)=0.
-   60 continue
+   end do
 ! ***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
 !    RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
 !    THE CONVERSION FACTOR IN THE FRONT OBTAINED FROM VANDENBERG'S
@@ -1591,7 +1496,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if (log_temperature.lt.tcut(4)) go to 100
+      if (log_temperature.ge.tcut(4)) then
 ! C13(ALPHA,N) O16
       r1=t9_m23+0.0129d0*t9_m13+2.04d0+0.184d0*t9_p13
       a1 = 6.77d15*exp(-32.329d0*t9_m13-(t9/1.284d0)**2)
@@ -1651,7 +1556,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! *******************
 ! MULTIPLY THE RATES PER GRAM, RATE(I), BY THE ABUNDANCES OF THE
 !  REACTING SPECIES BY MASS, TO GET THE TOTAL RATES PER GRAM, EG.
-  100 eg(1)=reaction_rate(1)*hydrogen_fraction*hydrogen_fraction
+      end if
+      eg(1)=reaction_rate(1)*hydrogen_fraction*hydrogen_fraction
 ! MHP 5/02 ADD DEUTERIUM BURNING IF RELEVANT
       if (deuterium_fraction.gt.1.0d-11) then
          egdeut = rdeut*hydrogen_fraction*deuterium_fraction
@@ -1672,6 +1578,99 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !     EG(13)=RATE(13)*XC12*XC12
 ! ******************************************************************
 ! ****************************************
+      call compute_energy_generation
+      call compute_neutrino_fluxes
+      return
+
+contains
+
+
+! ---------------------------------------------------------------
+! Zero the neutrino/alpha-capture yields, form the fractional
+! abundances of the burning species, the ion and electron mean
+! molecular weights, and the screening precursors (xtr, zet).
+subroutine setup_abundances_and_composition
+! ZERO OUT THE ENERGY YIELDS FROM NEUTRINOS(ENU) AND ALPHA CAPTURE
+! REACTIONS (EALPCA).
+      star%engeb%neutrino_loss_rate = 0.0d0
+      star%engeb%alpha_capture_energy = 0.0d0
+! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
+!  ISOTOPES.
+! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
+!  THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
+!  RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
+      mass_fraction(1) = 0.0
+      mass_fraction(2) = hydrogen_fraction
+! MHP 5/02 ADDED DEUTERIUM
+!      XFRAC(3) = 0.0
+      mass_fraction(3) = deuterium_fraction
+      mass_fraction(4) = 0.0
+      mass_fraction(5) = he3_fraction
+      mass_fraction(6) = helium_fraction
+      mass_fraction(7) = c12_fraction
+      mass_fraction(8) = c13_fraction
+      mass_fraction(9) = n14_fraction
+      mass_fraction(10) = o16_fraction
+      mass_fraction(11) = o18_fraction
+      mass_fraction(12) = 0.0
+      mass_fraction(13) = 0.0
+! *******************************************************************
+! BEGIN CALCULATION OF SCREENING CORRECTION.
+! *******************************************************************
+!  THE BASIC REFERENCES ARE SALPETER, AUSTRALIAN JOURNAL OF PHYSICS,
+!  VOL. 7, 373 (1954). THE FORMULA FOR WEAK SCREENING THAT IS BEING
+!  PROGRAMMED IS EQUATION (25) OF THIS PAPER. THE OTHER IMPORTANT
+!  REFERENCES ARE: DEWITT, GRABOSKE, AND COOPER, AP. J. 181, 439 (1973)
+!  AND GRABOSKE ET AL., AP. J. 181, 457 (1973). THE VALUES OF EMU AND
+!  ZET ARE ESSENTIAL FOR COMPUTING WEAK SCREENING; THE VALUE OF AMU IS
+!  USED IN AN NON-ESSENTIAL WAY IN THIS COMPUTATION. XTR IS USED IN
+!  COMPUTING INTERMEDIATE SCREENING.
+! AMU IS ONE OVER THE MEAN MOLECULAR WEIGHT OF THE IONS, MU SUB I .
+! EMU IS ONE OVER THE ELECTRON MEAN MOLECULAR WEIGHT, MU SUB E.
+!  EMU IS USED HERE AS THE NAME FOR THE SECOND PART OF THE ZETA FUNCTION
+!  IN THE SALPETER EXPRESSION FOR WEAK SCREENING.
+! XTR IS USED LATER IN THE INTERMEDIATE SCREENING CALCULATION.  THE AVERAGE
+!  OF THE QUANTITY Z**(3B -1) IS EQUAL TO XTR/AMU.
+! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
+! MU = SUM OVER I OF [X(I)/A(I)].
+! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
+      ion_mean_weight_inverse = 0.
+      electron_mean_weight_inverse = 0.
+      xtr = 0.
+      zeta_sum = 0.
+      do i = 1,num_isotopes
+         term = mass_fraction(i)/atomic_mass_amu(i)
+         ion_mean_weight_inverse = ion_mean_weight_inverse+term
+         electron_mean_weight_inverse = electron_mean_weight_inverse+ &
+              term*atomic_number(i)
+         xtr = xtr+term*atomic_number(i)**1.58
+         zeta_sum = zeta_sum+term*atomic_number(i)**2
+      end do
+! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
+!  THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
+!  GM PER CM^3 .
+! PDT AND PDP ARE THE DERIVATIVES OF THE DENSITY WITH RESPECT TO
+!  TEMPERATURE AND DENSITY.
+! DD = LOG RHO TO THE BASE 10.
+! CLN = LN10.  CLN IS CONVERSION BETWEEN LOG10 AND LN.
+! CONVERT DENSITY TO UNLOGGED FORM.
+! RWE = RHO/(MU SUB E), I. E., THE NUMBER OF ELECTRONS DIVIDED BY
+!  AVOGADRO'S NUMBER.
+      electron_number_density_na = ( exp(ln10*log_density) )* &
+           electron_mean_weight_inverse
+! THE EXPRESSION FOR RWE WAS INCORRECT IN THE ORIGINAL YALE SUBROUTINE.
+!  THE ORIGINAL VERSION HAD ( EXP(CLN*DL) ) DIVIDED BY EMU INSTEAD OF
+!  MULTIPLIED BY EMU.  RWE IS USED LATER IN COMPUTING THE SCREENING
+!  CORRECTION.
+      dd = log_density
+end subroutine setup_abundances_and_composition
+
+! ---------------------------------------------------------------
+! Energy release per reaction (MeV -> erg), reactions 9 and 13
+! zeroed as in the original Yale code, the total energy generation
+! with d ln eps / d ln rho and d ln eps / d ln T, and the global
+! outputs returned to the caller.
+subroutine compute_energy_generation
 ! ENERGY GENERATION.
 ! ****************************************
 ! CALCULATE ENERGY GENERATION BY MULTIPLYING RATES PER GRAM PER SEC BY
@@ -1728,7 +1727,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       total_energy_gen_rate=0.0
       sum2=0.0
       sum3=0.0
-      do 110 i=1,nrxns
+      do i=1,nrxns
 ! *******************************************************************
 ! SUM OF THE TOTAL ENERGY GENERATION IN ERGS PER GRM PER SECOND WITH
 ! DERIVATIVES WITH RESPECT TO DENSITY AND TO TEMPERATURE.
@@ -1740,12 +1739,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          total_energy_gen_rate=total_energy_gen_rate+reaction_energy_gen(i)
          sum2=sum2+reaction_energy_gen(i)*dlnrate_dlnrho(i)
          sum3=sum3+reaction_energy_gen(i)*dlnrate_dlnt(i)
-  110 continue
+      end do
 ! MHP 5/02 ADD DEUTERIUM BURNING
-!      IF(IU.LE.10)THEN
-!         WRITE(*,911)IU,SUM1,DGDEUT,SUM2,SUM3,QRTDEUT
-!      ENDIF
-! 911  FORMAT(I5,1P5E13.3)
       total_energy_gen_rate = total_energy_gen_rate + dgdeut
       sum2 = sum2 + dgdeut
       sum3 = sum3 + dgdeut*qrtdeut
@@ -1753,9 +1748,9 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          en=-20.
          dlnepsilon_dlnrho=0.
          dlnepsilon_dlnt=0.
-         do 120 i=1,nrxns
+         do i=1,nrxns
             eg(i)=0.
-  120    continue
+         end do
       else
 ! ******************************************************
 ! GLOBAL QUANTITIES THAT ARE RETURNED BY THE SUBROUTINE.
@@ -1764,10 +1759,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  WITH RESPECT TO DENSITY AND TEMPERATURE.
 ! MHP 5/90 CHANGE DERIVATIVES TO BE D LN EPS/D LN RHO AND D LN EPS/D LN T
 ! TO PUT THEM IN THE SAME FORM AS PRATHER DERIVATIVES.
-!        EN=DLOG10(SUM1)
-!        PEPD=SUM2/SUM1
-!        PEP=PDP*PEPD
-!        PET=SUM3/SUM1+PDT*PEPD
          dlnepsilon_dlnrho = sum2
          dlnepsilon_dlnt = sum3
       end if
@@ -1775,10 +1766,19 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! *****************************************************
 ! END OF COMPUTATION OF THE GLOBAL QUANTITIES.
 ! *****************************************************
-      do 130 i=1,nrxns
+      do i=1,nrxns
          if (reaction_rate(i).le.1.e-5) reaction_rate(i) = 0.0
-  130 continue
+      end do
 ! ******************************************************
+end subroutine compute_energy_generation
+
+! ---------------------------------------------------------------
+! Rates per 1e9 yr per amu (hrk), the pp/CNO energy split, and --
+! above tcut(5) -- the eight solar neutrino fluxes (pp, pep, hep,
+! Be7, B8, N13, O15, F17) with hep screening. The tcut(5) early
+! RETURN is equivalent in or out of the section: nothing follows
+! this call in engeb.
+subroutine compute_neutrino_fluxes
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
 ! ******************************************************
 ! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
@@ -1787,7 +1787,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
 ! C21 IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*(1 ATOMIC MASS UNIT/1
 !  GRAM). I HAVE USED HERE SIDEREAL YEAR IN CONVERTING TO SECONDS.
-  200 reaction_rate_1(shell_index)=reaction_rate(1)*years_per_sec_over_amu
+      reaction_rate_1(shell_index)=reaction_rate(1)*years_per_sec_over_amu
       reaction_rate_2(shell_index)=reaction_rate(2)*years_per_sec_over_amu
       reaction_rate_3(shell_index)=reaction_rate(3)*years_per_sec_over_amu
       reaction_rate_4(shell_index)=reaction_rate(4)*years_per_sec_over_amu
@@ -1860,23 +1860,23 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! DEFINE 4*PI*(AU)**2 .
          fourpiau2 = 2.812295e+27
 ! FLUX OF PP NEUTRINOS.
-         star%flux%neutrino_flux(1) = eg(1)/fourpiau2
+         star%flux%neutrino_flux(i_nu_pp) = eg(1)/fourpiau2
 ! FLUX OF PEP NEUTRINOS. USE EQUATION 3.17 OF NEUTRINO ASTROPHYSICS.
 ! Note that should not change SStandard(14) unless the ratio of pep to pp
 !  is changed.  Pep rate is explicitly scaled here with respect to the pp
 !  rate.
-         star%flux%neutrino_flux(2) = (3.4848e-6)*electron_number_density_na*t9_m12* &
+         star%flux%neutrino_flux(i_nu_pep) = (3.4848e-6)*electron_number_density_na*t9_m12* &
               (1.0 + 20.*t9)*eg(1)
-         star%flux%neutrino_flux(2) = star%flux%neutrino_flux(2)*cross_section_scale(14)/fourpiau2
+         star%flux%neutrino_flux(i_nu_pep) = star%flux%neutrino_flux(i_nu_pep)*cross_section_scale(14)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
          q6hep = -6.1399
 ! Q6 IS THE NEGATIVE OF THE COEFFICIENT OF T9M13 IN TAU, EQUATION 3.10.
-         star%flux%neutrino_flux(3) = (1.71724e+11)*density*t9_m23*exp(q6hep*t9_m13)
+         star%flux%neutrino_flux(i_nu_hep) = (1.71724e+11)*density*t9_m23*exp(q6hep*t9_m13)
 ! THE DERIVATIVES OF THE CROSS SECTION FACTOR ARE NOT KNOWN AND ARE
 !  TAKEN TO BE ZERO.  THE ONLY TERM FROM EQUATION 3.14 THAT SURVIVES
 !  IS 5/(12*TAU).
-         star%flux%neutrino_flux(3) = (1.0 + 0.067862*t9_p13)*cross_section_scale(17)* &
-              star%flux%neutrino_flux(3)
+         star%flux%neutrino_flux(i_nu_hep) = (1.0 + 0.067862*t9_p13)*cross_section_scale(17)* &
+              star%flux%neutrino_flux(i_nu_hep)
 ! CALCULATE WEAK OR INTERMEDIATE SCREENING FOR HEP NEUTRINOS.
          zprdhe3p = 2.0
          z86he3p = 3.08687
@@ -1888,8 +1888,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
             utothe3p = uint
          end if
 ! END OF CALCULATION OF SCREENING CORRECTION FOR HE3 + P REACTION.
-         star%flux%neutrino_flux(3) = star%flux%neutrino_flux(3)*exp(utothe3p)
-         star%flux%neutrino_flux(3) = star%flux%neutrino_flux(3)*hydrogen_fraction*he3_fraction/ &
+         star%flux%neutrino_flux(i_nu_hep) = star%flux%neutrino_flux(i_nu_hep)*exp(utothe3p)
+         star%flux%neutrino_flux(i_nu_hep) = star%flux%neutrino_flux(i_nu_hep)*hydrogen_fraction*he3_fraction/ &
               fourpiau2
 ! COMPUTE BE7MASSFRACTION. THIS IS NOT REQUIRED FOR THE NEUTRINO
 !  FLUXES SINCE BE7 IS ALWAYS IN EQUILIBRIUM WITH THE SLOWER PRODUCTION
@@ -1899,15 +1899,15 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          star%engeb%be7_mass_fraction = eg(3)/(be7proton + be7electron)
 ! END OF NOVEMBER 6, 1990  ADDITION.
 ! FLUX OF BE7 NEUTRINOS.
-         star%flux%neutrino_flux(4) = eg(3)*f1/fourpiau2
+         star%flux%neutrino_flux(i_nu_be7) = eg(3)*f1/fourpiau2
 ! FLUX OF B8 NEUTRINOS.
-         star%flux%neutrino_flux(5) = eg(3)*f2/fourpiau2
+         star%flux%neutrino_flux(i_nu_b8) = eg(3)*f2/fourpiau2
 ! FLUX OF N13 NEUTRINOS.
-         star%flux%neutrino_flux(6) = eg(4)/fourpiau2
+         star%flux%neutrino_flux(i_nu_n13) = eg(4)/fourpiau2
 ! FLUX OF O15 NEUTRINOS.
-         star%flux%neutrino_flux(7) = eg(6)/fourpiau2
+         star%flux%neutrino_flux(i_nu_o15) = eg(6)/fourpiau2
 ! FLUX OF F17 NEUTRINOS.
-         star%flux%neutrino_flux(8) = eg(7)/fourpiau2
+         star%flux%neutrino_flux(i_nu_f17) = eg(7)/fourpiau2
 ! FLUX OF FICTIONAL HE3 + HE3 NEUTRINOS.
          star%flux%neutrino_flux(9) = eg(2)/fourpiau2
 ! FLUX OF FICTIONAL HE3 + HE4 NEUTRINOS.
@@ -2031,7 +2031,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       end if
 
 
-      return
+end subroutine compute_neutrino_fluxes
+
 end subroutine engeb
 
 
@@ -2075,10 +2076,7 @@ end subroutine engeb
 ! interface (moved into net_lib.f90).
 subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_ad, i_grad_rad
       use luout_lib
       use const_lib
       use numerics_lib
@@ -2114,8 +2112,6 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
            extrap_result(3)
       data substep_counts/2,4,6,8,12,16,24,32,48,64,96/
       data extrap_tol/1.0d-6,1.0d-6,1.0d-6/
-      save
-
       integer :: zone_idx, refine_idx, substep_idx, species_idx
       integer :: cz_base_zone, cz_base_zone_old, min_zone, max_zone
       double precision :: del_diff, del_diff_below, cz_base_frac
@@ -2142,11 +2138,11 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
            radiative_frac
 
 ! SAVE ORIGINAL ABUNDANCES.
-      do 10 zone_idx = 1,num_zones
+      do zone_idx = 1,num_zones
          light_element_save(1,zone_idx) = composition(13,zone_idx)
          light_element_save(2,zone_idx) = composition(14,zone_idx)
          light_element_save(3,zone_idx) = composition(15,zone_idx)
-   10 continue
+      end do
 ! THE DEGREE OF LITHIUM BURNING IN A SURFACE CZ DEPENDS SENSITIVELY
 ! ON THE TEMPERATURE AT ITS BASE - SO ACCURATELY LOCATING IS IMPORTANT.
 ! DETERMINE THE TRUE LOCATION (FX) OF THE BASE OF THE CZ AT THE END
@@ -2161,8 +2157,8 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
-            del_diff = star%diag%del_grad(3,env_cz_zone)-star%diag%del_grad(1,env_cz_zone)
-            del_diff_below = star%diag%del_grad(3,env_cz_zone-1)-star%diag%del_grad(1,env_cz_zone-1)
+            del_diff = star%diag%del_grad(i_grad_ad,env_cz_zone)-star%diag%del_grad(i_grad_rad,env_cz_zone)
+            del_diff_below = star%diag%del_grad(i_grad_ad,env_cz_zone-1)-star%diag%del_grad(i_grad_rad,env_cz_zone-1)
          endif
 ! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
 ! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
@@ -2176,18 +2172,17 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          else
 ! STARTING CZ DEPTH
             if(star%light_burn%cz_base_radius_prev.eq.0.0d0)then
-               star%light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*star%prev%old_radius(env_cz_zone_old)) &
-                        +exp(ln10*star%prev%old_radius(env_cz_zone_old-1)))
+               star%light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*star%prev%logR_start(env_cz_zone_old)) &
+                        +exp(ln10*star%prev%logR_start(env_cz_zone_old-1)))
                search_radius = star%light_burn%cz_base_radius_prev - star%light_burn%pressure_scale_height_start
                do zone_idx = env_cz_zone_old-1,1,-1
-                  shell_radius = exp(ln10*star%prev%old_radius(zone_idx))
+                  shell_radius = exp(ln10*star%prev%logR_start(zone_idx))
                   if(shell_radius.lt.search_radius)then
                      cz_base_zone_old = zone_idx + 1
-                     goto 11
+                     exit
                   endif
                end do
-               cz_base_zone_old = 1
-   11          continue
+               if (zone_idx .lt. 1) cz_base_zone_old = 1
             else
                cz_base_zone_old = star%light_burn%envelope_cz_base_zone_prev
             endif
@@ -2201,15 +2196,14 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
                shell_radius = exp(ln10*radius(zone_idx))
                if(shell_radius.lt.search_radius)then
                   cz_base_zone = zone_idx + 1
-                  delta_radius = exp(ln10*star%prev%old_radius(zone_idx+1))-shell_radius
+                  delta_radius = exp(ln10*star%prev%logR_start(zone_idx+1))-shell_radius
                   cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                   cz_base_frac = max(-0.5d0,cz_base_frac)
                   cz_base_frac = min(0.5d0,cz_base_frac)
-                  goto 12
+                  exit
                endif
             end do
-            cz_base_zone = 1
-   12       continue
+            if (zone_idx .lt. 1) cz_base_zone = 1
          endif
       else
          cz_base_zone = env_cz_zone
@@ -2219,17 +2213,16 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! RADIATIVE INTERIOR.
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
-      do 50 zone_idx = 1,min_zone-1
-         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)goto 60
-         if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 &
-         .and.composition(15,zone_idx).lt.1.0d-24)goto 50
+      do zone_idx = 1,min_zone-1
+         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)exit
+         if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 .and.composition(15,zone_idx).lt.1.0d-24)cycle
          if(log_temperature(zone_idx).gt.7.0d0)then
             composition(13,zone_idx) = 0.0d0
             composition(14,zone_idx) = 0.0d0
             composition(15,zone_idx) = 0.0d0
-            goto 50
+            cycle
          endif
-         do 40 refine_idx = 1,11
+         do refine_idx = 1,11
 ! PERFORM BURNING IN substep_counts SMALLER TIMESTEPS.
 !  DEFINE FRAC - THE FRACTION OF THE TOTAL TIMESTEP IN EACH SMALL ONE -
 !  AND DELT - THE FRACTIONAL TIMESTEP IN YEARS.
@@ -2247,7 +2240,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
                    (log(star%light_burn%rate_li7(zone_idx))-log(star%light_burn%rate_li7_start(zone_idx)))
             log_rate_be9 = log(star%light_burn%rate_be9_start(zone_idx))-0.5d0*substep_frac* &
                    (log(star%light_burn%rate_be9(zone_idx))-log(star%light_burn%rate_be9_start(zone_idx)))
-            do 20 substep_idx = 1,substep_counts(refine_idx)
+            do substep_idx = 1,substep_counts(refine_idx)
 ! INCREMENT THE REACTION RATES.
                log_rate_li6 = log_rate_li6+substep_frac* &
                     (log(star%light_burn%rate_li6(zone_idx))-log(star%light_burn%rate_li6_start(zone_idx)))
@@ -2279,7 +2272,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
                else
                   composition(15,zone_idx) = 0.0d0
                endif
-   20       continue
+            end do
 ! STORE ABUNDANCES AS A FUNCTION OF TIMESTEP IN VECTOR YEST.
             extrap_y(1) = composition(13,zone_idx)
             extrap_y(2) = composition(14,zone_idx)
@@ -2291,25 +2284,26 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! CHECK IF THE SOLUTION HAS CONVERGED.
             if(refine_idx.gt.1)then
                converged = .true.
-               do 30 species_idx=1,3
-                  if(extrap_y(species_idx).lt.1.0d-24)goto 30
+               do species_idx=1,3
+                  if(extrap_y(species_idx).lt.1.0d-24)cycle
                   extrap_err(species_idx) = abs(extrap_err(species_idx)/extrap_y(species_idx))
                   if(extrap_err(species_idx).gt.extrap_tol(species_idx))converged=.false.
-   30          continue
+               end do
                if(converged)then
 !                 WRITE(ISHORT,912)I,J,(YEXT(K2)K2=1,3)
 !   912             FORMAT(1X,'CONVERGED',I5,' LEVEL ',I2,' LI6 ',1P,
 !      *            E12.5,' LI7 ',E12.5,' BE9 ',E12.5)
-                  goto 45
+                  exit
                endif
             endif
-   40    continue
+         end do
+         if (refine_idx > 11) then
 ! IF THE PROGRAM GETS HERE THEN IT FAILED TO CONVERGE TO WITHIN
 ! THE SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
          write(short_file_unit,911)zone_idx,(extrap_err(species_idx),species_idx=1,3)
   911    format(1x,'***LIBURN CONVERGENCE FAILURE IN SHELL ',i4, &
          'ERRORS '/1p3e10.3)
-   45    continue
+         end if
 ! WRITE NEW ABUNDANCES AND EXIT.
          composition(13,zone_idx)=extrap_result(1)
          if(composition(13,zone_idx).lt.1.0d-24)composition(13,zone_idx)=0.0d0
@@ -2317,23 +2311,25 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          if(composition(14,zone_idx).lt.1.0d-24)composition(14,zone_idx)=0.0d0
          composition(15,zone_idx)=extrap_result(3)
          if(composition(15,zone_idx).lt.1.0d-24)composition(15,zone_idx)=0.0d0
-   50 continue
-   60 continue
+      end do
 ! CONVECTION ZONE.
 !
 ! SKIP IF WHOLE CZ IS BELOW THE BURNING THRESHOLD.
-      if(star%light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%light_burn%rate_be9(cz_base_zone).le.1.0d-32)goto 200
+      if (star%light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%light_burn%rate_be9(cz_base_zone).le.1.0d-32) then
+         continue
+         return
+      end if
 ! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
       li6_cz_start = 0.0d0
       li7_cz_start = 0.0d0
       be9_cz_start = 0.0d0
       cz_mass_start = 0.0d0
-      do 65 zone_idx = cz_base_zone_old,num_zones
+      do zone_idx = cz_base_zone_old,num_zones
          li6_cz_start = li6_cz_start+composition(13,zone_idx)*shell_mass(zone_idx)
          li7_cz_start = li7_cz_start+composition(14,zone_idx)*shell_mass(zone_idx)
          be9_cz_start = be9_cz_start+composition(15,zone_idx)*shell_mass(zone_idx)
          cz_mass_start = cz_mass_start + shell_mass(zone_idx)
-   65 continue
+      end do
 !    67 CONTINUE
       li6_cz_start = li6_cz_start/cz_mass_start
       li7_cz_start = li7_cz_start/cz_mass_start
@@ -2343,11 +2339,11 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          log_rate_li6_cz_start = 0.0d0
          log_rate_li7_cz_start = 0.0d0
          log_rate_be9_cz_start = 0.0d0
-         do 68 zone_idx = cz_base_zone_old,num_zones
+         do zone_idx = cz_base_zone_old,num_zones
             log_rate_li6_cz_start = log_rate_li6_cz_start + star%light_burn%rate_li6_start(zone_idx)*shell_mass(zone_idx)
             log_rate_li7_cz_start = log_rate_li7_cz_start + star%light_burn%rate_li7_start(zone_idx)*shell_mass(zone_idx)
             log_rate_be9_cz_start = log_rate_be9_cz_start + star%light_burn%rate_be9_start(zone_idx)*shell_mass(zone_idx)
-   68    continue
+         end do
          log_rate_li6_cz_start = log(log_rate_li6_cz_start/cz_mass_start)
          log_rate_li7_cz_start = log(log_rate_li7_cz_start/cz_mass_start)
          log_rate_be9_cz_start = log(log_rate_be9_cz_start/cz_mass_start)
@@ -2381,7 +2377,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       log_rate_li6_cz_end = 0.0d0
       log_rate_li7_cz_end = 0.0d0
       log_rate_be9_cz_end = 0.0d0
-      do 70 zone_idx = cz_base_zone,num_zones
+      do zone_idx = cz_base_zone,num_zones
          log_rate_li6_cz_end = log_rate_li6_cz_end + star%light_burn%rate_li6(zone_idx)*shell_mass(zone_idx)
          log_rate_li7_cz_end = log_rate_li7_cz_end + star%light_burn%rate_li7(zone_idx)*shell_mass(zone_idx)
          log_rate_be9_cz_end = log_rate_be9_cz_end + star%light_burn%rate_be9(zone_idx)*shell_mass(zone_idx)
@@ -2389,7 +2385,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          li7_cz_end = li7_cz_end+composition(14,zone_idx)*shell_mass(zone_idx)
          be9_cz_end = be9_cz_end+composition(15,zone_idx)*shell_mass(zone_idx)
          cz_mass_end = cz_mass_end + shell_mass(zone_idx)
-   70 continue
+      end do
 !    75 CONTINUE
       li6_cz_end = li6_cz_end/cz_mass_end
       li7_cz_end = li7_cz_end/cz_mass_end
@@ -2407,7 +2403,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          li7_cz_start = li7_cz_end
          be9_cz_start = be9_cz_end
       endif
-      do 120 refine_idx = 1,11
+      do refine_idx = 1,11
 ! PERFORM BURNING IN substep_counts SMALLER TIMESTEPS.
 !  DEFINE FRAC - THE FRACTION OF THE TOTAL TIMESTEP IN EACH SMALL ONE -
 !  AND DELT - THE FRACTIONAL TIMESTEP IN YEARS.
@@ -2439,7 +2435,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          else
             accretion_active = .false.
          endif
-         do 100 substep_idx = 1,substep_counts(refine_idx)
+         do substep_idx = 1,substep_counts(refine_idx)
 ! INCREMENT RATES BY LINEAR INTERPOLATION IN THE LOG.
             cz_log_rate_li6 = cz_log_rate_li6 + substep_frac* &
                  (log_rate_li6_cz_end-log_rate_li6_cz_start)
@@ -2481,7 +2477,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
                be9_added = accreted_composition(15)*substep_frac/exp(0.5d0*be9_depletion)
                be9_accreted = be9_accreted/exp(be9_depletion) + be9_added
             endif
-  100    continue
+         end do
 ! DO A MASS-WEIGHTED AVERAGE OF THE ORIGINAL LIGHT
 ! ELEMENT CONTENT AND THE NET AMOUNT ADDED.
 ! FMASSACC = DMDT*DT/ORIGINAL CZ MASS
@@ -2511,21 +2507,22 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! CHECK IF THE SOLUTION HAS CONVERGED.
          if(refine_idx.gt.1)then
             converged = .true.
-            do 110 species_idx=1,3
-               if(extrap_y(species_idx).lt.1.0d-24)goto 110
+            do species_idx=1,3
+               if(extrap_y(species_idx).lt.1.0d-24)cycle
                extrap_err(species_idx) = abs(extrap_err(species_idx)/extrap_y(species_idx))
                if(extrap_err(species_idx).gt.extrap_tol(species_idx))converged=.false.
-  110       continue
+            end do
             if(converged)then
 !              WRITE(ISHORT,912)JENV,J,(YEXT(K2),YERR(K2),K2=1,3)
-               goto 125
+               exit
             endif
          endif
-  120 continue
+      end do
+      if (refine_idx .gt. 11) then
 ! IF THE PROGRAM GETS HERE THEN IT FAILED TO CONVERGE TO WITHIN
 ! THE SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
       write(short_file_unit,911)cz_base_zone,(extrap_err(species_idx),species_idx=1,3)
-  125 continue
+      end if
 ! WRITE NEW ABUNDANCES AND EXIT.
       li6_cz_end = extrap_result(1)
       if(li6_cz_end.lt.1.0d-24)li6_cz_end=0.0d0
@@ -2533,18 +2530,21 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       if(li7_cz_end.lt.1.0d-24)li7_cz_end=0.0d0
       be9_cz_end = extrap_result(3)
       if(be9_cz_end.lt.1.0d-24)be9_cz_end=0.0d0
-      do 130 zone_idx = max_zone,num_zones
+      do zone_idx = max_zone,num_zones
          composition(13,zone_idx) = li6_cz_end
          composition(14,zone_idx) = li7_cz_end
          composition(15,zone_idx) = be9_cz_end
-  130 continue
+      end do
 ! STORE ENDING RATE FOR USE AT THE BEGINNING OF THE NEXT STEP.
       star%light_burn%log_rate_li6_prev = log_rate_li6_cz_end
       star%light_burn%log_rate_li7_prev = log_rate_li7_cz_end
       star%light_burn%log_rate_be9_prev = log_rate_be9_cz_end
 ! NOW SOLVE FOR ABUNDANCES IN THE REGION WHICH BEGAN CONVECTIVE AND
 ! ENDED RADIATIVE.
-      if(cz_base_zone.le.cz_base_zone_old)goto 200
+      if (cz_base_zone.le.cz_base_zone_old) then
+         continue
+         return
+      end if
 ! FIND STARTING AND ENDING LOCATION IN MASS OF THE CZ BASE, AND
 ! ASSUME THAT THE FRACTION OF TIME SPENT IN THE CZ IS PROPORTIONAL TO
 ! THE LOCATION IN MASS (I.E. A POINT 1/3 FROM THE OLD TO THE NEW CZ
@@ -2556,10 +2556,10 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       endif
       mass_coord_end = 0.5d0*(mass_coordinate(cz_base_zone)+mass_coordinate(cz_base_zone-1))
       delta_mass = mass_coord_beg - mass_coord_end
-      do 140 zone_idx = cz_base_zone_old,cz_base_zone-1
+      do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
-         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32)goto 145
+         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32)exit
          radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
          li6_depletion = timestep*exp(radiative_frac*log(star%light_burn%rate_li6(zone_idx))+ &
@@ -2578,9 +2578,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          if(composition(14,zone_idx).lt.1.0d-24)composition(14,zone_idx)=0.0d0
          composition(15,zone_idx) = composition(15,zone_idx)/exp(be9_depletion)
          if(composition(15,zone_idx).lt.1.0d-24)composition(15,zone_idx)=0.0d0
-  140 continue
-  145 continue
-  200 continue
+      end do
       return
 end subroutine liburn
 
@@ -2622,10 +2620,7 @@ end subroutine liburn
 ! code, even though the net effect on the caller's array is zero.
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_grad_ad, i_grad_rad
       use luout_lib
       use const_lib
       implicit none
@@ -2652,8 +2647,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 
       double precision :: li6_substep_depletion(json), &
            li7_substep_depletion(json), be9_substep_depletion(json)
-      save
-
       integer :: zone_idx, min_zone, max_zone
       double precision :: del_diff, del_diff_below, cz_base_frac
       double precision :: search_radius, shell_radius, delta_radius, &
@@ -2687,8 +2680,8 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
-            del_diff = star%diag%del_grad(3,env_cz_zone)-star%diag%del_grad(1,env_cz_zone)
-            del_diff_below = star%diag%del_grad(3,env_cz_zone-1)-star%diag%del_grad(1,env_cz_zone-1)
+            del_diff = star%diag%del_grad(i_grad_ad,env_cz_zone)-star%diag%del_grad(i_grad_rad,env_cz_zone)
+            del_diff_below = star%diag%del_grad(i_grad_ad,env_cz_zone-1)-star%diag%del_grad(i_grad_rad,env_cz_zone-1)
          endif
 ! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
 ! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
@@ -2702,18 +2695,17 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          else
 ! STARTING CZ DEPTH
             if(star%light_burn%cz_base_radius_prev.eq.0.0d0)then
-               star%light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*star%prev%old_radius(env_cz_zone_old)) &
-                        +exp(ln10*star%prev%old_radius(env_cz_zone_old-1)))
+               star%light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*star%prev%logR_start(env_cz_zone_old)) &
+                        +exp(ln10*star%prev%logR_start(env_cz_zone_old-1)))
                search_radius = star%light_burn%cz_base_radius_prev - star%light_burn%pressure_scale_height_start
                do zone_idx = env_cz_zone_old-1,1,-1
-                  shell_radius = exp(ln10*star%prev%old_radius(zone_idx))
+                  shell_radius = exp(ln10*star%prev%logR_start(zone_idx))
                   if(shell_radius.lt.search_radius)then
                      cz_base_zone_old = zone_idx + 1
-                     goto 11
+                     exit
                   endif
                end do
-               cz_base_zone_old = 1
-   11          continue
+               if (zone_idx .lt. 1) cz_base_zone_old = 1
             else
                cz_base_zone_old = star%light_burn%envelope_cz_base_zone_prev
             endif
@@ -2727,15 +2719,14 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
                shell_radius = exp(ln10*radius(zone_idx))
                if(shell_radius.lt.search_radius)then
                   cz_base_zone = zone_idx + 1
-                  delta_radius = exp(ln10*star%prev%old_radius(zone_idx+1))-shell_radius
+                  delta_radius = exp(ln10*star%prev%logR_start(zone_idx+1))-shell_radius
                   cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                   cz_base_frac = max(-0.5d0,cz_base_frac)
                   cz_base_frac = min(0.5d0,cz_base_frac)
-                  goto 12
+                  exit
                endif
             end do
-            cz_base_zone = 1
-   12       continue
+            if (zone_idx .lt. 1) cz_base_zone = 1
          endif
       else
          cz_base_zone = env_cz_zone
@@ -2746,14 +2737,14 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
       do zone_idx = 1,min_zone-1
-         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)goto 50
+         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32 .or. star%light_burn%rate_be9_start(zone_idx).le.1.0d-32)cycle
          if(composition(13,zone_idx).lt.1.0d-24.and.composition(14,zone_idx).lt.1.0d-24 &
-         .and.composition(15,zone_idx).lt.1.0d-24)goto 50
+         .and.composition(15,zone_idx).lt.1.0d-24)cycle
          if(log_temperature(zone_idx).gt.7.0d0)then
             composition(13,zone_idx) = 0.0d0
             composition(14,zone_idx) = 0.0d0
             composition(15,zone_idx) = 0.0d0
-            goto 50
+            cycle
          endif
          log_rate_li6 = 0.5d0*(log(star%light_burn%rate_li6(zone_idx)) + log(star%light_burn%rate_li6_start(zone_idx)))
          log_rate_li7 = 0.5d0*(log(star%light_burn%rate_li7(zone_idx)) + log(star%light_burn%rate_li7_start(zone_idx)))
@@ -2786,23 +2777,25 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          if(composition(13,zone_idx).lt.1.0d-24)composition(13,zone_idx)=0.0d0
          if(composition(14,zone_idx).lt.1.0d-24)composition(14,zone_idx)=0.0d0
          if(composition(15,zone_idx).lt.1.0d-24)composition(15,zone_idx)=0.0d0
-   50    continue
       end do
 ! CONVECTION ZONE.
 !
 ! SKIP IF WHOLE CZ IS BELOW THE BURNING THRESHOLD.
-      if(star%light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%light_burn%rate_be9(cz_base_zone).le.1.0d-32)goto 200
+      if (star%light_burn%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%light_burn%rate_be9(cz_base_zone).le.1.0d-32) then
+         continue
+         return
+      end if
 ! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
       li6_cz_start = 0.0d0
       li7_cz_start = 0.0d0
       be9_cz_start = 0.0d0
       cz_mass_start = 0.0d0
-      do 65 zone_idx = cz_base_zone_old,num_zones
+      do zone_idx = cz_base_zone_old,num_zones
          li6_cz_start = li6_cz_start+composition(13,zone_idx)*shell_mass(zone_idx)
          li7_cz_start = li7_cz_start+composition(14,zone_idx)*shell_mass(zone_idx)
          be9_cz_start = be9_cz_start+composition(15,zone_idx)*shell_mass(zone_idx)
          cz_mass_start = cz_mass_start + shell_mass(zone_idx)
-   65 continue
+      end do
 !    67 CONTINUE
       li6_cz_start = li6_cz_start/cz_mass_start
       li7_cz_start = li7_cz_start/cz_mass_start
@@ -2812,11 +2805,11 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          log_rate_li6_cz_start = 0.0d0
          log_rate_li7_cz_start = 0.0d0
          log_rate_be9_cz_start = 0.0d0
-         do 68 zone_idx = cz_base_zone_old,num_zones
+         do zone_idx = cz_base_zone_old,num_zones
             log_rate_li6_cz_start = log_rate_li6_cz_start + star%light_burn%rate_li6_start(zone_idx)*shell_mass(zone_idx)
             log_rate_li7_cz_start = log_rate_li7_cz_start + star%light_burn%rate_li7_start(zone_idx)*shell_mass(zone_idx)
             log_rate_be9_cz_start = log_rate_be9_cz_start + star%light_burn%rate_be9_start(zone_idx)*shell_mass(zone_idx)
-   68    continue
+         end do
          log_rate_li6_cz_start = log(log_rate_li6_cz_start/cz_mass_start)
          log_rate_li7_cz_start = log(log_rate_li7_cz_start/cz_mass_start)
          log_rate_be9_cz_start = log(log_rate_be9_cz_start/cz_mass_start)
@@ -2850,7 +2843,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       log_rate_li6_cz_end = 0.0d0
       log_rate_li7_cz_end = 0.0d0
       log_rate_be9_cz_end = 0.0d0
-      do 70 zone_idx = cz_base_zone,num_zones
+      do zone_idx = cz_base_zone,num_zones
          log_rate_li6_cz_end = log_rate_li6_cz_end + star%light_burn%rate_li6(zone_idx)*shell_mass(zone_idx)
          log_rate_li7_cz_end = log_rate_li7_cz_end + star%light_burn%rate_li7(zone_idx)*shell_mass(zone_idx)
          log_rate_be9_cz_end = log_rate_be9_cz_end + star%light_burn%rate_be9(zone_idx)*shell_mass(zone_idx)
@@ -2858,7 +2851,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          li7_cz_end = li7_cz_end+composition(14,zone_idx)*shell_mass(zone_idx)
          be9_cz_end = be9_cz_end+composition(15,zone_idx)*shell_mass(zone_idx)
          cz_mass_end = cz_mass_end + shell_mass(zone_idx)
-   70 continue
+      end do
 !    75 CONTINUE
       li6_cz_end = li6_cz_end/cz_mass_end
       li7_cz_end = li7_cz_end/cz_mass_end
@@ -2916,7 +2909,10 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       star%light_burn%log_rate_be9_prev = log_rate_be9_cz_end
 ! NOW SOLVE FOR ABUNDANCES IN THE REGION WHICH BEGAN CONVECTIVE AND
 ! ENDED RADIATIVE.
-      if(cz_base_zone.le.cz_base_zone_old)goto 200
+      if (cz_base_zone.le.cz_base_zone_old) then
+         continue
+         return
+      end if
 ! FIND STARTING AND ENDING LOCATION IN MASS OF THE CZ BASE, AND
 ! ASSUME THAT THE FRACTION OF TIME SPENT IN THE CZ IS PROPORTIONAL TO
 ! THE LOCATION IN MASS (I.E. A POINT 1/3 FROM THE OLD TO THE NEW CZ
@@ -2931,7 +2927,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
-         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32)goto 200
+         if(star%light_burn%rate_be9(zone_idx).le.1.0d-32)exit
          radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
          li6_depletion = timestep*exp(radiative_frac*log(star%light_burn%rate_li6(zone_idx))+ &
@@ -2948,7 +2944,6 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          composition(15,zone_idx) = composition(15,zone_idx)/exp(be9_depletion)
          if(composition(15,zone_idx).lt.1.0d-24)composition(15,zone_idx)=0.0d0
       end do
-  200 continue
       return
 end subroutine liburn2
 
@@ -2970,7 +2965,6 @@ end subroutine liburn2
 subroutine lirate88(composition, log_density, log_temperature, num_zones, &
      use_current_model)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -2988,21 +2982,19 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
 
       double precision :: tlim
       data tlim/6.0d0/
-      save
-
       integer :: zone_idx, tail_idx
       double precision :: rhox, t9, t913, t923, t943, t953, t932, t934
       double precision :: fli6, fli7, fbe91, fbe92, fbe93, fx, ex, fsbe9
       double precision :: t9a, c56
 
-      do 100 zone_idx = 1,num_zones
-         if(log_temperature(zone_idx).lt.tlim.and.star%prev%old_temperature(zone_idx).lt.tlim)goto 110
+      do zone_idx = 1,num_zones
+         if(log_temperature(zone_idx).lt.tlim.and.star%prev%logT_start(zone_idx).lt.tlim)exit
          if(use_current_model.eq.1)then
             rhox = exp(ln10*log_density(zone_idx))*composition(1,zone_idx)
             t9=exp(ln10*(log_temperature(zone_idx)-9.0d0))
          else
-            rhox = exp(ln10*star%prev%old_density(zone_idx))*star%prev%old_composition(1,zone_idx)
-            t9=exp(ln10*(star%prev%old_temperature(zone_idx)-9.0d0))
+            rhox = exp(ln10*star%prev%logRho_start(zone_idx))*star%prev%xa_start(1,zone_idx)
+            t9=exp(ln10*(star%prev%logT_start(zone_idx)-9.0d0))
          endif
          t913=t9**cc13
          t923=t913*t913
@@ -3070,16 +3062,15 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
             star%light_burn%rate_li7_start(zone_idx) = fli7*rhox
             star%light_burn%rate_be9_start(zone_idx) = fsbe9*rhox
          endif
-  100 continue
-  110 continue
-      do 120 tail_idx = zone_idx,num_zones
+      end do
+      do tail_idx = zone_idx,num_zones
          star%light_burn%rate_li6(tail_idx)=0.0d0
          star%light_burn%rate_li7(tail_idx)=0.0d0
          star%light_burn%rate_be9(tail_idx)=0.0d0
          star%light_burn%rate_li6_start(tail_idx)=0.0d0
          star%light_burn%rate_li7_start(tail_idx)=0.0d0
          star%light_burn%rate_be9_start(tail_idx)=0.0d0
-  120 continue
+      end do
       return
 end subroutine lirate88
 

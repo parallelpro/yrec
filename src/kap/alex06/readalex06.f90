@@ -51,8 +51,6 @@ subroutine readalex06(alex06_table_path, ierr)
 ! alex06_cached_x/alex06_cached_z/alex06_index_x/alex06_index_t/
 ! alex06_index_r defaults moved to opacity_table_lib.f90: DATA can no
 ! longer target them here now that they're use-associated.
-      save
-
       integer :: i, ii, j, jj, k, kk
 
       ierr = 0

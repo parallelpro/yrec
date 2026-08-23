@@ -38,8 +38,11 @@ PUBLIC = {
     # atm_lib's three entries, plus surfbc (the solver's boundary-
     # condition wrapper, sole caller core/crrect.f90) and the turnover/
     # diagnostics consumed by core/io/rotation (calcad, gettau).
-    "atm": {"atm_get", "atm_get_surface_pt", "atm_init",
-            "surfbc", "calcad", "gettau"},
+    "atm": {"atm_get_surface_pt", "atm_init",
+            # pure surface-pressure lookups, called by the star
+            # layer's envelope integrator (core/envint_lib) since the
+            # atm split -- clean physics services
+            "surfp", "kcsurfp", "alsurfp"},
     # Every net_lib module procedure is public by construction.
     "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
                 "eqburn", "dburn", "dburnm", "deutrate", "engeb",

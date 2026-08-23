@@ -53,6 +53,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       integer :: num_valid_temps, temp_index, temp_index_start, &
            temp_index_end
       logical :: search_full_range
+      logical :: density_found
 
 
 
@@ -62,8 +63,6 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
 ! kurucz2_ix_x/kurucz2_ix_t/kurucz2_ix_rho defaults moved to
 ! opacity_table_lib.f90: DATA can no longer target them here now that
 ! they're use-associated.
-      save
-
 ! --- locals ---
       double precision :: local_logt, local_logrho
       integer :: t_row_index, row_density_start, row_density_end, &
@@ -85,10 +84,11 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       if (temp_index_start.le.0) temp_index_start = 1
       temp_index_end = opacity_table%kurucz2_ix_t+3
       if (temp_index_end.gt.opacity_table%kurucz2_num_temps) temp_index_end = opacity_table%kurucz2_num_temps
-  333 continue
+      full_search: do
       num_valid_temps = 0
-      do 300 temp_index = temp_index_start, temp_index_end
+      do temp_index = temp_index_start, temp_index_end
          t_row_index = temp_index
+         density_found = .false.
          row_density_start = opacity_table%kurucz2_density_start_index(t_row_index)
          row_density_end = row_density_start + &
               opacity_table%kurucz2_density_count(t_row_index) - 1
@@ -97,30 +97,33 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
               opacity_table%kurucz2_ix_rho.gt.row_density_end) opacity_table%kurucz2_ix_rho = row_density_end
          density_pointer = opacity_table%kurucz2_ix_rho
          if (local_logrho.lt.opacity_table%kurucz2_log10_rho(temp_index, density_pointer)) then
-            do 211 density_scan_index = density_pointer-1, row_density_start, -1
+            do density_scan_index = density_pointer-1, row_density_start, -1
                if (opacity_table%kurucz2_log10_rho(temp_index, density_scan_index).le. &
                     local_logrho) then
                   density_pointer = density_scan_index
-                  goto 213
+                  density_found = .true.
+                  exit
                endif
-  211       continue
-            go to 300
+            end do
          else
-            do 212 density_scan_index = density_pointer, row_density_end-1
+            do density_scan_index = density_pointer, row_density_end-1
                if (opacity_table%kurucz2_log10_rho(temp_index, density_scan_index+1).gt. &
                     local_logrho) then
                   density_pointer = density_scan_index
-                  goto 213
+                  density_found = .true.
+                  exit
                endif
-  212       continue
+            end do
+            if (.not. density_found) then
             if (opacity_table%kurucz2_log10_rho(temp_index, row_density_end).ge. &
                  local_logrho) then
                density_pointer = row_density_end
-               goto 213
+               density_found = .true.
             endif
-            go to 300
+            endif
          endif
-  213    opacity_table%kurucz2_ix_rho = density_pointer
+         if (.not. density_found) cycle
+         opacity_table%kurucz2_ix_rho = density_pointer
          knot_index = opacity_table%kurucz2_ix_rho - row_density_start + 1
          coeff_base_index = 4*(knot_index-1)
 !        NOW, (KNOT,KNOT+1) IS SUB-RANGE OF RHO WHICH CONTAINS D.
@@ -139,13 +142,13 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
          temp_subset_logt(num_valid_temps) = opacity_table%kurucz2_grid_logt(temp_index)
          temp_subset_log10_opacity(num_valid_temps) = log10_opacity_at_rho
          temp_subset_dlnkap_dlnrho(num_valid_temps) = dlnkap_dlnrho_at_rho
-  300 continue
+      end do
       if (num_valid_temps.le.3) then
          if (search_full_range) then
             temp_index_start = 1
             temp_index_end = opacity_table%kurucz2_num_temps
             search_full_range = .false.
-            go to 333
+            cycle full_search
          endif
          write(short_file_unit,*) 'ERROR KURUCZ OP: NO TABLE VALUE ', &
               local_logrho, local_logt
@@ -153,6 +156,8 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
          ierr = 1
          return
       endif
+      exit full_search
+      end do full_search
       if (temp_subset_logt(1).gt.local_logt .or. &
            temp_subset_logt(num_valid_temps).lt.local_logt) return 1
 !     INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.

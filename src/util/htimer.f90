@@ -64,17 +64,6 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
       double precision, intent(out) :: max_domega_frac
       integer, intent(in) :: h_shell_zone_begin
       double precision, intent(in) :: log_teff
-
-
-
-
-
-
-
-
-
-      save
-
       double precision :: structure_dt, rotation_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
       double precision :: energy_gen_terms(6)
@@ -85,13 +74,12 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
            rate_triple_alpha(json), rate_zero13(json)
       double precision :: frac_c12_alpha(json), frac_be7_electron(json)
 
-      if(previous_timestep.lt.0.0d0) goto 310
+      if (previous_timestep.ge.0.0d0) then
 ! if user is fixing tstep, set dt to given value and exit
       if(timestep_override_active(kind_card_index)) then
        hydrogen_dt = timestep_override(kind_card_index)*seconds_per_year
        previous_timestep = hydrogen_dt
-       goto 310
-      endif
+      else
 ! mhp 9/01  turn off structure-based timestep setting above a critical
 !           temperature; this is done when
       if(use_structure_dt_limits) then
@@ -215,7 +203,8 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 ! c *****************************
 
       hydrogen_dt = previous_timestep
-  310 continue
+      end if
+      end if
       previous_timestep = abs(previous_timestep)
       timestep_years = previous_timestep/seconds_per_year
 !     mhp 10/24 flag includes other stop conditions,

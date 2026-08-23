@@ -26,22 +26,20 @@ subroutine ylloc
       integer, parameter :: np = 100
 
       double precision :: spline_work(4,np), density_nodes(num_d)
-      save
-
       integer :: ix, it, index1, jd, ids, idf, id, index2, j, i
       double precision :: chkd, chko
 
-      do 1 ix = 1,opacity_table%opal92_num_x
-      do 2 it = 1,opacity_table%opal92_num_temps
+      do ix = 1,opacity_table%opal92_num_x
+      do it = 1,opacity_table%opal92_num_temps
        index1 = it + (ix-1)*opacity_table%opal92_num_temps
        jd = 0
         ids = 1
         idf = num_d
-        do 3 id = ids,idf
+        do id = ids,idf
           chkd = opacity_table%opal92_grid_logr(id)
           chko = opacity_table%opal92_log10_opacity(it+num_t*(ix-1),id)
 !>>>> CHECK THE EMPTY REGION
-          if (chko.le.-9.999d0) go to 3
+          if (chko.le.-9.999d0) cycle
           if (jd.le.0) then
              opacity_table%opal92_density_start_index(index1) = id
              if (id.ne.1) stop ' CHECK NDS '
@@ -50,18 +48,18 @@ subroutine ylloc
           density_nodes(jd) = chkd
 !>>>> CHECK THE OPACITY VALUE IN THE TABLE
           spline_work(1,jd) = chko
-    3   continue
+        end do
         opacity_table%opal92_density_count(index1) = jd
-        if (jd.le.1) go to 2
+        if (jd.le.1) cycle
         call ysplin(density_nodes, spline_work, jd)
-        do 100 j = 1,jd
-        do 200 i = 1,4
+        do j = 1,jd
+        do i = 1,4
          index2 = i + (j-1)*4
          opacity_table%opal92_spline_coeffs(index1,index2) = spline_work(i,j)
-  200   continue
-  100   continue
-    2 continue
-    1 continue
+        end do
+        end do
+      end do
+      end do
 !
 ! DBG 5/94 ZRAMP stuff
       if (use_two_z_tables) then
@@ -74,7 +72,7 @@ subroutine ylloc
                do id = ids,idf
                   chkd = opacity_table%opal92_grid_logr_z2(id)
                   chko = opacity_table%opal92_log10_opacity_z2(it+num_t*(ix-1),id)
-                  if (chko.le.-9.999d0) go to 503
+                  if (chko.le.-9.999d0) cycle
                   if (jd.le.0) then
                      opacity_table%opal92_density_start_index_z2(index1) = id
                      if (id.ne.1) stop ' CHECK NDS2 '
@@ -82,10 +80,9 @@ subroutine ylloc
                   jd = jd + 1
                   density_nodes(jd) = chkd
                   spline_work(1,jd) = chko
-  503             continue
                end do
                opacity_table%opal92_density_count_z2(index1) = jd
-               if (jd.le.1) go to 502
+               if (jd.le.1) cycle
                call ysplin(density_nodes, spline_work, jd)
                do j = 1,jd
                   do i = 1,4
@@ -93,7 +90,6 @@ subroutine ylloc
                      opacity_table%opal92_spline_coeffs_z2(index1,index2) = spline_work(i,j)
                   end do
                end do
-  502          continue
             end do
          end do
       end if

@@ -56,16 +56,11 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok, ierr)
 
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use temp2_lib
-      use star_info_lib, only: star
+      use star_info_lib
       use luout_lib
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
-
       double precision, intent(inout) :: sub_timestep
       double precision, intent(inout) :: log_density(json)
       double precision, intent(in) :: local_gravity(json)
@@ -101,27 +96,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       double precision, intent(inout) :: mixing_diffusion_coeff(json)
       double precision, intent(inout) :: diffusion_velocity(json)
       logical, intent(inout) :: diffusion_solve_ok
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      save
 ! MHP 6/00 added MRZONE,MXZONE for BS mixing plus burning (no longer
 ! part of the active call list).
 
@@ -199,12 +173,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 ! WILL NO LONGER REPORT THE CHANGES TO J AT EACH POINT, BECAUSE
 ! THIS CAN BE EASILY INFERRED FROM THE EXTENDED SHORT FILE. IF
 ! DESIRED, THIS OUTPUT CAN BE RETURNED.
-!      IF(.NOT.LPRT0)THEN
-!         LPRT = MOD(MODEL+1,NPRTMOD).EQ.0
-!      ELSE
-!         LPRT = .TRUE.
-!      ENDIF
-!      IF(.NOT.LSCRIB.OR..NOT.LPRTIN) LPRT = .FALSE.
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -225,13 +193,13 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            num_zones,radius_unlogged,dynamical_shear_omega_limit)
       total_luminosity = solar_luminosity_cgs*luminosity(num_zones)
 !  COMPUTE ANGULAR VELOCITY GRADIENTS
-      do 10 i = zone_min,zone_max
+      do i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
          log_radius_center = log10(star%rot%interface_radius(i))
          dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
               1.0D0/ln10/(log_radius_center-log_radius(i-1))
          dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
-   10 continue
+      end do
       call getqua(log_density,local_gravity,radius_unlogged,omega,num_zones)
       do i = 1,num_zones
          vfc(i) = 0.0D0
@@ -249,10 +217,10 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            call getfc(log_density,radius_unlogged,diffusion_velocity, &
            zone_min,zone_max,omega)
 !  STORE INITIAL ANGULAR MOMENTUM DISTRIBUTION.
-      do 20 i =1,num_zones
+      do i =1,num_zones
          specific_angular_momentum_prev(i) = specific_angular_momentum_saved(i)
          omega_start(i) = omega(i)
-   20 continue
+      end do
 !  STORE INITIAL SURFACE ANGULAR VELOCITY FOR USE IN ANGULAR MOMENTUM
 !  LOSS CALCULATIONS.
 !      WBEG = OMEGA(M)
@@ -264,7 +232,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  ITERATION IS USED TO GET THE VELOCITIES.  THIS 'NEW' VELOCITY IS THEN
 !  AVERAGED WITH THE VELOCITY FOUND IN THE PREVIOUS ITERATION TO GET A
 !  CORRECTED V AND THUS A MORE ACCURATE RUN OF DIFFUSION COEFFICIENTS.
-      do 100 iteration = 1,itdif2
+      do iteration = 1,itdif2
          omega_surface = omega(num_zones)
          if(iteration.gt.1)then
 !  COMPUTE NEW RUN OF ANGULAR VELOCITIES (AVERAGE OF INITIAL AND
@@ -273,13 +241,13 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                omega(i) = 0.5D0*(omega(i)+omega_start(i))
             end do
 !  COMPUTE NEW RUN OF ANGULAR VELOCITY GRADIENTS.
-            do 30 i = zone_min,zone_max
+            do i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
                log_radius_center = log10(star%rot%interface_radius(i))
                dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
                     1.0D0/ln10/(log_radius_center-log_radius(i-1))
                dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
-   30       continue
+            end do
 !  ON 2ND AND SUBSEQUENT ITERATIONS,COMPUTE CHARACTERISTIC VELOCITIES
 !  FOR THE NEW RUN OF OMEGA AND COMPOSITION FOUND IN THE PREVIOUS
 !  ITERATION.
@@ -293,12 +261,12 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                  zone_min,zone_max,omega)
 !  NOW THAT THE NEW DIFFUSION VELOCITIES HAVE BEEN COMPUTED, RESET THE
 !  ANGULAR MOMENTUM AND COMPOSITION ARRAYS TO THEIR ORIGINAL VALUES.
-            do 50 i = 1,num_zones
+            do i = 1,num_zones
                specific_angular_momentum(i) = specific_angular_momentum_saved(i)
-               do 40 j = 1,4
+               do j = 1,4
                   composition(j,i) = star%rot%composition_snapshot(j,i)
-   40          continue
-   50       continue
+               end do
+            end do
 ! MHP 10/91 CHANGED TO REMIX CZ'S TO THEIR PROPER DEPTH!
 ! OTHERWISE, DRASTIC ERRORS OCCUR IN THE PRESENCE OF A DEEPENING CZ
 ! (THE LOCAL ABUNDANCE AT THE CZ BASE PRIOR TO THE DEEPENING OF THE
@@ -324,9 +292,9 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
               .and. .not.disk_lock_active)then
 !  FIND MOMENT OF INERTIA OF THE SURFACE C.Z.
             cz_moment_of_inertia = 0.0D0
-            do 55 i = zone_max,num_zones
+            do i = zone_max,num_zones
                cz_moment_of_inertia = cz_moment_of_inertia + moment_of_inertia(i)
-   55       continue
+            end do
             wind_loss_active = ljdot0
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
             call mwind(log_luminosity_lsun,sub_timestep,cz_mass_bottom, &
@@ -356,7 +324,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !            WRITE(*,*)OMEGA(1),OMEGA(M)
          endif
 !  IF LDO=F,NO INSTABILITIES OCCUR (STABLE AGAINST ALL MECHANISMS).
-         if(.not.unstable_zone_found) goto 9999
+         if(.not.unstable_zone_found) return   ! (label 9999 was a bare return)
 !  TREAT CENTRAL AND SURFACE ZONES AS ALWAYS CONVECTIVE
 !  (SHOULD BE FIXED TO GIVE BETTER CENTRAL/SURFACE B.C.)
          am_transport_convective_flag(1) = .true.
@@ -371,7 +339,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  THE LAST NON-ZERO V.
          in_unstable_region = .false.
          scan_start_zone = zone_min
-   60    continue
+         region_loop: do
          unstable_zone_found = .false.
 ! MHP 8/13 TREAT ENTIRE DOMAIN AS UNSTABLE IF A CONSTANT DIFFUSION
 ! COEFFICIENT IS BEING ADDED
@@ -380,9 +348,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             zone_begin = zone_min - 1
             zone_end = zone_max
             scan_start_zone = zone_max + 1
-            goto 80
-         endif
-         do 70 j = scan_start_zone,zone_max
+         else
+         do j = scan_start_zone,zone_max
             if(diffusion_velocity(j).gt.0.0D0) then
                unstable_zone_found = .true.
                if(.not.in_unstable_region) then
@@ -395,16 +362,18 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                zone_end = j - 1
                in_unstable_region = .false.
                scan_start_zone = j + 1
-               goto 80
+               exit
             endif
-   70    continue
+         end do
+         if (j .gt. zone_max) then
 !  IF THE LAST INTERFACE IS UNSTABLE (NON-ZERO V) ENSURE THAT IEND IS SET
 !  PROPERLY.
          if(in_unstable_region) zone_end = zone_max
          scan_start_zone = zone_max + 1
-   80    continue
+         end if
+         endif
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
-         if(.not.unstable_zone_found) goto 90
+         if(.not.unstable_zone_found) exit region_loop
 ! MHP 08/03 REMOVED OBSOLETE EQUAL ROUTINE
 !         IF(M.GT.1)THEN
 !  TRANSFORM TO EQUAL GRID SPACING IN CHI FOR THE REGION.
@@ -429,9 +398,9 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  SKIP IF THIS OCCURS.
          if(single_interface_flag) then
             if(scan_start_zone.le.zone_max) then
-               goto 60
+               cycle region_loop
             else
-               goto 90
+               exit region_loop
             endif
          endif
 ! MHP 3/09 SKIP ANGULAR MOMENTUM EVOLUTION FOR SOLID BODY MODELS
@@ -495,9 +464,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             call eq2mod(eq_delta_angular_momentum,eq_angular_momentum, &
                  shell_mass,zone_begin,zone_end,am_transport_convective_flag, &
                  num_zones,sum_delta_angular_momentum,specific_angular_momentum)
-!         ELSE
-!         CALL EQUAL2(DJ,EJ,EM,ES1,HS1,IBEG,IEND,LCZ,M,NTOT,HJM)
-!         ENDIF
 !  PERFORM COMPOSITION DIFFUSION.
 !  UNTIL THE FINAL ITERATION, ONLY COMPOSITION DIFFUSION OF SPECIES WHICH
 !  AFFECT GRADIENTS IN MEAN MOLECULAR WEIGHT IS COMPUTED (H,HE3,HE4).
@@ -518,8 +484,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !     *               IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP)
 !         ENDIF
 !  RETURN FOR NEXT REGION IF APPLICABLE
-         if(scan_start_zone.le.zone_max) goto 60
-   90    continue
+         if(scan_start_zone.gt.zone_max) exit region_loop
+         end do region_loop
 ! CHECK SOLUTION,UPDATE OMEGA,AND SEE IF ANOTHER ITERATION IS NEEDED.
          am_transport_convective_flag(1) = lcz_first_zone
          am_transport_convective_flag(num_zones) = lcz_last_zone
@@ -542,19 +508,15 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 ! MHP 9/93
          if(no_am_transport_in_core)diffusion_solve_ok = .true.
 ! IF LOK=T,CONVERGED.
-         if(diffusion_solve_ok)goto 200
+         if(diffusion_solve_ok)exit   ! the post-loop reassignment is a no-op here
 ! IF LREDO=T, A PROBLEM REQUIRES TIMESTEP CUTTING.
-         if(redo_flag)goto 9999
-  100 continue
+         if(redo_flag)return   ! (label 9999 was a bare return)
+      end do
       diffusion_solve_ok = .true.
-  200 continue
 ! PERFORM COMPOSITION DIFFUSION OF REMAINING SPECIES.
       am_transport_convective_flag(1) = .true.
       am_transport_convective_flag(num_zones) = .true.
 ! MHP 6/00 ADDED OPTION OF BS EXTRAPOLATION FOR HE3, CNO
-!      LBSMIX=.TRUE.
-!      IF(LBSMIX)THEN
-!         CALL BSCOMP(DR,DT,COD2,ECOD2,EM,ES1,HRU,HS,HS1,HS2,
 !     *               IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP,HV,
 !     *           HD,HP,HR,HT,MRZONE,MXZONE,NRZONE,NZONE,HSTOT)
 !      ELSE
@@ -599,33 +561,10 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
  199     format(I5,1P7E10.3)
       end do
       endif
- 9999 continue
 ! MHP 8/03 - OMITTED I/O, COULD REINTRODUCE IN ANOTHER FILE
 !  DETERMINE COUPLING FACTOR (I.E. THE FRACTION OF THE TOTAL ANGULAR
 !  MOMENTUM LOST FROM THE CORE RELATIVE TO ITS FRACTION OF THE TOTAL
 !  MOMENT OF INERTIA).
-!      DJCORE = 0.0D0
-!      HICORE = 0.0D0
-!      HJTOT = 0.0D0
-!      DO I = 1,IMAX-1
-!         DJCORE = DJCORE + (HJM(I)-HJMSAV(I))*HS2(I)
-!         HICORE = HICORE + HI(I)
-!         HJTOT = HJTOT + HJM(I)*HS2(I)
-!      END DO
-!      HIENV = 0.0D0
-!      DJENV = 0.0D0
-!      DO I = IMAX,M
-!         DJENV = DJENV + (HJM(I)-HJMSAV(I))*HS2(I)
-!         HIENV = HIENV + HI(I)
-!         HJTOT = HJTOT + HJM(I)*HS2(I)
-!      END DO
-!      FI = HICORE/(HICORE+HIENV)
-!      IF(ABS(DJCORE+DJENV).GT.1.0D-32)THEN
-!         FJ = DJCORE/(DJCORE+DJENV)
-!      ELSE
-!         FJ = 1.0D0
-!      ENDIF
-!      WRITE(88,709)SAGE,HJTOT,OMEGA(M),FJ,FJ/FI,
 !     *               HCOMP(14,M),HCOMP(15,M)
 !  709 FORMAT(1P7E11.3)
       return
