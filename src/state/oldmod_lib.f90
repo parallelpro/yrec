@@ -36,13 +36,18 @@ module oldmod_lib
       integer, parameter :: json = 5000
 
       type, public :: prev_model_state
-            double precision :: old_pressure(json), old_temperature(json), &
-                 old_radius(json), old_luminosity(json), old_density(json)
-            double precision :: old_composition(15,json)
+! 2026 MESA-convention pass: start-of-step values carry MESA's _start
+! suffix, mirroring the live star_info member they snapshot.
+            double precision :: logP_start(json), logT_start(json), &
+                 logR_start(json), luminosity_lsun_start(json), logRho_start(json)
+            double precision :: xa_start(15,json)
+! NOT renamed dm_start: despite the name this slot holds LOG-MASS
+! coordinates of the pre-rezoning grid (see hpoint's spline blocks) --
+! a rezoning scratch, misnamed since the COMMON era.
             double precision :: old_shell_mass(json)
-            logical :: old_convective_flag(json), old_cz_flag(json)
-            double precision :: old_teff
-            integer :: old_num_zones
+            logical :: convective_flag_start(json), cz_flag_start(json)
+            double precision :: log_Teff_start
+            integer :: nz_start
       end type prev_model_state
 ! 2026 (phase four, step 4 -- ROADMAP.md): the instance moved into
 ! star_info (state/star_info_lib.f90); this module now only defines

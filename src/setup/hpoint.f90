@@ -356,15 +356,15 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        end do
       endif
       star%prev%old_shell_mass(1) = star%log_mass(1)
-      star%prev%old_pressure(1) = star%logP(1)
-      star%prev%old_luminosity(1) = star%luminosity_lsun(1)
+      star%prev%logP_start(1) = star%logP(1)
+      star%prev%luminosity_lsun_start(1) = star%luminosity_lsun(1)
       x_new(1) = star%xa(1,1)
       z_new(1) = star%xa(3,1)
       luminosity_max = star%luminosity_lsun(star%nz)
 !       JVS 04/14 added Teff to saved variables
-        star%prev%old_teff = star%log_Teff
+        star%prev%log_Teff_start = star%log_Teff
 !  JVS 05/25 Added model number to list of saved values
-      star%prev%old_num_zones = star%nz
+      star%prev%nz_start = star%nz
       do i = star%nz-1,1,-1
          if (star%luminosity_lsun(i).gt.luminosity_max) then
             luminosity_max = star%luminosity_lsun(i)
@@ -558,20 +558,20 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER.
 ! (NOTE HDO IS BEING USED AS A DUMMY ARRAY HERE).
       j = 1
-      star%prev%old_density(j) = star%prev%old_shell_mass(j)
+      star%prev%logRho_start(j) = star%prev%old_shell_mass(j)
       do k = 2,new_num_zones-1
 !
-       if (star%prev%old_shell_mass(k) - star%prev%old_density(j).gt.chi_grid_scale(1)) then
+       if (star%prev%old_shell_mass(k) - star%prev%logRho_start(j).gt.chi_grid_scale(1)) then
           j = j + 1
-          star%prev%old_density(j) = star%prev%old_shell_mass(k)
+          star%prev%logRho_start(j) = star%prev%old_shell_mass(k)
        endif
   810 continue
       end do
       j = j + 1
-      star%prev%old_density(j) = star%prev%old_shell_mass(new_num_zones)
+      star%prev%logRho_start(j) = star%prev%old_shell_mass(new_num_zones)
       new_num_zones = j
       do j = 2,new_num_zones
-       star%prev%old_shell_mass(j) = star%prev%old_density(j)
+       star%prev%old_shell_mass(j) = star%prev%logRho_start(j)
   820 continue
       end do
 !
@@ -639,13 +639,13 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 !  DO EACH COMPOSITION IN ORDER USING HPO AND HTO AS DUMMY ARRAYS.
 ! 7/91 ADD ENTROPY TERM INTERPOLATION.
       do j = 1,star%nz
-         star%prev%old_pressure(j) = star%run%temperature_entropy_term(j)
+         star%prev%logP_start(j) = star%run%temperature_entropy_term(j)
   904 continue
       end do
-      call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
+      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         star%run%temperature_entropy_term(j) = star%prev%old_temperature(j)
+         star%run%temperature_entropy_term(j) = star%prev%logT_start(j)
   905 continue
       end do
 
@@ -653,58 +653,58 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 
 
       do j = 1,star%nz
-         star%prev%old_pressure(j) = star%run%pressure_entropy_term(j)
+         star%prev%logP_start(j) = star%run%pressure_entropy_term(j)
   906 continue
       end do
-      call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
+      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         star%run%pressure_entropy_term(j) = star%prev%old_temperature(j)
+         star%run%pressure_entropy_term(j) = star%prev%logT_start(j)
   907 continue
       end do
       do j = 1,star%nz
-         star%prev%old_pressure(j) = star%run%luminosity_entropy_term(j)
+         star%prev%logP_start(j) = star%run%luminosity_entropy_term(j)
   911 continue
       end do
-      call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
+      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         star%run%luminosity_entropy_term(j) = star%prev%old_temperature(j)
+         star%run%luminosity_entropy_term(j) = star%prev%logT_start(j)
   912 continue
       end do
       do j = 1,star%nz
-         star%prev%old_pressure(j) = star%run%radius_entropy_term(j)
+         star%prev%logP_start(j) = star%run%radius_entropy_term(j)
   913 continue
       end do
-      call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
+      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         star%run%radius_entropy_term(j) = star%prev%old_temperature(j)
+         star%run%radius_entropy_term(j) = star%prev%logT_start(j)
   914 continue
       end do
 
 
       do i = 1,num_species_tracked
        do j = 1,star%nz
-          star%prev%old_pressure(j) = star%xa(i,j)
+          star%prev%logP_start(j) = star%xa(i,j)
   833    continue
        end do
-         call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
+         call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
-          star%xa(i,j) = star%prev%old_temperature(j)
+          star%xa(i,j) = star%prev%logT_start(j)
   835    continue
        end do
 !  HCOMPP IS THE ARRAY OF COMPOSITION AT THE BEGINNING OF THE TIMESTEP.
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
        do j = 1,star%nz
-          star%prev%old_pressure(j) = star%prev%old_composition(i,j)
+          star%prev%logP_start(j) = star%prev%xa_start(i,j)
   840    continue
        end do
-         call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
+         call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
-          star%prev%old_composition(i,j) = star%prev%old_temperature(j)
+          star%prev%xa_start(i,j) = star%prev%logT_start(j)
   845    continue
        end do
   850 continue
@@ -715,14 +715,14 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
       do i = 1,7
        do j = 1,star%nz
-          star%prev%old_pressure(j) = star%rot%reaction_rate_by_zone(reaction_rate_species_index(i),j)
+          star%prev%logP_start(j) = star%rot%reaction_rate_by_zone(reaction_rate_species_index(i),j)
   847    continue
        end do
-         call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
+         call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
           star%rot%reaction_rate_by_zone(reaction_rate_species_index(i),j) = &
-               star%prev%old_temperature(j)
+               star%prev%logT_start(j)
   848    continue
        end do
   849 continue
@@ -733,25 +733,25 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       if (use_extended_composition .and. &
            star%xa(12,star%nz).ge.1.0D-14) then
          do j = 1,star%nz
-            star%prev%old_pressure(j) = star%light_burn%deuterium_burning_rate_start(j)
+            star%prev%logP_start(j) = star%light_burn%deuterium_burning_rate_start(j)
          end do
-         call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%prev%old_pressure, &
+         call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
               old_point_count,new_point_count)
          do j = 1,new_num_zones
-            star%light_burn%deuterium_burning_rate_start(j) = star%prev%old_temperature(j)
+            star%light_burn%deuterium_burning_rate_start(j) = star%prev%logT_start(j)
          end do
       endif
 ! NOW FIND RUN OF P,R,L,T,AND RHO IN THAT ORDER FOR THE NEW POINTS.
 
-      call osplin(star%prev%old_shell_mass,star%prev%old_pressure,star%log_mass,star%logP, &
+      call osplin(star%prev%old_shell_mass,star%prev%logP_start,star%log_mass,star%logP, &
            old_point_count,new_point_count)
-      call osplin(star%prev%old_shell_mass,star%prev%old_radius,star%log_mass,star%logR, &
+      call osplin(star%prev%old_shell_mass,star%prev%logR_start,star%log_mass,star%logR, &
            old_point_count,new_point_count)
-      call osplin(star%prev%old_shell_mass,star%prev%old_luminosity,star%log_mass,star%luminosity_lsun, &
+      call osplin(star%prev%old_shell_mass,star%prev%luminosity_lsun_start,star%log_mass,star%luminosity_lsun, &
            old_point_count,new_point_count)
-      call osplin(star%prev%old_shell_mass,star%prev%old_temperature,star%log_mass,star%logT, &
+      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%logT, &
            old_point_count,new_point_count)
-      call osplin(star%prev%old_shell_mass,star%prev%old_density,star%log_mass,star%logRho, &
+      call osplin(star%prev%old_shell_mass,star%prev%logRho_start,star%log_mass,star%logRho, &
            old_point_count,new_point_count)
 
 ! FOR ROTATING MODELS FIND THE NEW RUN OF OMEGA,J/M,FP,FT,R0,AND ETA2.
@@ -782,8 +782,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
          write(idebug,920) (i,star%log_mass(i),star%logP(i), &
               star%logT(i),star%logR(i),star%luminosity_lsun(i), &
               x_new(i),z_new(i),star%xa(9,i),i,star%prev%old_shell_mass(i), &
-              star%prev%old_pressure(i),star%prev%old_temperature(i),star%prev%old_radius(i), &
-              star%prev%old_luminosity(i),star%xa(1,i),star%xa(3,i), &
+              star%prev%logP_start(i),star%prev%logT_start(i),star%prev%logR_start(i), &
+              star%prev%luminosity_lsun_start(i),star%xa(1,i),star%xa(3,i), &
               star%xa(9,i), i = 1,min_common_count)
   920    format( 2(1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3) )
          if (star%nz.gt.min_common_count) then
@@ -795,8 +795,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
   930       format( 1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
          else if (new_num_zones.gt.min_common_count) then
             min_common_count = min_common_count + 1
-            write(idebug,940)(i,star%prev%old_shell_mass(i),star%prev%old_pressure(i), &
-                 star%prev%old_temperature(i),star%prev%old_radius(i),star%prev%old_luminosity(i), &
+            write(idebug,940)(i,star%prev%old_shell_mass(i),star%prev%logP_start(i), &
+                 star%prev%logT_start(i),star%prev%logR_start(i),star%prev%luminosity_lsun_start(i), &
                  star%xa(1,i),star%xa(3,i),star%xa(9,i), &
                  i=min_common_count,new_num_zones)
   940       format(65X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
@@ -808,11 +808,11 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! TRANSFER NEW POINTS.
       do j = 1,new_num_zones
        star%log_mass(j) = star%prev%old_shell_mass(j)
-       star%logP(j) = star%prev%old_pressure(j)
-       star%logT(j) = star%prev%old_temperature(j)
-       star%logR(j) = star%prev%old_radius(j)
-       star%luminosity_lsun(j) = star%prev%old_luminosity(j)
-       star%logRho(j) = star%prev%old_density(j)
+       star%logP(j) = star%prev%logP_start(j)
+       star%logT(j) = star%prev%logT_start(j)
+       star%logR(j) = star%prev%logR_start(j)
+       star%luminosity_lsun(j) = star%prev%luminosity_lsun_start(j)
+       star%logRho(j) = star%prev%logRho_start(j)
  1000 continue
       end do
       if (rotation_active) then
@@ -911,8 +911,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           star%run%old_moment_of_inertia(i) = star%i_rot(i)
           star%run%old_eta_squared(i) = star%eta_squared(i)
           star%run%old_mean_radius(i) = star%mean_radius(i)
-          star%prev%old_convective_flag(i) = star%convective_flag(i)
-          star%prev%old_cz_flag(i) = am_transport_convective_flag(i)
+          star%prev%convective_flag_start(i) = star%convective_flag(i)
+          star%prev%cz_flag_start(i) = am_transport_convective_flag(i)
 ! MHP 10/91 J/M STORED IN HJX FOR I/O USE.
             star%run%old_specific_angular_momentum(i) = star%j_rot(i)
  1130    continue

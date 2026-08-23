@@ -369,7 +369,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
                star%j_rot(zone_index) = specific_angular_momentum_saved(zone_index)
                star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%thermo%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
                do species_index = 1,num_species_tracked
-                  star%xa(species_index,zone_index) = star%prev%old_composition(species_index,zone_index)
+                  star%xa(species_index,zone_index) = star%prev%xa_start(species_index,zone_index)
    70          continue
                end do
    80       continue
@@ -385,7 +385,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       if(.not.burs_extrapolation_active)then
          do zone_index = 1,star%nz
             do species_index = 1,11
-                  star%prev%old_composition(species_index,zone_index) = star%xa(species_index,zone_index)
+                  star%prev%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
             end do
          end do
       endif
@@ -462,13 +462,13 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          if(.not.instability_transport_active.or.fully_convective_flag)then
             do zone_index = 1,star%nz
                do species_index = 12,15
-                  star%prev%old_composition(species_index,zone_index) = star%xa(species_index,zone_index)
+                  star%prev%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
                end do
             end do
          else if(.not.burs_extrapolation_active)then
             do zone_index = 1,star%nz
                do species_index = 12,15
-                  star%prev%old_composition(species_index,zone_index) = star%xa(species_index,zone_index)
+                  star%prev%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
                end do
             end do
          endif

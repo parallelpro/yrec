@@ -155,12 +155,12 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
             min_comp_for_check = max(1.0d-6* &
                  composition(species_index,num_zones),1.0d-20)
             do zone_index = 1,num_zones
-               if(star%prev%old_composition(species_index,zone_index).lt. &
+               if(star%prev%xa_start(species_index,zone_index).lt. &
                     min_comp_for_check)cycle
                fractional_comp_change = &
                     (composition(species_index,zone_index)- &
-                    star%prev%old_composition(species_index,zone_index))/ &
-                    star%prev%old_composition(species_index,zone_index)
+                    star%prev%xa_start(species_index,zone_index))/ &
+                    star%prev%xa_start(species_index,zone_index)
                if(abs(fractional_comp_change).gt. &
                     abs(max_fractional_comp_change)) then
                   max_fractional_comp_change = fractional_comp_change
@@ -176,7 +176,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
    50 format(' MAX FRAC.COMP.CHANGE',1pe12.3,' SPECIES',i2, &
               ' AT PT.',i5)
          if(use_extended_composition)write(*,60) &
-              composition(14,num_zones),star%prev%old_composition(14,num_zones)
+              composition(14,num_zones),star%prev%xa_start(14,num_zones)
    60 format(5x,'NEW SURFACE LI',1pe14.4,'OLD VALUE',e14.4)
       endif
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.

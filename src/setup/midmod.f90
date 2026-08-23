@@ -139,12 +139,12 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 ! PRIOR STEP.
       if (first_call) then
          do j = 1,star%nz
-            star%rot%convective_flag_prev(j) = star%prev%old_convective_flag(j)
-            star%rot%radius_prev(j) = star%prev%old_radius(j)
+            star%rot%convective_flag_prev(j) = star%prev%convective_flag_start(j)
+            star%rot%radius_prev(j) = star%prev%logR_start(j)
             star%rot%del_grad_diff_prev(j) = star%rot%old_del_adiabatic_mix(j)-star%rot%old_del_radiative_mix(j)
             star%mix_phys%amum(j) = star%rot%old_amu(j)
             do i = 1,num_species_tracked
-               star%xa(i,j) = star%prev%old_composition(i,j)
+               star%xa(i,j) = star%prev%xa_start(i,j)
    10       continue
             end do
    20    continue
@@ -160,16 +160,16 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !  INTERPOLATE IN THE MODEL VARIABLES AND AUXILLARY PHYSICS.
       step_fraction_ratio = sub_timestep/full_timestep
       do j = 1,star%nz
-         log_density_mid(j) = star%prev%old_density(j) + &
-              time_fraction*(star%logRho(j)-star%prev%old_density(j))
-         log_luminosity_mid(j) = star%prev%old_luminosity(j) + &
-              time_fraction*(star%luminosity_lsun(j)-star%prev%old_luminosity(j))
-         log_pressure_mid(j) = star%prev%old_pressure(j) + &
-              time_fraction*(star%logP(j)-star%prev%old_pressure(j))
-         log_radius_mid(j) = star%prev%old_radius(j) + &
-              time_fraction*(star%logR(j)-star%prev%old_radius(j))
-         log_temperature_mid(j) = star%prev%old_temperature(j) + &
-              time_fraction*(star%logT(j)-star%prev%old_temperature(j))
+         log_density_mid(j) = star%prev%logRho_start(j) + &
+              time_fraction*(star%logRho(j)-star%prev%logRho_start(j))
+         log_luminosity_mid(j) = star%prev%luminosity_lsun_start(j) + &
+              time_fraction*(star%luminosity_lsun(j)-star%prev%luminosity_lsun_start(j))
+         log_pressure_mid(j) = star%prev%logP_start(j) + &
+              time_fraction*(star%logP(j)-star%prev%logP_start(j))
+         log_radius_mid(j) = star%prev%logR_start(j) + &
+              time_fraction*(star%logR(j)-star%prev%logR_start(j))
+         log_temperature_mid(j) = star%prev%logT_start(j) + &
+              time_fraction*(star%logT(j)-star%prev%logT_start(j))
 !        DO 30 I = 1,IEND
 !           HCOMP(I,J)=HCOMP(I,J)+FAC2*HCOMPM(I,J)
 !           HCOMPP(I,J) = HCOMP(I,J)
@@ -283,7 +283,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = cz_zone_bottom,j-1
                         radius_interp = star%rot%radius_prev(ii)+ &
-                             convective_fraction*(star%logR(ii)-star%prev%old_radius(ii))
+                             convective_fraction*(star%logR(ii)-star%prev%logR_start(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*star%dm(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
@@ -336,7 +336,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = j+1,cz_zone_top
                         radius_interp = star%rot%radius_prev(ii)+ &
-                             convective_fraction*(star%logR(ii)-star%prev%old_radius(ii))
+                             convective_fraction*(star%logR(ii)-star%prev%logR_start(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*star%dm(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
@@ -392,7 +392,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          end do
       end do
 ! MHP 05/02 ADDED DEUTERIUM BURNING
-      if (star%prev%old_composition(12,star%nz).gt.1.0D-14) then
+      if (star%prev%xa_start(12,star%nz).gt.1.0D-14) then
 ! INCREMENT THE TIMESTEP
          if (first_call) then
             do i = 1,star%nz

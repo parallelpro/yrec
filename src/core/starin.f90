@@ -1140,14 +1140,14 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! HPOLD IS USED TO LIMIT THE TIMESTEP BASED ON CHANGES FROM
 ! MODEL TO MODEL IN P,T,R,L.
       do i = 1,star%nz
-         star%prev%old_pressure(i) = star%logP(i)
-         star%prev%old_temperature(i) = star%logT(i)
-         star%prev%old_radius(i) = star%logR(i)
-         star%prev%old_luminosity(i) = star%luminosity_lsun(i)
+         star%prev%logP_start(i) = star%logP(i)
+         star%prev%logT_start(i) = star%logT(i)
+         star%prev%logR_start(i) = star%logR(i)
+         star%prev%luminosity_lsun_start(i) = star%luminosity_lsun(i)
 !  JVS 04/14 Added Teff to the list of saved values
-         star%prev%old_teff = star%log_Teff
+         star%prev%log_Teff_start = star%log_Teff
 !  JVS 05/25 Added model number to list of saved values
-       star%prev%old_num_zones = star%nz
+       star%prev%nz_start = star%nz
  710  continue
       end do
       if (rotation_active) then

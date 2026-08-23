@@ -260,7 +260,7 @@ subroutine run_yrec(ierr)
 ! read in the initial model here
 ! STARIN also calls RSCALE to perform rescaling if requested
 !        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-       call starin(star%evo%timestep_yr, star%evo%delta_time, star%evo%hydrogen_dt, star%evo%trial_sign_flag, &
+       call starin(star%evo%timestep_yr, star%evo%dt, star%evo%hydrogen_dt, star%evo%trial_sign_flag, &
             star%evo%ikut_flag, star%evo%istore_flag, star%evo%model_diverged_flag, &
             star%evo%recompute_envelope_triangle, nk, star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, &
             star%evo%total_angular_momentum, star%evo%total_rotational_ke, &
@@ -445,13 +445,13 @@ subroutine run_yrec(ierr)
 ! JVS 04/14 Added Teffl to passed variables
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(star%evo%delta_time,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
+       call htimer(star%evo%dt,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
             star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,nk, &
             star%logP,star%logR,star%omega,star%evo%max_domega_frac,star%evo%h_shell_zone_begin, &
             star%log_Teff)
 
-       star%evo%delta_time_saved = star%evo%delta_time
+       star%evo%dt_saved = star%evo%dt
 ! zero out entropy terms.
          do i = 1,star%nz
             star%run%temperature_entropy_term(i) = 0.0D0

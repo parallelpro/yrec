@@ -93,7 +93,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       do zone_idx = 1, num_zones
          do species_idx = 1, num_species
             composition_saved(species_idx,zone_idx) = &
-                 star%prev%old_composition(species_idx,zone_idx)
+                 star%prev%xa_start(species_idx,zone_idx)
          end do
          do species_idx = 1, 3
             composition_kept(species_idx,zone_idx) = &
@@ -111,7 +111,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
             do species_idx = 1, num_species
                composition(species_idx,zone_idx) = &
                     composition_saved(species_idx,zone_idx)
-               star%prev%old_composition(species_idx,zone_idx) = &
+               star%prev%xa_start(species_idx,zone_idx) = &
                     composition_saved(species_idx,zone_idx)
             end do
          end do
@@ -140,7 +140,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
             end if
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species
-                  star%prev%old_composition(species_idx,zone_idx) = &
+                  star%prev%xa_start(species_idx,zone_idx) = &
                        composition(species_idx,zone_idx)
                end do
             end do
@@ -150,7 +150,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
          if (converged) then
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species
-                  star%prev%old_composition(species_idx,zone_idx) = &
+                  star%prev%xa_start(species_idx,zone_idx) = &
                        composition(species_idx,zone_idx)
                end do
             end do

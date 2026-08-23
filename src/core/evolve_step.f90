@@ -171,7 +171,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       retry_step: do
             if (star%evo%model_diverged_flag) then
 !              CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-             call starin(star%evo%timestep_yr, star%evo%delta_time, star%evo%hydrogen_dt, &
+             call starin(star%evo%timestep_yr, star%evo%dt, star%evo%hydrogen_dt, &
                   star%evo%trial_sign_flag, star%evo%ikut_flag, star%evo%istore_flag, &
                   star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, nk, &
                   star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, star%evo%total_angular_momentum, &
@@ -205,7 +205,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! ADD MASS LOSS CALCULATION
-               call massloss(star%log_L,star%run%dage,star%evo%delta_time,star%xa,star%logRho,star%j_rot,star%logP,star%logR, &
+               call massloss(star%log_L,star%run%dage,star%evo%dt,star%xa,star%logRho,star%j_rot,star%logP,star%logR, &
                              star%log_mass,star%m,star%dm,star%log_total_mass,star%logT,star%envelope_cz_bottom_index,star%evo%recompute_envelope_triangle, &
                              star%nz,star%omega,star%star_mass,star%log_Teff,target_envelope_mass,new_atmosphere_fit_needed)
 ! STORE COMPOSITION MATRIX AT THE BEGINNING OF THE TIMESTEP.
@@ -213,7 +213,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                if (use_extended_composition) num_species=15
                do i = 1,star%nz
                   do j = 1,num_species
-                     star%prev%old_composition(j,i) = star%xa(j,i)
+                     star%prev%xa_start(j,i) = star%xa(j,i)
    32             continue
                   end do
    33          continue
@@ -223,7 +223,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! star% inside it) because crrect passes its own local array there --
 ! storage deliberately separate from main's. main passes the star copy
 ! explicitly.
-               call mix(star%evo%delta_time, iteration_level, star%evo%timestep_yr, &
+               call mix(star%evo%dt, iteration_level, star%evo%timestep_yr, &
                     star%core_cz_top_index, star%envelope_cz_bottom_index, &
                     star%mixed_zone_bounds_no_overshoot, jerr)
                if (jerr /= 0) then
@@ -231,7 +231,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                   ierr = jerr
                   return
                end if
-             star%evo%timestep_yr = star%evo%delta_time/seconds_per_year
+             star%evo%timestep_yr = star%evo%dt/seconds_per_year
              star%run%dage = star%run%dage + 1.0D-9*star%evo%timestep_yr
             endif
 !***MHP 1/04 OPACITY TEST
@@ -265,16 +265,16 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             else
 ! save old model for PTIME
                do i=1, star%nz
-                  star%prev%old_pressure(i) = star%logP(i)
-                  star%prev%old_temperature(i) = star%logT(i)
-                  star%prev%old_radius(i) = star%logR(i)
-                  star%prev%old_luminosity(i) = star%luminosity_lsun(i)
-                  star%prev%old_density(i) = star%logRho(i)
+                  star%prev%logP_start(i) = star%logP(i)
+                  star%prev%logT_start(i) = star%logT(i)
+                  star%prev%logR_start(i) = star%logR(i)
+                  star%prev%luminosity_lsun_start(i) = star%luminosity_lsun(i)
+                  star%prev%logRho_start(i) = star%logRho(i)
                end do
 ! JVS 04/14 Save Teff as well
-               star%prev%old_teff = star%log_Teff
+               star%prev%log_Teff_start = star%log_Teff
 !  JVS 05/25 Added model number to list of saved values
-           star%prev%old_num_zones = star%nz
+           star%prev%nz_start = star%nz
 
           endif
 ! store starting distribution of rotational kinetic energy.
@@ -305,12 +305,12 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! LFINI = T if model has converged
 ! LARGE = T if model has diverged
           if (lnew0) star%evo%recompute_envelope_triangle = .true.
-            if (.not.evolve_model_flag) star%evo%delta_time = -dabs(star%evo%delta_time)
+            if (.not.evolve_model_flag) star%evo%dt = -dabs(star%evo%dt)
             fcorr = dabs(fcorr0) - fcorri
             iterations_done = 0
             star%evo%model_diverged_flag = .false.
             converged = .false.
-            if (.not.lnews .or. star%evo%delta_time.le.0.0D0) then
+            if (.not.lnews .or. star%evo%dt.le.0.0D0) then
                do i = 1,star%nz
 ! zero entropy terms
                   star%log_temperature_delta(i) = 0.0D0
@@ -327,10 +327,10 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! use the rate of change in the previous model to estimate the new
 ! run of structure variables.
                do i = 1,star%nz
-                  delta_temp_step = star%run%temperature_entropy_term(i)*star%evo%delta_time
-                  delta_pressure_step = star%run%pressure_entropy_term(i)*star%evo%delta_time
-                  delta_lum_step = star%luminosity_lsun(i)*star%run%luminosity_entropy_term(i)*star%evo%delta_time
-                  delta_radius_step = star%run%radius_entropy_term(i)*star%evo%delta_time
+                  delta_temp_step = star%run%temperature_entropy_term(i)*star%evo%dt
+                  delta_pressure_step = star%run%pressure_entropy_term(i)*star%evo%dt
+                  delta_lum_step = star%luminosity_lsun(i)*star%run%luminosity_entropy_term(i)*star%evo%dt
+                  delta_radius_step = star%run%radius_entropy_term(i)*star%evo%dt
                   star%log_temperature_delta(i) = delta_temp_step
                   star%log_pressure_delta(i) = delta_pressure_step
                   star%logT(i) = star%logT(i) + delta_temp_step
@@ -350,7 +350,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             recompute_surface_bc = .false.
 ! CALL TO CRRECT - ADDED ITERATION LEVEL
             iteration_level = 1
-            call crrect(star%evo%delta_time, max_iterations, converged, &
+            call crrect(star%evo%dt, max_iterations, converged, &
                  star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
                  star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
                  star%evo%istore_flag, in_atmosphere, want_derivatives, &
@@ -363,7 +363,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             recompute_surface_bc = .true.
             max_iterations = niter2
             iteration_level = 2
-            call crrect(star%evo%delta_time, max_iterations, converged, &
+            call crrect(star%evo%dt, max_iterations, converged, &
                  star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
                  star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
                  star%evo%istore_flag, in_atmosphere, want_derivatives, &
@@ -373,12 +373,12 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             if (star%evo%model_diverged_flag) cycle retry_step
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
 ! IMPROVED FIRST GUESS AT THE STRUCTURE FOR THE NEXT MODEL IF LNEWS=T.
-            if (star%evo%delta_time.gt.0.0D0) then
+            if (star%evo%dt.gt.0.0D0) then
                do ii = 1,star%nz
-                  star%run%temperature_entropy_term(ii)=star%log_temperature_delta(ii)/star%evo%delta_time
-                  star%run%pressure_entropy_term(ii)=star%log_pressure_delta(ii)/star%evo%delta_time
-                  star%run%luminosity_entropy_term(ii)=2.0D0*(star%luminosity_lsun(ii)-star%prev%old_luminosity(ii))/(star%luminosity_lsun(ii)+star%prev%old_luminosity(ii))/star%evo%delta_time
-                  star%run%radius_entropy_term(ii)=(star%logR(ii)-star%prev%old_radius(ii))/star%evo%delta_time
+                  star%run%temperature_entropy_term(ii)=star%log_temperature_delta(ii)/star%evo%dt
+                  star%run%pressure_entropy_term(ii)=star%log_pressure_delta(ii)/star%evo%dt
+                  star%run%luminosity_entropy_term(ii)=2.0D0*(star%luminosity_lsun(ii)-star%prev%luminosity_lsun_start(ii))/(star%luminosity_lsun(ii)+star%prev%luminosity_lsun_start(ii))/star%evo%dt
+                  star%run%radius_entropy_term(ii)=(star%logR(ii)-star%prev%logR_start(ii))/star%evo%dt
  27            continue
                end do
             endif
@@ -386,7 +386,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             recompute_surface_bc = .false.
             max_iterations = niter3
             iteration_level = 3
-            call crrect(star%evo%delta_time, max_iterations, converged, &
+            call crrect(star%evo%dt, max_iterations, converged, &
                  star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
                  star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
                  star%evo%istore_flag, in_atmosphere, want_derivatives, &
@@ -406,7 +406,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                do i = 1,star%nz
                   star%run%orig_specific_angular_momentum(i) = star%j_rot(i)
                   do j = 1,15
-                     star%run%orig_composition(j,i) = star%prev%old_composition(j,i)
+                     star%run%orig_composition(j,i) = star%prev%xa_start(j,i)
                   end do
                end do
             endif
@@ -416,7 +416,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                if (itrot.gt.1) then
                   do i = 1,star%nz
                      do j = 1,15
-                        star%prev%old_composition(j,i) = star%run%orig_composition(j,i)
+                        star%prev%xa_start(j,i) = star%run%orig_composition(j,i)
                      end do
                   end do
                endif
@@ -431,7 +431,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             max_iterations = niter4
             recompute_surface_bc=.false.
             iteration_level = 4
-            call crrect(star%evo%delta_time, max_iterations, converged, &
+            call crrect(star%evo%dt, max_iterations, converged, &
                  star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
                  star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
                  star%evo%istore_flag, in_atmosphere, want_derivatives, &
@@ -482,7 +482,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! FIND THE NEW RUN OF OMEGA
 ! JENV0 ADDED TO SR CALL.
                wind_loss_active = ljdot0
-               call getw(star%evo%delta_time, star%evo%max_domega_frac, wind_loss_active, &
+               call getw(star%evo%dt, star%evo%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
                if (jerr /= 0) then
                ! 2026 (phase five, step B): propagate instead of stopping
@@ -501,7 +501,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%evo%h_shell_zone_begin,star%evo%h_shell_end_index,star%evo%h_shell_midpoint_zone, &
               star%evo%has_h_shell)
 ! PERFORM LIGHT ELEMENT BURNING
-         if (use_extended_composition .and. star%model_number.ge.0 .and. star%evo%delta_time.gt.0.0D0) then
+         if (use_extended_composition .and. star%model_number.ge.0 .and. star%evo%dt.gt.0.0D0) then
 ! ONLY FOR MODELS WITHOUT ROTATION, OR WITHOUT ROTATIONAL MIXING.
             if (.not.rotation_active .or. .not.instability_transport_active) then
 ! FIND CONVECTION ZONE DEPTH AT THE END OF THE TIME STEP.
@@ -518,7 +518,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! FIND BURNING RATES AT THE END OF THE TIME STEP.
                call lirate88(star%xa,star%logRho,star%logT,star%nz,2)
 !                CALL LIBURN(DELTS,HCOMP,HD,HR,HS1,HS2,HT,JENV1,JENV0,M)  ! KC 2025-05-31
-               call liburn(star%evo%delta_time,star%xa,star%logR,star%m,star%dm,star%logT,envelope_cz_zone_end,envelope_cz_zone_prev,star%nz)
+               call liburn(star%evo%dt,star%xa,star%logR,star%m,star%dm,star%logT,envelope_cz_zone_end,envelope_cz_zone_prev,star%nz)
             endif
          endif
 ! MHP 07/02 RESTORE PRIOR FITTING POINT IF MASS ACCRETION IS BEING
@@ -535,11 +535,11 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! DETERMINE TIMESTEP FOR NEXT MODEL
 ! HTIMER ALSO LOCATES THE H-BURNING SHELL
 ! JVS 04/14 added teffl to passed htimer variables
-       star%evo%delta_time = dabs(star%evo%delta_time)
-       star%evo%delta_time_saved = star%evo%delta_time
+       star%evo%dt = dabs(star%evo%dt)
+       star%evo%dt_saved = star%evo%dt
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *        JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(star%evo%delta_time,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
+       call htimer(star%evo%dt,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
               star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,nk,star%logP,star%logR,star%omega, &
               star%evo%max_domega_frac,star%evo%h_shell_zone_begin,star%log_Teff)
 ! IF EVOLVING TO A GIVEN AGE AND KIND CARD IS DONE, AVOID ZEROING OUT
@@ -548,13 +548,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! ONLY IF A FIXED END AGE IS USED, NOT FOR OTHER STOPS
        if (end_age_stop_active(nk) .and. target_end_age(nk).gt.0.0D0) then
           if (target_end_age(nk)-star%run%dage*1.0D9.le.1.0D0) then
-             star%evo%delta_time = max(star%evo%delta_time_saved,1.0D-3*star%run%dage*seconds_per_year)
-             star%evo%timestep_yr = star%evo%delta_time/seconds_per_year
+             star%evo%dt = max(star%evo%dt_saved,1.0D-3*star%run%dage*seconds_per_year)
+             star%evo%timestep_yr = star%evo%dt/seconds_per_year
           else
-             star%evo%delta_time_saved = star%evo%delta_time
+             star%evo%dt_saved = star%evo%dt
           endif
        else
-          star%evo%delta_time_saved = star%evo%delta_time
+          star%evo%dt_saved = star%evo%dt
        endif
        if (rescale_kind(nk).ne.2) star%model_number = star%model_number+1
 ! 2026 (phase four, step 5): compute the output diagnostics in the

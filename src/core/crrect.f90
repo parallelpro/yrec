@@ -203,7 +203,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
          if (use_extended_composition) num_species = 15
          do i = 1,star%nz
             do j = 1,num_species
-               star%xa(j,i) = star%prev%old_composition(j,i)
+               star%xa(j,i) = star%prev%xa_start(j,i)
     1       continue
             end do
     2    continue

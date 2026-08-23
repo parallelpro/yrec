@@ -101,7 +101,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
             do species_idx = 1, 11
                zone_avg_abundance(species_idx) = &
                     zone_avg_abundance(species_idx) + &
-                    star%prev%old_composition(species_idx,zone_idx)*shell_mass(zone_idx)
+                    star%prev%xa_start(species_idx,zone_idx)*shell_mass(zone_idx)
             end do
          end do
          do species_idx = 1, 11
@@ -111,7 +111,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       else
          do species_idx = 1, 11
             zone_avg_abundance(species_idx) = &
-                 star%prev%old_composition(species_idx,zone_begin)
+                 star%prev%xa_start(species_idx,zone_begin)
          end do
       end if
       if (zone_begin.eq.zone_end) then
@@ -296,9 +296,9 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
            hydrogen_fraction_new, helium3_fraction_new, deuterium_change
 
       if (zone_begin.eq.zone_end) then
-         hydrogen_fraction = star%prev%old_composition(1,zone_begin)
-         deuterium_fraction = star%prev%old_composition(12,zone_begin)
-         helium3_fraction = star%prev%old_composition(4,zone_begin)
+         hydrogen_fraction = star%prev%xa_start(1,zone_begin)
+         deuterium_fraction = star%prev%xa_start(12,zone_begin)
+         helium3_fraction = star%prev%xa_start(4,zone_begin)
          rate_start = star%light_burn%deuterium_burning_rate_start(zone_begin)
          rate_end = star%light_burn%deuterium_burning_rate(zone_begin)
       else
@@ -315,11 +315,11 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
             rate_end_sum = rate_end_sum + &
                  shell_mass(zone_idx)*star%light_burn%deuterium_burning_rate(zone_idx)
             hydrogen_fraction = hydrogen_fraction + &
-                 star%prev%old_composition(1,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(1,zone_idx)*shell_mass(zone_idx)
             deuterium_fraction = deuterium_fraction + &
-                 star%prev%old_composition(12,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(12,zone_idx)*shell_mass(zone_idx)
             helium3_fraction = helium3_fraction + &
-                 star%prev%old_composition(4,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(4,zone_idx)*shell_mass(zone_idx)
          end do
          rate_start = rate_start_sum/total_shell_mass
          rate_end = rate_end_sum/total_shell_mass
@@ -473,9 +473,9 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
 ! the units used elsewhere for the burning rates.
       timestep_gyr = timestep*1.0d-9/seconds_per_year
       if(zone_begin.eq.zone_end)then
-         hydrogen_fraction = star%prev%old_composition(1,zone_begin)
-         deuterium_fraction = star%prev%old_composition(12,zone_begin)
-         helium3_fraction = star%prev%old_composition(4,zone_begin)
+         hydrogen_fraction = star%prev%xa_start(1,zone_begin)
+         deuterium_fraction = star%prev%xa_start(12,zone_begin)
+         helium3_fraction = star%prev%xa_start(4,zone_begin)
          rate_start = deuterium_rate_start(zone_begin)
          rate_end = deuterium_rate_end(zone_begin)
       else
@@ -492,11 +492,11 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
             rate_end_sum = rate_end_sum + &
                  shell_mass(zone_idx)*deuterium_rate_end(zone_idx)
             hydrogen_fraction = hydrogen_fraction + &
-                 star%prev%old_composition(1,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(1,zone_idx)*shell_mass(zone_idx)
             deuterium_fraction = deuterium_fraction + &
-                 star%prev%old_composition(12,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(12,zone_idx)*shell_mass(zone_idx)
             helium3_fraction = helium3_fraction + &
-                 star%prev%old_composition(4,zone_idx)*shell_mass(zone_idx)
+                 star%prev%xa_start(4,zone_idx)*shell_mass(zone_idx)
          end do
          rate_start = rate_start_sum/total_shell_mass
          rate_end = rate_end_sum/total_shell_mass
@@ -2167,11 +2167,11 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          else
 ! STARTING CZ DEPTH
             if(star%light_burn%cz_base_radius_prev.eq.0.0d0)then
-               star%light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*star%prev%old_radius(env_cz_zone_old)) &
-                        +exp(ln10*star%prev%old_radius(env_cz_zone_old-1)))
+               star%light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*star%prev%logR_start(env_cz_zone_old)) &
+                        +exp(ln10*star%prev%logR_start(env_cz_zone_old-1)))
                search_radius = star%light_burn%cz_base_radius_prev - star%light_burn%pressure_scale_height_start
                do zone_idx = env_cz_zone_old-1,1,-1
-                  shell_radius = exp(ln10*star%prev%old_radius(zone_idx))
+                  shell_radius = exp(ln10*star%prev%logR_start(zone_idx))
                   if(shell_radius.lt.search_radius)then
                      cz_base_zone_old = zone_idx + 1
                      exit
@@ -2191,7 +2191,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
                shell_radius = exp(ln10*radius(zone_idx))
                if(shell_radius.lt.search_radius)then
                   cz_base_zone = zone_idx + 1
-                  delta_radius = exp(ln10*star%prev%old_radius(zone_idx+1))-shell_radius
+                  delta_radius = exp(ln10*star%prev%logR_start(zone_idx+1))-shell_radius
                   cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                   cz_base_frac = max(-0.5d0,cz_base_frac)
                   cz_base_frac = min(0.5d0,cz_base_frac)
@@ -2709,11 +2709,11 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          else
 ! STARTING CZ DEPTH
             if(star%light_burn%cz_base_radius_prev.eq.0.0d0)then
-               star%light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*star%prev%old_radius(env_cz_zone_old)) &
-                        +exp(ln10*star%prev%old_radius(env_cz_zone_old-1)))
+               star%light_burn%cz_base_radius_prev = 0.5d0*(exp(ln10*star%prev%logR_start(env_cz_zone_old)) &
+                        +exp(ln10*star%prev%logR_start(env_cz_zone_old-1)))
                search_radius = star%light_burn%cz_base_radius_prev - star%light_burn%pressure_scale_height_start
                do zone_idx = env_cz_zone_old-1,1,-1
-                  shell_radius = exp(ln10*star%prev%old_radius(zone_idx))
+                  shell_radius = exp(ln10*star%prev%logR_start(zone_idx))
                   if(shell_radius.lt.search_radius)then
                      cz_base_zone_old = zone_idx + 1
                      exit
@@ -2733,7 +2733,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
                shell_radius = exp(ln10*radius(zone_idx))
                if(shell_radius.lt.search_radius)then
                   cz_base_zone = zone_idx + 1
-                  delta_radius = exp(ln10*star%prev%old_radius(zone_idx+1))-shell_radius
+                  delta_radius = exp(ln10*star%prev%logR_start(zone_idx+1))-shell_radius
                   cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                   cz_base_frac = max(-0.5d0,cz_base_frac)
                   cz_base_frac = min(0.5d0,cz_base_frac)
@@ -3008,13 +3008,13 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
       double precision :: t9a, c56
 
       do zone_idx = 1,num_zones
-         if(log_temperature(zone_idx).lt.tlim.and.star%prev%old_temperature(zone_idx).lt.tlim)exit
+         if(log_temperature(zone_idx).lt.tlim.and.star%prev%logT_start(zone_idx).lt.tlim)exit
          if(use_current_model.eq.1)then
             rhox = exp(ln10*log_density(zone_idx))*composition(1,zone_idx)
             t9=exp(ln10*(log_temperature(zone_idx)-9.0d0))
          else
-            rhox = exp(ln10*star%prev%old_density(zone_idx))*star%prev%old_composition(1,zone_idx)
-            t9=exp(ln10*(star%prev%old_temperature(zone_idx)-9.0d0))
+            rhox = exp(ln10*star%prev%logRho_start(zone_idx))*star%prev%xa_start(1,zone_idx)
+            t9=exp(ln10*(star%prev%logT_start(zone_idx)-9.0d0))
          endif
          t913=t9**cc13
          t923=t913*t913

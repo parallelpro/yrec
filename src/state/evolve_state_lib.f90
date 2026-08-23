@@ -31,8 +31,8 @@ module evolve_state_lib
                  saved_pulse_output_flag
             integer :: h_shell_end_index, h_shell_midpoint_zone, &
                  h_shell_zone_begin, ikut_flag, istore_flag
-            double precision :: convective_velocity, delta_time, &
-                 delta_time_saved, dlnrho_dlnp, dlnrho_dlnt, hydrogen_dt, &
+            double precision :: convective_velocity, dt, &
+                 dt_saved, dlnrho_dlnp, dlnrho_dlnt, hydrogen_dt, &
                  max_domega_frac, path_length_sq, prev_age, prev_log_l, &
                  prev_log_teff, timestep_yr, total_angular_momentum, &
                  total_rotational_ke, trial_sign_flag

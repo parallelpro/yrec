@@ -965,3 +965,29 @@ modernization. Method: same discipline as the save campaign
 (per-line quote-guarded renames, dual gates per batch). Fold
 star%evo / star%job in as nested sub-structs alongside it (MESA
 one-root convergence; MESA's own s% job precedent).
+
+## MESA-convention pass (2026-08-22, DONE; user directive)
+
+One root, MESA vocabulary:
+
+- star%job (type star_job) and star%evo (type evolve_state) are
+  nested sub-structs of star_info; the module-level instances are
+  gone and yrec_reset's star0 snapshot covers everything.
+- star_info members renamed where MESA has a name (semantics
+  verified per member first): nz, xa, logT/logRho/logP/logR (log10,
+  matching MESA's log prefix -- ln* would be natural log), log_Teff,
+  log_L, star_mass (Msun), m/dm (grams, = s%m/s%dm), j_rot, i_rot,
+  fp_rot, ft_rot. prev-model members carry MESA's _start suffix
+  (logT_start, xa_start, nz_start, ...). evo%dt (seconds, = s%dt).
+- Deliberately NOT renamed: members with no MESA equivalent keep
+  descriptive spellings (luminosity_lsun, convective_flag, the CZ
+  indices, log_mass); prev%old_shell_mass keeps its name because it
+  is a misnamed REZONING SCRATCH holding log-mass coordinates (see
+  the oldmod_lib comment) -- renaming it dm_start would launder the
+  lie; local/dummy variables in physics routines are independent
+  storage and out of scope (opportunistic follow-up, not a campaign).
+
+Method: %-qualified quote-guarded renames only, ownership verified
+unique per member first, make clean before every gate (type
+changes), dual gates per batch, full battery at the end (81/81
+strict byte-diff, 8/8 local tests incl. test_pyyrec).
