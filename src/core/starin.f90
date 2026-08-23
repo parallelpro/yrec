@@ -261,6 +261,51 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       dlnrho_dlnt = -1.0d0
       dlnrho_dlnp = 1.0d0
 
+      call acquire_starting_model
+      if (ierr /= 0) return
+      call extend_core_toward_center
+      if (ierr /= 0) return
+      call rescale_and_refit_envelope
+      if (ierr /= 0) return
+!       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
+      call physic(star%fp_rot,star%ft_rot, &
+           star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun,star%logP, &
+           star%logR,star%log_mass,star%logT,star%convective_flag,star%nz, &
+           star%log_Teff, jerr)
+      if (jerr /= 0) then
+      ! 2026 (phase five, step B): propagate instead of stopping
+         ierr = jerr
+         return
+      end if
+      call ovrot(star%xa,star%logRho,star%logP,star%logR,star%log_mass, &
+                 star%logT,star%convective_flag,star%nz, &
+                 am_transport_convective_flag,radiative_zone_bounds, &
+                 convective_zone_bounds,num_radiative_zones, &
+                 num_convective_zones)
+! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP
+!       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
+      call gettau(star%xa,star%logR,star%logP,star%logRho, &
+                  star%m,star%logT,star%fp_rot, &
+                  star%ft_rot,star%log_Teff, &
+                  star%log_total_mass,star%log_L,star%nz,star%convective_flag, &
+                  env_struct%env_log10_radius)
+      star%turnover%convective_turnover_timescale_old = star%turnover%convective_turnover_timescale
+      star%turnover%pphot0 = star%turnover%pphot
+      star%turnover%fracstep = 0.5
+
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Obtain the starting model: reuse the model in memory (rescaling
+! the envelope mass when requested), or read + process the input
+! model file (YREC7 or MODEL2 layout, detected from its keyword),
+! check its mixing length / surface BC / CZ settings against the
+! user parameters, set up the rotation curve, and -- first model
+! of a run only -- apply the heavy-element mixture / isotope-ratio
+! alterations (isetmix / isetiso). Sets ierr on failure.
+subroutine acquire_starting_model
 ! Flag LFIRST(NK) tells where to get the starting stellar model for the current
 ! step (step NK).  If LFIRST(NK) is true, read in the starting stellarmodel from
 ! the file specified by LU IFIRST.  If LFIRST(NK) is false, as starting model use
@@ -514,6 +559,13 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       end if
       end if
       endif
+end subroutine acquire_starting_model
+
+! ---------------------------------------------------------------
+! If extend_core_inward is set, add central points inward of the
+! innermost shell using constant-epsilon, constant-density
+! stellar-structure estimates (spacing per hpttol).
+subroutine extend_core_toward_center
 
 !     The following code enables us to extend the model from the current
 !     inner most shell to a point ncloser to center, if flag LCORE is set.
@@ -610,6 +662,15 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
           star%nz = num_shells_extended
       end if
 ! End of code to extend core inward
+end subroutine extend_core_toward_center
+
+! ---------------------------------------------------------------
+! Rescale the first model when the kind card asks for it, then move
+! the envelope fitting point to the requested envelope mass --
+! deleting points (deeper new envelope) or integrating a fresh
+! envelope down to the new fitting mass (shallower), with EOS
+! re-evaluation at the surface point. Sets ierr on failure.
+subroutine rescale_and_refit_envelope
 
 ! PERFORM RESCALING OF FIRST MODEL IF REQUIRED
       if (rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
@@ -1125,31 +1186,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 !     *        VEL,LDERIV,LCONV,FPL,FTL,TEFFL)
 !C JVS 10/13 Always want SVEL
 
-!       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
-      call physic(star%fp_rot,star%ft_rot, &
-           star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun,star%logP, &
-           star%logR,star%log_mass,star%logT,star%convective_flag,star%nz, &
-           star%log_Teff, jerr)
-      if (jerr /= 0) then
-      ! 2026 (phase five, step B): propagate instead of stopping
-         ierr = jerr
-         return
-      end if
-      call ovrot(star%xa,star%logRho,star%logP,star%logR,star%log_mass, &
-                 star%logT,star%convective_flag,star%nz, &
-                 am_transport_convective_flag,radiative_zone_bounds, &
-                 convective_zone_bounds,num_radiative_zones, &
-                 num_convective_zones)
-! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP
-!       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
-      call gettau(star%xa,star%logR,star%logP,star%logRho, &
-                  star%m,star%logT,star%fp_rot, &
-                  star%ft_rot,star%log_Teff, &
-                  star%log_total_mass,star%log_L,star%nz,star%convective_flag, &
-                  env_struct%env_log10_radius)
-      star%turnover%convective_turnover_timescale_old = star%turnover%convective_turnover_timescale
-      star%turnover%pphot0 = star%turnover%pphot
-      star%turnover%fracstep = 0.5
+end subroutine rescale_and_refit_envelope
 
-      return
 end subroutine starin
