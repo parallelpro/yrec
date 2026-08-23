@@ -125,6 +125,26 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 !  IEND IS THE NUMBER OF SPECIES THE PROGRAM IS KEEPING TRACK OF
       num_species_tracked = 11
       if (use_extended_composition) num_species_tracked = 15
+      call check_envelope_temperature_range
+      if (ierr /= 0) return
+      call flag_fixed_points
+      if (ierr /= 0) return
+      call assign_new_points
+      if (ierr /= 0) return
+      call locate_new_cz_edges
+      if (ierr /= 0) return
+      call interpolate_onto_new_grid
+      if (ierr /= 0) return
+
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Verify the outermost Henyey point sits inside the allowed
+! envelope temperature window (tenv0/tenv), deleting or flagging
+! points as needed; ierr if the whole model is cooler than tenv0.
+subroutine check_envelope_temperature_range
 ! CHECK IF TEMPERATURE OF OUTERMOST HENYEY POINT > MIMIMUM ENVELOPE T
       if (star%logT(star%nz).lt.tenv0) then
        do i = star%nz-1,1,-1
@@ -177,6 +197,14 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       endif
 
 
+end subroutine check_envelope_temperature_range
+
+! ---------------------------------------------------------------
+! Set up the flagged points the rezoner must not smooth across:
+! convection-zone edges, the H-burning shell edge, X/Z/omega
+! gradient jumps, the overshoot base and the finely-zoned region
+! around the surface CZ; sort and de-duplicate them.
+subroutine flag_fixed_points
 ! SET UP FLAGGED POINTS - PROGRAM WILL NOT REZONE ACROSS FLAGGED POINTS
       flag_count = 1
 ! FLAG EDGES OF CENTRAL AND SURFACE CONVECTION ZONES
@@ -327,6 +355,15 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       end if
       write(short_file_unit,185) (flag_point(j),j=1,flag_count)
   185 format(1X,'FLAG-POINTS',20I4)
+end subroutine flag_fixed_points
+
+! ---------------------------------------------------------------
+! Refloat the point distribution between flagged points: accumulate
+! the normalized chi = dM + dL + dP spacing measure per region
+! (pmax1..5), add points where X or Z gradients demand them, and
+! delete new points that land too close together. ierr if the
+! requested point count exceeds json.
+subroutine assign_new_points
 ! BEGIN REFLOATING OF POINTS
       if (rotation_active) then
        do i = 1,star%nz
@@ -554,6 +591,12 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       end do
 !
 
+end subroutine assign_new_points
+
+! ---------------------------------------------------------------
+! Locate the convective-core outer edge and convective-envelope
+! inner edge in the new point distribution.
+subroutine locate_new_cz_edges
 !  NOW LOCATE OUTER EDGE OF CONVECTIVE CORE AND INNER EDGE OF CONVECTIVE
 !  ENVELOPE IN THE NEW POINT DISTRIBUTION.
       if (star%core_cz_top_index.gt.1) then
@@ -596,6 +639,14 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       end if
 
 
+end subroutine locate_new_cz_edges
+
+! ---------------------------------------------------------------
+! Osculatory-spline fit of every physical variable and species onto
+! the new mass grid, refresh the rotation profile and diffusion
+! auxiliaries, re-run physic, and update the surface opacity
+! tables if the surface composition moved.
+subroutine interpolate_onto_new_grid
 !  NOW USE AN OSCILLATORY SPLINE TO FIT THE OLD RUN OF PHYSICAL VARIABLES
 !  AT THE NEW RUN OF MASS POINTS.
       old_point_count = star%nz
@@ -927,6 +978,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
                call kap_update_surface_tables(star%env_comp%xnew)
 
       end if
+end subroutine interpolate_onto_new_grid
 
-      return
 end subroutine hpoint
