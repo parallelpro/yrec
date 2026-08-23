@@ -126,6 +126,19 @@ def test_mesa_output_contract(tmp_path):
     # surface first: mass decreases from zone 1 toward the center row
     assert float(prows[0][pcol["mass"]]) > float(prows[-1][pcol["mass"]])
 
+    # ---- extended model: profiles reach the top of the atmosphere ----
+    # The interior grid stops at the fitting point (T ~ 1e4-1e6 K);
+    # profiles must continue through the envelope + atmosphere, so the
+    # outermost point sits at/above the photosphere with T near (in
+    # fact below) Teff.  Guards against the truncation bug where
+    # zone 1 was the fitting point (T = 15145 K vs Teff = 4436 K).
+    prof_model = next(int(float(hr[icol["model_number"]])) for hr in hist_rows
+                      if int(float(hr[icol["profile_number"]])) == 1)
+    log_teff_1 = next(float(hr[icol["log_Teff"]]) for hr in hist_rows
+                      if int(float(hr[icol["model_number"]])) == prof_model)
+    t_outer = 10.0 ** float(prows[0][pcol["logT"]])
+    assert t_outer < 1.2 * 10.0 ** log_teff_1, (t_outer, 10 ** log_teff_1)
+
     # ---- custom history columns + FGONG pulse output ----
     columns = "! test subset\nstar_age\nlog_Teff\nlog_L\n"
     custom = unstamped.replace(
@@ -153,7 +166,24 @@ def test_mesa_output_contract(tmp_path):
     data = flines[5:]
     n_glob_lines = (iconst + 4) // 5
     n_var_lines = (ivar + 4) // 5
-    assert len(data) == n_glob_lines + nn * n_var_lines,         (len(data), nn, n_glob_lines, n_var_lines)
+    assert len(data) == n_glob_lines + nn * n_var_lines, \
+        (len(data), nn, n_glob_lines, n_var_lines)
+
+    # extended model in the pulse file too: the first point (FGONG is
+    # surface-to-center) is the top of the atmosphere -- radius at or
+    # above the photospheric R_star (glob 2), temperature below Teff
+    # (glob 14), not the fitting-point value.
+    def fgong_vals(lines):
+        vals = []
+        for l in lines:
+            l = l.rstrip()
+            vals += [float(l[i:i + 16]) for i in range(0, len(l), 16)]
+        return vals
+    glob = fgong_vals(data[:n_glob_lines])[:iconst]
+    surf = fgong_vals(data[n_glob_lines:n_glob_lines + n_var_lines])[:ivar]
+    r_star, teff = glob[1], glob[13]
+    assert surf[0] >= 0.999 * r_star, (surf[0], r_star)
+    assert surf[2] < 1.2 * teff, (surf[2], teff)
 
 
 def test_default_columns_lists_in_sync():

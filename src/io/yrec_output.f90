@@ -46,6 +46,18 @@ module yrec_output
       integer :: hist_nsel = 0, prof_nsel = 0
       integer :: hist_sel(max_cols), prof_sel(max_cols)
 
+! The extended model: interior (center -> fitting point) + envelope
+! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
+! assembled inward-to-outward, exactly the regions io/stitch.f90
+! splices for the legacy .store format. Profiles and pulse files both
+! cover the full star: truncating at the fitting point would drop the
+! superadiabatic layer and photosphere, which dominate p-mode
+! frequencies.
+      integer, parameter :: max_ext = 3*5000
+      integer :: n_ext = 0
+      integer :: ext_region(max_ext)   ! 1 interior, 2 envelope, 3 atmosphere
+      integer :: ext_index(max_ext)    ! index within that region
+
 contains
 
 ! ---------------------------------------------------------------
@@ -135,6 +147,7 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
             if (mod(star%model_number, profile_interval) == 0) then
                profile_counter = profile_counter + 1
                iprof = profile_counter
+               call build_extended
                if (write_profile_flag) call write_profile(iprof)
                if (write_pulse_flag) call write_pulse(iprof)
             end if
@@ -547,6 +560,175 @@ double precision function profile_value(icol, k)
       end select
 end function profile_value
 
+! Regenerate the envelope/atmosphere structures for the CONVERGED
+! model and build the inward-to-outward index map. The envelope the
+! solver last integrated belongs to some trial (Teff, L) -- or was
+! never integrated at all, when the envelope triangle interpolated --
+! so a fresh atm_get at the converged values is required (this is
+! what io/stitch.f90 does for the legacy .store profiles, with the
+! same fixed output step sizes).
+subroutine build_extended
+      use star_info_lib, only: star
+      use envstruct_lib
+      use atmstruct_lib
+      use envint_lib, only: atm_get
+      integer :: j, i, jerr
+      double precision :: atm_beg0, atm_min0, atm_max0
+      double precision :: env_beg0, env_min0, env_max0
+      double precision :: b, gl, rl, ateffl, plim, dum1(4), dum2(3), &
+           dum3(3), dum4(3)
+      integer :: ixx, idum, katm, kenv, ksaha
+      logical :: lprt, lsbc0, lpulpt
+
+! interior always present
+      n_ext = 0
+      do j = 1, star%nz
+         n_ext = n_ext + 1
+         ext_region(n_ext) = 1
+         ext_index(n_ext) = j
+      end do
+      if (.not. calc_envelope_flag) return
+
+! ---- re-integrate at the converged model (stitch's recipe) ----
+      atm_beg0 = atm_step_begin
+      atm_min0 = atm_step_min
+      atm_max0 = atm_step_max
+      env_beg0 = env_step_begin
+      env_min0 = env_step_min
+      env_max0 = env_step_max
+      atm_step_begin = atm_step_size
+      atm_step_min = atm_step_size
+      atm_step_max = atm_step_size
+      env_step_begin = envelope_step_size
+      env_step_min = envelope_step_size
+      env_step_max = envelope_step_size
+
+      idum = 0
+      ixx = 0
+      katm = 0
+      kenv = 0
+      ksaha = 0
+      lprt = .false.
+      lsbc0 = .false.
+      lpulpt = .false.
+      b = exp(ln10*star%log_L)
+      rl = 0.5d0*(star%log_L + log10_solar_luminosity - 4.0d0*star%log_Teff &
+           - c4pil - csigl)
+      gl = cgl + star%log_total_mass - rl - rl
+      plim = star%logP(star%nz)
+      if (star%convective_flag(star%nz) .and. spot_filling_factor /= 0.0d0 &
+          .and. spot_temp_contrast /= 1.0d0) then
+         ateffl = star%log_Teff - 0.25d0*log10(spot_filling_factor* &
+              spot_temp_contrast**4.0d0 + 1.0d0 - spot_filling_factor)
+      else
+         ateffl = star%log_Teff
+      end if
+      jerr = 0
+      call atm_get(b, star%fp_rot(star%nz), star%ft_rot(star%nz), gl, &
+           star%log_total_mass, ixx, lprt, lsbc0, plim, rl, ateffl, &
+           star%xa(1,star%nz), star%xa(3,star%nz), dum1, idum, katm, &
+           kenv, ksaha, dum2, dum3, dum4, lpulpt, jerr)
+
+      atm_step_begin = atm_beg0
+      atm_step_min = atm_min0
+      atm_step_max = atm_max0
+      env_step_begin = env_beg0
+      env_step_min = env_min0
+      env_step_max = env_max0
+      if (jerr /= 0) return
+
+! envelope: env_struct runs fitting point -> photosphere (envint
+! inverts it), so it appends directly. Its innermost point repeats
+! the fitting point (to re-integration roundoff, so its radius can
+! even land marginally BELOW the last interior point's) -- skip any
+! envelope point not strictly outside the interior, keeping the
+! extended radius strictly monotonic for GYRE.
+      do i = 1, env_struct%num_env_points
+         if (n_ext >= max_ext) exit
+         if (env_struct%env_log10_radius(i) <= star%logR(star%nz)) cycle
+         n_ext = n_ext + 1
+         ext_region(n_ext) = 2
+         ext_index(n_ext) = i
+      end do
+! atmosphere: atmo_struct runs outward-in, so walk it in reverse.
+      do i = atmo_struct%num_atm_points, 1, -1
+         if (n_ext >= max_ext) exit
+         n_ext = n_ext + 1
+         ext_region(n_ext) = 3
+         ext_index(n_ext) = i
+      end do
+end subroutine build_extended
+
+! Profile column value at extended point j. Envelope/atmosphere points
+! carry what those integrations store; quantities they do not track
+! (per-species abundances beyond X/Z, burning terms, rotation
+! internals) are zero, as io/stitch.f90 also writes them.
+double precision function ext_profile_value(icol, j)
+      use star_info_lib, only: star
+      use envstruct_lib
+      use atmstruct_lib
+      integer, intent(in) :: icol, j
+      integer :: i
+
+      i = ext_index(j)
+      select case (ext_region(j))
+      case (1)
+         ext_profile_value = profile_value(icol, i)
+      case (2)
+         select case (icol)
+         case (2);  ext_profile_value = exp(ln10*(env_struct%env_log10_mass(i) &
+                       + star%log_total_mass))/solar_mass_cgs
+         case (3);  ext_profile_value = env_struct%env_log10_radius(i)
+         case (4);  ext_profile_value = env_struct%env_log10_temperature(i)
+         case (5);  ext_profile_value = env_struct%env_log10_density(i)
+         case (6);  ext_profile_value = env_struct%env_log10_pressure(i)
+         case (7);  ext_profile_value = env_struct%env_luminosity(i)
+         case (9)
+            if (env_struct%env_convective_flag(i)) then
+               ext_profile_value = 1.0d0
+            else
+               ext_profile_value = 0.0d0
+            end if
+         case (10); ext_profile_value = env_struct%env_gamma1(i)
+         case (11); ext_profile_value = env_struct%env_opacity(i)
+         case (12); ext_profile_value = env_struct%env_gradients(1,i)
+         case (13); ext_profile_value = env_struct%env_gradients(2,i)
+         case (14); ext_profile_value = env_struct%env_gradients(3,i)
+         case (27); ext_profile_value = env_struct%env_hydrogen_fraction(i)
+         case (41); ext_profile_value = env_struct%env_metal_fraction(i)
+         case (42); ext_profile_value = star%omega(star%nz)
+         case (50); ext_profile_value = env_struct%env_specific_heat_cp(i)
+         case (51); ext_profile_value = -env_struct%env_dlnrho_dlnt(i)
+         case default; ext_profile_value = 0.0d0
+         end select
+      case (3)
+         select case (icol)
+         case (2);  ext_profile_value = star%star_mass
+         case (3);  ext_profile_value = log10(exp(ln10* &
+                       env_struct%env_log10_radius(env_struct%num_env_points)) &
+                       + atmo_struct%atmo_delta_depth(i))
+         case (4);  ext_profile_value = atmo_struct%atmo_log10_temperature(i)
+         case (5);  ext_profile_value = atmo_struct%atmo_log10_density(i)
+         case (6);  ext_profile_value = atmo_struct%atmo_log10_pressure(i)
+         case (7);  ext_profile_value = exp(ln10*star%log_L)
+         case (10); ext_profile_value = atmo_struct%atmo_gamma1(i)
+         case (11); ext_profile_value = atmo_struct%atmo_opacity(i)
+         case (12); ext_profile_value = atmo_struct%atmo_gradients(1,i)
+         case (13); ext_profile_value = atmo_struct%atmo_gradients(2,i)
+         case (14); ext_profile_value = atmo_struct%atmo_gradients(3,i)
+         case (16); ext_profile_value = atmo_struct%atmo_beta(i)
+         case (27); ext_profile_value = star%xa(1,star%nz)
+         case (41); ext_profile_value = star%xa(3,star%nz)
+         case (42); ext_profile_value = star%omega(star%nz)
+         case (50); ext_profile_value = atmo_struct%atmo_specific_heat_cp(i)
+         case (51); ext_profile_value = -atmo_struct%atmo_dlnrho_dlnt(i)
+         case default; ext_profile_value = 0.0d0
+         end select
+      case default
+         ext_profile_value = 0.0d0
+      end select
+end function ext_profile_value
+
 subroutine write_profile(iprof)
       use star_info_lib, only: star
       integer, intent(in) :: iprof
@@ -566,20 +748,21 @@ subroutine write_profile(iprof)
            adjustr('num_zones'), adjustr('star_age'), &
            adjustr('log_Teff'), adjustr('star_mass')
       write(u, '(2(1x,i40),3(1x,es40.16e3))') star%model_number, &
-           star%nz, star%run%dage*1.0d9, star%log_Teff, star%star_mass
+           n_ext, star%run%dage*1.0d9, star%log_Teff, star%star_mass
       write(u, '(a)') ''
       write(u, '(999(1x,i40))') (k, k = 1, prof_nsel)
       write(u, '(999(1x,a40))') &
            (adjustr(trim(names(prof_sel(k)))), k = 1, prof_nsel)
-! rows: zone 1 = the surface (MESA convention); YREC stores
-! center (1) .. surface (nz), so walk the arrays in reverse.
-      do k = 1, star%nz
-         kz = star%nz - k + 1
+! rows: zone 1 = the outermost point (MESA convention). The extended
+! model (interior + envelope + atmosphere, built by build_extended)
+! is stored inward-to-outward, so walk it in reverse.
+      do k = 1, n_ext
+         kz = n_ext - k + 1
          do i = 1, prof_nsel
             if (prof_sel(i) == 1) then
                v = dble(k)
             else
-               v = profile_value(prof_sel(i), kz)
+               v = ext_profile_value(prof_sel(i), kz)
             end if
             if (prof_sel(i) == 1 .or. prof_sel(i) == 9) then
                write(u, '(1x,i40)', advance='no') nint(v)
@@ -592,30 +775,178 @@ subroutine write_profile(iprof)
       close(u)
 end subroutine write_profile
 
-! Pulse file alongside profile <iprof>: profile<N>.data.GYRE or
-! .data.FGONG in the output directory, format per pulse_format.
+! Assemble the per-point pulse data for the FULL extended model
+! (interior + envelope + atmosphere; build_extended must have run).
+! Columns 1-18 are the GYRE schema-101 set; 19-34 the extras FGONG
+! needs. Envelope/atmosphere points carry what those integrations
+! store; opacity/energy derivative columns they do not track are
+! zero there (they matter only for nonadiabatic work), and the
+! composition above the fitting point is the surface composition, as
+! io/stitch.f90 also writes.
+subroutine build_pulse_points(pts)
+      use star_info_lib, only: star
+      use envstruct_lib
+      use atmstruct_lib
+      double precision, intent(out) :: pts(35, n_ext)
+      integer :: j, i, k
+      double precision :: r, m, P, T, rho, delta, nab, nab_ad, grav
+
+      do j = 1, n_ext
+         i = ext_index(j)
+         pts(:,j) = 0.0d0
+         select case (ext_region(j))
+         case (1)
+            r = exp(ln10*star%logR(i))
+            m = star%m(i)
+            P = exp(ln10*star%logP(i))
+            T = exp(ln10*star%logT(i))
+            rho = exp(ln10*star%logRho(i))
+            delta = -star%pulse%pulse_dlnrho_dlnt(i)
+            nab = star%diag%del_grad(2,i)
+            nab_ad = star%diag%del_grad(3,i)
+            pts(3,j) = star%luminosity_lsun(i)*solar_luminosity_cgs
+            pts(9,j) = star%run%adiabatic_index_gamma1(i)
+            pts(12,j) = star%diag%so(i)
+            pts(13,j) = star%pulse%pulse_dlnkap_dlnt(i)
+            pts(14,j) = star%pulse%pulse_dlnkap_dlnrho(i)
+            pts(15,j) = star%diag%sesum(i)
+            pts(16,j) = star%pulse%pulse_dlneps_dlnt(i)
+            pts(17,j) = star%pulse%pulse_dlneps_dlnrho(i)
+            pts(18,j) = star%omega(i)
+            pts(19,j) = star%pulse%pulse_specific_heat(i)
+            if (star%pulse%pulse_electron_mean_molecular_weight(i) &
+                 > 0.0d0) pts(20,j) = &
+                 1.0d0/star%pulse%pulse_electron_mean_molecular_weight(i)
+            pts(21,j) = star%xa(1,i)
+            pts(22,j) = star%xa(3,i)
+            do k = 1, 11
+               pts(22+k,j) = star%xa(species_slot(k),i)
+            end do
+            pts(34,j) = star%diag%seg(7,i)
+         case (2)
+            r = exp(ln10*env_struct%env_log10_radius(i))
+            m = exp(ln10*(env_struct%env_log10_mass(i) + &
+                 star%log_total_mass))
+            P = exp(ln10*env_struct%env_log10_pressure(i))
+            T = exp(ln10*env_struct%env_log10_temperature(i))
+            rho = exp(ln10*env_struct%env_log10_density(i))
+            delta = -env_struct%env_dlnrho_dlnt(i)
+            nab = env_struct%env_gradients(2,i)
+            nab_ad = env_struct%env_gradients(3,i)
+            pts(3,j) = env_struct%env_luminosity(i)*solar_luminosity_cgs
+            pts(9,j) = env_struct%env_gamma1(i)
+            pts(12,j) = env_struct%env_opacity(i)
+            pts(18,j) = star%omega(star%nz)
+            pts(19,j) = env_struct%env_specific_heat_cp(i)
+            pts(21,j) = env_struct%env_hydrogen_fraction(i)
+            pts(22,j) = env_struct%env_metal_fraction(i)
+            do k = 1, 11
+               pts(22+k,j) = star%xa(species_slot(k),star%nz)
+            end do
+         case default   ! atmosphere
+            r = exp(ln10* &
+                 env_struct%env_log10_radius(env_struct%num_env_points)) &
+                 + atmo_struct%atmo_delta_depth(i)
+            m = exp(ln10*star%log_total_mass)
+            P = exp(ln10*atmo_struct%atmo_log10_pressure(i))
+            T = exp(ln10*atmo_struct%atmo_log10_temperature(i))
+            rho = exp(ln10*atmo_struct%atmo_log10_density(i))
+            delta = -atmo_struct%atmo_dlnrho_dlnt(i)
+            nab = atmo_struct%atmo_gradients(2,i)
+            nab_ad = atmo_struct%atmo_gradients(3,i)
+            pts(3,j) = exp(ln10*star%log_L)*solar_luminosity_cgs
+            pts(9,j) = atmo_struct%atmo_gamma1(i)
+            pts(12,j) = atmo_struct%atmo_opacity(i)
+            pts(18,j) = star%omega(star%nz)
+            pts(19,j) = atmo_struct%atmo_specific_heat_cp(i)
+            pts(21,j) = star%xa(1,star%nz)
+            pts(22,j) = star%xa(3,star%nz)
+            do k = 1, 11
+               pts(22+k,j) = star%xa(species_slot(k),star%nz)
+            end do
+         end select
+         pts(1,j) = r
+         pts(2,j) = m
+         pts(4,j) = P
+         pts(5,j) = T
+         pts(6,j) = rho
+         pts(7,j) = nab
+         pts(10,j) = nab_ad
+         pts(11,j) = delta
+         if (r > 0.0d0) then
+            grav = exp(ln10*cgl)*m/(r*r)
+            pts(8,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
+         end if
+      end do
+end subroutine build_pulse_points
+
+! star%xa slot for pulse column 22+k (k = 1..11): the FGONG species
+! order he3, c12, c13, n14, o16, h2, he4, li7, n15, o17, o18
+! (column 34 is eps_grav, not a species; be9 has no FGONG column).
+integer function species_slot(k)
+      integer, intent(in) :: k
+      integer, parameter :: slots(11) = [4,5,6,7,9,12,2,14,8,10,11]
+      species_slot = slots(k)
+end function species_slot
+
+! Pulse file alongside profile <iprof>: profile<N>.data.GYRE /
+! .data.FGONG / .data.GSM in the output directory, covering the FULL
+! extended model. Global M_star/R_star/L_star refer to the
+! photosphere (atmosphere points extend above R_star, as in MESA's
+! add_atmosphere).
 subroutine write_pulse(iprof)
       use star_info_lib, only: star
       integer, intent(in) :: iprof
       character(len=256) :: path
       character(len=12) :: numstr
+      double precision, allocatable :: pts(:,:)
+      double precision :: mstar_g, rstar_cm, lstar_cgs
+
+      allocate(pts(35, n_ext))
+      call build_pulse_points(pts)
+      mstar_g = exp(ln10*star%log_total_mass)
+      rstar_cm = exp(ln10*(star%run%log_R_surface + log10_solar_radius))
+      lstar_cgs = exp(ln10*star%log_L)*solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
       if (pulse_format(1:5) == 'FGONG' .or. &
           pulse_format(1:5) == 'fgong') then
          path = trim(out_dir) // 'profile' // trim(numstr) // '.data.FGONG'
-         call write_fgong_pulse(star%nz, star%model_number, path)
+         call write_fgong_pulse(n_ext, pts, mstar_g, rstar_cm, &
+              lstar_cgs, path)
       else if (pulse_format(1:3) == 'GSM' .or. &
                pulse_format(1:3) == 'gsm') then
          path = trim(out_dir) // 'profile' // trim(numstr) // '.data.GSM'
-         call write_gsm_pulse(star%nz, star%model_number, path)
+         call write_gsm_pulse(n_ext, pts, mstar_g, rstar_cm, &
+              lstar_cgs, path)
       else
          path = trim(out_dir) // 'profile' // trim(numstr) // '.data.GYRE'
-         call write_gyre_pulse(star%nz, star%model_number, star%m, &
-              star%logRho, star%luminosity_lsun, star%logP, star%logR, &
-              star%logT, star%omega, path)
+         call write_gyre_ext(n_ext, pts, mstar_g, rstar_cm, &
+              lstar_cgs, path)
       end if
+      deallocate(pts)
 end subroutine write_pulse
+
+! GYRE text (MESA schema 101) over the extended point set. The
+! legacy-path writer io/write_gyre_pulse.f90 keeps its historical
+! interior-only behavior (byte-pinned); this is the MESA-mode writer.
+subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path)
+      use star_info_lib, only: star
+      integer, intent(in) :: n
+      double precision, intent(in) :: pts(35, n)
+      double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
+      character(len=*), intent(in) :: path
+      integer, parameter :: gyre_schema = 101
+      integer :: u, j, i
+
+      open(newunit=u, file=path, status='REPLACE', form='FORMATTED')
+      write(u,'(I6,3(1X,1PE26.16),1X,I6)') n, mstar_g, rstar_cm, &
+           lstar_cgs, gyre_schema
+      do j = 1, n
+         write(u,'(I6,99(1X,1PE26.16))') j, (pts(i,j), i = 1, 18)
+      end do
+      close(u)
+end subroutine write_gyre_ext
 
 ! History columns written as true integers.
 logical function is_int_hist_col(icol)

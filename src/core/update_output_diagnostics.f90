@@ -245,7 +245,6 @@ subroutine update_output_diagnostics(ierr)
 
 
 
-      return
 ! ---- 2026 MESA-style output: fill the per-model history sources ----
 ! (star%run% members read by write_history). Formulas are the legacy
 ! .track v0 branch's, verbatim. Legacy mode skips this: wrtout
