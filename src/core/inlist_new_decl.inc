@@ -210,7 +210,8 @@
            & initial_li6_fraction, initial_li7_fraction, &
            & initial_be9_fraction, initial_b10_fraction, &
            & initial_b11_fraction, pulse_gyre_interval, &
-           & use_legacy_output
+           & use_legacy_output, history_columns_file, &
+           & profile_columns_file
       namelist /controls/ &
            & atm_step_min, atm_step_begin, atm_error_tol, atm_step_max, &
            & atm_step_initial, change_species_name, atm_print_flag, &
@@ -301,4 +302,5 @@
            & tol_dm_max, tol_dm_min, tol_dp_core_max, tol_dp_czbase_max, &
            & tol_dp_env_max, tol_dx_max, tol_dz_max, time_max_dt_frac, &
            & use_new_rate_variables, use_new_turnover_timescale, &
-           & calc_envelope_flag
+           & calc_envelope_flag, star_history_name, profile_interval, &
+           & pulse_format

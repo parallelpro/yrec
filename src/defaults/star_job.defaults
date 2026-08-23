@@ -536,6 +536,12 @@
       ! Output style: .true. = historical .track/.store streams; .false. = MESA-format output (.history now, profiles to follow). Default depends on inlist style.
       use_legacy_output = .true. legacy decks / .false. new-style inlists
 
+      ! MESA mode: file listing the history columns to write (one name per line, ! comments); blank = all columns
+      history_columns_file = '' (all columns)
+
+      ! MESA mode: file listing the profile columns to write; blank = all columns
+      profile_columns_file = '' (all columns)
+
 /
 
 ! Unused legacy controls (accepted by the legacy reader only,

@@ -821,6 +821,15 @@
       ! (legacy name: lcalcenv)
       calc_envelope_flag = .false.   ! (implicit)
 
+      ! MESA mode: history file name (written to the output directory)
+      star_history_name = 'history.data'
+
+      ! MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles
+      profile_interval = 50
+
+      ! MESA mode: pulse file format written every pulse_gyre_interval models: GYRE or FGONG
+      pulse_format = 'GYRE'
+
 /
 
 ! Unused legacy controls (accepted by the legacy reader only,

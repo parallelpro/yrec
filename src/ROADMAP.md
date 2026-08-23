@@ -128,16 +128,23 @@ CASE.history in MESA's history.data layout, .track v0's 83 columns
 under MESA vocabulary, numerically interchangeable with the track
 (test_mesa_output.py). Remaining, in order:
 
-- Profile files: MESA-format profileN.data + profiles.index from
-  putstore's per-shell quantity set (putstore is suppressed in MESA
-  mode until then).
-- Column customization: history_columns.list / profile_columns.list
-  (subset + order against the writer's name table; unknown name ->
-  error listing valid names).
+- DONE (2026-08-23): profiles (profile{N}.data, zone 1 = surface,
+  every profile_interval models; the history profile_number column
+  replaces profiles.index per user design), column selection
+  (history_columns_file/profile_columns_file, one name per line,
+  unknown names fatal with the valid list logged),
+  star_history_name (default history.data in the output dir), and
+  the FGONG pulse writer (io/write_fgong_pulse.f90, ivers 300,
+  ICONST 15 / IVAR 40, layout ported from MESA pulse_fgong.f90;
+  selected via pulse_format = 'FGONG', GYRE remains the default).
+  All in io/yrec_output.f90's registry of names + pure readers over
+  star_info; test_mesa_output.py pins the whole contract.
 - MESA-style terminal output behind a control; quiet the .short
-  config echo in MESA mode at the same time.
-- FGONG pulse writer beside the existing GYRE one (port MESA's
-  pulse_fgong.f90 formulas, same pattern as write_gyre_pulse).
+  config echo / log verbosity control at the same time.
+- Pulse follow-ups: GYRE-HDF5 needs an HDF5 dependency (deliberately
+  not added); FGONG glob(6) mixing-length alpha and the central
+  d2P/d2rho globals are currently zero -- fill if a consumer needs
+  them.
 - DONE (2026-08-23): output I/O centralized in io/yrec_output.f90;
   MESA mode produces exactly CASE.history + CASE.log (short_file_unit
   retargeted to the log; no legacy opens, no stubs). Special rules:

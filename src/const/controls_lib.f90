@@ -25,6 +25,12 @@ module controls_lib
 ! flips the default to .false. before the read (either format can set
 ! it explicitly).
       logical, public :: use_legacy_output = .true.
+! MESA-style output controls (new-format inlists only):
+      character(len=256), public :: star_history_name = 'history.data'
+      character(len=256), public :: history_columns_file = ' '
+      character(len=256), public :: profile_columns_file = ' '
+      integer, public :: profile_interval = 50
+      character(len=8), public :: pulse_format = 'GYRE'
 
 ! former common/ctlim/. Defaults (previously two DATA statements in
 ! core/parmin.f90, now illegal there since these are use-associated
