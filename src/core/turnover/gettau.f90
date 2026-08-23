@@ -30,7 +30,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       use envint_lib, only: atm_get
       use envstruct_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none

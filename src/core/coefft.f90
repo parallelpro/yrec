@@ -53,11 +53,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 
       use net_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use eos_lib

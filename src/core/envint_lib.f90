@@ -31,13 +31,8 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       use kap_lib
       use atm_table_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use atmstruct_lib
-      use star_info_lib, only: star
       use envstruct_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use intpar_lib

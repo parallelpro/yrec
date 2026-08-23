@@ -23,8 +23,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      enclosed_mass, ierr)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none

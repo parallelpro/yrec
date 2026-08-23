@@ -29,12 +29,11 @@
 subroutine update_output_diagnostics(ierr)
       use star_info_lib, only: star
       use evolve_state_lib, only: output_diag_reset_pending
-
-      use star_info_lib, only: star
       use envelope_comp_lib
       use eos_lib
       use luout_lib
       use const_lib
+
       implicit none
 
 

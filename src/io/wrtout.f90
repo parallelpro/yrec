@@ -17,16 +17,6 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
      trial_sign_flag, punch_pending_flag, total_angular_momentum, &
      total_rotational_kinetic_energy)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use eos_lib

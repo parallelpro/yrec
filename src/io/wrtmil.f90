@@ -12,7 +12,6 @@
 subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none

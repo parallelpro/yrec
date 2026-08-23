@@ -18,19 +18,11 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-
       use kap_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use numerics_lib
+
       implicit none
       integer, parameter :: json = 5000
 

@@ -49,7 +49,6 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
 
       use rotdiff_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000

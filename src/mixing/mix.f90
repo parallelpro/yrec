@@ -31,17 +31,11 @@
 subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use net_lib
       use burn_lib
+
       implicit none
       integer, parameter :: json = 5000
 

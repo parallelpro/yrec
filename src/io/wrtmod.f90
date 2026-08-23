@@ -20,17 +20,12 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
      shape_factor_fp, shape_factor_ft, log_mass, age_gyr)
 
       use atm_lib
-
       use envint_lib, only: atm_get
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
       use yale_eos_lib
+
       implicit none
       integer, parameter :: json = 5000
 

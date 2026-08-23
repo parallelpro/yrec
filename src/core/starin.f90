@@ -102,17 +102,9 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-
       use atm_lib
-
       use envint_lib, only: atm_get
-      use star_info_lib, only: star
       use envstruct_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use eos_lib
@@ -120,6 +112,8 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       use opacity_table_lib
       use yale_eos_lib
       use scv_eos_lib
+
+
       implicit none
       integer, parameter :: json = 5000
       integer, parameter :: nts = 63, nps = 76

@@ -31,18 +31,13 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
      model)
 
       use atm_lib
-
       use envint_lib, only: atm_get
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use atmstruct_lib
-      use star_info_lib, only: star
       use envstruct_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
+
       implicit none
       integer, parameter :: json = 5000
 

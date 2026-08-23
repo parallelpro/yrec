@@ -25,10 +25,6 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
       use const_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       implicit none
       integer, parameter :: json = 5000
 

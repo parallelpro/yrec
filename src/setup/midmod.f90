@@ -27,19 +27,10 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
      radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
      num_convective_zones, ierr)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-
       use net_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       use burn_lib
+
       implicit none
       integer, parameter :: json = 5000
 

@@ -28,9 +28,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 
 !     WRITE MODEL OUT IN ASCII FORMAT
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use opacity_table_lib

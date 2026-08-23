@@ -27,16 +27,8 @@ subroutine run_yrec(ierr)
 ! change on "JSON=2000" or whatever.
       use net_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use yrec_reset_lib, only: yrec_run_prologue
       use burn_lib
       implicit none

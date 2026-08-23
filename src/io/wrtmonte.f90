@@ -19,7 +19,6 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
      monte_carlo_run_number)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000

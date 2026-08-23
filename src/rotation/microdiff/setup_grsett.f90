@@ -25,7 +25,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none

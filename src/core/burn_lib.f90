@@ -272,7 +272,6 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
@@ -442,7 +441,6 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep, deuterium_rate_end, deuterium_rate_start, &
      step_fraction)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json=5000
@@ -609,7 +607,6 @@ end subroutine dburnm
 ! convection zone, the rate is capped so that deuterium burning cannot
 ! proceed faster than the local convective overturn timescale.
 subroutine deutrate(dl,tl,x,i,itlvl)
-      use star_info_lib, only: star
       use star_info_lib, only: star
       use const_lib
       implicit none
@@ -838,9 +835,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      reaction_rate_13, n15_alpha_branch_fraction, &
      be7_electron_capture_fraction)
 
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use star_info_lib, only: star
       use luout_lib
       use const_lib
@@ -2068,9 +2062,6 @@ end subroutine engeb
 subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use numerics_lib
@@ -2632,9 +2623,6 @@ end subroutine liburn
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -2983,7 +2971,6 @@ end subroutine liburn2
 ! Burning rates from Caughlin and Fowler (1988).
 subroutine lirate88(composition, log_density, log_temperature, num_zones, &
      use_current_model)
-      use star_info_lib, only: star
       use star_info_lib, only: star
       use const_lib
       implicit none

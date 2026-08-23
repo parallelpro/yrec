@@ -30,8 +30,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
      total_luminosity, timestep, log_pressure)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none

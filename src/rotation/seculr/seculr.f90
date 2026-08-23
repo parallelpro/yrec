@@ -57,9 +57,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      diffusion_solve_ok, ierr)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use temp2_lib
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use numerics_lib

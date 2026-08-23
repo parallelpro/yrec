@@ -24,14 +24,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 
       use net_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use evolve_state_lib, only: evolve_step_reset_pending
       use burn_lib
       implicit none

@@ -49,9 +49,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       use atm_lib
       use atm_table_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       use eos_lib
       implicit none

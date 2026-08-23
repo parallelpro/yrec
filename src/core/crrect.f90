@@ -89,13 +89,10 @@ subroutine crrect(delta_time, max_iterations, converged, &
      conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, iterations_done, &
      iteration_level, ierr)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       use const_lib
       use yale_eos_lib
+
       implicit none
       integer, parameter :: json = 5000
 

@@ -36,9 +36,6 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 
       use star_info_lib, only: star
       use const_lib
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use luout_lib
       implicit none
       integer, parameter :: json = 5000

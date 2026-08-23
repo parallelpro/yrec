@@ -13,7 +13,6 @@
 subroutine viscos(composition, log_density, log_temperature, num_zones)
 !       SUBROUTINE VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000

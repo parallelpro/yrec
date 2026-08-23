@@ -21,7 +21,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       use numerics_lib
       implicit none

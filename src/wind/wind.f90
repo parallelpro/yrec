@@ -21,7 +21,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      specific_angular_momentum, ierr)
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
       use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000

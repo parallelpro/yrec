@@ -18,8 +18,6 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
       use const_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       implicit none
       integer, parameter :: json=5000
 

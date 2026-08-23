@@ -28,8 +28,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
       use envstruct_lib
       use const_lib
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use numerics_lib
       implicit none
       integer, parameter :: json=5000

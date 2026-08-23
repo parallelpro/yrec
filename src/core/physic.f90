@@ -23,10 +23,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      num_zones, log_teff, ierr)
 
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       use eos_lib
       use kap_lib

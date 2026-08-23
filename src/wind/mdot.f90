@@ -26,8 +26,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
       use star_info_lib, only: star
-      use star_info_lib, only: star
-      use star_info_lib, only: star
       use const_lib
       implicit none
       integer, parameter :: json = 5000
