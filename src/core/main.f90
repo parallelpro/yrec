@@ -35,7 +35,7 @@
 ! names were fixed by earlier batches). Judgment calls made below, all
 ! verified against the actual physics/usage in this file and cross-
 ! checked against each callee's current signature:
-!   - BL (log10 L/Lsun, surface value) is named star%log10_luminosity,
+!   - BL (log10 L/Lsun, surface value) is named star%log_L,
 !     matching crrect.f90/starin.f90/chkcal.f90/chkscal.f90's own
 !     slot names for this exact scalar; wrtlst.f90/massloss.f90/
 !     getnewenv.f90/putstore.f90/wrtout.f90 instead call the same
@@ -47,7 +47,7 @@
 !     "log_luminosity" (or plain "luminosity"/"star%luminosity_lsun" in
 !     findsh.f90's own case) -- a misnomer inherited from those files'
 !     own earlier conversions in most cases; out of scope to fix here.
-!   - M (number of mass zones) is named star%num_zones, the majority
+!   - M (number of mass zones) is named star%nz, the majority
 !     spelling among callees (massloss/mix/hpoint/getw/convec/
 !     lirate88/liburn/getnewenv/mixcz); starin.f90/wrtlst.f90/
 !     wrtout.f90/putstore.f90 instead call it num_shells,

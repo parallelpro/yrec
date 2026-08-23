@@ -127,7 +127,7 @@ subroutine update_output_diagnostics(ierr)
        total_luminosity_sum = star%luminosity_breakdown(1)+star%luminosity_breakdown(2)+ &
             star%luminosity_breakdown(3)+star%luminosity_breakdown(4)+star%luminosity_breakdown(5)+ &
             star%luminosity_breakdown(6)+star%luminosity_breakdown(7)+star%luminosity_breakdown(8)
-       temp_value = star%luminosity_lsun(star%num_zones)/total_luminosity_sum
+       temp_value = star%luminosity_lsun(star%nz)/total_luminosity_sum
        do i = 1,8
           star%luminosity_breakdown(i) = star%luminosity_breakdown(i)*temp_value
    10    continue
@@ -137,7 +137,7 @@ subroutine update_output_diagnostics(ierr)
 !  CALCULATE MASS OF CENTRAL AND SURFACE CONVECTION ZONES
 !  THESE MASSES ARE IN SOLAR UNITS
       if(star%core_cz_top_index.gt.1) then
-       star%run%core_cz_mass = star%enclosed_mass(star%core_cz_top_index)/solar_mass_cgs
+       star%run%core_cz_mass = star%m(star%core_cz_top_index)/solar_mass_cgs
       else
        star%run%core_cz_mass = 0.0D0
       endif
@@ -153,8 +153,8 @@ subroutine update_output_diagnostics(ierr)
 ! the original wrtout.f, preserved exactly, not fixed.
        core_boundary_fx2 = (star%diag%del_grad(3,star%core_cz_top_index+1)-star%diag%del_grad(1,star%core_cz_top_index))/ &
              (star%diag%del_grad(3,star%core_cz_top_index+1)-star%diag%del_grad(1,star%core_cz_top_index))
-       core_boundary_log_radius = star%log_radius(star%core_cz_top_index)+envelope_boundary_fx* &
-            (star%log_radius(star%core_cz_top_index+1)-star%log_radius(star%core_cz_top_index))-log10_solar_radius
+       core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
+            (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-log10_solar_radius
        core_boundary_radius = dexp(ln10*core_boundary_log_radius)
       else
        core_boundary_radius = 0.0D0
@@ -165,14 +165,14 @@ subroutine update_output_diagnostics(ierr)
 !  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
 !  CENTRAL ETA AND BETA ARE ALSO CALCULATED.
 !  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
-      temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+star%log_density(1)-star%log_mass(1))+star%log_density(1)+cgl+star%log_mass(1)))
-      pressure_linear = dexp(ln10*star%log_pressure(1))
+      temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+star%logRho(1)-star%log_mass(1))+star%logRho(1)+cgl+star%log_mass(1)))
+      pressure_linear = dexp(ln10*star%logP(1))
       log_pressure_center = dlog10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-      log_temperature_center = star%log_temperature(1) + dlog10(1.0D0+ temp_value*star%diag%del_grad(2,1)/pressure_linear)
-      log_density_center = star%log_density(1)
-      hydrogen_fraction_center = star%composition(1,1)
-      metal_fraction_center = star%composition(3,1)
+      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%diag%del_grad(2,1)/pressure_linear)
+      log_density_center = star%logRho(1)
+      hydrogen_fraction_center = star%xa(1,1)
+      metal_fraction_center = star%xa(3,1)
       is_atmosphere_point = .true.
       compute_derivatives = .false.
 !  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
@@ -182,7 +182,7 @@ subroutine update_output_diagnostics(ierr)
            amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
            qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center, &
            compute_derivatives,is_atmosphere_point,ksaha_center, &
-           composition_at_zone=star%composition(:,1), ierr=ierr)
+           composition_at_zone=star%xa(:,1), ierr=ierr)
       if (ierr /= 0) return
 ! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
 ! STORE CENTRAL RHO,P,T FOR LATER USE
@@ -194,7 +194,7 @@ subroutine update_output_diagnostics(ierr)
 ! MHP 02/12 FIXED MINOR GLITCH ON BASE OF THE CONVECTION ZONE
 ! PROPERTIES FOR FULLY CONVECTIVE STARS; TCENTER PCENTER RHOCENTER
 ! WERE BEING DEFINED AFTER THIS CODE SECTION
-      if(star%envelope_cz_bottom_index.lt.star%num_zones) then
+      if(star%envelope_cz_bottom_index.lt.star%nz) then
        if(star%envelope_cz_bottom_index.gt.1) then
 !  FIND MASS FRACTION OF THE ZONE EDGE AT BASE OF SURFACE C.Z.
 ! JVS 10/11/13 SDEL(1,JENV) IN DENOMINATOR WAS A TYPO. CHANGED TO SDEL(3,JENV)
@@ -204,29 +204,29 @@ subroutine update_output_diagnostics(ierr)
             dd1 = star%diag%del_grad(1,star%envelope_cz_bottom_index)-star%diag%del_grad(3,star%envelope_cz_bottom_index)
             envelope_boundary_fx = dd2/(dd2-dd1)
 !            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
-            cz_base_mass = star%enclosed_mass(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%enclosed_mass(star%envelope_cz_bottom_index)-star%enclosed_mass(star%envelope_cz_bottom_index-1))
+            cz_base_mass = star%m(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%m(star%envelope_cz_bottom_index)-star%m(star%envelope_cz_bottom_index-1))
             star%run%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/solar_mass_cgs
 !           ENVLM = SMASS-HS1(JENV-1)/CMSUN
 !          HSR = 0.5D0*(10.0D0**HR(JENV)+10.0D0**HR(JENV-1))
 !          ENVX = HSR/(10.0D0**RL)
 ! MHP 2/98 FIND RADIUS OF CZ BASE
-            star%run%envelope_cz_log_radius = star%log_radius(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%log_radius(star%envelope_cz_bottom_index)-star%log_radius(star%envelope_cz_bottom_index-1))-log10_solar_radius
+            star%run%envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%logR(star%envelope_cz_bottom_index)-star%logR(star%envelope_cz_bottom_index-1))-log10_solar_radius
             star%run%envelope_radius = exp(ln10*star%run%envelope_cz_log_radius)
             star%run%envelope_cz_o16 = star%diag%so(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%diag%so(star%envelope_cz_bottom_index)-star%diag%so(star%envelope_cz_bottom_index-1))
-            envelope_cz_log_temperature = star%log_temperature(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%log_temperature(star%envelope_cz_bottom_index)-star%log_temperature(star%envelope_cz_bottom_index-1))
-            envelope_cz_log_density = star%log_density(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%log_density(star%envelope_cz_bottom_index)-star%log_density(star%envelope_cz_bottom_index-1))
-            envelope_cz_log_pressure = star%log_pressure(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%log_pressure(star%envelope_cz_bottom_index)-star%log_pressure(star%envelope_cz_bottom_index-1))
+            envelope_cz_log_temperature = star%logT(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%logT(star%envelope_cz_bottom_index)-star%logT(star%envelope_cz_bottom_index-1))
+            envelope_cz_log_density = star%logRho(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%logRho(star%envelope_cz_bottom_index)-star%logRho(star%envelope_cz_bottom_index-1))
+            envelope_cz_log_pressure = star%logP(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%logP(star%envelope_cz_bottom_index)-star%logP(star%envelope_cz_bottom_index-1))
             star%run%envelope_cz_temperature = exp(ln10*envelope_cz_log_temperature)
             star%run%envelope_cz_density = exp(ln10*envelope_cz_log_density)
             star%run%envelope_cz_pressure = exp(ln10*envelope_cz_log_pressure)
        else
-          star%run%envelope_mass = star%total_mass_msun
+          star%run%envelope_mass = star%star_mass
           star%run%envelope_radius = 0.0D0
             star%run%envelope_cz_temperature = 10.0D0**star%run%central_log10_temperature
             star%run%envelope_cz_density = 10.0D0**star%run%central_log10_density

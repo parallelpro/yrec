@@ -53,14 +53,14 @@ module star_info_lib
       type, public :: star_info
 ! structure / thermodynamics, per zone
             double precision :: log_mass(json), luminosity_lsun(json), &
-                 log_radius(json), log_pressure(json), &
-                 log_temperature(json), log_density(json)
+                 logR(json), logP(json), &
+                 logT(json), logRho(json)
             logical :: convective_flag(json)
-            double precision :: composition(15,json), enclosed_mass(json), &
-                 shell_mass(json), gravitational_luminosity(json)
+            double precision :: xa(15,json), m(json), &
+                 dm(json), gravitational_luminosity(json)
 ! rotation corrections to the structure equations
-            double precision :: pressure_rotation_factor(json), &
-                 temperature_rotation_factor(json)
+            double precision :: fp_rot(json), &
+                 ft_rot(json)
 ! Henyey solver work arrays and corrections
             double precision :: elim_coeff(4,2,json), elim_rhs(4,json)
             double precision :: log_pressure_delta(json), &
@@ -74,8 +74,8 @@ module star_info_lib
                  trial_log_temperature(3), fit_point_pressure(3), &
                  fit_point_temperature(3), fit_point_radius(3)
 ! rotation state, per zone
-            double precision :: omega(json), moment_of_inertia(json), &
-                 specific_angular_momentum(json), kinetic_energy_rot(json), &
+            double precision :: omega(json), i_rot(json), &
+                 j_rot(json), kinetic_energy_rot(json), &
                  kinetic_energy_rot_old(json), mean_radius(json), &
                  eta_squared(json), qiw(json), mean_gravity(json)
             logical :: am_transport_convective_flag(json)
@@ -97,10 +97,10 @@ module star_info_lib
 ! separate storage: mix's core_cz_edge/envelope_cz_edge (crrect passes
 ! its own locals; mix writes them) and its
 ! mixed_zone_bounds_no_overshoot (same reason, see step 3).
-            integer :: num_zones, model_number
+            integer :: nz, model_number
             integer :: core_cz_top_index, envelope_cz_bottom_index
-            double precision :: log_total_mass, total_mass_msun
-            double precision :: log_teff, log10_luminosity
+            double precision :: log_total_mass, star_mass
+            double precision :: log_Teff, log_L
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &
