@@ -22,6 +22,7 @@ module burn_lib
 contains
 
 
+
 !----------------------------------------------------------------------
 ! eqburn
 !----------------------------------------------------------------------
@@ -1144,79 +1145,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            polx32, qedn, qetn, qetnx, qednx
       integer :: i, k, nz
 
-! ZERO OUT THE ENERGY YIELDS FROM NEUTRINOS(ENU) AND ALPHA CAPTURE
-! REACTIONS (EALPCA).
-      star%engeb%neutrino_loss_rate = 0.0d0
-      star%engeb%alpha_capture_energy = 0.0d0
-! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
-!  ISOTOPES.
-! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
-!  THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
-!  RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
-      mass_fraction(1) = 0.0
-      mass_fraction(2) = hydrogen_fraction
-! MHP 5/02 ADDED DEUTERIUM
-!      XFRAC(3) = 0.0
-      mass_fraction(3) = deuterium_fraction
-      mass_fraction(4) = 0.0
-      mass_fraction(5) = he3_fraction
-      mass_fraction(6) = helium_fraction
-      mass_fraction(7) = c12_fraction
-      mass_fraction(8) = c13_fraction
-      mass_fraction(9) = n14_fraction
-      mass_fraction(10) = o16_fraction
-      mass_fraction(11) = o18_fraction
-      mass_fraction(12) = 0.0
-      mass_fraction(13) = 0.0
-! *******************************************************************
-! BEGIN CALCULATION OF SCREENING CORRECTION.
-! *******************************************************************
-!  THE BASIC REFERENCES ARE SALPETER, AUSTRALIAN JOURNAL OF PHYSICS,
-!  VOL. 7, 373 (1954). THE FORMULA FOR WEAK SCREENING THAT IS BEING
-!  PROGRAMMED IS EQUATION (25) OF THIS PAPER. THE OTHER IMPORTANT
-!  REFERENCES ARE: DEWITT, GRABOSKE, AND COOPER, AP. J. 181, 439 (1973)
-!  AND GRABOSKE ET AL., AP. J. 181, 457 (1973). THE VALUES OF EMU AND
-!  ZET ARE ESSENTIAL FOR COMPUTING WEAK SCREENING; THE VALUE OF AMU IS
-!  USED IN AN NON-ESSENTIAL WAY IN THIS COMPUTATION. XTR IS USED IN
-!  COMPUTING INTERMEDIATE SCREENING.
-! AMU IS ONE OVER THE MEAN MOLECULAR WEIGHT OF THE IONS, MU SUB I .
-! EMU IS ONE OVER THE ELECTRON MEAN MOLECULAR WEIGHT, MU SUB E.
-!  EMU IS USED HERE AS THE NAME FOR THE SECOND PART OF THE ZETA FUNCTION
-!  IN THE SALPETER EXPRESSION FOR WEAK SCREENING.
-! XTR IS USED LATER IN THE INTERMEDIATE SCREENING CALCULATION.  THE AVERAGE
-!  OF THE QUANTITY Z**(3B -1) IS EQUAL TO XTR/AMU.
-! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
-! MU = SUM OVER I OF [X(I)/A(I)].
-! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
-      ion_mean_weight_inverse = 0.
-      electron_mean_weight_inverse = 0.
-      xtr = 0.
-      zeta_sum = 0.
-      do i = 1,num_isotopes
-         term = mass_fraction(i)/atomic_mass_amu(i)
-         ion_mean_weight_inverse = ion_mean_weight_inverse+term
-         electron_mean_weight_inverse = electron_mean_weight_inverse+ &
-              term*atomic_number(i)
-         xtr = xtr+term*atomic_number(i)**1.58
-         zeta_sum = zeta_sum+term*atomic_number(i)**2
-      end do
-! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
-!  THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
-!  GM PER CM^3 .
-! PDT AND PDP ARE THE DERIVATIVES OF THE DENSITY WITH RESPECT TO
-!  TEMPERATURE AND DENSITY.
-! DD = LOG RHO TO THE BASE 10.
-! CLN = LN10.  CLN IS CONVERSION BETWEEN LOG10 AND LN.
-! CONVERT DENSITY TO UNLOGGED FORM.
-! RWE = RHO/(MU SUB E), I. E., THE NUMBER OF ELECTRONS DIVIDED BY
-!  AVOGADRO'S NUMBER.
-      electron_number_density_na = ( exp(ln10*log_density) )* &
-           electron_mean_weight_inverse
-! THE EXPRESSION FOR RWE WAS INCORRECT IN THE ORIGINAL YALE SUBROUTINE.
-!  THE ORIGINAL VERSION HAD ( EXP(CLN*DL) ) DIVIDED BY EMU INSTEAD OF
-!  MULTIPLIED BY EMU.  RWE IS USED LATER IN COMPUTING THE SCREENING
-!  CORRECTION.
-      dd = log_density
+      call setup_abundances_and_composition
+! The reaction-rate / screening / energy-release block below stays
+! inline: extracting it into internal subroutines perturbs the
+! compiler's floating-point instruction scheduling enough to shift
+! the last bit of the pp-chain rates, breaking the byte-identical
+! regression pin (measured, 2026). Sections that do split cleanly
+! (setup, energy totals, neutrino fluxes) are internal subroutines
+! under contains.
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < 6.0.
 ! REPLACED FIXED 1 MILLION K THRESHOLD WITH TCUT(1).
 !      IF(TL.LE.6.0) THEN
@@ -1642,6 +1578,99 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !     EG(13)=RATE(13)*XC12*XC12
 ! ******************************************************************
 ! ****************************************
+      call compute_energy_generation
+      call compute_neutrino_fluxes
+      return
+
+contains
+
+
+! ---------------------------------------------------------------
+! Zero the neutrino/alpha-capture yields, form the fractional
+! abundances of the burning species, the ion and electron mean
+! molecular weights, and the screening precursors (xtr, zet).
+subroutine setup_abundances_and_composition
+! ZERO OUT THE ENERGY YIELDS FROM NEUTRINOS(ENU) AND ALPHA CAPTURE
+! REACTIONS (EALPCA).
+      star%engeb%neutrino_loss_rate = 0.0d0
+      star%engeb%alpha_capture_energy = 0.0d0
+! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
+!  ISOTOPES.
+! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
+!  THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
+!  RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
+      mass_fraction(1) = 0.0
+      mass_fraction(2) = hydrogen_fraction
+! MHP 5/02 ADDED DEUTERIUM
+!      XFRAC(3) = 0.0
+      mass_fraction(3) = deuterium_fraction
+      mass_fraction(4) = 0.0
+      mass_fraction(5) = he3_fraction
+      mass_fraction(6) = helium_fraction
+      mass_fraction(7) = c12_fraction
+      mass_fraction(8) = c13_fraction
+      mass_fraction(9) = n14_fraction
+      mass_fraction(10) = o16_fraction
+      mass_fraction(11) = o18_fraction
+      mass_fraction(12) = 0.0
+      mass_fraction(13) = 0.0
+! *******************************************************************
+! BEGIN CALCULATION OF SCREENING CORRECTION.
+! *******************************************************************
+!  THE BASIC REFERENCES ARE SALPETER, AUSTRALIAN JOURNAL OF PHYSICS,
+!  VOL. 7, 373 (1954). THE FORMULA FOR WEAK SCREENING THAT IS BEING
+!  PROGRAMMED IS EQUATION (25) OF THIS PAPER. THE OTHER IMPORTANT
+!  REFERENCES ARE: DEWITT, GRABOSKE, AND COOPER, AP. J. 181, 439 (1973)
+!  AND GRABOSKE ET AL., AP. J. 181, 457 (1973). THE VALUES OF EMU AND
+!  ZET ARE ESSENTIAL FOR COMPUTING WEAK SCREENING; THE VALUE OF AMU IS
+!  USED IN AN NON-ESSENTIAL WAY IN THIS COMPUTATION. XTR IS USED IN
+!  COMPUTING INTERMEDIATE SCREENING.
+! AMU IS ONE OVER THE MEAN MOLECULAR WEIGHT OF THE IONS, MU SUB I .
+! EMU IS ONE OVER THE ELECTRON MEAN MOLECULAR WEIGHT, MU SUB E.
+!  EMU IS USED HERE AS THE NAME FOR THE SECOND PART OF THE ZETA FUNCTION
+!  IN THE SALPETER EXPRESSION FOR WEAK SCREENING.
+! XTR IS USED LATER IN THE INTERMEDIATE SCREENING CALCULATION.  THE AVERAGE
+!  OF THE QUANTITY Z**(3B -1) IS EQUAL TO XTR/AMU.
+! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
+! MU = SUM OVER I OF [X(I)/A(I)].
+! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
+      ion_mean_weight_inverse = 0.
+      electron_mean_weight_inverse = 0.
+      xtr = 0.
+      zeta_sum = 0.
+      do i = 1,num_isotopes
+         term = mass_fraction(i)/atomic_mass_amu(i)
+         ion_mean_weight_inverse = ion_mean_weight_inverse+term
+         electron_mean_weight_inverse = electron_mean_weight_inverse+ &
+              term*atomic_number(i)
+         xtr = xtr+term*atomic_number(i)**1.58
+         zeta_sum = zeta_sum+term*atomic_number(i)**2
+      end do
+! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
+!  THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
+!  GM PER CM^3 .
+! PDT AND PDP ARE THE DERIVATIVES OF THE DENSITY WITH RESPECT TO
+!  TEMPERATURE AND DENSITY.
+! DD = LOG RHO TO THE BASE 10.
+! CLN = LN10.  CLN IS CONVERSION BETWEEN LOG10 AND LN.
+! CONVERT DENSITY TO UNLOGGED FORM.
+! RWE = RHO/(MU SUB E), I. E., THE NUMBER OF ELECTRONS DIVIDED BY
+!  AVOGADRO'S NUMBER.
+      electron_number_density_na = ( exp(ln10*log_density) )* &
+           electron_mean_weight_inverse
+! THE EXPRESSION FOR RWE WAS INCORRECT IN THE ORIGINAL YALE SUBROUTINE.
+!  THE ORIGINAL VERSION HAD ( EXP(CLN*DL) ) DIVIDED BY EMU INSTEAD OF
+!  MULTIPLIED BY EMU.  RWE IS USED LATER IN COMPUTING THE SCREENING
+!  CORRECTION.
+      dd = log_density
+end subroutine setup_abundances_and_composition
+
+! ---------------------------------------------------------------
+! Energy release per reaction (MeV -> erg), reactions 9 and 13
+! zeroed as in the original Yale code, the total energy generation
+! with d ln eps / d ln rho and d ln eps / d ln T, and the global
+! outputs returned to the caller.
+subroutine compute_energy_generation
 ! ENERGY GENERATION.
 ! ****************************************
 ! CALCULATE ENERGY GENERATION BY MULTIPLYING RATES PER GRAM PER SEC BY
@@ -1741,6 +1770,15 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          if (reaction_rate(i).le.1.e-5) reaction_rate(i) = 0.0
       end do
 ! ******************************************************
+end subroutine compute_energy_generation
+
+! ---------------------------------------------------------------
+! Rates per 1e9 yr per amu (hrk), the pp/CNO energy split, and --
+! above tcut(5) -- the eight solar neutrino fluxes (pp, pep, hep,
+! Be7, B8, N13, O15, F17) with hep screening. The tcut(5) early
+! RETURN is equivalent in or out of the section: nothing follows
+! this call in engeb.
+subroutine compute_neutrino_fluxes
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
 ! ******************************************************
 ! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
@@ -1993,7 +2031,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       end if
 
 
-      return
+end subroutine compute_neutrino_fluxes
+
 end subroutine engeb
 
 
