@@ -63,6 +63,7 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
      trial_sign_flag, punch_pending_flag, total_angular_momentum, &
      total_rotational_kinetic_energy)
       use star_info_lib, only: star
+      use luout_lib
       double precision, intent(in) :: timestep_yr
       double precision, intent(out) :: log_gravity
       logical, intent(in) :: has_h_shell
@@ -79,25 +80,12 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
               trial_sign_flag, punch_pending_flag, total_angular_momentum, &
               total_rotational_kinetic_energy)
       else
-! wrtout computes log_gravity as an output; reproduce it here so the
-! caller sees the same value in both modes.
-         log_gravity = cgl + star%env_comp%stotal - &
-              (star%log_L + log10_solar_luminosity - c4pil - csigl &
-               - 4.0d0*star%log_Teff)
-! The turnover-timescale/photospheric-pressure update lives inside
-! wrtout on the legacy path (hoisting it there would reorder the
-! .short print stream); MESA mode has no such constraint, so it runs
-! here, before the history row that reads its results.
-         call gettau(star%xa, star%logR, star%logP, star%logRho, &
-              star%m, star%logT, star%fp_rot, star%ft_rot, &
-              star%log_Teff, star%log_total_mass, star%log_L, star%nz, &
-              star%convective_flag, star%run%envelope_radius)
-         star%turnover%convective_turnover_timescale_old = &
-              star%turnover%convective_turnover_timescale
-         star%turnover%pphot0 = star%turnover%pphot
-         call write_history(has_h_shell, h_shell_begin_index, &
-              h_shell_end_index, h_shell_mid_index, &
-              total_angular_momentum, total_rotational_kinetic_energy)
+! Every history quantity was computed by update_output_diagnostics
+! (which also ran gettau in MESA mode) and stored in star_info;
+! the writers below are pure readers. wrtout computes log_gravity as
+! an output on the legacy path; hand back the stored value here.
+         log_gravity = star%run%log_g_surface
+         call write_history()
 ! The GYRE writer is the MESA-mode pulsation mechanism (wrtout
 ! triggers it on the legacy path).
          if (pulse_gyre_interval > 0) then
@@ -107,6 +95,8 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
                     star%logR, star%logT, star%omega)
             end if
          end if
+! Keep the log live during the run, like the history file.
+         flush(short_file_unit)
       end if
 end subroutine output_write_model
 

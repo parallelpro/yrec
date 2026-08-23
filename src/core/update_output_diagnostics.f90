@@ -35,6 +35,11 @@ subroutine update_output_diagnostics(ierr)
       implicit none
 
 
+! --- snu coefficients (as in wrtout) for the MESA-mode block below ---
+      double precision :: clsnuf_diag(8), gasnuf_diag(8)
+      data gasnuf_diag/1.18D1,2.15D2,7.14D4,7.17D1,2.40D4,6.04D1, &
+           1.137D2,1.139D2/
+      data clsnuf_diag/0.0D0,1.6D1,4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0/
 ! --- locals carried over from wrtout (names unchanged) ---
       double precision :: total_luminosity_sum, temp_value
       integer :: i
@@ -241,4 +246,102 @@ subroutine update_output_diagnostics(ierr)
 
 
       return
+! ---- 2026 MESA-style output: fill the per-model history sources ----
+! (star%run% members read by write_history). Formulas are the legacy
+! .track v0 branch's, verbatim. Legacy mode skips this: wrtout
+! computes the same values internally with pinned print ordering.
+      if (.not. use_legacy_output) then
+      call gettau(star%xa, star%logR, star%logP, star%logRho, &
+           star%m, star%logT, star%fp_rot, star%ft_rot, &
+           star%log_Teff, star%log_total_mass, star%log_L, star%nz, &
+           star%convective_flag, star%run%envelope_radius)
+      star%turnover%convective_turnover_timescale_old = &
+           star%turnover%convective_turnover_timescale
+      star%turnover%pphot0 = star%turnover%pphot
+
+      star%run%log_R_surface = 0.5d0*(star%log_L + log10_solar_luminosity &
+           - c4pil - csigl - 4.0d0*star%log_Teff)
+      star%run%log_g_surface = cgl + star%env_comp%stotal &
+           - 2.0d0*star%run%log_R_surface
+      star%run%log_R_surface = star%run%log_R_surface - log10_solar_radius
+
+      star%run%total_moment_of_inertia = 0.0d0
+      if (.not. rotation_active) then
+         do i = 1, star%nz
+            star%run%total_moment_of_inertia = &
+                 star%run%total_moment_of_inertia + &
+                 cc23*star%dm(i)*exp(2.0d0*ln10*star%logR(i))
+         end do
+      else
+         do i = 1, star%nz
+            star%run%total_moment_of_inertia = &
+                 star%run%total_moment_of_inertia + star%i_rot(i)
+         end do
+      end if
+
+      star%flux%cl37_snu_rate = 0.0d0
+      star%flux%ga71_snu_rate = 0.0d0
+      if (lsnu) then
+         do i = 1, 8
+            star%flux%cl37_snu_rate = star%flux%cl37_snu_rate + &
+                 clsnuf_diag(i)*star%flux%neutrino_flux_total(i)
+            star%flux%ga71_snu_rate = star%flux%ga71_snu_rate + &
+                 gasnuf_diag(i)*star%flux%neutrino_flux_total(i)
+         end do
+      else
+         do i = 1, 10
+            star%flux%neutrino_flux_total(i) = 0.0d0
+         end do
+      end if
+
+      star%run%cz_moment_of_inertia = 0.0d0
+      if (rotation_active) then
+         star%run%rotation_period_days = min(9999.0d0, &
+              0.5d0*c4pi/star%omega(star%nz)/8.64d4)
+         star%run%surf_velocity_kms = star%omega(star%nz)* &
+              exp(ln10*(star%run%log_R_surface+log10_solar_radius))*1.0d-5
+         if (star%envelope_cz_bottom_index .lt. star%nz) then
+            do i = star%envelope_cz_bottom_index, star%nz
+               star%run%cz_moment_of_inertia = &
+                    star%run%cz_moment_of_inertia + star%i_rot(i)
+            end do
+         end if
+      else
+         star%run%rotation_period_days = 0.0d0
+         star%run%surf_velocity_kms = 0.0d0
+         if (star%envelope_cz_bottom_index .lt. star%nz) then
+            do i = star%envelope_cz_bottom_index, star%nz
+               star%run%cz_moment_of_inertia = &
+                    star%run%cz_moment_of_inertia + &
+                    cc23*star%dm(i)*exp(2.0d0*ln10*star%logR(i))
+            end do
+         end if
+      end if
+
+      if (star%evo%has_h_shell) then
+         star%run%h_shell_bot_mass = &
+              star%m(star%evo%h_shell_zone_begin)/solar_mass_cgs
+         star%run%h_shell_mid_mass = &
+              star%m(star%evo%h_shell_midpoint_zone)/solar_mass_cgs
+         star%run%h_shell_top_mass = &
+              star%m(star%evo%h_shell_end_index)/solar_mass_cgs
+         star%run%h_shell_bot_radius = exp(ln10*( &
+              star%logR(star%evo%h_shell_zone_begin) &
+              - star%run%log_R_surface - log10_solar_radius))
+         star%run%h_shell_mid_radius = exp(ln10*( &
+              star%logR(star%evo%h_shell_midpoint_zone) &
+              - star%run%log_R_surface - log10_solar_radius))
+         star%run%h_shell_top_radius = exp(ln10*( &
+              star%logR(star%evo%h_shell_end_index) &
+              - star%run%log_R_surface - log10_solar_radius))
+      else
+         star%run%h_shell_bot_mass = 0.0d0
+         star%run%h_shell_mid_mass = 0.0d0
+         star%run%h_shell_top_mass = 0.0d0
+         star%run%h_shell_bot_radius = 0.0d0
+         star%run%h_shell_mid_radius = 0.0d0
+         star%run%h_shell_top_radius = 0.0d0
+      end if
+      end if
+
 end subroutine update_output_diagnostics

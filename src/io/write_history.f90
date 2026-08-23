@@ -1,51 +1,8 @@
-!----------------------------------------------------------------------
-! write_history
-!----------------------------------------------------------------------
-! New (2026, MESA-style output): writes one history row per converged
-! model in MESA's history.data layout -- 3 header rows of run-global
-! data, a blank row, a column-number row, a column-name row, then one
-! fixed-width row per model. pandas.read_fwf(path, skiprows=5) and
-! mesa_reader both parse it directly.
-!
-! Called from yrec_output's output_write_model in MESA mode (after
-! gettau). Self-contained: every derived scalar the legacy .track v0
-! row computes in wrtout is recomputed here with the identical
-! formulas, so the two streams stay numerically interchangeable
-! column for column. The column set is the .track v0
-! set under MESA-vocabulary names.
-!
-! The file is <MESA-mode .log path with .log replaced by .history>. It is
-! opened (REPLACE) on first use in a process/run and found again by
-! INQUIRE thereafter -- no SAVEd state, so re-entrant runs (which
-! close all units in the prologue) start a fresh file exactly like a
-! fresh process.
-subroutine write_history(has_h_shell, h_shell_begin_index, &
-     h_shell_end_index, h_shell_mid_index, total_angular_momentum, &
-     total_rotational_kinetic_energy)
+subroutine write_history()
       use star_info_lib, only: star
       use const_lib
       use luout_lib
       implicit none
-
-      logical, intent(in) :: has_h_shell
-      integer, intent(in) :: h_shell_begin_index, h_shell_end_index, &
-           h_shell_mid_index
-      double precision, intent(in) :: total_angular_momentum, &
-           total_rotational_kinetic_energy
-
-! Derived scalars, computed exactly as the legacy .track v0 branch in
-! io/wrtout.f90 computes them (formulas copied verbatim 2026):
-      double precision :: radius_log_surface, log_gravity
-      double precision :: total_moment_of_inertia, cz_moment_of_inertia
-      double precision :: rotation_period_days, equatorial_velocity_kms
-      double precision :: h_shell_begin_mass, h_shell_mid_mass2, &
-           h_shell_end_mass, h_shell_begin_radius, h_shell_mid_radius, &
-           h_shell_end_radius
-      double precision :: clsnuf(8), gasnuf(8)
-      integer :: k
-      data gasnuf/1.18D1,2.15D2,7.14D4,7.17D1,2.40D4,6.04D1, &
-           1.137D2,1.139D2/
-      data clsnuf/0.0D0,1.6D1,4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0/
 
       integer, parameter :: ncol = 83
       character(len=24) :: names(ncol)
@@ -139,88 +96,13 @@ subroutine write_history(has_h_shell, h_shell_begin_index, &
       names(82) = 'log_P_photosphere'
       names(83) = 'star_mass'
 
-! ---- derived scalars (wrtout v0-branch formulas, verbatim) ----
-      radius_log_surface = 0.5D0*(star%log_L + log10_solar_luminosity &
-           - c4pil - csigl - 4.0D0*star%log_Teff)
-      log_gravity = cgl + star%env_comp%stotal - radius_log_surface &
-           - radius_log_surface
-      radius_log_surface = radius_log_surface - log10_solar_radius
-
-      total_moment_of_inertia = 0.0D0
-      if(.not.rotation_active)then
-         do k = 1,star%nz
-            total_moment_of_inertia = total_moment_of_inertia + &
-                 cc23*star%dm(k)*exp(2.0D0*ln10*star%logR(k))
-         end do
-      else
-         do k = 1,star%nz
-            total_moment_of_inertia = total_moment_of_inertia + star%i_rot(k)
-         end do
-      endif
-
-      star%flux%cl37_snu_rate = 0.0D0
-      star%flux%ga71_snu_rate = 0.0D0
-      if(lsnu) then
-         do k = 1,8
-            star%flux%cl37_snu_rate = star%flux%cl37_snu_rate + &
-                 clsnuf(k)*star%flux%neutrino_flux_total(k)
-            star%flux%ga71_snu_rate = star%flux%ga71_snu_rate + &
-                 gasnuf(k)*star%flux%neutrino_flux_total(k)
-         end do
-      else
-         do k = 1,10
-            star%flux%neutrino_flux_total(k) = 0.0D0
-         end do
-      endif
-
-      cz_moment_of_inertia = 0.0D0
-      if(rotation_active) then
-         rotation_period_days = min(9999.0D0, &
-              0.5D0*c4pi/star%omega(star%nz)/8.64D4)
-         equatorial_velocity_kms = star%omega(star%nz)* &
-              exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
-         if(star%envelope_cz_bottom_index.lt.star%nz)then
-            do k = star%envelope_cz_bottom_index,star%nz
-               cz_moment_of_inertia = cz_moment_of_inertia + star%i_rot(k)
-            end do
-         endif
-      else
-         rotation_period_days = 0.0D0
-         equatorial_velocity_kms = 0.0D0
-         if(star%envelope_cz_bottom_index.lt.star%nz)then
-            do k = star%envelope_cz_bottom_index,star%nz
-               cz_moment_of_inertia = cz_moment_of_inertia + &
-                    cc23*star%dm(k)*exp(2.0D0*ln10*star%logR(k))
-            end do
-         endif
-      endif
-
-      if(has_h_shell) then
-         h_shell_begin_mass = star%m(h_shell_begin_index)/solar_mass_cgs
-         h_shell_mid_mass2 = star%m(h_shell_mid_index)/solar_mass_cgs
-         h_shell_end_mass = star%m(h_shell_end_index)/solar_mass_cgs
-         h_shell_begin_radius = exp(ln10*(star%logR(h_shell_begin_index) &
-              -radius_log_surface-log10_solar_radius))
-         h_shell_mid_radius = exp(ln10*(star%logR(h_shell_mid_index) &
-              -radius_log_surface-log10_solar_radius))
-         h_shell_end_radius = exp(ln10*(star%logR(h_shell_end_index) &
-              -radius_log_surface-log10_solar_radius))
-      else
-         h_shell_begin_mass = 0.0D0
-         h_shell_mid_mass2 = h_shell_begin_mass
-         h_shell_end_mass = h_shell_begin_mass
-         h_shell_begin_radius = h_shell_begin_mass
-         h_shell_mid_radius = h_shell_begin_mass
-         h_shell_end_radius = h_shell_begin_mass
-      endif
-
 ! ---- values: same sources as the legacy .track v0 row ----
       vals(1) = dble(star%model_number)
       vals(2) = dble(star%nz)
       vals(3) = star%run%dage*1.0d9
       vals(4) = star%log_L
-      vals(5) = radius_log_surface
-      vals(6) = log_gravity
+      vals(5) = star%run%log_R_surface
+      vals(6) = star%run%log_g_surface
       vals(7) = star%log_Teff
       vals(8) = star%run%core_cz_mass
       vals(9) = star%run%envelope_mass
@@ -258,21 +140,21 @@ subroutine write_history(has_h_shell, h_shell_begin_index, &
       vals(64) = star%xa(2,star%nz)
       vals(65) = star%xa(3,star%nz)
       vals(66) = star%xa(3,star%nz)/star%xa(1,star%nz)
-      vals(67) = total_angular_momentum
-      vals(68) = total_rotational_kinetic_energy
-      vals(69) = total_moment_of_inertia
-      vals(70) = cz_moment_of_inertia
+      vals(67) = star%evo%total_angular_momentum
+      vals(68) = star%evo%total_rotational_ke
+      vals(69) = star%run%total_moment_of_inertia
+      vals(70) = star%run%cz_moment_of_inertia
       vals(71) = star%omega(star%nz)
       vals(72) = star%omega(1)
-      vals(73) = rotation_period_days
-      vals(74) = equatorial_velocity_kms
+      vals(73) = star%run%rotation_period_days
+      vals(74) = star%run%surf_velocity_kms
       vals(75) = star%turnover%convective_turnover_timescale
-      vals(76) = h_shell_begin_mass
-      vals(77) = h_shell_mid_mass2
-      vals(78) = h_shell_end_mass
-      vals(79) = h_shell_begin_radius
-      vals(80) = h_shell_mid_radius
-      vals(81) = h_shell_end_radius
+      vals(76) = star%run%h_shell_bot_mass
+      vals(77) = star%run%h_shell_mid_mass
+      vals(78) = star%run%h_shell_top_mass
+      vals(79) = star%run%h_shell_bot_radius
+      vals(80) = star%run%h_shell_mid_radius
+      vals(81) = star%run%h_shell_top_radius
       vals(82) = star%turnover%pphot
       vals(83) = star%star_mass
 
@@ -294,6 +176,9 @@ subroutine write_history(has_h_shell, h_shell_begin_index, &
 
       write(hist_unit, '(1x,i28,i28,81es28.16e3)') &
            star%model_number, star%nz, (vals(i), i = 3, ncol)
+! Flush so the file is live during the run (tail -f / editor view),
+! matching MESA's behavior.
+      flush(hist_unit)
       return
 
 contains

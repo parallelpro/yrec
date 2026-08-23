@@ -179,6 +179,16 @@ module star_info_lib
 
 ! ---- from state/run_diag_lib.f90 ----
       type, public :: run_diagnostics_state
+! 2026 MESA-style output: per-model history sources. Computed by
+! update_output_diagnostics after all physics for the step is done;
+! writers (write_history) only read them. Zero at run start
+! (star0 snapshot / static zero), refreshed every converged model.
+           double precision :: log_R_surface, log_g_surface
+           double precision :: total_moment_of_inertia, cz_moment_of_inertia
+           double precision :: rotation_period_days, surf_velocity_kms
+           double precision :: h_shell_bot_mass, h_shell_mid_mass, &
+                h_shell_top_mass, h_shell_bot_radius, h_shell_mid_radius, &
+                h_shell_top_radius
 ! former common/entrop/
            double precision :: temperature_entropy_term(json), &
                 pressure_entropy_term(json), &
