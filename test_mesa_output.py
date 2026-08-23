@@ -179,3 +179,44 @@ def test_default_columns_lists_in_sync():
 
     assert listed("history_columns.list") == harvest("history_column_names")
     assert listed("profile_columns.list") == harvest("profile_column_names")
+
+
+def test_gsm_pulse_output(tmp_path):
+    """GSM (GYRE-HDF5) pulse output -- opt-in: needs an HDF5-enabled
+    build (`make USE_HDF5=1` in src/) and YREC_TEST_HDF5=1 in the
+    environment, since the default build compiles the GSM writer as a
+    reporting stub."""
+    if os.environ.get("YREC_TEST_HDF5") != "1":
+        pytest.skip("set YREC_TEST_HDF5=1 (and build with USE_HDF5=1)")
+    if not YREC.exists() or not (REPO / "input").exists():
+        pytest.skip("needs src/yrec and the full input/ tree")
+    inlist = tmp_path / "inlist_conv"
+    conv = subprocess.run(
+        [sys.executable, str(CONVERTER), str(CASE / NML1), str(CASE / NML2),
+         "-o", str(inlist)], capture_output=True, text=True)
+    assert conv.returncode == 0, conv.stderr
+    text = "\n".join(l for l in inlist.read_text().splitlines()
+                     if "use_legacy_output" not in l) + "\n"
+    text = text.replace(
+        "&controls",
+        "&controls\n pulse_format = 'GSM'\n write_pulse_flag = .true.\n"
+        " write_profile_flag = .false.\n", 1)
+    out = _run(tmp_path / "gsm", text)
+    gsms = sorted(out.glob("profile*.data.GSM"))
+    assert gsms, "no GSM files written"
+    blob = gsms[0].read_bytes()[:4]
+    assert blob == b"\x89HDF", blob
+    try:
+        import h5py
+    except ImportError:
+        return
+    with h5py.File(gsms[0], "r") as f:
+        n = int(f.attrs["n"][0]) if hasattr(f.attrs["n"], "__len__") \
+            else int(f.attrs["n"])
+        assert int(f.attrs["version"][0] if hasattr(f.attrs["version"],
+                   "__len__") else f.attrs["version"]) == 101
+        assert len(f["r"]) == n
+        assert sorted(f.keys()) == sorted(
+            ["r", "M_r", "L_r", "P", "T", "rho", "nabla", "N2", "Gamma_1",
+             "nabla_ad", "delta", "kap", "kap_kap_T", "kap_kap_rho",
+             "eps", "eps_eps_T", "eps_eps_rho", "Omega_rot"])

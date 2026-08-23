@@ -605,6 +605,10 @@ subroutine write_pulse(iprof)
           pulse_format(1:5) == 'fgong') then
          path = trim(out_dir) // 'profile' // trim(numstr) // '.data.FGONG'
          call write_fgong_pulse(star%nz, star%model_number, path)
+      else if (pulse_format(1:3) == 'GSM' .or. &
+               pulse_format(1:3) == 'gsm') then
+         path = trim(out_dir) // 'profile' // trim(numstr) // '.data.GSM'
+         call write_gsm_pulse(star%nz, star%model_number, path)
       else
          path = trim(out_dir) // 'profile' // trim(numstr) // '.data.GYRE'
          call write_gyre_pulse(star%nz, star%model_number, star%m, &

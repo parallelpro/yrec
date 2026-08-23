@@ -105,7 +105,31 @@ core/envint_lib.o: | atm/atm_lib.o state/star_info_lib.o \
 	const/const_lib.o const/luout_lib.o const/intpar_lib.o
 
 # Flags for GNU Fortran (gfortran)
-GNU_BASE_FFLAGS = -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
+GNU_BASE_FFLAGS = $(HDF5_FFLAGS) -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
+
+# Optional HDF5 support (GSM / GYRE-HDF5 pulse output): build with
+# `make USE_HDF5=1`. HDF5_DIR defaults to the MESA SDK, which ships
+# static HDF5 libraries and gfortran modules; point it elsewhere for
+# a different HDF5 installation (needs hdf5.mod/h5lt.mod +
+# libhdf5*_fortran). Without USE_HDF5, write_gsm_pulse compiles to a
+# stub that reports the missing capability.
+ifdef USE_HDF5
+HDF5_DIR ?= /Applications/mesasdk
+HDF5_FFLAGS = -DYREC_USE_HDF5 -I$(HDF5_DIR)/include
+HDF5_LIBS = $(HDF5_DIR)/lib/libhdf5hl_fortran.a $(HDF5_DIR)/lib/libhdf5_hl.a \
+	$(HDF5_DIR)/lib/libhdf5_fortran.a $(HDF5_DIR)/lib/libhdf5.a -lz -ldl -lm
+else
+HDF5_FFLAGS =
+HDF5_LIBS =
+endif
+# Rebuild the GSM writer whenever the HDF5 mode flips (make has no
+# flag tracking; without this a stale HDF5-flavored object links into
+# a non-HDF5 build and vice versa).
+HDF5_MODE_STAMP = .hdf5_mode_$(if $(USE_HDF5),on,off)
+$(HDF5_MODE_STAMP):
+	@rm -f .hdf5_mode_on .hdf5_mode_off
+	@touch $@
+io/write_gsm_pulse.o: $(HDF5_MODE_STAMP)
 GNU_DEV_FFLAGS = -fcheck=all -ffpe-trap=invalid,zero,overflow
 GNU_DBG_FFLAGS = -g -fsanitize=undefined -fsanitize=address -fstack-protector-strong -O0
 GNU_PROF_FFLAGS = -O3 -g -pg
@@ -193,23 +217,23 @@ libs: $(LIBS)
 # pinned expected outputs are flag-stable.
 test_eos: FFLAGS += $(REL_FFLAGS)
 test_eos: eos/test/test_eos.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
 
 test_kap: FFLAGS += $(REL_FFLAGS)
 test_kap: kap/test/test_kap.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
 
 test_atm: FFLAGS += $(REL_FFLAGS)
 test_atm: atm/test/test_atm.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
 
 test_reentry: FFLAGS += $(REL_FFLAGS)
 test_reentry: core/test/test_reentry.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
 
 test_net: FFLAGS += $(REL_FFLAGS)
 test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
 
 .PHONY: tests
 tests: test_eos test_kap test_atm test_net test_reentry
@@ -233,7 +257,7 @@ prof: LDFLAGS += $(PROF_LDFLAGS)
 prof: $(NAME)
 
 $(NAME): $(OBJS)
-	$(FC) $(LDFLAGS) -o $(NAME) $(OBJS)
+	$(FC) $(LDFLAGS) -o $(NAME) $(OBJS) $(HDF5_LIBS)
 
 # libyrec (2026): the embeddable engine as a shared library -- every
 # object except the CLI wrapper. Entry point: core/yrec_capi.f90's
@@ -246,7 +270,7 @@ else
 SHLIB := libyrec.so
 endif
 $(SHLIB): $(OBJS)
-	$(FC) $(LDFLAGS) -shared -o $(SHLIB) $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -shared -o $(SHLIB) $(filter-out core/main.o,$(OBJS)) $(HDF5_LIBS)
 
 lib: $(SHLIB)
 .PHONY: lib
