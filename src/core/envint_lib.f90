@@ -18,7 +18,6 @@ module envint_lib
       implicit none
 contains
 
-
 subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
      vertex_index, print_flag, save_boundary_flag, log10_pressure_limit, &
@@ -144,10 +143,75 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       double precision :: radius_linear, depth_fraction, local_log10_gravity, &
            local_gravity_linear
       double precision :: x_start, taucz_env_accum, delta_radius_cz
+! Pulse-store formats shared by the atmosphere and envelope blocks
+! (character parameters, not FORMAT labels, so the contains-based
+! sections below can all reach them via host association).
+      character(len=*), parameter :: fmt_pulse_e16 = &
+           '(5E16.9,/,5E16.9,/,5E16.9,/,4E16.9)'
+      character(len=*), parameter :: fmt_pulse_e23 = &
+           '(5E23.16,/,5E23.16,/,5E23.16,/,4E23.16)'
+      character(len=*), parameter :: fmt_pulse_e23w = &
+           '(6E23.16,/,6E23.16,/,6E23.16,/,4E23.16)'
 
       if (present(ierr)) ierr = 0
       jerr = 0
 
+      call prepare_surface_boundary
+      if (present(ierr)) then
+         if (ierr /= 0) return
+      end if
+      call integrate_atmosphere
+      if (present(ierr)) then
+         if (ierr /= 0) return
+      end if
+! ENVELOPE INTEGRATION
+! HERE P IS THE INDEPENDENT VARIABLE AND M,R,AND T ARE
+! DEPENDENT VARIABLES.  INTEGRATE FROM TAU = 2/3 TO THE LAST
+! MASS POINT IN THE MODEL.
+
+
+                 !  integration and come here
+! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
+      star%turnover%pphot = atm_table%atm_log10_pressure
+      if (.not.calc_envelope_flag) then
+         continue
+         return
+      end if
+
+      call integrate_envelope
+      if (present(ierr)) then
+         if (ierr /= 0) return
+      end if
+! JVS 08/13
+! IF THE CZ IS IN THE ENVELOPE (.I.E. BEYOND THE FITTING POINT) TRACK ITS
+! LOCATION IN MASS AND RADIUS FOR USE WITH AM LOSS ROUTINES
+!
+! G Somers 3/17, SKIP TAUCAL CALL IF USING NEW TAUCZ ROUTINES
+        if (use_new_turnover_timescale) then
+           continue
+           return
+        end if
+! G Somers END
+      call track_envelope_cz
+      if (present(ierr)) then
+         if (ierr /= 0) return
+      end if
+      return
+
+! error funnel: reached only when a callee (or one of the two
+! integration-failure checks above) reported jerr /= 0. With ierr
+! present the caller takes responsibility; without it, preserve the
+! historical stop (the diagnostic already printed at the point of
+! failure).
+
+contains
+
+! ---------------------------------------------------------------
+! Surface boundary condition: pulse-derivative flags, then the
+! tabulated surface pressure lookup (Kurucz / Kurucz-Castelli /
+! Allard, falling back to gray when the Allard lookup fails).
+! Sets tabulated_bc; ierr on a failed table interpolation.
+subroutine prepare_surface_boundary
 ! DBG PULSE TURN ON DERIVATIVE CALCULATOR
       if (pulse_print_flag.and.print_flag) then
           star%pulse%lpumod = .true.
@@ -223,6 +287,16 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
          endif
 ! We have Allard atmosphere boundary conditions
       endif
+end subroutine prepare_surface_boundary
+
+! ---------------------------------------------------------------
+! Gray-atmosphere start (guess T at tau ~ 0, matching P, rho and
+! starting tau) and the dP/dtau integration down to the
+! photosphere (tau = 2/3 Eddington, 0.312 Krishna-Swamy), storing
+! atmo_struct on the way; the atm_retry loop restarts with a
+! reduced step on failure, ierr after maxstp steps. Skipped
+! entirely when a tabulated boundary supplied the pressure.
+subroutine integrate_atmosphere
       if (.not. tabulated_bc) then
 ! Start gray atmosphere bounary conditions
 ! GUESS THE TEMPERATURE FOR AN OPTICAL DEPTH NEAR ZERO.
@@ -309,21 +383,18 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
         if(pulsation_file_version.eq.1) then
 ! MHP 10/02 TYPO - QED SHOULD HAVE BEEN QQED
 !     *         PL, QESUM,O,QDP,QED,
-           write(opal_atm_unit,5001)delta_tau_step,star%pulse%qfs,luminosity_linear,log10_temperature,log10_density, &
+           write(opal_atm_unit,fmt_pulse_e16)delta_tau_step,star%pulse%qfs,luminosity_linear,log10_temperature,log10_density, &
                log10_pressure, pulse_energy_sum,opacity,dlnrho_dlnp,star%pulse%qqed, &
                star%pulse%qqet,dlnkap_dlnrho,dlnkap_dlnt,pulse_gradient,adiabatic_gradient, &
                specific_heat_cp,specific_gas_constant,dlnrho_dlnt,electron_pressure
 !     *         PL, TAUP ,O,QDP,QED,
           else if (pulsation_file_version.eq.2 .or. pulsation_file_version.eq.3) then
-           write(opal_atm_unit,6001)delta_tau_step,star%pulse%qfs,luminosity_linear,log10_temperature,log10_density, &
+           write(opal_atm_unit,fmt_pulse_e23)delta_tau_step,star%pulse%qfs,luminosity_linear,log10_temperature,log10_density, &
                log10_pressure, prev_tau ,opacity,dlnrho_dlnp,star%pulse%qqed, &
                star%pulse%qqet,dlnkap_dlnrho,dlnkap_dlnt,pulse_gradient,adiabatic_gradient, &
                specific_heat_cp,specific_gas_constant,dlnrho_dlnt,electron_pressure
           end if
 
- 5001 format(5E16.9,/,5E16.9,/,5E16.9,/,4E16.9)
- 6001 format(5E23.16,/,5E23.16,/,5E23.16,/,4E23.16)
- 6003 format(6E23.16,/,6E23.16,/,6E23.16,/,4E23.16)
       end if
 
 
@@ -434,12 +505,12 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
           end if
           if (pulse_print_flag.and.print_flag) then
                 if (pulsation_file_version.eq.1) then
-                         write(opal_atm_unit,5001)delta_tau_step,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+                         write(opal_atm_unit,fmt_pulse_e16)delta_tau_step,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
                            star%pulse%qpl, pulse_energy_sum ,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
                            star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,pulse_gradient,star%pulse%qdela, &
                            star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
                         else if (pulsation_file_version.eq.2.or.pulsation_file_version.eq.3) then
-                         write(opal_atm_unit,6001)delta_tau_step,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+                         write(opal_atm_unit,fmt_pulse_e23)delta_tau_step,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
                            star%pulse%qpl, tau_now ,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
                            star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,pulse_gradient,star%pulse%qdela, &
                            star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
@@ -487,20 +558,14 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       exit atm_retry
       end do atm_retry
       end if
-! ENVELOPE INTEGRATION
-! HERE P IS THE INDEPENDENT VARIABLE AND M,R,AND T ARE
-! DEPENDENT VARIABLES.  INTEGRATE FROM TAU = 2/3 TO THE LAST
-! MASS POINT IN THE MODEL.
+end subroutine integrate_atmosphere
 
-
-                 !  integration and come here
-! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
-      star%turnover%pphot = atm_table%atm_log10_pressure
-      if (.not.calc_envelope_flag) then
-         continue
-         return
-      end if
-
+! ---------------------------------------------------------------
+! Integrate the envelope in pressure from the photosphere down to
+! the fitting mass (M, R, T dependent), storing env_struct
+! (inverted to inward-out at the end), with step limiting at the
+! fitting point; ierr after maxstp steps.
+subroutine integrate_envelope
 ! G Somers 11/14 WRITE ENVELOPE HEADER
       if(print_flag.and.lstenv)then
          if(.not.lstch) write(istor,61)
@@ -511,9 +576,9 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       if (pulse_print_flag.and.print_flag) then
 !         XYZ = 99.99D0
          if(pulsation_file_version.eq.1) then
-            write(opal_atm_unit, 5001) (xyz(i),i=1,19)
+            write(opal_atm_unit, fmt_pulse_e16) (xyz(i),i=1,19)
          else if (pulsation_file_version.eq.2.or.pulsation_file_version.eq.3) then
-            write(opal_atm_unit, 6001) (xyz(i),i=1,19)
+            write(opal_atm_unit, fmt_pulse_e23) (xyz(i),i=1,19)
          end if
 ! 5002    FORMAT(E16.9)
 ! 6002    FORMAT(E23.16)
@@ -571,18 +636,18 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
          star%pulse%qqet = 0.0d0
          electron_pressure = gas_constant * star%pulse%qt * star%pulse%qd * star%pulse%qemu
          if(pulsation_file_version.eq.1) then
-          write(opal_envelope_unit,5001)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+          write(opal_envelope_unit,fmt_pulse_e16)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
                  star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
                  star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela, &
                  star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
          else if (pulsation_file_version.eq.2) then
-          write(opal_envelope_unit,6001)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+          write(opal_envelope_unit,fmt_pulse_e23)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
                  star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
                  star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela, &
                  star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
          else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Appended mixing length info at end of first three lines
-          write(opal_envelope_unit,6003)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%rot%alfmlt, &
+          write(opal_envelope_unit,fmt_pulse_e23w)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%rot%alfmlt, &
                  star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed,star%rot%phmlt, &
                  star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela,star%rot%cmxmlt, &
                  star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
@@ -709,18 +774,18 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
           star%pulse%qqet = 0.0d0
           electron_pressure = gas_constant * star%pulse%qt * star%pulse%qd * star%pulse%qemu
           if(pulsation_file_version.eq.1) then
-               write(opal_envelope_unit,5001)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+               write(opal_envelope_unit,fmt_pulse_e16)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
                     star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
                     star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela, &
                     star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
             else if (pulsation_file_version.eq.2) then
-               write(opal_envelope_unit,6001)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
+               write(opal_envelope_unit,fmt_pulse_e23)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl, &
                     star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed, &
                     star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela, &
                     star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
             else if (pulsation_file_version.eq.3) then
 ! DBG 7/95 Appended mixing length info at end of first three lines
-               write(opal_envelope_unit,6003)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%rot%alfmlt, &
+               write(opal_envelope_unit,fmt_pulse_e23w)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%rot%alfmlt, &
                     star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed,star%rot%phmlt, &
                     star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela,star%rot%cmxmlt, &
                     star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
@@ -918,9 +983,9 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       if (pulse_print_flag.and.print_flag) then
 !         XYZ = 99.99D0
          if(pulsation_file_version.eq.1) then
-            write(opal_envelope_unit, 5001) (xyz(i),i=1,19)
+            write(opal_envelope_unit, fmt_pulse_e16) (xyz(i),i=1,19)
          else if (pulsation_file_version.eq.2 .or. pulsation_file_version.eq.3)then
-            write(opal_envelope_unit, 6003) (xyz(i),i=1,22)
+            write(opal_envelope_unit, fmt_pulse_e23w) (xyz(i),i=1,22)
          end if
       endif
 
@@ -931,16 +996,13 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            5X,'MAX RELATIVE ERRORS:M ',1PE14.5,'  T ',E14.5, &
            '  R ',E14.5)
 
-! JVS 08/13
-! IF THE CZ IS IN THE ENVELOPE (.I.E. BEYOND THE FITTING POINT) TRACK ITS
-! LOCATION IN MASS AND RADIUS FOR USE WITH AM LOSS ROUTINES
-!
-! G Somers 3/17, SKIP TAUCAL CALL IF USING NEW TAUCZ ROUTINES
-        if (use_new_turnover_timescale) then
-           continue
-           return
-        end if
-! G Somers END
+end subroutine integrate_envelope
+
+! ---------------------------------------------------------------
+! If the surface convection zone base lies in the envelope (beyond
+! the fitting point), record its mass and radius for the angular
+! momentum loss routines (legacy taucal path).
+subroutine track_envelope_cz
       cz_start_index = 0
       do i=1,env_struct%num_env_points
             if (cz_start_index .eq. 0 .and. env_struct%env_convective_flag(i) ) cz_start_index = i
@@ -975,13 +1037,8 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
                   env_struct%env_convective_velocity, taucal_radiative_gradient,taucal_adiabatic_gradient)
       endif
 
-      return
+end subroutine track_envelope_cz
 
-! error funnel: reached only when a callee (or one of the two
-! integration-failure checks above) reported jerr /= 0. With ierr
-! present the caller takes responsibility; without it, preserve the
-! historical stop (the diagnostic already printed at the point of
-! failure).
 end subroutine atm_get
 
 end module envint_lib
