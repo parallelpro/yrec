@@ -908,6 +908,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! G Somers 3/17 USE NEW OVERTURN TIMESCALE CALC?
            &    lnewtcz, lcalcenv
 
+! 2026 inlist revamp: new-style (&star_job/&controls) machinery,
+! generated from defaults/controls_registry.tsv.
+      include 'inlist_new_decl.inc'
       ierr = 0
 !
 ! DBG DATA CARDS FOR THE RUN PARAMETERS
@@ -1342,12 +1345,19 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       end if
       write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
 
+! 2026 inlist revamp: dispatch on inlist style. New-style files carry
+! &star_job (+ &controls, same file or the second); everything else
+! takes the byte-pinned legacy path unchanged.
+      if (nml_file_has_group(control_nml_file, 'star_job')) then
+      include 'inlist_new_read.inc'
+      else
       open(unit=standard_unit, file=control_nml_file, status='OLD')
       open(unit=run_unit, file=physics_nml_file, status='OLD')
       read(unit=standard_unit, nml=control)
       read(unit=run_unit, nml=physics)
       close(standard_unit)
       close(run_unit)
+      end if
 ! stolr0/imax/nuse must keep their exact NAMELIST /physics/ spelling
 ! (see this file's naming note at the top), so intpar_lib's
 ! canonically-named variables are set by copying from them here,
@@ -2376,6 +2386,30 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       1000 continue
       end do
       return
+
+contains
+
+! Does this namelist file contain the group &<gname>? Used to detect
+! new-style inlists (and whether &controls shares the &star_job file).
+logical function nml_file_has_group(fname, gname)
+      character(len=*), intent(in) :: fname, gname
+      character(len=512) :: probe_line
+      integer :: probe_unit, ios
+
+      nml_file_has_group = .false.
+      open(newunit=probe_unit, file=fname, status='OLD', &
+           action='READ', iostat=ios)
+      if (ios /= 0) return
+      do
+         read(probe_unit, '(a)', iostat=ios) probe_line
+         if (ios /= 0) exit
+         if (index(adjustl(probe_line), '&' // trim(gname)) == 1) then
+            nml_file_has_group = .true.
+            exit
+         end if
+      end do
+      close(probe_unit)
+end function nml_file_has_group
 
 end subroutine parmin
 

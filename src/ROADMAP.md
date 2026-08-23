@@ -991,3 +991,41 @@ Method: %-qualified quote-guarded renames only, ownership verified
 unique per member first, make clean before every gate (type
 changes), dual gates per batch, full battery at the end (81/81
 strict byte-diff, 8/8 local tests incl. test_pyyrec).
+
+## Inlist revamp (2026-08-23, DONE; user directive)
+
+MESA-style inlists: readable names, defaults files, legacy decks
+still first-class.
+
+- defaults/controls_registry.tsv is the single source of truth (391
+  entries: group, type, effective default, new name, status, doc).
+  210 names were already canonical internally; ~140 hand-named and
+  code-verified; 5 controls proved dead (fstch, sstandard, ies, imu,
+  hpttol) and are accepted by the legacy path only. Effective
+  defaults documented for the first time -- only 31 controls have
+  explicit defaults; the rest are implicit static zero pinned by
+  -finit-local-zero.
+- tools/gen_inlist.py generates from the registry: the &star_job /
+  &controls groups + new-variable declarations
+  (core/inlist_new_decl.inc), the new-style read
+  (core/inlist_new_read.inc), and defaults/star_job.defaults +
+  defaults/controls.defaults. Generated code re-states NO default
+  values: it seeds new names from their legacy twins pre-read and
+  copies back post-read, so both paths share parmin's defaults by
+  construction.
+- parmin dispatches on file content: &star_job present -> new path
+  (single-file inlist or pair); otherwise the byte-pinned legacy
+  &control/&physics read, unchanged. Make now knows parmin.o depends
+  on the generated .inc files.
+- tools/upgrade_inlist.py converts a legacy pair to one new-style
+  inlist (names only; values/comments/layout preserved; dead
+  controls dropped with a warning).
+- test_inlist_convert.py: convert + run both + byte-compare, over
+  the solar norot, rot, and solarcal decks -- all IDENTICAL.
+
+Registry findings while verifying names: FK/ALFA are the Kawaler
+wind-law constant/index (used inside parmin's post-processing --
+a functional-reference scan must include parmin itself and echo
+writes); KINDRN codes documented (1 evolve, 2 rescale, 3 both).
+8 entries remain status=todo (provisionally named, semantics
+unverified); the legacy names remain valid regardless.
