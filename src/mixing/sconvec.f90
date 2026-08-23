@@ -370,7 +370,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
          end if
       end if
       k_idx = k_idx + 1
-      if (.not. (k_idx.le.num_zones_mixed-1)) exit merge_scan
+      if (k_idx.gt.num_zones_mixed-1) exit merge_scan
       end do merge_scan
 
       return

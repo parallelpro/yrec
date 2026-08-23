@@ -285,7 +285,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  RETURN FOR NEXT ZONE. (was label 130)
       zone_index = zone_bottom - 1
       zone_bottom = zone_index
-      if(.not. (zone_index.gt.1)) exit zone_scan
+      if(zone_index.le.1) exit zone_scan
       end do zone_scan
 !  I/O FOR END OF DIFFUSION STEP.
       if(iteration_number.eq.itdif2.or.converged_flag)then

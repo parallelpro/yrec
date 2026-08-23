@@ -116,7 +116,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
        if (ierr /= 0) return
       end if
       end do
-      if (.not. (table_kind.eq.0)) then
+      if (table_kind.ne.0) then
 !     IF IDX=1: CHECK TABLES FOR CORRECT COMPOSITION CONSTRUCTION
 !     AND PERFORM NUMERICAL DERIVATIVES W.R.T. X
       composition_tolerance = 0.05d0*abs(delta_x)

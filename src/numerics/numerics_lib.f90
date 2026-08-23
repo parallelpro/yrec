@@ -2020,16 +2020,16 @@ subroutine lir_impl(linear_mode_in, target_z,table_z,result_y,table_y, &
       end do
 ! CONTROL WHEN Z DOES NOT LIE ON A MESH POINT
       if(search_idx.le.1) interp_flag=0
-      if (.not. (linear_mode.eq.1)) then
+      if (linear_mode.ne.1) then
 ! CUBIC INTERPOLATION/EXTRAPOLATION
 ! PIVOTAL POINT (M) AND POINT (K) CLOSEST TO Z
       pivot=search_idx
       closest=3
-      if (.not. (search_idx.gt.1+stride)) then
+      if (search_idx.le.1+stride) then
       pivot=1+stride+stride
       closest=search_idx
       end if
-      if (.not. (search_idx.lt.table_end)) then
+      if (search_idx.ge.table_end) then
       pivot=table_end-stride
       closest=4
       end if

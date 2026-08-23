@@ -493,7 +493,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !     *               IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP)
 !         ENDIF
 !  RETURN FOR NEXT REGION IF APPLICABLE
-         if(.not. (scan_start_zone.le.zone_max)) exit region_loop
+         if(scan_start_zone.gt.zone_max) exit region_loop
          end do region_loop
 ! CHECK SOLUTION,UPDATE OMEGA,AND SEE IF ANOTHER ITERATION IS NEEDED.
          am_transport_convective_flag(1) = lcz_first_zone

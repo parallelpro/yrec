@@ -318,8 +318,8 @@ subroutine alfilein(allard_table_path, ierr)
 
 !     we now verify that we have the correct FeH and Alpha
 
-      if (.not. (dabs(feh_value -allard_target_feh) .ge. 1d-6)) then
-      if (.not. (dabs(alpha_value -allard_target_alpha) .ge. 1d-6)) then
+      if (dabs(feh_value -allard_target_feh) .lt. 1d-6) then
+      if (dabs(alpha_value -allard_target_alpha) .lt. 1d-6) then
 
 
 !     We now have the correct indices for our tables, i1 for the Teff-direction
@@ -392,7 +392,7 @@ subroutine sort_shell(num_elements, values)
       inc=1
       do
          inc=3*inc+1                         ! Determin starting increment
-      if (.not. (inc .le. n)) exit
+      if (inc .gt. n) exit
       end do
       do
          continue
@@ -407,7 +407,7 @@ subroutine sort_shell(num_elements, values)
     end do
             values(j)=v
          enddo
-      if (.not. (inc .gt. 1)) exit
+      if (inc .le. 1) exit
       end do
       return
 end subroutine sort_shell

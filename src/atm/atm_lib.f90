@@ -221,7 +221,7 @@ subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
       jerr = 0
 
       call alsurfp(log_teff, log_g, print_to_files, lookup_failed, jerr)
-      if (.not. (jerr /= 0)) then
+      if (jerr == 0) then
 
       return
 

@@ -2182,7 +2182,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if (.not. (log_temperature.lt.tcut(4))) then
+      if (log_temperature.ge.tcut(4)) then
 ! C13(ALPHA,N) O16
       r1=t9m23+0.0129d0*t9m13+2.04d0+0.184d0*t9p13
       a1 = 6.77d15*exp(-32.329d0*t9m13-(t9/1.284d0)**2)

@@ -76,7 +76,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
       in_convection_zone = .false.
       convective_flag(num_zones+1) = .false.
       do zone_idx = 1, num_zones + 1
-         if (.not. (.not.convective_flag(zone_idx))) then
+         if (convective_flag(zone_idx)) then
 ! CONVECTION ZONE
          if (in_convection_zone) cycle
 ! START OF CONVECTION ZONE
@@ -147,12 +147,12 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
 !  ADD CONVECTIVE OVERSHOOT IF NEEDED; THE SIZE OF THE OVERSHOOT REGION IS
 !  COMPUTED AND THE EDGES IN MXZONE ARE MOVED TO THE EDGES OF THE
 !  OVERSHOOT REGIONS.
-      if (.not. (.not.lovstc .and. .not.envelope_overshoot_active .and. .not.lovstm)) then
+      if (lovstc .or. envelope_overshoot_active .or. lovstm) then
       call oversh(composition, log_density, log_pressure, log_radius, &
            log_mass, log_temperature, num_zones, mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, num_mixed_zones)
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY OVERSHOOT.
-      if (.not. (num_mixed_zones.eq.1)) then
+      if (num_mixed_zones.ne.1) then
       j_idx = 1
       merge_scan: do
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
@@ -178,7 +178,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
          end if
       end if
       j_idx = j_idx + 1
-      if (.not. (j_idx.le.num_mixed_zones-1)) exit merge_scan
+      if (j_idx.gt.num_mixed_zones-1) exit merge_scan
       end do merge_scan
       end if
       end if

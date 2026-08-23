@@ -88,7 +88,7 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
             spline_case=2
             return
          end if
-         if (.not. (prod1 .lt. 0.d0)) then
+         if (prod1 .ge. 0.d0) then
             if (mref1 .gt. ((1.d0+eps_tol)*mref)) then
                spline_case=1
             else
@@ -106,7 +106,7 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 
 ! IF THE RELATIVE DEVIATION OF slope_left OR slope_right FROM spq IS LESS THAN
 ! eps_tol, THEN CHOOSE CASE 2 OR CASE 3.
-      if (.not. ((abs(spq-slope_left).le.eps_tol*mref) .or. (abs(spq-slope_right).le.eps_tol*mref))) then
+      if (abs(spq-slope_left).gt.eps_tol*mref .and. abs(spq-slope_right).gt.eps_tol*mref) then
          prod=(mref-mref1)*(mref-mref2)
          if (prod .lt. 0.d0) then
 

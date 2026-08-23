@@ -420,7 +420,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! KEEP IREAD OPEN
       rewind iread
 ! End of the reading and processing of an input model file.
-      if (.not. (.not.first_call_flag(run_index))) then
+      if (first_call_flag(run_index)) then
 !      IF(.NOT.LFIRST(NK).OR.NK.GT.1)GOTO 3000
 !     MHP 10/24 MACHINERY TO ALTER THE HEAVY ELEMENT MIXTURE
 !     THIS IS ONLY DONE if the first MODEL IS being READ IN, AND ONLY FOR A
@@ -1057,7 +1057,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        total_rotational_ke = rotational_ke_sum
       endif
 
-      if (.not. (run_index.gt.1)) then
+      if (run_index.le.1) then
 ! SET UP MASS FRACTIONS AND NUMBER FRACTIONS OF ELEMENTS IN
 ! ENVELOPE.
 ! DBG 1/96 V (ENVELOPE MASS FRACTIONS WAS NORMALLY READ IN VIA

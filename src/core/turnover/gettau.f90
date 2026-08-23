@@ -150,7 +150,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! TOP OF THE INTERIOR MODEL IS RADIATIVE. CHECK IF TAUCZ = 0.0. IF NOT,
 ! THEN GO TO THE END.
 !
-      if (.not. (star%turnover%convective_turnover_timescale.ne.0.0)) then
+      if (star%turnover%convective_turnover_timescale.eq.0.0) then
 !
 ! COLLECT THE NECESSARY STRUCTURE VARIABLES INTO DUMMY VECTORS.
       combined_num_points = num_zones

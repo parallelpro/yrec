@@ -127,7 +127,7 @@ subroutine altabinit(ierr)
          endif
       enddo
 
-      if (.not. (table_is_bad)) then
+      if (.not. table_is_bad) then
 
       return                  ! If good table, return
 

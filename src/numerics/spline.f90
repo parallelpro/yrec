@@ -56,7 +56,7 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
 
 ! (Restructured 2026 from the original arithmetic-IF goto fans at
 ! labels 10-100; arithmetic is unchanged.)
-      if (.not. (spline_case .eq. 4)) then
+      if (spline_case .ne. 4) then
 !
 ! CASES 1,2, OR 3.
 !

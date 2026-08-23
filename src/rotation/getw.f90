@@ -203,7 +203,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
            star%dm,am_transport_convective_flag,star%nz,star%eta_squared, &
            star%i_rot,star%omega,star%qiw,star%mean_radius)
       skip_diffusion_flag = .not.instability_transport_active .and. .not.wind_loss_active
-      if (.not. (skip_diffusion_flag.or.full_timestep.le.0.0D0)) then
+      if (.not.skip_diffusion_flag .and. full_timestep.gt.0.0D0) then
 !  NOW LIMIT THE DIFFUSION TIMESTEP TO A MAXIMUM CHANGE IN OMEGA
 !  FROM THE PREVIOUS MODEL.
       if(max_domega_step.eq.0.0D0) max_domega_step = max_domega_global
@@ -474,7 +474,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       exit retry
       end do retry
 !  RETURN FOR NEXT SMALL DIFFUSION TIMESTEP IF NEEDED.
-      if (.not. (elapsed_substep_time.lt.full_timestep)) exit
+      if (elapsed_substep_time.ge.full_timestep) exit
       end do
 !  UPDATE OMEGA ARRAY TO REFLECT NEW ANGULAR MOMENTUM DISTRIBUTION.
       do zone_index = 1,star%nz

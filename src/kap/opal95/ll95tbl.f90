@@ -68,7 +68,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
 
       do
          read(opal95_table_unit,1,end=9999) header_line
-      if (.not. ( header_line(fmt_start:fmt_start+4).ne.'TABLE' )) exit
+      if (header_line(fmt_start:fmt_start+4).eq.'TABLE') exit
       end do
     1 format(a)
       read(header_line,'(36X,F7.4,11X,F7.4)') xx,zz
@@ -141,7 +141,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
       end do
 
 !     EXIT IF CORRECT NUMBER OF TABLES READ IN.
-      if (.not. (nn.ge.num_xz)) then
+      if (nn.lt.num_xz) then
       nn = nn + 1
 !     NEED TO ACCOUNT FOR FEWER X VALUES AT HIGHER Z.
       if (ix.le.8) then

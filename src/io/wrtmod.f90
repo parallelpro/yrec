@@ -244,7 +244,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 ! MHP 10/02 uncommented pelpf statement, used later in i/o
 !         PELPF = CGAS * DEXP(CLN*(HT(I) + HD(I)))* PEMU(I)
 !          ADDED X AND Z TO OUTPUT
-         if (.not. ((j.eq.2).and.(i.eq.1))) then
+         if (j.ne.2 .or. i.ne.1) then
          if(pulsation_file_version.eq.1) then
          pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* star%pulse%pulse_electron_mean_molecular_weight(i)
          write(opal_model_unit, 5052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &

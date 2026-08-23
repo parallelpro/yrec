@@ -79,7 +79,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       start_idx = 1
       end_idx = num_eval_points
       err_code = 0
-      if (.not. (num_eval_points .eq. 1)) then
+      if (num_eval_points .ne. 1) then
 
 ! Determine if eval_x is nondecreasing.
       loop_bound = num_eval_points - 1
@@ -137,7 +137,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! evaluation lies. The single-out-of-range-high case skips straight
 ! to the high-extrapolation tail.
       recompute_tail_params = .true.
-      if (.not. ((num_eval_points .eq. 1) .and. (end_idx .ne. num_eval_points))) then
+      if (num_eval_points .ne. 1 .or. end_idx .eq. num_eval_points) then
       call search(table_x, num_table_points, eval_x(start_idx), &
            table_idx, found_flag)
 
@@ -147,7 +147,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! data points, assign the appropriate value from table_y. Continue
 ! until a point of evaluation is found which is not equal to a data
 ! point.
-      if (.not. (found_flag .eq. 0)) then
+      if (found_flag .ne. 0) then
       do
          eval_y(start_idx) = table_y(table_idx)
       start_idx1 = start_idx
@@ -155,7 +155,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       if (start_idx .gt. num_eval_points) then
          return
       end if
-      if (.not. (eval_x(start_idx1) .eq. eval_x(start_idx))) exit
+      if (eval_x(start_idx1) .ne. eval_x(start_idx)) exit
       end do
 
 ! Advance the table pointers until the next point of evaluation lies
@@ -183,7 +183,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! Calculate the images of all the points which lie within range of
 ! the data.
       end if
-      if (.not. ((table_idx .eq. 1) .and. (err_code .eq. 1))) then
+      if (table_idx .ne. 1 .or. err_code .ne. 1) then
       call choose(table_x(table_idx), table_y(table_idx), &
            table_slope(table_idx), table_slope(table_idx1), &
            table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)

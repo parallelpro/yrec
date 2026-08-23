@@ -612,7 +612,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          saha_adiabatic_gradient_dp = adiabatic_gradient_dp
       end if
 !     Bypass relativistic EOS (eqrelv) if in low temperature region
-      if (.not. (skip_relativistic_eos)) then
+      if (.not. skip_relativistic_eos) then
 !     COMPUTE VALUES FOR FULLY IONIZED GAS
       electron_mean_weight_inverse = hydrogen_fraction*atomic_weights(1) + &
            (1.0d0 - hydrogen_fraction)*atomic_weights(4)

@@ -116,7 +116,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
       kk = min0(261,max0(1,kk))
       id1 = yale_eos%fermi_table_x_lookup(kk)
 !  IF INDEX UNCHANGED FROM PREVIOUS LOOP,SKIP THIS SECTION
-      if (.not. (id1.eq.id1p)) then
+      if (id1.ne.id1p) then
       id1p = id1
       id2 = id1 + 1
       id3 = id1 + 2

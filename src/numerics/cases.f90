@@ -50,8 +50,8 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
            mbar1, mbar2, mbar3, c1, d1, h1, j1, knot_y_x, knot_y_y, &
            k1, ztwo
       integer :: spline_case
-      if (.not. ((spline_case .eq. 3).or.(spline_case .eq. 4))) then
-      if (.not. (spline_case .eq. 2)) then
+      if (spline_case .ne. 3 .and. spline_case .ne. 4) then
+      if (spline_case .ne. 2) then
 
 ! CALCULATE THE PARAMETERS FOR CASE 1.
       knot_z_x=(y_left-y_right+slope_right*x_right-slope_left*x_left)/ &
@@ -84,11 +84,11 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
       mbar1=(y_right-y_left)/(h1-x_left)
       mbar2=(y_left-y_right)/(j1-x_right)
 
-      if (.not. (spline_case .eq. 4)) then
+      if (spline_case .ne. 4) then
 
 ! CALCULATE THE PARAMETERS FOR CASE 3.
       k1=(y_left-y_right+x_right*mbar2-x_left*mbar1)/(mbar2-mbar1)
-      if (.not. (abs(slope_left) .gt. abs(slope_right))) then
+      if (abs(slope_left) .le. abs(slope_right)) then
       knot_z_x=(k1+x_right)/2.d0
       knot_v_x=(x_left+knot_z_x)/2.d0
       knot_v_y=y_left+slope_left*(knot_v_x-x_left)

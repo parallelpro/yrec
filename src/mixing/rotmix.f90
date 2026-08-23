@@ -177,7 +177,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          end if
 ! 7/92 MHP STATEMENT ADDED FOR EXIT IF OVERSHOOT CAUSES A FULLY CONVECTIVE
 ! CASE.  AVOIDS OCCASIONAL PRE-MS CRASH IN FIRST RADIATIVE MODEL.
-         if (.not. (convective_zone_bounds(num_convective_zones,1).le.2 .and. convective_zone_bounds(num_convective_zones,2).eq.num_zones)) then
+         if (convective_zone_bounds(num_convective_zones,1).gt.2 .or. convective_zone_bounds(num_convective_zones,2).ne.num_zones) then
          outer_boundary_zone = radiative_zone_bounds(num_radiative_zones,2)
          do zone_idx = outer_boundary_zone,1,-1
             if (composition(2,zone_idx).gt.helium_diffusion_min) exit

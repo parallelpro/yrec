@@ -168,7 +168,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
 !        IF THERE ARE MULTIPLE CONVECTION CELLS IN THE PREDOMINATELY
 !        RADIATIVE ENVELOPE, USE AVERAGING METHOD.
          spline_taucz_done = .false.
-         if (.not. (index_gap.ne.0)) then
+         if (index_gap.eq.0) then
 ! CALCULATE HP
          pressure_scale_height2 = exp(ln10*(log10_pressure(cz_base_index)- &
               log10_density(cz_base_index)))/local_gravity(cz_base_index)
