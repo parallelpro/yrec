@@ -229,7 +229,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       idt = 15
       do jj = 1,4
        idd(jj) = 5
-    5 continue
       end do
       err_sum(1) = 0.0d0
       if(atm_choice .eq. 0) then
@@ -361,7 +360,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! YSCAL IS THE ARRAY THAT THE NUMERICAL ERRORS ARE SCALED AGAINST.
        do i = 1,num_eqs
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
-   30    continue
        end do
 ! ENSURE THAT STEP DOESN'T EXCEED MAXIMUM STEP SIZE OR GO PAST
 ! THE LIMIT OF THE INTEGRATION.
@@ -470,7 +468,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
        endif
        if(h_next.lt.h_min) h_next = h_min
        h_step = h_next
-40    continue
       end do
       if (step_index .gt. maxstp) then
 ! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
@@ -496,7 +493,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! MASS POINT IN THE MODEL.
 
 
-  200 continue   ! Kurucz and Allard (KTTAU=3 and 4) bypass atmosphere
                  !  integration and come here
 ! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
       star%turnover%pphot = atm_table%atm_log10_pressure
@@ -540,7 +536,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       in_atmosphere = .false.
       do i = 1,3
        err_sum(i) = 0.0d0
- 235  continue
       end do
       num_ok = 0
       num_bad = 0
@@ -667,7 +662,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
        do i = 1,num_eqs
           y_start(i) = y(i)
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
- 210     continue
        end do
        swap_temp = y(1) + h_step*dydx(1)
        if(star%env_comp%senv - y(1).gt.0.0d0 .or. star%env_comp%senv - swap_temp.gt.0.0d0) then
@@ -702,7 +696,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
               env_call_count,saha_state,step_err)
        do i = 1,3
           err_sum(i) = err_sum(i) + step_err(i)
- 255     continue
        end do
 !  FIND DY/DX AT THE START OF THE NEXT STEP.
        call qenv(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
@@ -826,7 +819,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
        endif
        if(h_next.lt.h_min) h_next = h_min
        h_step = h_next
- 220  continue
       end do
       if (step_index .gt. maxstp) then
 ! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
@@ -918,7 +910,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
             env_struct%env_ion_fraction(3,inversion_index2) = swap_temp
 
          end do
- 310     continue
 ! JVS 07/12 Save the last envelope point pressure
 !      PPHOT = ENVP(NUMENV) ! G Somers 3/17, MOVED PPHOT DEF HIGHER UP
 ! END JVS
@@ -984,7 +975,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
                   env_struct%env_convective_velocity, taucal_radiative_gradient,taucal_adiabatic_gradient)
       endif
 
-555      continue
       return
 
 ! error funnel: reached only when a callee (or one of the two

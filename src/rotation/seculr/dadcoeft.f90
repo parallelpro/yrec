@@ -619,7 +619,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          exit
       end if
       end do
- 900  continue
       write(*,*) substep_idx,theta_iter_idx,coeff_iter_idx
       write(*,100) max_omega_change_total,max_omega_change_total_zone, &
            (max_omega_change_history(j),max_omega_change_zone_history(j), &
@@ -645,7 +644,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          diffusion_converged = .false.
       end if
       end do
- 9999 continue
       do k = 1,num_eq_points
          omega_substep_start(k) = omega_working(k)
       end do
@@ -659,7 +657,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       end do
       if (substep_idx > num_substeps) then
       end if
- 950  continue
       if (.not.diffusion_converged) then
          timestep_cut_count = timestep_cut_count + 1
          num_substeps = 2*num_substeps

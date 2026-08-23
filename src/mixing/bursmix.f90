@@ -162,7 +162,6 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       write(*,5)
     5 format(' WARNING - EXTRAPOLATION IN BSBURN DID NOT CONVERGE')
       end if
-   10 continue
       do zone_idx = 1, num_zones
          composition(1,zone_idx) = composition_kept(1,zone_idx)
          composition(3,zone_idx) = composition_kept(3,zone_idx)

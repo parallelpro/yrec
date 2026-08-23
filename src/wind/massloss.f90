@@ -306,6 +306,5 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
            mean_molecular_weight_local,total_radius_cm,total_mass_msun, &
            mass_loss_rate_msun_yr,accretion_specific_energy,mean_thermal_energy, &
            cz_total_mass_below_fitting,old_log_envelope_mass_fraction)
- 9999 continue
       return
 end subroutine massloss

@@ -201,9 +201,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
          do i = 1,star%nz
             do j = 1,num_species
                star%xa(j,i) = star%prev%xa_start(j,i)
-    1       continue
             end do
-    2    continue
          end do
          call mix(delta_time, iteration_level, timestep_years, &
               core_cz_edge, envelope_zone_index, &
@@ -255,7 +253,6 @@ subroutine crrect(delta_time, max_iterations, converged, &
           temp = star%luminosity_lsun(star%nz)/total_luminosity_terms
           do j = 1,8
              star%luminosity_breakdown(j) = star%luminosity_breakdown(j)*temp
-   10       continue
           end do
        endif
 ! CHECK ON SIGNIFICANCE OF R.H.S. EQUATIONS FOR P AND T
@@ -291,7 +288,6 @@ subroutine crrect(delta_time, max_iterations, converged, &
        do j = 1,4
           star%max_residual(j) = dabs(star%elim_rhs(j,1))
           star%max_correction_index(j) = 1
-   30    continue
        end do
        do i = 2,star%nz
           test = dabs(star%elim_rhs(1,i))
@@ -314,7 +310,6 @@ subroutine crrect(delta_time, max_iterations, converged, &
              star%max_residual(4) = test
              star%max_correction_index(4) = i
           endif
-   40    continue
        end do
 !CC   HE FLASH -- OK FOR ALL
        luminosity_correction_max = star%max_residual(4)
@@ -332,7 +327,6 @@ subroutine crrect(delta_time, max_iterations, converged, &
        do j = 1,4
           max_correction_pos = star%max_correction_index(j)
           star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
-   50    continue
        end do
        if (fcorr0.gt.0.0d0) fcorr = dmin1(1.d0,fcorr+fcorri)
 ! HE FLASH CHANGE
@@ -376,7 +370,6 @@ subroutine crrect(delta_time, max_iterations, converged, &
           star%logR(i) = star%logR(i) + correction_factor*star%elim_rhs(3,i)
           star%luminosity_lsun(i) = star%luminosity_lsun(i) + &
                correction_factor*star%elim_rhs(4,i)
-   90    continue
        end do
        star%log_L = dlog10(star%luminosity_lsun(star%nz))
        star%log_Teff = star%envelope_fit_coeffs(7)*star%logP(star%nz) + &
@@ -397,7 +390,6 @@ subroutine crrect(delta_time, max_iterations, converged, &
          endif
        iterations_done = iterations_done + 1
        if (converged) return
-  100 continue
       end do
 
       return

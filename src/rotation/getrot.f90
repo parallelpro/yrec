@@ -66,7 +66,6 @@ subroutine getrot(log_density, specific_angular_momentum, log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
          endif
-   20 continue
       end do
       return
 end subroutine getrot

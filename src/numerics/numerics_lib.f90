@@ -194,7 +194,6 @@ subroutine findex(grid_x, n_grid, x_eval, index)
                
                return
             endif
- 211     continue
          end do
          found_index=-1
       else
@@ -205,11 +204,10 @@ subroutine findex(grid_x, n_grid, x_eval, index)
                
                return
             endif
- 212     continue
          end do
          found_index = -n_grid
       endif
- 213  index=found_index
+      index=found_index
 
       return
 end subroutine findex
@@ -1819,9 +1817,8 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
             return
          end if
          t_indices(1)=n
- 100  continue
       end do
- 101  if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1
+      if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1
       t_idx_max=num_t-3
       if(t_indices(1).gt.t_idx_max) t_indices(1)=t_idx_max
       do i=2,4
@@ -1838,9 +1835,8 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
          do m=1,num_r
             if(table_data(t_idx,m,2).ge.log10_pressure) exit
             r_lo_guess(i)=m
- 200     continue
          end do
- 201     if(r_lo_guess(i).ge.2) r_lo_guess(i)=r_lo_guess(i)-1
+         if(r_lo_guess(i).ge.2) r_lo_guess(i)=r_lo_guess(i)-1
          r_idx_max=num_r-3
          if(r_lo_guess(i).gt.r_idx_max) r_lo_guess(i)=r_idx_max
       end do

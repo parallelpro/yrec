@@ -111,6 +111,5 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
          continue
          return
 !      ENDIF
- 9999 continue
       return
 end subroutine chkcal

@@ -16,7 +16,6 @@ subroutine zero(array, array_size)
       integer :: index
       do index=1,array_size
          array(index)=0.d0
-    1 continue
       end do
       return
 end subroutine zero

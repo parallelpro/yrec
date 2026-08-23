@@ -139,7 +139,6 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
            q(j,2)*elim_coeff(2,1,zone_index)
       elim_coeff(j,2,zone_index) = elim_coeff(j,2,zone_index) - &
            q(j,2)*elim_coeff(2,2,zone_index)
-    2 continue
       end do
 ! PIVOT ON ROW-1 AND COLUMN-3
       div = 1.0D0/q(1,1)
@@ -152,7 +151,6 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
            q(j,1)*elim_coeff(1,1,zone_index)
       elim_coeff(j,2,zone_index) = elim_coeff(j,2,zone_index) - &
            q(j,1)*elim_coeff(1,2,zone_index)
-    4 continue
       end do
       return
 end subroutine reduce

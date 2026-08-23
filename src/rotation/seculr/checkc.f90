@@ -137,9 +137,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                   return
                endif
             endif
-   10    continue
          end do
-   20 continue
       end do
       if(iteration_number.eq.itdif2.and.print_flag) then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN COMPOSITION AND PRINT IT OUT.
@@ -164,9 +162,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
                   max_change_zone = zone_index
                   max_change_species = species_index
                endif
-   30       continue
             end do
-   40    continue
          end do
          write(*,50)max_fractional_comp_change,max_change_species, &
               max_change_zone
@@ -202,10 +198,8 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
             star%mix_phys%amum(zone_index) = ion_mean_weight_inverse* &
                  electron_mean_weight_inverse/ &
                  (ion_mean_weight_inverse+electron_mean_weight_inverse)
-   90    continue
          end do
       endif
-  100 continue
 
       return
 end subroutine checkc

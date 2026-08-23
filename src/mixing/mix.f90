@@ -150,7 +150,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !               GOTO 5
 !            ENDIF
 !         END DO
-    5    continue
       else
          do copy_idx = 1, star%nz
             deep_mix_flag(copy_idx) = star%convective_flag(copy_idx)
@@ -211,12 +210,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          else
             star%light_burn%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
-   10 continue
       end do
       if (zone_idx > (star%nz)) then
       zone_idx = star%nz + 1
       end if
-   20 continue
       do clear_idx = zone_idx, star%nz
          rate_pp(clear_idx) = 0.0d0
          rate_he3_he3(clear_idx) = 0.0d0
@@ -235,7 +232,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          frac_be7_electron(clear_idx) = 0.0d0
 ! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
          star%light_burn%deuterium_burning_rate(clear_idx) = 0.0d0
-   21 continue
       end do
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
@@ -257,13 +253,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
                  star%dm, star%xa, timestep_years, ierr)
             if (ierr /= 0) return
-   30    continue
          end do
-   40 continue
       end do
       if (radiative_region_idx > num_radiative_zones) then
       end if
-   45 continue
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
@@ -277,7 +270,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
               star%dm, star%xa, timestep_years, ierr)
          if (ierr /= 0) return
-   50 continue
       end do
       do zone_idx = 1, star%nz
          star%rot%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
@@ -345,7 +337,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
          if (radiative_region_idx > num_radiative_zones) then
          end if
-   60    continue
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
@@ -409,7 +400,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             weight_sum = 0.0d0
             do species_idx = 1, num_species
                species_sum(species_idx) = 0.0d0
-   55       continue
             end do
 !  ADD UP THE TOTAL MASS OF EACH SPECIES IN THE CONVECTIVE REGION.
 !  (HS2 IS THE MASS CONTAINED WITHIN A SHELL IN GRAMS).
@@ -418,24 +408,18 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                do species_idx = 1, num_species
                   species_sum(species_idx) = species_sum(species_idx) + &
                        star%xa(species_idx,shell_idx)*star%dm(shell_idx)
-   61          continue
                end do
-   65       continue
             end do
 !  DIVIDE BY THE TOTAL MASS TO FIND THE MEAN MASS FRACTION IN THE REGION.
             do species_idx = 1, num_species
                species_sum(species_idx) = species_sum(species_idx)/weight_sum
-   70       continue
             end do
 !  APPLY THE MEAN MASS FRACTION OF ALL SPECIES THROUGHOUT THE CZ.
             do shell_idx = mix_start, mix_end
                do species_idx = 1, num_species
                   star%xa(species_idx,shell_idx) = species_sum(species_idx)
-   80          continue
                end do
-   90       continue
             end do
-  100    continue
          end do
       end if
 !  WRITE OUT THE LOCATIONS OF MIXED REGIONS.
@@ -463,7 +447,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             dlnp_dr(zone_idx) = -exp(ln10*(star%logRho(zone_idx)+cgl+ &
                  star%log_mass(zone_idx)-2.0d0*star%logR(zone_idx)- &
                  star%logP(zone_idx)))
-  130    continue
          end do
 ! MHP 6/90 CHANGE ADDED : THE TIMESTEP FOR SETTLING IS RESTRICTED TO
 !   A FRACTION OF THE TIMESCALE FOR SETTLING AT THE OUTER BOUNDARY.
@@ -480,13 +463,11 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end if
          do search_idx = envelope_cz_edge, 1, -1
             if (star%xa(2,search_idx).gt.helium_diffusion_min) exit
-  140    continue
          end do
          if (search_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
          exit settling
          end if
-  150    continue
 !  FM IS THE MASS FRACTION ABOVE THE OUTER POINT.
          mass_fraction_above = (total_mass_unlogged- &
               star%m(search_idx))/total_mass_unlogged
@@ -514,7 +495,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                     star%logRho, star%m, star%logT, &
                     deep_mix_flag, star%nz, total_mass_unlogged)
             end if
-  160    continue
          end do
       exit settling
       end do settling
@@ -527,13 +507,11 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  max(star%xa(species_idx,zone_idx),0.0d0)
             star%xa(species_idx,zone_idx) = &
                  min(star%xa(species_idx,zone_idx),1.0d0)
-  175    continue
          end do
          star%xa(3,zone_idx) = min(star%xa(3,zone_idx), &
               1.0d0-star%xa(1,zone_idx)-star%xa(4,zone_idx))
          star%xa(2,zone_idx) = 1.0d0 - star%xa(1,zone_idx) - &
               star%xa(3,zone_idx) - star%xa(4,zone_idx)
-  180 continue
       end do
 ! MHP 1/95 ADDED CALL TO RESET JENV,JCORE FOR DEEP MIXING.
       if (dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
@@ -563,7 +541,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
          if (radiative_region_idx > num_radiative_zones) then
          end if
-  190    continue
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.

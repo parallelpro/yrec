@@ -87,7 +87,6 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
             else if( convective_flag(i) .and. .not. cz_exists_flag) then !First convective point from surface
                   cz_exists_flag = .true.
             endif
-   71    continue
         end do
          if (cz_base_index .lt. 1) then
               fully_convective_flag = .true.
@@ -178,7 +177,6 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
                        if (k > num_points) then
                     convective_velocity_bcz = convective_velocity(num_points)
                        end if
- 85                continue
 !                  DEFINE TAUCZ
                   star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
             endif

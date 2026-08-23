@@ -409,14 +409,12 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! THIS IS DONE TO CONVERT A NON-ROTATING MODEL TO A ROTATING ONE.
           do i = 1,star%nz
              star%omega(i) = wnew
- 540        continue
           end do
        endif
       else
          do i = 1,json
             star%fp_rot(i) = 1.0d0
             star%ft_rot(i) = 1.0d0
- 570     continue
          end do
       endif
 ! KEEP IREAD OPEN
@@ -673,7 +671,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
           target_log_mass_at_fit = star%log_total_mass+requested_envelope_mass
           do i = star%nz-1,1,-1
              if (star%log_mass(i).lt.target_log_mass_at_fit) exit
- 575        continue
           end do
           if (i < (1)) then
 ! ENVELOPE MASS DESIRED WITHIN FIRST POINT;PRINT NASTY MESSAGE
@@ -684,7 +681,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
               ' MASS NOT CHANGED')
           exit envelope_rescale
           end if
- 580        star%nz = i + 1
+            star%nz = i + 1
           star%env_comp%senv = requested_envelope_mass
           interior_interp_fraction = (target_log_mass_at_fit-star%log_mass(i))/ &
                (star%log_mass(i+1) - star%log_mass(i))
@@ -703,7 +700,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                star%logT(i))
           do j = 1,num_species
              star%xa(j,star%nz) = star%xa(j,i)
- 585        continue
           end do
           star%env_comp%xnew = star%xa(1,star%nz)
           star%env_comp%znew = star%xa(3,star%nz)
@@ -734,7 +730,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
              idt = 15
              do kk = 1,4
               idd(kk) = 5
- 588           continue
              end do
                call eos_get(log10_temperature,temperature,log10_pressure, &
                     pressure,log10_density,density,hydrogen_fraction, &
@@ -1029,7 +1024,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        next_mass = dexp(ln10*star%log_mass(i))
        star%m(i-1) = curr_mass
        star%dm(i-1) = 0.5d0*(next_mass-prev_mass)
- 120  continue
       end do
       star%m(star%nz) = next_mass
       star%dm(star%nz) = dexp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
@@ -1053,7 +1047,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
           star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum
           angular_momentum_sum = angular_momentum_sum+shell_angular_momentum
           rotational_ke_sum = rotational_ke_sum + star%kinetic_energy_rot(i)
- 550     continue
        end do
        write(short_file_unit,560)total_angular_momentum, &
             angular_momentum_sum,total_rotational_ke,rotational_ke_sum
@@ -1106,7 +1099,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
        species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
             atomic_weight(i)
        mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
- 610  continue
       end do
       star%env_comp%amuenv = mixture_weight_sum
       mixture_scale_factor = 1.0d0/star%env_comp%amuenv
@@ -1114,7 +1106,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 ! BY EOS ROUTINES (SEE EQSTAT AND EQSAHA)
       do i = 1,12
        star%env_comp%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
- 620  continue
       end do
 ! push the recomputed mixture to the eos domain (physics-purity pass)
       call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
@@ -1123,7 +1114,6 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 !     FIND SURFACE COMPOSITION OPACITY TABLE
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
       end if
- 630  continue
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
       call kap_update_surface_tables(star%env_comp%envelope_hydrogen_fraction)
       if (use_scv_eos) then
@@ -1142,12 +1132,10 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
          star%prev%log_Teff_start = star%log_Teff
 !  JVS 05/25 Added model number to list of saved values
        star%prev%nz_start = star%nz
- 710  continue
       end do
       if (rotation_active) then
          do i = 1,star%nz
           star%run%old_omega(i) = star%omega(i)
- 720     continue
          end do
       endif
 

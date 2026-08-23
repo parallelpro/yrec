@@ -87,7 +87,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          if (search_idx < (1)) then
          i0 = 1
          end if
-   10    continue
       else
          i0 = 1
       end if
@@ -112,7 +111,6 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          if (search_idx > num_zones) then
          i1 = num_zones
          end if
-   20    continue
       else
          i1 = num_zones
       end if
@@ -169,6 +167,5 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
          equally_spaced_diffusion_coeff(idx) = &
               equally_spaced_diffusion_coeff(idx)*exp(ln10*star%rot%yval(idx))
       end do
- 9999 continue
       return
 end subroutine mixgrid

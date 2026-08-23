@@ -67,7 +67,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
          zone_start = zone_idx
          cycle
          end if
-   10    if (.not.in_convection_zone) cycle
+         if (.not.in_convection_zone) cycle
 !   END OF CONVECTION ZONE
          in_convection_zone = .false.
          zone_bounds(j_idx) = zone_start
@@ -75,12 +75,10 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
          j_idx = j_idx + 2
          if (j_idx.lt.24) cycle
          exit
-   11    continue
       end do
       if (zone_idx > num_zones_plus1) then
       zone_bounds(j_idx) = 0
       end if
-   12 continue
       num_species = 11
       if (use_extended_composition) num_species = 15
 ! MIX ALL CONVECTIVE ZONES
@@ -93,31 +91,23 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
          weight_sum = 0.0d0
          do species_idx = 1, num_species
             species_sum(species_idx) = 0.0d0
-   40    continue
          end do
          do inner_idx = zone_start, zone_end
             weight_sum = weight_sum + shell_mass(inner_idx)
             do species_idx = 1, num_species
                species_sum(species_idx) = species_sum(species_idx) + &
                     composition(species_idx,inner_idx)*shell_mass(inner_idx)
-   50       continue
             end do
-   60    continue
          end do
          do species_idx = 1, num_species
             species_sum(species_idx) = species_sum(species_idx)/weight_sum
-   70    continue
          end do
          do inner_idx = zone_start, zone_end
             do species_idx = 1, num_species
                composition(species_idx,inner_idx) = species_sum(species_idx)
-   80       continue
             end do
-   90    continue
          end do
-  100 continue
       end do
-  110 continue
 ! RENORMALIZE COMPOSITION IF NECESSARY
       do zone_idx = 1, num_zones
          composition(1,zone_idx) = dmax1(composition(1,zone_idx), 0.0d0)

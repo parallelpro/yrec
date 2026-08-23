@@ -67,7 +67,6 @@ subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
 !  STORE THE RUN OF COMPOSITION AT THE BEGINNING OF THE TIMESTEP IN ARRAY rhs.
       do i = 1,num_eq_points
          rhs(i) = eq_composition(i)
-   10 continue
       end do
 !  FIRST SHELL BOUNDARY CONDITIONS: NO FLOW BELOW THE BOUNDARY
 !  I.E. THE ANGULAR MOMENTUM TRANSPORT AT THE FIRST SHELL DOES NOT
@@ -82,7 +81,6 @@ subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
          sub_diag(i) = -fact*diffusion_coeff(i)
          diag(i) = 1.0d0 + fact*(diffusion_coeff(i)+diffusion_coeff(i+1))
          super_diag(i) = -fact*diffusion_coeff(i+1)
-   20 continue
       end do
 !  LAST SHELL BOUNDARY CONDITIONS.
       fact = fact0/eq_mass(num_eq_points)

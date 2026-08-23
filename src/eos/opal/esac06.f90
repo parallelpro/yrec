@@ -307,7 +307,6 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
             recompute_flag = 1
          end do
       end do
-  123 continue
       end do
       if ((opal_eos%z_table_06(x_index_2).ne.opal_eos%z_table_06(opal_eos%x_index_lo_06)) .or. &
            (opal_eos%z_table_06(x_index_3).ne.opal_eos%z_table_06(opal_eos%x_index_lo_06))) then
@@ -344,9 +343,7 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
                     x_print_idx=opal_eos%x_index_lo_06,opal_eos%x_index_lo_06+2)
             end if
             recompute_flag = 1
-   46       continue
          end do
-   45 continue
       end do
 
       if (x_index_4.eq.x_index_hi) then  ! interpolate between quadratics
@@ -377,7 +374,6 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
                  (1.0d0 - x_interp_weight)
             recompute_flag = 1
          end do
-   47 continue
       end do
 
 
@@ -393,7 +389,6 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       call t6rinteos06(density_value, t6_value, ierr)
       if (ierr /= 0) return
       opal_eos%eos_output_06(eos_var_idx) = opal_eos%esact_06
-  124 continue
       end do
       if (eos_var_idx > deriv_order) then
       pressure_scale = t6_temperature*density
@@ -413,24 +408,24 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       end if
       return
 
-   61 write(short_file_unit,*) routine_id, "Mass fractions exceed unity (61)"
+      write(short_file_unit,*) routine_id, "Mass fractions exceed unity (61)"
       write(short_file_unit,*) 'Z, XH', opal_eos%table_metal_fraction_06, hydrogen_fraction
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
       return
-   62 write(short_file_unit,*) routine_id, " T6/LogR outside of table range (62)"
+      write(short_file_unit,*) routine_id, " T6/LogR outside of table range (62)"
       write(short_file_unit,*) "slt, t6a(1),t6a(nt):", t6_value, opal_eos%t6_grid_06(1), &
            opal_eos%t6_grid_06(nt)
       write(short_file_unit,*) "slr, rho(1), rho(nr):", density_value, &
            opal_eos%density_grid_06(1), opal_eos%density_grid_06(nr)
       return 1
-   65 write(short_file_unit,*) routine_id, "T6/log rho in empty region of table (65)"
+      write(short_file_unit,*) routine_id, "T6/log rho in empty region of table (65)"
       write(short_file_unit,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, &
            t6_temperature, density
       return 1
       end if
-   66 write(short_file_unit,*) routine_id, " Z does not match Z in EOSdata* files you ", &
+      write(short_file_unit,*) routine_id, " Z does not match Z in EOSdata* files you ", &
            "are using (66)"
       write(short_file_unit,'("mf,zz(mf)=",I5,E12.4)') opal_eos%x_index_lo_06, &
            opal_eos%z_table_06(opal_eos%x_index_lo_06)

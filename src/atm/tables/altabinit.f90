@@ -67,14 +67,12 @@ subroutine altabinit(ierr)
                exit
             endif
          enddo
-  100    continue
          do j = atm_table%allard_num_gl, 1, -1
             if (atm_table%allard_log10_pressure(i,j) .gt. -998d0) then
                atm_table%allard_gl_index_max(i) = j
                exit
             endif
          enddo
-  110    continue
 
       enddo
 
@@ -134,7 +132,6 @@ subroutine altabinit(ierr)
       return                  ! If good table, return
 
       end if
- 9999      continue
        write(*,*)
        write(*,*)'******** ALTABINIT: Program Terminated ********'
        write(*,*)

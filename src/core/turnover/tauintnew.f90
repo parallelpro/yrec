@@ -76,7 +76,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
             in_radiative_zone = .true.
          endif
          if (in_radiative_zone.and.convective_flag(i)) exit
-   60 continue
       end do
 ! IF THE SCAN COMPLETES, EITHER THE STAR IS FULLY CONVECTIVE, OR
 ! HAS A COMPLETELY RADIATIVE ENVLOPE, MAYBE WITH A CONVECTIVE CORE.
@@ -99,7 +98,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
 ! THE MODEL IS(ARE) ALREADY RADIATIVE
       do j = num_points-1,1,-1
          if (convective_flag(j+1) .and. .not.convective_flag(j)) exit
-   80 continue
       end do
       endif
       cz_base_index = i
@@ -237,7 +235,7 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
             do k = cz_base_index,num_points-1,1
                if (.not.convective_flag(k))exit
             enddo
-  120       cz_top_index = k-1
+            cz_top_index = k-1
 ! PINPOINT TOP OF CZ LINEARLY
             dd2 = radiative_gradient(cz_top_index)-adiabatic_gradient(cz_top_index)
             dd1 = radiative_gradient(cz_top_index+1)-adiabatic_gradient(cz_top_index+1)
@@ -251,7 +249,6 @@ subroutine tauintnew(shell_mass, convective_flag, log10_radius, &
             do k = cz_base_index,cz_top_index+1,1
                if (log10_radius(k).gt.radius_test) exit
             enddo
-  130       continue
             radius_test = exp(ln10*radius_test)
 !           IF K = IMAX+1, MOVE AWAY FROM EDGE CASE.
             kk = k

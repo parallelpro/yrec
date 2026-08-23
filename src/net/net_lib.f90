@@ -1901,7 +1901,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          mu_e_inv = mu_e_inv+trm*atomic_charge(i)
          xtr = xtr+trm*atomic_charge(i)**1.58
          zeta0 = zeta0+trm*atomic_charge(i)**2
-   10 continue
       end do
 ! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
 !  THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
@@ -1921,7 +1920,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       if(log_temperature.le.tcut(1)) then
          do i = 1,num_reactions
             rate(i) = 0.
-   20    continue
          end do
       else
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
@@ -2030,7 +2028,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
                endif
             endif
          endif
-   30 continue
       end do
 ! ****************************************************************
 ! END OF SCREENING CALCULATION. WEAK AND INTERMEDIATE SCREENING FORMS
@@ -2067,7 +2064,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          rate(i)=density*r1*exp(q6(i)*t9m13+q7(i)+(q8(i)*t9)**2+screening_factor(i))
          rate(i) = rate(i)*cross_section_scale(i)
          if(rate(i).lt.1.E-30) rate(i)=0.0d0
-   40 continue
       end do
 ! ***************************************************************
 ! END OF CALCULATION OF REACTION RATES FOR FIRST 7 REACTIONS.
@@ -2177,7 +2173,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       endif
       do i=nz,num_reactions
          rate(i)=0.
-   60 continue
    end do
 !***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
 !   RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
@@ -2218,13 +2213,11 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       rate(12) = 1.565315d21*density**2*t9m1*t9m2*2.79E-8* &
                  exp(-4.4027*t9m1+screening_factor(12))
       end if
-  100 continue
       rate(9) = 0.0d0
       rate(13) = 0.0d0
 ! END OF XEROING OUT OF REACTIONS 9 AND 13.
       do i=1,num_reactions
          if(rate(i).le.1.E-5) rate(i) = 0.0
-  130 continue
       end do
 ! ******************************************************
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)

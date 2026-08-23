@@ -61,7 +61,6 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
                  weight(species_idx)
             number_density_sum = number_density_sum+number_density(species_idx)
             mean_charge = mean_charge+number_density(species_idx)*z(species_idx)
-   10    continue
          end do
          mean_charge = mean_charge/number_density_sum
          temperature_cgs = dexp(ln10*log_temperature(shell_idx))
@@ -99,14 +98,12 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
                     z(species_idx2)**2* &
                     dsqrt((weight(species_idx)+weight(species_idx2))/ &
                     weight(species_idx2))
-   20       continue
             end do
             if(dabs(species_sum).lt.1.0d-38) cycle
             viscosity_molecular_species(species_idx) = species_coeff/species_sum
             if(viscosity_molecular_species(species_idx).gt.0.0d0) &
                  viscosity_molecular = viscosity_molecular+ &
                  viscosity_molecular_species(species_idx)
-   30    continue
          end do
          viscosity_molecular = viscosity_molecular/density_cgs
          star%thermo%visc(shell_idx) = viscosity_radiative+viscosity_molecular
@@ -122,7 +119,6 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
             if(viscosity_endal_sofia_species(species_idx).gt.0.0d0) &
                  viscosity_molecular_endal_sofia = viscosity_molecular_endal_sofia+ &
                  viscosity_endal_sofia_species(species_idx)
-   40    continue
          end do
          viscosity_molecular_endal_sofia = viscosity_molecular_endal_sofia/ &
               density_cgs/number_density_sum
@@ -133,7 +129,6 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 !  RADIATIVE DIFFUSIVITY = K*T**3/(O*RHO**2*CP)
          star%thermo%thdif(shell_idx) = 1.6d1*cc13*5.669d-5*temperature_cgs* &
               temperature_sq/(opacity_local*density_cgs**2*star%thermo%cp(shell_idx))
-  100 continue
       end do
 
       return

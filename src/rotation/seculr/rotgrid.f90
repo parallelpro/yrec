@@ -159,7 +159,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
          if (ii < (1)) then
          i0 = 1
          end if
- 10      continue
       else
          i0 = 1
       end if
@@ -191,7 +190,6 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
          if (ii > num_zones) then
          i1 = num_zones
          end if
- 20      continue
       else
          i1 = num_zones
       end if
@@ -301,6 +299,5 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
       end if
 ! REDEFINE DR AS DCHI
       grid_spacing = star%rot%dchi
- 9999 continue
       return
 end subroutine rotgrid

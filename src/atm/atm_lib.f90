@@ -89,7 +89,6 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
         do teff_idx=1,nt
           read(atm_table_file_unit,203) (kurucz_log10_pressure_table(teff_idx,logg_idx),logg_idx=1,ng)
   203     format(1p4e16.8,/1p4e16.8,/1p3e16.8)
-  205   continue
         end do
         rewind atm_table_file_unit
         close(atm_table_file_unit)
@@ -153,7 +152,6 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 ! GET GRID OF LOG PRESSURE VALUES:
         do teff_idx=1,ntc
           read(atm_table_file_unit,203) (kurucz_castelli_log10_pressure_table(teff_idx,logg_idx),logg_idx=1,ngc)
-  207   continue
         end do
         rewind atm_table_file_unit
         close(atm_table_file_unit)

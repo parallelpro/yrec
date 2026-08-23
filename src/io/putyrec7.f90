@@ -111,7 +111,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
            fit_point_temperature(i),fit_point_radius(i), &
            (envelope_fit_coeffs(3*i-3+j),j=1,3)
    50 format('ENV',I2,F7.5,4F8.5,1P3E12.5)
-   60 continue
       end do
 
 ! write HENYEY POINTS, one line per shell
@@ -122,7 +121,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
             log_pressure(i),log_temperature(i),log_density(i), &
             convective_flag(i),ix,iz
   100    format(0PF13.10,F10.7,1PE14.7,0PF10.7,2F10.7,L1,2I6)
-  110 continue
       end do
 
 ! WRITE OUT COMPOSITION ARRAY - CENTRAL AND SURFACE
@@ -135,7 +133,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
        do j = core_cz_top_index,envelope_cz_bottom_index
           write(iwrite,200) (composition(i,j),i = 4,11)
   200       format(8(1PE9.3,1X))
-  210    continue
        end do
       endif
 ! EXTENDED COMP - WRITE OUT 1 ABUND IF FULLY CONVECTIVE,
@@ -148,7 +145,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
           do pair_start_index = core_cz_top_index,envelope_cz_bottom_index-1,2
              write(iwrite,200)((composition(species_index,shell_index), &
                   species_index = 12,15),shell_index = pair_start_index,pair_start_index+1)
-  230       continue
           end do
 !   IF AN ODD NUMBER OF ABUNDANCES EXISTS, WRITE IN LAST VALUE
           parity_test = envelope_cz_bottom_index-1 - core_cz_top_index
@@ -163,7 +159,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
        do i = 1,num_shells
           if (omega(i).le.1.D-59) omega(i)=1.D-59
           omega_log10(i) = dabs(dlog10(omega(i)))
-  300    continue
        end do
        num_full_rows = int(num_shells/8)
        remainder_count = num_shells - num_full_rows*8
@@ -172,7 +167,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
           write(iwrite,310)(omega_log10(j),j = start_index,start_index + 7)
   310       format(0P8F10.7)
           start_index = start_index + 8
-  320    continue
        end do
        if(remainder_count.gt.0) write(iwrite,310) &
             (omega_log10(j),j=start_index,start_index+remainder_count-1)

@@ -59,7 +59,6 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          ierr = 1
          return
          end if
-   10    continue
       else
          do t6_scan_idx = opal_eos%t_row_index, 1, -1
             if (t6.le.opal_eos%t6_grid(t6_scan_idx)) then
@@ -76,7 +75,6 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          ierr = 1
          return
          end if
-   20    continue
       end if
       t_fraction = (t6 - opal_eos%t6_grid(opal_eos%t_row_index+1))/ &
            (opal_eos%t6_grid(opal_eos%t_row_index)-opal_eos%t6_grid(opal_eos%t_row_index+1))
@@ -122,7 +120,6 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       return
 
 !     Error Exit.
- 9999 continue
       in_opal_table = .false.       ! Not in table
       needs_ramp = .true.           ! Turn on ramping
       ramp_factor = 0d0             ! Set ramping factor to zero

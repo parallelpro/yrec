@@ -56,13 +56,12 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
 !  UPPERMOST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONALLY INDUCED MIXING.
          do i = num_points-1,1,-1
             if (.not.convective_flag(i)) exit
-   71    continue
          end do
          if (i < (1)) then
          fully_convective_flag = .true.
          i = 0
          end if
-   81    cz_base_index = i + 1
+         cz_base_index = i + 1
 !  HSTOP IS THE MASS AT THE TOP OF THE C.Z.
 !  HSBOT IS THE MASS AT THE BOTTOM OF THE C.Z.
          mass_at_cz_top = shell_mass(num_points)
@@ -175,7 +174,6 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
                pressure_scale_height_bcz = pressure_scale_height2
                star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
                end if
- 95            continue
             endif
          endif
       else

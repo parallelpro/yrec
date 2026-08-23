@@ -150,7 +150,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       if (lsnu) then
          do j = 1,10
             star%flux%neutrino_flux_total(j) = 0.0d0
-   5     continue
          end do
       end if
 ! MHP 10/02 QFPR,QFTR NOT USED - OMIT
@@ -170,12 +169,10 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       end if
       do j = 1,8
        luminosity_terms(j) = 0.0d0
-   10 continue
       end do
       idt = 15
       do j = 1,4
        idd(j) = 5
-   15 continue
       end do
       do im = 1,num_points
 ! SET UP LOCAL VARIABLES FOR CALLS TO BASIC PHYSICS ROUTINES
@@ -314,7 +311,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                do j = 1,10
                   star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) + &
                        star%flux%neutrino_flux(j)*shell_mass(im)
- 17            continue
                end do
             end if
             do j = 1,6
@@ -324,7 +320,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                zone_energy_luminosity = zone_energy_luminosity + &
                     (shell_mass(im)/solar_luminosity_cgs)* &
                     energy_gen_component(j)
- 20         continue
             end do
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
             star%engeb%he3_he3_rate_placeholder(im) = (shell_mass(im)/ &
@@ -550,7 +545,6 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          star%rot%valfmlt(im) = star%rot%alfmlt
          star%rot%vphmlt(im) = star%rot%phmlt
          star%rot%vcmxmlt(im) = star%rot%cmxmlt
- 30   continue
       end do
 
       return

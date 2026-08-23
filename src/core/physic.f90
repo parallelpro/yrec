@@ -92,7 +92,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       idt = 15
       do i = 1,4
          idd(i) = 5
-   25 continue
       end do
       do im = 1,num_zones
          log10_mass = log_mass(im)
@@ -162,7 +161,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
 !         ELSE
 !            SVEL(IM) = 0.0D0
 !         ENDIF
-   30 continue
       end do
 !  FIND THE THERMOMETRIC DIFFUSIVITY AND KINEMATIC VISCOSITY.
 !       CALL VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
@@ -190,7 +188,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
          end if
          do i = 1, 4
             log_mass_nodes(i) = log_mass(i+k-1)
-   90    continue
          end do
 !  USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND PHYSICAL VARIABLES
 !  AT THE INTERFACE BEING TESTED.
@@ -221,7 +218,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
          else
             star%rot%max_domega_dr(im) = 0.0d0
          end if
-  100 continue
       end do
 
       return

@@ -168,7 +168,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          temp_term(i) = at
          hydrogen_term(i) = ah
          diffusion_term(i) = ad
-    5 continue
       end do
       do i = 1,num_eq_points
          fac = coeff_scale(i)
@@ -217,7 +216,6 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
          diffusion_coeff1(i) = fac*(eq_dlnp_dr(i)*(ap+at)+dlncdr*ah)* &
               species_fraction(species_col,i)
          diffusion_coeff2(i) = fac*ad
-   10 continue
       end do
       return
 end subroutine microdiff_cod

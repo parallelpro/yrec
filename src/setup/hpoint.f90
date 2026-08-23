@@ -136,7 +136,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
              point_reset_flag = .true.
              exit
           endif
-   20    continue
        end do
        if (i < (1)) then
 !  ENTIRE MODEL HAS T<TENV0 - UNLIKELY - BUT STOP IF TRUE
@@ -149,7 +148,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        ierr = 1
        return
        end if
-   40    continue
 !  CHECK IF OUTER POINT T < MAXIMUM ENVELOPE T
       else if (star%logT(star%nz).gt.tenv1.and. &
            envelope_store_index.ne.0) then
@@ -166,7 +164,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        star%luminosity_lsun(star%nz) = star%luminosity_lsun(star%nz-1)
        do i = 1,num_species_tracked
           star%xa(i,star%nz) = star%xa(i,star%nz-1)
-   50    continue
        end do
        star%logRho(star%nz) = star%logP(star%nz) - &
             star%logT(star%nz) - 8.0D0
@@ -221,7 +218,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
   110       format(1X,'MORE THAN 100 FLAG POINTS-FIRST 100 RETAINED')
           exit
        endif
-  120 continue
       end do
       if (i > (star%nz)) then
 !  PMAX1 = MAX DEL LOG P BELOW SURFACE C.Z. AND BELOW FINELY ZONED
@@ -250,9 +246,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           do overshoot_base_zone = star%envelope_cz_bottom_index-1,1,-1
              if (star%logP(overshoot_base_zone)- &
                   star%logP(star%envelope_cz_bottom_index).gt.alphae) exit
-  191       continue
           end do
-  193       overshoot_base_zone = overshoot_base_zone + 1
+            overshoot_base_zone = overshoot_base_zone + 1
           delta_log_pressure = star%logP(overshoot_base_zone)- &
                star%logP(star%envelope_cz_bottom_index)
           if (delta_log_pressure.gt.0.0D0) then
@@ -279,9 +274,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
              if (star%logP(fine_zone_base) - &
                   star%logP(star%envelope_cz_bottom_index).gt.chi_grid_scale(7)) &
                   exit
-  195       continue
           end do
-  197       fine_zone_base = fine_zone_base + 1
+            fine_zone_base = fine_zone_base + 1
           if (.not. (fine_zone_base.eq.overshoot_base_zone)) then
           delta_log_pressure = star%logP(fine_zone_base) - &
                star%logP(overshoot_base_zone)
@@ -299,7 +293,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        endif
       endif
       end if
-  130 flag_point(flag_count) = star%nz
+      flag_point(flag_count) = star%nz
 ! ARRANGE THE FLAG POINTS IN ASCENDING ORDER
       if (.not. (flag_count.eq.1)) then
       do
@@ -312,7 +306,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           flag_point(i+1) = temp_swap
           sort_done = .false.
        endif
-  150 continue
       end do
       if (.not. (.not.sort_done)) exit
       end do
@@ -324,7 +317,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        if (i.lt.flag_count) then
           do j = i,flag_count-1
              flag_point(j) = flag_point(j+1)
-  170       continue
           end do
        endif
        flag_count = flag_count - 1
@@ -333,7 +325,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       if (.not. (i.le.flag_count)) exit
       end do
       end if
-  180 continue
       write(short_file_unit,185) (flag_point(j),j=1,flag_count)
   185 format(1X,'FLAG-POINTS',20I4)
 ! BEGIN REFLOATING OF POINTS
@@ -344,7 +335,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           else
              log10_omega(i) = 0.0D0
           endif
-  190    continue
        end do
       endif
       star%prev%old_shell_mass(1) = star%log_mass(1)
@@ -495,7 +485,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 !
       end if
       end if
- 102  continue
 ! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN Z.
       do j = 1,star%nz
          spline_x(j) = star%log_mass(j)
@@ -546,7 +535,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 !
       end if
       end if
- 103  continue
 ! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER.
 ! (NOTE HDO IS BEING USED AS A DUMMY ARRAY HERE).
       j = 1
@@ -557,14 +545,12 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           j = j + 1
           star%prev%logRho_start(j) = star%prev%old_shell_mass(k)
        endif
-  810 continue
       end do
       j = j + 1
       star%prev%logRho_start(j) = star%prev%old_shell_mass(new_num_zones)
       new_num_zones = j
       do j = 2,new_num_zones
        star%prev%old_shell_mass(j) = star%prev%logRho_start(j)
-  820 continue
       end do
 !
 
@@ -573,9 +559,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       if (star%core_cz_top_index.gt.1) then
        do j = 2,new_num_zones
           if (star%prev%old_shell_mass(j).gt.star%log_mass(star%core_cz_top_index)) exit
-  823    continue
        end do
-  824    star%core_cz_top_index = j - 1
+         star%core_cz_top_index = j - 1
       else
        star%core_cz_top_index = 1
       endif
@@ -583,16 +568,14 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        do j = new_num_zones-1,1,-1
           if (star%prev%old_shell_mass(j).lt.star%log_mass(star%envelope_cz_bottom_index)) &
                exit
-  825    continue
        end do
-  826    star%envelope_cz_bottom_index = j + 1
+         star%envelope_cz_bottom_index = j + 1
       else
        star%envelope_cz_bottom_index = new_num_zones
       endif
       if (star%core_cz_top_index.gt.1) then
        do i = 1,star%core_cz_top_index
           star%convective_flag(i) = .true.
-  827    continue
        end do
        radiative_zone_begin = star%core_cz_top_index + 1
       else
@@ -601,7 +584,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       if (star%envelope_cz_bottom_index.lt.new_num_zones) then
        do i = star%envelope_cz_bottom_index,new_num_zones
           star%convective_flag(i) = .true.
-  828    continue
        end do
        radiative_zone_end = star%envelope_cz_bottom_index - 1
       else
@@ -610,10 +592,8 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       if (.not. (radiative_zone_end.lt.1.or.radiative_zone_begin.gt.new_num_zones)) then
       do j = radiative_zone_begin,radiative_zone_end
        star%convective_flag(j) = .false.
-  829 continue
       end do
       end if
-  830 continue
 
 
 !  NOW USE AN OSCILLATORY SPLINE TO FIT THE OLD RUN OF PHYSICAL VARIABLES
@@ -632,13 +612,11 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! 7/91 ADD ENTROPY TERM INTERPOLATION.
       do j = 1,star%nz
          star%prev%logP_start(j) = star%run%temperature_entropy_term(j)
-  904 continue
       end do
       call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
          star%run%temperature_entropy_term(j) = star%prev%logT_start(j)
-  905 continue
       end do
 
 !
@@ -646,60 +624,49 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 
       do j = 1,star%nz
          star%prev%logP_start(j) = star%run%pressure_entropy_term(j)
-  906 continue
       end do
       call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
          star%run%pressure_entropy_term(j) = star%prev%logT_start(j)
-  907 continue
       end do
       do j = 1,star%nz
          star%prev%logP_start(j) = star%run%luminosity_entropy_term(j)
-  911 continue
       end do
       call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
          star%run%luminosity_entropy_term(j) = star%prev%logT_start(j)
-  912 continue
       end do
       do j = 1,star%nz
          star%prev%logP_start(j) = star%run%radius_entropy_term(j)
-  913 continue
       end do
       call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
          star%run%radius_entropy_term(j) = star%prev%logT_start(j)
-  914 continue
       end do
 
 
       do i = 1,num_species_tracked
        do j = 1,star%nz
           star%prev%logP_start(j) = star%xa(i,j)
-  833    continue
        end do
          call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
           star%xa(i,j) = star%prev%logT_start(j)
-  835    continue
        end do
 !  HCOMPP IS THE ARRAY OF COMPOSITION AT THE BEGINNING OF THE TIMESTEP.
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
        do j = 1,star%nz
           star%prev%logP_start(j) = star%prev%xa_start(i,j)
-  840    continue
        end do
          call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
           star%prev%xa_start(i,j) = star%prev%logT_start(j)
-  845    continue
        end do
-  850 continue
       end do
 
 
@@ -708,16 +675,13 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       do i = 1,7
        do j = 1,star%nz
           star%prev%logP_start(j) = star%rot%reaction_rate_by_zone(reaction_rate_species_index(i),j)
-  847    continue
        end do
          call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
           star%rot%reaction_rate_by_zone(reaction_rate_species_index(i),j) = &
                star%prev%logT_start(j)
-  848    continue
        end do
-  849 continue
       end do
 ! MHP 05/02 IF THE SURFACE DEUTERIUM IS ABOVE
 ! THRESHOLD (1.0D-14) FIND THE NEW RUN OF
@@ -805,7 +769,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        star%logR(j) = star%prev%logR_start(j)
        star%luminosity_lsun(j) = star%prev%luminosity_lsun_start(j)
        star%logRho(j) = star%prev%logRho_start(j)
- 1000 continue
       end do
       if (rotation_active) then
        do j = 1, new_num_zones
@@ -815,7 +778,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           star%ft_rot(j) = ft_old(j)
           star%eta_squared(j) = star%run%old_eta_squared(j)
           star%mean_radius(j) = star%run%old_mean_radius(j)
- 1005    continue
        end do
       endif
 ! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
@@ -842,7 +804,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        mass_curr = dexp(clndp*star%log_mass(i))
        star%m(i-1) = mass_prev
        star%dm(i-1) = 0.5D0*(mass_curr-mass_two_back)
- 1030 continue
       end do
       star%m(star%nz) = mass_curr
       star%dm(star%nz) = dexp(ln10*star%log_total_mass) - &
@@ -852,7 +813,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
        do i=1,star%nz
           star%i_rot(i) = cc23*star%dm(i)* &
                dexp(ln10*2.0D0*star%logR(i))
- 1070    continue
        end do
 !   CALCULATE OVERSHOOT
        call ovrot(star%xa,star%logRho,star%logP,star%logR, &
@@ -887,7 +847,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           star%kinetic_energy_rot(i) = 0.5D0*star%omega(i)*angular_momentum_shell
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + star%kinetic_energy_rot(i)
- 1110    continue
        end do
        write(short_file_unit,1120)total_angular_momentum, &
             sum_angular_momentum,total_rotational_ke,sum_rotational_ke
@@ -907,7 +866,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
           star%prev%cz_flag_start(i) = am_transport_convective_flag(i)
 ! MHP 10/91 J/M STORED IN HJX FOR I/O USE.
             star%run%old_specific_angular_momentum(i) = star%j_rot(i)
- 1130    continue
        end do
 ! MHP 9/91 CHANGE : T GRADIENTS STORED IF LEXCOM=T AND LOVSTE=T; OR FOR
 ! ROTATION; THIS IS NEEDED SO THAT THE BASE OF THE OVERSHOOT REGION FOR
@@ -949,7 +907,6 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
 ! MHP 6/00 CALCULATED EARLIER
 !            ESUMO(IM) = SESUM(IM)
             star%rot%max_domega_dr_old(zone_index) = star%rot%max_domega_dr(zone_index)
- 1040    continue
          end do
 ! MHP 06/02 ADDED TERM FOR THE TIME EVOLUTION
 ! OF THE ANGULAR VELOCITY DISTRIBUTION

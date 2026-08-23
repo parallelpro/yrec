@@ -100,7 +100,6 @@ subroutine yllo2d(temperature, density, abund_index, temp_index, &
          xt(jt) = opacity_table%opal92_grid_logt(it)
          yto(jt) = ol0
          aqod(jt) = qodi
- 300  continue
       end do
       if (xt(1).gt.temperature.or.xt(jt).lt.temperature) stop ' EXTRAPOLATION FAILS '
 !! INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.

@@ -95,7 +95,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             star%circ%gsf_circulation_velocity_prev(i) = star%circ%gsf_circulation_velocity(i)
             star%circ%es_circulation_velocity_prev(i) = star%circ%es_circulation_velocity(i)
             star%circ%secular_shear_velocity_prev(i) = star%circ%secular_shear_velocity(i)
-    5    continue
          end do
          if (use_diffusion_advection_transport) then
             do i = zone_min,zone_max
@@ -110,7 +109,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          star%circ%gsf_circulation_velocity(i) = 0.0d0
          star%circ%secular_shear_velocity(i) = 0.0d0
          star%circ%mu_gradient_velocity(i) = 0.0d0
-   10 continue
       end do
 !  MEAN MOLECULAR WEIGHT (AS WELL AS QUANTITIES WHICH DEPEND ON IT) AND
 !  THE ANGULAR VELOCITY DISTRIBUTION CHANGE DURING A DIFFUSION TIMESTEP.
@@ -162,7 +160,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
               *star%rot%lagrange_interp_weights(2,i)+log(star%mix_phys%thdifm(i))* &
               star%rot%lagrange_interp_weights(3,i)+log(star%mix_phys%thdifm(i+1)) &
               *star%rot%lagrange_interp_weights(4,i))
-   20 continue
       end do
 ! USE LINEAR INTERPOLATION FOR OMEGA AND MU.
       do i = 2,num_zones
@@ -257,7 +254,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             star%rot%second_deriv_geom_factor_eqgrid(i) = &
                  star%rot%second_deriv_geom_factor(i)*star%rot%omega_interface(i)
          end if
-   31 continue
       end do
 !      ENDIF
 ! INHIBITION CAUSED BY GRADIENTS IN MEAN MOLECULAR WEIGHT.
@@ -394,7 +390,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  star%rot%omega_interface(i)**2/rmid
          end if
          star%circ%gsf_circulation_velocity(i) = abs(fxx*star%circ%gsf_circulation_velocity(i))
-   40 continue
       end do
 ! OMIT JAMES AND KAHN ESTIMATE
 !      ELSE
@@ -527,7 +522,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                end if
             end if
          end if
-   60 continue
       end do
 !  NOW DETERMINE WHETHER OR NOT MU GRADIENTS ARE STEEP ENOUGH TO
 !  INHIBIT TRANSPORT.  MULTIPLY THE RESULTING VELOCITY ESTIMATES
@@ -658,7 +652,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  + star%circ%es_circulation_velocity_prev(i))
             star%circ%secular_shear_velocity(i) = 0.5d0*(star%circ%secular_shear_velocity(i) &
                  + star%circ%secular_shear_velocity_prev(i))
-   70    continue
          end do
 ! MHP 11/94
          if (use_diffusion_advection_transport) then
@@ -676,7 +669,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
          if (total_circulation_velocity(i).lt.1.0d-20) &
               total_circulation_velocity(i)=0.0d0
          if (total_circulation_velocity(i).gt.0.0d0) any_transport_active=.true.
-   80 continue
       end do
 ! 9/93 MIXING WITHOUT TRANSPORT ADDED.
 ! ZERO OUT COEFFICIENTS IN CORE TO AVOID NUMERICAL PROBLEMS IN
@@ -696,7 +688,6 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                exit
             end if
          end do
- 81      continue
       end if
 
       return

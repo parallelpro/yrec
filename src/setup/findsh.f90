@@ -86,19 +86,17 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
 !               write(*,*)'composition criteria'
              exit
           endif
-   10    continue
        end do
        if (i > num_points) then
        i = num_points
        end if
-   20    shell_end = i
+         shell_end = i
       endif
 !ccc find boundary of central convection zone.
       do i = 1,num_points
        if(.not.is_convective(i)) exit
-   30 continue
       end do
-   40 if(i.gt.1) then
+      if(i.gt.1) then
        core_edge = i-1
       else
        core_edge = 1
@@ -106,9 +104,8 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
 !ccc find boundary of surface c.z.
       do i = num_points,1,-1
        if(.not.is_convective(i)) exit
-   50 continue
       end do
-   60 if(i.lt.num_points) then
+      if(i.lt.num_points) then
        envelope_edge = i+1
       else
        envelope_edge = num_points

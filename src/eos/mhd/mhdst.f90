@@ -179,7 +179,6 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       end if
       if (.not. (unit_centre1.le.0)) then
       end if
-  500 continue
 ! 8002  FORMAT('      AT. WEIGHT     NUMBER ',
 !      & 'ABUNDANCE  MASS FRACTION',(/1X,1P3G16.7))
 ! 8003  FORMAT(/' MEAN MOLECULAR WEIGHT = ',F12.7//)

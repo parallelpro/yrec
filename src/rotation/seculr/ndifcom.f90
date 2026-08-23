@@ -126,7 +126,6 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
          if (unstable_region_active) zone_end = zone_max
          search_start = zone_max + 1
          end if
-   80    continue
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
          if (.not. (.not.unstable_zone_found)) then
 !  TRANSFORM TO EQUAL GRID SPACING IN R FOR THE REGION.

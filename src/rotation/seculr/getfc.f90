@@ -113,7 +113,6 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
             vfc(zone_index) = mixing_velocity_scale/denom_test
          endif
       end do
- 9999 continue
 
       return
 end subroutine getfc

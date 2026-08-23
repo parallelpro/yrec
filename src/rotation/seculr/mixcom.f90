@@ -220,6 +220,5 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
          end do
       end if
       end if
-  200 continue
       return
 end subroutine mixcom

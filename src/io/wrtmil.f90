@@ -58,7 +58,6 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
           np1 = 1.0d0/star%diag%del_grad(2,i)
           write(imilne,10)i,hs1(i),r,p,d,hcomp(1,i),hl(i), &
                             u,v,w,np1
-   20    continue
        end do
       endif
       if(iend.lt.m) then

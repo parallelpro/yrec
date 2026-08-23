@@ -122,13 +122,10 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
                  rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
                  timestep_years, ierr)
             if (ierr /= 0) return
-   30    continue
          end do
-   40 continue
       end do
       if (region_idx > num_radiative_zones) then
       end if
-   45 continue
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
@@ -145,7 +142,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
               rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
               timestep_years, ierr)
          if (ierr /= 0) return
-   50 continue
       end do
 !
 ! MICROSCOPIC DIFFUSION OF HELIUM.
@@ -185,13 +181,11 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          outer_boundary_zone = radiative_zone_bounds(num_radiative_zones,2)
          do zone_idx = outer_boundary_zone,1,-1
             if (composition(2,zone_idx).gt.helium_diffusion_min) exit
-  140    continue
          end do
          if (zone_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
          exit settling
          end if
-  150    continue
          total_mass=exp(ln10*log_total_mass)
          do zone_idx = 1,num_zones
             del_grad2_save(zone_idx) = star%diag%del_grad(2,zone_idx)
@@ -199,7 +193,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             dlnp_dr_settling(zone_idx)=-exp(ln10*(log_density(zone_idx)+ &
                  cgl+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
                  log_pressure(zone_idx)))
-  130    continue
          end do
 ! ***BC 6/92 only check for timestep cutting if JMAX is large
 !
@@ -252,7 +245,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
                     am_transport_convective_flag,num_zones,total_mass)
             end if
-  160    continue
          end do
          do zone_idx = 1,num_zones
             star%diag%del_grad(2,zone_idx) = del_grad2_save(zone_idx)
@@ -271,13 +263,11 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
                  max(composition(species_idx,zone_idx),0.0d0)
             composition(species_idx,zone_idx) = &
                  min(composition(species_idx,zone_idx),1.0d0)
-  175    continue
          end do
          composition(3,zone_idx) = min(composition(3,zone_idx), &
               1.0d0-composition(1,zone_idx)-composition(4,zone_idx))
          composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
               composition(3,zone_idx) - composition(4,zone_idx)
-  180 continue
       end do
       return
 end subroutine rotmix

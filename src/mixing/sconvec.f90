@@ -319,7 +319,6 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                log_density(search_zone_idx) = log_density_zone
 ! EXIT IF ZONE IS RADIATIVELY STABLE.
                if (gradient_ratio*radiative_gradient.lt.adiabatic_gradient) exit
-   32       continue
             end do
 ! (Natural loop completion already leaves search_zone_idx at 0 for a
 ! downward scan and num_zones+1 for an upward one -- the old explicit
@@ -341,9 +340,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
                  local_radiative_gradient
   601       format(1x,'CZ OLD EDGE ',i3,' EXTENDED TO-', &
                  i3,' LIMIT=',l1,' RAD.GRADS-IN/OUT',2f8.4)
-  200    continue
          end do
-  210 continue
       end do
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY SEMI-CONVECTION.
       if (num_zones_mixed.le.1) return
@@ -363,9 +360,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
             do pair_idx = 1, 2
                mixed_zone_bounds(zone_idx,pair_idx) = &
                     mixed_zone_bounds(zone_idx+1,pair_idx)
-   95       continue
             end do
-   90    continue
          end do
          num_zones_mixed = num_zones_mixed - 1
          if (k_idx.le.num_zones_mixed-1) then

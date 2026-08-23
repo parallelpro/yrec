@@ -132,11 +132,10 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
        df1(1,nn) = yale_eos%fermi_table_data(1,id,jt2) - yale_eos%fermi_table_data(1,id,jt1)
        df2(1,nn) = yale_eos%fermi_table_data(1,id,jt3)-yale_eos%fermi_table_data(1,id,jt2)-df1(1,nn)
        ff(1,nn) = yale_eos%fermi_table_data(1,id,jt1) + ttud*df1(1,nn) + ttcu*df2(1,nn)
-   20 continue
       end do
       dpel2 = 2.0d0*(ff(1,1)*cden1 + ff(1,2)*cden2 + ff(1,3)*cden3)
       end if
-   30 dx1 = xx - yale_eos%fermi_table_x_grid(id1)
+      dx1 = xx - yale_eos%fermi_table_x_grid(id1)
       dx2 = xx - yale_eos%fermi_table_x_grid(id2)
       dx3 = xx - yale_eos%fermi_table_x_grid(id3)
 !  INTERPOLATION IN X IS LAGRANGIAN(UNEQUAL TABLE SPACING IN X)
@@ -219,10 +218,8 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
           df1(kk,nn) = yale_eos%fermi_table_data(kk,id,jt2) - yale_eos%fermi_table_data(kk,id,jt1)
           df2(kk,nn)=(yale_eos%fermi_table_data(kk,id,jt3)-yale_eos%fermi_table_data(kk,id,jt2))-df1(kk,nn)
           ff(kk,nn)=yale_eos%fermi_table_data(kk,id,jt1)+ttud*df1(kk,nn)+ttcu*df2(kk,nn)
-   50    continue
        end do
        ffe(kk) = cl1*ff(kk,1) + cl2*ff(kk,2) + cl3*ff(kk,3)
-   60 continue
       end do
 ! DERIVATIVES OF P
       peq = dexp(ln10*ffe(3))

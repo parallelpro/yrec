@@ -143,7 +143,6 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
       return
 
 !     OUT OF TABLE EXIT
- 9999 continue
       in_opal_table = .false.       ! Not in table
       needs_ramp = .true.           ! Turn on ramping
       ramp_factor = 0d0             ! Set ramping factor to zero

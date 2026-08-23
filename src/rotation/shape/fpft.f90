@@ -100,16 +100,14 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
                   xa(j1) = extrap_step(n1)
                   ya(j1) = aint0(n1)
                   n1 = n1 + 1
-   35          continue
                end do
                call polint(xa, ya, k, 0.0d0, aint1, dint)
                if (dabs(dint).lt.eps*dabs(aint1)) exit
             end if
             aint0(j+1) = aint0(j)
             extrap_step(j+1) = 0.25d0*extrap_step(j)
-   40    continue
          end do
-   50    aint = prev_aint + aint1
+         aint = prev_aint + aint1
 ! FIND <G> AND <G-1> ACROSS THE SHELL BY GAUSSIAN QUADRATURE
 ! (func is passed as the integrand -- 2026, phase four step 2)
          call qgauss(func, g0, ginv0, sphi, b_coefficient, r0, log_mass, &
@@ -132,7 +130,6 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
          prev_omega_sq = omega_sq
          prev_density = density
          prev_r0 = r0(i)
-  100 continue
       end do
 
       return

@@ -152,7 +152,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                return
             endif
          endif
-   10 continue
       end do
 !  CHECK IF THE FRACTIONAL CHANGE IN OMEGA RELATIVE TO THE PREVIOUS
 !  ITERATION IS SMALL ENOUGH TO BE CONSIDERED CONVERGED.
@@ -174,7 +173,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
          endif
          specific_angular_momentum_prev(zone_index) = &
               specific_angular_momentum(zone_index)
-  140 continue
       end do
       if(abs(max_delta_j_by_iter(iteration_number)).le. &
            convergence_tolerance) then
@@ -222,18 +220,16 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
          if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
             do scan_index = zone_top + 1,num_zones
                if(.not.am_transport_convective_flag(scan_index)) exit
-   30       continue
             end do
-   40       zone_top = scan_index - 1
+            zone_top = scan_index - 1
          endif
 !  IBOT IS THE BOTTOM UNSTABLE ZONE. CHECK FOR ADJACENT CZ AS ABOVE.
          zone_bottom = zone_index - 1
          if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
             do scan_index = zone_bottom - 1,1,-1
                if(.not.am_transport_convective_flag(scan_index)) exit
-   50       continue
             end do
-   60       zone_bottom = scan_index + 1
+            zone_bottom = scan_index + 1
          endif
 !  ENFORCE A SOLID BODY ROTATION CURVE FROM IBOT TO ITOP.
          call solid(log_density,specific_angular_momentum,log_radius,log_mass, &
@@ -251,9 +247,8 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                   if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
                      do scan_index = zone_bottom - 1,1,-1
                         if(.not.am_transport_convective_flag(scan_index)) exit
-   80                continue
                      end do
-   90                zone_bottom = scan_index + 1
+                     zone_bottom = scan_index + 1
                   endif
                endif
             endif
@@ -267,9 +262,8 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                   if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
                      do scan_index = zone_top+1,num_zones
                         if(.not.am_transport_convective_flag(scan_index)) exit
-  100                continue
                      end do
-  110                zone_top = scan_index - 1
+                     zone_top = scan_index - 1
                   endif
                endif
             endif
@@ -313,7 +307,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                max_fractional_dj = delta_j_fraction
                max_dj_zone = zone_index
             endif
-  150    continue
          end do
          if(.not.already_converged_flag)then
             write(*,160)max_fractional_dj,max_dj_zone, &
@@ -355,7 +348,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !            IF(HV(J).EQ.0.0D0)GOTO 180
             print_zone_id(print_zone_count) = scan_index
             print_zone_count = print_zone_count + 1
-  180    continue
          end do
 ! OUTERMOST MODEL POINT (OR POINT AT BASE OF SURFACE C.Z.)ALWAYS PRINTED.
          if(print_zone_id(print_zone_count-1).ne.zone_max)then
@@ -373,7 +365,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                  specific_angular_momentum(print_zone_id(zone_index))- &
                  specific_angular_momentum_start(print_zone_id(zone_index))
   190 format(1x,i5,1p4e12.3)
-  200    continue
          end do
 !  I/O CONCERNING DIFFUSION VELOCITIES AND SCALE LENGTHS.
          write(imodpt,210)
@@ -391,7 +382,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                  star%circ%hle(print_zone_id(zone_index)), &
                  star%circ%mu_gradient_velocity(print_zone_id(zone_index))
   220 format(1x,i5,1p10e12.3)
-  230    continue
          end do
          if(use_diffusion_advection_transport)then
 !            DO I = 1,IDM
@@ -440,6 +430,5 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
             endif
          endif
       endif
-  240 continue
       return
 end subroutine checkj

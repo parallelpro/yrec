@@ -329,7 +329,6 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 !  THESE ARE TREATED USING DIFFUSION EQUATIONS.
          do zone_index = 1,star%nz
             specific_angular_momentum_saved(zone_index) = star%j_rot(zone_index)
-   60    continue
          end do
 ! MHP 6/00 ADDED COD2,HV TO LIST RETURNED FROM SECULR
 ! FOR THE BUR-ST MIXING ROUTINES
@@ -361,9 +360,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
                star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%thermo%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
                do species_index = 1,num_species_tracked
                   star%xa(species_index,zone_index) = star%prev%xa_start(species_index,zone_index)
-   70          continue
                end do
-   80       continue
             end do
             cycle retry
          endif
@@ -419,7 +416,6 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
                star%light_burn%rate_li6_start(zone_index) = star%light_burn%rate_li6(zone_index)
                star%light_burn%rate_li7_start(zone_index) = star%light_burn%rate_li7(zone_index)
                star%light_burn%rate_be9_start(zone_index) = star%light_burn%rate_be9(zone_index)
-  155       continue
             end do
          else
 ! COMPUTE BURNING.
@@ -443,9 +439,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          do zone_index = 1,star%nz
             do species_index = 12,15
                if(star%xa(species_index,zone_index).lt.1.0D-24)star%xa(species_index,zone_index)=0.0D0
-   90       continue
             end do
-  100   continue
          end do
 ! MHP 6/00 ADDED OVERWRITE OF HCOMPP FOR LIGHT ELEMENTS
 ! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
@@ -485,7 +479,6 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 !  UPDATE OMEGA ARRAY TO REFLECT NEW ANGULAR MOMENTUM DISTRIBUTION.
       do zone_index = 1,star%nz
          star%omega(zone_index) = omega_mid(zone_index)
-  110 continue
       end do
 ! MHP 3/96 ADDED CALL TO RECOMPUTE SELF-CONSISTENT SET OF OMEGAS
       call getrot(star%logRho,star%j_rot,star%logR,star%log_mass, &

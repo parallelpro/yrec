@@ -365,7 +365,6 @@ subroutine run_yrec(ierr)
          write(*,911)i,star%dm(i),(star%neutrino_flux_zone(j,i),j=1,10)
  911     format(I5,1P11E10.3)
       end do
-  666 continue
 ! WRITE OUT TOTAL NEUTRINO FLUXES.
 ! ***NOTE THAT THESE ARE IN UNITS OF 10**10. ***
       write(76,222)(star%flux%neutrino_flux_total(i),i=1,10)
@@ -394,7 +393,6 @@ subroutine run_yrec(ierr)
          star%neutrino_flux_zone(2,i),star%neutrino_flux_zone(3,i)
   145    format(F9.5,F7.3,F6.3,1P10E10.3)
       end do
-  141 continue
   222    format(1P10E10.3)
 !         IF(M.GT.1)STOP999
       endif
@@ -450,7 +448,6 @@ subroutine run_yrec(ierr)
             star%run%pressure_entropy_term(i) = 0.0D0
             star%run%luminosity_entropy_term(i) = 0.0D0
             star%run%radius_entropy_term(i) = 0.0D0
-   99    continue
          end do
 
 ! zero out light element burning rates in the surface CZ.
@@ -470,12 +467,11 @@ subroutine run_yrec(ierr)
        if (ierr /= 0) return
        if (step_status == 1) exit
        if (step_status == 2) cycle run_loop   ! (was goto 200, the run-loop terminator)
-  100    continue
        end do
 
 ! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
 ! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
-  110    if (lstore.and.lstpch.and.star%evo%punch_pending_flag) then
+         if (lstore.and.lstpch.and.star%evo%punch_pending_flag) then
           call putstore(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
                  star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
                  star%run%dage,star%evo%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
@@ -532,7 +528,6 @@ subroutine run_yrec(ierr)
 ! END RUN LOOP
       end do run_loop
 ! EXIT RUN LOOP
- 250  continue
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
 ! MODEL PARAMTERS TO AN OUTPUT FILE.
@@ -619,7 +614,7 @@ subroutine run_yrec(ierr)
                  star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
          endif
       endif
- 500  end do
+      end do
 
 ! 2026 (phase five, step B): the normal end-of-job stop became this
 ! clean return (ierr stays 0); the CLI wrapper simply ends.

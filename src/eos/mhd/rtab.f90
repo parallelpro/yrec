@@ -56,9 +56,7 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
       do rho_idx = 1, num_rho_points
 !     READ(IR,1002) (TDVAR(N,J,IV),IV=1,IVAR)
       read(file_unit     ) (table_data(t_idx,rho_idx,var_idx),var_idx=1,num_vars)
-11    continue
       end do
-10    continue
       end do
       return
 ! 1001  FORMAT(I5,E16.8)

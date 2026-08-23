@@ -118,7 +118,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       if(convective_flag(1))then
          do zone_idx=2,num_zones
             if(.not.convective_flag(zone_idx))exit
-   10    continue
          end do
          if (zone_idx > num_zones) then
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
@@ -128,7 +127,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
          continue
          return
          end if
-   20    continue
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_begin = zone_idx-1
       else
@@ -137,7 +135,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do zone_idx = zone_begin,num_zones
          if(composition(1,zone_idx).gt.hydrogen_diffusion_floor)exit
-   23 continue
       end do
       if (zone_idx > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
@@ -147,15 +144,12 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       continue
       return
       end if
-   25 continue
       zone_begin = zone_idx
 !     CHECK FOR CONVECTIVE ENVELOPE.
       if(convective_flag(num_zones))then
          do zone_idx=num_zones-1,2,-1
             if(.not.convective_flag(zone_idx))exit
-   30    continue
          end do
-   40    continue
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_end = zone_idx+1
       else
@@ -165,7 +159,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do zone_idx=zone_end,1,-1
          if(composition(2,zone_idx).gt.helium_diffusion_min) exit
-   45 continue
       end do
       if (zone_idx < (1)) then
 !     HYDROGEN-FREE MODEL - EXIT.
@@ -175,7 +168,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       continue
       return
       end if
-   47 continue
       zone_end = zone_idx
 !     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.
 !     CON_RADIUS=CONVERSION FACTOR FOR RADIUS.
@@ -195,7 +187,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
          mass_grams(zone_idx)=mass_grams(zone_idx)*star%rot%bl_mass_scale
          dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/star%rot%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
-   50 continue
       end do
       timestep_seconds=timestep_seconds/star%rot%bl_time_scale
       total_mass=total_mass*star%rot%bl_mass_scale
@@ -359,8 +350,6 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
            diffusion_coeff1_dx(zone_idx)=diffusion_coeff1_dx(zone_idx) + diffusion_coeff1(zone_idx)*1.5d0/ &
            (ln_lambda*(3.0d0*hydrogen_fraction+1.0d0))
        end if
-   60 continue
       end do
- 9999 continue
       return
 end subroutine setup_grsett

@@ -106,15 +106,12 @@ subroutine readco(ierr)
                     opal_eos%log10_r_value(density_row,t6_row), &
                     (opal_eos%eos_table(x_loop_index,opal_eos%eos_var_order(var_idx), &
                     t6_row,density_row), var_idx=1,10)
-    4          continue
             end do
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
-    2    continue
          end do
          read(iopale,'(A)') blank_line
-    3 continue
       end do
 
       do t6_scan_idx = 1, nt
@@ -125,14 +122,12 @@ subroutine readco(ierr)
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !    11 T6A(I)=T6LIST(1,I)
          opal_eos%t6_grid(t6_scan_idx) = opal_eos%t6_list(1,t6_scan_idx)
-   11 continue
       end do
-   14 do t6_idx = 2, nt
+      do t6_idx = 2, nt
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !    12 DFS(I)=1.D0/(T6A(I)-T6A(I-1))
          opal_eos%t6_grid_spacing_inv(t6_idx) = 1.0d0/(opal_eos%t6_grid(t6_idx) - &
               opal_eos%t6_grid(t6_idx-1))
-   12 continue
    end do
       opal_eos%density_grid(1) = opal_eos%density_grid_table(1,1)
       do r_idx = 2, nr
@@ -142,7 +137,6 @@ subroutine readco(ierr)
          opal_eos%density_grid(r_idx) = opal_eos%density_grid_table(1,r_idx)
          opal_eos%density_grid_spacing_inv(r_idx) = 1.0d0/(opal_eos%density_grid(r_idx) - &
               opal_eos%density_grid(r_idx-1))
-   13 continue
       end do
       do x_idx = 2, mx
          opal_eos%x_grid_spacing_inv(x_idx) = 1.0d0/(opal_eos%x_grid_copy(x_idx) - opal_eos%x_grid_copy(x_idx-1))

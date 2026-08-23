@@ -281,7 +281,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
             recompute_flag = 1
          end do
       end do
-  123 continue
       end do
       if ((opal_eos%z_table(x_index_2).ne.opal_eos%z_table(opal_eos%x_index_lo)) .or. &
            (opal_eos%z_table(x_index_3).ne.opal_eos%z_table(opal_eos%x_index_lo))) then
@@ -318,9 +317,7 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
                     x_print_idx=opal_eos%x_index_lo,opal_eos%x_index_lo+2)
             end if
             recompute_flag = 1
-   46       continue
          end do
-   45 continue
       end do
 
       if (x_index_4.eq.x_index_hi) then  ! interpolate between quadratics
@@ -351,7 +348,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
                  (1.0d0 - x_interp_weight)
             recompute_flag = 1
          end do
-   47 continue
       end do
 
 
@@ -367,7 +363,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
       call t6rinterp(density_value, t6_value, ierr)
       if (ierr /= 0) return
       opal_eos%eos_output(eos_var_idx) = opal_eos%esact
-  124 continue
       end do
       if (eos_var_idx > deriv_order) then
 
@@ -389,24 +384,24 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
       end if
       return
 
-   61 write(short_file_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
+      write(short_file_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
       write(short_file_unit,*) opal_eos%table_metal_fraction, hydrogen_fraction
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
       return
-   62 write(short_file_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
+      write(short_file_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
       write(short_file_unit,*) opal_eos%t6_grid(1), t6_value, opal_eos%t6_grid(nt)
       write(short_file_unit,*) opal_eos%density_grid(1), density_value, opal_eos%density_grid(nr)
       return 1
 
-   65 write(short_file_unit,'("T6/LOG RHO IN EMPTY REGION OF TABLE (65)")')
+      write(short_file_unit,'("T6/LOG RHO IN EMPTY REGION OF TABLE (65)")')
       write(short_file_unit,'("XH,T6,R=", 3E12.4)') hydrogen_fraction, &
            t6_temperature, density
       return 1
 
       end if
-   66 write(short_file_unit,'(" Z DOES NOT MATCH Z IN EOSDATA* FILES YOU ARE", &
+      write(short_file_unit,'(" Z DOES NOT MATCH Z IN EOSDATA* FILES YOU ARE", &
            &" USING (66)")')
       write(short_file_unit,'("MF,ZZ(MF)=",I5,E12.4)') opal_eos%x_index_lo, &
            opal_eos%z_table(opal_eos%x_index_lo)

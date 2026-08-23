@@ -317,7 +317,6 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
       end if
 
       end if
- 1000 continue
 !     DO A RAMP BETWEEN SURFACE AND INTERIOR OPACITY
 
       if (got_atmosphere_opacity .and. &

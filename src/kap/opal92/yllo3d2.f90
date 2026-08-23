@@ -53,7 +53,6 @@ subroutine yllo3d2(log10_density, log10_temperature, hydrogen_fraction, &
             single_x_table = .true.
             exit
          endif
- 130  continue
       end do
       end if
       if (.not. single_x_table) then

@@ -46,7 +46,6 @@ subroutine op95ztab(metal_fraction, ierr)
       ierr = 1
       return
       end if
-   10 continue
 !  FIND INTERPOLATION FACTORS IN Z.
       do i = 1,4
          table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index+i-1)
@@ -96,7 +95,6 @@ subroutine op95ztab(metal_fraction, ierr)
          end do
       end do
       end if
-   20 continue
 !  OMIT TABLE 10 (X = 1-Z) IF DESIRED Z >= 0.1
       if (.not. (metal_fraction.ge.0.1d0)) then
 !  CHECK TO ENSURE THAT Z=0.1 TABLE IS NOT ONE OF THE 4 TABLES; ADJUST
@@ -114,7 +112,6 @@ subroutine op95ztab(metal_fraction, ierr)
          end do
       endif
       end if
-   30 continue
       table1_index = opacity_table%opal95_table_start_index(z_table_index2)+10
       table2_index = opacity_table%opal95_table_start_index(z_table_index2+1)+10
       table3_index = opacity_table%opal95_table_start_index(z_table_index2+2)+10

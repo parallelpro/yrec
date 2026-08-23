@@ -87,7 +87,6 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
          di_domega(zone_idx) = di_domega_per_mass*shell_mass(zone_idx)
          prev_log_mean_radius = dlog(mean_radius(zone_idx))
          prev_log_true_radius = ln10*log_radius(zone_idx)
-   20 continue
       end do
 
       return

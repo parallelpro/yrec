@@ -176,7 +176,6 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
             (envelope_fit_coeffs(i+i+i-3+j),j = 1,3)
  70      format(3X,I2,F7.5,4F8.5,3E12.5)
        if(envelope_record_number.lt.0) trial_sign_flag = -1D0
- 80   continue
       end do
 
 ! READ IN HENYEY POINTS IN 4 PARTS
@@ -200,7 +199,6 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
        endif
        composition(1,i) = 1.0D-6*dfloat(ix)
        composition(3,i) = 1.0D-6*dfloat(iz)
- 110  continue
       end do
 
 ! Read SECOND PART:ELEMENT ABUNDANCES: HE3,CNO CYCLE ELEMENTS.
@@ -213,7 +211,6 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
        do j = core_cz_top_index,envelope_cz_bottom_index
           read(iread,200) (composition(i,j),i = 4,11)
  200        format(8(1PE9.3,1X))
- 210     continue
        end do
       endif
       if(core_cz_top_index.gt.1) then
@@ -221,9 +218,7 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
        do j = 1,core_cz_top_index-1
           do i = 4,11
              composition(i,j) = composition(i,core_cz_top_index)
- 220        continue
           end do
- 230     continue
        end do
       endif
       if(envelope_cz_bottom_index.lt.num_shells) then
@@ -231,16 +226,13 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
        do j = envelope_cz_bottom_index+1,num_shells
           do i = 4,11
              composition(i,j) = composition(i,envelope_cz_bottom_index)
- 240        continue
           end do
- 250     continue
        end do
       endif
 ! DEFINE HE4 = 1 - X - Z - HE3.
       do i = 1,num_shells
        composition(2,i) = 1.0D0 - composition(1,i) - composition(3,i) - &
             composition(4,i)
- 260  continue
       end do
 
 ! READ IN H2,LI6,LI7,BE9 (EXTENDED COMPOSITION)
@@ -253,9 +245,7 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
           do j = 1,num_shells
              do i = 12,15
               composition(i,j) = composition(i,1)
- 305           continue
              end do
- 310        continue
           end do
        else
 ! GENERAL CASE
@@ -263,7 +253,6 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
           do pair_start_index = core_cz_top_index,envelope_cz_bottom_index-1,2
              read(iread,200)((composition(i,j),i = 12,15), &
                   j = pair_start_index,pair_start_index+1)
- 315        continue
           end do
 ! IF AN ODD NUMBER OF ABUNDANCES STORED, READ IN LAST VALUE
           parity_test = envelope_cz_bottom_index-1 - core_cz_top_index
@@ -274,9 +263,7 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
              do j = 1,core_cz_top_index-1
               do i = 12,15
                  composition(i,j) = composition(i,core_cz_top_index)
- 320              continue
               end do
- 330           continue
              end do
           endif
           if(envelope_cz_bottom_index.lt.num_shells) then
@@ -284,9 +271,7 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
              do j = envelope_cz_bottom_index+1,num_shells
               do i = 12,15
                  composition(i,j) = composition(i,envelope_cz_bottom_index)
- 340              continue
               end do
- 350           continue
              end do
           endif
        endif
@@ -304,7 +289,6 @@ subroutine getyrec7(log_luminosity_lsun, envelope_fit_coeffs, &
            else
               omega(i) = 0D0
            endif
- 510    continue
       end do
       endif
 

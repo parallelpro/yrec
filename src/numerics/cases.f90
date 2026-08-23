@@ -67,7 +67,7 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
 
 ! CALCULATE THE PARAMETERS FOR CASE 2.
       end if
-  10  knot_z_x=(x_left+x_right)/2.d0
+      knot_z_x=(x_left+x_right)/2.d0
       knot_v_x=(x_left+knot_z_x)/2.d0
       knot_v_y=y_left+slope_left*(knot_v_x-x_left)
       knot_w_x=(knot_z_x+x_right)/2.d0
@@ -77,7 +77,7 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
 
 ! CALCULATE THE PARAMETERS USED IN BOTH CASES 3 AND 4.
       end if
-  20  c1=x_left+(y_right-y_left)/slope_left
+      c1=x_left+(y_right-y_left)/slope_left
       d1=x_right+(y_left-y_right)/slope_right
       h1=2.d0*c1-x_left
       j1=2.d0*d1-x_right
@@ -98,8 +98,8 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
       (knot_z_x-knot_v_x)
       return
       end if
-  30  knot_z_x=(k1+x_left)/2.d0
-  40  knot_v_x=(x_left+knot_z_x)/2.d0
+      knot_z_x=(k1+x_left)/2.d0
+      knot_v_x=(x_left+knot_z_x)/2.d0
       knot_v_y=y_left+slope_left*(knot_v_x-x_left)
       knot_w_x=(x_right+knot_z_x)/2.d0
       knot_w_y=y_right+slope_right*(knot_w_x-x_right)
@@ -109,7 +109,7 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
 
 ! CALCULATE THE PARAMETERS FOR CASE 4.
       end if
-  50  knot_y_x=(x_left+c1)/2.d0
+      knot_y_x=(x_left+c1)/2.d0
       knot_v_x=(x_left+knot_y_x)/2.d0
       knot_v_y=slope_left*(knot_v_x-x_left) + y_left
       knot_z_x=(d1+x_right)/2.d0

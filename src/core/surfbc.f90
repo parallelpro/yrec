@@ -164,7 +164,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
              tri_err = 0.0d0
              cycle tri_scan
           endif
- 20      continue
        end do
        exit tri_scan
        end do tri_scan
@@ -211,7 +210,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! G Somers END
           envelope_needs_recompute = .true.
        endif
- 40   continue
       end do
       if (envelope_needs_recompute) then
 ! RECOMPUTE COEFFICIENTS

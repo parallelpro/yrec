@@ -351,7 +351,6 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
           rotational_kinetic_energy(zone_index) = 0.5D0*omega(zone_index)*angular_momentum_shell
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + rotational_kinetic_energy(zone_index)
- 550     continue
        end do
        total_angular_momentum = sum_angular_momentum
        total_rotational_ke = sum_rotational_ke

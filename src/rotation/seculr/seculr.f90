@@ -205,7 +205,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
          dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
               1.0D0/ln10/(log_radius_center-log_radius(i-1))
          dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
-   10 continue
       end do
       call getqua(log_density,local_gravity,radius_unlogged,omega,num_zones)
       do i = 1,num_zones
@@ -227,7 +226,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       do i =1,num_zones
          specific_angular_momentum_prev(i) = specific_angular_momentum_saved(i)
          omega_start(i) = omega(i)
-   20 continue
       end do
 !  STORE INITIAL SURFACE ANGULAR VELOCITY FOR USE IN ANGULAR MOMENTUM
 !  LOSS CALCULATIONS.
@@ -255,7 +253,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
                     1.0D0/ln10/(log_radius_center-log_radius(i-1))
                dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
-   30       continue
             end do
 !  ON 2ND AND SUBSEQUENT ITERATIONS,COMPUTE CHARACTERISTIC VELOCITIES
 !  FOR THE NEW RUN OF OMEGA AND COMPOSITION FOUND IN THE PREVIOUS
@@ -274,9 +271,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                specific_angular_momentum(i) = specific_angular_momentum_saved(i)
                do j = 1,4
                   composition(j,i) = star%rot%composition_snapshot(j,i)
-   40          continue
                end do
-   50       continue
             end do
 ! MHP 10/91 CHANGED TO REMIX CZ'S TO THEIR PROPER DEPTH!
 ! OTHERWISE, DRASTIC ERRORS OCCUR IN THE PRESENCE OF A DEEPENING CZ
@@ -305,7 +300,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             cz_moment_of_inertia = 0.0D0
             do i = zone_max,num_zones
                cz_moment_of_inertia = cz_moment_of_inertia + moment_of_inertia(i)
-   55       continue
             end do
             wind_loss_active = ljdot0
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
@@ -376,7 +370,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                scan_start_zone = j + 1
                exit
             endif
-   70    continue
          end do
          if (j .gt. zone_max) then
 !  IF THE LAST INTERFACE IS UNSTABLE (NON-ZERO V) ENSURE THAT IEND IS SET
@@ -527,7 +520,6 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
          if(diffusion_solve_ok)exit   ! the post-loop reassignment is a no-op here
 ! IF LREDO=T, A PROBLEM REQUIRES TIMESTEP CUTTING.
          if(redo_flag)return   ! (label 9999 was a bare return)
-  100 continue
       end do
       diffusion_solve_ok = .true.
 ! PERFORM COMPOSITION DIFFUSION OF REMAINING SPECIES.

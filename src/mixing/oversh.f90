@@ -109,7 +109,6 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
             do j_idx = edge_idx-1, 1, -1
                radius = exp(ln10*log_radius(j_idx))
                if (radius.lt.overshoot_radius) exit
-   10       continue
             end do
 ! IF THE LOOP COMPLETES, THE OVERSHOOT REGION EXTENDS BELOW THE FIRST
 ! POINT AND THE CZ WILL EXTEND TO THE CENTER: natural completion of the
@@ -139,7 +138,6 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
             do j_idx = edge_idx+1, num_zones
                radius = exp(ln10*log_radius(j_idx))
                if (radius.gt.overshoot_radius) exit
-   30       continue
             end do
 ! IF THE LOOP COMPLETES, THE OVERSHOOT REGION EXTENDS ABOVE THE LAST
 ! POINT AND THE CZ WILL EXTEND TO THE SURFACE: natural completion of
@@ -153,7 +151,6 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
                  mixed_zone_bounds(zone_idx,2) = &
                  mixed_zone_bounds(zone_idx,2) + 1
          end if
-  100 continue
       end do
 ! OUTPUT : THE OLD AND NEW MIXED REGIONS ARE PRINTED OUT IN ISHORT.
       write(short_file_unit,200) ((mixed_zone_bounds_no_overshoot( &

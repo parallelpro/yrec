@@ -136,9 +136,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
             star%mix_phys%amum(j) = star%rot%old_amu(j)
             do i = 1,num_species_tracked
                star%xa(i,j) = star%prev%xa_start(i,j)
-   10       continue
             end do
-   20    continue
          end do
       else
          do j = 1,star%nz
@@ -181,7 +179,6 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
          total_epsilon = star%diag%sesum(j)+star%diag%seg(6,j)+star%diag%seg(7,j)
          star%mix_phys%epsm(j) = star%rot%old_eps(j)+time_fraction*(total_epsilon-star%rot%old_eps(j))
-   40 continue
       end do
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
 !  RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS TO DETERMINE WHETHER
@@ -204,7 +201,6 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                star%mix_phys%velm(i) = 0.0D0
             endif
          endif
-   50 continue
       end do
       new_cz_detected = .false.
 ! MHP 06/02 IF THE CZ DEPTHS HAVE CHANGED, RESOLVE
@@ -415,7 +411,6 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
         end do
          if (k > num_radiative_zones) then
          end if
- 190    continue
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
@@ -434,12 +429,11 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
       if (am_transport_convective_flag_mid(1)) then
          do i = 2,star%nz
             if (.not.am_transport_convective_flag_mid(i)) exit
-   60    continue
          end do
          if (i > (star%nz)) then
          i = star%nz + 1
          end if
-   65    core_boundary_zone = max(2,i-1)
+         core_boundary_zone = max(2,i-1)
       else
          core_boundary_zone = 2
       endif
@@ -450,13 +444,12 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !  UPPERMOST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONALLY INDUCED MIXING.
          do i = star%nz-1,1,-1
             if (.not.am_transport_convective_flag_mid(i)) exit
-   70    continue
          end do
          if (i < (1)) then
          fully_convective_flag = .true.
          i = 0
          end if
-   80    envelope_boundary_zone = i + 1
+         envelope_boundary_zone = i + 1
 !  HSTOP IS THE MASS AT THE TOP OF THE C.Z.
 !  HSBOT IS THE MASS AT THE BOTTOM OF THE C.Z.
          cz_mass_top = exp(ln10*star%log_total_mass)
@@ -574,7 +567,6 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                if (.not.am_transport_convective_flag_mid(i)) exit
                moment_of_inertia_cz = moment_of_inertia_cz + moment_of_inertia_mid(i)
             end do
-  110       continue
          endif
       else
          solid_zone_start = 1

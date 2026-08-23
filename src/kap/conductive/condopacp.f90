@@ -261,7 +261,7 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
          interp_deriv=v01+2d0*c2*interp_frac/h
          interp_deriv2=2d0*c2/h**2
       endif
-   10 return
+      return
 end subroutine cinterp3
 
 !   W.H.Press, B.P.Flannery, S.A.Teukolsky, W.T.Vetterling

@@ -54,7 +54,6 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       x_min_floor = 0.0d0
       do i = zone_begin,1,-1
          composition(1,i)=max(composition(1,i) + eq_delta_hydrogen(1),x_min_floor)
-   10 continue
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
@@ -82,7 +81,6 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
             do i = zone_begin,1,-1
                ii = light_element_id(kk)
                composition(ii,i)=max(composition(ii,i) + eq_delta_light(kk,1),x_min_floor)
-   15       continue
             end do
          end do
       endif
@@ -101,17 +99,14 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
                jmin=j
                exit
             endif
-   30    continue
          end do
          if (j > num_eq_points) then
          k0 = num_eq_points-3
          jmin=num_eq_points
          end if
-   40    continue
 
          do k=1,4
             tabler(k)=eq_radius(k0+k-1)
-   50    continue
          end do
          radmod=radius_bl(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
@@ -147,13 +142,11 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
                composition(ii,i) = composition(ii,i) + dxmod
             enddo
          endif
-   20 continue
       end do
 !
       do i = zone_end,num_zones
          x_max = 1.0d0 - composition(3,i) - composition(4,i)
          composition(1,i)=min(composition(1,i) + eq_delta_hydrogen(num_eq_points),x_max)
-   60 continue
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
       if(use_diffusion_z)then
@@ -177,7 +170,6 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
             do i = zone_end,num_zones
                ii = light_element_id(kk)
                composition(ii,i)=composition(ii,i) + eq_delta_light(kk,num_eq_points)
-   65       continue
             end do
          enddo
       endif
@@ -187,7 +179,6 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          temperature_bl(i)=temperature_bl(i)/star%rot%bl_temp_scale
          enclosed_mass(i)=enclosed_mass(i)/star%rot%bl_mass_scale
          dlnp_dr(i)=dlnp_dr(i)*star%rot%bl_radius_scale
-   70 continue
       end do
       timestep=timestep*star%rot%bl_time_scale
       total_mass=total_mass/star%rot%bl_mass_scale

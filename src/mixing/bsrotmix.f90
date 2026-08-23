@@ -49,7 +49,6 @@ subroutine bsrotmix(timestep, composition, extrapolation_order, num_zones, &
                   exit
                end if
             end do
-    5       continue
          end do
          if (species_active(4)) then
             do i = 1,num_zones

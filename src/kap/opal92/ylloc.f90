@@ -48,7 +48,6 @@ subroutine ylloc
           density_nodes(jd) = chkd
 !>>>> CHECK THE OPACITY VALUE IN THE TABLE
           spline_work(1,jd) = chko
-    3   continue
         end do
         opacity_table%opal92_density_count(index1) = jd
         if (jd.le.1) cycle
@@ -57,13 +56,9 @@ subroutine ylloc
         do i = 1,4
          index2 = i + (j-1)*4
          opacity_table%opal92_spline_coeffs(index1,index2) = spline_work(i,j)
-  200   continue
         end do
-  100   continue
         end do
-    2 continue
       end do
-    1 continue
       end do
 !
 ! DBG 5/94 ZRAMP stuff
@@ -85,7 +80,6 @@ subroutine ylloc
                   jd = jd + 1
                   density_nodes(jd) = chkd
                   spline_work(1,jd) = chko
-  503             continue
                end do
                opacity_table%opal92_density_count_z2(index1) = jd
                if (jd.le.1) cycle
@@ -96,7 +90,6 @@ subroutine ylloc
                      opacity_table%opal92_spline_coeffs_z2(index1,index2) = spline_work(i,j)
                   end do
                end do
-  502          continue
             end do
          end do
       end if

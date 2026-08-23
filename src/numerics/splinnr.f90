@@ -43,7 +43,6 @@ subroutine splinnr(x_values, y_values, num_points, first_deriv_start, &
         u(i)=(6.*((y_values(i+1)-y_values(i))/(x_values(i+1)-x_values(i))- &
              (y_values(i)-y_values(i-1))/(x_values(i)-x_values(i-1)))/ &
              (x_values(i+1)-x_values(i-1))-sig*u(i-1))/p
-11    continue
       end do
       if (first_deriv_end.gt..99e30) then
         qn=0.
@@ -57,7 +56,6 @@ subroutine splinnr(x_values, y_values, num_points, first_deriv_start, &
       second_derivs(num_points)=(un-qn*u(num_points-1))/(qn*second_derivs(num_points-1)+1.)
       do k=num_points-1,1,-1
         second_derivs(k)=second_derivs(k)*second_derivs(k+1)+u(k)
-12    continue
       end do
       return
 end subroutine splinnr

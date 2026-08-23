@@ -103,15 +103,12 @@ subroutine readcoeos01(ierr)
                     opal_eos%log10_r_value_01(density_row,t6_row), &
                     (opal_eos%eos_table_01(x_loop_index_01,opal_eos%eos_var_order_01(var_idx), &
                     t6_row,density_row), var_idx=1,9)
-    4          continue
             end do
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
             read(iopale,'(A)') blank_line
-    2    continue
          end do
          read(iopale,'(A)') blank_line
-    3 continue
       end do
 
       do t6_scan_idx = 1, nt
@@ -130,7 +127,6 @@ subroutine readcoeos01(ierr)
 !    12 dfs(i)=1D0/(t6a(i)-t6a(i-1))
          opal_eos%t6_grid_spacing_inv_01(t6_idx) = 1.0d0/(opal_eos%t6_grid_01(t6_idx) - &
               opal_eos%t6_grid_01(t6_idx-1))
-   12 continue
       end do
       opal_eos%density_grid_01(1) = opal_eos%density_grid_table_01(1,1)
       do r_idx = 2, nr
@@ -140,7 +136,6 @@ subroutine readcoeos01(ierr)
          opal_eos%density_grid_01(r_idx) = opal_eos%density_grid_table_01(1,r_idx)
          opal_eos%density_grid_spacing_inv_01(r_idx) = 1.0d0/(opal_eos%density_grid_01(r_idx) - &
               opal_eos%density_grid_01(r_idx-1))
-   13 continue
       end do
       do x_idx = 2, mx
          opal_eos%x_grid_spacing_inv_01(x_idx) = 1.0d0/(opal_eos%x_grid_copy_01(x_idx) - opal_eos%x_grid_copy_01(x_idx-1))

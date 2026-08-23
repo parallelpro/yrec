@@ -64,7 +64,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       ii = max(zone_end-20,zone_begin+1)
       do i = ii,zone_end
          drmin=min(drmin,radius_bl(i)-radius_bl(i-1))
-    7 continue
       end do
 !  ASSIGN THE MINIMUM NUMBER OF EQUALLY SPACED GRID POINTS SUCH THAT
 !  DR <= DRMIN.
@@ -86,7 +85,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          do i = 2,num_eq_points-1! old piece
             if(i-1 .eq. 0) print*, 'mte line 47'
             eq_radius_mid(i)=eq_radius_mid(i-1)+grid_spacing  ! old piece
-   10    continue          ! old piece
          end do
       endif
 
@@ -96,12 +94,10 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !  FIRST POINT : LINEAR INTERPOLATION BETWEEN STARTING POINT AND 2ND PT.
       do iu=2,num_eq_points
          if(radius_bl(iu).ge.eq_radius_mid(1))exit
-   15 continue
       end do
       if (iu > num_eq_points) then
       iu=num_eq_points
       end if
-   17 continue
       fx=(eq_radius_mid(1)-radius_bl(iu-1))/(radius_bl(iu)-radius_bl(iu-1))
       eq_mass_mid(1) = enclosed_mass(iu-1)+fx*(enclosed_mass(iu)-enclosed_mass(iu-1))
       eq_density_mid(1) = density_orig(iu-1)+fx*(density_orig(iu)-density_orig(iu-1))
@@ -137,16 +133,13 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                jmin=j
                exit
             endif
-   20    continue
          end do
          if (j > zone_end) then
          k0 = num_zones-3
          jmin=num_zones
          end if
-   30    continue
          do k=1,4
             tabler(k)=radius_bl(k0+k-1)
-   40    continue
          end do
          gridrad=eq_radius_mid(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
@@ -191,14 +184,12 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                        +facinterp(4)*composition(ii,k0+3)
             end do
          endif
-   50 continue
       end do
 
 !  SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE CENTERS.
       eq_radius(1)=radius_bl(zone_begin)
       do i = 2,num_eq_points
          eq_radius(i)=eq_radius(i-1)+grid_spacing
-   60 continue
       end do
 
 !  NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
@@ -237,16 +228,13 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                jmin=j
                exit
             endif
-   80    continue
          end do
          if (j > zone_end) then
          k0 = num_zones-3
          jmin=num_zones
          end if
-   90    continue
          do k=1,4
             tabler(k)=radius_bl(k0+k-1)
-  100    continue
          end do
          gridrad=eq_radius(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
@@ -286,7 +274,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                     +facinterp(4)*composition(ii,k0+3)
             end do
          endif
-   70 continue
       end do
 !  LAST POINT : BY DEFINITION, AT ENDING POINT.
       eq_mass(num_eq_points) = enclosed_mass(zone_end)

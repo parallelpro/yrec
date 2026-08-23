@@ -84,7 +84,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
          zone_start = zone_idx
          cycle
          end if
-   10    if (.not.in_convection_zone) cycle
+         if (.not.in_convection_zone) cycle
 !   END OF CONVECTION ZONE
          in_convection_zone = .false.
          if (zone_start.ne.zone_idx-1) then
@@ -96,9 +96,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
          write(short_file_unit,661)
   661    format(' -----TOO MANY MIX ZONES')
          exit
-   11 continue
       end do
-   12 continue
 
 ! MHP 5/91 LOGIC CHANGE TO AVOID PROBLEMS IF NO CZ IN MODEL(NZONE=0)
 ! SKIP REST OF SR IF THERE ARE NO CONVECTION ZONES.
@@ -120,7 +118,6 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
               mixed_zone_bounds(zone_idx,1)
          mixed_zone_bounds_no_overshoot(zone_idx,2) = &
               mixed_zone_bounds(zone_idx,2)
-   20 continue
       end do
       num_mixed_zones_no_overshoot = num_mixed_zones
 ! FIND OUTER EDGE OF THE CONVECTIVE CORE (JCORE) AND INNER EDGE OF THE
@@ -171,9 +168,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
             do pair_idx = 1, 2
                mixed_zone_bounds(k_idx,pair_idx) = &
                     mixed_zone_bounds(k_idx+1,pair_idx)
-   95       continue
             end do
-   90    continue
          end do
          num_mixed_zones = num_mixed_zones - 1
          if (j_idx.le.num_mixed_zones-1) then
@@ -205,7 +200,6 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
                  mixed_zone_bounds(zone_idx,2) + 1
             radiative_zone_bounds(num_radiative_zones,2) = &
                  mixed_zone_bounds(zone_idx+1,1) - 1
-  110    continue
          end do
       end if
 ! CHECK FOR A RADIATIVE REGION ABOVE THE LAST CONVECTION ZONE.
@@ -215,7 +209,6 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
               mixed_zone_bounds(num_mixed_zones,2) + 1
          radiative_zone_bounds(1,2) = num_zones
       end if
- 9999 continue
 
       return
 end subroutine convec

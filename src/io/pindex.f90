@@ -35,7 +35,6 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
           do j = ibeg,iend,print_point_interval
              id(idm) = j
              idm = idm + 1
-   10       continue
           end do
        end if
        if (iend .eq. jxbeg) then
@@ -46,7 +45,6 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
        do j = ixbeg,jxend
           id(idm) = j
           idm = idm + 1
-   20    continue
        end do
        if (print_point_interval.lt.m) then
           ibeg = int(jxend/print_point_interval+1)*print_point_interval
@@ -54,7 +52,6 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
           do j = ibeg,iend,print_point_interval
              id(idm) = j
              idm = idm + 1
-   30       continue
           end do
        end if
       else if (print_point_interval.lt.m) then
@@ -65,7 +62,6 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
        do j = ibeg,iend,print_point_interval
           id(idm) = j
           idm = idm + 1
-   40    continue
        end do
       end if
       id(idm) = m

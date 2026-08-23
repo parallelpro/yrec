@@ -64,14 +64,12 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          do i=1,3
          itbl = -i
          call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt)
- 10      continue
          end do
       else if (log10_temperature.lt.mhd_eos%zams_centre_boundary_log10t) then
 !     UPPER ZAMS TABLES
          do i=1,3
          itbl = i
          call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt)
- 20      continue
          end do
       else
 !     CENTRE TABLES
@@ -79,7 +77,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 !        OFFSET (+3) TO ACCESS CENTER TABLES
          itbl = i + 3
          call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt)
- 30      continue
          end do
       end if
 !     INTERPOLATION IN X
@@ -108,7 +105,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          var_at_x2 = table_vars(3,iv)
          call quint(hydrogen_fraction, x_grid_origin, x_grid_spacing, &
               var_at_x0, var_at_x1, var_at_x2, mhd_eos%mhd_output(iv))
- 100     continue
          end do
       else
 !     CUBIC LAGRANGIAN (ARBITRARILY SPACED XC'S)
@@ -126,7 +122,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 !  200     IX(I)=IXMIN+I-1
             cubic_table_index(i)=ixmin+i-1
- 200     continue
          end do
          do i =1,4
 ! KC 2025-05-30 fixed "Shared DO termination label"
@@ -136,9 +131,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
             cubic_x_nodes(i) = table_hfrac(cubic_table_index(i))
             do iv=1,ivarx
                cubic_vars(iv,i) = table_vars(cubic_table_index(i),iv)
- 251        continue
             end do
- 250     continue
          end do
          num_vars=ivarx
          var_leading_dim=ivarx
@@ -148,7 +141,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          call lir(hydrogen_fraction, cubic_x_nodes, mhd_eos%mhd_output, cubic_vars, &
               num_vars, var_leading_dim, num_points, lir_type_flag, interp_mode)
       end if
-  999 return
+      return
 !1000  FORMAT(' RESULTS FROM MHDPX2, ITBL,X = ',I6,1PE15.7/)
 ! 1001  FORMAT(12(/1X,1P5E15.6))
 ! 5001  FORMAT(1X,'******* WARNING: EXTRAPOLATION IN X (QUINT) ',

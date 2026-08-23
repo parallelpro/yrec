@@ -58,7 +58,6 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + shell_mass(zone_idx)
-   30    continue
          end do
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
          cz_specific_am = cz_total_am/cz_total_mass
@@ -71,7 +70,6 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
             call solid(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
-   40    continue
          end do
       else
 !  GENERAL LAW FOR OMEGA IN C.Z.: OMEGA = C*R**WALPCZ,WHERE C IS A CONSTANT
@@ -89,7 +87,6 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
             cz_total_mass = cz_total_mass + &
                  dexp(ln10*walpcz*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
-   50    continue
          end do
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
          power_law_norm = cz_total_am/cz_total_mass
@@ -103,7 +100,6 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
             call solid(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
-   60    continue
          end do
       endif
       return

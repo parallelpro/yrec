@@ -127,7 +127,6 @@ subroutine update_output_diagnostics(ierr)
        temp_value = star%luminosity_lsun(star%nz)/total_luminosity_sum
        do i = 1,8
           star%luminosity_breakdown(i) = star%luminosity_breakdown(i)*temp_value
-   10    continue
        end do
       endif
 

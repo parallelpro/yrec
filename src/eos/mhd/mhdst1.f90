@@ -115,7 +115,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
        call rtab(table_unit,nt2m,nr2m,ivar2,num_t2,num_r2,log10t2,table_vars2, ierr)
        if (ierr /= 0) return
       end if
- 400  continue
       end do
       if (.not. (table_kind.eq.0)) then
 !     IF IDX=1: CHECK TABLES FOR CORRECT COMPOSITION CONSTRUCTION
@@ -143,7 +142,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
          ierr = 1
          return
       end if
- 420  continue
       end do
       do temp_check_index=1,num_t2
       if (log10t2(temp_check_index).ne.log10t_down(temp_check_index)) then
@@ -160,7 +158,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
          ierr = 1
          return
       end if
- 430  continue
       end do
 !     NUMERICAL DERIVATIVES W.R.T. X
       do temp_deriv_index =1,num_t2
@@ -171,7 +168,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 435   TDVAR2(N,M,IV)=TDDIF0(N,M,IV)
         table_vars2(temp_deriv_index,density_deriv_index,var_index)=table_vars_centroid(temp_deriv_index,density_deriv_index,var_index)
-435   continue
       end do
 !
 !     EXTENDED SET OF VARIABLES (TDVAR2(N,M,IVAR1+1...IVAR2))
@@ -184,21 +180,16 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       table_vars2(temp_deriv_index,density_deriv_index,24)=(table_vars_up(temp_deriv_index,density_deriv_index, 9)-table_vars_down(temp_deriv_index,density_deriv_index, 9))/(2.d0*delta_x)
 !     SPACE-HOLDER VARIABLE (LIKE VAR(20))
       table_vars2(temp_deriv_index,density_deriv_index,25)=8888844444.d0
-  441 continue
       end do
-  440 continue
       end do
 !     NORMAL EXIT
       end if
- 450  continue
       return
 !     ERROR EXIT AND ERROR MESSAGES
-  500 continue
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
       return
- 600  continue
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1

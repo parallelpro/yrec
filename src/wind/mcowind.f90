@@ -157,6 +157,5 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       else
          domega_end = 0.5d0*(domega_end+domega_end_this_iter)
       endif
- 9999 continue
       return
 end subroutine mcowind

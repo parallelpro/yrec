@@ -68,7 +68,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             do zone_idx = 1,num_zones
                composition(1,zone_idx) = dmin1(rescale_params(2,run_index), &
                     composition(1,zone_idx)*x_rescale_factor)
-   10       continue
             end do
             star%env_comp%xnew = rescale_params(2,run_index)
             initial_envelope_x = rescale_params(2,run_index)
@@ -100,9 +99,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
                composition(3,species_idx) = dmax1(0.0d0,composition(3,species_idx)+delta_z)
                do zone_idx = 5,11
                   composition(zone_idx,species_idx) = composition(zone_idx,species_idx)*z_rescale_factor
-   20          continue
                end do
-   30       continue
             end do
             star%env_comp%znew = rescale_params(3,run_index)
             initial_envelope_z = rescale_params(3,run_index)
@@ -140,7 +137,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             if(new_species_value.lt.1.0d0) then
                do zone_idx = 1,num_zones
                   composition(new_species_index,zone_idx) = new_species_value
-   35          continue
                end do
             else
 !  ERROR - RESCALED ABUNDANCE >100% - ABUNDANCE NOT CHANGED
@@ -161,7 +157,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             star%env_comp%stotal = total_mass_log
             do zone_idx = 1,num_zones
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
-   40       continue
             end do
          endif
       else
@@ -250,7 +245,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             do zone_idx = shell_end+1,num_zones
         shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_end)+ &
              mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_end)))
-   70       continue
             end do
             env_mass_old = env_mass_new
 ! *****
@@ -302,7 +296,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             do zone_idx = shell_begin,num_zones
       shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_begin-1)+ &
            mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_begin-1)))
- 78     continue
             end do
             env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/solar_mass_cgs
             env_mass_total_check=(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_begin-1)))/solar_mass_cgs
@@ -344,7 +337,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             log_mass_shift = dlog10(rescale_params(4,run_index)/core_mass_old)
             do zone_idx = 1,shell_begin-1
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
-   80       continue
             end do
 
 !  HOLD H-SHELL MASS CONSTANT;SHIFT IS THE CHANGE IN THE
@@ -353,7 +345,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             do zone_idx = shell_begin,shell_end
                unlogged_mass_temp = exp(ln10*shell_mass_log(zone_idx))
                shell_mass_log(zone_idx) = log10(unlogged_mass_temp + mass_shift_grams)
-   90       continue
             end do
 !  NOW SHRINK OR EXPAND THE ENVELOPE MASS TO RETAIN TOTAL CONSTANT MASS.
 !
@@ -364,7 +355,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             do zone_idx = shell_end+1,num_zones
         shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(num_zones)- &
              mass_scale_factor*(10**shell_mass_log(num_zones)-10**shell_mass_log(zone_idx)))
-  100       continue
             end do
 
          endif
@@ -382,7 +372,6 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 !  CHANGE Y TO REFLECT NEW X,Z, AND HE3 VALUES.
       do zone_idx = 1,num_zones
          composition(2,zone_idx) = 1.0d0-composition(1,zone_idx)-composition(3,zone_idx)-composition(4,zone_idx)
-  110 continue
       end do
 !
 ! DBG 5/94 rescale interior Z if LZRAMP flag is T.

@@ -264,13 +264,11 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          end if
          end if
- 5003      continue
  5052      format(5E16.9,/,5E16.9,/,5E16.9,/,5E16.9)
  6052      format(5E23.16,/,5E23.16,/,5E23.16,/,5E23.16)
  6053      format(6E23.16,/,6E23.16,/,6E23.16,/,5E23.16)
       end if
 ! DBG END
-  220 continue
       end do
 !
 ! G Somers 11/14 REMOVED LONG BLOCK

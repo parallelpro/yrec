@@ -1362,6 +1362,22 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       close(standard_unit)
       close(run_unit)
       end if
+! 2026 MESA-style output: in MESA mode the legacy per-model streams
+! are off wholesale -- not just putstore's blocks (guarded there) but
+! the envint-driven atmosphere/envelope profile blocks appended to
+! the .store unit (lstatm/lstenv/...) and the legacy OPAL-format
+! pulsation files (lpulse; the GYRE writer, gated by
+! pulse_gyre_interval, is the MESA-mode pulsation mechanism).
+! MESA-format profile files are the queued successor (ROADMAP).
+      if (.not. use_legacy_output) then
+         lstore = .false.
+         lstatm = .false.
+         lstenv = .false.
+         lstmod = .false.
+         lstphys = .false.
+         lstrot = .false.
+         lpulse = .false.
+      end if
 ! stolr0/imax/nuse must keep their exact NAMELIST /physics/ spelling
 ! (see this file's naming note at the top), so intpar_lib's
 ! canonically-named variables are set by copying from them here,
@@ -1641,7 +1657,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
               exit
           endif
       end do
-      1250 continue
       shell_cmd(len_trim(shell_cmd)+2:len_trim(ftrack(1:last_slash_idx))+len_trim(shell_cmd)) = ftrack(1:last_slash_idx)
       print *,"OUTPUT placed in :  ",ftrack(1:last_slash_idx)
       print *, ''
@@ -1987,7 +2002,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             new_species_index = i + 3
             exit
           endif
-      10    continue
        end do
        if (i > 12) then
 ! ANEWCP NOT A RECOGNIZED ELEMENT
@@ -1996,7 +2010,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       20    format(1x,'VARIABLE',a4,1x,'NOT A RECOGNIZED ELEMENT'/1x, &
            &    'RESCALING NOT PERFORMED')
        end if
-      30    continue
       endif
       change_cno_mixture_active = .false.
       change_isotope_ratios_active = .false.
@@ -2387,7 +2400,6 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
          call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
               star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
               star%env_comp%fxenv)
-      1000 continue
       end do
       return
 
@@ -2484,7 +2496,6 @@ subroutine expand_value(path_value)
             end if
             path_value = temp_value
         end if
-      5000 continue
       end do
 
 end subroutine expand_value

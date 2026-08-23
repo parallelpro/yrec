@@ -177,12 +177,11 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
        if(.not.helium_flash_active) then
           do i = 2,star%nz
              if(star%logT(i).lt.star%logT(i-1))exit
-  100       continue
           end do
           if (i > (star%nz)) then
           i = star%nz + 1
           end if
-  110       max_temp_index = i - 1
+            max_temp_index = i - 1
           if(max_temp_index.gt.1) then
              h_shell_mid_mass = star%m(max_temp_index)/solar_mass_cgs
              max_log_temperature = star%logT(max_temp_index)
@@ -198,12 +197,11 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !  HE FLASH
           do i = 2,star%nz
              if(star%logT(i).lt.star%logT(i-1) .and. star%logT(i-1).gt.7.98D0) exit
-  130       continue
           end do
           if (i > (star%nz)) then
           i = star%nz + 1
           end if
-  140       max_temp_index = i - 1
+            max_temp_index = i - 1
           if(max_temp_index.gt.1) then
              h_shell_mid_mass = star%m(max_temp_index)/solar_mass_cgs
              max_log_temperature = star%logT(max_temp_index)

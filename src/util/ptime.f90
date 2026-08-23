@@ -84,7 +84,6 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
           max_change(4) = test_l
           max_change_index(4) = i
        endif
-   40 continue
       end do
 ! now actually limit the timestep by a factor that reduces the
 ! time changes in all quantities to the ps values or less

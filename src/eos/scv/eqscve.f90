@@ -110,7 +110,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          if (i < (1)) then
          ii = 1
          end if
-  10     continue
       else
 ! search up for nearest 4 table elements
          do i = idtt+2, nts
@@ -122,7 +121,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          if (i > nts) then
          ii = nts - 3
          end if
-  20     continue
       end if
       idtt = max(1,ii)
       idtt = min(nts-3,idtt)
@@ -160,7 +158,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          if (j < (1)) then
          jj = 1
          end if
-  30     continue
          idp = max(1,jj)
          idp = min(nptsx(idtt)-3, &
               idp)
@@ -178,7 +175,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          valid_table_point = .false.   ! Error exit - no valid table entry
          return
          end if
-  40     continue
          idp = min(nptsx(idtt)-3, jj)
       end if
       valid_table_point = .true.

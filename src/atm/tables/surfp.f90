@@ -60,7 +60,6 @@ subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
       if (row > nt) then
       row = nt
       end if
-   10 continue
       row_base = max(1,row-2)
       row_base = min(nt-3,row_base)
       do k = 1,4

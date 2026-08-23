@@ -91,13 +91,12 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! Determine where the BCZ is.
       do zone_index = num_zones-1,1,-1
          if (.not.convective_flag(zone_index)) exit
-   71 continue
       end do
       if (zone_index < (1)) then
       fully_convective_flag = .true.
       zone_index = 0
       end if
-   81 bcz_top_zone = zone_index + 1
+      bcz_top_zone = zone_index + 1
 ! Compare the pressure there to the surface pressure.
       pressure_diff_check = log_pressure(bcz_top_zone)-log_pressure(num_zones)
 ! IF CHKPRS > 1.0, AT LEAST 3 PSCAS, SO LOOK INTERIOR.
@@ -216,7 +215,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       endif
 ! RETURN FULL FUNCTIONALITY TO ENVINT
       end if
- 100  continue
       calc_envelope_flag = .true.
       return
 end subroutine gettau

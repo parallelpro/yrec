@@ -258,10 +258,8 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
        if (grid_idx.eq.41)  bin_end = 261
        do iden_idx=bin_start,bin_end
           yale_eos%fermi_table_x_lookup(iden_idx) = grid_idx
-  170    continue
        end do
        bin_start = bin_end + 1
-  180 continue
       end do
 
 !  CLOSE EQUATION OF STATE FILE.

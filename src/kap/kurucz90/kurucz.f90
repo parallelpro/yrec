@@ -103,7 +103,6 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
                   density_found = .true.
                   exit
                endif
-  211       continue
             end do
          else
             do density_scan_index = density_pointer, row_density_end-1
@@ -113,7 +112,6 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
                   density_found = .true.
                   exit
                endif
-  212       continue
             end do
             if (.not. density_found) then
             if (opacity_table%kurucz_log10_rho(temp_index, row_density_end).ge. &
@@ -143,7 +141,6 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
          temp_subset_logt(num_valid_temps) = opacity_table%kurucz_grid_logt(temp_index)
          temp_subset_log10_opacity(num_valid_temps) = log10_opacity_at_rho
          temp_subset_dlnkap_dlnrho(num_valid_temps) = dlnkap_dlnrho_at_rho
-  300 continue
       end do
       if (num_valid_temps.le.3) then
          if (search_full_range) then

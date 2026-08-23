@@ -207,9 +207,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                do i = 1,star%nz
                   do j = 1,num_species
                      star%prev%xa_start(j,i) = star%xa(j,i)
-   32             continue
                   end do
-   33          continue
                end do
                iteration_level=1
 ! mixed_zone_bounds_no_overshoot stays an ARGUMENT of mix (not read as
@@ -314,7 +312,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                   star%run%radius_entropy_term(i) = 0.0D0
 ! zero gravitational energy terms.
                   star%gravitational_luminosity(i) = 0.0D0
- 20            continue
                end do
             else
 ! use the rate of change in the previous model to estimate the new
@@ -332,7 +329,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                   star%logR(i) = star%logR(i) + delta_radius_step
 ! zero gravitational energy terms.
                   star%gravitational_luminosity(i) = 0.0D0
- 30            continue
                end do
             endif
 
@@ -372,7 +368,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                   star%run%pressure_entropy_term(ii)=star%log_pressure_delta(ii)/star%evo%dt
                   star%run%luminosity_entropy_term(ii)=2.0D0*(star%luminosity_lsun(ii)-star%prev%luminosity_lsun_start(ii))/(star%luminosity_lsun(ii)+star%prev%luminosity_lsun_start(ii))/star%evo%dt
                   star%run%radius_entropy_term(ii)=(star%logR(ii)-star%prev%logR_start(ii))/star%evo%dt
- 27            continue
                end do
             endif
 ! THIRD LEVEL OF ITERATIONS
@@ -617,9 +612,9 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       return
 
 ! run finished (was: goto 110)
- 810  step_status = 1
+      step_status = 1
       return
 ! leave the run loop (was: goto 200)
- 820  step_status = 2
+      step_status = 2
       return
 end subroutine evolve_step

@@ -42,7 +42,6 @@ subroutine ykoeff
             jd = jd + 1
             density_nodes(jd) = chkd
             spline_work(1,jd) = dlog10(chko)
- 103     continue
          end do
          opacity_table%kurucz_density_count(index1) = jd
          if (opacity_table%kurucz_density_start_index(index1).ne.1) stop ' ERROR KURUCZ OPACITY NDS'
@@ -55,7 +54,6 @@ subroutine ykoeff
                opacity_table%kurucz_spline_coeffs(index1,index2) = spline_work(i,j)
             end do
          end do
- 102  continue
       end do
 !
 !
@@ -75,7 +73,6 @@ subroutine ykoeff
                jd = jd + 1
                density_nodes(jd) = chkd
                spline_work(1,jd) = dlog10(chko)
- 203        continue
             end do
             opacity_table%kurucz2_density_count(index1) = jd
             if (opacity_table%kurucz2_density_start_index(index1).ne.1) stop ' NDS2'
@@ -88,7 +85,6 @@ subroutine ykoeff
                   opacity_table%kurucz2_spline_coeffs(index1,index2) = spline_work(i,j)
                end do
             end do
- 202     continue
          end do
       end if
 

@@ -39,7 +39,6 @@ subroutine alxztab(metal_fraction)
       if (i > (num_z-1)) then
       idz = num_z - 3
       end if
-   10 continue
       do i = 1,4
          interp_z(i) = opacity_table%alex95_grid_z(idz+i-1)
       end do

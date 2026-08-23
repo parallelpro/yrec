@@ -92,7 +92,6 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
       fact0 = timestep/grid_spacing
       do i = 1,num_eq_points
          rhs(i) = eq_omega(i)
-   10 continue
       end do
       surface_wind_loss_term = -0.5d0*(wind_loss_explicit+ &
            wind_loss_implicit)*eq_moment_of_inertia(num_eq_points)
@@ -111,7 +110,6 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
             sub_diag(i) = -fact*diffusion_coeff(i)
             diag(i) = 1.0d0 + fact*(diffusion_coeff(i)+diffusion_coeff(i+1))
             super_diag(i) = -fact*diffusion_coeff(i+1)
-   20    continue
          end do
 !  LAST SHELL B.C. : SAME AS FIRST SHELL B.C.
          fact = fact0/eq_moment_of_inertia(num_eq_points)

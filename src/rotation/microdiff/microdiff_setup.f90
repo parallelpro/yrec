@@ -74,7 +74,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       if(convective_flag(1))then
          do i=2,num_zones
             if(.not.convective_flag(i))exit
-   10    continue
          end do
          if (i > num_zones) then
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
@@ -84,7 +83,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          continue
          return
          end if
-   20    continue
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_begin = i-1
       else
@@ -93,7 +91,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do i = zone_begin,num_zones
          if(composition(1,i).gt.hydrogen_diffusion_floor)exit
-   23 continue
       end do
       if (i > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
@@ -103,15 +100,12 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       continue
       return
       end if
-   25 continue
       zone_begin = i
 !     CHECK FOR CONVECTIVE ENVELOPE.
       if(convective_flag(num_zones))then
          do i=num_zones-1,2,-1
             if(.not.convective_flag(i))exit
-   30    continue
          end do
-   40    continue
 !        COMPUTE OVERSHOOT (TO BE ADDED).
          zone_end = i+1
       else
@@ -121,7 +115,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do i=zone_end,1,-1
          if(composition(2,i).gt.helium_diffusion_min) exit
-   45 continue
       end do
       if (i < (1)) then
 !     HYDROGEN-FREE MODEL - EXIT.
@@ -131,7 +124,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       continue
       return
       end if
-   47 continue
       zone_end = i
 !     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.
 !     star%rot%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
@@ -150,7 +142,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          enclosed_mass(i)=enclosed_mass(i)*star%rot%bl_mass_scale
          dlnp_dr(i)=dlnp_dr(i)/star%rot%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
-   50 continue
       end do
       timestep=timestep/star%rot%bl_time_scale
       total_mass=total_mass*star%rot%bl_mass_scale
@@ -161,6 +152,5 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          density_orig(i) = exp(ln10*log_density(i))
          temperature_orig(i) = exp(ln10*log_temperature(i))
       enddo
- 9999 continue
       return
 end subroutine microdiff_setup

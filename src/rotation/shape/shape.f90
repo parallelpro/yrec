@@ -68,9 +68,8 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             (1.0d0 + c3*a_param**2 - c4*a_param**3)
             r0_cubed = r0_cubed + delta_r0_cubed
             if(dabs(delta_r0_cubed/r0_cubed).le.acfpft)exit
-   10    continue
          end do
-   20    r0(1) = r0_cubed**cc13
+         r0(1) = r0_cubed**cc13
          if (zone_end.eq.1) then
             continue
             return
@@ -136,9 +135,8 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
                (1.0d0 + c3*a_param**2 - c4*a_param**3)
                r0_cubed = r0_cubed + delta_r0_cubed
                if(dabs(delta_r0_cubed/r0_cubed).lt.acfpft)exit
-   40       continue
             end do
-   50       r0(i) = r0_cubed**cc13
+            r0(i) = r0_cubed**cc13
             err = r0(i) - r0_estimate
 !  ETA2 IS A FUNCTION OF R0, AND R0=RPHI WAS USED TO CALCULATE ETA2
 !  CORRECT ETA2 HERE IF DR/R0 > CUBE ROOT OF ACFPFT
@@ -164,14 +162,10 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             err = eta2_temp - eta2(i)
             if(dabs(err).le.acc_tol) exit
             r0_estimate = r0(i)
-   60    continue
          end do
-   70    continue
          rho_prev = density
          rho_bar_prev = rho_bar
          r_phi_prev = r_phi
-  100 continue
       end do
- 9999 continue
       return
 end subroutine shape

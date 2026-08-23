@@ -226,7 +226,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
             star_pressure_cgs(zone_idx)=dexp(ln10*log_pressure(zone_idx))
             star_hydrogen_fraction(zone_idx)=composition(1,zone_idx)
             star_metal_fraction(zone_idx)=composition(3,num_shells)
-34      continue
       end do
       do zone_idx=1,env_struct%num_env_points-1
             star_radius_cm(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_radius(zone_idx+1))
@@ -235,7 +234,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
             star_pressure_cgs(num_shells+zone_idx)=dexp(ln10*env_struct%env_log10_pressure(zone_idx+1))
             star_hydrogen_fraction(num_shells+zone_idx)=composition(1,num_shells)
             star_metal_fraction(num_shells+zone_idx)=composition(3,num_shells)
-35      continue
       end do
 
 
@@ -253,7 +251,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                  ksaha)
             star_inverse_sound_speed(zone_idx)=1.0d0/ &
                  sqrt(local_gamma1(zone_idx)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
-36      continue
       end do
 
 
@@ -302,7 +299,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                                          star_radius_cm(cz_zone_index-4+neighborhood_idx)
                                     spline_speed_neighborhood(neighborhood_idx)= &
                                          star_inverse_sound_speed(cz_zone_index-4+neighborhood_idx)
-26                              continue
                               end do
                               call splinj(spline_radius_neighborhood, &
                                    spline_speed_neighborhood,spline_second_deriv,7)
@@ -324,7 +320,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                                                star_radius_cm(cz_zone_index-2+neighborhood_idx)
                                           spline_speed_neighborhood(neighborhood_idx)= &
                                                star_inverse_sound_speed(cz_zone_index-2+neighborhood_idx)
-66                                    continue
                                     end do
                                     call splinj(spline_radius_neighborhood, &
                                          spline_speed_neighborhood,spline_second_deriv,7)
@@ -336,13 +331,11 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                               endif
                         endif
 
-22                   continue
                   end do
                   do zone_idx=1,integration_count-cz_zone_index+1
                         star_radius_to_cz(zone_idx)=star_radius_cm(cz_zone_index-1+zone_idx)
                         star_inverse_sound_speed_to_cz(zone_idx)= &
                              star_inverse_sound_speed(cz_zone_index-1+zone_idx)
-27                  continue
                   end do
 ! Then call Boole from surface to cz:
             remainder=mod((integration_count-cz_zone_index+1),4)
@@ -450,7 +443,6 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                         endif
 
 
-1505                  continue
                   end do
 1504                  format(1X,11E16.8)
 !                  DO 1520 I=1,IATCNT

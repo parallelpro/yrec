@@ -67,7 +67,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 20       VAROUT(1,I) = VARO(I)
             table_vars(1,i) = interpolated_vars(i)
-20       continue
          end do
          table_hfrac(1)    = mhd_eos%zams_a_mass_fraction(1)
       else if (table_selector.eq. 1) then
@@ -78,7 +77,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 30       VAROUT(1,I) = VARO(I)
             table_vars(1,i) = interpolated_vars(i)
-30       continue
          end do
          table_hfrac(1)    = mhd_eos%zams_a_mass_fraction(1)
       else if (table_selector.eq.-2) then
@@ -89,7 +87,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 40       VAROUT(2,I) = VARO(I)
             table_vars(2,i) = interpolated_vars(i)
-40       continue
          end do
          table_hfrac(2)    = mhd_eos%zams_b_mass_fraction(1)
       else if (table_selector.eq. 2) then
@@ -100,7 +97,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 50       VAROUT(2,I) = VARO(I)
             table_vars(2,i) = interpolated_vars(i)
-50       continue
          end do
          table_hfrac(2)    = mhd_eos%zams_b_mass_fraction(1)
       else if (table_selector.eq.-3) then
@@ -111,7 +107,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 60       VAROUT(3,I) = VARO(I)
             table_vars(3,i) = interpolated_vars(i)
-60       continue
          end do
          table_hfrac(3)    = mhd_eos%zams_c_mass_fraction(1)
       else if (table_selector.eq. 3) then
@@ -122,7 +117,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 70       VAROUT(3,I) = VARO(I)
             table_vars(3,i) = interpolated_vars(i)
-70       continue
          end do
          table_hfrac(3)    = mhd_eos%zams_c_mass_fraction(1)
 !     CENTER TABLES
@@ -134,7 +128,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 100      VAROUT(4,I) = VARO(I)
             table_vars(4,i) = interpolated_vars(i)
-100      continue
          end do
          table_hfrac(4)    = mhd_eos%centre1_mass_fraction(1)
       else if (table_selector.eq. 5) then
@@ -145,7 +138,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 110      VAROUT(5,I) = VARO(I)
             table_vars(5,i) = interpolated_vars(i)
-110      continue
          end do
          table_hfrac(5)    = mhd_eos%centre2_mass_fraction(1)
       else if (table_selector.eq. 6) then
@@ -156,7 +148,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 120      VAROUT(6,I) = VARO(I)
             table_vars(6,i) = interpolated_vars(i)
-120      continue
          end do
          table_hfrac(6)    = mhd_eos%centre3_mass_fraction(1)
       else if (table_selector.eq. 7) then
@@ -167,7 +158,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 130      VAROUT(7,I) = VARO(I)
             table_vars(7,i) = interpolated_vars(i)
-130      continue
          end do
          table_hfrac(7)    = mhd_eos%centre4_mass_fraction(1)
       else if (table_selector.eq. 8) then
@@ -178,7 +168,6 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 ! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
 ! 140      VAROUT(8,I) = VARO(I)
             table_vars(8,i) = interpolated_vars(i)
-140      continue
          end do
          table_hfrac(8)    = mhd_eos%centre5_mass_fraction(1)
       end if

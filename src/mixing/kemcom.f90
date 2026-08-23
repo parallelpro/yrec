@@ -104,26 +104,21 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
          total_shell_mass = 0.0d0
          do species_idx = 1,11
             avg_abundance(species_idx) = 0.0d0
-    1    continue
          end do
          do zone_idx = zone_begin,zone_end
             total_shell_mass = total_shell_mass + shell_mass(zone_idx)
             do species_idx = 1,11
                avg_abundance(species_idx) = avg_abundance(species_idx)+ &
                     star%prev%xa_start(species_idx,zone_idx)*shell_mass(zone_idx)
-    3       continue
             end do
-    5    continue
          end do
          do species_idx = 1,11
             avg_abundance(species_idx) = avg_abundance(species_idx)/total_shell_mass
-    7    continue
          end do
       else
          do species_idx = 1,11
             avg_abundance(species_idx) = &
                  star%prev%xa_start(species_idx,zone_begin)
-    9    continue
          end do
       endif
 !  skip burning calculations if starting shell below t cutoff for reactions.
@@ -131,9 +126,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
          do zone_idx = zone_begin,zone_end
             do species_idx = 1,11
                composition(species_idx,zone_idx) = avg_abundance(species_idx)
-   11       continue
             end do
-   13    continue
          end do
          return
       endif
@@ -216,7 +209,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             gr_n14_alpha = gr_n14_alpha + shell_mass(zone_idx)*rate_n14_alpha(zone_idx)
             gr_triple_alpha = gr_triple_alpha + shell_mass(zone_idx)*rate_triple_alpha(zone_idx)
             branch_frac_c12 = branch_frac_c12 + shell_mass(zone_idx)*frac_c12_alpha(zone_idx)
-   15    continue
          end do
          gr_pp = gr_pp/total_shell_mass
          gr_he3_he3 = gr_he3_he3/total_shell_mass
@@ -382,7 +374,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
          else
             any_nonzero_flag = 1
          endif
-   20 continue
       end do
       if(any_nonzero_flag.ne.0) call simeqc(system_matrix,8,7, ierr)
       if (ierr /= 0) return
@@ -398,7 +389,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             relative_change = dabs(correction(solved_species_idx)/abundance(solved_species_idx))
             if(relative_change.ge.max_relative_change) max_relative_change = relative_change
          endif
-   30 continue
       end do
       if(max_abs_change.ge.absolute_tolerance.or.max_relative_change.ge.relative_tolerance) then
 !  system not converged - see if maximum number of iterations exceeded.
@@ -441,7 +431,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
          composition(9,write_zone_idx) = abundance(7)
          composition(3,write_zone_idx) = new_metal_fraction
          composition(11,write_zone_idx) = o18_new
-   40 continue
       end do
-  200 return
+      return
 end subroutine kemcom

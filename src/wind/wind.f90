@@ -136,7 +136,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             exit omega_fixed_point
             end do omega_fixed_point
             omega_substep_start = omega_iter_new
-  100    continue
          end do
 !        CON = DELTS*CONSTFACTOR*(DMDOT/1.0D-14)**EXMD*OMEGAS**(EXW-1.0D0)
 !    *           *(RTOT/CRSUN)**EXR*SMASS**EXM
@@ -154,7 +153,6 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          do zone_idx = start_zone,end_zone
             specific_angular_momentum(zone_idx) = &
                  specific_angular_momentum(zone_idx) - delta_j_per_mass
-  10     continue
          end do
       endif
       return

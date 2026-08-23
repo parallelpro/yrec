@@ -80,13 +80,11 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 !  FIND UNLOGGED RADII OF THE MODEL POINTS.
       do zone_idx = 1,num_zones
          radius_unlogged(zone_idx) = exp(ln10*log_radius(zone_idx))
-    5 continue
       end do
 !  FIND LOCATION (IN RADIUS) OF THE MIDPOINTS OF THE INTERFACES.
       do zone_idx = 2,num_zones
          star%rot%interface_radius(zone_idx) = 0.5d0*(radius_unlogged(zone_idx) + &
               radius_unlogged(zone_idx-1))
-   10 continue
       end do
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS FOR ALL INTERFACES.
 !  INTERFACE BETWEEN FIRST AND SECOND POINT USES THE FIRST 4 POINTS FOR
@@ -248,7 +246,6 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
          star%rot%lagrange_interp_weights(2,zone_idx) = (lag_x1*lag_x3*lag_x4)/lag_denom2
          star%rot%lagrange_interp_weights(3,zone_idx) = (lag_x1*lag_x2*lag_x4)/lag_denom3
          star%rot%lagrange_interp_weights(4,zone_idx) = (lag_x1*lag_x2*lag_x3)/lag_denom4
-   20 continue
       end do
       grav_const = exp(ln10*cgl)
       grav_const_sq = grav_const**2
@@ -316,11 +313,9 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               star%mix_phys%cpm(zone_idx-1)*star%rot%lagrange_interp_weights(2,zone_idx)+ &
               star%mix_phys%cpm(zone_idx)*star%rot%lagrange_interp_weights(3,zone_idx)+ &
               star%mix_phys%cpm(zone_idx+1)*star%rot%lagrange_interp_weights(4,zone_idx)
-   30 continue
       end do
       do zone_idx = transport_zone_begin,transport_zone_end
          star%rot%delmi(zone_idx) = min(star%rot%delmi(zone_idx),star%rot%delami(zone_idx))
-   35 continue
       end do
       do zone_idx = 1,num_zones
          star%rot%es_velocity_coeff1(zone_idx) = 0.0d0
@@ -446,7 +441,6 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               (1.0d0 + 3.0d0*radiation_constant_over_3*star%rot%tm(zone_idx)**4/star%rot%pm(zone_idx))
 ! MHP 3/92 ADD VECTOR FOR LOCAL KELVIN-HELMHOLTZ TIME SCALE.
 !         TKH(I) = CG*HS3(I)**2/ABS(ALM(I))/RM(I)
-   40 continue
       end do
 ! MHP 06/02 ADDED TERMS OF ORDER DW/DR FROM ZAH&MAEDER 1998
       if(use_diffusion_advection_transport)then

@@ -48,12 +48,10 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
          read(laol_table_unit,196,end=93) grid_temp_k, &
               (opacity_table%opal92_log10_opacity(k+(i-1)*num_t,density_index),density_index=1,num_d)
          opacity_table%opal92_grid_logt(k)=dlog10(grid_temp_k)
-   20    continue
          end do
    93    num_temps_read=k-1
   196    format(18f7.3)
 !
-   10 continue
       end do
 !     CLOSE THE TABLE WE HAVE READ
    97 close(laol_table_unit,err=99)
@@ -72,10 +70,8 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
                read(ioopal2,196,end=593) grid_temp_k, &
                     (opacity_table%opal92_log10_opacity_z2(k+(i-1)*num_t,density_index),density_index=1,num_d)
                opacity_table%opal92_grid_logt_z2(k)=dlog10(grid_temp_k)
-  520       continue
             end do
   593       num_temps_read=k-1
-  510    continue
          end do
   597    close(ioopal2,err=99)
          opacity_table%opal92_num_temps_z2 = num_temps_read

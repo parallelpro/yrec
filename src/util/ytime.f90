@@ -68,7 +68,6 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
              max_temp_zone = zone_idx
              max_temp = log_temperature(zone_idx)
           endif
-  210    continue
        end do
 !     calculate helium burning rate at tmax
        local_log_density = log_density(max_temp_zone)

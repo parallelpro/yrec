@@ -41,7 +41,6 @@ subroutine op95xtab(hydrogen_fraction)
          if (i > (num_x-1)) then
          x_table_index = num_x - 3
          end if
-   10    continue
          do i = 1,4
             table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
          end do
@@ -56,7 +55,6 @@ subroutine op95xtab(hydrogen_fraction)
          if (i > (num_x-1)) then
          x_table_index = num_x - 3
          end if
-   20    continue
          do i = 1,4
             table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
          end do

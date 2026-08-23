@@ -85,7 +85,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          if (i < (1)) then
          ii = 1
          end if
-  10     continue
          idtt = max(1,ii)
          idtt = min(nts-3,idtt)
       else
@@ -99,7 +98,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          if (i > nts) then
          ii = nts - 3
          end if
-  20     continue
          idtt = max(1,ii)
          idtt = min(nts-3,idtt)
       end if
@@ -116,7 +114,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          if (j < (1)) then
          jj = 1
          end if
-  30     continue
          idp = max(1,jj)
          idp = min(nptsx(idtt)-3, &
               idp)
@@ -135,7 +132,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          valid_table_point = .false.
          return
          end if
-  40     continue
          idp = min(nptsx(idtt)-3, jj)
       end if
       valid_table_point = .true.

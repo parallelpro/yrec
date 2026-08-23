@@ -61,7 +61,6 @@ subroutine alex06tab(ierr)
       if (i > (num_z-2)) then
       iz = num_z - 3
       end if
-    7 continue
 !     FIND 4 NEAREST TABLES IN X.
       do i = 3,num_x-2
          if (opacity_table%alex06_cached_x.le.opacity_table%alex06_grid_x(i)) then
@@ -77,7 +76,6 @@ subroutine alex06tab(ierr)
          opacity_table%alex06_index_x = num_x - 3
       endif
       end if
-   10 continue
 !     INTERPOLATION FACTORS FOR Z
       do i = 1,4
          interp_nodes(i) = opacity_table%alex06_grid_z(iz+i-1)
