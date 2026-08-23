@@ -1337,6 +1337,23 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       if (control_nml_file(1:2) .eq. ' ') control_nml_file = 'yrec8.nml1'
       end if
       print *, ' '
+      call read_namelist_files
+      call adopt_canonical_names
+      call resolve_output_mode_and_paths
+      call derive_options_and_open_files
+      if (ierr /= 0) return
+      call echo_settings
+      call interpret_kind_cards
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Pick the CONTROL/PHYSICS namelist files (CLI override aware) and
+! read them -- through the new-style &star_job/&controls reader when
+! the control file carries a star_job group, else the legacy
+! NAMELIST /control/ + /physics/ pair.
+subroutine read_namelist_files
       write(*,*) 'CONTROL namelist :  ',control_nml_file(1:len_trim(control_nml_file))
 
       if (physics_nml_override .ne. ' ') then
@@ -1363,6 +1380,14 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       close(standard_unit)
       close(run_unit)
       end if
+end subroutine read_namelist_files
+
+! ---------------------------------------------------------------
+! Copy the namelist-spelled locals into their canonical const_lib
+! homes (see the NAMING NOTE in the header: NAMELIST members must
+! keep their original spelling, so renamed configuration lives in
+! module variables and is assigned here after the read).
+subroutine adopt_canonical_names
 ! stolr0/imax/nuse must keep their exact NAMELIST /physics/ spelling
 ! (see this file's naming note at the top), so intpar_lib's
 ! canonically-named variables are set by copying from them here,
@@ -1609,6 +1634,13 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! Monte-Carlo mode is legacy-file machinery through and through (the
 ! run loop rewinds the legacy units per realization); force legacy
 ! output rather than crash on unopened units.
+end subroutine adopt_canonical_names
+
+! ---------------------------------------------------------------
+! Enforce output-mode constraints (Monte Carlo requires the legacy
+! writers), echo the namelists in legacy mode, and expand
+! environment variables in every configured file path.
+subroutine resolve_output_mode_and_paths
       if (lmonte .and. .not. use_legacy_output) then
          write(*,*) 'LMONTE requires legacy output; setting use_legacy_output = .true.'
          use_legacy_output = .true.
@@ -1648,6 +1680,15 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! namelist if it doesn't already exist.
       shell_cmd = 'mkdir -p '
         ! find index of last '/' char. Use that to snip out the directory name.
+end subroutine resolve_output_mode_and_paths
+
+! ---------------------------------------------------------------
+! Derived options (track-name parsing, isotope switches, EOS table
+! selection) and the output-unit opens -- legacy mode opens the
+! full historical file set, MESA mode only what it needs. Sets
+! ierr nonzero (config error) if semiconvection and overshoot are
+! both enabled; the caller returns immediately in that case.
+subroutine derive_options_and_open_files
       do i = len_trim(ftrack), 1, -1
           if (ftrack(i:i) .eq. '/') then
               last_slash_idx = i
@@ -1887,6 +1928,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
             return
          endif
       endif
+end subroutine derive_options_and_open_files
+
+! ---------------------------------------------------------------
+! Write the full settings echo to the short/log stream (legacy
+! layout, format statements local to this block).
+subroutine echo_settings
       write(short_file_unit,1)(chi_grid_scale(i),i=1,12),alphae,alphac,linstb,ljdot0, &
            &               alfa,fk,fw,fc,fo,fmu,rcrit
       1 format(1x,'PT TOL',12f6.3/1x,'O.S.ENV',f6.3,' O.S.CORE',f6.3, &
@@ -2312,6 +2359,12 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       write(short_file_unit,323)
       323 format(' USING OSCILATORY SPLINE INTERPOLATION IN HPOINT')
 
+end subroutine echo_settings
+
+! ---------------------------------------------------------------
+! Interpret the per-run "kind" cards: stop conditions, rescale
+! parameters, and the rescaled envelope mixture for each run.
+subroutine interpret_kind_cards
 !     INTERPRET RUN FROM SEQUENCE OF "KIND" CARDS
 
       write(short_file_unit,200)
@@ -2419,9 +2472,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
               star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
               star%env_comp%fxenv)
       end do
-      return
-
-contains
+end subroutine interpret_kind_cards
 
 ! Does this namelist file contain the group &<gname>? Used to detect
 ! new-style inlists (and whether &controls shares the &star_job file).
