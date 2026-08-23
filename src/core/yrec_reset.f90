@@ -17,9 +17,8 @@
 ! the same table configuration -- the acceptance test
 ! (test_reentry.py) verifies the end-to-end equivalence.
 module yrec_reset_lib
-      use star_info_lib, only: star, star_info
-      use evolve_state_lib, only: &
-           evolve_step_reset_pending, output_diag_reset_pending
+      use star_info_lib, only: star, star_info, evolve_step_reset_pending, &
+           output_diag_reset_pending
       use controls_reset_lib
       implicit none
 

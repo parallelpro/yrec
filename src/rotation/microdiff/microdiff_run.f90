@@ -26,13 +26,11 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      eq_del_grad_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col)
 
-      use run_diag_lib
+      use star_info_lib
       use luout_lib
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
-
       double precision, intent(in) :: grid_spacing
       double precision, intent(in) :: timestep
       double precision, intent(in) :: total_mass

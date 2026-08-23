@@ -27,9 +27,7 @@
 ! Called from core/main.f90 immediately before wrtout, once per
 ! output model, exactly the cadence the blocks had inside wrtout.
 subroutine update_output_diagnostics(ierr)
-      use star_info_lib, only: star
-      use evolve_state_lib, only: output_diag_reset_pending
-      use envelope_comp_lib
+      use star_info_lib
       use eos_lib
       use luout_lib
       use const_lib

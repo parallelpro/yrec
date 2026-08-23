@@ -47,12 +47,9 @@
 subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
 
-      use rotdiff_lib
-      use star_info_lib, only: star
+      use star_info_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
-
       double precision, intent(in) :: radius_mid_prev(json)
       integer, intent(in) :: num_zones
       double precision, intent(out) :: radius_mid(json)

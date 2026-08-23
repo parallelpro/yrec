@@ -36,8 +36,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
      fscvz, opecalex, ierr)
 
-      use star_job_lib, only: control_nml_override, physics_nml_override
-      use star_info_lib, only: star
+      use star_info_lib, only: control_nml_override, physics_nml_override, &
+           star
       use const_lib
       use luout_lib
       use intpar_lib

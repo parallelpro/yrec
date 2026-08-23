@@ -19,7 +19,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
      adiabatic_gradient, valid_table_point)
 
       use const_lib
-      use envelope_comp_lib
+      use star_info_lib
       use numerics_lib
       use scv_eos_lib
       implicit none

@@ -24,7 +24,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
 
       use opal_eos_lib
       use const_lib
-      use envelope_comp_lib
+      use star_info_lib
       use luout_lib
       implicit none
 

@@ -23,7 +23,7 @@
 ! numerics-gate ierr opt-in lands.
 module yrec_capi
       use iso_c_binding, only: c_int, c_char, c_null_char
-      use star_job_lib, only: control_nml_override, physics_nml_override
+      use star_info_lib, only: control_nml_override, physics_nml_override
       implicit none
       private
       public :: yrec_run

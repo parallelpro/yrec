@@ -56,14 +56,11 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok, ierr)
 
-      use star_info_lib, only: star
-      use temp2_lib
+      use star_info_lib
       use luout_lib
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
-
       double precision, intent(inout) :: sub_timestep
       double precision, intent(inout) :: log_density(json)
       double precision, intent(in) :: local_gravity(json)

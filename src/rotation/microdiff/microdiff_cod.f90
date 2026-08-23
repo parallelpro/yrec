@@ -28,12 +28,9 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col)
 
-      use run_diag_lib
-      use scrtch_lib
+      use star_info_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
-
       integer, intent(in) :: num_eq_points
       double precision, intent(in) :: species_fraction(3,json), &
            eq_radius(json), eq_density(json), eq_temperature(json), &

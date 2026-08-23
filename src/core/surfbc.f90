@@ -45,12 +45,10 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       use atm_lib
       use envint_lib, only: atm_get
       use atm_table_lib
-      use envelope_comp_lib
+      use star_info_lib
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json=5000
-
       double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
            envelope_coeffs(9)
       double precision, intent(inout) :: vtx_logp(3), &

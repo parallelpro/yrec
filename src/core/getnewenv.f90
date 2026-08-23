@@ -20,14 +20,11 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag)
       use atm_lib
       use envint_lib, only: atm_get
-      use run_diag_lib
+      use star_info_lib
       use envstruct_lib
-      use star_info_lib, only: star
       use const_lib
       use yale_eos_lib
       implicit none
-      integer, parameter :: json = 5000
-
       double precision, intent(inout) :: target_envelope_mass
       double precision, intent(inout) :: composition(15,json), &
            log_density(json), log_luminosity(json), log_pressure(json), &

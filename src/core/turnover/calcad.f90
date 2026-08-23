@@ -59,15 +59,12 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       use atm_lib
       use envint_lib, only: atm_get
       use atm_table_lib
-      use run_diag_lib
+      use star_info_lib
       use envstruct_lib
-      use star_info_lib, only: star
-      use scrtch_lib
       use luout_lib
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
       integer, parameter :: nts = 63, nps = 76
 
       double precision, intent(in) :: log_radius(json)
