@@ -37,6 +37,8 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 
 
       double precision :: clsnuf(8), gasnuf(8)
+      character(len=5) :: legacy_gyre_suffix
+      character(len=64) :: legacy_gyre_path
 ! MHP 8/96 CROSS SECTIONS OF DIFFERENT NEUTRINOS TO THE CHLORINE
 ! AND GALLIUM EXPERIMENTS; TAKEN FROM NEUTRINO ASTROPHYSICS,P.207.
 ! note changes in cl37 cross sections (see bahcall and pinsonneault,
@@ -552,8 +554,10 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! the LPULSE/pulsation_output_active mechanism above -- see
 ! core/parmin.f90 and io/write_gyre_pulse.f90.
       if (pulse_gyre_interval.gt.0 .and. mod(star%model_number,pulse_gyre_interval).eq.0) then
+         write(legacy_gyre_suffix,'(I5.5)') star%model_number
+         legacy_gyre_path = 'gyre_profile_'//legacy_gyre_suffix//'.data.GYRE'
          call write_gyre_pulse(star%nz,star%model_number,star%m,star%logRho,star%luminosity_lsun, &
-              star%logP,star%logR,star%logT,star%omega)
+              star%logP,star%logR,star%logT,star%omega, legacy_gyre_path)
       endif
 
 ! JVS 01/11 Added new track file output format, +manipulations for stitching

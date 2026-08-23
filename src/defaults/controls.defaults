@@ -827,8 +827,14 @@
       ! MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles
       profile_interval = 50
 
-      ! MESA mode: pulse file format written every pulse_gyre_interval models: GYRE or FGONG
+      ! MESA mode: pulse file format (GYRE or FGONG), written alongside each profile as profile{N}.data.{format}
       pulse_format = 'GYRE'
+
+      ! MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)
+      write_profile_flag = .true.
+
+      ! MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)
+      write_pulse_flag = .false.
 
 /
 

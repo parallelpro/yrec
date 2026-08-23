@@ -23,7 +23,7 @@
 ! to-center internally and must reverse before writing).
 subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
-     log_temperature, omega)
+     log_temperature, omega, pulse_path)
       use star_info_lib, only: star
       use const_lib
       implicit none
@@ -35,17 +35,14 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
            log_radius(json), log_temperature(json), omega(json)
 
 
+      character(len=*), intent(in) :: pulse_path
       integer :: gyre_unit, i
       integer, parameter :: gyre_schema = 101
-      character(len=5) :: model_suffix
-      character(len=64) :: gyre_path
       double precision :: radius_cm, mass_g, luminosity_erg_s, &
            pressure_cgs, temperature_k, density_cgs, delta, grav, &
            brunt_n2, global_data(3)
 
-      write(model_suffix,'(I5.5)') model_number
-      gyre_path = 'gyre_profile_'//model_suffix//'.data.GYRE'
-      open(newunit=gyre_unit,file=gyre_path,status='UNKNOWN',form='FORMATTED')
+      open(newunit=gyre_unit,file=pulse_path,status='UNKNOWN',form='FORMATTED')
 
       global_data(1) = mass_coordinate(num_shells)
       global_data(2) = exp(ln10*log_radius(num_shells))

@@ -14,25 +14,22 @@
 ! unconditionally each model) and the diagnostics arrays supply
 ! kappa, eps, Gamma1, delta, cp, 1/mu_e and the gradients; the
 ! Brunt-Vaisala A* uses the same N^2 formula as write_gyre_pulse.
-subroutine write_fgong_pulse(num_shells, model_number)
+subroutine write_fgong_pulse(num_shells, model_number, pulse_path)
       use star_info_lib, only: star
       use const_lib
       implicit none
 
       integer, intent(in) :: num_shells, model_number
+      character(len=*), intent(in) :: pulse_path
 
       integer, parameter :: iconst = 15, ivar = 40, ivers = 300
       double precision :: glob(iconst), var(ivar)
-      character(len=5) :: model_suffix
-      character(len=64) :: fgong_path
       integer :: u, j, k, i
       double precision :: r_outer, m_outer, radius_cm, mass_g, &
            pressure_cgs, temperature_k, density_cgs, delta, grav, &
            brunt_n2, nabla_ad, nabla
 
-      write(model_suffix,'(I5.5)') model_number
-      fgong_path = 'fgong_profile_'//model_suffix//'.fgong'
-      open(newunit=u, file=fgong_path, status='REPLACE', form='FORMATTED')
+      open(newunit=u, file=pulse_path, status='REPLACE', form='FORMATTED')
 
       m_outer = star%m(num_shells)
       r_outer = exp(ln10*star%logR(num_shells))

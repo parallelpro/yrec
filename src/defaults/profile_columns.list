@@ -1,0 +1,63 @@
+! profile_columns.list
+! YREC's analogue of MESA's profile_columns.list.
+! Usage: copy this file to your run directory, delete or comment
+! out (with '!') the columns you do not want, and point the
+! &star_job control profile_columns_file at it. One column name per
+! line; order in this file is the order in the output file
+! (model_number / profile_number / num_zones always lead the
+! history file when selected). A blank control means ALL columns.
+! Unknown names are fatal, with the valid list written to the log.
+
+zone                      ! 1 = surface (integer)
+mass                      ! mass coordinate (Msun)
+logR                      ! log10 r (cgs)
+logT                      ! log10 T
+logRho                    ! log10 rho
+logP                      ! log10 P
+luminosity                ! L/Lsun at this shell
+dm                        ! shell mass (Msun)
+mixing_type               ! 1 convective, 0 radiative (integer)
+gamma1                    ! adiabatic Gamma_1
+opacity                   ! Rosseland opacity (cgs)
+gradr                     ! radiative temperature gradient
+gradT                     ! actual gradient
+grada                     ! adiabatic gradient
+conv_vel                  ! convective velocity (cgs)
+beta                      ! gas pressure fraction
+eta                       ! electron degeneracy parameter
+grav                      ! local gravity (cgs)
+eps_ppI
+eps_ppII
+eps_ppIII
+eps_cno
+eps_he3
+eps_nuc                   ! total nuclear energy generation
+eps_neu
+eps_grav                  ! gravitational energy term
+h1
+h2
+he3
+he4
+li6
+li7
+be9
+c12
+c13
+n14
+n15
+o16
+o17
+o18
+z
+omega                     ! angular velocity (rad/s)
+j_rot                     ! specific angular momentum
+i_rot                     ! shell moment of inertia
+fp_rot
+ft_rot
+v_es
+v_gsf
+v_ss
+cp                        ! specific heat at constant P
+delta                     ! -dlnRho/dlnT
+mu                        ! mean molecular weight
+mu_e_inv                  ! 1/mu_e

@@ -89,7 +89,9 @@ def test_mesa_output_contract(tmp_path):
                   if l.strip() and not l.lstrip().startswith("#")
                   and not l.lstrip().startswith("Step")]
     names, hist_rows, icol = _parse_mesa_file(mesa_out / "history.data")
-    assert names[0] == "model_number" and "profile_number" in names
+    assert names[:3] == ["model_number", "profile_number", "num_zones"]
+    # integer id columns are written as true integers
+    assert "." not in hist_rows[0][0] and "." not in hist_rows[0][2]
     assert len(hist_rows) == len(track_rows)
     for tr, hr in zip(track_rows, hist_rows):
         assert int(float(hr[icol["model_number"]])) == int(tr[0])
@@ -128,18 +130,22 @@ def test_mesa_output_contract(tmp_path):
     columns = "! test subset\nstar_age\nlog_Teff\nlog_L\n"
     custom = unstamped.replace(
         "&star_job",
-        "&star_job\n history_columns_file = 'my_columns.list'\n"
-        " pulse_gyre_interval = 100\n", 1)
+        "&star_job\n history_columns_file = 'my_columns.list'\n", 1)
     custom = custom.replace(
         "&controls",
-        "&controls\n pulse_format = 'FGONG'\n", 1)
+        "&controls\n pulse_format = 'FGONG'\n"
+        " write_profile_flag = .false.\n write_pulse_flag = .true.\n", 1)
     custom_out = _run(tmp_path / "custom", custom,
                       extra_files={"my_columns.list": columns})
     cnames, crows, _ = _parse_mesa_file(custom_out / "history.data")
     assert cnames == ["star_age", "log_Teff", "log_L"], cnames
     assert len(crows) == len(hist_rows)
 
-    fgongs = sorted((tmp_path / "custom").glob("fgong_profile_*.fgong"))
+    # write_profile_flag = .false. -> pulse-only mode: pulse files
+    # carry the profile numbering, no profile<N>.data
+    prof_data = [p.name for p in custom_out.glob("profile*.data")]
+    assert not prof_data, prof_data
+    fgongs = sorted(custom_out.glob("profile*.data.FGONG"))
     assert fgongs, "no FGONG files written"
     flines = fgongs[0].read_text().splitlines()
     nn, iconst, ivar, ivers = (int(x) for x in flines[4].split())
@@ -148,3 +154,28 @@ def test_mesa_output_contract(tmp_path):
     n_glob_lines = (iconst + 4) // 5
     n_var_lines = (ivar + 4) // 5
     assert len(data) == n_glob_lines + nn * n_var_lines,         (len(data), nn, n_glob_lines, n_var_lines)
+
+
+def test_default_columns_lists_in_sync():
+    """defaults/{history,profile}_columns.list must list exactly the
+    writers' column tables (they are the user-facing documentation of
+    what history_columns_file / profile_columns_file may contain)."""
+    import re
+    src = (REPO / "src" / "io" / "yrec_output.f90").read_text()
+
+    def harvest(sub):
+        m = re.search(r"subroutine " + sub + r"\(names\)(.*?)end subroutine " + sub,
+                      src, re.S)
+        return [n for _, n in
+                re.findall(r"names\((\d+)\)\s*=\s*'([^']+)'", m.group(1))]
+
+    def listed(fname):
+        out = []
+        for line in (REPO / "src" / "defaults" / fname).read_text().splitlines():
+            line = line.split("!")[0].strip()
+            if line:
+                out.append(line)
+        return out
+
+    assert listed("history_columns.list") == harvest("history_column_names")
+    assert listed("profile_columns.list") == harvest("profile_column_names")

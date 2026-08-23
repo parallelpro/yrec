@@ -77,6 +77,10 @@ subroutine output_init_mesa(fshort)
       call history_column_names(hist_names)
       call parse_columns(history_columns_file, hist_names, n_hist_cols, &
            hist_sel, hist_nsel, 'history')
+! model_number / profile_number / num_zones lead the file whenever
+! they are selected, in that fixed order (they are columns 1-3 of the
+! built-in table, so a stable hoist of indices 1..3 does it).
+      call hoist_id_columns(hist_sel, hist_nsel)
       call profile_column_names(prof_names)
       call parse_columns(profile_columns_file, prof_names, n_prof_cols, &
            prof_sel, prof_nsel, 'profile')
@@ -120,27 +124,22 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
 ! log_gravity as an output on the legacy path; hand back the stored
 ! value here.
          log_gravity = star%run%log_g_surface
+! Profiles and pulse files share the trigger and the number (MESA's
+! write_pulse_data_with_profile coupling): every profile_interval
+! models, the counter advances and each enabled product is written --
+! profile<N>.data, and/or profile<N>.data.GYRE / .data.FGONG per
+! pulse_format. The history profile_number column records N.
          iprof = 0
-         if (profile_interval > 0) then
+         if (profile_interval > 0 .and. &
+             (write_profile_flag .or. write_pulse_flag)) then
             if (mod(star%model_number, profile_interval) == 0) then
                profile_counter = profile_counter + 1
                iprof = profile_counter
-               call write_profile(iprof)
+               if (write_profile_flag) call write_profile(iprof)
+               if (write_pulse_flag) call write_pulse(iprof)
             end if
          end if
          call write_history_row(iprof)
-         if (pulse_gyre_interval > 0) then
-            if (mod(star%model_number, pulse_gyre_interval) == 0) then
-               if (pulse_format(1:5) == 'FGONG' .or. &
-                   pulse_format(1:5) == 'fgong') then
-                  call write_fgong_pulse(star%nz, star%model_number)
-               else
-                  call write_gyre_pulse(star%nz, star%model_number, &
-                       star%m, star%logRho, star%luminosity_lsun, &
-                       star%logP, star%logR, star%logT, star%omega)
-               end if
-            end if
-         end if
 ! Keep the log live during the run, like the history file.
          flush(short_file_unit)
       end if
@@ -217,8 +216,8 @@ subroutine history_column_names(names)
       character(len=24), intent(out) :: names(n_hist_cols)
 
       names(1) = 'model_number'
-      names(2) = 'num_zones'
-      names(3) = 'star_age'
+      names(2) = 'profile_number'
+      names(3) = 'num_zones'
       names(4) = 'log_L'
       names(5) = 'log_R'
       names(6) = 'log_g'
@@ -299,7 +298,7 @@ subroutine history_column_names(names)
       names(81) = 'h_shell_top_radius'
       names(82) = 'log_P_photosphere'
       names(83) = 'star_mass'
-      names(84) = 'profile_number'
+      names(84) = 'star_age'
 end subroutine history_column_names
 
 subroutine history_values(vals, iprof)
@@ -309,8 +308,8 @@ subroutine history_values(vals, iprof)
       integer :: i
 
       vals(1) = dble(star%model_number)
-      vals(2) = dble(star%nz)
-      vals(3) = star%run%dage*1.0d9
+      vals(2) = dble(iprof)
+      vals(3) = dble(star%nz)
       vals(4) = star%log_L
       vals(5) = star%run%log_R_surface
       vals(6) = star%run%log_g_surface
@@ -368,7 +367,7 @@ subroutine history_values(vals, iprof)
       vals(81) = star%run%h_shell_top_radius
       vals(82) = star%turnover%pphot
       vals(83) = star%star_mass
-      vals(84) = dble(iprof)
+      vals(84) = star%run%dage*1.0d9
 end subroutine history_values
 
 subroutine write_history_row(iprof)
@@ -385,20 +384,27 @@ subroutine write_history_row(iprof)
          open(newunit=hist_unit, file=hist_path, status='REPLACE', &
               action='WRITE')
          call history_column_names(names)
-         write(hist_unit, '(1x,3i28)') 1, 2, 3
-         write(hist_unit, '(1x,3a28)') adjustr('version_number'), &
+         write(hist_unit, '(3(1x,i40))') 1, 2, 3
+         write(hist_unit, '(3(1x,a40))') adjustr('version_number'), &
               adjustr('initial_mass'), adjustr('initial_z')
-         write(hist_unit, '(1x,a28,2es28.16e3)') &
-              adjustr(yrec_version_string(1:min(28, &
-              len_trim(yrec_version_string)))), &
+         write(hist_unit, '(1x,a40,2(1x,es40.16e3))') &
+              adjustr('"' // trim(yrec_version_string) // '"'), &
               star%star_mass, star%xa(3,star%nz)
          write(hist_unit, '(a)') ''
-         write(hist_unit, '(1x,999i28)') (k, k = 1, hist_nsel)
-         write(hist_unit, '(1x,999a28)') &
+         write(hist_unit, '(999(1x,i40))') (k, k = 1, hist_nsel)
+         write(hist_unit, '(999(1x,a40))') &
               (adjustr(trim(names(hist_sel(k)))), k = 1, hist_nsel)
       end if
-      write(hist_unit, '(1x,999es28.16e3)') &
-           (vals(hist_sel(i)), i = 1, hist_nsel)
+      do i = 1, hist_nsel
+         if (is_int_hist_col(hist_sel(i))) then
+            write(hist_unit, '(1x,i40)', advance='no') &
+                 nint(vals(hist_sel(i)))
+         else
+            write(hist_unit, '(1x,es40.16e3)', advance='no') &
+                 vals(hist_sel(i))
+         end if
+      end do
+      write(hist_unit, '(a)') ''
 ! Flush so the file is live during the run (tail -f / editor view),
 ! matching MESA's behavior.
       flush(hist_unit)
@@ -555,15 +561,15 @@ subroutine write_profile(iprof)
       path = trim(out_dir) // 'profile' // trim(numstr) // '.data'
       open(newunit=u, file=path, status='REPLACE', action='WRITE')
 ! global block (MESA profile shape: numbers / names / values)
-      write(u, '(1x,5i28)') 1, 2, 3, 4, 5
-      write(u, '(1x,5a28)') adjustr('model_number'), &
+      write(u, '(5(1x,i40))') 1, 2, 3, 4, 5
+      write(u, '(5(1x,a40))') adjustr('model_number'), &
            adjustr('num_zones'), adjustr('star_age'), &
            adjustr('log_Teff'), adjustr('star_mass')
-      write(u, '(1x,2i28,3es28.16e3)') star%model_number, star%nz, &
-           star%run%dage*1.0d9, star%log_Teff, star%star_mass
+      write(u, '(2(1x,i40),3(1x,es40.16e3))') star%model_number, &
+           star%nz, star%run%dage*1.0d9, star%log_Teff, star%star_mass
       write(u, '(a)') ''
-      write(u, '(1x,999i28)') (k, k = 1, prof_nsel)
-      write(u, '(1x,999a28)') &
+      write(u, '(999(1x,i40))') (k, k = 1, prof_nsel)
+      write(u, '(999(1x,a40))') &
            (adjustr(trim(names(prof_sel(k)))), k = 1, prof_nsel)
 ! rows: zone 1 = the surface (MESA convention); YREC stores
 ! center (1) .. surface (nz), so walk the arrays in reverse.
@@ -575,11 +581,67 @@ subroutine write_profile(iprof)
             else
                v = profile_value(prof_sel(i), kz)
             end if
-            write(u, '(es28.16e3)', advance='no') v
+            if (prof_sel(i) == 1 .or. prof_sel(i) == 9) then
+               write(u, '(1x,i40)', advance='no') nint(v)
+            else
+               write(u, '(1x,es40.16e3)', advance='no') v
+            end if
          end do
          write(u, '(a)') ''
       end do
       close(u)
 end subroutine write_profile
+
+! Pulse file alongside profile <iprof>: profile<N>.data.GYRE or
+! .data.FGONG in the output directory, format per pulse_format.
+subroutine write_pulse(iprof)
+      use star_info_lib, only: star
+      integer, intent(in) :: iprof
+      character(len=256) :: path
+      character(len=12) :: numstr
+
+      write(numstr, '(i0)') iprof
+      if (pulse_format(1:5) == 'FGONG' .or. &
+          pulse_format(1:5) == 'fgong') then
+         path = trim(out_dir) // 'profile' // trim(numstr) // '.data.FGONG'
+         call write_fgong_pulse(star%nz, star%model_number, path)
+      else
+         path = trim(out_dir) // 'profile' // trim(numstr) // '.data.GYRE'
+         call write_gyre_pulse(star%nz, star%model_number, star%m, &
+              star%logRho, star%luminosity_lsun, star%logP, star%logR, &
+              star%logT, star%omega, path)
+      end if
+end subroutine write_pulse
+
+! History columns written as true integers.
+logical function is_int_hist_col(icol)
+      integer, intent(in) :: icol
+      is_int_hist_col = (icol >= 1 .and. icol <= 3)
+end function is_int_hist_col
+
+! Stable hoist of the id columns (built-in indices 1..3, i.e.
+! model_number/profile_number/num_zones) to the front of a selection.
+subroutine hoist_id_columns(sel, nsel)
+      integer, intent(inout) :: sel(max_cols), nsel
+      integer :: tmp(max_cols), n, id, i
+
+      n = 0
+      do id = 1, 3
+         do i = 1, nsel
+            if (sel(i) == id) then
+               n = n + 1
+               tmp(n) = id
+            end if
+         end do
+      end do
+      do i = 1, nsel
+         if (sel(i) > 3) then
+            n = n + 1
+            tmp(n) = sel(i)
+         end if
+      end do
+      sel(1:n) = tmp(1:n)
+      nsel = n
+end subroutine hoist_id_columns
 
 end module yrec_output

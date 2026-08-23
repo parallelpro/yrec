@@ -75,7 +75,7 @@ $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 # does not guarantee build order under parallel (-j) builds.
 const/const_lib.o: | const/phys_const_lib.o const/controls_lib.o
 # parmin embeds the generated new-style inlist reader
-core/parmin.o: core/inlist_new_decl.inc core/inlist_new_read.inc
+io/parmin.o: io/inlist_new_decl.inc io/inlist_new_read.inc
 core/yrec_capi.o: | state/star_info_lib.o
 io/yrec_output.o: | const/const_lib.o const/luout_lib.o state/star_info_lib.o
 numerics/numerics_lib.o: | const/const_lib.o const/intpar_lib.o \
