@@ -257,6 +257,7 @@ clean:
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
+	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry
 
 install:
 	install -d $(PREFIX)
