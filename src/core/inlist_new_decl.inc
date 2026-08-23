@@ -209,7 +209,8 @@
            & initial_h2_fraction, initial_he3_fraction, &
            & initial_li6_fraction, initial_li7_fraction, &
            & initial_be9_fraction, initial_b10_fraction, &
-           & initial_b11_fraction, pulse_gyre_interval
+           & initial_b11_fraction, pulse_gyre_interval, &
+           & use_legacy_output
       namelist /controls/ &
            & atm_step_min, atm_step_begin, atm_error_tol, atm_step_max, &
            & atm_step_initial, change_species_name, atm_print_flag, &

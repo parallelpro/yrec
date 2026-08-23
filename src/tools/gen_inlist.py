@@ -70,7 +70,7 @@ def main():
     decls = joined_decl_lines(parmin)
     for extra in ("const/controls_lib.f90", "const/phys_const_lib.f90",
                   "const/const_lib.f90", "const/intpar_lib.f90",
-                  "state/opacity_table_lib.f90"):
+                  "kap/opacity_table_lib.f90"):
         decls += joined_decl_lines((SRC / extra).read_text())
     # canonical names = simple post-read copies canon = legacy
     canon = {}

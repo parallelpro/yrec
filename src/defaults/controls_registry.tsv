@@ -390,3 +390,4 @@ physics	time_max_dt_frac	real	0.0*	time_max_dt_frac	keep
 physics	lnewvars	logical	.false.*	use_new_rate_variables	verified		remap: use the new nuclear-rate variable set
 physics	lnewtcz	logical	.false.*	use_new_turnover_timescale	canonical		former common/ovrtrn/'s two config members: NAMELIST /physics/ values selecting the newer convective-turnover-timescale calculation and whether to run the full envelope i
 physics	lcalcenv	logical	.false.*	calc_envelope_flag	canonical		
+control	use_legacy_output	logical	.true. legacy decks / .false. new-style inlists	use_legacy_output	verified		Output style: .true. = historical .track/.store streams; .false. = MESA-format output (.history now, profiles to follow). Default depends on inlist style.

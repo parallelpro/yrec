@@ -533,6 +533,9 @@
       ! former common/pulsegyre/: pulse_gyre_interval is a NAMELIST /control/ value spelled identically to its canonical name.
       pulse_gyre_interval = 0   ! (implicit)
 
+      ! Output style: .true. = historical .track/.store streams; .false. = MESA-format output (.history now, profiles to follow). Default depends on inlist style.
+      use_legacy_output = .true. legacy decks / .false. new-style inlists
+
 /
 
 ! Unused legacy controls (accepted by the legacy reader only,

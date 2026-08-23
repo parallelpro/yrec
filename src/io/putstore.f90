@@ -34,6 +34,8 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       use yale_eos_lib
       use scv_eos_lib
       implicit none
+
+
       integer, parameter :: json = 5000
       integer, parameter :: nts=63, nps=76
 
@@ -91,6 +93,11 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 
 ! physics flags:
 ! Determine atmosphere flag, ATM
+! 2026 MESA-style output: the legacy .store stream is suppressed in
+! MESA mode (MESA-format profile files are the successor, not yet
+! implemented -- see ROADMAP).
+      if (.not. use_legacy_output) return
+
       if (atm_choice .eq. 0) then
          atmosphere_flag='EDD '
       elseif (atm_choice .eq. 1) then

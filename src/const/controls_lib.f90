@@ -18,6 +18,14 @@
 module controls_lib
       implicit none
 
+! 2026 MESA-style output: .true. -> the historical per-model streams
+! (.track/.store); .false. -> MESA-format output (history.data-layout
+! .history file; profiles to follow). Compile default .true. keeps
+! every legacy deck byte-pinned; parmin's new-style inlist path
+! flips the default to .false. before the read (either format can set
+! it explicitly).
+      logical, public :: use_legacy_output = .true.
+
 ! former common/ctlim/. Defaults (previously two DATA statements in
 ! core/parmin.f90, now illegal there since these are use-associated
 ! rather than locally declared) moved here as declaration-time

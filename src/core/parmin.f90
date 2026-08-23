@@ -806,6 +806,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer, intent(out) :: ierr
 
       namelist /control/ &
+           &    use_legacy_output, &
            &    cmixla, calsolage, calsolzx, &
            &    descrip, &
            &    endage, &
@@ -1349,6 +1350,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! &star_job (+ &controls, same file or the second); everything else
 ! takes the byte-pinned legacy path unchanged.
       if (nml_file_has_group(control_nml_file, 'star_job')) then
+! New-style inlists default to MESA-style output; legacy decks keep
+! the compile default (.true.). Either format may set it explicitly.
+      use_legacy_output = .false.
       include 'inlist_new_read.inc'
       else
       open(unit=standard_unit, file=control_nml_file, status='OLD')
