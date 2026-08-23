@@ -831,7 +831,7 @@
       pulse_format = 'GYRE'
 
       ! MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)
-      write_profile_flag = .true.
+      write_profile_flag = .false.
 
       ! MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)
       write_pulse_flag = .false.

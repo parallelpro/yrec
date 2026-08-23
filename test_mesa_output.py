@@ -72,9 +72,13 @@ def test_mesa_output_contract(tmp_path):
     assert "use_legacy_output = .true." in stamped
     unstamped = "\n".join(l for l in stamped.splitlines()
                           if "use_legacy_output" not in l) + "\n"
+    # write_profile_flag and write_pulse_flag both default to .false.;
+    # the mesa run opts into profiles to test that contract
+    with_profiles = unstamped.replace(
+        "&controls", "&controls\n write_profile_flag = .true.\n", 1)
 
     legacy_out = _run(tmp_path / "legacy", stamped)
-    mesa_out = _run(tmp_path / "mesa", unstamped)
+    mesa_out = _run(tmp_path / "mesa", with_profiles)
 
     # ---- exact file set ----
     produced = sorted(p.name for p in mesa_out.iterdir())

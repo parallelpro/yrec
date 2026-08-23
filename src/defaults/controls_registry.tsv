@@ -396,5 +396,5 @@ control	profile_columns_file	string	'' (all columns)	profile_columns_file	verifi
 physics	star_history_name	string	'history.data'	star_history_name	verified	mesa: same	MESA mode: history file name (written to the output directory)
 physics	profile_interval	integer	50	profile_interval	verified	mesa: same	MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles
 physics	pulse_format	string	'GYRE'	pulse_format	verified	mesa: pulse_data_format	MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format}
-physics	write_profile_flag	logical	.true.	write_profile_flag	verified		MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)
+physics	write_profile_flag	logical	.false.	write_profile_flag	verified		MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)
 physics	write_pulse_flag	logical	.false.	write_pulse_flag	verified		MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)

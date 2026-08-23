@@ -33,7 +33,7 @@ module controls_lib
       character(len=8), public :: pulse_format = 'GYRE'
 ! Independent toggles: profiles only, pulse only, both, or neither
 ! (cadence stays with profile_interval / pulse_gyre_interval):
-      logical, public :: write_profile_flag = .true.
+      logical, public :: write_profile_flag = .false.
       logical, public :: write_pulse_flag = .false.
 
 ! former common/ctlim/. Defaults (previously two DATA statements in
