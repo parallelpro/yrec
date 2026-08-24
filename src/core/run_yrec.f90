@@ -161,111 +161,11 @@ subroutine run_yrec(ierr)
 !     RUN THROUGH THE KIND CARDS IN ORDER
 !**********
       run_loop: do nk = 1, num_runs
-         star%run%sound_speed_output_active = .false.
-!         LPULSE=.FALSE.
-         initial_envelope_x = initial_x_array(nk)
-         initial_envelope_z = initial_z_array(nk)
-         cmixl = mixing_length_array(nk)
-       change_envelope_mass_flag = has_senv0_array(nk)
-       requested_envelope_mass = senv0_array(nk)
-       star%evo%reset_triangle = .false.
-       star%evo%model_diverged_flag = .false.
-! MHP 10/02 ZERO OUT INITIAL ANGULAR MOMENTUM
-         star%evo%total_angular_momentum = 0.0D0
-         star%evo%total_rotational_ke = 0.0D0
-! read in the initial model here
-! STARIN also calls RSCALE to perform rescaling if requested
-!        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-       call starin(star%evo%timestep_yr, star%evo%dt, star%evo%hydrogen_dt, star%evo%trial_sign_flag, &
-            star%evo%ikut_flag, star%evo%istore_flag, star%evo%model_diverged_flag, &
-            star%evo%recompute_envelope_triangle, nk, star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, &
-            star%evo%total_angular_momentum, star%evo%total_rotational_ke, &
-            star%evo%convective_velocity, star%job%mixture_weights, ierr)
-       if (ierr /= 0) return
-
-      if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
-
-1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
-                 ' Initialize rotation rates or set LROT to', &
-                 ' FALSE.')
-          print 1611
-          ! 2026 (phase five, step B): configuration error returns to the
-          ! CLI wrapper (which stops) instead of stopping here.
-          ierr = 1
-          return
-      endif
-!     MHP 10/24 CHECK STOP CONDITIONS AND DISABLE THEM IF THE STARTING VALUES ARE BELOW THE TARGET THRESHOLD
-! (2026: one table walk in stop_conditions -- the hand-written D/X/Y
-! triple that used to live here carried the disarm-the-wrong-stop bug
-! fixed in phase 1.)
-         call disarm_satisfied_stops(nk)
-! Opt-in diagnostic (2026): the former LNUTAB per-zone neutrino
-! table, off since 2004, is now the compute_neutrino_fluxes control
-! (core/neutrino_flux_table.f90); it describes the starting model
-! of each kind card.
-      if (compute_neutrino_fluxes) then
-         call neutrino_flux_table
-      endif
-! save mass in solar units
-         pulsation_mass_msun=star%star_mass
-! MHP 08/02 STORE STARTING CZ PROPERTIES
-         star%light_burn%jcz = star%envelope_cz_bottom_index
-         star%turnover%convective_turnover_timescale = 0.0D0
-! write out headers of the appropriate output files
-      call output_run_header(star%star_mass)
-! DBG PULSE OUT 7/92
-! initialize variables for calculating when to dump pulse output
-         star%evo%prev_log_l = star%log_L
-         star%evo%prev_log_teff = star%log_Teff
-         star%evo%prev_age = star%run%dage
-         star%evo%path_length_sq = 0.0D0
-
-       if (helium_flash_active) then
-! timestep cutting requires a model stored in logical unit ILAST
-! or it will crash - so copy initial model to unit ILAST
-          if (star%evo%punch_pending_flag) then
-             wrtlst_unit = ilast
-             call wrtlst(wrtlst_unit,star%xa,star%logRho,star%luminosity_lsun, &
-                  star%logP,star%logR,star%log_mass,star%logT,star%convective_flag, &
-                  star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
-                  star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
-                  star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
-                  star%envelope_cz_bottom_index,star%model_number,star%nz, &
-                  star%star_mass,star%log_Teff,star%log_L,star%log_total_mass,star%run%dage, &
-                  star%evo%timestep_yr,star%omega)
-          endif
-       endif
-
-! locate the hydrogen-burning shell and the boundaries of the central
-! and surface convection zones (if applicable).
-         call findsh(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
-              star%core_cz_top_index,star%envelope_cz_bottom_index,star%evo%h_shell_zone_begin, &
-              star%evo%h_shell_end_index,star%evo%h_shell_midpoint_zone,star%evo%has_h_shell)
-! determine timestep for model
-! JVS 04/14 Added Teffl to passed variables
-!        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
-!      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(star%evo%dt,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
-            star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
-            star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,nk, &
-            star%logP,star%logR,star%omega,star%evo%max_domega_frac,star%evo%h_shell_zone_begin, &
-            star%log_Teff)
-
-       star%evo%dt_saved = star%evo%dt
-! zero out entropy terms.
-         do i = 1,star%nz
-            star%run%temperature_entropy_term(i) = 0.0D0
-            star%run%pressure_entropy_term(i) = 0.0D0
-            star%run%luminosity_entropy_term(i) = 0.0D0
-            star%run%radius_entropy_term(i) = 0.0D0
-         end do
-
-! zero out light element burning rates in the surface CZ.
-         if (use_extended_composition) then
-            star%light_burn%log_rate_li6_prev = 0.0D0
-            star%light_burn%log_rate_li7_prev = 0.0D0
-            star%light_burn%log_rate_be9_prev = 0.0D0
-         endif
+! Per-kind-card setup (2026, core/ phase 3): everything from the
+! card's initial composition through the first timestep estimate is
+! begin_kind_card below; config/read errors return through ierr.
+         call begin_kind_card
+         if (ierr /= 0) return
 
 ! for a given kind card, evolve NMODLS(NK) times
 ! if rescaling is being performed, NMODLS(NK) is the number of times
@@ -279,16 +179,8 @@ subroutine run_yrec(ierr)
        if (step_status == step_leave_run_loop) cycle run_loop
        end do
 
-! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
-! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
-         if (lstore.and.lstpch.and.star%evo%punch_pending_flag) then
-          call putstore(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
-                 star%run%dage,star%evo%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
-            star%evo%punch_pending_flag = .false.
-       endif
-! 110  CONTINUE
-! G Somers END
+! Store the card's last model if requested (2026: end_kind_card).
+         call end_kind_card
 
 ! MHP 1/93 CHECK AUTOMATIC CALIBRATATION OF SOLAR MODEL.
 !c MHP 5/96 changed solar calibration to perform solar models in 3 kind cards
@@ -435,4 +327,139 @@ subroutine run_yrec(ierr)
 ! 2026 (phase five, step B): the normal end-of-job stop became this
 ! clean return (ierr stays 0); the CLI wrapper simply ends.
       return
+
+contains
+
+! ---------------------------------------------------------------
+! Start one kind card: per-card composition/mixing-length settings,
+! read or reuse the starting model (starin, incl. rescaling), check
+! the rotation configuration, disarm already-satisfied stops, the
+! optional neutrino table, output headers, the He-flash restore
+! copy, locate shells/CZ edges (findsh), the first timestep
+! estimate (htimer), and zero the entropy and light-element-rate
+! state. Sets ierr on configuration or model-read errors.
+subroutine begin_kind_card
+         star%run%sound_speed_output_active = .false.
+!         LPULSE=.FALSE.
+         initial_envelope_x = initial_x_array(nk)
+         initial_envelope_z = initial_z_array(nk)
+         cmixl = mixing_length_array(nk)
+       change_envelope_mass_flag = has_senv0_array(nk)
+       requested_envelope_mass = senv0_array(nk)
+       star%evo%reset_triangle = .false.
+       star%evo%model_diverged_flag = .false.
+! MHP 10/02 ZERO OUT INITIAL ANGULAR MOMENTUM
+         star%evo%total_angular_momentum = 0.0D0
+         star%evo%total_rotational_ke = 0.0D0
+! read in the initial model here
+! STARIN also calls RSCALE to perform rescaling if requested
+!        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
+       call starin(star%evo%timestep_yr, star%evo%dt, star%evo%hydrogen_dt, star%evo%trial_sign_flag, &
+            star%evo%ikut_flag, star%evo%istore_flag, star%evo%model_diverged_flag, &
+            star%evo%recompute_envelope_triangle, nk, star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, &
+            star%evo%total_angular_momentum, star%evo%total_rotational_ke, &
+            star%evo%convective_velocity, star%job%mixture_weights, ierr)
+       if (ierr /= 0) return
+
+      if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
+
+1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
+                 ' Initialize rotation rates or set LROT to', &
+                 ' FALSE.')
+          print 1611
+          ! 2026 (phase five, step B): configuration error returns to the
+          ! CLI wrapper (which stops) instead of stopping here.
+          ierr = 1
+          return
+      endif
+!     MHP 10/24 CHECK STOP CONDITIONS AND DISABLE THEM IF THE STARTING VALUES ARE BELOW THE TARGET THRESHOLD
+! (2026: one table walk in stop_conditions -- the hand-written D/X/Y
+! triple that used to live here carried the disarm-the-wrong-stop bug
+! fixed in phase 1.)
+         call disarm_satisfied_stops(nk)
+! Opt-in diagnostic (2026): the former LNUTAB per-zone neutrino
+! table, off since 2004, is now the compute_neutrino_fluxes control
+! (core/neutrino_flux_table.f90); it describes the starting model
+! of each kind card.
+      if (compute_neutrino_fluxes) then
+         call neutrino_flux_table
+      endif
+! save mass in solar units
+         pulsation_mass_msun=star%star_mass
+! MHP 08/02 STORE STARTING CZ PROPERTIES
+         star%light_burn%jcz = star%envelope_cz_bottom_index
+         star%turnover%convective_turnover_timescale = 0.0D0
+! write out headers of the appropriate output files
+      call output_run_header(star%star_mass)
+! DBG PULSE OUT 7/92
+! initialize variables for calculating when to dump pulse output
+         star%evo%prev_log_l = star%log_L
+         star%evo%prev_log_teff = star%log_Teff
+         star%evo%prev_age = star%run%dage
+         star%evo%path_length_sq = 0.0D0
+
+       if (helium_flash_active) then
+! timestep cutting requires a model stored in logical unit ILAST
+! or it will crash - so copy initial model to unit ILAST
+          if (star%evo%punch_pending_flag) then
+             wrtlst_unit = ilast
+             call wrtlst(wrtlst_unit,star%xa,star%logRho,star%luminosity_lsun, &
+                  star%logP,star%logR,star%log_mass,star%logT,star%convective_flag, &
+                  star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
+                  star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
+                  star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
+                  star%envelope_cz_bottom_index,star%model_number,star%nz, &
+                  star%star_mass,star%log_Teff,star%log_L,star%log_total_mass,star%run%dage, &
+                  star%evo%timestep_yr,star%omega)
+          endif
+       endif
+
+! locate the hydrogen-burning shell and the boundaries of the central
+! and surface convection zones (if applicable).
+         call findsh(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
+              star%core_cz_top_index,star%envelope_cz_bottom_index,star%evo%h_shell_zone_begin, &
+              star%evo%h_shell_end_index,star%evo%h_shell_midpoint_zone,star%evo%has_h_shell)
+! determine timestep for model
+! JVS 04/14 Added Teffl to passed variables
+!        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
+!      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
+       call htimer(star%evo%dt,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
+            star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
+            star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,nk, &
+            star%logP,star%logR,star%omega,star%evo%max_domega_frac,star%evo%h_shell_zone_begin, &
+            star%log_Teff)
+
+       star%evo%dt_saved = star%evo%dt
+! zero out entropy terms.
+         do i = 1,star%nz
+            star%run%temperature_entropy_term(i) = 0.0D0
+            star%run%pressure_entropy_term(i) = 0.0D0
+            star%run%luminosity_entropy_term(i) = 0.0D0
+            star%run%radius_entropy_term(i) = 0.0D0
+         end do
+
+! zero out light element burning rates in the surface CZ.
+         if (use_extended_composition) then
+            star%light_burn%log_rate_li6_prev = 0.0D0
+            star%light_burn%log_rate_li7_prev = 0.0D0
+            star%light_burn%log_rate_be9_prev = 0.0D0
+         endif
+end subroutine begin_kind_card
+
+! ---------------------------------------------------------------
+! Finish one kind card: store the last model to the .store stream
+! when configured (putstore) and clear the punch flag.
+subroutine end_kind_card
+! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
+! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
+         if (lstore.and.lstpch.and.star%evo%punch_pending_flag) then
+          call putstore(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
+                 star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
+                 star%run%dage,star%evo%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
+            star%evo%punch_pending_flag = .false.
+       endif
+! 110  CONTINUE
+! G Somers END
+end subroutine end_kind_card
+
 end subroutine run_yrec
