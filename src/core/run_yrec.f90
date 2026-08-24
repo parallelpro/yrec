@@ -22,11 +22,8 @@
 !
 subroutine run_yrec(ierr)
 
-! the array size, i.e. max # of shells is specified in the parameter
-! statement. it defines JSON. to change the array size do a global
-! change on "JSON=2000" or whatever.
       use net_lib
-      use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_metals, json
+      use star_info_lib, only: star, i_h1, i_metals
       use yrec_output, only: output_run_header
       use luout_lib
       use const_lib
@@ -35,32 +32,6 @@ subroutine run_yrec(ierr)
            step_leave_run_loop, disarm_satisfied_stops
       implicit none
       integer :: step_status
-      integer, parameter :: numtt = 70
-      integer, parameter :: numd = 19
-      integer, parameter :: numx = 10
-      integer, parameter :: numz = 13
-      integer, parameter :: numxz = 126
-
-! DBGLAOL - to save space make tables single precision
-! MHP 8/25 Removed unused variables and added pass-through variables
-! See the CROSS-CALLEE NAMING NOTE above for the file-path locals
-! (declared further below, in the --- locals --- section, using
-! setups.f90's/pdist.f90's own descriptive dummy-argument spelling).
-
-!     MHP 10/24 FLAG FOR END OF RUN
-
-! MHP 10/24 NEW VARIABLES FOR STOP CRITERIA ON CENTRAL ABUNDANCE are
-! carried in common/sett/ above.
-
-! latest values (Bahcall and Pinsonneault 1996)-actual values set in
-! subroutine PARMIN
-      double precision :: bp96_scale_factor(17)
-      data bp96_scale_factor/0.9558,0.9690,0.9712,1.0,1.0,0.992,1.0,1.0, &
-           1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.92088,0.1625/
-! MHP 3/96 added data for base solar age, L
-!       DATA SUNAGE,SUNL/4.57D09,3.844D33/  ! KC 2025-05-31
-      double precision :: reference_solar_luminosity
-      data reference_solar_luminosity/3.844D33/
 
 ! --- locals ---
 ! calibration card protocols (see the verdict block in the run loop)
@@ -73,19 +44,9 @@ subroutine run_yrec(ierr)
       double precision :: initial_x_guess, initial_alpha_guess
       logical :: saved_use_structure_dt_limits
       integer :: saved_atm_choice
-      integer:: i, j
-      integer :: wrtlst_unit, model_iteration
+      integer :: i
+      integer :: model_iteration
       double precision :: log_r_rsun, current_zx, surface_z_over_x
-      character(len=256) :: alex06_table_path, allard_table_path, &
-           atm_table_path, fermi_table_path, kurucz_table_path, &
-           kurucz_table2_path, laol_table_path, laol_table2_path, &
-           opal95_table_path, opal92_table_path
-      character(len=256) :: zams_a_table_path, zams_b_table_path, &
-           zams_c_table_path, centre1_table_path, centre2_table_path, &
-           centre3_table_path, centre4_table_path, centre5_table_path
-      character(len=256) :: opal92_table2_path, pure_z_table_path, &
-           scv_h_table_path, scv_he_table_path, scv_z_table_path
-      character(len=256) :: alex95_table_paths(7)
       double precision :: monte_helium_diffusion_fraction
 
       integer, intent(out) :: ierr
@@ -114,48 +75,10 @@ subroutine run_yrec(ierr)
       if (ierr /= 0) return
 
       do monte_carlo_run_number = star%job%mc_run_start,star%job%mc_run_end
-! for monte carlo run, input values of parameters being changed.
-      if (lmonte) then
-         cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
-         cross_section_scale(2) = star%run%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
-         cross_section_scale(3) = star%run%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
-         cross_section_scale(16) = star%run%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
-         monte_helium_diffusion_fraction = star%run%helium_fraction_param(monte_carlo_run_number)
-         fgrz = star%run%diffusion_factor(monte_carlo_run_number)
-         solar_luminosity_cgs = reference_solar_luminosity*star%run%luminosity_target(monte_carlo_run_number)
-         log10_solar_luminosity = dlog10(solar_luminosity_cgs)
-         ln_solar_luminosity = ln10/solar_luminosity_cgs
-         age_scale_factor = star%run%age_target(monte_carlo_run_number)
-! timestep and final age are altered in SR SETCAL; input #s should be
-! scaled for a solar age of 4.57 Gyr
-         target_end_age(2)=1.0D8
-         target_end_age(3)=4.57D9
-      else
-         age_scale_factor = 1.0D0
-      endif
-! DBG PULSE: save LPULSE flag, set LPULSE to F except on last model of
-! last run, then set LPULSE to saved value of LPULSE.
-      star%evo%saved_pulse_output_flag = pulsation_output_active
-! 02/11 JVS uncommented LPULSE=.FALSE.
-!      LPULSE = .FALSE.
-! MHP 1/93 add option to automatically calibrate solar model.
-! MHP 3/96 added counter for # of iterations per converged model and
-! starting estimate of ALPHA and X
-      if (calibrate_solar_model) then
-         call setcal(age_scale_factor)
-         convergence_iterations = 1
-         initial_x_guess = rescale_params(2,1)
-         initial_alpha_guess = mixing_length_array(1)
-         saved_use_structure_dt_limits = use_structure_dt_limits   ! save LPTIME for reuse during calibration
-         saved_atm_choice  = atm_choice    ! save KTTAU for reuse during calibration
-      else
-         convergence_iterations = 0
-      endif
-! DBG 12/94 add option to automatically calculate a stellar model
-! of specified Teff and L
-      if (calibrate_star_flag) then
-         call setscal
-      endif
+! Per-run setup (2026): the two prologue blocks are contained
+! subroutines below, mirroring begin_kind_card/end_kind_card.
+      call apply_monte_carlo_parameters
+      call begin_calibration
 
 !**********
 !     RUN THROUGH THE KIND CARDS IN ORDER
@@ -229,6 +152,79 @@ subroutine run_yrec(ierr)
       return
 
 contains
+
+! ---------------------------------------------------------------
+! For a Monte-Carlo run, apply the current run's sampled parameters:
+! nuclear cross-section scales (against the Bahcall & Pinsonneault
+! 1996 reference values), the metal diffusion factor, and the solar
+! luminosity/age targets. Outside Monte Carlo only the age scale
+! factor (1.0) is set.
+subroutine apply_monte_carlo_parameters
+! latest values (Bahcall and Pinsonneault 1996). NOTE: the literals
+! are default-real on purpose -- the original data statement's
+! single-precision constants, widened exactly as before; do not
+! append d0 (it would shift the values in the 8th decimal).
+      double precision, parameter :: bp96_scale_factor(17) = &
+           [0.9558,0.9690,0.9712,1.0,1.0,0.992,1.0,1.0, &
+           1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.92088,0.1625]
+! MHP 3/96 added data for base solar age, L
+      double precision, parameter :: reference_solar_luminosity = 3.844D33
+
+! for monte carlo run, input values of parameters being changed.
+      if (lmonte) then
+         cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
+         cross_section_scale(2) = star%run%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
+         cross_section_scale(3) = star%run%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
+         cross_section_scale(16) = star%run%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
+! NOTE (2026): write-only since the original F77 (FGRSET = FHE(NN))
+! -- the sampled helium diffusion factor never reaches the physics;
+! only the metal factor (fgrz) is wired through. Preserved, not
+! fixed; a candidate for an upstream report.
+         monte_helium_diffusion_fraction = star%run%helium_fraction_param(monte_carlo_run_number)
+         fgrz = star%run%diffusion_factor(monte_carlo_run_number)
+         solar_luminosity_cgs = reference_solar_luminosity*star%run%luminosity_target(monte_carlo_run_number)
+         log10_solar_luminosity = dlog10(solar_luminosity_cgs)
+         ln_solar_luminosity = ln10/solar_luminosity_cgs
+         age_scale_factor = star%run%age_target(monte_carlo_run_number)
+! timestep and final age are altered in SR SETCAL; input #s should be
+! scaled for a solar age of 4.57 Gyr
+         target_end_age(2)=1.0D8
+         target_end_age(3)=4.57D9
+      else
+         age_scale_factor = 1.0D0
+      endif
+end subroutine apply_monte_carlo_parameters
+
+! ---------------------------------------------------------------
+! Arm the calibration protocols for this run, if configured: setcal
+! expands the run list into solar-calibration triples (recording the
+! starting X/alpha guesses and saving the LPTIME/KTTAU controls that
+! chkcal's cycles restore); setscal expands it into star-calibration
+! pairs. Also saves the pulse-output flag the calibration cycles
+! toggle.
+subroutine begin_calibration
+! DBG PULSE: save LPULSE flag, set LPULSE to F except on last model of
+! last run, then set LPULSE to saved value of LPULSE.
+      star%evo%saved_pulse_output_flag = pulsation_output_active
+! MHP 1/93 add option to automatically calibrate solar model.
+! MHP 3/96 added counter for # of iterations per converged model and
+! starting estimate of ALPHA and X
+      if (calibrate_solar_model) then
+         call setcal(age_scale_factor)
+         convergence_iterations = 1
+         initial_x_guess = rescale_params(2,1)
+         initial_alpha_guess = mixing_length_array(1)
+         saved_use_structure_dt_limits = use_structure_dt_limits   ! save LPTIME for reuse during calibration
+         saved_atm_choice  = atm_choice    ! save KTTAU for reuse during calibration
+      else
+         convergence_iterations = 0
+      endif
+! DBG 12/94 add option to automatically calculate a stellar model
+! of specified Teff and L
+      if (calibrate_star_flag) then
+         call setscal
+      endif
+end subroutine begin_calibration
 
 ! ---------------------------------------------------------------
 ! End-of-kind-card calibration verdict (see the protocol comment
@@ -368,8 +364,7 @@ subroutine begin_kind_card
 ! timestep cutting requires a model stored in logical unit ILAST
 ! or it will crash - so copy initial model to unit ILAST
           if (star%evo%punch_pending_flag) then
-             wrtlst_unit = ilast
-             call wrtlst(wrtlst_unit,star%xa,star%logRho,star%luminosity_lsun, &
+             call wrtlst(ilast,star%xa,star%logRho,star%luminosity_lsun, &
                   star%logP,star%logR,star%log_mass,star%logT,star%convective_flag, &
                   star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
                   star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
