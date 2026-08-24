@@ -15,9 +15,9 @@
 ! are unchanged from the original COMMON member names, matching that
 ! same precedent.
 module envstruct_lib
+      use star_info_lib, only: json
       implicit none
       private
-      integer, parameter :: json = 5000
 
       type, public :: envelope_structure_state
             double precision :: env_log10_pressure(json), &

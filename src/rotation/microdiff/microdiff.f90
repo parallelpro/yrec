@@ -58,11 +58,11 @@
 subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, convective_flag, &
      num_zones, total_mass)
+      use star_info_lib, only: json
 
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 ! SET NLIGHT TO THE NUMBER OF LIGHT ELEMENTS TO BE DIFFUSED.
       integer, parameter :: num_light = 3
 

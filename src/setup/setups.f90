@@ -31,13 +31,12 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       use kap_lib
       use atm_lib
       use atm_table_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use luout_lib
       use const_lib
       use yale_eos_lib
       implicit none
       integer, intent(out) :: ierr
-      integer, parameter :: json = 5000
 ! JNT 06/14 ADD NTC FOR KURUCZ/CASTELLI 2004 ATM
       integer, parameter :: nt = 57, ng = 11
       integer, parameter :: ntc = 76, ngc = 11

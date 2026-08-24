@@ -18,10 +18,9 @@ subroutine lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
      diffused_abundance, num_eq_points, total_mass, &
      use_generic_diffusion_vectors)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: diffusion_coeff1_mid(json), &

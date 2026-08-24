@@ -22,11 +22,10 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass, ierr)
 
-      use star_info_lib, only: star, i_grad_actual
+      use star_info_lib, only: star, i_grad_actual, json
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
       double precision, intent(inout) :: composition(15,json)

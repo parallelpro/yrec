@@ -16,9 +16,9 @@
 subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, istart, iend, eta_squared, moment_of_inertia, &
      omega, qiw, mean_radius, num_zones)
+      use star_info_lib, only: json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_density(json)
       double precision, intent(inout) :: specific_angular_momentum(json)

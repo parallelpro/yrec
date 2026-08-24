@@ -28,13 +28,12 @@
 ! instability_transport_active (LINSTB), preserved exactly below.
 subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use net_lib
       use luout_lib
       use const_lib
       use burn_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: full_timestep
       double precision, intent(inout) :: max_domega_step

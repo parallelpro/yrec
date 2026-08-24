@@ -40,11 +40,10 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
      zone_end, fully_convective_flag, density_orig, temperature_orig)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: dlnp_dr(json)

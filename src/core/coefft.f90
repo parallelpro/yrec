@@ -52,14 +52,13 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff, ierr)
 
       use net_lib
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
       use luout_lib
       use const_lib
       use eos_lib
       use kap_lib
       use burn_lib
       implicit none
-      integer, parameter :: json=5000
 
       double precision, intent(in) :: delta_time
       integer, intent(in) :: num_points

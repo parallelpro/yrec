@@ -22,12 +22,11 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use luout_lib
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 ! the shape integrand passed to numerics' qgauss (phase four, step 2)
       external func
 

@@ -14,11 +14,11 @@
 ! (pscahe).
 subroutine hsubp(composition, density, pressure, radius, mass, &
      temperature, edge_zone, pscahe)
+      use star_info_lib, only: json
 
       use const_lib
       use eos_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: composition(15,json), density(json), &
            pressure(json), radius(json), mass(json), temperature(json)

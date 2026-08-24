@@ -24,10 +24,9 @@
 ! final shell, such that QUAD(I) varies as 1/R**4.
 subroutine getqua(log_density, gravity, radius, angular_velocity, num_zones)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_density(json), gravity(json), &
            radius(json), angular_velocity(json)

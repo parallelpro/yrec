@@ -48,11 +48,10 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      new_atmosphere_fit_needed)
       use atm_lib
       use atm_table_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use eos_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_luminosity_lsun, age_gyr
       double precision, intent(inout) :: timestep

@@ -27,7 +27,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
 
 !     WRITE MODEL OUT IN ASCII FORMAT
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
       use luout_lib
       use const_lib
       use opacity_table_lib
@@ -36,7 +36,6 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       implicit none
 
 
-      integer, parameter :: json = 5000
       integer, parameter :: nts=63, nps=76
 
       double precision, intent(inout) :: composition(15,json), log_density(json), &

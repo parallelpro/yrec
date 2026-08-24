@@ -40,11 +40,10 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
      convective_velocity, want_derivatives, is_convective, &
      pressure_rotation_factor, temperature_rotation_factor, log_teff, ierr)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json=5000
 !  DL,OL,X,Z,LOCOND USED BY OPACTY
 ! COMPUTES RADIATIVE GRADIENT AND COMPARES WITH ADIABATIC GRADIENT
 ! COMPUTES CONVECTIVE GRADIENT VIA MIXING LENGTH THEORY IF APPLICABLE

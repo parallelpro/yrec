@@ -29,11 +29,10 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       use atm_lib
       use envint_lib, only: atm_get
       use envstruct_lib
-      use star_info_lib, only: star, i_grad_ad, i_grad_rad
+      use star_info_lib, only: star, i_grad_ad, i_grad_rad, json
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(inout) :: log_radius(json), log_pressure(json), &

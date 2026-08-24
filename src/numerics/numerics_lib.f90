@@ -118,8 +118,8 @@ end subroutine boole
 ! condition for a natural spline, with zero second derivative on that
 ! boundary.
 subroutine cspline(x, y, n, yp1, ypn, y2)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
       double precision, intent(in) :: x(n), y(n), yp1, ypn
@@ -752,8 +752,8 @@ end subroutine mmid
 ! Upon exit from subroutine 'slopes' -- first_derivs contains the
 ! computed first derivatives at each data point.
 subroutine osplin(xval, yval, xtab, ytab, n, k)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: xval(json)
       double precision, intent(out) :: yval(json)
@@ -873,8 +873,8 @@ end subroutine quint
 ! splinj but with x/y/y2/u dimensioned to the json=5000 maximum
 ! rather than to n, exactly as in the original file.
 subroutine splinc(x, y, y2, n)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
       double precision, intent(in) :: x(json), y(json)
@@ -1011,8 +1011,8 @@ end subroutine splnr
 ! sub-diagonal a, diagonal b, super-diagonal c, and right-hand side
 ! ex_prime, returning the solution in ex.
 subroutine tridiag_gs(a, b, c, ex_prime, npt, ex)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: a(json), b(json), c(json), &
            ex_prime(json)
@@ -1142,9 +1142,9 @@ end subroutine ysplin
 ! per-call data flow (matrix in, solution out), not global
 ! configuration -- see GUIDELINES.md's module-vs-argument distinction.
 subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
+      use star_info_lib, only: json
 
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
 ! sub_diag/diag/super_diag are the tridiagonal matrix's three
@@ -1215,8 +1215,8 @@ end subroutine ctridi
 !       SUBROUTINE TRIDIA(N,EI,EJ,DJ,SUMDJ)  ! KC 2025-05-31
 subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
      solution, dj_n_seed)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
       double precision, intent(in) :: ei(json)
@@ -1559,9 +1559,9 @@ end subroutine splint
 ! Note: xa/ya/y2a are dimensioned to the json=5000 module-wide
 ! maximum rather than to n, exactly as in the original file.
 subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
+      use star_info_lib, only: json
       use luout_lib
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
       double precision, intent(in) :: xa(json), ya(json), y2a(json), x
@@ -1708,10 +1708,10 @@ end subroutine trapzd
 ! two symmetric abscissas about the interval midpoint. r0, hs, aint,
 ! q, w2, a, and i are passed through unchanged to func on each call.
 subroutine qgauss(integrand, g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
+      use star_info_lib, only: json
 
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
 ! 2026 (phase four, step 2 -- ROADMAP.md): the integrand used to be a
 ! hard-coded call to rotation's shape-integrand `func`, the one

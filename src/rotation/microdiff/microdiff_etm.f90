@@ -22,11 +22,10 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
      composition, dlnp_dr, radius_bl, enclosed_mass, temperature_bl, &
      num_zones, total_mass, num_light, light_element_id)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: timestep
       double precision, intent(in) :: eq_radius(json), &

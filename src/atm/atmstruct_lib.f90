@@ -17,9 +17,9 @@
 ! names are unchanged from the original COMMON member names, matching
 ! that same precedent.
 module atmstruct_lib
+      use star_info_lib, only: json
       implicit none
       private
-      integer, parameter :: json = 5000
 
       type, public :: atmosphere_structure_state
             double precision :: atmo_log10_pressure(json), &

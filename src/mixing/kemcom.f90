@@ -43,11 +43,10 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
      rate_triple_alpha, frac_c12_alpha, shell_mass, composition, &
      timestep_years, ierr)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use luout_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_temperature(json)
       integer, intent(in) :: zone_begin, zone_end

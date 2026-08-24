@@ -11,11 +11,10 @@
 ! unit, printed every nprtpt points (plus the first and last points).
 subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 
-      use star_info_lib, only: star, i_eps_grav, i_grad_actual
+      use star_info_lib, only: star, i_eps_grav, i_grad_actual, json
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: hcomp(15,json), hd(json), hl(json), &
            hp(json), hr(json), hs1(json)

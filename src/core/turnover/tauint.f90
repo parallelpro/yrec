@@ -19,9 +19,8 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
       use atm_table_lib
       use envstruct_lib
       use const_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       implicit none
-      integer, parameter :: json=5000
 
       double precision, intent(in) :: shell_mass(json)
       logical, intent(in) :: convective_flag(json)

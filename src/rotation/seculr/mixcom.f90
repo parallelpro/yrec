@@ -43,10 +43,9 @@ subroutine mixcom(timestep, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, shell_mass, zone_begin, zone_end, &
      convective_flag, final_iteration_flag, num_zones, composition, &
      species_begin, species_end)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: equally_spaced_diffusion_coeff(json), &

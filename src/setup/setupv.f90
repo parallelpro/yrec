@@ -22,10 +22,9 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
      transport_zone_end, num_zones, radius_unlogged, &
      dynamical_shear_omega_limit)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_density(json), local_gravity(json), &
            luminosity(json), log_pressure(json), log_radius(json), &

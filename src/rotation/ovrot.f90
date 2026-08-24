@@ -17,8 +17,8 @@ subroutine ovrot(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, convective_flag, num_zones, &
      am_transport_convective_flag, radiative_zone_bounds, &
      convective_zone_bounds, num_radiative_zones, num_convective_zones)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: composition(15,json), &
            log_density(json), log_pressure(json), log_radius(json), &

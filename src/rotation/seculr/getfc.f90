@@ -15,10 +15,9 @@
 subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
      zone_max, angular_velocity)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
 ! INPUT VARIABLES :
 ! log_density - LOG10 OF DENSITY(GM/CM**3) AT ZONE CENTERS.

@@ -13,9 +13,9 @@
 subroutine getrot(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, am_transport_convective_flag, num_zones, &
      eta_squared, moment_of_inertia, omega, qiw, mean_radius)
+      use star_info_lib, only: json
 
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: log_density(json), &
            specific_angular_momentum(json), log_radius(json), log_mass(json), &

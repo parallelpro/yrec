@@ -16,12 +16,11 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
      h_shell_begin_index, h_shell_mid_index, h_shell_end_index, &
      trial_sign_flag, punch_pending_flag, total_angular_momentum, &
      total_rotational_kinetic_energy)
-      use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_lum_he_c, i_lum_neu, i_metals, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_o16
+      use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_lum_he_c, i_lum_neu, i_metals, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_o16, json
       use luout_lib
       use const_lib
       use eos_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep_yr
       double precision, intent(out) :: log_gravity

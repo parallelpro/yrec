@@ -14,10 +14,9 @@
 subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
      log_temperature, num_points, struct_dt)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
 ! previous_timestep: previous model timestep.
 ! luminosity: run of luminosity (as a function of mass) in the current

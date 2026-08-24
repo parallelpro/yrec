@@ -14,9 +14,9 @@
 ! iteration. Also called by grsett.f (not part of this batch).
 subroutine get_imp_diffco(alpha, diffusion_coeff_mid, delta_abundance_mid, &
      diffusion_coeff_deriv_mid, sub_diag, diag, super_diag, npt)
+      use star_info_lib, only: json
 
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: alpha(json)
       double precision, intent(inout) :: diffusion_coeff_mid(json)

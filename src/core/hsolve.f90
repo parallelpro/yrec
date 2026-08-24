@@ -21,9 +21,9 @@
 ! not verified physical meaning; treat with the same care as the
 ! original when modifying.
 subroutine hsolve(num_shells, elim_coeff, elim_rhs, surface_bc)
+      use star_info_lib, only: json
 
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: num_shells
       double precision, intent(in) :: elim_coeff(4,2,json)

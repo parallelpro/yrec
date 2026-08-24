@@ -18,10 +18,10 @@
 ! formula is used directly.
 subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
+      use star_info_lib, only: json
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: eta_squared(json), log_radius(json), &
            log_mass(json), shell_mass(json)

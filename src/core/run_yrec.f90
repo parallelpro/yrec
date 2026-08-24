@@ -26,7 +26,7 @@ subroutine run_yrec(ierr)
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
       use net_lib
-      use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_metals
+      use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_metals, json
       use yrec_output, only: output_run_header
       use luout_lib
       use const_lib
@@ -35,7 +35,6 @@ subroutine run_yrec(ierr)
            step_leave_run_loop, disarm_satisfied_stops
       implicit none
       integer :: step_status
-      integer, parameter :: json = 5000
       integer, parameter :: numtt = 70
       integer, parameter :: numd = 19
       integer, parameter :: numx = 10

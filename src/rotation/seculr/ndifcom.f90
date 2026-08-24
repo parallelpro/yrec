@@ -67,8 +67,8 @@ subroutine ndifcom(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
      log_radius, log_mass, enclosed_mass, shell_mass, log_total_mass, &
      velocity, zone_begin, zone_end, zone_max, zone_min, convective_flag, &
      final_iteration_flag, num_zones, composition, species_begin, species_end)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: diffusion_coeff(json)

@@ -25,10 +25,9 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: composition(15,json)

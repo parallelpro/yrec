@@ -22,13 +22,12 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
 
-      use star_info_lib, only: star, i_grad_actual, i_grad_ad, i_grad_rad
+      use star_info_lib, only: star, i_grad_actual, i_grad_ad, i_grad_rad, json
       use const_lib
       use eos_lib
       use kap_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: fp(json), ft(json)
       double precision, intent(in) :: composition(15,json), log_density(json)

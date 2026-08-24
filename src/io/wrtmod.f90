@@ -21,13 +21,12 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 
       use atm_lib
       use envint_lib, only: atm_get
-      use star_info_lib, only: star, i_grad_actual, i_grad_ad
+      use star_info_lib, only: star, i_grad_actual, i_grad_ad, json
       use luout_lib
       use const_lib
       use yale_eos_lib
 
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: num_shells, envelope_cz_bottom_index
       double precision, intent(in) :: composition(15,json)

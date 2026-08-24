@@ -11,6 +11,7 @@
 ! Subroutine to remap new, more intuitively named, namelist parameters
 ! onto existing code parameters.
 subroutine remap
+      use star_info_lib, only: json
       use const_lib
       implicit none
 
@@ -19,7 +20,6 @@ subroutine remap
 ! PARAMETERS NTA AND NGA FOR TABULATED ALLARD MODEL SURFACE PRESSURES.
       integer, parameter :: nta = 54, nga = 5
       integer, parameter :: nts = 63, nps = 76
-      integer, parameter :: json = 5000
       integer :: i
 
       double precision :: s0_pp_ref, s0_he3he3_ref, s0_he3he4_ref, &

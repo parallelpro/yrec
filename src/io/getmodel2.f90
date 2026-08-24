@@ -28,7 +28,7 @@ subroutine getmodel2(log_luminosity_lsun, envelope_fit_coeffs, &
      disk_locking_active, instability_transport_active, ljdot0, alok_code, &
      lovstc, envelope_overshoot_active, lovstm, use_pure_z_table, lsemic, &
      compmix_code, disk_pressure, disk_temperature, wind_saturation_omega)
-      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons
 ! MHP 4/25 chanted LOK to ALOK to avoid variable name conflicts
@@ -43,7 +43,6 @@ subroutine getmodel2(log_luminosity_lsun, envelope_fit_coeffs, &
 ! io/getyrec7.f90, this file's sibling reader.
       use const_lib, only: solar_luminosity_cgs
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(out) :: log_luminosity_lsun
       double precision, intent(out) :: envelope_fit_coeffs(9), mixing_length

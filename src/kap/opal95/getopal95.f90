@@ -23,6 +23,7 @@
 ! (not part of this batch) accordingly.
 subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
+      use star_info_lib, only: json
 
       use opacity_table_lib
       use const_lib
@@ -34,7 +35,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       integer, parameter :: num_z = 13
       integer, parameter :: num_xz = 126
 ! JVS Need this one too:
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction

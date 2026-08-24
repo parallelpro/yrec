@@ -15,9 +15,8 @@
 ! (originally IEST) substeps out of the sequence substep_counts.
 subroutine bsrotmix(timestep, composition, extrapolation_order, num_zones, &
      species_begin, species_end, substep_counts, converged)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
       double precision, intent(inout) :: composition(15,json)

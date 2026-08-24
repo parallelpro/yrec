@@ -20,10 +20,9 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
      specific_angular_momentum, ierr)
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
            cz_mass_bottom, cz_mass_top

@@ -17,11 +17,10 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      equal_diffusion_coeff1_dx_mid, equal_diffusion_coeff2_dx_mid, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: diffusion_coeff1(json), &
            diffusion_coeff2(json)

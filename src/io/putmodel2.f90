@@ -22,7 +22,7 @@ subroutine putmodel2(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
      ljdot0, low_temp_opacity_flag, lovstc, envelope_overshoot_active, lovstm, &
      use_pure_z_table, lsemic, initial_composition_code, disk_pressure, &
      disk_temperature, wind_saturation_omega)
-      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons
 
@@ -35,7 +35,6 @@ subroutine putmodel2(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 ! blanket `use const_lib`. Same treatment as io/getyrec7.f90.
       use const_lib, only: solar_luminosity_cgs
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_luminosity_lsun
       double precision, intent(in) :: envelope_fit_coeffs(9), mixing_length

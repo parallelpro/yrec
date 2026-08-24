@@ -15,11 +15,10 @@
 ! set of equally spaced star%rot%chi values and their location in mass.
 subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
 ! log_luminosity (originally HL): this file's own comment describes
 ! this term as "L/(LTOT*DL)" (not "LOG(L)/DL", unlike the LOG(M) and

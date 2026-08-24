@@ -24,10 +24,9 @@
 subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
      log_temperature, omega, pulse_path)
-      use star_info_lib, only: star, i_grad_actual, i_grad_ad
+      use star_info_lib, only: star, i_grad_actual, i_grad_ad, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: num_shells, model_number
       double precision, intent(in) :: mass_coordinate(json), &

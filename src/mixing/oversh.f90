@@ -13,11 +13,11 @@
 subroutine oversh(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, num_zones, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, num_mixed_zones)
+      use star_info_lib, only: json
 
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: composition(15,json), &
            log_density(json), log_pressure(json), log_radius(json), &

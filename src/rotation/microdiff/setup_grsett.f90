@@ -24,11 +24,10 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
 
-      use star_info_lib, only: star, i_grad_actual
+      use star_info_lib, only: star, i_grad_actual, json
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: timestep_seconds
       double precision, intent(inout) :: dlnp_dr(json)

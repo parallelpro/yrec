@@ -11,10 +11,10 @@
 ! every zone within the H-burning shell (jxbeg..jxend) if lshell is
 ! set, plus every print_point_interval-th point elsewhere.
 subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
+      use star_info_lib, only: json
 
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: jxbeg, jxend
       logical, intent(in) :: lshell

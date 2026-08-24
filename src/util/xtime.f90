@@ -21,12 +21,12 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
      rate_c13_p, rate_n14_p, rate_o16_p, rate_c13_alpha, rate_zero9, &
      rate_c12_alpha, rate_n14_alpha, rate_triple_alpha, rate_zero13, &
      frac_c12_alpha, frac_be7_electron)
+      use star_info_lib, only: json
 
       use const_lib
       use net_lib
       use burn_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_density(json)
       double precision, intent(in) :: composition(15,json)

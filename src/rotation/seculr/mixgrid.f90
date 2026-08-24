@@ -20,11 +20,10 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: diffusion_coeff(json), &
            log_density(json), log_luminosity(json), log_pressure(json), &

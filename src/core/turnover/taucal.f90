@@ -17,9 +17,8 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
       use const_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       implicit none
-      integer, parameter :: json=5000
 
       double precision, intent(in) :: delta_mass(json), shell_mass(json)
       logical, intent(in) :: convective_flag(json)

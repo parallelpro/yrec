@@ -55,12 +55,11 @@
 subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
      mass_grams, log_temperature, convective_flag, num_zones, total_mass)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use luout_lib
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: composition(15,json)

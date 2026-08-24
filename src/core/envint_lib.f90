@@ -29,7 +29,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       use eos_lib
       use kap_lib
       use atm_table_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use atmstruct_lib
       use envstruct_lib
       use luout_lib
@@ -37,7 +37,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       use intpar_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json=5000
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES OF KURUCZ.
       integer, parameter :: nt=57, ng=11
 ! JNT 06/14 ADDED NTC/NGC FOR KTTAU=5

@@ -13,11 +13,10 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use luout_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_density(json)
       double precision, intent(inout) :: specific_angular_momentum(json)

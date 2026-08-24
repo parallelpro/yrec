@@ -14,10 +14,10 @@
 ! SOFIA.
 subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
      omega, eta2, r0)
+      use star_info_lib, only: json
 
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_density(json), log_radius(json), &
            log_mass(json)

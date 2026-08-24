@@ -37,13 +37,13 @@
 subroutine sconvec(timestep, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
      mixed_zone_bounds, num_zones_mixed, log_teff, ierr)
+      use star_info_lib, only: json
 
       use luout_lib
       use const_lib
       use eos_lib
       use kap_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: composition(15,json)

@@ -25,10 +25,9 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
      eq_hydrogen_mid, eq_helium_mid, eq_metal_mid, eq_light_mid)
 
       use const_lib
-      use star_info_lib, only: star, i_grad_actual
+      use star_info_lib, only: star, i_grad_actual, json
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: num_light
       integer, intent(in) :: light_element_id(num_light)

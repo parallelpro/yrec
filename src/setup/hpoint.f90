@@ -17,14 +17,13 @@
 subroutine hpoint(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_metals, i_o16
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_metals, i_o16, json
       use kap_lib
       use luout_lib
       use const_lib
       use numerics_lib
 
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: envelope_store_index
       logical, intent(out) :: point_reset_flag

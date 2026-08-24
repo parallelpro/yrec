@@ -51,10 +51,10 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
      radiative_zone_bounds, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
      num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot)
+      use star_info_lib, only: json
       use const_lib
       use luout_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: composition(15,json), &
            log_density(json), log_pressure(json), log_radius(json), &

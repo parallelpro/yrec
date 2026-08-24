@@ -27,10 +27,10 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
      dqt_dp0,dqt_dp,dqt_dt0,dqt_dt,eq_r_val0,eq_r_val,dqr_dr0,dqr_dr, &
      dqr_dp0,dqr_dp,dqr_dt0,dqr_dt,eq_l_val0,eq_l_val,dql_dp0,dql_dp, &
      dql_dt0,dql_dt)
+      use star_info_lib, only: json
 
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: zone_index
       double precision, intent(inout) :: elim_coeff(4,2,json), elim_rhs(4,json)

@@ -20,10 +20,9 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       use eos_lib
       use kap_lib
       use atm_table_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json=5000
 
       double precision, intent(inout) :: log10_optical_depth
       double precision, intent(inout) :: y(3), dydx(3)

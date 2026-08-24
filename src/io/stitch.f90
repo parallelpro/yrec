@@ -32,14 +32,13 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
       use atm_lib
       use envint_lib, only: atm_get
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
       use atmstruct_lib
       use envstruct_lib
       use luout_lib
       use const_lib
 
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: composition(15,json)
       double precision, intent(in) :: log_radius(json), log_pressure(json), &

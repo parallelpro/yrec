@@ -10,11 +10,10 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, temperature, num_zones, &
      total_mass)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: timestep
       double precision, intent(in) :: equal_radius(json), &

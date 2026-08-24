@@ -45,9 +45,9 @@
 subroutine findsh(composition, luminosity, is_convective, num_points, &
      core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
      has_h_shell)
+      use star_info_lib, only: json
       use const_lib
       implicit none
-      integer, parameter :: json=5000
 
       double precision, intent(in) :: composition(15,json), luminosity(json)
       logical, intent(in) :: is_convective(json)

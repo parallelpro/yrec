@@ -45,9 +45,9 @@
 !
 subroutine search(table_x, num_table_points, eval_point, table_idx, &
      found_flag)
+      use star_info_lib, only: json
 
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: table_x(json), eval_point
       integer, intent(in) :: num_table_points

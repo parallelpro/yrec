@@ -45,9 +45,9 @@
 !----------------------------------------------------------------------
 !
 subroutine slopes(table_x, table_y, first_derivs, num_points)
+      use star_info_lib, only: json
 
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: table_x(json), table_y(json)
       double precision, intent(out) :: first_derivs(json)

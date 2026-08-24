@@ -47,10 +47,9 @@
 subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
            cz_moment_of_inertia

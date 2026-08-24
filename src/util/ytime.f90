@@ -20,11 +20,10 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
      rate_zero13, frac_c12_alpha, frac_be7_electron, h_shell_zone_begin)
 
       use net_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use burn_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(out) :: energy_gen_terms(6)
       double precision, intent(in) :: composition(15,json)

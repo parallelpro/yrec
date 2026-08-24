@@ -24,9 +24,8 @@
 subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
       use const_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: shell_mass(json)

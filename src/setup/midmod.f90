@@ -26,13 +26,12 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
      surface_cz_active, omega_mid, mean_radius_mid, qiw_mid, &
      radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
      num_convective_zones, ierr)
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
       use net_lib
       use const_lib
       use burn_lib
 
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: full_timestep, sub_timestep
       double precision, intent(inout) :: time_fraction

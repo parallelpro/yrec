@@ -72,11 +72,10 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
      already_converged_flag, ierr)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       use luout_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: log_density(json)
       double precision, intent(inout) :: specific_angular_momentum_prev(json)

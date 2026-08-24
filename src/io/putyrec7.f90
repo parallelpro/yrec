@@ -17,7 +17,7 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
      model_number, omega, fit_point_pressure, fit_point_radius, &
      total_mass_msun, log_teff, luminosity_breakdown, trial_log_luminosity, &
      trial_log_temperature, fit_point_temperature)
-      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
 !      & ATM,EOS,HIK,LDIFY,LDIFZ,LDISK,LINSTB,LJDOT0,ALOK,
 !      & LOVSTC,LOVSTE,LOVSTM,LPUREZ,LSEMIC,COMPMIX,PDISK,TDISK,WMAX)  ! KC 2025-05-31
 ! First three lines above are YREC7 inputs
@@ -31,7 +31,6 @@ subroutine putyrec7(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 ! blanket `use const_lib`. Same treatment as io/getyrec7.f90.
       use const_lib, only: solar_luminosity_cgs
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_luminosity_lsun
       double precision, intent(in) :: envelope_fit_coeffs(9), mixing_length

@@ -42,10 +42,10 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
      luminosity_components, age_gyr, timestep_years, kind_card_index, &
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
      log_teff)
+      use star_info_lib, only: json
 
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: previous_timestep
       double precision, intent(out) :: hydrogen_dt

@@ -29,11 +29,10 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
      dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
      total_luminosity, timestep, log_pressure)
 
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use luout_lib
       use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_radius(json), radius(json)
       integer, intent(in) :: zone_min, zone_max, iteration

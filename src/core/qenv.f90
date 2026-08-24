@@ -30,10 +30,9 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
 
       use eos_lib
       use kap_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
-      integer, parameter :: json=5000
 
       double precision, intent(in) :: log10_pressure_indep
       double precision, intent(inout) :: y(3), dydx(3)
