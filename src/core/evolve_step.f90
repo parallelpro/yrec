@@ -594,11 +594,4 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 
       step_status = 0
       return
-
-! run finished (was: goto 110)
-      step_status = 1
-      return
-! leave the run loop (was: goto 200)
-      step_status = 2
-      return
 end subroutine evolve_step

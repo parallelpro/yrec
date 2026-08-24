@@ -398,3 +398,4 @@ physics	profile_interval	integer	50	profile_interval	verified	mesa: same	MESA mo
 physics	pulse_format	string	'GYRE'	pulse_format	verified	mesa: pulse_data_format	MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format}
 physics	write_profile_flag	logical	.false.	write_profile_flag	verified		MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)
 physics	write_pulse_flag	logical	.false.	write_pulse_flag	verified		MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)
+physics	compute_neutrino_fluxes	logical	.false.	compute_neutrino_fluxes	verified		Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run

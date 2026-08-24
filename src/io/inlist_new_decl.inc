@@ -303,4 +303,5 @@
            & tol_dp_env_max, tol_dx_max, tol_dz_max, time_max_dt_frac, &
            & use_new_rate_variables, use_new_turnover_timescale, &
            & calc_envelope_flag, star_history_name, profile_interval, &
-           & pulse_format, write_profile_flag, write_pulse_flag
+           & pulse_format, write_profile_flag, write_pulse_flag, &
+           & compute_neutrino_fluxes

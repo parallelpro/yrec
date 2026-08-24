@@ -836,6 +836,9 @@
       ! MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)
       write_pulse_flag = .false.
 
+      ! Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run
+      compute_neutrino_fluxes = .false.
+
 /
 
 ! Unused legacy controls (accepted by the legacy reader only,

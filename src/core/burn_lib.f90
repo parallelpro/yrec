@@ -1579,7 +1579,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! ******************************************************************
 ! ****************************************
       call compute_energy_generation
-      call compute_neutrino_fluxes
+      call compute_neutrino_emission
       return
 
 contains
@@ -1778,7 +1778,7 @@ end subroutine compute_energy_generation
 ! Be7, B8, N13, O15, F17) with hep screening. The tcut(5) early
 ! RETURN is equivalent in or out of the section: nothing follows
 ! this call in engeb.
-subroutine compute_neutrino_fluxes
+subroutine compute_neutrino_emission
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
 ! ******************************************************
 ! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
@@ -2031,7 +2031,7 @@ subroutine compute_neutrino_fluxes
       end if
 
 
-end subroutine compute_neutrino_fluxes
+end subroutine compute_neutrino_emission
 
 end subroutine engeb
 

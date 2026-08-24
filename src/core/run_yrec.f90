@@ -26,12 +26,11 @@ subroutine run_yrec(ierr)
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
       use net_lib
-      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_lum_grav, i_metals, i_n14, i_n15, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_o16, i_o17, i_o18
+      use star_info_lib, only: star, i_h1, i_h2, i_he4, i_lum_grav, i_metals
       use yrec_output, only: output_run_header
       use luout_lib
       use const_lib
       use yrec_reset_lib, only: yrec_run_prologue
-      use burn_lib
       implicit none
       integer :: step_status
       integer, parameter :: json = 5000
@@ -47,66 +46,7 @@ subroutine run_yrec(ierr)
 ! (declared further below, in the --- locals --- section, using
 ! setups.f90's/pdist.f90's own descriptive dummy-argument spelling).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 !     MHP 10/24 FLAG FOR END OF RUN
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ! MHP 10/24 NEW VARIABLES FOR STOP CRITERIA ON CENTRAL ABUNDANCE are
 ! carried in common/sett/ above.
@@ -128,21 +68,7 @@ subroutine run_yrec(ierr)
       double precision :: initial_x_guess, initial_alpha_guess
       logical :: saved_use_structure_dt_limits
       integer :: saved_atm_choice
-      logical :: compute_neutrino_fluxes
-      double precision :: prev_mass_bound, curr_mass_bound, next_mass_bound
-      double precision :: dlnrho_dlnt_unused, dlnrho_dlnp_unused
-      integer:: i, j, k
-      double precision :: shell_log_density, shell_log_temperature, &
-           hydrogen_fraction, helium_fraction, metal_fraction, he3_fraction, &
-           c12_fraction, c13_fraction, n14_fraction, n15_fraction, &
-           o16_fraction, o17_fraction, o18_fraction, deuterium_fraction
-      double precision :: pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
-           he3he4_be7_proton_energy_gen, cno_cycle_energy_gen, &
-           triple_alpha_energy_gen, dlnepsilon_dlnrho, dlnepsilon_dlnt, &
-           total_energy_gen_rate
-      integer :: shell_index
-      double precision :: t6_million_k, log_electron_density, &
-           zone_mass_fraction, zone_radius_fraction
+      integer:: i, j
       integer :: wrtlst_unit, model_iteration
       double precision :: log_r_rsun, current_zx, surface_z_over_x
       double precision :: initial_helium_fraction, initial_metal_fraction
@@ -160,18 +86,13 @@ subroutine run_yrec(ierr)
       character(len=256) :: alex95_table_paths(7)
       double precision :: monte_helium_diffusion_fraction
 
+      integer, intent(out) :: ierr
+! load-bearing: see header
       save
    ! INTENTIONAL: run-level state across MC runs; reset via yrec_reset
 !*******
 ! START
 !*******
-      ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
-      ! this driver-side call site preserves the historical stop.
-
-      integer, intent(out) :: ierr
-! load-bearing: see header
-      save
-   ! INTENTIONAL: run-level state across MC runs; reset via yrec_reset
       ierr = 0
 
 ! 2026 (phase five, step C): fresh-process semantics for repeated
@@ -283,119 +204,31 @@ subroutine run_yrec(ierr)
             endif
             if (central_hydrogen_stop(nk).gt.0.0D0 .and. &
                  star%xa(i_h1,1).lt.central_hydrogen_stop(nk)) then
-               central_deuterium_stop(nk)=-central_hydrogen_stop(nk)
-               write(*,102)star%xa(i_h2,1),central_deuterium_stop(nk)
-               write(short_file_unit,102)star%xa(i_h2,1),central_deuterium_stop(nk)
+! 2026: fixed an inherited bug (present in the original F77): this
+! branch disarmed central_deuterium_stop instead of the hydrogen stop
+! it had just tested, and the messages printed the deuterium values.
+               central_hydrogen_stop(nk)=-central_hydrogen_stop(nk)
+               write(*,102)star%xa(i_h1,1),central_hydrogen_stop(nk)
+               write(short_file_unit,102)star%xa(i_h1,1),central_hydrogen_stop(nk)
  102           format('STARTING X ',E12.4,' BELOW STOP VALUE ', &
                       E12.4,' STOP DISABLED.')
             endif
             if (central_helium_stop(nk).gt.0.0D0 .and. &
                  star%xa(i_he4,1).lt.central_helium_stop(nk)) then
                central_helium_stop(nk)=-central_helium_stop(nk)
-               write(*,103)star%xa(i_h2,1),central_deuterium_stop(nk)
-               write(short_file_unit,103)star%xa(i_h2,1),central_deuterium_stop(nk)
+! 2026: message fixed alongside the bug above (printed D values).
+               write(*,103)star%xa(i_he4,1),central_helium_stop(nk)
+               write(short_file_unit,103)star%xa(i_he4,1),central_helium_stop(nk)
  103           format('STARTING Y ',E12.4,' BELOW STOP VALUE ', &
                       E12.4,' STOP DISABLED.')
             endif
          endif
-!     MHP 2/04 NEUTRINO TABLE
-!      LNUTAB = .TRUE.
-      compute_neutrino_fluxes = .false.
+! Opt-in diagnostic (2026): the former LNUTAB per-zone neutrino
+! table, off since 2004, is now the compute_neutrino_fluxes control
+! (core/neutrino_flux_table.f90); it describes the starting model
+! of each kind card.
       if (compute_neutrino_fluxes) then
-! SET UP WEIGHTS AND MASSES.
-! HS1 = LOCATION IN GM (UNLOGGED) OF SHELL CENTERS.
-! HS2 = MASS IN GM OF EACH SHELL.
-      curr_mass_bound = exp(ln10*star%log_mass(1))
-      prev_mass_bound = - curr_mass_bound
-      do i = 2,star%nz
-         next_mass_bound = prev_mass_bound
-         prev_mass_bound = curr_mass_bound
-         curr_mass_bound = exp(ln10*star%log_mass(i))
-         star%m(i-1) = prev_mass_bound
-         star%dm(i-1) = 0.5D0*(curr_mass_bound-next_mass_bound)
-      end do
-      star%m(star%nz) = curr_mass_bound
-      star%dm(star%nz) = exp(ln10*star%log_total_mass) - 0.5D0*(prev_mass_bound+curr_mass_bound)
-      dlnrho_dlnt_unused = -1.0D0
-      dlnrho_dlnp_unused = 1.0D0
-      do j = 1,10
-         star%flux%neutrino_flux_total(j) = 0.0D0
-         do k = 1,star%nz
-            star%neutrino_flux_zone(j,k) = 0.0D0
-         end do
-      end do
-! ASSIGN LOCAL VARIABLES FOR SR CALL FROM GLOBAL VECTORS.
-      do i = 1,star%nz
-         shell_log_density = star%logRho(i)
-         shell_log_temperature = star%logT(i)
-! SKIP CALCULATIONS FOR LOW TEMPERATURES.
-         if (shell_log_temperature.lt.6.0D0) exit
-         hydrogen_fraction = star%xa(i_h1,i)
-         helium_fraction = star%xa(i_he4,i)
-         metal_fraction = star%xa(i_metals,i)
-         he3_fraction = star%xa(i_he3,i)
-         c12_fraction = star%xa(i_c12,i)
-         c13_fraction = star%xa(i_c13,i)
-         n14_fraction = star%xa(i_n14,i)
-         n15_fraction = star%xa(i_n15,i)
-         o16_fraction = star%xa(i_o16,i)
-         o17_fraction = star%xa(i_o17,i)
-         o18_fraction = star%xa(i_o18,i)
-         call engeb(pp_chain_energy_gen,he3he4_be7_electron_energy_gen, &
-              he3he4_be7_proton_energy_gen,cno_cycle_energy_gen, &
-              triple_alpha_energy_gen,dlnepsilon_dlnrho,dlnepsilon_dlnt, &
-              total_energy_gen_rate,shell_log_density, &
-!      *TL,PDT,PDP,X,Y,Z,XHE3,XC12,XC13,XN14,XN15,XO16,XO17,
-!      *XO18,XH2,XLI6,XLI7,XBE9,I,HR1,HR2,HR3,HR4,HR5,HR6,HR7,  ! KC 2025-05-31
-              shell_log_temperature,hydrogen_fraction,helium_fraction, &
-              he3_fraction,c12_fraction,c13_fraction,n14_fraction,o16_fraction, &
-              o18_fraction,deuterium_fraction,shell_index,star%reaction_rate_1, &
-              star%reaction_rate_2,star%reaction_rate_3,star%reaction_rate_4,star%reaction_rate_5, &
-              star%reaction_rate_6,star%reaction_rate_7,star%reaction_rate_8,star%reaction_rate_9, &
-              star%reaction_rate_10,star%reaction_rate_11,star%reaction_rate_12, &
-              star%reaction_rate_13,star%n15_alpha_branch_fraction, &
-              star%be7_electron_capture_fraction)
-! BE7 MASS FRACTION.
-         star%be7_mass_fraction_zone(i) = star%engeb%be7_mass_fraction
-! CONVERT FROM ERG/GM/S TO ERG/S FOR EACH SHELL BY MULTIPLYING
-! BY THE MASS OF EACH SHELL IN GM (HS2).
-         do j = 1,10
-            star%neutrino_flux_zone(j,i) = star%flux%neutrino_flux(j)*star%dm(i)
-            star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) + star%neutrino_flux_zone(j,i)
-         end do
-         write(*,911)i,star%dm(i),(star%neutrino_flux_zone(j,i),j=1,10)
- 911     format(I5,1P11E10.3)
-      end do
-! WRITE OUT TOTAL NEUTRINO FLUXES.
-! ***NOTE THAT THESE ARE IN UNITS OF 10**10. ***
-      write(76,222)(star%flux%neutrino_flux_total(i),i=1,10)
-! NORMALIZE FLUXES.
-      do j = 1,10
-         do i = 1,star%nz
-            star%neutrino_flux_zone(j,i) = star%neutrino_flux_zone(j,i)/star%flux%neutrino_flux_total(j)
-         end do
-      end do
-      do i = 1,star%nz
-! TEMPERATURE IN UNITS OF 10**6 K.
-         t6_million_k = exp(ln10*(star%logT(i)-6.0D0))
-         if (t6_million_k.lt.5.0D0) exit
-! ELECTRON DENSITY.
-         log_electron_density = star%logRho(i)+log10((1.0D0+star%xa(i_h1,i))/2.0D0)
-! MASS FRACTION.
-         zone_mass_fraction = star%dm(i)/1.9891D33
-! RADIUS FRACTION.
-         zone_radius_fraction = exp(ln10*star%logR(i))/solar_radius_cgs
-! FLUXES ARE PRINTED IN THE SAME ORDER AS BAHCALL AND PINSONNEAULT.
-         write(76,145)zone_radius_fraction,t6_million_k,log_electron_density, &
-         zone_mass_fraction,star%be7_mass_fraction_zone(i),star%neutrino_flux_zone(i_nu_pp,i), &
-         star%neutrino_flux_zone(i_nu_b8,i), &
-         star%neutrino_flux_zone(i_nu_n13,i), &
-         star%neutrino_flux_zone(i_nu_o15,i),star%neutrino_flux_zone(i_nu_f17,i),star%neutrino_flux_zone(i_nu_be7,i), &
-         star%neutrino_flux_zone(i_nu_pep,i),star%neutrino_flux_zone(i_nu_hep,i)
-  145    format(F9.5,F7.3,F6.3,1P10E10.3)
-      end do
-  222    format(1P10E10.3)
-!         IF(M.GT.1)STOP999
+         call neutrino_flux_table
       endif
 ! save mass in solar units
          pulsation_mass_msun=star%star_mass

@@ -35,6 +35,9 @@ module controls_lib
 ! (cadence stays with profile_interval / pulse_gyre_interval):
       logical, public :: write_profile_flag = .false.
       logical, public :: write_pulse_flag = .false.
+! diagnostic: per-zone solar neutrino production table (engeb per
+! shell) written to the short/log stream at the start of each run
+      logical, public :: compute_neutrino_fluxes = .false.
 
 ! former common/ctlim/. Defaults (previously two DATA statements in
 ! core/parmin.f90, now illegal there since these are use-associated
