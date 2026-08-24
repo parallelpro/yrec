@@ -19,7 +19,7 @@
 program test_net
       use const_lib
       use luout_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_h2
       use net_lib
       use scv_eos_lib, only: use_scv_eos
       use opacity_table_lib, only: use_pure_z_table

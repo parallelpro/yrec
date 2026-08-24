@@ -174,6 +174,21 @@ reaction-rate/screening core stays inline because extraction
 perturbs FP scheduling by 1 ulp -- documented in the code). sneut
 untouched by design.
 
+## core/ driver program (DONE 2026-08-24)
+
+Phases 1-5 + calibration, all gated byte-identical (three pinned
+cases incl. Test_solarcal for the calibration work): inherited
+stop-disarm bug fixed; LNUTAB resurrected as compute_neutrino_fluxes;
+stop_conditions module (protocol constants, age predicates, D/X/Y
+stop table); crrect ladder via solve_level; both drivers decomposed
+into named phases (run_yrec 629->432 incl. new docs); MC/.snu writer
+-> io/write_run_summaries; 114 duplicate json decls deleted; 20 live
+placeholder flags named from verified usage (10 dead carriers keep
+the suffix as documentation); calibration protocols (solar triples /
+star pairs) stated once at run_yrec's verdict call site with named
+cycle constants, end_of_card_calibration extracted, chkcal's stale
+pair-protocol header fixed.
+
 ## Science wiring (sg-rotation side)
 
 Wire pyyrec into the fit_*_mcmc.py workflow: a YREC rotational-
