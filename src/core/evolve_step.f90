@@ -27,6 +27,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use const_lib
       use burn_lib
       use yrec_output, only: output_write_model
+      use observables_lib, only: compute_observables
       use stop_conditions
       implicit none
 
@@ -154,10 +155,12 @@ subroutine evolve_step(model_iteration, step_status, ierr)
           star%evo%dt_saved = star%evo%dt
        endif
        if (rescale_kind(nk).ne.2) star%model_number = star%model_number+1
-! 2026 (phase four, step 5): compute the output diagnostics in the
-! star layer (fills star%run%*, star%luminosity_breakdown
-! renormalization, star%turnover% via gettau); wrtout below only reads.
-       call update_output_diagnostics(ierr)
+! 2026 (phase four, step 5): compute the per-model observables in
+! the star layer (fills star%run%*, star%luminosity_breakdown
+! renormalization, star%turnover% via gettau); wrtout below only
+! reads. One theme subroutine per quantity family -- see
+! core/observables_lib.f90.
+       call compute_observables(ierr)
        if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
        call output_write_model(star%evo%timestep_yr, log_gravity, star%evo%has_h_shell, &

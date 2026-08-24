@@ -1,52 +1,167 @@
 !----------------------------------------------------------------------
-! update_output_diagnostics
+! observables_lib
 !----------------------------------------------------------------------
-! Added 2026 (phase four, step 5 -- ROADMAP.md "Phase four: the star
-! layer"). The state-computing blocks that historically lived inside
-! io/wrtout.f90, moved verbatim so the writer only reads. In original
-! wrtout order:
-!   1. the luminosity-breakdown renormalization (MUTATES the model --
-!      star%luminosity_breakdown -- skipped during He flash);
-!   2. the core-CZ mass and the (dead) core-boundary radius; NOTE the
-!      preserved original bug: core_boundary_log_radius reads
-!      envelope_boundary_fx, which at that point still holds its
-!      SAVEd value from the PREVIOUS call (the FX/FX2 typo in the
-!      original wrtout.f); the blanket save below preserves exactly
-!      that behavior, and core_boundary_radius remains computed but
-!      never consumed, as in the original;
-!   3. the central conditions: P/T extrapolated to the center, a real
-!      eos_get evaluation for central beta and degeneracy eta, all
-!      stored in star%run%central_*;
-!   4. the surface-CZ base interpolation filling
-!      star%run%envelope_mass/envelope_radius/envelope_cz_*;
-!   5. NOT the gettau call: it stays in wrtout at its original spot.
-!      gettau's atm-side integration prints progress diagnostics into
-!      the .short stream, so hoisting it above wrtout's header writes
-!      reorders that stream (values identical, layout not) -- blocked
-!      by print interleaving, not by data flow. Documented residual.
-! Called from core/main.f90 immediately before wrtout, once per
-! output model, exactly the cadence the blocks had inside wrtout.
-subroutine update_output_diagnostics(ierr)
+! 2026: the former core/update_output_diagnostics.f90 (phase four,
+! step 5 -- the state-computing blocks that historically lived inside
+! io/wrtout.f90, moved so the writer only reads), restructured as a
+! module with one subroutine per theme. The public entry point is
+! compute_observables, called from evolve_step immediately before the
+! output writer, once per output model -- exactly the cadence the
+! blocks had inside wrtout. Every computed quantity is stored on
+! star% (star%run%*, star%flux%*, star%turnover%*,
+! star%luminosity_breakdown); nothing here feeds back into the
+! physics -- the physics consumers of the turnover timescale call
+! gettau themselves at their own points (getw, starin).
+!
+! Theme order matches the original wrtout order and is load-bearing:
+! central conditions must precede the surface-CZ base (its
+! fully-convective branch reads star%run%central_log10_*), and the
+! MESA-mode block reads star%run%log_R_surface set two themes
+! earlier.
+!
+! Statement-level content is verbatim from the original; only the
+! decomposition is new. Two locals of the old blanket-`save` version
+! are genuinely cross-call state and live at module level:
+!   * envelope_boundary_fx -- set by locate_surface_cz_base, but ALSO
+!     read by locate_core_cz, which runs EARLIER in the call: it sees
+!     the value from the PREVIOUS call. This is the documented FX/FX2
+!     typo in the original wrtout.f, preserved exactly, not fixed
+!     (its only consumer, core_boundary_radius, is itself dead).
+!   * ksaha_center -- eqstat's saha-table state continuity across
+!     calls.
+! All other former SAVEd locals are assigned before use on every path
+! that reads them, so they are plain locals of their theme routine;
+! the observables_reset_pending block (repeated-run C API support)
+! accordingly shrank to the two real carriers.
+!
+! NOT here: the legacy-mode gettau call stays in wrtout at its
+! original spot. gettau's atm-side integration prints progress
+! diagnostics into the .short stream, so hoisting it above wrtout's
+! header writes reorders that stream (values identical, layout not)
+! -- blocked by print interleaving, not by data flow. Documented
+! residual.
+module observables_lib
       use star_info_lib
       use eos_lib
       use luout_lib
       use const_lib
-
       implicit none
+      private
+      public :: compute_observables
 
+! cross-call state (see header): the FX/FX2 stale carry and the saha
+! table continuity. Static zero at process start; reset for repeated
+! in-process runs via observables_reset_pending.
+      double precision, save :: envelope_boundary_fx = 0.0d0
+      integer, save :: ksaha_center = 0
 
-! --- snu coefficients (as in wrtout) for the MESA-mode block below ---
-      double precision :: clsnuf_diag(8), gasnuf_diag(8)
-      data gasnuf_diag/1.18D1,2.15D2,7.14D4,7.17D1,2.40D4,6.04D1, &
-           1.137D2,1.139D2/
-      data clsnuf_diag/0.0D0,1.6D1,4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0/
-! --- locals carried over from wrtout (names unchanged) ---
+! snu coefficients (as in wrtout) for the MESA-mode snu rates
+      double precision, parameter :: gasnuf_diag(8) = [1.18D1,2.15D2, &
+           7.14D4,7.17D1,2.40D4,6.04D1,1.137D2,1.139D2]
+      double precision, parameter :: clsnuf_diag(8) = [0.0D0,1.6D1, &
+           4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0]
+
+contains
+
+! ---------------------------------------------------------------
+! Driver: one call fills every per-model observable on star%.
+subroutine compute_observables(ierr)
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
+! 2026 (phase five, step C): see evolve_step's matching block. This
+! includes envelope_boundary_fx, whose previous-call stale value is
+! the documented FX/FX2 quirk -- a fresh process starts it at zero,
+! so a repeated call must too.
+      if (observables_reset_pending) then
+         envelope_boundary_fx = 0.0d0
+         ksaha_center = 0
+         observables_reset_pending = .false.
+      end if
+
+      call renormalize_luminosity_breakdown
+      call locate_core_cz
+      call compute_central_conditions(ierr)
+      if (ierr /= 0) return
+      call locate_surface_cz_base
+
+! ---- 2026 MESA-style output: fill the per-model history sources ----
+! (star%run% members read by write_history). Formulas are the legacy
+! .track v0 branch's, verbatim. Legacy mode skips this: wrtout
+! computes the same values internally with pinned print ordering.
+      if (.not. use_legacy_output) then
+         call refresh_turnover_timescale
+         call compute_surface_globals
+         call compute_moment_of_inertia
+         call compute_snu_rates
+         call compute_rotation_observables
+         call compute_h_shell_boundaries
+      end if
+
+end subroutine compute_observables
+
+! ---------------------------------------------------------------
+! RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH
+! (MUTATES the model -- star%luminosity_breakdown.)
+subroutine renormalize_luminosity_breakdown
       double precision :: total_luminosity_sum, temp_value
       integer :: i
-      double precision :: core_boundary_fx2, envelope_boundary_fx
+
+      if(.not.helium_flash_active) then
+       total_luminosity_sum = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
+            star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
+            star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
+       temp_value = star%luminosity_lsun(star%nz)/total_luminosity_sum
+       do i = 1,8
+          star%luminosity_breakdown(i) = star%luminosity_breakdown(i)*temp_value
+       end do
+      endif
+end subroutine renormalize_luminosity_breakdown
+
+! ---------------------------------------------------------------
+!  CALCULATE MASS OF CENTRAL CONVECTION ZONE (SOLAR UNITS), plus the
+!  (dead) core-boundary radius with the preserved FX/FX2 stale-carry
+!  bug -- see the module header.
+subroutine locate_core_cz
+      double precision :: core_boundary_fx2
 ! core_boundary_log_radius/core_boundary_radius (CORERL/CORER) are
 ! computed but never consumed (original behavior, preserved).
       double precision :: core_boundary_log_radius, core_boundary_radius
+
+      if(star%core_cz_top_index.gt.1) then
+       star%run%core_cz_mass = star%m(star%core_cz_top_index)/solar_mass_cgs
+      else
+       star%run%core_cz_mass = 0.0D0
+      endif
+
+! JVS 10/11 Be more care about the true boundary of the convective core
+      if (star%core_cz_top_index.gt.1) then
+! JVS 10/11 note: this formula reads envelope_boundary_fx (FX), which
+! at this point has not yet been assigned in this call (it is set
+! later, in locate_surface_cz_base) -- as module SAVE state it
+! carries over whatever value it held at the end of the previous
+! call. core_boundary_fx2 (FX2) is computed just above but is NOT
+! what is used here -- this looks like a bug (FX2 vs FX typo) in the
+! original wrtout.f, preserved exactly, not fixed.
+       core_boundary_fx2 = (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))/ &
+             (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))
+       core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
+            (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-log10_solar_radius
+       core_boundary_radius = dexp(ln10*core_boundary_log_radius)
+      else
+       core_boundary_radius = 0.0D0
+      endif
+! JVS end
+end subroutine locate_core_cz
+
+! ---------------------------------------------------------------
+!  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
+!  CENTRAL ETA AND BETA ARE ALSO CALCULATED. Stores star%run%central_*.
+subroutine compute_central_conditions(ierr)
+      integer, intent(out) :: ierr
+
+      double precision :: temp_value
       double precision :: pressure_linear, log_pressure_center, &
            log_temperature_center, log_density_center, &
            hydrogen_fraction_center, metal_fraction_center
@@ -61,110 +176,10 @@ subroutine update_output_diagnostics(ierr)
       double precision :: qdt_center, qdp_center, qcp_center, dela_center, &
            qdtt_center, qdtp_center, qat_center, qap_center, qcpt_center, &
            qcpp_center
-      integer :: ksaha_center
       double precision :: fxion(3)
-      double precision :: dd1, dd2, cz_base_mass
-      double precision :: envelope_cz_log_temperature, &
-           envelope_cz_log_density, envelope_cz_log_pressure
-! blanket save, as in wrtout: preserves envelope_boundary_fx's
-! previous-call value (the documented bug above) and ksaha_center's
-! saha-table state continuity across calls.
-      save
-   ! INTENTIONAL: incl. the documented FX/FX2 stale carry; reset via output_diag_reset_pending
-!  RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH
-      integer, intent(out) :: ierr
 
       ierr = 0
 
-! 2026 (phase five, step C): see evolve_step's matching block. This
-! includes envelope_boundary_fx, whose previous-call stale value is
-! the documented FX/FX2 quirk -- a fresh process starts it at zero,
-! so a repeated call must too.
-      if (output_diag_reset_pending) then
-         total_luminosity_sum = 0.0d0
-         temp_value = 0.0d0
-         core_boundary_fx2 = 0.0d0
-         envelope_boundary_fx = 0.0d0
-         core_boundary_log_radius = 0.0d0
-         core_boundary_radius = 0.0d0
-         pressure_linear = 0.0d0
-         log_pressure_center = 0.0d0
-         log_temperature_center = 0.0d0
-         log_density_center = 0.0d0
-         hydrogen_fraction_center = 0.0d0
-         metal_fraction_center = 0.0d0
-         temperature_linear_center = 0.0d0
-         density_linear_center = 0.0d0
-         beta_center = 0.0d0
-         beta_inverse_center = 0.0d0
-         beta14_center = 0.0d0
-         mean_molecular_weight_center = 0.0d0
-         amu_center = 0.0d0
-         electron_mean_molecular_weight_center = 0.0d0
-         degeneracy_eta_center = 0.0d0
-         qdt_center = 0.0d0
-         qdp_center = 0.0d0
-         qcp_center = 0.0d0
-         dela_center = 0.0d0
-         qdtt_center = 0.0d0
-         qdtp_center = 0.0d0
-         qat_center = 0.0d0
-         qap_center = 0.0d0
-         qcpt_center = 0.0d0
-         qcpp_center = 0.0d0
-         dd1 = 0.0d0
-         dd2 = 0.0d0
-         cz_base_mass = 0.0d0
-         envelope_cz_log_temperature = 0.0d0
-         envelope_cz_log_density = 0.0d0
-         envelope_cz_log_pressure = 0.0d0
-         fxion = 0.0d0
-         ksaha_center = 0
-         is_atmosphere_point = .false.
-         compute_derivatives = .false.
-         output_diag_reset_pending = .false.
-      end if
-
-      if(.not.helium_flash_active) then
-       total_luminosity_sum = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
-            star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
-            star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
-       temp_value = star%luminosity_lsun(star%nz)/total_luminosity_sum
-       do i = 1,8
-          star%luminosity_breakdown(i) = star%luminosity_breakdown(i)*temp_value
-       end do
-      endif
-
-!  CALCULATE MASS OF CENTRAL AND SURFACE CONVECTION ZONES
-!  THESE MASSES ARE IN SOLAR UNITS
-      if(star%core_cz_top_index.gt.1) then
-       star%run%core_cz_mass = star%m(star%core_cz_top_index)/solar_mass_cgs
-      else
-       star%run%core_cz_mass = 0.0D0
-      endif
-
-! JVS 10/11 Be more care about the true boundary of the convective core
-      if (star%core_cz_top_index.gt.1) then
-! JVS 10/11 note: this formula reads envelope_boundary_fx (FX), which
-! at this point has not yet been assigned in this call (it is set
-! further below, in the JENV block) -- with SAVE it carries over
-! whatever value it held at the end of the previous call to this
-! subroutine. core_boundary_fx2 (FX2) is computed just above but is
-! NOT what is used here -- this looks like a bug (FX2 vs FX typo) in
-! the original wrtout.f, preserved exactly, not fixed.
-       core_boundary_fx2 = (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))/ &
-             (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))
-       core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
-            (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-log10_solar_radius
-       core_boundary_radius = dexp(ln10*core_boundary_log_radius)
-      else
-       core_boundary_radius = 0.0D0
-      endif
-! JVS end
-
-! MHP 02/12 MOVED ABOVE SECTION WHERE THESE ARE USED
-!  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
-!  CENTRAL ETA AND BETA ARE ALSO CALCULATED.
 !  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
       temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+star%logRho(1)-star%log_mass(1))+star%logRho(1)+cgl+star%log_mass(1)))
       pressure_linear = dexp(ln10*star%logP(1))
@@ -185,16 +200,28 @@ subroutine update_output_diagnostics(ierr)
            compute_derivatives,is_atmosphere_point,ksaha_center, &
            composition_at_zone=star%xa(:,1), ierr=ierr)
       if (ierr /= 0) return
-! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
 ! STORE CENTRAL RHO,P,T FOR LATER USE
       star%run%central_log10_pressure = log_pressure_center
       star%run%central_log10_temperature = log_temperature_center
       star%run%central_log10_density = log_density_center
       star%run%central_beta = beta_center
       star%run%central_degeneracy_eta = degeneracy_eta_center
+end subroutine compute_central_conditions
+
+! ---------------------------------------------------------------
+!  Surface-CZ base: interpolate the zone edge at the base of the
+!  surface convection zone, filling star%run%envelope_mass/
+!  envelope_radius/envelope_cz_*. Sets the module-level
+!  envelope_boundary_fx (the FX of the FX/FX2 story).
 ! MHP 02/12 FIXED MINOR GLITCH ON BASE OF THE CONVECTION ZONE
 ! PROPERTIES FOR FULLY CONVECTIVE STARS; TCENTER PCENTER RHOCENTER
-! WERE BEING DEFINED AFTER THIS CODE SECTION
+! WERE BEING DEFINED AFTER THIS CODE SECTION (hence central
+! conditions run first).
+subroutine locate_surface_cz_base
+      double precision :: dd1, dd2, cz_base_mass
+      double precision :: envelope_cz_log_temperature, &
+           envelope_cz_log_density, envelope_cz_log_pressure
+
       if(star%envelope_cz_bottom_index.lt.star%nz) then
        if(star%envelope_cz_bottom_index.gt.1) then
 !  FIND MASS FRACTION OF THE ZONE EDGE AT BASE OF SURFACE C.Z.
@@ -239,14 +266,14 @@ subroutine update_output_diagnostics(ierr)
          star%run%envelope_cz_pressure = 0.0D0
          star%run%envelope_cz_o16 = 0.0D0
       endif
+end subroutine locate_surface_cz_base
 
-
-
-! ---- 2026 MESA-style output: fill the per-model history sources ----
-! (star%run% members read by write_history). Formulas are the legacy
-! .track v0 branch's, verbatim. Legacy mode skips this: wrtout
-! computes the same values internally with pinned print ordering.
-      if (.not. use_legacy_output) then
+! ---------------------------------------------------------------
+! Refresh the turnover timescale for the history column, with the
+! lag bookkeeping (the physics consumers -- getw, the wind, the
+! deuterium limiter -- drive their own gettau calls; this one only
+! freshens the reported value).
+subroutine refresh_turnover_timescale
       call gettau(star%xa, star%logR, star%logP, star%logRho, &
            star%m, star%logT, star%fp_rot, star%ft_rot, &
            star%log_Teff, star%log_total_mass, star%log_L, star%nz, &
@@ -254,12 +281,23 @@ subroutine update_output_diagnostics(ierr)
       star%turnover%convective_turnover_timescale_old = &
            star%turnover%convective_turnover_timescale
       star%turnover%pphot0 = star%turnover%pphot
+end subroutine refresh_turnover_timescale
 
+! ---------------------------------------------------------------
+! Surface radius and gravity from L and Teff.
+subroutine compute_surface_globals
       star%run%log_R_surface = 0.5d0*(star%log_L + log10_solar_luminosity &
            - c4pil - csigl - 4.0d0*star%log_Teff)
       star%run%log_g_surface = cgl + star%env_comp%stotal &
            - 2.0d0*star%run%log_R_surface
       star%run%log_R_surface = star%run%log_R_surface - log10_solar_radius
+end subroutine compute_surface_globals
+
+! ---------------------------------------------------------------
+! Total moment of inertia (thin-shell sum without rotation, i_rot
+! sum with).
+subroutine compute_moment_of_inertia
+      integer :: i
 
       star%run%total_moment_of_inertia = 0.0d0
       if (.not. rotation_active) then
@@ -274,6 +312,12 @@ subroutine update_output_diagnostics(ierr)
                  star%run%total_moment_of_inertia + star%i_rot(i)
          end do
       end if
+end subroutine compute_moment_of_inertia
+
+! ---------------------------------------------------------------
+! Chlorine/gallium SNU capture rates from the neutrino flux totals.
+subroutine compute_snu_rates
+      integer :: i
 
       star%flux%cl37_snu_rate = 0.0d0
       star%flux%ga71_snu_rate = 0.0d0
@@ -289,6 +333,13 @@ subroutine update_output_diagnostics(ierr)
             star%flux%neutrino_flux_total(i) = 0.0d0
          end do
       end if
+end subroutine compute_snu_rates
+
+! ---------------------------------------------------------------
+! Surface rotation period/velocity and the CZ moment of inertia.
+! (Reads star%run%log_R_surface -- compute_surface_globals first.)
+subroutine compute_rotation_observables
+      integer :: i
 
       star%run%cz_moment_of_inertia = 0.0d0
       if (rotation_active) then
@@ -313,7 +364,12 @@ subroutine update_output_diagnostics(ierr)
             end do
          end if
       end if
+end subroutine compute_rotation_observables
 
+! ---------------------------------------------------------------
+! H-burning shell boundary masses and (surface-relative) radii.
+! (Reads star%run%log_R_surface -- compute_surface_globals first.)
+subroutine compute_h_shell_boundaries
       if (star%evo%has_h_shell) then
          star%run%h_shell_bot_mass = &
               star%m(star%evo%h_shell_zone_begin)/solar_mass_cgs
@@ -338,6 +394,6 @@ subroutine update_output_diagnostics(ierr)
          star%run%h_shell_mid_radius = 0.0d0
          star%run%h_shell_top_radius = 0.0d0
       end if
-      end if
+end subroutine compute_h_shell_boundaries
 
-end subroutine update_output_diagnostics
+end module observables_lib

@@ -5,7 +5,7 @@
 ! output feature: writes the converged model's structure to a GYRE-
 ! format stellar model file (MESA/GYRE schema 101, 18 data columns),
 ! independent of YREC's own older path-length-triggered OPAL-format
-! pulsation writer (misc/pdist.f90 + io/wrtmod.f90, gated by LPULSE).
+! pulsation writer (io/pdist.f90 + io/wrtmod.f90, gated by LPULSE).
 ! This routine is instead triggered by wrtout.f90 every
 ! pulse_gyre_interval converged models (common/pulsegyre/,
 ! new NAMELIST /control/ member, default 0 = off; see core/parmin.f90).

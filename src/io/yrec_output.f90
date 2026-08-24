@@ -26,7 +26,8 @@
 !                                  format per pulse_format.
 !
 ! Writers are PURE READERS: every quantity is computed by
-! update_output_diagnostics (after the step's physics) into star_info.
+! compute_observables (core/observables_lib.f90, after the step's
+! physics) into star_info.
 ! Module state below is per-job configuration (paths, parsed column
 ! selections, the profile counter), reset by output_init_mesa on
 ! every job -- re-entrant runs re-enter through it.
@@ -131,7 +132,7 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
               trial_sign_flag, punch_pending_flag, total_angular_momentum, &
               total_rotational_kinetic_energy)
       else
-! Every quantity below was computed by update_output_diagnostics and
+! Every quantity below was computed by compute_observables and
 ! stored in star_info; the writers are pure readers. wrtout computes
 ! log_gravity as an output on the legacy path; hand back the stored
 ! value here.

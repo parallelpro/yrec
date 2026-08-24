@@ -214,7 +214,7 @@ module star_info_lib
 ! ---- from state/run_diag_lib.f90 ----
       type, public :: run_diagnostics_state
 ! 2026 MESA-style output: per-model history sources. Computed by
-! update_output_diagnostics after all physics for the step is done;
+! compute_observables after all physics for the step is done;
 ! writers (write_history) only read them. Zero at run start
 ! (star0 snapshot / static zero), refreshed every converged model.
            double precision :: log_R_surface, log_g_surface
@@ -254,9 +254,9 @@ module star_info_lib
 ! former common/cent/
            double precision :: central_log10_temperature, central_log10_pressure, &
                 central_log10_density, envelope_mass, envelope_radius
-! 2026 (phase four, step 5): output diagnostics formerly computed as
+! 2026 (phase four, step 5): observables formerly computed as
 ! locals inside io/wrtout.f90, now filled by the star layer
-! (core/update_output_diagnostics.f90) and only READ by the writers.
+! (core/observables_lib.f90) and only READ by the writers.
            double precision :: central_beta, central_degeneracy_eta
            double precision :: core_cz_mass
            double precision :: envelope_cz_temperature, envelope_cz_density, &
@@ -576,6 +576,6 @@ module star_info_lib
       character(len=256), public, save :: control_nml_override = ' '
       character(len=256), public, save :: physics_nml_override = ' '
       logical, public, save :: evolve_step_reset_pending = .false.
-      logical, public, save :: output_diag_reset_pending = .false.
+      logical, public, save :: observables_reset_pending = .false.
 
 end module star_info_lib

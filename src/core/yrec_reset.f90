@@ -18,7 +18,7 @@
 ! (test_reentry.py) verifies the end-to-end equivalence.
 module yrec_reset_lib
       use star_info_lib, only: star, star_info, evolve_step_reset_pending, &
-           output_diag_reset_pending
+           observables_reset_pending
       use controls_reset_lib
       implicit none
 
@@ -41,7 +41,7 @@ subroutine yrec_run_prologue
          star = star0
          call controls_restore
          evolve_step_reset_pending = .true.
-         output_diag_reset_pending = .true.
+         observables_reset_pending = .true.
          do u = 7, 99
             close(u)
          end do
