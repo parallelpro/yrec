@@ -13,8 +13,14 @@
 ! the envelope hydrogen fraction (X) and mixing-length alpha using
 ! pre-determined empirical partial derivatives of log L and log R with
 ! respect to X and alpha (star%run%dlum_dx/star%run%drad_dx/star%run%dlum_dalpha/star%run%drad_dalpha).
-! ONLY CALLED FOR EVEN NK, ASSUMES RESCALING ON ODD NK AND EVOLVING
-! ON EVEN NK
+! Called after every completed calibration TRIPLE (mod(nk,3) == 0;
+! the protocol comment in run_yrec's run loop is the reference):
+! card 3k+1 rescales, 3k+2 settles to 1e8 yr, 3k+3 evolves to the
+! solar age. On a miss, the corrected (X[, Z], alpha) are written
+! into the NEXT triple's cards (run_index+1 .. +3), reading the
+! previous guess from run_index-2 (this triple's rescale card).
+! (An older header here claimed the pre-5/96 even/odd pair protocol;
+! fixed 2026.)
 subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
       use star_info_lib, only: star

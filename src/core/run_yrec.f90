@@ -63,6 +63,10 @@ subroutine run_yrec(ierr)
       data reference_solar_luminosity/3.844D33/
 
 ! --- locals ---
+! calibration card protocols (see the verdict block in the run loop)
+      integer, parameter :: solar_calib_cards_per_cycle = 3
+      integer, parameter :: star_calib_cards_per_cycle = 2
+      logical :: runs_complete
       integer :: monte_carlo_run_number
       double precision :: age_scale_factor
       integer :: convergence_iterations
@@ -178,12 +182,72 @@ subroutine run_yrec(ierr)
 ! Store the card's last model if requested (2026: end_kind_card).
          call end_kind_card
 
+! --- End-of-card calibration verdict ------------------------------
+! The two calibration modes drive the run list with implicit card
+! protocols, stated here once:
+!
+!  SOLAR calibration (calibrate_solar_model; setcal/chkcal): kind
+!  cards run in TRIPLES of solar_calib_cards_per_cycle = 3 --
+!  card 3k+1 rescales the seed model to the current (X, Z, alpha)
+!  guess, card 3k+2 evolves it to 1e8 yr (settling), card 3k+3
+!  evolves to the target solar age. After each completed triple
+!  (mod(nk,3) == 0) chkcal tests (log L, log R[, log Z/X]) against
+!  the Sun and either declares convergence or writes the
+!  Newton-corrected (X, Z, alpha) into the NEXT triple's cards.
+!  setcal pre-expands the run list to 16 such triples (48 cards);
+!  the verdict below also caps the attempts at 15.
+!
+!  STAR calibration (calibrate_star_flag; setscal/chkscal): cards
+!  run in PAIRS of star_calib_cards_per_cycle = 2 -- odd cards
+!  rescale, even cards evolve. chkscal watches every model of an
+!  even card for the target-radius crossing (that check lives in
+!  evolve_step; a crossing leaves the run loop via
+!  step_leave_run_loop) and, once the luminosity there matches too,
+!  arms a final run stopped at the interpolated age
+!  (star_found_flag) -- which the verdict below turns into the end
+!  of the run list.
+         call end_of_card_calibration(runs_complete)
+         if (runs_complete) exit run_loop
+
+! END RUN LOOP
+      end do run_loop
+! EXIT RUN LOOP
+
+! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
+! MODEL PARAMETERS (legacy mode only; io/write_run_summaries.f90 --
+! 2026, core/ phase 4: the last writer left in the driver moved to
+! io/. surface_z_over_x is inout: the failed-convergence branch
+! reports the value carried from a previous cycle, historical
+! SAVE semantics preserved).
+      call write_run_summaries(monte_carlo_run_number, &
+           convergence_iterations, initial_x_guess, initial_alpha_guess, &
+           log_r_rsun, surface_z_over_x)
+      end do
+
+! 2026 (phase five, step B): the normal end-of-job stop became this
+! clean return (ierr stays 0); the CLI wrapper simply ends.
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! End-of-kind-card calibration verdict (see the protocol comment
+! at the call site). Sets runs_complete when the run list is done:
+! solar calibration converged (or 15 attempts exhausted), or the
+! star-calibration target has been hit on an even card. On a
+! non-final solar triple, applies the between-cycle bookkeeping
+! (iteration counter, pulse-file rewinds, LPTIME/KTTAU restores),
+! ordering preserved exactly.
+subroutine end_of_card_calibration(runs_complete)
+      logical, intent(out) :: runs_complete
+
+      runs_complete = .false.
 ! MHP 1/93 CHECK AUTOMATIC CALIBRATATION OF SOLAR MODEL.
 !c MHP 5/96 changed solar calibration to perform solar models in 3 kind cards
          if (calibrate_solar_model) then
 ! JVS Turn off calcad - speeds things up
             compute_acoustic_depth=.false.
-            if (mod(nk,3).eq.0) then
+            if (mod(nk,solar_calib_cards_per_cycle).eq.0) then
                log_r_rsun = 0.5D0*(star%log_L+log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
                current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
@@ -192,13 +256,17 @@ subroutine run_yrec(ierr)
                use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
                if (star%run%solar_calibration_active) then
-                  exit
+                  runs_complete = .true.
+                  return
                else
 !c MHP 8/96 added counter for # of runs needed for calibration
                   convergence_iterations = convergence_iterations + 1
 ! MHP 6/97 STOP AFTER 10 ATTEMPTS AT CALIBRATION
 !                  IF(ICONV.GE.11) GOTO 250
-                  if (convergence_iterations.ge.15) exit
+                  if (convergence_iterations.ge.15) then
+                     runs_complete = .true.
+                     return
+                  end if
                   if (pulsation_output_active) then
 ! DBG 6/93 Need to delete pulse output because have not got ultimate
 ! model yet.
@@ -221,28 +289,12 @@ subroutine run_yrec(ierr)
          endif
 
 ! DBG 12/94 NO MORE RUNS NEEDED. HAVE CALIBRATED STELLAR MODEL
-         if (calibrate_star_flag .and. star_found_flag.and.(mod(nk,2).eq.0)) exit
+         if (calibrate_star_flag .and. star_found_flag.and.(mod(nk,star_calib_cards_per_cycle).eq.0)) then
+            runs_complete = .true.
+            return
+         end if
+end subroutine end_of_card_calibration
 
-! END RUN LOOP
-      end do run_loop
-! EXIT RUN LOOP
-
-! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
-! MODEL PARAMETERS (legacy mode only; io/write_run_summaries.f90 --
-! 2026, core/ phase 4: the last writer left in the driver moved to
-! io/. surface_z_over_x is inout: the failed-convergence branch
-! reports the value carried from a previous cycle, historical
-! SAVE semantics preserved).
-      call write_run_summaries(monte_carlo_run_number, &
-           convergence_iterations, initial_x_guess, initial_alpha_guess, &
-           log_r_rsun, surface_z_over_x)
-      end do
-
-! 2026 (phase five, step B): the normal end-of-job stop became this
-! clean return (ierr stays 0); the CLI wrapper simply ends.
-      return
-
-contains
 
 ! ---------------------------------------------------------------
 ! Start one kind card: per-card composition/mixing-length settings,
