@@ -7,11 +7,10 @@
 ! crrect, mixing, rotation (getw), rezoning (hpoint), the output
 ! diagnostics + wrtout, timestep update, and the per-model stop
 ! criteria. Exits:
-!   step_status = 0  advance accepted, continue the model loop
-!   step_status = 1  run finished (age/abundance stop) -> label 110
-!                    handling in run_yrec (punch bookkeeping)
-!   step_status = 2  leave the run loop entirely (target radius
-!                    passed) -> label 200 in run_yrec
+!   step_status = step_continue        advance accepted, continue
+!   step_status = step_kind_card_done  age/abundance stop reached
+!   step_status = step_leave_run_loop  target radius crossed
+!   (named constants from core/stop_conditions.f90)
 !   ierr /= 0        error; run_yrec returns it to the CLI wrapper
 ! (Internally the historical goto 110/200 jumps now target the 810/
 ! 820 exit labels below -- the control flow is otherwise untouched.)
@@ -28,6 +27,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use const_lib
       use burn_lib
       use yrec_output, only: output_write_model
+      use stop_conditions
       implicit none
 
 ! nk (the run index) is const_lib module state (former common/zramp/),
@@ -42,7 +42,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
            iteration_level, iterations_done, max_iterations, nao, &
            num_mixed_zones, num_mixed_zones_no_overshoot, &
            num_radiative_zones, num_species, i, j, ii, itrot, jerr
-      logical :: conductive_opacity_flag, converged, end_kind_flag, &
+      logical :: conductive_opacity_flag, converged, &
            evolve_model_flag, in_atmosphere, mixing_active, &
            new_atmosphere_fit_needed, recompute_surface_bc, &
            use_correct_gradients, want_derivatives, wind_loss_active
@@ -50,7 +50,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! load-bearing: see header
       save
    ! INTENTIONAL: cross-step driver state; reset via evolve_step_reset_pending
-      step_status = 0
+      step_status = step_continue
       ierr = 0
 
 ! 2026 (phase five, step C): on a repeated run_yrec call, put this
@@ -77,7 +77,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          nao = 1
          conductive_opacity_flag = .false.
          converged = .false.
-         end_kind_flag = .false.
          evolve_model_flag = .false.
          in_atmosphere = .false.
          mixing_active = .false.
@@ -142,8 +141,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 !
 ! DBG PULSE:  if endage reached then set LPULSE to LSAVPU
 ! MHP 10/24 GENERALIZE CHECK
-         if (end_age_stop_active(nk).and.target_end_age(nk).gt.0.0D0 .and. &
-         (abs(target_end_age(nk)-star%run%dage*1.0D9-star%evo%timestep_yr) .le. 1.0D0)) then
+         if (approaching_end_age(nk)) then
                  pulsation_output_active = star%evo%saved_pulse_output_flag
 ! MHP 7/96 compute sound speed for solar model
                  star%run%sound_speed_output_active = .true.
@@ -189,13 +187,11 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! MHP 7/98
 ! need to add logic to permit resacling + time evolution for
 ! pre-main sequence models
-            if (rescale_kind(nk).ne.2 .and. star%model_number.ge.0) then
-               evolve_model_flag = .true.
-            else if (star%model_number.ge.0 .and. star%logT(1).lt.6.6D0) then
-               evolve_model_flag = .true.
-            else
-               evolve_model_flag = .false.
-            endif
+! (2026, same logic as the former if-ladder: rescale-only kind cards
+! (rescale_kind = 2) skip aging EXCEPT while the center is still cool
+! -- pre-main-sequence models rescale and age at the same time.)
+            evolve_model_flag = star%model_number.ge.0 .and. &
+                 (rescale_kind(nk).ne.2 .or. star%logT(1).lt.6.6D0)
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! ADD MASS LOSS CALCULATION
@@ -319,29 +315,15 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! FIRST LEVEL OF ITERATIONS
 ! USE ENVELOPE TRIANGLE OF THE PREVIOUS MODEL;
 ! FOR THE FIRST MODEL OF A RUN,THE TRIANGLE IS GENERATED HERE.
-            max_iterations = niter1
-            recompute_surface_bc = .false.
-! CALL TO CRRECT - ADDED ITERATION LEVEL
-            iteration_level = 1
-            call crrect(star%evo%dt, max_iterations, converged, &
-                 star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
-                 star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
-                 star%evo%istore_flag, in_atmosphere, want_derivatives, &
-                 mixing_active, conductive_opacity_flag, star%evo%dlnrho_dlnt, &
-                 star%evo%dlnrho_dlnp, iterations_done, iteration_level, ierr)
+! CALL TO CRRECT - ADDED ITERATION LEVEL (2026: the four-level ladder
+! goes through the solve_level wrapper below; per-level differences
+! are only (level, max iterations, recompute surface BC))
+            call solve_level(1, niter1, .false.)
             if (ierr /= 0) return
 ! SECOND LEVEL OF ITERATIONS
 ! CHECK ENVELOPE TRIANGLE BEFORE ITERATING FOR SOLUTION
             if (star%evo%model_diverged_flag) cycle retry_step
-            recompute_surface_bc = .true.
-            max_iterations = niter2
-            iteration_level = 2
-            call crrect(star%evo%dt, max_iterations, converged, &
-                 star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
-                 star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
-                 star%evo%istore_flag, in_atmosphere, want_derivatives, &
-                 mixing_active, conductive_opacity_flag, star%evo%dlnrho_dlnt, &
-                 star%evo%dlnrho_dlnp, iterations_done, iteration_level, ierr)
+            call solve_level(2, niter2, .true.)
             if (ierr /= 0) return
             if (star%evo%model_diverged_flag) cycle retry_step
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
@@ -355,15 +337,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                end do
             endif
 ! THIRD LEVEL OF ITERATIONS
-            recompute_surface_bc = .false.
-            max_iterations = niter3
-            iteration_level = 3
-            call crrect(star%evo%dt, max_iterations, converged, &
-                 star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
-                 star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
-                 star%evo%istore_flag, in_atmosphere, want_derivatives, &
-                 mixing_active, conductive_opacity_flag, star%evo%dlnrho_dlnt, &
-                 star%evo%dlnrho_dlnp, iterations_done, iteration_level, ierr)
+            call solve_level(3, niter3, .false.)
             if (ierr /= 0) return
             if (star%evo%model_diverged_flag) cycle retry_step
             if (.not.rotation_active) then
@@ -400,15 +374,9 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! Surface boundary conditions checked again since we've changed the
 ! star%xa (and hence the structure) of the model in ITLVL=3
 ! (to be implemented when I know the rest of it works!)
-            max_iterations = niter4
-            recompute_surface_bc=.false.
-            iteration_level = 4
-            call crrect(star%evo%dt, max_iterations, converged, &
-                 star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
-                 star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
-                 star%evo%istore_flag, in_atmosphere, want_derivatives, &
-                 mixing_active, conductive_opacity_flag, star%evo%dlnrho_dlnt, &
-                 star%evo%dlnrho_dlnp, iterations_done, iteration_level, ierr)
+! (level 4 runs INSIDE the structure<->rotation iteration above,
+! unlike levels 1-3 -- deliberate, see the itrot loop)
+            call solve_level(4, niter4, .false.)
             if (ierr /= 0) return
 !  25         CONTINUE
             if (.not.converged) then
@@ -444,9 +412,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! MHP 9/94 ADDED FLAG TO TURN ON ROTATION OUTPUT WHEN END OF KIND
 ! CARD REACHED.
 ! MHP 10/24 GENERALIZE CHECK
-         if (end_age_stop_active(nk).and.target_end_age(nk).gt.0.0D0 .and. &
-         (abs(target_end_age(nk)-star%run%dage*1.0D9-star%evo%timestep_yr) .le. 1.0D0)) then
-!               IF(LENDAG(NK).AND.ENDAGE(NK)-DAGE*1.0D9.LE.1.0D0)THEN
+               if (approaching_end_age(nk)) then
                   star%run%lprt0_placeholder = .true.
                else
                   star%run%lprt0_placeholder = .false.
@@ -519,7 +485,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 !     INSTEAD WRITE THE PREVIOUS MODEL TIMESTEP TO MODEL.
 ! ONLY IF A FIXED END AGE IS USED, NOT FOR OTHER STOPS
        if (end_age_stop_active(nk) .and. target_end_age(nk).gt.0.0D0) then
-          if (target_end_age(nk)-star%run%dage*1.0D9.le.1.0D0) then
+          if (reached_end_age(nk)) then
              star%evo%dt = max(star%evo%dt_saved,1.0D-3*star%run%dage*seconds_per_year)
              star%evo%timestep_yr = star%evo%dt/seconds_per_year
           else
@@ -543,47 +509,31 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! MHP 10/24 GENERALIZED STOP CONDITIONS
 !     IF EVOLVING TO A GIVEN AGE AND AGE IS REACHED, KIND CARD IS DONE
 !       IF(LENDAG(NK).AND.ENDAGE(NK)-DAGE*1.0D9.LE.1.0D0)GOTO 110
-       if (end_age_stop_active(nk).and.target_end_age(nk).gt.0.0D0 .and. (target_end_age(nk)-star%run%dage*1.0D9).le.1.0D0) then
-          step_status = 1
+       if (reached_end_age(nk)) then
+          step_status = step_kind_card_done
           return
        end if
 ! MHP 10/24 CHECK ALL STOP CONDITIONS, EXIT IF ANY SATISFIED
-         end_kind_flag = .false.
-         if (end_age_stop_active(nk).and.central_deuterium_stop(nk).gt.0.0D0 .and. &
-              star%xa(i_h2,1).lt.central_deuterium_stop(nk)) then
-            write(*,104)star%xa(i_h2,1),central_deuterium_stop(nk)
- 104        format('CENTRAL D ',E12.4,' BELOW STOP VALUE ',E12.4)
-            end_kind_flag =.true.
-         endif
-         if (end_age_stop_active(nk).and.central_hydrogen_stop(nk).gt.0.0D0 .and. &
-              star%xa(i_h1,1).lt.central_hydrogen_stop(nk)) then
-            write(*,105)star%xa(i_h1,1),central_hydrogen_stop(nk)
- 105        format('CENTRAL X ',E12.4,' BELOW STOP VALUE ',E12.4)
-            end_kind_flag =.true.
-         endif
-         if (end_age_stop_active(nk).and.central_helium_stop(nk).gt.0.0D0 .and. &
-              star%xa(i_he4,1).lt.central_helium_stop(nk)) then
-            write(*,106)star%xa(i_he4,1),central_helium_stop(nk)
- 106        format('CENTRAL Y ',E12.4,' BELOW STOP VALUE ',E12.4)
-            end_kind_flag =.true.
-         endif
-! IF EXITING, SET I/O FLAGS PROPERLY AND EXIT LOOP
-         if (end_kind_flag) then
+! (2026: the D/X/Y checks are one table walk in stop_conditions)
+         if (abundance_stop_triggered(nk)) then
+! SET I/O FLAGS PROPERLY AND EXIT LOOP
             pulsation_output_active = star%evo%saved_pulse_output_flag
             star%run%sound_speed_output_active = .true.
             star%run%lprt0_placeholder = .true.
-            step_status = 1
+            step_status = step_kind_card_done
             return
          endif
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
          if (calibrate_star_flag .and. .not. star_found_flag) then
             if (mod(nk,2).eq.0) then
+! chkscal protocol: iteration 1 only primes its previous-model state
+! (the value computed here is never read -- see chkscal.f90)
              if (model_iteration.eq.1) then
                 teff_kelvin_unused = 10.0D0**star%log_Teff
              else
                 call chkscal(star%log_L, star%log_Teff, star%run%dage, nk)
                 if (just_passed_target_radius_flag) then
-                   step_status = 2
+                   step_status = step_leave_run_loop
                    return
                 end if
              end if
@@ -592,6 +542,30 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 
 ! END OF RUN
 
-      step_status = 0
+      step_status = step_continue
       return
+contains
+
+! ---------------------------------------------------------------
+! One level of the corrector ladder: same crrect call for every
+! level; only the level number, its iteration budget, and whether
+! the surface boundary condition is re-verified differ. All other
+! arguments are the host's locals / star%evo state, via host
+! association. ierr and the divergence flag are checked by the
+! caller after each level.
+subroutine solve_level(level, level_max_iterations, check_surface_bc)
+      integer, intent(in) :: level, level_max_iterations
+      logical, intent(in) :: check_surface_bc
+
+      iteration_level = level
+      max_iterations = level_max_iterations
+      recompute_surface_bc = check_surface_bc
+      call crrect(star%evo%dt, max_iterations, converged, &
+           star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, &
+           star%evo%reset_triangle, recompute_surface_bc, star%evo%trial_sign_flag, &
+           star%evo%istore_flag, in_atmosphere, want_derivatives, &
+           mixing_active, conductive_opacity_flag, star%evo%dlnrho_dlnt, &
+           star%evo%dlnrho_dlnp, iterations_done, iteration_level, ierr)
+end subroutine solve_level
+
 end subroutine evolve_step

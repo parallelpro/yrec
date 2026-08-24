@@ -63,7 +63,7 @@ OBJS := $(patsubst %.f90,%.o,$(SRCS))
 # statement. The order-only prerequisite below (declared once all module
 # sources are known) ensures every module object is built first, safely
 # under parallel (-j) builds, without forcing spurious rebuilds.
-MODULE_SRCS := const/phys_const_lib.f90 const/controls_lib.f90 const/controls_reset_lib.f90 const/const_lib.f90 const/luout_lib.f90 const/intpar_lib.f90 atm/envstruct_lib.f90 atm/atmstruct_lib.f90 eos/scv_eos_lib.f90 eos/eos_mixture_lib.f90 kap/conductive_table_lib.f90 state/star_info_lib.f90 atm/atm_table_lib.f90 eos/mhd_eos_lib.f90 kap/opacity_table_lib.f90 eos/opal_eos_lib.f90 eos/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/yrec_reset.f90 core/yrec_capi.f90 io/yrec_output.f90
+MODULE_SRCS := const/phys_const_lib.f90 const/controls_lib.f90 const/controls_reset_lib.f90 const/const_lib.f90 const/luout_lib.f90 const/intpar_lib.f90 atm/envstruct_lib.f90 atm/atmstruct_lib.f90 eos/scv_eos_lib.f90 eos/eos_mixture_lib.f90 kap/conductive_table_lib.f90 state/star_info_lib.f90 atm/atm_table_lib.f90 eos/mhd_eos_lib.f90 kap/opacity_table_lib.f90 eos/opal_eos_lib.f90 eos/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/stop_conditions.f90 core/yrec_reset.f90 core/yrec_capi.f90 io/yrec_output.f90
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
@@ -77,6 +77,8 @@ const/const_lib.o: | const/phys_const_lib.o const/controls_lib.o
 # parmin embeds the generated new-style inlist reader
 io/parmin.o: io/inlist_new_decl.inc io/inlist_new_read.inc
 core/yrec_capi.o: | state/star_info_lib.o
+core/stop_conditions.o: | state/star_info_lib.o const/const_lib.o \
+	const/luout_lib.o const/controls_lib.o
 io/yrec_output.o: | const/const_lib.o const/luout_lib.o state/star_info_lib.o \
 	core/envint_lib.o atm/envstruct_lib.o atm/atmstruct_lib.o
 numerics/numerics_lib.o: | const/const_lib.o const/intpar_lib.o \

@@ -26,11 +26,13 @@ subroutine run_yrec(ierr)
 ! statement. it defines JSON. to change the array size do a global
 ! change on "JSON=2000" or whatever.
       use net_lib
-      use star_info_lib, only: star, i_h1, i_h2, i_he4, i_lum_grav, i_metals
+      use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_metals
       use yrec_output, only: output_run_header
       use luout_lib
       use const_lib
       use yrec_reset_lib, only: yrec_run_prologue
+      use stop_conditions, only: step_kind_card_done, &
+           step_leave_run_loop, disarm_satisfied_stops
       implicit none
       integer :: step_status
       integer, parameter :: json = 5000
@@ -193,36 +195,10 @@ subroutine run_yrec(ierr)
           return
       endif
 !     MHP 10/24 CHECK STOP CONDITIONS AND DISABLE THEM IF THE STARTING VALUES ARE BELOW THE TARGET THRESHOLD
-         if (end_age_stop_active(nk)) then
-            if (central_deuterium_stop(nk).gt.0.0D0 .and. &
-                 star%xa(i_h2,1).lt.central_deuterium_stop(nk)) then
-               central_deuterium_stop(nk)=-central_deuterium_stop(nk)
-               write(*,101)star%xa(i_h2,1),central_deuterium_stop(nk)
-               write(short_file_unit,101)star%xa(i_h2,1),central_deuterium_stop(nk)
- 101           format('STARTING D ',E12.4,' BELOW STOP VALUE ', &
-                      E12.4,' STOP DISABLED.')
-            endif
-            if (central_hydrogen_stop(nk).gt.0.0D0 .and. &
-                 star%xa(i_h1,1).lt.central_hydrogen_stop(nk)) then
-! 2026: fixed an inherited bug (present in the original F77): this
-! branch disarmed central_deuterium_stop instead of the hydrogen stop
-! it had just tested, and the messages printed the deuterium values.
-               central_hydrogen_stop(nk)=-central_hydrogen_stop(nk)
-               write(*,102)star%xa(i_h1,1),central_hydrogen_stop(nk)
-               write(short_file_unit,102)star%xa(i_h1,1),central_hydrogen_stop(nk)
- 102           format('STARTING X ',E12.4,' BELOW STOP VALUE ', &
-                      E12.4,' STOP DISABLED.')
-            endif
-            if (central_helium_stop(nk).gt.0.0D0 .and. &
-                 star%xa(i_he4,1).lt.central_helium_stop(nk)) then
-               central_helium_stop(nk)=-central_helium_stop(nk)
-! 2026: message fixed alongside the bug above (printed D values).
-               write(*,103)star%xa(i_he4,1),central_helium_stop(nk)
-               write(short_file_unit,103)star%xa(i_he4,1),central_helium_stop(nk)
- 103           format('STARTING Y ',E12.4,' BELOW STOP VALUE ', &
-                      E12.4,' STOP DISABLED.')
-            endif
-         endif
+! (2026: one table walk in stop_conditions -- the hand-written D/X/Y
+! triple that used to live here carried the disarm-the-wrong-stop bug
+! fixed in phase 1.)
+         call disarm_satisfied_stops(nk)
 ! Opt-in diagnostic (2026): the former LNUTAB per-zone neutrino
 ! table, off since 2004, is now the compute_neutrino_fluxes control
 ! (core/neutrino_flux_table.f90); it describes the starting model
@@ -299,8 +275,8 @@ subroutine run_yrec(ierr)
 ! core/evolve_step.f90 (see its header for the step_status contract).
        call evolve_step(model_iteration, step_status, ierr)
        if (ierr /= 0) return
-       if (step_status == 1) exit
-       if (step_status == 2) cycle run_loop   ! (was goto 200, the run-loop terminator)
+       if (step_status == step_kind_card_done) exit
+       if (step_status == step_leave_run_loop) cycle run_loop
        end do
 
 ! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
