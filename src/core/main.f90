@@ -135,12 +135,12 @@
 !   - Several common blocks establish "_placeholder"-suffixed names
 !     for members that are unused in the file(s) that first declared
 !     them, but that this file actually reads/writes (common/acdpth/'s
-!     ageout_placeholder/lclcd_placeholder/ljlast_placeholder/
-!     ljwrt_placeholder; common/rotprt/'s star%run%lprt0_placeholder;
+!     output_ages_gyr/calcad_ageout_output_active/ageout_model_output_flag/
+!     ageout_bracket_armed; common/rotprt/'s star%run%lprt0_placeholder;
 !     common/chrone/'s lrwsh_placeholder; common/cenv/'s
 !     lnew0). Per the precedent set by atm_lib.f90 (keeps
-!     lclcd_placeholder despite noting its own active use) and
-!     getw.f90 (keeps star%run%lprt0_placeholder despite noting its own active
+!     calcad_ageout_output_active despite noting its own active use) and
+!     getw.f90 (keeps star%run%print_rotation_diagnostics despite noting its own active
 !     use), these established names are reused verbatim here too
 !     rather than renamed, even though this file actively assigns/
 !     reads them; each active use is called out in a comment at its

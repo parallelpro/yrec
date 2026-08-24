@@ -482,7 +482,7 @@ subroutine integrate_atmosphere
        endif
 ! DBG PULSE ATMOSPHERE VALUES FOR PULSATION
 ! JVS 02/11 - Added LCLCD option to IF statement
-       if ((pulse_print_flag.and.print_flag) .or. lclcd_placeholder .or. lstch) then
+       if ((pulse_print_flag.and.print_flag) .or. calcad_ageout_output_active .or. lstch) then
           star%pulse%qqed = 0.0d0
           pulse_energy_sum = 0.0d0
           star%pulse%qqet = 0.0d0
@@ -1015,7 +1015,7 @@ subroutine track_envelope_cz
 
             log10_cz_radius = env_struct%env_log10_radius(cz_start_index-1)+interp_fraction* &
                  (env_struct%env_log10_radius(cz_start_index)-env_struct%env_log10_radius(cz_start_index-1))-log10_solar_radius
-            star%run%convection_zone_radius_placeholder = exp(ln10*log10_cz_radius)
+            star%run%envelope_cz_base_radius_rsun = exp(ln10*log10_cz_radius)
 
             do i=1,env_struct%num_env_points
                   taucal_shell_mass(i) = dexp(ln10*(env_struct%env_log10_mass(i)+log10_star_mass))

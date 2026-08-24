@@ -74,7 +74,7 @@
       calibrate_star_flag = lcalst
       use_pure_z_table = lpurez
       isochrone_output_active = liso
-      lrwsh_placeholder = lrwsh
+      rewind_short_file = lrwsh
       has_senv0_array = lsenv0a
       po_output_enabled = lpout
       calibrate_solar_model = lcals
@@ -444,7 +444,7 @@
       lcalst = calibrate_star_flag
       lpurez = use_pure_z_table
       liso = isochrone_output_active
-      lrwsh = lrwsh_placeholder
+      lrwsh = rewind_short_file
       lsenv0a = has_senv0_array
       lpout = po_output_enabled
       lcals = calibrate_solar_model

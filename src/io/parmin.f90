@@ -500,7 +500,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       logical :: lpurez
 
 ! lrwsh/liso: NAMELIST /physics/ members, each with a different
-! canonical const_lib spelling (lrwsh_placeholder/
+! canonical const_lib spelling (rewind_short_file/
 ! isochrone_output_active), so kept local under their NAMELIST spelling
 ! here and copy-assigned after the namelist read below. iiso (former
 ! common/chrone/'s remaining member) is not a namelist value and
@@ -720,9 +720,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
 ! former common/acdpth/: ageout/lclcd/iclcd/ljlast/ljwrt/lacout are not
 ! namelist values and genuinely used in this file -- renamed in place
-! to their canonical const_lib names (ageout_placeholder/
-! lclcd_placeholder/iclcd_placeholder/ljlast_placeholder/
-! ljwrt_placeholder/acoustic_depth_output), now use-associated rather
+! to their canonical const_lib names (output_ages_gyr/
+! calcad_ageout_output_active/calcad_file_unit/ageout_model_output_flag/
+! ageout_bracket_armed/acoustic_depth_output), now use-associated rather
 ! than locally declared. Their DATA defaults moved to const_lib.f90
 ! since DATA can no longer target them here. tauczn/deladj/tauhe/
 ! tnorm/tcz/whe/acatmr/acatmd/acatmp/acatmt/tatmos/iacat/ijlast/ladon/
@@ -1139,8 +1139,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! common/cmixing/): DATA can no longer target them here now that
 ! they're use-associated.
 ! JVS 02/11 Initialize acoustic depth common block values appropriately
-! ageout_placeholder/lclcd_placeholder/ljlast_placeholder/
-! ljwrt_placeholder/acoustic_depth_output defaults moved to
+! output_ages_gyr/calcad_ageout_output_active/ageout_model_output_flag/
+! ageout_bracket_armed/acoustic_depth_output defaults moved to
 ! const_lib.f90 (former common/acdpth/): DATA can no longer target
 ! them here now that they're use-associated.
 ! JVS end
@@ -1529,7 +1529,7 @@ subroutine adopt_canonical_names
       num_core_shells_added = mcore
       core_mass_reduction_factor = fcore
       use_pure_z_table = lpurez
-      lrwsh_placeholder = lrwsh
+      rewind_short_file = lrwsh
       isochrone_output_active = liso
       initial_x_array = xenv0a
       initial_z_array = zenv0a
@@ -1705,12 +1705,12 @@ subroutine derive_options_and_open_files
 ! in the same directory as all other output, and names it with the
 ! same conventions
       if (acoustic_depth_output .and. use_legacy_output) then
-            iclcd_placeholder = 91
+            calcad_file_unit = 91
             short_prefix_len=index(fshort,'short')
             fcalcad=fshort(1:short_prefix_len-1)//'calcad'
-            open(unit=iclcd_placeholder, file=fcalcad, status='UNKNOWN')
-            write(iclcd_placeholder,*) 'Acoustic depth calculation output file'
-            write(iclcd_placeholder,*) 'age (Gyr),radius(cm),1/sound speed(s/cm),radius (CZ), 1/cs (CZ)                                         &
+            open(unit=calcad_file_unit, file=fcalcad, status='UNKNOWN')
+            write(calcad_file_unit,*) 'Acoustic depth calculation output file'
+            write(calcad_file_unit,*) 'age (Gyr),radius(cm),1/sound speed(s/cm),radius (CZ), 1/cs (CZ)                                         &
 &       delad,gamma1,P, T, X'
 
 

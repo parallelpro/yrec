@@ -549,12 +549,12 @@ module controls_lib
       integer :: num_core_shells_added
       double precision :: core_mass_reduction_factor
 
-! former common/chrone/: lrwsh_placeholder/isochrone_output_active
+! former common/chrone/: rewind_short_file/isochrone_output_active
 ! (originally lrwsh/liso) are NAMELIST values with different canonical
 ! spellings, kept local in core/parmin.f90 and copy-assigned.
 ! isochrone_file_unit (originally iiso) is not a namelist value --
 ! genuinely used in core/parmin.f90, renamed in place there.
-      logical :: lrwsh_placeholder, isochrone_output_active
+      logical :: rewind_short_file, isochrone_output_active
       integer :: isochrone_file_unit
 
 ! former common/newxym/: initial_x_array/initial_z_array/
@@ -709,16 +709,16 @@ module controls_lib
 ! directly.
       double precision :: cstmixing = 1.0d0, cstdiffmix = 1.0d0
 
-! former common/acdpth/: ageout_placeholder/lclcd_placeholder/
-! iclcd_placeholder/ljlast_placeholder/ljwrt_placeholder/
+! former common/acdpth/: output_ages_gyr/calcad_ageout_output_active/
+! calcad_file_unit/ageout_model_output_flag/ageout_bracket_armed/
 ! acoustic_depth_output (originally ageout/lclcd/iclcd/ljlast/ljwrt/
 ! lacout) are not namelist values -- genuinely used in
 ! core/parmin.f90, renamed in place there. Their DATA defaults moved
 ! here since DATA can no longer target use-associated entities.
-! taucz_placeholder/deladj_placeholder/tauhe_placeholder/
-! tnorm_placeholder/tcz_placeholder/whe_placeholder/acatmr_placeholder/
+! acoustic_depth_cz_fraction/eos_adiabatic_gradient/acoustic_depth_heii/
+! acoustic_crossing_time_seconds/acoustic_depth_cz_seconds/heii_zone_acoustic_width/acatmr_placeholder/
 ! acatmd_placeholder/acatmp_placeholder/acatmt_placeholder/
-! tatmos_placeholder/iacat_placeholder/ijlast_placeholder/
+! atmosphere_sound_travel_time/iacat_placeholder/ageout_model_unit/
 ! laoly_placeholder/ijvs_placeholder/ijent_placeholder/ijdel_placeholder
 ! (former common/acdpth/'s remaining members, originally tauczn/
 ! deladj/tauhe/tnorm/tcz/whe/acatmr/acatmd/acatmp/acatmt/tatmos/iacat/
@@ -732,21 +732,21 @@ module controls_lib
 ! per the majority-name convention). compute_acoustic_depth (LADON) is
 ! spelled identically to its canonical name everywhere -- used, not a
 ! placeholder.
-      double precision :: taucz_placeholder, deladj_placeholder(5000), &
-           tauhe_placeholder, tnorm_placeholder, &
-           tcz_placeholder, whe_placeholder, &
+      double precision :: acoustic_depth_cz_fraction, eos_adiabatic_gradient(5000), &
+           acoustic_depth_heii, acoustic_crossing_time_seconds, &
+           acoustic_depth_cz_seconds, heii_zone_acoustic_width, &
            acatmr_placeholder(5000), acatmd_placeholder(5000), &
            acatmp_placeholder(5000), acatmt_placeholder(5000), &
-           tatmos_placeholder
-      integer :: iacat_placeholder, ijlast_placeholder
+           atmosphere_sound_travel_time
+      integer :: iacat_placeholder, ageout_model_unit
       logical :: laoly_placeholder
       integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
       logical :: compute_acoustic_depth
-      double precision :: ageout_placeholder(5) = &
+      double precision :: output_ages_gyr(5) = &
            [0.5d0, 1.0d0, 5.0d0, 10.0d0, 20.0d0]
-      logical :: lclcd_placeholder = .false., ljlast_placeholder = .false., &
-           ljwrt_placeholder = .false., acoustic_depth_output = .false.
-      integer :: iclcd_placeholder
+      logical :: calcad_ageout_output_active = .false., ageout_model_output_flag = .false., &
+           ageout_bracket_armed = .false., acoustic_depth_output = .false.
+      integer :: calcad_file_unit
 
 ! former common/govs/: use_envelope_triangle_dt (originally ltrist) is
 ! a NAMELIST value with a different canonical spelling, kept local in

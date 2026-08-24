@@ -180,7 +180,7 @@
            & store_physics_columns, store_rotation_columns, &
            & pulsation_output_active, use_z_ramp, specify_teff_flag, &
            & calibrate_star_flag, use_pure_z_table, &
-           & isochrone_output_active, lrwsh_placeholder, &
+           & isochrone_output_active, rewind_short_file, &
            & has_senv0_array, po_output_enabled, calibrate_solar_model, &
            & calibrate_solar_zx, use_laol89_tables, use_opal92_tables, &
            & use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &

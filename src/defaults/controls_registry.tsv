@@ -67,8 +67,8 @@ control	lzramp	logical	.false.	use_z_ramp	canonical
 control	lteff	logical	.false.*	specify_teff_flag	canonical		
 control	lcalst	logical	.false.*	calibrate_star_flag	canonical		
 control	lpurez	logical	.false.	use_pure_z_table	canonical		
-control	liso	logical	.false.*	isochrone_output_active	canonical		former common/chrone/: lrwsh_placeholder/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
-control	lrwsh	logical	.false.*	lrwsh_placeholder	canonical		former common/chrone/: lrwsh_placeholder/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
+control	liso	logical	.false.*	isochrone_output_active	canonical		former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
+control	lrwsh	logical	.false.*	rewind_short_file	canonical		former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
 control	lsenv0a	logical(50)	.false.*	has_senv0_array	canonical		
 control	lpout	logical	.false.*	po_output_enabled	canonical		
 control	lcals	logical	.false.*	calibrate_solar_model	canonical		

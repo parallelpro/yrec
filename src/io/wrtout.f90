@@ -489,7 +489,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !      *            LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
                   star%log_Teff, star%xa, star%run%dage, star%envelope_cz_bottom_index)
             else if (star%envelope_cz_bottom_index.eq.1) then
-                  taucz_placeholder=0.0D0
+                  acoustic_depth_cz_fraction=0.0D0
             endif
             if (star%convective_flag(star%nz)) then
                   icheck=1
@@ -497,8 +497,8 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
                   icheck = 0
             endif
 
-        if (ljlast_placeholder) then
-         iwrite = ijlast_placeholder
+        if (ageout_model_output_flag) then
+         iwrite = ageout_model_unit
          call wrtlst(iwrite,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
          star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
          star%run%dage,timestep_yr,star%omega)
@@ -509,7 +509,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
             star%xa(i_metals,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_grav),star%luminosity_breakdown(i_lum_neu), &
             star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(i),i=1,10),(star%xa(i,1),i=4,11), &
             (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz), &
-            total_angular_momentum,taucz_placeholder,tcz_placeholder,tnorm_placeholder,tauhe_placeholder,whe_placeholder,tatmos_placeholder,equatorial_velocity_kms,star%turnover%convective_turnover_timescale, &
+            total_angular_momentum,acoustic_depth_cz_fraction,acoustic_depth_cz_seconds,acoustic_crossing_time_seconds,acoustic_depth_heii,heii_zone_acoustic_width,atmosphere_sound_travel_time,equatorial_velocity_kms,star%turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck
  1800      format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3, &
                   39E16.8, I8)

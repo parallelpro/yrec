@@ -311,10 +311,10 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                     energy_gen_component(j)
             end do
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
-            star%engeb%he3_he3_rate_placeholder(im) = (shell_mass(im)/ &
-                 solar_luminosity_cgs)*star%engeb%he3_luminosity_placeholder
-            star%engeb%he3_he4_rate_placeholder(im) = (shell_mass(im)/ &
-                 solar_luminosity_cgs)*star%engeb%he3_total_placeholder
+            star%engeb%he3_he3_luminosity_zone(im) = (shell_mass(im)/ &
+                 solar_luminosity_cgs)*star%engeb%he3_he3_energy_rate
+            star%engeb%he3_burning_luminosity_zone(im) = (shell_mass(im)/ &
+                 solar_luminosity_cgs)*star%engeb%he3_burning_energy_rate
 ! JVS end
             luminosity_terms(8)=luminosity_terms(8)+(shell_mass(im)/ &
                  solar_luminosity_cgs)*alpha_capture_energy_zone

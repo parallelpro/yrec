@@ -143,10 +143,10 @@ module star_info_lib
             double precision :: be7_mass_fraction
 ! former common/grab/: He3+He3/He3+He4 luminosity and per-shell rate
 ! diagnostics (JVS 10/11).
-            double precision :: he3_luminosity_placeholder, &
-                 he3_total_placeholder
-            double precision :: he3_he3_rate_placeholder(json), &
-                 he3_he4_rate_placeholder(json)
+            double precision :: he3_he3_energy_rate, &
+                 he3_burning_energy_rate
+            double precision :: he3_he3_luminosity_zone(json), &
+                 he3_burning_luminosity_zone(json)
       end type engeb_diagnostics_state
 
 ! ---- from state/fluxes_lib.f90 ----
@@ -229,7 +229,7 @@ module star_info_lib
                 luminosity_entropy_term(json), &
                 radius_entropy_term(json)
 ! former common/rotprt/
-           logical :: lprt0_placeholder
+           logical :: print_rotation_diagnostics
 ! former common/theage/
            double precision :: dage
 ! former common/stch/
@@ -265,7 +265,7 @@ module star_info_lib
            double precision :: orig_specific_angular_momentum(json), &
                 orig_composition(15,json)
 ! former common/envcz/
-           double precision :: convection_zone_radius_placeholder, rint_placeholder
+           double precision :: envelope_cz_base_radius_rsun, rint_placeholder
 ! former common/comp2/
            double precision :: envelope_helium_fraction, envelope_he3_fraction
 ! former common/envprt/

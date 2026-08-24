@@ -265,13 +265,13 @@
       ! (legacy name: lpurez)
       use_pure_z_table = .false.
 
-      ! former common/chrone/: lrwsh_placeholder/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
+      ! former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
       ! (legacy name: liso)
       isochrone_output_active = .false.   ! (implicit)
 
-      ! former common/chrone/: lrwsh_placeholder/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
+      ! former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
       ! (legacy name: lrwsh)
-      lrwsh_placeholder = .false.   ! (implicit)
+      rewind_short_file = .false.   ! (implicit)
 
       ! (legacy name: lsenv0a)
       has_senv0_array = .false.   ! (implicit)

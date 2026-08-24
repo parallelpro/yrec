@@ -1704,8 +1704,8 @@ subroutine compute_energy_generation
       reaction_energy_gen(11)=eg(11)*5.815*convert
       reaction_energy_gen(12)=eg(12)*7.275*convert
 ! JVS 10/11 Need to grab He3 energy generation
-      star%engeb%he3_luminosity_placeholder = reaction_energy_gen(2)
-      star%engeb%he3_total_placeholder = reaction_energy_gen(2)+reaction_energy_gen(3)
+      star%engeb%he3_he3_energy_rate = reaction_energy_gen(2)
+      star%engeb%he3_burning_energy_rate = reaction_energy_gen(2)+reaction_energy_gen(3)
 ! JVS end
 
 ! *******************************************************************

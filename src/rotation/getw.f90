@@ -482,7 +482,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
            star%i_rot,star%omega,star%qiw,star%mean_radius)
       end if
       endif
-      if(star%run%lprt0_placeholder)then
+      if(star%run%print_rotation_diagnostics)then
          star%log_L = log10(star%luminosity_lsun(star%nz))
          log_radius_surface = 0.5D0*(star%log_L + log10_solar_luminosity &
               - 4.0D0*star%log_Teff - c4pil - csigl)

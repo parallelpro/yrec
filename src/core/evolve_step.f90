@@ -178,7 +178,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! SET I/O FLAGS PROPERLY AND EXIT LOOP
             pulsation_output_active = star%evo%saved_pulse_output_flag
             star%run%sound_speed_output_active = .true.
-            star%run%lprt0_placeholder = .true.
+            star%run%print_rotation_diagnostics = .true.
             step_status = step_kind_card_done
             return
          endif
@@ -214,7 +214,7 @@ contains
 subroutine update_output_flags_for_step
 
 ! rewind ISHORT if LRWSH is true (keeps ISHORT small)
-          if (lrwsh_placeholder) then
+          if (rewind_short_file) then
              rewind(short_file_unit)
           endif
 ! DBG PULSE:  if last model of last run then set LPULSE to LSAVPU
@@ -237,26 +237,26 @@ subroutine update_output_flags_for_step
 ! If output has been turned on for a previous step, keep it on for the next
 ! step, but then turn it off.
       if (acoustic_depth_output) then
-            if (ljwrt_placeholder) then
+            if (ageout_bracket_armed) then
                   print*, 'LJWRT on'
                   pulsation_output_active = star%evo%saved_pulse_output_flag
                   nao=nao+1
-                  lclcd_placeholder =.true.
-                  ljlast_placeholder =.false.
-                  ljwrt_placeholder=.false.
-            else if (.not.ljwrt_placeholder) then
-                  lclcd_placeholder=.false.
+                  calcad_ageout_output_active =.true.
+                  ageout_model_output_flag =.false.
+                  ageout_bracket_armed=.false.
+            else if (.not.ageout_bracket_armed) then
+                  calcad_ageout_output_active=.false.
             endif
 ! If this is the step before one of the ages of interest, print everything out.
 ! Also, save model structure.
             if (nao.lt.6) then
-                  if (star%run%dage+star%evo%timestep_yr/1.0D9-ageout_placeholder(nao) .le. 0.0D0 .and. &
-                  star%run%dage+2.0D0*star%evo%timestep_yr/1.0D9-ageout_placeholder(nao) .ge. 0.0D0 .and. .not. ljwrt_placeholder) then
+                  if (star%run%dage+star%evo%timestep_yr/1.0D9-output_ages_gyr(nao) .le. 0.0D0 .and. &
+                  star%run%dage+2.0D0*star%evo%timestep_yr/1.0D9-output_ages_gyr(nao) .ge. 0.0D0 .and. .not. ageout_bracket_armed) then
                         print*, 'AGEOUT reached'
                         pulsation_output_active = star%evo%saved_pulse_output_flag
-                        lclcd_placeholder = .true.
-                        ljlast_placeholder = .true.
-                        ljwrt_placeholder=.true.
+                        calcad_ageout_output_active = .true.
+                        ageout_model_output_flag = .true.
+                        ageout_bracket_armed=.true.
                   endif
             endif
        endif
@@ -574,9 +574,9 @@ subroutine converge_with_rotation
 ! CARD REACHED.
 ! MHP 10/24 GENERALIZE CHECK
                if (approaching_end_age(nk)) then
-                  star%run%lprt0_placeholder = .true.
+                  star%run%print_rotation_diagnostics = .true.
                else
-                  star%run%lprt0_placeholder = .false.
+                  star%run%print_rotation_diagnostics = .false.
                endif
 ! FIND THE NEW RUN OF OMEGA
 ! JENV0 ADDED TO SR CALL.

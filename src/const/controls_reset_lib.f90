@@ -266,7 +266,7 @@ module controls_reset_lib
       logical :: snap_extend_core_inward
       integer :: snap_num_core_shells_added
       double precision :: snap_core_mass_reduction_factor
-      logical :: snap_lrwsh_placeholder
+      logical :: snap_rewind_short_file
       logical :: snap_isochrone_output_active
       integer :: snap_isochrone_file_unit
       double precision :: snap_initial_x_array(50)
@@ -346,30 +346,30 @@ module controls_reset_lib
       integer :: snap_solid_body_mode_flag
       double precision :: snap_cstmixing
       double precision :: snap_cstdiffmix
-      double precision :: snap_taucz_placeholder
-      double precision :: snap_deladj_placeholder(5000)
-      double precision :: snap_tauhe_placeholder
-      double precision :: snap_tnorm_placeholder
-      double precision :: snap_tcz_placeholder
-      double precision :: snap_whe_placeholder
+      double precision :: snap_acoustic_depth_cz_fraction
+      double precision :: snap_eos_adiabatic_gradient(5000)
+      double precision :: snap_acoustic_depth_heii
+      double precision :: snap_acoustic_crossing_time_seconds
+      double precision :: snap_acoustic_depth_cz_seconds
+      double precision :: snap_heii_zone_acoustic_width
       double precision :: snap_acatmr_placeholder(5000)
       double precision :: snap_acatmd_placeholder(5000)
       double precision :: snap_acatmp_placeholder(5000)
       double precision :: snap_acatmt_placeholder(5000)
-      double precision :: snap_tatmos_placeholder
+      double precision :: snap_atmosphere_sound_travel_time
       integer :: snap_iacat_placeholder
-      integer :: snap_ijlast_placeholder
+      integer :: snap_ageout_model_unit
       logical :: snap_laoly_placeholder
       integer :: snap_ijvs_placeholder
       integer :: snap_ijent_placeholder
       integer :: snap_ijdel_placeholder
       logical :: snap_compute_acoustic_depth
-      double precision :: snap_ageout_placeholder(5)
-      logical :: snap_lclcd_placeholder
-      logical :: snap_ljlast_placeholder
-      logical :: snap_ljwrt_placeholder
+      double precision :: snap_output_ages_gyr(5)
+      logical :: snap_calcad_ageout_output_active
+      logical :: snap_ageout_model_output_flag
+      logical :: snap_ageout_bracket_armed
       logical :: snap_acoustic_depth_output
-      integer :: snap_iclcd_placeholder
+      integer :: snap_calcad_file_unit
       logical :: snap_use_envelope_triangle_dt
       double precision :: snap_pmm_exponent_a
       double precision :: snap_pmm_exponent_b
@@ -723,7 +723,7 @@ subroutine controls_capture
       snap_extend_core_inward = extend_core_inward
       snap_num_core_shells_added = num_core_shells_added
       snap_core_mass_reduction_factor = core_mass_reduction_factor
-      snap_lrwsh_placeholder = lrwsh_placeholder
+      snap_rewind_short_file = rewind_short_file
       snap_isochrone_output_active = isochrone_output_active
       snap_isochrone_file_unit = isochrone_file_unit
       snap_initial_x_array = initial_x_array
@@ -803,30 +803,30 @@ subroutine controls_capture
       snap_solid_body_mode_flag = solid_body_mode_flag
       snap_cstmixing = cstmixing
       snap_cstdiffmix = cstdiffmix
-      snap_taucz_placeholder = taucz_placeholder
-      snap_deladj_placeholder = deladj_placeholder
-      snap_tauhe_placeholder = tauhe_placeholder
-      snap_tnorm_placeholder = tnorm_placeholder
-      snap_tcz_placeholder = tcz_placeholder
-      snap_whe_placeholder = whe_placeholder
+      snap_acoustic_depth_cz_fraction = acoustic_depth_cz_fraction
+      snap_eos_adiabatic_gradient = eos_adiabatic_gradient
+      snap_acoustic_depth_heii = acoustic_depth_heii
+      snap_acoustic_crossing_time_seconds = acoustic_crossing_time_seconds
+      snap_acoustic_depth_cz_seconds = acoustic_depth_cz_seconds
+      snap_heii_zone_acoustic_width = heii_zone_acoustic_width
       snap_acatmr_placeholder = acatmr_placeholder
       snap_acatmd_placeholder = acatmd_placeholder
       snap_acatmp_placeholder = acatmp_placeholder
       snap_acatmt_placeholder = acatmt_placeholder
-      snap_tatmos_placeholder = tatmos_placeholder
+      snap_atmosphere_sound_travel_time = atmosphere_sound_travel_time
       snap_iacat_placeholder = iacat_placeholder
-      snap_ijlast_placeholder = ijlast_placeholder
+      snap_ageout_model_unit = ageout_model_unit
       snap_laoly_placeholder = laoly_placeholder
       snap_ijvs_placeholder = ijvs_placeholder
       snap_ijent_placeholder = ijent_placeholder
       snap_ijdel_placeholder = ijdel_placeholder
       snap_compute_acoustic_depth = compute_acoustic_depth
-      snap_ageout_placeholder = ageout_placeholder
-      snap_lclcd_placeholder = lclcd_placeholder
-      snap_ljlast_placeholder = ljlast_placeholder
-      snap_ljwrt_placeholder = ljwrt_placeholder
+      snap_output_ages_gyr = output_ages_gyr
+      snap_calcad_ageout_output_active = calcad_ageout_output_active
+      snap_ageout_model_output_flag = ageout_model_output_flag
+      snap_ageout_bracket_armed = ageout_bracket_armed
       snap_acoustic_depth_output = acoustic_depth_output
-      snap_iclcd_placeholder = iclcd_placeholder
+      snap_calcad_file_unit = calcad_file_unit
       snap_use_envelope_triangle_dt = use_envelope_triangle_dt
       snap_pmm_exponent_a = pmm_exponent_a
       snap_pmm_exponent_b = pmm_exponent_b
@@ -1179,7 +1179,7 @@ subroutine controls_restore
       extend_core_inward = snap_extend_core_inward
       num_core_shells_added = snap_num_core_shells_added
       core_mass_reduction_factor = snap_core_mass_reduction_factor
-      lrwsh_placeholder = snap_lrwsh_placeholder
+      rewind_short_file = snap_rewind_short_file
       isochrone_output_active = snap_isochrone_output_active
       isochrone_file_unit = snap_isochrone_file_unit
       initial_x_array = snap_initial_x_array
@@ -1259,30 +1259,30 @@ subroutine controls_restore
       solid_body_mode_flag = snap_solid_body_mode_flag
       cstmixing = snap_cstmixing
       cstdiffmix = snap_cstdiffmix
-      taucz_placeholder = snap_taucz_placeholder
-      deladj_placeholder = snap_deladj_placeholder
-      tauhe_placeholder = snap_tauhe_placeholder
-      tnorm_placeholder = snap_tnorm_placeholder
-      tcz_placeholder = snap_tcz_placeholder
-      whe_placeholder = snap_whe_placeholder
+      acoustic_depth_cz_fraction = snap_acoustic_depth_cz_fraction
+      eos_adiabatic_gradient = snap_eos_adiabatic_gradient
+      acoustic_depth_heii = snap_acoustic_depth_heii
+      acoustic_crossing_time_seconds = snap_acoustic_crossing_time_seconds
+      acoustic_depth_cz_seconds = snap_acoustic_depth_cz_seconds
+      heii_zone_acoustic_width = snap_heii_zone_acoustic_width
       acatmr_placeholder = snap_acatmr_placeholder
       acatmd_placeholder = snap_acatmd_placeholder
       acatmp_placeholder = snap_acatmp_placeholder
       acatmt_placeholder = snap_acatmt_placeholder
-      tatmos_placeholder = snap_tatmos_placeholder
+      atmosphere_sound_travel_time = snap_atmosphere_sound_travel_time
       iacat_placeholder = snap_iacat_placeholder
-      ijlast_placeholder = snap_ijlast_placeholder
+      ageout_model_unit = snap_ageout_model_unit
       laoly_placeholder = snap_laoly_placeholder
       ijvs_placeholder = snap_ijvs_placeholder
       ijent_placeholder = snap_ijent_placeholder
       ijdel_placeholder = snap_ijdel_placeholder
       compute_acoustic_depth = snap_compute_acoustic_depth
-      ageout_placeholder = snap_ageout_placeholder
-      lclcd_placeholder = snap_lclcd_placeholder
-      ljlast_placeholder = snap_ljlast_placeholder
-      ljwrt_placeholder = snap_ljwrt_placeholder
+      output_ages_gyr = snap_output_ages_gyr
+      calcad_ageout_output_active = snap_calcad_ageout_output_active
+      ageout_model_output_flag = snap_ageout_model_output_flag
+      ageout_bracket_armed = snap_ageout_bracket_armed
       acoustic_depth_output = snap_acoustic_depth_output
-      iclcd_placeholder = snap_iclcd_placeholder
+      calcad_file_unit = snap_calcad_file_unit
       use_envelope_triangle_dt = snap_use_envelope_triangle_dt
       pmm_exponent_a = snap_pmm_exponent_a
       pmm_exponent_b = snap_pmm_exponent_b

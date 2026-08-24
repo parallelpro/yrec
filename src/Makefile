@@ -79,6 +79,8 @@ io/parmin.o: io/inlist_new_decl.inc io/inlist_new_read.inc
 core/yrec_capi.o: | state/star_info_lib.o
 core/stop_conditions.o: | state/star_info_lib.o const/const_lib.o \
 	const/luout_lib.o const/controls_lib.o
+# the env/atm struct libs import json from star_info (2026 json dedup)
+atm/envstruct_lib.o atm/atmstruct_lib.o: | state/star_info_lib.o
 io/yrec_output.o: | const/const_lib.o const/luout_lib.o state/star_info_lib.o \
 	core/envint_lib.o atm/envstruct_lib.o atm/atmstruct_lib.o
 numerics/numerics_lib.o: | const/const_lib.o const/intpar_lib.o \
