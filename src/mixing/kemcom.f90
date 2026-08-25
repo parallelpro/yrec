@@ -17,7 +17,7 @@
 !  species. composition(1,..)=H; 2=He4; 3=Z; 4=He3; 5=C12; 6=C13;
 !  7=N14; 9=O16; 11=O18. Elements 8(N15) and 10(O17) not currently
 !  used; 12-15 are light elements whose burning is treated elsewhere.
-! star%prev%xa_start (common/oldmod/) - the array of abundances at the
+! star%xa_start (common/oldmod/) - the array of abundances at the
 !  start of the timestep.
 ! shell_mass - run of mass contained in each shell.
 ! log_temperature - run of model temperature.
@@ -108,7 +108,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             total_shell_mass = total_shell_mass + shell_mass(zone_idx)
             do species_idx = 1,11
                avg_abundance(species_idx) = avg_abundance(species_idx)+ &
-                    star%prev%xa_start(species_idx,zone_idx)*shell_mass(zone_idx)
+                    star%xa_start(species_idx,zone_idx)*shell_mass(zone_idx)
             end do
          end do
          do species_idx = 1,11
@@ -117,7 +117,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
       else
          do species_idx = 1,11
             avg_abundance(species_idx) = &
-                 star%prev%xa_start(species_idx,zone_begin)
+                 star%xa_start(species_idx,zone_begin)
          end do
       endif
 !  skip burning calculations if starting shell below t cutoff for reactions.
@@ -415,7 +415,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
 !  update o18.
       o18_new = avg_abundance(11)+18.0d0*timestep_gyr*gr_n14_alpha*abundance(3)*abundance(6)
 !  change metal abundance if x<5.0d-7.
-      if(star%prev%xa_start(1,zone_end).lt.5.0d-7) then
+      if(star%xa_start(1,zone_end).lt.5.0d-7) then
          new_metal_fraction = 1.0d0-abundance(1)-abundance(2)-abundance(3)
       else
          new_metal_fraction = avg_abundance(3)

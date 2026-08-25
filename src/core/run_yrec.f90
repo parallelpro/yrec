@@ -66,7 +66,7 @@ subroutine run_yrec(ierr)
 
       iowr = 9
 ! LPUNCH is TRUE once first model is calculated
-      star%evo%punch_pending_flag = .false.
+      star%punch_pending_flag = .false.
 ! 2026 (phase five): controls read and setup are now star-layer
 ! routines operating on the star_job structure (state/star_job_lib).
       call read_controls(ierr)
@@ -182,20 +182,20 @@ subroutine apply_monte_carlo_parameters
 
 ! for monte carlo run, input values of parameters being changed.
       if (star%ctrl%lmonte) then
-         star%cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
-         star%cross_section_scale(2) = star%run%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
-         star%cross_section_scale(3) = star%run%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
-         star%cross_section_scale(16) = star%run%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
+         star%cross_section_scale(1) = star%job%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
+         star%cross_section_scale(2) = star%job%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
+         star%cross_section_scale(3) = star%job%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
+         star%cross_section_scale(16) = star%job%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
 ! NOTE (2026): write-only since the original F77 (FGRSET = FHE(NN))
 ! -- the sampled helium diffusion factor never reaches the physics;
 ! only the metal factor (fgrz) is wired through. Preserved, not
 ! fixed; a candidate for an upstream report.
-         monte_helium_diffusion_fraction = star%run%helium_fraction_param(monte_carlo_run_number)
-         star%job%fgrz = star%run%diffusion_factor(monte_carlo_run_number)
-         star%solar_luminosity_cgs = reference_solar_luminosity*star%run%luminosity_target(monte_carlo_run_number)
+         monte_helium_diffusion_fraction = star%job%helium_fraction_param(monte_carlo_run_number)
+         star%job%fgrz = star%job%diffusion_factor(monte_carlo_run_number)
+         star%solar_luminosity_cgs = reference_solar_luminosity*star%job%luminosity_target(monte_carlo_run_number)
          star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
          star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
-         age_scale_factor = star%run%age_target(monte_carlo_run_number)
+         age_scale_factor = star%job%age_target(monte_carlo_run_number)
 ! timestep and final age are altered in SR SETCAL; input #s should be
 ! scaled for a solar age of 4.57 Gyr
          star%job%target_end_age(2)=1.0D8
@@ -215,7 +215,7 @@ end subroutine apply_monte_carlo_parameters
 subroutine begin_calibration
 ! DBG PULSE: save LPULSE flag, set LPULSE to F except on last model of
 ! last run, then set LPULSE to saved value of LPULSE.
-      star%evo%saved_pulse_output_flag = star%job%pulsation_output_active
+      star%saved_pulse_output_flag = star%job%pulsation_output_active
 ! MHP 1/93 add option to automatically calibrate solar model.
 ! MHP 3/96 added counter for # of iterations per converged model and
 ! starting estimate of ALPHA and X
@@ -261,7 +261,7 @@ subroutine end_of_card_calibration(runs_complete)
 !               CALL CHKCAL(BL,RLL,NK)
                star%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                star%job%atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
-               if (star%run%solar_calibration_active) then
+               if (star%solar_calibration_active) then
                   runs_complete = .true.
                   return
                else
@@ -311,26 +311,26 @@ end subroutine end_of_card_calibration
 ! estimate (htimer), and zero the entropy and light-element-rate
 ! state. Sets ierr on configuration or model-read errors.
 subroutine begin_kind_card
-         star%run%sound_speed_output_active = .false.
+         star%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
          star%job%initial_envelope_x = star%job%initial_x_array(star%job%nk)
          star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
          star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
        star%job%change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
        star%job%requested_envelope_mass = star%job%senv0_array(star%job%nk)
-       star%evo%reset_triangle = .false.
-       star%evo%model_diverged_flag = .false.
+       star%reset_triangle = .false.
+       star%model_diverged_flag = .false.
 ! MHP 10/02 ZERO OUT INITIAL ANGULAR MOMENTUM
-         star%evo%total_angular_momentum = 0.0D0
-         star%evo%total_rotational_ke = 0.0D0
+         star%total_angular_momentum = 0.0D0
+         star%total_rotational_ke = 0.0D0
 ! read in the initial model here
 ! STARIN also calls RSCALE to perform rescaling if requested
 !        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-       call starin(star%evo%timestep_yr, star%evo%dt, star%evo%hydrogen_dt, star%evo%trial_sign_flag, &
-            star%evo%ikut_flag, star%evo%istore_flag, star%evo%model_diverged_flag, &
-            star%evo%recompute_envelope_triangle, star%job%nk, star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, &
-            star%evo%total_angular_momentum, star%evo%total_rotational_ke, &
-            star%evo%convective_velocity, star%job%mixture_weights, ierr)
+       call starin(star%timestep_yr, star%dt, star%hydrogen_dt, star%trial_sign_flag, &
+            star%ikut_flag, star%istore_flag, star%model_diverged_flag, &
+            star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
+            star%total_angular_momentum, star%total_rotational_ke, &
+            star%convective_velocity, star%job%mixture_weights, ierr)
        if (ierr /= 0) return
 
       if ((star%omega(1) .eq. 0) .and. (star%job%rotation_active)) then
@@ -359,61 +359,61 @@ subroutine begin_kind_card
 ! save mass in solar units
          star%pulsation_mass_msun=star%star_mass
 ! MHP 08/02 STORE STARTING CZ PROPERTIES
-         star%light_burn%jcz = star%envelope_cz_bottom_index
-         star%turnover%convective_turnover_timescale = 0.0D0
+         star%jcz = star%envelope_cz_bottom_index
+         star%convective_turnover_timescale = 0.0D0
 ! write out headers of the appropriate output files
       call output_run_header(star%star_mass)
 ! DBG PULSE OUT 7/92
 ! initialize variables for calculating when to dump pulse output
-         star%evo%prev_log_l = star%log_L
-         star%evo%prev_log_teff = star%log_Teff
-         star%evo%prev_age = star%run%dage
-         star%evo%path_length_sq = 0.0D0
+         star%prev_log_l = star%log_L
+         star%prev_log_teff = star%log_Teff
+         star%prev_age = star%dage
+         star%path_length_sq = 0.0D0
 
        if (star%ctrl%helium_flash_active) then
 ! timestep cutting requires a model stored in logical unit ILAST
 ! or it will crash - so copy initial model to unit ILAST
-          if (star%evo%punch_pending_flag) then
+          if (star%punch_pending_flag) then
              call wrtlst(ilast,star%xa,star%logRho,star%luminosity_lsun, &
                   star%logP,star%logR,star%log_mass,star%logT,star%convective_flag, &
                   star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
                   star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
-                  star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
+                  star%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
                   star%envelope_cz_bottom_index,star%model_number,star%nz, &
-                  star%star_mass,star%log_Teff,star%log_L,star%log_total_mass,star%run%dage, &
-                  star%evo%timestep_yr,star%omega)
+                  star%star_mass,star%log_Teff,star%log_L,star%log_total_mass,star%dage, &
+                  star%timestep_yr,star%omega)
           endif
        endif
 
 ! locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if applicable).
          call findsh(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
-              star%core_cz_top_index,star%envelope_cz_bottom_index,star%evo%h_shell_zone_begin, &
-              star%evo%h_shell_end_index,star%evo%h_shell_midpoint_zone,star%evo%has_h_shell)
+              star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin, &
+              star%h_shell_end_index,star%h_shell_midpoint_zone,star%has_h_shell)
 ! determine timestep for model
 ! JVS 04/14 Added Teffl to passed variables
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(star%evo%dt,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
+       call htimer(star%dt,star%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
-            star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,star%job%nk, &
-            star%logP,star%logR,star%omega,star%evo%max_domega_frac,star%evo%h_shell_zone_begin, &
+            star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk, &
+            star%logP,star%logR,star%omega,star%max_domega_frac,star%h_shell_zone_begin, &
             star%log_Teff)
 
-       star%evo%dt_saved = star%evo%dt
+       star%dt_saved = star%dt
 ! zero out entropy terms.
          do i = 1,star%nz
-            star%run%temperature_entropy_term(i) = 0.0D0
-            star%run%pressure_entropy_term(i) = 0.0D0
-            star%run%luminosity_entropy_term(i) = 0.0D0
-            star%run%radius_entropy_term(i) = 0.0D0
+            star%temperature_entropy_term(i) = 0.0D0
+            star%pressure_entropy_term(i) = 0.0D0
+            star%luminosity_entropy_term(i) = 0.0D0
+            star%radius_entropy_term(i) = 0.0D0
          end do
 
 ! zero out light element burning rates in the surface CZ.
          if (star%job%use_extended_composition) then
-            star%light_burn%log_rate_li6_prev = 0.0D0
-            star%light_burn%log_rate_li7_prev = 0.0D0
-            star%light_burn%log_rate_be9_prev = 0.0D0
+            star%log_rate_li6_prev = 0.0D0
+            star%log_rate_li7_prev = 0.0D0
+            star%log_rate_be9_prev = 0.0D0
          endif
 end subroutine begin_kind_card
 
@@ -423,11 +423,11 @@ end subroutine begin_kind_card
 subroutine end_kind_card
 ! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
 ! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
-         if (star%ctrl%lstore.and.star%ctrl%lstpch.and.star%evo%punch_pending_flag) then
+         if (star%ctrl%lstore.and.star%ctrl%lstpch.and.star%punch_pending_flag) then
           call putstore(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
-                 star%run%dage,star%evo%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
-            star%evo%punch_pending_flag = .false.
+                 star%envelope_fit_coeffs,star%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
+                 star%dage,star%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
+            star%punch_pending_flag = .false.
        endif
 ! 110  CONTINUE
 ! G Somers END

@@ -171,7 +171,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 
                  !  integration and come here
 ! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
-      star%turnover%pphot = atm_table%atm_log10_pressure
+      star%pphot = atm_table%atm_log10_pressure
       if (.not.star%job%calc_envelope_flag) then
          continue
          return
@@ -585,13 +585,13 @@ subroutine integrate_envelope
 ! DBG
 !  IF ENVELOPE MASS(SENV) SMALL ENOUGH,SKIP ENVELOPE INTEGRATION.
 ! DBG 2/92 CHANGED FROM 1.0D-10 to 1.0D-12
-      if(star%env_comp%senv.gt.-1.0d-12) then
+      if(star%senv.gt.-1.0d-12) then
        if(save_boundary_flag) then
           vtx_logp(vertex_index) = atm_table%atm_log10_pressure
           vtx_logr(vertex_index) = log10_radius
           vtx_logt(vertex_index) = atm_table%atm_log10_temperature
           if(print_flag)then
-            if(.not.star%ctrl%lstch)write(istor,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%env_comp%senv
+            if(.not.star%ctrl%lstch)write(istor,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%senv
           endif
        endif
  230     format(4X,3F16.12,8X,F16.12)
@@ -613,7 +613,7 @@ subroutine integrate_envelope
       h_max = star%job%env_step_max
       h_min = star%job%env_step_min
       h_step = star%job%env_step_begin
-      step_tolerance = dabs(tolerance_fraction*star%env_comp%senv)
+      step_tolerance = dabs(tolerance_fraction*star%senv)
       surface_radius_linear = dexp(ln10*log10_radius)
       if(stored_vertex_index.eq.vertex_index) stored_vertex_index = 0
       store_flag_set = .false.
@@ -674,50 +674,50 @@ subroutine integrate_envelope
        local_gravity_linear = dexp(ln10*local_log10_gravity)
          chi_rho = 1.0d0/star%pulse%qqdp
          chi_t = -chi_rho*star%pulse%qqdt
-         specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
-              star%run%current_log10_temperature))*chi_t**2/chi_rho
+         specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%current_log10_pressure-star%current_log10_density- &
+              star%current_log10_temperature))*chi_t**2/chi_rho
          gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
-       if(.not.star%ctrl%lstch) write(istor,260)local_gravity_linear,star%run%current_log10_pressure, &
-            star%run%current_log10_temperature,depth_fraction,star%run%current_log10_mass, &
-              star%run%current_log10_density,star%run%current_opacity,star%run%current_beta,(star%run%current_gradients(i),i=1,3), &
-                   (star%run%current_ion_fraction(i),i=1,3),star%run%current_velocity, &
+       if(.not.star%ctrl%lstch) write(istor,260)local_gravity_linear,star%current_log10_pressure, &
+            star%current_log10_temperature,depth_fraction,star%current_log10_mass, &
+              star%current_log10_density,star%current_opacity,star%current_beta,(star%current_gradients(i),i=1,3), &
+                   (star%current_ion_fraction(i),i=1,3),star%current_velocity, &
               gamma1,star%pulse%qqdp
       endif
 ! STORE STARTING VALUES OF THE INTEGRATION
 ! 07/02 INITIALIZE NUMBER OF STORED ENVELOPE POINTS TO 1
       cz_in_envelope = .false.
       taucz_env_accum = 0.0d0
-      env_struct%env_log10_density(1) = star%run%current_log10_density
-      env_struct%env_log10_pressure(1) = star%run%current_log10_pressure
-      env_struct%env_log10_radius(1) = star%run%current_log10_radius
-      env_struct%env_log10_mass(1) = star%run%current_log10_mass
-      env_struct%env_log10_temperature(1) = star%run%current_log10_temperature
+      env_struct%env_log10_density(1) = star%current_log10_density
+      env_struct%env_log10_pressure(1) = star%current_log10_pressure
+      env_struct%env_log10_radius(1) = star%current_log10_radius
+      env_struct%env_log10_mass(1) = star%current_log10_mass
+      env_struct%env_log10_temperature(1) = star%current_log10_temperature
       env_struct%env_hydrogen_fraction(1) = hydrogen_fraction
       env_struct%env_metal_fraction(1) = metal_fraction
-      env_struct%env_convective_flag(1) = star%run%current_velocity.gt.0.0d0
+      env_struct%env_convective_flag(1) = star%current_velocity.gt.0.0d0
 ! JVS 03/28
-      env_struct%env_gradients(1,1) = star%run%current_gradients(1)
-      env_struct%env_gradients(2,1) = star%run%current_gradients(2)
-      env_struct%env_gradients(3,1) = star%run%current_gradients(3)
-      env_struct%env_convective_velocity(1) = star%run%current_velocity
-      env_struct%env_beta(1) = star%run%current_beta
+      env_struct%env_gradients(1,1) = star%current_gradients(1)
+      env_struct%env_gradients(2,1) = star%current_gradients(2)
+      env_struct%env_gradients(3,1) = star%current_gradients(3)
+      env_struct%env_convective_velocity(1) = star%current_velocity
+      env_struct%env_beta(1) = star%current_beta
 ! JVS end
 ! JVS 08/25
 ! Always save these
       chi_rho = 1.0d0/star%pulse%qqdp
       chi_t = -chi_rho*star%pulse%qqdt
-      specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
-           star%run%current_log10_temperature))*chi_t**2/chi_rho
+      specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%current_log10_pressure-star%current_log10_density- &
+           star%current_log10_temperature))*chi_t**2/chi_rho
       env_struct%env_gamma1(1) = chi_rho*star%pulse%qqcp/specific_heat_cv
       env_struct%env_specific_heat_cp(1) = star%pulse%qqcp
-      env_struct%env_ion_fraction(1,1) = star%run%current_ion_fraction(1)
-      env_struct%env_ion_fraction(2,1) = star%run%current_ion_fraction(2)
-      env_struct%env_ion_fraction(3,1) = star%run%current_ion_fraction(3)
-      env_struct%env_opacity(1) = star%run%current_opacity
+      env_struct%env_ion_fraction(1,1) = star%current_ion_fraction(1)
+      env_struct%env_ion_fraction(2,1) = star%current_ion_fraction(2)
+      env_struct%env_ion_fraction(3,1) = star%current_ion_fraction(3)
+      env_struct%env_opacity(1) = star%current_opacity
       env_struct%env_luminosity(1) = luminosity_linear
       env_struct%env_dlnrho_dlnt(1) = star%pulse%qqdt
 ! JVS 10/10
-      unused_chdelj = star%run%current_gradients(2)
+      unused_chdelj = star%current_gradients(2)
       unused_chdeld = star%pulse%qdela
       if(env_struct%env_convective_flag(1))cz_in_envelope = .true.
       env_struct%num_env_points = 1
@@ -728,11 +728,11 @@ subroutine integrate_envelope
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
        end do
        swap_temp = y(1) + h_step*dydx(1)
-       if(star%env_comp%senv - y(1).gt.0.0d0 .or. star%env_comp%senv - swap_temp.gt.0.0d0) then
+       if(star%senv - y(1).gt.0.0d0 .or. star%senv - swap_temp.gt.0.0d0) then
 !  IF THE INTEGRATION HAS OVERSHOT THE FITTING POINT, OR THE NEXT
 !  STEP WILL DO SO,LIMIT STEP SIZE OR INTEGRATE BACKWARDS TO THE
 !  CORRECT MASS.
-          h_step = (star%env_comp%senv - y(1))/dydx(1)
+          h_step = (star%senv - y(1))/dydx(1)
        endif
 !  ENSURE THAT STEP DOESN'T EXCEED MAXIMUM STEP SIZE
        if(h_step.lt.0.0d0) then
@@ -799,13 +799,13 @@ subroutine integrate_envelope
           local_gravity_linear = dexp(ln10*local_log10_gravity)
             chi_rho = 1.0d0/star%pulse%qqdp
             chi_t = -chi_rho*star%pulse%qqdt
-            specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
-                 star%run%current_log10_temperature))*chi_t**2/chi_rho
+            specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%current_log10_pressure-star%current_log10_density- &
+                 star%current_log10_temperature))*chi_t**2/chi_rho
             gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
-          if(.not.star%ctrl%lstch) write(istor,260)local_gravity_linear,star%run%current_log10_pressure, &
-               star%run%current_log10_temperature,depth_fraction,star%run%current_log10_mass, &
-                 star%run%current_log10_density,star%run%current_opacity,star%run%current_beta,(star%run%current_gradients(i),i=1,3), &
-                      (star%run%current_ion_fraction(i),i=1,3),star%run%current_velocity, &
+          if(.not.star%ctrl%lstch) write(istor,260)local_gravity_linear,star%current_log10_pressure, &
+               star%current_log10_temperature,depth_fraction,star%current_log10_mass, &
+                 star%current_log10_density,star%current_opacity,star%current_beta,(star%current_gradients(i),i=1,3), &
+                      (star%current_ion_fraction(i),i=1,3),star%current_velocity, &
                  gamma1,star%pulse%qqdp
  260        format(1X,1PE10.3,0P2F10.7,1P2E14.7,0P1F10.7, &
                  1PE10.2,0PF7.3,1PE9.2,0P3F6.3,2F6.3,1PE9.2, &
@@ -817,37 +817,37 @@ subroutine integrate_envelope
           num_bad = num_bad + 1
        endif
 !  CHECK IF INTEGRATION COMPLETE
-       mass_diff_remaining = star%env_comp%senv - y(1)
+       mass_diff_remaining = star%senv - y(1)
 ! 07/02 STORE ENVELOPE TERMS IF THE INTEGRATION
 ! HAS NOT OVERSHOT THE FITTING POINT.
          if(mass_diff_remaining.le.step_tolerance)then
             env_struct%num_env_points = env_struct%num_env_points + 1
-            env_struct%env_log10_density(env_struct%num_env_points) = star%run%current_log10_density
-            env_struct%env_log10_pressure(env_struct%num_env_points) = star%run%current_log10_pressure
-            env_struct%env_log10_radius(env_struct%num_env_points) = star%run%current_log10_radius
-            env_struct%env_log10_mass(env_struct%num_env_points) = star%run%current_log10_mass
-            env_struct%env_log10_temperature(env_struct%num_env_points) = star%run%current_log10_temperature
+            env_struct%env_log10_density(env_struct%num_env_points) = star%current_log10_density
+            env_struct%env_log10_pressure(env_struct%num_env_points) = star%current_log10_pressure
+            env_struct%env_log10_radius(env_struct%num_env_points) = star%current_log10_radius
+            env_struct%env_log10_mass(env_struct%num_env_points) = star%current_log10_mass
+            env_struct%env_log10_temperature(env_struct%num_env_points) = star%current_log10_temperature
             env_struct%env_hydrogen_fraction(env_struct%num_env_points) = hydrogen_fraction
             env_struct%env_metal_fraction(env_struct%num_env_points) = metal_fraction
-            env_struct%env_convective_flag(env_struct%num_env_points) = star%run%current_velocity.gt.0.0d0
+            env_struct%env_convective_flag(env_struct%num_env_points) = star%current_velocity.gt.0.0d0
 ! JVS 08/13 ADD RUN FOR CZ CALCULATION
-            env_struct%env_gradients(1,env_struct%num_env_points) = star%run%current_gradients(1)
-            env_struct%env_gradients(2,env_struct%num_env_points) = star%run%current_gradients(2)
-            env_struct%env_gradients(3,env_struct%num_env_points) = star%run%current_gradients(3)
-            env_struct%env_convective_velocity(env_struct%num_env_points) = star%run%current_velocity
-            env_struct%env_beta(env_struct%num_env_points) = star%run%current_beta
+            env_struct%env_gradients(1,env_struct%num_env_points) = star%current_gradients(1)
+            env_struct%env_gradients(2,env_struct%num_env_points) = star%current_gradients(2)
+            env_struct%env_gradients(3,env_struct%num_env_points) = star%current_gradients(3)
+            env_struct%env_convective_velocity(env_struct%num_env_points) = star%current_velocity
+            env_struct%env_beta(env_struct%num_env_points) = star%current_beta
 ! JVS 08/25
 ! Always save these
             chi_rho = 1.0d0/star%pulse%qqdp
             chi_t = -chi_rho*star%pulse%qqdt
-            specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%run%current_log10_pressure-star%run%current_log10_density- &
-                 star%run%current_log10_temperature))*chi_t**2/chi_rho
+            specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%current_log10_pressure-star%current_log10_density- &
+                 star%current_log10_temperature))*chi_t**2/chi_rho
             env_struct%env_gamma1(env_struct%num_env_points) = chi_rho*star%pulse%qqcp/specific_heat_cv
             env_struct%env_specific_heat_cp(env_struct%num_env_points) = star%pulse%qqcp
-            env_struct%env_ion_fraction(1,env_struct%num_env_points) = star%run%current_ion_fraction(1)
-            env_struct%env_ion_fraction(2,env_struct%num_env_points) = star%run%current_ion_fraction(2)
-            env_struct%env_ion_fraction(3,env_struct%num_env_points) = star%run%current_ion_fraction(3)
-            env_struct%env_opacity(env_struct%num_env_points) = star%run%current_opacity
+            env_struct%env_ion_fraction(1,env_struct%num_env_points) = star%current_ion_fraction(1)
+            env_struct%env_ion_fraction(2,env_struct%num_env_points) = star%current_ion_fraction(2)
+            env_struct%env_ion_fraction(3,env_struct%num_env_points) = star%current_ion_fraction(3)
+            env_struct%env_opacity(env_struct%num_env_points) = star%current_opacity
             env_struct%env_luminosity(env_struct%num_env_points) = luminosity_linear
             env_struct%env_dlnrho_dlnt(env_struct%num_env_points) = star%pulse%qqdt
 
@@ -855,10 +855,10 @@ subroutine integrate_envelope
                if(env_struct%env_convective_flag(env_struct%num_env_points))then
                   cz_in_envelope = .true.
                endif
-            else if(star%run%current_velocity.gt.0.0d0)then
+            else if(star%current_velocity.gt.0.0d0)then
                delta_radius_cz = 10.0d0**env_struct%env_log10_radius(env_struct%num_env_points-1) - &
                     10.0d0**env_struct%env_log10_radius(env_struct%num_env_points)
-               taucz_env_accum = taucz_env_accum + delta_radius_cz/star%run%current_velocity
+               taucz_env_accum = taucz_env_accum + delta_radius_cz/star%current_velocity
             endif
          endif
        if(dabs(mass_diff_remaining).le.step_tolerance)then
@@ -868,7 +868,7 @@ subroutine integrate_envelope
              vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)
              vtx_logr(vertex_index) = y(3) + interp_weight*(y_start(3) - y(3))
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
-             if(print_flag)write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%env_comp%senv
+             if(print_flag)write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%senv
           endif
           exit
        else if(.not.store_flag_set) then
@@ -901,7 +901,7 @@ subroutine integrate_envelope
       end if
       end if
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR.
-      if(star%env_comp%senv.lt.-1.0d-12)then
+      if(star%senv.lt.-1.0d-12)then
          do i = 1,env_struct%num_env_points
             inversion_index1 = i
             inversion_index2 = env_struct%num_env_points - i + 1
@@ -1015,7 +1015,7 @@ subroutine track_envelope_cz
 
             log10_cz_radius = env_struct%env_log10_radius(cz_start_index-1)+interp_fraction* &
                  (env_struct%env_log10_radius(cz_start_index)-env_struct%env_log10_radius(cz_start_index-1))-star%log10_solar_radius
-            star%run%envelope_cz_base_radius_rsun = exp(ln10*log10_cz_radius)
+            star%envelope_cz_base_radius_rsun = exp(ln10*log10_cz_radius)
 
             do i=1,env_struct%num_env_points
                   taucal_shell_mass(i) = dexp(ln10*(env_struct%env_log10_mass(i)+log10_star_mass))

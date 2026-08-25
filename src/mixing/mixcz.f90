@@ -113,7 +113,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
          composition(3,zone_idx) = dmin1(composition(3,zone_idx), &
               1.0d0-composition(1,zone_idx))
          composition(9,zone_idx) = dmax1(composition(9,zone_idx), &
-              0.99d-3*(composition(3,zone_idx)-star%env_comp%zenvm))
+              0.99d-3*(composition(3,zone_idx)-star%zenvm))
       end do
 
 ! G Somers 3/17, commented out this taucz calculation. It is now
@@ -155,7 +155,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 !                  if(psca2.le.rtest2)then
 !                     fx = (rtest1-psca1)/((psca2-rtest2)-(psca1-rtest1))
 !  find v
-!                     cvel = star%diag%svel(k-1)+fx*(star%diag%svel(k)-star%diag%svel(k-1))
+!                     cvel = star%svel(k-1)+fx*(star%svel(k)-star%svel(k-1))
 !                     psca = psca1+fx*(psca2-psca1)
 !  define taucz
 

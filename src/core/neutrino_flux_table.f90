@@ -65,7 +65,7 @@ subroutine neutrino_flux_table
            - 0.5d0*(prev_mass_bound+curr_mass_bound)
 
       do j = 1,10
-         star%flux%neutrino_flux_total(j) = 0.0d0
+         star%neutrino_flux_total(j) = 0.0d0
          do i = 1,star%nz
             star%neutrino_flux_zone(j,i) = 0.0d0
          end do
@@ -101,12 +101,12 @@ subroutine neutrino_flux_table
               star%reaction_rate_13,star%n15_alpha_branch_fraction, &
               star%be7_electron_capture_fraction)
 ! BE7 MASS FRACTION.
-         star%be7_mass_fraction_zone(i) = star%engeb%be7_mass_fraction
+         star%be7_mass_fraction_zone(i) = star%be7_mass_fraction
 ! CONVERT FROM ERG/GM/S TO ERG/S FOR EACH SHELL BY MULTIPLYING
 ! BY THE MASS OF EACH SHELL IN GM.
          do j = 1,10
-            star%neutrino_flux_zone(j,i) = star%flux%neutrino_flux(j)*shell_mass(i)
-            star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) &
+            star%neutrino_flux_zone(j,i) = star%neutrino_flux(j)*shell_mass(i)
+            star%neutrino_flux_total(j) = star%neutrino_flux_total(j) &
                  + star%neutrino_flux_zone(j,i)
          end do
          write(short_file_unit,911)i,shell_mass(i), &
@@ -116,15 +116,15 @@ subroutine neutrino_flux_table
 
 ! WRITE OUT TOTAL NEUTRINO FLUXES.
 ! ***NOTE THAT THESE ARE IN UNITS OF 10**10. ***
-      write(short_file_unit,222)(star%flux%neutrino_flux_total(i),i=1,10)
+      write(short_file_unit,222)(star%neutrino_flux_total(i),i=1,10)
  222  format(1P10E10.3)
 
 ! NORMALIZE FLUXES.
       do j = 1,10
-         if (star%flux%neutrino_flux_total(j) .ne. 0.0d0) then
+         if (star%neutrino_flux_total(j) .ne. 0.0d0) then
             do i = 1,star%nz
                star%neutrino_flux_zone(j,i) = star%neutrino_flux_zone(j,i) &
-                    /star%flux%neutrino_flux_total(j)
+                    /star%neutrino_flux_total(j)
             end do
          end if
       end do

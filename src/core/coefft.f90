@@ -148,7 +148,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 
       if (star%ctrl%lsnu) then
          do j = 1,10
-            star%flux%neutrino_flux_total(j) = 0.0d0
+            star%neutrino_flux_total(j) = 0.0d0
          end do
       end if
 ! MHP 10/02 QFPR,QFTR NOT USED - OMIT
@@ -291,15 +291,15 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             energy_gen_component(3) = he3he4_be7_proton_gen
             energy_gen_component(4) = cno_gen
             energy_gen_component(5) = triple_alpha_gen
-            energy_gen_component(6) = star%engeb%neutrino_loss_rate
-            alpha_capture_energy_zone = star%engeb%alpha_capture_energy
+            energy_gen_component(6) = star%neutrino_loss_rate
+            alpha_capture_energy_zone = star%alpha_capture_energy
 ! 7/91 MHP
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
             if (star%ctrl%lsnu) then
                do j = 1,10
-                  star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) + &
-                       star%flux%neutrino_flux(j)*shell_mass(im)
+                  star%neutrino_flux_total(j) = star%neutrino_flux_total(j) + &
+                       star%neutrino_flux(j)*shell_mass(im)
                end do
             end if
             do j = 1,6
@@ -311,10 +311,10 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                     energy_gen_component(j)
             end do
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
-            star%engeb%he3_he3_luminosity_zone(im) = (shell_mass(im)/ &
-                 star%solar_luminosity_cgs)*star%engeb%he3_he3_energy_rate
-            star%engeb%he3_burning_luminosity_zone(im) = (shell_mass(im)/ &
-                 star%solar_luminosity_cgs)*star%engeb%he3_burning_energy_rate
+            star%he3_he3_luminosity_zone(im) = (shell_mass(im)/ &
+                 star%solar_luminosity_cgs)*star%he3_he3_energy_rate
+            star%he3_burning_luminosity_zone(im) = (shell_mass(im)/ &
+                 star%solar_luminosity_cgs)*star%he3_burning_energy_rate
 ! JVS end
             luminosity_terms(8)=luminosity_terms(8)+(shell_mass(im)/ &
                  star%solar_luminosity_cgs)*alpha_capture_energy_zone
@@ -413,7 +413,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! SUCH AS OPACITY ARE SAVED; PRIOR RESTRICTIONS WERE BASED ON OBSOLETE
 ! MEMORY RESTRICTIONS IN LEGACY CODE
 !         IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
-         star%diag%svel(im) = convective_velocity
+         star%svel(im) = convective_velocity
 !         ENDIF
 !  STORE VARIABLES FOR OUTPUT IN SCRIB2 IF MODEL IS TO BE PRINTED OUT
 ! DBG PULSE STORE VARIABLES FOR PULSATION OUPUT
@@ -423,41 +423,41 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 !         LSHORT = .NOT.LONG .AND. MOD(MODEL,NPRT1).EQ.0
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
          if (log_temperature(im).lt.star%ctrl%tcut(1)) then
-            star%diag%sesum(im) = 0.0d0
-            star%diag%seg(i_eps_grav,im) = gravitational_luminosity(im)
+            star%sesum(im) = 0.0d0
+            star%seg(i_eps_grav,im) = gravitational_luminosity(im)
             do j = 1,6
-               star%diag%seg(j,im) = 0.0d0
+               star%seg(j,im) = 0.0d0
            end do
          else
 !         ELSE IF(LONG) THEN
 !  LONG OUTPUT NEEDED
-            star%diag%sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
+            star%sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
                  energy_gen_component(3)+energy_gen_component(4)+ &
                  energy_gen_component(5)
-            star%diag%seg(i_eps_neu,im) = energy_gen_component(6)
-            star%diag%seg(i_eps_grav,im) = gravitational_luminosity(im)
-            if (star%diag%sesum(im).gt.1.0d-22) then
-               energy_sum_inverse = 1.0d0/star%diag%sesum(im)
+            star%seg(i_eps_neu,im) = energy_gen_component(6)
+            star%seg(i_eps_grav,im) = gravitational_luminosity(im)
+            if (star%sesum(im).gt.1.0d-22) then
+               energy_sum_inverse = 1.0d0/star%sesum(im)
             else
                energy_sum_inverse = 0.0d0
             end if
             do j = 1,5
-               star%diag%seg(j,im) = energy_gen_component(j)*energy_sum_inverse
+               star%seg(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
 !  SHORT OUTPUT ONLY
          end if
-         star%diag%sbeta(im) = beta
-         star%diag%seta(im) = electron_degeneracy_parameter
-         star%diag%locons(im) = conductive_opacity_flag
-         star%diag%so(im) = opacity
-         star%diag%del_grad(i_grad_rad,im) = radiative_gradient
-         star%diag%del_grad(i_grad_actual,im) = actual_gradient
-         star%diag%del_grad(i_grad_ad,im) = adiabatic_gradient
+         star%sbeta(im) = beta
+         star%seta(im) = electron_degeneracy_parameter
+         star%locons(im) = conductive_opacity_flag
+         star%so(im) = opacity
+         star%del_grad(i_grad_rad,im) = radiative_gradient
+         star%del_grad(i_grad_actual,im) = actual_gradient
+         star%del_grad(i_grad_ad,im) = adiabatic_gradient
          do j = 1,3
-            star%diag%sfxion(j,im) = ion_fraction(j)
+            star%sfxion(j,im) = ion_fraction(j)
          end do
-         star%diag%svel(im) = convective_velocity
-         star%diag%scp(im) = specific_heat_cp
+         star%svel(im) = convective_velocity
+         star%scp(im) = specific_heat_cp
 ! MHP 02/12 COMMENTED CODE OUT, AS REPLICATED BELOW
 !         IF(LSOUND) THEN
 ! MHP 7/96 CALCULATION OF GAMMA1 FROM GUENTHER 1995 P.C.
@@ -467,10 +467,10 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             chi_t = -chi_rho*dlnrho_dlnt
             specific_heat_cv = specific_heat_cp - exp(ln10*(log_pressure(im)- &
                  log10_density(im)-log_temperature(im)))*chi_t**2/chi_rho
-            star%run%adiabatic_index_gamma1(im) = chi_rho*specific_heat_cp/ &
+            star%adiabatic_index_gamma1(im) = chi_rho*specific_heat_cp/ &
                  specific_heat_cv
-            star%pulse%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-            star%pulse%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+            star%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
+            star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
 ! JVS END
 
 
@@ -478,9 +478,9 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             star%rot%dlnkappa_dlnrho(im) = dlnkap_dlnrho
             star%rot%dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error
-            if (star%diag%sesum(im).gt.0.0d0) then
-               total_energy_sum = star%diag%sesum(im)
-               neutrino_and_grav_sum = star%diag%seg(i_eps_neu,im)+star%diag%seg(i_eps_grav,im)
+            if (star%sesum(im).gt.0.0d0) then
+               total_energy_sum = star%sesum(im)
+               neutrino_and_grav_sum = star%seg(i_eps_neu,im)+star%seg(i_eps_grav,im)
                star%rot%neutrino_loss_fraction(im) = (total_energy_sum - &
                     neutrino_and_grav_sum)/total_energy_sum
             else
@@ -501,16 +501,16 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! copying them into the pulse1/mixing-length output arrays -- no
 ! change to any existing output (.short/.track/.store/.pmod/.penv/
 ! .patm) values, since none of those read from these arrays.
-         star%pulse%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-         star%pulse%pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
-         star%pulse%pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
-         star%pulse%pulse_dlnkap_dlnrho(im) = dlnkap_dlnrho
-         star%pulse%pulse_dlnkap_dlnt(im) = dlnkap_dlnt
-         star%pulse%pulse_specific_heat(im) = specific_heat_cp
-         star%pulse%pulse_mean_molecular_weight(im) = specific_gas_constant
-         star%pulse%pulse_electron_mean_molecular_weight(im) = &
+         star%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
+         star%pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
+         star%pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
+         star%pulse_dlnkap_dlnrho(im) = dlnkap_dlnrho
+         star%pulse_dlnkap_dlnt(im) = dlnkap_dlnt
+         star%pulse_specific_heat(im) = specific_heat_cp
+         star%pulse_mean_molecular_weight(im) = specific_gas_constant
+         star%pulse_electron_mean_molecular_weight(im) = &
               electron_mean_weight_inverse
-         star%pulse%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+         star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
          star%rot%valfmlt(im) = star%rot%alfmlt
          star%rot%vphmlt(im) = star%rot%phmlt
          star%rot%vcmxmlt(im) = star%rot%cmxmlt

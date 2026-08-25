@@ -74,6 +74,6 @@ subroutine setcal(age_scale_factor)
          star%job%timestep_override(i) = star%job%timestep_override(3)
          star%job%timestep_override_active(i) = star%job%timestep_override_active(3)
       end do
-      star%run%solar_calibration_active = .false.
+      star%solar_calibration_active = .false.
       return
 end subroutine setcal

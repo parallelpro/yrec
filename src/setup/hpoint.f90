@@ -151,7 +151,7 @@ subroutine check_envelope_temperature_range
              write(short_file_unit,10) star%nz,i
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              star%nz = i
-             star%env_comp%senv = star%log_mass(star%nz) - star%log_total_mass
+             star%senv = star%log_mass(star%nz) - star%log_total_mass
              point_reset_flag = .true.
              exit
           endif
@@ -171,8 +171,8 @@ subroutine check_envelope_temperature_range
       else if (star%logT(star%nz).gt.star%ctrl%tenv1.and. &
            envelope_store_index.ne.0) then
        star%nz = star%nz + 1
-       star%env_comp%senv = star%stored_envelope_state(4)
-       star%log_mass(star%nz) = star%log_total_mass + star%env_comp%senv
+       star%senv = star%stored_envelope_state(4)
+       star%log_mass(star%nz) = star%log_total_mass + star%senv
        star%logP(star%nz) = star%logP(star%nz-1) + &
             (star%stored_envelope_state(1) - star%fit_point_pressure(envelope_store_index))
        star%logT(star%nz) = star%logT(star%nz-1) + &
@@ -373,16 +373,16 @@ subroutine assign_new_points
           endif
        end do
       endif
-      star%prev%old_shell_mass(1) = star%log_mass(1)
-      star%prev%logP_start(1) = star%logP(1)
-      star%prev%luminosity_lsun_start(1) = star%luminosity_lsun(1)
+      star%old_shell_mass(1) = star%log_mass(1)
+      star%logP_start(1) = star%logP(1)
+      star%luminosity_lsun_start(1) = star%luminosity_lsun(1)
       x_new(1) = star%xa(i_h1,1)
       z_new(1) = star%xa(i_metals,1)
       luminosity_max = star%luminosity_lsun(star%nz)
 !       JVS 04/14 added Teff to saved variables
-        star%prev%log_Teff_start = star%log_Teff
+        star%log_Teff_start = star%log_Teff
 !  JVS 05/25 Added model number to list of saved values
-      star%prev%nz_start = star%nz
+      star%nz_start = star%nz
       do i = star%nz-1,1,-1
          if (star%luminosity_lsun(i).gt.luminosity_max) then
             luminosity_max = star%luminosity_lsun(i)
@@ -453,7 +453,7 @@ subroutine assign_new_points
             call splintd2(spline_x, spline_y, star%nz, &
                  spline_second_deriv, spline_eval_x, spline_eval_y, &
                  spline_klo, spline_khi)
-            star%prev%old_shell_mass(j) = spline_eval_y
+            star%old_shell_mass(j) = spline_eval_y
             chi_prev = spline_eval_x
 !
 
@@ -479,7 +479,7 @@ subroutine assign_new_points
       call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
 ! ASSIGN INTERPOLATED VECTOR OF X VALUES TO HIO
       do i = 2,new_num_zones
-         spline_eval_x = star%prev%old_shell_mass(i)
+         spline_eval_x = star%old_shell_mass(i)
          call splintd2(spline_x, spline_y, star%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, spline_klo, spline_khi)
          x_new(i) = spline_eval_y
@@ -506,14 +506,14 @@ subroutine assign_new_points
 ! NUMBER OF NEW POINTS NEEDED
          num_new_points = int(delta_x_over_max)
 !
-         point_insert_spacing = (star%prev%old_shell_mass(j)-star%prev%old_shell_mass(j-1))/ &
+         point_insert_spacing = (star%old_shell_mass(j)-star%old_shell_mass(j-1))/ &
               dfloat(num_new_points+1)
          do k = working_num_zones+num_new_points,j+num_new_points,-1
-            star%prev%old_shell_mass(k) = star%prev%old_shell_mass(k-num_new_points)
+            star%old_shell_mass(k) = star%old_shell_mass(k-num_new_points)
 !
          end do
          do k = j + num_new_points -1, j -1, -1
-            star%prev%old_shell_mass(k) = star%prev%old_shell_mass(k+1) - point_insert_spacing
+            star%old_shell_mass(k) = star%old_shell_mass(k+1) - point_insert_spacing
          end do
          working_num_zones = working_num_zones + num_new_points
       end do
@@ -530,7 +530,7 @@ subroutine assign_new_points
       call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
 ! ASSIGN INTERPOLATED VECTOR OF Z VALUES TO HGO
       do i = 2,new_num_zones
-         spline_eval_x = star%prev%old_shell_mass(i)
+         spline_eval_x = star%old_shell_mass(i)
          call splintd2(spline_x, spline_y, star%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, spline_klo, spline_khi)
          z_new(i) = spline_eval_y
@@ -557,13 +557,13 @@ subroutine assign_new_points
          delta_z_over_max = (z_new(j-1) - z_new(j))/point_spacing_max(4)
 ! NUMBER OF NEW POINTS NEEDED
          num_new_points = int(delta_z_over_max)
-         point_insert_spacing = (star%prev%old_shell_mass(j)-star%prev%old_shell_mass(j-1))/ &
+         point_insert_spacing = (star%old_shell_mass(j)-star%old_shell_mass(j-1))/ &
               dfloat(num_new_points+1)
          do k = working_num_zones+num_new_points,j+num_new_points,-1
-            star%prev%old_shell_mass(k) = star%prev%old_shell_mass(k-num_new_points)
+            star%old_shell_mass(k) = star%old_shell_mass(k-num_new_points)
          end do
          do k = j + num_new_points -1, j -1, -1
-            star%prev%old_shell_mass(k) = star%prev%old_shell_mass(k+1) - point_insert_spacing
+            star%old_shell_mass(k) = star%old_shell_mass(k+1) - point_insert_spacing
          end do
          working_num_zones = working_num_zones + num_new_points
       end do
@@ -574,19 +574,19 @@ subroutine assign_new_points
 ! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER.
 ! (NOTE HDO IS BEING USED AS A DUMMY ARRAY HERE).
       j = 1
-      star%prev%logRho_start(j) = star%prev%old_shell_mass(j)
+      star%logRho_start(j) = star%old_shell_mass(j)
       do k = 2,new_num_zones-1
 !
-       if (star%prev%old_shell_mass(k) - star%prev%logRho_start(j).gt.star%ctrl%chi_grid_scale(1)) then
+       if (star%old_shell_mass(k) - star%logRho_start(j).gt.star%ctrl%chi_grid_scale(1)) then
           j = j + 1
-          star%prev%logRho_start(j) = star%prev%old_shell_mass(k)
+          star%logRho_start(j) = star%old_shell_mass(k)
        endif
       end do
       j = j + 1
-      star%prev%logRho_start(j) = star%prev%old_shell_mass(new_num_zones)
+      star%logRho_start(j) = star%old_shell_mass(new_num_zones)
       new_num_zones = j
       do j = 2,new_num_zones
-       star%prev%old_shell_mass(j) = star%prev%logRho_start(j)
+       star%old_shell_mass(j) = star%logRho_start(j)
       end do
 !
 
@@ -600,7 +600,7 @@ subroutine locate_new_cz_edges
 !  ENVELOPE IN THE NEW POINT DISTRIBUTION.
       if (star%core_cz_top_index.gt.1) then
        do j = 2,new_num_zones
-          if (star%prev%old_shell_mass(j).gt.star%log_mass(star%core_cz_top_index)) exit
+          if (star%old_shell_mass(j).gt.star%log_mass(star%core_cz_top_index)) exit
        end do
          star%core_cz_top_index = j - 1
       else
@@ -608,7 +608,7 @@ subroutine locate_new_cz_edges
       endif
       if (star%envelope_cz_bottom_index.lt.star%nz) then
        do j = new_num_zones-1,1,-1
-          if (star%prev%old_shell_mass(j).lt.star%log_mass(star%envelope_cz_bottom_index)) &
+          if (star%old_shell_mass(j).lt.star%log_mass(star%envelope_cz_bottom_index)) &
                exit
        end do
          star%envelope_cz_bottom_index = j + 1
@@ -661,61 +661,61 @@ subroutine interpolate_onto_new_grid
 !  DO EACH COMPOSITION IN ORDER USING HPO AND HTO AS DUMMY ARRAYS.
 ! 7/91 ADD ENTROPY TERM INTERPOLATION.
       do j = 1,star%nz
-         star%prev%logP_start(j) = star%run%temperature_entropy_term(j)
+         star%logP_start(j) = star%temperature_entropy_term(j)
       end do
-      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
+      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         star%run%temperature_entropy_term(j) = star%prev%logT_start(j)
+         star%temperature_entropy_term(j) = star%logT_start(j)
       end do
 
 !
 
 
       do j = 1,star%nz
-         star%prev%logP_start(j) = star%run%pressure_entropy_term(j)
+         star%logP_start(j) = star%pressure_entropy_term(j)
       end do
-      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
+      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         star%run%pressure_entropy_term(j) = star%prev%logT_start(j)
+         star%pressure_entropy_term(j) = star%logT_start(j)
       end do
       do j = 1,star%nz
-         star%prev%logP_start(j) = star%run%luminosity_entropy_term(j)
+         star%logP_start(j) = star%luminosity_entropy_term(j)
       end do
-      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
+      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         star%run%luminosity_entropy_term(j) = star%prev%logT_start(j)
+         star%luminosity_entropy_term(j) = star%logT_start(j)
       end do
       do j = 1,star%nz
-         star%prev%logP_start(j) = star%run%radius_entropy_term(j)
+         star%logP_start(j) = star%radius_entropy_term(j)
       end do
-      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
+      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         star%run%radius_entropy_term(j) = star%prev%logT_start(j)
+         star%radius_entropy_term(j) = star%logT_start(j)
       end do
 
 
       do i = 1,num_species_tracked
        do j = 1,star%nz
-          star%prev%logP_start(j) = star%xa(i,j)
+          star%logP_start(j) = star%xa(i,j)
        end do
-         call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
+         call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
-          star%xa(i,j) = star%prev%logT_start(j)
+          star%xa(i,j) = star%logT_start(j)
        end do
 !  HCOMPP IS THE ARRAY OF COMPOSITION AT THE BEGINNING OF THE TIMESTEP.
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
        do j = 1,star%nz
-          star%prev%logP_start(j) = star%prev%xa_start(i,j)
+          star%logP_start(j) = star%xa_start(i,j)
        end do
-         call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
+         call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
-          star%prev%xa_start(i,j) = star%prev%logT_start(j)
+          star%xa_start(i,j) = star%logT_start(j)
        end do
       end do
 
@@ -724,13 +724,13 @@ subroutine interpolate_onto_new_grid
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
       do i = 1,7
        do j = 1,star%nz
-          star%prev%logP_start(j) = star%rot%reaction_rate_by_zone(reaction_rate_species_index(i),j)
+          star%logP_start(j) = star%rot%reaction_rate_by_zone(reaction_rate_species_index(i),j)
        end do
-         call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
+         call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
               old_point_count,new_point_count)
        do j = 1,new_num_zones
           star%rot%reaction_rate_by_zone(reaction_rate_species_index(i),j) = &
-               star%prev%logT_start(j)
+               star%logT_start(j)
        end do
       end do
 ! MHP 05/02 IF THE SURFACE DEUTERIUM IS ABOVE
@@ -739,40 +739,40 @@ subroutine interpolate_onto_new_grid
       if (star%job%use_extended_composition .and. &
            star%xa(i_h2,star%nz).ge.1.0D-14) then
          do j = 1,star%nz
-            star%prev%logP_start(j) = star%light_burn%deuterium_burning_rate_start(j)
+            star%logP_start(j) = star%deuterium_burning_rate_start(j)
          end do
-         call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%prev%logP_start, &
+         call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
               old_point_count,new_point_count)
          do j = 1,new_num_zones
-            star%light_burn%deuterium_burning_rate_start(j) = star%prev%logT_start(j)
+            star%deuterium_burning_rate_start(j) = star%logT_start(j)
          end do
       endif
 ! NOW FIND RUN OF P,R,L,T,AND RHO IN THAT ORDER FOR THE NEW POINTS.
 
-      call osplin(star%prev%old_shell_mass,star%prev%logP_start,star%log_mass,star%logP, &
+      call osplin(star%old_shell_mass,star%logP_start,star%log_mass,star%logP, &
            old_point_count,new_point_count)
-      call osplin(star%prev%old_shell_mass,star%prev%logR_start,star%log_mass,star%logR, &
+      call osplin(star%old_shell_mass,star%logR_start,star%log_mass,star%logR, &
            old_point_count,new_point_count)
-      call osplin(star%prev%old_shell_mass,star%prev%luminosity_lsun_start,star%log_mass,star%luminosity_lsun, &
+      call osplin(star%old_shell_mass,star%luminosity_lsun_start,star%log_mass,star%luminosity_lsun, &
            old_point_count,new_point_count)
-      call osplin(star%prev%old_shell_mass,star%prev%logT_start,star%log_mass,star%logT, &
+      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logT, &
            old_point_count,new_point_count)
-      call osplin(star%prev%old_shell_mass,star%prev%logRho_start,star%log_mass,star%logRho, &
+      call osplin(star%old_shell_mass,star%logRho_start,star%log_mass,star%logRho, &
            old_point_count,new_point_count)
 
 ! FOR ROTATING MODELS FIND THE NEW RUN OF OMEGA,J/M,FP,FT,R0,AND ETA2.
       if (star%job%rotation_active) then
-         call osplin(star%prev%old_shell_mass,star%run%old_omega,star%log_mass,star%omega, &
+         call osplin(star%old_shell_mass,star%old_omega,star%log_mass,star%omega, &
               old_point_count,new_point_count)
-         call osplin(star%prev%old_shell_mass,star%run%old_specific_angular_momentum,star%log_mass, &
+         call osplin(star%old_shell_mass,star%old_specific_angular_momentum,star%log_mass, &
               star%j_rot,old_point_count,new_point_count)
-         call osplin(star%prev%old_shell_mass,fp_old,star%log_mass,star%fp_rot, &
+         call osplin(star%old_shell_mass,fp_old,star%log_mass,star%fp_rot, &
               old_point_count,new_point_count)
-         call osplin(star%prev%old_shell_mass,ft_old,star%log_mass,star%ft_rot, &
+         call osplin(star%old_shell_mass,ft_old,star%log_mass,star%ft_rot, &
               old_point_count,new_point_count)
-         call osplin(star%prev%old_shell_mass,star%run%old_mean_radius,star%log_mass,star%mean_radius, &
+         call osplin(star%old_shell_mass,star%old_mean_radius,star%log_mass,star%mean_radius, &
               old_point_count,new_point_count)
-         call osplin(star%prev%old_shell_mass,star%run%old_eta_squared,star%log_mass,star%eta_squared, &
+         call osplin(star%old_shell_mass,star%old_eta_squared,star%log_mass,star%eta_squared, &
               old_point_count,new_point_count)
       endif
 !
@@ -787,9 +787,9 @@ subroutine interpolate_onto_new_grid
      8X,'P',7X,'T',7X,'R',8X,'L',7X,'X',4X,'Z',3X,'O16',1X) )
          write(idebug,920) (i,star%log_mass(i),star%logP(i), &
               star%logT(i),star%logR(i),star%luminosity_lsun(i), &
-              x_new(i),z_new(i),star%xa(i_o16,i),i,star%prev%old_shell_mass(i), &
-              star%prev%logP_start(i),star%prev%logT_start(i),star%prev%logR_start(i), &
-              star%prev%luminosity_lsun_start(i),star%xa(i_h1,i),star%xa(i_metals,i), &
+              x_new(i),z_new(i),star%xa(i_o16,i),i,star%old_shell_mass(i), &
+              star%logP_start(i),star%logT_start(i),star%logR_start(i), &
+              star%luminosity_lsun_start(i),star%xa(i_h1,i),star%xa(i_metals,i), &
               star%xa(i_o16,i), i = 1,min_common_count)
   920    format( 2(1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3) )
          if (star%nz.gt.min_common_count) then
@@ -801,8 +801,8 @@ subroutine interpolate_onto_new_grid
   930       format( 1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
          else if (new_num_zones.gt.min_common_count) then
             min_common_count = min_common_count + 1
-            write(idebug,940)(i,star%prev%old_shell_mass(i),star%prev%logP_start(i), &
-                 star%prev%logT_start(i),star%prev%logR_start(i),star%prev%luminosity_lsun_start(i), &
+            write(idebug,940)(i,star%old_shell_mass(i),star%logP_start(i), &
+                 star%logT_start(i),star%logR_start(i),star%luminosity_lsun_start(i), &
                  star%xa(i_h1,i),star%xa(i_metals,i),star%xa(i_o16,i), &
                  i=min_common_count,new_num_zones)
   940       format(65X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
@@ -813,33 +813,33 @@ subroutine interpolate_onto_new_grid
 
 ! TRANSFER NEW POINTS.
       do j = 1,new_num_zones
-       star%log_mass(j) = star%prev%old_shell_mass(j)
-       star%logP(j) = star%prev%logP_start(j)
-       star%logT(j) = star%prev%logT_start(j)
-       star%logR(j) = star%prev%logR_start(j)
-       star%luminosity_lsun(j) = star%prev%luminosity_lsun_start(j)
-       star%logRho(j) = star%prev%logRho_start(j)
+       star%log_mass(j) = star%old_shell_mass(j)
+       star%logP(j) = star%logP_start(j)
+       star%logT(j) = star%logT_start(j)
+       star%logR(j) = star%logR_start(j)
+       star%luminosity_lsun(j) = star%luminosity_lsun_start(j)
+       star%logRho(j) = star%logRho_start(j)
       end do
       if (star%job%rotation_active) then
        do j = 1, new_num_zones
-          star%j_rot(j) = star%run%old_specific_angular_momentum(j)
-          star%omega(j) = star%run%old_omega(j)
+          star%j_rot(j) = star%old_specific_angular_momentum(j)
+          star%omega(j) = star%old_omega(j)
           star%fp_rot(j) = fp_old(j)
           star%ft_rot(j) = ft_old(j)
-          star%eta_squared(j) = star%run%old_eta_squared(j)
-          star%mean_radius(j) = star%run%old_mean_radius(j)
+          star%eta_squared(j) = star%old_eta_squared(j)
+          star%mean_radius(j) = star%old_mean_radius(j)
        end do
       endif
 ! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
       if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
            star%job%envelope_overshoot_active)) then
-         call osplin(star%prev%old_shell_mass,star%rot%old_esum,star%log_mass,star%diag%sesum, &
+         call osplin(star%old_shell_mass,star%rot%old_esum,star%log_mass,star%sesum, &
               old_point_count,new_point_count)
          do zone_index = 1,star%nz
-            spline_y(zone_index) = star%diag%sesum(zone_index)+star%diag%seg(i_eps_neu,zone_index)+ &
-                 star%diag%seg(i_eps_grav,zone_index)
+            spline_y(zone_index) = star%sesum(zone_index)+star%seg(i_eps_neu,zone_index)+ &
+                 star%seg(i_eps_grav,zone_index)
          end do
-         call osplin(star%prev%old_shell_mass,star%rot%old_eps,star%log_mass,spline_y, &
+         call osplin(star%old_shell_mass,star%rot%old_eps,star%log_mass,spline_y, &
               old_point_count,new_point_count)
       endif
       write(short_file_unit,1020) star%nz,new_num_zones
@@ -907,15 +907,15 @@ subroutine interpolate_onto_new_grid
        total_rotational_ke = sum_rotational_ke
 !  STORE THE OLD MODEL STRUCTURE FOR USE IN DIFFUSION.
        do i = 1,star%nz
-          star%run%old_omega(i) = star%omega(i)
-          star%run%old_hg(i) = star%mean_gravity(i)
-          star%run%old_moment_of_inertia(i) = star%i_rot(i)
-          star%run%old_eta_squared(i) = star%eta_squared(i)
-          star%run%old_mean_radius(i) = star%mean_radius(i)
-          star%prev%convective_flag_start(i) = star%convective_flag(i)
-          star%prev%cz_flag_start(i) = am_transport_convective_flag(i)
+          star%old_omega(i) = star%omega(i)
+          star%old_hg(i) = star%mean_gravity(i)
+          star%old_moment_of_inertia(i) = star%i_rot(i)
+          star%old_eta_squared(i) = star%eta_squared(i)
+          star%old_mean_radius(i) = star%mean_radius(i)
+          star%convective_flag_start(i) = star%convective_flag(i)
+          star%cz_flag_start(i) = am_transport_convective_flag(i)
 ! MHP 10/91 J/M STORED IN HJX FOR I/O USE.
-            star%run%old_specific_angular_momentum(i) = star%j_rot(i)
+            star%old_specific_angular_momentum(i) = star%j_rot(i)
        end do
 ! MHP 9/91 CHANGE : T GRADIENTS STORED IF LEXCOM=T AND LOVSTE=T; OR FOR
 ! ROTATION; THIS IS NEEDED SO THAT THE BASE OF THE OVERSHOOT REGION FOR
@@ -941,16 +941,16 @@ subroutine interpolate_onto_new_grid
 !   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN
 !   ONE LARGE EVOLUTIONARY TIMESTEP.
          do zone_index = 1,star%nz
-            star%rot%old_del_radiative_mix(zone_index) = star%diag%del_grad(i_grad_rad,zone_index)
-            star%rot%old_delm(zone_index) = star%diag%del_grad(i_grad_actual,zone_index)
-            star%rot%old_del_adiabatic_mix(zone_index) = star%diag%del_grad(i_grad_ad,zone_index)
-            star%rot%old_amu(zone_index) = star%thermo%mean_molecular_weight(zone_index)
-            star%rot%old_om(zone_index) = star%diag%so(zone_index)
-            star%rot%old_cp(zone_index) = star%thermo%cp(zone_index)
-            star%rot%old_qdt(zone_index) = star%thermo%qdt(zone_index)
-            star%rot%old_vel(zone_index) = star%diag%svel(zone_index)
-            star%rot%old_visc(zone_index) = star%thermo%visc(zone_index)
-            star%rot%old_thdif(zone_index) = star%thermo%thdif(zone_index)
+            star%rot%old_del_radiative_mix(zone_index) = star%del_grad(i_grad_rad,zone_index)
+            star%rot%old_delm(zone_index) = star%del_grad(i_grad_actual,zone_index)
+            star%rot%old_del_adiabatic_mix(zone_index) = star%del_grad(i_grad_ad,zone_index)
+            star%rot%old_amu(zone_index) = star%mean_molecular_weight(zone_index)
+            star%rot%old_om(zone_index) = star%so(zone_index)
+            star%rot%old_cp(zone_index) = star%cp(zone_index)
+            star%rot%old_qdt(zone_index) = star%qdt(zone_index)
+            star%rot%old_vel(zone_index) = star%svel(zone_index)
+            star%rot%old_visc(zone_index) = star%visc(zone_index)
+            star%rot%old_thdif(zone_index) = star%thdif(zone_index)
 ! MHP 06/02
             star%rot%del_grad_diff_interface(zone_index) = &
                  star%rot%old_del_adiabatic_mix(zone_index) - star%rot%old_delm(zone_index)
@@ -971,10 +971,10 @@ subroutine interpolate_onto_new_grid
          end do
       endif
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.
-      if (dabs(star%env_comp%xnew-star%xa(i_h1,star%nz)).gt.1.0D-8) then
-               star%env_comp%xnew = star%xa(i_h1,star%nz)
-               star%env_comp%znew = star%xa(i_metals,star%nz)
-               call kap_update_surface_tables(star%env_comp%xnew)
+      if (dabs(star%xnew-star%xa(i_h1,star%nz)).gt.1.0D-8) then
+               star%xnew = star%xa(i_h1,star%nz)
+               star%znew = star%xa(i_metals,star%nz)
+               call kap_update_surface_tables(star%xnew)
 
       end if
 end subroutine interpolate_onto_new_grid

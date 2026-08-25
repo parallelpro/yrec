@@ -44,8 +44,8 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 ! luminosity
       dt_scale(2) = star%ctrl%tri_delta_logl
 
-      teffl_change = abs(star%prev%log_Teff_start - log_teff)
-      logl_change = abs(dlog10(star%prev%luminosity_lsun_start(star%prev%nz_start)) - &
+      teffl_change = abs(star%log_Teff_start - log_teff)
+      logl_change = abs(dlog10(star%luminosity_lsun_start(star%nz_start)) - &
            dlog10(luminosity(num_points)))
 
 ! now actually limit the timestep by a factor that reduces the

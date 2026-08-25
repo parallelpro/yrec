@@ -52,7 +52,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       do shell_idx = 1,num_zones
 !  COMPUTE THE KINEMATIC MICROSCOPIC VISCOSITY DUE TO RADIATION AND IONS
 !  CONVERT TO NUMBER DENSITIES AND FIND MEAN CHARGE PER ION(ZF) AND NE.
-         opacity_local = star%diag%so(shell_idx)
+         opacity_local = star%so(shell_idx)
          mean_charge = 0.0d0
          number_density_sum = 0.0d0
          do species_idx = 1,11
@@ -105,7 +105,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
                  viscosity_molecular_species(species_idx)
          end do
          viscosity_molecular = viscosity_molecular/density_cgs
-         star%thermo%visc(shell_idx) = viscosity_radiative+viscosity_molecular
+         star%visc(shell_idx) = viscosity_radiative+viscosity_molecular
 !  NOW COMPUTE USING ENDAL-SOFIA METHOD
          viscosity_molecular_endal_sofia = 0.0d0
          endal_sofia_coeff = 2.21d-15*dsqrt(temperature_cgs)*temperature_sq
@@ -126,8 +126,8 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 !  THERMAL DIFFUSIVITY(THDIF) DUE TO RADIATION IS CALCULATED
 !  COMPONENT DUE TO THERMAL CONDUCTION OF MATTER IS NEGLECTED
 !  RADIATIVE DIFFUSIVITY = K*T**3/(O*RHO**2*CP)
-         star%thermo%thdif(shell_idx) = 1.6d1*cc13*5.669d-5*temperature_cgs* &
-              temperature_sq/(opacity_local*density_cgs**2*star%thermo%cp(shell_idx))
+         star%thdif(shell_idx) = 1.6d1*cc13*5.669d-5*temperature_cgs* &
+              temperature_sq/(opacity_local*density_cgs**2*star%cp(shell_idx))
       end do
 
       return

@@ -142,7 +142,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 !      compostion (COMPMIX)
 ! former common/i2o/: compmix_code (passed to getyrec7/getmodel2) is
 ! now use-associated from run_diag_lib as
-! star%run%initial_composition_code (io/wrtlst.f90's/io/putstore.f90's
+! star%initial_composition_code (io/wrtlst.f90's/io/putstore.f90's
 ! established name -- majority spelling wins over this file's own
 ! atm_code/eos_code/hik_code/alok_code-matching compmix_code).
       double precision :: atomic_weight(12)
@@ -288,9 +288,9 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
                   star%ft_rot,star%log_Teff, &
                   star%log_total_mass,star%log_L,star%nz,star%convective_flag, &
                   env_struct%env_log10_radius)
-      star%turnover%convective_turnover_timescale_old = star%turnover%convective_turnover_timescale
-      star%turnover%pphot0 = star%turnover%pphot
-      star%turnover%fracstep = 0.5
+      star%convective_turnover_timescale_old = star%convective_turnover_timescale
+      star%pphot0 = star%pphot
+      star%fracstep = 0.5
 
       return
 
@@ -337,7 +337,7 @@ subroutine acquire_starting_model
          write(short_file_unit,12)
  12      format('STARIN:  Input model has YREC7 format')
          call getyrec7(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
-              star%run%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
+              star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
               star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
               star%log_total_mass,star%logT,iread,short_file_unit, &
               core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
@@ -350,7 +350,7 @@ subroutine acquire_starting_model
               disk_locking_active0,instability_transport_active0,ljdot00, &
               alok_code, &
               lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,star%run%initial_composition_code,disk_pressure0, &
+              lsemic0,star%initial_composition_code,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0, ierr)
          if (ierr /= 0) return
 ! First three lines above are YREC7 inputs
@@ -360,7 +360,7 @@ subroutine acquire_starting_model
          write(short_file_unit,16)
  16      format('STARIN:  Input model has MODEL2 format')
          call getmodel2(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
-              star%run%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
+              star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
               star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
               star%log_total_mass,star%logT,iread, &
               core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
@@ -373,7 +373,7 @@ subroutine acquire_starting_model
               disk_locking_active0,instability_transport_active0,ljdot00, &
               alok_code, &
               lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,star%run%initial_composition_code,disk_pressure0, &
+              lsemic0,star%initial_composition_code,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0)
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons
@@ -392,7 +392,7 @@ subroutine acquire_starting_model
 
       delta_time = seconds_per_year*timestep_yr
       delta_time_abs = dabs(delta_time)
-      star%env_comp%stotal = star%log_total_mass
+      star%stotal = star%log_total_mass
 
 ! CHECK TO ENSURE THAT MIX LENGTH, SURFACE B.C. AND CONVECTION ZONE
 ! THEORY OF THE MODEL ARE THE SAME AS USER PARAMETERS
@@ -437,8 +437,8 @@ subroutine acquire_starting_model
 
 ! GET XNEW AND ZNEW FROM HENYEY POINTS
 
-      star%env_comp%xnew = star%xa(i_h1,star%nz)
-      star%env_comp%znew = star%xa(i_metals,star%nz)
+      star%xnew = star%xa(i_h1,star%nz)
+      star%znew = star%xa(i_metals,star%nz)
 
 ! FOURTH PART:  - LOG J/M STORED
 
@@ -701,12 +701,12 @@ subroutine rescale_and_refit_envelope
 ! FOR THIS PURPOSE(BASE OF ATMOSPHERE).
        if (star%job%requested_envelope_mass.gt.-1.0d-12) star%job%requested_envelope_mass = &
             -1.d-12
-       star%env_comp%senv = star%log_mass(star%nz) - star%log_total_mass
-       old_senv = star%env_comp%senv
-       if (star%env_comp%senv.eq.star%job%requested_envelope_mass) exit envelope_rescale
+       star%senv = star%log_mass(star%nz) - star%log_total_mass
+       old_senv = star%senv
+       if (star%senv.eq.star%job%requested_envelope_mass) exit envelope_rescale
        num_species = 11
        if (star%job%use_extended_composition) num_species = 15
-       if (star%job%requested_envelope_mass.lt.star%env_comp%senv) then
+       if (star%job%requested_envelope_mass.lt.star%senv) then
 ! NEW ENVELOPE DEEPER THAN THE OLD ONE
           target_log_mass_at_fit = star%log_total_mass+star%job%requested_envelope_mass
           do i = star%nz-1,1,-1
@@ -722,7 +722,7 @@ subroutine rescale_and_refit_envelope
           exit envelope_rescale
           end if
             star%nz = i + 1
-          star%env_comp%senv = star%job%requested_envelope_mass
+          star%senv = star%job%requested_envelope_mass
           interior_interp_fraction = (target_log_mass_at_fit-star%log_mass(i))/ &
                (star%log_mass(i+1) - star%log_mass(i))
           star%log_mass(star%nz) = target_log_mass_at_fit
@@ -741,8 +741,8 @@ subroutine rescale_and_refit_envelope
           do j = 1,num_species
              star%xa(j,star%nz) = star%xa(j,i)
           end do
-          star%env_comp%xnew = star%xa(i_h1,star%nz)
-          star%env_comp%znew = star%xa(i_metals,star%nz)
+          star%xnew = star%xa(i_h1,star%nz)
+          star%znew = star%xa(i_metals,star%nz)
           if (star%job%rotation_active) star%omega(star%nz) = star%omega(i) + &
                interior_interp_fraction*(star%omega(i+1)-star%omega(i))
           if (star%convective_flag(i).and.star%convective_flag(i+1)) then
@@ -824,7 +824,7 @@ subroutine rescale_and_refit_envelope
           shell_luminosity_lsun = dexp(ln10*star%log_L)
           log10_radius = 0.5d0*(star%log_L + star%solar_luminosity_cgs - &
                4.0d0*star%log_Teff - c4pil - csigl)
-          log10_gravity = cgl + star%env_comp%stotal - log10_radius - log10_radius
+          log10_gravity = cgl + star%stotal - log10_radius - log10_radius
           hydrogen_fraction = star%xa(i_h1,star%nz)
           metal_fraction = star%xa(i_metals,star%nz)
           point_pressure_rotation_factor = 1.0d0
@@ -855,7 +855,7 @@ subroutine rescale_and_refit_envelope
              spot_adjusted_log_teff = star%log_Teff
           endif
           call atm_get(shell_luminosity_lsun,point_pressure_rotation_factor, &
-                 point_temperature_rotation_factor,log10_gravity,star%env_comp%stotal, &
+                 point_temperature_rotation_factor,log10_gravity,star%stotal, &
                  vertex_index,print_flag,save_boundary_flag, &
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
                  hydrogen_fraction,metal_fraction,atm_get_dummy1, &
@@ -865,7 +865,7 @@ subroutine rescale_and_refit_envelope
             star%job%env_step_max = saved_env_step_max
             star%job%env_step_min = saved_env_step_min
             star%job%env_step_begin = saved_env_step_begin
-          star%env_comp%senv = star%job%requested_envelope_mass
+          star%senv = star%job%requested_envelope_mass
             if (star%nz+env_struct%num_env_points.ge.json) stop 9999
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
 ! ADJUST THE (P, RHO, T, R) POINTS TO BE CONSISTENT
@@ -891,11 +891,11 @@ subroutine rescale_and_refit_envelope
 ! LUMINOSITY ASSUMED CONSTANT
                star%luminosity_lsun(j) = star%luminosity_lsun(star%nz)
 ! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
-               if (env_struct%env_log10_mass(env_point_index).le.star%env_comp%senv) then
+               if (env_struct%env_log10_mass(env_point_index).le.star%senv) then
                   star%logRho(j) = env_struct%env_log10_density(env_point_index)
                   star%logP(j) = env_struct%env_log10_pressure(env_point_index)
                   star%logR(j) = env_struct%env_log10_radius(env_point_index)
-                  star%log_mass(j) = env_struct%env_log10_mass(env_point_index) + star%env_comp%stotal
+                  star%log_mass(j) = env_struct%env_log10_mass(env_point_index) + star%stotal
                   star%logT(j) = env_struct%env_log10_temperature(env_point_index)
                   star%xa(i_h1,j) = env_struct%env_hydrogen_fraction(env_point_index)
                   star%xa(i_metals,j) = env_struct%env_metal_fraction(env_point_index)
@@ -911,9 +911,9 @@ subroutine rescale_and_refit_envelope
                   if (env_point_index.eq.1) then
 ! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
                      lower_mass_coord = star%log_mass(star%nz)
-                     target_mass_coord = star%env_comp%stotal + star%env_comp%senv
+                     target_mass_coord = star%stotal + star%senv
                      upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
-                          star%env_comp%stotal
+                          star%stotal
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
 ! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
 ! returns the error (run_yrec propagates, the CLI wrapper stops).
@@ -958,10 +958,10 @@ subroutine rescale_and_refit_envelope
                   else
 ! INTERPOLATE BETWEEN THE LAST 2 ENVELOPE POINTS
                      lower_mass_coord = env_struct%env_log10_mass(env_point_index-1) + &
-                          star%env_comp%stotal
-                     target_mass_coord = star%env_comp%stotal + star%env_comp%senv
+                          star%stotal
+                     target_mass_coord = star%stotal + star%senv
                      upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
-                          star%env_comp%stotal
+                          star%stotal
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
 ! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
 ! returns the error (run_yrec propagates, the CLI wrapper stops).
@@ -1028,13 +1028,13 @@ subroutine rescale_and_refit_envelope
  910  format(1x,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
             ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
       write(*,911)(j,star%logRho(j),star%luminosity_lsun(j),star%logP(j), &
-                   star%logR(j),star%log_mass(j)-star%env_comp%stotal, &
+                   star%logR(j),star%log_mass(j)-star%stotal, &
                    star%logT(j),star%convective_flag(j), j = old_last_shell,star%nz)
  911  format(i5,1p6e16.8,l2)
 !          DO 590 J = 1,JEND
        endif
        envelope_recomputed_flag = .true.
-       write(short_file_unit,597)old_senv,star%env_comp%senv
+       write(short_file_unit,597)old_senv,star%senv
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
       exit envelope_rescale
@@ -1102,47 +1102,47 @@ subroutine rescale_and_refit_envelope
 ! ZENVM = Z OTHER THAN CNO CYCLE ELEMENTS;
 ! AMUENV = MEAN ATOMIC WEIGHT OF SURFACE Z;
 ! FXENV = NUMBER DENSITY OF SPECIES .
-      star%env_comp%envelope_hydrogen_fraction = star%env_comp%xnew
-      star%env_comp%envelope_metal_fraction = star%env_comp%znew
-      star%run%envelope_helium_fraction = 1.0d0 - star%env_comp%envelope_hydrogen_fraction - &
-           star%env_comp%envelope_metal_fraction - star%xa(i_he3,star%nz)
-      star%run%envelope_he3_fraction = star%xa(i_he3,star%nz)
+      star%envelope_hydrogen_fraction = star%xnew
+      star%envelope_metal_fraction = star%znew
+      star%envelope_helium_fraction = 1.0d0 - star%envelope_hydrogen_fraction - &
+           star%envelope_metal_fraction - star%xa(i_he3,star%nz)
+      star%envelope_he3_fraction = star%xa(i_he3,star%nz)
 ! EVERYTHING BUT V(7)=H, AND V(12)=HE
       mixture_weight_sum = species_mix_weights(1)+species_mix_weights(2)+ &
            species_mix_weights(3)+species_mix_weights(4)+ &
            species_mix_weights(5)+species_mix_weights(6)+ &
            species_mix_weights(8)+species_mix_weights(9)+ &
            species_mix_weights(10)+species_mix_weights(11)
-      star%env_comp%zenvm = star%env_comp%envelope_metal_fraction*(mixture_weight_sum - &
+      star%zenvm = star%envelope_metal_fraction*(mixture_weight_sum - &
            species_mix_weights(6)-species_mix_weights(8)- &
            species_mix_weights(9))/mixture_weight_sum
-      mixture_scale_factor = star%env_comp%envelope_metal_fraction/mixture_weight_sum
-      species_mix_weights(7) = star%env_comp%envelope_hydrogen_fraction/ &
+      mixture_scale_factor = star%envelope_metal_fraction/mixture_weight_sum
+      species_mix_weights(7) = star%envelope_hydrogen_fraction/ &
            mixture_scale_factor
-      species_mix_weights(12) = (1.0d0-star%env_comp%envelope_hydrogen_fraction- &
-           star%env_comp%envelope_metal_fraction)/mixture_scale_factor
+      species_mix_weights(12) = (1.0d0-star%envelope_hydrogen_fraction- &
+           star%envelope_metal_fraction)/mixture_scale_factor
       mixture_weight_sum = 0.0d0
       do i = 1,12
        species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
             atomic_weight(i)
        mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
       end do
-      star%env_comp%amuenv = mixture_weight_sum
-      mixture_scale_factor = 1.0d0/star%env_comp%amuenv
+      star%amuenv = mixture_weight_sum
+      mixture_scale_factor = 1.0d0/star%amuenv
 ! DBG 1/96 FXENV ARE NUMBER FRACTIONS OF ELEMENTS REQURIED
 ! BY EOS ROUTINES (SEE EQSTAT AND EQSAHA)
       do i = 1,12
-       star%env_comp%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
+       star%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
       end do
 ! push the recomputed mixture to the eos domain (physics-purity pass)
-      call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
-           star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
-           star%env_comp%fxenv)
+      call eos_set_mixture(star%envelope_hydrogen_fraction, &
+           star%envelope_metal_fraction, star%amuenv, &
+           star%fxenv)
 !     FIND SURFACE COMPOSITION OPACITY TABLE
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
       end if
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
-      call kap_update_surface_tables(star%env_comp%envelope_hydrogen_fraction)
+      call kap_update_surface_tables(star%envelope_hydrogen_fraction)
       if (use_scv_eos) then
          call setscv
       endif
@@ -1151,18 +1151,18 @@ subroutine rescale_and_refit_envelope
 ! HPOLD IS USED TO LIMIT THE TIMESTEP BASED ON CHANGES FROM
 ! MODEL TO MODEL IN P,T,R,L.
       do i = 1,star%nz
-         star%prev%logP_start(i) = star%logP(i)
-         star%prev%logT_start(i) = star%logT(i)
-         star%prev%logR_start(i) = star%logR(i)
-         star%prev%luminosity_lsun_start(i) = star%luminosity_lsun(i)
+         star%logP_start(i) = star%logP(i)
+         star%logT_start(i) = star%logT(i)
+         star%logR_start(i) = star%logR(i)
+         star%luminosity_lsun_start(i) = star%luminosity_lsun(i)
 !  JVS 04/14 Added Teff to the list of saved values
-         star%prev%log_Teff_start = star%log_Teff
+         star%log_Teff_start = star%log_Teff
 !  JVS 05/25 Added model number to list of saved values
-       star%prev%nz_start = star%nz
+       star%nz_start = star%nz
       end do
       if (star%job%rotation_active) then
          do i = 1,star%nz
-          star%run%old_omega(i) = star%omega(i)
+          star%old_omega(i) = star%omega(i)
          end do
       endif
 

@@ -2478,11 +2478,11 @@ subroutine interpret_kind_cards
             write(short_file_unit,452) nmodls(nkind), &
            &       (rescale_params(i,nkind),i = 1,4)
        end if
-         if(rescale_params(3,nkind).ge.0.0d0)  star%env_comp%envelope_metal_fraction=rescale_params(3,nkind)
+         if(rescale_params(3,nkind).ge.0.0d0)  star%envelope_metal_fraction=rescale_params(3,nkind)
 ! keep the eos-side mixture in step with the rescaled Z
-         call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
-              star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
-              star%env_comp%fxenv)
+         call eos_set_mixture(star%envelope_hydrogen_fraction, &
+              star%envelope_metal_fraction, star%amuenv, &
+              star%fxenv)
       end do
 end subroutine interpret_kind_cards
 

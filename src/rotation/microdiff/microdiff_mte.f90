@@ -103,7 +103,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_temperature_mid(1) = temperature_orig(iu-1)+ &
            fx*(temperature_orig(iu)-temperature_orig(iu-1))
       eq_dlnp_dr_mid(1) = dlnp_dr(iu-1)+fx*(dlnp_dr(iu)-dlnp_dr(iu-1))
-      eq_del_grad_mid(1) = star%diag%del_grad(i_grad_actual,iu-1)+fx*(star%diag%del_grad(i_grad_actual,iu)-star%diag%del_grad(i_grad_actual,iu-1))
+      eq_del_grad_mid(1) = star%del_grad(i_grad_actual,iu-1)+fx*(star%del_grad(i_grad_actual,iu)-star%del_grad(i_grad_actual,iu-1))
       eq_hydrogen_mid(1) = composition(1,iu-1)+fx*(composition(1,iu)-composition(1,iu-1))
       eq_helium_mid(1) = composition(2,iu-1)+fx*(composition(2,iu)-composition(2,iu-1))
       eq_metal_mid(1) = composition(3,iu-1)+fx*(composition(3,iu)-composition(3,iu-1))
@@ -156,8 +156,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                    facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
          eq_dlnp_dr_mid(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
                    facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_del_grad_mid(i) = facinterp(1)*star%diag%del_grad(i_grad_actual,k0)+facinterp(2)*star%diag%del_grad(i_grad_actual,k0+1)+ &
-                   facinterp(3)*star%diag%del_grad(i_grad_actual,k0+2)+facinterp(4)*star%diag%del_grad(i_grad_actual,k0+3)
+         eq_del_grad_mid(i) = facinterp(1)*star%del_grad(i_grad_actual,k0)+facinterp(2)*star%del_grad(i_grad_actual,k0+1)+ &
+                   facinterp(3)*star%del_grad(i_grad_actual,k0+2)+facinterp(4)*star%del_grad(i_grad_actual,k0+3)
 !  MASS FRACTION OF HYDROGEN
          eq_hydrogen_mid(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
@@ -200,7 +200,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_density(1) = density_orig(zone_begin)
       eq_temperature(1) = temperature_orig(zone_begin)
       eq_dlnp_dr(1) = dlnp_dr(zone_begin)
-      eq_del_grad(1) = star%diag%del_grad(i_grad_actual,zone_begin)
+      eq_del_grad(1) = star%del_grad(i_grad_actual,zone_begin)
       eq_hydrogen(1) = composition(1,zone_begin)
       eq_helium(1) = composition(2,zone_begin)
       eq_metal(1) = composition(3,zone_begin)
@@ -250,8 +250,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
                    facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
          eq_dlnp_dr(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
                    facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_del_grad(i) = facinterp(1)*star%diag%del_grad(i_grad_actual,k0)+facinterp(2)*star%diag%del_grad(i_grad_actual,k0+1)+ &
-                   facinterp(3)*star%diag%del_grad(i_grad_actual,k0+2)+facinterp(4)*star%diag%del_grad(i_grad_actual,k0+3)
+         eq_del_grad(i) = facinterp(1)*star%del_grad(i_grad_actual,k0)+facinterp(2)*star%del_grad(i_grad_actual,k0+1)+ &
+                   facinterp(3)*star%del_grad(i_grad_actual,k0+2)+facinterp(4)*star%del_grad(i_grad_actual,k0+3)
          eq_hydrogen(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
               +facinterp(3)*composition(1,k0+2) &
@@ -279,7 +279,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_density(num_eq_points) = density_orig(zone_end)
       eq_temperature(num_eq_points) = temperature_orig(zone_end)
       eq_dlnp_dr(num_eq_points) = dlnp_dr(zone_end)
-      eq_del_grad(num_eq_points) = star%diag%del_grad(i_grad_actual,zone_end)
+      eq_del_grad(num_eq_points) = star%del_grad(i_grad_actual,zone_end)
       eq_hydrogen(num_eq_points) = composition(1,zone_end)
       eq_helium(num_eq_points) = composition(2,zone_end)
       eq_metal(num_eq_points) = composition(3,zone_end)

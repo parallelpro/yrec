@@ -57,12 +57,12 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       if(.not.star%job%instability_transport_active)then
          omega_saturation = star%job%wind_saturation_omega
       else if(star%job%wind_saturation_omega.gt.1.0d0)then
-         if(star%turnover%convective_turnover_timescale.gt.1.0d0)then
-            omega_saturation = star%job%wind_saturation_omega/star%turnover%convective_turnover_timescale
+         if(star%convective_turnover_timescale.gt.1.0d0)then
+            omega_saturation = star%job%wind_saturation_omega/star%convective_turnover_timescale
 !            WRITE(*,912)WSAT,TAUCZ
 ! 912        FORMAT('Omega sat, Tau',1p2e12.3)
          else
-            write(*,911)star%job%wind_saturation_omega,star%turnover%convective_turnover_timescale
+            write(*,911)star%job%wind_saturation_omega,star%convective_turnover_timescale
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
             ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
             ! call sites (core/main, core/crrect, core/starin, setup/hpoint)

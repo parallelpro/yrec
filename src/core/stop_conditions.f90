@@ -51,7 +51,7 @@ logical function reached_end_age(nk)
       integer, intent(in) :: nk
       reached_end_age = star%job%end_age_stop_active(nk) .and. &
            star%job%target_end_age(nk).gt.0.0d0 .and. &
-           (star%job%target_end_age(nk)-star%run%dage*1.0d9).le.1.0d0
+           (star%job%target_end_age(nk)-star%dage*1.0d9).le.1.0d0
 end function reached_end_age
 
 ! ---------------------------------------------------------------
@@ -62,7 +62,7 @@ logical function approaching_end_age(nk)
       integer, intent(in) :: nk
       approaching_end_age = star%job%end_age_stop_active(nk) .and. &
            star%job%target_end_age(nk).gt.0.0d0 .and. &
-           abs(star%job%target_end_age(nk)-star%run%dage*1.0d9-star%evo%timestep_yr) &
+           abs(star%job%target_end_age(nk)-star%dage*1.0d9-star%timestep_yr) &
            .le.1.0d0
 end function approaching_end_age
 

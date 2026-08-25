@@ -75,86 +75,6 @@ module star_info_lib
 ! MESA-convention folds; this completes the merge (one root, one
 ! file). Physics-domain table state stays with its domain.
 
-! ---- from state/oldmod_lib.f90 ----
-      type, public :: prev_model_state
-! 2026 MESA-convention pass: start-of-step values carry MESA's _start
-! suffix, mirroring the live star_info member they snapshot.
-            double precision :: logP_start(json), logT_start(json), &
-                 logR_start(json), luminosity_lsun_start(json), logRho_start(json)
-            double precision :: xa_start(15,json)
-! NOT renamed dm_start: despite the name this slot holds LOG-MASS
-! coordinates of the pre-rezoning grid (see hpoint's spline blocks) --
-! a rezoning scratch, misnamed since the COMMON era.
-            double precision :: old_shell_mass(json)
-            logical :: convective_flag_start(json), cz_flag_start(json)
-            double precision :: log_Teff_start
-            integer :: nz_start
-      end type prev_model_state
-
-! ---- from state/scrtch_lib.f90 ----
-      type, public :: shell_diagnostics_state
-            double precision :: sesum(json), seg(7,json), sbeta(json), &
-                 seta(json)
-            logical :: locons(json)
-            double precision :: so(json), del_grad(3,json), &
-                 sfxion(3,json), svel(json), scp(json)
-      end type shell_diagnostics_state
-
-! ---- from state/turnover_lib.f90 ----
-      type, public :: turnover_state
-            double precision :: convective_turnover_timescale, &
-                 convective_turnover_timescale_old
-            double precision :: pphot, pphot0
-            double precision :: fracstep
-      end type turnover_state
-
-! ---- from state/light_burn_lib.f90 ----
-      type, public :: light_element_burn_state
-! former common/newrat/: Li6/Li7/Be9 burning rates at the end of the
-! timestep, at the current (possibly overshoot-adjusted) depth.
-            double precision :: rate_li6(json), rate_li7(json), &
-                 rate_be9(json)
-! former common/oldrat/: same, at the start of the timestep.
-            double precision :: rate_li6_start(json), rate_li7_start(json), &
-                 rate_be9_start(json)
-! former common/liov/: pressure scale heights used to search downward
-! from the CZ base for the true (overshoot-corrected) base location.
-            double precision :: pressure_scale_height_start, &
-                 pressure_scale_height_end
-! former common/prevcz/: previous end-of-timestep values, used as the
-! new beginning-of-timestep values.
-            double precision :: cz_base_radius_prev, log_rate_li6_prev, &
-                 log_rate_li7_prev, log_rate_be9_prev
-            integer :: envelope_cz_base_zone_prev
-! former common/deuter/: deuterium burning rate (current/start of
-! timestep), accreted mass fraction, and the convection-zone base zone
-! index used by the deuterium-burning routines.
-            double precision :: deuterium_burning_rate(json), &
-                 deuterium_burning_rate_start(json)
-            double precision :: accreted_mass_fraction
-            integer :: jcz
-      end type light_element_burn_state
-
-! ---- from state/engeb_diag_lib.f90 ----
-      type, public :: engeb_diagnostics_state
-! former common/neweps/
-            double precision :: alpha_capture_energy, neutrino_loss_rate
-! former common/be7/
-            double precision :: be7_mass_fraction
-! former common/grab/: He3+He3/He3+He4 luminosity and per-shell rate
-! diagnostics (JVS 10/11).
-            double precision :: he3_he3_energy_rate, &
-                 he3_burning_energy_rate
-            double precision :: he3_he3_luminosity_zone(json), &
-                 he3_burning_luminosity_zone(json)
-      end type engeb_diagnostics_state
-
-! ---- from state/fluxes_lib.f90 ----
-      type, public :: neutrino_flux_state
-            double precision :: neutrino_flux(10), neutrino_flux_total(10)
-            double precision :: cl37_snu_rate, ga71_snu_rate
-      end type neutrino_flux_state
-
 ! ---- from state/mdphy_lib.f90 ----
       type, public :: mdphy_state
             double precision :: amum(json), cpm(json), delm(json)
@@ -164,20 +84,6 @@ module star_info_lib
             double precision :: thdifm(json), velm(json), viscm(json)
             double precision :: epsm(json)
       end type mdphy_state
-
-! ---- from state/envelope_comp_lib.f90 ----
-      type, public :: envelope_composition_state
-            double precision :: envelope_hydrogen_fraction, &
-                 envelope_metal_fraction
-            double precision :: zenvm, amuenv, fxenv(12)
-            double precision :: xnew, znew, stotal, senv
-      end type envelope_composition_state
-
-! ---- from state/temp_lib.f90 ----
-      type, public :: shell_temp_state
-            double precision :: cp(json), mean_molecular_weight(json)
-            double precision :: qdt(json), thdif(json), visc(json)
-      end type shell_temp_state
 
 ! ---- from state/temp2_lib.f90 ----
       type, public :: circulation_velocity_state
@@ -194,15 +100,6 @@ module star_info_lib
 ! ---- from state/pulse_diag_lib.f90 ----
       type, public :: pulsation_diagnostics_state
 ! former common/pulse1/
-            double precision :: pulse_dlnrho_dlnp(json), &
-                 pulse_dlneps_dlnrho(json)
-            double precision :: pulse_dlneps_dlnt(json), &
-                 pulse_dlnkap_dlnrho(json)
-            double precision :: pulse_dlnkap_dlnt(json), &
-                 pulse_specific_heat(json)
-            double precision :: pulse_mean_molecular_weight(json), &
-                 pulse_dlnrho_dlnt(json)
-            double precision :: pulse_electron_mean_molecular_weight(json)
             logical :: lpumod
 ! former common/pulse2/
             double precision :: qqdp, qqed, qqet, qqod, qqot, qdel, qdela, &
@@ -211,81 +108,9 @@ module star_info_lib
             double precision :: qqdt, qemu, qd, qfs
       end type pulsation_diagnostics_state
 
-! ---- from state/run_diag_lib.f90 ----
-      type, public :: run_diagnostics_state
-! 2026 MESA-style output: per-model history sources. Computed by
-! compute_observables after all physics for the step is done;
-! writers (write_history) only read them. Zero at run start
-! (star0 snapshot / static zero), refreshed every converged model.
-           double precision :: log_R_surface, log_g_surface
-           double precision :: total_moment_of_inertia, cz_moment_of_inertia
-           double precision :: rotation_period_days, surf_velocity_kms
-           double precision :: h_shell_bot_mass, h_shell_mid_mass, &
-                h_shell_top_mass, h_shell_bot_radius, h_shell_mid_radius, &
-                h_shell_top_radius
-! former common/entrop/
-           double precision :: temperature_entropy_term(json), &
-                pressure_entropy_term(json), &
-                luminosity_entropy_term(json), &
-                radius_entropy_term(json)
-! former common/rotprt/
-           logical :: print_rotation_diagnostics
-! former common/theage/
-           double precision :: dage
-! former common/stch/
-           double precision :: composition_final(15,json), &
-                log_radius_final(json), &
-                log_pressure_final(json), &
-                log_density_final(json), &
-                log_mass_final(json), &
-                log_temperature_final(json)
-! former common/calsun/
-           double precision :: dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
-                log_l_prev, log_r_prev, delta_x, delta_alpha
-           logical :: solar_calibration_active
-! former common/sound/
-           double precision :: adiabatic_index_gamma1(json)
-           logical :: sound_speed_output_active
-! former common/monte2/
-           double precision :: s11_rate(1000), s33_rate(1000), s34_rate(1000), &
-                s17_rate(1000), metal_to_h_ratio(1000), &
-                helium_fraction_param(1000), diffusion_factor(1000), &
-                luminosity_target(1000), age_target(1000)
-! former common/cent/
-           double precision :: central_log10_temperature, central_log10_pressure, &
-                central_log10_density, envelope_mass, envelope_radius
-! 2026 (phase four, step 5): observables formerly computed as
-! locals inside io/wrtout.f90, now filled by the star layer
-! (core/observables_lib.f90) and only READ by the writers.
-           double precision :: central_beta, central_degeneracy_eta
-           double precision :: core_cz_mass
-           double precision :: envelope_cz_temperature, envelope_cz_density, &
-                envelope_cz_pressure, envelope_cz_o16, envelope_cz_log_radius
-! former common/origstart/
-           double precision :: orig_specific_angular_momentum(json), &
-                orig_composition(15,json)
-! former common/envcz/
-           double precision :: envelope_cz_base_radius_rsun, rint_placeholder
-! former common/comp2/
-           double precision :: envelope_helium_fraction, envelope_he3_fraction
-! former common/envprt/
-           double precision :: current_log10_pressure, current_log10_temperature, &
-                current_log10_radius, current_log10_mass, current_log10_density, &
-                current_opacity, current_beta, current_gradients(3), &
-                current_ion_fraction(3), current_velocity
-! former common/oldrot/
-           double precision :: old_omega(json), &
-                old_specific_angular_momentum(json), &
-                old_moment_of_inertia(json), old_hg(json), &
-                old_mean_radius(json), old_eta_squared(json)
-! former common/i2o/
-           character(len=4) :: initial_composition_code
-      end type run_diagnostics_state
-
 ! ---- from state/rotdiff_lib.f90 ----
       type, public :: rotation_diffusion_state
 ! former common/advec/
-           double precision :: fadv(json), fadv0(json)
 ! former common/bsburn/
            double precision :: bs_extrapolation_table(11,15,json), &
                 bs_extrapolated_composition(15,json), &
@@ -328,16 +153,14 @@ module star_info_lib
                 mixing_velocity_estimate(json), &
                 equatorial_radius(json)
 ! former common/difaddt/
-           double precision :: ethvn(json), ethvp(json), &
-                omega_avg_start(json), domega_dr_start(json)
+           double precision :: omega_avg_start(json), domega_dr_start(json)
 ! former common/egrid/
            double precision :: chi(json), echi(json), &
                 es1(json)
            double precision :: dchi
            integer :: ntot
 ! former common/egridchi/
-           double precision :: dchi_dr_edge(json), &
-                dchi_dr_center(json)
+           double precision :: dchi_dr_edge(json)
 ! former common/egridder/
            double precision :: second_deriv_geom_factor_eqgrid(json), &
                 third_deriv_geom_factor_eqgrid(json), &
@@ -355,8 +178,6 @@ module star_info_lib
                 metal_abundance_change_mid(json)
 ! former common/gscof/ -- dead-everywhere placeholder in both its
 ! declaring files, kept lowercased pending a confirmed source.
-           double precision :: app(json), atp(json), &
-                apzp(json), atzp(json)
 ! former common/intfac/
            double precision :: lagrange_interp_weights(4,json)
 ! former common/intvar/
@@ -475,6 +296,13 @@ module star_info_lib
                  pulse_mod_path
             double precision :: mixture_weights(12)
             integer :: mc_run_start, mc_run_end
+! phase C flattening: the Monte-Carlo sample arrays (former
+! common/monte2/), read from the MC input file by star_setup -- job
+! configuration, moved here from the old run_diagnostics grab-bag.
+            double precision :: s11_rate(1000), s33_rate(1000), &
+                 s34_rate(1000), s17_rate(1000), metal_to_h_ratio(1000), &
+                 helium_fraction_param(1000), diffusion_factor(1000), &
+                 luminosity_target(1000), age_target(1000)
 ! 2026 phase A batch 6: the current kind-card index (former
 ! common/zramp/ NK), the run list's cursor -- set by run_yrec's card
 ! loop, read broadly (evolve_step, the io writers, the calibration
@@ -491,20 +319,6 @@ module star_info_lib
 ! GENERATED component list; regenerate via tools/gen_controls_state.py.
             include 'job_controls_def.inc'
       end type star_job
-
-! ---- from state/evolve_state_lib.f90 ----
-      type, public :: evolve_state
-            logical :: has_h_shell, model_diverged_flag, punch_pending_flag, &
-                 recompute_envelope_triangle, reset_triangle, &
-                 saved_pulse_output_flag
-            integer :: h_shell_end_index, h_shell_midpoint_zone, &
-                 h_shell_zone_begin, ikut_flag, istore_flag
-            double precision :: convective_velocity, dt, &
-                 dt_saved, dlnrho_dlnp, dlnrho_dlnt, hydrogen_dt, &
-                 max_domega_frac, path_length_sq, prev_age, prev_log_l, &
-                 prev_log_teff, timestep_yr, total_angular_momentum, &
-                 total_rotational_ke, trial_sign_flag
-      end type evolve_state
 
       type, public :: star_info
 ! structure / thermodynamics, per zone
@@ -638,29 +452,173 @@ module star_info_lib
 ! Physics-domain files (atm, nuclear, wind internals) that read these
 ! now visibly reference star%... -- the remaining star-coupling inside
 ! physics domains is grep-able as star% under those directories.
-            type(prev_model_state) :: prev
-            type(shell_diagnostics_state) :: diag
-            type(run_diagnostics_state) :: run
+! ---- 2026 phase-C flattening: the former prev/diag/run/turnover/
+! flux/engeb/env_comp/thermo/light_burn/evo sub-structs dissolved to
+! flat members (MESA shape: state is flat, only job/ctrl input
+! bundles and the rotation-solver scratch structs stay nested).
+! Member declarations moved verbatim, per-group comments retained.
+! -- former prev_model_state (prev (model snapshot)) --
+! 2026 MESA-convention pass: start-of-step values carry MESA's _start
+! suffix, mirroring the live star_info member they snapshot.
+            double precision :: logP_start(json), logT_start(json), &
+                 logR_start(json), luminosity_lsun_start(json), logRho_start(json)
+            double precision :: xa_start(15,json)
+! NOT renamed dm_start: despite the name this slot holds LOG-MASS
+! coordinates of the pre-rezoning grid (see hpoint's spline blocks) --
+! a rezoning scratch, misnamed since the COMMON era.
+            double precision :: old_shell_mass(json)
+            logical :: convective_flag_start(json), cz_flag_start(json)
+            double precision :: log_Teff_start
+            integer :: nz_start
+! -- former shell_diagnostics_state (diag (per-zone diagnostics)) --
+            double precision :: sesum(json), seg(7,json), sbeta(json), &
+                 seta(json)
+            logical :: locons(json)
+            double precision :: so(json), del_grad(3,json), &
+                 sfxion(3,json), svel(json), scp(json)
+! -- former turnover_state (turnover) --
+            double precision :: convective_turnover_timescale, &
+                 convective_turnover_timescale_old
+            double precision :: pphot, pphot0
+            double precision :: fracstep
+! -- former light_element_burn_state (light_burn) --
+! former common/newrat/: Li6/Li7/Be9 burning rates at the end of the
+! timestep, at the current (possibly overshoot-adjusted) depth.
+            double precision :: rate_li6(json), rate_li7(json), &
+                 rate_be9(json)
+! former common/oldrat/: same, at the start of the timestep.
+            double precision :: rate_li6_start(json), rate_li7_start(json), &
+                 rate_be9_start(json)
+! former common/liov/: pressure scale heights used to search downward
+! from the CZ base for the true (overshoot-corrected) base location.
+            double precision :: pressure_scale_height_start, &
+                 pressure_scale_height_end
+! former common/prevcz/: previous end-of-timestep values, used as the
+! new beginning-of-timestep values.
+            double precision :: cz_base_radius_prev, log_rate_li6_prev, &
+                 log_rate_li7_prev, log_rate_be9_prev
+            integer :: envelope_cz_base_zone_prev
+! former common/deuter/: deuterium burning rate (current/start of
+! timestep), accreted mass fraction, and the convection-zone base zone
+! index used by the deuterium-burning routines.
+            double precision :: deuterium_burning_rate(json), &
+                 deuterium_burning_rate_start(json)
+            double precision :: accreted_mass_fraction
+            integer :: jcz
+! -- former engeb_diagnostics_state (engeb) --
+! former common/neweps/
+            double precision :: alpha_capture_energy, neutrino_loss_rate
+! former common/be7/
+            double precision :: be7_mass_fraction
+! former common/grab/: He3+He3/He3+He4 luminosity and per-shell rate
+! diagnostics (JVS 10/11).
+            double precision :: he3_he3_energy_rate, &
+                 he3_burning_energy_rate
+            double precision :: he3_he3_luminosity_zone(json), &
+                 he3_burning_luminosity_zone(json)
+! -- former neutrino_flux_state (flux) --
+            double precision :: neutrino_flux(10), neutrino_flux_total(10)
+            double precision :: cl37_snu_rate, ga71_snu_rate
+! -- former envelope_composition_state (env_comp) --
+            double precision :: envelope_hydrogen_fraction, &
+                 envelope_metal_fraction
+            double precision :: zenvm, amuenv, fxenv(12)
+            double precision :: xnew, znew, stotal, senv
+! -- former shell_temp_state (thermo) --
+            double precision :: cp(json), mean_molecular_weight(json)
+            double precision :: qdt(json), thdif(json), visc(json)
+! -- former run_diagnostics_state (run (observables + driver bookkeeping)) --
+! 2026 MESA-style output: per-model history sources. Computed by
+! compute_observables after all physics for the step is done;
+! writers (write_history) only read them. Zero at run start
+! (star0 snapshot / static zero), refreshed every converged model.
+           double precision :: log_R_surface, log_g_surface
+           double precision :: total_moment_of_inertia, cz_moment_of_inertia
+           double precision :: rotation_period_days, surf_velocity_kms
+           double precision :: h_shell_bot_mass, h_shell_mid_mass, &
+                h_shell_top_mass, h_shell_bot_radius, h_shell_mid_radius, &
+                h_shell_top_radius
+! former common/entrop/
+           double precision :: temperature_entropy_term(json), &
+                pressure_entropy_term(json), &
+                luminosity_entropy_term(json), &
+                radius_entropy_term(json)
+! former common/rotprt/
+           logical :: print_rotation_diagnostics
+! former common/theage/
+           double precision :: dage
+! former common/stch/
+! former common/calsun/
+           double precision :: dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
+                log_l_prev, log_r_prev, delta_x, delta_alpha
+           logical :: solar_calibration_active
+! former common/sound/
+           double precision :: adiabatic_index_gamma1(json)
+           logical :: sound_speed_output_active
+! former common/monte2/
+! former common/cent/
+           double precision :: central_log10_temperature, central_log10_pressure, &
+                central_log10_density, envelope_mass, envelope_radius
+! 2026 (phase four, step 5): observables formerly computed as
+! locals inside io/wrtout.f90, now filled by the star layer
+! (core/observables_lib.f90) and only READ by the writers.
+           double precision :: central_beta, central_degeneracy_eta
+           double precision :: core_cz_mass
+           double precision :: envelope_cz_temperature, envelope_cz_density, &
+                envelope_cz_pressure, envelope_cz_o16, envelope_cz_log_radius
+! former common/origstart/
+           double precision :: orig_specific_angular_momentum(json), &
+                orig_composition(15,json)
+! former common/envcz/
+           double precision :: envelope_cz_base_radius_rsun
+! former common/comp2/
+           double precision :: envelope_helium_fraction, envelope_he3_fraction
+! former common/envprt/
+           double precision :: current_log10_pressure, current_log10_temperature, &
+                current_log10_radius, current_log10_mass, current_log10_density, &
+                current_opacity, current_beta, current_gradients(3), &
+                current_ion_fraction(3), current_velocity
+! former common/oldrot/
+           double precision :: old_omega(json), &
+                old_specific_angular_momentum(json), &
+                old_moment_of_inertia(json), old_hg(json), &
+                old_mean_radius(json), old_eta_squared(json)
+! former common/i2o/
+           character(len=4) :: initial_composition_code
+! -- former evolve_state (evo (driver-step state)) --
+            logical :: has_h_shell, model_diverged_flag, punch_pending_flag, &
+                 recompute_envelope_triangle, reset_triangle, &
+                 saved_pulse_output_flag
+            integer :: h_shell_end_index, h_shell_midpoint_zone, &
+                 h_shell_zone_begin, ikut_flag, istore_flag
+            double precision :: convective_velocity, dt, &
+                 dt_saved, dlnrho_dlnp, dlnrho_dlnt, hydrogen_dt, &
+                 max_domega_frac, path_length_sq, prev_age, prev_log_l, &
+                 prev_log_teff, timestep_yr, total_angular_momentum, &
+                 total_rotational_ke, trial_sign_flag
+! -- the extended-model pulse physics arrays (former pulse%) --
+            double precision :: pulse_dlnrho_dlnp(json), &
+                 pulse_dlneps_dlnrho(json)
+            double precision :: pulse_dlneps_dlnt(json), &
+                 pulse_dlnkap_dlnrho(json)
+            double precision :: pulse_dlnkap_dlnt(json), &
+                 pulse_specific_heat(json)
+            double precision :: pulse_mean_molecular_weight(json), &
+                 pulse_dlnrho_dlnt(json)
+            double precision :: pulse_electron_mean_molecular_weight(json)
             type(rotation_diffusion_state) :: rot
 ! 2026 (phase six, step 1): the nine remaining model-state modules,
 ! folded in the same way as prev/diag/run/rot -- types stay in their
 ! own files, the single instances live here. See ROADMAP.md phase six
 ! for the per-module classification (envstruct/atmstruct deliberately
 ! stay atm-domain state and are NOT here).
-            type(envelope_composition_state) :: env_comp
-            type(turnover_state) :: turnover
-            type(light_element_burn_state) :: light_burn
-            type(neutrino_flux_state) :: flux
-            type(engeb_diagnostics_state) :: engeb
             type(mdphy_state) :: mix_phys
-            type(shell_temp_state) :: thermo
             type(circulation_velocity_state) :: circ
             type(pulsation_diagnostics_state) :: pulse
 ! job configuration and driver-step state (2026 MESA-convention pass:
 ! folded in as nested sub-structs -- MESA's s% job precedent; one
 ! root means yrec_reset's star snapshot covers them automatically)
             type(star_job) :: job
-            type(evolve_state) :: evo
 ! phase B: the controls bundle (see controls_state above). Nested
 ! like star%job -- the two input bundles are the only nested
 ! sub-structs in the target shape.

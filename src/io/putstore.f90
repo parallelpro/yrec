@@ -156,7 +156,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
           ! write physics flags:
             write(istor,29) core_cz_top_index,envelope_cz_bottom_index,star%mixing_length_alpha, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
-           use_pure_z_table,star%run%initial_composition_code,star%job%use_extended_composition, &
+           use_pure_z_table,star%initial_composition_code,star%job%use_extended_composition, &
            star%job%diffuse_helium_active,star%job%use_diffusion_z,star%job%lsemic,star%job%lovstc, &
            star%job%envelope_overshoot_active,star%job%lovstm,star%job%rotation_active, &
            star%job%instability_transport_active,star%job%ljdot0,star%job%disk_locking_active, &
@@ -211,7 +211,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! write physics flags:
       write(istor,30) core_cz_top_index,envelope_cz_bottom_index,star%mixing_length_alpha, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
-           use_pure_z_table,star%run%initial_composition_code,star%job%use_extended_composition, &
+           use_pure_z_table,star%initial_composition_code,star%job%use_extended_composition, &
            star%job%diffuse_helium_active,star%job%use_diffusion_z,star%job%lsemic,star%job%lovstc, &
            star%job%envelope_overshoot_active,star%job%lovstm,star%job%rotation_active, &
            star%job%instability_transport_active,star%job%ljdot0,star%job%disk_locking_active, &
@@ -277,9 +277,9 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! write out additional physics if desired
             if(star%ctrl%lstphys)then
              sg = dexp(ln10*(cgl - 2.0D0*log_radius(i)))*mass_coordinate(i)
-               write(istor,63,advance='no') star%diag%so(i),sg,star%diag%del_grad(i_grad_rad,i),star%diag%del_grad(i_grad_actual,i), &
-                 star%diag%del_grad(i_grad_ad,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i),0.0,0.0,0.0,star%diag%sbeta(i),star%diag%seta(i), &
-                 (star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(i_eps_neu,i),star%diag%seg(i_eps_grav,i)
+               write(istor,63,advance='no') star%so(i),sg,star%del_grad(i_grad_rad,i),star%del_grad(i_grad_actual,i), &
+                 star%del_grad(i_grad_ad,i),star%svel(i),star%adiabatic_index_gamma1(i),0.0,0.0,0.0,star%sbeta(i),star%seta(i), &
+                 (star%seg(k,i),k=1,5),star%sesum(i),star%seg(i_eps_neu,i),star%seg(i_eps_grav,i)
 !               WRITE(ISTOR,63,ADVANCE='no') SO(I),SG,SDEL(1,I),SDEL(2,I),
 !     *           SDEL(3,I),SVEL(I),GAM1(I),SFXION(1,I),SFXION(2,I),SFXION(3,I),
 !     *           SBETA(I),SETA(I),(SEG(K,I),K=1,5),SESUM(I),SEG(6,I),SEG(7,I)

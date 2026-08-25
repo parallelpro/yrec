@@ -126,7 +126,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
            star%job%diffuse_helium_active,star%job%use_diffusion_z,star%job%disk_locking_active, &
            star%job%instability_transport_active,star%job%ljdot0,low_temp_opacity_flag,star%job%lovstc, &
            star%job%envelope_overshoot_active,star%job%lovstm,use_pure_z_table,star%job%lsemic, &
-           star%run%initial_composition_code,star%job%disk_pressure,star%job%disk_temperature, &
+           star%initial_composition_code,star%job%disk_pressure,star%job%disk_temperature, &
            star%job%wind_saturation_omega)
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons

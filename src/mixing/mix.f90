@@ -188,7 +188,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             call deutrate(log_density_zone, log_temperature_zone, &
                  hydrogen_fraction, zone_idx, iteration_level)
          else
-            star%light_burn%deuterium_burning_rate(zone_idx) = 0.0d0
+            star%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
       end do
       if (zone_idx > (star%nz)) then
@@ -211,7 +211,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          frac_c12_alpha(clear_idx) = 0.0d0
          frac_be7_electron(clear_idx) = 0.0d0
 ! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
-         star%light_burn%deuterium_burning_rate(clear_idx) = 0.0d0
+         star%deuterium_burning_rate(clear_idx) = 0.0d0
       end do
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE

@@ -8,7 +8,7 @@
 ! Yale (eqrelv/eqsaha) and SCV branches of eqstat2 and by eos/mu.f90.
 !
 ! Previously the eos internals read this straight from the model
-! (star%env_comp%...), the one place the eos domain touched
+! (star%...), the one place the eos domain touched
 ! star_info. Now the STAR LAYER pushes the mixture through the
 ! eos_set_mixture facade entry (eos_lib) whenever it recomputes the
 ! envelope composition (core/starin.f90's mixture blocks,

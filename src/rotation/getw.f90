@@ -176,7 +176,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
 ! MHP 10/17 timestep average loss rate
 !            FRACSTEP = 1.
-            star%turnover%fracstep = 0.5
+            star%fracstep = 0.5
             call mwind(star%log_L,full_timestep,cz_mass_bottom, &
                  cz_mass_top,envelope_boundary_zone,star%nz,wind_loss_active, &
                  omega_surface, &
@@ -251,11 +251,11 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 ! FOR USE IN THE ADVECTION/DIFFUSION TREATMENT OF MAEDER&ZAHN 1998
       if(first_call)then
          star%rot%theta_prev(1) = star%rot%tho(1)
-         star%rot%wmst(1) = star%run%old_omega(1)
+         star%rot%wmst(1) = star%old_omega(1)
          do zone_index = 2,star%nz
             star%rot%qwrmst(zone_index) = star%rot%qwrst(zone_index)
             star%rot%theta_prev(zone_index) = star%rot%tho(zone_index)
-            star%rot%wmst(zone_index) = star%run%old_omega(zone_index)
+            star%rot%wmst(zone_index) = star%old_omega(zone_index)
          end do
 ! RECOMPUTE THETA
       else
@@ -271,7 +271,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          end do
       endif
       fx = elapsed_substep_time/full_timestep
-      star%turnover%fracstep = fx
+      star%fracstep = fx
 ! INTERPOLATE LINEARLY IN TIME FOR THE MODEL STRUCTURE BETWEEN THE
 ! START AND END OF THE TIMESTEP.
 ! JVS
@@ -353,9 +353,9 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
             do zone_index = 1,star%nz
                star%j_rot(zone_index) = specific_angular_momentum_saved(zone_index)
-               star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%thermo%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
+               star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
                do species_index = 1,num_species_tracked
-                  star%xa(species_index,zone_index) = star%prev%xa_start(species_index,zone_index)
+                  star%xa(species_index,zone_index) = star%xa_start(species_index,zone_index)
                end do
             end do
             cycle retry
@@ -369,7 +369,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       if(.not.burs_extrapolation_active)then
          do zone_index = 1,star%nz
             do species_index = 1,11
-                  star%prev%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
+                  star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
             end do
          end do
       endif
@@ -388,11 +388,11 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
               num_convective_zones_burn)
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
          if(star%job%lovstm .and. convective_flag_mid(star%nz))then
-            star%light_burn%pressure_scale_height_end = star%ctrl%alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
+            star%pressure_scale_height_end = star%ctrl%alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
                  2.0D0*log_radius_mid(envelope_boundary_zone_cur) &
                  -log_density_mid(envelope_boundary_zone_cur)-cgl-star%log_mass(envelope_boundary_zone_cur)))
          else
-            star%light_burn%pressure_scale_height_end = 0.0D0
+            star%pressure_scale_height_end = 0.0D0
          endif
 ! FIND LIGHT ELEMENT BURNING RATES AT THE END OF THE TIME STEP.
          call lirate88(star%xa,log_density_mid,log_temperature_mid,star%nz,2)
@@ -407,11 +407,11 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
                  star%dm,log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)
             envelope_boundary_zone_prev = envelope_boundary_zone_cur
-            star%light_burn%pressure_scale_height_start = star%light_burn%pressure_scale_height_end
+            star%pressure_scale_height_start = star%pressure_scale_height_end
             do zone_index = 1,star%nz
-               star%light_burn%rate_li6_start(zone_index) = star%light_burn%rate_li6(zone_index)
-               star%light_burn%rate_li7_start(zone_index) = star%light_burn%rate_li7(zone_index)
-               star%light_burn%rate_be9_start(zone_index) = star%light_burn%rate_be9(zone_index)
+               star%rate_li6_start(zone_index) = star%rate_li6(zone_index)
+               star%rate_li7_start(zone_index) = star%rate_li7(zone_index)
+               star%rate_be9_start(zone_index) = star%rate_be9(zone_index)
             end do
          else
 ! COMPUTE BURNING.
@@ -443,13 +443,13 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          if(.not.star%job%instability_transport_active.or.fully_convective_flag)then
             do zone_index = 1,star%nz
                do species_index = 12,15
-                  star%prev%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
+                  star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
                end do
             end do
          else if(.not.burs_extrapolation_active)then
             do zone_index = 1,star%nz
                do species_index = 12,15
-                  star%prev%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
+                  star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
                end do
             end do
          endif
@@ -482,7 +482,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
            star%i_rot,star%omega,star%qiw,star%mean_radius)
       end if
       endif
-      if(star%run%print_rotation_diagnostics)then
+      if(star%print_rotation_diagnostics)then
          star%log_L = log10(star%luminosity_lsun(star%nz))
          log_radius_surface = 0.5D0*(star%log_L + star%log10_solar_luminosity &
               - 4.0D0*star%log_Teff - c4pil - csigl)

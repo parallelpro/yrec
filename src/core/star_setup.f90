@@ -33,14 +33,14 @@ subroutine star_setup(ierr)
          star%job%mc_run_end = star%job%imend
 ! read in monte carlo data
          do i = 1,star%job%imend
-            read(star%ctrl%dynamics_unit,1511)star%run%s11_rate(i),star%run%s33_rate(i),star%run%s34_rate(i), &
-                 star%run%s17_rate(i),star%run%metal_to_h_ratio(i),star%run%helium_fraction_param(i), &
-                 star%run%luminosity_target(i),star%run%age_target(i)
+            read(star%ctrl%dynamics_unit,1511)star%job%s11_rate(i),star%job%s33_rate(i),star%job%s34_rate(i), &
+                 star%job%s17_rate(i),star%job%metal_to_h_ratio(i),star%job%helium_fraction_param(i), &
+                 star%job%luminosity_target(i),star%job%age_target(i)
  1511       format(7X,1P7E10.3/E9.3)
-            write(iowr,*)i,star%run%s11_rate(i),star%run%s33_rate(i),star%run%s34_rate(i),star%run%s17_rate(i), &
-                 star%run%metal_to_h_ratio(i),star%run%helium_fraction_param(i), &
-                 star%run%luminosity_target(i),star%run%age_target(i)
-            star%run%diffusion_factor(i) = star%run%helium_fraction_param(i)
+            write(iowr,*)i,star%job%s11_rate(i),star%job%s33_rate(i),star%job%s34_rate(i),star%job%s17_rate(i), &
+                 star%job%metal_to_h_ratio(i),star%job%helium_fraction_param(i), &
+                 star%job%luminosity_target(i),star%job%age_target(i)
+            star%job%diffusion_factor(i) = star%job%helium_fraction_param(i)
          end do
       else
          star%job%mc_run_start = 1

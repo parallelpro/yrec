@@ -56,21 +56,21 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
          pressure_cgs = exp(ln10*log_pressure(i))
          temperature_k = exp(ln10*log_temperature(i))
          density_cgs = exp(ln10*log_density(i))
-! delta = chiT/chiRho = -star%pulse%pulse_dlnrho_dlnt, since chiRho=1/star%pulse%pulse_dlnrho_dlnp
-! and chiT=-chiRho*star%pulse%pulse_dlnrho_dlnt (see misc/coefft.f90 around line 639).
-         delta = -star%pulse%pulse_dlnrho_dlnt(i)
+! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho=1/star%pulse_dlnrho_dlnp
+! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see misc/coefft.f90 around line 639).
+         delta = -star%pulse_dlnrho_dlnt(i)
          if (radius_cm.gt.0.0d0) then
             grav = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)
             brunt_n2 = grav*grav*(density_cgs/pressure_cgs)*delta* &
-                 (star%diag%del_grad(i_grad_ad,i)-star%diag%del_grad(i_grad_actual,i))
+                 (star%del_grad(i_grad_ad,i)-star%del_grad(i_grad_actual,i))
          else
             brunt_n2 = 0.0d0
          end if
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
-              pressure_cgs,temperature_k,density_cgs,star%diag%del_grad(i_grad_actual,i), &
-              brunt_n2,star%run%adiabatic_index_gamma1(i),star%diag%del_grad(i_grad_ad,i),delta, &
-              star%diag%so(i),star%pulse%pulse_dlnkap_dlnt(i),star%pulse%pulse_dlnkap_dlnrho(i),star%diag%sesum(i), &
-              star%pulse%pulse_dlneps_dlnt(i),star%pulse%pulse_dlneps_dlnrho(i),omega(i)
+              pressure_cgs,temperature_k,density_cgs,star%del_grad(i_grad_actual,i), &
+              brunt_n2,star%adiabatic_index_gamma1(i),star%del_grad(i_grad_ad,i),delta, &
+              star%so(i),star%pulse_dlnkap_dlnt(i),star%pulse_dlnkap_dlnrho(i),star%sesum(i), &
+              star%pulse_dlneps_dlnt(i),star%pulse_dlneps_dlnrho(i),omega(i)
  110     format(I6,99(1X,1PE26.16))
       end do
 

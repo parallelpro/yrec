@@ -149,12 +149,12 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
             min_comp_for_check = max(1.0d-6* &
                  composition(species_index,num_zones),1.0d-20)
             do zone_index = 1,num_zones
-               if(star%prev%xa_start(species_index,zone_index).lt. &
+               if(star%xa_start(species_index,zone_index).lt. &
                     min_comp_for_check)cycle
                fractional_comp_change = &
                     (composition(species_index,zone_index)- &
-                    star%prev%xa_start(species_index,zone_index))/ &
-                    star%prev%xa_start(species_index,zone_index)
+                    star%xa_start(species_index,zone_index))/ &
+                    star%xa_start(species_index,zone_index)
                if(abs(fractional_comp_change).gt. &
                     abs(max_fractional_comp_change)) then
                   max_fractional_comp_change = fractional_comp_change
@@ -168,7 +168,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
    50 format(' MAX FRAC.COMP.CHANGE',1pe12.3,' SPECIES',i2, &
               ' AT PT.',i5)
          if(star%job%use_extended_composition)write(*,60) &
-              composition(14,num_zones),star%prev%xa_start(14,num_zones)
+              composition(14,num_zones),star%xa_start(14,num_zones)
    60 format(5x,'NEW SURFACE LI',1pe14.4,'OLD VALUE',e14.4)
       endif
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
@@ -177,14 +177,14 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
       if(iteration_number.gt.1)then
          do zone_index = 1,num_zones
             delta_hydrogen = composition(1,zone_index)- &
-                 star%env_comp%envelope_hydrogen_fraction
+                 star%envelope_hydrogen_fraction
             delta_helium = composition(2,zone_index)- &
-                 star%run%envelope_helium_fraction
+                 star%envelope_helium_fraction
             delta_metal = composition(3,zone_index)- &
-                 star%env_comp%envelope_metal_fraction
+                 star%envelope_metal_fraction
             delta_helium3 = composition(4,zone_index)- &
-                 star%run%envelope_he3_fraction
-            amu_calc_temp = star%env_comp%amuenv + delta_hydrogen/atomic_weight(1) + &
+                 star%envelope_he3_fraction
+            amu_calc_temp = star%amuenv + delta_hydrogen/atomic_weight(1) + &
                  delta_helium/atomic_weight(2) + &
                  delta_metal/atomic_weight(3) + &
                  delta_helium3/atomic_weight(4)

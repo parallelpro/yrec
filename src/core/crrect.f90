@@ -154,7 +154,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
       kenv = 0
       katm = 0
       ksaha = 0
-      star%env_comp%senv = star%log_mass(star%nz) - star%log_total_mass
+      star%senv = star%log_mass(star%nz) - star%log_total_mass
       if (start_new_triangle.or.reset_triangle .and.iteration_level.eq.2) &
            recompute_surface_bc = .true.
 !  FIND NEW FP AND FT IF MODEL IS ROTATING
@@ -169,8 +169,8 @@ subroutine crrect(delta_time, max_iterations, converged, &
 ! SET UP SURFACE BOUNDARY CONDITIONS-2ND AND 3RD LEVELS OF ITER ONLY
 ! FIND ENVELOPE MASS AND SET X AND Z TO ENVELOPE VALUES
       if (recompute_surface_bc) then
-       hydrogen_fraction = star%env_comp%xnew
-       metal_fraction = star%env_comp%znew
+       hydrogen_fraction = star%xnew
+       metal_fraction = star%znew
        log10_pressure_limit = star%logP(star%nz)
        if (use_debye_huckel_correction) then
           debye_huckel_x = star%xa(i_h1,star%nz)
@@ -199,7 +199,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
          if (star%job%use_extended_composition) num_species = 15
          do i = 1,star%nz
             do j = 1,num_species
-               star%xa(j,i) = star%prev%xa_start(j,i)
+               star%xa(j,i) = star%xa_start(j,i)
             end do
          end do
          call mix(delta_time, iteration_level, timestep_years, &

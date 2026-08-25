@@ -251,7 +251,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       total_mass_grams_old = 10.0d0**log_total_mass
       total_mass_grams_new = total_mass_grams_old + delta_mass_cgs
       log_total_mass = log10(total_mass_grams_new)
-      star%env_comp%stotal = log_total_mass
+      star%stotal = log_total_mass
 ! CORRECT MASS CONTENTS OF INDIVIDUAL SHELLS (HS2, IN GM)
       do zone_idx = envelope_boundary_zone,num_zones-1
        shell_mass(zone_idx) = 0.5d0*(zone_mass_grams(zone_idx+1)- &
@@ -260,7 +260,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       shell_mass(num_zones) = total_mass_grams_new-0.5d0* &
            (zone_mass_grams(num_zones)+zone_mass_grams(num_zones-1))
 ! 07/02RESET SENV
-      star%env_comp%senv = log_mass(num_zones) - log_total_mass
+      star%senv = log_mass(num_zones) - log_total_mass
 ! RECOMPUTE SURFACE BOUNDRY CONDITION
       new_surface_bc_needed = .true.
 ! REMIX THE SURFACE CONVECTION ZONE IF MDOT IS POSITIVE.
@@ -276,7 +276,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
                composition(species_idx,zone_idx) = mixed_abundance
             end do
          end do
-         star%light_burn%accreted_mass_fraction = delta_mass_cgs
+         star%accreted_mass_fraction = delta_mass_cgs
       endif
 !  9999 CONTINUE
       if(disk_exhausted_flag) star%job%use_mass_accretion = .false.

@@ -8,15 +8,15 @@
 ! compute_observables, called from evolve_step immediately before the
 ! output writer, once per output model -- exactly the cadence the
 ! blocks had inside wrtout. Every computed quantity is stored on
-! star% (star%run%*, star%flux%*, star%turnover%*,
+! star% (star%*, star%*, star%*,
 ! star%luminosity_breakdown); nothing here feeds back into the
 ! physics -- the physics consumers of the turnover timescale call
 ! gettau themselves at their own points (getw, starin).
 !
 ! Theme order matches the original wrtout order and is load-bearing:
 ! central conditions must precede the surface-CZ base (its
-! fully-convective branch reads star%run%central_log10_*), and the
-! MESA-mode block reads star%run%log_R_surface set two themes
+! fully-convective branch reads star%central_log10_*), and the
+! MESA-mode block reads star%log_R_surface set two themes
 ! earlier.
 !
 ! Statement-level content is verbatim from the original; only the
@@ -89,7 +89,7 @@ subroutine compute_observables(ierr)
       call locate_surface_cz_base
 
 ! ---- 2026 MESA-style output: fill the per-model history sources ----
-! (star%run% members read by write_history). Formulas are the legacy
+! (star% members read by write_history). Formulas are the legacy
 ! .track v0 branch's, verbatim. Legacy mode skips this: wrtout
 ! computes the same values internally with pinned print ordering.
       if (.not. star%ctrl%use_legacy_output) then
@@ -134,9 +134,9 @@ subroutine locate_core_cz
       double precision :: core_boundary_log_radius, core_boundary_radius
 
       if(star%core_cz_top_index.gt.1) then
-       star%run%core_cz_mass = star%m(star%core_cz_top_index)/star%solar_mass_cgs
+       star%core_cz_mass = star%m(star%core_cz_top_index)/star%solar_mass_cgs
       else
-       star%run%core_cz_mass = 0.0D0
+       star%core_cz_mass = 0.0D0
       endif
 
 ! JVS 10/11 Be more care about the true boundary of the convective core
@@ -148,8 +148,8 @@ subroutine locate_core_cz
 ! call. core_boundary_fx2 (FX2) is computed just above but is NOT
 ! what is used here -- this looks like a bug (FX2 vs FX typo) in the
 ! original wrtout.f, preserved exactly, not fixed.
-       core_boundary_fx2 = (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))/ &
-             (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))
+       core_boundary_fx2 = (star%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%del_grad(i_grad_rad,star%core_cz_top_index))/ &
+             (star%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%del_grad(i_grad_rad,star%core_cz_top_index))
        core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
             (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-star%log10_solar_radius
        core_boundary_radius = dexp(ln10*core_boundary_log_radius)
@@ -161,7 +161,7 @@ end subroutine locate_core_cz
 
 ! ---------------------------------------------------------------
 !  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
-!  CENTRAL ETA AND BETA ARE ALSO CALCULATED. Stores star%run%central_*.
+!  CENTRAL ETA AND BETA ARE ALSO CALCULATED. Stores star%central_*.
 subroutine compute_central_conditions(ierr)
       use star_info_lib, only: star
       integer, intent(out) :: ierr
@@ -190,7 +190,7 @@ subroutine compute_central_conditions(ierr)
       pressure_linear = dexp(ln10*star%logP(1))
       log_pressure_center = dlog10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%diag%del_grad(i_grad_actual,1)/pressure_linear)
+      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%del_grad(i_grad_actual,1)/pressure_linear)
       log_density_center = star%logRho(1)
       hydrogen_fraction_center = star%xa(i_h1,1)
       metal_fraction_center = star%xa(i_metals,1)
@@ -206,16 +206,16 @@ subroutine compute_central_conditions(ierr)
            composition_at_zone=star%xa(:,1), ierr=ierr)
       if (ierr /= 0) return
 ! STORE CENTRAL RHO,P,T FOR LATER USE
-      star%run%central_log10_pressure = log_pressure_center
-      star%run%central_log10_temperature = log_temperature_center
-      star%run%central_log10_density = log_density_center
-      star%run%central_beta = beta_center
-      star%run%central_degeneracy_eta = degeneracy_eta_center
+      star%central_log10_pressure = log_pressure_center
+      star%central_log10_temperature = log_temperature_center
+      star%central_log10_density = log_density_center
+      star%central_beta = beta_center
+      star%central_degeneracy_eta = degeneracy_eta_center
 end subroutine compute_central_conditions
 
 ! ---------------------------------------------------------------
 !  Surface-CZ base: interpolate the zone edge at the base of the
-!  surface convection zone, filling star%run%envelope_mass/
+!  surface convection zone, filling star%envelope_mass/
 !  envelope_radius/envelope_cz_*. Sets the module-level
 !  envelope_boundary_fx (the FX of the FX/FX2 story).
 ! MHP 02/12 FIXED MINOR GLITCH ON BASE OF THE CONVECTION ZONE
@@ -234,43 +234,43 @@ subroutine locate_surface_cz_base
 ! JVS 10/11/13 SDEL(1,JENV) IN DENOMINATOR WAS A TYPO. CHANGED TO SDEL(3,JENV)
 !            FX = (SDEL(3,JENV)-SDEL(1,JENV-1))/
 !     *           (SDEL(3,JENV)-SDEL(1,JENV-1))
-            dd2 = star%diag%del_grad(i_grad_rad,star%envelope_cz_bottom_index-1)-star%diag%del_grad(i_grad_ad,star%envelope_cz_bottom_index-1)
-            dd1 = star%diag%del_grad(i_grad_rad,star%envelope_cz_bottom_index)-star%diag%del_grad(i_grad_ad,star%envelope_cz_bottom_index)
+            dd2 = star%del_grad(i_grad_rad,star%envelope_cz_bottom_index-1)-star%del_grad(i_grad_ad,star%envelope_cz_bottom_index-1)
+            dd1 = star%del_grad(i_grad_rad,star%envelope_cz_bottom_index)-star%del_grad(i_grad_ad,star%envelope_cz_bottom_index)
             envelope_boundary_fx = dd2/(dd2-dd1)
 !            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
             cz_base_mass = star%m(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%m(star%envelope_cz_bottom_index)-star%m(star%envelope_cz_bottom_index-1))
-            star%run%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/star%solar_mass_cgs
+            star%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/star%solar_mass_cgs
 ! MHP 2/98 FIND RADIUS OF CZ BASE
-            star%run%envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+            star%envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logR(star%envelope_cz_bottom_index)-star%logR(star%envelope_cz_bottom_index-1))-star%log10_solar_radius
-            star%run%envelope_radius = exp(ln10*star%run%envelope_cz_log_radius)
-            star%run%envelope_cz_o16 = star%diag%so(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%diag%so(star%envelope_cz_bottom_index)-star%diag%so(star%envelope_cz_bottom_index-1))
+            star%envelope_radius = exp(ln10*star%envelope_cz_log_radius)
+            star%envelope_cz_o16 = star%so(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%so(star%envelope_cz_bottom_index)-star%so(star%envelope_cz_bottom_index-1))
             envelope_cz_log_temperature = star%logT(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logT(star%envelope_cz_bottom_index)-star%logT(star%envelope_cz_bottom_index-1))
             envelope_cz_log_density = star%logRho(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logRho(star%envelope_cz_bottom_index)-star%logRho(star%envelope_cz_bottom_index-1))
             envelope_cz_log_pressure = star%logP(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logP(star%envelope_cz_bottom_index)-star%logP(star%envelope_cz_bottom_index-1))
-            star%run%envelope_cz_temperature = exp(ln10*envelope_cz_log_temperature)
-            star%run%envelope_cz_density = exp(ln10*envelope_cz_log_density)
-            star%run%envelope_cz_pressure = exp(ln10*envelope_cz_log_pressure)
+            star%envelope_cz_temperature = exp(ln10*envelope_cz_log_temperature)
+            star%envelope_cz_density = exp(ln10*envelope_cz_log_density)
+            star%envelope_cz_pressure = exp(ln10*envelope_cz_log_pressure)
        else
-          star%run%envelope_mass = star%star_mass
-          star%run%envelope_radius = 0.0D0
-            star%run%envelope_cz_temperature = 10.0D0**star%run%central_log10_temperature
-            star%run%envelope_cz_density = 10.0D0**star%run%central_log10_density
-            star%run%envelope_cz_pressure = 10.0D0**star%run%central_log10_pressure
-            star%run%envelope_cz_o16 = star%diag%so(1)
+          star%envelope_mass = star%star_mass
+          star%envelope_radius = 0.0D0
+            star%envelope_cz_temperature = 10.0D0**star%central_log10_temperature
+            star%envelope_cz_density = 10.0D0**star%central_log10_density
+            star%envelope_cz_pressure = 10.0D0**star%central_log10_pressure
+            star%envelope_cz_o16 = star%so(1)
        endif
       else
-       star%run%envelope_mass = 0.0D0
-       star%run%envelope_radius = 0.0D0
-         star%run%envelope_cz_temperature = 0.0D0
-         star%run%envelope_cz_density = 0.0D0
-         star%run%envelope_cz_pressure = 0.0D0
-         star%run%envelope_cz_o16 = 0.0D0
+       star%envelope_mass = 0.0D0
+       star%envelope_radius = 0.0D0
+         star%envelope_cz_temperature = 0.0D0
+         star%envelope_cz_density = 0.0D0
+         star%envelope_cz_pressure = 0.0D0
+         star%envelope_cz_o16 = 0.0D0
       endif
 end subroutine locate_surface_cz_base
 
@@ -284,21 +284,21 @@ subroutine refresh_turnover_timescale
       call gettau(star%xa, star%logR, star%logP, star%logRho, &
            star%m, star%logT, star%fp_rot, star%ft_rot, &
            star%log_Teff, star%log_total_mass, star%log_L, star%nz, &
-           star%convective_flag, star%run%envelope_radius)
-      star%turnover%convective_turnover_timescale_old = &
-           star%turnover%convective_turnover_timescale
-      star%turnover%pphot0 = star%turnover%pphot
+           star%convective_flag, star%envelope_radius)
+      star%convective_turnover_timescale_old = &
+           star%convective_turnover_timescale
+      star%pphot0 = star%pphot
 end subroutine refresh_turnover_timescale
 
 ! ---------------------------------------------------------------
 ! Surface radius and gravity from L and Teff.
 subroutine compute_surface_globals
       use star_info_lib, only: star
-      star%run%log_R_surface = 0.5d0*(star%log_L + star%log10_solar_luminosity &
+      star%log_R_surface = 0.5d0*(star%log_L + star%log10_solar_luminosity &
            - c4pil - csigl - 4.0d0*star%log_Teff)
-      star%run%log_g_surface = cgl + star%env_comp%stotal &
-           - 2.0d0*star%run%log_R_surface
-      star%run%log_R_surface = star%run%log_R_surface - star%log10_solar_radius
+      star%log_g_surface = cgl + star%stotal &
+           - 2.0d0*star%log_R_surface
+      star%log_R_surface = star%log_R_surface - star%log10_solar_radius
 end subroutine compute_surface_globals
 
 ! ---------------------------------------------------------------
@@ -308,17 +308,17 @@ subroutine compute_moment_of_inertia
       use star_info_lib, only: star
       integer :: i
 
-      star%run%total_moment_of_inertia = 0.0d0
+      star%total_moment_of_inertia = 0.0d0
       if (.not. star%job%rotation_active) then
          do i = 1, star%nz
-            star%run%total_moment_of_inertia = &
-                 star%run%total_moment_of_inertia + &
+            star%total_moment_of_inertia = &
+                 star%total_moment_of_inertia + &
                  cc23*star%dm(i)*exp(2.0d0*ln10*star%logR(i))
          end do
       else
          do i = 1, star%nz
-            star%run%total_moment_of_inertia = &
-                 star%run%total_moment_of_inertia + star%i_rot(i)
+            star%total_moment_of_inertia = &
+                 star%total_moment_of_inertia + star%i_rot(i)
          end do
       end if
 end subroutine compute_moment_of_inertia
@@ -329,48 +329,48 @@ subroutine compute_snu_rates
       use star_info_lib, only: star
       integer :: i
 
-      star%flux%cl37_snu_rate = 0.0d0
-      star%flux%ga71_snu_rate = 0.0d0
+      star%cl37_snu_rate = 0.0d0
+      star%ga71_snu_rate = 0.0d0
       if (star%ctrl%lsnu) then
          do i = 1, 8
-            star%flux%cl37_snu_rate = star%flux%cl37_snu_rate + &
-                 clsnuf_diag(i)*star%flux%neutrino_flux_total(i)
-            star%flux%ga71_snu_rate = star%flux%ga71_snu_rate + &
-                 gasnuf_diag(i)*star%flux%neutrino_flux_total(i)
+            star%cl37_snu_rate = star%cl37_snu_rate + &
+                 clsnuf_diag(i)*star%neutrino_flux_total(i)
+            star%ga71_snu_rate = star%ga71_snu_rate + &
+                 gasnuf_diag(i)*star%neutrino_flux_total(i)
          end do
       else
          do i = 1, 10
-            star%flux%neutrino_flux_total(i) = 0.0d0
+            star%neutrino_flux_total(i) = 0.0d0
          end do
       end if
 end subroutine compute_snu_rates
 
 ! ---------------------------------------------------------------
 ! Surface rotation period/velocity and the CZ moment of inertia.
-! (Reads star%run%log_R_surface -- compute_surface_globals first.)
+! (Reads star%log_R_surface -- compute_surface_globals first.)
 subroutine compute_rotation_observables
       use star_info_lib, only: star
       integer :: i
 
-      star%run%cz_moment_of_inertia = 0.0d0
+      star%cz_moment_of_inertia = 0.0d0
       if (star%job%rotation_active) then
-         star%run%rotation_period_days = min(9999.0d0, &
+         star%rotation_period_days = min(9999.0d0, &
               0.5d0*c4pi/star%omega(star%nz)/8.64d4)
-         star%run%surf_velocity_kms = star%omega(star%nz)* &
-              exp(ln10*(star%run%log_R_surface+star%log10_solar_radius))*1.0d-5
+         star%surf_velocity_kms = star%omega(star%nz)* &
+              exp(ln10*(star%log_R_surface+star%log10_solar_radius))*1.0d-5
          if (star%envelope_cz_bottom_index .lt. star%nz) then
             do i = star%envelope_cz_bottom_index, star%nz
-               star%run%cz_moment_of_inertia = &
-                    star%run%cz_moment_of_inertia + star%i_rot(i)
+               star%cz_moment_of_inertia = &
+                    star%cz_moment_of_inertia + star%i_rot(i)
             end do
          end if
       else
-         star%run%rotation_period_days = 0.0d0
-         star%run%surf_velocity_kms = 0.0d0
+         star%rotation_period_days = 0.0d0
+         star%surf_velocity_kms = 0.0d0
          if (star%envelope_cz_bottom_index .lt. star%nz) then
             do i = star%envelope_cz_bottom_index, star%nz
-               star%run%cz_moment_of_inertia = &
-                    star%run%cz_moment_of_inertia + &
+               star%cz_moment_of_inertia = &
+                    star%cz_moment_of_inertia + &
                     cc23*star%dm(i)*exp(2.0d0*ln10*star%logR(i))
             end do
          end if
@@ -379,32 +379,32 @@ end subroutine compute_rotation_observables
 
 ! ---------------------------------------------------------------
 ! H-burning shell boundary masses and (surface-relative) radii.
-! (Reads star%run%log_R_surface -- compute_surface_globals first.)
+! (Reads star%log_R_surface -- compute_surface_globals first.)
 subroutine compute_h_shell_boundaries
       use star_info_lib, only: star
-      if (star%evo%has_h_shell) then
-         star%run%h_shell_bot_mass = &
-              star%m(star%evo%h_shell_zone_begin)/star%solar_mass_cgs
-         star%run%h_shell_mid_mass = &
-              star%m(star%evo%h_shell_midpoint_zone)/star%solar_mass_cgs
-         star%run%h_shell_top_mass = &
-              star%m(star%evo%h_shell_end_index)/star%solar_mass_cgs
-         star%run%h_shell_bot_radius = exp(ln10*( &
-              star%logR(star%evo%h_shell_zone_begin) &
-              - star%run%log_R_surface - star%log10_solar_radius))
-         star%run%h_shell_mid_radius = exp(ln10*( &
-              star%logR(star%evo%h_shell_midpoint_zone) &
-              - star%run%log_R_surface - star%log10_solar_radius))
-         star%run%h_shell_top_radius = exp(ln10*( &
-              star%logR(star%evo%h_shell_end_index) &
-              - star%run%log_R_surface - star%log10_solar_radius))
+      if (star%has_h_shell) then
+         star%h_shell_bot_mass = &
+              star%m(star%h_shell_zone_begin)/star%solar_mass_cgs
+         star%h_shell_mid_mass = &
+              star%m(star%h_shell_midpoint_zone)/star%solar_mass_cgs
+         star%h_shell_top_mass = &
+              star%m(star%h_shell_end_index)/star%solar_mass_cgs
+         star%h_shell_bot_radius = exp(ln10*( &
+              star%logR(star%h_shell_zone_begin) &
+              - star%log_R_surface - star%log10_solar_radius))
+         star%h_shell_mid_radius = exp(ln10*( &
+              star%logR(star%h_shell_midpoint_zone) &
+              - star%log_R_surface - star%log10_solar_radius))
+         star%h_shell_top_radius = exp(ln10*( &
+              star%logR(star%h_shell_end_index) &
+              - star%log_R_surface - star%log10_solar_radius))
       else
-         star%run%h_shell_bot_mass = 0.0d0
-         star%run%h_shell_mid_mass = 0.0d0
-         star%run%h_shell_top_mass = 0.0d0
-         star%run%h_shell_bot_radius = 0.0d0
-         star%run%h_shell_mid_radius = 0.0d0
-         star%run%h_shell_top_radius = 0.0d0
+         star%h_shell_bot_mass = 0.0d0
+         star%h_shell_mid_mass = 0.0d0
+         star%h_shell_top_mass = 0.0d0
+         star%h_shell_bot_radius = 0.0d0
+         star%h_shell_mid_radius = 0.0d0
+         star%h_shell_top_radius = 0.0d0
       end if
 end subroutine compute_h_shell_boundaries
 

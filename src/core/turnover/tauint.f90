@@ -129,7 +129,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
             end if
             end if
 ! DEFINE TAUCZ
-            star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+            star%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
 
          else
 ! INFER HP
@@ -143,7 +143,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
 ! SLOWLY VARYING DENSITY AND PRESSURE NEAR THE CENTER.
                convective_velocity_bcz = convective_velocity(1)
                pressure_scale_height_bcz = (pressure_scale_height2*radius_test2)**0.5d0
-               star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+               star%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
             else
                do k = 2,num_points
                   pressure_scale_height1 = pressure_scale_height2
@@ -163,7 +163,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
                      pressure_scale_height_bcz = pressure_scale_height1+ &
                           interp_fraction*(pressure_scale_height2-pressure_scale_height1)
 ! DEFINE TAUCZ
-                     star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+                     star%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
                      exit
                   endif
                end do
@@ -171,12 +171,12 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
                k = num_points
                convective_velocity_bcz = convective_velocity(num_points)
                pressure_scale_height_bcz = pressure_scale_height2
-               star%turnover%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
+               star%convective_turnover_timescale = pressure_scale_height_bcz/convective_velocity_bcz
                end if
             endif
          endif
       else
-         star%turnover%convective_turnover_timescale = 0.0d0
+         star%convective_turnover_timescale = 0.0d0
       endif
 
 !--------------------------------------------------------------

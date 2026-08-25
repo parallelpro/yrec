@@ -37,12 +37,12 @@ subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
 !     LUMINOSITY
       luminosity_lsun = 10.**log_luminosity_lsun
 !     PHOTOSPHERIC PRESSURE
-      photospheric_pressure_ratio = 10.**(star%turnover%pphot0+star%turnover%fracstep*(star%turnover%pphot-star%turnover%pphot0))/ &
+      photospheric_pressure_ratio = 10.**(star%pphot0+star%fracstep*(star%pphot-star%pphot0))/ &
            (10.**star%ctrl%pmm_solar_pressure)
 !     CONVECTIVE OVERTURN TIMESCALE
       if(star%ctrl%scale_by_rossby_number)then
-         turnover_ratio = (star%turnover%convective_turnover_timescale_old+star%turnover%fracstep* &
-              (star%turnover%convective_turnover_timescale-star%turnover%convective_turnover_timescale_old))/ &
+         turnover_ratio = (star%convective_turnover_timescale_old+star%fracstep* &
+              (star%convective_turnover_timescale-star%convective_turnover_timescale_old))/ &
               star%ctrl%pmm_solar_turnover_timescale
       else
          turnover_ratio = 1.

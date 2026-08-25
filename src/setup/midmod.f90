@@ -129,12 +129,12 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 ! PRIOR STEP.
       if (first_call) then
          do j = 1,star%nz
-            star%rot%convective_flag_prev(j) = star%prev%convective_flag_start(j)
-            star%rot%radius_prev(j) = star%prev%logR_start(j)
+            star%rot%convective_flag_prev(j) = star%convective_flag_start(j)
+            star%rot%radius_prev(j) = star%logR_start(j)
             star%rot%del_grad_diff_prev(j) = star%rot%old_del_adiabatic_mix(j)-star%rot%old_del_radiative_mix(j)
             star%mix_phys%amum(j) = star%rot%old_amu(j)
             do i = 1,num_species_tracked
-               star%xa(i,j) = star%prev%xa_start(i,j)
+               star%xa(i,j) = star%xa_start(i,j)
             end do
          end do
       else
@@ -148,32 +148,32 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !  INTERPOLATE IN THE MODEL VARIABLES AND AUXILLARY PHYSICS.
       step_fraction_ratio = sub_timestep/full_timestep
       do j = 1,star%nz
-         log_density_mid(j) = star%prev%logRho_start(j) + &
-              time_fraction*(star%logRho(j)-star%prev%logRho_start(j))
-         log_luminosity_mid(j) = star%prev%luminosity_lsun_start(j) + &
-              time_fraction*(star%luminosity_lsun(j)-star%prev%luminosity_lsun_start(j))
-         log_pressure_mid(j) = star%prev%logP_start(j) + &
-              time_fraction*(star%logP(j)-star%prev%logP_start(j))
-         log_radius_mid(j) = star%prev%logR_start(j) + &
-              time_fraction*(star%logR(j)-star%prev%logR_start(j))
-         log_temperature_mid(j) = star%prev%logT_start(j) + &
-              time_fraction*(star%logT(j)-star%prev%logT_start(j))
+         log_density_mid(j) = star%logRho_start(j) + &
+              time_fraction*(star%logRho(j)-star%logRho_start(j))
+         log_luminosity_mid(j) = star%luminosity_lsun_start(j) + &
+              time_fraction*(star%luminosity_lsun(j)-star%luminosity_lsun_start(j))
+         log_pressure_mid(j) = star%logP_start(j) + &
+              time_fraction*(star%logP(j)-star%logP_start(j))
+         log_radius_mid(j) = star%logR_start(j) + &
+              time_fraction*(star%logR(j)-star%logR_start(j))
+         log_temperature_mid(j) = star%logT_start(j) + &
+              time_fraction*(star%logT(j)-star%logT_start(j))
 !        DO 30 I = 1,IEND
-         hg_mid(j) = star%run%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%run%old_hg(j))
+         hg_mid(j) = star%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%old_hg(j))
          star%mix_phys%del_adiabatic_mix(j) = star%rot%old_del_adiabatic_mix(j) + &
-              time_fraction*(star%diag%del_grad(i_grad_ad,j)-star%rot%old_del_adiabatic_mix(j))
-         star%mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%diag%del_grad(i_grad_actual,j) - star%rot%old_delm(j))
+              time_fraction*(star%del_grad(i_grad_ad,j)-star%rot%old_del_adiabatic_mix(j))
+         star%mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%del_grad(i_grad_actual,j) - star%rot%old_delm(j))
          star%mix_phys%del_radiative_mix(j) = star%rot%old_del_radiative_mix(j) + &
-              time_fraction*(star%diag%del_grad(i_grad_rad,j) - star%rot%old_del_radiative_mix(j))
-         star%mix_phys%esumm(j) = star%rot%old_esum(j) + time_fraction*(star%diag%sesum(j) - star%rot%old_esum(j))
-         star%mix_phys%viscm(j) = star%rot%old_visc(j) + time_fraction*(star%thermo%visc(j) - star%rot%old_visc(j))
-         star%mix_phys%thdifm(j) = star%rot%old_thdif(j) + time_fraction*(star%thermo%thdif(j) - star%rot%old_thdif(j))
-         star%mix_phys%cpm(j) = star%rot%old_cp(j) + time_fraction*(star%thermo%cp(j) - star%rot%old_cp(j))
-         star%mix_phys%qdtm(j) = star%rot%old_qdt(j) + time_fraction*(star%thermo%qdt(j) - star%rot%old_qdt(j))
-         star%mix_phys%om(j) = star%rot%old_om(j) + time_fraction*(star%diag%so(j) - star%rot%old_om(j))
-         star%mix_phys%amum(j) = star%mix_phys%amum(j) + step_fraction_ratio*(star%thermo%mean_molecular_weight(j) - star%rot%old_amu(j))
+              time_fraction*(star%del_grad(i_grad_rad,j) - star%rot%old_del_radiative_mix(j))
+         star%mix_phys%esumm(j) = star%rot%old_esum(j) + time_fraction*(star%sesum(j) - star%rot%old_esum(j))
+         star%mix_phys%viscm(j) = star%rot%old_visc(j) + time_fraction*(star%visc(j) - star%rot%old_visc(j))
+         star%mix_phys%thdifm(j) = star%rot%old_thdif(j) + time_fraction*(star%thdif(j) - star%rot%old_thdif(j))
+         star%mix_phys%cpm(j) = star%rot%old_cp(j) + time_fraction*(star%cp(j) - star%rot%old_cp(j))
+         star%mix_phys%qdtm(j) = star%rot%old_qdt(j) + time_fraction*(star%qdt(j) - star%rot%old_qdt(j))
+         star%mix_phys%om(j) = star%rot%old_om(j) + time_fraction*(star%so(j) - star%rot%old_om(j))
+         star%mix_phys%amum(j) = star%mix_phys%amum(j) + step_fraction_ratio*(star%mean_molecular_weight(j) - star%rot%old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
-         total_epsilon = star%diag%sesum(j)+star%diag%seg(i_eps_neu,j)+star%diag%seg(i_eps_grav,j)
+         total_epsilon = star%sesum(j)+star%seg(i_eps_neu,j)+star%seg(i_eps_grav,j)
          star%mix_phys%epsm(j) = star%rot%old_eps(j)+time_fraction*(total_epsilon-star%rot%old_eps(j))
       end do
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
@@ -184,14 +184,14 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          star%rot%del_grad_diff_new(i) = star%mix_phys%del_adiabatic_mix(i)-star%mix_phys%del_radiative_mix(i)
          if (star%convective_flag(i).eqv.star%rot%convective_flag_prev(i)) then
             convective_flag_mid(i) = star%convective_flag(i)
-            star%mix_phys%velm(i) = star%rot%old_vel(i) + time_fraction*(star%diag%svel(i)-star%rot%old_vel(i))
+            star%mix_phys%velm(i) = star%rot%old_vel(i) + time_fraction*(star%svel(i)-star%rot%old_vel(i))
             convective_state_changed(i) = .false.
          else
             convective_state_changed(i) = .true.
             new_cz_detected = .true.
             if (star%mix_phys%del_adiabatic_mix(i).lt.star%mix_phys%del_radiative_mix(i)) then
                convective_flag_mid(i) = .true.
-               star%mix_phys%velm(i) = max(star%rot%old_vel(i),star%diag%svel(i))
+               star%mix_phys%velm(i) = max(star%rot%old_vel(i),star%svel(i))
             else
                convective_flag_mid(i) = .false.
                star%mix_phys%velm(i) = 0.0D0
@@ -266,7 +266,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = cz_zone_bottom,j-1
                         radius_interp = star%rot%radius_prev(ii)+ &
-                             convective_fraction*(star%logR(ii)-star%prev%logR_start(ii))
+                             convective_fraction*(star%logR(ii)-star%logR_start(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*star%dm(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
@@ -319,7 +319,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
                      convective_fraction = 1.0D0 - time_fraction
                      do ii = j+1,cz_zone_top
                         radius_interp = star%rot%radius_prev(ii)+ &
-                             convective_fraction*(star%logR(ii)-star%prev%logR_start(ii))
+                             convective_fraction*(star%logR(ii)-star%logR_start(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
                              cc23*star%dm(ii)*10.0D0**(2.0D0*radius_interp)
                         cz_angular_momentum = cz_angular_momentum + &
@@ -375,21 +375,21 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          end do
       end do
 ! MHP 05/02 ADDED DEUTERIUM BURNING
-      if (star%prev%xa_start(12,star%nz).gt.1.0D-14) then
+      if (star%xa_start(12,star%nz).gt.1.0D-14) then
 ! INCREMENT THE TIMESTEP
          if (first_call) then
             do i = 1,star%nz
-               deuterium_rate_mid(i) = star%light_burn%deuterium_burning_rate_start(i)+ &
-                    step_fraction_ratio*(star%light_burn%deuterium_burning_rate(i)- &
-                    star%light_burn%deuterium_burning_rate_start(i))
-               deuterium_rate_mid_start(i) = star%light_burn%deuterium_burning_rate_start(i)
+               deuterium_rate_mid(i) = star%deuterium_burning_rate_start(i)+ &
+                    step_fraction_ratio*(star%deuterium_burning_rate(i)- &
+                    star%deuterium_burning_rate_start(i))
+               deuterium_rate_mid_start(i) = star%deuterium_burning_rate_start(i)
             end do
          else
             do i = 1,star%nz
                deuterium_rate_mid_start(i) = deuterium_rate_mid(i)
                deuterium_rate_mid(i) = deuterium_rate_mid(i)+ &
-                    step_fraction_ratio*(star%light_burn%deuterium_burning_rate(i)- &
-                    star%light_burn%deuterium_burning_rate_start(i))
+                    step_fraction_ratio*(star%deuterium_burning_rate(i)- &
+                    star%deuterium_burning_rate_start(i))
             end do
          endif
 ! RADIATIVE ZONES.

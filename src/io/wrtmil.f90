@@ -27,9 +27,9 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 !  FIND THE MILNE INVARIANTS U AND V, ALONG WITH THE INDEX N+1.
 !  WRITE THEM OUT TO LOGICAL UNIT IMILNE.
 !  HEADER
-      smtot = dexp(ln10*star%env_comp%stotal)/star%solar_mass_cgs
-      write(imilne,5) model,star%env_comp%envelope_hydrogen_fraction, &
-           star%env_comp%envelope_metal_fraction,smtot
+      smtot = dexp(ln10*star%stotal)/star%solar_mass_cgs
+      write(imilne,5) model,star%envelope_hydrogen_fraction, &
+           star%envelope_metal_fraction,smtot
     5 format(10X,'MODEL',I5,'  XENV =',1PD10.3,'  ZENV =',D10.3, &
            '  MASS(SOLAR UNITS) =',D10.3)
 !  CALCULATE FOR FIRST POINT(ALWAYS DONE)
@@ -38,8 +38,8 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
       r = dexp(ln10*hr(1))
       u = c4pi*d*r**3/hs1(1)
       v = dexp(ln10*cgl)*hs1(1)*d/(p*r)
-      w = u*hs1(1)*(star%diag%sesum(1)+star%diag%seg(i_eps_grav,1))/(hl(1)*star%solar_luminosity_cgs)
-      np1 = 1.0d0/star%diag%del_grad(i_grad_actual,1)
+      w = u*hs1(1)*(star%sesum(1)+star%seg(i_eps_grav,1))/(hl(1)*star%solar_luminosity_cgs)
+      np1 = 1.0d0/star%del_grad(i_grad_actual,1)
       write(imilne,10)1,hs1(1),r,p,d,hcomp(1,1),hl(1),u,v,w,np1
    10 format(1X,I4,10(1PE11.3))
 !  PRINT OUT EVERY NPRTPT POINTS;LAST POINT ALWAYS PRINTED.
@@ -53,8 +53,8 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
           r = dexp(ln10*hr(i))
           u = c4pi*d*r**3/hs1(i)
           v = dexp(ln10*cgl)*hs1(i)*d/(p*r)
-          w = u*hs1(i)*(star%diag%sesum(i)+star%diag%seg(i_eps_grav,i))/(hl(i)*star%solar_luminosity_cgs)
-          np1 = 1.0d0/star%diag%del_grad(i_grad_actual,i)
+          w = u*hs1(i)*(star%sesum(i)+star%seg(i_eps_grav,i))/(hl(i)*star%solar_luminosity_cgs)
+          np1 = 1.0d0/star%del_grad(i_grad_actual,i)
           write(imilne,10)i,hs1(i),r,p,d,hcomp(1,i),hl(i), &
                             u,v,w,np1
        end do
@@ -66,8 +66,8 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
        r = dexp(ln10*hr(m))
        u = c4pi*d*r**3/hs1(m)
        v = dexp(ln10*cgl)*hs1(m)*d/(p*r)
-       w = u*hs1(m)*(star%diag%sesum(m)+star%diag%seg(i_eps_grav,m))/(hl(m)*star%solar_luminosity_cgs)
-       np1 = 1.0d0/star%diag%del_grad(i_grad_actual,m)
+       w = u*hs1(m)*(star%sesum(m)+star%seg(i_eps_grav,m))/(hl(m)*star%solar_luminosity_cgs)
+       np1 = 1.0d0/star%del_grad(i_grad_actual,m)
        write(imilne,10)m,hs1(m),r,p,d,hcomp(1,m),hl(m), &
                          u,v,w,np1
       endif

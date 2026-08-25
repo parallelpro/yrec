@@ -91,7 +91,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       do zone_idx = 1, num_zones
          do species_idx = 1, num_species
             composition_saved(species_idx,zone_idx) = &
-                 star%prev%xa_start(species_idx,zone_idx)
+                 star%xa_start(species_idx,zone_idx)
          end do
          do species_idx = 1, 3
             composition_kept(species_idx,zone_idx) = &
@@ -109,7 +109,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
             do species_idx = 1, num_species
                composition(species_idx,zone_idx) = &
                     composition_saved(species_idx,zone_idx)
-               star%prev%xa_start(species_idx,zone_idx) = &
+               star%xa_start(species_idx,zone_idx) = &
                     composition_saved(species_idx,zone_idx)
             end do
          end do
@@ -138,7 +138,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
             end if
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species
-                  star%prev%xa_start(species_idx,zone_idx) = &
+                  star%xa_start(species_idx,zone_idx) = &
                        composition(species_idx,zone_idx)
                end do
             end do
@@ -148,7 +148,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
          if (converged) then
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species
-                  star%prev%xa_start(species_idx,zone_idx) = &
+                  star%xa_start(species_idx,zone_idx) = &
                        composition(species_idx,zone_idx)
                end do
             end do
@@ -169,12 +169,12 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
       end do
       if (star%job%use_extended_composition) then
          do zone_idx = 1, num_zones
-            star%light_burn%rate_li6_start(zone_idx) = star%light_burn%rate_li6(zone_idx)
-            star%light_burn%rate_li7_start(zone_idx) = star%light_burn%rate_li7(zone_idx)
-            star%light_burn%rate_be9_start(zone_idx) = star%light_burn%rate_be9(zone_idx)
+            star%rate_li6_start(zone_idx) = star%rate_li6(zone_idx)
+            star%rate_li7_start(zone_idx) = star%rate_li7(zone_idx)
+            star%rate_be9_start(zone_idx) = star%rate_be9(zone_idx)
          end do
          env_cz_zone_old = env_cz_zone
-         star%light_burn%pressure_scale_height_start = star%light_burn%pressure_scale_height_end
+         star%pressure_scale_height_start = star%pressure_scale_height_end
       end if
       return
 end subroutine bursmix

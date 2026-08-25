@@ -76,8 +76,8 @@ program test_kap
       star%ctrl%use_opal2006_eos = .false.
       star%job%atm_choice = 0
 
-      star%env_comp%envelope_hydrogen_fraction = 0.70d0
-      star%env_comp%envelope_metal_fraction = 0.016232d0
+      star%envelope_hydrogen_fraction = 0.70d0
+      star%envelope_metal_fraction = 0.016232d0
 
 ! constants + table loads (real setups; kap_init inside it reads the
 ! OPAL95 table and builds the surface-X slice)

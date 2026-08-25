@@ -152,12 +152,12 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       if(envelope_boundary_zone.lt.num_zones)then
 !         TAUCZ = 0.0D0
 !         DO I = JENV+1,M
-         write(*,*)star%turnover%convective_turnover_timescale/seconds_per_year, &
+         write(*,*)star%convective_turnover_timescale/seconds_per_year, &
               total_radius_cm/star%solar_radius_cgs
-         star%light_burn%jcz = envelope_boundary_zone
+         star%jcz = envelope_boundary_zone
       else
-         star%turnover%convective_turnover_timescale = 0.0d0
-         star%light_burn%jcz = num_zones
+         star%convective_turnover_timescale = 0.0d0
+         star%jcz = num_zones
       endif
 ! MHP 8/10
 ! THE RUNNING TOTAL OF THE MASS OF THE

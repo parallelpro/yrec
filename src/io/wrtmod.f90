@@ -96,11 +96,11 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       integer :: j
       double precision :: fs, pelpf
 
-         print*,'wrtmod LSOUND 1: ',star%run%sound_speed_output_active
+         print*,'wrtmod LSOUND 1: ',star%sound_speed_output_active
 
-      if(star%run%sound_speed_output_active)then
+      if(star%sound_speed_output_active)then
 
-         print*,'wrtmod LSOUND 2: ',star%run%sound_speed_output_active
+         print*,'wrtmod LSOUND 2: ',star%sound_speed_output_active
 
 !CFD 10/09 Add an extra output to plot the sound speed profile easyly
          open(unit=500,file='Csound.dat',status='unknown')
@@ -113,11 +113,11 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             fm = exp(ln10*log_mass(i))/star%solar_mass_cgs
             xx1 = fm/fr**3
             xxx = -exp(ln10*(cgl+log_mass(i)+log_density(i)-log_pressure(i)-log_radius(i)))
-            xx2 = -xxx/star%run%adiabatic_index_gamma1(i)
-            xx3 = star%run%adiabatic_index_gamma1(i)
-            xx4 = -xx2-xxx*(star%pulse%pulse_dlnrho_dlnp(i)+star%diag%del_grad(i_grad_actual,i)*star%pulse%pulse_dlnrho_dlnt(i))
+            xx2 = -xxx/star%adiabatic_index_gamma1(i)
+            xx3 = star%adiabatic_index_gamma1(i)
+            xx4 = -xx2-xxx*(star%pulse_dlnrho_dlnp(i)+star%del_grad(i_grad_actual,i)*star%pulse_dlnrho_dlnt(i))
             xx5 = exp(ln10*(c4pil+log_density(i)+3.0D0*log_radius(i)-log_mass(i)))
-            sound_velocity = 1.0D-5*sqrt(star%run%adiabatic_index_gamma1(i)*exp(ln10*(log_pressure(i)-log_density(i))))
+            sound_velocity = 1.0D-5*sqrt(star%adiabatic_index_gamma1(i)*exp(ln10*(log_pressure(i)-log_density(i))))
             write(imodpt,123)fr,fm,xx1,xx2,xx3,xx4,xx5,sound_velocity
  123        format(1X,2F12.8,1P6E16.8)
 !CFD 10/09 Add an extra output to plot the sound speed profile easyly
@@ -128,13 +128,13 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
             if(i.lt.num_shells) then
               rmid = 0.5D0*(exp(ln10*log_radius(i))+exp(ln10*log_radius(i+1)))
               dr = exp(ln10*log_radius(i+1)) - exp(ln10*log_radius(i))
-              divp = 0.5D0*(star%run%adiabatic_index_gamma1(i)*exp(ln10*log_pressure(i))+ &
-                    star%run%adiabatic_index_gamma1(i+1)*exp(ln10*log_pressure(i+1)))*dr
+              divp = 0.5D0*(star%adiabatic_index_gamma1(i)*exp(ln10*log_pressure(i))+ &
+                    star%adiabatic_index_gamma1(i+1)*exp(ln10*log_pressure(i+1)))*dr
               divr = 0.5D0*(exp(ln10*log_density(i))+exp(ln10*log_density(i+1)))*dr
               qpr1 = exp(ln10*(cgl+log_mass(i)+log_density(i)-2.0D0*log_radius(i)))
-              qdr1 = exp(ln10*(log_density(i)-log_pressure(i)))*star%pulse%pulse_dlnrho_dlnp(i)*qpr1
+              qdr1 = exp(ln10*(log_density(i)-log_pressure(i)))*star%pulse_dlnrho_dlnp(i)*qpr1
               qpr2 = exp(ln10*(cgl+log_mass(i+1)+log_density(i+1)-2.0D0*log_radius(i+1)))
-              qdr2 = exp(ln10*(log_density(i+1)-log_pressure(i+1)))*star%pulse%pulse_dlnrho_dlnp(i+1)*qpr1
+              qdr2 = exp(ln10*(log_density(i+1)-log_pressure(i+1)))*star%pulse_dlnrho_dlnp(i+1)*qpr1
               qqpr = (qpr1-qpr2)/divp
               qqdr = (qdr1-qdr2)/divr
               write(imodpt,124)rmid/star%solar_radius_cgs,qpr1,qdr1,qqpr,qqdr
@@ -172,13 +172,13 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
        star%job%env_step_max = star%ctrl%envelope_step_size
        b = dexp(ln10*log_luminosity_lsun)
        rl = 0.5D0*(log_luminosity_lsun + star%log10_solar_luminosity - 4.0D0*log_teff - c4pil - csigl)
-       gl = cgl + star%env_comp%stotal - rl - rl
+       gl = cgl + star%stotal - rl - rl
        x = composition(1,num_shells)
        z = composition(3,num_shells)
        fpl = shape_factor_fp(num_shells)
        ftl = shape_factor_ft(num_shells)
        ixx=0
-       hstot = star%env_comp%stotal
+       hstot = star%stotal
        plim = log_pressure(num_shells)
 ! DBG PULSE: ADDED ARGUEMENT TO ENVINT TO TURN ON/OFF PULSE OUTPUT
          lpulpt = star%job%pulsation_output_active
@@ -215,7 +215,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !
 ! G Somers 11/14 LJOUT (rotation info) block deleted.
 !
-      fsi = dexp(-ln10*star%env_comp%stotal)
+      fsi = dexp(-ln10*star%stotal)
 ! DBG PULSE: WRITE HEADER INFORMATION FOR PULSE MODEL
       if(star%job%pulsation_output_active) then
          rsurfl = 0.5D0*(log_luminosity_lsun - c4pil - csigl - 4.0D0*log_teff + star%log10_solar_luminosity)
@@ -245,22 +245,22 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !          ADDED X AND Z TO OUTPUT
          if (j.ne.2 .or. i.ne.1) then
          if(star%ctrl%pulsation_file_version.eq.1) then
-         pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* star%pulse%pulse_electron_mean_molecular_weight(i)
+         pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* star%pulse_electron_mean_molecular_weight(i)
          write(star%ctrl%opal_model_unit, 5052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
-                log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i), &
-                star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i), &
-                star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), pelpf
+                log_pressure(i), star%sesum(i),star%so(i), star%pulse_dlnrho_dlnp(i), star%pulse_dlneps_dlnrho(i), &
+                star%pulse_dlneps_dlnt(i), star%pulse_dlnkap_dlnrho(i), star%pulse_dlnkap_dlnt(i), star%del_grad(i_grad_actual,i),star%del_grad(i_grad_ad,i), &
+                star%pulse_specific_heat(i), star%pulse_mean_molecular_weight(i), star%pulse_dlnrho_dlnt(i), pelpf
          else if (star%ctrl%pulsation_file_version.eq.2) then
          write(star%ctrl%opal_model_unit, 6052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
-            log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i), &
-            star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i), &
-            star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
+            log_pressure(i), star%sesum(i),star%so(i), star%pulse_dlnrho_dlnp(i), star%pulse_dlneps_dlnrho(i), &
+            star%pulse_dlneps_dlnt(i), star%pulse_dlnkap_dlnrho(i), star%pulse_dlnkap_dlnt(i), star%del_grad(i_grad_actual,i),star%del_grad(i_grad_ad,i), &
+            star%pulse_specific_heat(i), star%pulse_mean_molecular_weight(i), star%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          else if (star%ctrl%pulsation_file_version.eq.3) then
 ! DBG 7/95 Modifed to include mixing length variables
          write(star%ctrl%opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),star%rot%valfmlt(i), &
-            log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i),star%rot%vphmlt(i), &
-            star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i),star%rot%vcmxmlt(i), &
-            star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
+            log_pressure(i), star%sesum(i),star%so(i), star%pulse_dlnrho_dlnp(i), star%pulse_dlneps_dlnrho(i),star%rot%vphmlt(i), &
+            star%pulse_dlneps_dlnt(i), star%pulse_dlnkap_dlnrho(i), star%pulse_dlnkap_dlnt(i), star%del_grad(i_grad_actual,i),star%del_grad(i_grad_ad,i),star%rot%vcmxmlt(i), &
+            star%pulse_specific_heat(i), star%pulse_mean_molecular_weight(i), star%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          end if
          end if
  5052      format(5E16.9,/,5E16.9,/,5E16.9,/,5E16.9)

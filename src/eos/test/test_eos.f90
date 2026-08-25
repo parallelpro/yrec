@@ -131,34 +131,34 @@ program test_eos
       star%job%atm_choice = 0
 
 ! envelope composition state, per starin.f90's mixture algorithm
-      star%env_comp%xnew = 0.70d0
-      star%env_comp%znew = 0.016492d0
-      star%env_comp%envelope_hydrogen_fraction = star%env_comp%xnew
-      star%env_comp%envelope_metal_fraction = star%env_comp%znew
+      star%xnew = 0.70d0
+      star%znew = 0.016492d0
+      star%envelope_hydrogen_fraction = star%xnew
+      star%envelope_metal_fraction = star%znew
       do i = 1, 12
          w(i) = star%ctrl%vnew(i)
       end do
       wsum = w(1)+w(2)+w(3)+w(4)+w(5)+w(6)+w(8)+w(9)+w(10)+w(11)
-      star%env_comp%zenvm = star%env_comp%envelope_metal_fraction* &
+      star%zenvm = star%envelope_metal_fraction* &
            (wsum - w(6) - w(8) - w(9))/wsum
-      scale = star%env_comp%envelope_metal_fraction/wsum
-      w(7) = star%env_comp%envelope_hydrogen_fraction/scale
-      w(12) = (1.0d0 - star%env_comp%envelope_hydrogen_fraction - &
-           star%env_comp%envelope_metal_fraction)/scale
+      scale = star%envelope_metal_fraction/wsum
+      w(7) = star%envelope_hydrogen_fraction/scale
+      w(12) = (1.0d0 - star%envelope_hydrogen_fraction - &
+           star%envelope_metal_fraction)/scale
       wsum = 0.0d0
       do i = 1, 12
          w(i) = scale*w(i)/atomic_weight(i)
          wsum = wsum + w(i)
       end do
-      star%env_comp%amuenv = wsum
-      scale = 1.0d0/star%env_comp%amuenv
+      star%amuenv = wsum
+      scale = 1.0d0/star%amuenv
       do i = 1, 12
-         star%env_comp%fxenv(i) = w(i)*scale
+         star%fxenv(i) = w(i)*scale
       end do
 ! push the mixture to the eos domain, as starin does (physics-purity)
-      call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
-           star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
-           star%env_comp%fxenv)
+      call eos_set_mixture(star%envelope_hydrogen_fraction, &
+           star%envelope_metal_fraction, star%amuenv, &
+           star%fxenv)
 
 ! constants + Fermi/SCV table loads (real setups + eos_init inside it)
       call setups(laol_work, dummy_path, dummy_path, dummy_path, &

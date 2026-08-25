@@ -104,8 +104,8 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
          energy_gen_terms(3) = energy_gen_3
          energy_gen_terms(4) = energy_gen_4
          energy_gen_terms(5) = energy_gen_5
-         energy_gen_terms(6) = star%engeb%neutrino_loss_rate
-         dead_alpha_capture_energy = star%engeb%alpha_capture_energy
+         energy_gen_terms(6) = star%neutrino_loss_rate
+         dead_alpha_capture_energy = star%alpha_capture_energy
        if(energy_gen_terms(5).lt.1.d-22) energy_gen_terms(5) = 1.d-22
        helium_dt=1.0d15/energy_gen_terms(5)
       else

@@ -44,13 +44,13 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       glob(5) = pts(21, n)
 ! glob(6) (mixing length alpha), glob(11)/glob(12) (central second
 ! derivatives) not tracked here -- zero, as tools tolerate.
-      glob(13) = star%run%dage*1.0d9
+      glob(13) = star%dage*1.0d9
       glob(14) = 10.0d0**star%log_Teff
       glob(15) = exp(ln10*cgl)
 
       write(u,'(a)') 'YREC FGONG output (ported layout: MESA pulse_fgong)'
       write(u,'(a,i8)') 'model_number ', star%model_number
-      write(u,'(a,1pe16.9,a,0pf10.6)') 'star_age_yr ', star%run%dage*1.0d9, &
+      write(u,'(a,1pe16.9,a,0pf10.6)') 'star_age_yr ', star%dage*1.0d9, &
            '  log_Teff ', star%log_Teff
       write(u,'(a)') ''
       write(u,'(4I10)') n, iconst, ivar, ivers

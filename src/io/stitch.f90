@@ -87,11 +87,11 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
                  log_density(i),omega(i),convective_flag(i),.true.,.false., &
                  .false.,(composition(j,i),j=1,15)
 ! write out additional physics if desired
-            write(istor,63,advance='no') star%diag%so(i),sg,star%diag%del_grad(i_grad_rad,i),star%diag%del_grad(i_grad_actual,i), &
-                 star%diag%del_grad(i_grad_ad,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i), &
-                 star%diag%sfxion(1,i),star%diag%sfxion(2,i),star%diag%sfxion(3,i), &
-                 star%diag%sbeta(i),star%diag%seta(i),(star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(i_eps_neu,i),star%diag%seg(i_eps_grav,i), &
-                 star%diag%scp(i),star%pulse%pulse_dlnrho_dlnt(i)
+            write(istor,63,advance='no') star%so(i),sg,star%del_grad(i_grad_rad,i),star%del_grad(i_grad_actual,i), &
+                 star%del_grad(i_grad_ad,i),star%svel(i),star%adiabatic_index_gamma1(i), &
+                 star%sfxion(1,i),star%sfxion(2,i),star%sfxion(3,i), &
+                 star%sbeta(i),star%seta(i),(star%seg(k,i),k=1,5),star%sesum(i),star%seg(i_eps_neu,i),star%seg(i_eps_grav,i), &
+                 star%scp(i),star%pulse_dlnrho_dlnt(i)
 ! write out additional rotation info if rotation is on
             if(star%job%rotation_active)then
               fm = dexp(ln10*log_mass(i))

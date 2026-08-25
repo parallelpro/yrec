@@ -132,16 +132,16 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               temperature_rotation_factor, log_teff, ierr)
          if (ierr /= 0) return
          convective_flag(im) = is_convective
-         star%diag%del_grad(i_grad_rad,im) = radiative_gradient
-         star%diag%del_grad(i_grad_actual,im) = actual_gradient
-         star%diag%del_grad(i_grad_ad,im) = adiabatic_gradient
+         star%del_grad(i_grad_rad,im) = radiative_gradient
+         star%del_grad(i_grad_actual,im) = actual_gradient
+         star%del_grad(i_grad_ad,im) = adiabatic_gradient
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
-         dfx1 = composition(1,im) - star%env_comp%envelope_hydrogen_fraction
-         dfx2 = composition(2,im) - star%run%envelope_helium_fraction
-         dfx3 = composition(3,im) - star%env_comp%envelope_metal_fraction
-         dfx4 = composition(4,im) - star%run%envelope_he3_fraction
-         temp_scratch = star%env_comp%amuenv + dfx1/atomic_weight(1) + &
+         dfx1 = composition(1,im) - star%envelope_hydrogen_fraction
+         dfx2 = composition(2,im) - star%envelope_helium_fraction
+         dfx3 = composition(3,im) - star%envelope_metal_fraction
+         dfx4 = composition(4,im) - star%envelope_he3_fraction
+         temp_scratch = star%amuenv + dfx1/atomic_weight(1) + &
               dfx2/atomic_weight(2) + dfx3/atomic_weight(3) + &
               dfx4/atomic_weight(4)
          amu2 = 1.0d0/temp_scratch
@@ -149,12 +149,12 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               2.0d0*(composition(4,im)/atomic_weight(4) + &
               composition(2,im)/atomic_weight(2)) + 0.5d0*composition(3,im)
          emu2 = 1.0d0/temp_scratch
-         star%thermo%mean_molecular_weight(im) = amu2*emu2/(amu2+emu2)
-         star%diag%so(im) = opacity
-         star%thermo%cp(im) = specific_heat_cp
-         star%thermo%qdt(im) = dlnrho_dlnt
+         star%mean_molecular_weight(im) = amu2*emu2/(amu2+emu2)
+         star%so(im) = opacity
+         star%cp(im) = specific_heat_cp
+         star%qdt(im) = dlnrho_dlnt
 ! JVS 10/13 Always want SVEL
-         star%diag%svel(im) = convective_velocity
+         star%svel(im) = convective_velocity
       end do
 !  FIND THE THERMOMETRIC DIFFUSIVITY AND KINEMATIC VISCOSITY.
 !       CALL VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
@@ -195,14 +195,14 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
               log_density(k+1)*interp_weights(2) + &
               log_density(k+2)*interp_weights(3) + &
               log_density(k+3)*interp_weights(4)
-         actual_grad_mid = star%diag%del_grad(i_grad_actual,k)*interp_weights(1) + &
-              star%diag%del_grad(i_grad_actual,k+1)*interp_weights(2) + &
-              star%diag%del_grad(i_grad_actual,k+2)*interp_weights(3) + &
-              star%diag%del_grad(i_grad_actual,k+3)*interp_weights(4)
-         adiabatic_grad_mid = star%diag%del_grad(i_grad_ad,k)*interp_weights(1) + &
-              star%diag%del_grad(i_grad_ad,k+1)*interp_weights(2) + &
-              star%diag%del_grad(i_grad_ad,k+2)*interp_weights(3) + &
-              star%diag%del_grad(i_grad_ad,k+3)*interp_weights(4)
+         actual_grad_mid = star%del_grad(i_grad_actual,k)*interp_weights(1) + &
+              star%del_grad(i_grad_actual,k+1)*interp_weights(2) + &
+              star%del_grad(i_grad_actual,k+2)*interp_weights(3) + &
+              star%del_grad(i_grad_actual,k+3)*interp_weights(4)
+         adiabatic_grad_mid = star%del_grad(i_grad_ad,k)*interp_weights(1) + &
+              star%del_grad(i_grad_ad,k+1)*interp_weights(2) + &
+              star%del_grad(i_grad_ad,k+2)*interp_weights(3) + &
+              star%del_grad(i_grad_ad,k+3)*interp_weights(4)
          gravity_mid = hg(k)*interp_weights(1) + hg(k+1)*interp_weights(2) + &
               hg(k+2)*interp_weights(3) + hg(k+3)*interp_weights(4)
          temp_scratch = dexp(ln10*(density_mid - pressure_mid))* &

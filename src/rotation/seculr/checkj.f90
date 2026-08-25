@@ -206,7 +206,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  POSITIVE OMEGA GRADIENT ENCOUNTERED.
       if(omega(zone_index)-omega(zone_index-1).gt.1.0d0)then
 !  IF PREVIOUS GRADIENT WAS POSITIVE, LEAVE ALONE.
-         if(star%run%old_omega(zone_index)-star%run%old_omega(zone_index-1).gt.1.0d-15)then
+         if(star%old_omega(zone_index)-star%old_omega(zone_index-1).gt.1.0d-15)then
             zone_index = zone_bottom-1
             zone_bottom = zone_index
             if(zone_index.gt.1) cycle zone_scan
@@ -240,7 +240,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  CHECK FOR GRADIENT REVERSALS BELOW ZONE IBOT.
          if(zone_bottom.gt.1) then
             if(omega(zone_bottom)-omega(zone_bottom-1).gt.1.0d-15)then
-               if(star%run%old_omega(zone_bottom)-star%run%old_omega(zone_bottom-1).lt.1.0d-15)then
+               if(star%old_omega(zone_bottom)-star%old_omega(zone_bottom-1).lt.1.0d-15)then
                   redo_flag = .true.
                   zone_bottom = zone_bottom - 1
                   if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
@@ -255,7 +255,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  CHECK FOR GRADIENT REVERSALS ABOVE ZONE ITOP.
          if(zone_top.lt.num_zones) then
             if(omega(zone_top+1)-omega(zone_top).gt.1.0d-15)then
-               if(star%run%old_omega(zone_top+1)-star%run%old_omega(zone_top).lt.1.0d-15)then
+               if(star%old_omega(zone_top+1)-star%old_omega(zone_top).lt.1.0d-15)then
                   redo_flag = .true.
                   zone_top = zone_top+1
                   if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then

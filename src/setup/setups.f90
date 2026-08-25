@@ -158,8 +158,8 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ierr = 0
-      call kap_init(star%env_comp%envelope_hydrogen_fraction, &
-           star%env_comp%envelope_metal_fraction, laol_work_array, &
+      call kap_init(star%envelope_hydrogen_fraction, &
+           star%envelope_metal_fraction, laol_work_array, &
            alex06_table_path,kurucz_table_path,kurucz_table2_path, &
            laol_table_path,laol_table2_path, &
            opal95_table_path,opal92_table_path,opal92_table2_path, &

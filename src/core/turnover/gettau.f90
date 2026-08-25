@@ -79,8 +79,8 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       integer :: combined_num_points
 
 ! TAUCZ = 0.0
-      star%turnover%convective_turnover_timescale = 0.0
-      star%turnover%pphot = 0.0
+      star%convective_turnover_timescale = 0.0
+      star%pphot = 0.0
 
 ! Check if 1 PSCA above BCZ is within envelope. If so, only the interior
 ! model should be considered for TAUCZ. Set LCALCENV = .FALSE.. If not,
@@ -149,7 +149,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! TOP OF THE INTERIOR MODEL IS RADIATIVE. CHECK IF TAUCZ = 0.0. IF NOT,
 ! THEN GO TO THE END.
 !
-      if (star%turnover%convective_turnover_timescale.eq.0.0) then
+      if (star%convective_turnover_timescale.eq.0.0) then
 !
 ! COLLECT THE NECESSARY STRUCTURE VARIABLES INTO DUMMY VECTORS.
       combined_num_points = num_zones
@@ -166,9 +166,9 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
               exp(ln10*(cgl-2.0D0*log_radius(zone_index)))
          combined_temperature(zone_index) = log_temperature(zone_index)
 
-         combined_velocity(zone_index) = star%diag%svel(zone_index)
-         combined_grad1(zone_index) = star%diag%del_grad(i_grad_rad,zone_index)
-         combined_grad2(zone_index) = star%diag%del_grad(i_grad_ad,zone_index)
+         combined_velocity(zone_index) = star%svel(zone_index)
+         combined_grad1(zone_index) = star%del_grad(i_grad_rad,zone_index)
+         combined_grad2(zone_index) = star%del_grad(i_grad_ad,zone_index)
          combined_convective_flag(zone_index) = convective_flag(zone_index)
       enddo
 !

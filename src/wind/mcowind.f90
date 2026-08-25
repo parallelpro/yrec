@@ -85,8 +85,8 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 ! ADD ROSSBY SCALING TO WMAX = CRITICAL W FOR THE SUN.
       if(star%ctrl%scale_by_rossby_number)then
 ! MHP 8/17 CORRECTED TAUCZ CALCULATION TO INTERPOLATE PROPERLY IN TIMESTEP
-         current_turnover_timescale = star%turnover%convective_turnover_timescale_old+ &
-              star%turnover%fracstep*(star%turnover%convective_turnover_timescale-star%turnover%convective_turnover_timescale_old)
+         current_turnover_timescale = star%convective_turnover_timescale_old+ &
+              star%fracstep*(star%convective_turnover_timescale-star%convective_turnover_timescale_old)
          omega_saturation = star%job%wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
               current_turnover_timescale
 ! G Somers 08/17 IF ADDING ADDITIONAL B SCALING, ADD ADDITIONAL TAUCZ TERM.

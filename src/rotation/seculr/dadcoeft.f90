@@ -197,7 +197,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
 ! leave in them rather than the intended global Rossby-scaling flag.
             if (lrossby) then
                wind_saturation_threshold = star%job%wind_saturation_omega* &
-                    pmmsoltau/star%turnover%convective_turnover_timescale
+                    pmmsoltau/star%convective_turnover_timescale
             else
                wind_saturation_threshold = star%job%wind_saturation_omega
             end if

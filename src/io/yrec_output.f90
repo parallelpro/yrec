@@ -138,7 +138,7 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
 ! stored in star_info; the writers are pure readers. wrtout computes
 ! log_gravity as an output on the legacy path; hand back the stored
 ! value here.
-         log_gravity = star%run%log_g_surface
+         log_gravity = star%log_g_surface
 ! Profiles and pulse files share the trigger and the number (MESA's
 ! write_pulse_data_with_profile coupling): every profile_interval
 ! models, the counter advances and each enabled product is written --
@@ -327,21 +327,21 @@ subroutine history_values(vals, iprof)
       vals(2) = dble(iprof)
       vals(3) = dble(star%nz)
       vals(4) = star%log_L
-      vals(5) = star%run%log_R_surface
-      vals(6) = star%run%log_g_surface
+      vals(5) = star%log_R_surface
+      vals(6) = star%log_g_surface
       vals(7) = star%log_Teff
-      vals(8) = star%run%core_cz_mass
-      vals(9) = star%run%envelope_mass
-      vals(10) = star%run%envelope_radius
-      vals(11) = star%run%envelope_cz_temperature
-      vals(12) = star%run%envelope_cz_density
-      vals(13) = star%run%envelope_cz_pressure
-      vals(14) = star%run%envelope_cz_o16
-      vals(15) = star%run%central_log10_temperature
-      vals(16) = star%run%central_log10_density
-      vals(17) = star%run%central_log10_pressure
-      vals(18) = star%run%central_beta
-      vals(19) = star%run%central_degeneracy_eta
+      vals(8) = star%core_cz_mass
+      vals(9) = star%envelope_mass
+      vals(10) = star%envelope_radius
+      vals(11) = star%envelope_cz_temperature
+      vals(12) = star%envelope_cz_density
+      vals(13) = star%envelope_cz_pressure
+      vals(14) = star%envelope_cz_o16
+      vals(15) = star%central_log10_temperature
+      vals(16) = star%central_log10_density
+      vals(17) = star%central_log10_pressure
+      vals(18) = star%central_beta
+      vals(19) = star%central_degeneracy_eta
       vals(20) = star%xa(i_h1,1)
       vals(21) = star%xa(i_he4,1)
       vals(22) = star%xa(i_metals,1)
@@ -351,10 +351,10 @@ subroutine history_values(vals, iprof)
       vals(28) = star%luminosity_breakdown(i_lum_he_c)
       vals(29) = star%luminosity_breakdown(i_lum_grav)
       vals(30) = star%luminosity_breakdown(i_lum_neu)
-      vals(31) = star%flux%cl37_snu_rate
-      vals(32) = star%flux%ga71_snu_rate
+      vals(31) = star%cl37_snu_rate
+      vals(32) = star%ga71_snu_rate
       do i = 1, 10
-         vals(32+i) = star%flux%neutrino_flux_total(i)
+         vals(32+i) = star%neutrino_flux_total(i)
       end do
       do i = 4, 11
          vals(39+i) = star%xa(i,1)
@@ -366,24 +366,24 @@ subroutine history_values(vals, iprof)
       vals(64) = star%xa(i_he4,star%nz)
       vals(65) = star%xa(i_metals,star%nz)
       vals(66) = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
-      vals(67) = star%evo%total_angular_momentum
-      vals(68) = star%evo%total_rotational_ke
-      vals(69) = star%run%total_moment_of_inertia
-      vals(70) = star%run%cz_moment_of_inertia
+      vals(67) = star%total_angular_momentum
+      vals(68) = star%total_rotational_ke
+      vals(69) = star%total_moment_of_inertia
+      vals(70) = star%cz_moment_of_inertia
       vals(71) = star%omega(star%nz)
       vals(72) = star%omega(1)
-      vals(73) = star%run%rotation_period_days
-      vals(74) = star%run%surf_velocity_kms
-      vals(75) = star%turnover%convective_turnover_timescale
-      vals(76) = star%run%h_shell_bot_mass
-      vals(77) = star%run%h_shell_mid_mass
-      vals(78) = star%run%h_shell_top_mass
-      vals(79) = star%run%h_shell_bot_radius
-      vals(80) = star%run%h_shell_mid_radius
-      vals(81) = star%run%h_shell_top_radius
-      vals(82) = star%turnover%pphot
+      vals(73) = star%rotation_period_days
+      vals(74) = star%surf_velocity_kms
+      vals(75) = star%convective_turnover_timescale
+      vals(76) = star%h_shell_bot_mass
+      vals(77) = star%h_shell_mid_mass
+      vals(78) = star%h_shell_top_mass
+      vals(79) = star%h_shell_bot_radius
+      vals(80) = star%h_shell_mid_radius
+      vals(81) = star%h_shell_top_radius
+      vals(82) = star%pphot
       vals(83) = star%star_mass
-      vals(84) = star%run%dage*1.0d9
+      vals(84) = star%dage*1.0d9
 end subroutine history_values
 
 subroutine write_history_row(iprof)
@@ -507,24 +507,24 @@ double precision function profile_value(icol, k)
          else
             profile_value = 0.0d0
          end if
-      case (10); profile_value = star%run%adiabatic_index_gamma1(k)
-      case (11); profile_value = star%diag%so(k)
-      case (12); profile_value = star%diag%del_grad(i_grad_rad,k)
-      case (13); profile_value = star%diag%del_grad(i_grad_actual,k)
-      case (14); profile_value = star%diag%del_grad(i_grad_ad,k)
-      case (15); profile_value = star%diag%svel(k)
-      case (16); profile_value = star%diag%sbeta(k)
-      case (17); profile_value = star%diag%seta(k)
+      case (10); profile_value = star%adiabatic_index_gamma1(k)
+      case (11); profile_value = star%so(k)
+      case (12); profile_value = star%del_grad(i_grad_rad,k)
+      case (13); profile_value = star%del_grad(i_grad_actual,k)
+      case (14); profile_value = star%del_grad(i_grad_ad,k)
+      case (15); profile_value = star%svel(k)
+      case (16); profile_value = star%sbeta(k)
+      case (17); profile_value = star%seta(k)
       case (18)
          profile_value = exp(ln10*(cgl - 2.0d0*star%logR(k)))*star%m(k)
-      case (19); profile_value = star%diag%seg(i_eps_pp1,k)
-      case (20); profile_value = star%diag%seg(i_eps_pp2,k)
-      case (21); profile_value = star%diag%seg(i_eps_pp3,k)
-      case (22); profile_value = star%diag%seg(i_eps_cno,k)
-      case (23); profile_value = star%diag%seg(i_eps_he3,k)
-      case (24); profile_value = star%diag%sesum(k)
-      case (25); profile_value = star%diag%seg(i_eps_neu,k)
-      case (26); profile_value = star%diag%seg(i_eps_grav,k)
+      case (19); profile_value = star%seg(i_eps_pp1,k)
+      case (20); profile_value = star%seg(i_eps_pp2,k)
+      case (21); profile_value = star%seg(i_eps_pp3,k)
+      case (22); profile_value = star%seg(i_eps_cno,k)
+      case (23); profile_value = star%seg(i_eps_he3,k)
+      case (24); profile_value = star%sesum(k)
+      case (25); profile_value = star%seg(i_eps_neu,k)
+      case (26); profile_value = star%seg(i_eps_grav,k)
       case (27); profile_value = star%xa(i_h1,k)
       case (28); profile_value = star%xa(i_h2,k)
       case (29); profile_value = star%xa(i_he3,k)
@@ -548,13 +548,13 @@ double precision function profile_value(icol, k)
       case (47); profile_value = star%circ%es_circulation_velocity(k)
       case (48); profile_value = star%circ%gsf_circulation_velocity(k)
       case (49); profile_value = star%circ%secular_shear_velocity(k)
-      case (50); profile_value = star%pulse%pulse_specific_heat(k)
-      case (51); profile_value = -star%pulse%pulse_dlnrho_dlnt(k)
-      case (52); profile_value = star%pulse%pulse_mean_molecular_weight(k)
+      case (50); profile_value = star%pulse_specific_heat(k)
+      case (51); profile_value = -star%pulse_dlnrho_dlnt(k)
+      case (52); profile_value = star%pulse_mean_molecular_weight(k)
       case (53)
-         if (star%pulse%pulse_electron_mean_molecular_weight(k) > 0.0d0) then
+         if (star%pulse_electron_mean_molecular_weight(k) > 0.0d0) then
             profile_value = &
-                 1.0d0/star%pulse%pulse_electron_mean_molecular_weight(k)
+                 1.0d0/star%pulse_electron_mean_molecular_weight(k)
          else
             profile_value = 0.0d0
          end if
@@ -751,7 +751,7 @@ subroutine write_profile(iprof)
            adjustr('num_zones'), adjustr('star_age'), &
            adjustr('log_Teff'), adjustr('star_mass')
       write(u, '(2(1x,i40),3(1x,es40.16e3))') star%model_number, &
-           n_ext, star%run%dage*1.0d9, star%log_Teff, star%star_mass
+           n_ext, star%dage*1.0d9, star%log_Teff, star%star_mass
       write(u, '(a)') ''
       write(u, '(999(1x,i40))') (k, k = 1, prof_nsel)
       write(u, '(999(1x,a40))') &
@@ -804,28 +804,28 @@ subroutine build_pulse_points(pts)
             P = exp(ln10*star%logP(i))
             T = exp(ln10*star%logT(i))
             rho = exp(ln10*star%logRho(i))
-            delta = -star%pulse%pulse_dlnrho_dlnt(i)
-            nab = star%diag%del_grad(i_grad_actual,i)
-            nab_ad = star%diag%del_grad(i_grad_ad,i)
+            delta = -star%pulse_dlnrho_dlnt(i)
+            nab = star%del_grad(i_grad_actual,i)
+            nab_ad = star%del_grad(i_grad_ad,i)
             pts(3,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
-            pts(9,j) = star%run%adiabatic_index_gamma1(i)
-            pts(12,j) = star%diag%so(i)
-            pts(13,j) = star%pulse%pulse_dlnkap_dlnt(i)
-            pts(14,j) = star%pulse%pulse_dlnkap_dlnrho(i)
-            pts(15,j) = star%diag%sesum(i)
-            pts(16,j) = star%pulse%pulse_dlneps_dlnt(i)
-            pts(17,j) = star%pulse%pulse_dlneps_dlnrho(i)
+            pts(9,j) = star%adiabatic_index_gamma1(i)
+            pts(12,j) = star%so(i)
+            pts(13,j) = star%pulse_dlnkap_dlnt(i)
+            pts(14,j) = star%pulse_dlnkap_dlnrho(i)
+            pts(15,j) = star%sesum(i)
+            pts(16,j) = star%pulse_dlneps_dlnt(i)
+            pts(17,j) = star%pulse_dlneps_dlnrho(i)
             pts(18,j) = star%omega(i)
-            pts(19,j) = star%pulse%pulse_specific_heat(i)
-            if (star%pulse%pulse_electron_mean_molecular_weight(i) &
+            pts(19,j) = star%pulse_specific_heat(i)
+            if (star%pulse_electron_mean_molecular_weight(i) &
                  > 0.0d0) pts(20,j) = &
-                 1.0d0/star%pulse%pulse_electron_mean_molecular_weight(i)
+                 1.0d0/star%pulse_electron_mean_molecular_weight(i)
             pts(21,j) = star%xa(i_h1,i)
             pts(22,j) = star%xa(i_metals,i)
             do k = 1, 11
                pts(22+k,j) = star%xa(species_slot(k),i)
             end do
-            pts(34,j) = star%diag%seg(i_eps_grav,i)
+            pts(34,j) = star%seg(i_eps_grav,i)
          case (2)
             r = exp(ln10*env_struct%env_log10_radius(i))
             m = exp(ln10*(env_struct%env_log10_mass(i) + &
@@ -910,7 +910,7 @@ subroutine write_pulse(iprof)
       allocate(pts(35, n_ext))
       call build_pulse_points(pts)
       mstar_g = exp(ln10*star%log_total_mass)
-      rstar_cm = exp(ln10*(star%run%log_R_surface + star%log10_solar_radius))
+      rstar_cm = exp(ln10*(star%log_R_surface + star%log10_solar_radius))
       lstar_cgs = exp(ln10*star%log_L)*star%solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
