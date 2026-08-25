@@ -1359,11 +1359,11 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !         R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
 ! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
 ! RATE DERIVATIVES
-         r1=t9_m23+q1(i)*t9_m13+qs0e_scale(i)*(q2(i)+q3(i)*t9_p13)+ &
-              qqs0ee_scale(i)*(q4(i)*t9_p23+q5(i)*t9)
+         r1=t9_m23+q1(i)*t9_m13+star%qs0e_scale(i)*(q2(i)+q3(i)*t9_p13)+ &
+              star%qqs0ee_scale(i)*(q4(i)*t9_p23+q5(i)*t9)
          reaction_rate(i)=density*r1*exp(q6(i)*t9_m13+q7(i)+(q8(i)*t9)**2+ &
               screening_factor(i))
-         reaction_rate(i) = reaction_rate(i)*cross_section_scale(i)
+         reaction_rate(i) = reaction_rate(i)*star%cross_section_scale(i)
          if (reaction_rate(i).lt.1.e-30) then
             reaction_rate(i)=0.
             dlnrate_dlnt(i)=0.
@@ -1402,17 +1402,17 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! in Be7electron expression was (3.126571E+5). 10/14/97.
 !
          be7electron = (1.752e-10)*t9_m12*(1.0 + 0.004*(1000.*t9 - 16.))
-         be7electron = be7electron*electron_mean_weight_inverse*cross_section_scale(15)
+         be7electron = be7electron*electron_mean_weight_inverse*star%cross_section_scale(15)
          temp3 = (-10.2625*t9_m13)
-         be7proton = (3.128813e+5)*hydrogen_fraction*cross_section_scale(16)*exp(temp3)
+         be7proton = (3.128813e+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(temp3)
 ! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
 !  Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
 !  CORRECTIONS ARE DEFINED EARLIER IN THIS SUBROUTINE.
 !         QRBE7 = T9M23 + Q1(8)*T9M13 + Q2(8)+ Q3(8)*T9P13
 !     $          + Q4(8)*T9P23 + Q5(8)*T9
 ! MHP 9/14 ADDED THE ABILITY TO ALTER DERIVATIVES INDEPENDENTLY
-         qrbe7 = t9_m23 + q1(8)*t9_m13 + qs0e_scale(8)*(q2(8)+ q3(8)*t9_p13) &
-              + qqs0ee_scale(8)*(q4(8)*t9_p23 + q5(8)*t9)
+         qrbe7 = t9_m23 + q1(8)*t9_m13 + star%qs0e_scale(8)*(q2(8)+ q3(8)*t9_p13) &
+              + star%qqs0ee_scale(8)*(q4(8)*t9_p23 + q5(8)*t9)
          be7proton = be7proton*qrbe7
 ! CALCULATE THE SCREENING CORRECTION FOR BE7 + P REACTION.  USE WEAK AND
 !  INTERMEDIATE SCREENING FORMULAE.
@@ -1468,12 +1468,12 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !      O16GAMMA = O16GAMMA*64.
 ! MHP 9/14 ADDED THE OPTION TO MODIFY THE RELATIVE CROSS SECTIONS
 ! FOR N15+P -> C12+ALPHA AND O16+GAMMA
-      o16gamma = o16gamma*64*o16_gamma_scale
+      o16gamma = o16gamma*64*star%o16_gamma_scale
 !
       c12alpha = t9_m23 + 0.0273016*t9_m13 + 2.01186 + 0.384763*t9_p13 &
                 + 17.0579*t9_p23 + 8.29580*t9
 !      C12ALPHA = C12ALPHA*67500
-      c12alpha = c12alpha*67500*c12_alpha_scale
+      c12alpha = c12alpha*67500*star%c12_alpha_scale
       f3 = c12alpha/(c12alpha + o16gamma)
       f4 = 1.0d0 - f3
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
@@ -1862,7 +1862,7 @@ subroutine compute_neutrino_emission
 !  rate.
          star%flux%neutrino_flux(i_nu_pep) = (3.4848e-6)*electron_number_density_na*t9_m12* &
               (1.0 + 20.*t9)*eg(1)
-         star%flux%neutrino_flux(i_nu_pep) = star%flux%neutrino_flux(i_nu_pep)*cross_section_scale(14)/fourpiau2
+         star%flux%neutrino_flux(i_nu_pep) = star%flux%neutrino_flux(i_nu_pep)*star%cross_section_scale(14)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
          q6hep = -6.1399
 ! Q6 IS THE NEGATIVE OF THE COEFFICIENT OF T9M13 IN TAU, EQUATION 3.10.
@@ -1870,7 +1870,7 @@ subroutine compute_neutrino_emission
 ! THE DERIVATIVES OF THE CROSS SECTION FACTOR ARE NOT KNOWN AND ARE
 !  TAKEN TO BE ZERO.  THE ONLY TERM FROM EQUATION 3.14 THAT SURVIVES
 !  IS 5/(12*TAU).
-         star%flux%neutrino_flux(i_nu_hep) = (1.0 + 0.067862*t9_p13)*cross_section_scale(17)* &
+         star%flux%neutrino_flux(i_nu_hep) = (1.0 + 0.067862*t9_p13)*star%cross_section_scale(17)* &
               star%flux%neutrino_flux(i_nu_hep)
 ! CALCULATE WEAK OR INTERMEDIATE SCREENING FOR HEP NEUTRINOS.
          zprdhe3p = 2.0

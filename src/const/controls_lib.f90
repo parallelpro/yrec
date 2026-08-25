@@ -53,19 +53,16 @@ module controls_lib
       double precision :: saha_log10t_cutoff = 6.0d0
       double precision :: tenv0 = 3.0d0, tenv1 = 9.0d0, tgcut = 6.9d0
 
-! former common/cross/, common/weak/. All 6 cross members and
-! weak_screening_threshold get their real, final values from
-! setup/remap.f90 (called from core/parmin.f90 right after the
-! NAMELIST /physics/ read) -- cross_section_scale/qs0e_scale/
-! qqs0ee_scale/o16_gamma_scale/c12_alpha_scale are fully recomputed
-! there from other inputs regardless of any namelist value; only
-! use_new_nuclear_rates and weak_screening_threshold are read
-! (unchanged) from the namelist itself (lnewnuc/weakscreening in
-! core/parmin.f90, which can't be renamed -- see the naming note at
-! that file's top -- so parmin.f90 copies them into these canonical
-! names right after the namelist read, before remap runs).
-      double precision :: cross_section_scale(17), qs0e_scale(8), &
-           qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
+! former common/cross/, common/weak/. Only use_new_nuclear_rates and
+! weak_screening_threshold are read (unchanged) from the NAMELIST
+! /physics/ itself (lnewnuc/weakscreening in core/parmin.f90, which
+! can't be renamed -- see the naming note at that file's top -- so
+! parmin.f90 copies them into these canonical names right after the
+! namelist read, before remap runs). The five scale members
+! (cross_section_scale/qs0e_scale/qqs0ee_scale/o16_gamma_scale/
+! c12_alpha_scale) were fully recomputed by setup/remap.f90 from
+! other inputs regardless of any namelist value -- working state,
+! evicted to flat star% members (2026 phase A).
       logical :: use_new_nuclear_rates
       double precision :: weak_screening_threshold
 

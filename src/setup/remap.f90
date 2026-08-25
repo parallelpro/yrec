@@ -11,7 +11,7 @@
 ! Subroutine to remap new, more intuitively named, namelist parameters
 ! onto existing code parameters.
 subroutine remap
-      use star_info_lib, only: json
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
 
@@ -79,17 +79,17 @@ subroutine remap
 ! IF THE LNEWNUC FLAG IS SET TRUE THE SSTANDARD VECTOR IS NORMALIZED TO UNITY
 ! AND THE INDIVIDUAL CROSS-SECTION VALUES AND THEIR DERIVATIVES ARE USED INSTEAD.
       do i = 1,8
-         qs0e_scale(i) = 1.0d0
-         qqs0ee_scale(i) = 1.0d0
+         star%qs0e_scale(i) = 1.0d0
+         star%qqs0ee_scale(i) = 1.0d0
       end do
-      c12_alpha_scale = 1.0d0
-      o16_gamma_scale = 1.0d0
+      star%c12_alpha_scale = 1.0d0
+      star%o16_gamma_scale = 1.0d0
 !      WRITE(*,911)(QS0E(I),I=1,8),(QQS0EE(I),I=1,8),
 !     * (SSTANDARD(I),I=1,17),LNEWNUC
 ! 911  FORMAT(8E12.3/8E12.3/8E12.3/9E12.3/L5)
       if (use_new_nuclear_rates) then
          do i = 1,17
-            cross_section_scale(i) = 1.0d0
+            star%cross_section_scale(i) = 1.0d0
          end do
 ! The energy generation subroutine engeb has a vector, SSTANDARD,
 ! which is the ratio of the desired S0 to that of Bahcall & Ulrich (1988).
@@ -99,101 +99,101 @@ subroutine remap
 ! of the reactions are permitted to be separately modified, unlike in the
 ! original version of engeb.  In this case the inputs are the ratios
 ! S'/S0 and S''/S0, relative to the Solar Fusion I (Adelberger et al. 1998) ratios.
-         cross_section_scale(1) = s0_pp/s0_pp_ref
-         cross_section_scale(2) = s0_he3he3/s0_he3he3_ref
-         cross_section_scale(3) = s0_he3he4/s0_he3he4_ref
-         cross_section_scale(4) = s0_p_c12/s0_p_c12_ref
-         cross_section_scale(5) = s0_p_c13/s0_p_c13_ref
-         cross_section_scale(6) = s0_p_n14/s0_p_n14_ref
-         cross_section_scale(7) = s0_p_o16/s0_p_o16_ref
+         star%cross_section_scale(1) = s0_pp/s0_pp_ref
+         star%cross_section_scale(2) = s0_he3he3/s0_he3he3_ref
+         star%cross_section_scale(3) = s0_he3he4/s0_he3he4_ref
+         star%cross_section_scale(4) = s0_p_c12/s0_p_c12_ref
+         star%cross_section_scale(5) = s0_p_c13/s0_p_c13_ref
+         star%cross_section_scale(6) = s0_p_n14/s0_p_n14_ref
+         star%cross_section_scale(7) = s0_p_o16/s0_p_o16_ref
 !      SSTANDARD(8) = S0_4_13/S0_4_13_REF resonant; not fit by simple S0
 !      SSTANDARD(9) = S0_4_16/S0_4_16_REF not used
 !      SSTANDARD(10) = S0_4_12/S0_4_12_REF resonant; not fit by simple S0
 !      SSTANDARD(11) = S0_4_14/S0_4_14_REF resonant; not fit by simple S0
 !      SSTANDARD(12) = S0_3A/S0_3A_REF resonant; not fit by simple S0
 !      SSTANDARD(13) = S0_12_12/S0_12_12_REF not used
-         cross_section_scale(14) = s0_pep/s0_pep_ref
-         cross_section_scale(15) = s0_be7_electron/s0_be7_electron_ref
-         cross_section_scale(16) = s0_be7_p/s0_be7_p_ref
-         cross_section_scale(17) = s0_hep/s0_hep_ref
+         star%cross_section_scale(14) = s0_pep/s0_pep_ref
+         star%cross_section_scale(15) = s0_be7_electron/s0_be7_electron_ref
+         star%cross_section_scale(16) = s0_be7_p/s0_be7_p_ref
+         star%cross_section_scale(17) = s0_hep/s0_hep_ref
 ! ABILITY TO CHANGE THE HARD-CODED BRANCHING RATIOS FOR THE OUTCOME OF N15+P
-         c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
-         o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref
+         star%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
+         star%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref
 ! NUCLEAR REACTION DERIVATIVES ARE USED IN THE VECTORS Q2-Q5 IN ENGEB AND NRATES.
 ! THE Q2 AND Q3 FACTORS ARE DEFINED PROPORTIONAL TO S'/S (REFERENCE: SOLAR FUSION I IN 1998)
 ! THE Q4 AND Q5 FACTORS ARE DEFINTED PROPORTIONAL TO S''/S (SAME REFERENCE)
 ! FIRST DERIVATIVE TERMS - TO BE USED TO MULTIPLY Q2 AND Q3 TERMS IN ENGEB
 ! MHP 4/25 FIXED TYPOS AND TRAPPED OUT POTENTIAL DIVIDE BY ZERO ERRORS
          if (s0_pp.gt.0.0d0) then
-            qs0e_scale(1) = (s0p_pp/s0_pp)/(qs0e_pp_a98/s0_pp_a98)
+            star%qs0e_scale(1) = (s0p_pp/s0_pp)/(qs0e_pp_a98/s0_pp_a98)
          else
-            qs0e_scale(1) = 0.0d0
+            star%qs0e_scale(1) = 0.0d0
          end if
          if (s0_he3he3.gt.0.0d0) then
-            qs0e_scale(2) = (s0p_he3he3/s0_he3he3)/(qs0e_he3he3_a98/s0_pp_a98)
+            star%qs0e_scale(2) = (s0p_he3he3/s0_he3he3)/(qs0e_he3he3_a98/s0_pp_a98)
          else
-            qs0e_scale(2) = 0.0d0
+            star%qs0e_scale(2) = 0.0d0
          end if
          if (s0_he3he4.gt.0.0d0) then
-            qs0e_scale(3) = (s0p_he3he4/s0_he3he4)/(qs0e_he3he4_a98/s0_pp_a98)
+            star%qs0e_scale(3) = (s0p_he3he4/s0_he3he4)/(qs0e_he3he4_a98/s0_pp_a98)
          else
-            qs0e_scale(3) = 0.0d0
+            star%qs0e_scale(3) = 0.0d0
          end if
          if (s0_p_c12.gt.0.0d0) then
-            qs0e_scale(4) = (s0p_p_c12/s0_p_c12)/(qs0e_p_c12_a98/s0_pp_a98)
+            star%qs0e_scale(4) = (s0p_p_c12/s0_p_c12)/(qs0e_p_c12_a98/s0_pp_a98)
          else
-            qs0e_scale(4) = 0.0d0
+            star%qs0e_scale(4) = 0.0d0
          end if
          if (s0_p_c13.gt.0.0d0) then
-            qs0e_scale(5) = (s0p_p_c13/s0_p_c13)/(qs0e_p_c13_a98/s0_pp_a98)
+            star%qs0e_scale(5) = (s0p_p_c13/s0_p_c13)/(qs0e_p_c13_a98/s0_pp_a98)
          else
-            qs0e_scale(5) = 0.0d0
+            star%qs0e_scale(5) = 0.0d0
          end if
          if (s0_p_n14.gt.0.0d0) then
-            qs0e_scale(6) = (s0p_p_n14/s0_p_n14)/(qs0e_p_n14_a98/s0_pp_a98)
+            star%qs0e_scale(6) = (s0p_p_n14/s0_p_n14)/(qs0e_p_n14_a98/s0_pp_a98)
          else
-            qs0e_scale(6) = 0.0d0
+            star%qs0e_scale(6) = 0.0d0
          end if
          if (s0_p_o16.gt.0.0d0) then
-            qs0e_scale(7) = (s0p_p_o16/s0_p_o16)/(qs0e_p_o16_a98/s0_pp_a98)
+            star%qs0e_scale(7) = (s0p_p_o16/s0_p_o16)/(qs0e_p_o16_a98/s0_pp_a98)
          else
-            qs0e_scale(7) = 0.0d0
+            star%qs0e_scale(7) = 0.0d0
          end if
 !         QS0E(8)=(S0P_1_BE7P/S0_1_BE7P)/(QS0E_1_BE7P_A98/S0_1_BE7P__A98)
          if (s0_be7_p.gt.0.0d0) then
-            qs0e_scale(8) = (s0p_be7_p/s0_be7_p)/ &
+            star%qs0e_scale(8) = (s0p_be7_p/s0_be7_p)/ &
                  (qs0e_be7_p_a98/s0_be7_p_a98)
          else
-            qs0e_scale(8) = 0.0d0
+            star%qs0e_scale(8) = 0.0d0
          end if
 ! SECOND DERIVATIVE TERMS - TO BE USED TO MULTIPLY Q4 AND Q5 TERMS IN ENGEB
 !         QQS0EE(1) = (S0PP_1_1/S0_1_1)/(QQS0EE_1_1_A98/S0_1_1_A98) ZEROED OUT IN 2003 VERSION
 !         QQS0EE(2) = (S0PP_3_3/S0_3_3)/(QQS0EE_3_3_A98/S0_3_3_A98) ZEROED OUT IN 2003 VERSION
 !         QQS0EE(3) = (S0PP_3_4/S0_3_4)/(QQS0EE_3_4_A98/S0_3_4_A98) ZEROED OUT IN 2003 VERSION
          if (s0_p_c12.gt.0.0d0) then
-            qqs0ee_scale(4) = (s0pp_p_c12/s0_p_c12)/ &
+            star%qqs0ee_scale(4) = (s0pp_p_c12/s0_p_c12)/ &
                  (qqs0ee_p_c12_a98/s0_pp_a98)
          else
-            qqs0ee_scale(4) = 0.0d0
+            star%qqs0ee_scale(4) = 0.0d0
          end if
          if (s0_p_c13.gt.0.0d0) then
-            qqs0ee_scale(5) = (s0pp_p_c13/s0_p_c13)/ &
+            star%qqs0ee_scale(5) = (s0pp_p_c13/s0_p_c13)/ &
                  (qqs0ee_p_c13_a98/s0_pp_a98)
          else
-            qqs0ee_scale(5) = 0.0d0
+            star%qqs0ee_scale(5) = 0.0d0
          end if
 !         QQS0EE(6) = (S0PP_1_14/S0_1_14)/(QQS0EE_1_14_A98/S0_1_14_A98) ZEROED OUT IN 2003 VERSION
          if (s0_p_o16.gt.0.0d0) then
-            qqs0ee_scale(7) = (s0pp_p_o16/s0_p_o16)/ &
+            star%qqs0ee_scale(7) = (s0pp_p_o16/s0_p_o16)/ &
                  (qqs0ee_p_o16_a98/s0_pp_a98)
          else
-            qqs0ee_scale(7) = 0.0d0
+            star%qqs0ee_scale(7) = 0.0d0
          end if
          if (s0_be7_p.gt.0.0d0) then
-            qqs0ee_scale(8) = (s0pp_be7_p/s0_be7_p)/ &
+            star%qqs0ee_scale(8) = (s0pp_be7_p/s0_be7_p)/ &
                  (qqs0ee_be7_p_a98/s0_be7_p_a98)
          else
-            qqs0ee_scale(8) = 0.0d0
+            star%qqs0ee_scale(8) = 0.0d0
          end if
       end if
 ! OPTION TO OVERWRITE SPATIAL AND TEMPORAL TOLERANCES WITH MORE INTUITIVE VARIABLE NAMES.

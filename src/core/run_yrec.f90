@@ -172,10 +172,10 @@ subroutine apply_monte_carlo_parameters
 
 ! for monte carlo run, input values of parameters being changed.
       if (lmonte) then
-         cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
-         cross_section_scale(2) = star%run%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
-         cross_section_scale(3) = star%run%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
-         cross_section_scale(16) = star%run%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
+         star%cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
+         star%cross_section_scale(2) = star%run%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
+         star%cross_section_scale(3) = star%run%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
+         star%cross_section_scale(16) = star%run%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
 ! NOTE (2026): write-only since the original F77 (FGRSET = FHE(NN))
 ! -- the sampled helium diffusion factor never reaches the physics;
 ! only the metal factor (fgrz) is wired through. Preserved, not

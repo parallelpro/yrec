@@ -121,7 +121,7 @@ program test_net
       call remap
       write(*,'(a)') "# test_net: cross_section_scale from remap " // &
            "(newcross defaults)"
-      write(*,'(4(1pe20.12))') (cross_section_scale(i), i = 1, 16)
+      write(*,'(4(1pe20.12))') (star%cross_section_scale(i), i = 1, 16)
 
 ! reaction rates over a (logT, logRho) grid at a solar-ish mixture
       write(*,'(a)') "# test_net: rates, X=0.70 Y3=3e-5 C12=3.5e-3 " // &

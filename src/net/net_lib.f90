@@ -1661,7 +1661,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
      rate_c12_p,rate_c13_p,rate_n14_p,rate_o16_p,rate_c13_alpha,rate_zero9, &
      rate_c12_alpha,rate_n14_alpha,rate_triple_alpha,rate_zero13, &
      frac_c12_alpha,frac_be7_electron)
-      use star_info_lib, only: json
+      use star_info_lib, only: star, json
 
       use const_lib
       implicit none
@@ -2054,10 +2054,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !         R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
 ! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
 ! RATE DERIVATIVES
-         r1=t9m23+q1(i)*t9m13+qs0e_scale(i)*(q2(i)+q3(i)*t9p13)+ &
-            qqs0ee_scale(i)*(q4(i)*t9p23+q5(i)*t9)
+         r1=t9m23+q1(i)*t9m13+star%qs0e_scale(i)*(q2(i)+q3(i)*t9p13)+ &
+            star%qqs0ee_scale(i)*(q4(i)*t9p23+q5(i)*t9)
          rate(i)=density*r1*exp(q6(i)*t9m13+q7(i)+(q8(i)*t9)**2+screening_factor(i))
-         rate(i) = rate(i)*cross_section_scale(i)
+         rate(i) = rate(i)*star%cross_section_scale(i)
          if(rate(i).lt.1.E-30) rate(i)=0.0d0
       end do
 ! ***************************************************************
@@ -2090,9 +2090,9 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! in Be7electron expression was (3.126571E+5). 10/14/97.
 !
          be7_electron_rate = (1.752E-10)*t9m12*(1.0 + 0.004*(1000.*t9-16.))
-         be7_electron_rate = be7_electron_rate*mu_e_inv*cross_section_scale(15)
+         be7_electron_rate = be7_electron_rate*mu_e_inv*star%cross_section_scale(15)
          be7_temp_factor = (-10.2625*t9m13)
-         be7_proton_rate = (3.128813E+5)*hydrogen_fraction*cross_section_scale(16)*exp(be7_temp_factor)
+         be7_proton_rate = (3.128813E+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(be7_temp_factor)
 
 ! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
 !  Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
@@ -2100,8 +2100,8 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !         QRBE7 = T9M23 + Q1(8)*T9M13 + Q2(8)+ Q3(8)*T9P13
 !     $          + Q4(8)*T9P23 + Q5(8)*T9
 ! MHP 9/14 ADDED THE ABILITY TO ALTER DERIVATIVES INDEPENDENTLY
-         be7_q_factor = t9m23 + q1(8)*t9m13 + qs0e_scale(8)*(q2(8)+ q3(8)*t9p13) &
-                + qqs0ee_scale(8)*(q4(8)*t9p23 + q5(8)*t9)
+         be7_q_factor = t9m23 + q1(8)*t9m13 + star%qs0e_scale(8)*(q2(8)+ q3(8)*t9p13) &
+                + star%qqs0ee_scale(8)*(q4(8)*t9p23 + q5(8)*t9)
          be7_proton_rate = be7_proton_rate*be7_q_factor
 ! CALCULATE THE SCREENING CORRECTION FOR BE7 + P REACTION.  USE WEAK AND
 !  INTERMEDIATE SCREENING FORMULAE.
@@ -2156,12 +2156,12 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !      O16GAMMA = O16GAMMA*64.
 ! MHP 9/14 ADDED THE OPTION TO MODIFY THE RELATIVE CROSS SECTIONS
 ! FOR N15+P -> C12+ALPHA AND O16+GAMMA
-      o16_gamma_rate = o16_gamma_rate*64*o16_gamma_scale
+      o16_gamma_rate = o16_gamma_rate*64*star%o16_gamma_scale
 !
       c12_alpha_n15p_rate = t9m23 + 0.0273016*t9m13 + 2.01186 + 0.384763*t9p13 &
                 + 17.0579*t9p23 + 8.29580*t9
 !      C12ALPHA = C12ALPHA*67500.
-      c12_alpha_n15p_rate = c12_alpha_n15p_rate*67500*c12_alpha_scale
+      c12_alpha_n15p_rate = c12_alpha_n15p_rate*67500*star%c12_alpha_scale
       c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
       o16_gamma_frac = 1.0d0 - c12_alpha_frac
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .

@@ -631,7 +631,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! spelling, see this file's naming note at the top). Former common
 ! /cross/; only these two are actually read anywhere (sstandard's
 ! namelist value is never referenced outside its own declaration --
-! setup/remap.f90 fully recomputes const_lib's cross_section_scale
+! setup/remap.f90 fully recomputes star%cross_section_scale
 ! from other inputs regardless -- so it's dropped here rather than
 ! copied). lnewnuc is copied into const_lib's use_new_nuclear_rates
 ! right after the namelist read below, since remap.f90 needs it.

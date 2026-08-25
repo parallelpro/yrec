@@ -538,6 +538,14 @@ module star_info_lib
             double precision :: atm_hras, tenv
             integer :: atm_choice_initial
             logical :: use_ttau_relation
+! phase A batch 2: the nuclear cross-section scale family -- fully
+! recomputed by setup/remap.f90 from the s0_* namelist inputs after
+! every controls read (never namelist values themselves), and
+! cross_section_scale(1:3,16) is overwritten per Monte-Carlo run by
+! apply_monte_carlo_parameters. Consumed by net_lib's rates and
+! burn_lib's engeb.
+            double precision :: cross_section_scale(17), qs0e_scale(8), &
+                 qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &

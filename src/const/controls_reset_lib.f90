@@ -32,11 +32,6 @@ module controls_reset_lib
       double precision :: snap_tenv0
       double precision :: snap_tenv1
       double precision :: snap_tgcut
-      double precision :: snap_cross_section_scale(17)
-      double precision :: snap_qs0e_scale(8)
-      double precision :: snap_qqs0ee_scale(8)
-      double precision :: snap_o16_gamma_scale
-      double precision :: snap_c12_alpha_scale
       logical :: snap_use_new_nuclear_rates
       double precision :: snap_weak_screening_threshold
       double precision :: snap_dpenv
@@ -485,11 +480,6 @@ subroutine controls_capture
       snap_tenv0 = tenv0
       snap_tenv1 = tenv1
       snap_tgcut = tgcut
-      snap_cross_section_scale = cross_section_scale
-      snap_qs0e_scale = qs0e_scale
-      snap_qqs0ee_scale = qqs0ee_scale
-      snap_o16_gamma_scale = o16_gamma_scale
-      snap_c12_alpha_scale = c12_alpha_scale
       snap_use_new_nuclear_rates = use_new_nuclear_rates
       snap_weak_screening_threshold = weak_screening_threshold
       snap_dpenv = dpenv
@@ -937,11 +927,6 @@ subroutine controls_restore
       tenv0 = snap_tenv0
       tenv1 = snap_tenv1
       tgcut = snap_tgcut
-      cross_section_scale = snap_cross_section_scale
-      qs0e_scale = snap_qs0e_scale
-      qqs0ee_scale = snap_qqs0ee_scale
-      o16_gamma_scale = snap_o16_gamma_scale
-      c12_alpha_scale = snap_c12_alpha_scale
       use_new_nuclear_rates = snap_use_new_nuclear_rates
       weak_screening_threshold = snap_weak_screening_threshold
       dpenv = snap_dpenv
