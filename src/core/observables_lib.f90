@@ -168,22 +168,15 @@ subroutine compute_central_conditions(ierr)
 
       double precision :: temp_value
       double precision :: pressure_linear, log_pressure_center, &
-           log_temperature_center, log_density_center, &
-           hydrogen_fraction_center, metal_fraction_center
-! temperature_linear_center/density_linear_center are separate
-! eqstat/meqos output slots, never read after the call (dead output)
-! but kept distinct so no argument slots alias.
-      double precision :: temperature_linear_center, density_linear_center
+           log_temperature_center, hydrogen_fraction_center, &
+           metal_fraction_center
       logical :: is_atmosphere_point, compute_derivatives
-      double precision :: beta_center, beta_inverse_center, beta14_center, &
-           mean_molecular_weight_center, amu_center, &
-           electron_mean_molecular_weight_center, degeneracy_eta_center
-      double precision :: qdt_center, qdp_center, qcp_center, dela_center, &
-           qdtt_center, qdtp_center, qat_center, qap_center, qcpt_center, &
-           qcpp_center
-      double precision :: fxion(3)
+! 2026 named-index results: the former 20-variable central-conditions
+! soup is one eos result array (see eos_lib's index constants).
+      double precision :: eos_res(num_eos_results)
 
       ierr = 0
+      eos_res = 0.0d0
 
 !  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
       temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+star%logRho(1)-star%log_mass(1))+star%logRho(1)+cgl+star%log_mass(1)))
@@ -191,26 +184,23 @@ subroutine compute_central_conditions(ierr)
       log_pressure_center = dlog10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
       log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%del_grad(i_grad_actual,1)/pressure_linear)
-      log_density_center = star%logRho(1)
+      eos_res(i_log10_density) = star%logRho(1)
       hydrogen_fraction_center = star%xa(i_h1,1)
       metal_fraction_center = star%xa(i_metals,1)
       is_atmosphere_point = .true.
       compute_derivatives = .false.
 !  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
-      call eos_get(log_temperature_center,temperature_linear_center,log_pressure_center,pressure_linear, &
-           log_density_center,density_linear_center,hydrogen_fraction_center,metal_fraction_center, &
-           beta_center,beta_inverse_center,beta14_center,fxion,mean_molecular_weight_center, &
-           amu_center,electron_mean_molecular_weight_center,degeneracy_eta_center,qdt_center,qdp_center, &
-           qcp_center,dela_center,qdtt_center,qdtp_center,qat_center,qap_center,qcpt_center,qcpp_center, &
-           compute_derivatives,is_atmosphere_point,ksaha_center, &
+      call eos_get_r(log_temperature_center, log_pressure_center, &
+           hydrogen_fraction_center, metal_fraction_center, eos_res, &
+           compute_derivatives, is_atmosphere_point, ksaha_center, &
            composition_at_zone=star%xa(:,1), ierr=ierr)
       if (ierr /= 0) return
 ! STORE CENTRAL RHO,P,T FOR LATER USE
       star%central_log10_pressure = log_pressure_center
       star%central_log10_temperature = log_temperature_center
-      star%central_log10_density = log_density_center
-      star%central_beta = beta_center
-      star%central_degeneracy_eta = degeneracy_eta_center
+      star%central_log10_density = eos_res(i_log10_density)
+      star%central_beta = eos_res(i_beta)
+      star%central_degeneracy_eta = eos_res(i_eta)
 end subroutine compute_central_conditions
 
 ! ---------------------------------------------------------------

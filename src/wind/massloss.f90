@@ -111,10 +111,11 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       double precision :: hydrogen_fraction_local, metal_fraction_local
       logical :: eos_deriv_flag, eos_atmosphere_flag
       integer :: saha_flag
-      double precision :: beta_local, beta_ion, beta14, ion_fraction(3), &
-           mean_molecular_weight_eos, amu_eos, emu_eos, eta_eos, qdt_eos, &
-           qdp_eos, qcp_eos, dela_eos, qdtt_eos, qdtp_eos, qat_eos, qap_eos, &
-           qcpt_eos, qcpp_eos
+      double precision :: beta_local
+! 2026 named-index results: the former 18-variable eos output soup is
+! one result array (blanket-SAVEd like the locals it replaces, so the
+! inout slots keep their historical cross-call carry).
+      double precision :: eos_res(num_eos_results)
       double precision :: mass_loss_rate_cgs, pressure_from_wind, &
            temperature_from_wind, accretion_specific_entropy2
       integer :: zone_idx
@@ -250,19 +251,18 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          eos_deriv_flag = .false.
          saha_flag = 1
          eos_atmosphere_flag = .true.
-         call eos_get(log10_temperature_local,temperature_local, &
-              log10_pressure_local,pressure_local,log10_density_local, &
-              density_local,hydrogen_fraction_local,metal_fraction_local, &
-              beta_local,beta_ion,beta14,ion_fraction,mean_molecular_weight_eos, &
-              amu_eos,emu_eos,eta_eos,qdt_eos,qdp_eos,qcp_eos,dela_eos, &
-              qdtt_eos,qdtp_eos,qat_eos,qap_eos,qcpt_eos,qcpp_eos, &
-              eos_deriv_flag,eos_atmosphere_flag,saha_flag)
-         beta_local = 1.0d0-(radiation_constant_over_3*temperature_local**4/ &
-              pressure_local)
-         mean_molecular_weight_local = pressure_local*beta_local/ &
-              (density_local*temperature_local)
+         eos_res(i_log10_density) = log10_density_local
+         eos_res(i_beta) = beta_local
+         call eos_get_r(log10_temperature_local, log10_pressure_local, &
+              hydrogen_fraction_local, metal_fraction_local, eos_res, &
+              eos_deriv_flag, eos_atmosphere_flag, saha_flag)
+         log10_density_local = eos_res(i_log10_density)
+         beta_local = 1.0d0-(radiation_constant_over_3*eos_res(i_temperature)**4/ &
+              eos_res(i_pressure))
+         mean_molecular_weight_local = eos_res(i_pressure)*beta_local/ &
+              (eos_res(i_density)*eos_res(i_temperature))
          star%rot%accretion_specific_entropy = mean_molecular_weight_local* &
-              (1.5d0*log(temperature_local)-log(density_local))
+              (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
 !         WRITE(*,911)TL,PL,SACC,SCEN
 !  911     FORMAT(' TSUR,PSUR ',2F8.5,' SACC ',1PE12.3,' SCORE ',E12.3)
 ! ALTERNATE EXPRESSION FOR SURFACE PRESSURE AND LUMINOSITY, FROM STAHLER 1988
@@ -277,19 +277,18 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  csig)**0.25d0
             log10_pressure_local = log10(pressure_from_wind)
             log10_temperature_local = log10(temperature_from_wind)
-            call eos_get(log10_temperature_local,temperature_from_wind, &
-                 log10_pressure_local,pressure_from_wind,log10_density_local, &
-                 density_local,hydrogen_fraction_local,metal_fraction_local, &
-                 beta_local,beta_ion,beta14,ion_fraction,mean_molecular_weight_eos, &
-                 amu_eos,emu_eos,eta_eos,qdt_eos,qdp_eos,qcp_eos,dela_eos, &
-                 qdtt_eos,qdtp_eos,qat_eos,qap_eos,qcpt_eos,qcpp_eos, &
-                 eos_deriv_flag,eos_atmosphere_flag,saha_flag)
-            beta_local = 1.0d0-(radiation_constant_over_3*temperature_from_wind**4/ &
-                 pressure_from_wind)
-            mean_molecular_weight_local = pressure_from_wind*beta_local/ &
-                 (density_local*temperature_from_wind)
+            eos_res(i_log10_density) = log10_density_local
+            eos_res(i_beta) = beta_local
+            call eos_get_r(log10_temperature_local, log10_pressure_local, &
+                 hydrogen_fraction_local, metal_fraction_local, eos_res, &
+                 eos_deriv_flag, eos_atmosphere_flag, saha_flag)
+            log10_density_local = eos_res(i_log10_density)
+            beta_local = 1.0d0-(radiation_constant_over_3*eos_res(i_temperature)**4/ &
+                 eos_res(i_pressure))
+            mean_molecular_weight_local = eos_res(i_pressure)*beta_local/ &
+                 (eos_res(i_density)*eos_res(i_temperature))
             accretion_specific_entropy2 = mean_molecular_weight_local* &
-                 (1.5d0*log(temperature_from_wind)-log(density_local))
+                 (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
 !            WRITE(*,911)TL,PL,SACC2,SCEN
 !            SACC = MAX(SACC,SACC2)
             star%rot%envelope_specific_entropy = 0.0d0

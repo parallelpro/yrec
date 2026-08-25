@@ -34,22 +34,26 @@ test_pyyrec. make clean after any module-TYPE or signature change.
 
 ---
 
-## Named-index result arrays (phase-3 stage 4)
+## Named-index result arrays (phase-3 stage 4) -- PARTIALLY DONE 2026-08-25
 
-`eos_get` has 27 positional arguments; MESA's `eosDT_get` returns
-one `res(:)` array indexed by named constants (`i_lnPgas`, `i_Cp`,
-...). Adopt the same:
+DONE: eos_lib carries the index-constant block (i_temperature ...
+i_cp_dp, num_eos_results = 24) and `eos_get_r`, which packs the 24
+outputs into one intent(inout) res(:) around the unchanged eos_get
+(inout slots -- i_log10_density, i_beta, the ionization fractions,
+the gradient/cp guesses -- keep their historical carry through the
+array). Migrated (byte-identical): observables_lib's central
+conditions, compute_scale_height, massloss's two accretion-entropy
+sites -- each 18-20-variable soup is now one array.
 
-- Index-constant block (`i_pressure`, `i_grad_ad`, `i_cp`, ...,
-  `num_eos_results`) in eos_lib; facade packs/unpacks around the
-  unchanged eqstat/eqstat2/meqos.
-- Migrate the ~10 caller files; each site's local variable soup
-  collapses to one array + named indexing.
-- Then kap_get (4 outputs) if worth it.
-- Byte-identical verifiable throughout (packing the same doubles
-  changes no arithmetic). This is also the natural basis for a
-  pyyrec in-memory results API (profile/history accessors over
-  star%), which is the reason to do it sooner rather than later.
+DEFERRED (documented): the plumbing-heavy solver sites
+(shell_physics, henyey_coefficients, atmosphere/envelope_derivs,
+envint, read_starting_model, semiconvection x3) relay the eos
+outputs POSITIONALLY into kap_get and temperature_gradients;
+converting them before those callees take res-arrays just adds
+pack/unpack noise. Order of work when resumed: kap_get res-array
+(4 outputs) -> temperature_gradients res-array -> then these sites
+collapse for real. The indices are the basis for the pyyrec
+in-memory results API either way.
 
 ## Numerics-gate ierr opt-in
 

@@ -47,10 +47,99 @@
 ! 1) it goes through eos_get_gamma1 below instead, which preserves
 ! that same deliberate dispatch inside the facade boundary.
 module eos_lib
+! 2026 named-index result array (ROADMAP "Named-index result arrays"):
+! eos_get_r packs eos_get's 24 thermodynamic outputs into one
+! res(num_eos_results) array indexed by the constants below (MESA's
+! eosDT_get shape). The independent variables (log10 T, log10 P),
+! composition, mode flags, and the saha state stay explicit
+! arguments. res is intent(inout): the historically-inout slots
+! (i_log10_density, i_beta, the ionization fractions, i_mu_ion_inv,
+! i_dlnrho_dlnt/p, i_cp, i_grada) carry their previous-call values in
+! exactly as the old per-caller locals did; eos_get itself is called
+! unchanged, so results are byte-identical.
       use scv_eos_lib
       use yale_eos_lib
       implicit none
+! result-array slots for eos_get_r
+      integer, parameter, public :: &
+           i_temperature = 1, i_pressure = 2, i_log10_density = 3, &
+           i_density = 4, i_beta = 5, i_beta_inverse = 6, i_beta14 = 7, &
+           i_fxion = 8, &
+           i_gas_constant = 11, i_mu_ion_inv = 12, i_mu_e_inv = 13, &
+           i_eta = 14, i_dlnrho_dlnt = 15, i_dlnrho_dlnp = 16, &
+           i_cp = 17, i_grada = 18, i_dlnrho_dlnt_dt = 19, &
+           i_dlnrho_dlnp_dt = 20, i_grada_dt = 21, i_grada_dp = 22, &
+           i_cp_dt = 23, i_cp_dp = 24
+      integer, parameter, public :: num_eos_results = 24
+
 contains
+
+! ---------------------------------------------------------------
+! Named-index result-array form of eos_get (see module header).
+subroutine eos_get_r(log10_temperature, log10_pressure, &
+     hydrogen_fraction, metal_fraction, res, want_derivatives, &
+     in_atmosphere, saha_state, composition_at_zone, ierr)
+      double precision, intent(inout) :: log10_temperature, log10_pressure
+      double precision, intent(in) :: hydrogen_fraction, metal_fraction
+      double precision, intent(inout) :: res(num_eos_results)
+      logical, intent(in) :: want_derivatives, in_atmosphere
+      integer, intent(inout) :: saha_state
+      double precision, intent(in), optional :: composition_at_zone(15)
+      integer, intent(out), optional :: ierr
+      double precision :: fxion_local(3)
+
+      fxion_local = res(i_fxion:i_fxion+2)
+      if (present(composition_at_zone) .and. present(ierr)) then
+         call eos_get(log10_temperature, res(i_temperature), &
+              log10_pressure, res(i_pressure), res(i_log10_density), &
+              res(i_density), hydrogen_fraction, metal_fraction, &
+              res(i_beta), res(i_beta_inverse), res(i_beta14), &
+              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
+              composition_at_zone=composition_at_zone, ierr=ierr)
+      else if (present(composition_at_zone)) then
+         call eos_get(log10_temperature, res(i_temperature), &
+              log10_pressure, res(i_pressure), res(i_log10_density), &
+              res(i_density), hydrogen_fraction, metal_fraction, &
+              res(i_beta), res(i_beta_inverse), res(i_beta14), &
+              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
+              composition_at_zone=composition_at_zone)
+      else if (present(ierr)) then
+         call eos_get(log10_temperature, res(i_temperature), &
+              log10_pressure, res(i_pressure), res(i_log10_density), &
+              res(i_density), hydrogen_fraction, metal_fraction, &
+              res(i_beta), res(i_beta_inverse), res(i_beta14), &
+              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
+              ierr=ierr)
+      else
+         call eos_get(log10_temperature, res(i_temperature), &
+              log10_pressure, res(i_pressure), res(i_log10_density), &
+              res(i_density), hydrogen_fraction, metal_fraction, &
+              res(i_beta), res(i_beta_inverse), res(i_beta14), &
+              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state)
+      end if
+      res(i_fxion:i_fxion+2) = fxion_local
+end subroutine eos_get_r
+
 
 subroutine eos_get(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &

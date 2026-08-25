@@ -26,14 +26,14 @@ subroutine compute_scale_height(composition, density, pressure, radius, mass, &
       double precision, intent(out) :: pscahe
 
 
-      double precision :: fxion(3)
       logical :: lderiv, latmo
       integer :: ksaha
       double precision :: hydrogen_fraction, metal_fraction, log10_pressure, &
            log10_temperature, log10_density
-      double precision :: pressure_out, temperature_out, density_out
-      double precision :: beta, betai, beta14, rmu, amu, emu, eta, qdt, &
-           qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp
+! 2026 named-index results: the former 20-variable eos output soup is
+! one result array (see eos_lib's index constants); only
+! i_gas_constant and the inout i_log10_density are consumed here.
+      double precision :: eos_res(num_eos_results)
       double precision :: log10_mass, log10_radius
       double precision :: pscap
 
@@ -49,18 +49,17 @@ subroutine compute_scale_height(composition, density, pressure, radius, mass, &
       log10_pressure = pressure(edge_zone)
       log10_temperature = temperature(edge_zone)
       log10_density = density(edge_zone)
-      call eos_get(log10_temperature,temperature_out,log10_pressure, &
-           pressure_out,log10_density,density_out,hydrogen_fraction, &
-           metal_fraction,beta,betai,beta14,fxion, &
-           rmu,amu,emu,eta,qdt,qdp,qcp,dela,qdtt,qdtp, &
-           qat,qap,qcpt,qcpp,lderiv,latmo,ksaha, &
-           composition_at_zone=composition(:,edge_zone))
+      eos_res = 0.0d0
+      eos_res(i_log10_density) = log10_density
+      call eos_get_r(log10_temperature, log10_pressure, &
+           hydrogen_fraction, metal_fraction, eos_res, lderiv, latmo, &
+           ksaha, composition_at_zone=composition(:,edge_zone))
 !  COMPUTE PRESSURE SCALE HEIGHT.
       log10_mass = mass(edge_zone)
       log10_radius = radius(edge_zone)
-      pscap = rmu*exp(ln10*(log10_temperature-cgl-log10_mass+log10_radius+ &
+      pscap = eos_res(i_gas_constant)*exp(ln10*(log10_temperature-cgl-log10_mass+log10_radius+ &
            log10_radius))
       pscahe = exp(ln10*(log10_pressure + 2.0d0*log10_radius - &
-           log10_density - cgl - log10_mass))
+           eos_res(i_log10_density) - cgl - log10_mass))
       return
 end subroutine compute_scale_height
