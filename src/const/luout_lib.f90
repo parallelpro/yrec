@@ -20,5 +20,9 @@ module luout_lib
 
       integer :: ilast, idebug, itrack, short_file_unit, imilne, &
            imodpt, istor, iowr
+! 2026 phase A (controls->star% campaign): the two opacity-table
+! units from former common/zramp/, assigned by parmin like the rest
+! of this module, moved here from controls_lib.
+      integer :: iolaol2, ioopal2
 
 end module luout_lib

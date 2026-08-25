@@ -16,6 +16,7 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
 
       use opacity_table_lib
       use const_lib
+      use luout_lib
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17

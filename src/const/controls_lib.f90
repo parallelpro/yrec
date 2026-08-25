@@ -14,9 +14,9 @@
 ! stragglers that the original COMMON blocks mixed in. The 2026
 ! controls->star% campaign (phase A) is evicting those to their
 ! proper state homes: ctlim's tenv and atmos's kttau0/lttau/hras are
-! done (flat star% members); still here: zramp's nk run index, the
-! recomputed cross/weak scale arrays, the const solar octet, and
-! ccout1's iolaol2/ioopal2 units.
+! done (flat star% members), the cross/weak scale arrays are done,
+! and iolaol2/ioopal2 moved to luout_lib; still here: zramp's nk
+! run index and the const solar octet.
 module controls_lib
       implicit none
 
@@ -571,16 +571,18 @@ module controls_lib
            zx_tolerance, target_solar_zx, target_solar_age
       logical :: calibrate_solar_model, calibrate_solar_zx
 
-! former common/zramp/: rsclzc/rsclzm1/rsclzm2/iolaol2/ioopal2/nk are
-! spelled identically to their canonical names everywhere --
-! use-associated directly; their DATA defaults moved here from
-! core/parmin.f90 since DATA can no longer target use-associated
-! entities. use_z_ramp (originally lzramp) is a NAMELIST value with a
+! former common/zramp/: rsclzc/rsclzm1/rsclzm2/nk are spelled
+! identically to their canonical names everywhere -- use-associated
+! directly; their DATA defaults moved here from core/parmin.f90
+! since DATA can no longer target use-associated entities.
+! use_z_ramp (originally lzramp) is a NAMELIST value with a
 ! different canonical spelling, kept local in core/parmin.f90 and
-! copy-assigned.
+! copy-assigned. The block's two logical unit numbers (iolaol2/
+! ioopal2) moved to luout_lib with the other parmin-assigned units
+! (2026 phase A).
       double precision :: rsclzc(50) = -1.0d0, rsclzm1(50) = -1.0d0, &
            rsclzm2(50) = -1.0d0
-      integer :: iolaol2, ioopal2, nk
+      integer :: nk
       logical :: use_z_ramp
 
 ! former common/calstar/: target_luminosity_lsun/
