@@ -118,14 +118,17 @@ Phases (each byte-gated + test_net + test_reentry):
   the buffer); parmin stores buffer->star after remap so
   output_init_mesa sees real values; model-restore readers keep
   their control-named intent(out) dummies bare.
-- Phase C flattening stream (REMAINING): dissolve the state
-  sub-structs (prev/run/evo/turnover/flux/diag/rot/thermo/circ/
-  mix_phys/engeb/env_comp/light_burn/pulse) into flat star%
-  members, fused with the MESA-vocabulary rename so each member is
-  touched once. NEEDS a per-member name map reviewed with the user
-  first (the long-descriptive vs MESA-name tension is theirs to
-  arbitrate) -- generate the proposed map, review, then sweep per
-  sub-struct with the standing gates.
+- Phase C flattening stream (DONE 2026-08-24): evidence-driven via
+  defaults/flatten_rename_map.tsv (writer/reader analysis per
+  member). 16 dead members deleted (user-approved); MC sample
+  arrays -> star%job; prev/diag/turnover/light_burn/engeb/flux/
+  env_comp/thermo/run/evo dissolved to flat star% (158 members,
+  names kept -- MESA micro-renames like mean_molecular_weight->mu
+  and the diag cryptic-name modernization deferred to a later
+  scriptable pass); pulse's 9 pulse_* physics arrays flattened.
+  STAY NESTED as documented solver workspace: rot, mix_phys, circ,
+  pulse's q* print scratch -- flattening them awaits the solver
+  cleanup (and rot's dm/pm/tm collide with model members).
 - Phase D (teardown): controls_lib becomes parmin-private; const_lib
   umbrella deleted (each user switches to the specific module);
   luout_lib -> io/, intpar_lib -> numerics/; const/ folder deleted.
