@@ -68,7 +68,7 @@ def main():
                          mesa=parts[6], doc=parts[7] if len(parts) > 7 else ""))
     parmin = (SRC / "io" / "parmin.f90").read_text()
     decls = joined_decl_lines(parmin)
-    for extra in ("const/controls_lib.f90", "const/phys_const_lib.f90",
+    for extra in ("const/controls_lib.f90", "state/phys_const_lib.f90",
                   "const/const_lib.f90", "const/intpar_lib.f90",
                   "kap/opacity_table_lib.f90"):
         decls += joined_decl_lines((SRC / extra).read_text())
