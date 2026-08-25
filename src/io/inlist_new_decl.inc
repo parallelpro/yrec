@@ -61,7 +61,7 @@
       integer :: envelope_print_points
       integer :: profile_model_interval
       integer :: max_model_number(50)
-      character(len=256) :: alex_z_value(7)
+      character(len=256) :: alex95_table_z_list(7)
       double precision :: rescale_mass(50)
       double precision :: rescale_x(50)
       double precision :: rescale_z(50)
@@ -78,7 +78,7 @@
       character(len=8) :: cno_mixture_name
       character(len=8) :: isotope_mixture_name
       character(len=3) :: change_species_name
-      character(len=3) :: atm_print_flag
+      character(len=3) :: new_species_value_mode
       double precision :: fpft_average_weight
       double precision :: timestep_factors(14)
       double precision :: overshoot_alpha_core
@@ -90,13 +90,13 @@
       double precision :: solar_radius_cgs
       double precision :: envelope_logP_step
       double precision :: diffusion_timestep_factor
-      double precision :: solver_correction_factor0
-      double precision :: solver_correction_factor
+      double precision :: solver_underrelax_start
+      double precision :: solver_underrelax_increment
       double precision :: wind_law_constant
       double precision :: coupling_factor
       double precision :: settling_y_factor
       double precision :: settling_z_factor
-      double precision :: solver_tolerance(5,2)
+      double precision :: solver_tolerances(5,2)
       integer :: fpft_iter1
       integer :: fpft_iter2
       integer :: num_rotation_structure_iters
@@ -105,7 +105,7 @@
       logical :: diffuse_lithium
       logical :: calc_neutrinos
       logical :: core_overshoot_active
-      logical :: min_overshoot_active
+      logical :: intermediate_overshoot_active
       logical :: overshoot_max_extent_flag
       logical :: rotation_flag
       logical :: new_triangle_init_flag
@@ -139,7 +139,7 @@
       logical :: use_mass_change
       double precision :: constant_mixing_coeff
       double precision :: constant_settling_reduction
-      logical :: calibrate_solar_wind
+      logical :: use_rotation_scaled_solar_wind
       logical :: use_pmm_wind
       double precision :: pmm_omega_sat
       double precision :: solar_omega_sat
@@ -188,7 +188,7 @@
            & use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
            & debug_print_interval, envelope_print_points, &
            & profile_model_interval, print_point_interval, num_runs, &
-           & max_model_number, alex_z_value, po_weight_l, &
+           & max_model_number, alex95_table_z_list, po_weight_l, &
            & po_weight_teff, po_weight_age, po_max_len_sq, rescale_mass, &
            & rescale_x, rescale_z, rescale_core_mass, rescale_core_z, &
            & rescale_z_mix1, rescale_z_mix2, timestep_override, &
@@ -216,25 +216,26 @@
            & profile_columns_file
       namelist /controls/ &
            & atm_step_min, atm_step_begin, atm_error_tol, atm_step_max, &
-           & atm_step_initial, change_species_name, atm_print_flag, &
-           & fpft_average_weight, timestep_factors, &
-           & overshoot_alpha_core, overshoot_alpha_envelope, &
-           & wind_law_index, overshoot_alpha_min, atm_step_size, &
-           & absolute_tolerance, overshoot_beta_core, min_abundance, &
-           & solar_luminosity_cgs, solar_radius_cgs, envelope_logP_step, &
+           & atm_step_initial, change_species_name, &
+           & new_species_value_mode, fpft_average_weight, &
+           & timestep_factors, overshoot_alpha_core, &
+           & overshoot_alpha_envelope, wind_law_index, &
+           & overshoot_alpha_min, atm_step_size, absolute_tolerance, &
+           & overshoot_beta_core, min_abundance, solar_luminosity_cgs, &
+           & solar_radius_cgs, envelope_logP_step, &
            & diffusion_timestep_factor, max_domega_global, &
            & convergence_tolerance, settling_timestep_fraction, &
            & env_error_tol, env_step_max, env_step_min, env_step_begin, &
            & envelope_step_size, debye_huckel_eta_min, &
-           & debye_huckel_eta_max, solver_correction_factor0, &
-           & solver_correction_factor, wind_law_constant, &
+           & debye_huckel_eta_max, solver_underrelax_start, &
+           & solver_underrelax_increment, wind_law_constant, &
            & difad_velocity_scale, mixing_velocity_scale, &
            & coupling_factor, mu_gradient_scale, es_velocity_scale, &
            & core_mass_reduction_factor, gsf_velocity_scale, &
            & secular_shear_velocity_scale, es_mixing_scale, &
            & secular_shear_mixing_scale, gsf_mixing_scale, &
            & settling_y_factor, settling_z_factor, settling_tolerance, &
-           & solver_tolerance, fpft_iter1, fpft_iter2, max_stage_index, &
+           & solver_tolerances, fpft_iter1, fpft_iter2, max_stage_index, &
            & num_rotation_structure_iters, max_diffusion_iters, &
            & gsf_inhibition_mode, coulomb_log_choice, atm_choice, &
            & max_burn_iterations, velocity_form_correction, &
@@ -243,7 +244,7 @@
            & use_diffusion_z, diffuse_lithium, calc_neutrinos, &
            & use_debye_huckel_correction, rescale_species_active, &
            & helium_flash_active, core_overshoot_active, &
-           & envelope_overshoot_active, min_overshoot_active, &
+           & envelope_overshoot_active, intermediate_overshoot_active, &
            & overshoot_max_extent_flag, use_extended_composition, &
            & rotation_flag, new_triangle_init_flag, &
            & instability_transport_active, set_initial_omega, &
@@ -275,7 +276,7 @@
            & use_numerical_derivatives, allard_target_feh, &
            & allard_target_alpha, allard_use_tau100, &
            & constant_mixing_coeff, constant_settling_reduction, &
-           & calibrate_solar_wind, use_pmm_wind_law, &
+           & use_rotation_scaled_solar_wind, use_pmm_wind_law, &
            & scale_by_rossby_number, use_pmm_wind, scale_by_b_field, &
            & wind_law_name, pmm_exponent_a, pmm_exponent_b, &
            & pmm_exponent_c, pmm_exponent_d, pmm_exponent_m, &

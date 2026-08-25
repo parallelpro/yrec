@@ -1906,7 +1906,8 @@ subroutine derive_options_and_open_files
 ! force off the flags behind physics-time legacy streams (envint's
 ! atmosphere/envelope profile blocks, the legacy OPAL pulse files;
 ! GYRE under pulse_gyre_interval is the MESA-mode pulse mechanism).
-         call output_init_mesa(fshort)
+         call output_init_mesa(fshort, ierr)
+         if (ierr /= 0) return
          lstore = .false.
          lstatm = .false.
          lstenv = .false.

@@ -88,3 +88,17 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       stop 1
 end subroutine write_gsm_pulse
 #endif
+
+! ---------------------------------------------------------------
+! 2026 io-writer stops -> ierr: capability probe so output_init_mesa
+! can reject pulse_format='GSM' at configuration time (through the
+! read_controls ierr chain) instead of the stub stopping at the
+! first pulse write. The stub's stop above remains as a last-resort
+! guard only.
+logical function gsm_supported()
+#ifdef YREC_USE_HDF5
+      gsm_supported = .true.
+#else
+      gsm_supported = .false.
+#endif
+end function gsm_supported

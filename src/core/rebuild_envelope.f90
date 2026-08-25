@@ -187,7 +187,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       star%job%env_step_begin = env_begin_saved
       star%senv = target_envelope_mass
 ! STOP IF THE DESIRED NUMBER OF POINTS EXCEEDS THE ARRAY DIMENSIONS
-      if(num_zones+env_struct%num_env_points.ge.json) stop 9999
+! 2026 io/driver stops -> ierr (was: stop 9999)
+      if(num_zones+env_struct%num_env_points.ge.json) then
+         write(*,*) 'rebuild_envelope: grid overflow (json too small)'
+         ierr = 1
+         return
+      end if
 ! THE FIRST POINT IN THE ENVELOPE SOLUTION IS THE SET OF PROPERTIES
 ! OBTAINED AT A MASS EQUAL TO THE LAST INTERIOR POINT.  USE THIS TO
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
@@ -242,7 +247,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                mass_interp_x0 = log_mass(num_zones)
                mass_interp_x1 = star%stotal + star%senv
                mass_interp_x2 = env_struct%env_log10_mass(species_index) + star%stotal
-               if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) stop 9998
+! 2026 io/driver stops -> ierr (was: stop 9998)
+               if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) then
+                  write(*,*) 'rebuild_envelope: degenerate mass interpolation'
+                  ierr = 1
+                  return
+               end if
                interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
                     (mass_interp_x2-mass_interp_x0)
                log_density(zone_index) = log_density(num_zones)+interp_fraction* &
@@ -273,7 +283,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                mass_interp_x0 = env_struct%env_log10_mass(species_index-1) + star%stotal
                mass_interp_x1 = star%stotal + star%senv
                mass_interp_x2 = env_struct%env_log10_mass(species_index) + star%stotal
-               if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) stop 9998
+! 2026 io/driver stops -> ierr (was: stop 9998)
+               if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) then
+                  write(*,*) 'rebuild_envelope: degenerate mass interpolation'
+                  ierr = 1
+                  return
+               end if
                interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
                     (mass_interp_x2-mass_interp_x0)
                log_density(zone_index) = env_struct%env_log10_density(species_index-1)+interp_fraction* &

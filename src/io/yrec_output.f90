@@ -66,10 +66,13 @@ module yrec_output
 contains
 
 ! ---------------------------------------------------------------
-subroutine output_init_mesa(fshort)
+subroutine output_init_mesa(fshort, ierr)
       use star_info_lib, only: star
       use luout_lib
       character(len=*), intent(in) :: fshort
+      integer, intent(out) :: ierr
+      logical :: gsm_supported
+      external gsm_supported
       character(len=256) :: log_path
       character(len=24) :: hist_names(n_hist_cols), prof_names(n_prof_cols)
       integer :: n, islash
@@ -92,16 +95,32 @@ subroutine output_init_mesa(fshort)
       hist_path = trim(out_dir) // trim(star%ctrl%star_history_name)
       profile_counter = 0
 
+      ierr = 0
       call history_column_names(hist_names)
       call parse_columns(star%ctrl%history_columns_file, hist_names, n_hist_cols, &
-           hist_sel, hist_nsel, 'history')
+           hist_sel, hist_nsel, 'history', ierr)
+      if (ierr /= 0) return
 ! model_number / profile_number / num_zones lead the file whenever
 ! they are selected, in that fixed order (they are columns 1-3 of the
 ! built-in table, so a stable hoist of indices 1..3 does it).
       call hoist_id_columns(hist_sel, hist_nsel)
       call profile_column_names(prof_names)
       call parse_columns(star%ctrl%profile_columns_file, prof_names, n_prof_cols, &
-           prof_sel, prof_nsel, 'profile')
+           prof_sel, prof_nsel, 'profile', ierr)
+      if (ierr /= 0) return
+! 2026 io-writer stops -> ierr: fail GSM-without-HDF5 at config time
+! (the stub's stop at first write remains only as a last resort).
+      if (star%ctrl%write_pulse_flag .and. &
+          trim(star%job%pulse_format) == 'GSM') then
+         if (.not. gsm_supported()) then
+            write(*,*) 'pulse_format = GSM requires an HDF5-enabled build:'
+            write(*,*) '  make clean && make USE_HDF5=1'
+            write(short_file_unit,*) &
+                 'pulse_format = GSM requires USE_HDF5=1 build'
+            ierr = 1
+            return
+         end if
+      end if
 end subroutine output_init_mesa
 
 ! ---------------------------------------------------------------
@@ -170,9 +189,10 @@ end subroutine output_write_model
 ! blank lines ignored. Blank/absent control -> all columns in the
 ! built-in order. Unknown names are fatal (config error), with the
 ! valid names listed in the log.
-subroutine parse_columns(fname, names, ncol, sel, nsel, label)
+subroutine parse_columns(fname, names, ncol, sel, nsel, label, ierr)
       use luout_lib
       character(len=*), intent(in) :: fname, label
+      integer, intent(out) :: ierr
       integer, intent(in) :: ncol
       character(len=24), intent(in) :: names(ncol)
       integer, intent(out) :: sel(max_cols), nsel
@@ -180,6 +200,7 @@ subroutine parse_columns(fname, names, ncol, sel, nsel, label)
       integer :: u, ios, i, j
       logical :: found
 
+      ierr = 0
       if (len_trim(fname) == 0) then
          nsel = ncol
          do i = 1, ncol
@@ -193,7 +214,10 @@ subroutine parse_columns(fname, names, ncol, sel, nsel, label)
               trim(fname)
          write(short_file_unit,*) 'cannot open ', trim(label), &
               '_columns_file: ', trim(fname)
-         stop 1
+! 2026 io-writer stops -> ierr (stage-3 pattern): config error
+! returned to output_init_mesa -> read_input -> read_controls.
+         ierr = 1
+         return
       end if
       nsel = 0
       do
@@ -220,14 +244,16 @@ subroutine parse_columns(fname, names, ncol, sel, nsel, label)
             do j = 1, ncol
                write(short_file_unit,'(2x,a)') trim(names(j))
             end do
-            stop 1
+            ierr = 1
+            return
          end if
       end do
       close(u)
       if (nsel == 0) then
          write(*,*) trim(label), '_columns_file selected no columns: ', &
               trim(fname)
-         stop 1
+         ierr = 1
+         return
       end if
 end subroutine parse_columns
 

@@ -321,9 +321,9 @@
       ! (legacy name: nmodls)
       max_model_number = 0   ! (implicit)
 
-      ! TODO verify: Z of the Alexander opacity table in use
+      ! VERIFIED 2026: the seven Alexander-1995 low-T opacity table FILE PATHS (character(len=256)(7)), relayed to star%job%alex95_table_paths -- the old 'alex_z_value' guess was wrong.
       ! (legacy name: opecalex)
-      alex_z_value = 'OPACALEXANDER.X00',
+      alex95_table_z_list = 'OPACALEXANDER.X00',
 
       ! former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
       ! (legacy name: poa)

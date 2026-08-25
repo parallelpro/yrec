@@ -870,7 +870,12 @@ subroutine rescale_and_refit_envelope
             star%job%env_step_min = saved_env_step_min
             star%job%env_step_begin = saved_env_step_begin
           star%senv = star%job%requested_envelope_mass
-            if (star%nz+env_struct%num_env_points.ge.json) stop 9999
+! 2026 io/driver stops -> ierr (was: stop 9999)
+            if (star%nz+env_struct%num_env_points.ge.json) then
+               write(*,*) 'read_starting_model: grid overflow (json too small)'
+               ierr = 1
+               return
+            end if
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
 ! ADJUST THE (P, RHO, T, R) POINTS TO BE CONSISTENT
 ! WITH THE LAST MODEL POINT.
