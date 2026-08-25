@@ -129,9 +129,14 @@ Phases (each byte-gated + test_net + test_reentry):
   STAY NESTED as documented solver workspace: rot, mix_phys, circ,
   pulse's q* print scratch -- flattening them awaits the solver
   cleanup (and rot's dm/pm/tm collide with model members).
-- Phase D (teardown): controls_lib becomes parmin-private; const_lib
-  umbrella deleted (each user switches to the specific module);
-  luout_lib -> io/, intpar_lib -> numerics/; const/ folder deleted.
+- Phase D (DONE 2026-08-24): const_lib umbrella deleted (89 files ->
+  phys_const_lib, 71 dead imports removed, read path -> controls_lib);
+  controls_lib relocated to io/ and declared parmin-private;
+  luout_lib -> io/, intpar_lib -> numerics/; const/ folder gone;
+  idt/idd dead stores deleted. THE CAMPAIGN IS COMPLETE. Follow-ups
+  queued separately: MESA micro-rename pass (map QUERY rows), solver
+  cleanup (rot/mix_phys/circ/pulse-residue out of star_info),
+  registry-driven MESA renames for ctrl members.
 
 ## Library-based yrec link
 
