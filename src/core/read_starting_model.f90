@@ -267,6 +267,11 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       if (ierr /= 0) return
       call rescale_and_refit_envelope
       if (ierr /= 0) return
+      call build_shell_masses
+      call initialize_rotation_state
+      call update_surface_mixture
+      call snapshot_step_start
+      if (ierr /= 0) return
 !       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
       call shell_physics(star%fp_rot,star%ft_rot, &
            star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun,star%logP, &
@@ -1050,6 +1055,12 @@ subroutine rescale_and_refit_envelope
       end do envelope_rescale
       endif
 
+end subroutine rescale_and_refit_envelope
+
+! ---------------------------------------------------------------
+! Shell masses (unlogged) and per-shell dm from the (possibly
+! refitted) log-mass grid.
+subroutine build_shell_masses
 ! SET UP WEIGHTS AND MASSES
 ! HS1 IS THE UNLOGGED HS; HS2 IS THE MASS OF THE SHELL(ALSO NOT LOG).
       next_mass = dexp(ln10*star%log_mass(1))
@@ -1065,6 +1076,13 @@ subroutine rescale_and_refit_envelope
       star%dm(star%nz) = dexp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
            next_mass)
 
+end subroutine build_shell_masses
+
+! ---------------------------------------------------------------
+! Rotation state for the starting model: shape factors, moments of
+! inertia, and the J / rotational-KE totals (with the historical
+! previous-vs-new echo).
+subroutine initialize_rotation_state
       if (star%job%rotation_active) then
 ! CALCULATE FP,FT,R0 AND ETA2 GIVEN OMEGA
        call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
@@ -1092,7 +1110,14 @@ subroutine rescale_and_refit_envelope
        total_angular_momentum = angular_momentum_sum
        total_rotational_ke = rotational_ke_sum
       endif
+end subroutine initialize_rotation_state
 
+! ---------------------------------------------------------------
+! Surface-mixture bookkeeping: on the first kind card, rebuild the
+! envelope mass/number fractions (zenvm/amuenv/fxenv) and push them
+! to the eos domain; regenerate the surface opacity tables (and the
+! SCV envelope EOS table when in use) for the current surface X.
+subroutine update_surface_mixture
       if (run_index.le.1) then
 ! SET UP MASS FRACTIONS AND NUMBER FRACTIONS OF ELEMENTS IN
 ! ENVELOPE.
@@ -1156,6 +1181,12 @@ subroutine rescale_and_refit_envelope
          call build_scv_envelope_table
       endif
 
+end subroutine update_surface_mixture
+
+! ---------------------------------------------------------------
+! Snapshot the step-start structure (the *_start arrays that the
+! timestep limiters diff against) and, when rotating, old_omega.
+subroutine snapshot_step_start
 ! CLONE P,T,R,L ARRAY TO DUMMY ARRAY HPOLD.
 ! HPOLD IS USED TO LIMIT THE TIMESTEP BASED ON CHANGES FROM
 ! MODEL TO MODEL IN P,T,R,L.
@@ -1194,6 +1225,6 @@ subroutine rescale_and_refit_envelope
 !     *        VEL,LDERIV,LCONV,FPL,FTL,TEFFL)
 !C JVS 10/13 Always want SVEL
 
-end subroutine rescale_and_refit_envelope
+end subroutine snapshot_step_start
 
 end subroutine read_starting_model
