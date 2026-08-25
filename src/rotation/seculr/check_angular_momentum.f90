@@ -71,6 +71,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 ! QIW,R0,WSAV,ID,IDM,ECOD,ECOD2,LOKAD)
      qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
      already_converged_flag, ierr)
+      use rotation_scratch_lib
 
       use star_info_lib, only: star, json
       use luout_lib
@@ -183,17 +184,17 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 !  ITERATIVELY.  BECAUSE THE ERROR IN THE DIFFUSION IS OF ORDER DJOK,
 !  RELAX TOLERANCE FOR MOMENT OF INERTIA ITERATION EXCEPT FOR THE
 !  FINAL STEP.
-      saved_tolerance = star%rot%moment_of_inertia_tolerance
+      saved_tolerance = rot_scr%moment_of_inertia_tolerance
       saved_acc_tolerance = star%job%acfpft
       if(iteration_number.lt.star%ctrl%itdif2.and..not.converged_flag)then
-         star%rot%moment_of_inertia_tolerance = &
+         rot_scr%moment_of_inertia_tolerance = &
               max(star%ctrl%convergence_tolerance*1.0d-2,saved_tolerance)
          star%job%acfpft = max(star%ctrl%convergence_tolerance*1.0d-2,saved_acc_tolerance)
       endif
       call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius)
-      star%rot%moment_of_inertia_tolerance = saved_tolerance
+      rot_scr%moment_of_inertia_tolerance = saved_tolerance
       star%job%acfpft = saved_acc_tolerance
 !  SEARCH FOR REVERSAL OF OMEGA GRADIENTS.  IF ONE EXISTS, ENFORCE
 !  SOLID-BODY ROTATION IN THE OFFENDING PAIR OF ZONES.
@@ -367,15 +368,15 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
               'VSS',9x,'RAT',8x,'VTOT',7x,'LENGTH',8x,'VMU')
          do zone_index = 1,print_zone_count
             write(imodpt,220)print_zone_id(zone_index), &
-                 star%circ%es_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 star%circ%es_circulation_velocity(print_zone_id(zone_index)), &
-                 star%circ%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 star%circ%gsf_circulation_velocity(print_zone_id(zone_index)), &
-                 star%circ%secular_shear_velocity(print_zone_id(zone_index)), &
-                 star%rot%circulation_correction_ratio(print_zone_id(zone_index)), &
+                 circ_scr%es_circulation_velocity_prev(print_zone_id(zone_index)), &
+                 star%es_circulation_velocity(print_zone_id(zone_index)), &
+                 circ_scr%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
+                 star%gsf_circulation_velocity(print_zone_id(zone_index)), &
+                 star%secular_shear_velocity(print_zone_id(zone_index)), &
+                 rot_scr%circulation_correction_ratio(print_zone_id(zone_index)), &
                  diffusion_velocity(print_zone_id(zone_index)), &
-                 star%circ%hle(print_zone_id(zone_index)), &
-                 star%circ%mu_gradient_velocity(print_zone_id(zone_index))
+                 circ_scr%hle(print_zone_id(zone_index)), &
+                 circ_scr%mu_gradient_velocity(print_zone_id(zone_index))
   220 format(1x,i5,1p10e12.3)
          end do
          if(star%ctrl%use_diffusion_advection_transport)then
@@ -385,41 +386,41 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 !     *         ECOD(ID(I)),ECOD2(ID(I)),ECOD3(ID(I)),ECOD4(ID(I))
 ! 221           FORMAT(1X,I5,1P7E12.3)
 !            END DO
-            if(print_zone_count.eq.star%rot%ntot)then
+            if(print_zone_count.eq.rot_scr%ntot)then
             do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,star%rot%chi(zone_index), &
-                    star%circ%es_circulation_velocity(zone_index), &
-                    star%rot%es_advective_velocity(zone_index), &
-                    star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
-                    star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
+               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
+                    star%es_circulation_velocity(zone_index), &
+                    rot_scr%es_advective_velocity(zone_index), &
+                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
+                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
  221           format(1x,i5,1p7e12.3)
             end do
-            else if(print_zone_count.lt.star%rot%ntot)then
+            else if(print_zone_count.lt.rot_scr%ntot)then
             do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,star%rot%chi(zone_index), &
-                    star%circ%es_circulation_velocity(zone_index), &
-                    star%rot%es_advective_velocity(zone_index), &
-                    star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
-                    star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
+               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
+                    star%es_circulation_velocity(zone_index), &
+                    rot_scr%es_advective_velocity(zone_index), &
+                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
+                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
             end do
-            do zone_index = print_zone_count+1,star%rot%ntot
-               write(imodpt,222)zone_index,star%rot%echi(zone_index), &
-                    star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
+            do zone_index = print_zone_count+1,rot_scr%ntot
+               write(imodpt,222)zone_index,rot_scr%echi(zone_index), &
+                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
  222           format(1x,i5,48x,1p3e12.3)
             end do
             else
-            do zone_index = 1,star%rot%ntot
-               write(imodpt,221)zone_index,star%rot%chi(zone_index), &
-                    star%circ%es_circulation_velocity(zone_index), &
-                    star%rot%es_advective_velocity(zone_index), &
-                    star%rot%es_diffusive_velocity(zone_index),star%rot%echi(zone_index), &
-                    star%rot%am_advective_coeff(zone_index),star%rot%am_diffusive_coeff(zone_index)
+            do zone_index = 1,rot_scr%ntot
+               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
+                    star%es_circulation_velocity(zone_index), &
+                    rot_scr%es_advective_velocity(zone_index), &
+                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
+                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
             end do
-            do zone_index = star%rot%ntot+1,print_zone_count
-               write(imodpt,223)zone_index,star%rot%chi(zone_index), &
-                    star%circ%es_circulation_velocity(zone_index), &
-                    star%rot%es_advective_velocity(zone_index), &
-                    star%rot%es_diffusive_velocity(zone_index)
+            do zone_index = rot_scr%ntot+1,print_zone_count
+               write(imodpt,223)zone_index,rot_scr%chi(zone_index), &
+                    star%es_circulation_velocity(zone_index), &
+                    rot_scr%es_advective_velocity(zone_index), &
+                    rot_scr%es_diffusive_velocity(zone_index)
  223           format(1x,i5,1p4e12.3)
             end do
             endif

@@ -29,6 +29,7 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
      specific_angular_momentum, shape_factor_fp, shape_factor_ft, &
      log_teff, log_total_mass, log_luminosity_lsun, m, convective_flag, &
      model)
+      use rotation_scratch_lib
 
       use atm_lib
       use envint_lib, only: atm_get
@@ -98,13 +99,13 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
               duma = cc13*omega(i)**2/(cg*fm)*5.d0/(2.d0+rotation_eta2(i))
               a_val = duma * radius_ratio_r0(i)**3
               rpoleq = (1.0d0 - a_val)/(1.0d0 + 0.5d0*a_val)
-              vtot = star%circ%es_circulation_velocity(i)+star%circ%gsf_circulation_velocity(i)+ &
-                   star%circ%secular_shear_velocity(i)
+              vtot = star%es_circulation_velocity(i)+star%gsf_circulation_velocity(i)+ &
+                   star%secular_shear_velocity(i)
               write(istor,64) a_val,rpoleq,shape_factor_fp(i), &
                    shape_factor_ft(i),specific_angular_momentum(i), &
-                   shell_moment_of_inertia(i),star%rot%rotational_energy_term(i), &
-                   star%circ%es_circulation_velocity(i),star%circ%gsf_circulation_velocity(i), &
-                   star%circ%secular_shear_velocity(i),vtot
+                   shell_moment_of_inertia(i),rot_scr%rotational_energy_term(i), &
+                   star%es_circulation_velocity(i),star%gsf_circulation_velocity(i), &
+                   star%secular_shear_velocity(i),vtot
             else
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
             end if

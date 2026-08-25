@@ -12,6 +12,7 @@
 subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
+      use rotation_scratch_lib
 
       use star_info_lib, only: star, json
       use luout_lib
@@ -87,7 +88,7 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       delta_angular_momentum = total_angular_momentum - new_angular_momentum
       if(.not.disk_locked)then
       if(dabs(delta_angular_momentum/total_angular_momentum).gt. &
-           star%rot%moment_of_inertia_tolerance) then
+           rot_scr%moment_of_inertia_tolerance) then
          if(iteration_count.lt.20) then
             iteration_count = iteration_count + 1
             delta_omega = delta_angular_momentum/ &

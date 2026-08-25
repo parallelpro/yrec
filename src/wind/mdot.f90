@@ -28,6 +28,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
+      use rotation_scratch_lib
       use star_info_lib, only: star, json
       use phys_const_lib
       implicit none
@@ -83,10 +84,10 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 
       old_log_envelope_mass_fraction = log_mass(num_zones) - log_total_mass
 ! MHP 8/10- CHECK FOR SCALED SOLAR WIND MASS LOSS
-      if(star%rot%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
-         omega_ratio_sq = (omega(num_zones)/star%rot%wind_reference_omega)**2
-         omega_max_ratio_sq = (star%rot%wind_max_omega/star%rot%wind_reference_omega)**2
-         mass_loss_rate_msun_yr = star%rot%solar_wind_mass_loss_rate_msun_yr* &
+      if(rot_scr%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
+         omega_ratio_sq = (omega(num_zones)/rot_scr%wind_reference_omega)**2
+         omega_max_ratio_sq = (rot_scr%wind_max_omega/rot_scr%wind_reference_omega)**2
+         mass_loss_rate_msun_yr = rot_scr%solar_wind_mass_loss_rate_msun_yr* &
               min(omega_ratio_sq,omega_max_ratio_sq)
          write(*,*)omega(num_zones),mass_loss_rate_msun_yr
       endif
@@ -163,26 +164,26 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
               (local_density*local_temperature)
 !         DLOGEN = (DELM/DMCZ)*(SACC-SCEN)/RMU
          delta_log_specific_entropy = (delta_mass_cgs/cz_mass_grams)* &
-              star%rot%envelope_specific_entropy/mean_molecular_weight_local
+              rot_scr%envelope_specific_entropy/mean_molecular_weight_local
 !         DLNM = LOG(DMCZ+DELM)-LOG(DMCZ)
          delta_ln_mass = 0.0d0
          delta_log_radius = (cc23*delta_log_specific_entropy- &
               cc13*delta_ln_mass)/ln10
-         star%rot%delta_log_temperature = delta_ln_mass/ln10 - delta_log_radius
-         star%rot%delta_log_pressure = 2.0d0*delta_ln_mass/ln10 - 4.0d0*delta_log_radius
+         rot_scr%delta_log_temperature = delta_ln_mass/ln10 - delta_log_radius
+         rot_scr%delta_log_pressure = 2.0d0*delta_ln_mass/ln10 - 4.0d0*delta_log_radius
 !         WRITE(*,*)DLOGR,DLOGP,DLOGT
          if(envelope_boundary_zone.eq.1)then
             do zone_idx = envelope_boundary_zone,num_zones
                log_radius(zone_idx) = log_radius(zone_idx)+delta_log_radius
-               log_pressure(zone_idx) = log_pressure(zone_idx)+star%rot%delta_log_pressure
+               log_pressure(zone_idx) = log_pressure(zone_idx)+rot_scr%delta_log_pressure
                log_temperature(zone_idx) = &
-                    log_temperature(zone_idx)+star%rot%delta_log_temperature
+                    log_temperature(zone_idx)+rot_scr%delta_log_temperature
             end do
          else
             log_pressure(envelope_boundary_zone) = &
-                 log_pressure(envelope_boundary_zone)+star%rot%delta_log_pressure
+                 log_pressure(envelope_boundary_zone)+rot_scr%delta_log_pressure
             log_temperature(envelope_boundary_zone) = &
-                 log_temperature(envelope_boundary_zone)+star%rot%delta_log_temperature
+                 log_temperature(envelope_boundary_zone)+rot_scr%delta_log_temperature
             boundary_radius_cm = 10.0d0**log_radius(envelope_boundary_zone)
             radius_scale_factor = 10.0d0**delta_log_radius
             do zone_idx = envelope_boundary_zone+1,num_zones
@@ -247,7 +248,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 ! CORRECT TOTAL MASS IN SOLAR UNITS (SMASS) AND
 ! LOG OF TOTAL MASS IN GRAMS (HSTOT,STOTAL)
       total_mass_msun = total_mass_msun + delta_mass_cgs/star%solar_mass_cgs
-      star%rot%updated_mass_msun = total_mass_msun
+      rot_scr%updated_mass_msun = total_mass_msun
       delta_mass_msun = delta_mass_cgs/star%solar_mass_cgs
       write(*,20)total_mass_msun,delta_mass_msun
  20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)

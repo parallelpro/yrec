@@ -27,12 +27,13 @@
 ! OUTPUT VARIABLES:
 ! dt : DIFFUSION TIMESTEP, WHICH CAN BE CUT IF ERRORS IN THE
 !    COMPOSITION DIFFUSION ARE DISCOVERED.
-! star%mix_phys%amum (former common/mdphy/) : NEW RUN OF MEAN MOLECULAR WEIGHT.
+! mix_scr%amum (former common/mdphy/) : NEW RUN OF MEAN MOLECULAR WEIGHT.
 ! cut_count : NUMBER OF TIMES DIFFUSION TIMESTEP HAS BEEN CUT.
 ! converged_flag : SET F IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 ! redo_flag : SET T IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 subroutine check_composition(composition, iteration_number, print_flag, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
+      use rotation_scratch_lib
 
       use star_info_lib, only: star, json
       use luout_lib
@@ -193,7 +194,7 @@ subroutine check_composition(composition, iteration_number, print_flag, num_zone
                  + composition(2,zone_index)/atomic_weight(2)) + &
                  0.5d0*composition(3,zone_index)
             electron_mean_weight_inverse = 1.0d0/amu_calc_temp
-            star%mix_phys%amum(zone_index) = ion_mean_weight_inverse* &
+            mix_scr%amum(zone_index) = ion_mean_weight_inverse* &
                  electron_mean_weight_inverse/ &
                  (ion_mean_weight_inverse+electron_mean_weight_inverse)
          end do

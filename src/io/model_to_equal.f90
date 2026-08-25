@@ -17,6 +17,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      equal_diffusion_coeff1_dx_mid, equal_diffusion_coeff2_dx_mid, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
+      use rotation_scratch_lib
       use star_info_lib, only: star, json
       use numerics_lib
       implicit none
@@ -109,19 +110,19 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
            interp_fraction*(composition(1,interp_search_index)- &
            composition(1,interp_search_index-1))
       if(star%job%use_diffusion_z)then
-         star%rot%metal_diffusion_coeff1_mid(1)=star%rot%src_grid_metal_diffusion_coeff1(interp_search_index-1)+ &
-              interp_fraction*(star%rot%src_grid_metal_diffusion_coeff1(interp_search_index)- &
-              star%rot%src_grid_metal_diffusion_coeff1(interp_search_index-1))
-         star%rot%metal_diffusion_coeff2_mid(1)=star%rot%src_grid_metal_diffusion_coeff2(interp_search_index-1)+ &
-              interp_fraction*(star%rot%src_grid_metal_diffusion_coeff2(interp_search_index)- &
-              star%rot%src_grid_metal_diffusion_coeff2(interp_search_index-1))
-         star%rot%eq_metal_diffusion_coeff1_mid(1)=star%rot%src_grid_metal_diffusion_coeff1_dz(interp_search_index-1)+ &
-              interp_fraction*(star%rot%src_grid_metal_diffusion_coeff1_dz(interp_search_index)- &
-              star%rot%src_grid_metal_diffusion_coeff1_dz(interp_search_index-1))
-         star%rot%eq_metal_diffusion_coeff2_mid(1)=star%rot%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1)+ &
-              interp_fraction*(star%rot%src_grid_metal_diffusion_coeff2_dz(interp_search_index)- &
-              star%rot%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1))
-         star%rot%metal_abundance_change_mid(1) = composition(8,interp_search_index-1)+ &
+         rot_scr%metal_diffusion_coeff1_mid(1)=rot_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1)+ &
+              interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff1(interp_search_index)- &
+              rot_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1))
+         rot_scr%metal_diffusion_coeff2_mid(1)=rot_scr%src_grid_metal_diffusion_coeff2(interp_search_index-1)+ &
+              interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff2(interp_search_index)- &
+              rot_scr%src_grid_metal_diffusion_coeff2(interp_search_index-1))
+         rot_scr%eq_metal_diffusion_coeff1_mid(1)=rot_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index-1)+ &
+              interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index)- &
+              rot_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index-1))
+         rot_scr%eq_metal_diffusion_coeff2_mid(1)=rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1)+ &
+              interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index)- &
+              rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1))
+         rot_scr%metal_abundance_change_mid(1) = composition(8,interp_search_index-1)+ &
               interp_fraction*(composition(8,interp_search_index)- &
               composition(8,interp_search_index-1))
       endif
@@ -205,31 +206,31 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
          if(star%job%use_diffusion_z)then
 ! METAL DIFFUSION-TREATED AS FULLY IONIZED IRON.
 ! D1
-         star%rot%metal_diffusion_coeff1_mid(zone_index)=interp_factors(1)* &
-              star%rot%src_grid_metal_diffusion_coeff1(k0)+interp_factors(2)* &
-              star%rot%src_grid_metal_diffusion_coeff1(k0+1)+interp_factors(3)* &
-              star%rot%src_grid_metal_diffusion_coeff1(k0+2)+interp_factors(4)* &
-              star%rot%src_grid_metal_diffusion_coeff1(k0+3)
+         rot_scr%metal_diffusion_coeff1_mid(zone_index)=interp_factors(1)* &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0)+interp_factors(2)* &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0+1)+interp_factors(3)* &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0+2)+interp_factors(4)* &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0+3)
 ! D2
-         star%rot%metal_diffusion_coeff2_mid(zone_index)=interp_factors(1)* &
-              star%rot%src_grid_metal_diffusion_coeff2(k0)+interp_factors(2)* &
-              star%rot%src_grid_metal_diffusion_coeff2(k0+1)+interp_factors(3)* &
-              star%rot%src_grid_metal_diffusion_coeff2(k0+2)+interp_factors(4)* &
-              star%rot%src_grid_metal_diffusion_coeff2(k0+3)
+         rot_scr%metal_diffusion_coeff2_mid(zone_index)=interp_factors(1)* &
+              rot_scr%src_grid_metal_diffusion_coeff2(k0)+interp_factors(2)* &
+              rot_scr%src_grid_metal_diffusion_coeff2(k0+1)+interp_factors(3)* &
+              rot_scr%src_grid_metal_diffusion_coeff2(k0+2)+interp_factors(4)* &
+              rot_scr%src_grid_metal_diffusion_coeff2(k0+3)
 ! DERIVATIVE OF D1 WRT Z
-         star%rot%eq_metal_diffusion_coeff1_mid(zone_index)=interp_factors(1)* &
-              star%rot%src_grid_metal_diffusion_coeff1_dz(k0)+interp_factors(2)* &
-              star%rot%src_grid_metal_diffusion_coeff1_dz(k0+1) &
-              +interp_factors(3)*star%rot%src_grid_metal_diffusion_coeff1_dz(k0+2)+ &
-              interp_factors(4)*star%rot%src_grid_metal_diffusion_coeff1_dz(k0+3)
+         rot_scr%eq_metal_diffusion_coeff1_mid(zone_index)=interp_factors(1)* &
+              rot_scr%src_grid_metal_diffusion_coeff1_dz(k0)+interp_factors(2)* &
+              rot_scr%src_grid_metal_diffusion_coeff1_dz(k0+1) &
+              +interp_factors(3)*rot_scr%src_grid_metal_diffusion_coeff1_dz(k0+2)+ &
+              interp_factors(4)*rot_scr%src_grid_metal_diffusion_coeff1_dz(k0+3)
 ! DERIVATIVE OF D2 WRT Z
-         star%rot%eq_metal_diffusion_coeff2_mid(zone_index)=interp_factors(1)* &
-              star%rot%src_grid_metal_diffusion_coeff2_dz(k0)+interp_factors(2)* &
-              star%rot%src_grid_metal_diffusion_coeff2_dz(k0+1) &
-              +interp_factors(3)*star%rot%src_grid_metal_diffusion_coeff2_dz(k0+2)+ &
-              interp_factors(4)*star%rot%src_grid_metal_diffusion_coeff2_dz(k0+3)
+         rot_scr%eq_metal_diffusion_coeff2_mid(zone_index)=interp_factors(1)* &
+              rot_scr%src_grid_metal_diffusion_coeff2_dz(k0)+interp_factors(2)* &
+              rot_scr%src_grid_metal_diffusion_coeff2_dz(k0+1) &
+              +interp_factors(3)*rot_scr%src_grid_metal_diffusion_coeff2_dz(k0+2)+ &
+              interp_factors(4)*rot_scr%src_grid_metal_diffusion_coeff2_dz(k0+3)
 ! MASS FRACTION OF METALS
-         star%rot%metal_abundance_change_mid(zone_index)=interp_factors(1)* &
+         rot_scr%metal_abundance_change_mid(zone_index)=interp_factors(1)* &
               composition(8,k0)+interp_factors(2)*composition(8,k0+1)+ &
               interp_factors(3)*composition(8,k0+2)+ &
               interp_factors(4)*composition(8,k0+3)
@@ -251,8 +252,8 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_hydrogen_fraction(1) = composition(1,zone_begin)
       equal_diffusion_coeff1(1)=diffusion_coeff1(zone_begin)
       if(star%job%use_diffusion_z)then
-         star%rot%metal_abundance_change(1) = composition(8,zone_begin)
-         star%rot%metal_diffusion_coeff1(1) = star%rot%src_grid_metal_diffusion_coeff1(zone_begin)
+         star%metal_abundance_change(1) = composition(8,zone_begin)
+         rot_scr%metal_diffusion_coeff1(1) = rot_scr%src_grid_metal_diffusion_coeff1(zone_begin)
       endif
 ! FOR OTHER POINTS: FIRST FIND 4 NEAREST (IN RADIUS) MODEL POINTS
 ! AND THEN FIND LAGRANGIAN INTERPOLATION FACTORS. APPLY THEM TO FIND
@@ -306,13 +307,13 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 ! METAL DIFFUSION
          if(star%job%use_diffusion_z)then
 ! D1
-         star%rot%metal_diffusion_coeff1(zone_index)=interp_factors(1)* &
-              star%rot%src_grid_metal_diffusion_coeff1(k0)+interp_factors(2)* &
-              star%rot%src_grid_metal_diffusion_coeff1(k0+1)+interp_factors(3)* &
-              star%rot%src_grid_metal_diffusion_coeff1(k0+2)+interp_factors(4)* &
-              star%rot%src_grid_metal_diffusion_coeff1(k0+3)
+         rot_scr%metal_diffusion_coeff1(zone_index)=interp_factors(1)* &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0)+interp_factors(2)* &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0+1)+interp_factors(3)* &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0+2)+interp_factors(4)* &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0+3)
 ! MASS FRACTION OF METALS
-         star%rot%metal_abundance_change(zone_index)=interp_factors(1)* &
+         star%metal_abundance_change(zone_index)=interp_factors(1)* &
               composition(8,k0)+interp_factors(2)*composition(8,k0+1)+ &
               interp_factors(3)*composition(8,k0+2)+ &
               interp_factors(4)*composition(8,k0+3)
@@ -325,8 +326,8 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_diffusion_coeff1(num_equal_points)=diffusion_coeff1(zone_end)
 
       if(star%job%use_diffusion_z)then
-         star%rot%metal_abundance_change(num_equal_points) = composition(8,zone_end)
-         star%rot%metal_diffusion_coeff1(num_equal_points)=star%rot%src_grid_metal_diffusion_coeff1(zone_end)
+         star%metal_abundance_change(num_equal_points) = composition(8,zone_end)
+         rot_scr%metal_diffusion_coeff1(num_equal_points)=rot_scr%src_grid_metal_diffusion_coeff1(zone_end)
       endif
       return
 end subroutine model_to_equal

@@ -21,6 +21,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass, ierr)
+      use rotation_scratch_lib
 
       use star_info_lib, only: star, i_grad_actual, json
       use luout_lib
@@ -82,21 +83,21 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 !  DDAGE IS THE TIMESTEP IN YEARS.
       timestep_years = timestep/seconds_per_year
       do zone_idx = 1,num_zones
-         rate_pp(zone_idx) = star%rot%reaction_rate_by_zone(1,zone_idx)
-         rate_he3_he3(zone_idx) = star%rot%reaction_rate_by_zone(2,zone_idx)
-         rate_he3_he4(zone_idx) = star%rot%reaction_rate_by_zone(3,zone_idx)
-         rate_c12_p(zone_idx) = star%rot%reaction_rate_by_zone(4,zone_idx)
-         rate_c13_p(zone_idx) = star%rot%reaction_rate_by_zone(5,zone_idx)
-         rate_n14_p(zone_idx) = star%rot%reaction_rate_by_zone(6,zone_idx)
-         rate_o16_p(zone_idx) = star%rot%reaction_rate_by_zone(7,zone_idx)
-         rate_c13_alpha(zone_idx) = star%rot%reaction_rate_by_zone(8,zone_idx)
-         rate_zero9(zone_idx) = star%rot%reaction_rate_by_zone(9,zone_idx)
-         rate_c12_alpha(zone_idx) = star%rot%reaction_rate_by_zone(10,zone_idx)
-         rate_n14_alpha(zone_idx) = star%rot%reaction_rate_by_zone(11,zone_idx)
-         rate_triple_alpha(zone_idx) = star%rot%reaction_rate_by_zone(12,zone_idx)
-         rate_zero13(zone_idx) = star%rot%reaction_rate_by_zone(13,zone_idx)
-         frac_c12_alpha(zone_idx) = star%rot%reaction_rate_by_zone(14,zone_idx)
-         frac_be7_electron(zone_idx) = star%rot%reaction_rate_by_zone(15,zone_idx)
+         rate_pp(zone_idx) = rot_scr%reaction_rate_by_zone(1,zone_idx)
+         rate_he3_he3(zone_idx) = rot_scr%reaction_rate_by_zone(2,zone_idx)
+         rate_he3_he4(zone_idx) = rot_scr%reaction_rate_by_zone(3,zone_idx)
+         rate_c12_p(zone_idx) = rot_scr%reaction_rate_by_zone(4,zone_idx)
+         rate_c13_p(zone_idx) = rot_scr%reaction_rate_by_zone(5,zone_idx)
+         rate_n14_p(zone_idx) = rot_scr%reaction_rate_by_zone(6,zone_idx)
+         rate_o16_p(zone_idx) = rot_scr%reaction_rate_by_zone(7,zone_idx)
+         rate_c13_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(8,zone_idx)
+         rate_zero9(zone_idx) = rot_scr%reaction_rate_by_zone(9,zone_idx)
+         rate_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(10,zone_idx)
+         rate_n14_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(11,zone_idx)
+         rate_triple_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(12,zone_idx)
+         rate_zero13(zone_idx) = rot_scr%reaction_rate_by_zone(13,zone_idx)
+         frac_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(14,zone_idx)
+         frac_be7_electron(zone_idx) = rot_scr%reaction_rate_by_zone(15,zone_idx)
       end do
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
@@ -188,7 +189,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          total_mass=exp(ln10*log_total_mass)
          do zone_idx = 1,num_zones
             del_grad2_save(zone_idx) = star%gradT(zone_idx)
-            star%gradT(zone_idx) = star%mix_phys%delm(zone_idx)
+            star%gradT(zone_idx) = mix_scr%delm(zone_idx)
             dlnp_dr_settling(zone_idx)=-exp(ln10*(log_density(zone_idx)+ &
                  cgl+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
                  log_pressure(zone_idx)))

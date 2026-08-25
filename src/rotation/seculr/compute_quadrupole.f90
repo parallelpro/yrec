@@ -23,6 +23,7 @@
 ! is that there is no contribution to the quadrupole from outside the
 ! final shell, such that QUAD(I) varies as 1/R**4.
 subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, num_zones)
+      use rotation_scratch_lib
 
       use star_info_lib, only: star, json
       use phys_const_lib
@@ -129,8 +130,8 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
               gamma_elim(matrix_row+1)*solution(matrix_row+1)
       end do
       do zone_index = 1,num_zones
-         star%rot%quadrupole_moment(zone_index) = solution(zone_index)
-         star%rot%local_gravity(zone_index) = gravity(zone_index)
+         rot_scr%quadrupole_moment(zone_index) = solution(zone_index)
+         rot_scr%local_gravity(zone_index) = gravity(zone_index)
       end do
 
       return

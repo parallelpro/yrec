@@ -17,10 +17,11 @@
 ! potential (via trapzd/polint Richardson extrapolation) and averages
 ! the resulting local effective gravity over the shell (via qgauss/
 ! func) to get mean_gravity, from which FP/FT and the diagnostic
-! potential terms star%rot%phisp/star%rot%phirot/star%rot%phidis (common/quadd/) are built.
+! potential terms rot_scr%phisp/rot_scr%phirot/rot_scr%phidis (common/quadd/) are built.
 subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0)
+      use rotation_scratch_lib
 
       use star_info_lib, only: star, json
       use luout_lib
@@ -119,9 +120,9 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
 ! OUTPUT DATA
          rphi = dexp(ln10*log_radius(i))
          rphi3 = rphi**3
-         star%rot%phisp(i) = g_times_mass/rphi
-         star%rot%phirot(i) =  omega_sq*rphi**2
-         star%rot%phidis(i) = c4pi*cc13*aint/rphi3
+         rot_scr%phisp(i) = g_times_mass/rphi
+         rot_scr%phirot(i) =  omega_sq*rphi**2
+         rot_scr%phidis(i) = c4pi*cc13*aint/rphi3
          prev_aint = aint
          prev_q = q
          previous_shell_mass = shell_mass

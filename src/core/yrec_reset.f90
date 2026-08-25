@@ -20,9 +20,16 @@
 module yrec_reset_lib
       use star_info_lib, only: star, star_info, evolve_step_reset_pending, &
            observables_reset_pending
+      use rotation_scratch_lib
       implicit none
 
       logical, save :: first_entry = .true.
+! 2026 solver-scratch cleanup: the rotation workspace lives outside
+! star_info now (rotation_scratch_lib), so it needs its own pristine
+! snapshots alongside star0.
+      type(rotation_diffusion_state), save :: rot_scr0
+      type(mdphy_state), save :: mix_scr0
+      type(circulation_velocity_state), save :: circ_scr0
       ! star0 also carries star%job and star%evo since the 2026
       ! MESA-convention fold -- one snapshot covers all three roots.
       type(star_info), save :: star0
@@ -41,9 +48,15 @@ subroutine yrec_run_prologue
 ! evicted to star%, every member is recomputed by setups each run.
       if (first_entry) then
          star0 = star
+         rot_scr0 = rot_scr
+         mix_scr0 = mix_scr
+         circ_scr0 = circ_scr
          first_entry = .false.
       else
          star = star0
+         rot_scr = rot_scr0
+         mix_scr = mix_scr0
+         circ_scr = circ_scr0
          evolve_step_reset_pending = .true.
          observables_reset_pending = .true.
          do u = 7, 99

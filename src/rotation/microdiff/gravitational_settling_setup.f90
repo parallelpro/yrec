@@ -23,6 +23,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
      num_zones, total_mass, diffusion_coeff1, diffusion_coeff2, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
+      use rotation_scratch_lib
 
       use star_info_lib, only: star, i_grad_actual, json
       use luout_lib
@@ -168,27 +169,27 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       return
       end if
       zone_end = zone_idx
-!     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.
+!     star%bl_mass_scale=CONVERSION FACTOR FOR MASS.
 !     CON_RADIUS=CONVERSION FACTOR FOR RADIUS.
-!     star%rot%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
-!     star%rot%bl_time_scale=CONVERSION FACTOR FOR TIME.
-      star%rot%bl_radius_scale=1.0d0/solar_radius_bl
-      star%rot%bl_mass_scale=1.0d-2*star%rot%bl_radius_scale**3
-      star%rot%bl_temp_scale=1.0d-7
+!     star%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
+!     star%bl_time_scale=CONVERSION FACTOR FOR TIME.
+      star%bl_radius_scale=1.0d0/solar_radius_bl
+      star%bl_mass_scale=1.0d-2*star%bl_radius_scale**3
+      star%bl_temp_scale=1.0d-7
 !     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
-      star%rot%bl_time_scale=2.7d13*seconds_per_year_bl
+      star%bl_time_scale=2.7d13*seconds_per_year_bl
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do zone_idx=1,num_zones
 
-         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*star%rot%bl_radius_scale
-         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*star%rot%bl_temp_scale
-         mass_grams(zone_idx)=mass_grams(zone_idx)*star%rot%bl_mass_scale
-         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/star%rot%bl_radius_scale
+         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*star%bl_radius_scale
+         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*star%bl_temp_scale
+         mass_grams(zone_idx)=mass_grams(zone_idx)*star%bl_mass_scale
+         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/star%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
       end do
-      timestep_seconds=timestep_seconds/star%rot%bl_time_scale
-      total_mass=total_mass*star%rot%bl_mass_scale
+      timestep_seconds=timestep_seconds/star%bl_time_scale
+      total_mass=total_mass*star%bl_mass_scale
 !     SET UP DIFFUSION COEFFICIENTS.
 !     MODIFIED BY BC MAY/90 -- VALID FOR ALL X WITH VARIABLE LN LAMBDA
 !     GENERAL EQUATION IS
@@ -331,15 +332,15 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !         and add the uncertainties of differential mixing (cstdiffmix).
 !
 ! old ver      COD1Z(I) = FAC*HQPR(I)*ZZ*(AP+AT)
-               star%rot%src_grid_metal_diffusion_coeff1(zone_idx) = star%ctrl%cstdiffmix*star%ctrl%cstmixing* &
+               rot_scr%src_grid_metal_diffusion_coeff1(zone_idx) = star%ctrl%cstdiffmix*star%ctrl%cstmixing* &
                     settling_prefactor*dlnp_dr(zone_idx)*iron_fraction*(settling_coeff_p+settling_coeff_t)
 !              POSITIVE DIFFUSION COEFFICIENTS NEEDED!
 ! old ver.     COD2Z(I) = ABS(FAC*AH)
 ! old ver.     QCOD1Z(I) = FAC*HQPR(I)*(AP+AT)
-               star%rot%src_grid_metal_diffusion_coeff2(zone_idx) = star%ctrl%cstmixing*abs(settling_prefactor*iron_settling_ah)
-               star%rot%src_grid_metal_diffusion_coeff1_dz(zone_idx) = star%ctrl%cstmixing*settling_prefactor* &
+               rot_scr%src_grid_metal_diffusion_coeff2(zone_idx) = star%ctrl%cstmixing*abs(settling_prefactor*iron_settling_ah)
+               rot_scr%src_grid_metal_diffusion_coeff1_dz(zone_idx) = star%ctrl%cstmixing*settling_prefactor* &
                     dlnp_dr(zone_idx)*(settling_coeff_p+settling_coeff_t)
-               star%rot%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
+               rot_scr%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
             endif
          endif
 !

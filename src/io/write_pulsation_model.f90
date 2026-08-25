@@ -257,9 +257,9 @@ subroutine write_pulsation_model(num_shells, envelope_cz_bottom_index, compositi
             star%pulse_specific_heat(i), star%pulse_mean_molecular_weight(i), star%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          else if (star%ctrl%pulsation_file_version.eq.3) then
 ! DBG 7/95 Modifed to include mixing length variables
-         write(star%ctrl%opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),star%rot%valfmlt(i), &
-            log_pressure(i), star%eps_total(i),star%o16_zone(i), star%pulse_dlnrho_dlnp(i), star%pulse_dlneps_dlnrho(i),star%rot%vphmlt(i), &
-            star%pulse_dlneps_dlnt(i), star%pulse_dlnkap_dlnrho(i), star%pulse_dlnkap_dlnt(i), star%gradT(i),star%grada(i),star%rot%vcmxmlt(i), &
+         write(star%ctrl%opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),star%valfmlt(i), &
+            log_pressure(i), star%eps_total(i),star%o16_zone(i), star%pulse_dlnrho_dlnp(i), star%pulse_dlneps_dlnrho(i),star%vphmlt(i), &
+            star%pulse_dlneps_dlnt(i), star%pulse_dlnkap_dlnrho(i), star%pulse_dlnkap_dlnt(i), star%gradT(i),star%grada(i),star%vcmxmlt(i), &
             star%pulse_specific_heat(i), star%pulse_mean_molecular_weight(i), star%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
          end if
          end if

@@ -653,9 +653,9 @@ subroutine integrate_envelope
                  star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
          else if (star%ctrl%pulsation_file_version.eq.3) then
 ! DBG 7/95 Appended mixing length info at end of first three lines
-          write(star%ctrl%opal_envelope_unit,fmt_pulse_e23w)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%rot%alfmlt, &
-                 star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed,star%rot%phmlt, &
-                 star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela,star%rot%cmxmlt, &
+          write(star%ctrl%opal_envelope_unit,fmt_pulse_e23w)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%alfmlt, &
+                 star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed,star%phmlt, &
+                 star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela,star%cmxmlt, &
                  star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
          end if
       end if   !uncertain!
@@ -800,9 +800,9 @@ subroutine integrate_envelope
                     star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
             else if (star%ctrl%pulsation_file_version.eq.3) then
 ! DBG 7/95 Appended mixing length info at end of first three lines
-               write(star%ctrl%opal_envelope_unit,fmt_pulse_e23w)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%rot%alfmlt, &
-                    star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed,star%rot%phmlt, &
-                    star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela,star%rot%cmxmlt, &
+               write(star%ctrl%opal_envelope_unit,fmt_pulse_e23w)log10_radius,star%pulse%qfs,luminosity_linear,star%pulse%qtl,star%pulse%qdl,star%alfmlt, &
+                    star%pulse%qpl, pulse_energy_sum,star%pulse%qo,star%pulse%qqdp,star%pulse%qqed,star%phmlt, &
+                    star%pulse%qqet,star%pulse%qqod,star%pulse%qqot,star%pulse%qdel,star%pulse%qdela,star%cmxmlt, &
                     star%pulse%qqcp,star%pulse%qrmu,star%pulse%qqdt,electron_pressure
             end if
          end if

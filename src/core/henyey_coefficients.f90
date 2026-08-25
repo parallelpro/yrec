@@ -50,6 +50,7 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
      dlnrho_dlnt, dlnrho_dlnp, saha_state, &
      rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
      kinetic_energy_rot_old, envelope_zone_index, log_teff, ierr)
+      use rotation_scratch_lib
 
       use net_lib
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
@@ -328,9 +329,9 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
             if (star%job%use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0) then
                if (im.ge.envelope_zone_index) then
                   zone_log_temperature_delta = log_temperature_delta(im)+ &
-                       star%rot%delta_log_temperature
+                       rot_scr%delta_log_temperature
                   zone_log_pressure_delta = log_pressure_delta(im)+ &
-                       star%rot%delta_log_pressure
+                       rot_scr%delta_log_pressure
                else
                   zone_log_temperature_delta = log_temperature_delta(im)
                   zone_log_pressure_delta = log_pressure_delta(im)
@@ -361,9 +362,9 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
                  adiabatic_gradient_dt)
 ! 7/92 INCLUDE CHANGE IN ROTATIONAL KINETIC ENERGY IN ENERGY EQUATION.
             if (star%job%rotation_active) then
-               star%rot%rotational_energy_term(im) = zone_dt*(kinetic_energy_rot(im)- &
+               rot_scr%rotational_energy_term(im) = zone_dt*(kinetic_energy_rot(im)- &
                     kinetic_energy_rot_old(im))/shell_mass(im)
-               eq_l_val = eq_l_val - star%rot%rotational_energy_term(im)
+               eq_l_val = eq_l_val - rot_scr%rotational_energy_term(im)
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
          end if
@@ -471,19 +472,19 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 
 
          if (star%job%rotation_active) then
-            star%rot%dlnkappa_dlnrho(im) = dlnkap_dlnrho
-            star%rot%dlnkappa_dlnt(im) = dlnkap_dlnt
+            rot_scr%dlnkappa_dlnrho(im) = dlnkap_dlnrho
+            rot_scr%dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error
             if (star%eps_total(im).gt.0.0d0) then
                total_energy_sum = star%eps_total(im)
                neutrino_and_grav_sum = star%eps_channels(i_eps_neu,im)+star%eps_channels(i_eps_grav,im)
-               star%rot%neutrino_loss_fraction(im) = (total_energy_sum - &
+               rot_scr%neutrino_loss_fraction(im) = (total_energy_sum - &
                     neutrino_and_grav_sum)/total_energy_sum
             else
-               star%rot%neutrino_loss_fraction(im) = 0.0d0
+               rot_scr%neutrino_loss_fraction(im) = 0.0d0
             end if
-            star%rot%dlnepsilon_dlnrho(im) = zone_dlnepsilon_dlnrho
-            star%rot%dlnepsilon_dlnt(im) = zone_dlnepsilon_dlnt
+            rot_scr%dlnepsilon_dlnrho(im) = zone_dlnepsilon_dlnrho
+            rot_scr%dlnepsilon_dlnt(im) = zone_dlnepsilon_dlnt
          end if
 ! DBG PULSE
 ! MHP 8/25 unconditional: previously gated on pulsation_output_active
@@ -507,9 +508,9 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
          star%pulse_electron_mean_molecular_weight(im) = &
               electron_mean_weight_inverse
          star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
-         star%rot%valfmlt(im) = star%rot%alfmlt
-         star%rot%vphmlt(im) = star%rot%phmlt
-         star%rot%vcmxmlt(im) = star%rot%cmxmlt
+         star%valfmlt(im) = star%alfmlt
+         star%vphmlt(im) = star%phmlt
+         star%vcmxmlt(im) = star%cmxmlt
       end do
 
       return

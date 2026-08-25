@@ -22,6 +22,7 @@ subroutine write_store_model(composition, log_density, log_luminosity, log_press
      log_teff, log_luminosity_lsun, log_total_mass, age_gyr, timestep_yr, &
      omega, mass_coordinate, rotation_eta2, radius_ratio_r0, shape_factor_fp, &
      shape_factor_ft, specific_angular_momentum, shell_moment_of_inertia)
+      use rotation_scratch_lib
 
 ! PUTSTORE PUTS THE MOST RECENT VERBOSE OUTPUT FILE INTO THE .STORE FILE,
 ! EITHER AT SPECIFIED AGES, EVERY NPRTMOD MODELS, OR AT THE END OF RUNS.
@@ -293,11 +294,11 @@ subroutine write_store_model(composition, log_density, log_luminosity, log_press
              duma = cc13*omega(i)**2/(local_g_const*fm)*5.D0/(2.D0+rotation_eta2(i))
              oblateness_a = duma * radius_ratio_r0(i)**3
              pole_to_equator_ratio = (1.0D0 - oblateness_a)/(1.0D0 + 0.5D0*oblateness_a)
-               vtot = star%circ%es_circulation_velocity(i)+star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i)
+               vtot = star%es_circulation_velocity(i)+star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i)
                write(istor,64) oblateness_a,pole_to_equator_ratio,shape_factor_fp(i), &
                   shape_factor_ft(i),specific_angular_momentum(i),shell_moment_of_inertia(i), &
-                  star%rot%rotational_energy_term(i),star%circ%es_circulation_velocity(i), &
-                  star%circ%gsf_circulation_velocity(i),star%circ%secular_shear_velocity(i),vtot
+                  rot_scr%rotational_energy_term(i),star%es_circulation_velocity(i), &
+                  star%gsf_circulation_velocity(i),star%secular_shear_velocity(i),vtot
             else
                write(istor,64) 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
             endif

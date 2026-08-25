@@ -21,6 +21,7 @@
 subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
+      use rotation_scratch_lib
 
       use star_info_lib, only: star, i_grad_actual, i_grad_ad, i_grad_rad, json
       use phys_const_lib
@@ -163,7 +164,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       do im = 2,num_zones
 !  SKIP CONVECTIVE REGIONS
          if (convective_flag(im).and.convective_flag(im-1)) then
-            star%rot%max_domega_dr(im) = 0.0d0
+            rot_scr%max_domega_dr(im) = 0.0d0
             cycle
          end if
 !  NOW CHECK FOR SHEAR INSTABILITY -REF.ENDAL&SOFIA APJ 220:279(1978)
@@ -204,9 +205,9 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          temp_scratch = dexp(ln10*(density_mid - pressure_mid))* &
               (adiabatic_grad_mid - actual_grad_mid)*gravity_mid**2
          if (temp_scratch.gt.0.0d0) then
-            star%rot%max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)
+            rot_scr%max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)
          else
-            star%rot%max_domega_dr(im) = 0.0d0
+            rot_scr%max_domega_dr(im) = 0.0d0
          end if
       end do
 

@@ -124,26 +124,26 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       return
       end if
       zone_end = i
-!     star%rot%bl_mass_scale=CONVERSION FACTOR FOR MASS.
-!     star%rot%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
-!     star%rot%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
-!     star%rot%bl_time_scale=CONVERSION FACTOR FOR TIME.
-      star%rot%bl_radius_scale=1.0d0/crsun_bah
-      star%rot%bl_mass_scale=1.0d-2*star%rot%bl_radius_scale**3
-      star%rot%bl_temp_scale=1.0d-7
+!     star%bl_mass_scale=CONVERSION FACTOR FOR MASS.
+!     star%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
+!     star%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
+!     star%bl_time_scale=CONVERSION FACTOR FOR TIME.
+      star%bl_radius_scale=1.0d0/crsun_bah
+      star%bl_mass_scale=1.0d-2*star%bl_radius_scale**3
+      star%bl_temp_scale=1.0d-7
 !     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
-      star%rot%bl_time_scale=2.7d13*csecyr_bah
+      star%bl_time_scale=2.7d13*csecyr_bah
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do i=1,num_zones
-         radius_bl(i)=exp(ln10*log_radius(i))*star%rot%bl_radius_scale
-         temperature_bl(i)=exp(ln10*log_temperature(i))*star%rot%bl_temp_scale
-         enclosed_mass(i)=enclosed_mass(i)*star%rot%bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)/star%rot%bl_radius_scale
+         radius_bl(i)=exp(ln10*log_radius(i))*star%bl_radius_scale
+         temperature_bl(i)=exp(ln10*log_temperature(i))*star%bl_temp_scale
+         enclosed_mass(i)=enclosed_mass(i)*star%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)/star%bl_radius_scale
 !        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
       end do
-      timestep=timestep/star%rot%bl_time_scale
-      total_mass=total_mass*star%rot%bl_mass_scale
+      timestep=timestep/star%bl_time_scale
+      total_mass=total_mass*star%bl_mass_scale
 !
 ! COLLECT THE NECESSARY QUANTITIES (NAMELY RHO AND T) FOR LATER
 ! TRANSFORMATION TO THE EQUALLY SPACED GRID.

@@ -85,9 +85,9 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
 
       ierr = 0
 
-      star%rot%alfmlt=0.0d0
-      star%rot%phmlt=0.0d0
-      star%rot%cmxmlt=0.0d0
+      star%alfmlt=0.0d0
+      star%phmlt=0.0d0
+      star%cmxmlt=0.0d0
       radiative_gradient = opacity*luminosity_lsun*dexp(ln10*(log_pressure - &
            log_mass - 4d0*log_temperature + star%log10_solar_luminosity - cgl + &
            cdelrl))* &

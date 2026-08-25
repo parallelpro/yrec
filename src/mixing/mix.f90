@@ -30,6 +30,7 @@
 ! contain neutrino fluxes for solar neutrino calculations.
 subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
+      use rotation_scratch_lib
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
       use luout_lib
       use phys_const_lib
@@ -252,21 +253,21 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          if (ierr /= 0) return
       end do
       do zone_idx = 1, star%nz
-         star%rot%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
-         star%rot%reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
-         star%rot%reaction_rate_by_zone(3,zone_idx) = rate_he3_he4(zone_idx)
-         star%rot%reaction_rate_by_zone(4,zone_idx) = rate_c12_p(zone_idx)
-         star%rot%reaction_rate_by_zone(5,zone_idx) = rate_c13_p(zone_idx)
-         star%rot%reaction_rate_by_zone(6,zone_idx) = rate_n14_p(zone_idx)
-         star%rot%reaction_rate_by_zone(7,zone_idx) = rate_o16_p(zone_idx)
-         star%rot%reaction_rate_by_zone(8,zone_idx) = rate_c13_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(9,zone_idx) = rate_zero9(zone_idx)
-         star%rot%reaction_rate_by_zone(10,zone_idx) = rate_c12_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(11,zone_idx) = rate_n14_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(12,zone_idx) = rate_triple_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(13,zone_idx) = rate_zero13(zone_idx)
-         star%rot%reaction_rate_by_zone(14,zone_idx) = frac_c12_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(15,zone_idx) = frac_be7_electron(zone_idx)
+         rot_scr%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
+         rot_scr%reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
+         rot_scr%reaction_rate_by_zone(3,zone_idx) = rate_he3_he4(zone_idx)
+         rot_scr%reaction_rate_by_zone(4,zone_idx) = rate_c12_p(zone_idx)
+         rot_scr%reaction_rate_by_zone(5,zone_idx) = rate_c13_p(zone_idx)
+         rot_scr%reaction_rate_by_zone(6,zone_idx) = rate_n14_p(zone_idx)
+         rot_scr%reaction_rate_by_zone(7,zone_idx) = rate_o16_p(zone_idx)
+         rot_scr%reaction_rate_by_zone(8,zone_idx) = rate_c13_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(9,zone_idx) = rate_zero9(zone_idx)
+         rot_scr%reaction_rate_by_zone(10,zone_idx) = rate_c12_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(11,zone_idx) = rate_n14_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(12,zone_idx) = rate_triple_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(13,zone_idx) = rate_zero13(zone_idx)
+         rot_scr%reaction_rate_by_zone(14,zone_idx) = frac_c12_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(15,zone_idx) = frac_be7_electron(zone_idx)
       end do
 !
 ! IF ITLVL=1 THEN THE RATES OF HYDROGEN AND HELIUM BURNING ARE

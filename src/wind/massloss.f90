@@ -46,6 +46,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed)
+      use rotation_scratch_lib
       use atm_lib
       use atm_table_lib
       use star_info_lib, only: star, json
@@ -200,7 +201,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          sum_thermal_energy = 0.0d0
 !         SUMDM = 0.0D0
          thermal_energy_accreted_bar = 0.0d0
-         star%rot%envelope_specific_entropy = 0.0d0
+         rot_scr%envelope_specific_entropy = 0.0d0
          do zone_idx = envelope_boundary_zone, num_zones
             local_temperature = 10.0d0**log_temperature(zone_idx)
             local_pressure = 10.0d0**log_pressure(zone_idx)
@@ -218,7 +219,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  (local_density*local_temperature)
             local_entropy = mean_molecular_weight_local* &
                  (1.5d0*log(local_temperature)-log(local_density))
-            star%rot%envelope_specific_entropy = star%rot%envelope_specific_entropy+ &
+            rot_scr%envelope_specific_entropy = rot_scr%envelope_specific_entropy+ &
                  local_entropy*shell_mass(zone_idx)
 ! THE THERMAL ENERGY PER GM IN THE JTH SHELL IS
             thermal_energy_per_gram = local_pressure*local_beta/local_density
@@ -234,7 +235,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          mean_thermal_energy = sum_thermal_energy/cz_total_mass_below_fitting
          accretion_specific_energy = thermal_energy_accreted_bar/ &
               cz_total_mass_below_fitting
-         star%rot%envelope_specific_entropy = star%rot%envelope_specific_entropy/ &
+         rot_scr%envelope_specific_entropy = rot_scr%envelope_specific_entropy/ &
               cz_total_mass_below_fitting
          print_flag = .false.
          log10_gravity = cgl+log_total_mass-2.0d0*log10_radius
@@ -261,7 +262,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
               eos_res(i_pressure))
          mean_molecular_weight_local = eos_res(i_pressure)*beta_local/ &
               (eos_res(i_density)*eos_res(i_temperature))
-         star%rot%accretion_specific_entropy = mean_molecular_weight_local* &
+         rot_scr%accretion_specific_entropy = mean_molecular_weight_local* &
               (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
 !         WRITE(*,911)TL,PL,SACC,SCEN
 !  911     FORMAT(' TSUR,PSUR ',2F8.5,' SACC ',1PE12.3,' SCORE ',E12.3)
@@ -291,10 +292,10 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
 !            WRITE(*,911)TL,PL,SACC2,SCEN
 !            SACC = MAX(SACC,SACC2)
-            star%rot%envelope_specific_entropy = 0.0d0
+            rot_scr%envelope_specific_entropy = 0.0d0
 !            SCEN = SACC2 - SACC
          else
-            star%rot%envelope_specific_entropy = 0.0d0
+            rot_scr%envelope_specific_entropy = 0.0d0
          endif
       endif
 ! CALL MASS LOSS OR ACCRETION ROUTINE

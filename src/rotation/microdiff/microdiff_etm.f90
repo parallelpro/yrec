@@ -173,12 +173,12 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       endif
 !
       do i=1,num_zones
-         radius_bl(i)=radius_bl(i)/star%rot%bl_radius_scale
-         temperature_bl(i)=temperature_bl(i)/star%rot%bl_temp_scale
-         enclosed_mass(i)=enclosed_mass(i)/star%rot%bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)*star%rot%bl_radius_scale
+         radius_bl(i)=radius_bl(i)/star%bl_radius_scale
+         temperature_bl(i)=temperature_bl(i)/star%bl_temp_scale
+         enclosed_mass(i)=enclosed_mass(i)/star%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)*star%bl_radius_scale
       end do
-      timestep=timestep*star%rot%bl_time_scale
-      total_mass=total_mass/star%rot%bl_mass_scale
+      timestep=timestep*star%bl_time_scale
+      total_mass=total_mass/star%bl_mass_scale
       return
 end subroutine microdiff_etm

@@ -15,6 +15,7 @@
 ! (originally IEST) substeps out of the sequence substep_counts.
 subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num_zones, &
      species_begin, species_end, substep_counts, converged)
+      use rotation_scratch_lib
       use star_info_lib, only: star, json
       implicit none
 
@@ -95,17 +96,17 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
       do j1 = 1,num_active_species
          j = active_species_id(j1)
          do i = 1,num_zones
-            star%rot%bs_extrapolated_composition(j,i) = composition(j,i)
-            star%rot%bs_extrapolation_increment(j,i) = composition(j,i)
+            rot_scr%bs_extrapolated_composition(j,i) = composition(j,i)
+            rot_scr%bs_extrapolation_increment(j,i) = composition(j,i)
          end do
       end do
 ! EXTRAPOLATE IN THE LOG OF HE3 RATHER THAN ABSOLUTE ABUNDANCE
       if (species_active(4)) then
          do i = 1,num_zones
             if (he3_extrapolate_log(i)) then
-               star%rot%bs_extrapolated_composition(4,i) = log(composition(4,i))
-               star%rot%bs_extrapolation_increment(4,i) = &
-                    star%rot%bs_extrapolated_composition(4,i)
+               rot_scr%bs_extrapolated_composition(4,i) = log(composition(4,i))
+               rot_scr%bs_extrapolation_increment(4,i) = &
+                    rot_scr%bs_extrapolated_composition(4,i)
             end if
          end do
       end if
@@ -117,23 +118,23 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
                n14_abundance = composition(7,i)
                o16_abundance = composition(9,i)
 ! VECTOR 5: C13/C12
-               star%rot%bs_extrapolated_composition(5,i) = c13_abundance/c12_abundance
-               star%rot%bs_extrapolation_increment(5,i) = &
-                    star%rot%bs_extrapolated_composition(5,i)
+               rot_scr%bs_extrapolated_composition(5,i) = c13_abundance/c12_abundance
+               rot_scr%bs_extrapolation_increment(5,i) = &
+                    rot_scr%bs_extrapolated_composition(5,i)
 ! VECTOR 6: N14/C12
-               star%rot%bs_extrapolated_composition(6,i) = n14_abundance/c12_abundance
-               star%rot%bs_extrapolation_increment(6,i) = &
-                    star%rot%bs_extrapolated_composition(6,i)
+               rot_scr%bs_extrapolated_composition(6,i) = n14_abundance/c12_abundance
+               rot_scr%bs_extrapolation_increment(6,i) = &
+                    rot_scr%bs_extrapolated_composition(6,i)
 ! VECTOR 7: O16/N14
-               star%rot%bs_extrapolated_composition(7,i) = o16_abundance/n14_abundance
-               star%rot%bs_extrapolation_increment(7,i) = &
-                    star%rot%bs_extrapolated_composition(7,i)
+               rot_scr%bs_extrapolated_composition(7,i) = o16_abundance/n14_abundance
+               rot_scr%bs_extrapolation_increment(7,i) = &
+                    rot_scr%bs_extrapolated_composition(7,i)
 ! VECTOR 9: C12/12 + C13/13 + N14/14 + O16/16
-               star%rot%bs_extrapolated_composition(9,i) = c12_abundance/12.0d0 + &
+               rot_scr%bs_extrapolated_composition(9,i) = c12_abundance/12.0d0 + &
                     c13_abundance/13.0d0 + n14_abundance/14.0d0 &
                     + o16_abundance/16.0d0
-               star%rot%bs_extrapolation_increment(9,i) = &
-                    star%rot%bs_extrapolated_composition(9,i)
+               rot_scr%bs_extrapolation_increment(9,i) = &
+                    rot_scr%bs_extrapolated_composition(9,i)
             end if
          end do
       end if
@@ -145,14 +146,14 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
          do j1 = 1,num_active_species
             j = active_species_id(j1)
             do i = 1,num_zones
-               star%rot%bs_extrapolation_table(extrapolation_order,j,i) = &
+               rot_scr%bs_extrapolation_table(extrapolation_order,j,i) = &
                     composition(j,i)
             end do
          end do
          if (species_active(4)) then
             do i = 1,num_zones
                if (he3_extrapolate_log(i)) then
-                  star%rot%bs_extrapolation_table(extrapolation_order,4,i) = &
+                  rot_scr%bs_extrapolation_table(extrapolation_order,4,i) = &
                        log(composition(4,i))
                end if
             end do
@@ -160,14 +161,14 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
          if (use_cno_ratio_species) then
             do i = 1,num_zones
                if (use_cno_ratio_method(i)) then
-                  star%rot%bs_extrapolation_table(extrapolation_order,5,i) = &
-                       star%rot%bs_extrapolated_composition(5,i)
-                  star%rot%bs_extrapolation_table(extrapolation_order,6,i) = &
-                       star%rot%bs_extrapolated_composition(6,i)
-                  star%rot%bs_extrapolation_table(extrapolation_order,7,i) = &
-                       star%rot%bs_extrapolated_composition(7,i)
-                  star%rot%bs_extrapolation_table(extrapolation_order,9,i) = &
-                       star%rot%bs_extrapolated_composition(9,i)
+                  rot_scr%bs_extrapolation_table(extrapolation_order,5,i) = &
+                       rot_scr%bs_extrapolated_composition(5,i)
+                  rot_scr%bs_extrapolation_table(extrapolation_order,6,i) = &
+                       rot_scr%bs_extrapolated_composition(6,i)
+                  rot_scr%bs_extrapolation_table(extrapolation_order,7,i) = &
+                       rot_scr%bs_extrapolated_composition(7,i)
+                  rot_scr%bs_extrapolation_table(extrapolation_order,9,i) = &
+                       rot_scr%bs_extrapolated_composition(9,i)
                end if
              end do
           end if
@@ -217,23 +218,23 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
             do j1 = 1,num_active_species
                j = active_species_id(j1)
                do i = 1,num_zones
-                  prev_estimate = star%rot%bs_extrapolation_table(k1,j,i)
-                  star%rot%bs_extrapolation_table(k1,j,i) = &
-                       star%rot%bs_extrapolation_increment(j,i)
+                  prev_estimate = rot_scr%bs_extrapolation_table(k1,j,i)
+                  rot_scr%bs_extrapolation_table(k1,j,i) = &
+                       rot_scr%bs_extrapolation_increment(j,i)
                   delta = current_value(j,i) - prev_estimate
-                  star%rot%bs_extrapolation_increment(j,i) = extrap_weight1*delta
+                  rot_scr%bs_extrapolation_increment(j,i) = extrap_weight1*delta
                   current_value(j,i) = extrap_weight2*delta
-                  star%rot%bs_extrapolated_composition(j,i) = &
-                       star%rot%bs_extrapolated_composition(j,i)+ &
-                       star%rot%bs_extrapolation_increment(j,i)
+                  rot_scr%bs_extrapolated_composition(j,i) = &
+                       rot_scr%bs_extrapolated_composition(j,i)+ &
+                       rot_scr%bs_extrapolation_increment(j,i)
                end do
             end do
          end do
          do j1 = 1,num_active_species
             j = active_species_id(j1)
             do i = 1,num_zones
-               star%rot%bs_extrapolation_table(extrapolation_order,j,i) = &
-                    star%rot%bs_extrapolation_increment(j,i)
+               rot_scr%bs_extrapolation_table(extrapolation_order,j,i) = &
+                    rot_scr%bs_extrapolation_increment(j,i)
             end do
          end do
 ! NOW CHECK IF ERROR IS WITHIN TOLERANCE
@@ -243,9 +244,9 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
          do j1 = 1,num_active_species
             j = active_species_id(j1)
             do i = 1,num_zones
-               if (star%rot%bs_extrapolated_composition(j,i).gt.1.0d-12) then
-                  prev_estimate = star%rot%bs_extrapolation_increment(j,i)/ &
-                       star%rot%bs_extrapolated_composition(j,i)
+               if (rot_scr%bs_extrapolated_composition(j,i).gt.1.0d-12) then
+                  prev_estimate = rot_scr%bs_extrapolation_increment(j,i)/ &
+                       rot_scr%bs_extrapolated_composition(j,i)
                   if (abs(prev_estimate).gt.max_relative_error) then
                      max_error_zone = i
                      max_error_species = j
@@ -258,7 +259,7 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
          write(*,10) extrapolation_order,max_relative_error, &
               max_error_species,max_error_zone, &
               composition(max_error_species,max_error_zone), &
-              star%rot%bs_extrapolated_composition(max_error_species,max_error_zone)
+              rot_scr%bs_extrapolated_composition(max_error_species,max_error_zone)
          if (max_relative_error.lt.1.0d-3) converged=.true.
          if (converged) then
  10      format(5x,'ITER',i3,' MAX ERR ',1pe10.2,' SPECIES ',i3, &
@@ -267,8 +268,8 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
             if (species_active(4)) then
                do i =1,num_zones
                   if (he3_extrapolate_log(i)) then
-                     star%rot%bs_extrapolated_composition(4,i)= &
-                          exp(star%rot%bs_extrapolated_composition(4,i))
+                     rot_scr%bs_extrapolated_composition(4,i)= &
+                          exp(rot_scr%bs_extrapolated_composition(4,i))
                   end if
                end do
             end if
@@ -279,32 +280,32 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
 ! THEREFORE, C12 = SUMCNO/(1/12 + C13/C12*1/13 + N14/C12*1/14 +
 ! O16/N14*N14/C12*1/16)
                      cno_sum_check = (1.0d0/12.0d0) + &
-                          (star%rot%bs_extrapolated_composition(5,i)/13.0d0) + &
-                          (star%rot%bs_extrapolated_composition(6,i)/14.0d0) &
-                          + (star%rot%bs_extrapolated_composition(6,i)* &
-                          star%rot%bs_extrapolated_composition(7,i)/16.0d0)
-                     c12_abundance = star%rot%bs_extrapolated_composition(9,i)/ &
+                          (rot_scr%bs_extrapolated_composition(5,i)/13.0d0) + &
+                          (rot_scr%bs_extrapolated_composition(6,i)/14.0d0) &
+                          + (rot_scr%bs_extrapolated_composition(6,i)* &
+                          rot_scr%bs_extrapolated_composition(7,i)/16.0d0)
+                     c12_abundance = rot_scr%bs_extrapolated_composition(9,i)/ &
                           cno_sum_check
-                     c13_abundance = star%rot%bs_extrapolated_composition(5,i)* &
+                     c13_abundance = rot_scr%bs_extrapolated_composition(5,i)* &
                           c12_abundance
-                     n14_abundance = star%rot%bs_extrapolated_composition(6,i)* &
+                     n14_abundance = rot_scr%bs_extrapolated_composition(6,i)* &
                           c12_abundance
-                     o16_abundance = star%rot%bs_extrapolated_composition(7,i)* &
+                     o16_abundance = rot_scr%bs_extrapolated_composition(7,i)* &
                           n14_abundance
 !       WRITE(*,911)X12,X13,X14,X16,HCOMPA(5,I),HCOMPA(6,I),
 !     *             HCOMPA(7,I),HCOMPA(9,I),SUM
 ! 911   FORMAT(1P9E10.2)
-                     star%rot%bs_extrapolated_composition(5,i) = c12_abundance
-                     star%rot%bs_extrapolated_composition(6,i) = c13_abundance
-                     star%rot%bs_extrapolated_composition(7,i) = n14_abundance
-                     star%rot%bs_extrapolated_composition(9,i) = o16_abundance
+                     rot_scr%bs_extrapolated_composition(5,i) = c12_abundance
+                     rot_scr%bs_extrapolated_composition(6,i) = c13_abundance
+                     rot_scr%bs_extrapolated_composition(7,i) = n14_abundance
+                     rot_scr%bs_extrapolated_composition(9,i) = o16_abundance
                   end if
                end do
             end if
             do j1 = 1,num_active_species
                j = active_species_id(j1)
                do i = 1,num_zones
-                  composition(j,i) = star%rot%bs_extrapolated_composition(j,i)
+                  composition(j,i) = rot_scr%bs_extrapolated_composition(j,i)
                   if (composition(j,i).lt.1.0d-24) composition(j,i)=0.0d0
                end do
             end do

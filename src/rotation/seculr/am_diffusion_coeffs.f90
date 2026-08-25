@@ -68,6 +68,7 @@ subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
      eq_moment_of_inertia, eq_angular_momentum, eq_omega, num_eq_points, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
      sub_diag, diag, super_diag, rhs, surface_wind_loss_term)
+      use rotation_scratch_lib
       use star_info_lib, only: star, json
       implicit none
 
@@ -129,29 +130,29 @@ subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
          fact = fact0/eq_moment_of_inertia(1)
          facta = 0.5d0*timestep/eq_moment_of_inertia(1)
          sub_diag(1) = 0.0d0
-         diag(1) = 1.0d0 + fact*star%rot%am_diffusive_coeff(2) - &
-              facta*star%rot%am_advective_coeff(2)
-         super_diag(1) = -fact*star%rot%am_diffusive_coeff(2) - &
-              facta*star%rot%am_advective_coeff(2)
+         diag(1) = 1.0d0 + fact*rot_scr%am_diffusive_coeff(2) - &
+              facta*rot_scr%am_advective_coeff(2)
+         super_diag(1) = -fact*rot_scr%am_diffusive_coeff(2) - &
+              facta*rot_scr%am_advective_coeff(2)
          do i = 2,num_eq_points-1
             fact = fact0/eq_moment_of_inertia(i)
             facta = 0.5d0*timestep/eq_moment_of_inertia(i)
-            sub_diag(i) = -fact*star%rot%am_diffusive_coeff(i) + &
-                 facta*star%rot%am_advective_coeff(i)
-            diag(i) = 1.0d0 + fact*(star%rot%am_diffusive_coeff(i)+ &
-                 star%rot%am_diffusive_coeff(i+1)) + &
-                 facta*(star%rot%am_advective_coeff(i)-star%rot%am_advective_coeff(i+1))
-            super_diag(i) = -fact*star%rot%am_diffusive_coeff(i+1) - &
-                 facta*star%rot%am_advective_coeff(i+1)
+            sub_diag(i) = -fact*rot_scr%am_diffusive_coeff(i) + &
+                 facta*rot_scr%am_advective_coeff(i)
+            diag(i) = 1.0d0 + fact*(rot_scr%am_diffusive_coeff(i)+ &
+                 rot_scr%am_diffusive_coeff(i+1)) + &
+                 facta*(rot_scr%am_advective_coeff(i)-rot_scr%am_advective_coeff(i+1))
+            super_diag(i) = -fact*rot_scr%am_diffusive_coeff(i+1) - &
+                 facta*rot_scr%am_advective_coeff(i+1)
          end do
 !  LAST SHELL B.C. : SAME AS FIRST SHELL B.C.
          fact = fact0/eq_moment_of_inertia(num_eq_points)
          facta = 0.5d0*timestep/eq_moment_of_inertia(num_eq_points)
          if (.not.fix_omega_at_surface) then
-            sub_diag(num_eq_points) = -fact*star%rot%am_diffusive_coeff(num_eq_points) &
-                 + facta*star%rot%am_advective_coeff(num_eq_points)
-            diag(num_eq_points) = 1.0d0 + fact*star%rot%am_diffusive_coeff(num_eq_points) &
-                 + facta*star%rot%am_advective_coeff(num_eq_points)
+            sub_diag(num_eq_points) = -fact*rot_scr%am_diffusive_coeff(num_eq_points) &
+                 + facta*rot_scr%am_advective_coeff(num_eq_points)
+            diag(num_eq_points) = 1.0d0 + fact*rot_scr%am_diffusive_coeff(num_eq_points) &
+                 + facta*rot_scr%am_advective_coeff(num_eq_points)
          else
             sub_diag(num_eq_points) = 0.0d0
             diag(num_eq_points) = 1.0d0

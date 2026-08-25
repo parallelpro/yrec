@@ -2071,6 +2071,7 @@ end subroutine engeb
 ! interface (moved into net_lib.f90).
 subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use rotation_scratch_lib
       use star_info_lib, only: star, i_grad_ad, i_grad_rad, json
       use luout_lib
       use phys_const_lib
@@ -2144,10 +2145,10 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! IF APPLICABLE.
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
          if(star%job%rotation_active.and.star%job%instability_transport_active)then
-            del_diff = star%mix_phys%del_adiabatic_mix(env_cz_zone) - &
-                 star%mix_phys%del_radiative_mix(env_cz_zone)
-            del_diff_below = star%mix_phys%del_adiabatic_mix(env_cz_zone-1) - &
-                 star%mix_phys%del_radiative_mix(env_cz_zone-1)
+            del_diff = mix_scr%del_adiabatic_mix(env_cz_zone) - &
+                 mix_scr%del_radiative_mix(env_cz_zone)
+            del_diff_below = mix_scr%del_adiabatic_mix(env_cz_zone-1) - &
+                 mix_scr%del_radiative_mix(env_cz_zone-1)
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
@@ -2614,6 +2615,7 @@ end subroutine liburn
 ! code, even though the net effect on the caller's array is zero.
 subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+      use rotation_scratch_lib
       use star_info_lib, only: star, i_grad_ad, i_grad_rad, json
       use luout_lib
       use phys_const_lib
@@ -2666,10 +2668,10 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 ! IF APPLICABLE.
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
          if(star%job%rotation_active.and.star%job%instability_transport_active)then
-            del_diff = star%mix_phys%del_adiabatic_mix(env_cz_zone) - &
-                 star%mix_phys%del_radiative_mix(env_cz_zone)
-            del_diff_below = star%mix_phys%del_adiabatic_mix(env_cz_zone-1) - &
-                 star%mix_phys%del_radiative_mix(env_cz_zone-1)
+            del_diff = mix_scr%del_adiabatic_mix(env_cz_zone) - &
+                 mix_scr%del_radiative_mix(env_cz_zone)
+            del_diff_below = mix_scr%del_adiabatic_mix(env_cz_zone-1) - &
+                 mix_scr%del_radiative_mix(env_cz_zone-1)
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.

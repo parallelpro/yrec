@@ -46,6 +46,7 @@
 ! (unlogged) shell-midpoint radii, matching circulation_velocities.f90's radius(json).
 subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
+      use rotation_scratch_lib
       use star_info_lib, only: star
 
       use star_info_lib
@@ -61,10 +62,10 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
 
 !  THIS SR DETERMINES THE RUN OF CHARACTERISTIC VELOCITY LENGTH
 !  SCALES FOR THE DIFFUSION EQUATIONS.
-      star%circ%hle(1) = 0.0d0
+      circ_scr%hle(1) = 0.0d0
       radius_mid(1) = 0.0d0
       do i = 2,num_zones
-         star%circ%hle(i) = 0.0d0
+         circ_scr%hle(i) = 0.0d0
          radius_mid(i) = 0.5d0*(radius_mid_prev(i)+radius_mid_prev(i-1))
       end do
 ! MHP 9/14 ADDED LOOP TO ALLOW A CONSTANT BACKGROUND DIFFUSION COEFFICIENT
@@ -73,19 +74,19 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
          if (.not.star%ctrl%lvfc) then
             con2 = con1*star%ctrl%mixing_velocity_scale
             do i = 2,num_zones
-               am_diffusion_coeff(i)=con1*(star%circ%es_circulation_velocity(i)+ &
-                    star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i))* &
+               am_diffusion_coeff(i)=con1*(star%es_circulation_velocity(i)+ &
+                    star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i)=con2*(star%ctrl%es_mixing_scale* &
-                    star%circ%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
-                    star%circ%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
-                    star%circ%secular_shear_velocity(i))*radius_mid(i)
+                    star%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
+                    star%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
+                    star%secular_shear_velocity(i))*radius_mid(i)
 !               HLE(I)=RMID(I)
             end do
          else
             do i = 2,num_zones
-               am_diffusion_coeff(i) = con1*(star%circ%es_circulation_velocity(i)+ &
-                    star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i))* &
+               am_diffusion_coeff(i) = con1*(star%es_circulation_velocity(i)+ &
+                    star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
 !               HLE(I) = RMID(I)
@@ -96,17 +97,17 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
             con2 = con1*star%ctrl%mixing_velocity_scale
             do i = 2,num_zones
                am_diffusion_coeff(i)=con1*(star%ctrl%constant_background_diffusion_coeff+ &
-                    (star%circ%es_circulation_velocity(i)+star%circ%gsf_circulation_velocity(i)+ &
-                    star%circ%secular_shear_velocity(i))*radius_mid(i))
+                    (star%es_circulation_velocity(i)+star%gsf_circulation_velocity(i)+ &
+                    star%secular_shear_velocity(i))*radius_mid(i))
                mixing_diffusion_coeff(i)=con2*(star%ctrl%es_mixing_scale* &
-                    star%circ%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
-                    star%circ%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
-                    star%circ%secular_shear_velocity(i))*radius_mid(i)
+                    star%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
+                    star%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
+                    star%secular_shear_velocity(i))*radius_mid(i)
             end do
          else
             do i = 2,num_zones
-               am_diffusion_coeff(i) = con1*(star%circ%es_circulation_velocity(i)+ &
-                    star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i))* &
+               am_diffusion_coeff(i) = con1*(star%es_circulation_velocity(i)+ &
+                    star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
 ! MHP 8/13 ADD D.C. AFTER SCALE FACTOR FOR MIXING APPLIED

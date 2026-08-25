@@ -28,6 +28,7 @@
 ! instability_transport_active (LINSTB), preserved exactly below.
 subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
+      use rotation_scratch_lib
       use star_info_lib, only: star, json
       use net_lib
       use luout_lib
@@ -250,24 +251,24 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! COPY OVER PRIOR THETA(TIME) TERM TO TEMPORARY SLOT
 ! FOR USE IN THE ADVECTION/DIFFUSION TREATMENT OF MAEDER&ZAHN 1998
       if(first_call)then
-         star%rot%theta_prev(1) = star%rot%tho(1)
-         star%rot%wmst(1) = star%old_omega(1)
+         rot_scr%theta_prev(1) = rot_scr%tho(1)
+         rot_scr%wmst(1) = star%old_omega(1)
          do zone_index = 2,star%nz
-            star%rot%qwrmst(zone_index) = star%rot%qwrst(zone_index)
-            star%rot%theta_prev(zone_index) = star%rot%tho(zone_index)
-            star%rot%wmst(zone_index) = star%old_omega(zone_index)
+            rot_scr%qwrmst(zone_index) = rot_scr%qwrst(zone_index)
+            rot_scr%theta_prev(zone_index) = rot_scr%tho(zone_index)
+            rot_scr%wmst(zone_index) = star%old_omega(zone_index)
          end do
 ! RECOMPUTE THETA
       else
-         star%rot%wmst(1) = star%omega(1)
+         rot_scr%wmst(1) = star%omega(1)
          do zone_index = 2,star%nz
             omega_avg = 0.5D0*(star%omega(zone_index)+star%omega(zone_index-1))
             delta_radius_step = 10.0D0**log_radius_mid(zone_index)- &
                  10.0D0**log_radius_mid(zone_index-1)
             domega_dr = (star%omega(zone_index)-star%omega(zone_index-1))/delta_radius_step
-            star%rot%theta_prev(zone_index) = star%rot%theta_mean(zone_index)*omega_avg*domega_dr
-            star%rot%qwrmst(zone_index) = domega_dr
-            star%rot%wmst(zone_index) = star%omega(zone_index)
+            rot_scr%theta_prev(zone_index) = rot_scr%theta_mean(zone_index)*omega_avg*domega_dr
+            rot_scr%qwrmst(zone_index) = domega_dr
+            rot_scr%wmst(zone_index) = star%omega(zone_index)
          end do
       endif
       fx = elapsed_substep_time/full_timestep
@@ -353,7 +354,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
             do zone_index = 1,star%nz
                star%j_rot(zone_index) = specific_angular_momentum_saved(zone_index)
-               star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%mu(zone_index)-star%rot%old_amu(zone_index))
+               mix_scr%amum(zone_index) = mix_scr%amum(zone_index) - fx*(star%mu(zone_index)-rot_scr%old_amu(zone_index))
                do species_index = 1,num_species_tracked
                   star%xa(species_index,zone_index) = star%xa_start(species_index,zone_index)
                end do
@@ -487,7 +488,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          log_radius_surface = 0.5D0*(star%log_L + star%log10_solar_luminosity &
               - 4.0D0*star%log_Teff - c4pil - csigl)
          fx = exp(ln10*3.0D0*(star%logR(star%nz)-log_radius_surface))
-         surface_quad_term = fx*star%rot%quadrupole_moment(star%nz)
+         surface_quad_term = fx*rot_scr%quadrupole_moment(star%nz)
          surface_potential = exp(ln10*(cgl+star%log_total_mass-log_radius_surface))
          write(*,9911)surface_quad_term,surface_potential,-1.5D0*surface_quad_term/surface_potential
  9911    format(1X,'QUAD ',1PE12.3,' PHIS ',E12.3,' 3/2 QUAD/G ', &

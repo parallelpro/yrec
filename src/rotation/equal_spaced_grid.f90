@@ -7,14 +7,15 @@
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! This routine forms the sum of star%rot%chi, defined as
-! star%rot%chi = log(M)/dm + L/(Ltot*dl) - log(P)/dp, where dm, dp, and dl are
+! This routine forms the sum of rot_scr%chi, defined as
+! rot_scr%chi = log(M)/dm + L/(Ltot*dl) - log(P)/dp, where dm, dp, and dl are
 ! the point spacings for log mass, luminosity, and pressure
 ! respectively. This routine transforms these variables to an equally
 ! spaced grid from the first point to the last point. It returns a
-! set of equally spaced star%rot%chi values and their location in mass.
+! set of equally spaced rot_scr%chi values and their location in mass.
 subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
+      use rotation_scratch_lib
       use star_info_lib, only: star, json
       use phys_const_lib
       use numerics_lib
@@ -43,23 +44,23 @@ subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin,
       num_points_in_range = zone_end - zone_begin + 1
       do range_index = 1, num_points_in_range
          zone_index = zone_begin + range_index - 1
-         star%rot%chi(range_index) = log_mass(zone_index)/mass_scale + &
+         rot_scr%chi(range_index) = log_mass(zone_index)/mass_scale + &
               log_luminosity(zone_index)/luminosity_scale - &
               log_pressure(zone_index)/pressure_scale
       end do
 ! DEFINE NTOT EQUAL TO NTAB
-      star%rot%ntot = num_points_in_range
+      rot_scr%ntot = num_points_in_range
 ! TOTAL NUMBER OF ZONES IS MODULUS OF FINAL CHI PLUS ONE.
 !      NTOT = INT(CHI(NTAB)-CHI(1))+1
 ! FOR ROTATION PURPOSES, DEFINE THE MINIMUM NUMBER OF
 ! EQUALLY SPACED SHELLS AS 3.
-      star%rot%ntot = max(star%rot%ntot,3)
+      rot_scr%ntot = max(rot_scr%ntot,3)
 ! EQUALLY SPACED INCREMENT IN CHI
-      star%rot%dchi = (star%rot%chi(num_points_in_range)-star%rot%chi(1))/dfloat(star%rot%ntot-1)
+      rot_scr%dchi = (rot_scr%chi(num_points_in_range)-rot_scr%chi(1))/dfloat(rot_scr%ntot-1)
 ! ASSIGN VECTOR OF EQUALLY SPACED CHI
-      star%rot%echi(1) = star%rot%chi(1)
-      do zone_index = 2, star%rot%ntot
-         star%rot%echi(zone_index) = star%rot%echi(zone_index-1)+star%rot%dchi
+      rot_scr%echi(1) = rot_scr%chi(1)
+      do zone_index = 2, rot_scr%ntot
+         rot_scr%echi(zone_index) = rot_scr%echi(zone_index-1)+rot_scr%dchi
       end do
 ! NOW ASSIGN MASSES TO THE NEW EQUALLY SPACED GRID POINTS.
 ! PERFORM INTERPOLATION IN LOG MASS - CONSISTENT WITH CHI DEFINED
@@ -67,10 +68,10 @@ subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin,
       do zone_index = 1, num_points_in_range
          log_mass_table(zone_index) = log_mass(zone_begin+zone_index-1)
       end do
-      call osplin(star%rot%echi,star%rot%es1,star%rot%chi,log_mass_table,num_points_in_range,star%rot%ntot)
+      call osplin(rot_scr%echi,rot_scr%es1,rot_scr%chi,log_mass_table,num_points_in_range,rot_scr%ntot)
 ! TRANSFORM TO PHYSICAL MASS (GM)
-      do zone_index = 1, star%rot%ntot
-         star%rot%es1(zone_index) = exp(ln10*star%rot%es1(zone_index))
+      do zone_index = 1, rot_scr%ntot
+         rot_scr%es1(zone_index) = exp(ln10*rot_scr%es1(zone_index))
       end do
       return
 end subroutine equal_spaced_grid

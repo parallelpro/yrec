@@ -55,6 +55,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
      cz_moment_of_inertia, cz_mass_bottom, cz_mass_top, omega_surface, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok, ierr)
+      use rotation_scratch_lib
       use star_info_lib, only: star
 
       use star_info_lib
@@ -196,7 +197,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !  COMPUTE ANGULAR VELOCITY GRADIENTS
       do i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
-         log_radius_center = log10(star%rot%interface_radius(i))
+         log_radius_center = log10(rot_scr%interface_radius(i))
          dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
               1.0D0/ln10/(log_radius_center-log_radius(i-1))
          dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
@@ -225,7 +226,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !  STORE INITIAL SURFACE ANGULAR VELOCITY FOR USE IN ANGULAR MOMENTUM
 !  LOSS CALCULATIONS.
 !      WBEG = OMEGA(M)
-      omega_surface_start = star%rot%wmst(num_zones)
+      omega_surface_start = rot_scr%wmst(num_zones)
       diffusion_solve_ok = .false.
 !  ON THE FIRST LEVEL OF ITERATION, THE UNPERTURBED MODEL IS USED TO
 !  CALCULATE THE DIFFUSION VELOCITIES. ON THE SECOND AND SUBSEQUENT
@@ -244,7 +245,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !  COMPUTE NEW RUN OF ANGULAR VELOCITY GRADIENTS.
             do i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
-               log_radius_center = log10(star%rot%interface_radius(i))
+               log_radius_center = log10(rot_scr%interface_radius(i))
                dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
                     1.0D0/ln10/(log_radius_center-log_radius(i-1))
                dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
@@ -265,7 +266,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
             do i = 1,num_zones
                specific_angular_momentum(i) = specific_angular_momentum_saved(i)
                do j = 1,4
-                  composition(j,i) = star%rot%composition_snapshot(j,i)
+                  composition(j,i) = rot_scr%composition_snapshot(j,i)
                end do
             end do
 ! MHP 10/91 CHANGED TO REMIX CZ'S TO THEIR PROPER DEPTH!
@@ -418,7 +419,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
             else
                fix_omega_at_surface = .false.
                if(star%job%ljdot0)then
-                  cz_moment_of_inertia = eq_moment_of_inertia(star%rot%ntot)
+                  cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%ntot)
                   omega_surface = omega(num_zones)
                   call wind_spindown_matt(log_luminosity_lsun,sub_timestep, &
                        cz_moment_of_inertia,iteration,omega_surface, &
@@ -439,12 +440,12 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
          if(.not.star%ctrl%use_diffusion_advection_transport)then
 !  SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR OMEGA AT END OF TSTEP
             call am_diffusion_coeffs(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
-                 eq_moment_of_inertia,eq_angular_momentum,eq_omega,star%rot%ntot, &
+                 eq_moment_of_inertia,eq_angular_momentum,eq_omega,rot_scr%ntot, &
                  wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
                  sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
 !  SOLVE MATRIX FOR THE RUN OF OMEGA AT THE END OF THE TIMESTEP AT THE
 !  EQUALLY SPACED GRID POINTS.
-            call tridia(star%rot%ntot,eq_moment_of_inertia, &
+            call tridia(rot_scr%ntot,eq_moment_of_inertia, &
                  eq_delta_angular_momentum,sum_delta_angular_momentum, &
                  sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
                  surface_wind_loss_term)
@@ -453,7 +454,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
          else
 ! SOLVE FOR OMEGA AND ITS DERIVATIVES IN A BAND MATRIX
             call am_advection_diffusion_coeffs(grid_spacing,sub_timestep,eq_moment_of_inertia, &
-                 eq_omega,star%rot%ntot,wind_loss_explicit,wind_loss_implicit, &
+                 eq_omega,rot_scr%ntot,wind_loss_explicit,wind_loss_implicit, &
                  eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
                  sum_delta_angular_momentum,fix_omega_at_surface, &
                  diffusion_converged, ierr)
@@ -550,13 +551,13 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
              5X,'H',8X,'HE3',7X,'C12',7X,'C13',7X,'N14', &
              7X,'LI7',7X,'BE9')
       do i = 1,print_zone_count
-         delta_h1 = composition(1,print_zone_id(i))-star%rot%composition_snapshot(1,print_zone_id(i))
-         delta_he3 = composition(4,print_zone_id(i))-star%rot%composition_snapshot(4,print_zone_id(i))
-         delta_c12 = composition(5,print_zone_id(i))-star%rot%composition_snapshot(5,print_zone_id(i))
-         delta_c13 = composition(6,print_zone_id(i))-star%rot%composition_snapshot(6,print_zone_id(i))
-         delta_n14 = composition(7,print_zone_id(i))-star%rot%composition_snapshot(7,print_zone_id(i))
-         delta_li7 = composition(14,print_zone_id(i))-star%rot%composition_snapshot(14,print_zone_id(i))
-         delta_be9 = composition(15,print_zone_id(i))-star%rot%composition_snapshot(15,print_zone_id(i))
+         delta_h1 = composition(1,print_zone_id(i))-rot_scr%composition_snapshot(1,print_zone_id(i))
+         delta_he3 = composition(4,print_zone_id(i))-rot_scr%composition_snapshot(4,print_zone_id(i))
+         delta_c12 = composition(5,print_zone_id(i))-rot_scr%composition_snapshot(5,print_zone_id(i))
+         delta_c13 = composition(6,print_zone_id(i))-rot_scr%composition_snapshot(6,print_zone_id(i))
+         delta_n14 = composition(7,print_zone_id(i))-rot_scr%composition_snapshot(7,print_zone_id(i))
+         delta_li7 = composition(14,print_zone_id(i))-rot_scr%composition_snapshot(14,print_zone_id(i))
+         delta_be9 = composition(15,print_zone_id(i))-rot_scr%composition_snapshot(15,print_zone_id(i))
          write(imodpt,199)print_zone_id(i),delta_h1,delta_he3,delta_c12, &
               delta_c13,delta_n14,delta_li7,delta_be9
  199     format(I5,1P7E10.3)
