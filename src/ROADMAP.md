@@ -133,9 +133,17 @@ Phases (each byte-gated + test_net + test_reentry):
   names kept -- MESA micro-renames like mean_molecular_weight->mu
   and the diag cryptic-name modernization deferred to a later
   scriptable pass); pulse's 9 pulse_* physics arrays flattened.
-  STAY NESTED as documented solver workspace: rot, mix_phys, circ,
-  pulse's q* print scratch -- flattening them awaits the solver
-  cleanup (and rot's dm/pm/tm collide with model members).
+  Solver cleanup DONE 2026-08-25: rot/mix_phys/circ moved OUT of
+  star_info into rotation/rotation_scratch_lib.f90 (instances
+  rot_scr/mix_scr/circ_scr, private-by-default; yrec_reset
+  snapshots them alongside star0); their 14 PROPERTY members
+  (bl_* scales, MLT alpha vectors, metal_abundance_change, the
+  es/ss/gsf circulation velocities) flattened onto star% first.
+  Micro-renames DONE same day: del_grad -> gradr/gradT/grada,
+  sesum/seg/sbeta/seta/svel/so/locons/sfxion modernized,
+  mean_molecular_weight -> mu; scp deliberately kept (fill-time
+  distinct from cp, documented). Only pulse's q* print scratch
+  remains nested in star_info.
 - Phase D (DONE 2026-08-24): const_lib umbrella deleted (89 files ->
   phys_const_lib, 71 dead imports removed, read path -> controls_lib);
   controls_lib relocated to io/ and declared parmin-private;
