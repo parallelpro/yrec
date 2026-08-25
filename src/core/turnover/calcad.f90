@@ -55,6 +55,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
      shape_factor_fp, shape_factor_ft, log_total_mass, &
 !      *                  LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
      log_teff, composition, age_gyr, envelope_cz_bottom_index)
+      use star_info_lib, only: star
       use eos_lib
       use atm_lib
       use envint_lib, only: atm_get
@@ -173,12 +174,12 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       env_step_begin_saved = env_step_begin
       env_step_min_saved = env_step_min
       env_step_max_saved = env_step_max
-      atm_step_begin = atm_step_size
-      atm_step_min = atm_step_size
-      atm_step_max = atm_step_size
-      env_step_begin = envelope_step_size
-      env_step_min = envelope_step_size
-      env_step_max = envelope_step_size
+      atm_step_begin = star%ctrl%atm_step_size
+      atm_step_min = star%ctrl%atm_step_size
+      atm_step_max = star%ctrl%atm_step_size
+      env_step_begin = star%ctrl%envelope_step_size
+      env_step_min = star%ctrl%envelope_step_size
+      env_step_max = star%ctrl%envelope_step_size
       atm_get_unused_flag = 0
       luminosity_linear = dexp(ln10*log_luminosity_lsun)
       pressure_rotation_factor = shape_factor_fp(num_shells)
@@ -200,10 +201,10 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 !      IF (KTTAU .EQ. 3) LAOLY = .FALSE.      ! for grey atm intergration: stores values in common block
 !      G Somers 10/14, FOR SPOTTED RUNS, FIND THE PRESSURE AT
 !      THE AMBIENT TEMPERATURE ATEFFL
-      if(envelope_cz_bottom_index.eq.num_shells.and.spot_filling_factor.ne.0.0.and. &
-           spot_temp_contrast.ne.1.0)then
-            spot_adjusted_teff = log_teff-0.25*log10(spot_filling_factor* &
-                 spot_temp_contrast**4.0+1.0-spot_filling_factor)
+      if(envelope_cz_bottom_index.eq.num_shells.and.star%ctrl%spot_filling_factor.ne.0.0.and. &
+           star%ctrl%spot_temp_contrast.ne.1.0)then
+            spot_adjusted_teff = log_teff-0.25*log10(star%ctrl%spot_filling_factor* &
+                 star%ctrl%spot_temp_contrast**4.0+1.0-star%ctrl%spot_filling_factor)
       else
             spot_adjusted_teff = log_teff
       endif
@@ -396,7 +397,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 ! Save all vectors of interest when the end of a kind card is reached.
       if(calcad_ageout_output_active)then
 
-            write(unit=calcad_file_unit,fmt=1506) env_struct%num_env_points,num_shells,cz_zone_index
+            write(unit=star%ctrl%calcad_file_unit,fmt=1506) env_struct%num_env_points,num_shells,cz_zone_index
 1506            format(1X, 'Number of points in envelope:',I5,2X, &
      'Number of points in interior:',I5,2X,'Index near Rcz:' &
      ,I5,2X)
@@ -404,7 +405,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                   do zone_idx=1,num_shells+env_struct%num_env_points-1
                         if (zone_idx .le. integration_count-cz_zone_index+1) then
 !                         WRITE(UNIT=ICLCD,FMT=1504),DAGE, STARR(I), STARC(I),
-                        write(unit=calcad_file_unit,fmt=1504) age_gyr, &
+                        write(unit=star%ctrl%calcad_file_unit,fmt=1504) age_gyr, &
                              star_radius_cm(zone_idx),star_inverse_sound_speed(zone_idx), &
      star_radius_to_cz(zone_idx), star_inverse_sound_speed_to_cz(zone_idx), &
      eos_adiabatic_gradient(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
@@ -412,7 +413,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
                         else
 !                         WRITE(UNIT=ICLCD,FMT=1504) DAGE, STARR(I), STARC(I),
-                        write(unit=calcad_file_unit,fmt=1504) age_gyr, &
+                        write(unit=star%ctrl%calcad_file_unit,fmt=1504) age_gyr, &
                              star_radius_cm(zone_idx),star_inverse_sound_speed(zone_idx), &
      0.0d0, 0.0d0, eos_adiabatic_gradient(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
      star_temperature_1e6k(zone_idx),star_density_cgs(zone_idx),star_hydrogen_fraction(zone_idx)

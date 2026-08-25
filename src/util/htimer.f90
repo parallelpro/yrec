@@ -42,6 +42,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
      luminosity_components, age_gyr, timestep_years, kind_card_index, &
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
      log_teff)
+      use star_info_lib, only: star
       use star_info_lib, only: json
 
       use const_lib
@@ -76,8 +77,8 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 
       if (previous_timestep.ge.0.0d0) then
 ! if user is fixing tstep, set dt to given value and exit
-      if(timestep_override_active(kind_card_index)) then
-       hydrogen_dt = timestep_override(kind_card_index)*seconds_per_year
+      if(star%ctrl%timestep_override_active(kind_card_index)) then
+       hydrogen_dt = star%ctrl%timestep_override(kind_card_index)*seconds_per_year
        previous_timestep = hydrogen_dt
       else
 ! mhp 9/01  turn off structure-based timestep setting above a critical
@@ -149,7 +150,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 !  04/14 jvs added timestep governor based on the size of the envelope
 !  triangle. timesteps are restricted such that the model does not move
 !  more than tri_delta_logl or tri_delta_teffl
-      if(use_envelope_triangle_dt .and. .not. use_structure_dt_limits) then
+      if(star%ctrl%use_envelope_triangle_dt .and. .not. use_structure_dt_limits) then
        call entime(previous_timestep,luminosity,log_teff,num_points,envelope_dt)
       else
        envelope_dt = 1.0d20
@@ -163,7 +164,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 !         WRITE(*,*)'H time ',hydrogen_dt/seconds_per_year,'   He Time ',helium_dt/seconds_per_year
 
       if(previous_timestep.gt.1.0d0) then
-         previous_timestep = atime(13)*previous_timestep
+         previous_timestep = star%ctrl%atime(13)*previous_timestep
 !  now set the timestep to be the minimum of the entropy based timestep,
 !  the nuclear burning timesteps, and the previous timestep*atime(13).
 !  04/14 jvs added envelope_dt
@@ -211,8 +212,8 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 !  so only do this if there is a true stop age.
 !     if evolving to a given age, ensure age not exceeded
 !      IF(LENDAG(NK)) THEN
-      if(end_age_stop_active(kind_card_index) .and. target_end_age(kind_card_index).gt.0.0d0) then
-       time_left_years = target_end_age(kind_card_index) - age_gyr*1.0d9
+      if(star%ctrl%end_age_stop_active(kind_card_index) .and. star%ctrl%target_end_age(kind_card_index).gt.0.0d0) then
+       time_left_years = star%ctrl%target_end_age(kind_card_index) - age_gyr*1.0d9
        if(time_left_years.lt. timestep_years) then
          timestep_years = time_left_years
          hydrogen_dt = timestep_years*seconds_per_year

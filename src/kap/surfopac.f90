@@ -16,6 +16,7 @@
 ! either; same "misplaced, meval.f90-style" pattern as alsurfp.f90's
 ! earlier move the other direction (kap/ -> atm/).
 subroutine surfopac(hydrogen_fraction)
+      use star_info_lib, only: star
       use const_lib
       implicit none
 
@@ -26,18 +27,18 @@ subroutine surfopac(hydrogen_fraction)
 !     INTERIOR TABLES
 
 !     SETUP OPAL95 TABLES
-      if (use_opal95_tables) then
+      if (star%ctrl%use_opal95_tables) then
       call op95xtab(hydrogen_fraction)
       end if
 !     SETUP IN OPAL92 TABLES AT ZOPAL1 AND ZOPAL2
-      if (use_opal92_tables) then
+      if (star%ctrl%use_opal92_tables) then
         call ll4th(hydrogen_fraction)
       end if
 
 !     LOW TEMP TABLES
 
 !     INTERPOLATE ALEX95 TABLES
-      if (use_alex95_tables) then
+      if (star%ctrl%use_alex95_tables) then
        call alx8th(hydrogen_fraction)
       end if
 

@@ -133,11 +133,11 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do zone_idx = zone_begin,num_zones
-         if(composition(1,zone_idx).gt.hydrogen_diffusion_floor)exit
+         if(composition(1,zone_idx).gt.star%ctrl%hydrogen_diffusion_floor)exit
       end do
       if (zone_idx > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
-      write(short_file_unit,16)hydrogen_diffusion_floor
+      write(short_file_unit,16)star%ctrl%hydrogen_diffusion_floor
    16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
       continue
@@ -157,11 +157,11 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do zone_idx=zone_end,1,-1
-         if(composition(2,zone_idx).gt.helium_diffusion_min) exit
+         if(composition(2,zone_idx).gt.star%ctrl%helium_diffusion_min) exit
       end do
       if (zone_idx < (1)) then
 !     HYDROGEN-FREE MODEL - EXIT.
-      write(short_file_unit,17)helium_diffusion_min
+      write(short_file_unit,17)star%ctrl%helium_diffusion_min
    17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
       continue
@@ -200,12 +200,12 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 
          hydrogen_fraction = composition(1,zone_idx)
 ! MHP 10/02 INITIALIZED X - WAS NOT DONE PRIOR TO USAGE IN SHELL 1
-         if(coulomb_log_choice.eq.2)then
+         if(star%ctrl%coulomb_log_choice.eq.2)then
 !           Noerdlinger's formula (1977 A&A 57,407) for LN LAMBDA:
 !           Ln Lambda = -19.7 - ln[4/(3*X + 1)]/2 - ln(rho)/2 + 1.5*ln(T)
             ln_lambda=-1.97d1 - 0.5d0*log(1.0d0/(0.75d0*hydrogen_fraction+0.25d0)) &
                       -0.5d0*log_density(zone_idx)*ln10 + 1.5d0*log_temperature(zone_idx)*ln10
-         else if(coulomb_log_choice.eq.3)then
+         else if(star%ctrl%coulomb_log_choice.eq.3)then
 !           Loeb's formula (1989 Phys. Rev. D 39, 1009) for LN LAMBDA
 !           ln lambda = -19.105747 - ln(rho)/2 + 1.5*ln(T)
             ln_lambda=-1.9105747d1-0.50d0*log_density(zone_idx)*ln10+1.5d0*log_temperature(zone_idx)*ln10
@@ -213,12 +213,12 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             ln_lambda = 2.2d0
          end if
 !
-         settling_prefactor=fgry*radius_bl(zone_idx)**2*temperature_bl(zone_idx)**2.5d0/ln_lambda
+         settling_prefactor=star%ctrl%fgry*radius_bl(zone_idx)**2*temperature_bl(zone_idx)**2.5d0/ln_lambda
 !         X = HCOMP(1,I)
          metal_fraction_total = composition(3,zone_idx) + composition(4,zone_idx)
          iron_fraction = composition(3,zone_idx)
          hydrogen_fraction_sq = hydrogen_fraction*hydrogen_fraction
-         if(.not.lthoul)then
+         if(.not.star%ctrl%lthoul)then
             hydrogen_metal_product = hydrogen_fraction*metal_fraction_total
             hydrogen_fraction_cubed = hydrogen_fraction_sq*hydrogen_fraction
             thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
@@ -240,8 +240,8 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             species_mass_fraction(1) = composition(1,zone_idx)
             species_mass_fraction(2) = composition(2,zone_idx)
             species_mass_fraction(3) = composition(3,zone_idx)
-            if(.not.use_thoul_fit)then
-               if(coulomb_log_choice.eq.4)then
+            if(.not.star%ctrl%use_thoul_fit)then
+               if(star%ctrl%coulomb_log_choice.eq.4)then
                   rho_local = exp(ln10*log_density(zone_idx))
                   temp_local = exp(ln10*log_temperature(zone_idx))
 !                 calculate concentrations from mass fractions:
@@ -305,9 +305,9 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
             dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
 !CFD 10/09 Mimic Mixing to reduce settling.
 !            COD1(I) = FAC*HQPR(I)*X*(AP+AT)
-            diffusion_coeff1(zone_idx) = cstmixing*settling_prefactor*dlnp_dr(zone_idx)* &
+            diffusion_coeff1(zone_idx) = star%ctrl%cstmixing*settling_prefactor*dlnp_dr(zone_idx)* &
                  hydrogen_fraction*(settling_coeff_p+settling_coeff_t)
-            diffusion_coeff2(zone_idx) = cstmixing*settling_prefactor*ac_scratch
+            diffusion_coeff2(zone_idx) = star%ctrl%cstmixing*settling_prefactor*ac_scratch
             diffusion_coeff1_dx(zone_idx) = settling_prefactor*dlnp_dr(zone_idx)* &
                  (settling_coeff_p+settling_coeff_t+hydrogen_fraction*(dap_dx+dat_dx))
             diffusion_coeff2_dx(zone_idx) = settling_prefactor*dac_dx
@@ -317,8 +317,8 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
          if(use_diffusion_z)then
 
             settling_prefactor=fgrz*radius_bl(zone_idx)**2*temperature_bl(zone_idx)**2.5d0/ln_lambda
-            if(lthoul)then
-               if(use_thoul_fit)then
+            if(star%ctrl%lthoul)then
+               if(star%ctrl%use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq
                   settling_coeff_t = star%diag%del_grad(i_grad_actual,zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
                        0.549d0*hydrogen_fraction_sq)
@@ -331,13 +331,13 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !         and add the uncertainties of differential mixing (cstdiffmix).
 !
 ! old ver      COD1Z(I) = FAC*HQPR(I)*ZZ*(AP+AT)
-               star%rot%src_grid_metal_diffusion_coeff1(zone_idx) = cstdiffmix*cstmixing* &
+               star%rot%src_grid_metal_diffusion_coeff1(zone_idx) = star%ctrl%cstdiffmix*star%ctrl%cstmixing* &
                     settling_prefactor*dlnp_dr(zone_idx)*iron_fraction*(settling_coeff_p+settling_coeff_t)
 !              POSITIVE DIFFUSION COEFFICIENTS NEEDED!
 ! old ver.     COD2Z(I) = ABS(FAC*AH)
 ! old ver.     QCOD1Z(I) = FAC*HQPR(I)*(AP+AT)
-               star%rot%src_grid_metal_diffusion_coeff2(zone_idx) = cstmixing*abs(settling_prefactor*iron_settling_ah)
-               star%rot%src_grid_metal_diffusion_coeff1_dz(zone_idx) = cstmixing*settling_prefactor* &
+               star%rot%src_grid_metal_diffusion_coeff2(zone_idx) = star%ctrl%cstmixing*abs(settling_prefactor*iron_settling_ah)
+               star%rot%src_grid_metal_diffusion_coeff1_dz(zone_idx) = star%ctrl%cstmixing*settling_prefactor* &
                     dlnp_dr(zone_idx)*(settling_coeff_p+settling_coeff_t)
                star%rot%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
             endif
@@ -345,7 +345,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 !
 ! If using Noerdlinger's formula for LN LAMBDA, have a new term
 ! in D(D1)/DX
-         if(coulomb_log_choice.eq.2)  then
+         if(star%ctrl%coulomb_log_choice.eq.2)  then
            diffusion_coeff1_dx(zone_idx)=diffusion_coeff1_dx(zone_idx) + diffusion_coeff1(zone_idx)*1.5d0/ &
            (ln_lambda*(3.0d0*hydrogen_fraction+1.0d0))
        end if

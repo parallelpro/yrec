@@ -40,9 +40,9 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 
 ! find maximum absolute time differences for each quantity
 ! temperature
-      dt_scale(1) = tri_delta_teffl
+      dt_scale(1) = star%ctrl%tri_delta_teffl
 ! luminosity
-      dt_scale(2) = tri_delta_logl
+      dt_scale(2) = star%ctrl%tri_delta_logl
 
       teffl_change = abs(star%prev%log_Teff_start - log_teff)
       logl_change = abs(dlog10(star%prev%luminosity_lsun_start(star%prev%nz_start)) - &
@@ -50,13 +50,13 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
 
 ! now actually limit the timestep by a factor that reduces the
 ! time changes in all quantities to the triangle values or less
-      dt_factor = teffl_change/tri_delta_teffl
-      if (logl_change/tri_delta_logl .gt.dt_factor) dt_factor = logl_change/tri_delta_logl
+      dt_factor = teffl_change/star%ctrl%tri_delta_teffl
+      if (logl_change/star%ctrl%tri_delta_logl .gt.dt_factor) dt_factor = logl_change/star%ctrl%tri_delta_logl
 ! if no change from previous model, set envelope_dt to timestep
 ! stored in the previous model.
       if (dt_factor .eq. 0.0d0) dt_factor = 1.0d0
 ! use atime(13) as the global factor for limiting timestep changes
-      dt_factor_limit = atime(13)
+      dt_factor_limit = star%ctrl%atime(13)
       if (dt_factor.gt.dt_factor_limit) dt_factor = dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor = 1.0d0/dt_factor_limit
       envelope_dt = previous_timestep/dt_factor

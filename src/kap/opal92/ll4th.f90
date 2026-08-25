@@ -10,6 +10,7 @@
 ! IT CONTAINS THE OPACITIES FOR THE SURFACE ABUNDANCES OF X AND Z, AND
 ! IS USED TO AVOID MANY INTERPOLATIONS TO THE SAME X.
 subroutine ll4th(hydrogen_fraction)
+      use star_info_lib, only: star
 
       use opacity_table_lib
       use const_lib
@@ -35,7 +36,7 @@ subroutine ll4th(hydrogen_fraction)
 
 !     KEEP THE COMPOSITION OF THE 4TH TABLE.
       opacity_table%opal92_surface_x=hydrogen_fraction
-      opacity_table%opal92_surface_z=opal_table_z1
+      opacity_table%opal92_surface_z=star%ctrl%opal_table_z1
       call findex(opacity_table%opal92_grid_x, num_x, hydrogen_fraction, x_index)
       if (x_index.lt.0) x_index=-x_index
       if (x_index.ge.3) x_index=2
@@ -75,7 +76,7 @@ subroutine ll4th(hydrogen_fraction)
 
       if (use_two_z_tables) then
          opacity_table%opal92_surface_x_z2=hydrogen_fraction
-         opacity_table%opal92_surface_z_z2=opal_table_z2
+         opacity_table%opal92_surface_z_z2=star%ctrl%opal_table_z2
          call findex(opacity_table%opal92_grid_x_z2, num_x, hydrogen_fraction, x_index)
          if (x_index.lt.0) x_index=-x_index
          if (x_index.ge.3) x_index=2

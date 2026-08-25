@@ -147,12 +147,12 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !
 ! DBG PULSE: PRINT OUT PULSATION ENV AND ATM IN ENVINT
 ! G Somers 11/14 CHANGE TO NEW I/O FLAGS.
-      if(lstatm .or. lstenv .or. pulsation_output_active) then
+      if(lstatm .or. star%ctrl%lstenv .or. pulsation_output_active) then
 !  INTEGRATE AN ENVELOPE FROM THE SURFACE TO THE CONVERGED MODEL,
 !  PRINTING OUT THE RESULTS.
 !  SET UP FLAGS AND COUNTERS.
        lsbc0 = .false.
-       if(lstore)lprt = .true.
+       if(star%ctrl%lstore)lprt = .true.
        katm = 0
        kenv = 0
        ksaha = 0
@@ -164,12 +164,12 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
        ebeg0 = env_step_begin
        emin0 = env_step_min
        emax0 = env_step_max
-       atm_step_begin = atm_step_size
-       atm_step_min = atm_step_size
-       atm_step_max = atm_step_size
-       env_step_begin = envelope_step_size
-       env_step_min = envelope_step_size
-       env_step_max = envelope_step_size
+       atm_step_begin = star%ctrl%atm_step_size
+       atm_step_min = star%ctrl%atm_step_size
+       atm_step_max = star%ctrl%atm_step_size
+       env_step_begin = star%ctrl%envelope_step_size
+       env_step_min = star%ctrl%envelope_step_size
+       env_step_max = star%ctrl%envelope_step_size
        b = dexp(ln10*log_luminosity_lsun)
        rl = 0.5D0*(log_luminosity_lsun + star%log10_solar_luminosity - 4.0D0*log_teff - c4pil - csigl)
        gl = cgl + star%env_comp%stotal - rl - rl
@@ -194,8 +194,8 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
          idum = 0
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-        if(envelope_cz_bottom_index.eq.num_shells.and.spot_filling_factor.ne.0.0.and.spot_temp_contrast.ne.1.0)then
-            ateffl = log_teff - 0.25*log10(spot_filling_factor * spot_temp_contrast**4.0 + 1.0 - spot_filling_factor)
+        if(envelope_cz_bottom_index.eq.num_shells.and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0)then
+            ateffl = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
        else
           ateffl = log_teff
        endif
@@ -221,7 +221,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
          rsurfl = 0.5D0*(log_luminosity_lsun - c4pil - csigl - 4.0D0*log_teff + star%log10_solar_luminosity)
          tempr = rsurfl - star%log10_solar_radius
          qsmass = pulsation_mass_msun
-         write (opal_model_unit, 5001) model_number,num_pulsation_points,pulsation_file_version,qsmass, &
+         write (star%ctrl%opal_model_unit, 5001) model_number,num_pulsation_points,star%ctrl%pulsation_file_version,qsmass, &
                log_teff,log_luminosity_lsun,tempr, age_gyr, star%mixing_length_alpha, initial_envelope_x, initial_envelope_z
  5001    format(' MODEL#=', I5, '  NUMBER OF SHELLS IN MODEL=',I5, &
                 ' VER=',I2,/, &
@@ -239,25 +239,25 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !
 ! DBG WRITE PULSE MODEL
 !       PRINT*, 'LPULSE=',LPULSE
-         if (pulsation_output_active.and.lstore) then
+         if (pulsation_output_active.and.star%ctrl%lstore) then
 ! MHP 10/02 uncommented pelpf statement, used later in i/o
 !         PELPF = CGAS * DEXP(CLN*(HT(I) + HD(I)))* PEMU(I)
 !          ADDED X AND Z TO OUTPUT
          if (j.ne.2 .or. i.ne.1) then
-         if(pulsation_file_version.eq.1) then
+         if(star%ctrl%pulsation_file_version.eq.1) then
          pelpf = gas_constant * dexp(ln10*(log_temperature(i) + log_density(i)))* star%pulse%pulse_electron_mean_molecular_weight(i)
-         write(opal_model_unit, 5052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
+         write(star%ctrl%opal_model_unit, 5052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
                 log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i), &
                 star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i), &
                 star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), pelpf
-         else if (pulsation_file_version.eq.2) then
-         write(opal_model_unit, 6052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
+         else if (star%ctrl%pulsation_file_version.eq.2) then
+         write(star%ctrl%opal_model_unit, 6052)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i), &
             log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i), &
             star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i), &
             star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)
-         else if (pulsation_file_version.eq.3) then
+         else if (star%ctrl%pulsation_file_version.eq.3) then
 ! DBG 7/95 Modifed to include mixing length variables
-         write(opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),star%rot%valfmlt(i), &
+         write(star%ctrl%opal_model_unit, 6053)log_radius(i),fs,log_luminosity(i),log_temperature(i),log_density(i),star%rot%valfmlt(i), &
             log_pressure(i), star%diag%sesum(i),star%diag%so(i), star%pulse%pulse_dlnrho_dlnp(i), star%pulse%pulse_dlneps_dlnrho(i),star%rot%vphmlt(i), &
             star%pulse%pulse_dlneps_dlnt(i), star%pulse%pulse_dlnkap_dlnrho(i), star%pulse%pulse_dlnkap_dlnt(i), star%diag%del_grad(i_grad_actual,i),star%diag%del_grad(i_grad_ad,i),star%rot%vcmxmlt(i), &
             star%pulse%pulse_specific_heat(i), star%pulse%pulse_mean_molecular_weight(i), star%pulse%pulse_dlnrho_dlnt(i), composition(1,i),composition(3,i)

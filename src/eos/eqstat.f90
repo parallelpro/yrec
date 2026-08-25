@@ -22,6 +22,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, ierr)
+      use star_info_lib, only: star
 !
 !  Input Arguments: log10_temperature, log10_pressure, hydrogen_fraction,
 !          metal_fraction, want_derivatives, in_atmosphere
@@ -98,7 +99,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       in_atmosphere_local = in_atmosphere
       saha_state_local = saha_state
 
-      if (want_derivatives .and. use_numerical_derivatives) then
+      if (want_derivatives .and. star%ctrl%use_numerical_derivatives) then
 !        Get Numerical Derivatives of Current EOS    LLP  8/5/07
 !        If both derivatives and numerical derivatives are requested.
 !
@@ -208,7 +209,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       log10_temperature = log10_temperature_orig   ! Restore original TL and PL.
       log10_pressure = log10_pressure_orig
 
-      if (want_derivatives .and. .not.use_numerical_derivatives) then
+      if (want_derivatives .and. .not.star%ctrl%use_numerical_derivatives) then
          want_derivatives_2 = .true.   ! Need derivatives and have no numerical ones.
                           ! Call eqstat2 and request derivatives
          call eqstat2(log10_temperature, temperature, log10_pressure, &
@@ -299,6 +300,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, ierr)
+      use star_info_lib, only: star
 
       use eos_mixture_lib, only: eos_mix
       use luout_lib
@@ -382,9 +384,9 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
       ierr = 0
 
-      need_saha_solution = log10_temperature.lt.saha_log10t_cutoff
+      need_saha_solution = log10_temperature.lt.star%ctrl%saha_log10t_cutoff
       skip_relativistic_eos = log10_temperature.le. &
-           (saha_log10t_cutoff - saha_ramp_width)
+           (star%ctrl%saha_log10t_cutoff - saha_ramp_width)
 
 !     MHP 3/94 METAL DIFFUSION ADDED.  ASSUME ALL METALS SCALE EQUALLY.
       if (use_diffusion_z) then
@@ -629,7 +631,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp)
 !     INTERPOLATE VALUES
-      ramp_weight = saha_ramp_scale*(saha_log10t_cutoff - log10_temperature)
+      ramp_weight = saha_ramp_scale*(star%ctrl%saha_log10t_cutoff - log10_temperature)
       ramp_weight_sq = ramp_weight*ramp_weight
       ramp_factor = ramp_weight_sq*ramp_weight* &
            (6.0d0*ramp_weight_sq - 15.0d0*ramp_weight + 10.0d0)
@@ -671,7 +673,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     1995 OPAL eqos
-      if (use_opal95_eos) then
+      if (star%ctrl%use_opal95_eos) then
       if (temperature.ge.5.0d3 .and. log10_temperature.le.8.0d0 .and. &
            log10_density.le.5.0d0) then
 
@@ -737,7 +739,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     2001 OPAL eqos  LLP 6/17/03
-      if (use_opal2001_eos) then
+      if (star%ctrl%use_opal2001_eos) then
       if (temperature.ge.2.0d3 .and. temperature.le.100d6 .and. &
            log10_density.le.7.0d0) then
          call oeqos01(log10_temperature, temperature, log10_pressure, &
@@ -804,7 +806,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     2006 OPAL eqos  LLP 10/13/2996
-      if (use_opal2006_eos) then
+      if (star%ctrl%use_opal2006_eos) then
       if (temperature.ge.1.870d3 .and. temperature.le.200d6 .and. &
            log10_density.le.7.0d0) then
          call oeqos06(log10_temperature, temperature, log10_pressure, &

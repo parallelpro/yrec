@@ -18,15 +18,15 @@ subroutine wrthead(total_mass_msun)
 ! --- locals ---
       double precision :: total_mass_grams
 
-      if (rescale_kind(star%job%nk) .eq. 1) then
+      if (star%ctrl%rescale_kind(star%job%nk) .eq. 1) then
          write(iowr, 47) star%job%nk, initial_envelope_x, initial_envelope_z, &
-              star%mixing_length_alpha, num_models(star%job%nk)
-      else if (rescale_kind(star%job%nk) .eq. 2) then
+              star%mixing_length_alpha, star%ctrl%num_models(star%job%nk)
+      else if (star%ctrl%rescale_kind(star%job%nk) .eq. 2) then
          write(iowr, 48) star%job%nk, initial_envelope_x, initial_envelope_z, &
-              star%mixing_length_alpha, num_models(star%job%nk)
-      else if (rescale_kind(star%job%nk) .eq. 3) then
+              star%mixing_length_alpha, star%ctrl%num_models(star%job%nk)
+      else if (star%ctrl%rescale_kind(star%job%nk) .eq. 3) then
          write(iowr, 49) star%job%nk, initial_envelope_x, initial_envelope_z, &
-              star%mixing_length_alpha, num_models(star%job%nk)
+              star%mixing_length_alpha, star%ctrl%num_models(star%job%nk)
       end if
   47  format(/, ' RUN=',I2,' EVOLVE  ', ' X=',F8.6, &
              ' Z=',F8.6,' CMIXL=', F8.6, ' NO.MODS=', I5)
@@ -35,23 +35,23 @@ subroutine wrthead(total_mass_msun)
   49  format(/, ' RUN=',I2,' RESCALE&EVOLVE ', ' X=',F8.6, &
              ' Z=',F8.6,' CMIXL=', F8.6, ' NO.MODS=', I5)
 
-      if (isochrone_output_active) then
+      if (star%ctrl%isochrone_output_active) then
 ! header stuff for isochrone output
          total_mass_grams = total_mass_msun*star%solar_mass_cgs
-         write(isochrone_file_unit, 1495) total_mass_grams, &
+         write(star%ctrl%isochrone_file_unit, 1495) total_mass_grams, &
               initial_envelope_x,initial_envelope_z,star%mixing_length_alpha,star%solar_bolometric_magnitude
  1495    format(7X, 1P5E16.8)
       end if
 
-      if (ltrack .and. first_call_flag(star%job%nk)) then
+      if (star%ctrl%ltrack .and. star%ctrl%first_call_flag(star%job%nk)) then
 ! ITRVER identifies version of track out file.  If you change
 ! the track out file then change this version number.
-         write(itrack, 1500)track_file_version,total_mass_msun,initial_envelope_x, &
+         write(itrack, 1500)star%ctrl%track_file_version,total_mass_msun,initial_envelope_x, &
               initial_envelope_z,star%mixing_length_alpha
  1500    format('#Version=',i3,'  Mtot/Msun =',1PE16.8, &
               '  Initial: X =',1PE16.8,' Z =',1PE16.8, &
               '  Mix. length =', 1PE16.8)
-         if(track_file_version .eq. 0) then
+         if(star%ctrl%track_file_version .eq. 0) then
 !            WRITE(ITRACK, 1503)
 ! 1503       FORMAT(
 !     1'# Model #, shells, AGE(Gyr), log(L/Lsun), log(R/Rsun), log(g),',
@@ -106,7 +106,7 @@ subroutine wrthead(total_mass_msun)
      '    RHshell_base     RHShell_mid     RHshell_top       logP_phot       Mass_msun',/, &
      '# ')
 ! G Somers END.
-         else if(track_file_version .eq. 1) then
+         else if(star%ctrl%track_file_version .eq. 1) then
             write(itrack, 1505)
  1505       format( &
      '# Model #, shells, AGE, log(L/Lsun), log(R/Rsun), log(g),', &
@@ -123,12 +123,12 @@ subroutine wrthead(total_mass_msun)
      '    "        " cont: H2, Li6, Li7, Be9',/, &
      '# H shell loc: mass frac-base, midpoint, top; radius frac-', &
      'base, midpoint, top')
-         else if(track_file_version .eq. 2) then
+         else if(star%ctrl%track_file_version .eq. 2) then
             write(itrack, 1505)
             write(itrack, 1510)
  1510       format( &
      ' Jtot, K.E. Rotation, OMEGAsurf, OMEGAcenter')
-         else if(track_file_version .eq. 3) then
+         else if(star%ctrl%track_file_version .eq. 3) then
           write(itrack, 1515)
  1515       format( &
      '#Model #, shells, AGE, log(L/Lsun), log(R/Rsun), log(g),', &

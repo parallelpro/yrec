@@ -44,10 +44,10 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
    10 format(1X,I4,10(1PE11.3))
 !  PRINT OUT EVERY NPRTPT POINTS;LAST POINT ALWAYS PRINTED.
       iend = 1
-      if(print_point_interval.le.m) then
-       ibeg = max(2,print_point_interval)
-       iend = m - mod(m,print_point_interval)
-       do i = ibeg,iend,print_point_interval
+      if(star%ctrl%print_point_interval.le.m) then
+       ibeg = max(2,star%ctrl%print_point_interval)
+       iend = m - mod(m,star%ctrl%print_point_interval)
+       do i = ibeg,iend,star%ctrl%print_point_interval
           d = dexp(ln10*hd(i))
           p = dexp(ln10*hp(i))
           r = dexp(ln10*hr(i))

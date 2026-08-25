@@ -86,11 +86,11 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
       end do
 ! now actually limit the timestep by a factor that reduces the
 ! time changes in all quantities to the ps values or less
-      dt_factor = max_change(1)/atime(9)
-      if (max_change(2)/atime(8).gt.dt_factor) dt_factor=max_change(2)/atime(8)
-      if (max_change(3)/atime(10).gt.dt_factor) dt_factor=max_change(3)/atime(10)
-      if (max_change(4)/(atime(11)*2.3026d0).gt.dt_factor) then
-        dt_factor=max_change(4)/(atime(11)*2.3026d0)
+      dt_factor = max_change(1)/star%ctrl%atime(9)
+      if (max_change(2)/star%ctrl%atime(8).gt.dt_factor) dt_factor=max_change(2)/star%ctrl%atime(8)
+      if (max_change(3)/star%ctrl%atime(10).gt.dt_factor) dt_factor=max_change(3)/star%ctrl%atime(10)
+      if (max_change(4)/(star%ctrl%atime(11)*2.3026d0).gt.dt_factor) then
+        dt_factor=max_change(4)/(star%ctrl%atime(11)*2.3026d0)
       endif
 ! if no change from previous model,set struct_dt to timestep
 ! stored in the previous model.
@@ -98,7 +98,7 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
 ! restrict change in timestep to no more than a factor of atime(12)%
 ! up or down.
 ! mhp 10/14 use atime(13) as the global factor for limiting timestep changes
-      dt_factor_limit = atime(13)
+      dt_factor_limit = star%ctrl%atime(13)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit
       struct_dt = previous_timestep/dt_factor

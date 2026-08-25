@@ -109,7 +109,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          do zone_idx = radiative_zone_bounds(region_idx,1), &
               radiative_zone_bounds(region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (log_temperature(zone_idx).le.tcut(1)) exit
+            if (log_temperature(zone_idx).le.star%ctrl%tcut(1)) exit
             burn_zone_start = zone_idx
             burn_zone_end = zone_idx
             call kemcom(log_temperature,burn_zone_start,burn_zone_end, &
@@ -152,7 +152,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
       if (diffuse_helium_active) then
       settling: do
-         if (composition(1,1).lt.hydrogen_diffusion_floor) then
+         if (composition(1,1).lt.star%ctrl%hydrogen_diffusion_floor) then
             diffuse_helium_active=.false.
             exit settling
          end if
@@ -179,7 +179,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          if (convective_zone_bounds(num_convective_zones,1).gt.2 .or. convective_zone_bounds(num_convective_zones,2).ne.num_zones) then
          outer_boundary_zone = radiative_zone_bounds(num_radiative_zones,2)
          do zone_idx = outer_boundary_zone,1,-1
-            if (composition(2,zone_idx).gt.helium_diffusion_min) exit
+            if (composition(2,zone_idx).gt.star%ctrl%helium_diffusion_min) exit
          end do
          if (zone_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
@@ -208,7 +208,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 !  A USER SPECIFIED FRACTION (DT_GS) OF THE SETTLING TIMESCALE.
             write(69,*) 'JMAX=',outer_boundary_zone,' FM= ', &
                  mass_fraction_above,' TSCALE=',settling_timescale
-            max_settling_dt = settling_timestep_fraction*settling_timescale
+            max_settling_dt = star%ctrl%settling_timestep_fraction*settling_timescale
             num_settling_substeps = int(timestep/max_settling_dt)
             if (mod(max_settling_dt,timestep).ne.0.0d0.or. &
                  num_settling_substeps.eq.0) &
@@ -235,7 +235,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          do substep_idx = 1,num_settling_substeps
 ! PERFORM GRAVITATIONAL SETTLING. IF LNEWDIF = TRUE, USE THE NEW ROUTINES
 ! IN MICRODIFF. ELSE, USE THE OLD ROUTINES IN GRSETT.
-            if (use_new_diffusion_routines) then
+            if (star%ctrl%use_new_diffusion_routines) then
                call microdiff(settling_dt,composition,dlnp_dr_settling, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
                     am_transport_convective_flag,num_zones,total_mass)

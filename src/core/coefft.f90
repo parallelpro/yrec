@@ -146,7 +146,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 
       ierr = 0
 
-      if (lsnu) then
+      if (star%ctrl%lsnu) then
          do j = 1,10
             star%flux%neutrino_flux_total(j) = 0.0d0
          end do
@@ -167,7 +167,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
       end do
       idt = 15
       do j = 1,4
-       idd(j) = 5
+       star%ctrl%idd(j) = 5
       end do
       do im = 1,num_points
 ! SET UP LOCAL VARIABLES FOR CALLS TO BASIC PHYSICS ROUTINES
@@ -274,7 +274,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
        eq_l_val = 0.0d0
        dql_dt = 0.0d0
        dql_dp = 0.0d0
-       if (zone_log_temperature.gt.tcut(1)) then
+       if (zone_log_temperature.gt.star%ctrl%tcut(1)) then
 ! SET UP NUCLEAR ENERGY TERMS
             call engeb(pp_chain_gen, he3he4_be7_electron_gen, &
                  he3he4_be7_proton_gen, cno_gen, triple_alpha_gen, &
@@ -296,7 +296,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! 7/91 MHP
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
-            if (lsnu) then
+            if (star%ctrl%lsnu) then
                do j = 1,10
                   star%flux%neutrino_flux_total(j) = star%flux%neutrino_flux_total(j) + &
                        star%flux%neutrino_flux(j)*shell_mass(im)
@@ -329,7 +329,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          if (compute_entropy_term) then
 ! SET UP ENTROPY TERMS
             zone_dt = delta_time_inv
-            if (use_mass_accretion.and.mass_accretion_rate.gt.0.0d0) then
+            if (use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0) then
                if (im.ge.envelope_zone_index) then
                   zone_log_temperature_delta = log_temperature_delta(im)+ &
                        star%rot%delta_log_temperature
@@ -422,7 +422,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! MHP 10/02 LSHORT NOT USED, OMIT
 !         LSHORT = .NOT.LONG .AND. MOD(MODEL,NPRT1).EQ.0
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
-         if (log_temperature(im).lt.tcut(1)) then
+         if (log_temperature(im).lt.star%ctrl%tcut(1)) then
             star%diag%sesum(im) = 0.0d0
             star%diag%seg(i_eps_grav,im) = gravitational_luminosity(im)
             do j = 1,6

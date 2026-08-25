@@ -113,7 +113,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
 ! **************************   WRITE OUT ENVELOPE INFORMATION   **********************
 
-      if(lstenv)then ! only provide an envelope if asked to do so
+      if(star%ctrl%lstenv)then ! only provide an envelope if asked to do so
 ! Begin by "dropping a sinkline" with the envelope integrator
       abeg0 = atm_step_begin
       amin0 = atm_step_min
@@ -121,12 +121,12 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       ebeg0 = env_step_begin
       emin0 = env_step_min
       emax0 = env_step_max
-      atm_step_begin = atm_step_size
-      atm_step_min = atm_step_size
-      atm_step_max = atm_step_size
-      env_step_begin = envelope_step_size
-      env_step_min = envelope_step_size
-      env_step_max = envelope_step_size
+      atm_step_begin = star%ctrl%atm_step_size
+      atm_step_min = star%ctrl%atm_step_size
+      atm_step_max = star%ctrl%atm_step_size
+      env_step_begin = star%ctrl%envelope_step_size
+      env_step_min = star%ctrl%envelope_step_size
+      env_step_max = star%ctrl%envelope_step_size
       idum = 0
       b = dexp(ln10*log_luminosity_lsun)
       fpl = shape_factor_fp(m)
@@ -145,10 +145,10 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       plim = log_pressure(m)
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-      if(convective_flag(m).and.spot_filling_factor.ne.0.0.and. &
-           spot_temp_contrast.ne.1.0)then
-          ateffl = log_teff - 0.25*log10(spot_filling_factor* &
-               spot_temp_contrast**4.0+1.0-spot_filling_factor)
+      if(convective_flag(m).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
+           star%ctrl%spot_temp_contrast.ne.1.0)then
+          ateffl = log_teff - 0.25*log10(star%ctrl%spot_filling_factor* &
+               star%ctrl%spot_temp_contrast**4.0+1.0-star%ctrl%spot_filling_factor)
       else
           ateffl = log_teff
       end if

@@ -86,6 +86,7 @@ atm/envstruct_lib.o atm/atmstruct_lib.o: | state/star_info_lib.o
 io/yrec_output.o: | const/const_lib.o const/luout_lib.o state/star_info_lib.o \
 	core/envint_lib.o atm/envstruct_lib.o atm/atmstruct_lib.o
 numerics/numerics_lib.o: | const/const_lib.o const/intpar_lib.o \
+	state/star_info_lib.o \
 	const/luout_lib.o
 # star_info embeds the generated controls_state component list
 state/star_info_lib.o: state/controls_state_def.inc
@@ -93,7 +94,7 @@ state/star_info_lib.o: | eos/scv_eos_lib.o eos/eos_mixture_lib.o \
 	kap/conductive_table_lib.o
 net/net_lib.o: | const/const_lib.o state/star_info_lib.o \
 	const/luout_lib.o numerics/numerics_lib.o
-eos/eos_lib.o: | const/const_lib.o eos/opal_eos_lib.o \
+eos/eos_lib.o: | const/const_lib.o state/star_info_lib.o eos/opal_eos_lib.o \
 	eos/scv_eos_lib.o eos/eos_mixture_lib.o \
 	eos/yale_eos_lib.o const/luout_lib.o
 kap/kap_lib.o: | const/const_lib.o state/star_info_lib.o \

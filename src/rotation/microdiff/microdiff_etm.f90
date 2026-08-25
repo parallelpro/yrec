@@ -74,7 +74,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          end do
       endif
 ! G SOMERS 5/15; ADD LIGHT ELEMENT DIFFUSION
-      if(ldifli)then
+      if(star%ctrl%ldifli)then
          do kk = 1,num_light
             x_min_floor = 0.0d0
             do i = zone_begin,1,-1
@@ -131,7 +131,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
             composition(2,i)=1.0d0-composition(1,i)-composition(3,i)-composition(4,i)
          endif
 ! GES 5/15 ADDED LIGHT ELEMENT DIFFUSION
-         if(ldifli)then
+         if(star%ctrl%ldifli)then
             do kk = 1,num_light
                ii = light_element_id(kk)
                dxmod = facinterp(1)*eq_delta_light(kk,k0)+ &
@@ -164,7 +164,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          end do
       endif
 ! GES 5/15 LIGHT ELEMENT DIFFUSION
-      if(ldifli)then
+      if(star%ctrl%ldifli)then
          do kk = 1,num_light
             do i = zone_end,num_zones
                ii = light_element_id(kk)

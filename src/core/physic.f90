@@ -90,7 +90,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       in_atmosphere = .false.
       idt = 15
       do i = 1,4
-         idd(i) = 5
+         star%ctrl%idd(i) = 5
       end do
       do im = 1,num_zones
          log10_mass = log_mass(im)

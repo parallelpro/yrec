@@ -247,7 +247,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
        total_luminosity_terms = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
             star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
             star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
-       if (.not.helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
+       if (.not.star%ctrl%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
           temp = star%luminosity_lsun(star%nz)/total_luminosity_terms
           do j = 1,8
@@ -257,10 +257,10 @@ subroutine crrect(delta_time, max_iterations, converged, &
 ! CHECK ON SIGNIFICANCE OF R.H.S. EQUATIONS FOR P AND T
 ! N.B.  DOES NOT CHECK DIFFERENCES IN BOUNDARY EQUATIONS
        if (iter.gt.1) then
-          if (star%max_residual(1).le.htoler(5,1) .and. &
-               star%max_residual(2).le.htoler(5,2) .and. &
-               star%max_residual(3).le.htoler(5,1) .and. &
-               star%max_residual(4).le. htoler(5,2)) then
+          if (star%max_residual(1).le.star%ctrl%htoler(5,1) .and. &
+               star%max_residual(2).le.star%ctrl%htoler(5,2) .and. &
+               star%max_residual(3).le.star%ctrl%htoler(5,1) .and. &
+               star%max_residual(4).le. star%ctrl%htoler(5,2)) then
              write(short_file_unit,20) (star%max_residual(j),j=1,4)
    20          format(' R.H.S. BELOW TOLERANCES--P',1PE9.2,'  T ',E9.2, &
              '  R ',E9.2,'  L ',E9.2)
@@ -315,31 +315,31 @@ subroutine crrect(delta_time, max_iterations, converged, &
 ! LFINI = T IF MAX CORRECTIONS LESS THAN CONVERGENCE CRITERIA SET IN
 ! HTOLER. LARGE = T IF MAX CORRECTIONS GREATER THAN LARGEST CORRECTIONS
 ! ALLOWED, ALSO SET IN HTOLER
-       converged = star%max_residual(1).lt.htoler(1,1) .and. &
-            star%max_residual(2).lt.htoler(2,1) &
-         .and. star%max_residual(3).lt.htoler(3,1) .and. &
-         star%max_residual(4).lt.htoler(4,1)
-       corrections_too_large = star%max_residual(1).gt.htoler(1,2) .or. &
-            star%max_residual(2).gt.htoler(2,2) &
-         .or. star%max_residual(3).gt.htoler(3,2) .or. &
-         star%max_residual(4).gt.htoler(4,2)
+       converged = star%max_residual(1).lt.star%ctrl%htoler(1,1) .and. &
+            star%max_residual(2).lt.star%ctrl%htoler(2,1) &
+         .and. star%max_residual(3).lt.star%ctrl%htoler(3,1) .and. &
+         star%max_residual(4).lt.star%ctrl%htoler(4,1)
+       corrections_too_large = star%max_residual(1).gt.star%ctrl%htoler(1,2) .or. &
+            star%max_residual(2).gt.star%ctrl%htoler(2,2) &
+         .or. star%max_residual(3).gt.star%ctrl%htoler(3,2) .or. &
+         star%max_residual(4).gt.star%ctrl%htoler(4,2)
        do j = 1,4
           max_correction_pos = star%max_correction_index(j)
           star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
        end do
-       if (fcorr0.gt.0.0d0) fcorr = dmin1(1.d0,fcorr+fcorri)
+       if (star%ctrl%fcorr0.gt.0.0d0) fcorr = dmin1(1.d0,fcorr+star%ctrl%fcorri)
 ! HE FLASH CHANGE
        correction_factor = fcorr
-       if (helium_flash_active) then
+       if (star%ctrl%helium_flash_active) then
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
        endif
        hydrogen_burn_luminosity = star%luminosity_breakdown(i_lum_pp1) + star%luminosity_breakdown(i_lum_pp2) &
             + star%luminosity_breakdown(i_lum_pp3) + star%luminosity_breakdown(i_lum_cno)
        helium_burn_luminosity= star%luminosity_breakdown(i_lum_3alpha) + star%luminosity_breakdown(i_lum_he_c)
-       if (lcorr) then
+       if (star%ctrl%lcorr) then
           write (short_file_unit,60) converged,star%max_residual(4), &
-               htoler(4,1),star%max_correction_index(4)
+               star%ctrl%htoler(4,1),star%max_correction_index(4)
    60       format (1X,'DEL-L/L  ',L2,1P2E12.4,5X,I5)
           write(short_file_unit,70)(star%max_correction_index(j),star%max_residual(j), &
                j=1,4),correction_factor,hydrogen_burn_luminosity, &

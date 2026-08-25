@@ -57,7 +57,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
       double precision :: surface_z_over_x, tcen, pcen, dcen, yini, zini
 
 !  STORE LAST CONVERGED MODEL IN LOGICAL UNIT IMONTE2
-      iwrite = monte_carlo_unit2
+      iwrite = star%ctrl%monte_carlo_unit2
       call wrtlst(iwrite,hcomp,hd,hl,hp,hr,hs,ht,lc,trial_log_temperature, &
            trial_log_luminosity,fit_point_pressure,fit_point_temperature, &
            fit_point_radius,envelope_fit_coeffs,trial_sign_flag, &
@@ -68,7 +68,7 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
 !  SURFACE Z/X
       surface_z_over_x = hcomp(3,m)/hcomp(1,m)
 !  HEADER FILE:  MONTE CARLO PARAMETERS
-      write(monte_carlo_unit1,10)monte_carlo_run_number,star%run%s11_rate(monte_carlo_run_number), &
+      write(star%ctrl%monte_carlo_unit1,10)monte_carlo_run_number,star%run%s11_rate(monte_carlo_run_number), &
               star%run%s33_rate(monte_carlo_run_number),star%run%s34_rate(monte_carlo_run_number), &
               star%run%s17_rate(monte_carlo_run_number), &
               star%run%metal_to_h_ratio(monte_carlo_run_number),star%run%helium_fraction_param(monte_carlo_run_number), &
@@ -77,32 +77,32 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
    10 format(I7,1P9E10.3)
 !  #OF RUNS NEEDED FOR A CONVERGED MODEL, INITIAL X
 !  AND ALPHA, FINAL DL/DX,DR/DX,DL/D ALPHA, DR/D ALPHA
-      write(monte_carlo_unit1,20)convergence_iterations,star%run%dlum_dx,star%run%drad_dx, &
+      write(star%ctrl%monte_carlo_unit1,20)convergence_iterations,star%run%dlum_dx,star%run%drad_dx, &
            star%run%dlum_dalpha,star%run%drad_dalpha
 !      WRITE(IMONTE1,20)ICONV,XGUESS,AGUESS,DLDX,DRDX,DLDA,DRDA
 ! 20   FORMAT(1X,I2,2F10.6,1P4E11.4)
  20   format(1X,I2,1P4E11.4)
 !  NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
-      write(monte_carlo_unit1,30) star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(j),j=1,8)
+      write(star%ctrl%monte_carlo_unit1,30) star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(j),j=1,8)
  30   format(1X,2F8.3,1P8E10.3)
 !  SUMMARY OF STRUCTURE : TC, RHOC, PC, XC, ZC (ADD MU C)
       tcen = 10.0d0**(star%run%central_log10_temperature-6.0d0)
       pcen = 10.0d0**(star%run%central_log10_pressure-17.0d0)
       dcen = 10.0d0**star%run%central_log10_density
-      write(monte_carlo_unit1,40)tcen,dcen,pcen,hcomp(1,1),hcomp(3,1)
+      write(star%ctrl%monte_carlo_unit1,40)tcen,dcen,pcen,hcomp(1,1),hcomp(3,1)
  40   format(1X,F7.3,F7.2,F6.3,2F8.5)
 !  #SHELLS, INITIAL ALPHA, Y, Z; FINAL R, L
-      yini = 1.0d0 - rescale_params(2,run_index-2) - rescale_params(3,run_index-2)
-      zini = rescale_params(3,run_index-2)
-      write(monte_carlo_unit1,50)m,mixing_length_array(run_index),yini,zini, &
+      yini = 1.0d0 - star%ctrl%rescale_params(2,run_index-2) - star%ctrl%rescale_params(3,run_index-2)
+      zini = star%ctrl%rescale_params(3,run_index-2)
+      write(star%ctrl%monte_carlo_unit1,50)m,star%ctrl%mixing_length_array(run_index),yini,zini, &
            log_luminosity,local_log_radius
  50   format(I5,F7.4,2F8.5,1P2E10.3)
 !  CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)
-      write(monte_carlo_unit1,60)star%run%envelope_radius,star%run%envelope_mass,hcomp(2,m), &
+      write(star%ctrl%monte_carlo_unit1,60)star%run%envelope_radius,star%run%envelope_mass,hcomp(2,m), &
            hcomp(3,m),surface_z_over_x
  60   format(F8.5,F9.6,2F8.5,F9.6)
 !  ENERGY GENERATION FRACTIONS PP I,II,III,CNO,EGRAV
-      write(monte_carlo_unit1,70)(luminosity_breakdown(j),j=1,4),luminosity_breakdown(i_lum_grav)
+      write(star%ctrl%monte_carlo_unit1,70)(luminosity_breakdown(j),j=1,4),luminosity_breakdown(i_lum_grav)
  70   format(1P5E10.3)
       return
 end subroutine wrtmonte

@@ -98,7 +98,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
        is_convective = .false.
        actual_gradient = radiative_gradient
        convective_velocity=0.0d0
-         if (ladov .and. iovim.ge.iov1 .and. iovim.le.iov2 &
+         if (star%ctrl%ladov .and. iovim.ge.iov1 .and. iovim.le.iov2 &
              .and. iovim.ne.-1) then
             actual_gradient = adiabatic_gradient
          end if
@@ -110,7 +110,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
       is_convective = .true.
       actual_gradient = adiabatic_gradient
 ! SKIP MIXING LENGTH THEORY FOR CORES
-      if(log_temperature.gt.tgcut) then
+      if(log_temperature.gt.star%ctrl%tgcut) then
          convective_velocity = 1.0d-11
        if(want_derivatives) then
 ! DERIVATIVES OF CONVECTIVE GRADIENT
@@ -141,16 +141,16 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 ! This flux alters DELR, so recalculate DELDEL with the correction. Only
 ! do this if the spot filling factor is non-zero, and the envelope is
 ! convective.
-      if(spot_filling_factor .ne. 0.00)then
-         if(spot_depth_varies)then
-            ateffl = log_teff - 0.25*log10(spot_filling_factor * &
-                 spot_temp_contrast**4.0 + 1.0 - spot_filling_factor)
-            deepx = 1.0 - (1.0 - spot_temp_contrast)*(10.**ateffl)/(10.**log_temperature)
+      if(star%ctrl%spot_filling_factor .ne. 0.00)then
+         if(star%ctrl%spot_depth_varies)then
+            ateffl = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
+                 star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
+            deepx = 1.0 - (1.0 - star%ctrl%spot_temp_contrast)*(10.**ateffl)/(10.**log_temperature)
          else
-            deepx = spot_temp_contrast
+            deepx = star%ctrl%spot_temp_contrast
          endif
-         deldel = radiative_gradient/(spot_filling_factor * deepx**4.0 + &
-              1.0 - spot_filling_factor) - adiabatic_gradient
+         deldel = radiative_gradient/(star%ctrl%spot_filling_factor * deepx**4.0 + &
+              1.0 - star%ctrl%spot_filling_factor) - adiabatic_gradient
       endif
 ! G Somers END
       g = dexp(ln10*(cgl + log_mass - log_radius - log_radius))

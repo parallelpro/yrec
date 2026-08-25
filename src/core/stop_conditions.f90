@@ -49,9 +49,9 @@ contains
 ! end age. Used after a step: the kind card is done.
 logical function reached_end_age(nk)
       integer, intent(in) :: nk
-      reached_end_age = end_age_stop_active(nk) .and. &
-           target_end_age(nk).gt.0.0d0 .and. &
-           (target_end_age(nk)-star%run%dage*1.0d9).le.1.0d0
+      reached_end_age = star%ctrl%end_age_stop_active(nk) .and. &
+           star%ctrl%target_end_age(nk).gt.0.0d0 .and. &
+           (star%ctrl%target_end_age(nk)-star%run%dage*1.0d9).le.1.0d0
 end function reached_end_age
 
 ! ---------------------------------------------------------------
@@ -60,9 +60,9 @@ end function reached_end_age
 ! and sound-speed output.
 logical function approaching_end_age(nk)
       integer, intent(in) :: nk
-      approaching_end_age = end_age_stop_active(nk) .and. &
-           target_end_age(nk).gt.0.0d0 .and. &
-           abs(target_end_age(nk)-star%run%dage*1.0d9-star%evo%timestep_yr) &
+      approaching_end_age = star%ctrl%end_age_stop_active(nk) .and. &
+           star%ctrl%target_end_age(nk).gt.0.0d0 .and. &
+           abs(star%ctrl%target_end_age(nk)-star%run%dage*1.0d9-star%evo%timestep_yr) &
            .le.1.0d0
 end function approaching_end_age
 
@@ -74,7 +74,7 @@ logical function abundance_stop_triggered(nk)
       integer :: k
       abundance_stop_triggered = .false.
       do k = 1, nstops
-         if (end_age_stop_active(nk) .and. stop_value(k,nk).gt.0.0d0 .and. &
+         if (star%ctrl%end_age_stop_active(nk) .and. stop_value(k,nk).gt.0.0d0 .and. &
              star%xa(stop_species(k),1).lt.stop_value(k,nk)) then
             write(*,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
                  star%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
@@ -93,7 +93,7 @@ end function abundance_stop_triggered
 subroutine disarm_satisfied_stops(nk)
       integer, intent(in) :: nk
       integer :: k
-      if (.not. end_age_stop_active(nk)) return
+      if (.not. star%ctrl%end_age_stop_active(nk)) return
       do k = 1, nstops
          if (stop_value(k,nk).gt.0.0d0 .and. &
              star%xa(stop_species(k),1).lt.stop_value(k,nk)) then
@@ -113,9 +113,9 @@ end subroutine disarm_satisfied_stops
 double precision function stop_value(k, nk)
       integer, intent(in) :: k, nk
       select case (k)
-      case (1);      stop_value = central_deuterium_stop(nk)
-      case (2);      stop_value = central_hydrogen_stop(nk)
-      case default;  stop_value = central_helium_stop(nk)
+      case (1);      stop_value = star%ctrl%central_deuterium_stop(nk)
+      case (2);      stop_value = star%ctrl%central_hydrogen_stop(nk)
+      case default;  stop_value = star%ctrl%central_helium_stop(nk)
       end select
 end function stop_value
 
@@ -123,9 +123,9 @@ subroutine set_stop_value(k, nk, val)
       integer, intent(in) :: k, nk
       double precision, intent(in) :: val
       select case (k)
-      case (1);      central_deuterium_stop(nk) = val
-      case (2);      central_hydrogen_stop(nk) = val
-      case default;  central_helium_stop(nk) = val
+      case (1);      star%ctrl%central_deuterium_stop(nk) = val
+      case (2);      star%ctrl%central_hydrogen_stop(nk) = val
+      case default;  star%ctrl%central_helium_stop(nk) = val
       end select
 end subroutine set_stop_value
 

@@ -110,9 +110,9 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       endif
 ! COMPUTE MAXIMUM TIMESTEP BASED ON NOT REMOVING TOO MUCH MASS FROM THE
 ! SURFACE CZ (FCZDMDT) OR AS A FRACTION OF THE TOTAL MASS (FTOTDMDT)
-      timestep_limit_total_mass = ftotdmdt*total_mass_msun*star%solar_mass_cgs/ &
+      timestep_limit_total_mass = star%ctrl%ftotdmdt*total_mass_msun*star%solar_mass_cgs/ &
            mass_loss_rate_cgs
-      timestep_limit_cz_mass = fczdmdt*cz_mass_grams/mass_loss_rate_cgs
+      timestep_limit_cz_mass = star%ctrl%fczdmdt*cz_mass_grams/mass_loss_rate_cgs
       timestep_limit = min(timestep_limit_total_mass,timestep_limit_cz_mass)
 ! RESTRICT TIMESTEP TO ADD NO MORE THAN 1/2 OF THE CURRENT MASS
 ! BEYOND THE FITTING POINT TO THE STAR.
@@ -196,17 +196,17 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       if(rotation_active .and. delta_mass_cgs.lt.0.0d0)then
 ! MOMENT OF INERTIA PER UNIT MASS AT THE SURFACE.
          surface_moment_of_inertia_per_mass = 2.0d0/3.0d0*total_radius_cm**2
-         if(walpcz.ge.0.0d0)then
+         if(star%ctrl%walpcz.ge.0.0d0)then
 ! SOLID BODY CZ ROTATION
             delta_angular_momentum = omega(num_zones)* &
                  surface_moment_of_inertia_per_mass*delta_mass_cgs
-         else if(walpcz.le.-2.0d0)then
+         else if(star%ctrl%walpcz.le.-2.0d0)then
 ! CONSTANT J/M
             delta_angular_momentum = specific_angular_momentum(num_zones)* &
                  delta_mass_cgs
          else
             surface_omega_local = omega(num_zones)*10.0d0** &
-                 (log_radius(num_zones)*walpcz)/total_radius_cm**walpcz
+                 (log_radius(num_zones)*star%ctrl%walpcz)/total_radius_cm**star%ctrl%walpcz
             delta_angular_momentum = surface_omega_local* &
                  surface_moment_of_inertia_per_mass*delta_mass_cgs
          endif
@@ -270,7 +270,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       if(delta_mass_cgs.gt.0.0d0)then
          do species_idx = 1,11
             mixed_abundance = (composition(species_idx,envelope_boundary_zone)* &
-                 cz_mass_below_fitting+accreted_composition(species_idx)* &
+                 cz_mass_below_fitting+star%ctrl%accreted_composition(species_idx)* &
                  delta_mass_cgs)/(delta_mass_cgs+cz_mass_below_fitting)
             do zone_idx = envelope_boundary_zone,num_zones
                composition(species_idx,zone_idx) = mixed_abundance

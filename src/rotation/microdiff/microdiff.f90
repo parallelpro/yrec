@@ -58,6 +58,7 @@
 subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, convective_flag, &
      num_zones, total_mass)
+      use star_info_lib, only: star
       use star_info_lib, only: json
 
       use luout_lib
@@ -218,7 +219,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !----------------------------------------------------------------------
 !
 !     DIFFUSE LIGHT ELEMENTS.
-      if(ldifli)then
+      if(star%ctrl%ldifli)then
 !        ITERATE OVER THE DIFFUSION ROUTINES FOR EACH LIGHT ELEMENT.
          species_col = 3
          do ii = 1,num_light

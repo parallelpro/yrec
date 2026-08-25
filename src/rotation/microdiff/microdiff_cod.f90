@@ -27,6 +27,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
      eq_density, eq_temperature, eq_dlnp_dr, eq_del_grad, diffusion_coeff1, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col)
+      use star_info_lib, only: star
 
       use star_info_lib
       use const_lib
@@ -150,7 +151,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
 !         FAC=HRU_I**2*HTU_I**2.5D0/LN_LAMBDA
          fac=hru_i**2*htu_i**2.5d0/ln_lambda
          if(species_col.eq.1)then
-            fac=fgry*hru_i**2*htu_i**2.5d0/ln_lambda
+            fac=star%ctrl%fgry*hru_i**2*htu_i**2.5d0/ln_lambda
          endif
          if(species_col.eq.3)then
             fac=fgrz*hru_i**2*htu_i**2.5d0/ln_lambda

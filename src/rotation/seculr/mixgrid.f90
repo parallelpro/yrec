@@ -139,10 +139,10 @@ subroutine mixgrid(diffusion_coeff, log_density, log_luminosity, &
       call osplin(star%rot%xval, equally_spaced_diffusion_coeff, star%rot%xtab, star%rot%ytab, ntabb, &
            star%rot%ntot)
 ! PRODUCT OF RHO R^2 BY D CHI/DR
-      mass_scale = chi_grid_scale(2)
-      luminosity_scale = chi_grid_scale(9)*log_luminosity(num_zones)* &
+      mass_scale = star%ctrl%chi_grid_scale(2)
+      luminosity_scale = star%ctrl%chi_grid_scale(9)*log_luminosity(num_zones)* &
            star%solar_luminosity_cgs
-      pressure_scale = chi_grid_scale(11)
+      pressure_scale = star%ctrl%chi_grid_scale(11)
       do idx = 1, ntab
          search_idx = zone_begin + idx - 1
          star%rot%xtab(idx) = star%rot%chi(idx)

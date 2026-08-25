@@ -223,8 +223,8 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
       star%rot%ytab(ntabb) = mixing_diffusion_coeff(zone_end)
       call osplin(star%rot%xval,eq_mixing_diffusion_coeff,star%rot%xtab,star%rot%ytab,ntabb,star%rot%ntot)
 ! ADD DIFFUSION PLUS ADVECTION TREATMENT IF DESIRED
-      if (use_diffusion_advection_transport) then
-         scale_factor = 0.2d0*c4pi*difad_velocity_scale
+      if (star%ctrl%use_diffusion_advection_transport) then
+         scale_factor = 0.2d0*c4pi*star%ctrl%difad_velocity_scale
          star%rot%ytab(1) = scale_factor*star%rot%es_advective_velocity(zone_begin + 1)
          do i = 2,ntab
             ii = zone_begin + i - 1
@@ -251,10 +251,10 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
          end do
       end if
 ! PRODUCT OF RHO R^2 BY D CHI/DR
-      mass_scale_factor = chi_grid_scale(2)
-      luminosity_scale_factor = chi_grid_scale(9)*log_luminosity(num_zones)* &
+      mass_scale_factor = star%ctrl%chi_grid_scale(2)
+      luminosity_scale_factor = star%ctrl%chi_grid_scale(9)*log_luminosity(num_zones)* &
            star%solar_luminosity_cgs
-      pressure_scale_factor = chi_grid_scale(11)
+      pressure_scale_factor = star%ctrl%chi_grid_scale(11)
       do i = 1, ntab
          ii = zone_begin + i - 1
          star%rot%xtab(i) = star%rot%chi(i)
@@ -290,7 +290,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
          eq_am_diffusion_coeff(i) = eq_am_diffusion_coeff(i)*exp(ln10*star%rot%yval(i))
       end do
 ! MHP 05/02
-      if (use_diffusion_advection_transport) then
+      if (star%ctrl%use_diffusion_advection_transport) then
          do i = 1,star%rot%ntot
             star%rot%am_advective_coeff(i) = star%rot%am_advective_coeff(i)*exp(ln10*star%rot%yval(i))
             star%rot%am_diffusive_coeff(i) = star%rot%am_diffusive_coeff(i)*exp(ln10*star%rot%yval(i))

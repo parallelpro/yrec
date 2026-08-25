@@ -108,38 +108,38 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       if (use_debye_huckel_correction) eos_flag='SAH+DH'
       if (use_scv_eos) then
          eos_flag='SCV   '
-         if (use_opal95_eos) eos_flag='SCV+OP'
-         if (use_opal2001_eos) eos_flag='SCV+O1'
+         if (star%ctrl%use_opal95_eos) eos_flag='SCV+OP'
+         if (star%ctrl%use_opal2001_eos) eos_flag='SCV+O1'
          if (use_debye_huckel_correction) then
-         if (use_opal2006_eos) eos_flag='SCV+O6'
+         if (star%ctrl%use_opal2006_eos) eos_flag='SCV+O6'
             eos_flag='SCV+DH'
-            if (use_opal95_eos) eos_flag='SCVDHO'
-            if (use_opal2001_eos) eos_flag='SCDHO1'
-            if (use_opal2006_eos) eos_flag='SCDHO6'
+            if (star%ctrl%use_opal95_eos) eos_flag='SCVDHO'
+            if (star%ctrl%use_opal2001_eos) eos_flag='SCDHO1'
+            if (star%ctrl%use_opal2006_eos) eos_flag='SCDHO6'
          endif
       else
-         if (use_opal95_eos) then
+         if (star%ctrl%use_opal95_eos) then
             eos_flag='OPAL  '
             if (use_debye_huckel_correction) eos_flag='OPA+DH'
          endif
-         if (use_opal2001_eos) then
+         if (star%ctrl%use_opal2001_eos) then
             eos_flag='OPAL01'
             if (use_debye_huckel_correction) eos_flag='OP1+DH'
          endif
-         if (use_opal2006_eos) then
+         if (star%ctrl%use_opal2006_eos) then
             eos_flag='OPAL06'
             if (use_debye_huckel_correction) eos_flag='OP6+DH'
          endif
       endif
 ! Determine low temperature opacities flag, LOK
       low_temp_opacity_flag='NONE'
-      if (use_alex95_tables) low_temp_opacity_flag='ALEX'
-      if (use_kurucz90_tables) low_temp_opacity_flag='KURZ'
+      if (star%ctrl%use_alex95_tables) low_temp_opacity_flag='ALEX'
+      if (star%ctrl%use_kurucz90_tables) low_temp_opacity_flag='KURZ'
 ! Determine high temperature opacities flag, HIK
       high_temp_opacity_flag='NONE'
-      if (use_opal95_tables) high_temp_opacity_flag='OP95'
-      if (use_opal92_tables) high_temp_opacity_flag='OP92'
-      if (use_laol89_tables) high_temp_opacity_flag='LL89'
+      if (star%ctrl%use_opal95_tables) high_temp_opacity_flag='OP95'
+      if (star%ctrl%use_opal92_tables) high_temp_opacity_flag='OP92'
+      if (star%ctrl%use_laol89_tables) high_temp_opacity_flag='LL89'
 
       if(atmosphere_flag .eq. ' ? ') then
          write(short_file_unit,7)
@@ -149,7 +149,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 
 ! 09/25 JvS: Add secondary format option that prints stitched interior and envelope
 ! points. Output is either in the old format or new format, not both.
-      if(lstch)then
+      if(star%ctrl%lstch)then
           if(lphhd)then
             write(istor,1013) ! header key
           ! write model physics header. Should only happen upon first model output.
@@ -160,8 +160,8 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
            diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
            envelope_overshoot_active,lovstm,rotation_active, &
            instability_transport_active,ljdot0,disk_locking_active, &
-           disk_temperature,disk_pressure,wind_saturation_omega,lstore,lstatm,lstenv, &
-           lstmod,lstphys,lstrot
+           disk_temperature,disk_pressure,wind_saturation_omega,star%ctrl%lstore,lstatm,star%ctrl%lstenv, &
+           star%ctrl%lstmod,star%ctrl%lstphys,star%ctrl%lstrot
    29      format('#',2I8,F16.10,1X,A6,1X,3(A4,1X),L1,1X,A4,1X,11(L1,1X), &
            3(1PE18.10),1X,6(L1,1X))
            write(istor,1014) ! profile header
@@ -215,8 +215,8 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
            diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
            envelope_overshoot_active,lovstm,rotation_active, &
            instability_transport_active,ljdot0,disk_locking_active, &
-           disk_temperature,disk_pressure,wind_saturation_omega,lstore,lstatm,lstenv, &
-           lstmod,lstphys,lstrot
+           disk_temperature,disk_pressure,wind_saturation_omega,star%ctrl%lstore,lstatm,star%ctrl%lstenv, &
+           star%ctrl%lstmod,star%ctrl%lstphys,star%ctrl%lstrot
    30 format(2I8,F16.10,1X,A6,1X,3(A4,1X),L1,1X,A4,1X,11(L1,1X), &
            3(1PE18.10),1X,6(L1,1X))
 
@@ -249,7 +249,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 
       call pindex(jxbeg,jxend,lshell,num_shells,id,idm)
 
-      if(lstmod)then
+      if(star%ctrl%lstmod)then
 ! write column headings for all per shell information
          write(istor,55)
  55      format(/, &
@@ -275,7 +275,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
                  log_temperature(i),log_density(i),omega(i), &
                  convective_flag(i),(composition(j,i),j=1,15)
 ! write out additional physics if desired
-            if(lstphys)then
+            if(star%ctrl%lstphys)then
              sg = dexp(ln10*(cgl - 2.0D0*log_radius(i)))*mass_coordinate(i)
                write(istor,63,advance='no') star%diag%so(i),sg,star%diag%del_grad(i_grad_rad,i),star%diag%del_grad(i_grad_actual,i), &
                  star%diag%del_grad(i_grad_ad,i),star%diag%svel(i),star%run%adiabatic_index_gamma1(i),0.0,0.0,0.0,star%diag%sbeta(i),star%diag%seta(i), &
@@ -288,7 +288,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
                  0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
             endif
 ! write out additional rotation info if desired
-            if(lstrot.and.rotation_active)then
+            if(star%ctrl%lstrot.and.rotation_active)then
              fm = dexp(ln10*log_mass(i))
              duma = cc13*omega(i)**2/(local_g_const*fm)*5.D0/(2.D0+rotation_eta2(i))
              oblateness_a = duma * radius_ratio_r0(i)**3
@@ -315,7 +315,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       endif
 ! now call wrtmod, with the goal of outputting the envelope and atmosphere, or
 ! if required by LPULSE.
-      if(lstatm.or.lstenv)then
+      if(lstatm.or.star%ctrl%lstenv)then
        if(lmilne_local) call wrtmil(composition,log_density,log_luminosity, &
             log_pressure,log_radius,mass_coordinate,num_shells,model_number)
          call wrtmod(num_shells,envelope_cz_bottom_index,composition, &

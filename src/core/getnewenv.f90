@@ -18,6 +18,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag)
+      use star_info_lib, only: star
       use atm_lib
       use envint_lib, only: atm_get
       use star_info_lib
@@ -113,9 +114,9 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       env_max_saved = env_step_max
       env_min_saved = env_step_min
       env_begin_saved = env_step_begin
-      env_step_max = chi_grid_scale(8)
-      env_step_min = chi_grid_scale(8)
-      env_step_begin = chi_grid_scale(8)
+      env_step_max = star%ctrl%chi_grid_scale(8)
+      env_step_min = star%ctrl%chi_grid_scale(8)
+      env_step_begin = star%ctrl%chi_grid_scale(8)
       surface_bc_flag = .false.
       print_flag = .true.
       katm = 0
@@ -157,10 +158,10 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       atm_get_unused_flag = 0
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-      if(convective_flag(num_zones).and.spot_filling_factor.ne.0.0.and. &
-           spot_temp_contrast.ne.1.0)then
-         spot_adjusted_log_teff = log_teff - 0.25*log10(spot_filling_factor * &
-              spot_temp_contrast**4.0 + 1.0 - spot_filling_factor)
+      if(convective_flag(num_zones).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
+           star%ctrl%spot_temp_contrast.ne.1.0)then
+         spot_adjusted_log_teff = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
+              star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
       else
          spot_adjusted_log_teff = log_teff
       endif
@@ -315,14 +316,14 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 ! FIRST GUESS AT THE ROTATION RATES; ASSIGN A
 ! VECTOR OF OMEGA SUCH THAT
 ! OMEGA*R**WALPCZ = CONSTANT.
-         if(walpcz.le.-2.0D0)then
+         if(star%ctrl%walpcz.le.-2.0D0)then
 ! CONSTANT J/M
             do zone_index = old_num_zones+1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum(old_num_zones)
                moment_of_inertia(zone_index) = cc23*10.0D0**(2.0D0*log_radius(zone_index))
                omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
             end do
-         else if(walpcz.ge.0.0D0)then
+         else if(star%ctrl%walpcz.ge.0.0D0)then
 ! SOLID BODY ROTATION
             do zone_index = old_num_zones+1,num_zones
                omega(zone_index) = omega(old_num_zones)
@@ -331,9 +332,9 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
             end do
          else
 ! GENERAL CASE
-            omega_ref = omega(old_num_zones)*10.0D0**(log_radius(old_num_zones)*walpcz)
+            omega_ref = omega(old_num_zones)*10.0D0**(log_radius(old_num_zones)*star%ctrl%walpcz)
             do zone_index = old_num_zones+1,num_zones
-               omega(zone_index) = omega_ref/10.0D0**(log_radius(zone_index)*walpcz)
+               omega(zone_index) = omega_ref/10.0D0**(log_radius(zone_index)*star%ctrl%walpcz)
                moment_of_inertia(zone_index) = cc23*10.0D0**(2.0D0*log_radius(zone_index))
                specific_angular_momentum(zone_index) = omega(zone_index)*moment_of_inertia(zone_index)
             end do

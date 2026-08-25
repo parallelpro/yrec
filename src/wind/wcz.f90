@@ -20,6 +20,7 @@
 subroutine wcz(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, istart, iend, eta_squared, moment_of_inertia, &
      omega, qiw, mean_radius, num_zones)
+      use star_info_lib, only: star
       use star_info_lib, only: json
       use const_lib
       implicit none
@@ -44,12 +45,12 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
 ! ZONE EVEN IF WALPCZ IS TURNED ON (I.E. WALPCZ NOW ONLY AFFECTS
 ! SURFACE CONVECTION ZONES)
 
-      if((walpcz.ge.0.0d0) .or. (iend.lt.num_zones)) then
+      if((star%ctrl%walpcz.ge.0.0d0) .or. (iend.lt.num_zones)) then
 !  SOLID BODY ROTATION IN CONVECTIVE REGIONS.
          call solid(log_density,specific_angular_momentum,log_radius, &
               log_mass,shell_mass,istart,iend,eta_squared, &
               moment_of_inertia,omega,qiw,mean_radius,num_zones)
-      else if(walpcz.le.-2.0d0)then
+      else if(star%ctrl%walpcz.le.-2.0d0)then
 !  CONSTANT SPECIFIC ANGULAR MOMENTUM PER UNIT MASS IN THE C.Z.
 !  FIND TOTAL MASS AND ANGULAR MOMENTUM OF C.Z.
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
@@ -79,19 +80,19 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
 !  MASS).
 !  FIND TOTAL MASS AND ANGULAR MOMENTUM OF C.Z.
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
-         cz_total_mass = dexp(ln10*walpcz*log_radius(istart))* &
+         cz_total_mass = dexp(ln10*star%ctrl%walpcz*log_radius(istart))* &
               moment_of_inertia(istart)
          do zone_idx = istart+1,iend
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + &
-                 dexp(ln10*walpcz*log_radius(zone_idx))* &
+                 dexp(ln10*star%ctrl%walpcz*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
          end do
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
          power_law_norm = cz_total_am/cz_total_mass
          do zone_idx = istart,iend
-            omega(zone_idx) = power_law_norm*dexp(ln10*walpcz* &
+            omega(zone_idx) = power_law_norm*dexp(ln10*star%ctrl%walpcz* &
                  log_radius(zone_idx))
             specific_angular_momentum(zone_idx) = omega(zone_idx)* &
                  moment_of_inertia(zone_idx)/shell_mass(zone_idx)

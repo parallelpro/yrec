@@ -100,34 +100,34 @@ program test_eos
 
 ! unit numbers, per core/parmin.f90
       short_file_unit = 20
-      fermi_unit = 15
-      scv_h_unit = 72
-      scv_he_unit = 73
-      scv_z_unit = 74
-      iopale = 49
+      star%ctrl%fermi_unit = 15
+      star%ctrl%scv_h_unit = 72
+      star%ctrl%scv_he_unit = 73
+      star%ctrl%scv_z_unit = 74
+      star%ctrl%iopale = 49
       open(short_file_unit, file="test_eos.short", status="replace")
 
 ! eos configuration
-      use_mhd_eos = .false.
+      star%ctrl%use_mhd_eos = .false.
       use_scv_eos = .true.
-      use_opal95_eos = .false.
-      use_opal2001_eos = .false.
-      use_opal2006_eos = .true.
+      star%ctrl%use_opal95_eos = .false.
+      star%ctrl%use_opal2001_eos = .false.
+      star%ctrl%use_opal2006_eos = .true.
       use_diffusion_z = .false.
-      use_numerical_derivatives = .false.
+      star%ctrl%use_numerical_derivatives = .false.
       use_debye_huckel_correction = .false.
-      saha_log10t_cutoff = 6.0d0
+      star%ctrl%saha_log10t_cutoff = 6.0d0
 
 ! kap/atm gated off so setups' kap_init/atm_init are no-ops
-      use_opal95_tables = .false.
-      use_opal92_tables = .false.
-      use_laol89_tables = .false.
-      use_alex06_tables = .false.
-      use_alex95_tables = .false.
-      use_kurucz90_tables = .false.
+      star%ctrl%use_opal95_tables = .false.
+      star%ctrl%use_opal92_tables = .false.
+      star%ctrl%use_laol89_tables = .false.
+      star%ctrl%use_alex06_tables = .false.
+      star%ctrl%use_alex95_tables = .false.
+      star%ctrl%use_kurucz90_tables = .false.
       use_two_z_tables = .false.
       use_pure_z_table = .false.
-      use_conductive_opacity = .false.
+      star%ctrl%use_conductive_opacity = .false.
       atm_choice = 0
 
 ! envelope composition state, per starin.f90's mixture algorithm
@@ -136,7 +136,7 @@ program test_eos
       star%env_comp%envelope_hydrogen_fraction = star%env_comp%xnew
       star%env_comp%envelope_metal_fraction = star%env_comp%znew
       do i = 1, 12
-         w(i) = vnew(i)
+         w(i) = star%ctrl%vnew(i)
       end do
       wsum = w(1)+w(2)+w(3)+w(4)+w(5)+w(6)+w(8)+w(9)+w(10)+w(11)
       star%env_comp%zenvm = star%env_comp%envelope_metal_fraction* &
@@ -174,7 +174,7 @@ program test_eos
 
 ! OPAL-2006 EOS file, opened as core/parmin.f90 does (esac06 reads it
 ! lazily on first use)
-      open(iopale, file=opal06_path, status='OLD')
+      open(star%ctrl%iopale, file=opal06_path, status='OLD')
 
       x_frac = 0.70d0
       z_frac = 0.016492d0
@@ -223,7 +223,7 @@ program test_eos
 ! (which set LOPALE06), and not meaningfully pinnable.
       write(*,'(a)') "# test_eos: eos_get_gamma1, Yale/SCV branch " // &
            "(defined regime only)"
-      use_opal2006_eos = .false.
+      star%ctrl%use_opal2006_eos = .false.
       do ipt = 3, ng1
          t6 = g1_t6(ipt)
          rho = g1_rho(ipt)
@@ -233,7 +233,7 @@ program test_eos
               grad_ad, ksaha)
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
-      use_opal2006_eos = .true.
+      star%ctrl%use_opal2006_eos = .true.
 
 ! MHD path: infrastructure for closing the LMHD coverage gap; runs
 ! only when tables are supplied from outside the repository.
@@ -242,7 +242,7 @@ program test_eos
          write(*,'(a)') "# test_eos: MHD path SKIPPED " // &
               "(YREC_MHD_TABLES not set; no MHD tables ship with YREC)"
       else
-         use_mhd_eos = .true.
+         star%ctrl%use_mhd_eos = .true.
          call eos_init(fermi_path, scvh_path, scvhe_path, scvz_path, &
               trim(mhd_dir)//"/zams_a", trim(mhd_dir)//"/zams_b", &
               trim(mhd_dir)//"/zams_c", trim(mhd_dir)//"/centre1", &
@@ -265,7 +265,7 @@ program test_eos
             write(*,'(4(1pe24.15))') logt, logp, logd, beta
             write(*,'(4(1pe24.15))') qdt, qdp, qcp, dela
          end do
-         use_mhd_eos = .false.
+         star%ctrl%use_mhd_eos = .false.
       end if
 
 ! Error paths (2026, ROADMAP.md stage 3): in the eos domain the error

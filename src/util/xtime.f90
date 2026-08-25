@@ -65,15 +65,15 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
 ! **note that for a convective core, the timestep is based on the time
 !   needed to burn the given fraction of hydrogen in the core and not
 !   just in the central shell.
-      if(composition(1,1).ge.atime(1)) then
-       delta_x = min(atime(2),atime(3)*composition(1,convective_core_edge_zone))
+      if(composition(1,1).ge.star%ctrl%atime(1)) then
+       delta_x = min(star%ctrl%atime(2),star%ctrl%atime(3)*composition(1,convective_core_edge_zone))
        hydrogen_dt =(6.00d18/star%solar_luminosity_cgs)* &
             (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))*delta_x
        return
       endif
 !  h-shell burning criterion
 !  limit total mass of hydrogen burned.
-      delta_x = atime(6)*composition(1,num_points)*(star%solar_mass_cgs/star%solar_luminosity_cgs)
+      delta_x = star%ctrl%atime(6)*composition(1,num_points)*(star%solar_mass_cgs/star%solar_luminosity_cgs)
       hydrogen_dt = 6.00d18*delta_x/hydrogen_luminosity
 !  limit x-depletion at shell mid-point.
 !  call nuclear reaction sr's to find dxdt at the shell midpoint.
@@ -107,8 +107,8 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
            rate_n14_p,rate_o16_p,rate_c12_alpha,rate_triple_alpha,shell_mass, &
            log_temperature,zone_begin,zone_end,dc_dt,do_dt,dx_dt,dy_dt, &
            c12_fraction,o16_fraction,hydrogen_fraction,metal_fraction)
-      if(dx_dt.lt.0.0d0 .and. atime(7).gt.0.0d0) then
-         shell_dt_x_depletion = abs(seconds_per_year*1.0d9*atime(7)/dx_dt)
+      if(dx_dt.lt.0.0d0 .and. star%ctrl%atime(7).gt.0.0d0) then
+         shell_dt_x_depletion = abs(seconds_per_year*1.0d9*star%ctrl%atime(7)/dx_dt)
          hydrogen_dt = min(hydrogen_dt,shell_dt_x_depletion)
       endif
       return

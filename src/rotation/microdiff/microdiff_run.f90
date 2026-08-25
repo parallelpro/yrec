@@ -25,6 +25,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      eq_radius_mid, eq_density_mid, eq_temperature_mid, eq_dlnp_dr_mid, &
      eq_del_grad_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col)
+      use star_info_lib, only: star
 
       use star_info_lib
       use luout_lib
@@ -159,7 +160,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       enddo
       alpha(num_eq_points) = fac/(total_mass-eq_mass_mid(num_eq_points-1))
 !  START ITERATION LOOP FOR THE NEW RUN OF ABUNDANCES.
-      do iter=1,settling_num_iterations
+      do iter=1,star%ctrl%settling_num_iterations
 !  FIND CHANGE IN D AT THE ZONE MIDPOINTS, GIVEN CHANGE IN D AT
 !  THE ZONE CENTERS.
          do i = 2,num_eq_points
@@ -202,12 +203,12 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
          write(short_file_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
-         if(max_abundance_change.lt.settling_tolerance)exit
+         if(max_abundance_change.lt.star%ctrl%settling_tolerance)exit
       end do
-      if (iter > settling_num_iterations) then
-      write(iowr,110)settling_tolerance,settling_num_iterations, &
+      if (iter > star%ctrl%settling_num_iterations) then
+      write(iowr,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
            max_abundance_change,max_change_zone
-      write(short_file_unit,110)settling_tolerance,settling_num_iterations, &
+      write(short_file_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
            max_abundance_change,max_change_zone
   110 format(1x,'MICRODIFF FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
            'ITERATIONS'/1x,'LAST ITERATION CHANGE IN D ',1pe9.3, &

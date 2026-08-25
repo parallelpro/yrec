@@ -24,6 +24,7 @@
 !
 ! MHP 8/25 Added file name to subroutine call
 subroutine alxtbl(alex95_table_paths, ierr)
+      use star_info_lib, only: star
 
       use opacity_table_lib
       use const_lib
@@ -57,7 +58,7 @@ subroutine alxtbl(alex95_table_paths, ierr)
 
       do table_index=1,num_x
 !        OPEN EACH OF THE TABLES AT FIXED X WITH A RANGE OF Z.
-         open(unit=alex95_table_unit,file=alex95_table_paths(table_index), &
+         open(unit=star%ctrl%alex95_table_unit,file=alex95_table_paths(table_index), &
               status='OLD', form='FORMATTED')
 !        READ IN INITIAL X AND Z; ENSURE THAT THEY HAVE THE EXPECTED VALUES.
          do i = num_z,1,-1
@@ -66,7 +67,7 @@ subroutine alxtbl(alex95_table_paths, ierr)
 !           (0,0),(0.1,0),...(0.8,0),(0,0.00001),...
             ii = table_index + 7*(i-1)
 !           HEADER INFORMATION: X AND Z
-            read(alex95_table_unit,10) header_x, header_z
+            read(star%ctrl%alex95_table_unit,10) header_x, header_z
    10       format(18x,f6.2,2x,f7.2)
             if (header_x.ne.opacity_table%alex95_grid_x(table_index) .or. &
                  header_z.ne.opacity_table%alex95_grid_z(i)) then
@@ -81,7 +82,7 @@ subroutine alxtbl(alex95_table_paths, ierr)
 !           OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T,
 !           STARTING R.  STORE IN A NUMZ*NUMT*NUMR ARRAY.
             do j = num_t,1,-1
-               read(alex95_table_unit,30) opacity_table%alex95_index_t, row_density_count, &
+               read(star%ctrl%alex95_table_unit,30) opacity_table%alex95_index_t, row_density_count, &
                     row_temp, row_logr0, (row_opacity_temp(k),k=1,num_d)
                do k = 1, num_d
                   opacity_table%alex95_full_opacity(ii,j,k) = row_opacity_temp(k)
@@ -100,10 +101,10 @@ subroutine alxtbl(alex95_table_paths, ierr)
                endif
             end do
          end do
-         close(unit=alex95_table_unit)
+         close(unit=star%ctrl%alex95_table_unit)
       end do
       ierr = 0
-      target_z = alex_table_z1
+      target_z = star%ctrl%alex_table_z1
       call alxztab(target_z)
       return
 end subroutine alxtbl

@@ -137,7 +137,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          omega_surface = star%omega(star%nz)
 !  ENFORCE SB ROTATION (OR UNIFORM ROTATION LAW IN ENTIRE STAR) IF DESIRED.
 ! JNT 2025/09 FOR 05/15 MAKE IMPJMOD=1 ACT LIKE LSOLID
-         if(force_solid_body_rotation .or. (solid_body_mode_flag.eq.1))then
+         if(star%ctrl%force_solid_body_rotation .or. (star%ctrl%solid_body_mode_flag.eq.1))then
             do zone_index = 1,star%nz
                am_transport_convective_flag(zone_index) = .true.
             end do
@@ -153,7 +153,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 !  FIND MOMENT OF INERTIA OF THE SURFACE C.Z.
             moment_of_inertia_cz = 0.0D0
 !  ENFORCE SB ROTATION (OR UNIFORM ROTATION LAW IN ENTIRE STAR) IF DESIRED.
-            if(force_solid_body_rotation.or. (solid_body_mode_flag.eq.1))then
+            if(star%ctrl%force_solid_body_rotation.or. (star%ctrl%solid_body_mode_flag.eq.1))then
               envelope_boundary_zone = 1
             else
               envelope_boundary_zone = convective_zone_bounds(num_convective_zones,1)
@@ -388,7 +388,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
               num_convective_zones_burn)
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
          if(lovstm .and. convective_flag_mid(star%nz))then
-            star%light_burn%pressure_scale_height_end = alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
+            star%light_burn%pressure_scale_height_end = star%ctrl%alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
                  2.0D0*log_radius_mid(envelope_boundary_zone_cur) &
                  -log_density_mid(envelope_boundary_zone_cur)-cgl-star%log_mass(envelope_boundary_zone_cur)))
          else

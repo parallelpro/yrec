@@ -253,7 +253,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
 
 ! Set flags for reading an input model
       ikut_flag = 0
-      iread = first_unit
+      iread = star%ctrl%first_unit
 
 ! INITIALIZE VARIABLES
       convective_velocity = 0.0d0
@@ -310,10 +310,10 @@ subroutine acquire_starting_model
 ! the file specified by LU IFIRST.  If LFIRST(NK) is false, as starting model use
 ! the stellar model currently stored in memory.
 
-      if (.not.first_call_flag(run_index)) then
+      if (.not.star%ctrl%first_call_flag(run_index)) then
 ! Use the model currently in memory as the starting model.
 ! DBG 2/92 CHANGED SO WILL RESCALE ENVELOPE MASS ON EACH NEW RUN
-         if (rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
+         if (star%ctrl%rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
               star%xa,star%log_mass,star%log_total_mass,star%nz,run_index, &
               star%star_mass,star%convective_flag, ierr)
          if (ierr /= 0) return
@@ -443,11 +443,11 @@ subroutine acquire_starting_model
 ! FOURTH PART:  - LOG J/M STORED
 
       if (rotation_active) then
-       if (lwnew) then
+       if (star%ctrl%lwnew) then
 ! GENERATE A SOLID BODY ROTATION CURVE WITH OMEGA = WNEW;
 ! THIS IS DONE TO CONVERT A NON-ROTATING MODEL TO A ROTATING ONE.
           do i = 1,star%nz
-             star%omega(i) = wnew
+             star%omega(i) = star%ctrl%wnew
           end do
        endif
       else
@@ -459,14 +459,14 @@ subroutine acquire_starting_model
 ! KEEP IREAD OPEN
       rewind iread
 ! End of the reading and processing of an input model file.
-      if (first_call_flag(run_index)) then
+      if (star%ctrl%first_call_flag(run_index)) then
 !      IF(.NOT.LFIRST(NK).OR.NK.GT.1)GOTO 3000
 !     MHP 10/24 MACHINERY TO ALTER THE HEAVY ELEMENT MIXTURE
 !     THIS IS ONLY DONE if the first MODEL IS being READ IN, AND ONLY FOR A
 ! CHEMICALLY HOMOGENEOUS MODEL. IT CAN OVER-WRITE MASS FRACTIONS 4-15 WITH USER-SPECIFIED VALUES
 ! ISETMIX=1 -> CAN ADJUST CNO FRACTIONS ISETISO=1-> CHANGE ISOTOPE RATIOS
       mixture_ok = .true.
-      if (change_cno_mixture_active .or. change_isotope_ratios_active) then
+      if (star%ctrl%change_cno_mixture_active .or. star%ctrl%change_isotope_ratios_active) then
 ! ENSURE STARTING MODEL IS HOMOGENEOUS BEFORE EITHER IS CHANGED
          do i = 1,15
             reference_composition(i)=star%xa(i,1)
@@ -488,7 +488,7 @@ subroutine acquire_starting_model
       endif
       if (mixture_ok) then
 ! LOOP FOR CHANGING CNO MIX
-      if (change_cno_mixture_active) then
+      if (star%ctrl%change_cno_mixture_active) then
 !     INFER CURRENT TOTAL CNO FRACTIONS AND SCALE ALL ISOTOPES BY THE RATIO BETWEEN
 !     DESIRED AND CURRENT FRACTIONS. RELATIVE ISOTOPES ARE ADJUSTED IN THE ISOTOPE SECTION BELOW.
          total_carbon_cno_fraction = (reference_composition(5)+ &
@@ -498,14 +498,14 @@ subroutine acquire_starting_model
          total_oxygen_cno_fraction = (reference_composition(9)+ &
               reference_composition(10)+reference_composition(11))/ &
               reference_composition(3)
-         carbon_scale_ratio = target_carbon_cno_fraction/ &
+         carbon_scale_ratio = star%ctrl%target_carbon_cno_fraction/ &
               total_carbon_cno_fraction
-         nitrogen_scale_ratio = target_nitrogen_cno_fraction/ &
+         nitrogen_scale_ratio = star%ctrl%target_nitrogen_cno_fraction/ &
               total_nitrogen_cno_fraction
-         oxygen_scale_ratio = target_oxygen_cno_fraction/ &
+         oxygen_scale_ratio = star%ctrl%target_oxygen_cno_fraction/ &
               total_oxygen_cno_fraction
-         write(*,*)target_carbon_cno_fraction,target_nitrogen_cno_fraction, &
-              target_oxygen_cno_fraction
+         write(*,*)star%ctrl%target_carbon_cno_fraction,star%ctrl%target_nitrogen_cno_fraction, &
+              star%ctrl%target_oxygen_cno_fraction
          do i = 5,6
             do j = 1,star%nz
                star%xa(i,j)=carbon_scale_ratio*star%xa(i,j)
@@ -531,21 +531,21 @@ subroutine acquire_starting_model
 ! DESIRED ISOTOPE RATIOS AND LIGHT ELEMENT ABUNDANCES ASSIGNED.
 !     AT PRESENT B10,B11,N15,O17 ARE NOT USED AND THUS NOT ALTERED.
 !     START WITH LIGHT ELEMENTS
-      if (change_isotope_ratios_active) then
+      if (star%ctrl%change_isotope_ratios_active) then
          sum_c12_c13 = star%xa(i_c12,1)+star%xa(i_c13,1)
          sum_o16_o18 = star%xa(i_o16,1)+star%xa(i_o18,1)
          do j = 1,star%nz
-            star%xa(i_he3,j)=initial_he3_fraction
-            star%xa(i_c12,j)= c12_to_c13_ratio*sum_c12_c13/ &
-                 (1.0d0+c12_to_c13_ratio)
-            star%xa(i_c13,j)= sum_c12_c13/(1.0d0+c12_to_c13_ratio)
-            star%xa(i_o16,j)= o16_to_o18_ratio*sum_o16_o18/ &
-                 (1.0d0+o16_to_o18_ratio)
-            star%xa(i_o18,j)= sum_o16_o18/(1.0d0+o16_to_o18_ratio)
-            star%xa(i_h2,j)=initial_h2_fraction
-            star%xa(i_li6,j)=initial_li6_fraction
-            star%xa(i_li7,j)=initial_li7_fraction
-            star%xa(i_be9,j)=initial_be9_fraction
+            star%xa(i_he3,j)=star%ctrl%initial_he3_fraction
+            star%xa(i_c12,j)= star%ctrl%c12_to_c13_ratio*sum_c12_c13/ &
+                 (1.0d0+star%ctrl%c12_to_c13_ratio)
+            star%xa(i_c13,j)= sum_c12_c13/(1.0d0+star%ctrl%c12_to_c13_ratio)
+            star%xa(i_o16,j)= star%ctrl%o16_to_o18_ratio*sum_o16_o18/ &
+                 (1.0d0+star%ctrl%o16_to_o18_ratio)
+            star%xa(i_o18,j)= sum_o16_o18/(1.0d0+star%ctrl%o16_to_o18_ratio)
+            star%xa(i_h2,j)=star%ctrl%initial_h2_fraction
+            star%xa(i_li6,j)=star%ctrl%initial_li6_fraction
+            star%xa(i_li7,j)=star%ctrl%initial_li7_fraction
+            star%xa(i_be9,j)=star%ctrl%initial_be9_fraction
          end do
          write(*,593)(reference_composition(k),k=4,15), &
               (star%xa(k,1),k=4,15)
@@ -576,16 +576,16 @@ subroutine extend_core_toward_center
 ! MHP 9/14 CHANGED SO THAT MOVING THE CORE FITTING IS ATTACHED TO ANY RUN
 ! WHICH READS IN THE STARTING MODEL; THIS AVOIDS OVER-WRITING THE CHANGE
 ! IN AUTO-CALIBRATED SOLAR MODELS
-      if (extend_core_inward .and. first_call_flag(run_index)) then
+      if (star%ctrl%extend_core_inward .and. star%ctrl%first_call_flag(run_index)) then
 !      IF(LCORE .AND. NK .EQ. 1) THEN
 ! AVOID SHUFFLING POINTS BY ASSIGNING NEW CENTRAL POINTS IN INTEGER
 ! MULTIPLES OF THE CENTRAL POINT SPACING.
 !     MCORE is number of shells to extrapolate to new core.
 !     FCORE is factor to reduce inner mass shell.
           num_core_shells_added = int(dlog10(core_mass_reduction_factor)/ &
-               chi_grid_scale(2))+1
+               star%ctrl%chi_grid_scale(2))+1
           core_mass_reduction_factor = dble(num_core_shells_added)* &
-               chi_grid_scale(2)
+               star%ctrl%chi_grid_scale(2)
           num_shells_extended = star%nz + num_core_shells_added
           if (num_shells_extended .gt. json) then
              write(short_file_unit,476)"STARIN: Unable to extend core inward ", &
@@ -597,7 +597,7 @@ subroutine extend_core_toward_center
   477        format(a, i8, a, i8)
   478        format(a)
           endif
-          core_shell_spacing = chi_grid_scale(2)
+          core_shell_spacing = star%ctrl%chi_grid_scale(2)
 ! shift data for remaining points by the required number
           do i=star%nz,1, -1
              star%log_mass(i+num_core_shells_added) = star%log_mass(i)
@@ -672,7 +672,7 @@ end subroutine extend_core_toward_center
 subroutine rescale_and_refit_envelope
 
 ! PERFORM RESCALING OF FIRST MODEL IF REQUIRED
-      if (rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
+      if (star%ctrl%rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
            star%xa,star%log_mass,star%log_total_mass,star%nz,run_index, &
            star%star_mass,star%convective_flag, ierr)
       if (ierr /= 0) return
@@ -769,7 +769,7 @@ subroutine rescale_and_refit_envelope
              point_temperature_rotation_factor = 1.0d0
              idt = 15
              do kk = 1,4
-              idd(kk) = 5
+              star%ctrl%idd(kk) = 5
              end do
                call eos_get(log10_temperature,temperature,log10_pressure, &
                     pressure,log10_density,density,hydrogen_fraction, &
@@ -812,9 +812,9 @@ subroutine rescale_and_refit_envelope
             saved_env_step_max = env_step_max
             saved_env_step_min = env_step_min
             saved_env_step_begin = env_step_begin
-            env_step_max = chi_grid_scale(8)
-            env_step_min = chi_grid_scale(8)
-            env_step_begin = chi_grid_scale(8)
+            env_step_max = star%ctrl%chi_grid_scale(8)
+            env_step_min = star%ctrl%chi_grid_scale(8)
+            env_step_begin = star%ctrl%chi_grid_scale(8)
 !          SENV = SENV0
           save_boundary_flag = .false.
           print_flag = .true.
@@ -846,11 +846,11 @@ subroutine rescale_and_refit_envelope
             atm_get_unused_flag = 0
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-          if (star%envelope_cz_bottom_index.eq.star%nz.and.spot_filling_factor.ne. &
-               0.0.and.spot_temp_contrast.ne.1.0) then
+          if (star%envelope_cz_bottom_index.eq.star%nz.and.star%ctrl%spot_filling_factor.ne. &
+               0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
                spot_adjusted_log_teff = star%log_Teff - 0.25*log10(&
-                    spot_filling_factor * spot_temp_contrast**4.0 + 1.0 - &
-                    spot_filling_factor)
+                    star%ctrl%spot_filling_factor * star%ctrl%spot_temp_contrast**4.0 + 1.0 - &
+                    star%ctrl%spot_filling_factor)
           else
              spot_adjusted_log_teff = star%log_Teff
           endif
@@ -1094,7 +1094,7 @@ subroutine rescale_and_refit_envelope
 ! VIA RDLAOL OTHERWISE USE VNEW.
       if (.not.llaol) then
          do i=1, 12
-            species_mix_weights(i)=vnew(i)
+            species_mix_weights(i)=star%ctrl%vnew(i)
          end do
       end if
 

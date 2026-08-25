@@ -41,6 +41,7 @@
 ! -- blocked by print interleaving, not by data flow. Documented
 ! residual.
 module observables_lib
+      use star_info_lib, only: star
       use star_info_lib
       use eos_lib
       use luout_lib
@@ -66,6 +67,7 @@ contains
 ! ---------------------------------------------------------------
 ! Driver: one call fills every per-model observable on star%.
 subroutine compute_observables(ierr)
+      use star_info_lib, only: star
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -90,7 +92,7 @@ subroutine compute_observables(ierr)
 ! (star%run% members read by write_history). Formulas are the legacy
 ! .track v0 branch's, verbatim. Legacy mode skips this: wrtout
 ! computes the same values internally with pinned print ordering.
-      if (.not. use_legacy_output) then
+      if (.not. star%ctrl%use_legacy_output) then
          call refresh_turnover_timescale
          call compute_surface_globals
          call compute_moment_of_inertia
@@ -105,10 +107,11 @@ end subroutine compute_observables
 ! RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH
 ! (MUTATES the model -- star%luminosity_breakdown.)
 subroutine renormalize_luminosity_breakdown
+      use star_info_lib, only: star
       double precision :: total_luminosity_sum, temp_value
       integer :: i
 
-      if(.not.helium_flash_active) then
+      if(.not.star%ctrl%helium_flash_active) then
        total_luminosity_sum = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
             star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
             star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
@@ -124,6 +127,7 @@ end subroutine renormalize_luminosity_breakdown
 !  (dead) core-boundary radius with the preserved FX/FX2 stale-carry
 !  bug -- see the module header.
 subroutine locate_core_cz
+      use star_info_lib, only: star
       double precision :: core_boundary_fx2
 ! core_boundary_log_radius/core_boundary_radius (CORERL/CORER) are
 ! computed but never consumed (original behavior, preserved).
@@ -159,6 +163,7 @@ end subroutine locate_core_cz
 !  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
 !  CENTRAL ETA AND BETA ARE ALSO CALCULATED. Stores star%run%central_*.
 subroutine compute_central_conditions(ierr)
+      use star_info_lib, only: star
       integer, intent(out) :: ierr
 
       double precision :: temp_value
@@ -218,6 +223,7 @@ end subroutine compute_central_conditions
 ! WERE BEING DEFINED AFTER THIS CODE SECTION (hence central
 ! conditions run first).
 subroutine locate_surface_cz_base
+      use star_info_lib, only: star
       double precision :: dd1, dd2, cz_base_mass
       double precision :: envelope_cz_log_temperature, &
            envelope_cz_log_density, envelope_cz_log_pressure
@@ -274,6 +280,7 @@ end subroutine locate_surface_cz_base
 ! deuterium limiter -- drive their own gettau calls; this one only
 ! freshens the reported value).
 subroutine refresh_turnover_timescale
+      use star_info_lib, only: star
       call gettau(star%xa, star%logR, star%logP, star%logRho, &
            star%m, star%logT, star%fp_rot, star%ft_rot, &
            star%log_Teff, star%log_total_mass, star%log_L, star%nz, &
@@ -286,6 +293,7 @@ end subroutine refresh_turnover_timescale
 ! ---------------------------------------------------------------
 ! Surface radius and gravity from L and Teff.
 subroutine compute_surface_globals
+      use star_info_lib, only: star
       star%run%log_R_surface = 0.5d0*(star%log_L + star%log10_solar_luminosity &
            - c4pil - csigl - 4.0d0*star%log_Teff)
       star%run%log_g_surface = cgl + star%env_comp%stotal &
@@ -297,6 +305,7 @@ end subroutine compute_surface_globals
 ! Total moment of inertia (thin-shell sum without rotation, i_rot
 ! sum with).
 subroutine compute_moment_of_inertia
+      use star_info_lib, only: star
       integer :: i
 
       star%run%total_moment_of_inertia = 0.0d0
@@ -317,11 +326,12 @@ end subroutine compute_moment_of_inertia
 ! ---------------------------------------------------------------
 ! Chlorine/gallium SNU capture rates from the neutrino flux totals.
 subroutine compute_snu_rates
+      use star_info_lib, only: star
       integer :: i
 
       star%flux%cl37_snu_rate = 0.0d0
       star%flux%ga71_snu_rate = 0.0d0
-      if (lsnu) then
+      if (star%ctrl%lsnu) then
          do i = 1, 8
             star%flux%cl37_snu_rate = star%flux%cl37_snu_rate + &
                  clsnuf_diag(i)*star%flux%neutrino_flux_total(i)
@@ -339,6 +349,7 @@ end subroutine compute_snu_rates
 ! Surface rotation period/velocity and the CZ moment of inertia.
 ! (Reads star%run%log_R_surface -- compute_surface_globals first.)
 subroutine compute_rotation_observables
+      use star_info_lib, only: star
       integer :: i
 
       star%run%cz_moment_of_inertia = 0.0d0
@@ -370,6 +381,7 @@ end subroutine compute_rotation_observables
 ! H-burning shell boundary masses and (surface-relative) radii.
 ! (Reads star%run%log_R_surface -- compute_surface_globals first.)
 subroutine compute_h_shell_boundaries
+      use star_info_lib, only: star
       if (star%evo%has_h_shell) then
          star%run%h_shell_bot_mass = &
               star%m(star%evo%h_shell_zone_begin)/star%solar_mass_cgs

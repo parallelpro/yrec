@@ -38,6 +38,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
      pressure_rotation_factor, temperature_rotation_factor, &
      envelope_recomputed_flag, log10_pressure_limit, convective_flag, &
      zone_index)
+      use star_info_lib, only: star
 
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
@@ -142,10 +143,10 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! STARTING PROCEDURE
        tri_orientation = +1.0d0
        tri_teffl(3) = log10_teff
-       tri_teffl(1) = tri_teffl(3) - 0.5d0*tri_delta_teffl
-       tri_teffl(2) = tri_teffl(1) + tri_delta_teffl
-       tri_logl(3) = luminosity_linear + 0.5d0*tri_delta_logl
-       tri_logl(1) = tri_logl(3) - tri_delta_logl
+       tri_teffl(1) = tri_teffl(3) - 0.5d0*star%ctrl%tri_delta_teffl
+       tri_teffl(2) = tri_teffl(1) + star%ctrl%tri_delta_teffl
+       tri_logl(3) = luminosity_linear + 0.5d0*star%ctrl%tri_delta_logl
+       tri_logl(1) = tri_logl(3) - star%ctrl%tri_delta_logl
        tri_logl(2) = tri_logl(1)
        start_new_triangle = .false.
       else
@@ -190,8 +191,8 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
             pulse_print_flag = .false.
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-          if (convective_flag(zone_index).and.spot_filling_factor.ne.0.0.and.spot_temp_contrast.ne.1.0) then
-               adjusted_teffl = log10_teff - 0.25*log10(spot_filling_factor * spot_temp_contrast**4.0 + 1.0 - spot_filling_factor)
+          if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
+               adjusted_teffl = log10_teff - 0.25*log10(star%ctrl%spot_filling_factor * star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
           else
              adjusted_teffl = log10_teff
           endif

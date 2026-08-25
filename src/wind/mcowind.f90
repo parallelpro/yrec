@@ -69,7 +69,7 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 
       ierr = 0
 
-      if(.not.use_pmm_wind_law)then
+      if(.not.star%ctrl%use_pmm_wind_law)then
          call cowind(log_luminosity_lsun,full_timestep,cz_moment_of_inertia, &
               iteration_number,omega_surface,total_mass_msun,log_teff, &
               omega_old,domega_start,domega_end, ierr)
@@ -83,20 +83,20 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       omega_now = omega_surface
 !
 ! ADD ROSSBY SCALING TO WMAX = CRITICAL W FOR THE SUN.
-      if(scale_by_rossby_number)then
+      if(star%ctrl%scale_by_rossby_number)then
 ! MHP 8/17 CORRECTED TAUCZ CALCULATION TO INTERPOLATE PROPERLY IN TIMESTEP
          current_turnover_timescale = star%turnover%convective_turnover_timescale_old+ &
               star%turnover%fracstep*(star%turnover%convective_turnover_timescale-star%turnover%convective_turnover_timescale_old)
-         omega_saturation = wind_saturation_omega*pmm_solar_turnover_timescale/ &
+         omega_saturation = wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
               current_turnover_timescale
 ! G Somers 08/17 IF ADDING ADDITIONAL B SCALING, ADD ADDITIONAL TAUCZ TERM.
-         if(scale_by_b_field)then
+         if(star%ctrl%scale_by_b_field)then
             omega_first = omega_first*current_turnover_timescale/ &
-                 pmm_solar_turnover_timescale
+                 star%ctrl%pmm_solar_turnover_timescale
             omega_now = omega_now*current_turnover_timescale/ &
-                 pmm_solar_turnover_timescale
+                 star%ctrl%pmm_solar_turnover_timescale
             omega_saturation = omega_saturation*current_turnover_timescale/ &
-                 pmm_solar_turnover_timescale
+                 star%ctrl%pmm_solar_turnover_timescale
          endif
       else
          omega_saturation = wind_saturation_omega
@@ -126,12 +126,12 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 !
 ! CALCULATE THE NEW WIND COEFFICIENT.
 !
-      wind_coefficient = (full_timestep/cz_moment_of_inertia)*constfactor* &
+      wind_coefficient = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
            structfactor
 ! MHP 8/17 ADDED CENTRIFUGAL REDUCTION TERM FROM MATT+2012 ApJ 754, L26
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
 !      C_2 = 0.0506
-      fsun = 0.5*pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*gl)/star%solar_mass_cgs
+      fsun = 0.5*star%ctrl%pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*gl)/star%solar_mass_cgs
 !     RADIUS
       log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.d0*log_teff)
@@ -139,16 +139,16 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
            total_mass_msun/star%solar_mass_cgs
       fcorr2 = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
            total_mass_msun/star%solar_mass_cgs
-      fcen1 = ((c_2**2+fsun)/(c_2**2+fcorr1))**excen
-      fcen2 = ((c_2**2+fsun)/(c_2**2+fcorr2))**excen
+      fcen1 = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr1))**star%ctrl%excen
+      fcen2 = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr2))**star%ctrl%excen
 !
 ! G Somers, END
       omega_old_capped = min(omega_first,omega_saturation)
       omega_new_capped = min(omega_now,omega_saturation)
       domega_start = wind_coefficient*omega_old_capped** &
-           (wind_law_omega_exponent-1.0d0)*omega_old*fcen1
+           (star%ctrl%wind_law_omega_exponent-1.0d0)*omega_old*fcen1
       domega_end_this_iter = wind_coefficient*omega_new_capped** &
-           (wind_law_omega_exponent-1.0d0)*omega_surface*fcen2
+           (star%ctrl%wind_law_omega_exponent-1.0d0)*omega_surface*fcen2
 !      WIND1 = C*WP**(EXW-1.0D0)*WOLD
 !      TEMP = C*WN**(EXW-1.0D0)*OMEGAS
       if(iteration_number.eq.1) then

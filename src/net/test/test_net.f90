@@ -56,24 +56,24 @@ program test_net
 
 ! unit numbers, per core/parmin.f90
       short_file_unit = 20
-      fermi_unit = 15
+      star%ctrl%fermi_unit = 15
       open(short_file_unit, file="test_net.short", status="replace")
 
 ! everything gated off; only the Fermi table is a hard requirement
-      use_mhd_eos = .false.
+      star%ctrl%use_mhd_eos = .false.
       use_scv_eos = .false.
-      use_opal95_eos = .false.
-      use_opal2001_eos = .false.
-      use_opal2006_eos = .false.
-      use_opal95_tables = .false.
-      use_opal92_tables = .false.
-      use_laol89_tables = .false.
-      use_alex06_tables = .false.
-      use_alex95_tables = .false.
-      use_kurucz90_tables = .false.
+      star%ctrl%use_opal95_eos = .false.
+      star%ctrl%use_opal2001_eos = .false.
+      star%ctrl%use_opal2006_eos = .false.
+      star%ctrl%use_opal95_tables = .false.
+      star%ctrl%use_opal92_tables = .false.
+      star%ctrl%use_laol89_tables = .false.
+      star%ctrl%use_alex06_tables = .false.
+      star%ctrl%use_alex95_tables = .false.
+      star%ctrl%use_kurucz90_tables = .false.
       use_two_z_tables = .false.
       use_pure_z_table = .false.
-      use_conductive_opacity = .false.
+      star%ctrl%use_conductive_opacity = .false.
       atm_choice = 0
 
       call setups(laol_work, dummy_path, dummy_path, dummy_path, &

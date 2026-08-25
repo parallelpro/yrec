@@ -397,7 +397,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
          do k = 1,num_radiative_zones
             do j = radiative_zone_bounds(k,1),radiative_zone_bounds(k,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (log_temperature_mid(j).le.tcut(1)) exit
+               if (log_temperature_mid(j).le.star%ctrl%tcut(1)) exit
                burn_zone_begin = j
                burn_zone_end = j
                call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
@@ -499,7 +499,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
 !C 95            CONTINUE
 !C               WRITE(*,911)K,PSCA,CVEL,TAUCZ
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
-      if (.not.force_solid_body_rotation .and. (solid_body_mode_flag.ne.1)) then
+      if (.not.star%ctrl%force_solid_body_rotation .and. (star%ctrl%solid_body_mode_flag.ne.1)) then
 !  NOW FIND THE RUN OF ROTATION VARIABLES THAT ARE CONSISTENT WITH THE
 !  INTERMEDIATE STRUCTURE AND THE RUN OF SPECIFIC ANGULAR MOMENTUM J/M.
 !  J/M = I/M * OMEGA.

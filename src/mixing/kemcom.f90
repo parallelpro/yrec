@@ -121,7 +121,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
          end do
       endif
 !  skip burning calculations if starting shell below t cutoff for reactions.
-      if(log_temperature(zone_begin).lt.tcut(1)) then
+      if(log_temperature(zone_begin).lt.star%ctrl%tcut(1)) then
          do zone_idx = zone_begin,zone_end
             do species_idx = 1,11
                composition(species_idx,zone_idx) = avg_abundance(species_idx)
@@ -141,7 +141,7 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
       timestep_gyr_13 = 13.0d0*timestep_gyr
       timestep_gyr_14 = 14.0d0*timestep_gyr
       timestep_gyr_16 = 16.0d0*timestep_gyr
-      min_abundance_local=min_abundance
+      min_abundance_local=star%ctrl%min_abundance
 !  counter for the number of iterations.
       iteration_count=0
 !
@@ -389,10 +389,10 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
             if(relative_change.ge.max_relative_change) max_relative_change = relative_change
          endif
       end do
-      if(max_abs_change.ge.absolute_tolerance.or.max_relative_change.ge.relative_tolerance) then
+      if(max_abs_change.ge.star%ctrl%absolute_tolerance.or.max_relative_change.ge.star%ctrl%relative_tolerance) then
 !  system not converged - see if maximum number of iterations exceeded.
          iteration_count = iteration_count+1
-         if(iteration_count.ge.max_burn_iterations) then
+         if(iteration_count.ge.star%ctrl%max_burn_iterations) then
 !  mhp 10/02 iu not defined
 !            WRITE (short_file_unit,1000) iu
             write (short_file_unit,1000) zone_begin

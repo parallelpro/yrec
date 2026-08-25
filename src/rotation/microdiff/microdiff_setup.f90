@@ -89,11 +89,11 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do i = zone_begin,num_zones
-         if(composition(1,i).gt.hydrogen_diffusion_floor)exit
+         if(composition(1,i).gt.star%ctrl%hydrogen_diffusion_floor)exit
       end do
       if (i > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
-      write(short_file_unit,16)hydrogen_diffusion_floor
+      write(short_file_unit,16)star%ctrl%hydrogen_diffusion_floor
    16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
       continue
@@ -113,11 +113,11 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do i=zone_end,1,-1
-         if(composition(2,i).gt.helium_diffusion_min) exit
+         if(composition(2,i).gt.star%ctrl%helium_diffusion_min) exit
       end do
       if (i < (1)) then
 !     HYDROGEN-FREE MODEL - EXIT.
-      write(short_file_unit,17)helium_diffusion_min
+      write(short_file_unit,17)star%ctrl%helium_diffusion_min
    17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
       continue

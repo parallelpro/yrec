@@ -90,15 +90,15 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 !         *(R/RSUN)**EXR
 !  THE CONSTANT AND EXPONENTS ARE SET IN PARMIN BASED ON THE INPUT
 !  INDEX ALFA;SEE PARMIN FOR DETAILS ON THE DEPENDENCE OF EACH ON ALFA.
-      wind_coefficient = full_timestep/cz_moment_of_inertia*constfactor* &
-           (mass_loss_rate_msun_yr/1.0d-14)**exmd &
-           *(total_radius_cm/star%solar_radius_cgs)**exr*total_mass_msun**exm
+      wind_coefficient = full_timestep/cz_moment_of_inertia*star%ctrl%constfactor* &
+           (mass_loss_rate_msun_yr/1.0d-14)**star%ctrl%exmd &
+           *(total_radius_cm/star%solar_radius_cgs)**star%ctrl%exr*total_mass_msun**star%ctrl%exm
       omega_old_capped = min(omega_old,omega_saturation)
       omega_new_capped = min(omega_surface,omega_saturation)
       domega_start = wind_coefficient*omega_old_capped** &
-           (wind_law_omega_exponent-1.0d0)*omega_old
+           (star%ctrl%wind_law_omega_exponent-1.0d0)*omega_old
       domega_end_this_iter = wind_coefficient*omega_new_capped** &
-           (wind_law_omega_exponent-1.0d0)*omega_surface
+           (star%ctrl%wind_law_omega_exponent-1.0d0)*omega_surface
       if(iteration_number.eq.1) then
          domega_end = domega_end_this_iter
       else

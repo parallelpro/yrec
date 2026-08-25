@@ -81,7 +81,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       dy_dt = 0.0d0
       dc_dt = 0.0d0
       do_dt = 0.0d0
-      if (shell_temperature(zone_begin).lt.tcut(1)) return
+      if (shell_temperature(zone_begin).lt.star%ctrl%tcut(1)) return
 !     COMPUTE EXPLICIT HYDROGEN AND HELIUM BURNING RATES ASSUMING EQUILIBRIUM
 !     HE3 AND CN CYCLE ABUNDANCES.
 !     THIS IS USED FOR AN INITIAL GUESS AT THE BURNING RATES AT THE START
@@ -188,7 +188,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       local_xn14 = zone_avg_abundance(7)
       equilibrium_xo16 = zone_avg_abundance(9)
       if (hydrogen_fraction.gt.1.0d-10 .and. &
-           shell_temperature(zone_begin).gt.tcut(2)) then
+           shell_temperature(zone_begin).gt.star%ctrl%tcut(2)) then
 !        FIND EQUILIBRIUM HELIUM-3 ABUNDANCE, USING THE QUADRATIC FORMULA.
 !        THE EQUATION IS -2*R(3,3)*XHE3**2 - R(3,4)*XHE3*XHE4 + R(1,1)X**2 = 0.
          pp_reaction_term = pp_rate*hydrogen_fraction**2
@@ -205,7 +205,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
               - he3_he4_reaction_term*local_xhe3
 ! (Restructured 2026: the CN block below runs only on the hydrogen-
 ! burning branch; the old `goto 100` skipped it from the else.)
-      if (shell_temperature(zone_begin).gt.tcut(3)) then
+      if (shell_temperature(zone_begin).gt.star%ctrl%tcut(3)) then
 !        FIND EQUILIBRIUM C12,C13,N14 ABUNDANCES TREATING CN PROCESSING AS
 !        A CLOSED LOOP.
          cno_sum = equilibrium_xc12/1.2d1 + local_xc13/1.3d1 + &
@@ -234,7 +234,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       end if
 !     HELIUM BURNING REACTIONS.
       if (helium_fraction.gt.1.0d-10 .and. &
-           shell_temperature(zone_begin).gt.tcut(4)) then
+           shell_temperature(zone_begin).gt.star%ctrl%tcut(4)) then
          triple_alpha_term = triple_alpha_rate*helium_fraction**3
          c12_alpha_term = c12_alpha_rate*helium_fraction*equilibrium_xc12
          dy_dt = -4.0d0*(c12_alpha_term + 3.0d0*triple_alpha_term)
@@ -325,9 +325,9 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          helium3_fraction = helium3_fraction/total_shell_mass
       end if
       if (use_mass_accretion .and. zone_end.eq.num_zones .and. &
-           mass_accretion_rate.gt.0.0d0) then
+           star%ctrl%mass_accretion_rate.gt.0.0d0) then
          deuterium_fraction_test = (deuterium_fraction*total_shell_mass + &
-              accreted_composition(12)*star%light_burn%accreted_mass_fraction)/ &
+              star%ctrl%accreted_composition(12)*star%light_burn%accreted_mass_fraction)/ &
               (total_shell_mass + star%light_burn%accreted_mass_fraction)
       else
          deuterium_fraction_test = deuterium_fraction
@@ -369,7 +369,7 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
 !        AVERAGE D.  NOTE THAT ACCRETION OF ELEMENTS
 !        1-11 HAS ALREADY BEEN TREATED.
          rate_accum = rate_start
-         accreted_deuterium_fraction = accreted_composition(12)
+         accreted_deuterium_fraction = star%ctrl%accreted_composition(12)
          accreted_deuterium_burned = 0.0d0
          do substep_idx = 1, num_substeps
             burning_rate = rate_accum + 0.5d0*rate_increment
@@ -388,7 +388,7 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          deuterium_change_original = deuterium_fraction_burned - &
               deuterium_fraction
          deuterium_change_accreted = accreted_deuterium_burned - &
-              accreted_composition(12)
+              star%ctrl%accreted_composition(12)
          deuterium_fraction_new = (deuterium_fraction_burned*total_shell_mass &
               + accreted_deuterium_burned*star%light_burn%accreted_mass_fraction)/ &
               (total_shell_mass + star%light_burn%accreted_mass_fraction)
@@ -535,7 +535,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
 ! AVERAGE D.  NOTE THAT ACCRETION OF ELEMENTS
 ! 1-11 HAS ALREADY BEEN TREATED.
          rate_accum = rate_start
-         accreted_deuterium_fraction = accreted_composition(12)
+         accreted_deuterium_fraction = star%ctrl%accreted_composition(12)
          accreted_deuterium_burned = 0.0d0
          do substep_idx = 1,num_substeps
             burning_rate = rate_accum + 0.5d0*rate_increment
@@ -559,7 +559,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
          deuterium_change_original = deuterium_fraction_burned - &
               deuterium_fraction
          deuterium_change_accreted = accreted_deuterium_burned - &
-              accreted_composition(12)
+              star%ctrl%accreted_composition(12)
          deuterium_fraction_new = (deuterium_fraction_burned+ &
               accreted_deuterium_burned*accreted_mass_fraction_substep)/ &
               (1.0d0+accreted_mass_fraction_substep)
@@ -1151,7 +1151,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < 6.0.
 ! REPLACED FIXED 1 MILLION K THRESHOLD WITH TCUT(1).
 !      IF(TL.LE.6.0) THEN
-      if (log_temperature.le.tcut(1)) then
+      if (log_temperature.le.star%ctrl%tcut(1)) then
 ! MHP 5/02 DEUTERIUM BURNING
          dgdeut = 0.0d0
          qrtdeut = 0.0d0
@@ -1281,7 +1281,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
       do i=1,nrxns
          uwk=tm1*charge_product(i)
-         if (uwk.le.weak_screening_threshold) then
+         if (uwk.le.star%ctrl%weak_screening_threshold) then
 ! WEAKSCREENING IS A NUMERICAL PARAMETER PASSED IN THE FLUX COMMON
 !  BLOCK. TO OBTAIN THE GRABOSKE ET AL. AND SALPETER STANDARD RESULTS,
 !  USE: WEAKSCREENING = 0.03.  FOR THE STANDARD SOLAR MODEL, THIS IS THE
@@ -1419,7 +1419,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          zprdbe7p = 4.0
          z86be7p = 5.7790
          uwk = tm1*zprdbe7p
-         if (uwk.le.weak_screening_threshold) then
+         if (uwk.le.star%ctrl%weak_screening_threshold) then
             utotbe7p = uwk
          else
             uint = 0.38*xxl8*xtr*z86be7p/(ion_mean_weight_inverse*z58*z28)
@@ -1491,7 +1491,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if (log_temperature.ge.tcut(4)) then
+      if (log_temperature.ge.star%ctrl%tcut(4)) then
 ! C13(ALPHA,N) O16
       r1=t9_m23+0.0129d0*t9_m13+2.04d0+0.184d0*t9_p13
       a1 = 6.77d15*exp(-32.329d0*t9_m13-(t9/1.284d0)**2)
@@ -1836,7 +1836,7 @@ subroutine compute_neutrino_emission
 ! ENERGY FROM ALPHA CAPTURE REACTIONS.
       star%engeb%alpha_capture_energy=reaction_energy_gen(8)+reaction_energy_gen(10)+ &
            reaction_energy_gen(11)
-      if (lsnu) then
+      if (star%ctrl%lsnu) then
 ! MHP 9/91 CHANGE TO TURN OFF NEUTRINO CALC FOR HYDROGEN-EXHAUSTED CORE.
          if (hydrogen_fraction.le.1.0d-6) then
             do i=1,10
@@ -1876,7 +1876,7 @@ subroutine compute_neutrino_emission
          zprdhe3p = 2.0
          z86he3p = 3.08687
          uwk = tm1*zprdhe3p
-         if (uwk.le.weak_screening_threshold) then
+         if (uwk.le.star%ctrl%weak_screening_threshold) then
             utothe3p = uwk
          else
             uint = 0.38*xxl8*xtr*z86he3p/(ion_mean_weight_inverse*z58*z28)
@@ -1929,7 +1929,7 @@ subroutine compute_neutrino_emission
 ! routines.  See subroutine NEUTR for complete description.
 
 
-      if (log_temperature.le.tcut(5)) return
+      if (log_temperature.le.star%ctrl%tcut(5)) return
 
 
           carbon_fraction_total = c12_fraction+c13_fraction
@@ -1941,7 +1941,7 @@ subroutine compute_neutrino_emission
 !**** Itoh 1996 Neutrino loss routines - Grant Newsham 9/06 *****
 
 
-      if (use_itoh_neutrino_loss) then
+      if (star%ctrl%use_itoh_neutrino_loss) then
 
 
 
@@ -2421,7 +2421,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! ASSUMED TO EXPERIENCE BURNING FOR ON AVERAGE 1/2 OF
 ! THE STEP WHERE THEY ARE INITIALLY ACCRETED AND ARE
 ! THEN FULLY BURNED.
-         if(use_mass_accretion.and.mass_accretion_rate.gt.0.0d0)then
+         if(use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0)then
             accretion_active = .true.
             li6_accreted = 0.0d0
             li7_accreted = 0.0d0
@@ -2464,11 +2464,11 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! N.B. SINCE THIS IS A HALF-LIFE PROBLEM IT IS OK TO BURN
 ! THE COMPONENTS SEPARATELY.
             if(accretion_active)then
-               li6_added = accreted_composition(13)*substep_frac/exp(0.5d0*li6_depletion)
+               li6_added = star%ctrl%accreted_composition(13)*substep_frac/exp(0.5d0*li6_depletion)
                li6_accreted = li6_accreted/exp(li6_depletion) + li6_added
-               li7_added = accreted_composition(14)*substep_frac/exp(0.5d0*li7_depletion)
+               li7_added = star%ctrl%accreted_composition(14)*substep_frac/exp(0.5d0*li7_depletion)
                li7_accreted = li7_accreted/exp(li7_depletion) + li7_added
-               be9_added = accreted_composition(15)*substep_frac/exp(0.5d0*be9_depletion)
+               be9_added = star%ctrl%accreted_composition(15)*substep_frac/exp(0.5d0*be9_depletion)
                be9_accreted = be9_accreted/exp(be9_depletion) + be9_added
             endif
          end do
@@ -3037,11 +3037,11 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
 !
          fbe93=fx+4.51d+8*ex+6.7d+8/t934*exp(-5.16d0/t9)
 ! G Somers 6/14, SCALE BY THE NEW CROSS SECTIONS
-         fli6=li6_rate_scale*fli6
-         fli7=li7_rate_scale*fli7
-         fbe91=be9_pg_rate_scale*fbe91
-         fbe92=be9_pd_rate_scale*fbe92
-         fbe93=be9_palpha_rate_scale*fbe93
+         fli6=star%ctrl%li6_rate_scale*fli6
+         fli7=star%ctrl%li7_rate_scale*fli7
+         fbe91=star%ctrl%be9_pg_rate_scale*fbe91
+         fbe92=star%ctrl%be9_pd_rate_scale*fbe92
+         fbe93=star%ctrl%be9_palpha_rate_scale*fbe93
 ! G Somers END
 ! SUM RATES
          fsbe9 = fbe91 + fbe92 + fbe93

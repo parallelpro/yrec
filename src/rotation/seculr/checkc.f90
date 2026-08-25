@@ -77,7 +77,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
 
       ierr = 0
 
-      if(iteration_number.eq.itdif2)then
+      if(iteration_number.eq.star%ctrl%itdif2)then
          num_diffused_species = 11
       else
          num_diffused_species = 4
@@ -138,7 +138,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
             endif
          end do
       end do
-      if(iteration_number.eq.itdif2.and.print_flag) then
+      if(iteration_number.eq.star%ctrl%itdif2.and.print_flag) then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN COMPOSITION AND PRINT IT OUT.
          max_fractional_comp_change = 0.0d0
          max_change_zone = 0

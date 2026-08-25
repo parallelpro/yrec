@@ -81,38 +81,38 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       if (use_debye_huckel_correction) eos_flag='SAH+DH'
       if (use_scv_eos) then
          eos_flag='SCV   '
-         if (use_opal95_eos) eos_flag='SCV+OP'
-         if (use_opal2001_eos) eos_flag='SCV+O1'
+         if (star%ctrl%use_opal95_eos) eos_flag='SCV+OP'
+         if (star%ctrl%use_opal2001_eos) eos_flag='SCV+O1'
          if (use_debye_huckel_correction) then
-         if (use_opal2006_eos) eos_flag='SCV+O6'
+         if (star%ctrl%use_opal2006_eos) eos_flag='SCV+O6'
             eos_flag='SCV+DH'
-            if (use_opal95_eos) eos_flag='SCVDHO'
-            if (use_opal2001_eos) eos_flag='SCDHO1'
-            if (use_opal2006_eos) eos_flag='SCDHO6'
+            if (star%ctrl%use_opal95_eos) eos_flag='SCVDHO'
+            if (star%ctrl%use_opal2001_eos) eos_flag='SCDHO1'
+            if (star%ctrl%use_opal2006_eos) eos_flag='SCDHO6'
          endif
       else
-         if (use_opal95_eos) then
+         if (star%ctrl%use_opal95_eos) then
             eos_flag='OPAL  '
             if (use_debye_huckel_correction) eos_flag='OPA+DH'
          endif
-         if (use_opal2001_eos) then
+         if (star%ctrl%use_opal2001_eos) then
             eos_flag='OPAL01'
             if (use_debye_huckel_correction) eos_flag='OP1+DH'
          endif
-         if (use_opal2006_eos) then
+         if (star%ctrl%use_opal2006_eos) then
             eos_flag='OPAL06'
             if (use_debye_huckel_correction) eos_flag='OP6+DH'
          endif
       endif
 ! Determine low temperature opacities flag, ALOK
       low_temp_opacity_flag='NONE'
-      if (use_alex95_tables) low_temp_opacity_flag='ALEX'
-      if (use_kurucz90_tables) low_temp_opacity_flag='KURZ'
+      if (star%ctrl%use_alex95_tables) low_temp_opacity_flag='ALEX'
+      if (star%ctrl%use_kurucz90_tables) low_temp_opacity_flag='KURZ'
 ! Determine high temperature opacities flag, HIK
       high_temp_opacity_flag='NONE'
-      if (use_opal95_tables) high_temp_opacity_flag='OP95'
-      if (use_opal92_tables) high_temp_opacity_flag='OP92'
-      if (use_laol89_tables) high_temp_opacity_flag='LL89'
+      if (star%ctrl%use_opal95_tables) high_temp_opacity_flag='OP95'
+      if (star%ctrl%use_opal92_tables) high_temp_opacity_flag='OP92'
+      if (star%ctrl%use_laol89_tables) high_temp_opacity_flag='LL89'
 
       call putmodel2(log_luminosity_lsun,envelope_fit_coeffs,star%mixing_length_alpha, &
            age_gyr,timestep_yr,trial_sign_flag,composition,log_density, &

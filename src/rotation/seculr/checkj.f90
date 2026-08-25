@@ -174,7 +174,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
               specific_angular_momentum(zone_index)
       end do
       if(abs(max_delta_j_by_iter(iteration_number)).le. &
-           convergence_tolerance) then
+           star%ctrl%convergence_tolerance) then
 !         LOK = .FALSE.
 !      ELSE
          converged_flag = .true.
@@ -186,10 +186,10 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  FINAL STEP.
       saved_tolerance = star%rot%moment_of_inertia_tolerance
       saved_acc_tolerance = acfpft
-      if(iteration_number.lt.itdif2.and..not.converged_flag)then
+      if(iteration_number.lt.star%ctrl%itdif2.and..not.converged_flag)then
          star%rot%moment_of_inertia_tolerance = &
-              max(convergence_tolerance*1.0d-2,saved_tolerance)
-         acfpft = max(convergence_tolerance*1.0d-2,saved_acc_tolerance)
+              max(star%ctrl%convergence_tolerance*1.0d-2,saved_tolerance)
+         acfpft = max(star%ctrl%convergence_tolerance*1.0d-2,saved_acc_tolerance)
       endif
       call getrot(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
@@ -275,7 +275,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                        shell_mass,zone_bottom,zone_top,eta_squared, &
                        moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do
-         if(iteration_number.eq.itdif2.or.converged_flag) &
+         if(iteration_number.eq.star%ctrl%itdif2.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number
   120    format(5x,'OMEGA GRADIENT REVERSAL BETWEEN ZONES ', &
                  i5,' AND ',i5,' ITERATION ',i5)
@@ -287,7 +287,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
       if(zone_index.le.1) exit zone_scan
       end do zone_scan
 !  I/O FOR END OF DIFFUSION STEP.
-      if(iteration_number.eq.itdif2.or.converged_flag)then
+      if(iteration_number.eq.star%ctrl%itdif2.or.converged_flag)then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN J/M OVER TIMESTEP.
          max_fractional_dj = 0.0d0
          max_dj_zone = 0
@@ -326,7 +326,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 ! G Somers END
 !
 !  IF NPRTPT IS SET TO A LARGE NUMBER, SKIP DETAILED OUTPUT.
-         if (print_point_interval.gt.num_zones) then
+         if (star%ctrl%print_point_interval.gt.num_zones) then
             continue
             return
          end if
@@ -336,11 +336,11 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  FIRST POINT ALWAYS PRINTED OUT.
          print_zone_id(1) = 1
          print_zone_count = 2
-         print_zone_begin = max(zone_min,print_point_interval)
+         print_zone_begin = max(zone_min,star%ctrl%print_point_interval)
          print_zone_end = min(zone_max, &
-              int(zone_max/print_point_interval)*print_point_interval)
+              int(zone_max/star%ctrl%print_point_interval)*star%ctrl%print_point_interval)
 ! PRINT OUT EVERY NPRTPT POINTS. WHEN V=0, SKIP POINTS.
-         do scan_index = print_zone_begin,print_zone_end,print_point_interval
+         do scan_index = print_zone_begin,print_zone_end,star%ctrl%print_point_interval
 !            IF(HV(J).EQ.0.0D0)GOTO 180
             print_zone_id(print_zone_count) = scan_index
             print_zone_count = print_zone_count + 1
@@ -379,7 +379,7 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
                  star%circ%mu_gradient_velocity(print_zone_id(zone_index))
   220 format(1x,i5,1p10e12.3)
          end do
-         if(use_diffusion_advection_transport)then
+         if(star%ctrl%use_diffusion_advection_transport)then
 !            DO I = 1,IDM
 !               WRITE(IMODPT,221)ID(I),VES(ID(I)),VESA(ID(I)),
 !     *         VESD(ID(I)),

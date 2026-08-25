@@ -343,7 +343,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 !  ALL INTERFACES.
       cpigi_const = 4.0d0/c4pi/grav_const
       do zone_idx = transport_zone_begin,transport_zone_end
-         if(.not.use_diffusion_advection_transport)then
+         if(.not.star%ctrl%use_diffusion_advection_transport)then
             dlnmu_dlnp = (log10(star%mix_phys%amum(zone_idx))-log10(star%mix_phys%amum(zone_idx-1)))/ &
                  (log_pressure(zone_idx)-log_pressure(zone_idx-1))
          else
@@ -442,7 +442,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
 !         TKH(I) = CG*HS3(I)**2/ABS(ALM(I))/RM(I)
       end do
 ! MHP 06/02 ADDED TERMS OF ORDER DW/DR FROM ZAH&MAEDER 1998
-      if(use_diffusion_advection_transport)then
+      if(star%ctrl%use_diffusion_advection_transport)then
          ht_temp_scale_prev = exp(ln10*(log_pressure(transport_zone_begin-1)+ &
               2.0d0*log_radius(transport_zone_begin-1)-log_density(transport_zone_begin-1))) &
               /mass_unlogged(transport_zone_begin-1)/grav_const/star%mix_phys%del_radiative_mix(transport_zone_begin-1)

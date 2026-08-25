@@ -26,6 +26,7 @@
 !
 ! MHP 8/25 Added file name to subroutine call
 subroutine readalex06(alex06_table_path, ierr)
+      use star_info_lib, only: star
 
       use opacity_table_lib
       use const_lib
@@ -54,7 +55,7 @@ subroutine readalex06(alex06_table_path, ierr)
       integer :: i, ii, j, jj, k, kk
 
       ierr = 0
-      open(unit=alex06_table_unit,file=alex06_table_path)
+      open(unit=star%ctrl%alex06_table_unit,file=alex06_table_path)
 !     READ IN INITIAL X AND Z; ENSURE THAT THEY HAVE THE EXPECTED VALUES.
       do i = 1,num_x-1
          do ii = 1, num_z
@@ -63,7 +64,7 @@ subroutine readalex06(alex06_table_path, ierr)
 !           (0,0),(0,0.1),...(0.9,0),(0.9,0.1).  The final tables are defined
 !           at X = 1-Z except for the 0.1 Z case (already read in at X=0.9).
 !           HEADER INFORMATION: X AND Z; CHECK FOR CONSISTENCY
-            read(alex06_table_unit,10) header_x, header_z
+            read(star%ctrl%alex06_table_unit,10) header_x, header_z
    10       format(30x,f9.6,7x,f9.6//)
             if (header_x.ne.opacity_table%alex06_grid_x(i) .or. header_z.ne.opacity_table%alex06_grid_z(ii)) then
                write(*,15) opacity_table%alex06_grid_x(i), header_x, opacity_table%alex06_grid_z(ii), header_z
@@ -71,7 +72,7 @@ subroutine readalex06(alex06_table_path, ierr)
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
 !               STOP
             endif
-            read(alex06_table_unit,20) (row_logr_check(k),k=1,num_d)
+            read(star%ctrl%alex06_table_unit,20) (row_logr_check(k),k=1,num_d)
    20       format(6x,19f7.3)
             do kk=1,16
                if (row_logr_check(kk).ne.opacity_table%alex06_grid_logr(kk)) then
@@ -87,7 +88,7 @@ subroutine readalex06(alex06_table_path, ierr)
 !           OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T.
 !           STORE IN A NUMXZ*NUMT*NUMR ARRAY.
             do j = num_t,1,-1
-               read(alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,num_d)
+               read(star%ctrl%alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,num_d)
    30          format(f5.3,1x,19f7.3)
                if (row_temp.ne.opacity_table%alex06_grid_logt(j)) then
                   write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
@@ -108,7 +109,7 @@ subroutine readalex06(alex06_table_path, ierr)
 !        (0,0),(0,0.1),...(0.9,0),(0.9,0.1).  The final tables are defined
 !        at X = 1-Z except for the 0.1 Z case (already read in at X=0.9).
 !        HEADER INFORMATION: X AND Z; CHECK FOR CONSISTENCY
-         read(alex06_table_unit,10) header_x, header_z
+         read(star%ctrl%alex06_table_unit,10) header_x, header_z
          if (header_x.ne.(1.0d0 - opacity_table%alex06_grid_z(ii)) .or. &
               header_z.ne.opacity_table%alex06_grid_z(ii)) then
             write(*,15) 1.0d0 - opacity_table%alex06_grid_z(ii), header_x, opacity_table%alex06_grid_z(ii), header_z
@@ -116,7 +117,7 @@ subroutine readalex06(alex06_table_path, ierr)
             ierr = 1
             return
          endif
-         read(alex06_table_unit,20) (row_logr_check(k),k=1,num_d)
+         read(star%ctrl%alex06_table_unit,20) (row_logr_check(k),k=1,num_d)
          do kk=1,16
             if (row_logr_check(kk).ne.opacity_table%alex06_grid_logr(kk)) then
                write(*,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
@@ -129,7 +130,7 @@ subroutine readalex06(alex06_table_path, ierr)
 !        OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T.
 !        STORE IN A NUMXZ*NUMT*NUMR ARRAY.
          do j = num_t,1,-1
-            read(alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,num_d)
+            read(star%ctrl%alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,num_d)
             if (row_temp.ne.opacity_table%alex06_grid_logt(j)) then
                write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
                ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
@@ -138,7 +139,7 @@ subroutine readalex06(alex06_table_path, ierr)
             endif
          end do
       end do
-      close(unit=alex06_table_unit)
+      close(unit=star%ctrl%alex06_table_unit)
 !     INITIALIZE FIXED Z,X TABLE
       do i = 1,num_t
          do j = 1,num_d

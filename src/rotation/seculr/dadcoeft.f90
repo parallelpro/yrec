@@ -178,7 +178,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          substep_frac = timestep/full_timestep
 ! LOOP FOR ITERATION ON THE D THETA/DT TERM;
 ! COEFFICIENTS UPDATED ONCE PER NNN
-      do theta_iter_idx = 1,itdif2
+      do theta_iter_idx = 1,star%ctrl%itdif2
 ! LOOP FOR ITERATION ON THE OTHER COEFFICIENTS
 ! THAT ARE FUNCTIONS OF OMEGA; UPDATED ONCE PER
 ! NN.
@@ -210,10 +210,10 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
                  wind_saturation_threshold)
             wind_loss_implicit = wind_loss_implicit_initial* &
                  (omega_prev_capped/omega_capped)** &
-                 (wind_law_omega_exponent-1.0d0)* &
+                 (star%ctrl%wind_law_omega_exponent-1.0d0)* &
                  (omega_working(num_eq_points)/eq_omega(num_eq_points))
          end if
-      do coeff_iter_idx = 1,itdif2
+      do coeff_iter_idx = 1,star%ctrl%itdif2
 ! COMPUTE THE DIFFUSION COEFFICIENTS FOR
 ! THE FIRST AND SECOND ORDER TERMS.
       if (substep_idx.eq.1) then
@@ -250,7 +250,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
             star%rot%gsf_diffusion_coeff_eqgrid(i) = star%rot%gsf_diffusion_coeff_eqgrid(i)* &
                  (domega_dr_prev_substep/domega_dr(i))**2
          end if
-         advective_term1 = difad_velocity_scale*star%rot%eq_velocity_coeff0(i)* &
+         advective_term1 = star%ctrl%difad_velocity_scale*star%rot%eq_velocity_coeff0(i)* &
               omega_mid(i)**2*(star%rot%eq_velocity_coeff1a(i)+ &
               omega_mid(i)**2*star%rot%eq_velocity_coeff1b(i))
 !         VTH = FW*(ETHVN(I)*WM(I)*QWR2-ETHVP(I))/DT
@@ -270,7 +270,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
             theta_term_n=0.0d0
             theta_term_p=0.0d0
          end if
-         diffusive_term2 = difad_velocity_scale*star%rot%eq_velocity_coeff0(i)* &
+         diffusive_term2 = star%ctrl%difad_velocity_scale*star%rot%eq_velocity_coeff0(i)* &
               omega_mid(i)**2*(star%rot%eq_velocity_coeff2a(i)+ &
               star%rot%eq_velocity_coeff2b(i))+theta_term_n
          advective_term1 = advective_term1 + theta_term_p
@@ -589,7 +589,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
       max_omega_change_history(coeff_iter_idx) = max_omega_change
       max_omega_change_zone_history(coeff_iter_idx) = max_omega_change_zone
 ! DETERMINE IF RUN HAS CONVERGED
-      if (abs(max_omega_change).lt.convergence_tolerance) then
+      if (abs(max_omega_change).lt.star%ctrl%convergence_tolerance) then
          diffusion_converged = .true.
          exit
       end if
@@ -612,7 +612,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
                  0.5d0*omega_working(k)
          end do
       end if
-      if (abs(max_omega_change_medium_iter).le.convergence_tolerance .and. &
+      if (abs(max_omega_change_medium_iter).le.star%ctrl%convergence_tolerance .and. &
            theta_iter_idx.ge.2) then
          exit
       else
@@ -658,7 +658,7 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
          advective_velocity_term = star%rot%am_advective_coeff(i)/star%rot%geometric_factor(i)
          domega_dr_velocity_term = star%rot%am_diffusive_coeff(i)/star%rot%geometric_factor(i)* &
               rhs(ii-2)*star%rot%dchi_dr_edge(i)/omega_mid_new
-         domega_dr_velocity_term_alt = 0.2d0*difad_velocity_scale* &
+         domega_dr_velocity_term_alt = 0.2d0*star%ctrl%difad_velocity_scale* &
               star%rot%eq_velocity_coeff0(i)*omega_mid_new*star%rot%dchi_dr_edge(i)* &
               (star%rot%eq_velocity_coeff2a(i)+star%rot%eq_velocity_coeff2b(i))*rhs(ii-2)
          if (star%rot%am_diffusive_coeff(i).le.0.0d0) domega_dr_velocity_term_alt = 0.0d0
@@ -677,12 +677,12 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
               third_deriv_velocity_term,total_velocity, &
               rhs(ii+1),rhs(ii+2),rhs(ii+3)
          end if
-         star%rot%mixing_velocity_estimate(i) = 5.0d0*abs(mixing_velocity_scale* &
-              es_mixing_scale*total_velocity_alt*star%rot%equatorial_radius(i))
+         star%rot%mixing_velocity_estimate(i) = 5.0d0*abs(star%ctrl%mixing_velocity_scale* &
+              star%ctrl%es_mixing_scale*total_velocity_alt*star%rot%equatorial_radius(i))
          mixing_diffusion_raw = (star%rot%mixing_velocity_estimate(i)+ &
-              mixing_velocity_scale*secular_shear_mixing_scale* &
-              star%rot%shear_diffusion_coeff_eqgrid(i)+mixing_velocity_scale* &
-              gsf_mixing_scale*star%rot%gsf_diffusion_coeff_eqgrid(i))
+              star%ctrl%mixing_velocity_scale*star%ctrl%secular_shear_mixing_scale* &
+              star%rot%shear_diffusion_coeff_eqgrid(i)+star%ctrl%mixing_velocity_scale* &
+              star%ctrl%gsf_mixing_scale*star%rot%gsf_diffusion_coeff_eqgrid(i))
          eq_mixing_diffusion_coeff(i) = mixing_diffusion_raw* &
               star%rot%mixing_geometric_factor(i)
 !         WRITE(*,1111)I,VESN(I),DCMIX,ECOD2(I),REQ(I)

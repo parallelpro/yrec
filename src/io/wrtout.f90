@@ -101,7 +101,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
       write(short_file_unit,21)
    20 format(1X,127('*'))
    21 format(/,1X,127('*'))
-      if(.not.helium_flash_active) then
+      if(.not.star%ctrl%helium_flash_active) then
        write(short_file_unit,30)star%model_number,star%star_mass,star%env_comp%xnew,star%env_comp%znew,star%run%dage,timestep_yr
    30    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
           ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',F12.0)
@@ -156,7 +156,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
        he_core_mass = star%m(h_shell_begin_index-1)/star%solar_mass_cgs
        max_log_temperature = star%run%central_log10_temperature
 ! LOCATE MAXIMUM T - NOTE DIFFERENT METHOD USED FOR HE FLASH
-       if(.not.helium_flash_active) then
+       if(.not.star%ctrl%helium_flash_active) then
           do i = 2,star%nz
              if(star%logT(i).lt.star%logT(i-1))exit
           end do
@@ -228,7 +228,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
       write(short_file_unit,170)fit_point_mass,star%logP(star%nz),star%logT(star%nz),star%logR(star%nz)
   170 format(1X,'FIT-POINT    M/MSUN=',F16.12,5X,'(P,T,R) =',3F12.7)
       write(short_file_unit,20)
-      if(ltrack) then
+      if(star%ctrl%ltrack) then
 ! MHP 02/12 MOVED ABOVE TO WHERE FIRST USED
 ! MHP 8/96
 ! STORE CENTRAL RHO,P,T FOR LATER USE
@@ -244,11 +244,11 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
             end do
          endif
 ! MHP 12/09 NEW OPTION TO OUTPUT TRACK INFORMATION IN ONE LINE PER MODEL FORMAT.
-         if(track_file_version .eq. 0) then
+         if(star%ctrl%track_file_version .eq. 0) then
 ! MHP 8/96 ADD LINE TO COMPUTE SNU's for Cl37 and Ga71.
             star%flux%cl37_snu_rate = 0.0D0
             star%flux%ga71_snu_rate = 0.0D0
-            if(lsnu) then
+            if(star%ctrl%lsnu) then
                do i = 1,8
                   star%flux%cl37_snu_rate = star%flux%cl37_snu_rate + clsnuf(i)*star%flux%neutrino_flux_total(i)
                   star%flux%ga71_snu_rate = star%flux%ga71_snu_rate + gasnuf(i)*star%flux%neutrino_flux_total(i)
@@ -331,7 +331,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !     1499       FORMAT(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3,41E16.8)
 ! MCR 12/25 Preserve precision and 'E' for values w/ 3-digit exponents
  1499       format(1X,2I8,1P7E17.8E3,1P5E12.4,16E17.8E3,12E10.3,41E17.8E3)
-         else if(track_file_version .eq.1 .or. track_file_version .eq.2) then
+         else if(star%ctrl%track_file_version .eq.1 .or. star%ctrl%track_file_version .eq.2) then
             write(itrack,1500)star%model_number,star%nz,star%run%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%run%core_cz_mass,star%run%envelope_mass, &
                            star%run%envelope_radius,star%run%envelope_cz_temperature,star%run%envelope_cz_density,star%run%envelope_cz_pressure,star%run%envelope_cz_o16
  1500       format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4)
@@ -392,13 +392,13 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
          endif
 !        ROTATION STUFF
 ! 4/09 ADDED TAUCZ TO ROTATION INFORMATION
-         if (track_file_version .eq. 2) then
+         if (star%ctrl%track_file_version .eq. 2) then
 
             write(itrack,1540)total_angular_momentum,total_rotational_kinetic_energy,total_moment_of_inertia,cz_moment_of_inertia,star%omega(star%nz), &
                            star%omega(1),rotation_period_days,equatorial_velocity_kms,star%turnover%convective_turnover_timescale
  1540       format(1X, 1P6E13.5,0P,2F11.5,1E13.5)
          end if
-         if (track_file_version .eq. 3) then
+         if (star%ctrl%track_file_version .eq. 3) then
 !        RATIO OF GRAV TO TOTAL ENERGY
 !       GROTOT = 100.0*TLUMX(7)/HL(M)
             write(itrack,1501)star%model_number,star%nz,star%run%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%run%core_cz_mass,star%run%envelope_mass, &
@@ -409,7 +409,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
       endif
 
 ! April 1992, DBG ISOCHRONE OUTPUT
-      if(isochrone_output_active) then
+      if(star%ctrl%isochrone_output_active) then
 ! Write out model no., age (yr), L (erg/s), R (cm), Teff (K),
 ! g (cm/s**2), Ycenter, Mass He core (gm)
         age_yr = star%run%dage*1.0D9
@@ -425,7 +425,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
         else
            he_core_mass_grams = 0.0D0
         end if
-          write(isochrone_file_unit,1005)star%model_number,age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs,ycenter_local, &
+          write(star%ctrl%isochrone_file_unit,1005)star%model_number,age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs,ycenter_local, &
             he_core_mass_grams
  1005     format(1X, I5, 1P7E17.8)
       end if
@@ -452,7 +452,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 !  PRINT OUT MODEL DETAILS IF REQUESTED FOR THIS MODEL. THIS IS ALL DONE
 !  IN THE SR PUTSTORE.
 !
-      if(lstore.and.mod(star%model_number,nprtmod).eq.0) then
+      if(star%ctrl%lstore.and.mod(star%model_number,star%ctrl%nprtmod).eq.0) then
        call putstore(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
          star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L, &
          star%log_total_mass,star%run%dage,timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
@@ -461,8 +461,8 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! the call to putstore above creates the necessary pulsation output for LPULSE.
 ! however, in the event that the above block is not executed and pulsation
 ! output is desired, call wrtmod.
-      if(.not.(lstore.and.mod(star%model_number,nprtmod).eq.0) .and. pulsation_output_active) then
-       if(lmilne) call wrtmil(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%m,star%nz,star%model_number)
+      if(.not.(star%ctrl%lstore.and.mod(star%model_number,star%ctrl%nprtmod).eq.0) .and. pulsation_output_active) then
+       if(star%ctrl%lmilne) call wrtmil(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%m,star%nz,star%model_number)
 !        CALL WRTMOD(M,LSHELL,JXBEG,JXEND,JCORE,JENV,HCOMP,HS1,HD,HL,
 !      *   HP,HR,HT,LC,MODEL,BL,TEFFL,OMEGA,FP,FT,ETA2,R0,HJM,HI,HS,
 !      *   DAGE)  ! KC 2025-05-31
@@ -473,7 +473,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! new (2026): GYRE-format periodic pulsation output, independent of
 ! the LPULSE/pulsation_output_active mechanism above -- see
 ! core/parmin.f90 and io/write_gyre_pulse.f90.
-      if (pulse_gyre_interval.gt.0 .and. mod(star%model_number,pulse_gyre_interval).eq.0) then
+      if (star%ctrl%pulse_gyre_interval.gt.0 .and. mod(star%model_number,star%ctrl%pulse_gyre_interval).eq.0) then
          write(legacy_gyre_suffix,'(I5.5)') star%model_number
          legacy_gyre_path = 'gyre_profile_'//legacy_gyre_suffix//'.data.GYRE'
          call write_gyre_pulse(star%nz,star%model_number,star%m,star%logRho,star%luminosity_lsun, &
@@ -483,7 +483,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! JVS 01/11 Added new track file output format, +manipulations for stitching
 ! together the interior and envelope pieces. Columns 68,69,70 are normalized
 ! acoustic depth, depth to CZ and acoustic crossing time, respectively.
-        if (acoustic_depth_output) then
+        if (star%ctrl%acoustic_depth_output) then
             if(star%envelope_cz_bottom_index.gt.1 .and. compute_acoustic_depth) then
                   call calcad(star%logR, star%run%envelope_cz_log_radius, star%nz, star%logRho, star%logP,star%logT,star%log_L, star%fp_rot, star%ft_rot, star%log_total_mass, &
 !      *            LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
@@ -498,7 +498,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
             endif
 
         if (ageout_model_output_flag) then
-         iwrite = ageout_model_unit
+         iwrite = star%ctrl%ageout_model_unit
          call wrtlst(iwrite,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
          star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
          star%run%dage,timestep_yr,star%omega)

@@ -47,33 +47,33 @@ program test_kap
 
 ! unit numbers, per core/parmin.f90
       short_file_unit = 20
-      fermi_unit = 15
-      opal95_table_unit = 48
+      star%ctrl%fermi_unit = 15
+      star%ctrl%opal95_table_unit = 48
       open(short_file_unit, file="test_kap.short", status="replace")
 
 ! kap configuration: OPAL95 atomic tables only, per the reference
 ! solar namelists (LOPAL95=T, ZOPAL951=0.016232, TMOLMIN/TMOLMAX
 ! 4.0/4.1); molecular and conductive paths off
-      use_opal95_tables = .true.
-      use_opal92_tables = .false.
-      use_laol89_tables = .false.
-      use_alex06_tables = .false.
-      use_alex95_tables = .false.
-      use_kurucz90_tables = .false.
+      star%ctrl%use_opal95_tables = .true.
+      star%ctrl%use_opal92_tables = .false.
+      star%ctrl%use_laol89_tables = .false.
+      star%ctrl%use_alex06_tables = .false.
+      star%ctrl%use_alex95_tables = .false.
+      star%ctrl%use_kurucz90_tables = .false.
       use_two_z_tables = .false.
       use_pure_z_table = .false.
-      use_conductive_opacity = .false.
-      opal95_single_table_z = 0.016232d0
-      molecular_opacity_logt_min = 4.0d0
-      molecular_opacity_logt_max = 4.1d0
+      star%ctrl%use_conductive_opacity = .false.
+      star%ctrl%opal95_single_table_z = 0.016232d0
+      star%ctrl%molecular_opacity_logt_min = 4.0d0
+      star%ctrl%molecular_opacity_logt_max = 4.1d0
 
 ! eos side gated off except the always-loaded Fermi table (setups
 ! calls eos_init unconditionally)
-      use_mhd_eos = .false.
+      star%ctrl%use_mhd_eos = .false.
       use_scv_eos = .false.
-      use_opal95_eos = .false.
-      use_opal2001_eos = .false.
-      use_opal2006_eos = .false.
+      star%ctrl%use_opal95_eos = .false.
+      star%ctrl%use_opal2001_eos = .false.
+      star%ctrl%use_opal2006_eos = .false.
       atm_choice = 0
 
       star%env_comp%envelope_hydrogen_fraction = 0.70d0
@@ -118,14 +118,14 @@ program test_kap
       call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
            kap_ierr)
       write(*,'(a,i4)') "err out-of-table   ierr = ", kap_ierr
-      use_opal95_tables = .false.
+      star%ctrl%use_opal95_tables = .false.
       logt = 6.0d0
       logd = -3.0d0
       fxion = 0.0d0
       call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
            kap_ierr)
       write(*,'(a,i4)') "err no-table-chosen ierr = ", kap_ierr
-      use_opal95_tables = .true.
+      star%ctrl%use_opal95_tables = .true.
 
       close(short_file_unit)
       write(*,'(a)') "test_kap: done"

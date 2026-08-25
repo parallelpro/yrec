@@ -113,9 +113,9 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
 !  core_helium_fraction: computed as 1 - Z(core); in a He-burning core
 !  X is normally negligible there, so this approximates the core Y.
        core_helium_fraction = 1d0 - composition(3,convective_core_edge_zone)
-       if(core_helium_fraction.ge.atime(1)) then
+       if(core_helium_fraction.ge.star%ctrl%atime(1)) then
 
-            helium_dt = min(atime(4),atime(5)*core_helium_fraction)
+            helium_dt = min(star%ctrl%atime(4),star%ctrl%atime(5)*core_helium_fraction)
 
           helium_dt = (5.85d17/star%solar_luminosity_cgs)*helium_dt* &
                (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))

@@ -55,6 +55,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
      cz_moment_of_inertia, cz_mass_bottom, cz_mass_top, omega_surface, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok, ierr)
+      use star_info_lib, only: star
 
       use star_info_lib
       use luout_lib
@@ -202,7 +203,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       end do
       call getqua(log_density,local_gravity,radius_unlogged,omega,num_zones)
       do i = 1,num_zones
-         vfc(i) = 0.0D0
+         star%ctrl%vfc(i) = 0.0D0
       end do
 !  CHECK STABILITY OF THE MODEL AND COMPUTE CIRCULATION VELOCITIES.
 !  MECHANISMS CONSIDERED:SECULAR AND DYNAMICAL SHEAR,EDDINGTON CIRCULATION,
@@ -213,7 +214,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
            am_transport_convective_flag,num_zones,omega,unstable_zone_found, &
            dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
            total_luminosity,sub_timestep,log_pressure)
-      if(use_diffusion_advection_transport) &
+      if(star%ctrl%use_diffusion_advection_transport) &
            call getfc(log_density,radius_unlogged,diffusion_velocity, &
            zone_min,zone_max,omega)
 !  STORE INITIAL ANGULAR MOMENTUM DISTRIBUTION.
@@ -232,7 +233,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 !  ITERATION IS USED TO GET THE VELOCITIES.  THIS 'NEW' VELOCITY IS THEN
 !  AVERAGED WITH THE VELOCITY FOUND IN THE PREVIOUS ITERATION TO GET A
 !  CORRECTED V AND THUS A MORE ACCURATE RUN OF DIFFUSION COEFFICIENTS.
-      do iteration = 1,itdif2
+      do iteration = 1,star%ctrl%itdif2
          omega_surface = omega(num_zones)
          if(iteration.gt.1)then
 !  COMPUTE NEW RUN OF ANGULAR VELOCITIES (AVERAGE OF INITIAL AND
@@ -256,7 +257,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                  iteration,am_transport_convective_flag,num_zones,omega, &
                  unstable_zone_found,dlnomega_dlnr,dynamical_shear_omega_limit, &
                  diffusion_velocity,total_luminosity,sub_timestep,log_pressure)
-            if(use_diffusion_advection_transport) &
+            if(star%ctrl%use_diffusion_advection_transport) &
                  call getfc(log_density,radius_unlogged,diffusion_velocity, &
                  zone_min,zone_max,omega)
 !  NOW THAT THE NEW DIFFUSION VELOCITIES HAVE BEEN COMPUTED, RESET THE
@@ -304,8 +305,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             if (ierr /= 0) return
 ! REMOVE TORQUE FROM ENTIRE STAR
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 SAME AS LSOLID
-         else if(surface_cz_active .and. (force_solid_body_rotation .or. &
-              (solid_body_mode_flag.eq.1)))then
+         else if(surface_cz_active .and. (star%ctrl%force_solid_body_rotation .or. &
+              (star%ctrl%solid_body_mode_flag.eq.1)))then
             wind_loss_active = ljdot0
             solid_cz_mass_bottom = 0.0D0
             solid_cz_mass_top = exp(ln10*log_total_mass)
@@ -405,8 +406,8 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
          endif
 ! MHP 3/09 SKIP ANGULAR MOMENTUM EVOLUTION FOR SOLID BODY MODELS
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
-         if(.not.force_solid_body_rotation .and. &
-              (solid_body_mode_flag.ne.1))then
+         if(.not.star%ctrl%force_solid_body_rotation .and. &
+              (star%ctrl%solid_body_mode_flag.ne.1))then
 !  CHECK IF SURFACE C.Z. IS PART OF THE UNSTABLE REGION.
 !  IF SO,CALCULATE TERMS FOR DIFFUSION.
          if(surface_cz_active.and.zone_end.eq.zone_max)then
@@ -435,7 +436,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             wind_loss_implicit = 0.0D0
          endif
          diffusion_converged = .false.
-         if(.not.use_diffusion_advection_transport)then
+         if(.not.star%ctrl%use_diffusion_advection_transport)then
 !  SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR OMEGA AT END OF TSTEP
             call dcoeft(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
                  eq_moment_of_inertia,eq_angular_momentum,eq_omega,star%rot%ntot, &
@@ -506,7 +507,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
               diffusion_solve_ok,redo_flag, ierr)
          if (ierr /= 0) return
 ! MHP 9/93
-         if(no_am_transport_in_core)diffusion_solve_ok = .true.
+         if(star%ctrl%no_am_transport_in_core)diffusion_solve_ok = .true.
 ! IF LOK=T,CONVERGED.
          if(diffusion_solve_ok)exit   ! the post-loop reassignment is a no-op here
 ! IF LREDO=T, A PROBLEM REQUIRES TIMESTEP CUTTING.

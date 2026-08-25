@@ -51,7 +51,7 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
 ! restrict change in timestep to no more than a factor of atime(14)%
 ! up or down.
 ! mhp 10/14 use atime(13) as the global timestep limiter for the code
-      dt_factor_limit = atime(13)
+      dt_factor_limit = star%ctrl%atime(13)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit
       rotation_dt = previous_timestep/dt_factor

@@ -102,7 +102,7 @@ subroutine run_yrec(ierr)
 ! for a given kind card, evolve NMODLS(NK) times
 ! if rescaling is being performed, NMODLS(NK) is the number of times
 ! the new model is being relaxed
-       do model_iteration = 1,num_models(star%job%nk)
+       do model_iteration = 1,star%ctrl%num_models(star%job%nk)
 ! 2026 (phase five): one model advance per iteration, extracted to
 ! core/evolve_step.f90 (see its header for the step_status contract).
        call evolve_step(model_iteration, step_status, ierr)
@@ -181,7 +181,7 @@ subroutine apply_monte_carlo_parameters
       double precision, parameter :: reference_solar_luminosity = 3.844D33
 
 ! for monte carlo run, input values of parameters being changed.
-      if (lmonte) then
+      if (star%ctrl%lmonte) then
          star%cross_section_scale(1) = star%run%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
          star%cross_section_scale(2) = star%run%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
          star%cross_section_scale(3) = star%run%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
@@ -198,8 +198,8 @@ subroutine apply_monte_carlo_parameters
          age_scale_factor = star%run%age_target(monte_carlo_run_number)
 ! timestep and final age are altered in SR SETCAL; input #s should be
 ! scaled for a solar age of 4.57 Gyr
-         target_end_age(2)=1.0D8
-         target_end_age(3)=4.57D9
+         star%ctrl%target_end_age(2)=1.0D8
+         star%ctrl%target_end_age(3)=4.57D9
       else
          age_scale_factor = 1.0D0
       endif
@@ -219,11 +219,11 @@ subroutine begin_calibration
 ! MHP 1/93 add option to automatically calibrate solar model.
 ! MHP 3/96 added counter for # of iterations per converged model and
 ! starting estimate of ALPHA and X
-      if (calibrate_solar_model) then
+      if (star%ctrl%calibrate_solar_model) then
          call setcal(age_scale_factor)
          convergence_iterations = 1
-         initial_x_guess = rescale_params(2,1)
-         initial_alpha_guess = mixing_length_array(1)
+         initial_x_guess = star%ctrl%rescale_params(2,1)
+         initial_alpha_guess = star%ctrl%mixing_length_array(1)
          saved_use_structure_dt_limits = use_structure_dt_limits   ! save LPTIME for reuse during calibration
          saved_atm_choice  = atm_choice    ! save KTTAU for reuse during calibration
       else
@@ -231,7 +231,7 @@ subroutine begin_calibration
       endif
 ! DBG 12/94 add option to automatically calculate a stellar model
 ! of specified Teff and L
-      if (calibrate_star_flag) then
+      if (star%ctrl%calibrate_star_flag) then
          call setscal
       endif
 end subroutine begin_calibration
@@ -250,7 +250,7 @@ subroutine end_of_card_calibration(runs_complete)
       runs_complete = .false.
 ! MHP 1/93 CHECK AUTOMATIC CALIBRATATION OF SOLAR MODEL.
 !c MHP 5/96 changed solar calibration to perform solar models in 3 kind cards
-         if (calibrate_solar_model) then
+         if (star%ctrl%calibrate_solar_model) then
 ! JVS Turn off calcad - speeds things up
             compute_acoustic_depth=.false.
             if (mod(star%job%nk,solar_calib_cards_per_cycle).eq.0) then
@@ -277,9 +277,9 @@ subroutine end_of_card_calibration(runs_complete)
 ! DBG 6/93 Need to delete pulse output because have not got ultimate
 ! model yet.
 ! MHP 8/25 Replaced delete file with rewind file. This is functionally the same and avoids the need to pass the character string for the file name from parmin.
-                     rewind(opal_model_unit)
-                     rewind(opal_envelope_unit)
-                     rewind(opal_atm_unit)
+                     rewind(star%ctrl%opal_model_unit)
+                     rewind(star%ctrl%opal_envelope_unit)
+                     rewind(star%ctrl%opal_atm_unit)
 !                     CLOSE(IOPMOD, STATUS='DELETE')
 !                     CLOSE(IOPENV, STATUS='DELETE')
 !                     CLOSE(IOPATM, STATUS='DELETE')
@@ -295,7 +295,7 @@ subroutine end_of_card_calibration(runs_complete)
          endif
 
 ! DBG 12/94 NO MORE RUNS NEEDED. HAVE CALIBRATED STELLAR MODEL
-         if (calibrate_star_flag .and. star_found_flag.and.(mod(star%job%nk,star_calib_cards_per_cycle).eq.0)) then
+         if (star%ctrl%calibrate_star_flag .and. star_found_flag.and.(mod(star%job%nk,star_calib_cards_per_cycle).eq.0)) then
             runs_complete = .true.
             return
          end if
@@ -313,11 +313,11 @@ end subroutine end_of_card_calibration
 subroutine begin_kind_card
          star%run%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
-         initial_envelope_x = initial_x_array(star%job%nk)
-         initial_envelope_z = initial_z_array(star%job%nk)
-         star%mixing_length_alpha = mixing_length_array(star%job%nk)
-       change_envelope_mass_flag = has_senv0_array(star%job%nk)
-       requested_envelope_mass = senv0_array(star%job%nk)
+         initial_envelope_x = star%ctrl%initial_x_array(star%job%nk)
+         initial_envelope_z = star%ctrl%initial_z_array(star%job%nk)
+         star%mixing_length_alpha = star%ctrl%mixing_length_array(star%job%nk)
+       change_envelope_mass_flag = star%ctrl%has_senv0_array(star%job%nk)
+       requested_envelope_mass = star%ctrl%senv0_array(star%job%nk)
        star%evo%reset_triangle = .false.
        star%evo%model_diverged_flag = .false.
 ! MHP 10/02 ZERO OUT INITIAL ANGULAR MOMENTUM
@@ -353,7 +353,7 @@ subroutine begin_kind_card
 ! table, off since 2004, is now the compute_neutrino_fluxes control
 ! (core/neutrino_flux_table.f90); it describes the starting model
 ! of each kind card.
-      if (compute_neutrino_fluxes) then
+      if (star%ctrl%compute_neutrino_fluxes) then
          call neutrino_flux_table
       endif
 ! save mass in solar units
@@ -370,7 +370,7 @@ subroutine begin_kind_card
          star%evo%prev_age = star%run%dage
          star%evo%path_length_sq = 0.0D0
 
-       if (helium_flash_active) then
+       if (star%ctrl%helium_flash_active) then
 ! timestep cutting requires a model stored in logical unit ILAST
 ! or it will crash - so copy initial model to unit ILAST
           if (star%evo%punch_pending_flag) then
@@ -423,7 +423,7 @@ end subroutine begin_kind_card
 subroutine end_kind_card
 ! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
 ! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
-         if (lstore.and.lstpch.and.star%evo%punch_pending_flag) then
+         if (star%ctrl%lstore.and.star%ctrl%lstpch.and.star%evo%punch_pending_flag) then
           call putstore(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
                  star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
                  star%run%dage,star%evo%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)

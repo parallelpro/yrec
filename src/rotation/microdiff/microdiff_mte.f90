@@ -107,7 +107,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_hydrogen_mid(1) = composition(1,iu-1)+fx*(composition(1,iu)-composition(1,iu-1))
       eq_helium_mid(1) = composition(2,iu-1)+fx*(composition(2,iu)-composition(2,iu-1))
       eq_metal_mid(1) = composition(3,iu-1)+fx*(composition(3,iu)-composition(3,iu-1))
-      if(ldifli)then
+      if(star%ctrl%ldifli)then
          do kk=1,num_light
             ii = light_element_id(kk)
             eq_light_mid(kk,1) = composition(ii,iu-1)+ &
@@ -174,7 +174,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
               +facinterp(3)*composition(3,k0+2) &
               +facinterp(4)*composition(3,k0+3)
 !  MASS FRACTION OF LIGHT ELEMENTS
-         if(ldifli)then
+         if(star%ctrl%ldifli)then
             do kk=1,num_light
                ii = light_element_id(kk)
                eq_light_mid(kk,i)=facinterp(1)*composition(ii,k0) &
@@ -204,7 +204,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_hydrogen(1) = composition(1,zone_begin)
       eq_helium(1) = composition(2,zone_begin)
       eq_metal(1) = composition(3,zone_begin)
-      if(ldifli)then
+      if(star%ctrl%ldifli)then
          do kk=1,num_light
             ii = light_element_id(kk)
             eq_light(kk,1) = composition(ii,zone_begin)
@@ -264,7 +264,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
               +facinterp(2)*composition(3,k0+1) &
               +facinterp(3)*composition(3,k0+2) &
               +facinterp(4)*composition(3,k0+3)
-         if(ldifli)then
+         if(star%ctrl%ldifli)then
             do kk=1,num_light
                ii = light_element_id(kk)
                eq_light(kk,i)=facinterp(1)*composition(ii,k0) &
@@ -283,7 +283,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_hydrogen(num_eq_points) = composition(1,zone_end)
       eq_helium(num_eq_points) = composition(2,zone_end)
       eq_metal(num_eq_points) = composition(3,zone_end)
-      if(ldifli)then
+      if(star%ctrl%ldifli)then
          do kk=1,num_light
             ii = light_element_id(kk)
             eq_light(kk,num_eq_points) = composition(ii,zone_end)

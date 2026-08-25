@@ -36,6 +36,7 @@
 !     e-mail: palex@astro.ioffe.rssi.ru
 subroutine condopacp(ion_charge, log10_temperature, log10_density, &
      log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, ierr)
+      use star_info_lib, only: star
 
       use const_lib
       use conductive_table_lib, only: cond_table
@@ -73,7 +74,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       double precision :: dt2k, drtk, drt2k, xt
 
       if (cond_table%table_loaded_flag.ne.12345) then   ! Reading
-         file_unit = icondopacp
+         file_unit = star%ctrl%icondopacp
 ! MHP 8/25 file opening moved to parmin
 !         open(IP,file=FcondOpacP,status='OLD')
 !         print*,'Reading thermal conductivity data...'

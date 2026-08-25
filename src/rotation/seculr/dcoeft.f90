@@ -96,7 +96,7 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
            wind_loss_implicit)*eq_moment_of_inertia(num_eq_points)
       rhs(num_eq_points) = rhs(num_eq_points)*(1.0d0+ &
            surface_wind_loss_term/eq_angular_momentum(num_eq_points))
-      if (.not.use_diffusion_advection_transport) then
+      if (.not.star%ctrl%use_diffusion_advection_transport) then
 !  FIRST SHELL BOUNDARY CONDITIONS: NO FLOW BELOW THE BOUNDARY
 !  I.E. THE ANGULAR MOMENTUM TRANSPORT AT THE FIRST SHELL DOES NOT
 !  DEPEND ON THE SHELLS BELOW IT.

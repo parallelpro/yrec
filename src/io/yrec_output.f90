@@ -63,6 +63,7 @@ contains
 
 ! ---------------------------------------------------------------
 subroutine output_init_mesa(fshort)
+      use star_info_lib, only: star
       use luout_lib
       character(len=*), intent(in) :: fshort
       character(len=256) :: log_path
@@ -84,26 +85,27 @@ subroutine output_init_mesa(fshort)
       else
          out_dir = ' '
       end if
-      hist_path = trim(out_dir) // trim(star_history_name)
+      hist_path = trim(out_dir) // trim(star%ctrl%star_history_name)
       profile_counter = 0
 
       call history_column_names(hist_names)
-      call parse_columns(history_columns_file, hist_names, n_hist_cols, &
+      call parse_columns(star%ctrl%history_columns_file, hist_names, n_hist_cols, &
            hist_sel, hist_nsel, 'history')
 ! model_number / profile_number / num_zones lead the file whenever
 ! they are selected, in that fixed order (they are columns 1-3 of the
 ! built-in table, so a stable hoist of indices 1..3 does it).
       call hoist_id_columns(hist_sel, hist_nsel)
       call profile_column_names(prof_names)
-      call parse_columns(profile_columns_file, prof_names, n_prof_cols, &
+      call parse_columns(star%ctrl%profile_columns_file, prof_names, n_prof_cols, &
            prof_sel, prof_nsel, 'profile')
 end subroutine output_init_mesa
 
 ! ---------------------------------------------------------------
 subroutine output_run_header(star_mass_msun)
+      use star_info_lib, only: star
       double precision, intent(in) :: star_mass_msun
 
-      if (use_legacy_output) then
+      if (star%ctrl%use_legacy_output) then
          call wrthead(star_mass_msun)
       end if
 end subroutine output_run_header
@@ -126,7 +128,7 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
            total_rotational_kinetic_energy
       integer :: iprof
 
-      if (use_legacy_output) then
+      if (star%ctrl%use_legacy_output) then
          call wrtout(timestep_yr, log_gravity, has_h_shell, &
               h_shell_begin_index, h_shell_end_index, h_shell_mid_index, &
               trial_sign_flag, punch_pending_flag, total_angular_momentum, &
@@ -143,14 +145,14 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
 ! profile<N>.data, and/or profile<N>.data.GYRE / .data.FGONG per
 ! pulse_format. The history profile_number column records N.
          iprof = 0
-         if (profile_interval > 0 .and. &
-             (write_profile_flag .or. write_pulse_flag)) then
-            if (mod(star%model_number, profile_interval) == 0) then
+         if (star%ctrl%profile_interval > 0 .and. &
+             (star%ctrl%write_profile_flag .or. star%ctrl%write_pulse_flag)) then
+            if (mod(star%model_number, star%ctrl%profile_interval) == 0) then
                profile_counter = profile_counter + 1
                iprof = profile_counter
                call build_extended
-               if (write_profile_flag) call write_profile(iprof)
-               if (write_pulse_flag) call write_pulse(iprof)
+               if (star%ctrl%write_profile_flag) call write_profile(iprof)
+               if (star%ctrl%write_pulse_flag) call write_pulse(iprof)
             end if
          end if
          call write_history_row(iprof)
@@ -597,12 +599,12 @@ subroutine build_extended
       env_beg0 = env_step_begin
       env_min0 = env_step_min
       env_max0 = env_step_max
-      atm_step_begin = atm_step_size
-      atm_step_min = atm_step_size
-      atm_step_max = atm_step_size
-      env_step_begin = envelope_step_size
-      env_step_min = envelope_step_size
-      env_step_max = envelope_step_size
+      atm_step_begin = star%ctrl%atm_step_size
+      atm_step_min = star%ctrl%atm_step_size
+      atm_step_max = star%ctrl%atm_step_size
+      env_step_begin = star%ctrl%envelope_step_size
+      env_step_min = star%ctrl%envelope_step_size
+      env_step_max = star%ctrl%envelope_step_size
 
       idum = 0
       ixx = 0
@@ -617,10 +619,10 @@ subroutine build_extended
            - c4pil - csigl)
       gl = cgl + star%log_total_mass - rl - rl
       plim = star%logP(star%nz)
-      if (star%convective_flag(star%nz) .and. spot_filling_factor /= 0.0d0 &
-          .and. spot_temp_contrast /= 1.0d0) then
-         ateffl = star%log_Teff - 0.25d0*log10(spot_filling_factor* &
-              spot_temp_contrast**4.0d0 + 1.0d0 - spot_filling_factor)
+      if (star%convective_flag(star%nz) .and. star%ctrl%spot_filling_factor /= 0.0d0 &
+          .and. star%ctrl%spot_temp_contrast /= 1.0d0) then
+         ateffl = star%log_Teff - 0.25d0*log10(star%ctrl%spot_filling_factor* &
+              star%ctrl%spot_temp_contrast**4.0d0 + 1.0d0 - star%ctrl%spot_filling_factor)
       else
          ateffl = star%log_Teff
       end if

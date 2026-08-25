@@ -25,15 +25,15 @@ subroutine star_setup(ierr)
            star%job%centre4_table_path,star%job%centre5_table_path,star%job%opal92_table2_path,star%job%pure_z_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path,star%job%scv_z_table_path,star%job%alex95_table_paths, ierr)
       if (ierr /= 0) return
 ! MHP 3/96 changed I/O to read in only up to max run needed.
-      if (lmonte) then
+      if (star%ctrl%lmonte) then
 !c MHP 8/25 moved file open to parmin
 !     OPEN(UNIT=IDYN,FILE=FDYN,FORM='FORMATTED',STATUS='OLD')
-         star%job%mc_run_start = imbeg
+         star%job%mc_run_start = star%ctrl%imbeg
          imend = min(imend,1000)
          star%job%mc_run_end = imend
 ! read in monte carlo data
          do i = 1,imend
-            read(dynamics_unit,1511)star%run%s11_rate(i),star%run%s33_rate(i),star%run%s34_rate(i), &
+            read(star%ctrl%dynamics_unit,1511)star%run%s11_rate(i),star%run%s33_rate(i),star%run%s34_rate(i), &
                  star%run%s17_rate(i),star%run%metal_to_h_ratio(i),star%run%helium_fraction_param(i), &
                  star%run%luminosity_target(i),star%run%age_target(i)
  1511       format(7X,1P7E10.3/E9.3)

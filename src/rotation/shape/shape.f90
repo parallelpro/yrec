@@ -14,6 +14,7 @@
 ! SOFIA.
 subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
      omega, eta2, r0)
+      use star_info_lib, only: star
       use star_info_lib, only: json
 
       use const_lib
@@ -62,7 +63,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
          fact = 5.0d0*cc13*omega(1)**2/(gm*(2.0d0+eta2(1)))
-         do j = 1,itfp2
+         do j = 1,star%ctrl%itfp2
             a_param = fact*r0_cubed
             delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
             (1.0d0 + c3*a_param**2 - c4*a_param**3)
@@ -124,12 +125,12 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r0_estimate = r_phi
          acc_tol = acfpft**cc13
 ! ITERATE BETWEEN SOLUTION FOR ETA2 AND SOLUTION FOR R0 ITFP1 TIMES.
-         do k = 1,itfp1
+         do k = 1,star%ctrl%itfp1
             fact = 5.0d0*cc13*omega(i)**2/(gm*(2.0d0+eta2(i)))
 ! NOW ITERATE FOR R0 GIVEN RPHI AND ETA2, USING THE RELATION
 ! RPHI**3 = R0**3(1.0 + 3/5A**2 - 2/35A**3)
 ! WHERE A = OMEGA**2*R0**3*5/3GM(2+ETA2))
-            do j = 1,itfp2
+            do j = 1,star%ctrl%itfp2
                a_param = fact*r0_cubed
                delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
                (1.0d0 + c3*a_param**2 - c4*a_param**3)

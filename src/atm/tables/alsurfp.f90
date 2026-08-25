@@ -84,6 +84,7 @@
 !
 !       If LPRT  is .TRUE. print Log(P) at the associated Log(Teff) to ISHORT and IMODPT.
 subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
+      use star_info_lib, only: star
 
       use atm_table_lib
       use const_lib
@@ -243,7 +244,7 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
          call polint(atm_table%allard_gl_grid(j1),temp_tau100_row,4,log_g,temp_tau100_col(i),unused_dy)
       enddo
 !     Now do final 4-point Lagrange inerpolations in TEFFL
-      if (.not. allard_use_tau100) then
+      if (.not. star%ctrl%allard_use_tau100) then
 !        Current standard alternative. PL for TEFFL,GL, TL=TEFFL
          call polint(atm_table%allard_teffl_grid(teffl_index),pressure_col,4,log_teff,atm_table%atm_log10_pressure,unused_dy)
          atm_table%atm_log10_temperature = log_teff
@@ -256,7 +257,7 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
 !     If requested, WRITE OUT INFORMATION TO THE MODEL FILE.
       if (print_to_files) then
-         if (allard_use_tau100) then
+         if (star%ctrl%allard_use_tau100) then
             write(short_file_unit,70)
             write(istor,70)
    70       format('********PL,TL at Tau=100 INTERPOLATED' &
@@ -275,7 +276,7 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
 !     If not requested via LPRT, WRITE OUT INFORMATION TO THE SHORT FILE.
       if (.not. print_to_files) then
-        if (allard_use_tau100) then
+        if (star%ctrl%allard_use_tau100) then
            write(short_file_unit,73)
    73      format('ALSURFP:  PL,TL at Tau=100 INTERPOLATED' &
                 , ' FROM ALLARD TABULATED VALUES:')

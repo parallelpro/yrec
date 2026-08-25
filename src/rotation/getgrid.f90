@@ -37,9 +37,9 @@ subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
       double precision :: mass_scale, luminosity_scale, pressure_scale
 
 ! USE THE MODEL CRITERIA FOR ASSIGNING THE SPACING BETWEEN GRID POINTS.
-      mass_scale = chi_grid_scale(2)
-      luminosity_scale = chi_grid_scale(9)*log_luminosity(num_zones)
-      pressure_scale = chi_grid_scale(11)
+      mass_scale = star%ctrl%chi_grid_scale(2)
+      luminosity_scale = star%ctrl%chi_grid_scale(9)*log_luminosity(num_zones)
+      pressure_scale = star%ctrl%chi_grid_scale(11)
       num_points_in_range = zone_end - zone_begin + 1
       do range_index = 1, num_points_in_range
          zone_index = zone_begin + range_index - 1

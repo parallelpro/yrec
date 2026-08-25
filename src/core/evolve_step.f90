@@ -144,7 +144,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! TIMESTEP WRITTEN TO MODEL (AS THIS MAKES CONTINUING A SEQUENCE AWKWARD.)
 !     INSTEAD WRITE THE PREVIOUS MODEL TIMESTEP TO MODEL.
 ! ONLY IF A FIXED END AGE IS USED, NOT FOR OTHER STOPS
-       if (end_age_stop_active(star%job%nk) .and. target_end_age(star%job%nk).gt.0.0D0) then
+       if (star%ctrl%end_age_stop_active(star%job%nk) .and. star%ctrl%target_end_age(star%job%nk).gt.0.0D0) then
           if (reached_end_age(star%job%nk)) then
              star%evo%dt = max(star%evo%dt_saved,1.0D-3*star%run%dage*seconds_per_year)
              star%evo%timestep_yr = star%evo%dt/seconds_per_year
@@ -154,7 +154,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        else
           star%evo%dt_saved = star%evo%dt
        endif
-       if (rescale_kind(star%job%nk).ne.2) star%model_number = star%model_number+1
+       if (star%ctrl%rescale_kind(star%job%nk).ne.2) star%model_number = star%model_number+1
 ! 2026 (phase four, step 5): compute the per-model observables in
 ! the star layer (fills star%run%*, star%luminosity_breakdown
 ! renormalization, star%turnover% via gettau); wrtout below only
@@ -186,7 +186,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             return
          endif
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
-         if (calibrate_star_flag .and. .not. star_found_flag) then
+         if (star%ctrl%calibrate_star_flag .and. .not. star_found_flag) then
             if (mod(star%job%nk,2).eq.0) then
 ! chkscal protocol: iteration 1 only primes its previous-model state
 ! (the value computed here is never read -- see chkscal.f90)
@@ -217,11 +217,11 @@ contains
 subroutine update_output_flags_for_step
 
 ! rewind ISHORT if LRWSH is true (keeps ISHORT small)
-          if (rewind_short_file) then
+          if (star%ctrl%rewind_short_file) then
              rewind(short_file_unit)
           endif
 ! DBG PULSE:  if last model of last run then set LPULSE to LSAVPU
-            if (model_iteration.eq.num_models(star%job%nk) .and. star%job%nk .eq. num_runs) then
+            if (model_iteration.eq.star%ctrl%num_models(star%job%nk) .and. star%job%nk .eq. num_runs) then
                  pulsation_output_active = star%evo%saved_pulse_output_flag
             end if
 
@@ -232,14 +232,14 @@ subroutine update_output_flags_for_step
 ! been printed out, AGEOUT is set to the next age.
 !
 ! Turn on calcad:
-      if (acoustic_depth_output) then
+      if (star%ctrl%acoustic_depth_output) then
             compute_acoustic_depth=.true.
       else
             compute_acoustic_depth = .false.
       endif
 ! If output has been turned on for a previous step, keep it on for the next
 ! step, but then turn it off.
-      if (acoustic_depth_output) then
+      if (star%ctrl%acoustic_depth_output) then
             if (ageout_bracket_armed) then
                   print*, 'LJWRT on'
                   pulsation_output_active = star%evo%saved_pulse_output_flag
@@ -253,8 +253,8 @@ subroutine update_output_flags_for_step
 ! If this is the step before one of the ages of interest, print everything out.
 ! Also, save model structure.
             if (nao.lt.6) then
-                  if (star%run%dage+star%evo%timestep_yr/1.0D9-output_ages_gyr(nao) .le. 0.0D0 .and. &
-                  star%run%dage+2.0D0*star%evo%timestep_yr/1.0D9-output_ages_gyr(nao) .ge. 0.0D0 .and. .not. ageout_bracket_armed) then
+                  if (star%run%dage+star%evo%timestep_yr/1.0D9-star%ctrl%output_ages_gyr(nao) .le. 0.0D0 .and. &
+                  star%run%dage+2.0D0*star%evo%timestep_yr/1.0D9-star%ctrl%output_ages_gyr(nao) .ge. 0.0D0 .and. .not. ageout_bracket_armed) then
                         print*, 'AGEOUT reached'
                         pulsation_output_active = star%evo%saved_pulse_output_flag
                         calcad_ageout_output_active = .true.
@@ -279,7 +279,7 @@ subroutine update_output_flags_for_step
 !FD echo LSOUND
 !        print*,'MAIN LSOUND = ',LSOUND
 !FD end
-            if (po_output_enabled) then
+            if (star%ctrl%po_output_enabled) then
 ! MHP 8/25 changed to add file names as declared variables
              call pdist(star%evo%prev_log_l,star%evo%prev_log_teff,star%evo%prev_age,star%evo%path_length_sq,star%log_L,star%log_Teff,model_iteration,star%job%pulse_atm_path, &
              star%job%pulse_env_path,star%job%pulse_mod_path)
@@ -328,7 +328,7 @@ subroutine advance_composition_and_age
 ! (rescale_kind = 2) skip aging EXCEPT while the center is still cool
 ! -- pre-main-sequence models rescale and age at the same time.)
             evolve_model_flag = star%model_number.ge.0 .and. &
-                 (rescale_kind(star%job%nk).ne.2 .or. star%logT(1).lt.6.6D0)
+                 (star%ctrl%rescale_kind(star%job%nk).ne.2 .or. star%logT(1).lt.6.6D0)
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! ADD MASS LOSS CALCULATION
@@ -371,7 +371,7 @@ subroutine rezone_or_snapshot
 ! DBG 12/95 GET OPACITY
 !*** END TEST
 ! rezone new model, except rezoning not performed for He flash calculations
-          if (.not.helium_flash_active) then
+          if (.not.star%ctrl%helium_flash_active) then
              call hpoint(star%evo%istore_flag, star%evo%reset_triangle, star%evo%h_shell_zone_begin, &
                   star%evo%has_h_shell, star%evo%total_angular_momentum, &
                   star%evo%total_rotational_ke, ierr)
@@ -405,7 +405,7 @@ subroutine rezone_or_snapshot
                star%light_burn%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = star%envelope_cz_bottom_index
                if (envelope_overshoot_active) then
-                  star%light_burn%pressure_scale_height_start = alphae*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
+                  star%light_burn%pressure_scale_height_start = star%ctrl%alphae*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
                            -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
                   star%light_burn%pressure_scale_height_start = 0.0D0
@@ -429,13 +429,13 @@ subroutine solve_structure
 ! (i.e. old triangle ignored)
 ! LFINI = T if model has converged
 ! LARGE = T if model has diverged
-          if (lnew0) star%evo%recompute_envelope_triangle = .true.
+          if (star%ctrl%lnew0) star%evo%recompute_envelope_triangle = .true.
             if (.not.evolve_model_flag) star%evo%dt = -dabs(star%evo%dt)
-            fcorr = dabs(fcorr0) - fcorri
+            fcorr = dabs(star%ctrl%fcorr0) - star%ctrl%fcorri
             iterations_done = 0
             star%evo%model_diverged_flag = .false.
             converged = .false.
-            if (.not.lnews .or. star%evo%dt.le.0.0D0) then
+            if (.not.star%ctrl%lnews .or. star%evo%dt.le.0.0D0) then
                do i = 1,star%nz
 ! zero entropy terms
                   star%log_temperature_delta(i) = 0.0D0
@@ -472,12 +472,12 @@ subroutine solve_structure
 ! CALL TO CRRECT - ADDED ITERATION LEVEL (2026: the four-level ladder
 ! goes through the solve_level wrapper below; per-level differences
 ! are only (level, max iterations, recompute surface BC))
-            call solve_level(1, niter1, .false.)
+            call solve_level(1, star%ctrl%niter1, .false.)
             if (ierr /= 0) return
 ! SECOND LEVEL OF ITERATIONS
 ! CHECK ENVELOPE TRIANGLE BEFORE ITERATING FOR SOLUTION
             if (star%evo%model_diverged_flag) return   ! (host cycles retry_step on the flag)
-            call solve_level(2, niter2, .true.)
+            call solve_level(2, star%ctrl%niter2, .true.)
             if (ierr /= 0) return
             if (star%evo%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
@@ -491,7 +491,7 @@ subroutine solve_structure
                end do
             endif
 ! THIRD LEVEL OF ITERATIONS
-            call solve_level(3, niter3, .false.)
+            call solve_level(3, star%ctrl%niter3, .false.)
             if (ierr /= 0) return
             if (star%evo%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 end subroutine solve_structure
@@ -540,7 +540,7 @@ subroutine converge_with_rotation
 ! (to be implemented when I know the rest of it works!)
 ! (level 4 runs INSIDE the structure<->rotation iteration above,
 ! unlike levels 1-3 -- deliberate, see the itrot loop)
-            call solve_level(4, niter4, .false.)
+            call solve_level(4, star%ctrl%niter4, .false.)
             if (ierr /= 0) return
 !  25         CONTINUE
             if (.not.converged) then
@@ -612,7 +612,7 @@ subroutine burn_light_elements
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index
                if (envelope_overshoot_active) then
-                  star%light_burn%pressure_scale_height_end = alphae*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
+                  star%light_burn%pressure_scale_height_end = star%ctrl%alphae*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
                            -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
                   star%light_burn%pressure_scale_height_end = 0.0D0

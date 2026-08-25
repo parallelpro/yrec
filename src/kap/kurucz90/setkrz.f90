@@ -10,6 +10,7 @@
 ! requested, a second Kurucz table) and builds the spline
 ! interpolation coefficients used later by kurucz.f90/kurucz2.f90.
 subroutine setkrz(kurucz_table_path, kurucz_table2_path)
+      use star_info_lib, only: star
 
       use opacity_table_lib
       use const_lib
@@ -31,13 +32,13 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
       x_table_count = num_x_tables
     1 format(2f5.2,5f7.3,3f9.5,f8.3)
 !     OPEN TABLE
-      open(kurucz_table_unit, file=kurucz_table_path, status='OLD')
-      read(kurucz_table_unit,'(/)')
+      open(star%ctrl%kurucz_table_unit, file=kurucz_table_path, status='OLD')
+      read(star%ctrl%kurucz_table_unit,'(/)')
 
       num_read = 0
       prev_grid_temp = 0.0d0
       table_read: do
-      read(kurucz_table_unit,1,iostat=read_status) grid_temp, pressure, &
+      read(star%ctrl%kurucz_table_unit,1,iostat=read_status) grid_temp, pressure, &
            log10_opacity0, log10_opacity1, log10_opacity2, &
            log10_opacity4, log10_opacity8, electron_density, &
            atom_density, density, unused_col
@@ -58,18 +59,18 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 
       opacity_table%kurucz_num_temps = num_read
 !     CLOSE THE TABLE WE HAVE READ
-      close(kurucz_table_unit,err=99)
+      close(star%ctrl%kurucz_table_unit,err=99)
 
 ! DBG 12/95 read in second Z table if requested
       if (use_two_z_tables) then
 !        OPEN TABLE
-         open(ikur2, file=kurucz_table2_path, status='OLD')
-         read(ikur2,'(/)')
+         open(star%ctrl%ikur2, file=kurucz_table2_path, status='OLD')
+         read(star%ctrl%ikur2,'(/)')
 
          num_read = 0
          prev_grid_temp = 0.0d0
          table2_read: do
-         read(ikur2,1,iostat=read_status) grid_temp, pressure, &
+         read(star%ctrl%ikur2,1,iostat=read_status) grid_temp, pressure, &
               log10_opacity0, log10_opacity1, log10_opacity2, &
               log10_opacity4, log10_opacity8, electron_density, &
               atom_density, density, unused_col
@@ -90,7 +91,7 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
 
          opacity_table%kurucz2_num_temps = num_read
 !        CLOSE THE TABLE WE HAVE READ
-         close(ikur2,err=99)
+         close(star%ctrl%ikur2,err=99)
       end if
 
       call ykoeff

@@ -61,6 +61,7 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
+      use star_info_lib, only: star
 
       use const_lib
       use scv_eos_lib
@@ -102,7 +103,7 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
       if (present(ierr)) ierr = 0
       jerr = 0
 
-      if (use_mhd_eos) then
+      if (star%ctrl%use_mhd_eos) then
          call meqos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
@@ -185,6 +186,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
      zams_b_table_path, zams_c_table_path, centre1_table_path, &
      centre2_table_path, centre3_table_path, centre4_table_path, &
      centre5_table_path, ierr)
+      use star_info_lib, only: star
 
       use yale_eos_lib
       use luout_lib
@@ -213,7 +215,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       if (present(ierr)) ierr = 0
       jerr = 0
 
-      if (use_mhd_eos) then
+      if (star%ctrl%use_mhd_eos) then
          call mhdtbl(zams_a_table_path, zams_b_table_path, &
               zams_c_table_path, centre1_table_path, centre2_table_path, &
               centre3_table_path, centre4_table_path, centre5_table_path, &
@@ -229,14 +231,14 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
 
 !  INPUT F-TABLES FOR DEGENERATE EQUATION OF STATE
 !  OPEN DATA FILES
-      open(unit=fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
-      read(fermi_unit,150)  (yale_eos%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,150)  (yale_eos%fermi_table_eta(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,160) (grid_idx,iden_idx,(yale_eos%fermi_table_data(col_idx,grid_idx,iden_idx), &
+      open(unit=star%ctrl%fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
+      read(star%ctrl%fermi_unit,150)  (yale_eos%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
+      read(star%ctrl%fermi_unit,150)  (yale_eos%fermi_table_eta(grid_idx), grid_idx = 1,43)
+      read(star%ctrl%fermi_unit,160) (grid_idx,iden_idx,(yale_eos%fermi_table_data(col_idx,grid_idx,iden_idx), &
            col_idx=1,5),card_idx=1,860)
   150 format(8x,9f8.4)
   160 format(2i5,5f12.7)
-      rewind fermi_unit
+      rewind star%ctrl%fermi_unit
       bin_start = 1
       do grid_idx=1,41
 ! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
@@ -263,30 +265,30 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       end do
 
 !  CLOSE EQUATION OF STATE FILE.
-      close(fermi_unit)
+      close(star%ctrl%fermi_unit)
 
 ! MHP 5/97 ADDED OPTION FOR NEW SCV EQUATION OF STATE TABLES.
       if(use_scv_eos)then
-         open(unit=scv_h_unit,file=scv_h_table_path,status='OLD')
-         open(unit=scv_he_unit,file=scv_he_table_path,status='OLD')
-         open(unit=scv_z_unit,file=scv_z_table_path,status='OLD')
+         open(unit=star%ctrl%scv_h_unit,file=scv_h_table_path,status='OLD')
+         open(unit=star%ctrl%scv_he_unit,file=scv_he_table_path,status='OLD')
+         open(unit=star%ctrl%scv_z_unit,file=scv_z_table_path,status='OLD')
 !  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
          do t_idx = 1, nts
-            read(scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
-            read(scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
-            read(scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
+            read(star%ctrl%scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
+            read(star%ctrl%scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
+            read(star%ctrl%scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
     1       format(f5.2,i4)
 ! TABLE GRID POINTS IN T, P(T) ARE THE SAME - NPTSY AND TLOGX
 ! READ IN TO RETAIN PARALLEL COMMON BLOCK STRUCTURE.
             do p_idx = 1, nptsx(t_idx)
-               read(scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
-               read(scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
+               read(star%ctrl%scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
+               read(star%ctrl%scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
     2          format(f6.2,1p2e13.5,0p,8f9.4)
             end do
 !  READ IN METAL EQUATION OF STATE TABLE; COMPUTED USING THE PRATHER
 ! EQUATION OF STATE IN THE OLD YALE CODE.
             do p_idx = nptsx(t_idx),1,-1
-               read(scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
+               read(star%ctrl%scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
  3             format(f6.2,12f9.4)
             end do
          end do
@@ -318,6 +320,7 @@ end subroutine eos_init
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
      saha_state, ierr)
+      use star_info_lib, only: star
 
       use opal_eos_lib
       use const_lib
@@ -354,7 +357,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       if (present(ierr)) ierr = 0
       jerr = 0
 
-      if (use_opal2006_eos) then
+      if (star%ctrl%use_opal2006_eos) then
          eos_interp_order = 9
          eos_rad_flag = 1
          x_local = hydrogen_fraction

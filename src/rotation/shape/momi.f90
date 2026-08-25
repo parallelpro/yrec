@@ -18,6 +18,7 @@
 ! formula is used directly.
 subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
+      use star_info_lib, only: star
       use star_info_lib, only: json
       use luout_lib
       use const_lib
@@ -50,7 +51,7 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
          prev_log_true_radius = ln10*log_radius(zone_start - 1)
       end if
       rotation_param_const = cc13*5.0d0/dexp(ln10*cgl)
-      if (walpcz.ne.0.0d0) then
+      if (star%ctrl%walpcz.ne.0.0d0) then
          do zone_idx = zone_start,zone_end
             moment_of_inertia(zone_idx) = cc23*shell_mass(zone_idx)* &
                  exp(ln10*2.0d0*log_radius(zone_idx))

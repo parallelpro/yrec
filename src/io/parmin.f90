@@ -38,6 +38,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
       use star_info_lib, only: control_nml_override, physics_nml_override, &
            star
+      use controls_sync_lib, only: store_controls_to_star
       use const_lib
       use luout_lib
       use intpar_lib
@@ -1622,7 +1623,19 @@ subroutine adopt_canonical_names
       use_scv_eos = lscv
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
+! (2026 phase C: remap is read-path like this routine -- it reads
+! AND writes the controls BUFFER; the stores below/in read_controls
+! carry its results into star%ctrl.)
       call remap
+! 2026 phase C: output_init_mesa (called from
+! derive_options_and_open_files below) reads its output controls
+! from star%ctrl, but read_controls' final store has not happened
+! yet at that point -- store the buffer into star%ctrl here, after
+! the namelist reads, the local->canonical copies, and remap.
+! read_controls' final store after parmin returns then also captures
+! echo_settings' clamps (walpcz etc.); each store is an idempotent
+! buffer copy.
+      call store_controls_to_star
 ! MHP 06/13 Added memory of whether the choice of atmospheres has
 ! been changed during the run, and what the original setting was
       star%atm_choice_initial = kttau

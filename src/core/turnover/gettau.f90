@@ -101,7 +101,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! IF CHKPRS > 1.0, AT LEAST 3 PSCAS, SO LOOK INTERIOR.
 ! IF CHKPRS < 1.0, 1 PSCA UP MIGHT BE IN ENV. STITCH TOGETHER.
 ! FINALLY, IF LNEWTCZ = .FALSE., MAKE SURE TO CALC AN ENV.
-      if (pressure_diff_check.lt.1.0.or..not.use_new_turnover_timescale) then
+      if (pressure_diff_check.lt.1.0.or..not.star%ctrl%use_new_turnover_timescale) then
          calc_envelope_flag = .true.
       else
          calc_envelope_flag = .false.
@@ -129,10 +129,10 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       pressure_limit = log_pressure(num_zones)
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-      if (convective_flag(num_zones).and.spot_filling_factor.ne.0.0.and. &
-           spot_temp_contrast.ne.1.0) then
-         spot_adjusted_log_teff = log_teff - 0.25*log10(spot_filling_factor* &
-              spot_temp_contrast**4.0+1.0-spot_filling_factor)
+      if (convective_flag(num_zones).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
+           star%ctrl%spot_temp_contrast.ne.1.0) then
+         spot_adjusted_log_teff = log_teff - 0.25*log10(star%ctrl%spot_filling_factor* &
+              star%ctrl%spot_temp_contrast**4.0+1.0-star%ctrl%spot_filling_factor)
       else
          spot_adjusted_log_teff = log_teff
       endif
@@ -172,7 +172,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
          combined_convective_flag(zone_index) = convective_flag(zone_index)
       enddo
 !
-      if (calc_envelope_flag.and.use_new_turnover_timescale) then
+      if (calc_envelope_flag.and.star%ctrl%use_new_turnover_timescale) then
 ! IF CHKPRS < 1, THEN STITCH THE ENVELOPE ONTO THE INTERIOR.
 ! ENVELOPE WAS JUST INTEGRATED IN ENVINT ABOVE, SO USE THAT RUN.
 ! THIS CODE BORROWED FROM STITCH.F.
@@ -198,7 +198,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
          enddo
       endif
 ! CALL TAUINT
-      if (use_new_turnover_timescale) then
+      if (star%ctrl%use_new_turnover_timescale) then
 !          CALL TAUINTNEW(HCOMPF,HS2,HSF,LCF,HRF,HPF,HDF,HGF,MM,M,HVF,
 !      *                  DELF1,DELF2,HSTOT,RBCZ)  ! KC 2025-05-31
          call tauintnew(combined_mass,combined_convective_flag,combined_radius, &

@@ -13,6 +13,7 @@
 subroutine oversh(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, num_zones, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, num_mixed_zones)
+      use star_info_lib, only: star
       use star_info_lib, only: json
 
       use luout_lib
@@ -62,11 +63,11 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 !            PSCALU = PSCALU*ALPHAC
 ! JVS 07/13 ALLOW FOR THE LIMITING OF OVERSHOOTING ABOVE THE CONVECTIVE
 ! CORES OF LOVE MASS STARS AS PER WOO & DEMARQUE 2001
-            if (lovmax) then
-               pscale_up = min(pscale_up*alphac, &
-                    betac*exp(ln10*log_radius(edge_idx)))
+            if (star%ctrl%lovmax) then
+               pscale_up = min(pscale_up*star%ctrl%alphac, &
+                    star%ctrl%betac*exp(ln10*log_radius(edge_idx)))
             else
-               pscale_up = pscale_up*alphac
+               pscale_up = pscale_up*star%ctrl%alphac
             end if
 
          else if (mixed_zone_bounds(zone_idx,2).eq.num_zones) then
@@ -80,7 +81,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
                  log_mass, log_temperature, edge_idx, pscale_down)
 ! PSCALD IS THE PRESSURE SCALE HEIGHT BELOW THE CONVECTIVE REGION;
 ! ALPHAE IS THE DESIRED OVERSHOOT (IN SCALE HEIGHTS).
-            pscale_down = pscale_down*alphae
+            pscale_down = pscale_down*star%ctrl%alphae
          else
 ! INTERMEDIATE CONVECTION ZONE (NOT INCLUDING CENTRAL OR SURFACE POINT).
 ! SKIP IF NO INTERMEDIATE CONVECTION.
@@ -92,11 +93,11 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
             edge_idx = mixed_zone_bounds(zone_idx,1)
             call hsubp(composition, log_density, log_pressure, log_radius, &
                  log_mass, log_temperature, edge_idx, pscale_down)
-            pscale_down = pscale_down*alpham
+            pscale_down = pscale_down*star%ctrl%alpham
             edge_idx = mixed_zone_bounds(zone_idx,2)
             call hsubp(composition, log_density, log_pressure, log_radius, &
                  log_mass, log_temperature, edge_idx, pscale_up)
-            pscale_up = pscale_up*alpham
+            pscale_up = pscale_up*star%ctrl%alpham
          end if
 ! COMPUTE EXTENSION OF CONVECTION ZONE BELOW SCHWARTZSCHILD BOUNDARY.
          if (down_overshoot_flag) then

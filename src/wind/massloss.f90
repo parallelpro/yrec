@@ -120,7 +120,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       integer :: zone_idx
 
 ! INITIALIZE MASS LOSS AT DEFAULT RATE
-      mass_loss_rate_msun_yr = mass_accretion_rate
+      mass_loss_rate_msun_yr = star%ctrl%mass_accretion_rate
       if(use_mass_accretion)then
          apply_mass_change = .true.
       else
@@ -142,9 +142,9 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       age_seconds = age_gyr*1.0d9*seconds_per_year
 ! USE A REIMERS FORMULA TO COMPUTE MDOT IF DESIRED; OVERWRITES
 ! CONSTANT MDOT.  IN THIS EXPRESSION MDOT=K*L/G/R.
-      if(apply_mass_change .and. lreimer)then
+      if(apply_mass_change .and. star%ctrl%lreimer)then
          surface_gravity_cgs = 10.0d0**(cgl)*total_mass_grams/total_radius_cm**2
-         mass_loss_rate_msun_yr = creim*10.0d0**(log_luminosity_lsun+ &
+         mass_loss_rate_msun_yr = star%ctrl%creim*10.0d0**(log_luminosity_lsun+ &
               star%log10_solar_luminosity)/surface_gravity_cgs/total_radius_cm
       endif
 ! 02/12 MHP TAUCZ NOW COMPUTED PRIOR TO CALL IN MIXCZ

@@ -145,9 +145,9 @@ contains
 ! points as needed; ierr if the whole model is cooler than tenv0.
 subroutine check_envelope_temperature_range
 ! CHECK IF TEMPERATURE OF OUTERMOST HENYEY POINT > MIMIMUM ENVELOPE T
-      if (star%logT(star%nz).lt.tenv0) then
+      if (star%logT(star%nz).lt.star%ctrl%tenv0) then
        do i = star%nz-1,1,-1
-          if (star%logT(i).gt.tenv0) then
+          if (star%logT(i).gt.star%ctrl%tenv0) then
              write(short_file_unit,10) star%nz,i
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              star%nz = i
@@ -168,7 +168,7 @@ subroutine check_envelope_temperature_range
        return
        end if
 !  CHECK IF OUTER POINT T < MAXIMUM ENVELOPE T
-      else if (star%logT(star%nz).gt.tenv1.and. &
+      else if (star%logT(star%nz).gt.star%ctrl%tenv1.and. &
            envelope_store_index.ne.0) then
        star%nz = star%nz + 1
        star%env_comp%senv = star%stored_envelope_state(4)
@@ -223,19 +223,19 @@ subroutine flag_fixed_points
       endif
       do i = 2,star%nz
 ! TEST FOR FLAGGING DUE TO X GRADIENT
-       if (dabs(star%xa(i_h1,i)-star%xa(i_h1,i-1)).gt.chi_grid_scale(3)) then
+       if (dabs(star%xa(i_h1,i)-star%xa(i_h1,i-1)).gt.star%ctrl%chi_grid_scale(3)) then
           flag_point(flag_count) = i
           flag_count = flag_count + 1
 ! TEST FOR FLAGGING DUE TO Z GRADIENT
        else if (dabs(star%xa(i_metals,i)-star%xa(i_metals,i-1)).gt. &
-            chi_grid_scale(4)) then
+            star%ctrl%chi_grid_scale(4)) then
           flag_point(flag_count) = i
           flag_count = flag_count + 1
 ! TEST FOR FLAGGING DUE TO GRADIENT IN LOG OMEGA.
        else if (rotation_active) then
           log_omega_top = dlog10(star%omega(i))
           log_omega_bot = dlog10(star%omega(i-1))
-          if (dabs(log_omega_top-log_omega_bot).gt.chi_grid_scale(12)) then
+          if (dabs(log_omega_top-log_omega_bot).gt.star%ctrl%chi_grid_scale(12)) then
              flag_point(flag_count) = i
              flag_count = flag_count + 1
           endif
@@ -255,9 +255,9 @@ subroutine flag_fixed_points
 !  PMAX4 = MAX DEL LOG P ABOVE BASE OF SURFACE C.Z. IN FINELY ZONED
 !  REGION AROUND IT.
 !  PMAX5 = SAME FOR THE OUTER POINTS IN THE STAR.
-      pmax1 = chi_grid_scale(11)
-      pmax4 = chi_grid_scale(10)
-      pmax5 = chi_grid_scale(8)
+      pmax1 = star%ctrl%chi_grid_scale(11)
+      pmax4 = star%ctrl%chi_grid_scale(10)
+      pmax5 = star%ctrl%chi_grid_scale(8)
       if (.not.star%convective_flag(star%nz)) then
        overshoot_base_zone = star%nz
        fine_zone_base = star%nz
@@ -272,25 +272,25 @@ subroutine flag_fixed_points
        else
           do overshoot_base_zone = star%envelope_cz_bottom_index-1,1,-1
              if (star%logP(overshoot_base_zone)- &
-                  star%logP(star%envelope_cz_bottom_index).gt.alphae) exit
+                  star%logP(star%envelope_cz_bottom_index).gt.star%ctrl%alphae) exit
           end do
             overshoot_base_zone = overshoot_base_zone + 1
           delta_log_pressure = star%logP(overshoot_base_zone)- &
                star%logP(star%envelope_cz_bottom_index)
           if (delta_log_pressure.gt.0.0D0) then
-             overshoot_point_count = int(delta_log_pressure/chi_grid_scale(10))
-             if (mod(delta_log_pressure,chi_grid_scale(10)).ne.0D0) &
+             overshoot_point_count = int(delta_log_pressure/star%ctrl%chi_grid_scale(10))
+             if (mod(delta_log_pressure,star%ctrl%chi_grid_scale(10)).ne.0D0) &
                   overshoot_point_count = overshoot_point_count+1
              pmax3 = delta_log_pressure/dfloat(overshoot_point_count)
           else
-             pmax3 = chi_grid_scale(10)
+             pmax3 = star%ctrl%chi_grid_scale(10)
           endif
             if (overshoot_base_zone.gt.1) then
                flag_point(flag_count) = overshoot_base_zone
                flag_count = flag_count + 1
             endif
        endif
-       if (chi_grid_scale(7).eq.0.0D0) then
+       if (star%ctrl%chi_grid_scale(7).eq.0.0D0) then
           fine_zone_base = overshoot_base_zone
        else
 ! NOW LOCATE BASE OF FINELY ZONED REGION.
@@ -299,18 +299,18 @@ subroutine flag_fixed_points
           else
           do fine_zone_base = overshoot_base_zone-1,1,-1
              if (star%logP(fine_zone_base) - &
-                  star%logP(star%envelope_cz_bottom_index).gt.chi_grid_scale(7)) &
+                  star%logP(star%envelope_cz_bottom_index).gt.star%ctrl%chi_grid_scale(7)) &
                   exit
           end do
             fine_zone_base = fine_zone_base + 1
           if (fine_zone_base.ne.overshoot_base_zone) then
           delta_log_pressure = star%logP(fine_zone_base) - &
                star%logP(overshoot_base_zone)
-          overshoot_point_count = int(delta_log_pressure/chi_grid_scale(10))
-          if (mod(delta_log_pressure,chi_grid_scale(10)).ne.0D0) &
+          overshoot_point_count = int(delta_log_pressure/star%ctrl%chi_grid_scale(10))
+          if (mod(delta_log_pressure,star%ctrl%chi_grid_scale(10)).ne.0D0) &
                overshoot_point_count = overshoot_point_count+1
           pmax2 = delta_log_pressure/dfloat(overshoot_point_count)
-          if (pmax2.eq.0.0D0) pmax2 = chi_grid_scale(10)
+          if (pmax2.eq.0.0D0) pmax2 = star%ctrl%chi_grid_scale(10)
             if (fine_zone_base.gt.1) then
                flag_point(flag_count) = fine_zone_base
                flag_count = flag_count + 1
@@ -388,10 +388,10 @@ subroutine assign_new_points
             luminosity_max = star%luminosity_lsun(i)
          endif
       end do
-      point_spacing_max(1) = chi_grid_scale(8)
-      point_spacing_max(2) = chi_grid_scale(9)*luminosity_max
-      point_spacing_max(3) = chi_grid_scale(5)
-      point_spacing_max(4) = chi_grid_scale(6)
+      point_spacing_max(1) = star%ctrl%chi_grid_scale(8)
+      point_spacing_max(2) = star%ctrl%chi_grid_scale(9)*luminosity_max
+      point_spacing_max(3) = star%ctrl%chi_grid_scale(5)
+      point_spacing_max(4) = star%ctrl%chi_grid_scale(6)
 !      KFACT = 0
 !  200 CONTINUE
       point_insert_flag = 1
@@ -399,20 +399,20 @@ subroutine assign_new_points
       chi_start_index = 2
 ! CHI IS THE NORMALIZED VECTOR OF DIFFERENCES IN M,L,P:
 ! CHI = HS/DELTA M + HL/DELTA L - HP/DELTA P
-      mass_scale = chi_grid_scale(2)
+      mass_scale = star%ctrl%chi_grid_scale(2)
       luminosity_scale = point_spacing_max(2)
       chi(1) = 1.0D0
       do j = 2, star%nz
          pressure_test = star%logP(j) - star%logP(star%envelope_cz_bottom_index)
-         if (abs(pressure_test).lt.chi_grid_scale(7)) then
+         if (abs(pressure_test).lt.star%ctrl%chi_grid_scale(7)) then
 ! FINELY ZONED REGION
-            dp_scale = chi_grid_scale(10)
-         else if (pressure_test.gt.chi_grid_scale(7)) then
+            dp_scale = star%ctrl%chi_grid_scale(10)
+         else if (pressure_test.gt.star%ctrl%chi_grid_scale(7)) then
 ! BELOW SURFACE CZ
-            dp_scale = chi_grid_scale(11)
+            dp_scale = star%ctrl%chi_grid_scale(11)
          else
 ! IN SURFACE CZ
-            dp_scale = chi_grid_scale(8)
+            dp_scale = star%ctrl%chi_grid_scale(8)
          endif
          if (star%luminosity_lsun(j).gt.star%luminosity_lsun(j-1)) then
             dchi = (star%log_mass(j)-star%log_mass(j-1))/mass_scale + &
@@ -577,7 +577,7 @@ subroutine assign_new_points
       star%prev%logRho_start(j) = star%prev%old_shell_mass(j)
       do k = 2,new_num_zones-1
 !
-       if (star%prev%old_shell_mass(k) - star%prev%logRho_start(j).gt.chi_grid_scale(1)) then
+       if (star%prev%old_shell_mass(k) - star%prev%logRho_start(j).gt.star%ctrl%chi_grid_scale(1)) then
           j = j + 1
           star%prev%logRho_start(j) = star%prev%old_shell_mass(k)
        endif
@@ -778,8 +778,8 @@ subroutine interpolate_onto_new_grid
 !
 
 !     SPIT OUT POINT DISTRIBUTION DETAILS IF REQUESTED
-      if (ldebug .and.  npoint.lt.9999) then
-      if (mod(star%model_number,npoint).eq.0) then
+      if (star%ctrl%ldebug .and.  star%ctrl%npoint.lt.9999) then
+      if (mod(star%model_number,star%ctrl%npoint).eq.0) then
          min_common_count = min0(star%nz,new_num_zones)
 !
          write(idebug,910)

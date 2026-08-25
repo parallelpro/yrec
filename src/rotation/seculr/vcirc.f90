@@ -95,7 +95,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             star%circ%es_circulation_velocity_prev(i) = star%circ%es_circulation_velocity(i)
             star%circ%secular_shear_velocity_prev(i) = star%circ%secular_shear_velocity(i)
          end do
-         if (use_diffusion_advection_transport) then
+         if (star%ctrl%use_diffusion_advection_transport) then
             do i = zone_min,zone_max
                star%rot%es_advective_velocity_prev(i) = star%rot%es_advective_velocity(i)
                star%rot%es_diffusive_velocity_prev(i) = star%rot%es_diffusive_velocity(i)
@@ -216,7 +216,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
  303        format(i5,' RAT ',1pe10.3,' POT SPH,CYL,QUA', &
                  3e10.3/' QUA,G,R ',6e12.3)
          end if
-         if (.not.use_diffusion_advection_transport) then
+         if (.not.star%ctrl%use_diffusion_advection_transport) then
             star%circ%es_circulation_velocity(i) = &
                  abs(star%rot%circulation_correction_ratio(i)*star%circ%es_circulation_velocity(i)- &
                  star%rot%es_shear_coeff(i)*qw)
@@ -272,7 +272,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
           ddtest2 = max(ddel,1.0d-3)
           qqq = ddtest/ddtest2
           star%circ%es_circulation_velocity(i) = star%circ%es_circulation_velocity(i)*qqq
-          if (use_diffusion_advection_transport) then
+          if (star%ctrl%use_diffusion_advection_transport) then
              star%rot%es_advective_velocity(i) = star%rot%es_advective_velocity(i)*qqq
              star%rot%es_diffusive_velocity(i) = star%rot%es_diffusive_velocity(i)*qqq
              star%rot%vesd2(i) = star%rot%vesd2(i)*qqq
@@ -314,7 +314,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
               am_transport_convective_flag(i-1)) cycle
 ! MHP 8/93 STABILITY CONDITION ADDED, NEGLECTING THE EFFECTS OF
 ! MU GRADIENTS.
-         if (gsf_inhibition_mode.eq.2 .or. gsf_inhibition_mode.eq.0) then
+         if (star%ctrl%gsf_inhibition_mode.eq.2 .or. star%ctrl%gsf_inhibition_mode.eq.0) then
             qwrmx = 2.0d0*sqrt(star%rot%kinematic_viscosity_interface(i)/ &
                  star%rot%thermal_diffusivity_interface(i))*dlnomega_dlnr_max(i)
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
@@ -327,7 +327,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
             fxx = 1.0d0
          end if
          dr = radius(i)-radius(i-1)
-         if (gsf_inhibition_mode.eq.0) then
+         if (star%ctrl%gsf_inhibition_mode.eq.0) then
             qwrmx=2.0d0*sqrt(star%rot%interface_gravity_factor(i)* &
                  abs(star%mix_phys%amum(i)-star%mix_phys%amum(i-1)) &
                  /dr/star%rot%mean_molecular_weight_interface(i))
@@ -442,7 +442,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! MHP 3/92 SQUARE ROOT OF PR# NEEDED, NOT PR # - ERROR CORRECTED!
 ! THE VELOCITY ESTIMATE HERE IS FROM ZAHN 1991.
          qwrmx = sqrt(star%rot%kinematic_viscosity_interface(i)/ &
-              star%rot%thermal_diffusivity_interface(i)*1.25d-1*critical_reynolds)* &
+              star%rot%thermal_diffusivity_interface(i)*1.25d-1*star%ctrl%critical_reynolds)* &
               dlnomega_dlnr_max(i)
          if (abs(dlnomega_dlnr(i)).gt.qwrmx) then
 !  UNSTABLE; CHECK FOR MU GRADIENTS.
@@ -489,24 +489,24 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! MHP 8/03 MULTIPLY VELOCITY ESTIMATES BY USER PARAMETER
 ! SCALE FACTORS
       do i = zone_min,zone_max
-         star%circ%es_circulation_velocity(i)=abs(es_velocity_scale* &
+         star%circ%es_circulation_velocity(i)=abs(star%ctrl%es_velocity_scale* &
               star%circ%es_circulation_velocity(i))
-         star%circ%gsf_circulation_velocity(i) = gsf_velocity_scale* &
+         star%circ%gsf_circulation_velocity(i) = star%ctrl%gsf_velocity_scale* &
               star%circ%gsf_circulation_velocity(i)
-         star%circ%secular_shear_velocity(i)= secular_shear_velocity_scale* &
+         star%circ%secular_shear_velocity(i)= star%ctrl%secular_shear_velocity_scale* &
               star%circ%secular_shear_velocity(i)
       end do
 ! MHP 11/94
 ! REPEAT FOR DIF+AD
-      if (use_diffusion_advection_transport) then
+      if (star%ctrl%use_diffusion_advection_transport) then
          do i = zone_min,zone_max
-               star%rot%es_diffusive_velocity(i)=abs(es_velocity_scale* &
+               star%rot%es_diffusive_velocity(i)=abs(star%ctrl%es_velocity_scale* &
                     star%rot%es_diffusive_velocity(i))
-               star%rot%es_advective_velocity(i)=es_velocity_scale* &
+               star%rot%es_advective_velocity(i)=star%ctrl%es_velocity_scale* &
                     star%rot%es_advective_velocity(i)
          end do
       end if
-      if (use_diffusion_advection_transport) then
+      if (star%ctrl%use_diffusion_advection_transport) then
 ! MHP 05/02
 ! CHANGED TO REFLECT THE DIFFERENT TREATMENT OF THE GSF INSTABILITY.
 ! THE ENDAL AND SOFIA VARIANT HAD V=THDIF*DLNWDR*W**2/R WHICH WAS
@@ -544,7 +544,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
                  + star%circ%secular_shear_velocity_prev(i))
          end do
 ! MHP 11/94
-         if (use_diffusion_advection_transport) then
+         if (star%ctrl%use_diffusion_advection_transport) then
             do i = zone_min,zone_max
                star%rot%es_advective_velocity(i) = 0.5d0*(star%rot%es_advective_velocity(i) &
                     + star%rot%es_advective_velocity_prev(i))
@@ -563,7 +563,7 @@ subroutine vcirc(log_radius, radius, zone_min, zone_max, iteration, &
 ! 9/93 MIXING WITHOUT TRANSPORT ADDED.
 ! ZERO OUT COEFFICIENTS IN CORE TO AVOID NUMERICAL PROBLEMS IN
 ! THE H-BURNING SHELL.
-      if (no_am_transport_in_core) then
+      if (star%ctrl%no_am_transport_in_core) then
          do i = zone_min,zone_max
             dell = star%rot%interface_luminosity(i)/total_luminosity
             if (dell.lt.9.9d-1) then

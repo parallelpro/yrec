@@ -1912,7 +1912,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  CORRECTION.
       log_rho_local = log_density
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
-      if(log_temperature.le.tcut(1)) then
+      if(log_temperature.le.star%ctrl%tcut(1)) then
          do i = 1,num_reactions
             rate(i) = 0.
          end do
@@ -1997,7 +1997,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
       do i=1,num_reactions
          weak_screening_u=lambda0_zcurl*charge_product(i)
-         if(weak_screening_u.le.weak_screening_threshold) then
+         if(weak_screening_u.le.star%ctrl%weak_screening_threshold) then
 ! WEAKSCREENING IS A NUMERICAL PARAMETER PASSED IN THE FLUX COMMON
 !  BLOCK. TO OBTAIN THE GRABOSKE ET AL. AND SALPETER STANDARD RESULTS,
 !  USE: WEAKSCREENING = 0.03.  FOR THE STANDARD SOLAR MODEL, THIS IS THE
@@ -2108,7 +2108,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          be7p_charge_product = 4.0
          be7p_z86 = 5.7790
          weak_screening_u = lambda0_zcurl*be7p_charge_product
-         if(weak_screening_u.le.weak_screening_threshold) then
+         if(weak_screening_u.le.star%ctrl%weak_screening_threshold) then
             be7p_screening_u = weak_screening_u
          else
             intermediate_screening_u = 0.38*lambda0_86*xtr*be7p_z86/(mu_ion_inv*z_curl_58*z_bar_28)
@@ -2177,7 +2177,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if (log_temperature.ge.tcut(4)) then
+      if (log_temperature.ge.star%ctrl%tcut(4)) then
 ! C13(ALPHA,N) O16
       r1=t9m23+0.0129d0*t9m13+2.04d0+0.184d0*t9p13
       a1 = 6.77d15*exp(-32.329d0*t9m13-(t9/1.284d0)**2)

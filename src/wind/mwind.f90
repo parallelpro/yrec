@@ -53,7 +53,7 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 
       ierr = 0
 
-      if(.not.use_pmm_wind_law)then
+      if(.not.star%ctrl%use_pmm_wind_law)then
          call wind(log_luminosity_lsun,full_timestep,cz_mass_bottom, &
               cz_mass_top,start_zone,end_zone,wind_loss_active,omega_surface, &
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM)  ! KC 2025-05-31
@@ -65,18 +65,18 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       endif
 !
 ! ADD ROSSBY SCALING IF DESIRED.
-      if(scale_by_rossby_number)then
+      if(star%ctrl%scale_by_rossby_number)then
 ! MHP 8/17 CORRECTED TAUCZ CALCULATION TO INTERPOLATE PROPERLY IN TIMESTEP
          current_turnover_timescale = star%turnover%convective_turnover_timescale_old+ &
               star%turnover%fracstep*(star%turnover%convective_turnover_timescale-star%turnover%convective_turnover_timescale_old)
-         if(scale_by_b_field)then
+         if(star%ctrl%scale_by_b_field)then
 ! G Somers 8/17 CREATE ROTATION DUMMY VARIABLES.
             omega_now = omega_surface*current_turnover_timescale/ &
-                 pmm_solar_turnover_timescale
+                 star%ctrl%pmm_solar_turnover_timescale
             omega_saturation = wind_saturation_omega
          else
             omega_now = omega_surface
-            omega_saturation = wind_saturation_omega*pmm_solar_turnover_timescale/ &
+            omega_saturation = wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
                  current_turnover_timescale
          endif
 ! If not scaling, just set dummies to the original values.
@@ -114,16 +114,16 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! MHP 8/17 ADDED CENTRIFUGAL REDUCTION TERM FROM MATT+2012 ApJ 754, L26
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
 !      C_2 = 0.0506
-      fsun = 0.5*pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*cgl)/star%solar_mass_cgs
+      fsun = 0.5*star%ctrl%pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*cgl)/star%solar_mass_cgs
 !     RADIUS
       log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.d0*log_teff)
       fcorr_local = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
            total_mass_msun/star%solar_mass_cgs
-      fcen = ((c_2**2+fsun)/(c_2**2+fcorr_local))**excen
-      domega_test = (full_timestep/cz_moment_of_inertia)*constfactor* &
+      fcen = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local))**star%ctrl%excen
+      domega_test = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
            structfactor*omega_surface &
-           *min(omega_now,omega_saturation)**(wind_law_omega_exponent-1.0d0)*fcen
+           *min(omega_now,omega_saturation)**(star%ctrl%wind_law_omega_exponent-1.0d0)*fcen
 !      DWTEST = (DELTS/HICZ)*CONSTFACTOR*STRUCTFACTOR*OMEGAS
 !     *          *MIN(OMEGAS,WSAT)**(EXW-1.0D0)
 ! G Somers END
@@ -149,9 +149,9 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          omega_iter_prev = omega_substep_start
          omega_fixed_point: do   ! (was label 5)
 ! G Somers 08/17 IF ADDING ADDITIONAL B SCALING, ADD ADDITIONAL TAUCZ TERM.
-         if(scale_by_b_field)then
+         if(star%ctrl%scale_by_b_field)then
             omega_now = omega_iter*current_turnover_timescale/ &
-                 pmm_solar_turnover_timescale
+                 star%ctrl%pmm_solar_turnover_timescale
          else
             omega_now = omega_iter
          endif
@@ -164,10 +164,10 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
          fcorr_local = 0.5*omega_iter**2*exp(ln10*(3.0*log10_radius-cgl))/ &
               total_mass_msun/star%solar_mass_cgs
-         fcen = ((c_2**2+fsun)/(c_2**2+fcorr_local))**excen
+         fcen = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local))**star%ctrl%excen
          omega_iter_new = omega_substep_start - (sub_timestep/ &
-              cz_moment_of_inertia)*constfactor*structfactor*omega_iter &
-              *min(omega_now,omega_saturation)**(wind_law_omega_exponent-1.0d0)*fcen
+              cz_moment_of_inertia)*star%ctrl%constfactor*structfactor*omega_iter &
+              *min(omega_now,omega_saturation)**(star%ctrl%wind_law_omega_exponent-1.0d0)*fcen
 !         WNEW = WS - (DT/HICZ)*CONSTFACTOR*STRUCTFACTOR*W
 !     *          *MIN(W,WSAT)**(EXW-1.0D0)
 ! G Somers END

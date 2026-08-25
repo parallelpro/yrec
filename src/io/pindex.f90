@@ -11,6 +11,7 @@
 ! every zone within the H-burning shell (jxbeg..jxend) if lshell is
 ! set, plus every print_point_interval-th point elsewhere.
 subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
+      use star_info_lib, only: star
       use star_info_lib, only: json
 
       use const_lib
@@ -29,10 +30,10 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
       idm = 2
       if (lshell) then
 !  PRINT OUT EVERY ZONE IN H-BURNING SHELL
-       if (print_point_interval.lt.jxbeg) then
-          ibeg = max(2,print_point_interval)
-          iend = int(jxbeg/print_point_interval)*print_point_interval
-          do j = ibeg,iend,print_point_interval
+       if (star%ctrl%print_point_interval.lt.jxbeg) then
+          ibeg = max(2,star%ctrl%print_point_interval)
+          iend = int(jxbeg/star%ctrl%print_point_interval)*star%ctrl%print_point_interval
+          do j = ibeg,iend,star%ctrl%print_point_interval
              id(idm) = j
              idm = idm + 1
           end do
@@ -46,20 +47,20 @@ subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
           id(idm) = j
           idm = idm + 1
        end do
-       if (print_point_interval.lt.m) then
-          ibeg = int(jxend/print_point_interval+1)*print_point_interval
-          iend = int(m/print_point_interval)*print_point_interval
-          do j = ibeg,iend,print_point_interval
+       if (star%ctrl%print_point_interval.lt.m) then
+          ibeg = int(jxend/star%ctrl%print_point_interval+1)*star%ctrl%print_point_interval
+          iend = int(m/star%ctrl%print_point_interval)*star%ctrl%print_point_interval
+          do j = ibeg,iend,star%ctrl%print_point_interval
              id(idm) = j
              idm = idm + 1
           end do
        end if
-      else if (print_point_interval.lt.m) then
+      else if (star%ctrl%print_point_interval.lt.m) then
 !  GENERAL CASE; PRINT OUT EVERY NPRTPT POINTS.
-       ibeg = max(2,print_point_interval)
-       iend = int(m/print_point_interval)*print_point_interval
-       if (iend .eq. m) iend = iend - print_point_interval
-       do j = ibeg,iend,print_point_interval
+       ibeg = max(2,star%ctrl%print_point_interval)
+       iend = int(m/star%ctrl%print_point_interval)*star%ctrl%print_point_interval
+       if (iend .eq. m) iend = iend - star%ctrl%print_point_interval
+       do j = ibeg,iend,star%ctrl%print_point_interval
           id(idm) = j
           idm = idm + 1
        end do

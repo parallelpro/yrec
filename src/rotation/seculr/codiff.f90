@@ -46,6 +46,7 @@
 ! (unlogged) shell-midpoint radii, matching vcirc.f90's radius(json).
 subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
+      use star_info_lib, only: star
 
       use star_info_lib
       use const_lib
@@ -67,17 +68,17 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
          radius_mid(i) = 0.5d0*(radius_mid_prev(i)+radius_mid_prev(i-1))
       end do
 ! MHP 9/14 ADDED LOOP TO ALLOW A CONSTANT BACKGROUND DIFFUSION COEFFICIENT
-      con1 = c4pi*difad_velocity_scale
-      if (.not.use_constant_background_diffusion) then
-         if (.not.lvfc) then
-            con2 = con1*mixing_velocity_scale
+      con1 = c4pi*star%ctrl%difad_velocity_scale
+      if (.not.star%ctrl%use_constant_background_diffusion) then
+         if (.not.star%ctrl%lvfc) then
+            con2 = con1*star%ctrl%mixing_velocity_scale
             do i = 2,num_zones
                am_diffusion_coeff(i)=con1*(star%circ%es_circulation_velocity(i)+ &
                     star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i))* &
                     radius_mid(i)
-               mixing_diffusion_coeff(i)=con2*(es_mixing_scale* &
-                    star%circ%es_circulation_velocity(i)+gsf_mixing_scale* &
-                    star%circ%gsf_circulation_velocity(i)+secular_shear_mixing_scale* &
+               mixing_diffusion_coeff(i)=con2*(star%ctrl%es_mixing_scale* &
+                    star%circ%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
+                    star%circ%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
                     star%circ%secular_shear_velocity(i))*radius_mid(i)
 !               HLE(I)=RMID(I)
             end do
@@ -86,20 +87,20 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
                am_diffusion_coeff(i) = con1*(star%circ%es_circulation_velocity(i)+ &
                     star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i))* &
                     radius_mid(i)
-               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*vfc(i)
+               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%ctrl%vfc(i)
 !               HLE(I) = RMID(I)
             end do
          end if
       else
-         if (.not.lvfc) then
-            con2 = con1*mixing_velocity_scale
+         if (.not.star%ctrl%lvfc) then
+            con2 = con1*star%ctrl%mixing_velocity_scale
             do i = 2,num_zones
-               am_diffusion_coeff(i)=con1*(constant_background_diffusion_coeff+ &
+               am_diffusion_coeff(i)=con1*(star%ctrl%constant_background_diffusion_coeff+ &
                     (star%circ%es_circulation_velocity(i)+star%circ%gsf_circulation_velocity(i)+ &
                     star%circ%secular_shear_velocity(i))*radius_mid(i))
-               mixing_diffusion_coeff(i)=con2*(es_mixing_scale* &
-                    star%circ%es_circulation_velocity(i)+gsf_mixing_scale* &
-                    star%circ%gsf_circulation_velocity(i)+secular_shear_mixing_scale* &
+               mixing_diffusion_coeff(i)=con2*(star%ctrl%es_mixing_scale* &
+                    star%circ%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
+                    star%circ%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
                     star%circ%secular_shear_velocity(i))*radius_mid(i)
             end do
          else
@@ -107,15 +108,15 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
                am_diffusion_coeff(i) = con1*(star%circ%es_circulation_velocity(i)+ &
                     star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i))* &
                     radius_mid(i)
-               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*vfc(i)
+               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%ctrl%vfc(i)
 ! MHP 8/13 ADD D.C. AFTER SCALE FACTOR FOR MIXING APPLIED
                am_diffusion_coeff(i) = am_diffusion_coeff(i)+ &
-                    con1*constant_background_diffusion_coeff
+                    con1*star%ctrl%constant_background_diffusion_coeff
             end do
          end if
       end if
 ! OPTION TO SUPPRESS ANGULAR MOMENTUM TRANSPORT (BUT PERMIT MIXING).
-      if (no_am_transport_in_core) then
+      if (star%ctrl%no_am_transport_in_core) then
          do i = 2,num_zones
             am_diffusion_coeff(i) = 0.0d0
          end do
