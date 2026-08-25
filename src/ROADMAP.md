@@ -66,13 +66,51 @@ can use a numerics-terminated case.
 putstore/wrtmod-family write-path stops -> ierr, same pattern as
 stage 3. Small, mechanical.
 
-## const umbrella dissolution
+## controls -> star% campaign (ACTIVE 2026-08-24; supersedes the old
+## "const umbrella dissolution" section)
 
-const_lib is a use-and-reexport umbrella over phys_const_lib +
-controls_lib. Migrate each file's `use const_lib` to the specific
-module (only-lists already resolve through it); evict the
-documented stragglers (zramp's nk, ctlim's tenv, flags living with
-evicted tables) to their proper owners. Then delete the umbrella.
+User-approved target shape: nested `star%ctrl` (namelist controls,
+immutable after read, structural reset via `star%ctrl =
+controls_state()`) + nested `star%job` (paths, run-list arrays, MC
+config, nk); everything the code COMPUTES flattens to direct star%
+members. phys_const_lib (relocated to state/, Phase 0 DONE) stays
+the one legitimately blanket-use module. Pinned rule: mutables never
+live in star%ctrl -- a control that seeds a working value (cmixl,
+atm_choice) gets a star% working copy.
+
+The namelist wall: Fortran forbids namelist reads into derived-type
+components, so controls_lib survives as parmin's read BUFFER. Read
+sequence: (1) star%ctrl = controls_state() [pristine defaults];
+(2) seed buffer from star%ctrl; (3) parmin reads over it (namelist
+only overwrites what the file provides -- semantics unchanged);
+(4) store buffer -> star%ctrl. The seed/store copies and the type
+body are GENERATED from controls_lib's declarations (single source
+of defaults; members lacking an initializer get the explicit
+zero/blank/.false. that static storage gave them). This replaces
+controls_reset_lib's snapshot-restore outright.
+
+Phases (each byte-gated + test_net + test_reentry):
+- Phase 0 (DONE): phys_const_lib -> state/.
+- Phase A (evictions, IN PROGRESS): non-namelist stragglers leave
+  controls_lib for flat star%. DONE: atm trio + tenv (batch 1);
+  cross_section_scale family (batch 2). REMAINING: iolaol2/ioopal2
+  -> luout_lib; cmixl/cmixl2/cmixl3 out of phys_const -> star%;
+  the solar octet (solar_*_cgs + logs) -> star%; nk -> star%job%nk.
+- Phase B: generate controls_state + seed/store; add star%ctrl;
+  rewire read_controls to the 4-step sequence; DELETE
+  controls_reset_lib and yrec_reset's capture/restore (star0 +
+  structural reset cover it; test_reentry is the proof). Consumers
+  still read the buffer -- star%ctrl is written, not yet read.
+- Phase C (the long march): per former-common family (~75 groups,
+  ~178 files): consumers switch to star%ctrl%/star%job% members,
+  per-member classification (ctrl vs job vs flat state -- the
+  calibration-mutated card arrays are job, not ctrl), FUSED with
+  the MESA-vocabulary rename and the sub-struct flattening
+  (run/evo/turnover/flux/diag/rot dissolve) so each member is
+  touched once.
+- Phase D (teardown): controls_lib becomes parmin-private; const_lib
+  umbrella deleted (each user switches to the specific module);
+  luout_lib -> io/, intpar_lib -> numerics/; const/ folder deleted.
 
 ## Library-based yrec link
 
@@ -91,14 +129,15 @@ checker script.
 - The .short echo still prints the legacy namelist group for
   new-style runs; acceptable, revisit if user-facing.
 
-## star_info flattening (deferred, evidence-driven)
+## star_info flattening (decided 2026-08-24; folded into Phase C)
 
-Keep the nested sub-structs for now. prev/job/evo are principled
-lifecycle boundaries (MESA nests s% job too). The COMMON-era
-groupings (thermo/circ/mix_phys/engeb/diag) are candidates for
-selective flattening -- decide after the remaining work has used
-star% in anger; promote widely-read per-zone physics arrays
-(MESA-named ones first), keep lifecycle structs nested.
+User decision: only star%ctrl and star%job stay nested (the two
+input bundles -- MESA's actual principle: s% job/s% pg are nested,
+physics state is flat). Every other sub-struct (prev/run/evo/
+turnover/flux/diag/rot/thermo/circ/mix_phys/engeb/env_comp/
+light_burn/pulse) dissolves to direct star% members, fused with the
+MESA-vocabulary rename inside the controls-campaign Phase C batches
+so each member is touched once.
 
 ## atm envelope-integration purity split
 
