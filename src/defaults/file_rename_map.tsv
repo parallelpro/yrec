@@ -1,14 +1,14 @@
 current_path	proposed_path	subroutine_rename	verdict	rationale
 core/chkcal.f90	core/check_solar_calibration.f90	chkcal -> check_solar_calibration	PROPOSE	solar-calibration Newton verdict
 core/chkscal.f90	core/check_star_calibration.f90	chkscal -> check_star_calibration	PROPOSE	star (Teff/L target) calibration verdict
-core/coefft.f90	core/henyey_coefficients.f90	coefft -> henyey_coefficients	PROPOSE	builds the Henyey difference-equation coefficients per shell
-core/crrect.f90	core/henyey_correct.f90	crrect -> henyey_correct	PROPOSE	one corrector pass: coefficients -> eliminate -> solve -> apply
+core/coefft.f90	core/henyey_coefficients.f90	coefft -> henyey_coefficients	PROPOSE	VERIFIED: builds elim_coeff/elim_rhs (via reduce) per mesh point from EOS/opacity/gradient calls
+core/crrect.f90	core/henyey_iterate.f90	crrect -> henyey_iterate	PROPOSE	VERIFIED (corrected): header calls it 'YREC's Newton-Raphson relaxation driver' -- it iterates corrector passes to convergence, not a single correction
 core/hsolve.f90	core/henyey_solve.f90	hsolve -> henyey_solve	PROPOSE	backward-sweep solve of the eliminated system
-core/physic.f90	core/shell_physics.f90	physic -> shell_physics	PROPOSE	per-shell EOS + opacity + gradients evaluation
+core/physic.f90	core/shell_physics.f90	physic -> shell_physics	PROPOSE	VERIFIED: per-shell EOS/opacity/gradients + diffusivities + Endal-Sofia shear-instability critical omega-gradient check
 core/qatm.f90	core/atmosphere_derivs.f90	qatm -> atmosphere_derivs	PROPOSE	dP/dtau integrand callback for the atmosphere integration
 core/qenv.f90	core/envelope_derivs.f90	qenv -> envelope_derivs	PROPOSE	envelope ODE integrand callback
 core/starin.f90	core/read_starting_model.f90	starin -> read_starting_model	PROPOSE	reads (and rescales) the kind card's starting model
-core/getnewenv.f90	core/rebuild_envelope.f90	getnewenv -> rebuild_envelope	PROPOSE	reconstructs envelope zones after envelope-mass change
+core/getnewenv.f90	core/rebuild_envelope.f90	getnewenv -> rebuild_envelope	PROPOSE	VERIFIED: moves the outer fitting point / adds sinkline points when the envelope mass changes
 core/surfbc.f90	core/surface_bc.f90	surfbc -> surface_bc	KEEP-OK	already readable; rename optional
 core/turnover/gettau.f90	core/turnover/turnover_timescale.f90	gettau -> compute_turnover_timescale	PROPOSE	computes tau_conv (wind/burn consumer)
 core/turnover/taucal.f90	core/turnover/turnover_from_envelope.f90	taucal -> turnover_from_envelope	PROPOSE	CONFIRMED: overturn timescale at surface-CZ base within the ENVELOPE model (handles multiple CZs split by radiative gaps)
@@ -19,8 +19,8 @@ io/alprint.f90	io/print_allard_tables.f90	alprint -> print_allard_tables	PROPOSE
 io/pindex.f90	io/select_print_shells.f90	pindex -> select_print_shells	PROPOSE	builds the shell-index list for printing
 io/wrtmil.f90	io/write_milne.f90	wrtmil -> write_milne	PROPOSE	Milne invariants U/V to .milne
 io/wrtlst.f90	io/write_last_model.f90	wrtlst -> write_last_model	PROPOSE	.last/.store model writer
-io/wrtmod.f90	io/write_pulsation_model.f90	wrtmod -> write_pulsation_model	PROPOSE	pulse-model + sound-speed output (fresh env/atm integration)
-io/wrtout.f90	io/write_legacy_output.f90	wrtout -> write_legacy_output	PROPOSE	the legacy per-model .short/.track driver
+io/wrtmod.f90	io/write_pulsation_model.f90	wrtmod -> write_pulsation_model	PROPOSE	VERIFIED: pulse-model output incl. sound-speed profile via a fresh envelope/atmosphere integration
+io/wrtout.f90	io/write_legacy_output.f90	wrtout -> write_legacy_output	PROPOSE	VERIFIED: .short summary block + .track record + last-model store + dispatch to putstore/wrtmod/wrtmil -- THE legacy output driver
 io/wrthead.f90	io/write_output_headers.f90	wrthead -> write_output_headers	PROPOSE	run headers for all output files
 io/wrtmonte.f90	io/write_monte_carlo_model.f90	wrtmonte -> write_monte_carlo_model	PROPOSE	MC per-run model + summary line
 io/putstore.f90	io/write_store_model.f90	putstore -> write_store_model	PROPOSE	verbose .store model writer
@@ -35,7 +35,7 @@ mixing/bursmix.f90	mixing/burn_settle_mix.f90	bursmix -> burn_settle_mix	PROPOSE
 mixing/bsrotmix.f90	mixing/burn_mix_extrapolated.f90	bsrotmix -> burn_mix_extrapolated	PROPOSE	CONFIRMED: BS = Bulirsch-Stoer/Richardson extrapolation to zero substep (Neville's algorithm) of the sequential burn+mix
 mixing/convec.f90	mixing/find_convection_zones.f90	convec -> find_convection_zones	PROPOSE	CZ boundaries with/without overshoot
 mixing/hsubp.f90	mixing/pressure_scale_height.f90	hsubp -> pressure_scale_height	PROPOSE	H_P at a CZ edge (H-sub-P)
-mixing/kemcom.f90	mixing/solve_composition.f90	kemcom -> solve_composition	PROPOSE	implicit nuclear-abundance solve from engeb rates
+mixing/kemcom.f90	mixing/solve_composition.f90	kemcom -> solve_composition	PROPOSE	VERIFIED: implicit simultaneous solve of H/He3/He4/CNO abundances from engeb rates (VandenBerg scheme)
 mixing/mixcz.f90	mixing/homogenize_convection_zones.f90	mixcz -> homogenize_convection_zones	PROPOSE	averages composition within each CZ
 mixing/oversh.f90	mixing/overshoot_boundaries.f90	oversh -> overshoot_boundaries	PROPOSE	overshoot-region edges via H_P
 mixing/sconvec.f90	mixing/semiconvection.f90	sconvec -> semiconvection	PROPOSE	semiconvective mixing test
@@ -52,9 +52,9 @@ rotation/seculr/bandw.f90	rotation/seculr/banded_solver.f90	bandw -> banded_solv
 rotation/seculr/ccoeft.f90	rotation/seculr/composition_diffusion_coeffs.f90	ccoeft -> composition_diffusion_coeffs	PROPOSE	coefficients for composition-transport equations
 rotation/seculr/dcoeft.f90	rotation/seculr/am_diffusion_coeffs.f90	dcoeft -> am_diffusion_coeffs	PROPOSE	coefficients for AM diffusion equation
 rotation/seculr/dadcoeft.f90	rotation/seculr/am_advection_diffusion_coeffs.f90	dadcoeft -> am_advection_diffusion_coeffs	PROPOSE	CONFIRMED: the advective variant (difad_velocity_scale / advective_velocity_term); dcoeft is pure diffusion
-rotation/seculr/checkc.f90	rotation/seculr/check_composition.f90	checkc -> check_composition	PROPOSE	anomalous-composition guard
-rotation/seculr/checkj.f90	rotation/seculr/check_angular_momentum.f90	checkj -> check_angular_momentum	PROPOSE	AM-conservation guard
-rotation/seculr/codiff.f90	rotation/seculr/composition_diffusion.f90	codiff -> composition_diffusion	PROPOSE	composition diffusion from AM transport
+rotation/seculr/checkc.f90	rotation/seculr/check_composition.f90	checkc -> check_composition	PROPOSE	VERIFIED: anomalous-composition timestep cut + delta-mu from composition diffusion
+rotation/seculr/checkj.f90	rotation/seculr/check_angular_momentum.f90	checkj -> check_angular_momentum	PROPOSE	VERIFIED: negative-j timestep cut, omega-gradient reversal guard, diffusion-iteration convergence verdict
+rotation/seculr/codiff.f90	rotation/seculr/diffusion_velocity_scales.f90	codiff -> diffusion_velocity_scales	PROPOSE	VERIFIED (corrected): NOT composition diffusion -- computes the characteristic velocity/length scales for the diffusion equations (per-mechanism FC via getfc)
 rotation/seculr/eq2mod.f90	rotation/seculr/equal_grid_to_model.f90	eq2mod -> equal_grid_to_model	PROPOSE	maps the equal-spaced solve back to model zones
 rotation/seculr/getfc.f90	rotation/seculr/zahn_coupling_factor.f90	getfc -> zahn_coupling_factor	PROPOSE	Zahn (1992) FC prescription
 rotation/seculr/getqua.f90	rotation/seculr/quadrupole_moment.f90	getqua -> quadrupole_moment	PROPOSE	Sweet/Zahn quadrupole moment
@@ -71,7 +71,7 @@ rotation/microdiff/grsett.f90	rotation/microdiff/gravitational_settling.f90	grse
 rotation/microdiff/setup_grsett.f90	rotation/microdiff/gravitational_settling_setup.f90	setup_grsett -> gravitational_settling_setup	PROPOSE	settling zone boundaries + prep
 rotation/microdiff/thdiff.f90	rotation/microdiff/thoul_diffusion.f90	thdiff -> thoul_diffusion	PROPOSE	Anne Thoul's diffusion routine
 rotation/microdiff/get_imp_diffco.f90	rotation/microdiff/implicit_diffusion_coeffs.f90	get_imp_diffco -> implicit_diffusion_coeffs	PROPOSE	tridiagonal coefficients for the implicit term
-rotation/microdiff/microdiff_cod.f90	rotation/microdiff/microdiff_coefficients.f90	microdiff_cod -> microdiff_coefficients	PROPOSE	COD = coefficients of diffusion
+rotation/microdiff/microdiff_cod.f90	rotation/microdiff/microdiff_coefficients.f90	microdiff_cod -> microdiff_coefficients	PROPOSE	VERIFIED: diffusion coefficients on the equally-spaced light-element grid (COD = coefficient of diffusion)
 rotation/microdiff/lax_wendrof1.f90	rotation/microdiff/lax_wendroff_step1.f90	lax_wendrof1 -> lax_wendroff_step1	PROPOSE	fix the misspelling; predictor step
 rotation/microdiff/lax_wendrof2.f90	rotation/microdiff/lax_wendroff_step2.f90	lax_wendrof2 -> lax_wendroff_step2	PROPOSE	corrector step
 setup/findsh.f90	setup/locate_shell_boundaries.f90	findsh -> locate_shell_boundaries	PROPOSE	CZ edges + H-burning shell begin/mid/end
@@ -84,7 +84,7 @@ setup/rscale.f90	setup/rescale_model.f90	rscale -> rescale_model	PROPOSE	mass/co
 setup/setcal.f90	setup/setup_solar_calibration.f90	setcal -> setup_solar_calibration	PROPOSE	expands run list into calibration triples
 setup/setscal.f90	setup/setup_star_calibration.f90	setscal -> setup_star_calibration	PROPOSE	expands run list into HR-target pairs
 setup/setscv.f90	eos/scv/scv_envelope_table.f90	setscv -> build_scv_envelope_table	PROPOSE	CONFIRMED + MISFILED: builds the envelope-mixture SCV EOS table from pure-H/He/Z tables -- eos/scv domain content, relocate
-setup/setups.f90	setup/setup_tables.f90	setups -> setup_tables	PROPOSE	constants + all physics-table loads
+setup/setups.f90	setup/setup_tables.f90	setups -> setup_tables	PROPOSE	VERIFIED: one-time startup -- physical constants (const1-3/debhu) plus every physics-table load (opacity/EOS/atm/Fermi-Dirac)
 setup/setupv.f90	setup/rotation_stability_setup.f90	setupv -> rotation_stability_setup	PROPOSE	CONFIRMED: per-interface stability criteria against rotationally induced mixing (fills the velocity/stability coefficient arrays)
 util/htimer.f90	util/compute_timestep.f90	htimer -> compute_timestep	PROPOSE	the timestep driver
 util/entime.f90	util/timestep_limit_hr.f90	entime -> timestep_limit_hr	PROPOSE	limit from Teff/L change
