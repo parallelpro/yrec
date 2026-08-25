@@ -51,7 +51,6 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
       use star_info_lib, only: star
 
       use atm_table_lib
-      use const_lib
       implicit none
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES OF KURUCZ,
 ! NTC/NGC FOR KURUCZ/CASTELLI (matching setups.f90's historical

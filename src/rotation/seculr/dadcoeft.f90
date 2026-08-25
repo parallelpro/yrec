@@ -63,7 +63,6 @@ subroutine dadcoeft(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged, ierr)
       use star_info_lib, only: star
-      use const_lib
       implicit none
       integer, parameter :: json = 5000, nmax = 8000
 

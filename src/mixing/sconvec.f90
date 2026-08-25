@@ -40,7 +40,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
       use star_info_lib, only: star, json
 
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use eos_lib
       use kap_lib
       implicit none

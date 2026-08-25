@@ -47,7 +47,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: rate_pp(json), rate_he3_he3(json), &
@@ -271,7 +271,7 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep)
 
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
       integer, intent(in) :: zone_begin, zone_end, num_zones
@@ -438,7 +438,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep, deuterium_rate_end, deuterium_rate_start, &
      step_fraction)
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
       integer, intent(in) :: zone_begin, zone_end, num_zones
@@ -603,7 +603,7 @@ end subroutine dburnm
 ! proceed faster than the local convective overturn timescale.
 subroutine deutrate(dl,tl,x,i,itlvl)
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: dl, tl, x
@@ -831,7 +831,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 
       use star_info_lib, only: star, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(out) :: pp_chain_energy_gen, &
@@ -2073,7 +2073,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use star_info_lib, only: star, i_grad_ad, i_grad_rad, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       implicit none
 
@@ -2616,7 +2616,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use star_info_lib, only: star, i_grad_ad, i_grad_rad, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: timestep
@@ -2958,7 +2958,7 @@ end subroutine liburn2
 subroutine lirate88(composition, log_density, log_temperature, num_zones, &
      use_current_model)
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: composition(15,json)

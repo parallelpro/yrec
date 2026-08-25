@@ -29,7 +29,7 @@ subroutine neutrino_flux_table
            i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
            i_nu_o15, i_nu_f17
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use burn_lib
       implicit none
 

@@ -13,7 +13,6 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use opacity_table_lib
-      use const_lib
       use luout_lib
       use numerics_lib
       implicit none

@@ -24,7 +24,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 
       use star_info_lib, only: star, i_grad_actual, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: timestep

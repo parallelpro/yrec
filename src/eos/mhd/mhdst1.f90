@@ -23,7 +23,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
                   log10t_down,log10t_up,table_vars_centroid,table_vars_down,table_vars_up, &
                   atomic_weight_down,atomic_weight_up, &
                   number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-      use const_lib
       implicit none
       integer, intent(in) :: table_unit, table_kind, nt1m, nr1m, ivar1, &
            nt2m, nr2m, ivar2, nchem0

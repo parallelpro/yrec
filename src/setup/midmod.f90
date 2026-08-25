@@ -28,7 +28,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
      num_convective_zones, ierr)
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
       use net_lib
-      use const_lib
+      use phys_const_lib
       use burn_lib
 
       implicit none

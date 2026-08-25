@@ -33,7 +33,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       use atmstruct_lib
       use envstruct_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use intpar_lib
       use numerics_lib
       implicit none
@@ -299,10 +299,6 @@ subroutine integrate_atmosphere
       if (.not. tabulated_bc) then
 ! Start gray atmosphere bounary conditions
 ! GUESS THE TEMPERATURE FOR AN OPTICAL DEPTH NEAR ZERO.
-      idt = 15
-      do jj = 1,4
-       star%ctrl%idd(jj) = 5
-      end do
       err_sum(1) = 0.0d0
       if(star%job%atm_choice .eq. 0) then
             log10_temperature = log10_teff - 0.031235d0 + 0.25d0*dlog10(cc23)

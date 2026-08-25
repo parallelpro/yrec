@@ -14,7 +14,6 @@ subroutine readcoeos01(ierr)
       use star_info_lib, only: star
 
       use opal_eos_lib
-      use const_lib
       use luout_lib
       implicit none
 

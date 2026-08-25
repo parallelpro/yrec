@@ -19,7 +19,7 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 
       use star_info_lib, only: star
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: log_l_lsun, log_teff, current_age

@@ -32,7 +32,7 @@ subroutine eqrelv(log10_temperature, temperature, log10_pressure, &
      adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp)
 
       use yale_eos_lib
-      use const_lib
+      use phys_const_lib
       use luout_lib
       implicit none
 

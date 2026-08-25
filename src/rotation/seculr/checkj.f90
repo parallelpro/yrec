@@ -73,7 +73,6 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
      already_converged_flag, ierr)
 
       use star_info_lib, only: star, json
-      use const_lib
       use luout_lib
       implicit none
 

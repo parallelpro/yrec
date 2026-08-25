@@ -23,7 +23,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       use envint_lib, only: atm_get
       use star_info_lib
       use envstruct_lib
-      use const_lib
+      use phys_const_lib
       use yale_eos_lib
       implicit none
       double precision, intent(inout) :: target_envelope_mass

@@ -57,7 +57,7 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
 
       use star_info_lib, only: star, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       implicit none
 

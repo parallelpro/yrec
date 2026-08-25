@@ -29,7 +29,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 
       use star_info_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       implicit none
       double precision, intent(in) :: grid_spacing

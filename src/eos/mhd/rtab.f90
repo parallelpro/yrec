@@ -16,7 +16,6 @@
 ! num_vars variables at each of its density points.
 subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
      num_t_points,num_rho_points,log_t,table_data, ierr)
-      use const_lib
       implicit none
 
       integer, intent(in) :: file_unit, max_t_points, max_rho_points, &

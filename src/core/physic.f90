@@ -23,7 +23,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
      num_zones, log_teff, ierr)
 
       use star_info_lib, only: star, i_grad_actual, i_grad_ad, i_grad_rad, json
-      use const_lib
+      use phys_const_lib
       use eos_lib
       use kap_lib
       use numerics_lib
@@ -88,10 +88,6 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
       want_derivatives = .false.
       local_conductive_opacity_flag = .false.
       in_atmosphere = .false.
-      idt = 15
-      do i = 1,4
-         star%ctrl%idd(i) = 5
-      end do
       do im = 1,num_zones
          log10_mass = log_mass(im)
          log10_temperature = log_temperature(im)

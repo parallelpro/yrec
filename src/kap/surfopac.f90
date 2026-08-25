@@ -17,7 +17,6 @@
 ! earlier move the other direction (kap/ -> atm/).
 subroutine surfopac(hydrogen_fraction)
       use star_info_lib, only: star
-      use const_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction

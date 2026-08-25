@@ -87,7 +87,6 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
       use star_info_lib, only: star
 
       use atm_table_lib
-      use const_lib
       use luout_lib
       use numerics_lib
       implicit none

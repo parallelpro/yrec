@@ -25,7 +25,6 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 ! CONVERGED MODEL) AND STORE MODELS D(EVERY NPUNCH MODELS)
 
 !     WRITE MODEL OUT IN ASCII FORMAT
-      use const_lib
       use luout_lib
       use star_info_lib, only: star, json
       use opacity_table_lib

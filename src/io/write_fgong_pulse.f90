@@ -21,7 +21,7 @@
 subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
       use star_info_lib, only: star
-      use const_lib
+      use phys_const_lib
       implicit none
 
       integer, intent(in) :: n

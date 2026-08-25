@@ -13,7 +13,6 @@
 subroutine pindex(jxbeg, jxend, lshell, m, id, idm)
       use star_info_lib, only: star
       use star_info_lib, only: star, json
-      use const_lib
       implicit none
 
       integer, intent(in) :: jxbeg, jxend

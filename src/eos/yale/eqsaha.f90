@@ -24,7 +24,7 @@ subroutine eqsaha(saha_mass_fractions, log10_temperature, temperature, &
      specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
 
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: saha_mass_fractions(12)

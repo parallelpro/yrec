@@ -22,7 +22,7 @@
 subroutine setscv
 
       use star_info_lib, only: star
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       use scv_eos_lib
       implicit none

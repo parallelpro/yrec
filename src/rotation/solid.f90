@@ -14,7 +14,6 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
 
       use star_info_lib, only: star, json
-      use const_lib
       use luout_lib
       implicit none
 

@@ -23,7 +23,7 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
      frac_c12_alpha, frac_be7_electron)
       use star_info_lib, only: star, json
 
-      use const_lib
+      use phys_const_lib
       use net_lib
       use burn_lib
       implicit none

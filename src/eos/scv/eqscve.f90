@@ -23,7 +23,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
      ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
      adiabatic_gradient, valid_table_point)
 
-      use const_lib
+      use phys_const_lib
       use eos_mixture_lib, only: eos_mix
       use numerics_lib
       use scv_eos_lib

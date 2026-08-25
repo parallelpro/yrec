@@ -31,7 +31,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       use envstruct_lib
       use star_info_lib, only: star, i_grad_ad, i_grad_rad, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(inout) :: composition(15,json)

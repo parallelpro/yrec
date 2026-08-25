@@ -23,7 +23,6 @@
 ! executes.
 subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
 
-      use const_lib
       use star_info_lib, only: star, json
       implicit none
 

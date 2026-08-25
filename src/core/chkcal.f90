@@ -24,7 +24,6 @@
 subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
 
       use star_info_lib, only: star
-      use const_lib
       use luout_lib
       implicit none
 

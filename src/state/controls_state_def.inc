@@ -60,8 +60,6 @@
             integer :: unit_centre5 = 0
             double precision :: metal_fraction_match_tolerance = 0.0d0
             double precision :: zsi = 0.0d0
-            integer :: idt = 0
-            integer :: idd(4) = 0
             logical :: lstore = .false.
             logical :: lstenv = .false.
             logical :: lstmod = .false.

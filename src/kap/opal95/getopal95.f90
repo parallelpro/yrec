@@ -26,7 +26,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       use star_info_lib, only: star
       use star_info_lib, only: star, json
       use opacity_table_lib
-      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_t = 70

@@ -15,7 +15,6 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
-      use const_lib
       use luout_lib
       use yale_eos_lib
       implicit none

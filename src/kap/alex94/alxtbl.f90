@@ -27,7 +27,6 @@ subroutine alxtbl(alex95_table_paths, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
-      use const_lib
       use luout_lib
       implicit none
       integer, intent(out) :: ierr

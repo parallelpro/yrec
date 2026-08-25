@@ -32,7 +32,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use net_lib
       use burn_lib
 

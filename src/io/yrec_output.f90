@@ -32,7 +32,7 @@
 ! selections, the profile counter), reset by output_init_mesa on
 ! every job -- re-entrant runs re-enter through it.
 module yrec_output
-      use const_lib
+      use phys_const_lib
       implicit none
       private
       public :: output_init_mesa, output_run_header, output_write_model

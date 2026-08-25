@@ -90,7 +90,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
      iteration_level, ierr)
       use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use yale_eos_lib
 
       implicit none

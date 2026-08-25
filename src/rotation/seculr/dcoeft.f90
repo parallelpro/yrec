@@ -69,7 +69,6 @@ subroutine dcoeft(diffusion_coeff, grid_spacing, timestep, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
      sub_diag, diag, super_diag, rhs, surface_wind_loss_term)
       use star_info_lib, only: star, json
-      use const_lib
       implicit none
 
       double precision, intent(in) :: diffusion_coeff(json)

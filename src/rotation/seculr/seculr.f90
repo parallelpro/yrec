@@ -59,7 +59,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 
       use star_info_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       implicit none
       double precision, intent(inout) :: sub_timestep

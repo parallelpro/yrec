@@ -63,7 +63,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       use star_info_lib
       use envstruct_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       implicit none
       integer, parameter :: nts = 63, nps = 76

@@ -18,7 +18,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
      convective_velocity, radiative_gradient, adiabatic_gradient)
       use atm_table_lib
       use envstruct_lib
-      use const_lib
+      use phys_const_lib
       use star_info_lib, only: star, json
       implicit none
 

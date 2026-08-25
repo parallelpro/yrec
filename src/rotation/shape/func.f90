@@ -19,7 +19,7 @@ subroutine func(colatitude, local_gravity, area_element, r0, log_mass, &
      aint, q, w2, a, i)
       use star_info_lib, only: json
 
-      use const_lib
+      use phys_const_lib
       implicit none
 
 

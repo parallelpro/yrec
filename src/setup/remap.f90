@@ -12,7 +12,7 @@
 ! onto existing code parameters.
 subroutine remap
       use star_info_lib, only: star, json
-      use const_lib
+      use controls_lib
       implicit none
 
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES.

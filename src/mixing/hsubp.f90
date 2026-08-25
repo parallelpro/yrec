@@ -16,7 +16,7 @@ subroutine hsubp(composition, density, pressure, radius, mass, &
      temperature, edge_zone, pscahe)
       use star_info_lib, only: json
 
-      use const_lib
+      use phys_const_lib
       use eos_lib
       implicit none
 

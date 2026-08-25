@@ -16,7 +16,7 @@
 subroutine getgrid(log_luminosity, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       implicit none
 

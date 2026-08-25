@@ -30,7 +30,6 @@
 subroutine altabinit(ierr)
 
       use atm_table_lib
-      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: nta = 250

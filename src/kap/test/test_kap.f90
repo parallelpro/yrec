@@ -12,7 +12,6 @@
 ! and prints the results for byte-comparison against the checked-in
 ! expected_test_kap.out.
 program test_kap
-      use const_lib
       use luout_lib
       use star_info_lib, only: star
       use kap_lib

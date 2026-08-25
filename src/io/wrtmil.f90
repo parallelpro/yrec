@@ -13,7 +13,7 @@ subroutine wrtmil(hcomp, hd, hl, hp, hr, hs1, m, model)
 
       use star_info_lib, only: star, i_eps_grav, i_grad_actual, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: hcomp(15,json), hd(json), hl(json), &

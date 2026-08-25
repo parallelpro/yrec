@@ -15,7 +15,6 @@
 subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
 
       use atm_table_lib
-      use const_lib
       use luout_lib
       use numerics_lib
       implicit none

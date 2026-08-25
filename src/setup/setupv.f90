@@ -23,7 +23,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
      dynamical_shear_omega_limit)
 
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: log_density(json), local_gravity(json), &

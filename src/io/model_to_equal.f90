@@ -18,7 +18,6 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
       use star_info_lib, only: star, json
-      use const_lib
       use numerics_lib
       implicit none
 

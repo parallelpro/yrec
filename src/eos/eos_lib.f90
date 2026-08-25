@@ -63,7 +63,7 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
       use star_info_lib, only: star
 
-      use const_lib
+      use phys_const_lib
       use scv_eos_lib
       implicit none
 
@@ -190,7 +190,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
 
       use yale_eos_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use scv_eos_lib
       implicit none
       integer, parameter :: nts = 63
@@ -323,7 +323,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       use star_info_lib, only: star
 
       use opal_eos_lib
-      use const_lib
+      use phys_const_lib
       use scv_eos_lib
       implicit none
 

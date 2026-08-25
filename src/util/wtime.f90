@@ -13,7 +13,6 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
      max_domega_frac)
 
       use star_info_lib, only: star, json
-      use const_lib
       implicit none
 
 ! previous_timestep: previous model timestep.

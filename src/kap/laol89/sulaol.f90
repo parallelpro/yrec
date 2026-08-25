@@ -14,7 +14,6 @@ subroutine sulaol
       use star_info_lib, only: star
 
       use opacity_table_lib
-      use const_lib
       use numerics_lib
       implicit none
 

@@ -31,7 +31,6 @@
 subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
      log10_density, ierr)
       use mhd_eos_lib
-      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: ivarx = 25

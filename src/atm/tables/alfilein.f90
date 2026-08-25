@@ -40,7 +40,6 @@ subroutine alfilein(allard_table_path, ierr)
 ! associated max number of GL's is nGL.
 
       use atm_table_lib
-      use const_lib
       use luout_lib
       implicit none
       integer, parameter :: nta = 250

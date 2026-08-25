@@ -42,7 +42,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 
       use star_info_lib, only: star, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 !  DL,OL,X,Z,LOCOND USED BY OPACTY
 ! COMPUTES RADIATIVE GRADIENT AND COMPARES WITH ADIABATIC GRADIENT

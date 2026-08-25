@@ -23,7 +23,6 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      composition, dlnp_dr, radius_bl, enclosed_mass, temperature_bl, &
      num_zones, total_mass, num_light, light_element_id)
       use star_info_lib, only: star, json
-      use const_lib
       use numerics_lib
       implicit none
 

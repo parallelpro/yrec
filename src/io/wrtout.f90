@@ -18,7 +18,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
      total_rotational_kinetic_energy)
       use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_lum_he_c, i_lum_neu, i_metals, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_o16, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use eos_lib
       implicit none
 

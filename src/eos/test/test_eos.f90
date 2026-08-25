@@ -36,7 +36,6 @@
 ! the infrastructure half of closing ROADMAP.md's LMHD coverage gap;
 ! the data half needs tables from outside the repo.
 program test_eos
-      use const_lib
       use luout_lib
       use star_info_lib, only: star
       use eos_lib

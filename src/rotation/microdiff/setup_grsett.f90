@@ -26,7 +26,7 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
 
       use star_info_lib, only: star, i_grad_actual, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(inout) :: timestep_seconds

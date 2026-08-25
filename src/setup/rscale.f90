@@ -22,7 +22,7 @@
 subroutine rscale(luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag, ierr)
 ! DBG 5/94 Added rescaling of Z in core ZRAMP stuff.
-      use const_lib
+      use phys_const_lib
       use star_info_lib, only: star, json
       use luout_lib
       use eos_lib, only: eos_set_mixture

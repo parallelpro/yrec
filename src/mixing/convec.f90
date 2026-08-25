@@ -52,7 +52,6 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
      mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
      num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot)
       use star_info_lib, only: star, json
-      use const_lib
       use luout_lib
       implicit none
 

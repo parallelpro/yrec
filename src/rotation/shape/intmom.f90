@@ -17,7 +17,7 @@
 ! eta_squared (originally ETA2X). Called once per zone by momi.f90.
 subroutine intmom(rotation_param, eta_squared, dlnr0_dlnr, r0_geom_factor, &
      moment_of_inertia_per_mass, di_domega_per_mass)
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: rotation_param, eta_squared, &

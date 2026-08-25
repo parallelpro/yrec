@@ -31,7 +31,6 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction, ierr)
       use star_info_lib, only: star
-      use const_lib
       use luout_lib
       use opacity_table_lib
       implicit none

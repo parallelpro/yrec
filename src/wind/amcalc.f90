@@ -16,7 +16,7 @@
 ! scaling, each raised to its own calibrated exponent.
 subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
       use star_info_lib, only: star
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: total_mass_msun, log_luminosity_lsun, &

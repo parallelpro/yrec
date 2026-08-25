@@ -38,7 +38,6 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
      log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, ierr)
       use star_info_lib, only: star
 
-      use const_lib
       use conductive_table_lib, only: cond_table
       implicit none
 

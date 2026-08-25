@@ -18,7 +18,7 @@ subroutine setscal
 
       use star_info_lib, only: star
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 !     LSTAR     T - have got a star at Teff and L
 !     LPASSR    T - on run have just passed Teff

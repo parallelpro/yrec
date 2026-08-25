@@ -18,7 +18,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
      ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
      adiabatic_gradient, valid_table_point)
 
-      use const_lib
+      use phys_const_lib
       use star_info_lib
       use numerics_lib
       use scv_eos_lib

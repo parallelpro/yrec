@@ -20,7 +20,6 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
      log_luminosity, log_teff, model_number, pulse_atm_path, &
      pulse_env_path, pulse_mod_path)
       use star_info_lib, only: star
-      use const_lib
       use luout_lib
       implicit none
 

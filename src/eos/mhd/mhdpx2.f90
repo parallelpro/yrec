@@ -17,7 +17,6 @@
 subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
      table_vars, table_hfrac, ndimt)
       use mhd_eos_lib
-      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: ivarc = 20

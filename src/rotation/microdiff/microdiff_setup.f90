@@ -42,7 +42,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 
       use star_info_lib, only: star, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(inout) :: timestep

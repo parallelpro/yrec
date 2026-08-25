@@ -45,7 +45,7 @@ module observables_lib
       use star_info_lib
       use eos_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
       private
       public :: compute_observables

@@ -48,7 +48,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       use atm_table_lib
       use star_info_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
       double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
            envelope_coeffs(9)

@@ -15,7 +15,6 @@ subroutine ptime(previous_timestep, luminosity, log_pressure, log_radius, &
      log_temperature, num_points, struct_dt)
 
       use star_info_lib, only: star, json
-      use const_lib
       implicit none
 
 ! previous_timestep: previous model timestep.

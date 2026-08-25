@@ -15,7 +15,6 @@ subroutine entime(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
       use star_info_lib, only: star, json
-      use const_lib
       implicit none
 
 ! previous_timestep: previous model timestep.

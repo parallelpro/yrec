@@ -51,7 +51,6 @@
 subroutine ccoeft(diffusion_coeff, grid_spacing, timestep, eq_composition, &
      eq_mass, num_eq_points, sub_diag, diag, super_diag, rhs)
       use star_info_lib, only: json
-      use const_lib
       use luout_lib
       implicit none
 

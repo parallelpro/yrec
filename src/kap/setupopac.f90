@@ -17,7 +17,6 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
      alex95_table_paths, ierr)
       use star_info_lib, only: star
 
-      use const_lib
       use opacity_table_lib
       implicit none
 

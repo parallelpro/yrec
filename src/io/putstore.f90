@@ -29,7 +29,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 !     WRITE MODEL OUT IN ASCII FORMAT
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use opacity_table_lib
       use yale_eos_lib
       use scv_eos_lib

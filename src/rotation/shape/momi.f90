@@ -21,7 +21,7 @@ subroutine momi(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
       use star_info_lib, only: star
       use star_info_lib, only: star, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: eta_squared(json), log_radius(json), &

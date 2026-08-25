@@ -13,7 +13,6 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
       use star_info_lib, only: star
 
       use opacity_table_lib
-      use const_lib
       implicit none
       integer, parameter :: max_num_temps = 60
       integer, parameter :: max_num_densities = 50

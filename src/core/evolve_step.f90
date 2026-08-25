@@ -24,7 +24,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use net_lib
       use star_info_lib, only: star, evolve_step_reset_pending, i_h1, i_h2, i_he4
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use burn_lib
       use yrec_output, only: output_write_model
       use observables_lib, only: compute_observables

@@ -44,7 +44,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
      log_teff)
       use star_info_lib, only: star
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(inout) :: previous_timestep

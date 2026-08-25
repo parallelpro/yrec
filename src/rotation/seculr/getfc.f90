@@ -16,7 +16,7 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
      zone_max, angular_velocity)
 
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
 ! INPUT VARIABLES :

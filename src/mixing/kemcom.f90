@@ -44,7 +44,6 @@ subroutine kemcom(log_temperature, zone_begin, zone_end, rate_pp, &
      timestep_years, ierr)
 
       use star_info_lib, only: star, json
-      use const_lib
       use luout_lib
       implicit none
 

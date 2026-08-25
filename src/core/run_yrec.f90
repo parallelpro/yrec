@@ -26,7 +26,7 @@ subroutine run_yrec(ierr)
       use star_info_lib, only: star, i_h1, i_metals
       use yrec_output, only: output_run_header
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use yrec_reset_lib, only: yrec_run_prologue
       use stop_conditions, only: step_kind_card_done, &
            step_leave_run_loop, disarm_satisfied_stops

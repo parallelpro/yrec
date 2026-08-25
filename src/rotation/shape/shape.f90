@@ -16,7 +16,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
      omega, eta2, r0)
       use star_info_lib, only: star
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: log_density(json), log_radius(json), &

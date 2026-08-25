@@ -19,7 +19,6 @@ subroutine mhdtbl(zams_a_table_path, zams_b_table_path, zams_c_table_path, &
      centre1_table_path, centre2_table_path, centre3_table_path, &
      centre4_table_path, centre5_table_path, ierr)
       use star_info_lib, only: star
-      use const_lib
       implicit none
 
 !     COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,

@@ -38,7 +38,8 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
       use star_info_lib, only: star, control_nml_override, physics_nml_override
       use controls_sync_lib, only: store_controls_to_star
-      use const_lib
+      use phys_const_lib
+      use controls_lib
       use luout_lib
       use intpar_lib
       use yrec_output, only: output_init_mesa

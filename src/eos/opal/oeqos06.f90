@@ -24,7 +24,7 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, ierr, *)
 
       use opal_eos_lib
-      use const_lib
+      use phys_const_lib
       use star_info_lib
       use luout_lib
       implicit none

@@ -24,7 +24,7 @@ subroutine fpft(log_density, log_radius, log_mass, num_points, omega, &
 
       use star_info_lib, only: star, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       implicit none
 ! the shape integrand passed to numerics' qgauss (phase four, step 2)

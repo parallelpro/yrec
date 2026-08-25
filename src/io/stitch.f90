@@ -36,7 +36,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       use atmstruct_lib
       use envstruct_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
 
       implicit none
 

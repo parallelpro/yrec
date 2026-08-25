@@ -12,7 +12,6 @@
 subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
      number_abundance, mass_fraction, mean_molecular_weight, ierr)
 
-      use const_lib
       implicit none
 
       integer, intent(in) :: table_unit, nchem0

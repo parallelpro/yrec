@@ -20,7 +20,6 @@
 subroutine setcal(age_scale_factor)
 
       use star_info_lib, only: star
-      use const_lib
       implicit none
 
       double precision, intent(in) :: age_scale_factor

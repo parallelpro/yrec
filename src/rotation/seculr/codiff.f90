@@ -49,7 +49,7 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
       use star_info_lib, only: star
 
       use star_info_lib
-      use const_lib
+      use phys_const_lib
       implicit none
       double precision, intent(in) :: radius_mid_prev(json)
       integer, intent(in) :: num_zones

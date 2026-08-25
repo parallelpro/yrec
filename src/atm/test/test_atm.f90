@@ -20,7 +20,6 @@
 ! Results print for byte-comparison against expected_test_atm.out.
 program test_atm
       use star_info_lib, only: star
-      use const_lib
       use luout_lib
       use atm_table_lib
       use atm_lib

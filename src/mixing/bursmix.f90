@@ -24,7 +24,6 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
      convective_flag, num_zones, radiative_zone_bounds, mixed_zone_bounds, &
      num_radiative_zones, num_zones_mixed, ierr)
       use net_lib
-      use const_lib
       use star_info_lib, only: star, json
       use burn_lib
       implicit none

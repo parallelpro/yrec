@@ -27,7 +27,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
      eq_mixing_diffusion_coeff, eq_moment_of_inertia, eq_angular_momentum, &
      eq_mass, eq_omega, single_interface_flag)
       use star_info_lib, only: star, json
-      use const_lib
+      use phys_const_lib
       use numerics_lib
       implicit none
 

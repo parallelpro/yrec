@@ -31,7 +31,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       use star_info_lib, only: star, json
       use net_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use burn_lib
       implicit none
 

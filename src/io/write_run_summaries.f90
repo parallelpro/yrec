@@ -17,7 +17,6 @@ subroutine write_run_summaries(monte_carlo_run_number, &
      log_r_rsun, surface_z_over_x)
       use star_info_lib, only: star, i_h1, i_he4, i_lum_grav, i_metals
       use luout_lib
-      use const_lib
       implicit none
 
       integer, intent(in) :: monte_carlo_run_number, convergence_iterations

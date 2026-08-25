@@ -97,8 +97,6 @@ subroutine seed_controls_buffer
       unit_centre5 = star%ctrl%unit_centre5
       metal_fraction_match_tolerance = star%ctrl%metal_fraction_match_tolerance
       zsi = star%ctrl%zsi
-      idt = star%ctrl%idt
-      idd = star%ctrl%idd
       lstore = star%ctrl%lstore
       lstatm = star%job%lstatm
       lstenv = star%ctrl%lstenv
@@ -495,8 +493,6 @@ subroutine store_controls_to_star
       star%ctrl%unit_centre5 = unit_centre5
       star%ctrl%metal_fraction_match_tolerance = metal_fraction_match_tolerance
       star%ctrl%zsi = zsi
-      star%ctrl%idt = idt
-      star%ctrl%idd = idd
       star%ctrl%lstore = lstore
       star%job%lstatm = lstatm
       star%ctrl%lstenv = lstenv

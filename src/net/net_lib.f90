@@ -1663,7 +1663,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
      frac_c12_alpha,frac_be7_electron)
       use star_info_lib, only: star, json
 
-      use const_lib
+      use phys_const_lib
       implicit none
 
       double precision, intent(in) :: log_density, log_temperature, &

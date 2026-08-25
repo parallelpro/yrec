@@ -11,7 +11,6 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
      aux_radial_quantity, radius, enclosed_mass, temperature, num_zones, &
      total_mass)
       use star_info_lib, only: star, json
-      use const_lib
       use numerics_lib
       implicit none
 

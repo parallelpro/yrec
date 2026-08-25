@@ -5,10 +5,12 @@
 ! out of const_lib: essentially every NAMELIST /control/ and /physics/
 ! target (core/parmin.f90 reads into these), grouped by their former
 ! COMMON blocks with the original per-block commentary retained.
-! Conceptually this is part of the job configuration (star_job) -- the
-! MESA inlist->s% pattern expressed in YREC's module idiom; kept as
-! its own module because ~200 members are referenced by bare name
-! across the codebase via the const_lib umbrella.
+! 2026 phase D: RELOCATED to io/ and PARMIN-PRIVATE. The only
+! legitimate users are the read path -- io/parmin.f90 (namelist
+! targets), setup/remap.f90 (reads+writes the buffer), the generated
+! state/controls_sync_lib.f90 (seed/store), and net/test/test_net.f90
+! (sets remap inputs). Everything else reads star%ctrl / star%job.
+! The const_lib umbrella is gone.
 !
 ! Contract: read-only after read_controls/parmin. Phase A of the
 ! 2026 controls->star% campaign evicted every non-namelist straggler
@@ -215,13 +217,11 @@ module controls_lib
 ! copy-assigned). zsi/idt/idd (former common/optab/'s remaining
 ! members) are not namelist values -- dead in core/parmin.f90 (dropped
 ! there) but genuinely set-and-consumed-locally in several other
-! files (misc/coefft.f90, misc/physic.f90, atm/atm_lib.f90,
-! core/starin.f90), each independently assigning the same constants
-! (idt=15, idd(:)=5) -- kept here rather than deleted since removing
-! the assignment would be a logic change, not a mechanical conversion.
+! files. DELETED 2026 phase D (user-approved dead cleanup): every
+! site only ASSIGNED the same constants (idt=15, idd(:)=5); nothing
+! anywhere read them -- dead stores since the COMMON era.
       double precision :: metal_fraction_match_tolerance
       double precision :: zsi = 0.0d0
-      integer :: idt, idd(4)
 
 ! former common/ccout/: lstore/lstatm/lstenv/lstmod/lstphys/lstrot/
 ! lscrib/lstch/lphhd are all NAMELIST /physics/ values in

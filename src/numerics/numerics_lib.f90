@@ -1631,7 +1631,6 @@ end subroutine splintd2
 subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
      eta22p, q, qp)
 
-      use const_lib
       implicit none
 
 
@@ -1710,7 +1709,6 @@ end subroutine trapzd
 subroutine qgauss(integrand, g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
       use star_info_lib, only: json
 
-      use const_lib
       implicit none
 
 ! 2026 (phase four, step 2 -- ROADMAP.md): the integrand used to be a

@@ -9,7 +9,6 @@
 ! Write the headers for all the appropriate output files.
 subroutine wrthead(total_mass_msun)
 
-      use const_lib
       use luout_lib
       use star_info_lib, only: star
       implicit none

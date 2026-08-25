@@ -17,7 +17,7 @@
 ! diagnostics, timestep) -- a full-model concern covered by Stage-0.
 ! Results print for byte-comparison against expected_test_net.out.
 program test_net
-      use const_lib
+      use controls_lib
       use luout_lib
       use star_info_lib, only: star, i_h2
       use net_lib

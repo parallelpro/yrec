@@ -106,7 +106,7 @@ subroutine starin(timestep_yr, delta_time, delta_time_abs, &
       use envint_lib, only: atm_get
       use envstruct_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use eos_lib
       use kap_lib
       use opacity_table_lib
@@ -767,10 +767,6 @@ subroutine rescale_and_refit_envelope
              log10_mass = star%log_mass(star%nz)
              point_pressure_rotation_factor = 1.0d0
              point_temperature_rotation_factor = 1.0d0
-             idt = 15
-             do kk = 1,4
-              star%ctrl%idd(kk) = 5
-             end do
                call eos_get(log10_temperature,temperature,log10_pressure, &
                     pressure,log10_density,density,hydrogen_fraction, &
                     metal_fraction,beta,beta_inverse,beta14,ion_fraction, &

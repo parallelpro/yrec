@@ -29,7 +29,7 @@ subroutine reduce(zone_index,elim_coeff,elim_rhs,log_luminosity,max_residual, &
      dql_dt0,dql_dt)
       use star_info_lib, only: json
 
-      use const_lib
+      use phys_const_lib
       implicit none
 
       integer, intent(in) :: zone_index

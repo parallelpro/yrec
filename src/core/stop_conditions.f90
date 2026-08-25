@@ -24,7 +24,6 @@
 ! negates it (the historical convention -- every check tests .gt.0).
 module stop_conditions
       use star_info_lib, only: star, i_h1, i_h2, i_he4
-      use const_lib
       use luout_lib
       implicit none
       private

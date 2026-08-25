@@ -19,7 +19,6 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
      monte_carlo_run_number)
 
       use star_info_lib, only: star, i_lum_grav, json
-      use const_lib
       implicit none
 
       double precision, intent(in) :: hcomp(15,json), hd(json), hl(json), &

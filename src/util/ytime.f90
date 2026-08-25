@@ -21,7 +21,6 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
 
       use net_lib
       use star_info_lib, only: star, json
-      use const_lib
       use burn_lib
       implicit none
 

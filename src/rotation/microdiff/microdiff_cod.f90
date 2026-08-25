@@ -30,7 +30,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
       use star_info_lib, only: star
 
       use star_info_lib
-      use const_lib
+      use phys_const_lib
       implicit none
       integer, intent(in) :: num_eq_points
       double precision, intent(in) :: species_fraction(3,json), &
