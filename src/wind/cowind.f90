@@ -81,7 +81,7 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
       else
          omega_saturation = wind_saturation_omega
       endif
-      log10_radius=0.5d0*(log_luminosity_lsun+log10_solar_luminosity-c4pil- &
+      log10_radius=0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.d0*log_teff)
       total_radius_cm = exp(ln10*log10_radius)
 ! DMDOT IS THE MASS LOSS RATE IN SOLAR MASSES PER YEAR.
@@ -92,7 +92,7 @@ subroutine cowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 !  INDEX ALFA;SEE PARMIN FOR DETAILS ON THE DEPENDENCE OF EACH ON ALFA.
       wind_coefficient = full_timestep/cz_moment_of_inertia*constfactor* &
            (mass_loss_rate_msun_yr/1.0d-14)**exmd &
-           *(total_radius_cm/solar_radius_cgs)**exr*total_mass_msun**exm
+           *(total_radius_cm/star%solar_radius_cgs)**exr*total_mass_msun**exm
       omega_old_capped = min(omega_old,omega_saturation)
       omega_new_capped = min(omega_surface,omega_saturation)
       domega_start = wind_coefficient*omega_old_capped** &

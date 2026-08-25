@@ -45,14 +45,14 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
 
       global_data(1) = mass_coordinate(num_shells)
       global_data(2) = exp(ln10*log_radius(num_shells))
-      global_data(3) = log_luminosity(num_shells)*solar_luminosity_cgs
+      global_data(3) = log_luminosity(num_shells)*star%solar_luminosity_cgs
       write(gyre_unit,100) num_shells,global_data,gyre_schema
  100  format(I6,3(1X,1PE26.16),1X,I6)
 
       do i = 1,num_shells
          radius_cm = exp(ln10*log_radius(i))
          mass_g = mass_coordinate(i)
-         luminosity_erg_s = log_luminosity(i)*solar_luminosity_cgs
+         luminosity_erg_s = log_luminosity(i)*star%solar_luminosity_cgs
          pressure_cgs = exp(ln10*log_pressure(i))
          temperature_k = exp(ln10*log_temperature(i))
          density_cgs = exp(ln10*log_density(i))

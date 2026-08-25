@@ -37,9 +37,9 @@ subroutine wrthead(total_mass_msun)
 
       if (isochrone_output_active) then
 ! header stuff for isochrone output
-         total_mass_grams = total_mass_msun*solar_mass_cgs
+         total_mass_grams = total_mass_msun*star%solar_mass_cgs
          write(isochrone_file_unit, 1495) total_mass_grams, &
-              initial_envelope_x,initial_envelope_z,star%mixing_length_alpha,solar_bolometric_magnitude
+              initial_envelope_x,initial_envelope_z,star%mixing_length_alpha,star%solar_bolometric_magnitude
  1495    format(7X, 1P5E16.8)
       end if
 

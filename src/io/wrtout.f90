@@ -111,14 +111,14 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
           ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',1PE12.4)
       endif
 
-      bolometric_magnitude = solar_bolometric_magnitude-2.5D0*star%log_L
-      radius_log_surface = 0.5D0*(star%log_L + log10_solar_luminosity - c4pil - csigl - 4.0D0*star%log_Teff)
+      bolometric_magnitude = star%solar_bolometric_magnitude-2.5D0*star%log_L
+      radius_log_surface = 0.5D0*(star%log_L + star%log10_solar_luminosity - c4pil - csigl - 4.0D0*star%log_Teff)
       log_gravity = cgl + star%env_comp%stotal - radius_log_surface - radius_log_surface
       write(short_file_unit,50)star%nz,initial_envelope_x,initial_envelope_z,star%run%core_cz_mass,star%run%envelope_mass, star%run%envelope_radius
    50 format(1X,'SHELLS=',I5,2X,'(X0,Z0)=(',F9.7,',',F9.7,')',2X, &
        'CONV. ZONE MASSES(MSUN): CORE',F10.7,' ENV.',F10.7, &
        ' RAD. FRAC.',F10.7)
-      radius_log_surface = radius_log_surface - log10_solar_radius
+      radius_log_surface = radius_log_surface - star%log10_solar_radius
       write(short_file_unit,60)star%log_Teff,bolometric_magnitude,star%log_L,radius_log_surface,log_gravity
    60 format(1X,'LOG(TEFF)=',F11.8,'  M(BOL)=',F11.7,'  LOG(L/LSUN)=' &
        ,F12.8,'  LOG(R/RSUN)=',F12.8,'  LOG(G) =',F12.8)
@@ -151,9 +151,9 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! H-SHELL VALUES PRINTED OUT - MASSES IN SOLAR UNITS
 ! SS1 - MASS INTERIOR TO CENTER OF H SHELL; SS2 = MASS OF H SHELL;
 ! SS3 = HE CORE MASS; SS4 = MASS INTERIOR TO SHELL WITH MAXIMUM T
-       fit_point_mass = star%m(h_shell_mid_index)/solar_mass_cgs
-       h_shell_total_mass = (star%m(h_shell_end_index) - star%m(h_shell_begin_index-1))/solar_mass_cgs
-       he_core_mass = star%m(h_shell_begin_index-1)/solar_mass_cgs
+       fit_point_mass = star%m(h_shell_mid_index)/star%solar_mass_cgs
+       h_shell_total_mass = (star%m(h_shell_end_index) - star%m(h_shell_begin_index-1))/star%solar_mass_cgs
+       he_core_mass = star%m(h_shell_begin_index-1)/star%solar_mass_cgs
        max_log_temperature = star%run%central_log10_temperature
 ! LOCATE MAXIMUM T - NOTE DIFFERENT METHOD USED FOR HE FLASH
        if(.not.helium_flash_active) then
@@ -165,7 +165,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
           end if
             max_temp_index = i - 1
           if(max_temp_index.gt.1) then
-             h_shell_mid_mass = star%m(max_temp_index)/solar_mass_cgs
+             h_shell_mid_mass = star%m(max_temp_index)/star%solar_mass_cgs
              max_log_temperature = star%logT(max_temp_index)
           else
              h_shell_mid_mass = 0.0D0
@@ -185,7 +185,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
           end if
             max_temp_index = i - 1
           if(max_temp_index.gt.1) then
-             h_shell_mid_mass = star%m(max_temp_index)/solar_mass_cgs
+             h_shell_mid_mass = star%m(max_temp_index)/star%solar_mass_cgs
              max_log_temperature = star%logT(max_temp_index)
 !  ADDITIONAL OUTPUT FOR HE FLASH
              max_temp_log_radius = star%logR(max_temp_index)
@@ -224,7 +224,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
  2160 format(1X,'NEUTRINO ENERGIES (1.E-36ERG): 7Li=', 1PE9.2, &
        ' 37Cl=',1PE9.2,' 71Ga=',1PE9.2,' 81Br=',1PE9.2,' 98Mo=', &
        1PE9.2, ' 115In=', 1PE9.2)
-      fit_point_mass = star%m(star%nz)/solar_mass_cgs
+      fit_point_mass = star%m(star%nz)/star%solar_mass_cgs
       write(short_file_unit,170)fit_point_mass,star%logP(star%nz),star%logT(star%nz),star%logR(star%nz)
   170 format(1X,'FIT-POINT    M/MSUN=',F16.12,5X,'(P,T,R) =',3F12.7)
       write(short_file_unit,20)
@@ -265,7 +265,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
             cz_moment_of_inertia = 0.0D0
             if(rotation_active) then
                rotation_period_days = min(9999.0D0,0.5D0*c4pi/star%omega(star%nz)/8.64D4)
-               equatorial_velocity_kms = star%omega(star%nz)*exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
+               equatorial_velocity_kms = star%omega(star%nz)*exp(ln10*(radius_log_surface+star%log10_solar_radius))*1.0D-5
                if(star%envelope_cz_bottom_index.lt.star%nz)then
                   do k = star%envelope_cz_bottom_index,star%nz
                      cz_moment_of_inertia = cz_moment_of_inertia + star%i_rot(k)
@@ -283,12 +283,12 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! END CHANGED SECTION
 !        Get location of bottom, middle, top of B burning shell.
             if(h_shell_present_flag) then
-             h_shell_begin_mass = star%m(h_shell_begin_index)/solar_mass_cgs
-             h_shell_mid_mass2 = star%m(h_shell_mid_index)/solar_mass_cgs
-             h_shell_end_mass = star%m(h_shell_end_index)/solar_mass_cgs
-             h_shell_begin_radius = exp(ln10*(star%logR(h_shell_begin_index)-radius_log_surface-log10_solar_radius))
-             h_shell_mid_radius = exp(ln10*(star%logR(h_shell_mid_index)-radius_log_surface-log10_solar_radius))
-             h_shell_end_radius = exp(ln10*(star%logR(h_shell_end_index)-radius_log_surface-log10_solar_radius))
+             h_shell_begin_mass = star%m(h_shell_begin_index)/star%solar_mass_cgs
+             h_shell_mid_mass2 = star%m(h_shell_mid_index)/star%solar_mass_cgs
+             h_shell_end_mass = star%m(h_shell_end_index)/star%solar_mass_cgs
+             h_shell_begin_radius = exp(ln10*(star%logR(h_shell_begin_index)-radius_log_surface-star%log10_solar_radius))
+             h_shell_mid_radius = exp(ln10*(star%logR(h_shell_mid_index)-radius_log_surface-star%log10_solar_radius))
+             h_shell_end_radius = exp(ln10*(star%logR(h_shell_end_index)-radius_log_surface-star%log10_solar_radius))
           else
              h_shell_begin_mass = 0.0D0
              h_shell_mid_mass2 = h_shell_begin_mass
@@ -361,7 +361,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! MHP 8/25 removed limit on rotation period output
 !     ROTP = MIN(9999.0D0,0.5D0*C4PI/OMEGA(M)/8.64D4)
                rotation_period_days = 0.5D0*c4pi/star%omega(star%nz)/8.64D4
-               equatorial_velocity_kms = star%omega(star%nz)*exp(ln10*(radius_log_surface+log10_solar_radius))*1.0D-5
+               equatorial_velocity_kms = star%omega(star%nz)*exp(ln10*(radius_log_surface+star%log10_solar_radius))*1.0D-5
                cz_moment_of_inertia = 0.0D0
                if(star%convective_flag(star%nz))then
                   do k = star%envelope_cz_bottom_index,star%nz
@@ -373,12 +373,12 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
             endif
 !        Get location of bottom, middle, top of B burning shell.
             if(h_shell_present_flag) then
-             h_shell_begin_mass = star%m(h_shell_begin_index)/solar_mass_cgs
-             h_shell_mid_mass2 = star%m(h_shell_mid_index)/solar_mass_cgs
-             h_shell_end_mass = star%m(h_shell_end_index)/solar_mass_cgs
-             h_shell_begin_radius = exp(ln10*(star%logR(h_shell_begin_index)-radius_log_surface-log10_solar_radius))
-             h_shell_mid_radius = exp(ln10*(star%logR(h_shell_mid_index)-radius_log_surface-log10_solar_radius))
-             h_shell_end_radius = exp(ln10*(star%logR(h_shell_end_index)-radius_log_surface-log10_solar_radius))
+             h_shell_begin_mass = star%m(h_shell_begin_index)/star%solar_mass_cgs
+             h_shell_mid_mass2 = star%m(h_shell_mid_index)/star%solar_mass_cgs
+             h_shell_end_mass = star%m(h_shell_end_index)/star%solar_mass_cgs
+             h_shell_begin_radius = exp(ln10*(star%logR(h_shell_begin_index)-radius_log_surface-star%log10_solar_radius))
+             h_shell_mid_radius = exp(ln10*(star%logR(h_shell_mid_index)-radius_log_surface-star%log10_solar_radius))
+             h_shell_end_radius = exp(ln10*(star%logR(h_shell_end_index)-radius_log_surface-star%log10_solar_radius))
              else
              h_shell_begin_mass = 0.0D0
              h_shell_mid_mass2 = h_shell_begin_mass
@@ -414,9 +414,9 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! g (cm/s**2), Ycenter, Mass He core (gm)
         age_yr = star%run%dage*1.0D9
         luminosity_erg_s = 10.0D0**star%log_L
-          luminosity_erg_s = luminosity_erg_s*solar_luminosity_cgs
+          luminosity_erg_s = luminosity_erg_s*star%solar_luminosity_cgs
         radius_cm = 10.0D0**radius_log_surface
-          radius_cm = radius_cm*solar_radius_cgs
+          radius_cm = radius_cm*star%solar_radius_cgs
         teff_k = 10.0D0**star%log_Teff
         gravity_cgs = 10.0D0**log_gravity
         ycenter_local = star%xa(i_he4,1)

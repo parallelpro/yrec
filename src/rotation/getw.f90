@@ -484,7 +484,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       endif
       if(star%run%print_rotation_diagnostics)then
          star%log_L = log10(star%luminosity_lsun(star%nz))
-         log_radius_surface = 0.5D0*(star%log_L + log10_solar_luminosity &
+         log_radius_surface = 0.5D0*(star%log_L + star%log10_solar_luminosity &
               - 4.0D0*star%log_Teff - c4pil - csigl)
          fx = exp(ln10*3.0D0*(star%logR(star%nz)-log_radius_surface))
          surface_quad_term = fx*star%rot%quadrupole_moment(star%nz)

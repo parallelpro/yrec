@@ -70,7 +70,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
             mass_at_cz_bottom = 0.0d0
          endif
 !  LCZSUR=T IF A SURFACE C.Z.DEEP ENOUGH FOR ANGULAR MOMENTUM LOSS EXISTS
-         if ((mass_at_cz_top-mass_at_cz_bottom)/solar_mass_cgs.gt.0.0d0) then
+         if ((mass_at_cz_top-mass_at_cz_bottom)/star%solar_mass_cgs.gt.0.0d0) then
             surface_cz_deep_enough = .true.
          else
             surface_cz_deep_enough= .false.

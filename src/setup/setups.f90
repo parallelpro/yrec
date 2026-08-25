@@ -82,15 +82,15 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       ln10 = clndp
       clni = 1.0d0/ln10
 ! Luminosity of Sun
-      log10_solar_luminosity = dlog10(solar_luminosity_cgs)
-      ln_solar_luminosity = ln10/solar_luminosity_cgs
+      star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
+      star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
 ! Mass of Sun
-      solar_mass_cgs = 1.9891d33
-      log10_solar_mass = dlog10(solar_mass_cgs)
+      star%solar_mass_cgs = 1.9891d33
+      star%log10_solar_mass = dlog10(star%solar_mass_cgs)
 ! Radius of Sun
-      log10_solar_radius = dlog10(solar_radius_cgs)
+      star%log10_solar_radius = dlog10(star%solar_radius_cgs)
 ! Bolometric magnitude of the sun
-      solar_bolometric_magnitude = 4.79d0
+      star%solar_bolometric_magnitude = 4.79d0
 ! No. of seconds per year and other mathematical constants
       seconds_per_year = 3.1558d7
       cc13 = 1.0d0/3.0d0

@@ -109,8 +109,8 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
  9124    format(1X,'Shell#',5x,'R/Rsun',7x,'M/Msun',7x,'Cs',15x,'Rho')
 !CFD end
          do i = 1,num_shells
-            fr = exp(ln10*log_radius(i))/solar_radius_cgs
-            fm = exp(ln10*log_mass(i))/solar_mass_cgs
+            fr = exp(ln10*log_radius(i))/star%solar_radius_cgs
+            fm = exp(ln10*log_mass(i))/star%solar_mass_cgs
             xx1 = fm/fr**3
             xxx = -exp(ln10*(cgl+log_mass(i)+log_density(i)-log_pressure(i)-log_radius(i)))
             xx2 = -xxx/star%run%adiabatic_index_gamma1(i)
@@ -137,7 +137,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
               qdr2 = exp(ln10*(log_density(i+1)-log_pressure(i+1)))*star%pulse%pulse_dlnrho_dlnp(i+1)*qpr1
               qqpr = (qpr1-qpr2)/divp
               qqdr = (qdr1-qdr2)/divr
-              write(imodpt,124)rmid/solar_radius_cgs,qpr1,qdr1,qqpr,qqdr
+              write(imodpt,124)rmid/star%solar_radius_cgs,qpr1,qdr1,qqpr,qqdr
  124          format(1X,F11.7,1P4E16.8)
             endif
          end do
@@ -171,7 +171,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
        env_step_min = envelope_step_size
        env_step_max = envelope_step_size
        b = dexp(ln10*log_luminosity_lsun)
-       rl = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity - 4.0D0*log_teff - c4pil - csigl)
+       rl = 0.5D0*(log_luminosity_lsun + star%log10_solar_luminosity - 4.0D0*log_teff - c4pil - csigl)
        gl = cgl + star%env_comp%stotal - rl - rl
        x = composition(1,num_shells)
        z = composition(3,num_shells)
@@ -218,8 +218,8 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
       fsi = dexp(-ln10*star%env_comp%stotal)
 ! DBG PULSE: WRITE HEADER INFORMATION FOR PULSE MODEL
       if(pulsation_output_active) then
-         rsurfl = 0.5D0*(log_luminosity_lsun - c4pil - csigl - 4.0D0*log_teff + log10_solar_luminosity)
-         tempr = rsurfl - log10_solar_radius
+         rsurfl = 0.5D0*(log_luminosity_lsun - c4pil - csigl - 4.0D0*log_teff + star%log10_solar_luminosity)
+         tempr = rsurfl - star%log10_solar_radius
          qsmass = pulsation_mass_msun
          write (opal_model_unit, 5001) model_number,num_pulsation_points,pulsation_file_version,qsmass, &
                log_teff,log_luminosity_lsun,tempr, age_gyr, star%mixing_length_alpha, initial_envelope_x, initial_envelope_z

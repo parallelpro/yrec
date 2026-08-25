@@ -182,9 +182,9 @@ subroutine apply_monte_carlo_parameters
 ! fixed; a candidate for an upstream report.
          monte_helium_diffusion_fraction = star%run%helium_fraction_param(monte_carlo_run_number)
          fgrz = star%run%diffusion_factor(monte_carlo_run_number)
-         solar_luminosity_cgs = reference_solar_luminosity*star%run%luminosity_target(monte_carlo_run_number)
-         log10_solar_luminosity = dlog10(solar_luminosity_cgs)
-         ln_solar_luminosity = ln10/solar_luminosity_cgs
+         star%solar_luminosity_cgs = reference_solar_luminosity*star%run%luminosity_target(monte_carlo_run_number)
+         star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
+         star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
          age_scale_factor = star%run%age_target(monte_carlo_run_number)
 ! timestep and final age are altered in SR SETCAL; input #s should be
 ! scaled for a solar age of 4.57 Gyr
@@ -244,7 +244,7 @@ subroutine end_of_card_calibration(runs_complete)
 ! JVS Turn off calcad - speeds things up
             compute_acoustic_depth=.false.
             if (mod(nk,solar_calib_cards_per_cycle).eq.0) then
-               log_r_rsun = 0.5D0*(star%log_L+log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-log10_solar_radius
+               log_r_rsun = 0.5D0*(star%log_L+star%log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-star%log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
                current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
                call chkcal(star%log_L,log_r_rsun,nk,current_zx)

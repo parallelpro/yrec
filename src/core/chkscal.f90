@@ -17,6 +17,7 @@
 ! ON EVEN NK
 subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -58,8 +59,8 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 !     If not store L and age and return.
       just_passed_target_radius_flag=.false.
       teff_current = 10.0d0**log_teff
-      log_r_rsun_current = sqrt((10.0d0**log_l_lsun)*solar_luminosity_cgs/ &
-           (c4pi*csig))/(teff_current*teff_current*solar_radius_cgs)
+      log_r_rsun_current = sqrt((10.0d0**log_l_lsun)*star%solar_luminosity_cgs/ &
+           (c4pi*csig))/(teff_current*teff_current*star%solar_radius_cgs)
       if(log_r_rsun_current.gt.log_r_prev_model) then
          if(.not.(log_r_rsun_current.gt.target_radius_rsun.and. &
               log_r_prev_model.le.target_radius_rsun)) then

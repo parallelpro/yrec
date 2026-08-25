@@ -93,7 +93,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 !      FRAC = 0.1D0
 !      IF(.NOT.LMDOT)GOTO 9999
 ! CONVERT FROM SOLAR MASSES/YEAR TO GM/SEC
-      mass_loss_rate_cgs = abs(mass_loss_rate_msun_yr)*solar_mass_cgs/ &
+      mass_loss_rate_cgs = abs(mass_loss_rate_msun_yr)*star%solar_mass_cgs/ &
            seconds_per_year
 ! THE SUM OF THE MASSES OF ALL SHELLS (E.G. TO JENV - 1)
 ! SHOULD BE USED RATHER THAN THE SUM OF THE MASSES DOWN
@@ -110,7 +110,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       endif
 ! COMPUTE MAXIMUM TIMESTEP BASED ON NOT REMOVING TOO MUCH MASS FROM THE
 ! SURFACE CZ (FCZDMDT) OR AS A FRACTION OF THE TOTAL MASS (FTOTDMDT)
-      timestep_limit_total_mass = ftotdmdt*total_mass_msun*solar_mass_cgs/ &
+      timestep_limit_total_mass = ftotdmdt*total_mass_msun*star%solar_mass_cgs/ &
            mass_loss_rate_cgs
       timestep_limit_cz_mass = fczdmdt*cz_mass_grams/mass_loss_rate_cgs
       timestep_limit = min(timestep_limit_total_mass,timestep_limit_cz_mass)
@@ -139,7 +139,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          disk_exhausted_flag = .false.
       endif
 ! FINAL AMOUNT OF MASS LOSS INFERRED IN CGS UNITS.
-      delta_mass_cgs = mass_loss_rate_msun_yr*solar_mass_cgs*timestep/ &
+      delta_mass_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs*timestep/ &
            seconds_per_year
 ! COMPUTE THE MEAN THERMAL ENERGY
 ! CONTENT OF THE CONVECTION ZONE FOR MODELS WITH ACCRETION.
@@ -243,9 +243,9 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 !      WRITE(*,*)HS1(M),HS(M)
 ! CORRECT TOTAL MASS IN SOLAR UNITS (SMASS) AND
 ! LOG OF TOTAL MASS IN GRAMS (HSTOT,STOTAL)
-      total_mass_msun = total_mass_msun + delta_mass_cgs/solar_mass_cgs
+      total_mass_msun = total_mass_msun + delta_mass_cgs/star%solar_mass_cgs
       star%rot%updated_mass_msun = total_mass_msun
-      delta_mass_msun = delta_mass_cgs/solar_mass_cgs
+      delta_mass_msun = delta_mass_cgs/star%solar_mass_cgs
       write(*,20)total_mass_msun,delta_mass_msun
  20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)
       total_mass_grams_old = 10.0d0**log_total_mass

@@ -822,7 +822,7 @@ subroutine rescale_and_refit_envelope
           kenv = 0
           saha_state = 0
           shell_luminosity_lsun = dexp(ln10*star%log_L)
-          log10_radius = 0.5d0*(star%log_L + solar_luminosity_cgs - &
+          log10_radius = 0.5d0*(star%log_L + star%solar_luminosity_cgs - &
                4.0d0*star%log_Teff - c4pil - csigl)
           log10_gravity = cgl + star%env_comp%stotal - log10_radius - log10_radius
           hydrogen_fraction = star%xa(i_h1,star%nz)

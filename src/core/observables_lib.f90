@@ -130,7 +130,7 @@ subroutine locate_core_cz
       double precision :: core_boundary_log_radius, core_boundary_radius
 
       if(star%core_cz_top_index.gt.1) then
-       star%run%core_cz_mass = star%m(star%core_cz_top_index)/solar_mass_cgs
+       star%run%core_cz_mass = star%m(star%core_cz_top_index)/star%solar_mass_cgs
       else
        star%run%core_cz_mass = 0.0D0
       endif
@@ -147,7 +147,7 @@ subroutine locate_core_cz
        core_boundary_fx2 = (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))/ &
              (star%diag%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%diag%del_grad(i_grad_rad,star%core_cz_top_index))
        core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
-            (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-log10_solar_radius
+            (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-star%log10_solar_radius
        core_boundary_radius = dexp(ln10*core_boundary_log_radius)
       else
        core_boundary_radius = 0.0D0
@@ -234,10 +234,10 @@ subroutine locate_surface_cz_base
 !            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
             cz_base_mass = star%m(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%m(star%envelope_cz_bottom_index)-star%m(star%envelope_cz_bottom_index-1))
-            star%run%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/solar_mass_cgs
+            star%run%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/star%solar_mass_cgs
 ! MHP 2/98 FIND RADIUS OF CZ BASE
             star%run%envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%logR(star%envelope_cz_bottom_index)-star%logR(star%envelope_cz_bottom_index-1))-log10_solar_radius
+                 (star%logR(star%envelope_cz_bottom_index)-star%logR(star%envelope_cz_bottom_index-1))-star%log10_solar_radius
             star%run%envelope_radius = exp(ln10*star%run%envelope_cz_log_radius)
             star%run%envelope_cz_o16 = star%diag%so(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%diag%so(star%envelope_cz_bottom_index)-star%diag%so(star%envelope_cz_bottom_index-1))
@@ -286,11 +286,11 @@ end subroutine refresh_turnover_timescale
 ! ---------------------------------------------------------------
 ! Surface radius and gravity from L and Teff.
 subroutine compute_surface_globals
-      star%run%log_R_surface = 0.5d0*(star%log_L + log10_solar_luminosity &
+      star%run%log_R_surface = 0.5d0*(star%log_L + star%log10_solar_luminosity &
            - c4pil - csigl - 4.0d0*star%log_Teff)
       star%run%log_g_surface = cgl + star%env_comp%stotal &
            - 2.0d0*star%run%log_R_surface
-      star%run%log_R_surface = star%run%log_R_surface - log10_solar_radius
+      star%run%log_R_surface = star%run%log_R_surface - star%log10_solar_radius
 end subroutine compute_surface_globals
 
 ! ---------------------------------------------------------------
@@ -346,7 +346,7 @@ subroutine compute_rotation_observables
          star%run%rotation_period_days = min(9999.0d0, &
               0.5d0*c4pi/star%omega(star%nz)/8.64d4)
          star%run%surf_velocity_kms = star%omega(star%nz)* &
-              exp(ln10*(star%run%log_R_surface+log10_solar_radius))*1.0d-5
+              exp(ln10*(star%run%log_R_surface+star%log10_solar_radius))*1.0d-5
          if (star%envelope_cz_bottom_index .lt. star%nz) then
             do i = star%envelope_cz_bottom_index, star%nz
                star%run%cz_moment_of_inertia = &
@@ -372,20 +372,20 @@ end subroutine compute_rotation_observables
 subroutine compute_h_shell_boundaries
       if (star%evo%has_h_shell) then
          star%run%h_shell_bot_mass = &
-              star%m(star%evo%h_shell_zone_begin)/solar_mass_cgs
+              star%m(star%evo%h_shell_zone_begin)/star%solar_mass_cgs
          star%run%h_shell_mid_mass = &
-              star%m(star%evo%h_shell_midpoint_zone)/solar_mass_cgs
+              star%m(star%evo%h_shell_midpoint_zone)/star%solar_mass_cgs
          star%run%h_shell_top_mass = &
-              star%m(star%evo%h_shell_end_index)/solar_mass_cgs
+              star%m(star%evo%h_shell_end_index)/star%solar_mass_cgs
          star%run%h_shell_bot_radius = exp(ln10*( &
               star%logR(star%evo%h_shell_zone_begin) &
-              - star%run%log_R_surface - log10_solar_radius))
+              - star%run%log_R_surface - star%log10_solar_radius))
          star%run%h_shell_mid_radius = exp(ln10*( &
               star%logR(star%evo%h_shell_midpoint_zone) &
-              - star%run%log_R_surface - log10_solar_radius))
+              - star%run%log_R_surface - star%log10_solar_radius))
          star%run%h_shell_top_radius = exp(ln10*( &
               star%logR(star%evo%h_shell_end_index) &
-              - star%run%log_R_surface - log10_solar_radius))
+              - star%run%log_R_surface - star%log10_solar_radius))
       else
          star%run%h_shell_bot_mass = 0.0d0
          star%run%h_shell_mid_mass = 0.0d0

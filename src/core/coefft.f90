@@ -304,22 +304,22 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             end if
             do j = 1,6
                luminosity_terms(j) = luminosity_terms(j) + &
-                    (shell_mass(im)/solar_luminosity_cgs)* &
+                    (shell_mass(im)/star%solar_luminosity_cgs)* &
                     energy_gen_component(j)
                zone_energy_luminosity = zone_energy_luminosity + &
-                    (shell_mass(im)/solar_luminosity_cgs)* &
+                    (shell_mass(im)/star%solar_luminosity_cgs)* &
                     energy_gen_component(j)
             end do
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
             star%engeb%he3_he3_luminosity_zone(im) = (shell_mass(im)/ &
-                 solar_luminosity_cgs)*star%engeb%he3_he3_energy_rate
+                 star%solar_luminosity_cgs)*star%engeb%he3_he3_energy_rate
             star%engeb%he3_burning_luminosity_zone(im) = (shell_mass(im)/ &
-                 solar_luminosity_cgs)*star%engeb%he3_burning_energy_rate
+                 star%solar_luminosity_cgs)*star%engeb%he3_burning_energy_rate
 ! JVS end
             luminosity_terms(8)=luminosity_terms(8)+(shell_mass(im)/ &
-                 solar_luminosity_cgs)*alpha_capture_energy_zone
+                 star%solar_luminosity_cgs)*alpha_capture_energy_zone
             zone_energy_luminosity = zone_energy_luminosity + &
-                 (shell_mass(im)/solar_luminosity_cgs)* &
+                 (shell_mass(im)/star%solar_luminosity_cgs)* &
                  alpha_capture_energy_zone
             eq_l_val = energy_gen_rate
             dql_dt = dql_dt + zone_dlnepsilon_dlnt + &
@@ -355,7 +355,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             egrav = zone_dt*entropy_term
             gravitational_luminosity(im) = egrav
             luminosity_terms(7) = luminosity_terms(7) + (shell_mass(im)/ &
-                 solar_luminosity_cgs)*egrav
+                 star%solar_luminosity_cgs)*egrav
             eq_l_val = eq_l_val + egrav
             dql_dp = dql_dp + zone_dt*(entropy_term*(1.0d0-dlnrho_dlnp+ &
                  dlnrho_dlnp_dt)-entropy_term1 - entropy_term3* &
@@ -371,7 +371,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
          end if
-         cccql = ln_solar_luminosity*mass_weight_ln(im)
+         cccql = star%ln_solar_luminosity*mass_weight_ln(im)
          eq_l_val = cccql*eq_l_val
          dql_dp = cccql*dql_dp
          dql_dt = cccql*dql_dt

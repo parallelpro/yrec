@@ -139,7 +139,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
       lsbc0 = .false.
       x = composition(1,m)
       z = composition(3,m)
-      rl = 0.5d0*(log_luminosity_lsun + log10_solar_luminosity - &
+      rl = 0.5d0*(log_luminosity_lsun + star%log10_solar_luminosity - &
            4.0d0*log_teff - c4pil - csigl)
       gl = cgl + log_total_mass - rl - rl
       plim = log_pressure(m)

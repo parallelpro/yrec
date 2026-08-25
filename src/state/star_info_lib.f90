@@ -554,6 +554,17 @@ module star_info_lib
 ! parmin-echo value before the first kind card (and after a
 ! yrec_reset star0 restore).
             double precision :: mixing_length_alpha = 1.4d0
+! phase A batch 5: the solar-unit octet (former common/const/).
+! Computed at startup by setup/setups.f90 -- solar_luminosity_cgs/
+! solar_radius_cgs seeded from the NAMELIST /physics/ clsun/crsun
+! values (copied by parmin), the rest derived from them -- and the
+! luminosity trio is overwritten per Monte-Carlo run by
+! apply_monte_carlo_parameters. Job-configured unit definitions,
+! i.e. computed state, not controls.
+            double precision :: solar_luminosity_cgs, &
+                 log10_solar_luminosity, ln_solar_luminosity, &
+                 solar_mass_cgs, log10_solar_mass, solar_radius_cgs, &
+                 log10_solar_radius, solar_bolometric_magnitude
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &

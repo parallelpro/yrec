@@ -137,7 +137,7 @@ subroutine neutrino_flux_table
 ! MASS FRACTION.
          zone_mass_fraction = shell_mass(i)/1.9891d33
 ! RADIUS FRACTION.
-         zone_radius_fraction = exp(ln10*star%logR(i))/solar_radius_cgs
+         zone_radius_fraction = exp(ln10*star%logR(i))/star%solar_radius_cgs
 ! FLUXES ARE PRINTED IN THE SAME ORDER AS BAHCALL AND PINSONNEAULT.
          write(short_file_unit,145)zone_radius_fraction,t6_million_k, &
               log_electron_density,zone_mass_fraction, &

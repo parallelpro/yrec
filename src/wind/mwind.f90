@@ -114,12 +114,12 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! MHP 8/17 ADDED CENTRIFUGAL REDUCTION TERM FROM MATT+2012 ApJ 754, L26
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
 !      C_2 = 0.0506
-      fsun = 0.5*pmm_solar_omega**2*solar_radius_cgs**3/exp(ln10*cgl)/solar_mass_cgs
+      fsun = 0.5*pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*cgl)/star%solar_mass_cgs
 !     RADIUS
-      log10_radius = 0.5d0*(log_luminosity_lsun+log10_solar_luminosity-c4pil- &
+      log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.d0*log_teff)
       fcorr_local = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
-           total_mass_msun/solar_mass_cgs
+           total_mass_msun/star%solar_mass_cgs
       fcen = ((c_2**2+fsun)/(c_2**2+fcorr_local))**excen
       domega_test = (full_timestep/cz_moment_of_inertia)*constfactor* &
            structfactor*omega_surface &
@@ -163,7 +163,7 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! MHP 8/17 ADDED CENTRIFUGAL REDUCTION TERM FROM MATT+2012 ApJ 754, L26
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
          fcorr_local = 0.5*omega_iter**2*exp(ln10*(3.0*log10_radius-cgl))/ &
-              total_mass_msun/solar_mass_cgs
+              total_mass_msun/star%solar_mass_cgs
          fcen = ((c_2**2+fsun)/(c_2**2+fcorr_local))**excen
          omega_iter_new = omega_substep_start - (sub_timestep/ &
               cz_moment_of_inertia)*constfactor*structfactor*omega_iter &

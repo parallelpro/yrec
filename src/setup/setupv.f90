@@ -136,7 +136,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               mass_unlogged(3)*star%rot%lagrange_interp_weights(3,2)+mass_unlogged(4)*star%rot%lagrange_interp_weights(4,2)
          star%rot%epsilm(2)=star%mix_phys%esumm(1)*star%rot%lagrange_interp_weights(1,2)+star%mix_phys%esumm(2)*star%rot%lagrange_interp_weights(2,2)+ &
               star%mix_phys%esumm(3)*star%rot%lagrange_interp_weights(3,2)+star%mix_phys%esumm(4)*star%rot%lagrange_interp_weights(4,2)
-         star%rot%interface_luminosity(2)=solar_luminosity_cgs*(luminosity(1)*star%rot%lagrange_interp_weights(1,2)+ &
+         star%rot%interface_luminosity(2)=star%solar_luminosity_cgs*(luminosity(1)*star%rot%lagrange_interp_weights(1,2)+ &
               luminosity(2)*star%rot%lagrange_interp_weights(2,2)+ &
               luminosity(3)*star%rot%lagrange_interp_weights(3,2)+luminosity(4)*star%rot%lagrange_interp_weights(4,2))
          star%rot%interface_gravity_factor(2)=local_gravity(1)*star%rot%lagrange_interp_weights(1,2)+ &
@@ -204,7 +204,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               star%mix_phys%esumm(num_zones-2)*star%rot%lagrange_interp_weights(2,num_zones)+ &
               star%mix_phys%esumm(num_zones-1)*star%rot%lagrange_interp_weights(3,num_zones)+ &
               star%mix_phys%esumm(num_zones)*star%rot%lagrange_interp_weights(4,num_zones)
-         star%rot%interface_luminosity(num_zones)=solar_luminosity_cgs*(luminosity(num_zones-3)*star%rot%lagrange_interp_weights(1,num_zones)+ &
+         star%rot%interface_luminosity(num_zones)=star%solar_luminosity_cgs*(luminosity(num_zones-3)*star%rot%lagrange_interp_weights(1,num_zones)+ &
               luminosity(num_zones-2)*star%rot%lagrange_interp_weights(2,num_zones)+ &
               luminosity(num_zones-1)*star%rot%lagrange_interp_weights(3,num_zones)+ &
               luminosity(num_zones)*star%rot%lagrange_interp_weights(4,num_zones))
@@ -293,7 +293,7 @@ subroutine setupv(log_density, local_gravity, luminosity, log_pressure, &
               star%mix_phys%esumm(zone_idx)*star%rot%lagrange_interp_weights(3,zone_idx)+ &
               star%mix_phys%esumm(zone_idx+1)*star%rot%lagrange_interp_weights(4,zone_idx)
 !  LUMINOSITY.
-         star%rot%interface_luminosity(zone_idx)=solar_luminosity_cgs*(luminosity(zone_idx-2)*star%rot%lagrange_interp_weights(1,zone_idx)+ &
+         star%rot%interface_luminosity(zone_idx)=star%solar_luminosity_cgs*(luminosity(zone_idx-2)*star%rot%lagrange_interp_weights(1,zone_idx)+ &
               luminosity(zone_idx-1)*star%rot%lagrange_interp_weights(2,zone_idx)+ &
               luminosity(zone_idx)*star%rot%lagrange_interp_weights(3,zone_idx)+ &
               luminosity(zone_idx+1)*star%rot%lagrange_interp_weights(4,zone_idx))

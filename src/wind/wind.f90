@@ -76,7 +76,7 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       if (wind_loss_active) then
 ! FIND TOTAL RADIUS OF STAR.
          gravity_cgs = dexp(ln10*cgl)
-         log10_radius=0.5d0*(log_luminosity_lsun+log10_solar_luminosity-c4pil- &
+         log10_radius=0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
               csigl-4.d0*log_teff)
          total_radius_cm = dexp(ln10*log10_radius)
 ! DMDOT IS THE MASS LOSS RATE IN SOLAR MASSES PER YEAR.
@@ -92,7 +92,7 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! MHP 12/91 CAP LOSS RATE AT WSAT.
          domega_test = (full_timestep/cz_moment_of_inertia)*constfactor* &
               (mass_loss_rate_msun_yr/1.0d-14)**exmd &
-              *omega_surface*(total_radius_cm/solar_radius_cgs)**exr* &
+              *omega_surface*(total_radius_cm/star%solar_radius_cgs)**exr* &
               total_mass_msun**exm &
               *min(omega_surface,omega_saturation)**(wind_law_omega_exponent-1.0d0)
          if(domega_test.gt.omega_surface)then
@@ -120,7 +120,7 @@ subroutine wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             omega_iter_new = omega_substep_start - (sub_timestep/ &
                  cz_moment_of_inertia)*constfactor* &
                  (mass_loss_rate_msun_yr/1.0d-14)**exmd &
-                 *omega_iter*(total_radius_cm/solar_radius_cgs)**exr* &
+                 *omega_iter*(total_radius_cm/star%solar_radius_cgs)**exr* &
                  total_mass_msun**exm &
                  *min(omega_iter,omega_saturation)**(wind_law_omega_exponent-1.0d0)
             domega_relative_change = 2.0d0*abs((omega_iter_prev-omega_iter_new)/ &

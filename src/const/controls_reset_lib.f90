@@ -74,14 +74,6 @@ module controls_reset_lib
       logical :: snap_use_itoh_neutrino_loss
       logical :: snap_use_new_turnover_timescale
       logical :: snap_calc_envelope_flag
-      double precision :: snap_solar_luminosity_cgs
-      double precision :: snap_log10_solar_luminosity
-      double precision :: snap_ln_solar_luminosity
-      double precision :: snap_solar_mass_cgs
-      double precision :: snap_log10_solar_mass
-      double precision :: snap_solar_radius_cgs
-      double precision :: snap_log10_solar_radius
-      double precision :: snap_solar_bolometric_magnitude
       logical :: snap_use_extended_composition
       double precision :: snap_spot_filling_factor
       double precision :: snap_spot_temp_contrast
@@ -519,14 +511,6 @@ subroutine controls_capture
       snap_use_itoh_neutrino_loss = use_itoh_neutrino_loss
       snap_use_new_turnover_timescale = use_new_turnover_timescale
       snap_calc_envelope_flag = calc_envelope_flag
-      snap_solar_luminosity_cgs = solar_luminosity_cgs
-      snap_log10_solar_luminosity = log10_solar_luminosity
-      snap_ln_solar_luminosity = ln_solar_luminosity
-      snap_solar_mass_cgs = solar_mass_cgs
-      snap_log10_solar_mass = log10_solar_mass
-      snap_solar_radius_cgs = solar_radius_cgs
-      snap_log10_solar_radius = log10_solar_radius
-      snap_solar_bolometric_magnitude = solar_bolometric_magnitude
       snap_use_extended_composition = use_extended_composition
       snap_spot_filling_factor = spot_filling_factor
       snap_spot_temp_contrast = spot_temp_contrast
@@ -963,14 +947,6 @@ subroutine controls_restore
       use_itoh_neutrino_loss = snap_use_itoh_neutrino_loss
       use_new_turnover_timescale = snap_use_new_turnover_timescale
       calc_envelope_flag = snap_calc_envelope_flag
-      solar_luminosity_cgs = snap_solar_luminosity_cgs
-      log10_solar_luminosity = snap_log10_solar_luminosity
-      ln_solar_luminosity = snap_ln_solar_luminosity
-      solar_mass_cgs = snap_solar_mass_cgs
-      log10_solar_mass = snap_log10_solar_mass
-      solar_radius_cgs = snap_solar_radius_cgs
-      log10_solar_radius = snap_log10_solar_radius
-      solar_bolometric_magnitude = snap_solar_bolometric_magnitude
       use_extended_composition = snap_use_extended_composition
       spot_filling_factor = snap_spot_filling_factor
       spot_temp_contrast = snap_spot_temp_contrast

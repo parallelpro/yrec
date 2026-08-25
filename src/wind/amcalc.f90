@@ -30,10 +30,10 @@ subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
 !     MASS
       mass_factor = total_mass_msun
 !     RADIUS
-      log10_radius = 0.5d0*(log_luminosity_lsun+log10_solar_luminosity-c4pil- &
+      log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.d0*log_teff)
       total_radius_cm = dexp(ln10*log10_radius)
-      radius_rsun = total_radius_cm/solar_radius_cgs
+      radius_rsun = total_radius_cm/star%solar_radius_cgs
 !     LUMINOSITY
       luminosity_lsun = 10.**log_luminosity_lsun
 !     PHOTOSPHERIC PRESSURE

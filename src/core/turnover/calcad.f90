@@ -192,7 +192,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
       surface_bc_flag = .false.
       hydrogen_fraction = composition(1,num_shells)
       metal_fraction = composition(3,num_shells)
-      log10_radius_local = 0.5d0*(log_luminosity_lsun+log10_solar_luminosity- &
+      log10_radius_local = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity- &
            4.0d0*log_teff-c4pil-csigl)
       log10_gravity = cgl+star%env_comp%stotal-log10_radius_local-log10_radius_local
       log10_pressure_limit = log_pressure(num_shells)
@@ -278,7 +278,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 ! Find the location of the CZ, but only if one exists
       if (envelope_cz_bottom_index.lt.num_shells) then
-            cz_radius_cm=dexp(ln10*(envelope_cz_log_radius+log10_solar_radius))
+            cz_radius_cm=dexp(ln10*(envelope_cz_log_radius+star%log10_solar_radius))
 
 
 !      get the location of the convection zone, and count nonzero entries:

@@ -492,13 +492,13 @@ double precision function profile_value(icol, k)
 
       select case (icol)
       case (1);  profile_value = 0.0d0   ! zone number set by the writer
-      case (2);  profile_value = star%m(k)/solar_mass_cgs
+      case (2);  profile_value = star%m(k)/star%solar_mass_cgs
       case (3);  profile_value = star%logR(k)
       case (4);  profile_value = star%logT(k)
       case (5);  profile_value = star%logRho(k)
       case (6);  profile_value = star%logP(k)
       case (7);  profile_value = star%luminosity_lsun(k)
-      case (8);  profile_value = star%dm(k)/solar_mass_cgs
+      case (8);  profile_value = star%dm(k)/star%solar_mass_cgs
       case (9)
          if (star%convective_flag(k)) then
             profile_value = 1.0d0
@@ -613,7 +613,7 @@ subroutine build_extended
       lsbc0 = .false.
       lpulpt = .false.
       b = exp(ln10*star%log_L)
-      rl = 0.5d0*(star%log_L + log10_solar_luminosity - 4.0d0*star%log_Teff &
+      rl = 0.5d0*(star%log_L + star%log10_solar_luminosity - 4.0d0*star%log_Teff &
            - c4pil - csigl)
       gl = cgl + star%log_total_mass - rl - rl
       plim = star%logP(star%nz)
@@ -678,7 +678,7 @@ double precision function ext_profile_value(icol, j)
       case (2)
          select case (icol)
          case (2);  ext_profile_value = exp(ln10*(env_struct%env_log10_mass(i) &
-                       + star%log_total_mass))/solar_mass_cgs
+                       + star%log_total_mass))/star%solar_mass_cgs
          case (3);  ext_profile_value = env_struct%env_log10_radius(i)
          case (4);  ext_profile_value = env_struct%env_log10_temperature(i)
          case (5);  ext_profile_value = env_struct%env_log10_density(i)
@@ -805,7 +805,7 @@ subroutine build_pulse_points(pts)
             delta = -star%pulse%pulse_dlnrho_dlnt(i)
             nab = star%diag%del_grad(i_grad_actual,i)
             nab_ad = star%diag%del_grad(i_grad_ad,i)
-            pts(3,j) = star%luminosity_lsun(i)*solar_luminosity_cgs
+            pts(3,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
             pts(9,j) = star%run%adiabatic_index_gamma1(i)
             pts(12,j) = star%diag%so(i)
             pts(13,j) = star%pulse%pulse_dlnkap_dlnt(i)
@@ -834,7 +834,7 @@ subroutine build_pulse_points(pts)
             delta = -env_struct%env_dlnrho_dlnt(i)
             nab = env_struct%env_gradients(2,i)
             nab_ad = env_struct%env_gradients(3,i)
-            pts(3,j) = env_struct%env_luminosity(i)*solar_luminosity_cgs
+            pts(3,j) = env_struct%env_luminosity(i)*star%solar_luminosity_cgs
             pts(9,j) = env_struct%env_gamma1(i)
             pts(12,j) = env_struct%env_opacity(i)
             pts(18,j) = star%omega(star%nz)
@@ -855,7 +855,7 @@ subroutine build_pulse_points(pts)
             delta = -atmo_struct%atmo_dlnrho_dlnt(i)
             nab = atmo_struct%atmo_gradients(2,i)
             nab_ad = atmo_struct%atmo_gradients(3,i)
-            pts(3,j) = exp(ln10*star%log_L)*solar_luminosity_cgs
+            pts(3,j) = exp(ln10*star%log_L)*star%solar_luminosity_cgs
             pts(9,j) = atmo_struct%atmo_gamma1(i)
             pts(12,j) = atmo_struct%atmo_opacity(i)
             pts(18,j) = star%omega(star%nz)
@@ -909,8 +909,8 @@ subroutine write_pulse(iprof)
       allocate(pts(35, n_ext))
       call build_pulse_points(pts)
       mstar_g = exp(ln10*star%log_total_mass)
-      rstar_cm = exp(ln10*(star%run%log_R_surface + log10_solar_radius))
-      lstar_cgs = exp(ln10*star%log_L)*solar_luminosity_cgs
+      rstar_cm = exp(ln10*(star%run%log_R_surface + star%log10_solar_radius))
+      lstar_cgs = exp(ln10*star%log_L)*star%solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
       if (pulse_format(1:5) == 'FGONG' .or. &

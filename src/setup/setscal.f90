@@ -16,6 +16,7 @@
 ! setcal.f90's solar-calibration run-list expansion.
 subroutine setscal
 
+      use star_info_lib, only: star
       use luout_lib
       use const_lib
       implicit none
@@ -48,12 +49,12 @@ subroutine setscal
       just_passed_target_radius_flag = .false.
       if (specify_teff_flag) then
          target_radius_rsun = sqrt(target_luminosity_lsun* &
-              solar_luminosity_cgs/(c4pi*csig))/(target_teff*target_teff* &
-              solar_radius_cgs)
+              star%solar_luminosity_cgs/(c4pi*csig))/(target_teff*target_teff* &
+              star%solar_radius_cgs)
       else
-         target_teff = ((target_luminosity_lsun*solar_luminosity_cgs)/ &
+         target_teff = ((target_luminosity_lsun*star%solar_luminosity_cgs)/ &
               (c4pi*csig*target_radius_rsun*target_radius_rsun* &
-              solar_radius_cgs*solar_radius_cgs))**0.25d0
+              star%solar_radius_cgs*star%solar_radius_cgs))**0.25d0
       end if
       log_r_prev_model = 0
 !     SET UP RUN TO EVOLVE TO L, Teff IN HR-DIAGRM.

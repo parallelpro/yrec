@@ -191,7 +191,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       call setupv(log_density,local_gravity,luminosity,log_pressure, &
            log_radius,enclosed_mass,log_temperature,zone_min,zone_max, &
            num_zones,radius_unlogged,dynamical_shear_omega_limit)
-      total_luminosity = solar_luminosity_cgs*luminosity(num_zones)
+      total_luminosity = star%solar_luminosity_cgs*luminosity(num_zones)
 !  COMPUTE ANGULAR VELOCITY GRADIENTS
       do i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.

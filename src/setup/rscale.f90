@@ -183,10 +183,10 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 ! ****************************************************************
 
 ! FIND CORE, ENVELOPE, AND H-BURNING SHELL MASSES.
-            core_mass_old = exp(ln10*shell_mass_log(shell_begin-1))/solar_mass_cgs
-            env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/solar_mass_cgs
-            env_mass_old2 = (exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_end)))/solar_mass_cgs
-            shell_mass_old = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/solar_mass_cgs
+            core_mass_old = exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs
+            env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
+            env_mass_old2 = (exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
+            shell_mass_old = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
             delta_env_mass = 0.0d0
             delta_core_mass = 0.0d0
             write(short_file_unit,63)core_mass_old,shell_mass_old,env_mass_old,star_mass
@@ -206,7 +206,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
             env_mass_new = env_mass_old + delta_env_mass
 
 ! ** Reduce either total mass outside core OR the standard envelope only ***
-            if((((10d0**total_mass_log)/solar_mass_cgs)-core_mass_old).ge.0.01d0) then
+            if((((10d0**total_mass_log)/star%solar_mass_cgs)-core_mass_old).ge.0.01d0) then
 ! ************
       write(*,*)'Entering old method ',(10**total_mass_log-10**shell_mass_log(num_zones))/ &
                                         (10**shell_mass_log(num_zones)-10**shell_mass_log(shell_begin-1))
@@ -231,8 +231,8 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 ! ***** Calculate scale factor for mass rescaling *****
 
 !            HSTOT1 = DLOG10(RESCAL(1,NK)/SMASS)
-        mass_scale_factor =(rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_end))/solar_mass_cgs)/ &
-                          (star_mass-exp(ln10*shell_mass_log(shell_end))/solar_mass_cgs)
+        mass_scale_factor =(rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_end))/star%solar_mass_cgs)/ &
+                          (star_mass-exp(ln10*shell_mass_log(shell_end))/star%solar_mass_cgs)
 
 ! *****************************************************
 
@@ -258,7 +258,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       write(*,*)'Envelope ',10**shell_mass_log(num_zones) - 10**shell_mass_log(shell_begin-1)
 ! ************
 !           *** print debug info ***
-            env_mass_check = ((10**total_mass_log)/solar_mass_cgs)-core_mass_old
+            env_mass_check = ((10**total_mass_log)/star%solar_mass_cgs)-core_mass_old
             if(env_mass_check.le.0.0d0)then
                write(short_file_unit,69)env_mass_old,env_mass_old+delta_env_mass,rescale_params(1,run_index),star_mass
                ! 2026 (phase five, step B): stop converted to ierr; run_yrec
@@ -270,8 +270,8 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 ! **** Calculate scale factor *****
 
 !           HSTOT1 = DLOG10(RESCAL(1,NK)/SMASS)
-        mass_scale_factor =(rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_begin-1))/solar_mass_cgs)/ &
-                          (star_mass-exp(ln10*shell_mass_log(shell_begin-1))/solar_mass_cgs)
+        mass_scale_factor =(rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs)/ &
+                          (star_mass-exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs)
 !        write(*,*)'hstot1',(10**HSTOT1)
 !        write(*,*)'smass',SMASS
 
@@ -285,8 +285,8 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
       shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_begin-1)+ &
            mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_begin-1)))
             end do
-            env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/solar_mass_cgs
-            env_mass_total_check=(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_begin-1)))/solar_mass_cgs
+            env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
+            env_mass_total_check=(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
 
 ! ************
 !      write(*,*)'leaving new method ',HSTOT-HS(M)
@@ -326,7 +326,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 
 !  HOLD H-SHELL MASS CONSTANT;SHIFT IS THE CHANGE IN THE
 !  UNLOGGED MASS OF EACH POINT IN THE H SHELL.
-            mass_shift_grams = delta_core_mass*solar_mass_cgs
+            mass_shift_grams = delta_core_mass*star%solar_mass_cgs
             do zone_idx = shell_begin,shell_end
                unlogged_mass_temp = exp(ln10*shell_mass_log(zone_idx))
                shell_mass_log(zone_idx) = log10(unlogged_mass_temp + mass_shift_grams)
@@ -345,9 +345,9 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
          endif
 
          if(rescale_params(1,run_index).gt.0.0d0.or.rescale_params(4,run_index).gt.0.0d0)then
-            core_mass_new = exp(ln10*shell_mass_log(shell_begin-1))/solar_mass_cgs
-            env_mass_new = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/solar_mass_cgs
-            shell_mass_new = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/solar_mass_cgs
+            core_mass_new = exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs
+            env_mass_new = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
+            shell_mass_new = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
             write(short_file_unit,101)core_mass_new,shell_mass_new,env_mass_new,star_mass
   101       format(1x,'HB-RESCALED MASSES: CORE ', &
            f9.6,' SHELL ',f9.6,' ENV ',f9.6,' TOTAL ',f9.6)
@@ -366,7 +366,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
            .and.(rsclzm2(run_index).gt.0d0))then
             z_ramp_slope = (star%env_comp%znew - rsclzc(run_index))/(rsclzm2(run_index)-rsclzm1(run_index))
             do zone_idx = 1,num_zones
-               mass_fraction_local = 10.0d0**shell_mass_log(zone_idx)/(star_mass*solar_mass_cgs)
+               mass_fraction_local = 10.0d0**shell_mass_log(zone_idx)/(star_mass*star%solar_mass_cgs)
                if (mass_fraction_local .lt. rsclzm1(run_index)) then
                   z_rescale_factor = (composition(3,zone_idx)-rsclzc(run_index))/composition(3,zone_idx)
                   composition(3,zone_idx) = rsclzc(run_index)

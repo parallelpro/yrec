@@ -89,7 +89,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
       star%rot%phmlt=0.0d0
       star%rot%cmxmlt=0.0d0
       radiative_gradient = opacity*luminosity_lsun*dexp(ln10*(log_pressure - &
-           log_mass - 4d0*log_temperature + log10_solar_luminosity - cgl + &
+           log_mass - 4d0*log_temperature + star%log10_solar_luminosity - cgl + &
            cdelrl))* &
            temperature_rotation_factor/pressure_rotation_factor
       deldel = radiative_gradient - adiabatic_gradient

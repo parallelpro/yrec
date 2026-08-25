@@ -86,6 +86,8 @@
       double precision :: wind_law_index
       double precision :: overshoot_alpha_min
       double precision :: overshoot_beta_core
+      double precision :: solar_luminosity_cgs
+      double precision :: solar_radius_cgs
       double precision :: envelope_logP_step
       double precision :: diffusion_timestep_factor
       double precision :: solver_correction_factor0

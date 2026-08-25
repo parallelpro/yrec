@@ -122,7 +122,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       pulsation_output_flag = .false.
       hydrogen_fraction = composition(1,num_zones)
       metal_fraction = composition(3,num_zones)
-      log_radius_surface = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity &
+      log_radius_surface = 0.5D0*(log_luminosity_lsun + star%log10_solar_luminosity &
            - 4.0D0*log_teff - c4pil - csigl)
       log_gravity_surface = cgl + log_total_mass - log_radius_surface - &
            log_radius_surface

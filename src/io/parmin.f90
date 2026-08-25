@@ -1424,8 +1424,8 @@ subroutine adopt_canonical_names
 ! const_lib's solar_luminosity_cgs/solar_radius_cgs here (before
 ! setup/setups.f90 computes the rest of former common/const/ from
 ! these two).
-      solar_luminosity_cgs = clsun
-      solar_radius_cgs = crsun
+      star%solar_luminosity_cgs = clsun
+      star%solar_radius_cgs = crsun
 ! lexcom must likewise keep its NAMELIST spelling; copy into
 ! const_lib's use_extended_composition here.
       use_extended_composition = lexcom

@@ -456,7 +456,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
             cz_mass_bottom = 0.0D0
          endif
 !  LCZSUR=T IF A SURFACE C.Z.DEEP ENOUGH FOR ANGULAR MOMENTUM LOSS EXISTS
-         if ((cz_mass_top-cz_mass_bottom)/solar_mass_cgs.gt.0.0D0) then
+         if ((cz_mass_top-cz_mass_bottom)/star%solar_mass_cgs.gt.0.0D0) then
             surface_cz_active = .true.
          else
             surface_cz_active= .false.

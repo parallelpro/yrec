@@ -21,7 +21,7 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
      rate_c13_p, rate_n14_p, rate_o16_p, rate_c13_alpha, rate_zero9, &
      rate_c12_alpha, rate_n14_alpha, rate_triple_alpha, rate_zero13, &
      frac_c12_alpha, frac_be7_electron)
-      use star_info_lib, only: json
+      use star_info_lib, only: star, json
 
       use const_lib
       use net_lib
@@ -67,13 +67,13 @@ subroutine xtime(log_density, composition, luminosity, enclosed_mass, &
 !   just in the central shell.
       if(composition(1,1).ge.atime(1)) then
        delta_x = min(atime(2),atime(3)*composition(1,convective_core_edge_zone))
-       hydrogen_dt =(6.00d18/solar_luminosity_cgs)* &
+       hydrogen_dt =(6.00d18/star%solar_luminosity_cgs)* &
             (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))*delta_x
        return
       endif
 !  h-shell burning criterion
 !  limit total mass of hydrogen burned.
-      delta_x = atime(6)*composition(1,num_points)*(solar_mass_cgs/solar_luminosity_cgs)
+      delta_x = atime(6)*composition(1,num_points)*(star%solar_mass_cgs/star%solar_luminosity_cgs)
       hydrogen_dt = 6.00d18*delta_x/hydrogen_luminosity
 !  limit x-depletion at shell mid-point.
 !  call nuclear reaction sr's to find dxdt at the shell midpoint.

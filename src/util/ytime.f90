@@ -117,12 +117,12 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
 
             helium_dt = min(atime(4),atime(5)*core_helium_fraction)
 
-          helium_dt = (5.85d17/solar_luminosity_cgs)*helium_dt* &
+          helium_dt = (5.85d17/star%solar_luminosity_cgs)*helium_dt* &
                (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))
 
             else
 
-            helium_dt = (5.85d17/solar_luminosity_cgs)*helium_dt* &
+            helium_dt = (5.85d17/star%solar_luminosity_cgs)*helium_dt* &
                  (enclosed_mass(h_shell_zone_begin-1)/luminosity(h_shell_zone_begin-1))
 
          endif

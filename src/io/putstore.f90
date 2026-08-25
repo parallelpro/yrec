@@ -230,7 +230,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
            dabs(luminosity_breakdown(i_lum_neu)),luminosity_breakdown(i_lum_grav))
       if(max_luminosity_component.le.1.0D20) then
        do j = 1,7
-          luminosity_breakdown(j) = luminosity_breakdown(j) * solar_luminosity_cgs
+          luminosity_breakdown(j) = luminosity_breakdown(j) * star%solar_luminosity_cgs
          enddo
       endif
       write(istor,40) (luminosity_breakdown(j),j=1,7)

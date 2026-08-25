@@ -373,7 +373,7 @@ subroutine integrate_atmosphere
         electron_pressure = gas_constant * temperature * density * electron_mean_weight_inverse
 ! FROM FIRST LINES OF TPGRAD
         pulse_radiative_gradient = opacity*luminosity_linear*dexp(ln10*(log10_pressure-log10_star_mass-4.0d0*log10_temperature+ &
-                 log10_solar_luminosity-cgl+cdelrl))*temperature_rotation_factor/pressure_rotation_factor
+                 star%log10_solar_luminosity-cgl+cdelrl))*temperature_rotation_factor/pressure_rotation_factor
         if (pulse_radiative_gradient-adiabatic_gradient .le. 1.0d-6) then
             pulse_gradient = pulse_radiative_gradient
         else
@@ -495,7 +495,7 @@ subroutine integrate_atmosphere
           electron_pressure = gas_constant * star%pulse%qt * star%pulse%qd * star%pulse%qemu
           prev_opacity = opacity_now
 !FROM FIRST LINES OF TPGRAD
-          pulse_radiative_gradient = star%pulse%qo*luminosity_linear*dexp(ln10*(star%pulse%qpl-log10_star_mass-4.0d0*star%pulse%qtl+log10_solar_luminosity-cgl+ &
+          pulse_radiative_gradient = star%pulse%qo*luminosity_linear*dexp(ln10*(star%pulse%qpl-log10_star_mass-4.0d0*star%pulse%qtl+star%log10_solar_luminosity-cgl+ &
                  cdelrl))*temperature_rotation_factor/pressure_rotation_factor
           if (pulse_radiative_gradient-star%pulse%qdela .le. 1.0d-6) then
             pulse_gradient = pulse_radiative_gradient
@@ -1014,7 +1014,7 @@ subroutine track_envelope_cz
             interp_fraction = dd2/(dd2-dd1)
 
             log10_cz_radius = env_struct%env_log10_radius(cz_start_index-1)+interp_fraction* &
-                 (env_struct%env_log10_radius(cz_start_index)-env_struct%env_log10_radius(cz_start_index-1))-log10_solar_radius
+                 (env_struct%env_log10_radius(cz_start_index)-env_struct%env_log10_radius(cz_start_index-1))-star%log10_solar_radius
             star%run%envelope_cz_base_radius_rsun = exp(ln10*log10_cz_radius)
 
             do i=1,env_struct%num_env_points

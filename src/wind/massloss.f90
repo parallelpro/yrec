@@ -133,11 +133,11 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! TEFFL IS THE BASE 10 LOG OF THE EFFECTIVE TEMPERATURE
 ! COMPUTE GLOBAL QUANTITIES (RADIUS,MASS,AGE) IN CGS UNITS.
 ! RADIUS
-      log10_radius = 0.5d0*(log_luminosity_lsun+log10_solar_luminosity-c4pil- &
+      log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.0d0*log_teff)
       total_radius_cm = 10.0d0**log10_radius
 ! MASS
-      total_mass_grams = total_mass_msun*solar_mass_cgs
+      total_mass_grams = total_mass_msun*star%solar_mass_cgs
 ! AGE
       age_seconds = age_gyr*1.0d9*seconds_per_year
 ! USE A REIMERS FORMULA TO COMPUTE MDOT IF DESIRED; OVERWRITES
@@ -145,7 +145,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       if(apply_mass_change .and. lreimer)then
          surface_gravity_cgs = 10.0d0**(cgl)*total_mass_grams/total_radius_cm**2
          mass_loss_rate_msun_yr = creim*10.0d0**(log_luminosity_lsun+ &
-              log10_solar_luminosity)/surface_gravity_cgs/total_radius_cm
+              star%log10_solar_luminosity)/surface_gravity_cgs/total_radius_cm
       endif
 ! 02/12 MHP TAUCZ NOW COMPUTED PRIOR TO CALL IN MIXCZ
 ! CONVECTIVE OVERTURN TIMESCALE
@@ -153,7 +153,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 !         TAUCZ = 0.0D0
 !         DO I = JENV+1,M
          write(*,*)star%turnover%convective_turnover_timescale/seconds_per_year, &
-              total_radius_cm/solar_radius_cgs
+              total_radius_cm/star%solar_radius_cgs
          star%light_burn%jcz = envelope_boundary_zone
       else
          star%turnover%convective_turnover_timescale = 0.0d0
@@ -260,7 +260,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 !  911     FORMAT(' TSUR,PSUR ',2F8.5,' SACC ',1PE12.3,' SCORE ',E12.3)
 ! ALTERNATE EXPRESSION FOR SURFACE PRESSURE AND LUMINOSITY, FROM STAHLER 1988
          if(accretion_efficiency.gt.0.0d0)then
-            mass_loss_rate_cgs = mass_loss_rate_msun_yr*solar_mass_cgs/ &
+            mass_loss_rate_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs/ &
                  seconds_per_year
             pressure_from_wind = mass_loss_rate_cgs/c4pi* &
                  sqrt(2.0d0*accretion_efficiency*10.0d0**log10_gravity/ &

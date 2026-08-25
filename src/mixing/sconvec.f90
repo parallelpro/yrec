@@ -37,7 +37,7 @@
 subroutine sconvec(timestep, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
      mixed_zone_bounds, num_zones_mixed, log_teff, ierr)
-      use star_info_lib, only: json
+      use star_info_lib, only: star, json
 
       use luout_lib
       use const_lib
@@ -241,7 +241,7 @@ subroutine sconvec(timestep, composition, log_density, log_luminosity, &
 ! IS THE TIMESTEP(DELTS) MULTIPLIED BY THE VELOCITY OF PROPAGATION OF
 ! THE INSTABILITY (VP IN EQUATION 5PRIME, P. 347).
             max_overshoot_radius = max_overshoot_radius*(log_luminosity( &
-                 cz_edge_idx)*solar_luminosity_cgs/(10.0d0*c4pi* &
+                 cz_edge_idx)*star%solar_luminosity_cgs/(10.0d0*c4pi* &
                  dexp(ln10*log_pressure(cz_edge_idx))))* &
                  (timestep/dexp(ln10*(log_radius(cz_edge_idx)+ &
                  log_radius(cz_edge_idx))))

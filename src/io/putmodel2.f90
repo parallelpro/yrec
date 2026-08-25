@@ -22,7 +22,7 @@ subroutine putmodel2(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
      ljdot0, low_temp_opacity_flag, lovstc, envelope_overshoot_active, lovstm, &
      use_pure_z_table, lsemic, initial_composition_code, disk_pressure, &
      disk_temperature, wind_saturation_omega)
-      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
+      use star_info_lib, only: star, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons
 
@@ -33,7 +33,8 @@ subroutine putmodel2(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
 ! names with unrelated const_lib runtime-config module variables, so
 ! `use, only:` the one member actually needed here rather than a
 ! blanket `use const_lib`. Same treatment as io/getyrec7.f90.
-      use const_lib, only: solar_luminosity_cgs
+! (solar_luminosity_cgs now comes from star% -- 2026 phase-A
+! eviction; the former `use const_lib, only:` import is gone.)
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun
@@ -124,7 +125,7 @@ subroutine putmodel2(log_luminosity_lsun, envelope_fit_coeffs, mixing_length, &
            dabs(luminosity_breakdown(i_lum_neu)),luminosity_breakdown(i_lum_grav))
       if(max_luminosity_component.le.1.0D20) then
        do j = 1,7
-          luminosity_breakdown(j) = luminosity_breakdown(j) * solar_luminosity_cgs
+          luminosity_breakdown(j) = luminosity_breakdown(j) * star%solar_luminosity_cgs
          enddo
       endif
       write(iwrite,40) (luminosity_breakdown(j),j=1,7)

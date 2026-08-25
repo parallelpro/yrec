@@ -253,7 +253,7 @@ subroutine rotgrid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
 ! PRODUCT OF RHO R^2 BY D CHI/DR
       mass_scale_factor = chi_grid_scale(2)
       luminosity_scale_factor = chi_grid_scale(9)*log_luminosity(num_zones)* &
-           solar_luminosity_cgs
+           star%solar_luminosity_cgs
       pressure_scale_factor = chi_grid_scale(11)
       do i = 1, ntab
          ii = zone_begin + i - 1

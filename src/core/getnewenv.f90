@@ -125,7 +125,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 ! LUMINOSITY
       luminosity_linear = dexp(ln10*log_luminosity_lsun)
 ! RADIUS
-      log_radius_surface = 0.5D0*(log_luminosity_lsun + log10_solar_luminosity &
+      log_radius_surface = 0.5D0*(log_luminosity_lsun + star%log10_solar_luminosity &
            - 4.0D0*log_teff - c4pil - csigl)
 ! SURFACE GRAVITY
       log_gravity_surface = cgl + star%env_comp%stotal - log_radius_surface - log_radius_surface
