@@ -91,16 +91,21 @@ controls_reset_lib's snapshot-restore outright.
 
 Phases (each byte-gated + test_net + test_reentry):
 - Phase 0 (DONE): phys_const_lib -> state/.
-- Phase A (evictions, IN PROGRESS): non-namelist stragglers leave
-  controls_lib for flat star%. DONE: atm trio + tenv (batch 1);
-  cross_section_scale family (batch 2). REMAINING: iolaol2/ioopal2
-  -> luout_lib; cmixl/cmixl2/cmixl3 out of phys_const -> star%;
-  the solar octet (solar_*_cgs + logs) -> star%; nk -> star%job%nk.
-- Phase B: generate controls_state + seed/store; add star%ctrl;
-  rewire read_controls to the 4-step sequence; DELETE
-  controls_reset_lib and yrec_reset's capture/restore (star0 +
-  structural reset cover it; test_reentry is the proof). Consumers
-  still read the buffer -- star%ctrl is written, not yet read.
+- Phase A (DONE 2026-08-24, 6 batches): every non-namelist straggler
+  evicted -- atm trio + tenv, cross_section_scale family, iolaol2/
+  ioopal2 -> luout_lib, cmixl -> star%mixing_length_alpha (cmixl2/3
+  stay: MLT formula constants despite the names), the solar octet,
+  nk -> star%job%nk (DO-variable cannot be a component: local
+  kind_card drives the loop, post-loop fix-up preserves DO
+  semantics). controls_lib is now a pure namelist target set.
+- Phase B (DONE 2026-08-24): tools/gen_controls_state.py generates
+  controls_state's 418 default-initialized components
+  (state/controls_state_def.inc) + the seed/store copies
+  (state/controls_sync_lib.f90) from the buffer's declarations;
+  star%ctrl added; read_controls runs reset/seed/read/store;
+  controls_reset_lib DELETED (test_reentry byte-identical without
+  it). Consumers still read the buffer -- star%ctrl is written, not
+  yet read.
 - Phase C (the long march): per former-common family (~75 groups,
   ~178 files): consumers switch to star%ctrl%/star%job% members,
   per-member classification (ctrl vs job vs flat state -- the
