@@ -47,7 +47,7 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
 
       if (star%ctrl%mixing_velocity_scale.le.0.0D0) then
          do zone_index = zone_min, zone_max
-            star%ctrl%vfc(zone_index) = 0.0D0
+            star%vfc(zone_index) = 0.0D0
          end do
          continue
          
@@ -104,12 +104,12 @@ subroutine getfc(log_density, radius, diffusion_velocity, zone_min, &
 ! MECHANISMS AND IS LIMITED TO A MAXIMUM OF 1.
       do zone_index = zone_min, zone_max
          if (diffusion_velocity(zone_index).le.0.0D0) then
-            star%ctrl%vfc(zone_index) = 0.0D0
+            star%vfc(zone_index) = 0.0D0
          else
             denom_test = max(abs(circ_velocity(zone_index)- &
                  half_dlnj_dlnr(zone_index)*diffusion_velocity(zone_index))/ &
                  diffusion_velocity(zone_index),star%ctrl%mixing_velocity_scale)
-            star%ctrl%vfc(zone_index) = star%ctrl%mixing_velocity_scale/denom_test
+            star%vfc(zone_index) = star%ctrl%mixing_velocity_scale/denom_test
          endif
       end do
 

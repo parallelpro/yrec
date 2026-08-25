@@ -77,8 +77,8 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 
       if (previous_timestep.ge.0.0d0) then
 ! if user is fixing tstep, set dt to given value and exit
-      if(star%ctrl%timestep_override_active(kind_card_index)) then
-       hydrogen_dt = star%ctrl%timestep_override(kind_card_index)*seconds_per_year
+      if(star%job%timestep_override_active(kind_card_index)) then
+       hydrogen_dt = star%job%timestep_override(kind_card_index)*seconds_per_year
        previous_timestep = hydrogen_dt
       else
 ! mhp 9/01  turn off structure-based timestep setting above a critical
@@ -212,8 +212,8 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 !  so only do this if there is a true stop age.
 !     if evolving to a given age, ensure age not exceeded
 !      IF(LENDAG(NK)) THEN
-      if(star%ctrl%end_age_stop_active(kind_card_index) .and. star%ctrl%target_end_age(kind_card_index).gt.0.0d0) then
-       time_left_years = star%ctrl%target_end_age(kind_card_index) - age_gyr*1.0d9
+      if(star%job%end_age_stop_active(kind_card_index) .and. star%job%target_end_age(kind_card_index).gt.0.0d0) then
+       time_left_years = star%job%target_end_age(kind_card_index) - age_gyr*1.0d9
        if(time_left_years.lt. timestep_years) then
          timestep_years = time_left_years
          hydrogen_dt = timestep_years*seconds_per_year

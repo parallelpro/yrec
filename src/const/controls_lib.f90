@@ -658,13 +658,14 @@ module controls_lib
 ! here since DATA can no longer target use-associated entities.
       double precision :: alex_mixture_x = 0.7d0, alex_mixture_z = 0.02d0
 
-! former common/varfc/: vfc/lvfc are spelled identically to their
-! canonical names -- use-associated directly; lvfc's DATA default
-! moved here from core/parmin.f90 since DATA can no longer target a
-! use-associated entity. use_diffusion_advection_transport (originally
-! ldifad) is a NAMELIST value with a different canonical spelling,
-! kept local in core/parmin.f90 and copy-assigned.
-      double precision :: vfc(5000)
+! former common/varfc/: lvfc is spelled identically to its canonical
+! name -- use-associated directly; its DATA default moved here from
+! core/parmin.f90 since DATA can no longer target a use-associated
+! entity. use_diffusion_advection_transport (originally ldifad) is a
+! NAMELIST value with a different canonical spelling, kept local in
+! core/parmin.f90 and copy-assigned. vfc, the block's per-zone WORK
+! ARRAY (written by getfc/seculr every step), was never a control --
+! evicted to flat star%vfc (2026 phase C batch 2).
       logical :: lvfc = .false.
       logical :: use_diffusion_advection_transport
 

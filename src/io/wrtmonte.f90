@@ -92,9 +92,9 @@ subroutine wrtmonte(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr, &
       write(star%ctrl%monte_carlo_unit1,40)tcen,dcen,pcen,hcomp(1,1),hcomp(3,1)
  40   format(1X,F7.3,F7.2,F6.3,2F8.5)
 !  #SHELLS, INITIAL ALPHA, Y, Z; FINAL R, L
-      yini = 1.0d0 - star%ctrl%rescale_params(2,run_index-2) - star%ctrl%rescale_params(3,run_index-2)
-      zini = star%ctrl%rescale_params(3,run_index-2)
-      write(star%ctrl%monte_carlo_unit1,50)m,star%ctrl%mixing_length_array(run_index),yini,zini, &
+      yini = 1.0d0 - star%job%rescale_params(2,run_index-2) - star%job%rescale_params(3,run_index-2)
+      zini = star%job%rescale_params(3,run_index-2)
+      write(star%ctrl%monte_carlo_unit1,50)m,star%job%mixing_length_array(run_index),yini,zini, &
            log_luminosity,local_log_radius
  50   format(I5,F7.4,2F8.5,1P2E10.3)
 !  CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)

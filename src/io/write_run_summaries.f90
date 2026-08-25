@@ -51,7 +51,7 @@ subroutine write_run_summaries(monte_carlo_run_number, &
  1525    format(5X,'DID NOT CONVERGE WITHIN 10 ATTEMPTS L,R',2F10.6)
 ! MONTE CARLO #, CONVERGED MIXING LENGTH AND INITIAL H, SURFACE X,
 ! SURFACE Z, Z/X, CENTRAL X, CENTRAL Z
-         write(star%ctrl%neutrino_unit,1519) monte_carlo_run_number,star%ctrl%mixing_length_array(star%job%nk),star%ctrl%rescale_params(2,star%job%nk-2),star%xa(i_h1,star%nz), &
+         write(star%ctrl%neutrino_unit,1519) monte_carlo_run_number,star%job%mixing_length_array(star%job%nk),star%job%rescale_params(2,star%job%nk-2),star%xa(i_h1,star%nz), &
               star%xa(i_metals,star%nz),surface_z_over_x,star%xa(i_h1,1),star%xa(i_metals,1)
  1519    format(1X,I5,3F10.6,4E10.3)
 ! NUMERICAL DATA : #OF RUNS NEEDED FOR A CONVERGED MODEL, INITIAL X
@@ -100,9 +100,9 @@ subroutine write_run_summaries(monte_carlo_run_number, &
          write(star%ctrl%neutrino_unit, 1517)central_temperature_mk,central_density_linear,central_pressure_scaled,star%xa(i_h1,1),star%xa(i_metals,1)
  1517    format(1X,F7.3,F7.2,F6.3,2F8.5)
 ! INITIAL ALPHA,Y,Z,ALPHA; FINAL R, L
-         initial_helium_fraction = 1.0D0 - star%ctrl%rescale_params(2,star%job%nk-2) - star%ctrl%rescale_params(3,star%job%nk-2)
-         initial_metal_fraction = star%ctrl%rescale_params(3,star%job%nk-2)
-         write(star%ctrl%neutrino_unit,1521)star%ctrl%mixing_length_array(star%job%nk),initial_helium_fraction,initial_metal_fraction,star%log_L,log_r_rsun
+         initial_helium_fraction = 1.0D0 - star%job%rescale_params(2,star%job%nk-2) - star%job%rescale_params(3,star%job%nk-2)
+         initial_metal_fraction = star%job%rescale_params(3,star%job%nk-2)
+         write(star%ctrl%neutrino_unit,1521)star%job%mixing_length_array(star%job%nk),initial_helium_fraction,initial_metal_fraction,star%log_L,log_r_rsun
  1521    format(F7.4,2F8.5,1P2E10.3)
 ! CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)
          write(star%ctrl%neutrino_unit,1522)star%run%envelope_radius,star%run%envelope_mass,star%xa(i_he4,star%nz),star%xa(i_metals,star%nz),surface_z_over_x

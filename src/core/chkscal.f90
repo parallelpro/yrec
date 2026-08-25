@@ -96,10 +96,10 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
            (log_r_rsun_current-log_r_prev_model)
       age_at_target_radius = current_age + &
            dage_dlogr*(target_radius_rsun-log_r_rsun_current)
-      write(*,*) ' X, LogL/Lsun at R* =', star%ctrl%rescale_params(2,run_index-1), &
+      write(*,*) ' X, LogL/Lsun at R* =', star%job%rescale_params(2,run_index-1), &
            log_l_at_target_radius
       write(itrack,*) '#X, LogL/Lsun at R* =', &
-           star%ctrl%rescale_params(2,run_index-1), log_l_at_target_radius
+           star%job%rescale_params(2,run_index-1), log_l_at_target_radius
       if (abs(10.0d0**log_l_at_target_radius-star%ctrl%target_luminosity_lsun) &
            .le. star%ctrl%target_star_luminosity_tolerance) then
 !        Get here then have track that passes through specified
@@ -107,13 +107,13 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 !        run to stop at that age. Do one more run
 !        stopping at interpolated age.
          star_found_flag=.true.
-       star%ctrl%end_age_stop_active(run_index+1) = .true.
-       star%ctrl%target_end_age(run_index+1) = age_at_target_radius*1.0d9
-       star%ctrl%end_age_stop_active(run_index+2) = .true.
-       star%ctrl%target_end_age(run_index+2) = age_at_target_radius*1.0d9
-       star%ctrl%rescale_params(2,run_index+1) = star%ctrl%rescale_params(2,run_index-1)
-       star%ctrl%initial_x_array(run_index+1) = star%ctrl%rescale_params(2,run_index+1)
-       star%ctrl%initial_x_array(run_index+2) = star%ctrl%initial_x_array(run_index+1)
+       star%job%end_age_stop_active(run_index+1) = .true.
+       star%job%target_end_age(run_index+1) = age_at_target_radius*1.0d9
+       star%job%end_age_stop_active(run_index+2) = .true.
+       star%job%target_end_age(run_index+2) = age_at_target_radius*1.0d9
+       star%job%rescale_params(2,run_index+1) = star%job%rescale_params(2,run_index-1)
+       star%job%initial_x_array(run_index+1) = star%job%rescale_params(2,run_index+1)
+       star%job%initial_x_array(run_index+2) = star%job%initial_x_array(run_index+1)
 !
       write(*,*) ' Have hit R* & L*, prepare final run to age:', &
         age_at_target_radius
@@ -125,11 +125,11 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 !           First time through. Save L and X at R*.
 !           Add 0.01 to Y. Start next run.
             log_l_at_target_radius_prev_run = log_l_at_target_radius
-          prev_x = star%ctrl%rescale_params(2,run_index-1)
+          prev_x = star%job%rescale_params(2,run_index-1)
           new_x = prev_x - 0.01d0
-          star%ctrl%rescale_params(2,run_index+1) = new_x
-          star%ctrl%initial_x_array(run_index+1) = new_x
-          star%ctrl%initial_x_array(run_index+2) = new_x
+          star%job%rescale_params(2,run_index+1) = new_x
+          star%job%initial_x_array(run_index+1) = new_x
+          star%job%initial_x_array(run_index+2) = new_x
 !
       write(*,*) ' NK=2, Y=Y+0.01, Setup next run, X=', new_x
       write(itrack,*) '#NK=2, Y=Y+0.01, Setup next run, X=', new_x
@@ -138,8 +138,8 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
 !           If NK=4,6,8,... (second and more times through) then
 !           Use current and previous values of L at R and X to calculate
 !           dX/dlogL. Save L.  Start next run.
-            new_x = star%ctrl%rescale_params(2, run_index-1)
-          prev_x = star%ctrl%rescale_params(2, run_index-3)
+            new_x = star%job%rescale_params(2, run_index-1)
+          prev_x = star%job%rescale_params(2, run_index-3)
             dx_dlogl = (new_x-prev_x)/ &
                  (log_l_at_target_radius-log_l_at_target_radius_prev_run)
           new_x = dx_dlogl*(log10(star%ctrl%target_luminosity_lsun)- &
@@ -148,9 +148,9 @@ subroutine chkscal(log_l_lsun, log_teff, current_age, run_index)
       write(*,*) ' Setup next run, NK, X =', run_index, new_x
       write(itrack, *) ' Setup next run, NK, X =', run_index, new_x
           log_l_at_target_radius_prev_run = log_l_at_target_radius
-          star%ctrl%rescale_params(2,run_index+1) = new_x
-          star%ctrl%initial_x_array(run_index+1) = new_x
-          star%ctrl%initial_x_array(run_index+2) = new_x
+          star%job%rescale_params(2,run_index+1) = new_x
+          star%job%initial_x_array(run_index+1) = new_x
+          star%job%initial_x_array(run_index+2) = new_x
        end if
       endif
       return

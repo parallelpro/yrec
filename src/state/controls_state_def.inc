@@ -67,13 +67,6 @@
             double precision :: disk_pressure = 7.2722d-6
             logical :: disk_locking_active = .false.
             double precision :: disk_lifetime = 0.0d0
-            double precision :: target_end_age(50) = 0.0d0
-            double precision :: timestep_override(50) = 0.0d0
-            double precision :: central_deuterium_stop(50) = 0.0d0
-            double precision :: central_hydrogen_stop(50) = 0.0d0
-            double precision :: central_helium_stop(50) = 0.0d0
-            logical :: end_age_stop_active(50) = .false.
-            logical :: timestep_override_active(50) = .false.
             logical :: use_mhd_eos = .false.
             integer :: unit_zams_a = 0
             integer :: unit_zams_b = 0
@@ -170,11 +163,6 @@
             logical :: lnew0 = .false.
             double precision :: requested_envelope_mass = 0.0d0
             logical :: change_envelope_mass_flag = .false.
-            double precision :: rescale_params(4,50) = 0.0d0
-            integer :: rescale_kind(50) = 0
-            integer :: num_models(50) = 0
-            integer :: num_runs = 0
-            logical :: first_call_flag(50) = .false.
             double precision :: max_domega_global = 0.0d0
             logical :: use_structure_dt_limits = .false.
             double precision :: atm_step_size = 0.0d0
@@ -237,11 +225,6 @@
             logical :: rewind_short_file = .false.
             logical :: isochrone_output_active = .false.
             integer :: isochrone_file_unit = 0
-            double precision :: initial_x_array(50) = 0.0d0
-            double precision :: initial_z_array(50) = 0.0d0
-            double precision :: mixing_length_array(50) = 0.0d0
-            double precision :: senv0_array(50) = 0.0d0
-            logical :: has_senv0_array(50) = .false.
             double precision :: luminosity_tolerance = 0.0d0
             double precision :: radius_tolerance = 0.0d0
             double precision :: zx_tolerance = 0.0d0
@@ -249,9 +232,6 @@
             double precision :: target_solar_age = 0.0d0
             logical :: calibrate_solar_model = .false.
             logical :: calibrate_solar_zx = .false.
-            double precision :: rsclzc(50) = -1.0d0
-            double precision :: rsclzm1(50) = -1.0d0
-            double precision :: rsclzm2(50) = -1.0d0
             logical :: use_z_ramp = .false.
             double precision :: target_luminosity_lsun = 0.0d0
             double precision :: target_star_luminosity_tolerance = 0.0d0
@@ -296,7 +276,6 @@
             integer :: alex06_table_unit = 0
             double precision :: alex_mixture_x = 0.7d0
             double precision :: alex_mixture_z = 0.02d0
-            double precision :: vfc(5000) = 0.0d0
             logical :: lvfc = .false.
             logical :: use_diffusion_advection_transport = .false.
             logical :: no_am_transport_in_core = .false.

@@ -203,7 +203,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
       end do
       call getqua(log_density,local_gravity,radius_unlogged,omega,num_zones)
       do i = 1,num_zones
-         star%ctrl%vfc(i) = 0.0D0
+         star%vfc(i) = 0.0D0
       end do
 !  CHECK STABILITY OF THE MODEL AND COMPUTE CIRCULATION VELOCITIES.
 !  MECHANISMS CONSIDERED:SECULAR AND DYNAMICAL SHEAR,EDDINGTON CIRCULATION,

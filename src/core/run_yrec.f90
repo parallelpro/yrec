@@ -91,7 +91,7 @@ subroutine run_yrec(ierr)
 ! when the calibration verdict exits early) for the post-loop
 ! readers (write_run_summaries' nk-2 indexing).
       runs_complete = .false.
-      run_loop: do kind_card = 1, num_runs
+      run_loop: do kind_card = 1, star%job%num_runs
          star%job%nk = kind_card
 ! Per-kind-card setup (2026, core/ phase 3): everything from the
 ! card's initial composition through the first timestep estimate is
@@ -102,7 +102,7 @@ subroutine run_yrec(ierr)
 ! for a given kind card, evolve NMODLS(NK) times
 ! if rescaling is being performed, NMODLS(NK) is the number of times
 ! the new model is being relaxed
-       do model_iteration = 1,star%ctrl%num_models(star%job%nk)
+       do model_iteration = 1,star%job%num_models(star%job%nk)
 ! 2026 (phase five): one model advance per iteration, extracted to
 ! core/evolve_step.f90 (see its header for the step_status contract).
        call evolve_step(model_iteration, step_status, ierr)
@@ -144,7 +144,7 @@ subroutine run_yrec(ierr)
 ! END RUN LOOP
       end do run_loop
 ! EXIT RUN LOOP
-      if (.not. runs_complete) star%job%nk = num_runs + 1
+      if (.not. runs_complete) star%job%nk = star%job%num_runs + 1
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
 ! MODEL PARAMETERS (legacy mode only; io/write_run_summaries.f90 --
@@ -198,8 +198,8 @@ subroutine apply_monte_carlo_parameters
          age_scale_factor = star%run%age_target(monte_carlo_run_number)
 ! timestep and final age are altered in SR SETCAL; input #s should be
 ! scaled for a solar age of 4.57 Gyr
-         star%ctrl%target_end_age(2)=1.0D8
-         star%ctrl%target_end_age(3)=4.57D9
+         star%job%target_end_age(2)=1.0D8
+         star%job%target_end_age(3)=4.57D9
       else
          age_scale_factor = 1.0D0
       endif
@@ -222,8 +222,8 @@ subroutine begin_calibration
       if (star%ctrl%calibrate_solar_model) then
          call setcal(age_scale_factor)
          convergence_iterations = 1
-         initial_x_guess = star%ctrl%rescale_params(2,1)
-         initial_alpha_guess = star%ctrl%mixing_length_array(1)
+         initial_x_guess = star%job%rescale_params(2,1)
+         initial_alpha_guess = star%job%mixing_length_array(1)
          saved_use_structure_dt_limits = use_structure_dt_limits   ! save LPTIME for reuse during calibration
          saved_atm_choice  = atm_choice    ! save KTTAU for reuse during calibration
       else
@@ -313,11 +313,11 @@ end subroutine end_of_card_calibration
 subroutine begin_kind_card
          star%run%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
-         initial_envelope_x = star%ctrl%initial_x_array(star%job%nk)
-         initial_envelope_z = star%ctrl%initial_z_array(star%job%nk)
-         star%mixing_length_alpha = star%ctrl%mixing_length_array(star%job%nk)
-       change_envelope_mass_flag = star%ctrl%has_senv0_array(star%job%nk)
-       requested_envelope_mass = star%ctrl%senv0_array(star%job%nk)
+         initial_envelope_x = star%job%initial_x_array(star%job%nk)
+         initial_envelope_z = star%job%initial_z_array(star%job%nk)
+         star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
+       change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
+       requested_envelope_mass = star%job%senv0_array(star%job%nk)
        star%evo%reset_triangle = .false.
        star%evo%model_diverged_flag = .false.
 ! MHP 10/02 ZERO OUT INITIAL ANGULAR MOMENTUM

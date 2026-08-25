@@ -87,7 +87,7 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
                am_diffusion_coeff(i) = con1*(star%circ%es_circulation_velocity(i)+ &
                     star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i))* &
                     radius_mid(i)
-               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%ctrl%vfc(i)
+               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
 !               HLE(I) = RMID(I)
             end do
          end if
@@ -108,7 +108,7 @@ subroutine codiff(radius_mid_prev, num_zones, radius_mid, &
                am_diffusion_coeff(i) = con1*(star%circ%es_circulation_velocity(i)+ &
                     star%circ%gsf_circulation_velocity(i)+star%circ%secular_shear_velocity(i))* &
                     radius_mid(i)
-               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%ctrl%vfc(i)
+               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
 ! MHP 8/13 ADD D.C. AFTER SCALE FACTOR FOR MIXING APPLIED
                am_diffusion_coeff(i) = am_diffusion_coeff(i)+ &
                     con1*star%ctrl%constant_background_diffusion_coeff

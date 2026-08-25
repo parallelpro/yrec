@@ -79,36 +79,36 @@ subroutine chkcal(log_l_lsun, log_r_rsun, run_index, current_zx)
          star%run%delta_alpha = ((log_l_lsun*star%run%drad_dx/star%run%dlum_dx-log_r_rsun)/ &
               (star%run%drad_dalpha-star%run%dlum_dalpha*star%run%drad_dx/star%run%dlum_dx))
          star%run%delta_x = -(log_l_lsun + star%run%dlum_dalpha*star%run%delta_alpha)/star%run%dlum_dx
-         star%ctrl%mixing_length_array(run_index+1) = &
-              star%ctrl%mixing_length_array(run_index-2)+star%run%delta_alpha
-         star%ctrl%mixing_length_array(run_index+2) = star%ctrl%mixing_length_array(run_index+1)
-         star%ctrl%mixing_length_array(run_index+3) = star%ctrl%mixing_length_array(run_index+1)
+         star%job%mixing_length_array(run_index+1) = &
+              star%job%mixing_length_array(run_index-2)+star%run%delta_alpha
+         star%job%mixing_length_array(run_index+2) = star%job%mixing_length_array(run_index+1)
+         star%job%mixing_length_array(run_index+3) = star%job%mixing_length_array(run_index+1)
          if(star%ctrl%calibrate_solar_zx)then
-            star%ctrl%rescale_params(3,run_index+1) = &
-                 star%ctrl%rescale_params(3,run_index-2)*star%ctrl%target_solar_zx/current_zx
-            delta_z = star%ctrl%rescale_params(3,run_index+1) - &
-                 star%ctrl%rescale_params(3,run_index-2)
-            star%ctrl%initial_z_array(run_index+1) = star%ctrl%rescale_params(3,run_index+1)
-            star%ctrl%initial_z_array(run_index+2) = star%ctrl%rescale_params(3,run_index+1)
-            star%ctrl%initial_z_array(run_index+3) = star%ctrl%rescale_params(3,run_index+1)
+            star%job%rescale_params(3,run_index+1) = &
+                 star%job%rescale_params(3,run_index-2)*star%ctrl%target_solar_zx/current_zx
+            delta_z = star%job%rescale_params(3,run_index+1) - &
+                 star%job%rescale_params(3,run_index-2)
+            star%job%initial_z_array(run_index+1) = star%job%rescale_params(3,run_index+1)
+            star%job%initial_z_array(run_index+2) = star%job%rescale_params(3,run_index+1)
+            star%job%initial_z_array(run_index+3) = star%job%rescale_params(3,run_index+1)
          endif
-         star%ctrl%rescale_params(2,run_index+1) = star%ctrl%rescale_params(2,run_index-2)+star%run%delta_x
-         star%ctrl%initial_x_array(run_index+1) = star%ctrl%rescale_params(2,run_index+1)
-         star%ctrl%initial_x_array(run_index+2) = star%ctrl%rescale_params(2,run_index+1)
-         star%ctrl%initial_x_array(run_index+3) = star%ctrl%rescale_params(2,run_index+1)
+         star%job%rescale_params(2,run_index+1) = star%job%rescale_params(2,run_index-2)+star%run%delta_x
+         star%job%initial_x_array(run_index+1) = star%job%rescale_params(2,run_index+1)
+         star%job%initial_x_array(run_index+2) = star%job%rescale_params(2,run_index+1)
+         star%job%initial_x_array(run_index+3) = star%job%rescale_params(2,run_index+1)
          write(iowr,*) "New BL, Old BL, Delta BL: ", &
              log_l_lsun, star%run%log_l_prev, log_l_lsun-star%run%log_l_prev
          write(iowr,*) "New RL, Old RL, Delta RL: ", &
              log_r_rsun, star%run%log_r_prev, log_r_rsun-star%run%log_r_prev
          write(iowr,*) "New X, Old X, DX: ", &
-             star%ctrl%rescale_params(2,run_index+1), star%ctrl%rescale_params(2,run_index-2), &
+             star%job%rescale_params(2,run_index+1), star%job%rescale_params(2,run_index-2), &
              star%run%delta_x
          write(iowr,*) "New A, Old A, DA: ", &
-             star%ctrl%mixing_length_array(run_index+1), &
-             star%ctrl%mixing_length_array(run_index-2), star%run%delta_alpha
+             star%job%mixing_length_array(run_index+1), &
+             star%job%mixing_length_array(run_index-2), star%run%delta_alpha
          if(star%ctrl%calibrate_solar_zx)then
             write(iowr,*) "New Z, Old Z, DZ: ", &
-             star%ctrl%rescale_params(3,run_index+1), star%ctrl%rescale_params(3,run_index-2), &
+             star%job%rescale_params(3,run_index+1), star%job%rescale_params(3,run_index-2), &
              delta_z
          endif
          star%run%log_l_prev = log_l_lsun

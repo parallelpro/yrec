@@ -144,7 +144,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! TIMESTEP WRITTEN TO MODEL (AS THIS MAKES CONTINUING A SEQUENCE AWKWARD.)
 !     INSTEAD WRITE THE PREVIOUS MODEL TIMESTEP TO MODEL.
 ! ONLY IF A FIXED END AGE IS USED, NOT FOR OTHER STOPS
-       if (star%ctrl%end_age_stop_active(star%job%nk) .and. star%ctrl%target_end_age(star%job%nk).gt.0.0D0) then
+       if (star%job%end_age_stop_active(star%job%nk) .and. star%job%target_end_age(star%job%nk).gt.0.0D0) then
           if (reached_end_age(star%job%nk)) then
              star%evo%dt = max(star%evo%dt_saved,1.0D-3*star%run%dage*seconds_per_year)
              star%evo%timestep_yr = star%evo%dt/seconds_per_year
@@ -154,7 +154,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        else
           star%evo%dt_saved = star%evo%dt
        endif
-       if (star%ctrl%rescale_kind(star%job%nk).ne.2) star%model_number = star%model_number+1
+       if (star%job%rescale_kind(star%job%nk).ne.2) star%model_number = star%model_number+1
 ! 2026 (phase four, step 5): compute the per-model observables in
 ! the star layer (fills star%run%*, star%luminosity_breakdown
 ! renormalization, star%turnover% via gettau); wrtout below only
@@ -221,7 +221,7 @@ subroutine update_output_flags_for_step
              rewind(short_file_unit)
           endif
 ! DBG PULSE:  if last model of last run then set LPULSE to LSAVPU
-            if (model_iteration.eq.star%ctrl%num_models(star%job%nk) .and. star%job%nk .eq. num_runs) then
+            if (model_iteration.eq.star%job%num_models(star%job%nk) .and. star%job%nk .eq. star%job%num_runs) then
                  pulsation_output_active = star%evo%saved_pulse_output_flag
             end if
 
@@ -328,7 +328,7 @@ subroutine advance_composition_and_age
 ! (rescale_kind = 2) skip aging EXCEPT while the center is still cool
 ! -- pre-main-sequence models rescale and age at the same time.)
             evolve_model_flag = star%model_number.ge.0 .and. &
-                 (star%ctrl%rescale_kind(star%job%nk).ne.2 .or. star%logT(1).lt.6.6D0)
+                 (star%job%rescale_kind(star%job%nk).ne.2 .or. star%logT(1).lt.6.6D0)
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! ADD MASS LOSS CALCULATION

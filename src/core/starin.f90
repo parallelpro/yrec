@@ -310,10 +310,10 @@ subroutine acquire_starting_model
 ! the file specified by LU IFIRST.  If LFIRST(NK) is false, as starting model use
 ! the stellar model currently stored in memory.
 
-      if (.not.star%ctrl%first_call_flag(run_index)) then
+      if (.not.star%job%first_call_flag(run_index)) then
 ! Use the model currently in memory as the starting model.
 ! DBG 2/92 CHANGED SO WILL RESCALE ENVELOPE MASS ON EACH NEW RUN
-         if (star%ctrl%rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
+         if (star%job%rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
               star%xa,star%log_mass,star%log_total_mass,star%nz,run_index, &
               star%star_mass,star%convective_flag, ierr)
          if (ierr /= 0) return
@@ -459,7 +459,7 @@ subroutine acquire_starting_model
 ! KEEP IREAD OPEN
       rewind iread
 ! End of the reading and processing of an input model file.
-      if (star%ctrl%first_call_flag(run_index)) then
+      if (star%job%first_call_flag(run_index)) then
 !      IF(.NOT.LFIRST(NK).OR.NK.GT.1)GOTO 3000
 !     MHP 10/24 MACHINERY TO ALTER THE HEAVY ELEMENT MIXTURE
 !     THIS IS ONLY DONE if the first MODEL IS being READ IN, AND ONLY FOR A
@@ -576,7 +576,7 @@ subroutine extend_core_toward_center
 ! MHP 9/14 CHANGED SO THAT MOVING THE CORE FITTING IS ATTACHED TO ANY RUN
 ! WHICH READS IN THE STARTING MODEL; THIS AVOIDS OVER-WRITING THE CHANGE
 ! IN AUTO-CALIBRATED SOLAR MODELS
-      if (star%ctrl%extend_core_inward .and. star%ctrl%first_call_flag(run_index)) then
+      if (star%ctrl%extend_core_inward .and. star%job%first_call_flag(run_index)) then
 !      IF(LCORE .AND. NK .EQ. 1) THEN
 ! AVOID SHUFFLING POINTS BY ASSIGNING NEW CENTRAL POINTS IN INTEGER
 ! MULTIPLES OF THE CENTRAL POINT SPACING.
@@ -672,7 +672,7 @@ end subroutine extend_core_toward_center
 subroutine rescale_and_refit_envelope
 
 ! PERFORM RESCALING OF FIRST MODEL IF REQUIRED
-      if (star%ctrl%rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
+      if (star%job%rescale_kind(run_index).ne.1) call rscale(star%luminosity_lsun, &
            star%xa,star%log_mass,star%log_total_mass,star%nz,run_index, &
            star%star_mass,star%convective_flag, ierr)
       if (ierr /= 0) return

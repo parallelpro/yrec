@@ -61,33 +61,33 @@ subroutine setscal
 !     THIS CONSISTS OF SETTING THE NUMBER OF RUNS TO THE MAXIMUM (50),
 !     AND COPYING THE RELEVANT PARAMETERS FROM THE FIRST TWO RUNS TO
 !     THE NEXT SERIES OF 24 CALIBRATING RUNS.
-      num_runs = 50
+      star%job%num_runs = 50
       do i = 2,50
-         star%ctrl%initial_x_array(i) = star%ctrl%initial_x_array(1)
-         star%ctrl%initial_z_array(i) = star%ctrl%initial_z_array(1)
-         star%ctrl%mixing_length_array(i) = star%ctrl%mixing_length_array(1)
-         star%ctrl%has_senv0_array(i) = star%ctrl%has_senv0_array(1)
-         star%ctrl%senv0_array(i) = star%ctrl%senv0_array(1)
+         star%job%initial_x_array(i) = star%job%initial_x_array(1)
+         star%job%initial_z_array(i) = star%job%initial_z_array(1)
+         star%job%mixing_length_array(i) = star%job%mixing_length_array(1)
+         star%job%has_senv0_array(i) = star%job%has_senv0_array(1)
+         star%job%senv0_array(i) = star%job%senv0_array(1)
       end do
       do i = 3,49,2
-         star%ctrl%rescale_kind(i) = star%ctrl%rescale_kind(1)
-         star%ctrl%first_call_flag(i) = .true.
-         star%ctrl%num_models(i) = star%ctrl%num_models(1)
-         star%ctrl%rsclzc(i) = star%ctrl%rsclzc(1)
-         star%ctrl%rsclzm1(i) = star%ctrl%rsclzm1(1)
-         star%ctrl%rsclzm2(i) = star%ctrl%rsclzm2(1)
+         star%job%rescale_kind(i) = star%job%rescale_kind(1)
+         star%job%first_call_flag(i) = .true.
+         star%job%num_models(i) = star%job%num_models(1)
+         star%job%rsclzc(i) = star%job%rsclzc(1)
+         star%job%rsclzm1(i) = star%job%rsclzm1(1)
+         star%job%rsclzm2(i) = star%job%rsclzm2(1)
          do j = 1,4
-            star%ctrl%rescale_params(j,i) = star%ctrl%rescale_params(j,1)
+            star%job%rescale_params(j,i) = star%job%rescale_params(j,1)
          end do
       end do
       do i = 4,50,2
-         star%ctrl%rescale_kind(i) = 1
-         star%ctrl%first_call_flag(i) = .false.
-         star%ctrl%num_models(i) = star%ctrl%num_models(2)
-         star%ctrl%target_end_age(i) = star%ctrl%target_end_age(2)
-         star%ctrl%end_age_stop_active(i) = star%ctrl%end_age_stop_active(2)
-         star%ctrl%timestep_override(i) = star%ctrl%timestep_override(2)
-         star%ctrl%timestep_override_active(i) = star%ctrl%timestep_override_active(2)
+         star%job%rescale_kind(i) = 1
+         star%job%first_call_flag(i) = .false.
+         star%job%num_models(i) = star%job%num_models(2)
+         star%job%target_end_age(i) = star%job%target_end_age(2)
+         star%job%end_age_stop_active(i) = star%job%end_age_stop_active(2)
+         star%job%timestep_override(i) = star%job%timestep_override(2)
+         star%job%timestep_override_active(i) = star%job%timestep_override_active(2)
       end do
       write(*,*) ' Evolve to R*, L* = ', target_radius_rsun, &
            star%ctrl%target_luminosity_lsun

@@ -483,6 +483,13 @@ module star_info_lib
 ! preserves the historical post-loop value (num_runs+1 on
 ! exhaustion) explicitly.
             integer :: nk
+! phase C batch 2: the run-list / calibration-protocol card arrays
+! and latches -- namelist/card-read (parmin fills the buffer, the
+! generated sync stores them HERE, not into star%ctrl) but mutable:
+! setcal/chkcal/setscal/chkscal rewrite next-cycle cards, the
+! stop-disarm pass negates thresholds, the MC loop scales ages.
+! GENERATED component list; regenerate via tools/gen_controls_state.py.
+            include 'job_controls_def.inc'
       end type star_job
 
 ! ---- from state/evolve_state_lib.f90 ----
@@ -588,6 +595,10 @@ module star_info_lib
                  log10_solar_luminosity, ln_solar_luminosity, &
                  solar_mass_cgs, log10_solar_mass, solar_radius_cgs, &
                  log10_solar_radius, solar_bolometric_magnitude
+! phase C batch 2: the rotation-mixing velocity-factor work array
+! (former common/varfc/ VFC, written per zone by getfc/seculr every
+! step) -- never a control, evicted from the buffer.
+            double precision :: vfc(json)
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &
