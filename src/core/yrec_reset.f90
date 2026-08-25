@@ -3,14 +3,15 @@
 !----------------------------------------------------------------------
 ! Added 2026 (phase five, step C -- ROADMAP.md): the re-entrancy
 ! prologue. Fresh-process semantics for repeated run_yrec calls in
-! one process, by pristine snapshot: at the FIRST entry the four
-! state roots' startup state is captured (module/static storage is
+! one process, by pristine snapshot: at the FIRST entry star's
+! startup state is captured (module/static storage is
 ! zero-initialized plus declaration defaults -- exactly what a new
-! process sees); at every LATER entry it is restored, the controls
-! rewind to their declaration defaults (so parmin reads over pristine
-! values), the step/diagnostics routines are told to re-initialize
-! their SAVEd locals, and any file units run 1 left open are closed
-! (closing a not-connected unit is a no-op). Physics-domain table
+! process sees); at every LATER entry it is restored, the
+! step/diagnostics routines are told to re-initialize their SAVEd
+! locals, and any file units run 1 left open are closed (closing a
+! not-connected unit is a no-op). The controls no longer need a
+! snapshot here: read_controls itself resets star%ctrl to defaults
+! and re-seeds the namelist buffer before every read (2026 phase B). Physics-domain table
 ! state is deliberately NOT reset: tables reloaded by star_setup are
 ! overwritten, and the lazy first-use guards (readco and friends)
 ! keep already-loaded tables, which is correct while both calls use
@@ -19,7 +20,6 @@
 module yrec_reset_lib
       use star_info_lib, only: star, star_info, evolve_step_reset_pending, &
            observables_reset_pending
-      use controls_reset_lib, only: controls_capture, controls_restore
       implicit none
 
       logical, save :: first_entry = .true.
@@ -33,13 +33,17 @@ subroutine yrec_run_prologue
 
       integer :: u
 
+! 2026 phase B (controls->star% campaign): the controls_capture/
+! controls_restore snapshot pair is gone. The namelist BUFFER
+! (controls_lib) no longer needs restoring here because
+! read_controls re-seeds it from pristine star%ctrl defaults before
+! every read; phys_const_lib needs no restoring because, with cmixl
+! evicted to star%, every member is recomputed by setups each run.
       if (first_entry) then
          star0 = star
-         call controls_capture
          first_entry = .false.
       else
          star = star0
-         call controls_restore
          evolve_step_reset_pending = .true.
          observables_reset_pending = .true.
          do u = 7, 99

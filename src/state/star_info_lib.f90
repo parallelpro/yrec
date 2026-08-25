@@ -445,6 +445,21 @@ module star_info_lib
       end type rotation_diffusion_state
 
 ! ---- from state/star_job_lib.f90 ----
+! 2026 controls->star% campaign, phase B: the authoritative home of
+! every namelist control. Component list GENERATED from the read
+! buffer's declarations (const/controls_lib.f90) by
+! tools/gen_controls_state.py -- regenerate on any member change.
+! Every component is default-initialized, so
+!   star%ctrl = controls_state()
+! is the structural "reset controls to pristine defaults" (used by
+! read_controls before every read; replaces the retired
+! controls_reset_lib snapshot machinery). Immutable after
+! read_controls stores into it; consumers migrate from the buffer's
+! bare names to star%ctrl%... in phase C.
+      type, public :: controls_state
+            include 'controls_state_def.inc'
+      end type controls_state
+
       type, public :: star_job
             character(len=256) :: alex06_table_path, allard_table_path, &
                  atm_table_path, fermi_table_path, kurucz_table_path, &
@@ -610,6 +625,10 @@ module star_info_lib
 ! root means yrec_reset's star snapshot covers them automatically)
             type(star_job) :: job
             type(evolve_state) :: evo
+! phase B: the controls bundle (see controls_state above). Nested
+! like star%job -- the two input bundles are the only nested
+! sub-structs in the target shape.
+            type(controls_state) :: ctrl
       end type star_info
 
 ! the one star this process evolves (no handles -- see header)

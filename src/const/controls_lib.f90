@@ -10,12 +10,19 @@
 ! its own module because ~200 members are referenced by bare name
 ! across the codebase via the const_lib umbrella.
 !
-! Contract: read-only after read_controls/parmin, with documented
-! stragglers that the original COMMON blocks mixed in. The 2026
-! controls->star% campaign (phase A) is evicting those to their
-! proper state homes: ctlim's tenv and atmos's kttau0/lttau/hras are
-! done (flat star% members), the cross/weak scale arrays, solar
-! octet, cmixl and nk are done, iolaol2/ioopal2 moved to luout_lib.
+! Contract: read-only after read_controls/parmin. Phase A of the
+! 2026 controls->star% campaign evicted every non-namelist straggler
+! the original COMMON blocks mixed in (ctlim's tenv, atmos's
+! kttau0/lttau/hras, the cross/weak scale arrays, the solar octet,
+! cmixl, nk -- flat star% members now; iolaol2/ioopal2 to luout_lib).
+!
+! Phase B: this module is now formally the namelist read BUFFER.
+! read_controls re-seeds it from pristine star%ctrl defaults before
+! every parmin read and stores it back into star%ctrl (the
+! authoritative home) afterwards -- see io/read_controls.f90 and the
+! generated state/controls_state_def.inc / controls_sync_lib.f90
+! (tools/gen_controls_state.py; regenerate on any member change
+! here). Consumers migrate to star%ctrl%... in phase C.
 
 module controls_lib
       implicit none
