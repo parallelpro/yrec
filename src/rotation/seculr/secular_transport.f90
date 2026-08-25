@@ -182,7 +182,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 ! MHP 9/94
 ! DISK LOCKING CHECKED
       disk_lock_active = .false.
-      if(star%job%disk_locking_active .and. star%disk_lifetime.le.star%job%disk_temperature) &
+      if(star%job%disk_locking_active .and. star%disk_gate_age_gyr.le.star%job%disk_locking_age_gyr) &
            disk_lock_active = .true.
 !  FIRST AND LAST SHELL BOUNDARY CONDITIONS REQUIRE THAT THESE SHELLS BE
 !  TREATED AS 'CONVECTIVE' FOR DIFFUSION PURPOSES. FIX THIS.

@@ -160,7 +160,7 @@ subroutine write_store_model(composition, log_density, log_luminosity, log_press
            star%job%diffuse_helium_active,star%job%use_diffusion_z,star%job%lsemic,star%job%lovstc, &
            star%job%envelope_overshoot_active,star%job%lovstm,star%job%rotation_active, &
            star%job%instability_transport_active,star%job%ljdot0,star%job%disk_locking_active, &
-           star%job%disk_temperature,star%job%disk_pressure,star%job%wind_saturation_omega,star%ctrl%lstore,star%job%lstatm,star%ctrl%lstenv, &
+           star%job%disk_locking_age_gyr,star%job%disk_omega_rad_s,star%job%wind_saturation_omega,star%ctrl%lstore,star%job%lstatm,star%ctrl%lstenv, &
            star%ctrl%lstmod,star%ctrl%lstphys,star%ctrl%lstrot
    29      format('#',2I8,F16.10,1X,A6,1X,3(A4,1X),L1,1X,A4,1X,11(L1,1X), &
            3(1PE18.10),1X,6(L1,1X))
@@ -215,7 +215,7 @@ subroutine write_store_model(composition, log_density, log_luminosity, log_press
            star%job%diffuse_helium_active,star%job%use_diffusion_z,star%job%lsemic,star%job%lovstc, &
            star%job%envelope_overshoot_active,star%job%lovstm,star%job%rotation_active, &
            star%job%instability_transport_active,star%job%ljdot0,star%job%disk_locking_active, &
-           star%job%disk_temperature,star%job%disk_pressure,star%job%wind_saturation_omega,star%ctrl%lstore,star%job%lstatm,star%ctrl%lstenv, &
+           star%job%disk_locking_age_gyr,star%job%disk_omega_rad_s,star%job%wind_saturation_omega,star%ctrl%lstore,star%job%lstatm,star%ctrl%lstenv, &
            star%ctrl%lstmod,star%ctrl%lstphys,star%ctrl%lstrot
    30 format(2I8,F16.10,1X,A6,1X,3(A4,1X),L1,1X,A4,1X,11(L1,1X), &
            3(1PE18.10),1X,6(L1,1X))

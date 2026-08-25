@@ -274,8 +274,8 @@
       mc_run_end = imend
       use_scv_eos = lscv
       disk_locking_active = ldisk
-      disk_temperature = tdisk
-      disk_pressure = pdisk
+      disk_locking_age_gyr = tdisk
+      disk_omega_rad_s = pdisk
       wind_saturation_omega = wmax
       force_solid_body_rotation = lsolid
       solid_body_mode_flag = impjmod
@@ -644,8 +644,8 @@
       imend = mc_run_end
       lscv = use_scv_eos
       ldisk = disk_locking_active
-      tdisk = disk_temperature
-      pdisk = disk_pressure
+      tdisk = disk_locking_age_gyr
+      pdisk = disk_omega_rad_s
       wmax = wind_saturation_omega
       lsolid = force_solid_body_rotation
       impjmod = solid_body_mode_flag

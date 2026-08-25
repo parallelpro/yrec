@@ -564,7 +564,7 @@ subroutine converge_with_rotation
 ! G Somers END
 
 ! MHP 9/94 STORE TOTAL AGE IN SAGE
-            star%disk_lifetime = star%dage
+            star%disk_gate_age_gyr = star%dage
             if (star%job%rotation_active) then
 ! RESTORE ORIGINAL START OF TIMESTEP VALUES
 ! TO THE ANGULAR MOMENTUM DISTRIBUTION

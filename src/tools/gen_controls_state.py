@@ -27,7 +27,7 @@ import pathlib
 import re
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
-LIB = SRC / "const" / "controls_lib.f90"
+LIB = SRC / "io" / "controls_lib.f90"
 DEF = SRC / "state" / "controls_state_def.inc"
 JOBDEF = SRC / "state" / "job_controls_def.inc"
 SYNC = SRC / "state" / "controls_sync_lib.f90"
@@ -53,7 +53,7 @@ JOB_MEMBERS = {
     "rotation_active", "use_extended_composition", "lovstc", "lovstm",
     "envelope_overshoot_active", "lsemic",
     "instability_transport_active", "disk_locking_active",
-    "disk_pressure", "disk_temperature", "use_diffusion_z",
+    "disk_omega_rad_s", "disk_locking_age_gyr", "use_diffusion_z",
     "wind_saturation_omega", "ljdot0", "lphhd", "atm_choice",
     "use_structure_dt_limits", "pulsation_output_active",
     "calcad_ageout_output_active", "ageout_model_output_flag",

@@ -142,10 +142,17 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       age_seconds = age_gyr*1.0d9*seconds_per_year
 ! USE A REIMERS FORMULA TO COMPUTE MDOT IF DESIRED; OVERWRITES
 ! CONSTANT MDOT.  IN THIS EXPRESSION MDOT=K*L/G/R.
+! 2026 config-matrix fix: the historical expression computed
+! creim*L/(g*R) in CGS -- units of g/s -- but stored it in the
+! Msun/yr variable, which mdot then converted to CGS AGAIN (a
+! ~1e25 rate inflation). Unreachable before the mdot argument-count
+! fix, so never caught. Now implements the standard Reimers law the
+! comment above describes: Mdot[Msun/yr] = creim*(L/Lsun)(R/Rsun)/(M/Msun),
+! creim default -4e-13 (the classical eta=1 coefficient).
       if(apply_mass_change .and. star%ctrl%lreimer)then
-         surface_gravity_cgs = 10.0d0**(cgl)*total_mass_grams/total_radius_cm**2
-         mass_loss_rate_msun_yr = star%ctrl%creim*10.0d0**(log_luminosity_lsun+ &
-              star%log10_solar_luminosity)/surface_gravity_cgs/total_radius_cm
+         mass_loss_rate_msun_yr = star%ctrl%creim* &
+              10.0d0**log_luminosity_lsun* &
+              (total_radius_cm/star%solar_radius_cgs)/total_mass_msun
       endif
 ! 02/12 MHP TAUCZ NOW COMPUTED PRIOR TO CALL IN MIXCZ
 ! CONVECTIVE OVERTURN TIMESCALE
@@ -292,7 +299,13 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          endif
       endif
 ! CALL MASS LOSS OR ACCRETION ROUTINE
-      if(apply_mass_change)call mdot(log_luminosity_lsun,timestep,composition, &
+! 2026 config-matrix fix: the historical call passed 24 actuals into
+! mdot's 23 dummies (leading extra log_luminosity_lsun), shifting
+! every later argument one slot -- LMDOT runs dereferenced a scalar
+! as the composition array and crashed. Pre-existing in the original
+! F77 (documented in mdot.f90's header); fixed by dropping the
+! spurious first actual so the list matches mdot's dummies 1:1.
+      if(apply_mass_change)call mdot(timestep,composition, &
            log_density,specific_angular_momentum,log_pressure,log_radius,log_mass, &
            zone_mass_grams,shell_mass,log_total_mass,log_temperature, &
            envelope_boundary_zone,new_surface_bc_needed,num_zones,omega, &

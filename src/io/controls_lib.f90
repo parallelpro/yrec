@@ -176,14 +176,14 @@ module controls_lib
       double precision :: spot_temp_contrast = 1.00d0
       logical :: spot_depth_varies = .false.
 
-! former common/disk/: disk_temperature/disk_pressure/
+! former common/disk/: disk_locking_age_gyr/disk_omega_rad_s/
 ! disk_locking_active are NAMELIST /physics/ values (core/read_input.f90's
 ! tdisk/pdisk/ldisk, kept local there and copy-assigned). disk_lifetime
 ! (former common/disk/'s remaining member, originally "sage") is not a
 ! namelist value -- core/main.f90 sets it at runtime -- so it has no
 ! declaration-time default here.
-      double precision :: disk_temperature = 0.0d0
-      double precision :: disk_pressure = 7.2722d-6
+      double precision :: disk_locking_age_gyr = 0.0d0
+      double precision :: disk_omega_rad_s = 7.2722d-6
       logical :: disk_locking_active = .false.
 
 ! former common/sett/: target_end_age/timestep_override/

@@ -56,11 +56,11 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       disk_locked = .false.
       if(zone_end.eq.num_zones .and. zone_start.ne.zone_end .and. &
            star%job%disk_locking_active .and. &
-           star%disk_lifetime.le.star%job%disk_temperature)disk_locked = .true.
+           star%disk_gate_age_gyr.le.star%job%disk_locking_age_gyr)disk_locked = .true.
       if(.not.disk_locked)then
          omega_guess = omega_sum/dfloat(zone_end - zone_start + 1)
       else
-         omega_guess = star%job%disk_pressure
+         omega_guess = star%job%disk_omega_rad_s
       end if
       omega_iter: do
       do zone_idx = zone_start,zone_end

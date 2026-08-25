@@ -1436,8 +1436,8 @@ subroutine adopt_canonical_names
       spot_filling_factor = spotf
       spot_temp_contrast = spotx
       spot_depth_varies = lsdepth
-      disk_temperature = tdisk
-      disk_pressure = pdisk
+      disk_locking_age_gyr = tdisk
+      disk_omega_rad_s = pdisk
       disk_locking_active = ldisk
       target_end_age = endage
       timestep_override = setdt

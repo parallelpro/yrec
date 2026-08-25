@@ -436,7 +436,7 @@ module star_info_lib
                  just_passed_target_radius_flag = .false., &
                  compute_acoustic_depth = .false., &
                  use_two_z_tables = .false.
-            double precision :: disk_lifetime, pulsation_mass_msun
+            double precision :: disk_gate_age_gyr, pulsation_mass_msun
             integer :: iov1, iov2, iovim
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &

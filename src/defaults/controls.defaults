@@ -457,12 +457,13 @@
       ! (legacy name: ldisk)
       disk_locking_active = .false.   ! (implicit)
 
-      ! former common/disk/: disk_temperature/disk_pressure/ disk_locking_active are NAMELIST /physics/ values (core/parmin.f90's tdisk/pdisk/ldisk, kept local there and copy-ass
+      ! Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr).
       ! (legacy name: tdisk)
-      disk_temperature = 0.0   ! (implicit)
+      disk_locking_age_gyr = 0.0   ! (implicit)
 
+      ! Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly said period in days; the code has always consumed rad/s).
       ! (legacy name: pdisk)
-      disk_pressure = 0.0   ! (implicit)
+      disk_omega_rad_s = 0.0   ! (implicit)
 
       ! (legacy name: wmax)
       wind_saturation_omega = 0.0   ! (implicit)

@@ -9,7 +9,7 @@
 !
 ! MASS LOSS ROUTINE
 !
-! PRESERVED CALL-SITE BUG (not fixed, per project policy): mdot.f's
+! CALL-SITE BUG FIXED 2026 (config-matrix campaign): mdot.f's
 ! only caller, massloss.f90, calls this routine with 24 actual
 ! arguments (leading with log_luminosity_lsun/BL) while this
 ! subroutine declares only 23 dummy arguments (starting with
@@ -17,6 +17,9 @@
 ! existing argument-count mismatch in the original F77 source
 ! (mdot.f/massloss.f) -- every actual argument after the first is
 ! therefore received one position off from what the caller intended.
+! massloss.f90's call now matches this dummy list 1:1 (the spurious
+! leading luminosity actual was dropped); LMDOT runs are exercised
+! by examples/run_config_matrix/cm_massloss_*.
 ! Reproduced exactly; NOT corrected here.
 subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      log_pressure, log_radius, log_mass, zone_mass_grams, shell_mass, &
@@ -128,9 +131,9 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       endif
 ! mhp 8/10 turn mass loss off when disk exhausted only when dm /dt > 0, e.g. accretion
       if(star%job%disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
-         disk_age_test = star%disk_lifetime + 1.0d-9*timestep/seconds_per_year
-         if(disk_age_test.gt.star%job%disk_temperature)then
-            timestep = (star%job%disk_temperature-star%disk_lifetime)*1.0d9*seconds_per_year
+         disk_age_test = star%disk_gate_age_gyr + 1.0d-9*timestep/seconds_per_year
+         if(disk_age_test.gt.star%job%disk_locking_age_gyr)then
+            timestep = (star%job%disk_locking_age_gyr-star%disk_gate_age_gyr)*1.0d9*seconds_per_year
             disk_exhausted_flag = .true.
          else
             disk_exhausted_flag = .false.

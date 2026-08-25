@@ -273,8 +273,8 @@ physics	imend	integer	0*	mc_run_end	proposed		Last Monte-Carlo realization index
 physics	sstandard	real(17)	0.9828,1.0485,0.9815,0.9241,1.3818,1.0542,1.0, &	mc_standard_seed	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 physics	lscv	logical	.false.	use_scv_eos	canonical		
 physics	ldisk	logical	.false.*	disk_locking_active	canonical		
-physics	tdisk	real	0.0*	disk_temperature	canonical		former common/disk/: disk_temperature/disk_pressure/ disk_locking_active are NAMELIST /physics/ values (core/parmin.f90's tdisk/pdisk/ldisk, kept local there and copy-ass
-physics	pdisk	real	0.0*	disk_pressure	canonical		
+physics	tdisk	real	0.0*	disk_locking_age_gyr	canonical		Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr).
+physics	pdisk	real	0.0*	disk_omega_rad_s	canonical		Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly said period in days; the code has always consumed rad/s).
 physics	wmax	real	0.0*	wind_saturation_omega	canonical		
 physics	lsolid	logical	.false.*	force_solid_body_rotation	canonical		former common/sbrot/: force_solid_body_rotation/solid_body_mode_flag (originally lsolid/impjmod) are NAMELIST values with different canonical spellings, kept local in cor
 physics	impjmod	integer	0*	solid_body_mode_flag	canonical		
