@@ -31,16 +31,16 @@
 ! `use net_lib` (it called `neutrino`) was removed -- a module
 ! cannot use itself; host association already gives every contained
 ! procedure access to every sibling procedure. Callers that didn't
-! already `use net_lib` (setup/midmod.f90, misc/coefft.f90,
-! core/main.f90, util/ytime.f90, rotation/getw.f90,
-! mixing/bursmix.f90) had it added.
+! already `use net_lib` (setup/mid_timestep_model.f90, misc/henyey_coefficients.f90,
+! core/main.f90, util/timestep_limit_heburn.f90, rotation/evolve_angular_momentum.f90,
+! mixing/burn_settle_mix.f90) had it added.
 ! ---------------------------------------------------------------------
 ! MAP OF THE MODULE (2026; updated at the physics-purity split).
 ! net_lib now holds ONLY the pure kernels -- functions of
 ! (logRho, logT, composition, controls), no model state, the surface
 ! test_nuclear pins:
 !     rates      13 reaction rates + branching fractions at one point
-!                (consumes cross_section_scale from setup/remap.f90).
+!                (consumes cross_section_scale from setup/map_user_inputs.f90).
 !     sneut      Itoh et al. (1996) neutrino losses (pure fits).
 !     nulosses   azbar + sneut wrapper for a full mixture.
 !     neutrino   legacy interface to the loss rates.

@@ -8,7 +8,7 @@
 ! 1..num_atm_points), the atmosphere-region counterpart of
 ! envstruct_lib's envelope profile. Computed by the atmosphere
 ! integrator (atm/atm_lib.f90) and read by output writers
-! (misc/stitch.f90, io/putstore.f90, io/wrtmod.f90, io/wrtout.f90) and
+! (misc/write_stitched_profile.f90, io/write_store_model.f90, io/write_pulsation_model.f90, io/write_legacy_output.f90) and
 ! rotation/ files needing the current atmosphere structure.
 !
 ! Per GUIDELINES.md's module-vs-argument test this is case 1b, same as

@@ -6,7 +6,7 @@
 ! conventions). Exercises the composition-in/rates-out core of the
 ! domain -- the pieces that are pure functions of (logT, logRho,
 ! composition) once the cross-section scales are set:
-!   * setup/remap.f90's cross-section scale computation (from the
+!   * setup/map_user_inputs.f90's cross-section scale computation (from the
 !     newcross namelist defaults),
 !   * rates (the 13 reaction rates + branching fractions),
 !   * sneut (Itoh et al. 1996 neutrino losses),
@@ -54,7 +54,7 @@ program test_net
       dummy_paths7 = ""
       laol_work = 0.0d0
 
-! unit numbers, per core/parmin.f90
+! unit numbers, per core/read_input.f90
       short_file_unit = 20
       star%ctrl%fermi_unit = 15
       open(short_file_unit, file="test_net.short", status="replace")
@@ -89,7 +89,7 @@ program test_net
 
 ! Nuclear cross-sections: parmin keeps the S-factor namelist locals
 ! with Solar Fusion II defaults (Adelberger et al. 2011; see
-! core/parmin.f90's DATA statements around line 1177) and
+! core/read_input.f90's DATA statements around line 1177) and
 ! copy-assigns them into controls. This test bypasses parmin, so it
 ! sets the same SFII values explicitly, with the new-rates path on.
       use_new_nuclear_rates = .true.
@@ -118,8 +118,8 @@ program test_net
       s0pp_be7_p = -2.288d-7
 
 ! cross-section scales via the real remap
-      call remap
-      write(*,'(a)') "# test_net: cross_section_scale from remap " // &
+      call map_user_inputs
+      write(*,'(a)') "# test_net: cross_section_scale from map_user_inputs " // &
            "(newcross defaults)"
       write(*,'(4(1pe20.12))') (star%cross_section_scale(i), i = 1, 16)
 

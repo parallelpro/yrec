@@ -1,3 +1,6 @@
+# EXECUTED 2026-08-24 (with pre-flight corrections: momi->zone_moments_of_inertia,
+# intmom->shell_inertia_integral, getqua->compute_quadrupole, hsubp->compute_scale_height,
+# ykoeff->build_kurucz_splines -- original proposals collided with existing variable names).
 current_path	proposed_path	subroutine_rename	verdict	rationale
 core/chkcal.f90	core/check_solar_calibration.f90	chkcal -> check_solar_calibration	PROPOSE	solar-calibration Newton verdict
 core/chkscal.f90	core/check_star_calibration.f90	chkscal -> check_star_calibration	PROPOSE	star (Teff/L target) calibration verdict

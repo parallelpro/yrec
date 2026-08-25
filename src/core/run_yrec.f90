@@ -220,7 +220,7 @@ subroutine begin_calibration
 ! MHP 3/96 added counter for # of iterations per converged model and
 ! starting estimate of ALPHA and X
       if (star%ctrl%calibrate_solar_model) then
-         call setcal(age_scale_factor)
+         call setup_solar_calibration(age_scale_factor)
          convergence_iterations = 1
          initial_x_guess = star%job%rescale_params(2,1)
          initial_alpha_guess = star%job%mixing_length_array(1)
@@ -232,7 +232,7 @@ subroutine begin_calibration
 ! DBG 12/94 add option to automatically calculate a stellar model
 ! of specified Teff and L
       if (star%ctrl%calibrate_star_flag) then
-         call setscal
+         call setup_star_calibration
       endif
 end subroutine begin_calibration
 
@@ -257,7 +257,7 @@ subroutine end_of_card_calibration(runs_complete)
                log_r_rsun = 0.5D0*(star%log_L+star%log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-star%log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
                current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
-               call chkcal(star%log_L,log_r_rsun,star%job%nk,current_zx)
+               call check_solar_calibration(star%log_L,log_r_rsun,star%job%nk,current_zx)
 !               CALL CHKCAL(BL,RLL,NK)
                star%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                star%job%atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
@@ -326,7 +326,7 @@ subroutine begin_kind_card
 ! read in the initial model here
 ! STARIN also calls RSCALE to perform rescaling if requested
 !        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-       call starin(star%timestep_yr, star%dt, star%hydrogen_dt, star%trial_sign_flag, &
+       call read_starting_model(star%timestep_yr, star%dt, star%hydrogen_dt, star%trial_sign_flag, &
             star%ikut_flag, star%istore_flag, star%model_diverged_flag, &
             star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
             star%total_angular_momentum, star%total_rotational_ke, &
@@ -374,7 +374,7 @@ subroutine begin_kind_card
 ! timestep cutting requires a model stored in logical unit ILAST
 ! or it will crash - so copy initial model to unit ILAST
           if (star%punch_pending_flag) then
-             call wrtlst(ilast,star%xa,star%logRho,star%luminosity_lsun, &
+             call write_last_model(ilast,star%xa,star%logRho,star%luminosity_lsun, &
                   star%logP,star%logR,star%log_mass,star%logT,star%convective_flag, &
                   star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
                   star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
@@ -387,14 +387,14 @@ subroutine begin_kind_card
 
 ! locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if applicable).
-         call findsh(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
+         call locate_shell_boundaries(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin, &
               star%h_shell_end_index,star%h_shell_midpoint_zone,star%has_h_shell)
 ! determine timestep for model
 ! JVS 04/14 Added Teffl to passed variables
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(star%dt,star%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
+       call compute_timestep(star%dt,star%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
             star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk, &
             star%logP,star%logR,star%omega,star%max_domega_frac,star%h_shell_zone_begin, &
@@ -424,7 +424,7 @@ subroutine end_kind_card
 ! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
 ! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
          if (star%ctrl%lstore.and.star%ctrl%lstpch.and.star%punch_pending_flag) then
-          call putstore(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
+          call write_store_model(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
                  star%envelope_fit_coeffs,star%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
                  star%dage,star%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
             star%punch_pending_flag = .false.

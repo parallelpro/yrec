@@ -14,7 +14,7 @@
 ! defines the physical/mathematical constants used throughout the
 ! code (common/const1//const2//const3//const/debhu), loads the
 ! opacity tables (setupopac/mhdtbl), the degenerate-electron
-! (Fermi-Dirac) equation-of-state table used by eqrelv.f90, the
+! (Fermi-Dirac) equation-of-state table used by fully_ionized_eos.f90, the
 ! Kurucz/Castelli surface-pressure table used for the T-tau surface
 ! boundary condition, and (if enabled) the SCVH envelope
 ! equation-of-state tables.
@@ -70,8 +70,8 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! --- locals ---
       double precision :: speed_of_light, electron_mass, boltzmann_constant, &
            planck_constant, hydrogen_atom_mass, electron_charge_esu
-      double precision :: hra
-      external hra
+      double precision :: harvard_t_tau
+      external harvard_t_tau
       integer :: teff_idx, logg_idx
       logical :: found_valid_pressure
 
@@ -153,7 +153,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     EVALUATE TAU = 2/3 TEMPERATURE FOR HRA
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      star%atm_hras = hra(cc23)
+      star%atm_hras = harvard_t_tau(cc23)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

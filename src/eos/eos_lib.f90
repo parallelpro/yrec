@@ -9,28 +9,28 @@
 ! interface entry point that replaces the `if (use_mhd_eos) call meqos
 ! else call eqstat` dispatch that used to be duplicated at every call
 ! site, and additionally centralizes the Debye-Huckel composition
-! setup (debye_huckel_x/y/z_total/z(3), read only by eos/yale/eqrelv.f90
+! setup (debye_huckel_x/y/z_total/z(3), read only by eos/yale/fully_ionized_eos.f90
 ! on the non-MHD path) that 6 of those call sites also used to
 ! duplicate verbatim. eos/eqstat.f90 (which also hosts eqstat2, its
-! co-located pair), eos/yale/eqrelv.f90, and eos/mhd/meqos.f90 are all
+! co-located pair), eos/yale/fully_ionized_eos.f90, and eos/mhd/meqos.f90 are all
 ! unchanged; this is a pure dispatch/setup wrapper.
 !
 ! composition_at_zone is OPTIONAL: callers that carry full per-species
-! composition (misc/coefft.f90, io/wrtout.f90, core/starin.f90,
-! misc/physic.f90, mixing/hsubp.f90, mixing/sconvec.f90) pass
+! composition (misc/henyey_coefficients.f90, io/write_legacy_output.f90, core/read_starting_model.f90,
+! misc/shell_physics.f90, mixing/compute_scale_height.f90, mixing/semiconvection.f90) pass
 ! composition(:,idx) and get the same Debye-Huckel setup they used to
 ! compute themselves. Callers that only ever carried bulk
-! hydrogen_fraction/metal_fraction (atm/atm_lib.f90, atm/qatm.f90,
-! atm/qenv.f90, wind/massloss.f90) omit it -- exactly matching their
+! hydrogen_fraction/metal_fraction (atm/atm_lib.f90, atm/atmosphere_derivs.f90,
+! atm/envelope_derivs.f90, wind/massloss.f90) omit it -- exactly matching their
 ! prior behavior, since none of them set these fields before either.
 !
-! core/starin.f90 previously had a bug here (confirmed against the
+! core/read_starting_model.f90 previously had a bug here (confirmed against the
 ! original F77 source via git history): a missing ELSE meant it called
 ! *both* meqos and eqstat when MHD was on, and *neither* when MHD was
 ! off. eos_get's if/else has the structurally-correct form, so
 ! migrating that call site fixes the bug by construction.
 !
-! mixing/hsubp.f90, mixing/sconvec.f90, and wind/massloss.f90
+! mixing/compute_scale_height.f90, mixing/semiconvection.f90, and wind/massloss.f90
 ! previously called eqstat unconditionally, with no LMHD check at all
 ! -- confirmed authentic original YREC behavior (unchanged since the
 ! very first commit, not a modernization artifact). Migrating them to
@@ -39,7 +39,7 @@
 ! an acknowledged numerics change for use_mhd_eos=.true. runs, which
 ! the Stage-0 regression suite cannot verify (no test case sets LMHD).
 !
-! atm/turnover/calcad.f90 (the acoustic-depth diagnostic) was NOT
+! atm/turnover/acoustic_depths.f90 (the acoustic-depth diagnostic) was NOT
 ! migrated to eos_get during phase two: it deliberately bypasses
 ! eqstat2's boundary-ramping, calling esac06 directly under its own
 ! use_opal2006_eos check, confirmed to match the original F77 -- not
@@ -304,7 +304,7 @@ end subroutine eos_init
 !----------------------------------------------------------------------
 ! Added 2026 (phase three, ROADMAP.md stage 1): a component-accessor
 ! entry in the spirit of MESA's eosDT_get_component, created so
-! atm/turnover/calcad.f90 (the acoustic-depth diagnostic, previously
+! atm/turnover/acoustic_depths.f90 (the acoustic-depth diagnostic, previously
 ! the last file calling eos internals -- esac06/eqstat2 -- directly)
 ! can go through the facade. Given composition and an (unlogged)
 ! T/rho/P point, returns gamma1 and the adiabatic gradient,

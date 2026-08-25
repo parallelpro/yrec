@@ -41,13 +41,13 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
       if (star%ctrl%use_opal95_tables) then
          call ll95tbl(opal95_table_path, ierr)
          if (ierr /= 0) return
-         call op95xtab(envelope_hydrogen_fraction)
+         call opal95_surface_table(envelope_hydrogen_fraction)
       end if
 
 !     READ IN OPAL92 TABLES AT ZOPAL1 AND ZOPAL2
       if (star%ctrl%use_opal92_tables) then
-         call setllo(opal92_table_path, opal92_table2_path)
-         call ll4th(envelope_hydrogen_fraction)
+         call read_opal92_tables(opal92_table_path, opal92_table2_path)
+         call opal92_surface_table(envelope_hydrogen_fraction)
       end if
 !     READ IN LAOL89 TABLES AT ZLAOL1 AND ZLAOL2
       if (star%ctrl%use_laol89_tables) then
@@ -72,12 +72,12 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
          if (ierr /= 0) return
 !     READ IN ALEX 1995 TABLES
       else if (star%ctrl%use_alex95_tables) then
-         call alxtbl(alex95_table_paths, ierr)
+         call read_alex94_tables(alex95_table_paths, ierr)
          if (ierr /= 0) return
-         call alx8th(envelope_hydrogen_fraction)
+         call alex94_surface_table(envelope_hydrogen_fraction)
 !     READ IN KURUCZ TABLE AT ZKUR1 AND ZKUR2
       else if (star%ctrl%use_kurucz90_tables) then
-         call setkrz(kurucz_table_path, kurucz_table2_path)
+         call read_kurucz_tables(kurucz_table_path, kurucz_table2_path)
       end if
       return
 end subroutine setupopac

@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! New (2026) as part of the YREC module-modernization project (see
 ! GUIDELINES.md). Replaces common/luout/: I/O logical unit numbers,
-! assigned once at run startup (core/parmin.f90) and read broadly --
+! assigned once at run startup (core/read_input.f90) and read broadly --
 ! global configuration, not per-call data, so (like const_lib) this
 ! becomes a module of plain module-level variables rather than
 ! subroutine arguments. Lives alongside const_lib in this folder for

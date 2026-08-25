@@ -224,7 +224,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       if (abs(metal_fraction-opacity_table%opal95_fixed_z)/max(opacity_table%opal95_fixed_z,1.0d-6).le.1.0d-4) then
          if (abs(hydrogen_fraction-opacity_table%opal95_surface_x).le.1.0d-4) then
 !           2D INTERPOLATION IN SURFACE TABLE
-            call op952d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+            call opal95_interp2d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
             continue
             return
          else
@@ -288,7 +288,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          do j = 1,4
             opacity_table%opal95_weight_x(1,j) = weight(j)
          end do
-         call op953d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+         call opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
          continue
          return
       endif
@@ -393,6 +393,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             opacity_table%opal95_weight_x(k,j) = weight(j)
          end do
       end do
-      call op954d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+      call opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       return
 end subroutine getopal95

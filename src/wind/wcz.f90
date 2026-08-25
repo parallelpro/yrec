@@ -7,8 +7,8 @@
 ! were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! NOTE: as of the JNT 2025/09 getw.f90/getrot.f90 revision this
-! routine's every caller was switched to wczimp (see wczimp.f90); WCZ
+! NOTE: as of the JNT 2025/09 evolve_angular_momentum.f90/omega_from_j.f90 revision this
+! routine's every caller was switched to wczimp (see enforce_rotation_profile.f90); WCZ
 ! itself is no longer called anywhere in the current source tree, but
 ! is retained/converted per the batch scope.
 !
@@ -47,7 +47,7 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
 
       if((star%ctrl%walpcz.ge.0.0d0) .or. (iend.lt.num_zones)) then
 !  SOLID BODY ROTATION IN CONVECTIVE REGIONS.
-         call solid(log_density,specific_angular_momentum,log_radius, &
+         call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
               log_mass,shell_mass,istart,iend,eta_squared, &
               moment_of_inertia,omega,qiw,mean_radius,num_zones)
       else if(star%ctrl%walpcz.le.-2.0d0)then
@@ -68,7 +68,7 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
                  moment_of_inertia(zone_idx)
             zone_start = zone_idx
             zone_end = zone_idx
-            call solid(log_density,specific_angular_momentum,log_radius, &
+            call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do
@@ -98,7 +98,7 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
                  moment_of_inertia(zone_idx)/shell_mass(zone_idx)
             zone_start = zone_idx
             zone_end = zone_idx
-            call solid(log_density,specific_angular_momentum,log_radius, &
+            call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do

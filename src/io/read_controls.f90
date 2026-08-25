@@ -32,7 +32,7 @@ subroutine read_controls(ierr)
       star%ctrl = controls_state()
       call seed_controls_buffer
 ! read in user parameters
-      call parmin(star%job%alex06_table_path,star%job%allard_table_path,star%job%atm_table_path,star%job%fermi_table_path,star%job%kurucz_table_path,star%job%kurucz_table2_path,star%job%laol_table_path, &
+      call read_input(star%job%alex06_table_path,star%job%allard_table_path,star%job%atm_table_path,star%job%fermi_table_path,star%job%kurucz_table_path,star%job%kurucz_table2_path,star%job%laol_table_path, &
            star%job%laol_table2_path,star%job%opal95_table_path,star%job%opal92_table_path,star%job%zams_a_table_path,star%job%zams_b_table_path,star%job%zams_c_table_path,star%job%centre1_table_path,star%job%centre2_table_path,star%job%centre3_table_path,star%job%centre4_table_path, &
            star%job%centre5_table_path,star%job%opal92_table2_path,star%job%pulse_atm_path,star%job%pulse_env_path,star%job%pulse_mod_path,star%job%pure_z_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path,star%job%scv_z_table_path,star%job%alex95_table_paths, ierr)
       if (ierr /= 0) return

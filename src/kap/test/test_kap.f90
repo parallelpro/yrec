@@ -44,7 +44,7 @@ program test_kap
       dummy_paths7 = ""
       laol_work = 0.0d0
 
-! unit numbers, per core/parmin.f90
+! unit numbers, per core/read_input.f90
       short_file_unit = 20
       star%ctrl%fermi_unit = 15
       star%ctrl%opal95_table_unit = 48

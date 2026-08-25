@@ -65,7 +65,7 @@ subroutine write_run_summaries(monte_carlo_run_number, &
 !      *        DDAGE,SMASS,TEFFL,BL,GL,LSHELL,JXBEG,JXMID,
 !      *        JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
 !      *        CFENV,FTRI,HSTOT,OMEGA,RLL,ICONV,NK,NN)  ! KC 2025-05-31
-         call wrtmonte(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%dage, &
+         call write_monte_carlo_model(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%dage, &
               star%timestep_yr,star%star_mass,star%log_Teff,star%log_L, &
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
               star%envelope_fit_coeffs,star%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,star%job%nk,monte_carlo_run_number)
@@ -114,7 +114,7 @@ subroutine write_run_summaries(monte_carlo_run_number, &
 !      *           DDAGE,SMASS,TEFFL,BL,GL,LSHELL,JXBEG,JXMID,
 !      *           JXEND,JCORE,JENV,TLUMX,TRIT,TRIL,PS,TS,RS,
 !      *           CFENV,FTRI,HSTOT,OMEGA,RLL,ICONV,NK,NN)  ! KC 2025-05-31
-            call wrtmonte(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%dage, &
+            call write_monte_carlo_model(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%dage, &
                  star%timestep_yr,star%star_mass,star%log_Teff,star%log_L, &
                  star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
                  star%envelope_fit_coeffs,star%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,star%job%nk,monte_carlo_run_number)

@@ -8,7 +8,7 @@
 ! suite (examples/run_standard_solar_model).
 !
 ! First stage of the microdiff.f90 element-settling pipeline (see also
-! microdiff_mte.f90, microdiff_cod.f90, microdiff_run.f90,
+! microdiff_mte.f90, microdiff_coefficients.f90, microdiff_run.f90,
 ! microdiff_etm.f90): locates the diffusion region (between any central
 ! convective core and any surface convection zone, and bounded by
 ! hydrogen/helium exhaustion), and converts the needed model quantities
@@ -33,8 +33,8 @@
 !     CSECYR_BAH = NUMBER OF SECONDS IN A YEAR.
 !
 ! Note: enclosed_mass (originally HS1) is the run of enclosed mass at
-! the original model points, unlogged -- naming matches ndifcom.f90/
-! bursmix.f90's HS1, not the per-shell mass (HS2 there).
+! the original model points, unlogged -- naming matches diffuse_composition_driver.f90/
+! burn_settle_mix.f90's HS1, not the per-shell mass (HS2 there).
 subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      enclosed_mass, log_temperature, convective_flag, num_zones, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &

@@ -150,7 +150,7 @@ module opal_eos_lib
 ! relocated here from atm_table_lib in 2026 (ROADMAP.md stage 1) --
 ! it had landed there through phase one purely as an accident of the
 ! original COMMON grouping, and its only non-eos reader
-! (atm/turnover/calcad.f90's direct eos_output(8)/(9) reads) was
+! (atm/turnover/acoustic_depths.f90's direct eos_output(8)/(9) reads) was
 ! absorbed into eos_lib's eos_get_gamma1 first.
            double precision :: esact_06, eos_output_06(n_eos_mv)
 ! former common/eeeos/

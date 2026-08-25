@@ -252,10 +252,10 @@ module star_info_lib
 ! former common/roten/
            double precision :: rotational_energy_term(json)
 ! former common/masschg2/: massloss.f90 declared delta_log_pressure/
-! delta_log_temperature in swapped order relative to coefft.f90/
+! delta_log_temperature in swapped order relative to henyey_coefficients.f90/
 ! mdot.f90 (a self-documented, harmless pre-existing bug there since
 ! both are unused placeholders in massloss.f90) -- uses the majority
-! (coefft.f90/mdot.f90) order here.
+! (henyey_coefficients.f90/mdot.f90) order here.
            double precision :: accretion_specific_entropy, &
                 envelope_specific_entropy, updated_mass_msun, &
                 delta_log_pressure, delta_log_temperature
@@ -383,7 +383,7 @@ module star_info_lib
             integer :: atm_choice_initial
             logical :: use_ttau_relation
 ! phase A batch 2: the nuclear cross-section scale family -- fully
-! recomputed by setup/remap.f90 from the s0_* namelist inputs after
+! recomputed by setup/map_user_inputs.f90 from the s0_* namelist inputs after
 ! every controls read (never namelist values themselves), and
 ! cross_section_scale(1:3,16) is overwritten per Monte-Carlo run by
 ! apply_monte_carlo_parameters. Consumed by net_lib's rates and
@@ -560,7 +560,7 @@ module star_info_lib
            double precision :: central_log10_temperature, central_log10_pressure, &
                 central_log10_density, envelope_mass, envelope_radius
 ! 2026 (phase four, step 5): observables formerly computed as
-! locals inside io/wrtout.f90, now filled by the star layer
+! locals inside io/write_legacy_output.f90, now filled by the star layer
 ! (core/observables_lib.f90) and only READ by the writers.
            double precision :: central_beta, central_degeneracy_eta
            double precision :: core_cz_mass

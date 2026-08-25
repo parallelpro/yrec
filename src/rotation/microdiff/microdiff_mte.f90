@@ -9,12 +9,12 @@
 !
 ! "MTE" = model-to-equally-spaced-grid transform: builds the equally
 ! spaced radial grid (at both zone centers and zone midpoints, in
-! Bahcall & Loeb units) used by microdiff_run.f90/microdiff_cod.f90,
+! Bahcall & Loeb units) used by microdiff_run.f90/microdiff_coefficients.f90,
 ! and interpolates density, temperature, dlnP/dr, the "del" temperature
 ! gradient, and the H/He/metal/light-element mass fractions onto it via
 ! 4-point Lagrangian interpolation (see interp.f, not part of this
 ! batch). Part of the microdiff.f90 pipeline (see also
-! microdiff_setup.f90, microdiff_cod.f90, microdiff_run.f90,
+! microdiff_setup.f90, microdiff_coefficients.f90, microdiff_run.f90,
 ! microdiff_etm.f90).
 subroutine microdiff_mte(num_light, light_element_id, composition, &
      dlnp_dr, radius_bl, enclosed_mass, zone_begin, zone_end, num_zones, &

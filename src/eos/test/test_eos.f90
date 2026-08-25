@@ -11,7 +11,7 @@
 !
 ! Initialization notes -- everything here replicates what the full
 ! code does at startup, with the source of each piece cited:
-!  * unit numbers: core/parmin.f90's assignments (short_file_unit=20,
+!  * unit numbers: core/read_input.f90's assignments (short_file_unit=20,
 !    fermi_unit=15, scv units 72-74, iopale=49).
 !  * flags/cutoffs: explicit assignments below (TSCUT=6.0 matching
 !    the reference solar-model namelists; all kap table flags false
@@ -21,13 +21,13 @@
 !    eos_lib's eos_init, with real Fermi/SCV table paths and dummy
 !    paths for everything gated off.
 !  * env_comp (the envelope-composition state eqstat2 consumes):
-!    core/starin.f90's exact mixture algorithm (its statements at the
+!    core/read_starting_model.f90's exact mixture algorithm (its statements at the
 !    "COMPUTE SURFACE MIX VALUES" block), seeded from const_lib's
 !    vnew defaults (the G&N93 12-species mixture) and starin's
 !    atomic_weight data, for X=0.70, Z=0.016492 (matching the shipped
 !    EOSOPAL06Z0.016492 table).
 !  * the OPAL-2006 EOS file is opened on iopale exactly as
-!    core/parmin.f90 does; the table itself is lazily read by esac06
+!    core/read_input.f90 does; the table itself is lazily read by esac06
 !    on first use, as in production.
 !
 ! The MHD path is exercised only if YREC_MHD_TABLES is set to a
@@ -50,7 +50,7 @@ program test_eos
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-! starin.f90's atomic_weight data (12-species set, same order as vnew)
+! read_starting_model.f90's atomic_weight data (12-species set, same order as vnew)
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
@@ -97,7 +97,7 @@ program test_eos
       dummy_paths7 = ""
       laol_work = 0.0d0
 
-! unit numbers, per core/parmin.f90
+! unit numbers, per core/read_input.f90
       short_file_unit = 20
       star%ctrl%fermi_unit = 15
       star%ctrl%scv_h_unit = 72
@@ -129,7 +129,7 @@ program test_eos
       star%ctrl%use_conductive_opacity = .false.
       star%job%atm_choice = 0
 
-! envelope composition state, per starin.f90's mixture algorithm
+! envelope composition state, per read_starting_model.f90's mixture algorithm
       star%xnew = 0.70d0
       star%znew = 0.016492d0
       star%envelope_hydrogen_fraction = star%xnew
@@ -171,7 +171,7 @@ program test_eos
          stop 1
       end if
 
-! OPAL-2006 EOS file, opened as core/parmin.f90 does (esac06 reads it
+! OPAL-2006 EOS file, opened as core/read_input.f90 does (esac06 reads it
 ! lazily on first use)
       open(star%ctrl%iopale, file=opal06_path, status='OLD')
 

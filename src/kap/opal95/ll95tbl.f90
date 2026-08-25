@@ -175,7 +175,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
 !     Z TABLES.
       target_z = star%ctrl%opal95_single_table_z
 
-      call op95ztab(target_z, ierr)
+      call opal95_fixed_z_table(target_z, ierr)
       if (ierr /= 0) return
  9999 continue
       return

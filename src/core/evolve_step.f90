@@ -115,19 +115,19 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       end do retry_step
 ! LOCATE THE HYDROGEN-BURNING SHELL AND THE BOUNDARIES OF THE CENTRAL
 ! AND SURFACE CONVECTION ZONES (IF APPLICABLE).
-       call findsh(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
+       call locate_shell_boundaries(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin,star%h_shell_end_index,star%h_shell_midpoint_zone, &
               star%has_h_shell)
 ! PERFORM LIGHT ELEMENT BURNING (2026: extracted below)
          call burn_light_elements
 ! INCLUDED
          if (new_atmosphere_fit_needed) then
-            call getnewenv(target_envelope_mass,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%m,star%dm, &
+            call rebuild_envelope(target_envelope_mass,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%m,star%dm, &
 !     *                     HSTOT,HT,LC,ETA2,HG,HI,HJM,QIW,R0,  ! KC 2025-05-31
                             star%log_total_mass,star%logT,star%convective_flag,star%eta_squared,star%i_rot,star%j_rot,star%qiw,star%mean_radius, &
                             star%kinetic_energy_rot,star%log_L,star%total_angular_momentum,star%total_rotational_ke,star%log_Teff,star%nz,star%recompute_envelope_triangle)
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
-            call fpft(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
+            call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
             new_atmosphere_fit_needed = .false.
          endif
 ! DETERMINE TIMESTEP FOR NEXT MODEL
@@ -137,7 +137,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        star%dt_saved = star%dt
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *        JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
-       call htimer(star%dt,star%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
+       call compute_timestep(star%dt,star%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
               star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk,star%logP,star%logR,star%omega, &
               star%max_domega_frac,star%h_shell_zone_begin,star%log_Teff)
 ! IF EVOLVING TO A GIVEN AGE AND KIND CARD IS DONE, AVOID ZEROING OUT
@@ -189,11 +189,11 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          if (star%ctrl%calibrate_star_flag .and. .not. star%star_found_flag) then
             if (mod(star%job%nk,2).eq.0) then
 ! chkscal protocol: iteration 1 only primes its previous-model state
-! (the value computed here is never read -- see chkscal.f90)
+! (the value computed here is never read -- see check_star_calibration.f90)
              if (model_iteration.eq.1) then
                 teff_kelvin_unused = 10.0D0**star%log_Teff
              else
-                call chkscal(star%log_L, star%log_Teff, star%dage, star%job%nk)
+                call check_star_calibration(star%log_L, star%log_Teff, star%dage, star%job%nk)
                 if (star%just_passed_target_radius_flag) then
                    step_status = step_leave_run_loop
                    return
@@ -281,7 +281,7 @@ subroutine update_output_flags_for_step
 !FD end
             if (star%ctrl%po_output_enabled) then
 ! MHP 8/25 changed to add file names as declared variables
-             call pdist(star%prev_log_l,star%prev_log_teff,star%prev_age,star%path_length_sq,star%log_L,star%log_Teff,model_iteration,star%job%pulse_atm_path, &
+             call open_pulse_files(star%prev_log_l,star%prev_log_teff,star%prev_age,star%path_length_sq,star%log_L,star%log_Teff,model_iteration,star%job%pulse_atm_path, &
              star%job%pulse_env_path,star%job%pulse_mod_path)
           endif
 end subroutine update_output_flags_for_step
@@ -294,7 +294,7 @@ end subroutine update_output_flags_for_step
 subroutine reload_model_if_diverged
             if (star%model_diverged_flag) then
 !              CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
-             call starin(star%timestep_yr, star%dt, star%hydrogen_dt, &
+             call read_starting_model(star%timestep_yr, star%dt, star%hydrogen_dt, &
                   star%trial_sign_flag, star%ikut_flag, star%istore_flag, &
                   star%model_diverged_flag, star%recompute_envelope_triangle, star%job%nk, &
                   star%dlnrho_dlnp, star%dlnrho_dlnt, star%total_angular_momentum, &
@@ -372,7 +372,7 @@ subroutine rezone_or_snapshot
 !*** END TEST
 ! rezone new model, except rezoning not performed for He flash calculations
           if (.not.star%ctrl%helium_flash_active) then
-             call hpoint(star%istore_flag, star%reset_triangle, star%h_shell_zone_begin, &
+             call rezone(star%istore_flag, star%reset_triangle, star%h_shell_zone_begin, &
                   star%has_h_shell, star%total_angular_momentum, &
                   star%total_rotational_ke, ierr)
              if (ierr /= 0) return
@@ -560,7 +560,7 @@ subroutine converge_with_rotation
 ! G Somers 6/14, SET LIMIX = .TRUE. SO THE CORRECT GRADS ARE USED.
       use_correct_gradients = .true.
 !       CALL MIXCZ(HCOMP,HS2,HS1,LC,HR,HP,HD,HG,M,LIMIX)  ! KC 2025-05-31
-      call mixcz(star%xa,star%dm,star%convective_flag,star%nz)
+      call homogenize_convection_zones(star%xa,star%dm,star%convective_flag,star%nz)
 ! G Somers END
 
 ! MHP 9/94 STORE TOTAL AGE IN SAGE
@@ -584,7 +584,7 @@ subroutine converge_with_rotation
 ! FIND THE NEW RUN OF OMEGA
 ! JENV0 ADDED TO SR CALL.
                wind_loss_active = star%job%ljdot0
-               call getw(star%dt, star%max_domega_frac, wind_loss_active, &
+               call evolve_angular_momentum(star%dt, star%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
                if (jerr /= 0) then
                ! 2026 (phase five, step B): propagate instead of stopping
@@ -592,7 +592,7 @@ subroutine converge_with_rotation
                   return
                end if
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
-               call fpft(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
+               call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
             endif
             end do
 end subroutine converge_with_rotation
@@ -607,7 +607,7 @@ subroutine burn_light_elements
 ! ONLY FOR MODELS WITHOUT ROTATION, OR WITHOUT ROTATIONAL MIXING.
             if (.not.star%job%rotation_active .or. .not.star%job%instability_transport_active) then
 ! FIND CONVECTION ZONE DEPTH AT THE END OF THE TIME STEP.
-               call convec(star%xa,star%logRho,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%radiative_zone_bounds,star%mixed_zone_bounds, &
+               call find_convection_zones(star%xa,star%logRho,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%radiative_zone_bounds,star%mixed_zone_bounds, &
                             star%mixed_zone_bounds_no_overshoot,star%core_cz_top_index,star%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot)
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index
@@ -641,7 +641,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       iteration_level = level
       max_iterations = level_max_iterations
       recompute_surface_bc = check_surface_bc
-      call crrect(star%dt, max_iterations, converged, &
+      call henyey_iterate(star%dt, max_iterations, converged, &
            star%model_diverged_flag, star%recompute_envelope_triangle, &
            star%reset_triangle, recompute_surface_bc, star%trial_sign_flag, &
            star%istore_flag, in_atmosphere, want_derivatives, &

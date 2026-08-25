@@ -5,13 +5,13 @@
 ! output feature: writes the converged model's structure to a GYRE-
 ! format stellar model file (MESA/GYRE schema 101, 18 data columns),
 ! independent of YREC's own older path-length-triggered OPAL-format
-! pulsation writer (io/pdist.f90 + io/wrtmod.f90, gated by LPULSE).
-! This routine is instead triggered by wrtout.f90 every
+! pulsation writer (io/open_pulse_files.f90 + io/write_pulsation_model.f90, gated by LPULSE).
+! This routine is instead triggered by write_legacy_output.f90 every
 ! pulse_gyre_interval converged models (common/pulsegyre/,
-! new NAMELIST /control/ member, default 0 = off; see core/parmin.f90).
+! new NAMELIST /control/ member, default 0 = off; see core/read_input.f90).
 !
 ! The physics quantities are the same ones YREC already computes for
-! every shell in misc/coefft.f90 (common/scrtch/, common/pulse1/,
+! every shell in misc/henyey_coefficients.f90 (common/scrtch/, common/pulse1/,
 ! common/sound/) -- see the "MHP 8/25 unconditional" note there for
 ! why those arrays are now always populated instead of only when the
 ! older LPULSE mechanism is active. Column formulas and the two format
@@ -57,7 +57,7 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
          temperature_k = exp(ln10*log_temperature(i))
          density_cgs = exp(ln10*log_density(i))
 ! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho=1/star%pulse_dlnrho_dlnp
-! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see misc/coefft.f90 around line 639).
+! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see misc/henyey_coefficients.f90 around line 639).
          delta = -star%pulse_dlnrho_dlnt(i)
          if (radius_cm.gt.0.0d0) then
             grav = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)

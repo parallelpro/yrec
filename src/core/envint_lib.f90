@@ -85,9 +85,9 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       integer, parameter :: maxstp = 2000
       logical :: tabulated_bc
       double precision, parameter :: tiny = 1.0d-30
-      external qatm, qenv
-      double precision :: hra
-      external hra
+      external atmosphere_derivs, envelope_derivs
+      double precision :: harvard_t_tau
+      external harvard_t_tau
 
       double precision :: ion_fraction(3)
       double precision :: taucal_delta_mass(json), taucal_shell_mass(json), &
@@ -305,7 +305,7 @@ subroutine integrate_atmosphere
       else if (star%job%atm_choice .eq. 1) then
             log10_temperature = log10_teff - 0.031235d0 + 0.25d0*dlog10(0.550d0)
       else if (star%job%atm_choice .eq. 2) then
-            log10_temperature = log10_teff + hra(cc23) - star%atm_hras
+            log10_temperature = log10_teff + harvard_t_tau(cc23) - star%atm_hras
       end if
 !                 For kttau = 0,1,or 2, very occasionally the integration
 !                 fails because the starting point (X0) is past the end
@@ -435,14 +435,14 @@ subroutine integrate_atmosphere
 ! H IS THE ATTEMPTED STEP,HDID IS THE ONE PERFORMED, AND HNEXT IS THE
 ! PREDICTED NEXT STEP.
        call bsstep(y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
-            h_next,qatm, luminosity_linear,pressure_rotation_factor, &
+            h_next,atmosphere_derivs, luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count, &
             saha_state,step_err)
 ! FIND DP/DTAU AT THE START OF THE NEXT STEP.
        err_sum(1) = err_sum(1) + step_err(1)
-       call qatm(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
+       call atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state)
@@ -619,7 +619,7 @@ subroutine integrate_envelope
          pressure_limit_test_flag = .true.
       end if
 !  FIND DY/DX AT THE START OF THE STEP.
-      call qenv(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
+      call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
            log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state)
@@ -749,7 +749,7 @@ subroutine integrate_envelope
 !  INTEGRATE THE EQUATIONS FROM X0 TO X0 + H
 !  H IS THE ATTEMPTED STEP,HDID IS THE ONE PERFORMED, AND HNEXT IS THE
 !  PREDICTED NEXT STEP.
-       call bsstep(y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did,h_next,qenv, &
+       call bsstep(y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did,h_next,envelope_derivs, &
               luminosity_linear,pressure_rotation_factor,temperature_rotation_factor, &
               log10_gravity,in_atmosphere,want_derivatives,conductive_opacity_flag, &
               print_flag,log10_radius,log10_teff,hydrogen_fraction,metal_fraction, &
@@ -758,7 +758,7 @@ subroutine integrate_envelope
           err_sum(i) = err_sum(i) + step_err(i)
        end do
 !  FIND DY/DX AT THE START OF THE NEXT STEP.
-       call qenv(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
+       call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
               log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state)
@@ -1027,7 +1027,7 @@ subroutine track_envelope_cz
             end do
 
 !             CALL TAUCAL(ENVX,ENVS2,ENVS1,LCENV,ENVR,ENVP,ENVD,ENVG,NUMENV,  ! KC 2025-05-31
-            call taucal(taucal_delta_mass,taucal_shell_mass,env_struct%env_convective_flag,env_struct%env_log10_radius, &
+            call turnover_from_envelope(taucal_delta_mass,taucal_shell_mass,env_struct%env_convective_flag,env_struct%env_log10_radius, &
                   env_struct%env_log10_pressure,env_struct%env_log10_density,taucal_local_gravity,env_struct%num_env_points, &
                   env_struct%env_convective_velocity, taucal_radiative_gradient,taucal_adiabatic_gradient)
       endif

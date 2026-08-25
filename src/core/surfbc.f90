@@ -25,7 +25,7 @@
 ! in atm_get's header (and eos/eqstat.f90's metal_fraction fix) --
 ! silently tolerated while atm_get (as envint) was a bare external
 ! subroutine with no interface to check against, surfaced once
-! atm_lib.f90 gave it one. core/crrect.f90 (this routine's only
+! atm_lib.f90 gave it one. core/henyey_iterate.f90 (this routine's only
 ! caller) already passes real local variables for these positions, so
 ! widening the intent here changes nothing about how it's called.
 subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &

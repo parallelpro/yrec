@@ -1202,13 +1202,13 @@ end subroutine ctridi
 ! storage); converted (2026, GUIDELINES.md) to explicit arguments
 ! since this is real per-call data flow, not global configuration.
 ! dj_n_seed replaces what was previously smuggled in via
-! gamma_elim(n): the caller (dcoeft.f90, via seculr.f90) computes a
+! gamma_elim(n): the caller (am_diffusion_coeffs.f90, via secular_transport.f90) computes a
 ! surface wind-angular-momentum-loss term and used to stash it in the
 ! shared common block's gamma_elim(num_eq_points) slot specifically so
 ! this routine's very first statement (before gamma_elim is
 ! overwritten as pure solver scratch below) could pick it up as dj(n)'s
 ! initial value. That's now an explicit input instead of a COMMON
-! side-channel; see dcoeft.f90's matching surface_wind_loss_term
+! side-channel; see am_diffusion_coeffs.f90's matching surface_wind_loss_term
 ! output argument.
 ! KC 2025-05-31 removed the unused ej dummy argument (see the
 ! commented-out original signature below).
@@ -1714,7 +1714,7 @@ subroutine qgauss(integrand, g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
 ! 2026 (phase four, step 2 -- ROADMAP.md): the integrand used to be a
 ! hard-coded call to rotation's shape-integrand `func`, the one
 ! backwards dependency that kept numerics from being a pure leaf. It
-! is now a procedure dummy; rotation/shape/fpft.f90 passes `func` at
+! is now a procedure dummy; rotation/shape/rotation_shape_factors.f90 passes `func` at
 ! the call site. Same argument protocol as before (assumed-size for
 ! the two model-shaped arrays, matching the historical implicit
 ! interface).

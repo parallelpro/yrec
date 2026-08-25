@@ -49,7 +49,7 @@ module yrec_output
 
 ! The extended model: interior (center -> fitting point) + envelope
 ! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
-! assembled inward-to-outward, exactly the regions io/stitch.f90
+! assembled inward-to-outward, exactly the regions io/write_stitched_profile.f90
 ! splices for the legacy .store format. Profiles and pulse files both
 ! cover the full star: truncating at the fitting point would drop the
 ! superadiabatic layer and photosphere, which dominate p-mode
@@ -110,7 +110,7 @@ subroutine output_run_header(star_mass_msun)
       double precision, intent(in) :: star_mass_msun
 
       if (star%ctrl%use_legacy_output) then
-         call wrthead(star_mass_msun)
+         call write_output_headers(star_mass_msun)
       end if
 end subroutine output_run_header
 
@@ -133,7 +133,7 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
       integer :: iprof
 
       if (star%ctrl%use_legacy_output) then
-         call wrtout(timestep_yr, log_gravity, has_h_shell, &
+         call write_legacy_output(timestep_yr, log_gravity, has_h_shell, &
               h_shell_begin_index, h_shell_end_index, h_shell_mid_index, &
               trial_sign_flag, punch_pending_flag, total_angular_momentum, &
               total_rotational_kinetic_energy)
@@ -576,7 +576,7 @@ end function profile_value
 ! solver last integrated belongs to some trial (Teff, L) -- or was
 ! never integrated at all, when the envelope triangle interpolated --
 ! so a fresh atm_get at the converged values is required (this is
-! what io/stitch.f90 does for the legacy .store profiles, with the
+! what io/write_stitched_profile.f90 does for the legacy .store profiles, with the
 ! same fixed output step sizes).
 subroutine build_extended
       use star_info_lib, only: star, i_h1, i_metals
@@ -744,7 +744,7 @@ end subroutine compute_seismic_columns
 ! Profile column value at extended point j. Envelope/atmosphere points
 ! carry what those integrations store; quantities they do not track
 ! (per-species abundances beyond X/Z, burning terms, rotation
-! internals) are zero, as io/stitch.f90 also writes them.
+! internals) are zero, as io/write_stitched_profile.f90 also writes them.
 double precision function ext_profile_value(icol, j)
       use star_info_lib, only: star, i_h1, i_metals
       use envstruct_lib
@@ -875,7 +875,7 @@ end subroutine write_profile
 ! store; opacity/energy derivative columns they do not track are
 ! zero there (they matter only for nonadiabatic work), and the
 ! composition above the fitting point is the surface composition, as
-! io/stitch.f90 also writes.
+! io/write_stitched_profile.f90 also writes.
 subroutine build_pulse_points(pts)
       use star_info_lib, only: star, i_eps_grav, i_grad_actual, i_grad_ad, i_h1, i_metals
       use envstruct_lib

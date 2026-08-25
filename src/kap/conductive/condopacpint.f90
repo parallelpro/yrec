@@ -15,7 +15,7 @@
 ! Combines the fully-ionized-species Potekhin conductive opacity
 ! (condopacp.f90, called for pure H, He, and a Z=8 metal proxy) into a
 ! single mixture value, weighted by each species' actual ionization
-! fraction (ion_fraction, from the eos/yale/eqsaha.f90/eqrelv.f90 solve
+! fraction (ion_fraction, from the eos/yale/saha_eos.f90/fully_ionized_eos.f90 solve
 ! upstream). Called from kap_lib.f90's kap_get whenever conductive
 ! opacity is enabled.
 subroutine condopacpint(log10_density, log10_temperature, &

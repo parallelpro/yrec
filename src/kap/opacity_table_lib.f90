@@ -16,10 +16,10 @@
 ! DATA-statement defaults (kipmll/kipm/kipm2's cached-index scalars,
 ! and the Alexander 94/06 table-grid arrays) are preserved here as
 ! declaration-time initializers, transcribed verbatim from the
-! original DATA statements in kap/alex94/alxtbl.f90,
+! original DATA statements in kap/alex94/read_alex94_tables.f90,
 ! kap/alex06/readalex06.f90, kap/kurucz90/kurucz.f90,
-! kap/kurucz90/kurucz2.f90. kap/opal92/yllo3d2.f90's mirror of
-! kap/opal92/yllo3d.f90's common/kipmll/ (its own common/kipmll2/) never had a
+! kap/kurucz90/kurucz2.f90. kap/opal92/opal92_interp3d_z2.f90's mirror of
+! kap/opal92/opal92_interp3d.f90's common/kipmll/ (its own common/kipmll2/) never had a
 ! DATA statement in the original, so its members are left without an
 ! initializer here too, preserving that asymmetry.
 module opacity_table_lib
@@ -69,8 +69,8 @@ module opacity_table_lib
            double precision :: opal92_surface_spline_coeffs_z2(n_opal92_t,n_opal92_4d)
            integer :: opal92_surface_x_index_z2
 ! former common/kipmll/ (cached grid indices, DATA-initialized in
-! kap/opal92/yllo3d.f90) and common/kipmll2/ (its second-Z mirror in
-! kap/opal92/yllo3d2.f90, never DATA-initialized in the original -- no
+! kap/opal92/opal92_interp3d.f90) and common/kipmll2/ (its second-Z mirror in
+! kap/opal92/opal92_interp3d_z2.f90, never DATA-initialized in the original -- no
 ! initializer here either, preserving that asymmetry).
            integer :: abund_index = 1, temp_index = 1, dens_index = 1
            integer :: abund_index_z2, temp_index_z2, dens_index_z2
@@ -176,9 +176,9 @@ module opacity_table_lib
            integer :: opal95_table_start_index(n_opal95_z) = &
                 [0,10,20,30,40,50,60,70,80,90,100,109,118]
 ! former common/llot95/: the single-Z OPAL95 opacity table, sliced at
-! the model's actual Z. atm/turnover/calcad.f90 declared a mismatched single-
+! the model's actual Z. atm/turnover/acoustic_depths.f90 declared a mismatched single-
 ! scalar layout for this block (never read/set there) -- the majority
-! (7-file) array+scalar layout below is used; calcad.f90's reference
+! (7-file) array+scalar layout below is used; acoustic_depths.f90's reference
 ! now maps onto (an unused corner of) this same type.
            double precision :: opal95_fixed_z_opacity(n_opal95_x,n_opal95_t,n_opal95_d)
            double precision :: opal95_fixed_z
@@ -213,9 +213,9 @@ module opacity_table_lib
 ! orho/tollaol/iolaol/numofxyz/numrho/numt/llaol/iopurez) is spelled
 ! identically to its canonical name everywhere -- use-associated
 ! directly. tollaol/llaol's DATA defaults moved here from
-! core/parmin.f90 since DATA can no longer target use-associated
+! core/read_input.f90 since DATA can no longer target use-associated
 ! entities. use_pure_z_table (originally lpurez) is a NAMELIST value
-! with a different canonical spelling, kept local in core/parmin.f90
+! with a different canonical spelling, kept local in core/read_input.f90
 ! and copy-assigned.
       double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104)
       double precision :: tollaol = 10.0d0

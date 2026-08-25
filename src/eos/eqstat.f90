@@ -261,7 +261,7 @@ end subroutine eqstat
 ! two have always been a matched pair; both remain plain external
 ! subroutines (not module procedures), so this is a purely
 ! organizational move -- callers (eos_lib.f90's eos_get for eqstat;
-! atm/turnover/calcad.f90, which calls eqstat2 directly) are unaffected.
+! atm/turnover/acoustic_depths.f90, which calls eqstat2 directly) are unaffected.
 !
 ! Co-locating the two surfaced a genuine (harmless) interface bug:
 ! gfortran checks call-site argument intents against a callee's actual
@@ -284,9 +284,9 @@ end subroutine eqstat
 !
 ! Core equation-of-state dispatcher. Given log10(T), log10(P), X, Z:
 ! decides whether the gas needs a Saha ionization solve (via
-! yale/eqsaha.f90, optionally backed by the SCV table lookup in
+! yale/saha_eos.f90, optionally backed by the SCV table lookup in
 ! scv/eqscve.f90) or can be treated as fully ionized (via
-! yale/eqrelv.f90), interpolates between the two regimes near the
+! yale/fully_ionized_eos.f90), interpolates between the two regimes near the
 ! ionization-cutoff temperature, and finally checks whether an OPAL
 ! table (1995/2001/2006) covers the point and, if so, blends its
 ! result in (via opal/oeqos*.f90 and the matching opal/eqbound*.f90
@@ -489,7 +489,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          ion_fraction(1) = 1.0d0
          ion_fraction(2) = 0.0d0
          ion_fraction(3) = 1.0d0
-         call eqrelv(log10_temperature, temperature, log10_pressure, &
+         call fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, beta, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
               electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
@@ -500,7 +500,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !     CHECK IF SAUMON, CHABRIER, AND VAN HORN EQUATION OF STATE NEEDED.
 !     THIS EOS REPLACES THE CALL TO EQSAHA, EXCEPT FOR DERIVATIVE PURPOSES.
       if (use_scv_eos) then
-         call eqsaha(saha_mass_fractions, log10_temperature, temperature, &
+         call saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               log10_pressure, pressure, log10_density, density, beta, &
               beta_inverse, beta14, ion_fraction, specific_gas_constant, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -590,7 +590,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       else
 !        CALL TO PRATHER EOS - Either because SCV was not requested or
 !        it has failed.
-         call eqsaha(saha_mass_fractions, log10_temperature, temperature, &
+         call saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               log10_pressure, pressure, log10_density, density, beta, &
               beta_inverse, beta14, ion_fraction, specific_gas_constant, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -623,7 +623,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       ion_fraction(1) = 1.0d0
       ion_fraction(2) = 0.0d0
       ion_fraction(3) = 1.0d0
-      call eqrelv(log10_temperature, temperature, log10_pressure, &
+      call fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
            pressure, log10_density, density, beta, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, &
            electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &

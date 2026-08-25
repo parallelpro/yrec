@@ -94,7 +94,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
             end if
             got_atmosphere_opacity = .true.
          else if (star%ctrl%use_alex95_tables) then
-            call yalo3d(log10_density, log10_temperature, &
+            call alex94_interp3d(log10_density, log10_temperature, &
                  hydrogen_fraction, metal_fraction, atm_opacity, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt)
             got_atmosphere_opacity = .true.
@@ -186,7 +186,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
                stop
             end if
          else if (star%ctrl%use_opal92_tables) then
-            call yllo3d(log10_density, log10_temperature, &
+            call opal92_interp3d(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt)
             table_metal_fraction = star%ctrl%opal_table_z1
@@ -247,10 +247,10 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
             stop
          end if
       else if (star%ctrl%use_opal92_tables) then
-         call yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
+         call opal92_interp3d(log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
          if (star%use_two_z_tables) then
-            call yllo3d2(log10_density, log10_temperature, &
+            call opal92_interp3d_z2(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2)
             slope = (log10_opacity - log10_opacity_2) / &
@@ -462,8 +462,8 @@ end subroutine kap_init
 ! Added 2026 (phase three, ROADMAP.md stage 1): public lifecycle entry
 ! for refreshing the cached surface-composition opacity-table slices
 ! (OPAL95/OPAL92/ALEX95 fixed-X tables) when the envelope hydrogen
-! fraction changes. Wraps surfopac.f90; core/starin.f90 and
-! setup/hpoint.f90 previously called surfopac directly -- a
+! fraction changes. Wraps surfopac.f90; core/read_starting_model.f90 and
+! setup/rezone.f90 previously called surfopac directly -- a
 ! legitimate lifecycle operation that simply had no facade name.
 subroutine kap_update_surface_tables(hydrogen_fraction)
 

@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! 2026: the former core/update_output_diagnostics.f90 (phase four,
 ! step 5 -- the state-computing blocks that historically lived inside
-! io/wrtout.f90, moved so the writer only reads), restructured as a
+! io/write_legacy_output.f90, moved so the writer only reads), restructured as a
 ! module with one subroutine per theme. The public entry point is
 ! compute_observables, called from evolve_step immediately before the
 ! output writer, once per output model -- exactly the cadence the
@@ -281,7 +281,7 @@ end subroutine locate_surface_cz_base
 ! freshens the reported value).
 subroutine refresh_turnover_timescale
       use star_info_lib, only: star
-      call gettau(star%xa, star%logR, star%logP, star%logRho, &
+      call compute_turnover_timescale(star%xa, star%logR, star%logP, star%logRho, &
            star%m, star%logT, star%fp_rot, star%ft_rot, &
            star%log_Teff, star%log_total_mass, star%log_L, star%nz, &
            star%convective_flag, star%envelope_radius)

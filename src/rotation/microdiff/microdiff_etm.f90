@@ -14,7 +14,7 @@
 ! floor/ceiling failsafes, renormalizes helium via X+Y+Z=1, and
 ! converts DT/STOT/HRU/HTU/HS1/HQPR back out of Bahcall & Loeb units.
 ! Last stage of the microdiff.f90 pipeline (see also
-! microdiff_setup.f90, microdiff_mte.f90, microdiff_cod.f90,
+! microdiff_setup.f90, microdiff_mte.f90, microdiff_coefficients.f90,
 ! microdiff_run.f90).
 !  TRANSFORM BACK TO ORIGINAL GRID OF MODEL POINTS FROM EQUALLY
 !  SPACED GRID.

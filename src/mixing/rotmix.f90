@@ -112,7 +112,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             if (log_temperature(zone_idx).le.star%ctrl%tcut(1)) exit
             burn_zone_start = zone_idx
             burn_zone_end = zone_idx
-            call kemcom(log_temperature,burn_zone_start,burn_zone_end, &
+            call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &
                  rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
                  rate_n14_p,rate_o16_p, &
 !      *                   HR8,HR9,HR10,HR11,HR12,HR13,HF1,HS2,HCOMP,
@@ -132,7 +132,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       do region_idx = 1,num_convective_zones
          burn_zone_start = convective_zone_bounds(region_idx,1)
          burn_zone_end = convective_zone_bounds(region_idx,2)
-         call kemcom(log_temperature,burn_zone_start,burn_zone_end, &
+         call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &
               rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
               rate_n14_p,rate_o16_p, &
 !      *                HR8,HR9,HR10,HR11,HR12,HR13,HF1,HS2,HCOMP,
@@ -240,7 +240,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
                     am_transport_convective_flag,num_zones,total_mass)
             else
-               call grsett(settling_dt,composition,dlnp_dr_settling, &
+               call gravitational_settling(settling_dt,composition,dlnp_dr_settling, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
                     am_transport_convective_flag,num_zones,total_mass)
             end if

@@ -11,12 +11,12 @@
 ! PARAMETERS ARE DEFINED AT BOTH THE GRID POINTS AND MIDPOINTS.
 !
 ! Part of the microdiff.f90 pipeline (see also microdiff_setup.f90,
-! microdiff_mte.f90, microdiff_cod.f90, microdiff_etm.f90): performs
+! microdiff_mte.f90, microdiff_coefficients.f90, microdiff_etm.f90): performs
 ! the actual two-step Lax-Wendroff + implicit-second-derivative
 ! diffusion solve for one species (hydrogen, metals, or a light
-! element in turn), calling microdiff_cod.f90 for the diffusion
+! element in turn), calling microdiff_coefficients.f90 for the diffusion
 ! coefficients, lax_wendrof1.f/lax_wendrof2.f (not part of this batch)
-! for the explicit first-derivative term, and get_imp_diffco.f90 +
+! for the explicit first-derivative term, and implicit_diffusion_coeffs.f90 +
 ! tridiag_gs.f (not part of this batch) for the implicit second-
 ! derivative term.
 subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
@@ -100,7 +100,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 ! METHOD OF THE THOUL ROUTINE. MUCH OF THE FOLLOWING CODE WAS TAKEN FROM
 ! SETUP_LISETT.F.
 !
-      call microdiff_cod(num_eq_points, species_fraction, eq_radius, &
+      call microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
            eq_density, eq_temperature, eq_dlnp_dr, eq_del_grad, &
            diffusion_coeff1, diffusion_coeff2, hydrogen_dlnc_dr, &
            atomic_weight_diffused, atomic_charge_diffused, species_col)
@@ -111,7 +111,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 ! WHERE N IS THE TIME VARIABLE, J IS THE SPATIAL ONE, AND COD1 IS THE
 ! DIFFUSION COEFFICIENT.
 !
-      call lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
+      call lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
            total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
 !
 ! UPDATE ESPEC WITH THE NEW RUN OF ED_H, FOR THE PURPOSE OF
@@ -127,7 +127,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 ! MIDPOINTS HAVE ONE LESS GRID ELEMENT.
 !
       num_mid_points = num_eq_points-1
-      call microdiff_cod(num_mid_points, species_fraction_mid, eq_radius_mid, &
+      call microdiff_coefficients(num_mid_points, species_fraction_mid, eq_radius_mid, &
            eq_density_mid, eq_temperature_mid, eq_dlnp_dr_mid, &
            eq_del_grad_mid, diffusion_coeff1_mid, diffusion_coeff2_mid, &
            hydrogen_dlnc_dr_mid, atomic_weight_diffused, &
@@ -139,7 +139,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 ! COMPUTING A NEW RUN OF ABUNDANCE AND TRANSFORMING IT BACK.  THIS IS DONE
 ! TO MINIMIZE ERRORS FROM THE INTERPOLATION.
 !
-      call lax_wendrof2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
+      call lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
            diffused_abundance, num_eq_points, total_mass, &
            use_generic_diffusion_vectors)
 !
@@ -180,7 +180,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 !  GET NEW DIFFUSION COEFFICIENTS, TAKING INTO ACCOUNT THE CHANGE IN D
 !  FROM THE PREVIOUS ITERATION.
 !
-         call get_imp_diffco(alpha, diffusion_coeff2_mid, &
+         call implicit_diffusion_coeffs(alpha, diffusion_coeff2_mid, &
               diffused_abundance_mid, diffusion_coeff2_deriv_mid, sub_diag, &
               diag, super_diag, num_eq_points)
 !

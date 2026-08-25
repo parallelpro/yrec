@@ -136,7 +136,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
       end if
 
-      call convec(star%xa, star%logRho, star%logP, star%logR, &
+      call find_convection_zones(star%xa, star%logRho, star%logP, star%logR, &
            star%log_mass, star%logT, deep_mix_flag, star%nz, &
            radiative_zone_bounds, star%mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
@@ -227,7 +227,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
-            call kemcom(star%logT, zone_begin, zone_end, rate_pp, &
+            call solve_composition(star%logT, zone_begin, zone_end, rate_pp, &
                  rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
                  rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
                  rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
@@ -244,7 +244,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       do mixed_zone_idx = 1, num_mixed_zones
          zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
          zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-         call kemcom(star%logT, zone_begin, zone_end, rate_pp, &
+         call solve_composition(star%logT, zone_begin, zone_end, rate_pp, &
               rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
               rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
               rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
@@ -356,7 +356,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !
       if (star%job%lsemic) then
          if (iteration_level.gt.1) &
-              call sconvec(timestep, star%xa, star%logRho, &
+              call semiconvection(timestep, star%xa, star%logRho, &
               star%luminosity_lsun, star%logP, star%logR, star%log_mass, &
               star%logT, star%nz, star%mixed_zone_bounds, &
               num_mixed_zones, star%log_Teff, ierr)
@@ -471,7 +471,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                     star%logT, deep_mix_flag, star%nz, &
                     total_mass_unlogged)
             else
-               call grsett(settling_dt, star%xa, dlnp_dr, star%logR, &
+               call gravitational_settling(settling_dt, star%xa, dlnp_dr, star%logR, &
                     star%logRho, star%m, star%logT, &
                     deep_mix_flag, star%nz, total_mass_unlogged)
             end if
@@ -495,7 +495,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       end do
 ! MHP 1/95 ADDED CALL TO RESET JENV,JCORE FOR DEEP MIXING.
       if (star%ctrl%dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
-         call convec(star%xa, star%logRho, star%logP, star%logR, &
+         call find_convection_zones(star%xa, star%logRho, star%logP, star%logR, &
               star%log_mass, star%logT, star%convective_flag, star%nz, &
               radiative_zone_bounds, star%mixed_zone_bounds, &
               mixed_zone_bounds_no_overshoot, core_cz_edge, &

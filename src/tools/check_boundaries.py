@@ -54,8 +54,10 @@ PUBLIC = {
     # (it is MLT convection physics): it is legitimately called from
     # core (physic/coefft/starin) and atm (qenv) pending the
     # star-layer consolidation.
-    "mixing": {"mix", "mixcz", "convec", "bursmix", "rotmix", "hsubp",
-               "oversh", "sconvec", "tpgrad"},
+    "mixing": {"mix", "homogenize_convection_zones", "find_convection_zones",
+               "burn_settle_mix", "rotmix", "compute_scale_height",
+               "overshoot_boundaries", "semiconvection",
+               "temperature_gradients"},
     # rotation deliberately has no facade (multi-primitive surface,
     # user decision during the phase-two sweep). "func" was here
     # because numerics' qgauss hard-coded a call to it; phase four's
@@ -63,10 +65,14 @@ PUBLIC = {
     # fpft passes it across the module boundary into numerics. solid
     # joined when step 1 moved it here from misc/ (rotation geometry,
     # legitimately called from setup/midmod and wind/wcz).
-    "rotation": {"getw", "getrot", "fpft", "momi", "ovrot", "viscos",
-                 "wczimp", "grsett", "microdiff", "ndifcom", "mixcom",
-                 "mixgrid", "func", "solid"},
-    "wind": {"massloss", "mwind", "mcowind"},
+    "rotation": {"evolve_angular_momentum", "omega_from_j",
+                 "rotation_shape_factors", "zone_moments_of_inertia",
+                 "am_convective_regions", "viscos",
+                 "enforce_rotation_profile", "gravitational_settling",
+                 "microdiff", "diffuse_composition_driver",
+                 "diffuse_composition", "composition_grid",
+                 "equipotential_integrand", "solid_body_omega"},
+    "wind": {"massloss", "matt_wind", "wind_spindown_matt"},
     # numerics is the shared numerics library: all-public by design.
     "numerics": None,
 }

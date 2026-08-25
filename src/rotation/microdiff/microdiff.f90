@@ -52,7 +52,7 @@
 ! Dispatcher for the microdiff.f90 element-settling pipeline: calls
 ! microdiff_setup.f90 (locate diffusion region, unit conversion),
 ! microdiff_mte.f90 (build the equally spaced grid), then
-! microdiff_run.f90 (via microdiff_cod.f90) once each for hydrogen,
+! microdiff_run.f90 (via microdiff_coefficients.f90) once each for hydrogen,
 ! heavy metals, and each light element in turn, and finally
 ! microdiff_etm.f90 (transform back to the model grid).
 subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &

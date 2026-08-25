@@ -103,7 +103,7 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
       integer :: gl_index(4)
 ! sized 20 (only the first 4 elements are ever used) to match polint's
 ! dummy arguments xa(20)/ya(20) -- see numerics/polint.f90's header
-! comment and rotation/shape/fpft.f90's identical convention.
+! comment and rotation/shape/rotation_shape_factors.f90's identical convention.
       double precision :: pressure_row(20), pressure_tau100_row(20), &
            temp_tau100_row(20), pressure_col(20), pressure_tau100_col(20), &
            temp_tau100_col(20)

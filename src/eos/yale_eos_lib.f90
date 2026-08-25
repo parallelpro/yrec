@@ -5,7 +5,7 @@
 ! Prather EOS's tabulated state: the degenerate-electron (Fermi-Dirac)
 ! table, former common/ccr/, read once at startup (now by eos_lib's
 ! eos_init; historically by an inline block in setup/setups.f90) and
-! consumed only by eos/yale/eqrelv.f90's fully-ionized-gas solve.
+! consumed only by eos/yale/fully_ionized_eos.f90's fully-ionized-gas solve.
 !
 ! These members lived in atm_table_lib through phases one and two
 ! purely as an accident of the original COMMON grouping -- eos-domain
@@ -42,12 +42,12 @@ module yale_eos_lib
 ! an existing convention. use_debye_huckel_correction/
 ! debye_huckel_eta_min/debye_huckel_eta_max (originally ldh/etadh0/
 ! etadh1) are NAMELIST /physics/ values, kept local in
-! core/parmin.f90 and copy-assigned. debye_huckel_coefficient/
+! core/read_input.f90 and copy-assigned. debye_huckel_coefficient/
 ! debye_huckel_nu (originally cdh/dhnue) are not namelist values --
 ! setup/setups.f90 computes them once at startup -- so they have no
 ! declaration-time default. debye_huckel_x/debye_huckel_y/
 ! debye_huckel_z_total/debye_huckel_z (originally xxdh(or xxdy)/yydh/
-! zzdh/zdh) are likewise not namelist values -- mixing/hsubp.f90
+! zzdh/zdh) are likewise not namelist values -- mixing/compute_scale_height.f90
 ! recomputes them per shell from the local composition -- so they too
 ! have no declaration-time default.
       double precision :: debye_huckel_coefficient

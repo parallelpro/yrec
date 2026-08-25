@@ -73,8 +73,8 @@ $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 # non-module objects after the full set of module objects, not module
 # objects relative to each other, and MODULE_SRCS list position alone
 # does not guarantee build order under parallel (-j) builds.
-# parmin embeds the generated new-style inlist reader
-io/parmin.o: io/inlist_new_decl.inc io/inlist_new_read.inc
+# read_input (former parmin) embeds the generated new-style inlist reader
+io/read_input.o: io/inlist_new_decl.inc io/inlist_new_read.inc
 core/yrec_capi.o: | state/star_info_lib.o
 core/stop_conditions.o: | state/star_info_lib.o state/phys_const_lib.o \
 	io/luout_lib.o io/controls_lib.o

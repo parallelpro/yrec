@@ -876,7 +876,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! -- now use-associated from const_lib. neutrino_dlnq_dlnt/
 ! neutrino_dlnq_dlnd (the log-derivatives of the resulting loss rate
 ! w.r.t. T/rho) are set and consumed entirely within this file --
-! core/parmin.f90, which declared the same common block, never
+! core/read_input.f90, which declared the same common block, never
 ! actually touches them -- so they're genuinely local, not shared
 ! state, and become plain locals here rather than moving to a module.
       double precision :: neutrino_dlnq_dlnt, neutrino_dlnq_dlnd
@@ -2065,7 +2065,7 @@ end subroutine engeb
 ! metal_fraction fix, this can't just be narrowed away. Externally the
 ! net effect on the caller's array is still zero (every path that
 ! writes also restores before return), which is exactly why
-! rotation/getw.f90 -- one of this routine's two callers -- had
+! rotation/evolve_angular_momentum.f90 -- one of this routine's two callers -- had
 ! declared its own shell_mass intent(in) and needed widening to
 ! intent(inout) to match, once this routine gained an explicit
 ! interface (moved into net_lib.f90).
