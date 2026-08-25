@@ -29,7 +29,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
 
-      integer, parameter :: iconst = 15, ivar = 40, ivers = 300
+      integer, parameter :: iconst = 15, ivar = 40, ivers = 1300
       double precision :: glob(iconst), var(ivar)
       integer :: u, j, k, i
       double precision :: radius_cm, mass_g, grav
@@ -48,13 +48,17 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       glob(14) = 10.0d0**star%log_Teff
       glob(15) = exp(ln10*cgl)
 
-      write(u,'(a)') 'YREC FGONG output (ported layout: MESA pulse_fgong)'
-      write(u,'(a,i8)') 'model_number ', star%model_number
-      write(u,'(a,1pe16.9,a,0pf10.6)') 'star_age_yr ', star%dage*1.0d9, &
+! MESA-style 4-line comment header (FGONG spec: lines 1-4 free text),
+! followed by the standard `nn iconst ivar ivers` record. ivers 1300
+! selects the wide E26.18E3 layout, exactly as MESA writes it.
+      write(u,'(a)') 'FGONG file'
+      write(u,'(a)') 'Created by YREC'
+      write(u,'(a,i8,a,1pe16.9,a,0pf10.6)') 'model_number ', &
+           star%model_number, '  star_age_yr ', star%dage*1.0d9, &
            '  log_Teff ', star%log_Teff
       write(u,'(a)') ''
       write(u,'(4I10)') n, iconst, ivar, ivers
-      write(u,'(1P5E16.9,x)') (glob(i), i = 1, iconst)
+      write(u,'(1P,5(X,E26.18E3))') (glob(i), i = 1, iconst)
 
       do j = 1, n
          k = n - j + 1
@@ -104,7 +108,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
          var(35) = pts(33,k)
 ! var(36) X_Ne20 and var(37)-var(40): not tracked -> 0
 
-         write(u,'(1P5E16.9,x)') (var(i), i = 1, ivar)
+         write(u,'(1P,5(X,E26.18E3))') (var(i), i = 1, ivar)
       end do
 
       close(u)

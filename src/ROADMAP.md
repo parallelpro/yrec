@@ -253,12 +253,3 @@ the suffix as documentation); calibration protocols (solar triples /
 star pairs) stated once at run_yrec's verdict call site with named
 cycle constants, end_of_card_calibration extracted, chkcal's stale
 pair-protocol header fixed.
-
-## Science wiring (sg-rotation side)
-
-Wire pyyrec into the fit_*_mcmc.py workflow: a YREC rotational-
-evolution track producer (multiprocessing, one engine per worker
-process), feeding the same fitting machinery that currently
-consumes MESA tracks. Depends on nothing above, benefits from the
-numerics-gate opt-in (worker survival) and stage 4 (in-memory
-reads).

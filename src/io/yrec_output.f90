@@ -39,7 +39,7 @@ module yrec_output
 
       integer, parameter :: max_cols = 128
       integer, parameter :: n_hist_cols = 84
-      integer, parameter :: n_prof_cols = 53
+      integer, parameter :: n_prof_cols = 57
 
       character(len=256) :: out_dir = ' '
       character(len=256) :: hist_path = ' '
@@ -58,6 +58,10 @@ module yrec_output
       integer :: n_ext = 0
       integer :: ext_region(max_ext)   ! 1 interior, 2 envelope, 3 atmosphere
       integer :: ext_index(max_ext)    ! index within that region
+! Seismic profile columns (54-57), precomputed over the extended grid
+! by compute_seismic_columns (called from build_extended): brunt_N2,
+! lamb_S2 (l=1), gradL, gradr_div_grada.
+      double precision :: ext_seismic(4,max_ext)
 
 contains
 
@@ -483,6 +487,10 @@ subroutine profile_column_names(names)
       names(51) = 'delta'
       names(52) = 'mu'
       names(53) = 'mu_e_inv'
+      names(54) = 'brunt_N2'
+      names(55) = 'lamb_S2'
+      names(56) = 'gradL'
+      names(57) = 'gradr_div_grada'
 end subroutine profile_column_names
 
 ! Per-zone value for profile column icol at YREC zone index k
@@ -660,7 +668,78 @@ subroutine build_extended
          ext_region(n_ext) = 3
          ext_index(n_ext) = i
       end do
+      call compute_seismic_columns
 end subroutine build_extended
+
+! ---------------------------------------------------------------
+! Fill ext_seismic(1:4,:) over the assembled extended grid:
+!   1 brunt_N2 = g*[(1/Gamma1) dlnP/dr - dlnRho/dr]  (centered
+!     differences in r -- the same derivative content as FGONG's A4)
+!   2 lamb_S2  = l(l+1) c^2 / r^2 with l=1: 2*Gamma1*P/(rho r^2)
+!   3 gradL    = grada + (1/delta)*dln(mu)/dlnP  (Ledoux gradient
+!     with the ideal-fully-ionized phi=1 approximation; the mu
+!     gradient is a centered difference in lnP)
+!   4 gradr_div_grada
+! Endpoints copy their neighbor's derivative-based values.
+subroutine compute_seismic_columns
+      use star_info_lib, only: star
+      integer :: j
+      double precision :: r(max_ext), lnp(max_ext), lnrho(max_ext), &
+           lnmu(max_ext), g1(max_ext), grada_(max_ext), delta_(max_ext), &
+           gradr_(max_ext), mass_g(max_ext)
+      double precision :: dr, dlnp_dr, dlnrho_dr, grav, dlnmu_dlnp, p, rho
+
+      do j = 1, n_ext
+         r(j)      = exp(ln10*ext_profile_value(3, j))
+         lnp(j)    = ln10*ext_profile_value(6, j)
+         lnrho(j)  = ln10*ext_profile_value(5, j)
+         g1(j)     = ext_profile_value(10, j)
+         grada_(j) = ext_profile_value(14, j)
+         gradr_(j) = ext_profile_value(12, j)
+         delta_(j) = ext_profile_value(51, j)
+         mass_g(j) = ext_profile_value(2, j)*star%solar_mass_cgs
+         lnmu(j)   = log(max(ext_profile_value(52, j), 1.0d-30))
+      end do
+      do j = 1, n_ext
+         p   = exp(lnp(j))
+         rho = exp(lnrho(j))
+! lamb_S2 (pointwise)
+         if (r(j) > 0.0d0 .and. rho > 0.0d0 .and. g1(j) > 0.0d0) then
+            ext_seismic(2,j) = 2.0d0*g1(j)*p/(rho*r(j)*r(j))
+         else
+            ext_seismic(2,j) = 0.0d0
+         end if
+! gradr_div_grada (pointwise)
+         if (grada_(j) /= 0.0d0) then
+            ext_seismic(4,j) = gradr_(j)/grada_(j)
+         else
+            ext_seismic(4,j) = 0.0d0
+         end if
+      end do
+      do j = 2, n_ext-1
+         dr = r(j+1) - r(j-1)
+         if (dr /= 0.0d0 .and. r(j) > 0.0d0 .and. g1(j) > 0.0d0) then
+            dlnp_dr   = (lnp(j+1) - lnp(j-1))/dr
+            dlnrho_dr = (lnrho(j+1) - lnrho(j-1))/dr
+            grav = exp(ln10*cgl)*mass_g(j)/(r(j)*r(j))
+            ext_seismic(1,j) = grav*(dlnp_dr/g1(j) - dlnrho_dr)
+         else
+            ext_seismic(1,j) = 0.0d0
+         end if
+         if (lnp(j+1) /= lnp(j-1) .and. delta_(j) /= 0.0d0) then
+            dlnmu_dlnp = (lnmu(j+1) - lnmu(j-1))/(lnp(j+1) - lnp(j-1))
+            ext_seismic(3,j) = grada_(j) + dlnmu_dlnp/delta_(j)
+         else
+            ext_seismic(3,j) = grada_(j)
+         end if
+      end do
+      if (n_ext >= 2) then
+         ext_seismic(1,1) = ext_seismic(1,2)
+         ext_seismic(3,1) = ext_seismic(3,2)
+         ext_seismic(1,n_ext) = ext_seismic(1,n_ext-1)
+         ext_seismic(3,n_ext) = ext_seismic(3,n_ext-1)
+      end if
+end subroutine compute_seismic_columns
 
 ! Profile column value at extended point j. Envelope/atmosphere points
 ! carry what those integrations store; quantities they do not track
@@ -673,6 +752,10 @@ double precision function ext_profile_value(icol, j)
       integer, intent(in) :: icol, j
       integer :: i
 
+      if (icol >= 54 .and. icol <= 57) then
+         ext_profile_value = ext_seismic(icol-53, j)
+         return
+      end if
       i = ext_index(j)
       select case (ext_region(j))
       case (1)
@@ -746,12 +829,19 @@ subroutine write_profile(iprof)
       path = trim(out_dir) // 'profile' // trim(numstr) // '.data'
       open(newunit=u, file=path, status='REPLACE', action='WRITE')
 ! global block (MESA profile shape: numbers / names / values)
-      write(u, '(5(1x,i40))') 1, 2, 3, 4, 5
-      write(u, '(5(1x,a40))') adjustr('model_number'), &
-           adjustr('num_zones'), adjustr('star_age'), &
-           adjustr('log_Teff'), adjustr('star_mass')
-      write(u, '(2(1x,i40),3(1x,es40.16e3))') star%model_number, &
-           n_ext, star%dage*1.0d9, star%log_Teff, star%star_mass
+      write(u, '(8(1x,i40))') 1, 2, 3, 4, 5, 6, 7, 8
+      write(u, '(8(1x,a40))') adjustr('model_number'), &
+           adjustr('num_zones'), adjustr('initial_mass'), &
+           adjustr('initial_z'), adjustr('star_age'), &
+           adjustr('time_step'), adjustr('log_Teff'), &
+           adjustr('star_mass')
+! initial_mass/initial_z are the kind card's starting values
+! (pulsation_mass_msun is stamped by begin_kind_card); star_age and
+! time_step are in years, matching MESA's profile header.
+      write(u, '(2(1x,i40),6(1x,es40.16e3))') star%model_number, &
+           n_ext, star%pulsation_mass_msun, &
+           star%job%initial_envelope_z, star%dage*1.0d9, &
+           star%timestep_yr, star%log_Teff, star%star_mass
       write(u, '(a)') ''
       write(u, '(999(1x,i40))') (k, k = 1, prof_nsel)
       write(u, '(999(1x,a40))') &
