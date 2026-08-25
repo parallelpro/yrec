@@ -469,9 +469,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! here and copy-assigned after the namelist read below. kttau0/lttau
 ! (former common/atmos/'s remaining members) are not namelist values
 ! -- both computed from kttau right after the namelist read (kttau0 =
-! kttau; lttau = .false.) -- so they're simply renamed in place to
-! their canonical const_lib names (atm_choice_initial/
-! use_ttau_relation), now use-associated rather than locally declared.
+! kttau; lttau = .false.) -- computed working state, so they live on
+! the star structure (star%atm_choice_initial/star%use_ttau_relation
+! since the 2026 phase-A controls eviction).
 ! hras is unused in this file, so it's dropped entirely.
       integer :: kttau
 
@@ -1625,8 +1625,8 @@ subroutine adopt_canonical_names
       call remap
 ! MHP 06/13 Added memory of whether the choice of atmospheres has
 ! been changed during the run, and what the original setting was
-      atm_choice_initial = kttau
-      use_ttau_relation = .false.
+      star%atm_choice_initial = kttau
+      star%use_ttau_relation = .false.
 ! DBG WRITE OUT ENTIRE NAMELIST TO ISHORT
 ! Historically these echoes run BEFORE the .short open below, so they
 ! land in the unit's default file (fort.NN) -- preserved bug-for-bug
@@ -1940,7 +1940,7 @@ subroutine echo_settings
            &        ' LINSTB ',l1,' LJDOT ',l1,' WIND IND.',f6.3,' FK', &
            &        1pe8.2/1x,' FV',0pf5.2,' FC',f5.2,' COUPLING' &
            &        ,f6.3, ' F MU',f5.2,' RCRIT',f9.1)
-      tenv = 0.5d0*(tenv0 + tenv1)
+      star%tenv = 0.5d0*(tenv0 + tenv1)
       if(lrot) then
          lnew0 = .true.
          if(walpcz.lt.-2.0d0) walpcz = -2.0d0

@@ -74,7 +74,7 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       else if (atm_choice .eq. 1) then
             log10_temperature = ttaul1(optical_depth)
       else if (atm_choice .eq. 2) then
-            log10_temperature = log10_teff + hra(optical_depth) - atm_hras
+            log10_temperature = log10_teff + hra(optical_depth) - star%atm_hras
       end if
       log10_pressure = y(1)
       call eos_get(log10_temperature,temperature,log10_pressure,pressure, &

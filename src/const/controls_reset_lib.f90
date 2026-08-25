@@ -32,7 +32,6 @@ module controls_reset_lib
       double precision :: snap_tenv0
       double precision :: snap_tenv1
       double precision :: snap_tgcut
-      double precision :: snap_tenv
       double precision :: snap_cross_section_scale(17)
       double precision :: snap_qs0e_scale(8)
       double precision :: snap_qqs0ee_scale(8)
@@ -188,9 +187,6 @@ module controls_reset_lib
       integer :: snap_pulsation_file_version
       double precision :: snap_pulsation_mass_msun
       integer :: snap_atm_choice
-      integer :: snap_atm_choice_initial
-      logical :: snap_use_ttau_relation
-      double precision :: snap_atm_hras
       double precision :: snap_vnew(12)
       character(len=256) :: snap_monte_carlo_file1_path
       character(len=256) :: snap_monte_carlo_file2_path
@@ -489,7 +485,6 @@ subroutine controls_capture
       snap_tenv0 = tenv0
       snap_tenv1 = tenv1
       snap_tgcut = tgcut
-      snap_tenv = tenv
       snap_cross_section_scale = cross_section_scale
       snap_qs0e_scale = qs0e_scale
       snap_qqs0ee_scale = qqs0ee_scale
@@ -645,9 +640,6 @@ subroutine controls_capture
       snap_pulsation_file_version = pulsation_file_version
       snap_pulsation_mass_msun = pulsation_mass_msun
       snap_atm_choice = atm_choice
-      snap_atm_choice_initial = atm_choice_initial
-      snap_use_ttau_relation = use_ttau_relation
-      snap_atm_hras = atm_hras
       snap_vnew = vnew
       snap_monte_carlo_file1_path = monte_carlo_file1_path
       snap_monte_carlo_file2_path = monte_carlo_file2_path
@@ -945,7 +937,6 @@ subroutine controls_restore
       tenv0 = snap_tenv0
       tenv1 = snap_tenv1
       tgcut = snap_tgcut
-      tenv = snap_tenv
       cross_section_scale = snap_cross_section_scale
       qs0e_scale = snap_qs0e_scale
       qqs0ee_scale = snap_qqs0ee_scale
@@ -1101,9 +1092,6 @@ subroutine controls_restore
       pulsation_file_version = snap_pulsation_file_version
       pulsation_mass_msun = snap_pulsation_mass_msun
       atm_choice = snap_atm_choice
-      atm_choice_initial = snap_atm_choice_initial
-      use_ttau_relation = snap_use_ttau_relation
-      atm_hras = snap_atm_hras
       vnew = snap_vnew
       monte_carlo_file1_path = snap_monte_carlo_file1_path
       monte_carlo_file2_path = snap_monte_carlo_file2_path

@@ -527,6 +527,17 @@ module star_info_lib
             integer :: core_cz_top_index, envelope_cz_bottom_index
             double precision :: log_total_mass, star_mass
             double precision :: log_Teff, log_L
+! 2026 controls->star% campaign, phase A: computed/working state
+! evicted from controls_lib (they were never namelist values). Per
+! the agreed shape these land FLAT on star%. atm_hras is set once by
+! setups (Krishna-Swamy T(tau) at tau=2/3); tenv once by parmin
+! (0.5*(tenv0+tenv1)); atm_choice_initial once by parmin (from
+! kttau); use_ttau_relation is toggled at runtime by surfbc/envint
+! (genuinely mutable working state -- the reason it cannot be a
+! control).
+            double precision :: atm_hras, tenv
+            integer :: atm_choice_initial
+            logical :: use_ttau_relation
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &

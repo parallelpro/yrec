@@ -91,7 +91,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
             atm_choice = 0
             start_new_triangle = .true.
 ! MHP 06/13 Remember that flag is switched
-            use_ttau_relation = .true.
+            star%use_ttau_relation = .true.
          endif
       endif
       if (atm_choice.eq.4) then
@@ -104,19 +104,19 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
             atm_choice = 0
             start_new_triangle = .true.
 ! MHP 06/13 Remember that flag is switched
-            use_ttau_relation = .true.
+            star%use_ttau_relation = .true.
          endif
       endif
-      if (use_ttau_relation) then
-         if (atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
-            atm_choice = atm_choice_initial
-            use_ttau_relation = .false.
+      if (star%use_ttau_relation) then
+         if (star%atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
+            atm_choice = star%atm_choice_initial
+            star%use_ttau_relation = .false.
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
-         else if (atm_choice_initial.eq.4.and.log10_teff.lt.atm_table%allard_al_teffl_max) then
-            atm_choice = atm_choice_initial
-            use_ttau_relation = .false.
+         else if (star%atm_choice_initial.eq.4.and.log10_teff.lt.atm_table%allard_al_teffl_max) then
+            atm_choice = star%atm_choice_initial
+            star%use_ttau_relation = .false.
             write(*,11) log10_teff, atm_table%allard_al_teffl_max
  11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &
            ,'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')

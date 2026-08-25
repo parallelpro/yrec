@@ -276,7 +276,7 @@ subroutine prepare_surface_boundary
 ! Changed to Allard atmosphere code
          if(allard_lookup_failed) then
             atm_choice=0
-            use_ttau_relation = .true.
+            star%use_ttau_relation = .true.
 ! Set to gray atmosphere (KTTAU=0), as
 ! TeffL is above Allard max, or GL is out of range.
             write(*,*) 'ENVINT: Change to gray atmosphere (KTTAU=0)'
@@ -309,7 +309,7 @@ subroutine integrate_atmosphere
       else if (atm_choice .eq. 1) then
             log10_temperature = log10_teff - 0.031235d0 + 0.25d0*dlog10(0.550d0)
       else if (atm_choice .eq. 2) then
-            log10_temperature = log10_teff + hra(cc23) - atm_hras
+            log10_temperature = log10_teff + hra(cc23) - star%atm_hras
       end if
 !                 For kttau = 0,1,or 2, very occasionally the integration
 !                 fails because the starting point (X0) is past the end
@@ -872,7 +872,7 @@ subroutine integrate_envelope
           endif
           exit
        else if(.not.store_flag_set) then
-          if(y(2).ge.tenv .and. save_boundary_flag) then
+          if(y(2).ge.star%tenv .and. save_boundary_flag) then
              store_flag_set = .true.
              stored_vertex_index = vertex_index
              stored_envelope_state(1) = indep_var

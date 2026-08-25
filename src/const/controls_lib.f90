@@ -11,10 +11,12 @@
 ! across the codebase via the const_lib umbrella.
 !
 ! Contract: read-only after read_controls/parmin, with documented
-! stragglers that the original COMMON blocks mixed in (e.g. zramp's
-! nk run index, computed members like ctlim's tenv, working values
-! like atmos's atm_hras). Evicting those to their proper state homes
-! is the remaining member-level cleanup, listed in ROADMAP.md.
+! stragglers that the original COMMON blocks mixed in. The 2026
+! controls->star% campaign (phase A) is evicting those to their
+! proper state homes: ctlim's tenv and atmos's kttau0/lttau/hras are
+! done (flat star% members); still here: zramp's nk run index, the
+! recomputed cross/weak scale arrays, the const solar octet, and
+! ccout1's iolaol2/ioopal2 units.
 module controls_lib
       implicit none
 
@@ -42,15 +44,14 @@ module controls_lib
 ! former common/ctlim/. Defaults (previously two DATA statements in
 ! core/parmin.f90, now illegal there since these are use-associated
 ! rather than locally declared) moved here as declaration-time
-! initializers. tenv is the one member computed at runtime (see
-! core/parmin.f90: tenv = 0.5d0*(tenv0+tenv1)), so it has no default.
+! initializers. tenv, the one member computed at runtime
+! (0.5*(tenv0+tenv1)), was evicted to star%tenv (2026 phase A).
       double precision :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
            3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
            1.5d0,0.25d0/)
       double precision :: tcut(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
       double precision :: saha_log10t_cutoff = 6.0d0
       double precision :: tenv0 = 3.0d0, tenv1 = 9.0d0, tgcut = 6.9d0
-      double precision :: tenv
 
 ! former common/cross/, common/weak/. All 6 cross members and
 ! weak_screening_threshold get their real, final values from
@@ -357,19 +358,15 @@ module controls_lib
 
 ! former common/atmos/: atm_choice (originally kttau) is a NAMELIST
 ! value with a different canonical spelling, kept local in
-! core/parmin.f90 and copy-assigned. atm_choice_initial/
-! use_ttau_relation (originally kttau0/lttau) are not namelist values
-! -- core/parmin.f90 computes them from kttau right after the
-! namelist read (atm_choice_initial = kttau; use_ttau_relation =
-! .false.) -- so no declaration-time defaults are needed for them.
-! atm_hras (former common/atmos/'s remaining member, originally hras)
-! is not a namelist value -- setup/setups.f90 computes it at runtime
-! -- so it has no declaration-time default; it was unused in
-! core/parmin.f90 itself and dropped there.
+! core/parmin.f90 and copy-assigned. NOTE: atm_choice is clobbered
+! at runtime (surfbc's hot-edge fallback sets it from
+! star%atm_choice_initial; run_yrec's calibration cycles restore it)
+! -- when controls move to star%ctrl it will need a working copy on
+! star%, like cmixl. The block's other members (kttau0/lttau/hras ->
+! atm_choice_initial/use_ttau_relation/atm_hras) were computed or
+! runtime-toggled, never namelist values -- evicted to flat star%
+! members (2026 phase A).
       integer :: atm_choice
-      integer :: atm_choice_initial
-      logical :: use_ttau_relation
-      double precision :: atm_hras
 
 ! former common/vnewcb/: vnew (initial abundances for a 12-species
 ! set, Na/Al/Mg/Fe/Si/C/H/O/N/Ar/Ne/He for a G&N93 solar mixture) is a

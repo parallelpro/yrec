@@ -26,11 +26,11 @@
 !                 the rest of const1-3 -- still "occasional
 !                 configuration read broadly," not per-call data, so
 !                 the same module treatment applies.
-! ctlim members: atime, tcut, saha_log10t_cutoff, tenv0, tenv1, tenv,
+! ctlim members: atime, tcut, saha_log10t_cutoff, tenv0, tenv1,
 !                tgcut -- NAMELIST /physics/ values (core/parmin.f90),
 !                same "set once, read broadly" character as const1-3;
-!                tenv is the one computed member (0.5*(tenv0+tenv1)),
-!                still only once, not per call.
+!                the computed member tenv (0.5*(tenv0+tenv1)) moved
+!                to star%tenv in the 2026 phase-A eviction.
 ! 2026 (phase six, step 3 -- ROADMAP.md): const_lib is now a
 ! compatibility umbrella. Its members were split by ownership --
 ! physical constants into phys_const_lib, the namelist targets into
