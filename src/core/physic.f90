@@ -118,7 +118,7 @@ subroutine physic(fp, ft, composition, log_density, hg, log_luminosity, &
          call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
               metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
               dlnkap_dlnt, ion_fraction)
-         iovim = im
+         star%iovim = im
          call tpgrad(log10_temperature, temperature, log10_pressure, &
               pressure, density, log10_radius, log10_mass, &
               luminosity_lsun, opacity, dlnrho_dlnt, dlnrho_dlnp, &

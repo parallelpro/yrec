@@ -56,12 +56,12 @@ subroutine solid(log_density, specific_angular_momentum, log_radius, &
 !  THE SURFACE C.Z. ONLY.
       disk_locked = .false.
       if(zone_end.eq.num_zones .and. zone_start.ne.zone_end .and. &
-           disk_locking_active .and. &
-           disk_lifetime.le.disk_temperature)disk_locked = .true.
+           star%job%disk_locking_active .and. &
+           star%disk_lifetime.le.star%job%disk_temperature)disk_locked = .true.
       if(.not.disk_locked)then
          omega_guess = omega_sum/dfloat(zone_end - zone_start + 1)
       else
-         omega_guess = disk_pressure
+         omega_guess = star%job%disk_pressure
       end if
       omega_iter: do
       do zone_idx = zone_start,zone_end

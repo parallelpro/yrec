@@ -599,6 +599,31 @@ module star_info_lib
 ! (former common/varfc/ VFC, written per zone by getfc/seculr every
 ! step) -- never a control, evicted from the buffer.
             double precision :: vfc(json)
+! phase C batch 3: working/diagnostic state evicted from the buffer
+! (zero read-path references -- never namelist targets). The
+! acoustic-depth family holds calcad's OUTPUTS (read by wrtout's
+! track columns); the age/log_l/log_r group is chkscal's
+! star-calibration bookkeeping (star_found_flag arms the final
+! age-stopped run); compute_acoustic_depth is the calcad toggle the
+! calibration verdict disables; iov1/iov2/iovim are overshoot zone
+! indices written by oversh; use_two_z_tables is derived by
+! setupopac from the table configuration; disk_lifetime is the
+! disk-locking countdown evolve_step advances; pulsation_mass_msun
+! is stamped per kind card by begin_kind_card.
+            double precision :: acoustic_crossing_time_seconds, &
+                 acoustic_depth_cz_fraction, acoustic_depth_cz_seconds, &
+                 acoustic_depth_heii, atmosphere_sound_travel_time, &
+                 heii_zone_acoustic_width
+            double precision :: eos_adiabatic_gradient(json)
+            double precision :: age_at_target_radius, age_prev_model, &
+                 log_l_at_target_radius, log_l_at_target_radius_prev_run, &
+                 log_l_prev_model, log_r_prev_model
+            logical :: star_found_flag = .false., &
+                 just_passed_target_radius_flag = .false., &
+                 compute_acoustic_depth = .false., &
+                 use_two_z_tables = .false.
+            double precision :: disk_lifetime, pulsation_mass_msun
+            integer :: iov1, iov2, iovim
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &

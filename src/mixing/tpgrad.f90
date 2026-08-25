@@ -98,8 +98,8 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
        is_convective = .false.
        actual_gradient = radiative_gradient
        convective_velocity=0.0d0
-         if (star%ctrl%ladov .and. iovim.ge.iov1 .and. iovim.le.iov2 &
-             .and. iovim.ne.-1) then
+         if (star%ctrl%ladov .and. star%iovim.ge.star%iov1 .and. star%iovim.le.star%iov2 &
+             .and. star%iovim.ne.-1) then
             actual_gradient = adiabatic_gradient
          end if
        continue

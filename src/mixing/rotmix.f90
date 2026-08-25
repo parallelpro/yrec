@@ -74,7 +74,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 
       ierr = 0
 
-      if (use_extended_composition) then
+      if (star%job%use_extended_composition) then
          num_species = 15
       else
          num_species = 11
@@ -150,10 +150,10 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 ! FIRST DEFINE VARIABLES NEEDED FOR SETTLING -
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
-      if (diffuse_helium_active) then
+      if (star%job%diffuse_helium_active) then
       settling: do
          if (composition(1,1).lt.star%ctrl%hydrogen_diffusion_floor) then
-            diffuse_helium_active=.false.
+            star%job%diffuse_helium_active=.false.
             exit settling
          end if
 ! MHP 6/90 CHANGE ADDED : THE TIMESTEP FOR SETTLING IS RESTRICTED TO

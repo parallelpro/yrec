@@ -71,10 +71,10 @@ program test_net
       star%ctrl%use_alex06_tables = .false.
       star%ctrl%use_alex95_tables = .false.
       star%ctrl%use_kurucz90_tables = .false.
-      use_two_z_tables = .false.
+      star%use_two_z_tables = .false.
       use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
-      atm_choice = 0
+      star%job%atm_choice = 0
 
       call setups(laol_work, dummy_path, dummy_path, dummy_path, &
            fermi_path, dummy_path, dummy_path, dummy_path, dummy_path, &

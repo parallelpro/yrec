@@ -147,7 +147,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !
 ! DBG PULSE: PRINT OUT PULSATION ENV AND ATM IN ENVINT
 ! G Somers 11/14 CHANGE TO NEW I/O FLAGS.
-      if(lstatm .or. star%ctrl%lstenv .or. pulsation_output_active) then
+      if(star%job%lstatm .or. star%ctrl%lstenv .or. star%job%pulsation_output_active) then
 !  INTEGRATE AN ENVELOPE FROM THE SURFACE TO THE CONVERGED MODEL,
 !  PRINTING OUT THE RESULTS.
 !  SET UP FLAGS AND COUNTERS.
@@ -158,18 +158,18 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
        ksaha = 0
 !  SAVE THE INTEGRATION STEP PARAMETERS AND ENFORCE THE SPACING
 !  REQUESTED FOR PRINTOUT PURPOSES.
-       abeg0 = atm_step_begin
-       amin0 = atm_step_min
-       amax0 = atm_step_max
-       ebeg0 = env_step_begin
-       emin0 = env_step_min
-       emax0 = env_step_max
-       atm_step_begin = star%ctrl%atm_step_size
-       atm_step_min = star%ctrl%atm_step_size
-       atm_step_max = star%ctrl%atm_step_size
-       env_step_begin = star%ctrl%envelope_step_size
-       env_step_min = star%ctrl%envelope_step_size
-       env_step_max = star%ctrl%envelope_step_size
+       abeg0 = star%job%atm_step_begin
+       amin0 = star%job%atm_step_min
+       amax0 = star%job%atm_step_max
+       ebeg0 = star%job%env_step_begin
+       emin0 = star%job%env_step_min
+       emax0 = star%job%env_step_max
+       star%job%atm_step_begin = star%ctrl%atm_step_size
+       star%job%atm_step_min = star%ctrl%atm_step_size
+       star%job%atm_step_max = star%ctrl%atm_step_size
+       star%job%env_step_begin = star%ctrl%envelope_step_size
+       star%job%env_step_min = star%ctrl%envelope_step_size
+       star%job%env_step_max = star%ctrl%envelope_step_size
        b = dexp(ln10*log_luminosity_lsun)
        rl = 0.5D0*(log_luminosity_lsun + star%log10_solar_luminosity - 4.0D0*log_teff - c4pil - csigl)
        gl = cgl + star%env_comp%stotal - rl - rl
@@ -181,7 +181,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
        hstot = star%env_comp%stotal
        plim = log_pressure(num_shells)
 ! DBG PULSE: ADDED ARGUEMENT TO ENVINT TO TURN ON/OFF PULSE OUTPUT
-         lpulpt = pulsation_output_active
+         lpulpt = star%job%pulsation_output_active
             if (use_debye_huckel_correction) then
                debye_huckel_x = composition(1,num_shells)
                debye_huckel_y = composition(2,num_shells)+composition(4,num_shells)
@@ -203,12 +203,12 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
                      ateffl,x,z,dum1,idum,katm,kenv,ksaha,dum2, &
                      dum3,dum4,lpulpt)
 ! G Somers END
-       atm_step_begin = abeg0
-       atm_step_min = amin0
-       atm_step_max = amax0
-       env_step_begin = ebeg0
-       env_step_min = emin0
-       env_step_max = emax0
+       star%job%atm_step_begin = abeg0
+       star%job%atm_step_min = amin0
+       star%job%atm_step_max = amax0
+       star%job%env_step_begin = ebeg0
+       star%job%env_step_min = emin0
+       star%job%env_step_max = emax0
       endif
 !
 ! G Somers 11/14 LCONZO (convection zone info) block deleted.
@@ -217,12 +217,12 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !
       fsi = dexp(-ln10*star%env_comp%stotal)
 ! DBG PULSE: WRITE HEADER INFORMATION FOR PULSE MODEL
-      if(pulsation_output_active) then
+      if(star%job%pulsation_output_active) then
          rsurfl = 0.5D0*(log_luminosity_lsun - c4pil - csigl - 4.0D0*log_teff + star%log10_solar_luminosity)
          tempr = rsurfl - star%log10_solar_radius
-         qsmass = pulsation_mass_msun
+         qsmass = star%pulsation_mass_msun
          write (star%ctrl%opal_model_unit, 5001) model_number,num_pulsation_points,star%ctrl%pulsation_file_version,qsmass, &
-               log_teff,log_luminosity_lsun,tempr, age_gyr, star%mixing_length_alpha, initial_envelope_x, initial_envelope_z
+               log_teff,log_luminosity_lsun,tempr, age_gyr, star%mixing_length_alpha, star%job%initial_envelope_x, star%job%initial_envelope_z
  5001    format(' MODEL#=', I5, '  NUMBER OF SHELLS IN MODEL=',I5, &
                 ' VER=',I2,/, &
                 ' MASS=',F8.5, '  LOG(TEFF)=',F8.5,/, ' LOG(L/LSUN)=', &
@@ -239,7 +239,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
 !
 ! DBG WRITE PULSE MODEL
 !       PRINT*, 'LPULSE=',LPULSE
-         if (pulsation_output_active.and.star%ctrl%lstore) then
+         if (star%job%pulsation_output_active.and.star%ctrl%lstore) then
 ! MHP 10/02 uncommented pelpf statement, used later in i/o
 !         PELPF = CGAS * DEXP(CLN*(HT(I) + HD(I)))* PEMU(I)
 !          ADDED X AND Z TO OUTPUT

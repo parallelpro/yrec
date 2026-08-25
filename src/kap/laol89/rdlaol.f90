@@ -12,6 +12,7 @@
 ! Reads the LAOL89 opacity table(s) (and, if a second Z table is
 ! requested, a second LAOL89 table).
 subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
+      use star_info_lib, only: star
 
       use opacity_table_lib
       use const_lib
@@ -84,7 +85,7 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 
 
 ! DBG 4/94 New stuff follows
-      if (use_two_z_tables) then
+      if (star%use_two_z_tables) then
          open(unit=iolaol2,file=laol_table2_path, form='FORMATTED', &
               status='OLD')
 !        READ IN ARRAY SIZES

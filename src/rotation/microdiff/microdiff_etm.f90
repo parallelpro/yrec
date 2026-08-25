@@ -57,7 +57,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
 ! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          do i = zone_begin,1,-1
             z_max = 1.0d0 - composition(1,i) - composition(4,i)
             zz=min(composition(3,i)+eq_delta_metal(1),z_max)
@@ -116,7 +116,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          x_max = 1.0d0 - composition(3,i) - composition(4,i)
          composition(1,i)=min(composition(1,i) + dxmod,x_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
-         if(use_diffusion_z)then
+         if(star%job%use_diffusion_z)then
             z_max = 1.0d0 - composition(1,i) - composition(4,i)
             dzmod = facinterp(1)*eq_delta_metal(k0)+facinterp(2)*eq_delta_metal(k0+1)+ &
                    facinterp(3)*eq_delta_metal(k0+2)+facinterp(4)*eq_delta_metal(k0+3)
@@ -148,7 +148,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          composition(1,i)=min(composition(1,i) + eq_delta_hydrogen(num_eq_points),x_max)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          do i = zone_end,num_zones
             zz = max(composition(3,i)+eq_delta_metal(num_eq_points),0.0d0)
             zz2 = zz/composition(3,i)

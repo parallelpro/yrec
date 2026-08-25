@@ -86,7 +86,7 @@ subroutine qenv(log10_pressure_indep, y, dydx, luminosity_linear, &
       call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
            metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
            dlnkap_dlnt, ion_fraction)
-      iovim = -1
+      star%iovim = -1
       call tpgrad(log10_temperature,temperature,log10_pressure,pressure, &
            density,log10_radius,log10_mass,luminosity_linear,opacity, &
            dlnrho_dlnt,dlnrho_dlnp,dlnkap_dlnt,dlnkap_dlnrho, &

@@ -33,7 +33,7 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
 !     SET UP SPLINES FOR THE TABLES.
 !     WHEN LZRAMP=T OR LDIFZ=T THEN READ IN SECOND SET OF
 !     OPACITY TABLES AT DIFFERENT Z (E.G. ZOPAL952).
-      use_two_z_tables = star%ctrl%use_z_ramp .or. use_diffusion_z
+      star%use_two_z_tables = star%ctrl%use_z_ramp .or. star%job%use_diffusion_z
 
 !     INTERIOR TABLES
 

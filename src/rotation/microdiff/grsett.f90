@@ -141,7 +141,7 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
          hydrogen_x_orig(eq_idx) = equal_hydrogen_fraction(eq_idx)
       end do
 ! MHP 3/94 METAL DIFFUSION
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          do eq_idx = 1,num_equal_points
             metal_x_orig(eq_idx) = star%rot%metal_abundance_change(eq_idx)
          end do
@@ -175,7 +175,7 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
       end do
       hydrogen_x_prev_iter(num_equal_points) = hydrogen_x_orig(num_equal_points)
 ! MHP 3/94 METAL DIFFUSION
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          do eq_idx=1,num_equal_points-1
             star%rot%metal_diffusion_coeff1_mid(eq_idx)=star%rot%metal_diffusion_coeff1_mid(eq_idx)+ &
                  star%rot%metal_abundance_change_mid(eq_idx)*star%rot%eq_metal_diffusion_coeff1_mid(eq_idx)
@@ -268,7 +268,7 @@ subroutine grsett(timestep, composition, dlnp_dr, log_radius, log_density, &
          equal_hydrogen_fraction(eq_idx) = equal_hydrogen_fraction(eq_idx)-hydrogen_x_orig(eq_idx)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          z_change_first=star%rot%metal_abundance_change(1)-metal_x_orig(1)
          z_change_last=star%rot%metal_abundance_change(num_equal_points)- &
               metal_x_orig(num_equal_points)

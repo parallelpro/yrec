@@ -102,7 +102,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 
       ierr = 0
 
-      if (use_extended_composition) then
+      if (star%job%use_extended_composition) then
          num_species = 15
       else
          num_species = 11
@@ -144,7 +144,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
            num_mixed_zones_no_overshoot)
 
 ! FIND BURNING RATES (HR1- HR13,HF1,HF2).
-      if (use_mass_accretion .and. star%ctrl%mass_accretion_rate.gt.0.0d0) then
+      if (star%job%use_mass_accretion .and. star%ctrl%mass_accretion_rate.gt.0.0d0) then
          deuterium_test = max(star%xa(i_h2,star%nz), &
               star%ctrl%accreted_composition(12))
       else
@@ -354,7 +354,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !
 ! DETERMINE EXTENT OF SEMI-CONVECTION IF APPLICABLE.
 !
-      if (lsemic) then
+      if (star%job%lsemic) then
          if (iteration_level.gt.1) &
               call sconvec(timestep, star%xa, star%logRho, &
               star%luminosity_lsun, star%logP, star%logR, star%log_mass, &
@@ -362,7 +362,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               num_mixed_zones, star%log_Teff, ierr)
               if (ierr /= 0) return
       end if
-      if (lsemic .or. (iteration_level .eq. 1)) then
+      if (star%job%lsemic .or. (iteration_level .eq. 1)) then
 !
 !    MIX CONVECTIVE REGIONS IN ORDER.
 !    THIS NEEDS TO BE DONE IF SEMI-CONVECTION IS BEING CHECKED, OR
@@ -416,10 +416,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! FIRST DEFINE VARIABLES NEEDED FOR SETTLING -
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
-      if (diffuse_helium_active) then
+      if (star%job%diffuse_helium_active) then
       settling: do
          if (star%xa(i_h1,1).lt.star%ctrl%hydrogen_diffusion_floor) then
-            diffuse_helium_active = .false.
+            star%job%diffuse_helium_active = .false.
             exit settling
          end if
          total_mass_unlogged = exp(ln10*star%log_total_mass)
@@ -503,7 +503,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               num_mixed_zones_no_overshoot)
       end if
 ! MHP 5/02 ADDED DEUTERIUM BURNING
-      if (use_extended_composition) then
+      if (star%job%use_extended_composition) then
 ! RADIATIVE ZONES.
 !
          dt_gyr = timestep_years*1.0d-9

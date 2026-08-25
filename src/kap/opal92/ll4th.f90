@@ -74,7 +74,7 @@ subroutine ll4th(hydrogen_fraction)
 
 
 
-      if (use_two_z_tables) then
+      if (star%use_two_z_tables) then
          opacity_table%opal92_surface_x_z2=hydrogen_fraction
          opacity_table%opal92_surface_z_z2=star%ctrl%opal_table_z2
          call findex(opacity_table%opal92_grid_x_z2, num_x, hydrogen_fraction, x_index)

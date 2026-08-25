@@ -215,7 +215,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          call kap_get(zone_log10_density, zone_log_temperature, &
               hydrogen_fraction, metal_fraction, opacity, log10_opacity, &
               dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)
-         iovim = im
+         star%iovim = im
          call tpgrad(zone_log_temperature, temperature, zone_log_pressure, &
               pressure, density, zone_log_radius, zone_log_mass, &
               zone_luminosity_lsun, opacity, dlnrho_dlnt, dlnrho_dlnp, &
@@ -329,7 +329,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
          if (compute_entropy_term) then
 ! SET UP ENTROPY TERMS
             zone_dt = delta_time_inv
-            if (use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0) then
+            if (star%job%use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0) then
                if (im.ge.envelope_zone_index) then
                   zone_log_temperature_delta = log_temperature_delta(im)+ &
                        star%rot%delta_log_temperature
@@ -364,7 +364,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
                  dlnrho_dlnt_dt) + entropy_term2 - entropy_term3* &
                  adiabatic_gradient_dt)
 ! 7/92 INCLUDE CHANGE IN ROTATIONAL KINETIC ENERGY IN ENERGY EQUATION.
-            if (rotation_active) then
+            if (star%job%rotation_active) then
                star%rot%rotational_energy_term(im) = zone_dt*(kinetic_energy_rot(im)- &
                     kinetic_energy_rot_old(im))/shell_mass(im)
                eq_l_val = eq_l_val - star%rot%rotational_energy_term(im)
@@ -474,7 +474,7 @@ subroutine coefft(delta_time, num_points, log10_density, elim_coeff, &
 ! JVS END
 
 
-         if (rotation_active) then
+         if (star%job%rotation_active) then
             star%rot%dlnkappa_dlnrho(im) = dlnkap_dlnrho
             star%rot%dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error

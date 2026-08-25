@@ -114,7 +114,7 @@ subroutine taucal(delta_mass, shell_mass, convective_flag, log10_radius, &
 ! Should never be the case, but removed it.
 !      IF(LCZSUR)THEN
          if (.not.fully_convective_flag) then
-            if (.not.rotation_active) then
+            if (.not.star%job%rotation_active) then
                local_gravity(cz_base_index)=shell_mass(cz_base_index)*exp(ln10*(cgl-2.0d0*log10_radius(cz_base_index)))
                local_gravity(cz_base_index-1)=shell_mass(cz_base_index-1)*exp(ln10*(cgl-2.0d0*log10_radius(cz_base_index-1)))
             endif

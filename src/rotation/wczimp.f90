@@ -17,7 +17,7 @@ subroutine wczimp(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, istart, iend, eta_squared, moment_of_inertia, &
      omega, qiw, mean_radius, num_zones)
       use star_info_lib, only: star
-      use star_info_lib, only: json
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
 

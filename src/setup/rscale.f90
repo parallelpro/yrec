@@ -69,7 +69,7 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
                     composition(1,zone_idx)*x_rescale_factor)
             end do
             star%env_comp%xnew = star%job%rescale_params(2,run_index)
-            initial_envelope_x = star%job%rescale_params(2,run_index)
+            star%job%initial_envelope_x = star%job%rescale_params(2,run_index)
 ! DBG 4/95 BUG FIX XENV IS USED IN SOME ROUTINES AND NOT XENV0 SO CHANGE
 !     XENV WHENEVER X IS CHANGED.
 ! MHP 7/99 THIS IS NOT A BUG, IT IS NECESSARY.
@@ -101,10 +101,10 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
                end do
             end do
             star%env_comp%znew = star%job%rescale_params(3,run_index)
-            initial_envelope_z = star%job%rescale_params(3,run_index)
+            star%job%initial_envelope_z = star%job%rescale_params(3,run_index)
 ! DBG 4/95 BUG FIX ZENV IS USED IN MANY ROUTINES AND NOT ZENV0 SO CHANGE
 !     ZENV WHENEVER Z IS CHANGED.
-            star%env_comp%envelope_metal_fraction = initial_envelope_z
+            star%env_comp%envelope_metal_fraction = star%job%initial_envelope_z
 ! keep the eos-side mixture in step with the rescaled Z
             call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
                  star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
@@ -125,22 +125,22 @@ subroutine rscale(luminosity_array, composition, shell_mass_log, &
 ! ************
 
 !  MAIN SEQUENCE RESCALING - MASS AND SINGLE ELEMENT.
-         if(star%ctrl%rescale_species_active.and.new_species_value.ge.0.0d0) then
+         if(star%ctrl%rescale_species_active.and.star%job%new_species_value.ge.0.0d0) then
 !  RESCALE THE ABUNDANCE OF ONE ELEMENT OTHER THAN X,Y,Z
 !  JNEWCP = INDEX OF ELEMENT TO BE CHANGED IN MATRIX HCOMP
 !  IF LREL = T, ABUNDANCE IS RELATIVE TO SURFACE HYDROGEN ABUNDANCE
 !  ON A LOGARITHMIC SCALE WHERE X ABUNDANCE = 12.0
 !  E.G. AN ABUNDANCE OF 3.0 MEANS 1.0D-9* SURFACE H ABUNDANCE
-            if(star%ctrl%value_relative_to_h) new_species_value = &
-                 dexp(ln10*(new_species_value-12.0d0))*composition(1,num_zones)
-            if(new_species_value.lt.1.0d0) then
+            if(star%ctrl%value_relative_to_h) star%job%new_species_value = &
+                 dexp(ln10*(star%job%new_species_value-12.0d0))*composition(1,num_zones)
+            if(star%job%new_species_value.lt.1.0d0) then
                do zone_idx = 1,num_zones
-                  composition(star%ctrl%new_species_index,zone_idx) = new_species_value
+                  composition(star%ctrl%new_species_index,zone_idx) = star%job%new_species_value
                end do
             else
 !  ERROR - RESCALED ABUNDANCE >100% - ABUNDANCE NOT CHANGED
 !               ACOMP = ANEWCP
-               write(short_file_unit,1004)icomp,run_index,new_species_value
+               write(short_file_unit,1004)icomp,run_index,star%job%new_species_value
  1004       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF ', &
            'SPECIES ',i3,' IN KIND CARD # ',i3,' FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')

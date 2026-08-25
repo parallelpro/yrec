@@ -83,7 +83,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
 
       if (surface_cz_deep_enough) then
          if (.not.fully_convective_flag) then
-            if (.not.rotation_active) then
+            if (.not.star%job%rotation_active) then
                local_gravity(cz_base_index)=shell_mass(cz_base_index)*exp(ln10*(cgl-2.0d0*log10_radius(cz_base_index)))
                local_gravity(cz_base_index-1)=shell_mass(cz_base_index-1)*exp(ln10*(cgl-2.0d0*log10_radius(cz_base_index-1)))
             endif
@@ -133,7 +133,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
 
          else
 ! INFER HP
-            if (.not.rotation_active) then
+            if (.not.star%job%rotation_active) then
                local_gravity(1)=shell_mass(1)*exp(ln10*(cgl-2.0d0*log10_radius(1)))
             endif
             pressure_scale_height2 = exp(ln10*(log10_pressure(1)-log10_density(1)))/local_gravity(1)
@@ -148,7 +148,7 @@ subroutine tauint(shell_mass, convective_flag, log10_radius, &
                do k = 2,num_points
                   pressure_scale_height1 = pressure_scale_height2
                   radius_test1 = radius_test2
-                  if (.not.rotation_active) then
+                  if (.not.star%job%rotation_active) then
                      local_gravity(k)=shell_mass(k)*exp(ln10*(cgl-2.0d0*log10_radius(k)))
                   endif
                   pressure_scale_height2 = exp(ln10*(log10_pressure(k)-log10_density(k)))/local_gravity(k)

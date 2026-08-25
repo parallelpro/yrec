@@ -389,7 +389,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            (star%ctrl%saha_log10t_cutoff - saha_ramp_width)
 
 !     MHP 3/94 METAL DIFFUSION ADDED.  ASSUME ALL METALS SCALE EQUALLY.
-      if (use_diffusion_z) then
+      if (star%job%use_diffusion_z) then
 !        THE VECTOR eos_mix%fxenv IS DEFINED IN STARIN AS
 !        (MASS FRACTION OF SPECIES/ATOMIC WT/AMUENV) FOR THE COMPOSITION
 !        XENV,ZENV.

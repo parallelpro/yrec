@@ -40,7 +40,7 @@ subroutine wtime(previous_timestep, num_points, omega, rotation_dt, &
             max_index = i
          endif
       end do
-      dt_factor = max_domega_frac/max_domega_global
+      dt_factor = max_domega_frac/star%job%max_domega_global
 ! if no change from previous model,set rotation_dt to timestep
 ! stored in the previous model.
       if (dt_factor.eq.0.d0)then

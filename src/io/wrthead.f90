@@ -19,13 +19,13 @@ subroutine wrthead(total_mass_msun)
       double precision :: total_mass_grams
 
       if (star%job%rescale_kind(star%job%nk) .eq. 1) then
-         write(iowr, 47) star%job%nk, initial_envelope_x, initial_envelope_z, &
+         write(iowr, 47) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
               star%mixing_length_alpha, star%job%num_models(star%job%nk)
       else if (star%job%rescale_kind(star%job%nk) .eq. 2) then
-         write(iowr, 48) star%job%nk, initial_envelope_x, initial_envelope_z, &
+         write(iowr, 48) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
               star%mixing_length_alpha, star%job%num_models(star%job%nk)
       else if (star%job%rescale_kind(star%job%nk) .eq. 3) then
-         write(iowr, 49) star%job%nk, initial_envelope_x, initial_envelope_z, &
+         write(iowr, 49) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
               star%mixing_length_alpha, star%job%num_models(star%job%nk)
       end if
   47  format(/, ' RUN=',I2,' EVOLVE  ', ' X=',F8.6, &
@@ -39,15 +39,15 @@ subroutine wrthead(total_mass_msun)
 ! header stuff for isochrone output
          total_mass_grams = total_mass_msun*star%solar_mass_cgs
          write(star%ctrl%isochrone_file_unit, 1495) total_mass_grams, &
-              initial_envelope_x,initial_envelope_z,star%mixing_length_alpha,star%solar_bolometric_magnitude
+              star%job%initial_envelope_x,star%job%initial_envelope_z,star%mixing_length_alpha,star%solar_bolometric_magnitude
  1495    format(7X, 1P5E16.8)
       end if
 
       if (star%ctrl%ltrack .and. star%job%first_call_flag(star%job%nk)) then
 ! ITRVER identifies version of track out file.  If you change
 ! the track out file then change this version number.
-         write(itrack, 1500)star%ctrl%track_file_version,total_mass_msun,initial_envelope_x, &
-              initial_envelope_z,star%mixing_length_alpha
+         write(itrack, 1500)star%ctrl%track_file_version,total_mass_msun,star%job%initial_envelope_x, &
+              star%job%initial_envelope_z,star%mixing_length_alpha
  1500    format('#Version=',i3,'  Mtot/Msun =',1PE16.8, &
               '  Initial: X =',1PE16.8,' Z =',1PE16.8, &
               '  Mix. length =', 1PE16.8)

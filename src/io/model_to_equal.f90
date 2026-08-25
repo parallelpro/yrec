@@ -109,7 +109,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_hydrogen_fraction_mid(1) = composition(1,interp_search_index-1)+ &
            interp_fraction*(composition(1,interp_search_index)- &
            composition(1,interp_search_index-1))
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          star%rot%metal_diffusion_coeff1_mid(1)=star%rot%src_grid_metal_diffusion_coeff1(interp_search_index-1)+ &
               interp_fraction*(star%rot%src_grid_metal_diffusion_coeff1(interp_search_index)- &
               star%rot%src_grid_metal_diffusion_coeff1(interp_search_index-1))
@@ -203,7 +203,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
               composition(1,k0)+interp_factors(2)*composition(1,k0+1)+ &
               interp_factors(3)*composition(1,k0+2)+ &
               interp_factors(4)*composition(1,k0+3)
-         if(use_diffusion_z)then
+         if(star%job%use_diffusion_z)then
 ! METAL DIFFUSION-TREATED AS FULLY IONIZED IRON.
 ! D1
          star%rot%metal_diffusion_coeff1_mid(zone_index)=interp_factors(1)* &
@@ -251,7 +251,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_mass(1) = enclosed_mass(zone_begin)
       equal_hydrogen_fraction(1) = composition(1,zone_begin)
       equal_diffusion_coeff1(1)=diffusion_coeff1(zone_begin)
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          star%rot%metal_abundance_change(1) = composition(8,zone_begin)
          star%rot%metal_diffusion_coeff1(1) = star%rot%src_grid_metal_diffusion_coeff1(zone_begin)
       endif
@@ -305,7 +305,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
               interp_factors(3)*composition(1,k0+2)+ &
               interp_factors(4)*composition(1,k0+3)
 ! METAL DIFFUSION
-         if(use_diffusion_z)then
+         if(star%job%use_diffusion_z)then
 ! D1
          star%rot%metal_diffusion_coeff1(zone_index)=interp_factors(1)* &
               star%rot%src_grid_metal_diffusion_coeff1(k0)+interp_factors(2)* &
@@ -325,7 +325,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_hydrogen_fraction(num_equal_points) = composition(1,zone_end)
       equal_diffusion_coeff1(num_equal_points)=diffusion_coeff1(zone_end)
 
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          star%rot%metal_abundance_change(num_equal_points) = composition(8,zone_end)
          star%rot%metal_diffusion_coeff1(num_equal_points)=star%rot%src_grid_metal_diffusion_coeff1(zone_end)
       endif

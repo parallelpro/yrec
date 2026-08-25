@@ -100,7 +100,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
 ! its initial zero-fill) -- not the caller's actual rotation state.
       double precision :: omega(json)
 
-      if(use_extended_composition)then
+      if(star%job%use_extended_composition)then
          species_end_index = 15
       else
          species_end_index = 11
@@ -111,12 +111,12 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       old_num_zones = num_zones
       envelope_mass_before = star%env_comp%senv
 ! SET NUMERICAL PARAMETERS OF THE ENVELOPE INTEGRATION
-      env_max_saved = env_step_max
-      env_min_saved = env_step_min
-      env_begin_saved = env_step_begin
-      env_step_max = star%ctrl%chi_grid_scale(8)
-      env_step_min = star%ctrl%chi_grid_scale(8)
-      env_step_begin = star%ctrl%chi_grid_scale(8)
+      env_max_saved = star%job%env_step_max
+      env_min_saved = star%job%env_step_min
+      env_begin_saved = star%job%env_step_begin
+      star%job%env_step_max = star%ctrl%chi_grid_scale(8)
+      star%job%env_step_min = star%ctrl%chi_grid_scale(8)
+      star%job%env_step_begin = star%ctrl%chi_grid_scale(8)
       surface_bc_flag = .false.
       print_flag = .true.
       katm = 0
@@ -173,9 +173,9 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
            atm_get_dummy3,atm_get_dummy4,pulsation_output_flag)
 ! G Somers END
 ! RESET THE NUMERICAL PARAMETERS FOR THE ENVELOPE INTEGRATION
-      env_step_max = env_max_saved
-      env_step_min = env_min_saved
-      env_step_begin = env_begin_saved
+      star%job%env_step_max = env_max_saved
+      star%job%env_step_min = env_min_saved
+      star%job%env_step_begin = env_begin_saved
       star%env_comp%senv = target_envelope_mass
 ! STOP IF THE DESIRED NUMBER OF POINTS EXCEEDS THE ARRAY DIMENSIONS
       if(num_zones+env_struct%num_env_points.ge.json) stop 9999
@@ -312,7 +312,7 @@ subroutine getnewenv(target_envelope_mass, composition, log_density, &
       mass_at_base = 0.5D0*(enclosed_mass(num_zones)+enclosed_mass(num_zones-1))
       shell_mass(num_zones) = 10.0D0**log_total_mass - mass_at_base
 ! RECOMPUTE TERMS RELATED TO ROTATION.
-      if(rotation_active)then
+      if(star%job%rotation_active)then
 ! FIRST GUESS AT THE ROTATION RATES; ASSIGN A
 ! VECTOR OF OMEGA SUCH THAT
 ! OMEGA*R**WALPCZ = CONSTANT.

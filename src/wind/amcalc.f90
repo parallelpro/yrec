@@ -48,7 +48,7 @@ subroutine amcalc(total_mass_msun, log_luminosity_lsun, log_teff)
          turnover_ratio = 1.
       endif
 !     COMBINE THEM ALL
-      structfactor = mass_factor**star%ctrl%exm * radius_rsun**star%ctrl%exr * &
+      star%job%structfactor = mass_factor**star%ctrl%exm * radius_rsun**star%ctrl%exr * &
            luminosity_lsun**star%ctrl%exl * photospheric_pressure_ratio**star%ctrl%expr &
            * turnover_ratio**star%ctrl%extau
       return

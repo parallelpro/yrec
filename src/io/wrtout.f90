@@ -114,7 +114,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
       bolometric_magnitude = star%solar_bolometric_magnitude-2.5D0*star%log_L
       radius_log_surface = 0.5D0*(star%log_L + star%log10_solar_luminosity - c4pil - csigl - 4.0D0*star%log_Teff)
       log_gravity = cgl + star%env_comp%stotal - radius_log_surface - radius_log_surface
-      write(short_file_unit,50)star%nz,initial_envelope_x,initial_envelope_z,star%run%core_cz_mass,star%run%envelope_mass, star%run%envelope_radius
+      write(short_file_unit,50)star%nz,star%job%initial_envelope_x,star%job%initial_envelope_z,star%run%core_cz_mass,star%run%envelope_mass, star%run%envelope_radius
    50 format(1X,'SHELLS=',I5,2X,'(X0,Z0)=(',F9.7,',',F9.7,')',2X, &
        'CONV. ZONE MASSES(MSUN): CORE',F10.7,' ENV.',F10.7, &
        ' RAD. FRAC.',F10.7)
@@ -234,7 +234,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! STORE CENTRAL RHO,P,T FOR LATER USE
 !  Total moment of inertia
          total_moment_of_inertia = 0.0D0
-         if(.not.rotation_active)then
+         if(.not.star%job%rotation_active)then
             do i = 1,star%nz
                total_moment_of_inertia = total_moment_of_inertia + cc23*star%dm(i)*exp(2.0D0*ln10*star%logR(i))
             end do
@@ -263,7 +263,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! MODELS, AND CORRECTLY ZERO OUT TERMS NOT COMPUTED IN SPHERICAL MODELS
 ! ROTATION I/O
             cz_moment_of_inertia = 0.0D0
-            if(rotation_active) then
+            if(star%job%rotation_active) then
                rotation_period_days = min(9999.0D0,0.5D0*c4pi/star%omega(star%nz)/8.64D4)
                equatorial_velocity_kms = star%omega(star%nz)*exp(ln10*(radius_log_surface+star%log10_solar_radius))*1.0D-5
                if(star%envelope_cz_bottom_index.lt.star%nz)then
@@ -357,7 +357,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
               (star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
  1520       format(1X,1P8E16.8,/,1X,1P8E16.8)
 ! ROTATION I/O
-            if(rotation_active) then
+            if(star%job%rotation_active) then
 ! MHP 8/25 removed limit on rotation period output
 !     ROTP = MIN(9999.0D0,0.5D0*C4PI/OMEGA(M)/8.64D4)
                rotation_period_days = 0.5D0*c4pi/star%omega(star%nz)/8.64D4
@@ -461,7 +461,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! the call to putstore above creates the necessary pulsation output for LPULSE.
 ! however, in the event that the above block is not executed and pulsation
 ! output is desired, call wrtmod.
-      if(.not.(star%ctrl%lstore.and.mod(star%model_number,star%ctrl%nprtmod).eq.0) .and. pulsation_output_active) then
+      if(.not.(star%ctrl%lstore.and.mod(star%model_number,star%ctrl%nprtmod).eq.0) .and. star%job%pulsation_output_active) then
        if(star%ctrl%lmilne) call wrtmil(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%m,star%nz,star%model_number)
 !        CALL WRTMOD(M,LSHELL,JXBEG,JXEND,JCORE,JENV,HCOMP,HS1,HD,HL,
 !      *   HP,HR,HT,LC,MODEL,BL,TEFFL,OMEGA,FP,FT,ETA2,R0,HJM,HI,HS,
@@ -484,12 +484,12 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
 ! together the interior and envelope pieces. Columns 68,69,70 are normalized
 ! acoustic depth, depth to CZ and acoustic crossing time, respectively.
         if (star%ctrl%acoustic_depth_output) then
-            if(star%envelope_cz_bottom_index.gt.1 .and. compute_acoustic_depth) then
+            if(star%envelope_cz_bottom_index.gt.1 .and. star%compute_acoustic_depth) then
                   call calcad(star%logR, star%run%envelope_cz_log_radius, star%nz, star%logRho, star%logP,star%logT,star%log_L, star%fp_rot, star%ft_rot, star%log_total_mass, &
 !      *            LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
                   star%log_Teff, star%xa, star%run%dage, star%envelope_cz_bottom_index)
             else if (star%envelope_cz_bottom_index.eq.1) then
-                  acoustic_depth_cz_fraction=0.0D0
+                  star%acoustic_depth_cz_fraction=0.0D0
             endif
             if (star%convective_flag(star%nz)) then
                   icheck=1
@@ -497,7 +497,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
                   icheck = 0
             endif
 
-        if (ageout_model_output_flag) then
+        if (star%job%ageout_model_output_flag) then
          iwrite = star%ctrl%ageout_model_unit
          call wrtlst(iwrite,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
          star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
@@ -509,7 +509,7 @@ subroutine wrtout(timestep_yr, log_gravity, h_shell_present_flag, &
             star%xa(i_metals,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_grav),star%luminosity_breakdown(i_lum_neu), &
             star%flux%cl37_snu_rate,star%flux%ga71_snu_rate,(star%flux%neutrino_flux_total(i),i=1,10),(star%xa(i,1),i=4,11), &
             (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz), &
-            total_angular_momentum,acoustic_depth_cz_fraction,acoustic_depth_cz_seconds,acoustic_crossing_time_seconds,acoustic_depth_heii,heii_zone_acoustic_width,atmosphere_sound_travel_time,equatorial_velocity_kms,star%turnover%convective_turnover_timescale, &
+            total_angular_momentum,star%acoustic_depth_cz_fraction,star%acoustic_depth_cz_seconds,star%acoustic_crossing_time_seconds,star%acoustic_depth_heii,star%heii_zone_acoustic_width,star%atmosphere_sound_travel_time,equatorial_velocity_kms,star%turnover%convective_turnover_timescale, &
             h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck
  1800      format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3, &
                   39E16.8, I8)

@@ -46,7 +46,7 @@ subroutine findsh(composition, luminosity, is_convective, num_points, &
      core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
      has_h_shell)
       use star_info_lib, only: star
-      use star_info_lib, only: json
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
 

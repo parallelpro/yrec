@@ -154,7 +154,7 @@ subroutine microdiff_cod(num_eq_points, species_fraction, eq_radius, &
             fac=star%ctrl%fgry*hru_i**2*htu_i**2.5d0/ln_lambda
          endif
          if(species_col.eq.3)then
-            fac=fgrz*hru_i**2*htu_i**2.5d0/ln_lambda
+            fac=star%job%fgrz*hru_i**2*htu_i**2.5d0/ln_lambda
          endif
 !        collect the first diffusion terms for hydroden.
 !        collect the third diffusion terms for everything else.

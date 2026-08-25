@@ -69,11 +69,11 @@ subroutine qatm(log10_optical_depth, y, dydx, luminosity_linear, &
       atm_table%atm_tau = log10_optical_depth
       optical_depth = dexp(ln10*atm_table%atm_tau)
 ! USE KTTAU TO IMPLIMENT FUTURE T TAU RELATIONS
-      if (atm_choice .eq. 0) then
+      if (star%job%atm_choice .eq. 0) then
             log10_temperature = ttaul0(optical_depth)
-      else if (atm_choice .eq. 1) then
+      else if (star%job%atm_choice .eq. 1) then
             log10_temperature = ttaul1(optical_depth)
-      else if (atm_choice .eq. 2) then
+      else if (star%job%atm_choice .eq. 2) then
             log10_temperature = log10_teff + hra(optical_depth) - star%atm_hras
       end if
       log10_pressure = y(1)

@@ -36,8 +36,7 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
      fscvz, opecalex, ierr)
 
-      use star_info_lib, only: control_nml_override, physics_nml_override, &
-           star
+      use star_info_lib, only: star, control_nml_override, physics_nml_override
       use controls_sync_lib, only: store_controls_to_star
       use const_lib
       use luout_lib

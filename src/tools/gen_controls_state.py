@@ -46,6 +46,26 @@ JOB_MEMBERS = {
     "target_end_age", "end_age_stop_active", "central_deuterium_stop",
     "central_hydrogen_stop", "central_helium_stop",
     "timestep_override", "timestep_override_active", "first_call_flag",
+    # batch 3: namelist-read members the run mutates -- the
+    # model-restore set (getyrec7/getmodel2 write them back from
+    # stored models), driver/output toggles, per-card working copies,
+    # and config the physics adjusts in place.
+    "rotation_active", "use_extended_composition", "lovstc", "lovstm",
+    "envelope_overshoot_active", "lsemic",
+    "instability_transport_active", "disk_locking_active",
+    "disk_pressure", "disk_temperature", "use_diffusion_z",
+    "wind_saturation_omega", "ljdot0", "lphhd", "atm_choice",
+    "use_structure_dt_limits", "pulsation_output_active",
+    "calcad_ageout_output_active", "ageout_model_output_flag",
+    "ageout_bracket_armed", "atm_step_begin", "atm_step_min",
+    "atm_step_max", "env_step_begin", "env_step_min", "env_step_max",
+    "lstatm", "calc_envelope_flag", "initial_envelope_x",
+    "initial_envelope_z", "requested_envelope_mass",
+    "change_envelope_mass_flag", "core_mass_reduction_factor",
+    "num_core_shells_added", "fcorr", "itdif1", "dtdif", "imend",
+    "acfpft", "max_domega_global", "structfactor", "fgrz",
+    "diffuse_helium_active", "use_mass_accretion", "new_species_value",
+    "target_radius_rsun", "target_teff", "pulse_format",
 }
 
 TYPE_RE = re.compile(

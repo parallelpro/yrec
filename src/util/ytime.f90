@@ -82,7 +82,7 @@ subroutine ytime(energy_gen_terms, composition, log_density, luminosity, &
        o16_fraction = composition(9,max_temp_zone)
        o17_fraction = composition(10,max_temp_zone)
        o18_fraction = composition(11,max_temp_zone)
-       if(use_extended_composition) then
+       if(star%job%use_extended_composition) then
           h2_fraction = composition(12,max_temp_zone)
           li6_fraction = composition(13,max_temp_zone)
           li7_fraction = composition(14,max_temp_zone)

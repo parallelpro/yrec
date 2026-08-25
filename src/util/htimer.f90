@@ -43,8 +43,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
      log_teff)
       use star_info_lib, only: star
-      use star_info_lib, only: json
-
+      use star_info_lib, only: star, json
       use const_lib
       implicit none
 
@@ -83,18 +82,18 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
       else
 ! mhp 9/01  turn off structure-based timestep setting above a critical
 !           temperature; this is done when
-      if(use_structure_dt_limits) then
+      if(star%job%use_structure_dt_limits) then
          if(log_temperature(1).gt.7.1d0 .and. luminosity_components(7).lt. 0.0d0) then
             write(*, 100) log_temperature(1), luminosity_components(7)
  100        format('LPTIME SET FALSE - TC ',F7.4,' EGRAV ',E10.2)
-            use_structure_dt_limits = .false.
+            star%job%use_structure_dt_limits = .false.
          endif
       endif
 !  find timestep based on changes in structure variables from
 !       one model to the next.
 !  note that this returns the timestep stored in the model on the
 !       first call to htimer for each kind card.
-      if(use_structure_dt_limits) then
+      if(star%job%use_structure_dt_limits) then
        call ptime(previous_timestep,luminosity,log_pressure,log_radius,log_temperature,num_points,structure_dt)
       else
        structure_dt = 1.0d20
@@ -109,7 +108,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 !       to determine the number of diffusion timesteps required.
 !  note that this returns the timestep stored in the model on the
 !       first call to htimer for each kind card.
-      if(rotation_active) then
+      if(star%job%rotation_active) then
        call wtime(previous_timestep,num_points,omega,rotation_dt,max_domega_frac)
       else
        rotation_dt = 1.0d20
@@ -150,7 +149,7 @@ subroutine htimer(previous_timestep, hydrogen_dt, num_points, log_density, &
 !  04/14 jvs added timestep governor based on the size of the envelope
 !  triangle. timesteps are restricted such that the model does not move
 !  more than tri_delta_logl or tri_delta_teffl
-      if(star%ctrl%use_envelope_triangle_dt .and. .not. use_structure_dt_limits) then
+      if(star%ctrl%use_envelope_triangle_dt .and. .not. star%job%use_structure_dt_limits) then
        call entime(previous_timestep,luminosity,log_teff,num_points,envelope_dt)
       else
        envelope_dt = 1.0d20

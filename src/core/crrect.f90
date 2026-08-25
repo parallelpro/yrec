@@ -158,7 +158,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
       if (start_new_triangle.or.reset_triangle .and.iteration_level.eq.2) &
            recompute_surface_bc = .true.
 !  FIND NEW FP AND FT IF MODEL IS ROTATING
-      if (rotation_active.and.recompute_surface_bc) then
+      if (star%job%rotation_active.and.recompute_surface_bc) then
        surface_pressure_rotation_factor = star%fp_rot(star%nz)
        surface_temperature_rotation_factor = &
             star%ft_rot(star%nz)
@@ -196,7 +196,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
 ! 7/91 ADD CALL TO MIX
       if (iteration_level.gt.2 .and. delta_time.gt.0.0d0) then
          num_species = 11
-         if (use_extended_composition) num_species = 15
+         if (star%job%use_extended_composition) num_species = 15
          do i = 1,star%nz
             do j = 1,num_species
                star%xa(j,i) = star%prev%xa_start(j,i)
@@ -327,9 +327,9 @@ subroutine crrect(delta_time, max_iterations, converged, &
           max_correction_pos = star%max_correction_index(j)
           star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
        end do
-       if (star%ctrl%fcorr0.gt.0.0d0) fcorr = dmin1(1.d0,fcorr+star%ctrl%fcorri)
+       if (star%ctrl%fcorr0.gt.0.0d0) star%job%fcorr = dmin1(1.d0,star%job%fcorr+star%ctrl%fcorri)
 ! HE FLASH CHANGE
-       correction_factor = fcorr
+       correction_factor = star%job%fcorr
        if (star%ctrl%helium_flash_active) then
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
@@ -374,7 +374,7 @@ subroutine crrect(delta_time, max_iterations, converged, &
        star%log_Teff = star%envelope_fit_coeffs(7)*star%logP(star%nz) + &
             star%envelope_fit_coeffs(8)*star%logT(star%nz) + &
             star%envelope_fit_coeffs(9)
-         if (rotation_active) then
+         if (star%job%rotation_active) then
             call getrot(star%logRho,star%j_rot,star%logR, &
                  star%log_mass,star%dm,star%am_transport_convective_flag, &
                  star%nz,star%eta_squared,star%i_rot,star%omega,star%qiw, &

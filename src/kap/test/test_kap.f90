@@ -60,7 +60,7 @@ program test_kap
       star%ctrl%use_alex06_tables = .false.
       star%ctrl%use_alex95_tables = .false.
       star%ctrl%use_kurucz90_tables = .false.
-      use_two_z_tables = .false.
+      star%use_two_z_tables = .false.
       use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
       star%ctrl%opal95_single_table_z = 0.016232d0
@@ -74,7 +74,7 @@ program test_kap
       star%ctrl%use_opal95_eos = .false.
       star%ctrl%use_opal2001_eos = .false.
       star%ctrl%use_opal2006_eos = .false.
-      atm_choice = 0
+      star%job%atm_choice = 0
 
       star%env_comp%envelope_hydrogen_fraction = 0.70d0
       star%env_comp%envelope_metal_fraction = 0.016232d0

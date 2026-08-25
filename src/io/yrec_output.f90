@@ -590,21 +590,21 @@ subroutine build_extended
          ext_region(n_ext) = 1
          ext_index(n_ext) = j
       end do
-      if (.not. calc_envelope_flag) return
+      if (.not. star%job%calc_envelope_flag) return
 
 ! ---- re-integrate at the converged model (stitch's recipe) ----
-      atm_beg0 = atm_step_begin
-      atm_min0 = atm_step_min
-      atm_max0 = atm_step_max
-      env_beg0 = env_step_begin
-      env_min0 = env_step_min
-      env_max0 = env_step_max
-      atm_step_begin = star%ctrl%atm_step_size
-      atm_step_min = star%ctrl%atm_step_size
-      atm_step_max = star%ctrl%atm_step_size
-      env_step_begin = star%ctrl%envelope_step_size
-      env_step_min = star%ctrl%envelope_step_size
-      env_step_max = star%ctrl%envelope_step_size
+      atm_beg0 = star%job%atm_step_begin
+      atm_min0 = star%job%atm_step_min
+      atm_max0 = star%job%atm_step_max
+      env_beg0 = star%job%env_step_begin
+      env_min0 = star%job%env_step_min
+      env_max0 = star%job%env_step_max
+      star%job%atm_step_begin = star%ctrl%atm_step_size
+      star%job%atm_step_min = star%ctrl%atm_step_size
+      star%job%atm_step_max = star%ctrl%atm_step_size
+      star%job%env_step_begin = star%ctrl%envelope_step_size
+      star%job%env_step_min = star%ctrl%envelope_step_size
+      star%job%env_step_max = star%ctrl%envelope_step_size
 
       idum = 0
       ixx = 0
@@ -632,12 +632,12 @@ subroutine build_extended
            star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), dum1, idum, katm, &
            kenv, ksaha, dum2, dum3, dum4, lpulpt, jerr)
 
-      atm_step_begin = atm_beg0
-      atm_step_min = atm_min0
-      atm_step_max = atm_max0
-      env_step_begin = env_beg0
-      env_step_min = env_min0
-      env_step_max = env_max0
+      star%job%atm_step_begin = atm_beg0
+      star%job%atm_step_min = atm_min0
+      star%job%atm_step_max = atm_max0
+      star%job%env_step_begin = env_beg0
+      star%job%env_step_min = env_min0
+      star%job%env_step_max = env_max0
       if (jerr /= 0) return
 
 ! envelope: env_struct runs fitting point -> photosphere (envint
@@ -887,8 +887,7 @@ end subroutine build_pulse_points
 ! order (column 34 is eps_grav, not a species; be9 has no FGONG
 ! column).
 integer function species_slot(k)
-      use star_info_lib, only: i_he3, i_c12, i_c13, i_n14, i_o16, &
-           i_h2, i_he4, i_li7, i_n15, i_o17, i_o18
+      use star_info_lib, only: star, i_he3, i_c12, i_c13, i_n14, i_o16, i_h2, i_he4, i_li7, i_n15, i_o17, i_o18
       integer, intent(in) :: k
       integer, parameter :: slots(11) = [i_he3, i_c12, i_c13, i_n14, &
            i_o16, i_h2, i_he4, i_li7, i_n15, i_o17, i_o18]
@@ -915,13 +914,13 @@ subroutine write_pulse(iprof)
       lstar_cgs = exp(ln10*star%log_L)*star%solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
-      if (pulse_format(1:5) == 'FGONG' .or. &
-          pulse_format(1:5) == 'fgong') then
+      if (star%job%pulse_format(1:5) == 'FGONG' .or. &
+          star%job%pulse_format(1:5) == 'fgong') then
          path = trim(out_dir) // 'profile' // trim(numstr) // '.data.FGONG'
          call write_fgong_pulse(n_ext, pts, mstar_g, rstar_cm, &
               lstar_cgs, path)
-      else if (pulse_format(1:3) == 'GSM' .or. &
-               pulse_format(1:3) == 'gsm') then
+      else if (star%job%pulse_format(1:3) == 'GSM' .or. &
+               star%job%pulse_format(1:3) == 'gsm') then
          path = trim(out_dir) // 'profile' // trim(numstr) // '.data.GSM'
          call write_gsm_pulse(n_ext, pts, mstar_g, rstar_cm, &
               lstar_cgs, path)

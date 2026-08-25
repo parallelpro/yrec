@@ -45,18 +45,18 @@ subroutine setscal
 ! --- locals ---
       integer :: i, j
 
-      star_found_flag = .false.
-      just_passed_target_radius_flag = .false.
+      star%star_found_flag = .false.
+      star%just_passed_target_radius_flag = .false.
       if (star%ctrl%specify_teff_flag) then
-         target_radius_rsun = sqrt(star%ctrl%target_luminosity_lsun* &
-              star%solar_luminosity_cgs/(c4pi*csig))/(target_teff*target_teff* &
+         star%job%target_radius_rsun = sqrt(star%ctrl%target_luminosity_lsun* &
+              star%solar_luminosity_cgs/(c4pi*csig))/(star%job%target_teff*star%job%target_teff* &
               star%solar_radius_cgs)
       else
-         target_teff = ((star%ctrl%target_luminosity_lsun*star%solar_luminosity_cgs)/ &
-              (c4pi*csig*target_radius_rsun*target_radius_rsun* &
+         star%job%target_teff = ((star%ctrl%target_luminosity_lsun*star%solar_luminosity_cgs)/ &
+              (c4pi*csig*star%job%target_radius_rsun*star%job%target_radius_rsun* &
               star%solar_radius_cgs*star%solar_radius_cgs))**0.25d0
       end if
-      log_r_prev_model = 0
+      star%log_r_prev_model = 0
 !     SET UP RUN TO EVOLVE TO L, Teff IN HR-DIAGRM.
 !     THIS CONSISTS OF SETTING THE NUMBER OF RUNS TO THE MAXIMUM (50),
 !     AND COPYING THE RELEVANT PARAMETERS FROM THE FIRST TWO RUNS TO
@@ -89,9 +89,9 @@ subroutine setscal
          star%job%timestep_override(i) = star%job%timestep_override(2)
          star%job%timestep_override_active(i) = star%job%timestep_override_active(2)
       end do
-      write(*,*) ' Evolve to R*, L* = ', target_radius_rsun, &
+      write(*,*) ' Evolve to R*, L* = ', star%job%target_radius_rsun, &
            star%ctrl%target_luminosity_lsun
-      write(itrack,*) '#Evolve to R*, L* = ', target_radius_rsun, &
+      write(itrack,*) '#Evolve to R*, L* = ', star%job%target_radius_rsun, &
            star%ctrl%target_luminosity_lsun
       return
 end subroutine setscal

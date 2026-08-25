@@ -62,7 +62,7 @@ subroutine setkrz(kurucz_table_path, kurucz_table2_path)
       close(star%ctrl%kurucz_table_unit,err=99)
 
 ! DBG 12/95 read in second Z table if requested
-      if (use_two_z_tables) then
+      if (star%use_two_z_tables) then
 !        OPEN TABLE
          open(star%ctrl%ikur2, file=kurucz_table2_path, status='OLD')
          read(star%ctrl%ikur2,'(/)')

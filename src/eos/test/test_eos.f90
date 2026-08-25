@@ -113,7 +113,7 @@ program test_eos
       star%ctrl%use_opal95_eos = .false.
       star%ctrl%use_opal2001_eos = .false.
       star%ctrl%use_opal2006_eos = .true.
-      use_diffusion_z = .false.
+      star%job%use_diffusion_z = .false.
       star%ctrl%use_numerical_derivatives = .false.
       use_debye_huckel_correction = .false.
       star%ctrl%saha_log10t_cutoff = 6.0d0
@@ -125,10 +125,10 @@ program test_eos
       star%ctrl%use_alex06_tables = .false.
       star%ctrl%use_alex95_tables = .false.
       star%ctrl%use_kurucz90_tables = .false.
-      use_two_z_tables = .false.
+      star%use_two_z_tables = .false.
       use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
-      atm_choice = 0
+      star%job%atm_choice = 0
 
 ! envelope composition state, per starin.f90's mixture algorithm
       star%env_comp%xnew = 0.70d0

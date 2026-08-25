@@ -123,7 +123,7 @@ subroutine hpoint(envelope_store_index, point_reset_flag, &
       point_reset_flag = .false.
 !  IEND IS THE NUMBER OF SPECIES THE PROGRAM IS KEEPING TRACK OF
       num_species_tracked = 11
-      if (use_extended_composition) num_species_tracked = 15
+      if (star%job%use_extended_composition) num_species_tracked = 15
       call check_envelope_temperature_range
       if (ierr /= 0) return
       call flag_fixed_points
@@ -232,7 +232,7 @@ subroutine flag_fixed_points
           flag_point(flag_count) = i
           flag_count = flag_count + 1
 ! TEST FOR FLAGGING DUE TO GRADIENT IN LOG OMEGA.
-       else if (rotation_active) then
+       else if (star%job%rotation_active) then
           log_omega_top = dlog10(star%omega(i))
           log_omega_bot = dlog10(star%omega(i-1))
           if (dabs(log_omega_top-log_omega_bot).gt.star%ctrl%chi_grid_scale(12)) then
@@ -266,7 +266,7 @@ subroutine flag_fixed_points
        fine_zone_base = 1
       else
 ! LOCATE BASE OF OVERSHOOT REGION IF APPLICABLE.
-       if (.not.envelope_overshoot_active) then
+       if (.not.star%job%envelope_overshoot_active) then
           i = star%envelope_cz_bottom_index
           overshoot_base_zone = star%envelope_cz_bottom_index
        else
@@ -364,7 +364,7 @@ end subroutine flag_fixed_points
 ! requested point count exceeds json.
 subroutine assign_new_points
 ! BEGIN REFLOATING OF POINTS
-      if (rotation_active) then
+      if (star%job%rotation_active) then
        do i = 1,star%nz
           if (star%omega(i).gt.0.0D0) then
              log10_omega(i) = dlog10(star%omega(i))
@@ -736,7 +736,7 @@ subroutine interpolate_onto_new_grid
 ! MHP 05/02 IF THE SURFACE DEUTERIUM IS ABOVE
 ! THRESHOLD (1.0D-14) FIND THE NEW RUN OF
 ! DEUTERIUM BURNING RATES
-      if (use_extended_composition .and. &
+      if (star%job%use_extended_composition .and. &
            star%xa(i_h2,star%nz).ge.1.0D-14) then
          do j = 1,star%nz
             star%prev%logP_start(j) = star%light_burn%deuterium_burning_rate_start(j)
@@ -761,7 +761,7 @@ subroutine interpolate_onto_new_grid
            old_point_count,new_point_count)
 
 ! FOR ROTATING MODELS FIND THE NEW RUN OF OMEGA,J/M,FP,FT,R0,AND ETA2.
-      if (rotation_active) then
+      if (star%job%rotation_active) then
          call osplin(star%prev%old_shell_mass,star%run%old_omega,star%log_mass,star%omega, &
               old_point_count,new_point_count)
          call osplin(star%prev%old_shell_mass,star%run%old_specific_angular_momentum,star%log_mass, &
@@ -820,7 +820,7 @@ subroutine interpolate_onto_new_grid
        star%luminosity_lsun(j) = star%prev%luminosity_lsun_start(j)
        star%logRho(j) = star%prev%logRho_start(j)
       end do
-      if (rotation_active) then
+      if (star%job%rotation_active) then
        do j = 1, new_num_zones
           star%j_rot(j) = star%run%old_specific_angular_momentum(j)
           star%omega(j) = star%run%old_omega(j)
@@ -831,8 +831,8 @@ subroutine interpolate_onto_new_grid
        end do
       endif
 ! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
-      if (rotation_active .or. (use_extended_composition .and. &
-           envelope_overshoot_active)) then
+      if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
+           star%job%envelope_overshoot_active)) then
          call osplin(star%prev%old_shell_mass,star%rot%old_esum,star%log_mass,star%diag%sesum, &
               old_point_count,new_point_count)
          do zone_index = 1,star%nz
@@ -858,7 +858,7 @@ subroutine interpolate_onto_new_grid
       star%m(star%nz) = mass_curr
       star%dm(star%nz) = dexp(ln10*star%log_total_mass) - &
            0.5D0*(mass_prev+mass_curr)
-      if (rotation_active) then
+      if (star%job%rotation_active) then
 !  FIRST GUESS AT MOMENT OF INERTIA(HI)
        do i=1,star%nz
           star%i_rot(i) = cc23*star%dm(i)* &
@@ -921,8 +921,8 @@ subroutine interpolate_onto_new_grid
 ! ROTATION; THIS IS NEEDED SO THAT THE BASE OF THE OVERSHOOT REGION FOR
 ! PRE-MS MODELS CAN BE ACCURATELY LOCATED.
       endif
-      if (rotation_active .or. (use_extended_composition .and. &
-           envelope_overshoot_active)) then
+      if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
+           star%job%envelope_overshoot_active)) then
 ! END OF 9/91 CHANGE
 !   FIND THE NEW RUN OF PHYSICAL VARIABLES AT THE NEW SET OF POINTS;
 !   THIS IS NEEDED EVEN IN THE ABSENCE OF DIFFUSION TO ACCURATELY LOCATE

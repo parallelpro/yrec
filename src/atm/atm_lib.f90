@@ -48,6 +48,7 @@ contains
 ! preserved use of `ng` (not `ngc`) in the Castelli branch's final
 ! failsafe (harmless, both are 11; not "fixed").
 subroutine atm_init(atm_table_path, allard_table_path, ierr)
+      use star_info_lib, only: star
 
       use atm_table_lib
       use const_lib
@@ -73,7 +74,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
       if (present(ierr)) ierr = 0
       jerr = 0
 
-      if ((atm_choice .eq. 3) .or. (atm_choice .eq. 4)) then
+      if ((star%job%atm_choice .eq. 3) .or. (star%job%atm_choice .eq. 4)) then
 ! OPEN SURFACE PRESSURE TABLE
         open(atm_table_file_unit,file=atm_table_path, status='OLD')
 ! GET ABUNDANCE:
@@ -124,7 +125,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !        G Somers 5/15 END
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES; USED INSTEAD OF
 ! KURUCZ FOR TEFF < 10,000 K.
-         if(atm_choice .eq. 4)then
+         if(star%job%atm_choice .eq. 4)then
 !            ATMZA = 0.02D0
           call alfilein(allard_table_path, jerr)      ! Get Allard Atmospheres files and
           if (jerr /= 0) then
@@ -138,7 +139,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 
 
 ! JNT 6/14 ADD OPTION FOR NEW KURUCZ/CASTELLI ATMOSHPERES
-      else if (atm_choice .eq. 5) then
+      else if (star%job%atm_choice .eq. 5) then
 ! OPEN SURFACE PRESSURE TABLE
         open(atm_table_file_unit,file=atm_table_path, status='OLD')
 ! GET ABUNDANCE:

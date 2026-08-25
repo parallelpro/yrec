@@ -49,7 +49,7 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
       prev_log_teff = log_teff
       prev_age = star%run%dage
       if (path_length_sq .ge. star%ctrl%po_max_len_sq) then
-          pulsation_output_active = .true.
+          star%job%pulsation_output_active = .true.
           path_length_sq = 0.0d0
           trim_col = index(pulse_mod_path,' ')-1
           if (model_number.lt.10000) then
@@ -82,7 +82,7 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
           close(star%ctrl%opal_model_unit)
           close(star%ctrl%opal_envelope_unit)
           close(star%ctrl%opal_atm_unit)
-          pulsation_output_active = .false.
+          star%job%pulsation_output_active = .false.
        end if
        write(iowr,276) path_length_sq,delta_log_l,delta_log_teff,delta_age
        write(short_file_unit,276) path_length_sq,weighted_l_sq, &

@@ -59,8 +59,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, convective_flag, &
      num_zones, total_mass)
       use star_info_lib, only: star
-      use star_info_lib, only: json
-
+      use star_info_lib, only: star, json
       use luout_lib
       use const_lib
       implicit none
@@ -157,7 +156,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !  THESE VALUES ARE USED FOR THE METAL ABUNDANCE IN THOUL.
 !
 !     DIFFUSE HYDROGEN.
-      if(diffuse_helium_active)then
+      if(star%job%diffuse_helium_active)then
          species_col = 1
          atomic_weight_diffused = 55.86d0
          atomic_charge_diffused = 26.0d0
@@ -190,7 +189,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !----------------------------------------------------------------------
 !
 !     DIFFUSE HEAVY METALS.
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          species_col = 3
          atomic_weight_diffused = 55.86d0
          atomic_charge_diffused = 26.0d0

@@ -92,15 +92,15 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 
 ! physics flags:
 ! Determine atmosphere flag, ATM
-      if (atm_choice .eq. 0) then
+      if (star%job%atm_choice .eq. 0) then
          atmosphere_flag='EDD '
-      elseif (atm_choice .eq. 1) then
+      elseif (star%job%atm_choice .eq. 1) then
          atmosphere_flag='KS  '
-      elseif (atm_choice .eq. 2) then
+      elseif (star%job%atm_choice .eq. 2) then
          atmosphere_flag='HRA '
-      elseif (atm_choice .eq. 3) then
+      elseif (star%job%atm_choice .eq. 3) then
          atmosphere_flag='KUR '
-      elseif (atm_choice .eq. 4) then
+      elseif (star%job%atm_choice .eq. 4) then
          atmosphere_flag='ALL '
       endif
 ! Determine equation of state flag, EOS
@@ -150,22 +150,22 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! 09/25 JvS: Add secondary format option that prints stitched interior and envelope
 ! points. Output is either in the old format or new format, not both.
       if(star%ctrl%lstch)then
-          if(lphhd)then
+          if(star%job%lphhd)then
             write(istor,1013) ! header key
           ! write model physics header. Should only happen upon first model output.
           ! write physics flags:
             write(istor,29) core_cz_top_index,envelope_cz_bottom_index,star%mixing_length_alpha, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
-           use_pure_z_table,star%run%initial_composition_code,use_extended_composition, &
-           diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
-           envelope_overshoot_active,lovstm,rotation_active, &
-           instability_transport_active,ljdot0,disk_locking_active, &
-           disk_temperature,disk_pressure,wind_saturation_omega,star%ctrl%lstore,lstatm,star%ctrl%lstenv, &
+           use_pure_z_table,star%run%initial_composition_code,star%job%use_extended_composition, &
+           star%job%diffuse_helium_active,star%job%use_diffusion_z,star%job%lsemic,star%job%lovstc, &
+           star%job%envelope_overshoot_active,star%job%lovstm,star%job%rotation_active, &
+           star%job%instability_transport_active,star%job%ljdot0,star%job%disk_locking_active, &
+           star%job%disk_temperature,star%job%disk_pressure,star%job%wind_saturation_omega,star%ctrl%lstore,star%job%lstatm,star%ctrl%lstenv, &
            star%ctrl%lstmod,star%ctrl%lstphys,star%ctrl%lstrot
    29      format('#',2I8,F16.10,1X,A6,1X,3(A4,1X),L1,1X,A4,1X,11(L1,1X), &
            3(1PE18.10),1X,6(L1,1X))
            write(istor,1014) ! profile header
-           lphhd = .false. ! Turn off the physics header fo the rest of the run.
+           star%job%lphhd = .false. ! Turn off the physics header fo the rest of the run.
           endif
         call stitch(composition,log_radius,log_pressure,log_density, &
              log_mass,log_temperature,log_luminosity,mass_coordinate,omega, &
@@ -211,11 +211,11 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
 ! write physics flags:
       write(istor,30) core_cz_top_index,envelope_cz_bottom_index,star%mixing_length_alpha, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
-           use_pure_z_table,star%run%initial_composition_code,use_extended_composition, &
-           diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
-           envelope_overshoot_active,lovstm,rotation_active, &
-           instability_transport_active,ljdot0,disk_locking_active, &
-           disk_temperature,disk_pressure,wind_saturation_omega,star%ctrl%lstore,lstatm,star%ctrl%lstenv, &
+           use_pure_z_table,star%run%initial_composition_code,star%job%use_extended_composition, &
+           star%job%diffuse_helium_active,star%job%use_diffusion_z,star%job%lsemic,star%job%lovstc, &
+           star%job%envelope_overshoot_active,star%job%lovstm,star%job%rotation_active, &
+           star%job%instability_transport_active,star%job%ljdot0,star%job%disk_locking_active, &
+           star%job%disk_temperature,star%job%disk_pressure,star%job%wind_saturation_omega,star%ctrl%lstore,star%job%lstatm,star%ctrl%lstenv, &
            star%ctrl%lstmod,star%ctrl%lstphys,star%ctrl%lstrot
    30 format(2I8,F16.10,1X,A6,1X,3(A4,1X),L1,1X,A4,1X,11(L1,1X), &
            3(1PE18.10),1X,6(L1,1X))
@@ -288,7 +288,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
                  0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
             endif
 ! write out additional rotation info if desired
-            if(star%ctrl%lstrot.and.rotation_active)then
+            if(star%ctrl%lstrot.and.star%job%rotation_active)then
              fm = dexp(ln10*log_mass(i))
              duma = cc13*omega(i)**2/(local_g_const*fm)*5.D0/(2.D0+rotation_eta2(i))
              oblateness_a = duma * radius_ratio_r0(i)**3
@@ -315,7 +315,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       endif
 ! now call wrtmod, with the goal of outputting the envelope and atmosphere, or
 ! if required by LPULSE.
-      if(lstatm.or.star%ctrl%lstenv)then
+      if(star%job%lstatm.or.star%ctrl%lstenv)then
        if(lmilne_local) call wrtmil(composition,log_density,log_luminosity, &
             log_pressure,log_radius,mass_coordinate,num_shells,model_number)
          call wrtmod(num_shells,envelope_cz_bottom_index,composition, &

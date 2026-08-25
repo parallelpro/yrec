@@ -182,7 +182,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 ! MHP 9/94
 ! DISK LOCKING CHECKED
       disk_lock_active = .false.
-      if(disk_locking_active .and. disk_lifetime.le.disk_temperature) &
+      if(star%job%disk_locking_active .and. star%disk_lifetime.le.star%job%disk_temperature) &
            disk_lock_active = .true.
 !  FIRST AND LAST SHELL BOUNDARY CONDITIONS REQUIRE THAT THESE SHELLS BE
 !  TREATED AS 'CONVECTIVE' FOR DIFFUSION PURPOSES. FIX THIS.
@@ -296,7 +296,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
             do i = zone_max,num_zones
                cz_moment_of_inertia = cz_moment_of_inertia + moment_of_inertia(i)
             end do
-            wind_loss_active = ljdot0
+            wind_loss_active = star%job%ljdot0
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
             call mwind(log_luminosity_lsun,sub_timestep,cz_mass_bottom, &
                  cz_mass_top,zone_max,num_zones,wind_loss_active,omega_surface, &
@@ -307,7 +307,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 SAME AS LSOLID
          else if(surface_cz_active .and. (star%ctrl%force_solid_body_rotation .or. &
               (star%ctrl%solid_body_mode_flag.eq.1)))then
-            wind_loss_active = ljdot0
+            wind_loss_active = star%job%ljdot0
             solid_cz_mass_bottom = 0.0D0
             solid_cz_mass_top = exp(ln10*log_total_mass)
             solid_start_zone = 1
@@ -417,7 +417,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
                fix_omega_at_surface = .true.
             else
                fix_omega_at_surface = .false.
-               if(ljdot0)then
+               if(star%job%ljdot0)then
                   cz_moment_of_inertia = eq_moment_of_inertia(star%rot%ntot)
                   omega_surface = omega(num_zones)
                   call mcowind(log_luminosity_lsun,sub_timestep, &
@@ -524,7 +524,7 @@ subroutine seculr(sub_timestep, log_density, local_gravity, &
 ! MHP 08/03 REMOVED OBSOLETE DIFCOM ROUTINE
 !      IF(M.GT.1)THEN
       species_begin = 5
-      if(use_extended_composition)then
+      if(star%job%use_extended_composition)then
          species_end = 15
       else
          species_end = 11

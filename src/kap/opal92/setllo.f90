@@ -61,7 +61,7 @@ subroutine setllo(opal92_table_path, opal92_table2_path)
       opacity_table%opal92_num_x=i-1
 
 ! DBG 5/94 Second Opacity Table read here
-      if (use_two_z_tables) then
+      if (star%use_two_z_tables) then
          open(unit=ioopal2,file=opal92_table2_path)
          do i=1,num_x
             read(ioopal2,190,end=597) opacity_table%opal92_grid_x_z2(i), local_grid_z(i)

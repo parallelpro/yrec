@@ -407,10 +407,10 @@ subroutine acquire_starting_model
             (dabs(star%mixing_length_alpha-mixing_length0).lt.2.0d-3)
 ! MHP 9/03 FIXED TYPO
        if (.not.mixing_length_matches .or. use_extended_composition0.neqv. &
-            use_extended_composition) then
+            star%job%use_extended_composition) then
           write(short_file_unit,1040) star%mixing_length_alpha,mixing_length0, &
-               use_extended_composition,lexcp0
-          write(iowr,1040) star%mixing_length_alpha,mixing_length0,use_extended_composition, &
+               star%job%use_extended_composition,lexcp0
+          write(iowr,1040) star%mixing_length_alpha,mixing_length0,star%job%use_extended_composition, &
                lexcp0
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
@@ -442,7 +442,7 @@ subroutine acquire_starting_model
 
 ! FOURTH PART:  - LOG J/M STORED
 
-      if (rotation_active) then
+      if (star%job%rotation_active) then
        if (star%ctrl%lwnew) then
 ! GENERATE A SOLID BODY ROTATION CURVE WITH OMEGA = WNEW;
 ! THIS IS DONE TO CONVERT A NON-ROTATING MODEL TO A ROTATING ONE.
@@ -582,11 +582,11 @@ subroutine extend_core_toward_center
 ! MULTIPLES OF THE CENTRAL POINT SPACING.
 !     MCORE is number of shells to extrapolate to new core.
 !     FCORE is factor to reduce inner mass shell.
-          num_core_shells_added = int(dlog10(core_mass_reduction_factor)/ &
+          star%job%num_core_shells_added = int(dlog10(star%job%core_mass_reduction_factor)/ &
                star%ctrl%chi_grid_scale(2))+1
-          core_mass_reduction_factor = dble(num_core_shells_added)* &
+          star%job%core_mass_reduction_factor = dble(star%job%num_core_shells_added)* &
                star%ctrl%chi_grid_scale(2)
-          num_shells_extended = star%nz + num_core_shells_added
+          num_shells_extended = star%nz + star%job%num_core_shells_added
           if (num_shells_extended .gt. json) then
              write(short_file_unit,476)"STARIN: Unable to extend core inward ", &
                    "- JSON too small"
@@ -600,18 +600,18 @@ subroutine extend_core_toward_center
           core_shell_spacing = star%ctrl%chi_grid_scale(2)
 ! shift data for remaining points by the required number
           do i=star%nz,1, -1
-             star%log_mass(i+num_core_shells_added) = star%log_mass(i)
-             star%logR(i+num_core_shells_added) = star%logR(i)
-             star%luminosity_lsun(i+num_core_shells_added) = star%luminosity_lsun(i)
-             star%logP(i+num_core_shells_added) = star%logP(i)
-             star%logT(i+num_core_shells_added) = star%logT(i)
-             star%convective_flag(i+num_core_shells_added) = star%convective_flag(i)
+             star%log_mass(i+star%job%num_core_shells_added) = star%log_mass(i)
+             star%logR(i+star%job%num_core_shells_added) = star%logR(i)
+             star%luminosity_lsun(i+star%job%num_core_shells_added) = star%luminosity_lsun(i)
+             star%logP(i+star%job%num_core_shells_added) = star%logP(i)
+             star%logT(i+star%job%num_core_shells_added) = star%logT(i)
+             star%convective_flag(i+star%job%num_core_shells_added) = star%convective_flag(i)
              do j=1, 15
-                star%xa(j,i+num_core_shells_added) = star%xa(j,i)
+                star%xa(j,i+star%job%num_core_shells_added) = star%xa(j,i)
              end do
-             star%omega(i+num_core_shells_added) = star%omega(i)
+             star%omega(i+star%job%num_core_shells_added) = star%omega(i)
           end do
-          first_original_shell = num_core_shells_added+1
+          first_original_shell = star%job%num_core_shells_added+1
 ! MARCH INWARD IN MASS FROM THE INNERMOST MODEL POINT.
 ! ASSUME EPSILON=CONSTANT AND DEL=CONSTANT
           central_log_density = star%logRho(1)
@@ -622,7 +622,7 @@ subroutine extend_core_toward_center
           density_estimate_offset = star%logP(first_original_shell)- &
                star%logRho(first_original_shell)- &
                star%logT(first_original_shell)
-          do i = num_core_shells_added,1,-1
+          do i = star%job%num_core_shells_added,1,-1
              star%log_mass(i) = star%log_mass(i+1)-core_shell_spacing
 ! USE M  = 4PI/3*RHOC*R**3 TO GET R AS A FUNCTION OF M
              star%logR(i) = cc13*(star%log_mass(i)-c4pi3l-central_log_density)
@@ -692,37 +692,37 @@ subroutine rescale_and_refit_envelope
 ! IS INTEGRATED FROM THE SURFACE TO THE DESIRED FITTING POINT.
 ! 1 NEW POINT IS ADDED, AND THE COMPOSITION OF THE NEW POINT
 ! IS ASSUMED EQUAL TO THAT OF THE LAST OLD POINT.
-      if (change_envelope_mass_flag) then
+      if (star%job%change_envelope_mass_flag) then
       envelope_rescale: do
-       if (requested_envelope_mass.gt.0.0d0) requested_envelope_mass = &
-            -requested_envelope_mass
+       if (star%job%requested_envelope_mass.gt.0.0d0) star%job%requested_envelope_mass = &
+            -star%job%requested_envelope_mass
 ! DBG 2/92 CHANGED MINIMUM FROM 1.0D-10 TO 1.0D-12
 ! RESTRICT MIMIMUM ENVELOPE MASS;1.0D-12 CORRESPONDS TO TAU=2/3
 ! FOR THIS PURPOSE(BASE OF ATMOSPHERE).
-       if (requested_envelope_mass.gt.-1.0d-12) requested_envelope_mass = &
+       if (star%job%requested_envelope_mass.gt.-1.0d-12) star%job%requested_envelope_mass = &
             -1.d-12
        star%env_comp%senv = star%log_mass(star%nz) - star%log_total_mass
        old_senv = star%env_comp%senv
-       if (star%env_comp%senv.eq.requested_envelope_mass) exit envelope_rescale
+       if (star%env_comp%senv.eq.star%job%requested_envelope_mass) exit envelope_rescale
        num_species = 11
-       if (use_extended_composition) num_species = 15
-       if (requested_envelope_mass.lt.star%env_comp%senv) then
+       if (star%job%use_extended_composition) num_species = 15
+       if (star%job%requested_envelope_mass.lt.star%env_comp%senv) then
 ! NEW ENVELOPE DEEPER THAN THE OLD ONE
-          target_log_mass_at_fit = star%log_total_mass+requested_envelope_mass
+          target_log_mass_at_fit = star%log_total_mass+star%job%requested_envelope_mass
           do i = star%nz-1,1,-1
              if (star%log_mass(i).lt.target_log_mass_at_fit) exit
           end do
           if (i < (1)) then
 ! ENVELOPE MASS DESIRED WITHIN FIRST POINT;PRINT NASTY MESSAGE
 ! AND ABORT.
-          write(short_file_unit,576)requested_envelope_mass
+          write(short_file_unit,576)star%job%requested_envelope_mass
  576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
           exit envelope_rescale
           end if
             star%nz = i + 1
-          star%env_comp%senv = requested_envelope_mass
+          star%env_comp%senv = star%job%requested_envelope_mass
           interior_interp_fraction = (target_log_mass_at_fit-star%log_mass(i))/ &
                (star%log_mass(i+1) - star%log_mass(i))
           star%log_mass(star%nz) = target_log_mass_at_fit
@@ -743,7 +743,7 @@ subroutine rescale_and_refit_envelope
           end do
           star%env_comp%xnew = star%xa(i_h1,star%nz)
           star%env_comp%znew = star%xa(i_metals,star%nz)
-          if (rotation_active) star%omega(star%nz) = star%omega(i) + &
+          if (star%job%rotation_active) star%omega(star%nz) = star%omega(i) + &
                interior_interp_fraction*(star%omega(i+1)-star%omega(i))
           if (star%convective_flag(i).and.star%convective_flag(i+1)) then
              star%convective_flag(star%nz) = .true.
@@ -785,7 +785,7 @@ subroutine rescale_and_refit_envelope
                call kap_get(log10_density, log10_temperature, &
                     hydrogen_fraction, metal_fraction, opacity, &
                     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ion_fraction)
-               iovim = -1
+               star%iovim = -1
                call tpgrad(log10_temperature,temperature,log10_pressure, &
                     pressure,density,log10_radius,log10_mass, &
                     shell_luminosity_lsun,opacity,dlnrho_dlnt,dlnrho_dlnp, &
@@ -809,12 +809,12 @@ subroutine rescale_and_refit_envelope
        else
 ! DESIRED ENVELOPE MASS LESS THAN CURRENT VALUE.
             old_last_shell = star%nz
-            saved_env_step_max = env_step_max
-            saved_env_step_min = env_step_min
-            saved_env_step_begin = env_step_begin
-            env_step_max = star%ctrl%chi_grid_scale(8)
-            env_step_min = star%ctrl%chi_grid_scale(8)
-            env_step_begin = star%ctrl%chi_grid_scale(8)
+            saved_env_step_max = star%job%env_step_max
+            saved_env_step_min = star%job%env_step_min
+            saved_env_step_begin = star%job%env_step_begin
+            star%job%env_step_max = star%ctrl%chi_grid_scale(8)
+            star%job%env_step_min = star%ctrl%chi_grid_scale(8)
+            star%job%env_step_begin = star%ctrl%chi_grid_scale(8)
 !          SENV = SENV0
           save_boundary_flag = .false.
           print_flag = .true.
@@ -862,10 +862,10 @@ subroutine rescale_and_refit_envelope
                  atm_get_unused_flag,katm,kenv,saha_state,atm_get_dummy2, &
                  atm_get_dummy3,atm_get_dummy4,pulse_print_flag)
 ! G Somers END
-            env_step_max = saved_env_step_max
-            env_step_min = saved_env_step_min
-            env_step_begin = saved_env_step_begin
-          star%env_comp%senv = requested_envelope_mass
+            star%job%env_step_max = saved_env_step_max
+            star%job%env_step_min = saved_env_step_min
+            star%job%env_step_begin = saved_env_step_begin
+          star%env_comp%senv = star%job%requested_envelope_mass
             if (star%nz+env_struct%num_env_points.ge.json) stop 9999
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
 ! ADJUST THE (P, RHO, T, R) POINTS TO BE CONSISTENT
@@ -1017,7 +1017,7 @@ subroutine rescale_and_refit_envelope
             if (j .gt. star%nz + env_struct%num_env_points) then
             star%nz = star%nz + env_struct%num_env_points
             end if
-            if (rotation_active) then
+            if (star%job%rotation_active) then
                do j = old_last_shell+1,star%nz
                   star%omega(j) = star%omega(old_last_shell)
                   star%j_rot(j) = cc23*star%omega(old_last_shell)* &
@@ -1056,7 +1056,7 @@ subroutine rescale_and_refit_envelope
       star%dm(star%nz) = dexp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
            next_mass)
 
-      if (rotation_active) then
+      if (star%job%rotation_active) then
 ! CALCULATE FP,FT,R0 AND ETA2 GIVEN OMEGA
        call fpft(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
             star%eta_squared,star%fp_rot,star%ft_rot, &
@@ -1160,7 +1160,7 @@ subroutine rescale_and_refit_envelope
 !  JVS 05/25 Added model number to list of saved values
        star%prev%nz_start = star%nz
       end do
-      if (rotation_active) then
+      if (star%job%rotation_active) then
          do i = 1,star%nz
           star%run%old_omega(i) = star%omega(i)
          end do

@@ -79,7 +79,7 @@ subroutine mixcz(composition, shell_mass, convective_flag, num_zones)
       zone_bounds(j_idx) = 0
       end if
       num_species = 11
-      if (use_extended_composition) num_species = 15
+      if (star%job%use_extended_composition) num_species = 15
 ! MIX ALL CONVECTIVE ZONES
       do j_idx = 1, 24, 2
          if (zone_bounds(j_idx).le.0) exit

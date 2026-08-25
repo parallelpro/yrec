@@ -102,9 +102,9 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
 ! IF CHKPRS < 1.0, 1 PSCA UP MIGHT BE IN ENV. STITCH TOGETHER.
 ! FINALLY, IF LNEWTCZ = .FALSE., MAKE SURE TO CALC AN ENV.
       if (pressure_diff_check.lt.1.0.or..not.star%ctrl%use_new_turnover_timescale) then
-         calc_envelope_flag = .true.
+         star%job%calc_envelope_flag = .true.
       else
-         calc_envelope_flag = .false.
+         star%job%calc_envelope_flag = .false.
       endif
 !
 ! CALL ENVINT
@@ -172,7 +172,7 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
          combined_convective_flag(zone_index) = convective_flag(zone_index)
       enddo
 !
-      if (calc_envelope_flag.and.star%ctrl%use_new_turnover_timescale) then
+      if (star%job%calc_envelope_flag.and.star%ctrl%use_new_turnover_timescale) then
 ! IF CHKPRS < 1, THEN STITCH THE ENVELOPE ONTO THE INTERIOR.
 ! ENVELOPE WAS JUST INTEGRATED IN ENVINT ABOVE, SO USE THAT RUN.
 ! THIS CODE BORROWED FROM STITCH.F.
@@ -214,6 +214,6 @@ subroutine gettau(composition, log_radius, log_pressure, log_density, &
       endif
 ! RETURN FULL FUNCTIONALITY TO ENVINT
       end if
-      calc_envelope_flag = .true.
+      star%job%calc_envelope_flag = .true.
       return
 end subroutine gettau

@@ -152,13 +152,13 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 ! along with the dispatch itself; 2026, ROADMAP.md stage 1.)
 
 ! Initialize values:
-      acoustic_depth_cz_fraction = 0.0d0
-      acoustic_depth_cz_seconds = 0.0d0
-      acoustic_crossing_time_seconds = 0.0d0
-      heii_zone_acoustic_width = 0.0d0
-      acoustic_depth_heii = 0.0d0
+      star%acoustic_depth_cz_fraction = 0.0d0
+      star%acoustic_depth_cz_seconds = 0.0d0
+      star%acoustic_crossing_time_seconds = 0.0d0
+      star%heii_zone_acoustic_width = 0.0d0
+      star%acoustic_depth_heii = 0.0d0
       atmosphere_hydrogen_fraction = 0.0d0
-      atmosphere_sound_travel_time = 0.0d0
+      star%atmosphere_sound_travel_time = 0.0d0
 !      KTSAV = 3
 
 ! Need to calculate the sound speed in the envelope: first, stitch
@@ -168,18 +168,18 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
 ! First, do the envelope integration to make sure the values in ENVSTRUCT
 ! are up-to-date (this section of code grabbed from wrtmod). First, integrate the atm and store values with grey atm
-      atm_step_begin_saved = atm_step_begin
-      atm_step_min_saved = atm_step_min
-      atm_step_max_saved = atm_step_max
-      env_step_begin_saved = env_step_begin
-      env_step_min_saved = env_step_min
-      env_step_max_saved = env_step_max
-      atm_step_begin = star%ctrl%atm_step_size
-      atm_step_min = star%ctrl%atm_step_size
-      atm_step_max = star%ctrl%atm_step_size
-      env_step_begin = star%ctrl%envelope_step_size
-      env_step_min = star%ctrl%envelope_step_size
-      env_step_max = star%ctrl%envelope_step_size
+      atm_step_begin_saved = star%job%atm_step_begin
+      atm_step_min_saved = star%job%atm_step_min
+      atm_step_max_saved = star%job%atm_step_max
+      env_step_begin_saved = star%job%env_step_begin
+      env_step_min_saved = star%job%env_step_min
+      env_step_max_saved = star%job%env_step_max
+      star%job%atm_step_begin = star%ctrl%atm_step_size
+      star%job%atm_step_min = star%ctrl%atm_step_size
+      star%job%atm_step_max = star%ctrl%atm_step_size
+      star%job%env_step_begin = star%ctrl%envelope_step_size
+      star%job%env_step_min = star%ctrl%envelope_step_size
+      star%job%env_step_max = star%ctrl%envelope_step_size
       atm_get_unused_flag = 0
       luminosity_linear = dexp(ln10*log_luminosity_lsun)
       pressure_rotation_factor = shape_factor_fp(num_shells)
@@ -248,7 +248,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                  star_metal_fraction(zone_idx), &
                  star_temperature_1e6k(zone_idx), &
                  star_density_cgs(zone_idx),star_pressure_cgs(zone_idx), &
-                 local_gamma1(zone_idx),eos_adiabatic_gradient(zone_idx), &
+                 local_gamma1(zone_idx),star%eos_adiabatic_gradient(zone_idx), &
                  ksaha)
             star_inverse_sound_speed(zone_idx)=1.0d0/ &
                  sqrt(local_gamma1(zone_idx)*star_pressure_cgs(zone_idx)/star_density_cgs(zone_idx))
@@ -272,7 +272,7 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 
       call boole(star_radius_cm,star_inverse_sound_speed,integration_count, &
            grid_count,acoustic_crossing_time_arr)
-      acoustic_crossing_time_seconds = acoustic_crossing_time_arr(1)
+      star%acoustic_crossing_time_seconds = acoustic_crossing_time_arr(1)
 
 
 
@@ -348,9 +348,9 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
             endif
             call boole(star_radius_to_cz,star_inverse_sound_speed_to_cz, &
                  cz_segment_count,grid_count,acoustic_depth_to_cz_arr)
-            acoustic_depth_cz_seconds = acoustic_depth_to_cz_arr(1)
+            star%acoustic_depth_cz_seconds = acoustic_depth_to_cz_arr(1)
       else
-            acoustic_depth_cz_seconds = 0.0d0
+            star%acoustic_depth_cz_seconds = 0.0d0
       endif
 
 ! Deal with the atmosphere seperately
@@ -383,19 +383,19 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
 !      CALL BOOLE(ATMOSR,ATMOSC,V,NN,TATMOS)
 
 ! Output normalized acoustic depth
-      acoustic_depth_cz_fraction=0.0d0
-      acoustic_depth_cz_fraction=acoustic_depth_cz_seconds/acoustic_crossing_time_seconds
+      star%acoustic_depth_cz_fraction=0.0d0
+      star%acoustic_depth_cz_fraction=star%acoustic_depth_cz_seconds/star%acoustic_crossing_time_seconds
 
 ! Output acoustic depth info to ISHORT
-      write(short_file_unit,67)acoustic_depth_cz_seconds,acoustic_crossing_time_seconds, &
-           acoustic_depth_cz_fraction,atmosphere_sound_travel_time
+      write(short_file_unit,67)star%acoustic_depth_cz_seconds,star%acoustic_crossing_time_seconds, &
+           star%acoustic_depth_cz_fraction,star%atmosphere_sound_travel_time
 67       format(1X,'Acoustic depth to CZ:',F14.8,2X,'Acoustic depth to center', &
      F13.7,2X,'Normalized taucz:',F11.9, 'Acoustic depth of atmopshere:',F16.8,2X)
 
 ! 555            CONTINUE
 !--------------------------------------------------------------
 ! Save all vectors of interest when the end of a kind card is reached.
-      if(calcad_ageout_output_active)then
+      if(star%job%calcad_ageout_output_active)then
 
             write(unit=star%ctrl%calcad_file_unit,fmt=1506) env_struct%num_env_points,num_shells,cz_zone_index
 1506            format(1X, 'Number of points in envelope:',I5,2X, &
@@ -408,14 +408,14 @@ subroutine calcad(log_radius, envelope_cz_log_radius, num_shells, &
                         write(unit=star%ctrl%calcad_file_unit,fmt=1504) age_gyr, &
                              star_radius_cm(zone_idx),star_inverse_sound_speed(zone_idx), &
      star_radius_to_cz(zone_idx), star_inverse_sound_speed_to_cz(zone_idx), &
-     eos_adiabatic_gradient(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
+     star%eos_adiabatic_gradient(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
      star_temperature_1e6k(zone_idx),star_density_cgs(zone_idx),star_hydrogen_fraction(zone_idx)
 
                         else
 !                         WRITE(UNIT=ICLCD,FMT=1504) DAGE, STARR(I), STARC(I),
                         write(unit=star%ctrl%calcad_file_unit,fmt=1504) age_gyr, &
                              star_radius_cm(zone_idx),star_inverse_sound_speed(zone_idx), &
-     0.0d0, 0.0d0, eos_adiabatic_gradient(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
+     0.0d0, 0.0d0, star%eos_adiabatic_gradient(zone_idx), local_gamma1(zone_idx), star_pressure_cgs(zone_idx), &
      star_temperature_1e6k(zone_idx),star_density_cgs(zone_idx),star_hydrogen_fraction(zone_idx)
 
                         endif

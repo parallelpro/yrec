@@ -13,6 +13,7 @@
 ! OPAL92 opacity tables, and for the second (different-Z) OPAL92
 ! table set when use_two_z_tables is set.
 subroutine ylloc
+      use star_info_lib, only: star
       use opacity_table_lib
       use const_lib
       use numerics_lib
@@ -62,7 +63,7 @@ subroutine ylloc
       end do
 !
 ! DBG 5/94 ZRAMP stuff
-      if (use_two_z_tables) then
+      if (star%use_two_z_tables) then
          do ix = 1,opacity_table%opal92_num_x_z2
             do it = 1,opacity_table%opal92_num_temps_z2
                index1 = it + (ix-1)*opacity_table%opal92_num_temps_z2

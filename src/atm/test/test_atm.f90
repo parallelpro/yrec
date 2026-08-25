@@ -81,13 +81,13 @@ program test_atm
       star%ctrl%use_alex06_tables = .false.
       star%ctrl%use_alex95_tables = .false.
       star%ctrl%use_kurucz90_tables = .false.
-      use_two_z_tables = .false.
+      star%use_two_z_tables = .false.
       use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
 
 ! constants (real setups; its atm_init call is a no-op at
 ! atm_choice=0 -- the per-option loads happen explicitly below)
-      atm_choice = 0
+      star%job%atm_choice = 0
       call setups(laol_work, dummy_path, dummy_path, dummy_path, &
            fermi_path, dummy_path, dummy_path, dummy_path, dummy_path, &
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
@@ -100,7 +100,7 @@ program test_atm
       end if
 
 ! --- Kurucz (1993), atm_choice=3, looked up via surfp ---
-      atm_choice = 3
+      star%job%atm_choice = 3
       call atm_init(kurucz_atm_path, dummy_path)
       write(*,'(a)') "# test_atm: Kurucz (choice 3), surfp lookups"
       do ipt = 1, npts
@@ -112,7 +112,7 @@ program test_atm
       end do
 
 ! --- Castelli & Kurucz (2003), atm_choice=5, via kcsurfp ---
-      atm_choice = 5
+      star%job%atm_choice = 5
       call atm_init(castelli_path, dummy_path)
       write(*,'(a)') "# test_atm: Castelli/Kurucz (choice 5), " // &
            "kcsurfp lookups"
@@ -125,7 +125,7 @@ program test_atm
       end do
 
 ! --- Allard NextGen, atm_choice=4, through the facade entry ---
-      atm_choice = 4
+      star%job%atm_choice = 4
       call atm_init(kurucz_atm_path, allard_path)
       write(*,'(a)') "# test_atm: Allard (choice 4), " // &
            "atm_get_surface_pt lookups"

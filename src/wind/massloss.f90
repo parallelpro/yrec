@@ -121,7 +121,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 
 ! INITIALIZE MASS LOSS AT DEFAULT RATE
       mass_loss_rate_msun_yr = star%ctrl%mass_accretion_rate
-      if(use_mass_accretion)then
+      if(star%job%use_mass_accretion)then
          apply_mass_change = .true.
       else
          apply_mass_change = .false.

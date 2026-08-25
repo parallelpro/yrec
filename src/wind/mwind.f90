@@ -73,16 +73,16 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! G Somers 8/17 CREATE ROTATION DUMMY VARIABLES.
             omega_now = omega_surface*current_turnover_timescale/ &
                  star%ctrl%pmm_solar_turnover_timescale
-            omega_saturation = wind_saturation_omega
+            omega_saturation = star%job%wind_saturation_omega
          else
             omega_now = omega_surface
-            omega_saturation = wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
+            omega_saturation = star%job%wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
                  current_turnover_timescale
          endif
 ! If not scaling, just set dummies to the original values.
       else
          omega_now = omega_surface
-         omega_saturation = wind_saturation_omega
+         omega_saturation = star%job%wind_saturation_omega
       endif
 !
 ! G Somers 3/17, CHANGING WINDLAW TO NEW MATT+2012 METHOD.
@@ -122,7 +122,7 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
            total_mass_msun/star%solar_mass_cgs
       fcen = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local))**star%ctrl%excen
       domega_test = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
-           structfactor*omega_surface &
+           star%job%structfactor*omega_surface &
            *min(omega_now,omega_saturation)**(star%ctrl%wind_law_omega_exponent-1.0d0)*fcen
 !      DWTEST = (DELTS/HICZ)*CONSTFACTOR*STRUCTFACTOR*OMEGAS
 !     *          *MIN(OMEGAS,WSAT)**(EXW-1.0D0)
@@ -166,7 +166,7 @@ subroutine mwind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
               total_mass_msun/star%solar_mass_cgs
          fcen = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local))**star%ctrl%excen
          omega_iter_new = omega_substep_start - (sub_timestep/ &
-              cz_moment_of_inertia)*star%ctrl%constfactor*structfactor*omega_iter &
+              cz_moment_of_inertia)*star%ctrl%constfactor*star%job%structfactor*omega_iter &
               *min(omega_now,omega_saturation)**(star%ctrl%wind_law_omega_exponent-1.0d0)*fcen
 !         WNEW = WS - (DT/HICZ)*CONSTFACTOR*STRUCTFACTOR*W
 !     *          *MIN(W,WSAT)**(EXW-1.0D0)

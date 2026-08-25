@@ -185,17 +185,17 @@ subroutine checkj(log_density, specific_angular_momentum_prev, &
 !  RELAX TOLERANCE FOR MOMENT OF INERTIA ITERATION EXCEPT FOR THE
 !  FINAL STEP.
       saved_tolerance = star%rot%moment_of_inertia_tolerance
-      saved_acc_tolerance = acfpft
+      saved_acc_tolerance = star%job%acfpft
       if(iteration_number.lt.star%ctrl%itdif2.and..not.converged_flag)then
          star%rot%moment_of_inertia_tolerance = &
               max(star%ctrl%convergence_tolerance*1.0d-2,saved_tolerance)
-         acfpft = max(star%ctrl%convergence_tolerance*1.0d-2,saved_acc_tolerance)
+         star%job%acfpft = max(star%ctrl%convergence_tolerance*1.0d-2,saved_acc_tolerance)
       endif
       call getrot(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius)
       star%rot%moment_of_inertia_tolerance = saved_tolerance
-      acfpft = saved_acc_tolerance
+      star%job%acfpft = saved_acc_tolerance
 !  SEARCH FOR REVERSAL OF OMEGA GRADIENTS.  IF ONE EXISTS, ENFORCE
 !  SOLID-BODY ROTATION IN THE OFFENDING PAIR OF ZONES.
       zone_index = num_zones

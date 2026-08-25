@@ -87,7 +87,7 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 ! MHP 8/17 CORRECTED TAUCZ CALCULATION TO INTERPOLATE PROPERLY IN TIMESTEP
          current_turnover_timescale = star%turnover%convective_turnover_timescale_old+ &
               star%turnover%fracstep*(star%turnover%convective_turnover_timescale-star%turnover%convective_turnover_timescale_old)
-         omega_saturation = wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
+         omega_saturation = star%job%wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
               current_turnover_timescale
 ! G Somers 08/17 IF ADDING ADDITIONAL B SCALING, ADD ADDITIONAL TAUCZ TERM.
          if(star%ctrl%scale_by_b_field)then
@@ -99,7 +99,7 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
                  star%ctrl%pmm_solar_turnover_timescale
          endif
       else
-         omega_saturation = wind_saturation_omega
+         omega_saturation = star%job%wind_saturation_omega
       endif
 !
 ! G Somers 3/17, COMMENTING OUT OLD WIND LAW COEFFICIENT
@@ -127,7 +127,7 @@ subroutine mcowind(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
 ! CALCULATE THE NEW WIND COEFFICIENT.
 !
       wind_coefficient = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
-           structfactor
+           star%job%structfactor
 ! MHP 8/17 ADDED CENTRIFUGAL REDUCTION TERM FROM MATT+2012 ApJ 754, L26
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
 !      C_2 = 0.0506

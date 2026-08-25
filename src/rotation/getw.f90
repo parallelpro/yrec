@@ -110,7 +110,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 ! DETERMINE THE NUMBER OF DIFFERENT ELEMENTS AND ISOTOPES BEING TRACKED
 ! BY THE CODE (NSPEC).
       num_species_tracked = 11
-      if(use_extended_composition) num_species_tracked = 15
+      if(star%job%use_extended_composition) num_species_tracked = 15
 !  CONVECTIVE AND RADIATIVE REGIONS ARE TREATED DIFFERENTLY FOR ANGULAR
 !  MOMENTUM PURPOSES; IF CONVECTIVE OVERSHOOT IS BEING INCLUDED THE
 !  OVERSHOOT REGION IS TREATED AS CONVECTIVE FOR ANGULAR MOMENTUM PURPOSES.
@@ -130,9 +130,9 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
            convective_zone_bounds,num_radiative_zones,num_convective_zones)
 ! MHP 9/94 ADDED DISK LOCKING OPTION.
       disk_lock_engaged = .false.
-      if(disk_locking_active .and. disk_lifetime.le.disk_temperature) &
+      if(star%job%disk_locking_active .and. star%disk_lifetime.le.star%job%disk_temperature) &
            disk_lock_engaged = .true.
-      if(.not.instability_transport_active)then
+      if(.not.star%job%instability_transport_active)then
 !  STORE THE SURFACE ANGULAR VELOCITY FROM THE BEGINNING OF THE TIMESTEP.
          omega_surface = star%omega(star%nz)
 !  ENFORCE SB ROTATION (OR UNIFORM ROTATION LAW IN ENTIRE STAR) IF DESIRED.
@@ -149,7 +149,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
               star%log_mass,star%dm,am_transport_convective_flag,star%nz, &
               star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
 !  ANGULAR MOMENTUM LOSS WITHOUT INTERNAL ANGULAR MOMENTUM TRANSPORT.
-         if(.not.disk_lock_engaged .and. ljdot0 .and. star%convective_flag(star%nz)) then
+         if(.not.disk_lock_engaged .and. star%job%ljdot0 .and. star%convective_flag(star%nz)) then
 !  FIND MOMENT OF INERTIA OF THE SURFACE C.Z.
             moment_of_inertia_cz = 0.0D0
 !  ENFORCE SB ROTATION (OR UNIFORM ROTATION LAW IN ENTIRE STAR) IF DESIRED.
@@ -172,7 +172,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
             else
                cz_mass_bottom = 0.0D0
             endif
-            wind_loss_active = ljdot0
+            wind_loss_active = star%job%ljdot0
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
 ! MHP 10/17 timestep average loss rate
 !            FRACSTEP = 1.
@@ -198,15 +198,15 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       call getrot(star%logRho,star%j_rot,star%logR,star%log_mass, &
            star%dm,am_transport_convective_flag,star%nz,star%eta_squared, &
            star%i_rot,star%omega,star%qiw,star%mean_radius)
-      skip_diffusion_flag = .not.instability_transport_active .and. .not.wind_loss_active
+      skip_diffusion_flag = .not.star%job%instability_transport_active .and. .not.wind_loss_active
       if (.not.skip_diffusion_flag .and. full_timestep.gt.0.0D0) then
 !  NOW LIMIT THE DIFFUSION TIMESTEP TO A MAXIMUM CHANGE IN OMEGA
 !  FROM THE PREVIOUS MODEL.
-      if(max_domega_step.eq.0.0D0) max_domega_step = max_domega_global
-      num_diffusion_steps = int(max_domega_step/dtdif)
-      if (mod(max_domega_step,dtdif).ne.0.0D0) num_diffusion_steps = num_diffusion_steps + 1
-      num_wind_diffusion_steps = int(max_domega_global/dtdif)
-      if (mod(max_domega_global,dtdif).ne.0.0D0) num_wind_diffusion_steps = num_wind_diffusion_steps + 1
+      if(max_domega_step.eq.0.0D0) max_domega_step = star%job%max_domega_global
+      num_diffusion_steps = int(max_domega_step/star%job%dtdif)
+      if (mod(max_domega_step,star%job%dtdif).ne.0.0D0) num_diffusion_steps = num_diffusion_steps + 1
+      num_wind_diffusion_steps = int(star%job%max_domega_global/star%job%dtdif)
+      if (mod(star%job%max_domega_global,star%job%dtdif).ne.0.0D0) num_wind_diffusion_steps = num_wind_diffusion_steps + 1
 !     NSTEP = MAX(NSTEP,NSTEP2/2)
       num_diffusion_steps = min(num_diffusion_steps,num_wind_diffusion_steps)
       sub_timestep = full_timestep/dfloat(num_diffusion_steps)
@@ -292,7 +292,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       if(.not.disk_lock_engaged .and. wind_loss_active .and. surface_cz_active) then
          omega_surface = omega_mid(star%nz)
 !  WIND CALCULATION WITHOUT INSTABILITIES
-         if(fully_convective_flag.or..not.instability_transport_active) then
+         if(fully_convective_flag.or..not.star%job%instability_transport_active) then
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
             call mwind(star%log_L,sub_timestep,cz_mass_bottom,cz_mass_top, &
                  envelope_boundary_zone,star%nz,wind_loss_active,omega_surface, &
@@ -309,7 +309,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
          endif
       endif
 !  NOW CHECK FOR INSTABILITIES IN RADIATIVE REGIONS
-      if(instability_transport_active.and..not.fully_convective_flag) then
+      if(star%job%instability_transport_active.and..not.fully_convective_flag) then
 !  ENSURE THAT CONVECTIVE REGIONS ARE FULLY MIXED.
 !  JVS 0212       CALL MIXCZ(HCOMP,HS2,LCZM,M)
 ! KC 2025-05-30 addressed warning messages from Makefile.legacy
@@ -377,7 +377,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 !  CLEAN UP EXTENDED COMP ARRAYS; ZERO VALUES THROUGHOUT MOST OF THE
 !  INTERIOR CAN LEAD TO SMALL NEGATIVE VALUES DUE TO ROUNDOFF ERROR IN
 !  THE DIFFUSION CALCULATIONS.
-      if(use_extended_composition)then
+      if(star%job%use_extended_composition)then
 !  PERFORM LIGHT ELEMENT BURNING.
 ! FIND SURFACE C.Z. DEPTH AT THE END OF THE TIME STEP.
          call convec(star%xa,log_density_mid,log_pressure_mid,log_radius_mid, &
@@ -387,7 +387,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
               envelope_boundary_zone_cur,num_radiative_zones,num_convective_zones, &
               num_convective_zones_burn)
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
-         if(lovstm .and. convective_flag_mid(star%nz))then
+         if(star%job%lovstm .and. convective_flag_mid(star%nz))then
             star%light_burn%pressure_scale_height_end = star%ctrl%alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
                  2.0D0*log_radius_mid(envelope_boundary_zone_cur) &
                  -log_density_mid(envelope_boundary_zone_cur)-cgl-star%log_mass(envelope_boundary_zone_cur)))
@@ -400,7 +400,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 ! THE NEXT STEP.
 ! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
 ! BURNING - ONLY UPDATED IF NOT USED
-         if(.not.instability_transport_active .or. .not.burs_extrapolation_active .or. fully_convective_flag)then
+         if(.not.star%job%instability_transport_active .or. .not.burs_extrapolation_active .or. fully_convective_flag)then
 ! COMPUTE BURNING.
 !             CALL LIBURN(DT,HCOMP,HDM,HRM,HS1,HS2,HTM,JENV1,JENV0,M)  ! KC 2025-05-31
             call liburn(sub_timestep,star%xa,log_radius_mid,star%m, &
@@ -440,7 +440,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
 ! MHP 6/00 ADDED OVERWRITE OF HCOMPP FOR LIGHT ELEMENTS
 ! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
 ! BURNING - ONLY UPDATED IF NOT USED
-         if(.not.instability_transport_active.or.fully_convective_flag)then
+         if(.not.star%job%instability_transport_active.or.fully_convective_flag)then
             do zone_index = 1,star%nz
                do species_index = 12,15
                   star%prev%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
@@ -456,7 +456,7 @@ subroutine getw(full_timestep, max_domega_step, wind_loss_active, &
       endif
 ! MHP 6/00 NOW ADDED THE OPTION OF PERFORMING A BUR-ST EXTRAPOLATION
 ! TO ZERO TIMESTEP FOR THE COMBINATION OF MIXING AND NUCLEAR BURNING.
-      if(instability_transport_active .and. .not.fully_convective_flag)then
+      if(star%job%instability_transport_active .and. .not.fully_convective_flag)then
          if(burs_extrapolation_active)then
         call bursmix(cod2,sub_timestep,star%xa,log_density_mid,log_luminosity_mid, &
              log_pressure_mid,log_radius_mid,star%log_mass,star%m,star%dm,star%log_total_mass, &

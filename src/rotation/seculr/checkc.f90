@@ -167,7 +167,7 @@ subroutine checkc(composition, iteration_number, print_flag, num_zones, &
               max_change_zone
    50 format(' MAX FRAC.COMP.CHANGE',1pe12.3,' SPECIES',i2, &
               ' AT PT.',i5)
-         if(use_extended_composition)write(*,60) &
+         if(star%job%use_extended_composition)write(*,60) &
               composition(14,num_zones),star%prev%xa_start(14,num_zones)
    60 format(5x,'NEW SURFACE LI',1pe14.4,'OLD VALUE',e14.4)
       endif

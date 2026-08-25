@@ -89,7 +89,6 @@ module controls_lib
       logical :: lovmax = .false.
       double precision :: betac = 0.15d0
       logical :: lsemic = .false.
-      integer :: iov1, iov2, iovim
 
 ! former common/rot/: rotation control parameters/flags, all
 ! NAMELIST /physics/ values. walpcz is clamped once at startup
@@ -184,7 +183,6 @@ module controls_lib
       double precision :: disk_temperature = 0.0d0
       double precision :: disk_pressure = 7.2722d-6
       logical :: disk_locking_active = .false.
-      double precision :: disk_lifetime
 
 ! former common/sett/: target_end_age/timestep_override/
 ! central_deuterium_stop/central_hydrogen_stop/central_helium_stop are
@@ -349,7 +347,6 @@ module controls_lib
 ! and dropped there.
       logical :: pulsation_output_active
       integer :: pulsation_file_version
-      double precision :: pulsation_mass_msun
 
 ! former common/atmos/: atm_choice (originally kttau) is a NAMELIST
 ! value with a different canonical spelling, kept local in
@@ -594,13 +591,8 @@ module controls_lib
 ! (former common/calstar/'s remaining members) are unused in
 ! core/parmin.f90 -- genuinely used in misc/chkscal.f90/
 ! setup/setscal.f90/core/main.f90, so still declared here.
-      double precision :: target_luminosity_lsun, &
-           target_star_luminosity_tolerance, target_teff, &
-           target_radius_rsun, log_l_prev_model, log_r_prev_model, &
-           age_at_target_radius, log_l_at_target_radius, &
-           log_l_at_target_radius_prev_run, age_prev_model
-      logical :: star_found_flag, specify_teff_flag, &
-           just_passed_target_radius_flag, calibrate_star_flag
+      double precision :: target_luminosity_lsun, target_star_luminosity_tolerance, target_teff, target_radius_rsun
+      logical :: specify_teff_flag, calibrate_star_flag
 
 ! former common/opaleos/: use_opal95_eos/use_opal2001_eos/
 ! use_opal2006_eos/use_numerical_derivatives (originally lopale/
@@ -630,9 +622,7 @@ module controls_lib
            opal_table_z2, opal95_single_table_z, alex_table_z1, &
            kurucz_table_z1, kurucz_table_z2, &
            molecular_opacity_logt_min, molecular_opacity_logt_max
-      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, &
-           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           use_two_z_tables
+      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, use_opal95_tables, use_kurucz90_tables, use_alex95_tables
 
 ! former common/miscopac/: ikur2/icondopacp are spelled identically to
 ! their canonical names -- use-associated directly.
@@ -725,16 +715,10 @@ module controls_lib
 ! per the majority-name convention). compute_acoustic_depth (LADON) is
 ! spelled identically to its canonical name everywhere -- used, not a
 ! placeholder.
-      double precision :: acoustic_depth_cz_fraction, eos_adiabatic_gradient(5000), &
-           acoustic_depth_heii, acoustic_crossing_time_seconds, &
-           acoustic_depth_cz_seconds, heii_zone_acoustic_width, &
-           acatmr_placeholder(5000), acatmd_placeholder(5000), &
-           acatmp_placeholder(5000), acatmt_placeholder(5000), &
-           atmosphere_sound_travel_time
+      double precision :: acatmr_placeholder(5000), acatmd_placeholder(5000), acatmp_placeholder(5000), acatmt_placeholder(5000)
       integer :: iacat_placeholder, ageout_model_unit
       logical :: laoly_placeholder
       integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
-      logical :: compute_acoustic_depth
       double precision :: output_ages_gyr(5) = &
            [0.5d0, 1.0d0, 5.0d0, 10.0d0, 20.0d0]
       logical :: calcad_ageout_output_active = .false., ageout_model_output_flag = .false., &

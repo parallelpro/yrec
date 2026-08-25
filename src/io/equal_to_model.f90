@@ -51,7 +51,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
 ! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          do zone_index = zone_begin,1,-1
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
             metal_new=min(composition(3,zone_index)+star%rot%metal_abundance_change(1),metal_max)
@@ -106,7 +106,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
          hydrogen_max = 1.0D0 - composition(3,zone_index) - composition(4,zone_index)
          composition(1,zone_index)=min(composition(1,zone_index) + delta_x,hydrogen_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
-         if(use_diffusion_z)then
+         if(star%job%use_diffusion_z)then
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
             delta_z = interp_factors(1)*star%rot%metal_abundance_change(k0)+ &
                  interp_factors(2)*star%rot%metal_abundance_change(k0+1)+ &
@@ -131,7 +131,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
               equal_hydrogen_fraction(num_equal_points),hydrogen_max)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          metal_floor = 0.0D0
          do zone_index = zone_end,num_zones
             metal_new = max(composition(3,zone_index)+ &

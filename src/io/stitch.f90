@@ -93,7 +93,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
                  star%diag%sbeta(i),star%diag%seta(i),(star%diag%seg(k,i),k=1,5),star%diag%sesum(i),star%diag%seg(i_eps_neu,i),star%diag%seg(i_eps_grav,i), &
                  star%diag%scp(i),star%pulse%pulse_dlnrho_dlnt(i)
 ! write out additional rotation info if rotation is on
-            if(rotation_active)then
+            if(star%job%rotation_active)then
               fm = dexp(ln10*log_mass(i))
               duma = cc13*omega(i)**2/(cg*fm)*5.d0/(2.d0+rotation_eta2(i))
               a_val = duma * radius_ratio_r0(i)**3
@@ -115,18 +115,18 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
       if(star%ctrl%lstenv)then ! only provide an envelope if asked to do so
 ! Begin by "dropping a sinkline" with the envelope integrator
-      abeg0 = atm_step_begin
-      amin0 = atm_step_min
-      amax0 = atm_step_max
-      ebeg0 = env_step_begin
-      emin0 = env_step_min
-      emax0 = env_step_max
-      atm_step_begin = star%ctrl%atm_step_size
-      atm_step_min = star%ctrl%atm_step_size
-      atm_step_max = star%ctrl%atm_step_size
-      env_step_begin = star%ctrl%envelope_step_size
-      env_step_min = star%ctrl%envelope_step_size
-      env_step_max = star%ctrl%envelope_step_size
+      abeg0 = star%job%atm_step_begin
+      amin0 = star%job%atm_step_min
+      amax0 = star%job%atm_step_max
+      ebeg0 = star%job%env_step_begin
+      emin0 = star%job%env_step_min
+      emax0 = star%job%env_step_max
+      star%job%atm_step_begin = star%ctrl%atm_step_size
+      star%job%atm_step_min = star%ctrl%atm_step_size
+      star%job%atm_step_max = star%ctrl%atm_step_size
+      star%job%env_step_begin = star%ctrl%envelope_step_size
+      star%job%env_step_min = star%ctrl%envelope_step_size
+      star%job%env_step_max = star%ctrl%envelope_step_size
       idum = 0
       b = dexp(ln10*log_luminosity_lsun)
       fpl = shape_factor_fp(m)
@@ -185,7 +185,7 @@ subroutine stitch(composition, log_radius, log_pressure, log_density, &
 
 ! *************************** WRITE OUT ATMOSPHERE INFORMATION  ************************
 ! Finish with the atmosphere, if the atmosphere was computed
-       if(lstatm)then
+       if(star%job%lstatm)then
             do i=atmo_struct%num_atm_points,1,-1
 ! write out the basic info. Omega and abundances take value of last interior point.
             rad = dlog10(dexp(ln10*env_struct%env_log10_radius(env_struct%num_env_points)) + &

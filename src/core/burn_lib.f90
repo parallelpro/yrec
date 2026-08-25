@@ -324,7 +324,7 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          deuterium_fraction = deuterium_fraction/total_shell_mass
          helium3_fraction = helium3_fraction/total_shell_mass
       end if
-      if (use_mass_accretion .and. zone_end.eq.num_zones .and. &
+      if (star%job%use_mass_accretion .and. zone_end.eq.num_zones .and. &
            star%ctrl%mass_accretion_rate.gt.0.0d0) then
          deuterium_fraction_test = (deuterium_fraction*total_shell_mass + &
               star%ctrl%accreted_composition(12)*star%light_burn%accreted_mass_fraction)/ &
@@ -360,7 +360,7 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
          rate_accum = rate_accum + rate_increment
       end do
 !     INCLUDE MASS ACCRETION FROM DEUTERIUM BURNING
-      if (use_mass_accretion .and. zone_end.eq.num_zones) then
+      if (star%job%use_mass_accretion .and. zone_end.eq.num_zones) then
 !        ACCRETED MATTER IS EXPOSED TO BURNING FOR, ON
 !        AVERAGE. 1/2 OF THE TIMESTEP.  star%light_burn%accreted_mass_fraction IS
 !        DEFINED AS DMDT*DT/ORIGINAL CZ MASS.
@@ -526,7 +526,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
          rate_accum = rate_accum + rate_increment
       end do
 ! INCLUDE MASS ACCRETION FROM DEUTERIUM BURNING
-      if(use_mass_accretion .and. zone_end.eq.num_zones)then
+      if(star%job%use_mass_accretion .and. zone_end.eq.num_zones)then
 ! ACCRETED MATTER IS EXPOSED TO BURNING FOR, ON
 ! AVERAGE. 1/2 OF THE TIMESTEP.  star%light_burn%accreted_mass_fraction IS
 ! DEFINED AS DMDT*DT/ORIGINAL CZ MASS.
@@ -2143,7 +2143,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! OF THE TIMESTEP, AND THE LOCATION OF THE EDGE OF OVERSHOOT REGIONS
 ! IF APPLICABLE.
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
-         if(rotation_active.and.instability_transport_active)then
+         if(star%job%rotation_active.and.star%job%instability_transport_active)then
             del_diff = star%mix_phys%del_adiabatic_mix(env_cz_zone) - &
                  star%mix_phys%del_radiative_mix(env_cz_zone)
             del_diff_below = star%mix_phys%del_adiabatic_mix(env_cz_zone-1) - &
@@ -2160,7 +2160,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          cz_base_frac = max(-0.5d0,0.5d0-del_diff_below/ &
               (del_diff_below-del_diff))
          cz_base_frac = min(0.5d0,cz_base_frac)
-         if(.not.envelope_overshoot_active)then
+         if(.not.star%job%envelope_overshoot_active)then
             cz_base_zone = env_cz_zone
             cz_base_zone_old = env_cz_zone_old
          else
@@ -2421,7 +2421,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! ASSUMED TO EXPERIENCE BURNING FOR ON AVERAGE 1/2 OF
 ! THE STEP WHERE THEY ARE INITIALLY ACCRETED AND ARE
 ! THEN FULLY BURNED.
-         if(use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0)then
+         if(star%job%use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0)then
             accretion_active = .true.
             li6_accreted = 0.0d0
             li7_accreted = 0.0d0
@@ -2665,7 +2665,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 ! OF THE TIMESTEP, AND THE LOCATION OF THE EDGE OF OVERSHOOT REGIONS
 ! IF APPLICABLE.
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
-         if(rotation_active.and.instability_transport_active)then
+         if(star%job%rotation_active.and.star%job%instability_transport_active)then
             del_diff = star%mix_phys%del_adiabatic_mix(env_cz_zone) - &
                  star%mix_phys%del_radiative_mix(env_cz_zone)
             del_diff_below = star%mix_phys%del_adiabatic_mix(env_cz_zone-1) - &
@@ -2682,7 +2682,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          cz_base_frac = max(-0.5d0,0.5d0-del_diff_below/ &
               (del_diff_below-del_diff))
          cz_base_frac = min(0.5d0,cz_base_frac)
-         if(.not.envelope_overshoot_active)then
+         if(.not.star%job%envelope_overshoot_active)then
             cz_base_zone = env_cz_zone
             cz_base_zone_old = env_cz_zone_old
          else

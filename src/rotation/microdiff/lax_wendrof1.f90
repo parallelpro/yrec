@@ -51,7 +51,7 @@ subroutine lax_wendrof1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
       delta_abundance_mid = -dt_half*diffusion_coeff1(num_eq_points-1)/zone_mass
       diffused_abundance_mid(num_eq_points-1) = delta_abundance_mid
 ! metal diffusion
-      if(use_diffusion_z.and..not.use_generic_diffusion_vectors)then
+      if(star%job%use_diffusion_z.and..not.use_generic_diffusion_vectors)then
 ! central boundary condition
          zone_mass = eq_mass(2)
          delta_metal_abundance_mid = dt_half*star%rot%metal_diffusion_coeff1(2)/zone_mass

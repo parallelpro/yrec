@@ -51,7 +51,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
      radiative_zone_bounds, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
      num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot)
-      use star_info_lib, only: json
+      use star_info_lib, only: star, json
       use const_lib
       use luout_lib
       implicit none
@@ -147,7 +147,7 @@ subroutine convec(composition, log_density, log_pressure, log_radius, &
 !  ADD CONVECTIVE OVERSHOOT IF NEEDED; THE SIZE OF THE OVERSHOOT REGION IS
 !  COMPUTED AND THE EDGES IN MXZONE ARE MOVED TO THE EDGES OF THE
 !  OVERSHOOT REGIONS.
-      if (lovstc .or. envelope_overshoot_active .or. lovstm) then
+      if (star%job%lovstc .or. star%job%envelope_overshoot_active .or. star%job%lovstm) then
       call oversh(composition, log_density, log_pressure, log_radius, &
            log_mass, log_temperature, num_zones, mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, num_mixed_zones)

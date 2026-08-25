@@ -80,7 +80,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 
       old_log_envelope_mass_fraction = log_mass(num_zones) - log_total_mass
 ! MHP 8/10- CHECK FOR SCALED SOLAR WIND MASS LOSS
-      if(star%rot%use_rotation_scaled_solar_wind .and. rotation_active) then
+      if(star%rot%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
          omega_ratio_sq = (omega(num_zones)/star%rot%wind_reference_omega)**2
          omega_max_ratio_sq = (star%rot%wind_max_omega/star%rot%wind_reference_omega)**2
          mass_loss_rate_msun_yr = star%rot%solar_wind_mass_loss_rate_msun_yr* &
@@ -127,10 +127,10 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          timestep = timestep_limit
       endif
 ! mhp 8/10 turn mass loss off when disk exhausted only when dm /dt > 0, e.g. accretion
-      if(disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
-         disk_age_test = disk_lifetime + 1.0d-9*timestep/seconds_per_year
-         if(disk_age_test.gt.disk_temperature)then
-            timestep = (disk_temperature-disk_lifetime)*1.0d9*seconds_per_year
+      if(star%job%disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
+         disk_age_test = star%disk_lifetime + 1.0d-9*timestep/seconds_per_year
+         if(disk_age_test.gt.star%job%disk_temperature)then
+            timestep = (star%job%disk_temperature-star%disk_lifetime)*1.0d9*seconds_per_year
             disk_exhausted_flag = .true.
          else
             disk_exhausted_flag = .false.
@@ -193,7 +193,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 ! FOR MODELS WITH ROTATION AND MASS LOSS REMOVE ANGULAR MOMENTUM.
 ! IN THIS CASE WE ASSUME A THERMAL WIND WHERE THE SURFACE MATTER
 ! CARRIES AWAY ONLY ITS LOCAL ANGULAR MOMENTUM PER UNIT MASS.
-      if(rotation_active .and. delta_mass_cgs.lt.0.0d0)then
+      if(star%job%rotation_active .and. delta_mass_cgs.lt.0.0d0)then
 ! MOMENT OF INERTIA PER UNIT MASS AT THE SURFACE.
          surface_moment_of_inertia_per_mass = 2.0d0/3.0d0*total_radius_cm**2
          if(star%ctrl%walpcz.ge.0.0d0)then
@@ -279,7 +279,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          star%light_burn%accreted_mass_fraction = delta_mass_cgs
       endif
 !  9999 CONTINUE
-      if(disk_exhausted_flag) use_mass_accretion = .false.
+      if(disk_exhausted_flag) star%job%use_mass_accretion = .false.
 !      WRITE(*,*)M,HS(M),HSTOT
       return
 end subroutine mdot

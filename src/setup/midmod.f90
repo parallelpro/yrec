@@ -121,7 +121,7 @@ subroutine midmod(full_timestep, sub_timestep, time_fraction, first_call, &
       ierr = 0
 
       num_species_tracked = 11
-      if (use_extended_composition) num_species_tracked = 15
+      if (star%job%use_extended_composition) num_species_tracked = 15
 !  INITIALIZE COMPOSITION ARRAY THE FIRST TIME THROUGH.
 !  HCOMPM IS THE ARRAY OF CHANGES IN COMPOSITION DUE TO NUCLEAR BURNING
 !  DURING THE COURSE OF THE MODEL TIMESTEP.

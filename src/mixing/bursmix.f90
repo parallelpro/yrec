@@ -77,7 +77,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
 
       ierr = 0
 
-      if (use_extended_composition) then
+      if (star%job%use_extended_composition) then
          num_species = 15
       else
          num_species = 11
@@ -131,7 +131,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
                  velocity, zone_begin, zone_end, zone_max, zone_min, &
                  convective_flag, final_iteration_flag, num_zones, &
                  composition, species_begin, species_end)
-            if (use_extended_composition) then
+            if (star%job%use_extended_composition) then
                call liburn2(substep_dt, composition, log_radius, &
                     enclosed_mass, shell_mass, log_temperature, &
                     env_cz_zone, env_cz_zone_old, num_zones)
@@ -167,7 +167,7 @@ subroutine bursmix(diffusion_coeff, timestep, composition, log_density, &
          composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
               composition(3,zone_idx) - composition(4,zone_idx)
       end do
-      if (use_extended_composition) then
+      if (star%job%use_extended_composition) then
          do zone_idx = 1, num_zones
             star%light_burn%rate_li6_start(zone_idx) = star%light_burn%rate_li6(zone_idx)
             star%light_burn%rate_li7_start(zone_idx) = star%light_burn%rate_li7(zone_idx)

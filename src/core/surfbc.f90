@@ -82,27 +82,27 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       double precision :: b, gl, rl, adjusted_teffl
 
 ! MHP 9/01
-      if (atm_choice.eq.3) then
+      if (star%job%atm_choice.eq.3) then
          if (log10_teff.ge.3.95d0) then
             write(*,*)
             write(*,5) log10_teff
  5          format('LOG TEFF OF ',F7.3,' ABOVE 3.95 - SWITCH' &
                    ,'TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
-            atm_choice = 0
+            star%job%atm_choice = 0
             start_new_triangle = .true.
 ! MHP 06/13 Remember that flag is switched
             star%use_ttau_relation = .true.
          endif
       endif
-      if (atm_choice.eq.4) then
+      if (star%job%atm_choice.eq.4) then
          if (log10_teff.ge.atm_table%allard_al_teffl_max) then
             write(*,*)
             write(*,7) log10_teff, atm_table%allard_al_teffl_max
  7          format('LOG TEFF OF ',F7.3,' ABOVE Allard Table max ',F7.3 &
                    ,'  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
-            atm_choice = 0
+            star%job%atm_choice = 0
             start_new_triangle = .true.
 ! MHP 06/13 Remember that flag is switched
             star%use_ttau_relation = .true.
@@ -110,13 +110,13 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       endif
       if (star%use_ttau_relation) then
          if (star%atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
-            atm_choice = star%atm_choice_initial
+            star%job%atm_choice = star%atm_choice_initial
             star%use_ttau_relation = .false.
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
          else if (star%atm_choice_initial.eq.4.and.log10_teff.lt.atm_table%allard_al_teffl_max) then
-            atm_choice = star%atm_choice_initial
+            star%job%atm_choice = star%atm_choice_initial
             star%use_ttau_relation = .false.
             write(*,11) log10_teff, atm_table%allard_al_teffl_max
  11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &

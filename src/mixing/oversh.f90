@@ -14,8 +14,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, num_zones, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, num_mixed_zones)
       use star_info_lib, only: star
-      use star_info_lib, only: json
-
+      use star_info_lib, only: star, json
       use luout_lib
       use const_lib
       implicit none
@@ -34,8 +33,8 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 
 ! IOV1/IOV2 (from common/dpmix/) store the position of overshoot for
 ! adiabatic extension.
-      iov1 = -1
-      iov2 = -1
+      star%iov1 = -1
+      star%iov2 = -1
       do zone_idx = 1, num_mixed_zones
 ! DETERMINE IF THIS REGION IS A CORE CONVECTION ZONE, SURFACE CZ,
 ! OR INTERMEDIATE CZ. THERE ARE SEPARATE FLAGS GOVERNING WHETHER
@@ -52,7 +51,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
                return
             end if
 ! SKIP IF NO CORE OVERSHOOT IS DESIRED.
-            if (.not.lovstc) cycle
+            if (.not.star%job%lovstc) cycle
             up_overshoot_flag = .true.
             down_overshoot_flag = .false.
             edge_idx = mixed_zone_bounds(zone_idx,2)
@@ -73,7 +72,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
          else if (mixed_zone_bounds(zone_idx,2).eq.num_zones) then
 ! CONVECTIVE ENVELOPE
 ! SKIP IF NO ENVELOPE OVERSHOOT IS DESIRED.
-            if (.not.envelope_overshoot_active) cycle
+            if (.not.star%job%envelope_overshoot_active) cycle
             up_overshoot_flag = .false.
             down_overshoot_flag = .true.
             edge_idx = mixed_zone_bounds(zone_idx,1)
@@ -85,7 +84,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
          else
 ! INTERMEDIATE CONVECTION ZONE (NOT INCLUDING CENTRAL OR SURFACE POINT).
 ! SKIP IF NO INTERMEDIATE CONVECTION.
-            if (.not.lovstm) cycle
+            if (.not.star%job%lovstm) cycle
             up_overshoot_flag = .true.
             down_overshoot_flag = .true.
 ! PSCALU AND PSCALD HAVE THE SAME MEANING AS ABOVE; OVERSHOOT BOTH BELOW
@@ -119,14 +118,14 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! IN THE OVERSHOOT REGION.
             mixed_zone_bounds(zone_idx,1) = j_idx + 1
 ! 11/91 MHP CHANGED TO REQUIRE AN OVERSHOOT ZONE ONLY IF LINSTB=T.
-            if (rotation_active .and. instability_transport_active .and. &
+            if (star%job%rotation_active .and. star%job%instability_transport_active .and. &
                  mixed_zone_bounds(zone_idx,1).eq. &
                  mixed_zone_bounds_no_overshoot(zone_idx,1)) &
                  mixed_zone_bounds(zone_idx,1) = &
                  mixed_zone_bounds(zone_idx,1) - 1
 ! DBG 8/94 STORE POSITION OF OVERSHOOT FOR ADIABATIC EXTENSION
-            iov2 = edge_idx
-            iov1 = mixed_zone_bounds(zone_idx,1)
+            star%iov2 = edge_idx
+            star%iov1 = mixed_zone_bounds(zone_idx,1)
          end if
 ! COMPUTE EXTENSION OF CONVECTION ZONE ABOVE SCHWARTZSCHILD BOUNDARY.
          if (up_overshoot_flag) then
@@ -146,7 +145,7 @@ subroutine oversh(composition, log_density, log_pressure, log_radius, &
 ! explicit assignment before label 40 was redundant).
             mixed_zone_bounds(zone_idx,2) = j_idx - 1
 ! 11/91 MHP CHANGED TO REQUIRE AN OVERSHOOT ZONE ONLY IF LINSTB=T.
-            if (rotation_active .and. instability_transport_active .and. &
+            if (star%job%rotation_active .and. star%job%instability_transport_active .and. &
                  mixed_zone_bounds(zone_idx,2).eq. &
                  mixed_zone_bounds_no_overshoot(zone_idx,2)) &
                  mixed_zone_bounds(zone_idx,2) = &

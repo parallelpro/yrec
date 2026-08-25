@@ -110,7 +110,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
                end if
                stop
             end if
-            if (use_two_z_tables) then
+            if (star%use_two_z_tables) then
                call kurucz2(log10_density, log10_temperature, &
                     atm_opacity_2, atm_log10_opacity_2, &
                     atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2, jerr, *100)
@@ -218,7 +218,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
 
       else if ((metal_fraction.gt.0.12d0) .or. &
            ((abs(metal_fraction - kap_envelope_metal_fraction).gt. &
-           star%ctrl%metal_fraction_match_tolerance) .and. .not.use_two_z_tables &
+           star%ctrl%metal_fraction_match_tolerance) .and. .not.star%use_two_z_tables &
            .and. .not.star%ctrl%use_opal95_tables)) then
 !        JCZ 211125 changed to 10^7 K in message to reflect above
 !        change in logic.
@@ -250,7 +250,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
       else if (star%ctrl%use_opal92_tables) then
          call yllo3d(log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-         if (use_two_z_tables) then
+         if (star%use_two_z_tables) then
             call yllo3d2(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2)
@@ -278,7 +278,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
             end if
             stop
          end if
-         if (use_two_z_tables) then
+         if (star%use_two_z_tables) then
             call gtlaol2(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)

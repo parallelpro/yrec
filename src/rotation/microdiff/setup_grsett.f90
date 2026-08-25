@@ -314,9 +314,9 @@ subroutine setup_grsett(timestep_seconds, dlnp_dr, log_radius, &
          endif
 !        METAL DIFFUSION, USING THE THOUL ET AL. COEFFICIENTS FOR FULLY
 !        IONIZED IRON.
-         if(use_diffusion_z)then
+         if(star%job%use_diffusion_z)then
 
-            settling_prefactor=fgrz*radius_bl(zone_idx)**2*temperature_bl(zone_idx)**2.5d0/ln_lambda
+            settling_prefactor=star%job%fgrz*radius_bl(zone_idx)**2*temperature_bl(zone_idx)**2.5d0/ln_lambda
             if(star%ctrl%lthoul)then
                if(star%ctrl%use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq

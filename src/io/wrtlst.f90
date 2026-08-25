@@ -62,18 +62,18 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
 ! run_diag_lib.
 ! physics flags:
 ! Determine atmosphere flag, ATM
-      if (atm_choice .eq. 0) then
+      if (star%job%atm_choice .eq. 0) then
          atmosphere_flag='EDD '
-      elseif (atm_choice .eq. 1) then
+      elseif (star%job%atm_choice .eq. 1) then
          atmosphere_flag='KS  '
-      elseif (atm_choice .eq. 2) then
+      elseif (star%job%atm_choice .eq. 2) then
          atmosphere_flag='HRA '
-      elseif (atm_choice .eq. 3) then
+      elseif (star%job%atm_choice .eq. 3) then
          atmosphere_flag='KUR '
-      elseif (atm_choice .eq. 4) then
+      elseif (star%job%atm_choice .eq. 4) then
          atmosphere_flag='ALL '
 ! JNT 06/14
-      elseif (atm_choice .eq. 5) then
+      elseif (star%job%atm_choice .eq. 5) then
          atmosphere_flag='K/C '
       endif
 ! Determine equation of state flag, EOS
@@ -118,16 +118,16 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
            age_gyr,timestep_yr,trial_sign_flag,composition,log_density, &
            log_luminosity,log_pressure,log_radius,log_mass,log_total_mass, &
            log_temperature,iwrite,short_file_unit,core_cz_top_index, &
-           envelope_cz_bottom_index,convective_flag,use_extended_composition, &
-           rotation_active,num_shells,model_number,omega,fit_point_pressure, &
+           envelope_cz_bottom_index,convective_flag,star%job%use_extended_composition, &
+           star%job%rotation_active,num_shells,model_number,omega,fit_point_pressure, &
            fit_point_radius,total_mass_msun,log_teff,luminosity_breakdown, &
            trial_log_luminosity,trial_log_temperature,fit_point_temperature, &
            atmosphere_flag,eos_flag,high_temp_opacity_flag, &
-           diffuse_helium_active,use_diffusion_z,disk_locking_active, &
-           instability_transport_active,ljdot0,low_temp_opacity_flag,lovstc, &
-           envelope_overshoot_active,lovstm,use_pure_z_table,lsemic, &
-           star%run%initial_composition_code,disk_pressure,disk_temperature, &
-           wind_saturation_omega)
+           star%job%diffuse_helium_active,star%job%use_diffusion_z,star%job%disk_locking_active, &
+           star%job%instability_transport_active,star%job%ljdot0,low_temp_opacity_flag,star%job%lovstc, &
+           star%job%envelope_overshoot_active,star%job%lovstm,use_pure_z_table,star%job%lsemic, &
+           star%run%initial_composition_code,star%job%disk_pressure,star%job%disk_temperature, &
+           star%job%wind_saturation_omega)
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons
 

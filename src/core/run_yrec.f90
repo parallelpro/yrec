@@ -191,7 +191,7 @@ subroutine apply_monte_carlo_parameters
 ! only the metal factor (fgrz) is wired through. Preserved, not
 ! fixed; a candidate for an upstream report.
          monte_helium_diffusion_fraction = star%run%helium_fraction_param(monte_carlo_run_number)
-         fgrz = star%run%diffusion_factor(monte_carlo_run_number)
+         star%job%fgrz = star%run%diffusion_factor(monte_carlo_run_number)
          star%solar_luminosity_cgs = reference_solar_luminosity*star%run%luminosity_target(monte_carlo_run_number)
          star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
          star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
@@ -215,7 +215,7 @@ end subroutine apply_monte_carlo_parameters
 subroutine begin_calibration
 ! DBG PULSE: save LPULSE flag, set LPULSE to F except on last model of
 ! last run, then set LPULSE to saved value of LPULSE.
-      star%evo%saved_pulse_output_flag = pulsation_output_active
+      star%evo%saved_pulse_output_flag = star%job%pulsation_output_active
 ! MHP 1/93 add option to automatically calibrate solar model.
 ! MHP 3/96 added counter for # of iterations per converged model and
 ! starting estimate of ALPHA and X
@@ -224,8 +224,8 @@ subroutine begin_calibration
          convergence_iterations = 1
          initial_x_guess = star%job%rescale_params(2,1)
          initial_alpha_guess = star%job%mixing_length_array(1)
-         saved_use_structure_dt_limits = use_structure_dt_limits   ! save LPTIME for reuse during calibration
-         saved_atm_choice  = atm_choice    ! save KTTAU for reuse during calibration
+         saved_use_structure_dt_limits = star%job%use_structure_dt_limits   ! save LPTIME for reuse during calibration
+         saved_atm_choice  = star%job%atm_choice    ! save KTTAU for reuse during calibration
       else
          convergence_iterations = 0
       endif
@@ -252,15 +252,15 @@ subroutine end_of_card_calibration(runs_complete)
 !c MHP 5/96 changed solar calibration to perform solar models in 3 kind cards
          if (star%ctrl%calibrate_solar_model) then
 ! JVS Turn off calcad - speeds things up
-            compute_acoustic_depth=.false.
+            star%compute_acoustic_depth=.false.
             if (mod(star%job%nk,solar_calib_cards_per_cycle).eq.0) then
                log_r_rsun = 0.5D0*(star%log_L+star%log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-star%log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
                current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
                call chkcal(star%log_L,log_r_rsun,star%job%nk,current_zx)
 !               CALL CHKCAL(BL,RLL,NK)
-               use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
-               atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
+               star%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
+               star%job%atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
                if (star%run%solar_calibration_active) then
                   runs_complete = .true.
                   return
@@ -273,7 +273,7 @@ subroutine end_of_card_calibration(runs_complete)
                      runs_complete = .true.
                      return
                   end if
-                  if (pulsation_output_active) then
+                  if (star%job%pulsation_output_active) then
 ! DBG 6/93 Need to delete pulse output because have not got ultimate
 ! model yet.
 ! MHP 8/25 Replaced delete file with rewind file. This is functionally the same and avoids the need to pass the character string for the file name from parmin.
@@ -295,7 +295,7 @@ subroutine end_of_card_calibration(runs_complete)
          endif
 
 ! DBG 12/94 NO MORE RUNS NEEDED. HAVE CALIBRATED STELLAR MODEL
-         if (star%ctrl%calibrate_star_flag .and. star_found_flag.and.(mod(star%job%nk,star_calib_cards_per_cycle).eq.0)) then
+         if (star%ctrl%calibrate_star_flag .and. star%star_found_flag.and.(mod(star%job%nk,star_calib_cards_per_cycle).eq.0)) then
             runs_complete = .true.
             return
          end if
@@ -313,11 +313,11 @@ end subroutine end_of_card_calibration
 subroutine begin_kind_card
          star%run%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
-         initial_envelope_x = star%job%initial_x_array(star%job%nk)
-         initial_envelope_z = star%job%initial_z_array(star%job%nk)
+         star%job%initial_envelope_x = star%job%initial_x_array(star%job%nk)
+         star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
          star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
-       change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
-       requested_envelope_mass = star%job%senv0_array(star%job%nk)
+       star%job%change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
+       star%job%requested_envelope_mass = star%job%senv0_array(star%job%nk)
        star%evo%reset_triangle = .false.
        star%evo%model_diverged_flag = .false.
 ! MHP 10/02 ZERO OUT INITIAL ANGULAR MOMENTUM
@@ -333,7 +333,7 @@ subroutine begin_kind_card
             star%evo%convective_velocity, star%job%mixture_weights, ierr)
        if (ierr /= 0) return
 
-      if ((star%omega(1) .eq. 0) .and. (rotation_active)) then
+      if ((star%omega(1) .eq. 0) .and. (star%job%rotation_active)) then
 
 1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
                  ' Initialize rotation rates or set LROT to', &
@@ -357,7 +357,7 @@ subroutine begin_kind_card
          call neutrino_flux_table
       endif
 ! save mass in solar units
-         pulsation_mass_msun=star%star_mass
+         star%pulsation_mass_msun=star%star_mass
 ! MHP 08/02 STORE STARTING CZ PROPERTIES
          star%light_burn%jcz = star%envelope_cz_bottom_index
          star%turnover%convective_turnover_timescale = 0.0D0
@@ -410,7 +410,7 @@ subroutine begin_kind_card
          end do
 
 ! zero out light element burning rates in the surface CZ.
-         if (use_extended_composition) then
+         if (star%job%use_extended_composition) then
             star%light_burn%log_rate_li6_prev = 0.0D0
             star%light_burn%log_rate_li7_prev = 0.0D0
             star%light_burn%log_rate_be9_prev = 0.0D0

@@ -172,7 +172,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
                  !  integration and come here
 ! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
       star%turnover%pphot = atm_table%atm_log10_pressure
-      if (.not.calc_envelope_flag) then
+      if (.not.star%job%calc_envelope_flag) then
          continue
          return
       end if
@@ -228,17 +228,17 @@ subroutine prepare_surface_boundary
 
 ! G Somers 11/14 WRITE ATMOSHPHERE HEADER TO .STORE FILE, AND ADDED
 ! I/O FLAGS TO THE ATMOSPHERE CALLS
-      if(print_flag.and.lstatm)then
+      if(print_flag.and.star%job%lstatm)then
          if(.not.star%ctrl%lstch)write(istor,60)
       endif
  60   format(/,'******** ATMOSPHERE BEGIN ********')
 
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPL.
       tabulated_bc = .false.
-      if (atm_choice .eq. 3) then
+      if (star%job%atm_choice .eq. 3) then
 ! KURUCZ ATMOSPHERES
-         if(star%ctrl%lstch) lstatm=.false.
-         call surfp(log10_teff,log10_gravity,print_flag.and.lstatm,jerr)
+         if(star%ctrl%lstch) star%job%lstatm=.false.
+         call surfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
                ierr = jerr
@@ -249,10 +249,10 @@ subroutine prepare_surface_boundary
          tabulated_bc = .true.
 ! JNT 06/14
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPLC.
-      else if (atm_choice .eq. 5) then
+      else if (star%job%atm_choice .eq. 5) then
 ! KURUCZ ATMOSPHERES
-         if(star%ctrl%lstch) lstatm=.false.
-         call kcsurfp(log10_teff,log10_gravity,print_flag.and.lstatm,jerr)
+         if(star%ctrl%lstch) star%job%lstatm=.false.
+         call kcsurfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
                ierr = jerr
@@ -262,10 +262,10 @@ subroutine prepare_surface_boundary
          end if
          tabulated_bc = .true.
 ! We have Kurucz atmosphere boundary conditions
-      else if (atm_choice .eq. 4) then
+      else if (star%job%atm_choice .eq. 4) then
 ! ALLARD & HAUSCHILDT ATMOSPHERES
-         if(star%ctrl%lstch) lstatm=.false.
-         call alsurfp(log10_teff,log10_gravity,print_flag.and.lstatm,allard_lookup_failed,jerr)
+         if(star%ctrl%lstch) star%job%lstatm=.false.
+         call alsurfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,allard_lookup_failed,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
                ierr = jerr
@@ -275,7 +275,7 @@ subroutine prepare_surface_boundary
          end if
 ! Changed to Allard atmosphere code
          if(allard_lookup_failed) then
-            atm_choice=0
+            star%job%atm_choice=0
             star%use_ttau_relation = .true.
 ! Set to gray atmosphere (KTTAU=0), as
 ! TeffL is above Allard max, or GL is out of range.
@@ -304,11 +304,11 @@ subroutine integrate_atmosphere
        star%ctrl%idd(jj) = 5
       end do
       err_sum(1) = 0.0d0
-      if(atm_choice .eq. 0) then
+      if(star%job%atm_choice .eq. 0) then
             log10_temperature = log10_teff - 0.031235d0 + 0.25d0*dlog10(cc23)
-      else if (atm_choice .eq. 1) then
+      else if (star%job%atm_choice .eq. 1) then
             log10_temperature = log10_teff - 0.031235d0 + 0.25d0*dlog10(0.550d0)
-      else if (atm_choice .eq. 2) then
+      else if (star%job%atm_choice .eq. 2) then
             log10_temperature = log10_teff + hra(cc23) - star%atm_hras
       end if
 !                 For kttau = 0,1,or 2, very occasionally the integration
@@ -344,7 +344,7 @@ subroutine integrate_atmosphere
       y(1) = log10_pressure
       dydx(1) = dexp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))
 ! G Somers 11/14 ADDED I/O FLAG AND CHANGED WRITE OUTS TO .STORE.
-      if(print_flag.and.lstatm) then
+      if(print_flag.and.star%job%lstatm) then
        if(.not.star%ctrl%lstch) write(istor,10)
          beta = 1.0d0 - radiation_constant_over_3*(temperature**2)**2/pressure
          chi_rho = 1.0d0/dlnrho_dlnp
@@ -402,7 +402,7 @@ subroutine integrate_atmosphere
 ! SET NUMERICAL PARAMETERS UP.
       num_eqs = 1
       tolerance = star%ctrl%atm_error_tol
-      if (atm_choice .eq. 1) then
+      if (star%job%atm_choice .eq. 1) then
 ! KRISHNA-SWAMY T TAU HAS DIFFERENT ZERO THAN EDDINGTON T TAU
 ! TAU = 0.312156330 AT TEFF.
             x_limit = -0.505627854d0
@@ -418,9 +418,9 @@ subroutine integrate_atmosphere
        cycle atm_retry        ! and retry.
       endif
 
-      h_max = atm_step_max
-      h_min = atm_step_min
-      h_step = atm_step_begin
+      h_max = star%job%atm_step_max
+      h_min = star%job%atm_step_min
+      h_step = star%job%atm_step_begin
       step_tolerance = tolerance_fraction
       num_ok = 0
       num_bad = 0
@@ -451,7 +451,7 @@ subroutine integrate_atmosphere
             want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state)
 ! G Somers 11/14 ADDED I/O FLAG AND CHANGED WRITE OUTS TO .STORE.
-       if(print_flag.and.lstatm) then
+       if(print_flag.and.star%job%lstatm) then
             beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_table%atm_log10_temperature-atm_table%atm_log10_pressure))
             chi_rho = 1.0d0/star%pulse%qqdp
             chi_t = -chi_rho*star%pulse%qqdt
@@ -482,7 +482,7 @@ subroutine integrate_atmosphere
        endif
 ! DBG PULSE ATMOSPHERE VALUES FOR PULSATION
 ! JVS 02/11 - Added LCLCD option to IF statement
-       if ((pulse_print_flag.and.print_flag) .or. calcad_ageout_output_active .or. star%ctrl%lstch) then
+       if ((pulse_print_flag.and.print_flag) .or. star%job%calcad_ageout_output_active .or. star%ctrl%lstch) then
           star%pulse%qqed = 0.0d0
           pulse_energy_sum = 0.0d0
           star%pulse%qqet = 0.0d0
@@ -610,9 +610,9 @@ subroutine integrate_envelope
       y(3) = log10_radius
       num_eqs = 3
       tolerance = star%ctrl%env_error_tol
-      h_max = env_step_max
-      h_min = env_step_min
-      h_step = env_step_begin
+      h_max = star%job%env_step_max
+      h_min = star%job%env_step_min
+      h_step = star%job%env_step_begin
       step_tolerance = dabs(tolerance_fraction*star%env_comp%senv)
       surface_radius_linear = dexp(ln10*log10_radius)
       if(stored_vertex_index.eq.vertex_index) stored_vertex_index = 0

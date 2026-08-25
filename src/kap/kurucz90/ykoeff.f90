@@ -12,6 +12,7 @@
 ! common/gkrz/, common/intpl2/ (and their "2" siblings) match the
 ! names established in setkrz.f90/kurucz.f90/kurucz2.f90.
 subroutine ykoeff
+      use star_info_lib, only: star
 
       use opacity_table_lib
       use const_lib
@@ -59,7 +60,7 @@ subroutine ykoeff
 !
 !
 ! DBG 12/95 second Z table
-      if (use_two_z_tables) then
+      if (star%use_two_z_tables) then
          do it = 1,opacity_table%kurucz2_num_temps
             index1 = it
             jd = 0
