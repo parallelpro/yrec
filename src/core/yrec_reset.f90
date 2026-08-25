@@ -19,7 +19,7 @@
 module yrec_reset_lib
       use star_info_lib, only: star, star_info, evolve_step_reset_pending, &
            observables_reset_pending
-      use controls_reset_lib
+      use controls_reset_lib, only: controls_capture, controls_restore
       implicit none
 
       logical, save :: first_entry = .true.
