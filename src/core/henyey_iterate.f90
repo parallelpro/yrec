@@ -191,7 +191,14 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
             star%log_Teff,hydrogen_fraction,metal_fraction, &
             surface_pressure_rotation_factor, &
             surface_temperature_rotation_factor,envelope_recomputed_flag, &
-            log10_pressure_limit,star%convective_flag,star%nz)
+            log10_pressure_limit,star%convective_flag,star%nz,jerr)
+! 2026 numerics-gate opt-in: surfbc surfaces envelope/atmosphere
+! integration failures (incl. numerics_termination, negative) via
+! ierr; propagate to the driver.
+       if (jerr /= 0) then
+          ierr = jerr
+          return
+       end if
       endif
 ! 7/91 ADD CALL TO MIX
       if (iteration_level.gt.2 .and. delta_time.gt.0.0d0) then

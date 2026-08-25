@@ -439,7 +439,18 @@ subroutine integrate_atmosphere
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count, &
-            saha_state,step_err)
+            saha_state,step_err,ierr=jerr)
+! 2026 numerics-gate opt-in: a bsstep failure (the historical
+! "solution diverged" stop, its diagnostic already printed by the
+! gate) becomes the graceful numerics-termination code when the
+! caller opted in via ierr; without ierr the historical stop stands.
+       if (jerr /= 0) then
+          if (present(ierr)) then
+             ierr = numerics_termination
+             return
+          end if
+          stop
+       end if
 ! FIND DP/DTAU AT THE START OF THE NEXT STEP.
        err_sum(1) = err_sum(1) + step_err(1)
        call atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
@@ -753,7 +764,16 @@ subroutine integrate_envelope
               luminosity_linear,pressure_rotation_factor,temperature_rotation_factor, &
               log10_gravity,in_atmosphere,want_derivatives,conductive_opacity_flag, &
               print_flag,log10_radius,log10_teff,hydrogen_fraction,metal_fraction, &
-              env_call_count,saha_state,step_err)
+              env_call_count,saha_state,step_err,ierr=jerr)
+! 2026 numerics-gate opt-in: same contract as the atmosphere-side
+! bsstep call above.
+       if (jerr /= 0) then
+          if (present(ierr)) then
+             ierr = numerics_termination
+             return
+          end if
+          stop
+       end if
        do i = 1,3
           err_sum(i) = err_sum(i) + step_err(i)
        end do

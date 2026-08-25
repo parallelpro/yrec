@@ -115,6 +115,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
 
 
       implicit none
+      integer :: jerr_atm
       integer, parameter :: nts = 63, nps = 76
 
       double precision, intent(inout) :: timestep_yr
@@ -856,7 +857,14 @@ subroutine rescale_and_refit_envelope
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
                  hydrogen_fraction,metal_fraction,atm_get_dummy1, &
                  atm_get_unused_flag,katm,kenv,saha_state,atm_get_dummy2, &
-                 atm_get_dummy3,atm_get_dummy4,pulse_print_flag)
+                 atm_get_dummy3,atm_get_dummy4,pulse_print_flag,ierr=jerr_atm)
+! 2026 numerics-gate opt-in: envelope/atmosphere integration failures
+! surface here (incl. numerics_termination) instead of stopping in
+! atm_get; the host's ierr is already threaded to run_yrec.
+          if (jerr_atm /= 0) then
+             ierr = jerr_atm
+             return
+          end if
 ! G Somers END
             star%job%env_step_max = saved_env_step_max
             star%job%env_step_min = saved_env_step_min

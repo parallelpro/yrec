@@ -155,5 +155,9 @@ program main
 
       ierr = 0
       call run_yrec(ierr)
-      if (ierr /= 0) stop 1
+! 2026 numerics-gate opt-in: negative ierr is numerics_termination
+! (numerics_lib) -- the historical "solution diverged" stop, which
+! exited 0; preserve that as a clean exit. Positive ierr remains a
+! real error (exit 1, phase-5 step B convention).
+      if (ierr > 0) stop 1
 end program main

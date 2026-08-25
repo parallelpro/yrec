@@ -37,7 +37,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
      log10_teff, hydrogen_fraction, metal_fraction, &
      pressure_rotation_factor, temperature_rotation_factor, &
      envelope_recomputed_flag, log10_pressure_limit, convective_flag, &
-     zone_index)
+     zone_index, ierr)
       use star_info_lib, only: star
 
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
@@ -70,6 +70,8 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 
       logical :: tri_vertex_valid(3)
 
+      integer, intent(out) :: ierr
+      integer :: jerr_atm
       integer :: numenv
       data numenv/0/
 
@@ -81,6 +83,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
            save_boundary_flag, pulse_print_flag
       double precision :: b, gl, rl, adjusted_teffl
 
+      ierr = 0
 ! MHP 9/01
       if (star%job%atm_choice.eq.3) then
          if (log10_teff.ge.3.95d0) then
@@ -202,7 +205,14 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &
                  stored_envelope_state,stored_vertex_index,atm_call_count, &
                  env_call_count,saha_state,vtx_logp, &
-                 vtx_logr,vtx_logt,pulse_print_flag)
+                 vtx_logr,vtx_logt,pulse_print_flag,ierr=jerr_atm)
+! 2026 numerics-gate opt-in: envelope-integration failures
+! (numerics_termination) and table errors surface here instead of
+! stopping inside atm_get; the caller (henyey_iterate) propagates.
+          if (jerr_atm /= 0) then
+             ierr = jerr_atm
+             return
+          end if
 ! G Somers END
           envelope_needs_recompute = .true.
        endif

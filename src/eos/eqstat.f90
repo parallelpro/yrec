@@ -511,7 +511,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          call eqscve(log10_temperature, temperature, pressure, &
               log10_density, density, hydrogen_fraction, metal_fraction, &
               beta, ion_fraction, dlnrho_dlnt, dlnrho_dlnp, &
-              specific_heat_cp, adiabatic_gradient, valid_table_point)
+              specific_heat_cp, adiabatic_gradient, valid_table_point, ierr)
+         if (ierr /= 0) return
 
          do_scv_derivatives = .false.   ! Do not do SCV derivatives
          if (do_scv_derivatives .and. valid_table_point) then
@@ -543,14 +544,16 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                  density_1, hydrogen_fraction, metal_fraction, beta, &
                  ion_fraction, dlnrho_dlnt_1, dlnrho_dlnp_1, &
                  specific_heat_cp_1, adiabatic_gradient_1, &
-                 valid_table_point_1)
+                 valid_table_point_1, ierr)
+            if (ierr /= 0) return
             ttl = log10_temperature - dtl
             temperature = 10.0d0**ttl
             call eqscve(ttl, temperature, pressure, log10_density_1, &
                  density_1, hydrogen_fraction, metal_fraction, beta, &
                  ion_fraction, dlnrho_dlnt_1, dlnrho_dlnp_1, &
                  specific_heat_cp_1, adiabatic_gradient_1, &
-                 valid_table_point_1)
+                 valid_table_point_1, ierr)
+            if (ierr /= 0) return
             dtl2 = 2d0*dtl
             dlnrho_dlnt_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
             specific_heat_cp_dt = (dlog10(specific_heat_cp_1) - &
@@ -565,14 +568,16 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                  log10_density_1, density_1, hydrogen_fraction, &
                  metal_fraction, beta, ion_fraction, dlnrho_dlnt_1, &
                  dlnrho_dlnp_1, specific_heat_cp_1, &
-                 adiabatic_gradient_1, valid_table_point_1)
+                 adiabatic_gradient_1, valid_table_point_1, ierr)
+            if (ierr /= 0) return
             ppl = log10_pressure - dpl
             pressure = 10.0d0**ppl
             call eqscve(log10_temperature, temperature, pressure, &
                  log10_density_1, density_1, hydrogen_fraction, &
                  metal_fraction, beta, ion_fraction, dlnrho_dlnt_2, &
                  dlnrho_dlnp_2, specific_heat_cp_2, &
-                 adiabatic_gradient_2, valid_table_point_2)
+                 adiabatic_gradient_2, valid_table_point_2, ierr)
+            if (ierr /= 0) return
             pressure = 10.0d0**log10_pressure
             dpl2 = 2d0*dpl
             dlnrho_dlnp_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10

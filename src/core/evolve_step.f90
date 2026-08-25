@@ -125,7 +125,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             call rebuild_envelope(target_envelope_mass,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%m,star%dm, &
 !     *                     HSTOT,HT,LC,ETA2,HG,HI,HJM,QIW,R0,  ! KC 2025-05-31
                             star%log_total_mass,star%logT,star%convective_flag,star%eta_squared,star%i_rot,star%j_rot,star%qiw,star%mean_radius, &
-                            star%kinetic_energy_rot,star%log_L,star%total_angular_momentum,star%total_rotational_ke,star%log_Teff,star%nz,star%recompute_envelope_triangle)
+                            star%kinetic_energy_rot,star%log_L,star%total_angular_momentum,star%total_rotational_ke,star%log_Teff,star%nz,star%recompute_envelope_triangle,ierr)
+            if (ierr /= 0) return
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
             call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
             new_atmosphere_fit_needed = .false.

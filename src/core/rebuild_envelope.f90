@@ -17,7 +17,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      log_total_mass, log_temperature, convective_flag, eta_squared, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
-     total_rotational_ke, log_teff, num_zones, new_points_added_flag)
+     total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
       use star_info_lib, only: star
       use atm_lib
       use envint_lib, only: atm_get
@@ -26,6 +26,8 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       use phys_const_lib
       use yale_eos_lib
       implicit none
+      integer, intent(out) :: ierr
+      integer :: jerr_atm
       double precision, intent(inout) :: target_envelope_mass
       double precision, intent(inout) :: composition(15,json), &
            log_density(json), log_luminosity(json), log_pressure(json), &
@@ -100,6 +102,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! its initial zero-fill) -- not the caller's actual rotation state.
       double precision :: omega(json)
 
+      ierr = 0
       if(star%job%use_extended_composition)then
          species_end_index = 15
       else
@@ -170,7 +173,13 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
            log_radius_surface, &
            spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
            atm_get_dummy1,atm_get_unused_flag,katm,kenv,ksaha,atm_get_dummy2, &
-           atm_get_dummy3,atm_get_dummy4,pulsation_output_flag)
+           atm_get_dummy3,atm_get_dummy4,pulsation_output_flag,ierr=jerr_atm)
+! 2026 numerics-gate opt-in: same contract as read_starting_model's
+! atm_get call; caller (evolve_step) checks ierr.
+      if (jerr_atm /= 0) then
+         ierr = jerr_atm
+         return
+      end if
 ! G Somers END
 ! RESET THE NUMERICAL PARAMETERS FOR THE ENVELOPE INTEGRATION
       star%job%env_step_max = env_max_saved

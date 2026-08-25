@@ -24,6 +24,7 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       use numerics_lib
 
       implicit none
+      integer :: jerr_gate
 
       integer, intent(in) :: envelope_store_index
       logical, intent(out) :: point_reset_flag
@@ -452,7 +453,13 @@ subroutine assign_new_points
             spline_eval_x = chi_prev + dchi
             call splintd2(spline_x, spline_y, star%nz, &
                  spline_second_deriv, spline_eval_x, spline_eval_y, &
-                 spline_klo, spline_khi)
+                 spline_klo, spline_khi, jerr_gate)
+            ! 2026 numerics-gate opt-in: interpolation failure returns via
+            ! ierr (diagnostic printed at the gate) instead of stopping.
+            if (jerr_gate /= 0) then
+               ierr = jerr_gate
+               return
+            end if
             star%old_shell_mass(j) = spline_eval_y
             chi_prev = spline_eval_x
 !
@@ -481,7 +488,11 @@ subroutine assign_new_points
       do i = 2,new_num_zones
          spline_eval_x = star%old_shell_mass(i)
          call splintd2(spline_x, spline_y, star%nz, spline_second_deriv, &
-              spline_eval_x, spline_eval_y, spline_klo, spline_khi)
+              spline_eval_x, spline_eval_y, spline_klo, spline_khi, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
          x_new(i) = spline_eval_y
       end do
 
@@ -532,7 +543,11 @@ subroutine assign_new_points
       do i = 2,new_num_zones
          spline_eval_x = star%old_shell_mass(i)
          call splintd2(spline_x, spline_y, star%nz, spline_second_deriv, &
-              spline_eval_x, spline_eval_y, spline_klo, spline_khi)
+              spline_eval_x, spline_eval_y, spline_klo, spline_khi, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
          z_new(i) = spline_eval_y
 !
       end do

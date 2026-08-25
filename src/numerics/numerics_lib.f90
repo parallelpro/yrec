@@ -20,6 +20,15 @@
 ! GUIDELINES.md's rule that folder/module placement should track
 ! function, not caller.
 module numerics_lib
+! 2026 numerics-gate opt-in: callers that pass the optional ierr of
+! the gated procedures (bsstep/ksplint/splint/splintd2/intpol) can
+! distinguish a NUMERICS TERMINATION -- the historical "solution
+! diverged, stop" mode, e.g. a bsstep envelope-integration failure
+! that is the normal pinned ending of some configurations -- from a
+! hard configuration/table error. The driver maps this negative code
+! to a clean process exit (the legacy stop exited 0), while
+! yrec_capi surfaces it to pyyrec as a distinct status.
+      integer, parameter, public :: numerics_termination = -2
 contains
 
 !----------------------------------------------------------------------

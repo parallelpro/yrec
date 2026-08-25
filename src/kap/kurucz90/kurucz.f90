@@ -33,6 +33,7 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
       use luout_lib
       use numerics_lib
       implicit none
+      integer :: jerr_gate
       integer, parameter :: max_num_temps = 60
       integer, parameter :: max_num_densities = 50
       integer, parameter :: num_x_tables = 1
@@ -162,13 +163,23 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
 !     INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.
 !     GET THE PARTIAL DERIVATIVE OF OL WRT T.
       call intpol(temp_subset_logt, temp_subset_log10_opacity, &
-           num_valid_temps, local_logt, log10_opacity_interp, dlnkap_dlnt)
+           num_valid_temps, local_logt, log10_opacity_interp, dlnkap_dlnt, jerr_gate)
+      ! 2026 numerics-gate opt-in: interpolation failure returns via
+      ! ierr (diagnostic printed at the gate) instead of stopping.
+      if (jerr_gate /= 0) then
+         ierr = jerr_gate
+         return
+      end if
       log10_opacity = log10_opacity_interp
       opacity = 10.0d0**log10_opacity
 !     QOTF = D LN(O)/D LN(T)
 !     FIND THE PARTIAL DERIVATIVE VALUE OF OL WRT D IN THE GIVEN T AND D
       call intpol(temp_subset_logt, temp_subset_dlnkap_dlnrho, &
-           num_valid_temps, local_logt, dlnkap_dlnrho, dlnkap_dlnrho_unused)
+           num_valid_temps, local_logt, dlnkap_dlnrho, dlnkap_dlnrho_unused, jerr_gate)
+      if (jerr_gate /= 0) then
+         ierr = jerr_gate
+         return
+      end if
 !     QODF = D LN(O)/D LN(D)
       return
 end subroutine kurucz

@@ -100,6 +100,13 @@ def filevals_differ(ref_file, out_file, float_tol, int_tol):
         try:
             refline = next(ref)
             outline = next(out)
+            # The version stamp ("# YREC v... (<git hash>)") differs on
+            # every commit; it is build provenance, not physics -- skip
+            # it so baselines survive commits (2026: this also unbreaks
+            # the perpetual m0030-chain version-line failures).
+            if refline.startswith("# YREC v") and outline.startswith("# YREC v"):
+                lineno += 1
+                continue
             ref_vals = vals_from_line(refline)
             out_vals = vals_from_line(outline)
         except StopIteration as ex:
