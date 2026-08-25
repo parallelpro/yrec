@@ -51,7 +51,7 @@ subroutine write_run_summaries(monte_carlo_run_number, &
  1525    format(5X,'DID NOT CONVERGE WITHIN 10 ATTEMPTS L,R',2F10.6)
 ! MONTE CARLO #, CONVERGED MIXING LENGTH AND INITIAL H, SURFACE X,
 ! SURFACE Z, Z/X, CENTRAL X, CENTRAL Z
-         write(neutrino_unit,1519) monte_carlo_run_number,mixing_length_array(nk),rescale_params(2,nk-2),star%xa(i_h1,star%nz), &
+         write(neutrino_unit,1519) monte_carlo_run_number,mixing_length_array(star%job%nk),rescale_params(2,star%job%nk-2),star%xa(i_h1,star%nz), &
               star%xa(i_metals,star%nz),surface_z_over_x,star%xa(i_h1,1),star%xa(i_metals,1)
  1519    format(1X,I5,3F10.6,4E10.3)
 ! NUMERICAL DATA : #OF RUNS NEEDED FOR A CONVERGED MODEL, INITIAL X
@@ -69,7 +69,7 @@ subroutine write_run_summaries(monte_carlo_run_number, &
          call wrtmonte(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%run%dage, &
               star%evo%timestep_yr,star%star_mass,star%log_Teff,star%log_L, &
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-              star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
+              star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,star%job%nk,monte_carlo_run_number)
       else if (calibrate_solar_model .and. lsnu .and. star%run%solar_calibration_active) then
          rewind(ilast)
          rewind(first_unit)
@@ -100,9 +100,9 @@ subroutine write_run_summaries(monte_carlo_run_number, &
          write(neutrino_unit, 1517)central_temperature_mk,central_density_linear,central_pressure_scaled,star%xa(i_h1,1),star%xa(i_metals,1)
  1517    format(1X,F7.3,F7.2,F6.3,2F8.5)
 ! INITIAL ALPHA,Y,Z,ALPHA; FINAL R, L
-         initial_helium_fraction = 1.0D0 - rescale_params(2,nk-2) - rescale_params(3,nk-2)
-         initial_metal_fraction = rescale_params(3,nk-2)
-         write(neutrino_unit,1521)mixing_length_array(nk),initial_helium_fraction,initial_metal_fraction,star%log_L,log_r_rsun
+         initial_helium_fraction = 1.0D0 - rescale_params(2,star%job%nk-2) - rescale_params(3,star%job%nk-2)
+         initial_metal_fraction = rescale_params(3,star%job%nk-2)
+         write(neutrino_unit,1521)mixing_length_array(star%job%nk),initial_helium_fraction,initial_metal_fraction,star%log_L,log_r_rsun
  1521    format(F7.4,2F8.5,1P2E10.3)
 ! CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)
          write(neutrino_unit,1522)star%run%envelope_radius,star%run%envelope_mass,star%xa(i_he4,star%nz),star%xa(i_metals,star%nz),surface_z_over_x
@@ -118,7 +118,7 @@ subroutine write_run_summaries(monte_carlo_run_number, &
             call wrtmonte(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%run%dage, &
                  star%evo%timestep_yr,star%star_mass,star%log_Teff,star%log_L, &
                  star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,nk,monte_carlo_run_number)
+                 star%envelope_fit_coeffs,star%evo%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,star%job%nk,monte_carlo_run_number)
          endif
       endif
       end if

@@ -267,7 +267,6 @@ module controls_reset_lib
       double precision :: snap_rsclzc(50)
       double precision :: snap_rsclzm1(50)
       double precision :: snap_rsclzm2(50)
-      integer :: snap_nk
       logical :: snap_use_z_ramp
       double precision :: snap_target_luminosity_lsun
       double precision :: snap_target_star_luminosity_tolerance
@@ -704,7 +703,6 @@ subroutine controls_capture
       snap_rsclzc = rsclzc
       snap_rsclzm1 = rsclzm1
       snap_rsclzm2 = rsclzm2
-      snap_nk = nk
       snap_use_z_ramp = use_z_ramp
       snap_target_luminosity_lsun = target_luminosity_lsun
       snap_target_star_luminosity_tolerance = target_star_luminosity_tolerance
@@ -1140,7 +1138,6 @@ subroutine controls_restore
       rsclzc = snap_rsclzc
       rsclzm1 = snap_rsclzm1
       rsclzm2 = snap_rsclzm2
-      nk = snap_nk
       use_z_ramp = snap_use_z_ramp
       target_luminosity_lsun = snap_target_luminosity_lsun
       target_star_luminosity_tolerance = snap_target_star_luminosity_tolerance

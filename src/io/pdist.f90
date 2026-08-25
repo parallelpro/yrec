@@ -53,28 +53,28 @@ subroutine pdist(prev_log_l, prev_log_teff, prev_age, path_length_sq, &
           path_length_sq = 0.0d0
           trim_col = index(pulse_mod_path,' ')-1
           if (model_number.lt.10000) then
-             write(temp_string,'(I2.2,''_'',I4.4)') nk, model_number
+             write(temp_string,'(I2.2,''_'',I4.4)') star%job%nk, model_number
              output_path = pulse_mod_path(1:trim_col) // temp_string(1:7)
           else
-             write(temp_string,'(I2.2,''_'',I5.5)') nk, model_number
+             write(temp_string,'(I2.2,''_'',I5.5)') star%job%nk, model_number
              output_path = pulse_mod_path(1:trim_col) // temp_string(1:8)
           end if
           open(opal_model_unit,file=output_path,status='NEW',form='FORMATTED')
           trim_col = index(pulse_env_path,' ')-1
           if (model_number.lt.10000) then
-             write(temp_string,'(I2.2,''_'',I4.4)') nk, model_number
+             write(temp_string,'(I2.2,''_'',I4.4)') star%job%nk, model_number
              output_path = pulse_env_path(1:trim_col) // temp_string(1:7)
           else
-             write(temp_string,'(I2.2,''_'',I5.5)') nk, model_number
+             write(temp_string,'(I2.2,''_'',I5.5)') star%job%nk, model_number
              output_path = pulse_env_path(1:trim_col) // temp_string(1:8)
           end if
           open(opal_envelope_unit,file=output_path,status='NEW',form='FORMATTED')
           trim_col = index(pulse_atm_path,' ')-1
           if (model_number.lt.10000) then
-             write(temp_string,'(I2.2,''_'',I4.4)') nk, model_number
+             write(temp_string,'(I2.2,''_'',I4.4)') star%job%nk, model_number
              output_path = pulse_atm_path(1:trim_col) // temp_string(1:7)
           else
-             write(temp_string,'(I2.2,''_'',I5.5)') nk, model_number
+             write(temp_string,'(I2.2,''_'',I5.5)') star%job%nk, model_number
              output_path = pulse_atm_path(1:trim_col) // temp_string(1:8)
           end if
           open(opal_atm_unit,file=output_path,status='NEW',form='FORMATTED')

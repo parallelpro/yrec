@@ -31,8 +31,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use stop_conditions
       implicit none
 
-! nk (the run index) is const_lib module state (former common/zramp/),
-! not an argument
+! the run index (former common/zramp/ NK) is star%job%nk (2026
+! phase-A eviction), not an argument
       integer, intent(in) :: model_iteration
       integer, intent(out) :: step_status, ierr
 
@@ -138,14 +138,14 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 !        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
 !      *        JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
        call htimer(star%evo%dt,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
-              star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,nk,star%logP,star%logR,star%omega, &
+              star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,star%job%nk,star%logP,star%logR,star%omega, &
               star%evo%max_domega_frac,star%evo%h_shell_zone_begin,star%log_Teff)
 ! IF EVOLVING TO A GIVEN AGE AND KIND CARD IS DONE, AVOID ZEROING OUT
 ! TIMESTEP WRITTEN TO MODEL (AS THIS MAKES CONTINUING A SEQUENCE AWKWARD.)
 !     INSTEAD WRITE THE PREVIOUS MODEL TIMESTEP TO MODEL.
 ! ONLY IF A FIXED END AGE IS USED, NOT FOR OTHER STOPS
-       if (end_age_stop_active(nk) .and. target_end_age(nk).gt.0.0D0) then
-          if (reached_end_age(nk)) then
+       if (end_age_stop_active(star%job%nk) .and. target_end_age(star%job%nk).gt.0.0D0) then
+          if (reached_end_age(star%job%nk)) then
              star%evo%dt = max(star%evo%dt_saved,1.0D-3*star%run%dage*seconds_per_year)
              star%evo%timestep_yr = star%evo%dt/seconds_per_year
           else
@@ -154,7 +154,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        else
           star%evo%dt_saved = star%evo%dt
        endif
-       if (rescale_kind(nk).ne.2) star%model_number = star%model_number+1
+       if (rescale_kind(star%job%nk).ne.2) star%model_number = star%model_number+1
 ! 2026 (phase four, step 5): compute the per-model observables in
 ! the star layer (fills star%run%*, star%luminosity_breakdown
 ! renormalization, star%turnover% via gettau); wrtout below only
@@ -171,13 +171,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! MHP 10/24 GENERALIZED STOP CONDITIONS
 !     IF EVOLVING TO A GIVEN AGE AND AGE IS REACHED, KIND CARD IS DONE
 !       IF(LENDAG(NK).AND.ENDAGE(NK)-DAGE*1.0D9.LE.1.0D0)GOTO 110
-       if (reached_end_age(nk)) then
+       if (reached_end_age(star%job%nk)) then
           step_status = step_kind_card_done
           return
        end if
 ! MHP 10/24 CHECK ALL STOP CONDITIONS, EXIT IF ANY SATISFIED
 ! (2026: the D/X/Y checks are one table walk in stop_conditions)
-         if (abundance_stop_triggered(nk)) then
+         if (abundance_stop_triggered(star%job%nk)) then
 ! SET I/O FLAGS PROPERLY AND EXIT LOOP
             pulsation_output_active = star%evo%saved_pulse_output_flag
             star%run%sound_speed_output_active = .true.
@@ -187,13 +187,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          endif
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
          if (calibrate_star_flag .and. .not. star_found_flag) then
-            if (mod(nk,2).eq.0) then
+            if (mod(star%job%nk,2).eq.0) then
 ! chkscal protocol: iteration 1 only primes its previous-model state
 ! (the value computed here is never read -- see chkscal.f90)
              if (model_iteration.eq.1) then
                 teff_kelvin_unused = 10.0D0**star%log_Teff
              else
-                call chkscal(star%log_L, star%log_Teff, star%run%dage, nk)
+                call chkscal(star%log_L, star%log_Teff, star%run%dage, star%job%nk)
                 if (just_passed_target_radius_flag) then
                    step_status = step_leave_run_loop
                    return
@@ -221,7 +221,7 @@ subroutine update_output_flags_for_step
              rewind(short_file_unit)
           endif
 ! DBG PULSE:  if last model of last run then set LPULSE to LSAVPU
-            if (model_iteration.eq.num_models(nk) .and. nk .eq. num_runs) then
+            if (model_iteration.eq.num_models(star%job%nk) .and. star%job%nk .eq. num_runs) then
                  pulsation_output_active = star%evo%saved_pulse_output_flag
             end if
 
@@ -269,7 +269,7 @@ subroutine update_output_flags_for_step
 !
 ! DBG PULSE:  if endage reached then set LPULSE to LSAVPU
 ! MHP 10/24 GENERALIZE CHECK
-         if (approaching_end_age(nk)) then
+         if (approaching_end_age(star%job%nk)) then
                  pulsation_output_active = star%evo%saved_pulse_output_flag
 ! MHP 7/96 compute sound speed for solar model
                  star%run%sound_speed_output_active = .true.
@@ -296,7 +296,7 @@ subroutine reload_model_if_diverged
 !              CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
              call starin(star%evo%timestep_yr, star%evo%dt, star%evo%hydrogen_dt, &
                   star%evo%trial_sign_flag, star%evo%ikut_flag, star%evo%istore_flag, &
-                  star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, nk, &
+                  star%evo%model_diverged_flag, star%evo%recompute_envelope_triangle, star%job%nk, &
                   star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, star%evo%total_angular_momentum, &
                   star%evo%total_rotational_ke, star%evo%convective_velocity, &
                   star%job%mixture_weights, ierr)
@@ -328,7 +328,7 @@ subroutine advance_composition_and_age
 ! (rescale_kind = 2) skip aging EXCEPT while the center is still cool
 ! -- pre-main-sequence models rescale and age at the same time.)
             evolve_model_flag = star%model_number.ge.0 .and. &
-                 (rescale_kind(nk).ne.2 .or. star%logT(1).lt.6.6D0)
+                 (rescale_kind(star%job%nk).ne.2 .or. star%logT(1).lt.6.6D0)
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! ADD MASS LOSS CALCULATION
@@ -576,7 +576,7 @@ subroutine converge_with_rotation
 ! MHP 9/94 ADDED FLAG TO TURN ON ROTATION OUTPUT WHEN END OF KIND
 ! CARD REACHED.
 ! MHP 10/24 GENERALIZE CHECK
-               if (approaching_end_age(nk)) then
+               if (approaching_end_age(star%job%nk)) then
                   star%run%print_rotation_diagnostics = .true.
                else
                   star%run%print_rotation_diagnostics = .false.

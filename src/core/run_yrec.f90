@@ -45,7 +45,7 @@ subroutine run_yrec(ierr)
       logical :: saved_use_structure_dt_limits
       integer :: saved_atm_choice
       integer :: i
-      integer :: model_iteration
+      integer :: kind_card, model_iteration
       double precision :: log_r_rsun, current_zx, surface_z_over_x
       double precision :: monte_helium_diffusion_fraction
 
@@ -83,7 +83,16 @@ subroutine run_yrec(ierr)
 !**********
 !     RUN THROUGH THE KIND CARDS IN ORDER
 !**********
-      run_loop: do nk = 1, num_runs
+! star%job%nk is the run list's cursor (formerly the module variable
+! NK doubling as the DO index). A structure component cannot be a
+! DO-variable, so a local drives the loop and star%job%nk shadows it;
+! the exhaustion fix-up after the loop reproduces the historical DO
+! semantics (nk = num_runs+1 when the list runs out, current card
+! when the calibration verdict exits early) for the post-loop
+! readers (write_run_summaries' nk-2 indexing).
+      runs_complete = .false.
+      run_loop: do kind_card = 1, num_runs
+         star%job%nk = kind_card
 ! Per-kind-card setup (2026, core/ phase 3): everything from the
 ! card's initial composition through the first timestep estimate is
 ! begin_kind_card below; config/read errors return through ierr.
@@ -93,7 +102,7 @@ subroutine run_yrec(ierr)
 ! for a given kind card, evolve NMODLS(NK) times
 ! if rescaling is being performed, NMODLS(NK) is the number of times
 ! the new model is being relaxed
-       do model_iteration = 1,num_models(nk)
+       do model_iteration = 1,num_models(star%job%nk)
 ! 2026 (phase five): one model advance per iteration, extracted to
 ! core/evolve_step.f90 (see its header for the step_status contract).
        call evolve_step(model_iteration, step_status, ierr)
@@ -135,6 +144,7 @@ subroutine run_yrec(ierr)
 ! END RUN LOOP
       end do run_loop
 ! EXIT RUN LOOP
+      if (.not. runs_complete) star%job%nk = num_runs + 1
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
 ! MODEL PARAMETERS (legacy mode only; io/write_run_summaries.f90 --
@@ -243,11 +253,11 @@ subroutine end_of_card_calibration(runs_complete)
          if (calibrate_solar_model) then
 ! JVS Turn off calcad - speeds things up
             compute_acoustic_depth=.false.
-            if (mod(nk,solar_calib_cards_per_cycle).eq.0) then
+            if (mod(star%job%nk,solar_calib_cards_per_cycle).eq.0) then
                log_r_rsun = 0.5D0*(star%log_L+star%log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-star%log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
                current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
-               call chkcal(star%log_L,log_r_rsun,nk,current_zx)
+               call chkcal(star%log_L,log_r_rsun,star%job%nk,current_zx)
 !               CALL CHKCAL(BL,RLL,NK)
                use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
@@ -285,7 +295,7 @@ subroutine end_of_card_calibration(runs_complete)
          endif
 
 ! DBG 12/94 NO MORE RUNS NEEDED. HAVE CALIBRATED STELLAR MODEL
-         if (calibrate_star_flag .and. star_found_flag.and.(mod(nk,star_calib_cards_per_cycle).eq.0)) then
+         if (calibrate_star_flag .and. star_found_flag.and.(mod(star%job%nk,star_calib_cards_per_cycle).eq.0)) then
             runs_complete = .true.
             return
          end if
@@ -303,11 +313,11 @@ end subroutine end_of_card_calibration
 subroutine begin_kind_card
          star%run%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
-         initial_envelope_x = initial_x_array(nk)
-         initial_envelope_z = initial_z_array(nk)
-         star%mixing_length_alpha = mixing_length_array(nk)
-       change_envelope_mass_flag = has_senv0_array(nk)
-       requested_envelope_mass = senv0_array(nk)
+         initial_envelope_x = initial_x_array(star%job%nk)
+         initial_envelope_z = initial_z_array(star%job%nk)
+         star%mixing_length_alpha = mixing_length_array(star%job%nk)
+       change_envelope_mass_flag = has_senv0_array(star%job%nk)
+       requested_envelope_mass = senv0_array(star%job%nk)
        star%evo%reset_triangle = .false.
        star%evo%model_diverged_flag = .false.
 ! MHP 10/02 ZERO OUT INITIAL ANGULAR MOMENTUM
@@ -318,7 +328,7 @@ subroutine begin_kind_card
 !        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
        call starin(star%evo%timestep_yr, star%evo%dt, star%evo%hydrogen_dt, star%evo%trial_sign_flag, &
             star%evo%ikut_flag, star%evo%istore_flag, star%evo%model_diverged_flag, &
-            star%evo%recompute_envelope_triangle, nk, star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, &
+            star%evo%recompute_envelope_triangle, star%job%nk, star%evo%dlnrho_dlnp, star%evo%dlnrho_dlnt, &
             star%evo%total_angular_momentum, star%evo%total_rotational_ke, &
             star%evo%convective_velocity, star%job%mixture_weights, ierr)
        if (ierr /= 0) return
@@ -338,7 +348,7 @@ subroutine begin_kind_card
 ! (2026: one table walk in stop_conditions -- the hand-written D/X/Y
 ! triple that used to live here carried the disarm-the-wrong-stop bug
 ! fixed in phase 1.)
-         call disarm_satisfied_stops(nk)
+         call disarm_satisfied_stops(star%job%nk)
 ! Opt-in diagnostic (2026): the former LNUTAB per-zone neutrino
 ! table, off since 2004, is now the compute_neutrino_fluxes control
 ! (core/neutrino_flux_table.f90); it describes the starting model
@@ -386,7 +396,7 @@ subroutine begin_kind_card
 !      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
        call htimer(star%evo%dt,star%evo%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
-            star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,nk, &
+            star%evo%h_shell_midpoint_zone,star%luminosity_breakdown,star%run%dage,star%evo%timestep_yr,star%job%nk, &
             star%logP,star%logR,star%omega,star%evo%max_domega_frac,star%evo%h_shell_zone_begin, &
             star%log_Teff)
 

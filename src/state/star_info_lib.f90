@@ -460,6 +460,14 @@ module star_info_lib
                  pulse_mod_path
             double precision :: mixture_weights(12)
             integer :: mc_run_start, mc_run_end
+! 2026 phase A batch 6: the current kind-card index (former
+! common/zramp/ NK), the run list's cursor -- set by run_yrec's card
+! loop, read broadly (evolve_step, the io writers, the calibration
+! protocol arithmetic). A structure component cannot be a
+! DO-variable, so run_yrec drives it from a local index and
+! preserves the historical post-loop value (num_runs+1 on
+! exhaustion) explicitly.
+            integer :: nk
       end type star_job
 
 ! ---- from state/evolve_state_lib.f90 ----

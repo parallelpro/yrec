@@ -18,15 +18,15 @@ subroutine wrthead(total_mass_msun)
 ! --- locals ---
       double precision :: total_mass_grams
 
-      if (rescale_kind(nk) .eq. 1) then
-         write(iowr, 47) nk, initial_envelope_x, initial_envelope_z, &
-              star%mixing_length_alpha, num_models(nk)
-      else if (rescale_kind(nk) .eq. 2) then
-         write(iowr, 48) nk, initial_envelope_x, initial_envelope_z, &
-              star%mixing_length_alpha, num_models(nk)
-      else if (rescale_kind(nk) .eq. 3) then
-         write(iowr, 49) nk, initial_envelope_x, initial_envelope_z, &
-              star%mixing_length_alpha, num_models(nk)
+      if (rescale_kind(star%job%nk) .eq. 1) then
+         write(iowr, 47) star%job%nk, initial_envelope_x, initial_envelope_z, &
+              star%mixing_length_alpha, num_models(star%job%nk)
+      else if (rescale_kind(star%job%nk) .eq. 2) then
+         write(iowr, 48) star%job%nk, initial_envelope_x, initial_envelope_z, &
+              star%mixing_length_alpha, num_models(star%job%nk)
+      else if (rescale_kind(star%job%nk) .eq. 3) then
+         write(iowr, 49) star%job%nk, initial_envelope_x, initial_envelope_z, &
+              star%mixing_length_alpha, num_models(star%job%nk)
       end if
   47  format(/, ' RUN=',I2,' EVOLVE  ', ' X=',F8.6, &
              ' Z=',F8.6,' CMIXL=', F8.6, ' NO.MODS=', I5)
@@ -43,7 +43,7 @@ subroutine wrthead(total_mass_msun)
  1495    format(7X, 1P5E16.8)
       end if
 
-      if (ltrack .and. first_call_flag(nk)) then
+      if (ltrack .and. first_call_flag(star%job%nk)) then
 ! ITRVER identifies version of track out file.  If you change
 ! the track out file then change this version number.
          write(itrack, 1500)track_file_version,total_mass_msun,initial_envelope_x, &
