@@ -106,13 +106,26 @@ Phases (each byte-gated + test_net + test_reentry):
   controls_reset_lib DELETED (test_reentry byte-identical without
   it). Consumers still read the buffer -- star%ctrl is written, not
   yet read.
-- Phase C (the long march): per former-common family (~75 groups,
-  ~178 files): consumers switch to star%ctrl%/star%job% members,
-  per-member classification (ctrl vs job vs flat state -- the
-  calibration-mutated card arrays are job, not ctrl), FUSED with
-  the MESA-vocabulary rename and the sub-struct flattening
-  (run/evo/turnover/flux/diag/rot dissolve) so each member is
-  touched once.
+- Phase C controls stream (DONE 2026-08-24, batches 1-3): all 418
+  buffer members classified and migrated -- 346 immutable ->
+  star%ctrl (batch 1 mega-sweep); 68 mutable namelist/card members
+  -> star%job (batches 2-3: card arrays, calibration protocol,
+  model-restore set, driver toggles, physics-adjusted config); 23
+  working/diagnostic members -> flat star% (vfc, calcad outputs,
+  chkscal bookkeeping, ...). The buffer now has NO production
+  readers/writers outside the read path (parmin/remap/sync).
+  Read-path invariants learned: remap is read-path (reads+writes
+  the buffer); parmin stores buffer->star after remap so
+  output_init_mesa sees real values; model-restore readers keep
+  their control-named intent(out) dummies bare.
+- Phase C flattening stream (REMAINING): dissolve the state
+  sub-structs (prev/run/evo/turnover/flux/diag/rot/thermo/circ/
+  mix_phys/engeb/env_comp/light_burn/pulse) into flat star%
+  members, fused with the MESA-vocabulary rename so each member is
+  touched once. NEEDS a per-member name map reviewed with the user
+  first (the long-descriptive vs MESA-name tension is theirs to
+  arbitrate) -- generate the proposed map, review, then sweep per
+  sub-struct with the standing gates.
 - Phase D (teardown): controls_lib becomes parmin-private; const_lib
   umbrella deleted (each user switches to the specific module);
   luout_lib -> io/, intpar_lib -> numerics/; const/ folder deleted.
