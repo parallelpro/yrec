@@ -55,20 +55,23 @@ pack/unpack noise. Order of work when resumed: kap_get res-array
 collapse for real. The indices are the basis for the pyyrec
 in-memory results API either way.
 
-## Numerics-gate ierr opt-in
+## Numerics-gate ierr opt-in -- DONE 2026-08-25
 
-The numerics_lib procedures carry OPTIONAL ierr gates, but their
-callers do not yet pass ierr -- a bsstep/splint failure still stops
-the process. Thread ierr from the gates up through the callers to
-evolve_step's step_status. Payoffs: embedding safety (a failed
-model becomes YrecError in pyyrec instead of killing the worker),
-m0030-style configurations become re-enterable, and test_reentry
-can use a numerics-terminated case.
+numerics_termination (-2) protocol: bsstep failures flow
+bsstep -> envint -> surfbc -> henyey_iterate -> evolve_step ->
+run_yrec -> main (clean exit 0, matching the legacy stop) and to
+pyyrec as a distinct negative status; ksplint/splint/splintd2/
+intpol gates wired into their hosts' stage-3 ierr channels.
+Residual (documented): opal92 interp chain and the calcad/
+tauintnew output-path gates keep absent-ierr stops.
 
-## io-writer stops
+## io-writer stops -- DONE 2026-08-25
 
-putstore/wrtmod-family write-path stops -> ierr, same pattern as
-stage 3. Small, mechanical.
+parse_columns config stops -> ierr through output_init_mesa ->
+read_input; GSM-without-HDF5 rejected at configuration time via
+gsm_supported(); residual grid-overflow stops in rebuild_envelope/
+read_starting_model converted. Remaining stops by design: main's
+exit-1, envint's absent-ierr funnels, qenv's tpgrad residual.
 
 ## controls -> star% campaign (ACTIVE 2026-08-24; supersedes the old
 ## "const umbrella dissolution" section)
@@ -142,12 +145,15 @@ Phases (each byte-gated + test_net + test_reentry):
   cleanup (rot/mix_phys/circ/pulse-residue out of star_info),
   registry-driven MESA renames for ctrl members.
 
-## Library-based yrec link
+## Library-based yrec link -- DONE 2026-08-25
 
-`make libs` builds 15 per-domain archives but yrec still links the
-flat object list. Link yrec (and the test programs) from the
-libraries so the boundary is enforced at link time, not just by the
-checker script.
+`make yrec_libs` links core/main.o against the 13 per-domain
+archives (list repeated for single-pass resolution); an object
+missing from its domain library surfaces as an undefined symbol,
+which the flat link would paper over. Verified byte-identical to
+the flat binary on the solar case; CI builds it as the layout
+check. The default `yrec` stays flat-linked (byte-stable object
+order).
 
 ## Inlist registry follow-ups
 

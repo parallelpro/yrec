@@ -57,6 +57,8 @@ jobs:
         run: make -C src -j4 test_eos test_kap test_atm test_net
       - name: Build libyrec (shared)
         run: make -C src lib
+      - name: Library-based link check (archives complete, layout self-consistent)
+        run: make -C src -j4 libs && make -C src yrec_libs
 
       - name: Run per-module tests and boundary checker
         env:

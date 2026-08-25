@@ -206,7 +206,7 @@ endif
 # object list (the transition to library-based linking can go domain
 # by domain). Standalone per-domain test programs link against these.
 DOMAIN_DIRS := eos kap atm net wind mixing rotation numerics \
-	const state setup io core util
+	state setup io core util
 
 define LIB_template
 lib$(1).a: $$(filter $(1)/%,$$(OBJS))
@@ -218,6 +218,23 @@ LIBS := $(foreach d,$(DOMAIN_DIRS),lib$(d).a)
 
 .PHONY: libs
 libs: $(LIBS)
+
+# Library-linked executable (2026, ROADMAP "Library-based yrec link"):
+# links core/main.o against the per-domain archives instead of the
+# flat object list. Proves every archive is complete and the domain
+# layout self-consistent at link time (an object missing from its
+# domain library surfaces as an undefined symbol here, which the flat
+# link would silently paper over). The archive list is repeated so
+# single-pass archive resolution converges regardless of dependency
+# order. The default `yrec` binary stays flat-linked (byte-stable
+# object order); CI builds this target as the layout check.
+YREC_LIBS_ORDER := libstate.a libio.a libnumerics.a libeos.a libkap.a \
+	libatm.a libnet.a libmixing.a librotation.a libwind.a \
+	libsetup.a libutil.a libcore.a
+yrec_libs: core/main.o $(LIBS)
+	$(FC) $(LDFLAGS) -o $@ core/main.o \
+	$(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) \
+	$(HDF5_LIBS)
 
 # Standalone per-domain test programs (phase three, ROADMAP.md stage
 # 2). Each links the full object set minus core/main.o (the flat-link
