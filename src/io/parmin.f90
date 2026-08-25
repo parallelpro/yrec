@@ -1008,9 +1008,9 @@ subroutine parmin(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data lptime/.true./
 ! JVS 04/14
       data ltrist/.false./
-! cmixl's default (1.4d0) moved to const_lib.f90's own declaration: a
-! DATA statement can no longer target it here now that it's
-! use-associated from const_lib rather than locally declared/COMMON.
+! the working mixing length's default (1.4d0) lives on its
+! star%mixing_length_alpha component declaration (2026 phase-A
+! eviction; it was CMIXL's DATA default here originally).
       data lkuthe/.false./
 !       DATA DPENV,LNSTDMX,LOVSTC,ALPHAC,LOVSTE,ALPHAE, LOVSTM, ALPHAM
 !      */1.0D0,.FALSE.,.FALSE., 0.0D0, .FALSE.,0.0D0, .FALSE., 0.0/
@@ -2298,7 +2298,7 @@ subroutine echo_settings
       write(short_file_unit,165) lkuthe
       165 format(3x,'LINE  8    LKUTHE'/,2x, &
            & 'STANDARD',9x,'F'/3x,'CURRENT',9x,l1)
-      write(short_file_unit,175) cmixl,dpenv,lovstc,alphac,lovste,alphae
+      write(short_file_unit,175) star%mixing_length_alpha,dpenv,lovstc,alphac,lovste,alphae
       175 format(3x,'LINE  9   CMIXL     DPENV    LOVSTC    ALPHAC    LOVSTE                                                            &
 &    ALPHAE'/2x,'STANDARD',7x,'N/A',6x,'1.00',2(9x,'F',6x,'0.00')/ &
            & 3x,'CURRENT',2(5x,f5.2),2(9x,l1,5x,f5.2))

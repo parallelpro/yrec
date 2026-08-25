@@ -17,15 +17,9 @@
 ! const1 members: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
 ! const2 members: gas_constant, radiation_constant_over_3, ca3l, csig,
 !                 csigl, cgl, cmkh, cmkhn
-! const3 members: cdelrl, cmixl, cmixl2, cmixl3, clndp,
-!                 seconds_per_year -- cmixl (the mixing length) is the
-!                 one member here that isn't a pure physical constant:
-!                 it's copied from the per-kind-card namelist array
-!                 cmixla(nk) each time a new kind card starts, rather
-!                 than computed once at the very start of the run like
-!                 the rest of const1-3 -- still "occasional
-!                 configuration read broadly," not per-call data, so
-!                 the same module treatment applies.
+! const3 members: cdelrl, cmixl2, cmixl3, clndp, seconds_per_year.
+!                 (cmixl, the historical mutable exception, moved to
+!                 star%mixing_length_alpha -- 2026 phase-A eviction.)
 ! ctlim members: atime, tcut, saha_log10t_cutoff, tenv0, tenv1,
 !                tgcut -- NAMELIST /physics/ values (core/parmin.f90),
 !                same "set once, read broadly" character as const1-3;

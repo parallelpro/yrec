@@ -154,7 +154,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
             write(istor,1013) ! header key
           ! write model physics header. Should only happen upon first model output.
           ! write physics flags:
-            write(istor,29) core_cz_top_index,envelope_cz_bottom_index,cmixl, &
+            write(istor,29) core_cz_top_index,envelope_cz_bottom_index,star%mixing_length_alpha, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
            use_pure_z_table,star%run%initial_composition_code,use_extended_composition, &
            diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &
@@ -209,7 +209,7 @@ subroutine putstore(composition, log_density, log_luminosity, log_pressure, &
       endif
 
 ! write physics flags:
-      write(istor,30) core_cz_top_index,envelope_cz_bottom_index,cmixl, &
+      write(istor,30) core_cz_top_index,envelope_cz_bottom_index,star%mixing_length_alpha, &
            eos_flag,atmosphere_flag,low_temp_opacity_flag,high_temp_opacity_flag, &
            use_pure_z_table,star%run%initial_composition_code,use_extended_composition, &
            diffuse_helium_active,use_diffusion_z,lsemic,lovstc, &

@@ -465,7 +465,6 @@ module controls_reset_lib
       double precision :: snap_cmixl3
       double precision :: snap_clndp
       double precision :: snap_seconds_per_year
-      double precision :: snap_cmixl
       character(len=10) :: snap_yrec_version_string
       character(len=20) :: snap_git_hash_string
 
@@ -911,7 +910,6 @@ subroutine controls_capture
       snap_cmixl3 = cmixl3
       snap_clndp = clndp
       snap_seconds_per_year = seconds_per_year
-      snap_cmixl = cmixl
       snap_yrec_version_string = yrec_version_string
       snap_git_hash_string = git_hash_string
 end subroutine controls_capture
@@ -1356,7 +1354,6 @@ subroutine controls_restore
       cmixl3 = snap_cmixl3
       clndp = snap_clndp
       seconds_per_year = snap_seconds_per_year
-      cmixl = snap_cmixl
       yrec_version_string = snap_yrec_version_string
       git_hash_string = snap_git_hash_string
 end subroutine controls_restore

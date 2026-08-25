@@ -546,6 +546,14 @@ module star_info_lib
 ! burn_lib's engeb.
             double precision :: cross_section_scale(17), qs0e_scale(8), &
                  qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
+! phase A batch 4: the working mixing length (former CMIXL, the one
+! mutable member phys_const_lib carried) -- copied from the per-card
+! control mixing_length_array(nk) at every kind-card start
+! (run_yrec's begin_kind_card) and rewritten by solar calibration.
+! MESA name; the 1.4d0 declaration default reproduces the historical
+! parmin-echo value before the first kind card (and after a
+! yrec_reset star0 restore).
+            double precision :: mixing_length_alpha = 1.4d0
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(12,2), &
                  mixed_zone_bounds_no_overshoot(12,2), &

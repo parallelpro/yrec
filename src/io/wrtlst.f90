@@ -114,7 +114,7 @@ subroutine wrtlst(iwrite, composition, log_density, log_luminosity, &
       if (use_opal92_tables) high_temp_opacity_flag='OP92'
       if (use_laol89_tables) high_temp_opacity_flag='LL89'
 
-      call putmodel2(log_luminosity_lsun,envelope_fit_coeffs,cmixl, &
+      call putmodel2(log_luminosity_lsun,envelope_fit_coeffs,star%mixing_length_alpha, &
            age_gyr,timestep_yr,trial_sign_flag,composition,log_density, &
            log_luminosity,log_pressure,log_radius,log_mass,log_total_mass, &
            log_temperature,iwrite,short_file_unit,core_cz_top_index, &

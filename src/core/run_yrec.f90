@@ -305,7 +305,7 @@ subroutine begin_kind_card
 !         LPULSE=.FALSE.
          initial_envelope_x = initial_x_array(nk)
          initial_envelope_z = initial_z_array(nk)
-         cmixl = mixing_length_array(nk)
+         star%mixing_length_alpha = mixing_length_array(nk)
        change_envelope_mass_flag = has_senv0_array(nk)
        requested_envelope_mass = senv0_array(nk)
        star%evo%reset_triangle = .false.

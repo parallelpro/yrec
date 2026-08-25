@@ -222,7 +222,7 @@ subroutine wrtmod(num_shells, envelope_cz_bottom_index, composition, &
          tempr = rsurfl - log10_solar_radius
          qsmass = pulsation_mass_msun
          write (opal_model_unit, 5001) model_number,num_pulsation_points,pulsation_file_version,qsmass, &
-               log_teff,log_luminosity_lsun,tempr, age_gyr, cmixl, initial_envelope_x, initial_envelope_z
+               log_teff,log_luminosity_lsun,tempr, age_gyr, star%mixing_length_alpha, initial_envelope_x, initial_envelope_z
  5001    format(' MODEL#=', I5, '  NUMBER OF SHELLS IN MODEL=',I5, &
                 ' VER=',I2,/, &
                 ' MASS=',F8.5, '  LOG(TEFF)=',F8.5,/, ' LOG(L/LSUN)=', &

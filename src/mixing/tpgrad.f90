@@ -155,7 +155,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 ! G Somers END
       g = dexp(ln10*(cgl + log_mass - log_radius - log_radius))
       presht = pressure/(density*g)
-      phi = cmixl*density*opacity*presht
+      phi = star%mixing_length_alpha*density*opacity*presht
       phi2 = phi*phi
       phiphi = 1.0d0/(1.0d0 + cmixl2*phi2)
 ! SOLVE CUBIC A3*V**3 + V**2 + A1*V - 1.0 = 0.0
@@ -217,7 +217,7 @@ subroutine tpgrad(log_temperature, temperature, log_pressure, pressure, &
 ! CALCULATE CONVECTIVE VELOCITY
       test = g*(-dlnrho_dlnt)*presht*deldel
       if(test.gt.0.0d0)then
-         convective_velocity = v*dsqrt(g*(-dlnrho_dlnt)*(cmixl**2)*presht*deldel/8.0d0)
+         convective_velocity = v*dsqrt(g*(-dlnrho_dlnt)*(star%mixing_length_alpha**2)*presht*deldel/8.0d0)
       else
          convective_velocity = 1.0d0-11
       endif

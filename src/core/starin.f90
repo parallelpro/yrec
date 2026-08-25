@@ -404,13 +404,13 @@ subroutine acquire_starting_model
 ! length from 1.0e-6 to 2.0e-3 because models only store
 ! mixing length to four sig digits.
        if (mixing_length0.gt.0.0d0) mixing_length_matches = &
-            (dabs(cmixl-mixing_length0).lt.2.0d-3)
+            (dabs(star%mixing_length_alpha-mixing_length0).lt.2.0d-3)
 ! MHP 9/03 FIXED TYPO
        if (.not.mixing_length_matches .or. use_extended_composition0.neqv. &
             use_extended_composition) then
-          write(short_file_unit,1040) cmixl,mixing_length0, &
+          write(short_file_unit,1040) star%mixing_length_alpha,mixing_length0, &
                use_extended_composition,lexcp0
-          write(iowr,1040) cmixl,mixing_length0,use_extended_composition, &
+          write(iowr,1040) star%mixing_length_alpha,mixing_length0,use_extended_composition, &
                lexcp0
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
