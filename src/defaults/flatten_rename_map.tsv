@@ -1,0 +1,385 @@
+sub_struct	struct_verdict	member	dims	proposed_flat_home	note
+prev	FLATTEN	logP_start	(json)	star%logP_start	
+prev	FLATTEN	logT_start	(json)	star%logT_start	
+prev	FLATTEN	logR_start	(json)	star%logR_start	
+prev	FLATTEN	luminosity_lsun_start	(json)	star%luminosity_lsun_start	
+prev	FLATTEN	logRho_start	(json)	star%logRho_start	
+prev	FLATTEN	xa_start	(15,json)	star%xa_start	
+prev	FLATTEN	old_shell_mass	(json)	star%old_shell_mass	MISNOMER (holds log-mass coords of pre-rezoning grid) -- rename rezone_log_mass_prev?
+prev	FLATTEN	convective_flag_start	(json)	star%convective_flag_start	
+prev	FLATTEN	cz_flag_start	(json)	star%cz_flag_start	
+prev	FLATTEN	log_Teff_start		star%log_Teff_start	
+prev	FLATTEN	nz_start		star%nz_start	
+diag	FLATTEN	sesum	(json)	star%sesum	propose eps_nuc_total? QUERY
+diag	FLATTEN	seg	(7,json)	star%seg	eps channels; propose eps_channels or split -- QUERY
+diag	FLATTEN	sbeta	(json)	star%sbeta	propose beta_gas? QUERY
+diag	FLATTEN	seta	(json)	star%seta	propose eta_degeneracy? QUERY
+diag	FLATTEN	locons	(json)	star%locons	propose convergence_flag? QUERY
+diag	FLATTEN	so	(json)	star%so	O16 diagnostic; cryptic -- QUERY
+diag	FLATTEN	del_grad	(3,json)	star%del_grad	split into gradr/gradT/grada (MESA, 3 arrays) or keep 2-D? QUERY
+diag	FLATTEN	sfxion	(3,json)	star%sfxion	ionization fractions -- propose fxion
+diag	FLATTEN	svel	(json)	star%svel	propose conv_vel (MESA)? QUERY
+diag	FLATTEN	scp	(json)	star%scp	possible duplicate of thermo%cp -- investigate before flatten
+turnover	FLATTEN	convective_turnover_timescale		star%convective_turnover_timescale	KEEP (wind/burn consumers documented)
+turnover	FLATTEN	convective_turnover_timescale_old		star%convective_turnover_timescale_old	
+turnover	FLATTEN	pphot		star%pphot	
+turnover	FLATTEN	pphot0		star%pphot0	
+turnover	FLATTEN	fracstep		star%fracstep	
+light_burn	FLATTEN	rate_li6	(json)	star%rate_li6	
+light_burn	FLATTEN	rate_li7	(json)	star%rate_li7	
+light_burn	FLATTEN	rate_be9	(json)	star%rate_be9	
+light_burn	FLATTEN	rate_li6_start	(json)	star%rate_li6_start	
+light_burn	FLATTEN	rate_li7_start	(json)	star%rate_li7_start	
+light_burn	FLATTEN	rate_be9_start	(json)	star%rate_be9_start	
+light_burn	FLATTEN	pressure_scale_height_start		star%pressure_scale_height_start	
+light_burn	FLATTEN	pressure_scale_height_end		star%pressure_scale_height_end	
+light_burn	FLATTEN	cz_base_radius_prev		star%cz_base_radius_prev	
+light_burn	FLATTEN	log_rate_li6_prev		star%log_rate_li6_prev	
+light_burn	FLATTEN	log_rate_li7_prev		star%log_rate_li7_prev	
+light_burn	FLATTEN	log_rate_be9_prev		star%log_rate_be9_prev	
+light_burn	FLATTEN	envelope_cz_base_zone_prev		star%envelope_cz_base_zone_prev	
+light_burn	FLATTEN	deuterium_burning_rate	(json)	star%deuterium_burning_rate	
+light_burn	FLATTEN	deuterium_burning_rate_start	(json)	star%deuterium_burning_rate_start	
+light_burn	FLATTEN	accreted_mass_fraction		star%accreted_mass_fraction	
+light_burn	FLATTEN	jcz		star%jcz	
+engeb	FLATTEN	alpha_capture_energy		star%alpha_capture_energy	
+engeb	FLATTEN	neutrino_loss_rate		star%neutrino_loss_rate	
+engeb	FLATTEN	be7_mass_fraction		star%be7_mass_fraction	
+engeb	FLATTEN	he3_he3_energy_rate		star%he3_he3_energy_rate	
+engeb	FLATTEN	he3_burning_energy_rate		star%he3_burning_energy_rate	
+engeb	FLATTEN	he3_he3_luminosity_zone	(json)	star%he3_he3_luminosity_zone	
+engeb	FLATTEN	he3_burning_luminosity_zone	(json)	star%he3_burning_luminosity_zone	
+flux	FLATTEN	neutrino_flux	(10)	star%neutrino_flux	
+flux	FLATTEN	neutrino_flux_total	(10)	star%neutrino_flux_total	
+flux	FLATTEN	cl37_snu_rate		star%cl37_snu_rate	
+flux	FLATTEN	ga71_snu_rate		star%ga71_snu_rate	
+mix_phys	QUERY-NESTED	amum	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	cpm	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	delm	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	del_adiabatic_mix	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	del_radiative_mix	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	esumm	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	om	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	qdtm	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	thdifm	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	velm	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	viscm	(json)	(struct-level decision)	
+mix_phys	QUERY-NESTED	epsm	(json)	(struct-level decision)	
+env_comp	FLATTEN	envelope_hydrogen_fraction		star%envelope_hydrogen_fraction	
+env_comp	FLATTEN	envelope_metal_fraction		star%envelope_metal_fraction	
+env_comp	FLATTEN	zenvm		star%zenvm	
+env_comp	FLATTEN	amuenv		star%amuenv	
+env_comp	FLATTEN	fxenv	(12)	star%fxenv	
+env_comp	FLATTEN	xnew		star%xnew	
+env_comp	FLATTEN	znew		star%znew	
+env_comp	FLATTEN	stotal		star%stotal	
+env_comp	FLATTEN	senv		star%senv	
+thermo	FLATTEN	cp	(json)	star%cp	
+thermo	FLATTEN	mean_molecular_weight	(json)	star%mu	
+thermo	FLATTEN	qdt	(json)	star%qdt	
+thermo	FLATTEN	thdif	(json)	star%thdif	
+thermo	FLATTEN	visc	(json)	star%visc	
+circ	QUERY-NESTED	es_circulation_velocity	(json)	(struct-level decision)	
+circ	QUERY-NESTED	es_circulation_velocity_prev	(json)	(struct-level decision)	
+circ	QUERY-NESTED	secular_shear_velocity	(json)	(struct-level decision)	
+circ	QUERY-NESTED	secular_shear_velocity_prev	(json)	(struct-level decision)	
+circ	QUERY-NESTED	hle	(json)	(struct-level decision)	
+circ	QUERY-NESTED	gsf_circulation_velocity	(json)	(struct-level decision)	
+circ	QUERY-NESTED	gsf_circulation_velocity_prev	(json)	(struct-level decision)	
+circ	QUERY-NESTED	mu_gradient_velocity	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_dlnrho_dlnp	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_dlneps_dlnrho	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_dlneps_dlnt	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_dlnkap_dlnrho	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_dlnkap_dlnt	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_specific_heat	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_mean_molecular_weight	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_dlnrho_dlnt	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	pulse_electron_mean_molecular_weight	(json)	(struct-level decision)	
+pulse	QUERY-NESTED	lpumod		(struct-level decision)	
+pulse	QUERY-NESTED	qqdp		(struct-level decision)	
+pulse	QUERY-NESTED	qqed		(struct-level decision)	
+pulse	QUERY-NESTED	qqet		(struct-level decision)	
+pulse	QUERY-NESTED	qqod		(struct-level decision)	
+pulse	QUERY-NESTED	qqot		(struct-level decision)	
+pulse	QUERY-NESTED	qdel		(struct-level decision)	
+pulse	QUERY-NESTED	qdela		(struct-level decision)	
+pulse	QUERY-NESTED	qqcp		(struct-level decision)	
+pulse	QUERY-NESTED	qrmu		(struct-level decision)	
+pulse	QUERY-NESTED	qtl		(struct-level decision)	
+pulse	QUERY-NESTED	qpl		(struct-level decision)	
+pulse	QUERY-NESTED	qdl		(struct-level decision)	
+pulse	QUERY-NESTED	qo		(struct-level decision)	
+pulse	QUERY-NESTED	qol		(struct-level decision)	
+pulse	QUERY-NESTED	qt		(struct-level decision)	
+pulse	QUERY-NESTED	qp		(struct-level decision)	
+pulse	QUERY-NESTED	qqdt		(struct-level decision)	
+pulse	QUERY-NESTED	qemu		(struct-level decision)	
+pulse	QUERY-NESTED	qd		(struct-level decision)	
+pulse	QUERY-NESTED	qfs		(struct-level decision)	
+run	SPLIT	log_R_surface		star%log_R_surface	
+run	SPLIT	log_g_surface		star%log_g_surface	
+run	SPLIT	total_moment_of_inertia		star%total_moment_of_inertia	
+run	SPLIT	cz_moment_of_inertia		star%cz_moment_of_inertia	
+run	SPLIT	rotation_period_days		star%rotation_period_days	
+run	SPLIT	surf_velocity_kms		star%surf_velocity_kms	
+run	SPLIT	h_shell_bot_mass		star%h_shell_bot_mass	
+run	SPLIT	h_shell_mid_mass		star%h_shell_mid_mass	
+run	SPLIT	h_shell_top_mass		star%h_shell_top_mass	
+run	SPLIT	h_shell_bot_radius		star%h_shell_bot_radius	
+run	SPLIT	h_shell_mid_radius		star%h_shell_mid_radius	
+run	SPLIT	h_shell_top_radius		star%h_shell_top_radius	
+run	SPLIT	temperature_entropy_term	(json)	star%temperature_entropy_term	
+run	SPLIT	pressure_entropy_term	(json)	star%pressure_entropy_term	
+run	SPLIT	luminosity_entropy_term	(json)	star%luminosity_entropy_term	
+run	SPLIT	radius_entropy_term	(json)	star%radius_entropy_term	
+run	SPLIT	print_rotation_diagnostics		star%print_rotation_diagnostics	
+run	SPLIT	dage		star%dage	age in Gyr; MESA star_age is yr -- star_age_gyr? QUERY
+run	SPLIT	composition_final	(15,json)	star%composition_final	
+run	SPLIT	log_radius_final	(json)	star%log_radius_final	
+run	SPLIT	log_pressure_final	(json)	star%log_pressure_final	
+run	SPLIT	log_density_final	(json)	star%log_density_final	
+run	SPLIT	log_mass_final	(json)	star%log_mass_final	
+run	SPLIT	log_temperature_final	(json)	star%log_temperature_final	
+run	SPLIT	dlum_dx		star%dlum_dx	
+run	SPLIT	drad_dx		star%drad_dx	
+run	SPLIT	dlum_dalpha		star%dlum_dalpha	
+run	SPLIT	drad_dalpha		star%drad_dalpha	
+run	SPLIT	log_l_prev		star%log_l_prev	
+run	SPLIT	log_r_prev		star%log_r_prev	
+run	SPLIT	delta_x		star%delta_x	
+run	SPLIT	delta_alpha		star%delta_alpha	
+run	SPLIT	solar_calibration_active		star%solar_calibration_active	
+run	SPLIT	adiabatic_index_gamma1	(json)	star%adiabatic_index_gamma1	
+run	SPLIT	sound_speed_output_active		star%sound_speed_output_active	
+run	SPLIT	s11_rate	(1000)	star%job%s11_rate	
+run	SPLIT	s33_rate	(1000)	star%job%s33_rate	
+run	SPLIT	s34_rate	(1000)	star%job%s34_rate	
+run	SPLIT	s17_rate	(1000)	star%job%s17_rate	
+run	SPLIT	metal_to_h_ratio	(1000)	star%job%metal_to_h_ratio	
+run	SPLIT	helium_fraction_param	(1000)	star%job%helium_fraction_param	
+run	SPLIT	diffusion_factor	(1000)	star%job%diffusion_factor	
+run	SPLIT	luminosity_target	(1000)	star%job%luminosity_target	
+run	SPLIT	age_target	(1000)	star%job%age_target	
+run	SPLIT	central_log10_temperature		star%central_log10_temperature	
+run	SPLIT	central_log10_pressure		star%central_log10_pressure	
+run	SPLIT	central_log10_density		star%central_log10_density	
+run	SPLIT	envelope_mass		star%envelope_mass	
+run	SPLIT	envelope_radius		star%envelope_radius	
+run	SPLIT	central_beta		star%central_beta	
+run	SPLIT	central_degeneracy_eta		star%central_degeneracy_eta	
+run	SPLIT	core_cz_mass		star%core_cz_mass	
+run	SPLIT	envelope_cz_temperature		star%envelope_cz_temperature	
+run	SPLIT	envelope_cz_density		star%envelope_cz_density	
+run	SPLIT	envelope_cz_pressure		star%envelope_cz_pressure	
+run	SPLIT	envelope_cz_o16		star%envelope_cz_o16	
+run	SPLIT	envelope_cz_log_radius		star%envelope_cz_log_radius	
+run	SPLIT	orig_specific_angular_momentum	(json)	star%orig_specific_angular_momentum	
+run	SPLIT	orig_composition	(15,json)	star%orig_composition	
+run	SPLIT	envelope_cz_base_radius_rsun		star%envelope_cz_base_radius_rsun	
+run	SPLIT	rint_placeholder		star%rint_placeholder	
+run	SPLIT	envelope_helium_fraction		star%envelope_helium_fraction	
+run	SPLIT	envelope_he3_fraction		star%envelope_he3_fraction	
+run	SPLIT	current_log10_pressure		(scratch -- see struct note)	
+run	SPLIT	current_log10_temperature		(scratch -- see struct note)	
+run	SPLIT	current_log10_radius		(scratch -- see struct note)	
+run	SPLIT	current_log10_mass		(scratch -- see struct note)	
+run	SPLIT	current_log10_density		(scratch -- see struct note)	
+run	SPLIT	current_opacity		(scratch -- see struct note)	
+run	SPLIT	current_beta		(scratch -- see struct note)	
+run	SPLIT	current_gradients	(3)	(scratch -- see struct note)	
+run	SPLIT	current_ion_fraction	(3)	(scratch -- see struct note)	
+run	SPLIT	current_velocity		(scratch -- see struct note)	
+run	SPLIT	old_omega	(json)	(scratch -- see struct note)	
+run	SPLIT	old_specific_angular_momentum	(json)	(scratch -- see struct note)	
+run	SPLIT	old_moment_of_inertia	(json)	(scratch -- see struct note)	
+run	SPLIT	old_hg	(json)	(scratch -- see struct note)	
+run	SPLIT	old_mean_radius	(json)	(scratch -- see struct note)	
+run	SPLIT	old_eta_squared	(json)	(scratch -- see struct note)	
+run	SPLIT	initial_composition_code		star%initial_composition_code	
+rot	QUERY-NESTED	fadv	(json)	(struct-level decision)	
+rot	QUERY-NESTED	fadv0	(json)	(struct-level decision)	
+rot	QUERY-NESTED	bs_extrapolation_table	(11,15,json)	(struct-level decision)	
+rot	QUERY-NESTED	bs_extrapolated_composition	(15,json)	(struct-level decision)	
+rot	QUERY-NESTED	bs_extrapolation_increment	(15,json)	(struct-level decision)	
+rot	QUERY-NESTED	reaction_rate_by_zone	(15,json)	(struct-level decision)	
+rot	QUERY-NESTED	bl_radius_scale		(struct-level decision)	
+rot	QUERY-NESTED	bl_mass_scale		(struct-level decision)	
+rot	QUERY-NESTED	bl_temp_scale		(struct-level decision)	
+rot	QUERY-NESTED	bl_time_scale		(struct-level decision)	
+rot	QUERY-NESTED	am_advective_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	am_diffusive_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es_advective_velocity	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es_advective_velocity_prev	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es_diffusive_velocity	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es_diffusive_velocity_prev	(json)	(struct-level decision)	
+rot	QUERY-NESTED	facd2	(json)	(struct-level decision)	
+rot	QUERY-NESTED	facd3	(json)	(struct-level decision)	
+rot	QUERY-NESTED	vesd2	(json)	(struct-level decision)	
+rot	QUERY-NESTED	vesd3	(json)	(struct-level decision)	
+rot	QUERY-NESTED	am_2nd_deriv_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	am_3rd_deriv_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	geometric_factor	(json)	(struct-level decision)	
+rot	QUERY-NESTED	velocity_coeff0	(json)	(struct-level decision)	
+rot	QUERY-NESTED	velocity_coeff1a	(json)	(struct-level decision)	
+rot	QUERY-NESTED	velocity_coeff1b	(json)	(struct-level decision)	
+rot	QUERY-NESTED	velocity_coeff2a	(json)	(struct-level decision)	
+rot	QUERY-NESTED	velocity_coeff2b	(json)	(struct-level decision)	
+rot	QUERY-NESTED	eq_velocity_coeff0	(json)	(struct-level decision)	
+rot	QUERY-NESTED	eq_velocity_coeff1a	(json)	(struct-level decision)	
+rot	QUERY-NESTED	eq_velocity_coeff1b	(json)	(struct-level decision)	
+rot	QUERY-NESTED	eq_velocity_coeff2a	(json)	(struct-level decision)	
+rot	QUERY-NESTED	eq_velocity_coeff2b	(json)	(struct-level decision)	
+rot	QUERY-NESTED	shear_diffusion_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	gsf_diffusion_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	shear_diffusion_coeff_eqgrid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	gsf_diffusion_coeff_eqgrid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	mixing_geometric_factor	(json)	(struct-level decision)	
+rot	QUERY-NESTED	mixing_velocity_estimate	(json)	(struct-level decision)	
+rot	QUERY-NESTED	equatorial_radius	(json)	(struct-level decision)	
+rot	QUERY-NESTED	ethvn	(json)	(struct-level decision)	
+rot	QUERY-NESTED	ethvp	(json)	(struct-level decision)	
+rot	QUERY-NESTED	omega_avg_start	(json)	(struct-level decision)	
+rot	QUERY-NESTED	domega_dr_start	(json)	(struct-level decision)	
+rot	QUERY-NESTED	chi	(json)	(struct-level decision)	
+rot	QUERY-NESTED	echi	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es1	(json)	(struct-level decision)	
+rot	QUERY-NESTED	dchi		(struct-level decision)	
+rot	QUERY-NESTED	ntot		(struct-level decision)	
+rot	QUERY-NESTED	dchi_dr_edge	(json)	(struct-level decision)	
+rot	QUERY-NESTED	dchi_dr_center	(json)	(struct-level decision)	
+rot	QUERY-NESTED	second_deriv_geom_factor_eqgrid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	third_deriv_geom_factor_eqgrid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	second_deriv_geom_factor	(json)	(struct-level decision)	
+rot	QUERY-NESTED	third_deriv_geom_factor	(json)	(struct-level decision)	
+rot	QUERY-NESTED	moment_of_inertia_tolerance		(struct-level decision)	
+rot	QUERY-NESTED	metal_diffusion_coeff1	(json)	(struct-level decision)	
+rot	QUERY-NESTED	metal_diffusion_coeff1_mid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	metal_diffusion_coeff2_mid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	eq_metal_diffusion_coeff1_mid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	eq_metal_diffusion_coeff2_mid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	metal_abundance_change	(json)	(struct-level decision)	
+rot	QUERY-NESTED	metal_abundance_change_mid	(json)	(struct-level decision)	
+rot	QUERY-NESTED	app	(json)	(struct-level decision)	
+rot	QUERY-NESTED	atp	(json)	(struct-level decision)	
+rot	QUERY-NESTED	apzp	(json)	(struct-level decision)	
+rot	QUERY-NESTED	atzp	(json)	(struct-level decision)	
+rot	QUERY-NESTED	lagrange_interp_weights	(4,json)	(struct-level decision)	
+rot	QUERY-NESTED	interface_luminosity	(json)	(struct-level decision)	
+rot	QUERY-NESTED	delami	(json)	(struct-level decision)	
+rot	QUERY-NESTED	delmi	(json)	(struct-level decision)	
+rot	QUERY-NESTED	dm	(json)	(struct-level decision)	
+rot	QUERY-NESTED	epsilm	(json)	(struct-level decision)	
+rot	QUERY-NESTED	interface_gravity_factor	(json)	(struct-level decision)	
+rot	QUERY-NESTED	hs3	(json)	(struct-level decision)	
+rot	QUERY-NESTED	pm	(json)	(struct-level decision)	
+rot	QUERY-NESTED	qdtmi	(json)	(struct-level decision)	
+rot	QUERY-NESTED	interface_radius	(json)	(struct-level decision)	
+rot	QUERY-NESTED	tm	(json)	(struct-level decision)	
+rot	QUERY-NESTED	mean_molecular_weight_interface	(json)	(struct-level decision)	
+rot	QUERY-NESTED	thermal_diffusivity_interface	(json)	(struct-level decision)	
+rot	QUERY-NESTED	kinematic_viscosity_interface	(json)	(struct-level decision)	
+rot	QUERY-NESTED	omega_interface	(json)	(struct-level decision)	
+rot	QUERY-NESTED	composition_snapshot	(15,json)	(struct-level decision)	
+rot	QUERY-NESTED	old_delm	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_del_adiabatic_mix	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_amu	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_om	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_cp	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_qdt	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_vel	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_visc	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_thdif	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_esum	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_del_radiative_mix	(json)	(struct-level decision)	
+rot	QUERY-NESTED	old_eps	(json)	(struct-level decision)	
+rot	QUERY-NESTED	tho	(json)	(struct-level decision)	
+rot	QUERY-NESTED	theta_new	(json)	(struct-level decision)	
+rot	QUERY-NESTED	theta_mean	(json)	(struct-level decision)	
+rot	QUERY-NESTED	del_grad_diff_interface	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es_relaxation_factor	(json)	(struct-level decision)	
+rot	QUERY-NESTED	theta_prev	(json)	(struct-level decision)	
+rot	QUERY-NESTED	qwrst	(json)	(struct-level decision)	
+rot	QUERY-NESTED	wmst	(json)	(struct-level decision)	
+rot	QUERY-NESTED	qwrmst	(json)	(struct-level decision)	
+rot	QUERY-NESTED	mu_gradient_velocity_prev	(json)	(struct-level decision)	
+rot	QUERY-NESTED	alfmlt		(struct-level decision)	
+rot	QUERY-NESTED	phmlt		(struct-level decision)	
+rot	QUERY-NESTED	cmxmlt		(struct-level decision)	
+rot	QUERY-NESTED	valfmlt	(json)	(struct-level decision)	
+rot	QUERY-NESTED	vphmlt	(json)	(struct-level decision)	
+rot	QUERY-NESTED	vcmxmlt	(json)	(struct-level decision)	
+rot	QUERY-NESTED	phisp	(json)	(struct-level decision)	
+rot	QUERY-NESTED	phirot	(json)	(struct-level decision)	
+rot	QUERY-NESTED	phidis	(json)	(struct-level decision)	
+rot	QUERY-NESTED	circulation_correction_ratio	(json)	(struct-level decision)	
+rot	QUERY-NESTED	quadrupole_moment	(json)	(struct-level decision)	
+rot	QUERY-NESTED	local_gravity	(json)	(struct-level decision)	
+rot	QUERY-NESTED	xval	(json)	(struct-level decision)	
+rot	QUERY-NESTED	yval	(json)	(struct-level decision)	
+rot	QUERY-NESTED	xtab	(json)	(struct-level decision)	
+rot	QUERY-NESTED	ytab	(json)	(struct-level decision)	
+rot	QUERY-NESTED	fact6	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es_velocity_coeff1	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es_velocity_coeff2	(json)	(struct-level decision)	
+rot	QUERY-NESTED	fgsfj	(json)	(struct-level decision)	
+rot	QUERY-NESTED	gsf_kippenhahn_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	es_shear_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	fact1	(json)	(struct-level decision)	
+rot	QUERY-NESTED	fact2	(json)	(struct-level decision)	
+rot	QUERY-NESTED	fact3	(json)	(struct-level decision)	
+rot	QUERY-NESTED	fact4	(json)	(struct-level decision)	
+rot	QUERY-NESTED	mu_gradient_richardson_coeff	(json)	(struct-level decision)	
+rot	QUERY-NESTED	difad_shear_coeff1	(json)	(struct-level decision)	
+rot	QUERY-NESTED	difad_shear_coeff2	(json)	(struct-level decision)	
+rot	QUERY-NESTED	max_domega_dr	(json)	(struct-level decision)	
+rot	QUERY-NESTED	max_domega_dr_old	(json)	(struct-level decision)	
+rot	QUERY-NESTED	src_grid_metal_diffusion_coeff1	(json)	(struct-level decision)	
+rot	QUERY-NESTED	src_grid_metal_diffusion_coeff2	(json)	(struct-level decision)	
+rot	QUERY-NESTED	src_grid_metal_diffusion_coeff1_dz	(json)	(struct-level decision)	
+rot	QUERY-NESTED	src_grid_metal_diffusion_coeff2_dz	(json)	(struct-level decision)	
+rot	QUERY-NESTED	del_grad_diff_prev	(json)	(struct-level decision)	
+rot	QUERY-NESTED	del_grad_diff_new	(json)	(struct-level decision)	
+rot	QUERY-NESTED	radius_prev	(json)	(struct-level decision)	
+rot	QUERY-NESTED	convective_flag_prev	(json)	(struct-level decision)	
+rot	QUERY-NESTED	dlnkappa_dlnrho	(json)	(struct-level decision)	
+rot	QUERY-NESTED	dlnkappa_dlnt	(json)	(struct-level decision)	
+rot	QUERY-NESTED	dlnepsilon_dlnrho	(json)	(struct-level decision)	
+rot	QUERY-NESTED	dlnepsilon_dlnt	(json)	(struct-level decision)	
+rot	QUERY-NESTED	neutrino_loss_fraction	(json)	(struct-level decision)	
+rot	QUERY-NESTED	rotational_energy_term	(json)	(struct-level decision)	
+rot	QUERY-NESTED	accretion_specific_entropy		(struct-level decision)	
+rot	QUERY-NESTED	envelope_specific_entropy		(struct-level decision)	
+rot	QUERY-NESTED	updated_mass_msun		(struct-level decision)	
+rot	QUERY-NESTED	delta_log_pressure		(struct-level decision)	
+rot	QUERY-NESTED	delta_log_temperature		(struct-level decision)	
+rot	QUERY-NESTED	solar_wind_mass_loss_rate_msun_yr		(struct-level decision)	
+rot	QUERY-NESTED	wind_reference_omega		(struct-level decision)	
+rot	QUERY-NESTED	wind_max_omega		(struct-level decision)	
+rot	QUERY-NESTED	use_rotation_scaled_solar_wind		(struct-level decision)	
+evo	FLATTEN	has_h_shell		star%has_h_shell	
+evo	FLATTEN	model_diverged_flag		star%model_diverged_flag	
+evo	FLATTEN	punch_pending_flag		star%punch_pending_flag	
+evo	FLATTEN	recompute_envelope_triangle		star%recompute_envelope_triangle	
+evo	FLATTEN	reset_triangle		star%reset_triangle	
+evo	FLATTEN	saved_pulse_output_flag		star%saved_pulse_output_flag	
+evo	FLATTEN	h_shell_end_index		star%h_shell_end_index	
+evo	FLATTEN	h_shell_midpoint_zone		star%h_shell_midpoint_zone	
+evo	FLATTEN	h_shell_zone_begin		star%h_shell_zone_begin	
+evo	FLATTEN	ikut_flag		star%ikut_flag	
+evo	FLATTEN	istore_flag		star%istore_flag	
+evo	FLATTEN	convective_velocity		star%convective_velocity	
+evo	FLATTEN	dt		star%dt	
+evo	FLATTEN	dt_saved		star%dt_saved	
+evo	FLATTEN	dlnrho_dlnp		star%dlnrho_dlnp	
+evo	FLATTEN	dlnrho_dlnt		star%dlnrho_dlnt	
+evo	FLATTEN	hydrogen_dt		star%hydrogen_dt	
+evo	FLATTEN	max_domega_frac		star%max_domega_frac	
+evo	FLATTEN	path_length_sq		star%path_length_sq	
+evo	FLATTEN	prev_age		star%prev_age	
+evo	FLATTEN	prev_log_l		star%prev_log_l	
+evo	FLATTEN	prev_log_teff		star%prev_log_teff	
+evo	FLATTEN	timestep_yr		star%timestep_yr	propose dt_years? QUERY
+evo	FLATTEN	total_angular_momentum		star%total_angular_momentum	
+evo	FLATTEN	total_rotational_ke		star%total_rotational_ke	
+evo	FLATTEN	trial_sign_flag		star%trial_sign_flag	
