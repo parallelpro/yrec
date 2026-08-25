@@ -2151,8 +2151,8 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
-            del_diff = star%del_grad(i_grad_ad,env_cz_zone)-star%del_grad(i_grad_rad,env_cz_zone)
-            del_diff_below = star%del_grad(i_grad_ad,env_cz_zone-1)-star%del_grad(i_grad_rad,env_cz_zone-1)
+            del_diff = star%grada(env_cz_zone)-star%gradr(env_cz_zone)
+            del_diff_below = star%grada(env_cz_zone-1)-star%gradr(env_cz_zone-1)
          endif
 ! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
 ! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
@@ -2673,8 +2673,8 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.
-            del_diff = star%del_grad(i_grad_ad,env_cz_zone)-star%del_grad(i_grad_rad,env_cz_zone)
-            del_diff_below = star%del_grad(i_grad_ad,env_cz_zone-1)-star%del_grad(i_grad_rad,env_cz_zone-1)
+            del_diff = star%grada(env_cz_zone)-star%gradr(env_cz_zone)
+            del_diff_below = star%grada(env_cz_zone-1)-star%gradr(env_cz_zone-1)
          endif
 ! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
 ! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE

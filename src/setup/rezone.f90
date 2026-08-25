@@ -848,11 +848,11 @@ subroutine interpolate_onto_new_grid
 ! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
       if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
            star%job%envelope_overshoot_active)) then
-         call osplin(star%old_shell_mass,star%rot%old_esum,star%log_mass,star%sesum, &
+         call osplin(star%old_shell_mass,star%rot%old_esum,star%log_mass,star%eps_total, &
               old_point_count,new_point_count)
          do zone_index = 1,star%nz
-            spline_y(zone_index) = star%sesum(zone_index)+star%seg(i_eps_neu,zone_index)+ &
-                 star%seg(i_eps_grav,zone_index)
+            spline_y(zone_index) = star%eps_total(zone_index)+star%eps_channels(i_eps_neu,zone_index)+ &
+                 star%eps_channels(i_eps_grav,zone_index)
          end do
          call osplin(star%old_shell_mass,star%rot%old_eps,star%log_mass,spline_y, &
               old_point_count,new_point_count)
@@ -956,14 +956,14 @@ subroutine interpolate_onto_new_grid
 !   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN
 !   ONE LARGE EVOLUTIONARY TIMESTEP.
          do zone_index = 1,star%nz
-            star%rot%old_del_radiative_mix(zone_index) = star%del_grad(i_grad_rad,zone_index)
-            star%rot%old_delm(zone_index) = star%del_grad(i_grad_actual,zone_index)
-            star%rot%old_del_adiabatic_mix(zone_index) = star%del_grad(i_grad_ad,zone_index)
-            star%rot%old_amu(zone_index) = star%mean_molecular_weight(zone_index)
-            star%rot%old_om(zone_index) = star%so(zone_index)
+            star%rot%old_del_radiative_mix(zone_index) = star%gradr(zone_index)
+            star%rot%old_delm(zone_index) = star%gradT(zone_index)
+            star%rot%old_del_adiabatic_mix(zone_index) = star%grada(zone_index)
+            star%rot%old_amu(zone_index) = star%mu(zone_index)
+            star%rot%old_om(zone_index) = star%o16_zone(zone_index)
             star%rot%old_cp(zone_index) = star%cp(zone_index)
             star%rot%old_qdt(zone_index) = star%qdt(zone_index)
-            star%rot%old_vel(zone_index) = star%svel(zone_index)
+            star%rot%old_vel(zone_index) = star%conv_vel(zone_index)
             star%rot%old_visc(zone_index) = star%visc(zone_index)
             star%rot%old_thdif(zone_index) = star%thdif(zone_index)
 ! MHP 06/02

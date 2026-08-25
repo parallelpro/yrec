@@ -166,9 +166,9 @@ subroutine compute_turnover_timescale(composition, log_radius, log_pressure, log
               exp(ln10*(cgl-2.0D0*log_radius(zone_index)))
          combined_temperature(zone_index) = log_temperature(zone_index)
 
-         combined_velocity(zone_index) = star%svel(zone_index)
-         combined_grad1(zone_index) = star%del_grad(i_grad_rad,zone_index)
-         combined_grad2(zone_index) = star%del_grad(i_grad_ad,zone_index)
+         combined_velocity(zone_index) = star%conv_vel(zone_index)
+         combined_grad1(zone_index) = star%gradr(zone_index)
+         combined_grad2(zone_index) = star%grada(zone_index)
          combined_convective_flag(zone_index) = convective_flag(zone_index)
       enddo
 !

@@ -62,14 +62,14 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
          if (radius_cm.gt.0.0d0) then
             grav = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)
             brunt_n2 = grav*grav*(density_cgs/pressure_cgs)*delta* &
-                 (star%del_grad(i_grad_ad,i)-star%del_grad(i_grad_actual,i))
+                 (star%grada(i)-star%gradT(i))
          else
             brunt_n2 = 0.0d0
          end if
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
-              pressure_cgs,temperature_k,density_cgs,star%del_grad(i_grad_actual,i), &
-              brunt_n2,star%adiabatic_index_gamma1(i),star%del_grad(i_grad_ad,i),delta, &
-              star%so(i),star%pulse_dlnkap_dlnt(i),star%pulse_dlnkap_dlnrho(i),star%sesum(i), &
+              pressure_cgs,temperature_k,density_cgs,star%gradT(i), &
+              brunt_n2,star%adiabatic_index_gamma1(i),star%grada(i),delta, &
+              star%o16_zone(i),star%pulse_dlnkap_dlnt(i),star%pulse_dlnkap_dlnrho(i),star%eps_total(i), &
               star%pulse_dlneps_dlnt(i),star%pulse_dlneps_dlnrho(i),omega(i)
  110     format(I6,99(1X,1PE26.16))
       end do

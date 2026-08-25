@@ -409,7 +409,7 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 ! SUCH AS OPACITY ARE SAVED; PRIOR RESTRICTIONS WERE BASED ON OBSOLETE
 ! MEMORY RESTRICTIONS IN LEGACY CODE
 !         IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
-         star%svel(im) = convective_velocity
+         star%conv_vel(im) = convective_velocity
 !         ENDIF
 !  STORE VARIABLES FOR OUTPUT IN SCRIB2 IF MODEL IS TO BE PRINTED OUT
 ! DBG PULSE STORE VARIABLES FOR PULSATION OUPUT
@@ -419,40 +419,40 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 !         LSHORT = .NOT.LONG .AND. MOD(MODEL,NPRT1).EQ.0
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
          if (log_temperature(im).lt.star%ctrl%tcut(1)) then
-            star%sesum(im) = 0.0d0
-            star%seg(i_eps_grav,im) = gravitational_luminosity(im)
+            star%eps_total(im) = 0.0d0
+            star%eps_channels(i_eps_grav,im) = gravitational_luminosity(im)
             do j = 1,6
-               star%seg(j,im) = 0.0d0
+               star%eps_channels(j,im) = 0.0d0
            end do
          else
 !         ELSE IF(LONG) THEN
 !  LONG OUTPUT NEEDED
-            star%sesum(im) = energy_gen_component(1)+energy_gen_component(2)+ &
+            star%eps_total(im) = energy_gen_component(1)+energy_gen_component(2)+ &
                  energy_gen_component(3)+energy_gen_component(4)+ &
                  energy_gen_component(5)
-            star%seg(i_eps_neu,im) = energy_gen_component(6)
-            star%seg(i_eps_grav,im) = gravitational_luminosity(im)
-            if (star%sesum(im).gt.1.0d-22) then
-               energy_sum_inverse = 1.0d0/star%sesum(im)
+            star%eps_channels(i_eps_neu,im) = energy_gen_component(6)
+            star%eps_channels(i_eps_grav,im) = gravitational_luminosity(im)
+            if (star%eps_total(im).gt.1.0d-22) then
+               energy_sum_inverse = 1.0d0/star%eps_total(im)
             else
                energy_sum_inverse = 0.0d0
             end if
             do j = 1,5
-               star%seg(j,im) = energy_gen_component(j)*energy_sum_inverse
+               star%eps_channels(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
 !  SHORT OUTPUT ONLY
          end if
-         star%sbeta(im) = beta
-         star%seta(im) = electron_degeneracy_parameter
-         star%locons(im) = conductive_opacity_flag
-         star%so(im) = opacity
-         star%del_grad(i_grad_rad,im) = radiative_gradient
-         star%del_grad(i_grad_actual,im) = actual_gradient
-         star%del_grad(i_grad_ad,im) = adiabatic_gradient
+         star%beta(im) = beta
+         star%eta(im) = electron_degeneracy_parameter
+         star%converged_zone(im) = conductive_opacity_flag
+         star%o16_zone(im) = opacity
+         star%gradr(im) = radiative_gradient
+         star%gradT(im) = actual_gradient
+         star%grada(im) = adiabatic_gradient
          do j = 1,3
-            star%sfxion(j,im) = ion_fraction(j)
+            star%fxion_zone(j,im) = ion_fraction(j)
          end do
-         star%svel(im) = convective_velocity
+         star%conv_vel(im) = convective_velocity
          star%scp(im) = specific_heat_cp
 ! MHP 02/12 COMMENTED CODE OUT, AS REPLICATED BELOW
 !         IF(LSOUND) THEN
@@ -474,9 +474,9 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
             star%rot%dlnkappa_dlnrho(im) = dlnkap_dlnrho
             star%rot%dlnkappa_dlnt(im) = dlnkap_dlnt
 ! MHP 10/02 variable index error
-            if (star%sesum(im).gt.0.0d0) then
-               total_energy_sum = star%sesum(im)
-               neutrino_and_grav_sum = star%seg(i_eps_neu,im)+star%seg(i_eps_grav,im)
+            if (star%eps_total(im).gt.0.0d0) then
+               total_energy_sum = star%eps_total(im)
+               neutrino_and_grav_sum = star%eps_channels(i_eps_neu,im)+star%eps_channels(i_eps_grav,im)
                star%rot%neutrino_loss_fraction(im) = (total_energy_sum - &
                     neutrino_and_grav_sum)/total_energy_sum
             else

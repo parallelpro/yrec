@@ -277,9 +277,9 @@ subroutine write_store_model(composition, log_density, log_luminosity, log_press
 ! write out additional physics if desired
             if(star%ctrl%lstphys)then
              sg = dexp(ln10*(cgl - 2.0D0*log_radius(i)))*mass_coordinate(i)
-               write(istor,63,advance='no') star%so(i),sg,star%del_grad(i_grad_rad,i),star%del_grad(i_grad_actual,i), &
-                 star%del_grad(i_grad_ad,i),star%svel(i),star%adiabatic_index_gamma1(i),0.0,0.0,0.0,star%sbeta(i),star%seta(i), &
-                 (star%seg(k,i),k=1,5),star%sesum(i),star%seg(i_eps_neu,i),star%seg(i_eps_grav,i)
+               write(istor,63,advance='no') star%o16_zone(i),sg,star%gradr(i),star%gradT(i), &
+                 star%grada(i),star%conv_vel(i),star%adiabatic_index_gamma1(i),0.0,0.0,0.0,star%beta(i),star%eta(i), &
+                 (star%eps_channels(k,i),k=1,5),star%eps_total(i),star%eps_channels(i_eps_neu,i),star%eps_channels(i_eps_grav,i)
 !               WRITE(ISTOR,63,ADVANCE='no') SO(I),SG,SDEL(1,I),SDEL(2,I),
 !     *           SDEL(3,I),SVEL(I),GAM1(I),SFXION(1,I),SFXION(2,I),SFXION(3,I),
 !     *           SBETA(I),SETA(I),(SEG(K,I),K=1,5),SESUM(I),SEG(6,I),SEG(7,I)

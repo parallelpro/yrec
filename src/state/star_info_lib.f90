@@ -46,11 +46,13 @@ module star_info_lib
            i_o16 = 9,  i_o17 = 10, i_o18 = 11,    i_h2  = 12, &
            i_li6 = 13, i_li7 = 14, i_be9 = 15
 
-! del_grad(3,json): the three temperature gradients per zone.
+! historical gradient-row indices: DEL_GRAD(3,json) is now the three
+! flat arrays gradr/gradT/grada; these constants remain for the
+! other 3-row gradient carriers (current_gradients, env_gradients).
       integer, parameter, public :: &
            i_grad_rad = 1, i_grad_actual = 2, i_grad_ad = 3
 
-! diag%seg(7,json): specific energy generation channels [erg/g/s].
+! eps_channels(7,json): specific energy generation channels [erg/g/s].
       integer, parameter, public :: &
            i_eps_pp1 = 1, i_eps_pp2 = 2, i_eps_pp3 = 3, &
            i_eps_cno = 4, i_eps_he3 = 5, i_eps_neu = 6, &
@@ -470,12 +472,22 @@ module star_info_lib
             logical :: convective_flag_start(json), cz_flag_start(json)
             double precision :: log_Teff_start
             integer :: nz_start
-! -- former shell_diagnostics_state (diag (per-zone diagnostics)) --
-            double precision :: sesum(json), seg(7,json), sbeta(json), &
-                 seta(json)
-            logical :: locons(json)
-            double precision :: so(json), del_grad(3,json), &
-                 sfxion(3,json), svel(json), scp(json)
+! -- former shell_diagnostics_state (per-zone diagnostics), member
+! micro-renames 2026: eps_total (SESUM, total specific energy
+! generation), eps_channels (SEG, per-channel via i_eps_*), beta
+! (SBETA, gas-pressure fraction), eta (SETA, electron degeneracy),
+! conv_vel (SVEL, MESA name), o16_zone (SO), converged_zone (LOCONS),
+! fxion_zone (SFXION, ionization fractions), gradr/gradT/grada (the
+! DEL_GRAD(3,:) rows, split into MESA-named arrays). scp keeps its
+! name deliberately: it is the Henyey-solve-time specific heat that
+! the profile writers read, distinct in fill time from cp (the
+! rotation-pipeline copy) -- merging or renaming awaits a semantics
+! audit.
+            double precision :: eps_total(json), eps_channels(7,json), &
+                 beta(json), eta(json)
+            logical :: converged_zone(json)
+            double precision :: o16_zone(json), gradr(json), gradT(json), &
+                 grada(json), fxion_zone(3,json), conv_vel(json), scp(json)
 ! -- former turnover_state (turnover) --
             double precision :: convective_turnover_timescale, &
                  convective_turnover_timescale_old
@@ -525,7 +537,8 @@ module star_info_lib
             double precision :: zenvm, amuenv, fxenv(12)
             double precision :: xnew, znew, stotal, senv
 ! -- former shell_temp_state (thermo) --
-            double precision :: cp(json), mean_molecular_weight(json)
+! mu = MESA name (was mean_molecular_weight)
+            double precision :: cp(json), mu(json)
             double precision :: qdt(json), thdif(json), visc(json)
 ! -- former run_diagnostics_state (run (observables + driver bookkeeping)) --
 ! 2026 MESA-style output: per-model history sources. Computed by

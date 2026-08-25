@@ -154,7 +154,7 @@ subroutine homogenize_convection_zones(composition, shell_mass, convective_flag,
 !                  if(psca2.le.rtest2)then
 !                     fx = (rtest1-psca1)/((psca2-rtest2)-(psca1-rtest1))
 !  find v
-!                     cvel = star%svel(k-1)+fx*(star%svel(k)-star%svel(k-1))
+!                     cvel = star%conv_vel(k-1)+fx*(star%conv_vel(k)-star%conv_vel(k-1))
 !                     psca = psca1+fx*(psca2-psca1)
 !  define taucz
 

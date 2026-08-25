@@ -161,19 +161,19 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
 !        DO 30 I = 1,IEND
          hg_mid(j) = star%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%old_hg(j))
          star%mix_phys%del_adiabatic_mix(j) = star%rot%old_del_adiabatic_mix(j) + &
-              time_fraction*(star%del_grad(i_grad_ad,j)-star%rot%old_del_adiabatic_mix(j))
-         star%mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%del_grad(i_grad_actual,j) - star%rot%old_delm(j))
+              time_fraction*(star%grada(j)-star%rot%old_del_adiabatic_mix(j))
+         star%mix_phys%delm(j) = star%rot%old_delm(j) + time_fraction*(star%gradT(j) - star%rot%old_delm(j))
          star%mix_phys%del_radiative_mix(j) = star%rot%old_del_radiative_mix(j) + &
-              time_fraction*(star%del_grad(i_grad_rad,j) - star%rot%old_del_radiative_mix(j))
-         star%mix_phys%esumm(j) = star%rot%old_esum(j) + time_fraction*(star%sesum(j) - star%rot%old_esum(j))
+              time_fraction*(star%gradr(j) - star%rot%old_del_radiative_mix(j))
+         star%mix_phys%esumm(j) = star%rot%old_esum(j) + time_fraction*(star%eps_total(j) - star%rot%old_esum(j))
          star%mix_phys%viscm(j) = star%rot%old_visc(j) + time_fraction*(star%visc(j) - star%rot%old_visc(j))
          star%mix_phys%thdifm(j) = star%rot%old_thdif(j) + time_fraction*(star%thdif(j) - star%rot%old_thdif(j))
          star%mix_phys%cpm(j) = star%rot%old_cp(j) + time_fraction*(star%cp(j) - star%rot%old_cp(j))
          star%mix_phys%qdtm(j) = star%rot%old_qdt(j) + time_fraction*(star%qdt(j) - star%rot%old_qdt(j))
-         star%mix_phys%om(j) = star%rot%old_om(j) + time_fraction*(star%so(j) - star%rot%old_om(j))
-         star%mix_phys%amum(j) = star%mix_phys%amum(j) + step_fraction_ratio*(star%mean_molecular_weight(j) - star%rot%old_amu(j))
+         star%mix_phys%om(j) = star%rot%old_om(j) + time_fraction*(star%o16_zone(j) - star%rot%old_om(j))
+         star%mix_phys%amum(j) = star%mix_phys%amum(j) + step_fraction_ratio*(star%mu(j) - star%rot%old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
-         total_epsilon = star%sesum(j)+star%seg(i_eps_neu,j)+star%seg(i_eps_grav,j)
+         total_epsilon = star%eps_total(j)+star%eps_channels(i_eps_neu,j)+star%eps_channels(i_eps_grav,j)
          star%mix_phys%epsm(j) = star%rot%old_eps(j)+time_fraction*(total_epsilon-star%rot%old_eps(j))
       end do
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
@@ -184,14 +184,14 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          star%rot%del_grad_diff_new(i) = star%mix_phys%del_adiabatic_mix(i)-star%mix_phys%del_radiative_mix(i)
          if (star%convective_flag(i).eqv.star%rot%convective_flag_prev(i)) then
             convective_flag_mid(i) = star%convective_flag(i)
-            star%mix_phys%velm(i) = star%rot%old_vel(i) + time_fraction*(star%svel(i)-star%rot%old_vel(i))
+            star%mix_phys%velm(i) = star%rot%old_vel(i) + time_fraction*(star%conv_vel(i)-star%rot%old_vel(i))
             convective_state_changed(i) = .false.
          else
             convective_state_changed(i) = .true.
             new_cz_detected = .true.
             if (star%mix_phys%del_adiabatic_mix(i).lt.star%mix_phys%del_radiative_mix(i)) then
                convective_flag_mid(i) = .true.
-               star%mix_phys%velm(i) = max(star%rot%old_vel(i),star%svel(i))
+               star%mix_phys%velm(i) = max(star%rot%old_vel(i),star%conv_vel(i))
             else
                convective_flag_mid(i) = .false.
                star%mix_phys%velm(i) = 0.0D0

@@ -353,7 +353,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
             elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
             do zone_index = 1,star%nz
                star%j_rot(zone_index) = specific_angular_momentum_saved(zone_index)
-               star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%mean_molecular_weight(zone_index)-star%rot%old_amu(zone_index))
+               star%mix_phys%amum(zone_index) = star%mix_phys%amum(zone_index) - fx*(star%mu(zone_index)-star%rot%old_amu(zone_index))
                do species_index = 1,num_species_tracked
                   star%xa(species_index,zone_index) = star%xa_start(species_index,zone_index)
                end do

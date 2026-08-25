@@ -148,8 +148,8 @@ subroutine locate_core_cz
 ! call. core_boundary_fx2 (FX2) is computed just above but is NOT
 ! what is used here -- this looks like a bug (FX2 vs FX typo) in the
 ! original wrtout.f, preserved exactly, not fixed.
-       core_boundary_fx2 = (star%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%del_grad(i_grad_rad,star%core_cz_top_index))/ &
-             (star%del_grad(i_grad_ad,star%core_cz_top_index+1)-star%del_grad(i_grad_rad,star%core_cz_top_index))
+       core_boundary_fx2 = (star%grada(star%core_cz_top_index+1)-star%gradr(star%core_cz_top_index))/ &
+             (star%grada(star%core_cz_top_index+1)-star%gradr(star%core_cz_top_index))
        core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
             (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-star%log10_solar_radius
        core_boundary_radius = dexp(ln10*core_boundary_log_radius)
@@ -183,7 +183,7 @@ subroutine compute_central_conditions(ierr)
       pressure_linear = dexp(ln10*star%logP(1))
       log_pressure_center = dlog10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%del_grad(i_grad_actual,1)/pressure_linear)
+      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%gradT(1)/pressure_linear)
       eos_res(i_log10_density) = star%logRho(1)
       hydrogen_fraction_center = star%xa(i_h1,1)
       metal_fraction_center = star%xa(i_metals,1)
@@ -224,8 +224,8 @@ subroutine locate_surface_cz_base
 ! JVS 10/11/13 SDEL(1,JENV) IN DENOMINATOR WAS A TYPO. CHANGED TO SDEL(3,JENV)
 !            FX = (SDEL(3,JENV)-SDEL(1,JENV-1))/
 !     *           (SDEL(3,JENV)-SDEL(1,JENV-1))
-            dd2 = star%del_grad(i_grad_rad,star%envelope_cz_bottom_index-1)-star%del_grad(i_grad_ad,star%envelope_cz_bottom_index-1)
-            dd1 = star%del_grad(i_grad_rad,star%envelope_cz_bottom_index)-star%del_grad(i_grad_ad,star%envelope_cz_bottom_index)
+            dd2 = star%gradr(star%envelope_cz_bottom_index-1)-star%grada(star%envelope_cz_bottom_index-1)
+            dd1 = star%gradr(star%envelope_cz_bottom_index)-star%grada(star%envelope_cz_bottom_index)
             envelope_boundary_fx = dd2/(dd2-dd1)
 !            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
             cz_base_mass = star%m(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
@@ -235,8 +235,8 @@ subroutine locate_surface_cz_base
             star%envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logR(star%envelope_cz_bottom_index)-star%logR(star%envelope_cz_bottom_index-1))-star%log10_solar_radius
             star%envelope_radius = exp(ln10*star%envelope_cz_log_radius)
-            star%envelope_cz_o16 = star%so(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%so(star%envelope_cz_bottom_index)-star%so(star%envelope_cz_bottom_index-1))
+            star%envelope_cz_o16 = star%o16_zone(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%o16_zone(star%envelope_cz_bottom_index)-star%o16_zone(star%envelope_cz_bottom_index-1))
             envelope_cz_log_temperature = star%logT(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logT(star%envelope_cz_bottom_index)-star%logT(star%envelope_cz_bottom_index-1))
             envelope_cz_log_density = star%logRho(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
@@ -252,7 +252,7 @@ subroutine locate_surface_cz_base
             star%envelope_cz_temperature = 10.0D0**star%central_log10_temperature
             star%envelope_cz_density = 10.0D0**star%central_log10_density
             star%envelope_cz_pressure = 10.0D0**star%central_log10_pressure
-            star%envelope_cz_o16 = star%so(1)
+            star%envelope_cz_o16 = star%o16_zone(1)
        endif
       else
        star%envelope_mass = 0.0D0
