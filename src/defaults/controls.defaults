@@ -815,10 +815,6 @@
       ! (legacy name: lnewvars)
       use_new_rate_variables = .false.   ! (implicit)
 
-      ! former common/ovrtrn/'s two config members: NAMELIST /physics/ values selecting the newer convective-turnover-timescale calculation and whether to run the full envelope i
-      ! (legacy name: lnewtcz)
-      use_new_turnover_timescale = .false.   ! (implicit)
-
       ! (legacy name: lcalcenv)
       calc_envelope_flag = .false.   ! (implicit)
 
