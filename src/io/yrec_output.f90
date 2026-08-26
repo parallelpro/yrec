@@ -36,7 +36,7 @@ module yrec_output
 ! The stitched full-star model (interior + envelope + atmosphere)
 ! is assembled and materialized by core/stitched_model.f90; the
 ! writers below are pure readers of its stx_* arrays.
-      use stitched_model_lib, only: build_stitched_model, n_ext, &
+      use stitched_model_lib, only: stitch_due, n_ext, &
            stx_prof, stx_pulse, n_prof_cols, n_pulse_cols
       implicit none
       private
@@ -157,15 +157,14 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
 ! profile<N>.data, and/or profile<N>.data.GYRE / .data.FGONG per
 ! pulse_format. The history profile_number column records N.
          iprof = 0
-         if (star%ctrl%profile_interval > 0 .and. &
-             (star%ctrl%write_profile_flag .or. star%ctrl%write_pulse_flag)) then
-            if (mod(star%model_number, star%ctrl%profile_interval) == 0) then
-               profile_counter = profile_counter + 1
-               iprof = profile_counter
-               call build_stitched_model
-               if (star%ctrl%write_profile_flag) call write_profile(iprof)
-               if (star%ctrl%write_pulse_flag) call write_pulse(iprof)
-            end if
+! The stitched arrays were built by evolve_step (ahead of
+! compute_observables) under the same stitch_due predicate; this
+! block only numbers and writes.
+         if (stitch_due()) then
+            profile_counter = profile_counter + 1
+            iprof = profile_counter
+            if (star%ctrl%write_profile_flag) call write_profile(iprof)
+            if (star%ctrl%write_pulse_flag) call write_pulse(iprof)
          end if
          call write_history_row(iprof)
 ! Keep the log live during the run, like the history file.

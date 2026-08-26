@@ -28,6 +28,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use burn_lib
       use yrec_output, only: output_write_model
       use observables_lib, only: compute_observables
+      use stitched_model_lib, only: build_stitched_model, stitch_due
       use stop_conditions
       implicit none
 
@@ -156,6 +157,14 @@ subroutine evolve_step(model_iteration, step_status, ierr)
           star%dt_saved = star%dt
        endif
        if (star%job%rescale_kind(star%job%nk).ne.2) star%model_number = star%model_number+1
+! 2026 stitched-model restructure: when a profile/pulse output is
+! due this model, assemble the full converged star (interior +
+! envelope + atmosphere) and materialize the writer-facing arrays
+! BEFORE the observables pass -- profile-based observables can read
+! them, and the io writers below only copy. The build is
+! side-effect-free (pphot restored), so evolution never depends on
+! profile cadence.
+       if (stitch_due()) call build_stitched_model
 ! 2026 (phase four, step 5): compute the per-model observables in
 ! the star layer (fills star%*, star%luminosity_breakdown
 ! renormalization, star% via gettau); wrtout below only

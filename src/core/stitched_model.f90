@@ -22,8 +22,8 @@ module stitched_model_lib
       use phys_const_lib
       implicit none
       private
-      public :: build_stitched_model, n_ext, stx_prof, stx_pulse, &
-           n_prof_cols, n_pulse_cols
+      public :: build_stitched_model, stitch_due, n_ext, stx_prof, &
+           stx_pulse, n_prof_cols, n_pulse_cols
 
       integer, parameter :: n_prof_cols = 57
       integer, parameter :: n_pulse_cols = 35
@@ -47,6 +47,21 @@ module stitched_model_lib
 
 contains
 
+! ---------------------------------------------------------------
+! Is a stitched build due this model? One predicate shared by the
+! evolve_step hook (build) and output_write_model (write), so the
+! two can never drift apart. Mirrors the historical profile/pulse
+! trigger exactly.
+logical function stitch_due()
+      use star_info_lib, only: star
+      stitch_due = .false.
+      if (star%ctrl%use_legacy_output) return
+      if (star%ctrl%profile_interval <= 0) return
+      if (.not. (star%ctrl%write_profile_flag .or. &
+           star%ctrl%write_pulse_flag)) return
+      stitch_due = mod(star%model_number, star%ctrl%profile_interval) == 0
+end function stitch_due
+
 ! Regenerate the envelope/atmosphere structures for the CONVERGED
 ! model and build the inward-to-outward index map. The envelope the
 ! solver last integrated belongs to some trial (Teff, L) -- or was
@@ -64,6 +79,7 @@ subroutine build_stitched_model
       double precision :: env_beg0, env_min0, env_max0
       double precision :: b, gl, rl, ateffl, plim, dum1(4), dum2(3), &
            dum3(3), dum4(3)
+      double precision :: pphot_save
       integer :: ixx, idum, katm, kenv, ksaha
       logical :: lprt, lsbc0, lpulpt
 
@@ -117,10 +133,16 @@ subroutine build_stitched_model
          ateffl = star%log_Teff
       end if
       jerr = 0
+! The stitch must be SIDE-EFFECT-FREE: atm_get sets star%pphot on
+! every call, and pphot (with its pphot0 lag) is live physics/
+! bookkeeping state. Restore it so building a profile never
+! perturbs the run -- values must not depend on profile_interval.
+      pphot_save = star%pphot
       call atm_get(b, star%fp_rot(star%nz), star%ft_rot(star%nz), gl, &
            star%log_total_mass, ixx, lprt, lsbc0, plim, rl, ateffl, &
            star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), dum1, idum, katm, &
            kenv, ksaha, dum2, dum3, dum4, lpulpt, jerr)
+      star%pphot = pphot_save
 
       star%job%atm_step_begin = atm_beg0
       star%job%atm_step_min = atm_min0
