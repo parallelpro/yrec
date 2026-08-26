@@ -171,7 +171,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          mix_scr%thdifm(j) = rot_scr%old_thdif(j) + time_fraction*(star%thdif(j) - rot_scr%old_thdif(j))
          mix_scr%cpm(j) = rot_scr%old_cp(j) + time_fraction*(star%cp(j) - rot_scr%old_cp(j))
          mix_scr%qdtm(j) = rot_scr%old_qdt(j) + time_fraction*(star%qdt(j) - rot_scr%old_qdt(j))
-         mix_scr%om(j) = rot_scr%old_om(j) + time_fraction*(star%o16_zone(j) - rot_scr%old_om(j))
+         mix_scr%om(j) = rot_scr%old_om(j) + time_fraction*(star%opacity_zone(j) - rot_scr%old_om(j))
          mix_scr%amum(j) = mix_scr%amum(j) + step_fraction_ratio*(star%mu(j) - rot_scr%old_amu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
          total_epsilon = star%eps_total(j)+star%eps_channels(i_eps_neu,j)+star%eps_channels(i_eps_grav,j)

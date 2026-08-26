@@ -961,7 +961,7 @@ subroutine interpolate_onto_new_grid
             rot_scr%old_delm(zone_index) = star%gradT(zone_index)
             rot_scr%old_del_adiabatic_mix(zone_index) = star%grada(zone_index)
             rot_scr%old_amu(zone_index) = star%mu(zone_index)
-            rot_scr%old_om(zone_index) = star%o16_zone(zone_index)
+            rot_scr%old_om(zone_index) = star%opacity_zone(zone_index)
             rot_scr%old_cp(zone_index) = star%cp(zone_index)
             rot_scr%old_qdt(zone_index) = star%qdt(zone_index)
             rot_scr%old_vel(zone_index) = star%conv_vel(zone_index)

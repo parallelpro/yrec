@@ -88,7 +88,7 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
                  log_density(i),omega(i),convective_flag(i),.true.,.false., &
                  .false.,(composition(j,i),j=1,15)
 ! write out additional physics if desired
-            write(istor,63,advance='no') star%o16_zone(i),sg,star%gradr(i),star%gradT(i), &
+            write(istor,63,advance='no') star%opacity_zone(i),sg,star%gradr(i),star%gradT(i), &
                  star%grada(i),star%conv_vel(i),star%adiabatic_index_gamma1(i), &
                  star%fxion_zone(1,i),star%fxion_zone(2,i),star%fxion_zone(3,i), &
                  star%beta(i),star%eta(i),(star%eps_channels(k,i),k=1,5),star%eps_total(i),star%eps_channels(i_eps_neu,i),star%eps_channels(i_eps_grav,i), &

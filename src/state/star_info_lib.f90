@@ -311,7 +311,8 @@ module star_info_lib
 ! micro-renames 2026: eps_total (SESUM, total specific energy
 ! generation), eps_channels (SEG, per-channel via i_eps_*), beta
 ! (SBETA, gas-pressure fraction), eta (SETA, electron degeneracy),
-! conv_vel (SVEL, MESA name), o16_zone (SO), converged_zone (LOCONS),
+! conv_vel (SVEL, MESA name), opacity_zone (SO -- per-zone OPACITY,
+! not O16: the 2026 o16_zone guess was wrong), converged_zone (LOCONS),
 ! fxion_zone (SFXION, ionization fractions), gradr/gradT/grada (the
 ! DEL_GRAD(3,:) rows, split into MESA-named arrays). scp keeps its
 ! name deliberately: it is the Henyey-solve-time specific heat that
@@ -321,7 +322,7 @@ module star_info_lib
             double precision :: eps_total(json), eps_channels(7,json), &
                  beta(json), eta(json)
             logical :: converged_zone(json)
-            double precision :: o16_zone(json), gradr(json), gradT(json), &
+            double precision :: opacity_zone(json), gradr(json), gradT(json), &
                  grada(json), fxion_zone(3,json), conv_vel(json), scp(json)
 ! -- former turnover_state (turnover) --
             double precision :: convective_turnover_timescale, &
@@ -413,7 +414,7 @@ module star_info_lib
            double precision :: central_beta, central_degeneracy_eta
            double precision :: core_cz_mass
            double precision :: envelope_cz_temperature, envelope_cz_density, &
-                envelope_cz_pressure, envelope_cz_o16, envelope_cz_log_radius
+                envelope_cz_pressure, envelope_cz_opacity, envelope_cz_log_radius
 ! former common/origstart/
            double precision :: orig_specific_angular_momentum(json), &
                 orig_composition(15,json)

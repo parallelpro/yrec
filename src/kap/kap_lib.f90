@@ -21,7 +21,40 @@ module kap_lib
 ! initialized with (set by kap_init; physics-purity pass 2026 -- the
 ! kap domain no longer reads star_info)
       double precision, save :: kap_envelope_metal_fraction
+! result-array slots for kap_get_r (2026, MESA kap-results shape)
+      integer, parameter, public :: &
+           i_kap = 1, i_log10_kap = 2, i_dlnkap_dlnrho = 3, &
+           i_dlnkap_dlnt = 4
+      integer, parameter, public :: num_kap_results = 4
+
 contains
+
+! ---------------------------------------------------------------
+! Named-index result-array form of kap_get: the four opacity
+! outputs packed into res(num_kap_results). ion_fraction stays an
+! explicit inout argument (it is shared eos/kap ionization state,
+! typically the caller's eos_res(i_fxion:i_fxion+2) slice).
+subroutine kap_get_r(log10_density, log10_temperature, &
+     hydrogen_fraction, metal_fraction, res, ion_fraction, ierr)
+      double precision, intent(in) :: log10_density, log10_temperature, &
+           hydrogen_fraction, metal_fraction
+      double precision, intent(inout) :: res(num_kap_results)
+      double precision, intent(inout) :: ion_fraction(3)
+      integer, intent(out), optional :: ierr
+
+      if (present(ierr)) then
+         call kap_get(log10_density, log10_temperature, &
+              hydrogen_fraction, metal_fraction, res(i_kap), &
+              res(i_log10_kap), res(i_dlnkap_dlnrho), &
+              res(i_dlnkap_dlnt), ion_fraction, ierr)
+      else
+         call kap_get(log10_density, log10_temperature, &
+              hydrogen_fraction, metal_fraction, res(i_kap), &
+              res(i_log10_kap), res(i_dlnkap_dlnrho), &
+              res(i_dlnkap_dlnt), ion_fraction)
+      end if
+end subroutine kap_get_r
+
 
 ! Computes the opacity for a given composition (X, Z), blending
 ! between molecular/atmosphere tables, interior tables (OPAL/LAOL/

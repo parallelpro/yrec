@@ -258,3 +258,52 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
 
       return
 end subroutine temperature_gradients
+
+! ---------------------------------------------------------------
+! Result-array form (2026): takes the eos_get_r and kap_get_r result
+! arrays directly, unpacking them into temperature_gradients'
+! positional arguments -- the same doubles, so byte-identical. This
+! is what lets the per-shell physics sequence read
+!   call eos_get_r(...)  /  call kap_get_r(...)  /
+!   call temperature_gradients_r(...)
+! with two arrays instead of ~20 relay locals.
+subroutine temperature_gradients_r(log_temperature, log_pressure, &
+     eos_res, kap_res, log_radius, log_mass, luminosity_lsun, &
+     actual_gradient, radiative_gradient, dgrad_dt_component, &
+     dgrad_dp_component, dgrad_dr_component, convective_velocity, &
+     want_derivatives, is_convective, pressure_rotation_factor, &
+     temperature_rotation_factor, log_teff, ierr)
+      use eos_lib, only: num_eos_results, i_temperature, i_pressure, &
+           i_density, i_dlnrho_dlnt, i_dlnrho_dlnp, i_cp, i_grada, &
+           i_dlnrho_dlnt_dt, i_dlnrho_dlnp_dt, i_grada_dt, i_grada_dp, &
+           i_cp_dt, i_cp_dp
+      use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
+           i_dlnkap_dlnt
+      implicit none
+      double precision, intent(in) :: log_temperature, log_pressure, &
+           log_radius, log_mass, luminosity_lsun
+      double precision, intent(in) :: eos_res(num_eos_results), &
+           kap_res(num_kap_results)
+      double precision, intent(out) :: actual_gradient, radiative_gradient, &
+           dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
+           convective_velocity
+      logical, intent(in) :: want_derivatives
+      logical, intent(out) :: is_convective
+      double precision, intent(in) :: pressure_rotation_factor, &
+           temperature_rotation_factor, log_teff
+      integer, intent(out) :: ierr
+
+      call temperature_gradients(log_temperature, eos_res(i_temperature), &
+           log_pressure, eos_res(i_pressure), eos_res(i_density), &
+           log_radius, log_mass, luminosity_lsun, kap_res(i_kap), &
+           eos_res(i_dlnrho_dlnt), eos_res(i_dlnrho_dlnp), &
+           kap_res(i_dlnkap_dlnt), kap_res(i_dlnkap_dlnrho), &
+           eos_res(i_cp), actual_gradient, radiative_gradient, &
+           eos_res(i_grada), eos_res(i_dlnrho_dlnt_dt), &
+           eos_res(i_dlnrho_dlnp_dt), eos_res(i_grada_dt), &
+           eos_res(i_grada_dp), dgrad_dt_component, dgrad_dp_component, &
+           dgrad_dr_component, eos_res(i_cp_dt), eos_res(i_cp_dp), &
+           convective_velocity, want_derivatives, is_convective, &
+           pressure_rotation_factor, temperature_rotation_factor, &
+           log_teff, ierr)
+end subroutine temperature_gradients_r

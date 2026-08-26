@@ -52,7 +52,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       do shell_idx = 1,num_zones
 !  COMPUTE THE KINEMATIC MICROSCOPIC VISCOSITY DUE TO RADIATION AND IONS
 !  CONVERT TO NUMBER DENSITIES AND FIND MEAN CHARGE PER ION(ZF) AND NE.
-         opacity_local = star%o16_zone(shell_idx)
+         opacity_local = star%opacity_zone(shell_idx)
          mean_charge = 0.0d0
          number_density_sum = 0.0d0
          do species_idx = 1,11

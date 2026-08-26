@@ -40,19 +40,12 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
 ! MHP 8/25 Removed unused variables
 !      CHARACTER*256 FLAOL, FPUREZ
 ! MHP 8/25 Removed character file names from common block
-      double precision :: fxion(3)
 ! --- locals ---
       double precision :: effective_gravity, optical_depth
-      double precision :: log10_temperature, temperature, log10_pressure, &
-           pressure, log10_density, density
-      double precision :: beta, beta_inverse, beta14, specific_gas_constant, &
-           ion_mean_weight_inverse, electron_mean_weight_inverse, &
-           electron_degeneracy_parameter
-      double precision :: dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
-           adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
-           adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp
-      double precision :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
+      double precision :: log10_temperature, log10_pressure
+! 2026 named-index results: the eos/kap relay soup is two arrays
+! (fresh each call -- this is an ODE integrand).
+      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
       double precision :: ttaul0, ttaul1, yy
       double precision :: harvard_t_tau
       external harvard_t_tau
@@ -77,46 +70,42 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
             log10_temperature = log10_teff + harvard_t_tau(optical_depth) - star%atm_hras
       end if
       log10_pressure = y(1)
-      call eos_get(log10_temperature,temperature,log10_pressure,pressure, &
-           log10_density,density,hydrogen_fraction,metal_fraction,beta, &
-           beta_inverse,beta14,fxion,specific_gas_constant, &
-           ion_mean_weight_inverse,electron_mean_weight_inverse, &
-           electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
-           specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
-           specific_heat_cp_dt,specific_heat_cp_dp,want_derivatives, &
-           in_atmosphere,saha_state)
-      call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
-           metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
-           dlnkap_dlnt, fxion)
-      dydx(1) = effective_gravity*optical_depth/(pressure*opacity)
+      call eos_get_r(log10_temperature, log10_pressure, hydrogen_fraction, &
+           metal_fraction, eos_res, want_derivatives, in_atmosphere, &
+           saha_state)
+! kap at eqstat's returned density -- the historical inout dataflow
+      call kap_get_r(eos_res(i_log10_density), log10_temperature, &
+           hydrogen_fraction, metal_fraction, kap_res, &
+           eos_res(i_fxion:i_fxion+2))
+      dydx(1) = effective_gravity*optical_depth/ &
+           (eos_res(i_pressure)*kap_res(i_kap))
       atm_call_count = atm_call_count + 1
       atm_table%atm_log10_pressure = log10_pressure
       atm_table%atm_log10_temperature = log10_temperature
       if (print_flag .or. star%pulse%lpumod) then
-       atm_table%atm_log10_density = log10_density
-       atm_table%atm_opacity = opacity
-       atm_table%atm_ion_fraction(1) = fxion(1)
-       atm_table%atm_ion_fraction(2) = fxion(2)
-       atm_table%atm_ion_fraction(3) = fxion(3)
+       atm_table%atm_log10_density = eos_res(i_log10_density)
+       atm_table%atm_opacity = kap_res(i_kap)
+       atm_table%atm_ion_fraction(1) = eos_res(i_fxion)
+       atm_table%atm_ion_fraction(2) = eos_res(i_fxion+1)
+       atm_table%atm_ion_fraction(3) = eos_res(i_fxion+2)
        star%pulse%qtl = log10_temperature
        star%pulse%qt = dexp(ln10*log10_temperature)
        star%pulse%qpl = log10_pressure
        star%pulse%qp = dexp(ln10*log10_pressure)
-       star%pulse%qdl = log10_density
-       star%pulse%qd = dexp(ln10*log10_density)
-       star%pulse%qo = opacity
-       star%pulse%qol = log10_opacity
-       star%pulse%qqdp = dlnrho_dlnp
+       star%pulse%qdl = eos_res(i_log10_density)
+       star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
+       star%pulse%qo = kap_res(i_kap)
+       star%pulse%qol = kap_res(i_log10_kap)
+       star%pulse%qqdp = eos_res(i_dlnrho_dlnp)
        star%pulse%qqed = 0.0d0
-       star%pulse%qqod = dlnkap_dlnrho
-       star%pulse%qqot = dlnkap_dlnt
+       star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
+       star%pulse%qqot = kap_res(i_dlnkap_dlnt)
        star%pulse%qdel = 0.0d0
-       star%pulse%qqdt = dlnrho_dlnt
-       star%pulse%qdela = adiabatic_gradient
-       star%pulse%qqcp = specific_heat_cp
-       star%pulse%qrmu = specific_gas_constant
-       star%pulse%qemu = electron_mean_weight_inverse
+       star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
+       star%pulse%qdela = eos_res(i_grada)
+       star%pulse%qqcp = eos_res(i_cp)
+       star%pulse%qrmu = eos_res(i_gas_constant)
+       star%pulse%qemu = eos_res(i_mu_e_inv)
       endif
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.

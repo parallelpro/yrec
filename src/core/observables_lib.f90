@@ -235,8 +235,8 @@ subroutine locate_surface_cz_base
             star%envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logR(star%envelope_cz_bottom_index)-star%logR(star%envelope_cz_bottom_index-1))-star%log10_solar_radius
             star%envelope_radius = exp(ln10*star%envelope_cz_log_radius)
-            star%envelope_cz_o16 = star%o16_zone(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
-                 (star%o16_zone(star%envelope_cz_bottom_index)-star%o16_zone(star%envelope_cz_bottom_index-1))
+            star%envelope_cz_opacity = star%opacity_zone(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+                 (star%opacity_zone(star%envelope_cz_bottom_index)-star%opacity_zone(star%envelope_cz_bottom_index-1))
             envelope_cz_log_temperature = star%logT(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logT(star%envelope_cz_bottom_index)-star%logT(star%envelope_cz_bottom_index-1))
             envelope_cz_log_density = star%logRho(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
@@ -252,7 +252,7 @@ subroutine locate_surface_cz_base
             star%envelope_cz_temperature = 10.0D0**star%central_log10_temperature
             star%envelope_cz_density = 10.0D0**star%central_log10_density
             star%envelope_cz_pressure = 10.0D0**star%central_log10_pressure
-            star%envelope_cz_o16 = star%o16_zone(1)
+            star%envelope_cz_opacity = star%opacity_zone(1)
        endif
       else
        star%envelope_mass = 0.0D0
@@ -260,7 +260,7 @@ subroutine locate_surface_cz_base
          star%envelope_cz_temperature = 0.0D0
          star%envelope_cz_density = 0.0D0
          star%envelope_cz_pressure = 0.0D0
-         star%envelope_cz_o16 = 0.0D0
+         star%envelope_cz_opacity = 0.0D0
       endif
 end subroutine locate_surface_cz_base
 

@@ -33,8 +33,9 @@ PUBLIC = {
     # The three eos_lib facade entries. Everything else in eos/
     # (eqstat/eqstat2, the OPAL/MHD/SCV/Yale internals, mu) is private.
     "eos": {"eos_get", "eos_get_r", "eos_get_gamma1", "eos_init", "eos_set_mixture"},
-    # The three kap_lib facade entries.
-    "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
+    # The kap_lib facade entries (kap_get_r is the named-index
+    # result-array variant of kap_get).
+    "kap": {"kap_get", "kap_get_r", "kap_init", "kap_update_surface_tables"},
     # atm_lib's three entries, plus surfbc (the solver's boundary-
     # condition wrapper, sole caller core/crrect.f90) and the turnover/
     # diagnostics consumed by core/io/rotation (calcad, gettau).
@@ -57,7 +58,7 @@ PUBLIC = {
     "mixing": {"mix", "homogenize_convection_zones", "find_convection_zones",
                "burn_settle_mix", "rotmix", "compute_scale_height",
                "overshoot_boundaries", "semiconvection",
-               "temperature_gradients"},
+               "temperature_gradients", "temperature_gradients_r"},
     # rotation deliberately has no facade (multi-primitive surface,
     # user decision during the phase-two sweep). "func" was here
     # because numerics' qgauss hard-coded a call to it; phase four's

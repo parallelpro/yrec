@@ -366,7 +366,7 @@ subroutine history_values(vals, iprof)
       vals(11) = star%envelope_cz_temperature
       vals(12) = star%envelope_cz_density
       vals(13) = star%envelope_cz_pressure
-      vals(14) = star%envelope_cz_o16
+      vals(14) = star%envelope_cz_opacity
       vals(15) = star%central_log10_temperature
       vals(16) = star%central_log10_density
       vals(17) = star%central_log10_pressure
@@ -542,7 +542,7 @@ double precision function profile_value(icol, k)
             profile_value = 0.0d0
          end if
       case (10); profile_value = star%adiabatic_index_gamma1(k)
-      case (11); profile_value = star%o16_zone(k)
+      case (11); profile_value = star%opacity_zone(k)
       case (12); profile_value = star%gradr(k)
       case (13); profile_value = star%gradT(k)
       case (14); profile_value = star%grada(k)
@@ -925,7 +925,7 @@ subroutine build_pulse_points(pts)
             nab_ad = star%grada(i)
             pts(3,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
             pts(9,j) = star%adiabatic_index_gamma1(i)
-            pts(12,j) = star%o16_zone(i)
+            pts(12,j) = star%opacity_zone(i)
             pts(13,j) = star%pulse_dlnkap_dlnt(i)
             pts(14,j) = star%pulse_dlnkap_dlnrho(i)
             pts(15,j) = star%eps_total(i)

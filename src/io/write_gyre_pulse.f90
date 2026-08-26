@@ -69,7 +69,7 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
               pressure_cgs,temperature_k,density_cgs,star%gradT(i), &
               brunt_n2,star%adiabatic_index_gamma1(i),star%grada(i),delta, &
-              star%o16_zone(i),star%pulse_dlnkap_dlnt(i),star%pulse_dlnkap_dlnrho(i),star%eps_total(i), &
+              star%opacity_zone(i),star%pulse_dlnkap_dlnt(i),star%pulse_dlnkap_dlnrho(i),star%eps_total(i), &
               star%pulse_dlneps_dlnt(i),star%pulse_dlneps_dlnrho(i),omega(i)
  110     format(I6,99(1X,1PE26.16))
       end do

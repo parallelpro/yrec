@@ -63,15 +63,16 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
            log10_radius, luminosity_lsun, hydrogen_fraction, &
            metal_fraction, log10_density, pressure_rotation_factor, &
            temperature_rotation_factor
-      double precision :: temperature, pressure, density, beta, &
-           beta_inverse, beta14, ion_fraction(3), specific_gas_constant, &
-           ion_mean_weight_inverse, electron_mean_weight_inverse, &
-           electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp
+! 2026 named-index results: the eos/kap relay soup is two arrays
+! (see eos_lib/kap_lib index constants). Loop-carried inout slots
+! (log10_density mode input, the gradient/cp guesses, the ionization
+! fractions) persist across shells in the arrays exactly as the old
+! locals did. NOTE: kap_get_r receives eos_res(i_log10_density) --
+! the density eqstat just RETURNED -- matching the historical inout
+! dataflow (passing the model's log_density instead drifts rotating
+! runs, caught by the byte gate).
+      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
       integer :: saha_state
-      double precision :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
       double precision :: actual_gradient, radiative_gradient, &
            dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
            convective_velocity
@@ -101,37 +102,27 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          pressure_rotation_factor = fp(im)
          temperature_rotation_factor = ft(im)
 
-         call eos_get(log10_temperature, temperature, log10_pressure, &
-              pressure, log10_density, density, hydrogen_fraction, &
-              metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
-              specific_gas_constant, ion_mean_weight_inverse, &
-              electron_mean_weight_inverse, &
-              electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-              specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-              dlnrho_dlnp_dt, adiabatic_gradient_dt, &
-              adiabatic_gradient_dp, specific_heat_cp_dt, &
-              specific_heat_cp_dp, want_derivatives, in_atmosphere, &
-              saha_state, composition_at_zone=composition(:,im))
-         call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
-              metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
-              dlnkap_dlnt, ion_fraction)
+         eos_res(i_log10_density) = log10_density
+         call eos_get_r(log10_temperature, log10_pressure, &
+              hydrogen_fraction, metal_fraction, eos_res, &
+              want_derivatives, in_atmosphere, saha_state, &
+              composition_at_zone=composition(:,im))
+         call kap_get_r(eos_res(i_log10_density), log10_temperature, &
+              hydrogen_fraction, metal_fraction, kap_res, &
+              eos_res(i_fxion:i_fxion+2))
          star%iovim = im
-         call temperature_gradients(log10_temperature, temperature, log10_pressure, &
-              pressure, density, log10_radius, log10_mass, &
-              luminosity_lsun, opacity, dlnrho_dlnt, dlnrho_dlnp, &
-              dlnkap_dlnt, dlnkap_dlnrho, specific_heat_cp, &
-              actual_gradient, radiative_gradient, adiabatic_gradient, &
-              dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
-              adiabatic_gradient_dp, dgrad_dt_component, &
-              dgrad_dp_component, dgrad_dr_component, specific_heat_cp_dt, &
-              specific_heat_cp_dp, convective_velocity, &
-              want_derivatives, is_convective, pressure_rotation_factor, &
-              temperature_rotation_factor, log_teff, ierr)
+         call temperature_gradients_r(log10_temperature, log10_pressure, &
+              eos_res, kap_res, log10_radius, log10_mass, &
+              luminosity_lsun, actual_gradient, radiative_gradient, &
+              dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
+              convective_velocity, want_derivatives, is_convective, &
+              pressure_rotation_factor, temperature_rotation_factor, &
+              log_teff, ierr)
          if (ierr /= 0) return
          convective_flag(im) = is_convective
          star%gradr(im) = radiative_gradient
          star%gradT(im) = actual_gradient
-         star%grada(im) = adiabatic_gradient
+         star%grada(im) = eos_res(i_grada)
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
          dfx1 = composition(1,im) - star%envelope_hydrogen_fraction
@@ -147,9 +138,9 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
               composition(2,im)/atomic_weight(2)) + 0.5d0*composition(3,im)
          emu2 = 1.0d0/temp_scratch
          star%mu(im) = amu2*emu2/(amu2+emu2)
-         star%o16_zone(im) = opacity
-         star%cp(im) = specific_heat_cp
-         star%qdt(im) = dlnrho_dlnt
+         star%opacity_zone(im) = kap_res(i_kap)
+         star%cp(im) = eos_res(i_cp)
+         star%qdt(im) = eos_res(i_dlnrho_dlnt)
 ! JVS 10/13 Always want SVEL
          star%conv_vel(im) = convective_velocity
       end do

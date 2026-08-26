@@ -321,7 +321,7 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
 
 ! JVS 02/12 Added PPHOT and SMASS to the output
             write(itrack, 1499) star%model_number,star%nz,star%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%core_cz_mass,star%envelope_mass, &
-            star%envelope_radius,star%envelope_cz_temperature,star%envelope_cz_density,star%envelope_cz_pressure,star%envelope_cz_o16,star%central_log10_temperature,star%central_log10_density,star%central_log10_pressure,star%central_beta,star%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
+            star%envelope_radius,star%envelope_cz_temperature,star%envelope_cz_density,star%envelope_cz_pressure,star%envelope_cz_opacity,star%central_log10_temperature,star%central_log10_density,star%central_log10_pressure,star%central_beta,star%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
             star%xa(i_metals,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_grav),star%luminosity_breakdown(i_lum_neu), &
             star%cl37_snu_rate,star%ga71_snu_rate,(star%neutrino_flux_total(i),i=1,10),(star%xa(i,1),i=4,11), &
             (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz), &
@@ -333,7 +333,7 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
  1499       format(1X,2I8,1P7E17.8E3,1P5E12.4,16E17.8E3,12E10.3,41E17.8E3)
          else if(star%ctrl%track_file_version .eq.1 .or. star%ctrl%track_file_version .eq.2) then
             write(itrack,1500)star%model_number,star%nz,star%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%core_cz_mass,star%envelope_mass, &
-                           star%envelope_radius,star%envelope_cz_temperature,star%envelope_cz_density,star%envelope_cz_pressure,star%envelope_cz_o16
+                           star%envelope_radius,star%envelope_cz_temperature,star%envelope_cz_density,star%envelope_cz_pressure,star%envelope_cz_opacity
  1500       format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4)
             write(itrack,1509)star%central_log10_temperature,star%central_log10_density,star%central_log10_pressure,star%central_beta,star%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
                            star%xa(i_metals,1),total_moment_of_inertia
@@ -505,7 +505,7 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
         endif
 
             write(itrack, 1800) star%model_number,star%nz,star%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%core_cz_mass,star%envelope_mass, &
-            star%envelope_radius,star%envelope_cz_temperature,star%envelope_cz_density,star%envelope_cz_pressure,star%envelope_cz_o16,star%central_log10_temperature,star%central_log10_density,star%central_log10_pressure,star%central_beta,star%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
+            star%envelope_radius,star%envelope_cz_temperature,star%envelope_cz_density,star%envelope_cz_pressure,star%envelope_cz_opacity,star%central_log10_temperature,star%central_log10_density,star%central_log10_pressure,star%central_beta,star%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
             star%xa(i_metals,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_grav),star%luminosity_breakdown(i_lum_neu), &
             star%cl37_snu_rate,star%ga71_snu_rate,(star%neutrino_flux_total(i),i=1,10),(star%xa(i,1),i=4,11), &
             (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz), &

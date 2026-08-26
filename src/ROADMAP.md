@@ -34,26 +34,38 @@ test_pyyrec. make clean after any module-TYPE or signature change.
 
 ---
 
-## Named-index result arrays (phase-3 stage 4) -- PARTIALLY DONE 2026-08-25
+## Named-index result arrays (phase-3 stage 4) -- DONE 2026-08-25
 
-DONE: eos_lib carries the index-constant block (i_temperature ...
+eos_lib carries the index-constant block (i_temperature ...
 i_cp_dp, num_eos_results = 24) and `eos_get_r`, which packs the 24
 outputs into one intent(inout) res(:) around the unchanged eos_get
 (inout slots -- i_log10_density, i_beta, the ionization fractions,
 the gradient/cp guesses -- keep their historical carry through the
-array). Migrated (byte-identical): observables_lib's central
-conditions, compute_scale_height, massloss's two accretion-entropy
-sites -- each 18-20-variable soup is now one array.
+array). kap_lib gained the matching `kap_get_r` (i_kap,
+i_log10_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt; ion_fraction stays an
+explicit inout arg), and temperature_gradients_r unpacks both
+arrays around the unchanged temperature_gradients.
 
-DEFERRED (documented): the plumbing-heavy solver sites
-(shell_physics, henyey_coefficients, atmosphere/envelope_derivs,
-envint, read_starting_model, semiconvection x3) relay the eos
-outputs POSITIONALLY into kap_get and temperature_gradients;
-converting them before those callees take res-arrays just adds
-pack/unpack noise. Order of work when resumed: kap_get res-array
-(4 outputs) -> temperature_gradients res-array -> then these sites
-collapse for real. The indices are the basis for the pyyrec
-in-memory results API either way.
+Migrated (each gate2 byte-identical): observables_lib's central
+conditions, compute_scale_height, massloss's two accretion-entropy
+sites, then the nine formerly-deferred plumbing sites --
+shell_physics, henyey_coefficients, semiconvection x3,
+read_starting_model's convective-flag test, atmosphere_derivs,
+envelope_derivs, envint's atmosphere start (this last one keeps
+its host-associated scalars and wraps the call with a symmetric
+prepack/unpack, since the scalars are shared across envint_lib's
+contained routines). Every production call site now goes through
+the _r facades; the scalar eos_get/kap_get remain only for the
+standalone domain tests, and scalar temperature_gradients is
+called only by its _r wrapper.
+
+LOAD-BEARING RULE (gate-proven twice): eqstat updates its density
+argument IN PLACE, and downstream code -- kap_get, the tail of
+henyey_coefficients, semiconvection's next call -- must see the
+UPDATED value, not the pre-call one. Every migrated site either
+passes eos_res(i_log10_density) onward or writes it back to the
+local immediately after the call. The indices are the basis for
+the pyyrec in-memory results API.
 
 ## Numerics-gate ierr opt-in -- DONE 2026-08-25
 

@@ -117,6 +117,11 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
       double precision :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
+! 2026 named-index call buffers for eos_get_r/kap_get_r. Unlike the
+! other migrated sites, the relay scalars above STAY: they are host-
+! associated across the contained routines (and the atm_retry loop),
+! so the call is wrapped with a symmetric prepack/unpack instead.
+      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
       double precision :: indep_var
       double precision :: chi_rho, chi_t, specific_heat_cv, gamma1
       double precision :: pulse_energy_sum, prev_tau, prev_opacity, &
@@ -323,19 +328,64 @@ subroutine integrate_atmosphere
            radiation_constant_over_3*temperature**3)*temperature)
 
 ! NOW FIND THE OPTICAL DEPTH(X0) WHERE THE ATMOSPHERE INTEGRATION BEGINS.
-      call eos_get(log10_temperature,temperature,log10_pressure,pressure, &
-           log10_density,density,hydrogen_fraction,metal_fraction,beta, &
-           beta_inverse,beta14,ion_fraction,specific_gas_constant, &
-           ion_mean_weight_inverse,electron_mean_weight_inverse, &
-           electron_degeneracy_parameter,dlnrho_dlnt,dlnrho_dlnp, &
-           specific_heat_cp,adiabatic_gradient,dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt,adiabatic_gradient_dt,adiabatic_gradient_dp, &
-           specific_heat_cp_dt,specific_heat_cp_dp,want_derivatives, &
-           in_atmosphere,saha_state)
-! DBG 12/95 GET OPACITY
-      call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
-           metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, &
-           dlnkap_dlnt, ion_fraction)
+! prepack every result slot from its host scalar, call, unpack every
+! one back: identity for slots eqstat leaves alone, and the host
+! scalars keep carrying the historical inout guesses across calls.
+      eos_res(i_temperature) = temperature
+      eos_res(i_pressure) = pressure
+      eos_res(i_log10_density) = log10_density
+      eos_res(i_density) = density
+      eos_res(i_beta) = beta
+      eos_res(i_beta_inverse) = beta_inverse
+      eos_res(i_beta14) = beta14
+      eos_res(i_fxion:i_fxion+2) = ion_fraction
+      eos_res(i_gas_constant) = specific_gas_constant
+      eos_res(i_mu_ion_inv) = ion_mean_weight_inverse
+      eos_res(i_mu_e_inv) = electron_mean_weight_inverse
+      eos_res(i_eta) = electron_degeneracy_parameter
+      eos_res(i_dlnrho_dlnt) = dlnrho_dlnt
+      eos_res(i_dlnrho_dlnp) = dlnrho_dlnp
+      eos_res(i_cp) = specific_heat_cp
+      eos_res(i_grada) = adiabatic_gradient
+      eos_res(i_dlnrho_dlnt_dt) = dlnrho_dlnt_dt
+      eos_res(i_dlnrho_dlnp_dt) = dlnrho_dlnp_dt
+      eos_res(i_grada_dt) = adiabatic_gradient_dt
+      eos_res(i_grada_dp) = adiabatic_gradient_dp
+      eos_res(i_cp_dt) = specific_heat_cp_dt
+      eos_res(i_cp_dp) = specific_heat_cp_dp
+      call eos_get_r(log10_temperature, log10_pressure, hydrogen_fraction, &
+           metal_fraction, eos_res, want_derivatives, in_atmosphere, &
+           saha_state)
+      temperature = eos_res(i_temperature)
+      pressure = eos_res(i_pressure)
+      log10_density = eos_res(i_log10_density)
+      density = eos_res(i_density)
+      beta = eos_res(i_beta)
+      beta_inverse = eos_res(i_beta_inverse)
+      beta14 = eos_res(i_beta14)
+      ion_fraction = eos_res(i_fxion:i_fxion+2)
+      specific_gas_constant = eos_res(i_gas_constant)
+      ion_mean_weight_inverse = eos_res(i_mu_ion_inv)
+      electron_mean_weight_inverse = eos_res(i_mu_e_inv)
+      electron_degeneracy_parameter = eos_res(i_eta)
+      dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
+      dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
+      specific_heat_cp = eos_res(i_cp)
+      adiabatic_gradient = eos_res(i_grada)
+      dlnrho_dlnt_dt = eos_res(i_dlnrho_dlnt_dt)
+      dlnrho_dlnp_dt = eos_res(i_dlnrho_dlnp_dt)
+      adiabatic_gradient_dt = eos_res(i_grada_dt)
+      adiabatic_gradient_dp = eos_res(i_grada_dp)
+      specific_heat_cp_dt = eos_res(i_cp_dt)
+      specific_heat_cp_dp = eos_res(i_cp_dp)
+! DBG 12/95 GET OPACITY (log10_density just unpacked = eqstat's
+! returned density, the historical inout dataflow)
+      call kap_get_r(log10_density, log10_temperature, hydrogen_fraction, &
+           metal_fraction, kap_res, ion_fraction)
+      opacity = kap_res(i_kap)
+      log10_opacity = kap_res(i_log10_kap)
+      dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
+      dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
       indep_var = log10_pressure - log10_gravity + dlog10(opacity)
       y(1) = log10_pressure
       dydx(1) = dexp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))
