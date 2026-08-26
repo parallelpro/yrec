@@ -34,6 +34,40 @@ test_pyyrec. make clean after any module-TYPE or signature change.
 
 ---
 
+## Stitched-model restructure -- DONE 2026-08-25
+
+One authoritative assembly of the full converged star per step.
+core/stitched_model.f90 (stitched_model_lib) builds interior +
+envelope + atmosphere at the converged (Teff, L) with fixed output
+steps and materializes every writer-facing quantity as arrays over
+the extended grid (stx_prof / stx_pulse, named ip_* column indices).
+Built unconditionally in evolve_step BEFORE compute_observables;
+stitch_due() gates only the profile/pulse WRITES (shared predicate
+with output_write_model). The io writers are pure readers.
+
+The turnover timescale is an observable of this model: computed once
+per step by compute_observables' theme (both output modes), walking
+the stitched interior+envelope span; gettau's private integration +
+hand stitch, getw's mid-step recompute, and wrtout's write-time
+recompute are all gone (consumers read step-start values -- the
+*_old/pphot0 lag semantics). star%pphot is owned by the stitched
+build. LNEWTCZ and the legacy taucal side-effect path (turnover
+recomputed at the end of every envelope integration) are retired
+end-to-end.
+
+Bug fixed on the way: profile files had gradT/grada SWAPPED in the
+envelope region (cols 13/14 -> env_gradients(2)/(3)); envelope col
+15 (conv_vel) was also missing. Quantified drift vs the old method:
+non-rot evolution byte-identical, turnover identical, pphot ~1e-8;
+rotating final log_Teff ~2e-4 (step-start lag semantics).
+Maintained baselines regenerated (solar 4, matrix 16, m0030 chain).
+DEBT: run_from_dbl_to_zams m0040+, testsuite/ (12 solar cases also
+fail on a missing opal2006 EOS table path -- pre-existing), and
+giant_differential_rotation baselines predate this change.
+NEXT (queued): profile-based observables in the new
+compute-observables hook (tauhe/taucz He-glitch acoustic depths);
+legacy .store writer (write_stitched_profile) reading stx arrays.
+
 ## Named-index result arrays (phase-3 stage 4) -- DONE 2026-08-25
 
 eos_lib carries the index-constant block (i_temperature ...
