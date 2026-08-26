@@ -311,13 +311,10 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
 !      ELSE IF(JENV.GE.M .AND. LC(M)) THEN
 !
 
-! G Somers 3/17, ADDED CALL TO NEW TAUCZ AND PPHOT CALCULATION ROUTINE.
-
-!       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
-      call compute_turnover_timescale(star%xa,star%logR,star%logP,star%logRho,star%m,star%logT,star%fp_rot,star%ft_rot,star%log_Teff, &
-                  star%log_total_mass,star%log_L,star%nz,star%convective_flag,star%envelope_radius)
-      star%convective_turnover_timescale_old = star%convective_turnover_timescale
-      star%pphot0 = star%pphot
+! 2026 stitched-model restructure: TAUCZ/PPHOT and their lag
+! bookkeeping are computed once per step by compute_observables'
+! turnover theme (from the stitched model); this writer only reads
+! the stored values, like every other quantity it prints.
 
 ! JVS 02/12 Added PPHOT and SMASS to the output
             write(itrack, 1499) star%model_number,star%nz,star%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%core_cz_mass,star%envelope_mass, &

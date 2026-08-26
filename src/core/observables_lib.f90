@@ -87,13 +87,18 @@ subroutine compute_observables(ierr)
       call compute_central_conditions(ierr)
       if (ierr /= 0) return
       call locate_surface_cz_base
+! The turnover timescale (with its pphot/_old lag bookkeeping) is
+! PHYSICS state -- the wind saturation and the deuterium limiter
+! read it -- so it refreshes in BOTH output modes. (Pre-2026-
+! restructure, legacy mode refreshed it via wrtout's own gettau
+! call at write time; that call is gone.)
+      call refresh_turnover_timescale
 
 ! ---- 2026 MESA-style output: fill the per-model history sources ----
 ! (star% members read by write_history). Formulas are the legacy
 ! .track v0 branch's, verbatim. Legacy mode skips this: wrtout
 ! computes the same values internally with pinned print ordering.
       if (.not. star%ctrl%use_legacy_output) then
-         call refresh_turnover_timescale
          call compute_surface_globals
          call compute_moment_of_inertia
          call compute_snu_rates
@@ -271,10 +276,7 @@ end subroutine locate_surface_cz_base
 ! freshens the reported value).
 subroutine refresh_turnover_timescale
       use star_info_lib, only: star
-      call compute_turnover_timescale(star%xa, star%logR, star%logP, star%logRho, &
-           star%m, star%logT, star%fp_rot, star%ft_rot, &
-           star%log_Teff, star%log_total_mass, star%log_L, star%nz, &
-           star%convective_flag, star%envelope_radius)
+      call compute_turnover_timescale(star%envelope_radius)
       star%convective_turnover_timescale_old = &
            star%convective_turnover_timescale
       star%pphot0 = star%pphot

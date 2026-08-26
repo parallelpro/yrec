@@ -114,6 +114,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use scv_eos_lib
 
 
+      use stitched_model_lib, only: build_stitched_model
       implicit none
       integer :: jerr_atm
       integer, parameter :: nts = 63, nps = 76
@@ -290,13 +291,13 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
                  am_transport_convective_flag,radiative_zone_bounds, &
                  convective_zone_bounds,num_radiative_zones, &
                  num_convective_zones)
-! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP
-!       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
-      call compute_turnover_timescale(star%xa,star%logR,star%logP,star%logRho, &
-                  star%m,star%logT,star%fp_rot, &
-                  star%ft_rot,star%log_Teff, &
-                  star%log_total_mass,star%log_L,star%nz,star%convective_flag, &
-                  env_struct%env_log10_radius)
+! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP (2026: build the stitched
+! model first -- the turnover walker reads it; this also seeds
+! star%pphot. The historical call passed env_log10_radius as the
+! scalar BCZ-radius out-arg, clobbering env_log10_radius(1) by
+! sequence association; the sane out-arg is used now.)
+      call build_stitched_model
+      call compute_turnover_timescale(star%envelope_radius)
       star%convective_turnover_timescale_old = star%convective_turnover_timescale
       star%pphot0 = star%pphot
       star%fracstep = 0.5

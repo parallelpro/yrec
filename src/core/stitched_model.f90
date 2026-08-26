@@ -22,11 +22,18 @@ module stitched_model_lib
       use phys_const_lib
       implicit none
       private
-      public :: build_stitched_model, stitch_due, n_ext, stx_prof, &
-           stx_pulse, n_prof_cols, n_pulse_cols
+      public :: build_stitched_model, stitch_due, n_ext, n_ie, stx_prof, &
+           stx_pulse, n_prof_cols, n_pulse_cols, &
+           ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, ip_conv, &
+           ip_gradr, ip_gradT, ip_grada, ip_conv_vel
 
       integer, parameter :: n_prof_cols = 57
       integer, parameter :: n_pulse_cols = 35
+! Named indices for the stx_prof columns physics consumers read
+! (column meanings = the profile column registry in io/yrec_output).
+      integer, parameter :: ip_mass = 2, ip_logR = 3, ip_logT = 4, &
+           ip_logRho = 5, ip_logP = 6, ip_conv = 9, ip_gradr = 12, &
+           ip_gradT = 13, ip_grada = 14, ip_conv_vel = 15
 ! The extended model: interior (center -> fitting point) + envelope
 ! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
 ! assembled inward-to-outward, exactly the regions io/write_stitched_profile.f90
@@ -44,6 +51,10 @@ module stitched_model_lib
       double precision :: ext_seismic(4,max_ext)
       double precision :: stx_prof(n_prof_cols, max_ext)
       double precision :: stx_pulse(n_pulse_cols, max_ext)
+! Index of the last NON-atmosphere point: the turnover calculation
+! walks regions 1-2 only (interior + envelope), matching the
+! pre-restructure combined-array assembly.
+      integer :: n_ie = 0
 
 contains
 
@@ -79,7 +90,6 @@ subroutine build_stitched_model
       double precision :: env_beg0, env_min0, env_max0
       double precision :: b, gl, rl, ateffl, plim, dum1(4), dum2(3), &
            dum3(3), dum4(3)
-      double precision :: pphot_save
       integer :: ixx, idum, katm, kenv, ksaha
       logical :: lprt, lsbc0, lpulpt
 
@@ -91,6 +101,7 @@ subroutine build_stitched_model
          ext_index(n_ext) = j
       end do
       if (.not. star%job%calc_envelope_flag) then
+         n_ie = n_ext
 ! interior-only: materialize what we have. (Historical quirk kept
 ! byte-for-byte: the seismic columns are NOT recomputed on this
 ! branch -- they hold whatever the last full build left.)
@@ -133,16 +144,14 @@ subroutine build_stitched_model
          ateffl = star%log_Teff
       end if
       jerr = 0
-! The stitch must be SIDE-EFFECT-FREE: atm_get sets star%pphot on
-! every call, and pphot (with its pphot0 lag) is live physics/
-! bookkeeping state. Restore it so building a profile never
-! perturbs the run -- values must not depend on profile_interval.
-      pphot_save = star%pphot
+! The stitch is the ONE writer of star%pphot: atm_get sets it from
+! this integration at the converged model, and no other path
+! recomputes it (the former gettau/wrtout own atm_get calls are
+! gone). The stitch runs every step, so pphot is always current.
       call atm_get(b, star%fp_rot(star%nz), star%ft_rot(star%nz), gl, &
            star%log_total_mass, ixx, lprt, lsbc0, plim, rl, ateffl, &
            star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), dum1, idum, katm, &
            kenv, ksaha, dum2, dum3, dum4, lpulpt, jerr)
-      star%pphot = pphot_save
 
       star%job%atm_step_begin = atm_beg0
       star%job%atm_step_min = atm_min0
@@ -150,7 +159,11 @@ subroutine build_stitched_model
       star%job%env_step_begin = env_beg0
       star%job%env_step_min = env_min0
       star%job%env_step_max = env_max0
-      if (jerr /= 0) return
+      if (jerr /= 0) then
+         n_ie = n_ext
+         call fill_stitched_arrays
+         return
+      end if
 
 ! envelope: env_struct runs fitting point -> photosphere (envint
 ! inverts it), so it appends directly. Its innermost point repeats
@@ -165,6 +178,7 @@ subroutine build_stitched_model
          ext_region(n_ext) = 2
          ext_index(n_ext) = i
       end do
+      n_ie = n_ext
 ! atmosphere: atmo_struct runs outward-in, so walk it in reverse.
       do i = atmo_struct%num_atm_points, 1, -1
          if (n_ext >= max_ext) exit
@@ -283,8 +297,14 @@ double precision function ext_profile_value(icol, j)
          case (10); ext_profile_value = env_struct%env_gamma1(i)
          case (11); ext_profile_value = env_struct%env_opacity(i)
          case (12); ext_profile_value = env_struct%env_gradients(1,i)
-         case (13); ext_profile_value = env_struct%env_gradients(2,i)
-         case (14); ext_profile_value = env_struct%env_gradients(3,i)
+! env_gradients order is (1) radiative, (2) adiabatic, (3) actual
+! (set from current_gradients in envint) -- profile columns are
+! 13 = gradT (actual), 14 = grada. The pre-2026 mapping had these
+! two swapped in the envelope region (found when the turnover
+! walker started reading the stitched columns).
+         case (13); ext_profile_value = env_struct%env_gradients(3,i)
+         case (14); ext_profile_value = env_struct%env_gradients(2,i)
+         case (15); ext_profile_value = env_struct%env_convective_velocity(i)
          case (27); ext_profile_value = env_struct%env_hydrogen_fraction(i)
          case (41); ext_profile_value = env_struct%env_metal_fraction(i)
          case (42); ext_profile_value = star%omega(star%nz)

@@ -101,7 +101,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       double precision :: surface_quad_term, surface_potential
       double precision :: log_radius_surface
       double precision :: omega_avg, domega_dr, delta_radius_step
-      double precision :: radius_at_bcz
 
       integer, intent(out) :: ierr
 
@@ -218,11 +217,10 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       call shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun,star%logP, &
            star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%log_Teff, ierr)
       if (ierr /= 0) return
-! 8/17 DETERMINE TAUCZ AND PPHOT
-!       CALL GETTAU(HCOMP,HR,HP,HD,HG,HS1,HT,FP,FT,TEFFL,  ! KC 2025-05-31
-      call compute_turnover_timescale(star%xa,star%logR,star%logP,star%logRho,star%m, &
-           star%logT,star%fp_rot,star%ft_rot,star%log_Teff, &
-           star%log_total_mass,star%log_L,star%nz,star%convective_flag,radius_at_bcz)
+! 8/17 TAUCZ AND PPHOT: read the stored step-start values (2026
+! stitched-model restructure -- computed once per step from the
+! stitched model in compute_observables; the *_old lag bookkeeping
+! always assumed this cadence). No mid-step recomputation.
 ! IF DT IS LESS THAN DELTS, THEN THE MODEL TIMESTEP IS TOO LONG FOR THE
 ! DIFFUSION CALCULATIONS.  IF THIS OCCURS,
 ! USE A SERIES OF SMALLER TIMESTEPS THAT DON'T VIOLATE THIS CONDITION.
