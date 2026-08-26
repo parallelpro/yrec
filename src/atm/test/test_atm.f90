@@ -19,7 +19,7 @@
 ! (a full-model concern, covered by Stage-0); noted in ROADMAP.md.
 ! Results print for byte-comparison against expected_test_atm.out.
 program test_atm
-      use const_lib
+      use star_info_lib, only: star
       use luout_lib
       use atm_table_lib
       use atm_lib
@@ -55,11 +55,11 @@ program test_atm
       dummy_paths7 = ""
       laol_work = 0.0d0
 
-! unit numbers, per core/parmin.f90
+! unit numbers, per core/read_input.f90
       short_file_unit = 20
-      fermi_unit = 15
+      star%ctrl%fermi_unit = 15
       atm_table_file_unit = 38
-      allard_table_unit = 66
+      star%ctrl%allard_table_unit = 66
       open(short_file_unit, file="test_atm.short", status="replace")
 ! surfp/kcsurfp write their out-of-table diagnostic to iowr (the main
 ! output unit in production, per parmin) as well as short_file_unit;
@@ -69,24 +69,24 @@ program test_atm
 
 ! everything else gated off (setups calls eos_init/kap_init/atm_init
 ! unconditionally; only the Fermi table is a hard requirement)
-      use_mhd_eos = .false.
+      star%ctrl%use_mhd_eos = .false.
       use_scv_eos = .false.
-      use_opal95_eos = .false.
-      use_opal2001_eos = .false.
-      use_opal2006_eos = .false.
-      use_opal95_tables = .false.
-      use_opal92_tables = .false.
-      use_laol89_tables = .false.
-      use_alex06_tables = .false.
-      use_alex95_tables = .false.
-      use_kurucz90_tables = .false.
-      use_two_z_tables = .false.
+      star%ctrl%use_opal95_eos = .false.
+      star%ctrl%use_opal2001_eos = .false.
+      star%ctrl%use_opal2006_eos = .false.
+      star%ctrl%use_opal95_tables = .false.
+      star%ctrl%use_opal92_tables = .false.
+      star%ctrl%use_laol89_tables = .false.
+      star%ctrl%use_alex06_tables = .false.
+      star%ctrl%use_alex95_tables = .false.
+      star%ctrl%use_kurucz90_tables = .false.
+      star%use_two_z_tables = .false.
       use_pure_z_table = .false.
-      use_conductive_opacity = .false.
+      star%ctrl%use_conductive_opacity = .false.
 
 ! constants (real setups; its atm_init call is a no-op at
 ! atm_choice=0 -- the per-option loads happen explicitly below)
-      atm_choice = 0
+      star%job%atm_choice = 0
       call setups(laol_work, dummy_path, dummy_path, dummy_path, &
            fermi_path, dummy_path, dummy_path, dummy_path, dummy_path, &
            dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
@@ -99,7 +99,7 @@ program test_atm
       end if
 
 ! --- Kurucz (1993), atm_choice=3, looked up via surfp ---
-      atm_choice = 3
+      star%job%atm_choice = 3
       call atm_init(kurucz_atm_path, dummy_path)
       write(*,'(a)') "# test_atm: Kurucz (choice 3), surfp lookups"
       do ipt = 1, npts
@@ -111,7 +111,7 @@ program test_atm
       end do
 
 ! --- Castelli & Kurucz (2003), atm_choice=5, via kcsurfp ---
-      atm_choice = 5
+      star%job%atm_choice = 5
       call atm_init(castelli_path, dummy_path)
       write(*,'(a)') "# test_atm: Castelli/Kurucz (choice 5), " // &
            "kcsurfp lookups"
@@ -124,7 +124,7 @@ program test_atm
       end do
 
 ! --- Allard NextGen, atm_choice=4, through the facade entry ---
-      atm_choice = 4
+      star%job%atm_choice = 4
       call atm_init(kurucz_atm_path, allard_path)
       write(*,'(a)') "# test_atm: Allard (choice 4), " // &
            "atm_get_surface_pt lookups"

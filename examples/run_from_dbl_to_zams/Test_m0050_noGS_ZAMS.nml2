@@ -187,7 +187,7 @@
  LWNEW = .FALSE. ! Toggle if converting a non-rotating model to a rotating one               
  WNEW = 0.000000D+00 ! Uniform angular velocity imposed if LWNEW = .TRUE (rad/s). If star-disk coupling is being used, should be set to the same value as the disk period. Check your units!
  LDISK = .TRUE. ! Toggle if enforcing co-rotation with accretion disk
- TDISK = 1.00D+05 ! Lifetime of disk locking (yr) - 1e5 is the D burning BL.
+ TDISK = 1.00D+05 ! Disk locking ends at this age -- UNITS: Gyr, NOT yr (1.0D-4 = 1e5 yr, the D-burning birthline)
  PDISK = 9.0902e-6 ! Rotation period (rad/s) of disk; 8 days (9.0902e-6) is the observed median period in solar-mass disked stars in star forming regions.
 
 ! Angular momentum loss options

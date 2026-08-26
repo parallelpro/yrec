@@ -23,9 +23,9 @@
 ! (not part of this batch) accordingly.
 subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
-
+      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use opacity_table_lib
-      use const_lib
       use numerics_lib
       implicit none
       integer, parameter :: num_t = 70
@@ -34,7 +34,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       integer, parameter :: num_z = 13
       integer, parameter :: num_xz = 126
 ! JVS Need this one too:
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
@@ -221,11 +220,11 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 !     DETERMINE WHETHER A 2D (RHO,T); 3D (X,RHO,T); OR 4D (Z,X,RHO,T)
 !     INTERPOLATION IS NEEDED TO GET THE OPACITY.
 !     JVS 04/11 force 4d interpolation for acoustic depth calculations
-      if (.not. (compute_acoustic_depth .and. acoustic_depth_output)) then
+      if (.not. (star%compute_acoustic_depth .and. star%ctrl%acoustic_depth_output)) then
       if (abs(metal_fraction-opacity_table%opal95_fixed_z)/max(opacity_table%opal95_fixed_z,1.0d-6).le.1.0d-4) then
          if (abs(hydrogen_fraction-opacity_table%opal95_surface_x).le.1.0d-4) then
 !           2D INTERPOLATION IN SURFACE TABLE
-            call op952d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+            call opal95_interp2d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
             continue
             return
          else
@@ -289,7 +288,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          do j = 1,4
             opacity_table%opal95_weight_x(1,j) = weight(j)
          end do
-         call op953d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+         call opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
          continue
          return
       endif
@@ -394,6 +393,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             opacity_table%opal95_weight_x(k,j) = weight(j)
          end do
       end do
-      call op954d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+      call opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       return
 end subroutine getopal95

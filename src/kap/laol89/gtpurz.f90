@@ -13,10 +13,10 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use opacity_table_lib
-      use const_lib
       use luout_lib
       use numerics_lib
       implicit none
+      integer :: jerr_gate
       double precision, intent(in) :: log10_density, log10_temperature
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
@@ -58,7 +58,13 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
                  local_logrho.lt.row_log_rho(num_valid_rho)) then
                call splint(row_log_rho, row_log10_opacity, num_valid_rho, &
                     row_d2opacity, local_logrho, log10_opacity_value, &
-                    spline_index_lo, spline_index_hi)
+                    spline_index_lo, spline_index_hi, jerr_gate)
+               ! 2026 numerics-gate opt-in: interpolation failure returns via
+               ! ierr (diagnostic printed at the gate) instead of stopping.
+               if (jerr_gate /= 0) then
+                  ierr = jerr_gate
+                  return
+               end if
                num_valid_t = num_valid_t+1
                logt_interp_opacity(num_valid_t) = log10_opacity_value
                logt_values(num_valid_t) = opacity_table%zlaol_logt_grid(t_index)
@@ -101,7 +107,11 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
               1.0d30, 1.0d30, logt_d2opacity)
          call splint(logt_values, logt_interp_opacity, num_valid_t, &
               logt_d2opacity, local_logt, log10_opacity_value, &
-              spline_index_lo, spline_index_hi)
+              spline_index_lo, spline_index_hi, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
          slope=(dlnkap_dlnrho_by_t(spline_index_hi)-dlnkap_dlnrho_by_t(spline_index_lo))/ &
               (logt_values(spline_index_hi)-logt_values(spline_index_lo))
          dlnkap_dlnrho = dlnkap_dlnrho_by_t(spline_index_lo)+ &

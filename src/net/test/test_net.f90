@@ -6,7 +6,7 @@
 ! conventions). Exercises the composition-in/rates-out core of the
 ! domain -- the pieces that are pure functions of (logT, logRho,
 ! composition) once the cross-section scales are set:
-!   * setup/remap.f90's cross-section scale computation (from the
+!   * setup/map_user_inputs.f90's cross-section scale computation (from the
 !     newcross namelist defaults),
 !   * rates (the 13 reaction rates + branching fractions),
 !   * sneut (Itoh et al. 1996 neutrino losses),
@@ -17,9 +17,9 @@
 ! diagnostics, timestep) -- a full-model concern covered by Stage-0.
 ! Results print for byte-comparison against expected_test_net.out.
 program test_net
-      use const_lib
+      use controls_lib
       use luout_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, i_h2
       use net_lib
       use scv_eos_lib, only: use_scv_eos
       use opacity_table_lib, only: use_pure_z_table
@@ -54,27 +54,27 @@ program test_net
       dummy_paths7 = ""
       laol_work = 0.0d0
 
-! unit numbers, per core/parmin.f90
+! unit numbers, per core/read_input.f90
       short_file_unit = 20
-      fermi_unit = 15
+      star%ctrl%fermi_unit = 15
       open(short_file_unit, file="test_net.short", status="replace")
 
 ! everything gated off; only the Fermi table is a hard requirement
-      use_mhd_eos = .false.
+      star%ctrl%use_mhd_eos = .false.
       use_scv_eos = .false.
-      use_opal95_eos = .false.
-      use_opal2001_eos = .false.
-      use_opal2006_eos = .false.
-      use_opal95_tables = .false.
-      use_opal92_tables = .false.
-      use_laol89_tables = .false.
-      use_alex06_tables = .false.
-      use_alex95_tables = .false.
-      use_kurucz90_tables = .false.
-      use_two_z_tables = .false.
+      star%ctrl%use_opal95_eos = .false.
+      star%ctrl%use_opal2001_eos = .false.
+      star%ctrl%use_opal2006_eos = .false.
+      star%ctrl%use_opal95_tables = .false.
+      star%ctrl%use_opal92_tables = .false.
+      star%ctrl%use_laol89_tables = .false.
+      star%ctrl%use_alex06_tables = .false.
+      star%ctrl%use_alex95_tables = .false.
+      star%ctrl%use_kurucz90_tables = .false.
+      star%use_two_z_tables = .false.
       use_pure_z_table = .false.
-      use_conductive_opacity = .false.
-      atm_choice = 0
+      star%ctrl%use_conductive_opacity = .false.
+      star%job%atm_choice = 0
 
       call setups(laol_work, dummy_path, dummy_path, dummy_path, &
            fermi_path, dummy_path, dummy_path, dummy_path, dummy_path, &
@@ -89,7 +89,7 @@ program test_net
 
 ! Nuclear cross-sections: parmin keeps the S-factor namelist locals
 ! with Solar Fusion II defaults (Adelberger et al. 2011; see
-! core/parmin.f90's DATA statements around line 1177) and
+! core/read_input.f90's DATA statements around line 1177) and
 ! copy-assigns them into controls. This test bypasses parmin, so it
 ! sets the same SFII values explicitly, with the new-rates path on.
       use_new_nuclear_rates = .true.
@@ -118,10 +118,10 @@ program test_net
       s0pp_be7_p = -2.288d-7
 
 ! cross-section scales via the real remap
-      call remap
-      write(*,'(a)') "# test_net: cross_section_scale from remap " // &
+      call map_user_inputs
+      write(*,'(a)') "# test_net: cross_section_scale from map_user_inputs " // &
            "(newcross defaults)"
-      write(*,'(4(1pe20.12))') (cross_section_scale(i), i = 1, 16)
+      write(*,'(4(1pe20.12))') (star%cross_section_scale(i), i = 1, 16)
 
 ! reaction rates over a (logT, logRho) grid at a solar-ish mixture
       write(*,'(a)') "# test_net: rates, X=0.70 Y3=3e-5 C12=3.5e-3 " // &
@@ -157,7 +157,7 @@ program test_net
       write(*,'(a)') "# test_net: deutrate"
       star%xa(i_h2,1) = 2.0d-5
       call deutrate(1.5d0, 6.2d0, 0.70d0, 1, 1)
-      write(*,'(1pe20.12)') star%light_burn%deuterium_burning_rate(1)
+      write(*,'(1pe20.12)') star%deuterium_burning_rate(1)
 
       close(short_file_unit)
       write(*,'(a)') "test_net: done"

@@ -30,14 +30,14 @@
 ! contain neutrino fluxes for solar neutrino calculations.
 subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
-      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
+      use rotation_scratch_lib
+      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use net_lib
       use burn_lib
 
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: timestep
       integer, intent(in) :: iteration_level
@@ -103,7 +103,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 
       ierr = 0
 
-      if (use_extended_composition) then
+      if (star%job%use_extended_composition) then
          num_species = 15
       else
          num_species = 11
@@ -116,9 +116,9 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! ******* INTRODUCE DPENV PARAMETER FOR DEEP MIXING *******************
 !  DPENV MIXES THE STAR FROM THE SURFACE TO MASS FRACTION DPENV
 !  E.G. DPENV = 0.7 MEANS THE OUTER .3 OF THE STAR IS MIXED
-      if (dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
+      if (star%ctrl%dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
 ! MIX FROM CENTER TO A FIXED MASS FRACTION
-         max_mixed_mass = dpenv*exp(ln10*star%log_total_mass)
+         max_mixed_mass = star%ctrl%dpenv*exp(ln10*star%log_total_mass)
          do zone_idx = 1, star%nz
             if (star%m(zone_idx).gt.max_mixed_mass) then
                do copy_idx = zone_idx, star%nz
@@ -137,7 +137,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
       end if
 
-      call convec(star%xa, star%logRho, star%logP, star%logR, &
+      call find_convection_zones(star%xa, star%logRho, star%logP, star%logR, &
            star%log_mass, star%logT, deep_mix_flag, star%nz, &
            radiative_zone_bounds, star%mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
@@ -145,15 +145,15 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
            num_mixed_zones_no_overshoot)
 
 ! FIND BURNING RATES (HR1- HR13,HF1,HF2).
-      if (use_mass_accretion .and. mass_accretion_rate.gt.0.0d0) then
+      if (star%job%use_mass_accretion .and. star%ctrl%mass_accretion_rate.gt.0.0d0) then
          deuterium_test = max(star%xa(i_h2,star%nz), &
-              accreted_composition(12))
+              star%ctrl%accreted_composition(12))
       else
          deuterium_test = star%xa(i_h2,star%nz)
       end if
       do zone_idx = 1, star%nz
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-         if (star%logT(zone_idx).le.tcut(1)) exit
+         if (star%logT(zone_idx).le.star%ctrl%tcut(1)) exit
 ! SCALAR VARIABLES ARE USED IN THE CALLS TO THE ENERGY GENERATION ROUTINES.
 ! SET SCALARS EQUAL TO THE GLOBAL ARRAYS FOR THE VARIABLES OF INTEREST.
 ! DL-LOG(DENSITY),TL-LOG TEMPERATURE,X***-MASS FRACTION OF SPECIES ***,
@@ -189,7 +189,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             call deutrate(log_density_zone, log_temperature_zone, &
                  hydrogen_fraction, zone_idx, iteration_level)
          else
-            star%light_burn%deuterium_burning_rate(zone_idx) = 0.0d0
+            star%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
       end do
       if (zone_idx > (star%nz)) then
@@ -212,7 +212,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          frac_c12_alpha(clear_idx) = 0.0d0
          frac_be7_electron(clear_idx) = 0.0d0
 ! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
-         star%light_burn%deuterium_burning_rate(clear_idx) = 0.0d0
+         star%deuterium_burning_rate(clear_idx) = 0.0d0
       end do
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
@@ -225,10 +225,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          do inner_zone_idx = radiative_zone_bounds(radiative_region_idx,1), &
               radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (star%logT(inner_zone_idx).le.tcut(1)) exit
+            if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
-            call kemcom(star%logT, zone_begin, zone_end, rate_pp, &
+            call solve_composition(star%logT, zone_begin, zone_end, rate_pp, &
                  rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
                  rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
                  rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
@@ -245,7 +245,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       do mixed_zone_idx = 1, num_mixed_zones
          zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
          zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-         call kemcom(star%logT, zone_begin, zone_end, rate_pp, &
+         call solve_composition(star%logT, zone_begin, zone_end, rate_pp, &
               rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
               rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
               rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
@@ -253,21 +253,21 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          if (ierr /= 0) return
       end do
       do zone_idx = 1, star%nz
-         star%rot%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
-         star%rot%reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
-         star%rot%reaction_rate_by_zone(3,zone_idx) = rate_he3_he4(zone_idx)
-         star%rot%reaction_rate_by_zone(4,zone_idx) = rate_c12_p(zone_idx)
-         star%rot%reaction_rate_by_zone(5,zone_idx) = rate_c13_p(zone_idx)
-         star%rot%reaction_rate_by_zone(6,zone_idx) = rate_n14_p(zone_idx)
-         star%rot%reaction_rate_by_zone(7,zone_idx) = rate_o16_p(zone_idx)
-         star%rot%reaction_rate_by_zone(8,zone_idx) = rate_c13_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(9,zone_idx) = rate_zero9(zone_idx)
-         star%rot%reaction_rate_by_zone(10,zone_idx) = rate_c12_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(11,zone_idx) = rate_n14_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(12,zone_idx) = rate_triple_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(13,zone_idx) = rate_zero13(zone_idx)
-         star%rot%reaction_rate_by_zone(14,zone_idx) = frac_c12_alpha(zone_idx)
-         star%rot%reaction_rate_by_zone(15,zone_idx) = frac_be7_electron(zone_idx)
+         rot_scr%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
+         rot_scr%reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
+         rot_scr%reaction_rate_by_zone(3,zone_idx) = rate_he3_he4(zone_idx)
+         rot_scr%reaction_rate_by_zone(4,zone_idx) = rate_c12_p(zone_idx)
+         rot_scr%reaction_rate_by_zone(5,zone_idx) = rate_c13_p(zone_idx)
+         rot_scr%reaction_rate_by_zone(6,zone_idx) = rate_n14_p(zone_idx)
+         rot_scr%reaction_rate_by_zone(7,zone_idx) = rate_o16_p(zone_idx)
+         rot_scr%reaction_rate_by_zone(8,zone_idx) = rate_c13_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(9,zone_idx) = rate_zero9(zone_idx)
+         rot_scr%reaction_rate_by_zone(10,zone_idx) = rate_c12_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(11,zone_idx) = rate_n14_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(12,zone_idx) = rate_triple_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(13,zone_idx) = rate_zero13(zone_idx)
+         rot_scr%reaction_rate_by_zone(14,zone_idx) = frac_c12_alpha(zone_idx)
+         rot_scr%reaction_rate_by_zone(15,zone_idx) = frac_be7_electron(zone_idx)
       end do
 !
 ! IF ITLVL=1 THEN THE RATES OF HYDROGEN AND HELIUM BURNING ARE
@@ -290,7 +290,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%logT(inner_zone_idx).le.tcut(1)) exit
+               if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call eqburn(rate_pp, rate_he3_he3, rate_he3_he4, &
@@ -355,15 +355,15 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !
 ! DETERMINE EXTENT OF SEMI-CONVECTION IF APPLICABLE.
 !
-      if (lsemic) then
+      if (star%job%lsemic) then
          if (iteration_level.gt.1) &
-              call sconvec(timestep, star%xa, star%logRho, &
+              call semiconvection(timestep, star%xa, star%logRho, &
               star%luminosity_lsun, star%logP, star%logR, star%log_mass, &
               star%logT, star%nz, star%mixed_zone_bounds, &
               num_mixed_zones, star%log_Teff, ierr)
               if (ierr /= 0) return
       end if
-      if (lsemic .or. (iteration_level .eq. 1)) then
+      if (star%job%lsemic .or. (iteration_level .eq. 1)) then
 !
 !    MIX CONVECTIVE REGIONS IN ORDER.
 !    THIS NEEDS TO BE DONE IF SEMI-CONVECTION IS BEING CHECKED, OR
@@ -417,10 +417,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! FIRST DEFINE VARIABLES NEEDED FOR SETTLING -
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
-      if (diffuse_helium_active) then
+      if (star%job%diffuse_helium_active) then
       settling: do
-         if (star%xa(i_h1,1).lt.hydrogen_diffusion_floor) then
-            diffuse_helium_active = .false.
+         if (star%xa(i_h1,1).lt.star%ctrl%hydrogen_diffusion_floor) then
+            star%job%diffuse_helium_active = .false.
             exit settling
          end if
          total_mass_unlogged = exp(ln10*star%log_total_mass)
@@ -443,7 +443,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             exit settling
          end if
          do search_idx = envelope_cz_edge, 1, -1
-            if (star%xa(i_he4,search_idx).gt.helium_diffusion_min) exit
+            if (star%xa(i_he4,search_idx).gt.star%ctrl%helium_diffusion_min) exit
          end do
          if (search_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
@@ -458,7 +458,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               exp(ln10*1.5d0*star%logT(search_idx))
 !  RESTRICT TIMESTEP TO THE MINIMUM OF THE MODEL TIMESTEP AND
 !  A USER SPECIFIED FRACTION (DT_GS) OF THE SETTLING TIMESCALE.
-         max_settling_dt = settling_timestep_fraction*settling_timescale
+         max_settling_dt = star%ctrl%settling_timestep_fraction*settling_timescale
          num_settling_steps = int(timestep/max_settling_dt)
          if (mod(max_settling_dt,timestep).ne.0.0d0) num_settling_steps = &
               num_settling_steps + 1
@@ -466,13 +466,13 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          do substep_idx = 1, num_settling_steps
 ! PERFORM GRAVITATIONAL SETTLING. IF LNEWDIF = TRUE, USE THE NEW ROUTINES
 ! IN MICRODIFF. ELSE, USE THE OLD ROUTINES IN GRSETT.
-            if (use_new_diffusion_routines) then
+            if (star%ctrl%use_new_diffusion_routines) then
                call microdiff(settling_dt, star%xa, dlnp_dr, &
                     star%logR, star%logRho, star%m, &
                     star%logT, deep_mix_flag, star%nz, &
                     total_mass_unlogged)
             else
-               call grsett(settling_dt, star%xa, dlnp_dr, star%logR, &
+               call gravitational_settling(settling_dt, star%xa, dlnp_dr, star%logR, &
                     star%logRho, star%m, star%logT, &
                     deep_mix_flag, star%nz, total_mass_unlogged)
             end if
@@ -495,8 +495,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               star%xa(i_metals,zone_idx) - star%xa(i_he3,zone_idx)
       end do
 ! MHP 1/95 ADDED CALL TO RESET JENV,JCORE FOR DEEP MIXING.
-      if (dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
-         call convec(star%xa, star%logRho, star%logP, star%logR, &
+      if (star%ctrl%dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
+         call find_convection_zones(star%xa, star%logRho, star%logP, star%logR, &
               star%log_mass, star%logT, star%convective_flag, star%nz, &
               radiative_zone_bounds, star%mixed_zone_bounds, &
               mixed_zone_bounds_no_overshoot, core_cz_edge, &
@@ -504,7 +504,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               num_mixed_zones_no_overshoot)
       end if
 ! MHP 5/02 ADDED DEUTERIUM BURNING
-      if (use_extended_composition) then
+      if (star%job%use_extended_composition) then
 ! RADIATIVE ZONES.
 !
          dt_gyr = timestep_years*1.0d-9
@@ -513,7 +513,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%logT(inner_zone_idx).le.tcut(1)) exit
+               if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call dburn(zone_begin, zone_end, star%nz, star%dm, &

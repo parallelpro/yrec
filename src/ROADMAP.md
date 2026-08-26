@@ -34,52 +34,180 @@ test_pyyrec. make clean after any module-TYPE or signature change.
 
 ---
 
-## Named-index result arrays (phase-3 stage 4)
+## Stitched-model restructure -- DONE 2026-08-25
 
-`eos_get` has 27 positional arguments; MESA's `eosDT_get` returns
-one `res(:)` array indexed by named constants (`i_lnPgas`, `i_Cp`,
-...). Adopt the same:
+One authoritative assembly of the full converged star per step.
+core/stitched_model.f90 (stitched_model_lib) builds interior +
+envelope + atmosphere at the converged (Teff, L) with fixed output
+steps and materializes every writer-facing quantity as arrays over
+the extended grid (stx_prof / stx_pulse, named ip_* column indices).
+Built unconditionally in evolve_step BEFORE compute_observables;
+stitch_due() gates only the profile/pulse WRITES (shared predicate
+with output_write_model). The io writers are pure readers.
 
-- Index-constant block (`i_pressure`, `i_grad_ad`, `i_cp`, ...,
-  `num_eos_results`) in eos_lib; facade packs/unpacks around the
-  unchanged eqstat/eqstat2/meqos.
-- Migrate the ~10 caller files; each site's local variable soup
-  collapses to one array + named indexing.
-- Then kap_get (4 outputs) if worth it.
-- Byte-identical verifiable throughout (packing the same doubles
-  changes no arithmetic). This is also the natural basis for a
-  pyyrec in-memory results API (profile/history accessors over
-  star%), which is the reason to do it sooner rather than later.
+The turnover timescale is an observable of this model: computed once
+per step by compute_observables' theme (both output modes), walking
+the stitched interior+envelope span; gettau's private integration +
+hand stitch, getw's mid-step recompute, and wrtout's write-time
+recompute are all gone (consumers read step-start values -- the
+*_old/pphot0 lag semantics). star%pphot is owned by the stitched
+build. LNEWTCZ and the legacy taucal side-effect path (turnover
+recomputed at the end of every envelope integration) are retired
+end-to-end.
 
-## Numerics-gate ierr opt-in
+Bug fixed on the way: profile files had gradT/grada SWAPPED in the
+envelope region (cols 13/14 -> env_gradients(2)/(3)); envelope col
+15 (conv_vel) was also missing. Quantified drift vs the old method:
+non-rot evolution byte-identical, turnover identical, pphot ~1e-8;
+rotating final log_Teff ~2e-4 (step-start lag semantics).
+Maintained baselines regenerated (solar 4, matrix 16, m0030 chain).
+DEBT: run_from_dbl_to_zams m0040+, testsuite/ (12 solar cases also
+fail on a missing opal2006 EOS table path -- pre-existing), and
+giant_differential_rotation baselines predate this change.
+NEXT (queued): profile-based observables in the new
+compute-observables hook (tauhe/taucz He-glitch acoustic depths);
+legacy .store writer (write_stitched_profile) reading stx arrays.
 
-The numerics_lib procedures carry OPTIONAL ierr gates, but their
-callers do not yet pass ierr -- a bsstep/splint failure still stops
-the process. Thread ierr from the gates up through the callers to
-evolve_step's step_status. Payoffs: embedding safety (a failed
-model becomes YrecError in pyyrec instead of killing the worker),
-m0030-style configurations become re-enterable, and test_reentry
-can use a numerics-terminated case.
+## Named-index result arrays (phase-3 stage 4) -- DONE 2026-08-25
 
-## io-writer stops
+eos_lib carries the index-constant block (i_temperature ...
+i_cp_dp, num_eos_results = 24) and `eos_get_r`, which packs the 24
+outputs into one intent(inout) res(:) around the unchanged eos_get
+(inout slots -- i_log10_density, i_beta, the ionization fractions,
+the gradient/cp guesses -- keep their historical carry through the
+array). kap_lib gained the matching `kap_get_r` (i_kap,
+i_log10_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt; ion_fraction stays an
+explicit inout arg), and temperature_gradients_r unpacks both
+arrays around the unchanged temperature_gradients.
 
-putstore/wrtmod-family write-path stops -> ierr, same pattern as
-stage 3. Small, mechanical.
+Migrated (each gate2 byte-identical): observables_lib's central
+conditions, compute_scale_height, massloss's two accretion-entropy
+sites, then the nine formerly-deferred plumbing sites --
+shell_physics, henyey_coefficients, semiconvection x3,
+read_starting_model's convective-flag test, atmosphere_derivs,
+envelope_derivs, envint's atmosphere start (this last one keeps
+its host-associated scalars and wraps the call with a symmetric
+prepack/unpack, since the scalars are shared across envint_lib's
+contained routines). Every production call site now goes through
+the _r facades; the scalar eos_get/kap_get remain only for the
+standalone domain tests, and scalar temperature_gradients is
+called only by its _r wrapper.
 
-## const umbrella dissolution
+LOAD-BEARING RULE (gate-proven twice): eqstat updates its density
+argument IN PLACE, and downstream code -- kap_get, the tail of
+henyey_coefficients, semiconvection's next call -- must see the
+UPDATED value, not the pre-call one. Every migrated site either
+passes eos_res(i_log10_density) onward or writes it back to the
+local immediately after the call. The indices are the basis for
+the pyyrec in-memory results API.
 
-const_lib is a use-and-reexport umbrella over phys_const_lib +
-controls_lib. Migrate each file's `use const_lib` to the specific
-module (only-lists already resolve through it); evict the
-documented stragglers (zramp's nk, ctlim's tenv, flags living with
-evicted tables) to their proper owners. Then delete the umbrella.
+## Numerics-gate ierr opt-in -- DONE 2026-08-25
 
-## Library-based yrec link
+numerics_termination (-2) protocol: bsstep failures flow
+bsstep -> envint -> surfbc -> henyey_iterate -> evolve_step ->
+run_yrec -> main (clean exit 0, matching the legacy stop) and to
+pyyrec as a distinct negative status; ksplint/splint/splintd2/
+intpol gates wired into their hosts' stage-3 ierr channels.
+Residual (documented): opal92 interp chain and the calcad/
+tauintnew output-path gates keep absent-ierr stops.
 
-`make libs` builds 15 per-domain archives but yrec still links the
-flat object list. Link yrec (and the test programs) from the
-libraries so the boundary is enforced at link time, not just by the
-checker script.
+## io-writer stops -- DONE 2026-08-25
+
+parse_columns config stops -> ierr through output_init_mesa ->
+read_input; GSM-without-HDF5 rejected at configuration time via
+gsm_supported(); residual grid-overflow stops in rebuild_envelope/
+read_starting_model converted. Remaining stops by design: main's
+exit-1, envint's absent-ierr funnels, qenv's tpgrad residual.
+
+## controls -> star% campaign (ACTIVE 2026-08-24; supersedes the old
+## "const umbrella dissolution" section)
+
+User-approved target shape: nested `star%ctrl` (namelist controls,
+immutable after read, structural reset via `star%ctrl =
+controls_state()`) + nested `star%job` (paths, run-list arrays, MC
+config, nk); everything the code COMPUTES flattens to direct star%
+members. phys_const_lib (relocated to state/, Phase 0 DONE) stays
+the one legitimately blanket-use module. Pinned rule: mutables never
+live in star%ctrl -- a control that seeds a working value (cmixl,
+atm_choice) gets a star% working copy.
+
+The namelist wall: Fortran forbids namelist reads into derived-type
+components, so controls_lib survives as parmin's read BUFFER. Read
+sequence: (1) star%ctrl = controls_state() [pristine defaults];
+(2) seed buffer from star%ctrl; (3) parmin reads over it (namelist
+only overwrites what the file provides -- semantics unchanged);
+(4) store buffer -> star%ctrl. The seed/store copies and the type
+body are GENERATED from controls_lib's declarations (single source
+of defaults; members lacking an initializer get the explicit
+zero/blank/.false. that static storage gave them). This replaces
+controls_reset_lib's snapshot-restore outright.
+
+Phases (each byte-gated + test_net + test_reentry):
+- Phase 0 (DONE): phys_const_lib -> state/.
+- Phase A (DONE 2026-08-24, 6 batches): every non-namelist straggler
+  evicted -- atm trio + tenv, cross_section_scale family, iolaol2/
+  ioopal2 -> luout_lib, cmixl -> star%mixing_length_alpha (cmixl2/3
+  stay: MLT formula constants despite the names), the solar octet,
+  nk -> star%job%nk (DO-variable cannot be a component: local
+  kind_card drives the loop, post-loop fix-up preserves DO
+  semantics). controls_lib is now a pure namelist target set.
+- Phase B (DONE 2026-08-24): tools/gen_controls_state.py generates
+  controls_state's 418 default-initialized components
+  (state/controls_state_def.inc) + the seed/store copies
+  (state/controls_sync_lib.f90) from the buffer's declarations;
+  star%ctrl added; read_controls runs reset/seed/read/store;
+  controls_reset_lib DELETED (test_reentry byte-identical without
+  it). Consumers still read the buffer -- star%ctrl is written, not
+  yet read.
+- Phase C controls stream (DONE 2026-08-24, batches 1-3): all 418
+  buffer members classified and migrated -- 346 immutable ->
+  star%ctrl (batch 1 mega-sweep); 68 mutable namelist/card members
+  -> star%job (batches 2-3: card arrays, calibration protocol,
+  model-restore set, driver toggles, physics-adjusted config); 23
+  working/diagnostic members -> flat star% (vfc, calcad outputs,
+  chkscal bookkeeping, ...). The buffer now has NO production
+  readers/writers outside the read path (parmin/remap/sync).
+  Read-path invariants learned: remap is read-path (reads+writes
+  the buffer); parmin stores buffer->star after remap so
+  output_init_mesa sees real values; model-restore readers keep
+  their control-named intent(out) dummies bare.
+- Phase C flattening stream (DONE 2026-08-24): evidence-driven via
+  defaults/flatten_rename_map.tsv (writer/reader analysis per
+  member). 16 dead members deleted (user-approved); MC sample
+  arrays -> star%job; prev/diag/turnover/light_burn/engeb/flux/
+  env_comp/thermo/run/evo dissolved to flat star% (158 members,
+  names kept -- MESA micro-renames like mean_molecular_weight->mu
+  and the diag cryptic-name modernization deferred to a later
+  scriptable pass); pulse's 9 pulse_* physics arrays flattened.
+  Solver cleanup DONE 2026-08-25: rot/mix_phys/circ moved OUT of
+  star_info into rotation/rotation_scratch_lib.f90 (instances
+  rot_scr/mix_scr/circ_scr, private-by-default; yrec_reset
+  snapshots them alongside star0); their 14 PROPERTY members
+  (bl_* scales, MLT alpha vectors, metal_abundance_change, the
+  es/ss/gsf circulation velocities) flattened onto star% first.
+  Micro-renames DONE same day: del_grad -> gradr/gradT/grada,
+  sesum/seg/sbeta/seta/svel/so/locons/sfxion modernized,
+  mean_molecular_weight -> mu; scp deliberately kept (fill-time
+  distinct from cp, documented). Only pulse's q* print scratch
+  remains nested in star_info.
+- Phase D (DONE 2026-08-24): const_lib umbrella deleted (89 files ->
+  phys_const_lib, 71 dead imports removed, read path -> controls_lib);
+  controls_lib relocated to io/ and declared parmin-private;
+  luout_lib -> io/, intpar_lib -> numerics/; const/ folder gone;
+  idt/idd dead stores deleted. THE CAMPAIGN IS COMPLETE. Follow-ups
+  queued separately: MESA micro-rename pass (map QUERY rows), solver
+  cleanup (rot/mix_phys/circ/pulse-residue out of star_info),
+  registry-driven MESA renames for ctrl members.
+
+## Library-based yrec link -- DONE 2026-08-25
+
+`make yrec_libs` links core/main.o against the 13 per-domain
+archives (list repeated for single-pass resolution); an object
+missing from its domain library surfaces as an undefined symbol,
+which the flat link would paper over. Verified byte-identical to
+the flat binary on the solar case; CI builds it as the layout
+check. The default `yrec` stays flat-linked (byte-stable object
+order).
 
 ## Inlist registry follow-ups
 
@@ -91,14 +219,15 @@ checker script.
 - The .short echo still prints the legacy namelist group for
   new-style runs; acceptable, revisit if user-facing.
 
-## star_info flattening (deferred, evidence-driven)
+## star_info flattening (decided 2026-08-24; folded into Phase C)
 
-Keep the nested sub-structs for now. prev/job/evo are principled
-lifecycle boundaries (MESA nests s% job too). The COMMON-era
-groupings (thermo/circ/mix_phys/engeb/diag) are candidates for
-selective flattening -- decide after the remaining work has used
-star% in anger; promote widely-read per-zone physics arrays
-(MESA-named ones first), keep lifecycle structs nested.
+User decision: only star%ctrl and star%job stay nested (the two
+input bundles -- MESA's actual principle: s% job/s% pg are nested,
+physics state is flat). Every other sub-struct (prev/run/evo/
+turnover/flux/diag/rot/thermo/circ/mix_phys/engeb/env_comp/
+light_burn/pulse) dissolves to direct star% members, fused with the
+MESA-vocabulary rename inside the controls-campaign Phase C batches
+so each member is touched once.
 
 ## atm envelope-integration purity split
 
@@ -174,11 +303,17 @@ reaction-rate/screening core stays inline because extraction
 perturbs FP scheduling by 1 ulp -- documented in the code). sneut
 untouched by design.
 
-## Science wiring (sg-rotation side)
+## core/ driver program (DONE 2026-08-24)
 
-Wire pyyrec into the fit_*_mcmc.py workflow: a YREC rotational-
-evolution track producer (multiprocessing, one engine per worker
-process), feeding the same fitting machinery that currently
-consumes MESA tracks. Depends on nothing above, benefits from the
-numerics-gate opt-in (worker survival) and stage 4 (in-memory
-reads).
+Phases 1-5 + calibration, all gated byte-identical (three pinned
+cases incl. Test_solarcal for the calibration work): inherited
+stop-disarm bug fixed; LNUTAB resurrected as compute_neutrino_fluxes;
+stop_conditions module (protocol constants, age predicates, D/X/Y
+stop table); crrect ladder via solve_level; both drivers decomposed
+into named phases (run_yrec 629->432 incl. new docs); MC/.snu writer
+-> io/write_run_summaries; 114 duplicate json decls deleted; 20 live
+placeholder flags named from verified usage (10 dead carriers keep
+the suffix as documentation); calibration protocols (solar triples /
+star pairs) stated once at run_yrec's verdict call site with named
+cycle constants, end_of_card_calibration extracted, chkcal's stale
+pair-protocol header fixed.

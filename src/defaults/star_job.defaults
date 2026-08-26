@@ -265,13 +265,13 @@
       ! (legacy name: lpurez)
       use_pure_z_table = .false.
 
-      ! former common/chrone/: lrwsh_placeholder/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
+      ! former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
       ! (legacy name: liso)
       isochrone_output_active = .false.   ! (implicit)
 
-      ! former common/chrone/: lrwsh_placeholder/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
+      ! former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
       ! (legacy name: lrwsh)
-      lrwsh_placeholder = .false.   ! (implicit)
+      rewind_short_file = .false.   ! (implicit)
 
       ! (legacy name: lsenv0a)
       has_senv0_array = .false.   ! (implicit)
@@ -321,9 +321,9 @@
       ! (legacy name: nmodls)
       max_model_number = 0   ! (implicit)
 
-      ! TODO verify: Z of the Alexander opacity table in use
+      ! VERIFIED 2026: the seven Alexander-1995 low-T opacity table FILE PATHS (character(len=256)(7)), relayed to star%job%alex95_table_paths -- the old 'alex_z_value' guess was wrong.
       ! (legacy name: opecalex)
-      alex_z_value = 'OPACALEXANDER.X00',
+      alex95_table_z_list = 'OPACALEXANDER.X00',
 
       ! former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
       ! (legacy name: poa)

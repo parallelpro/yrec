@@ -22,6 +22,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, ierr)
+      use star_info_lib, only: star
 !
 !  Input Arguments: log10_temperature, log10_pressure, hydrogen_fraction,
 !          metal_fraction, want_derivatives, in_atmosphere
@@ -36,7 +37,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 !  Update (Input and Output) Arguments: saha_state
 !
 
-      use const_lib
+      use phys_const_lib
       use eos_mixture_lib, only: eos_mix
       use luout_lib
       use scv_eos_lib
@@ -98,7 +99,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       in_atmosphere_local = in_atmosphere
       saha_state_local = saha_state
 
-      if (want_derivatives .and. use_numerical_derivatives) then
+      if (want_derivatives .and. star%ctrl%use_numerical_derivatives) then
 !        Get Numerical Derivatives of Current EOS    LLP  8/5/07
 !        If both derivatives and numerical derivatives are requested.
 !
@@ -208,7 +209,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       log10_temperature = log10_temperature_orig   ! Restore original TL and PL.
       log10_pressure = log10_pressure_orig
 
-      if (want_derivatives .and. .not.use_numerical_derivatives) then
+      if (want_derivatives .and. .not.star%ctrl%use_numerical_derivatives) then
          want_derivatives_2 = .true.   ! Need derivatives and have no numerical ones.
                           ! Call eqstat2 and request derivatives
          call eqstat2(log10_temperature, temperature, log10_pressure, &
@@ -260,7 +261,7 @@ end subroutine eqstat
 ! two have always been a matched pair; both remain plain external
 ! subroutines (not module procedures), so this is a purely
 ! organizational move -- callers (eos_lib.f90's eos_get for eqstat;
-! atm/turnover/calcad.f90, which calls eqstat2 directly) are unaffected.
+! atm/turnover/acoustic_depths.f90, which calls eqstat2 directly) are unaffected.
 !
 ! Co-locating the two surfaced a genuine (harmless) interface bug:
 ! gfortran checks call-site argument intents against a callee's actual
@@ -283,9 +284,9 @@ end subroutine eqstat
 !
 ! Core equation-of-state dispatcher. Given log10(T), log10(P), X, Z:
 ! decides whether the gas needs a Saha ionization solve (via
-! yale/eqsaha.f90, optionally backed by the SCV table lookup in
+! yale/saha_eos.f90, optionally backed by the SCV table lookup in
 ! scv/eqscve.f90) or can be treated as fully ionized (via
-! yale/eqrelv.f90), interpolates between the two regimes near the
+! yale/fully_ionized_eos.f90), interpolates between the two regimes near the
 ! ionization-cutoff temperature, and finally checks whether an OPAL
 ! table (1995/2001/2006) covers the point and, if so, blends its
 ! result in (via opal/oeqos*.f90 and the matching opal/eqbound*.f90
@@ -299,10 +300,11 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, ierr)
+      use star_info_lib, only: star
 
       use eos_mixture_lib, only: eos_mix
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use scv_eos_lib
       implicit none
 
@@ -382,12 +384,12 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
       ierr = 0
 
-      need_saha_solution = log10_temperature.lt.saha_log10t_cutoff
+      need_saha_solution = log10_temperature.lt.star%ctrl%saha_log10t_cutoff
       skip_relativistic_eos = log10_temperature.le. &
-           (saha_log10t_cutoff - saha_ramp_width)
+           (star%ctrl%saha_log10t_cutoff - saha_ramp_width)
 
 !     MHP 3/94 METAL DIFFUSION ADDED.  ASSUME ALL METALS SCALE EQUALLY.
-      if (use_diffusion_z) then
+      if (star%job%use_diffusion_z) then
 !        THE VECTOR eos_mix%fxenv IS DEFINED IN STARIN AS
 !        (MASS FRACTION OF SPECIES/ATOMIC WT/AMUENV) FOR THE COMPOSITION
 !        XENV,ZENV.
@@ -487,7 +489,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          ion_fraction(1) = 1.0d0
          ion_fraction(2) = 0.0d0
          ion_fraction(3) = 1.0d0
-         call eqrelv(log10_temperature, temperature, log10_pressure, &
+         call fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, beta, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
               electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
@@ -498,7 +500,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !     CHECK IF SAUMON, CHABRIER, AND VAN HORN EQUATION OF STATE NEEDED.
 !     THIS EOS REPLACES THE CALL TO EQSAHA, EXCEPT FOR DERIVATIVE PURPOSES.
       if (use_scv_eos) then
-         call eqsaha(saha_mass_fractions, log10_temperature, temperature, &
+         call saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               log10_pressure, pressure, log10_density, density, beta, &
               beta_inverse, beta14, ion_fraction, specific_gas_constant, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -509,7 +511,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          call eqscve(log10_temperature, temperature, pressure, &
               log10_density, density, hydrogen_fraction, metal_fraction, &
               beta, ion_fraction, dlnrho_dlnt, dlnrho_dlnp, &
-              specific_heat_cp, adiabatic_gradient, valid_table_point)
+              specific_heat_cp, adiabatic_gradient, valid_table_point, ierr)
+         if (ierr /= 0) return
 
          do_scv_derivatives = .false.   ! Do not do SCV derivatives
          if (do_scv_derivatives .and. valid_table_point) then
@@ -541,14 +544,16 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                  density_1, hydrogen_fraction, metal_fraction, beta, &
                  ion_fraction, dlnrho_dlnt_1, dlnrho_dlnp_1, &
                  specific_heat_cp_1, adiabatic_gradient_1, &
-                 valid_table_point_1)
+                 valid_table_point_1, ierr)
+            if (ierr /= 0) return
             ttl = log10_temperature - dtl
             temperature = 10.0d0**ttl
             call eqscve(ttl, temperature, pressure, log10_density_1, &
                  density_1, hydrogen_fraction, metal_fraction, beta, &
                  ion_fraction, dlnrho_dlnt_1, dlnrho_dlnp_1, &
                  specific_heat_cp_1, adiabatic_gradient_1, &
-                 valid_table_point_1)
+                 valid_table_point_1, ierr)
+            if (ierr /= 0) return
             dtl2 = 2d0*dtl
             dlnrho_dlnt_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
             specific_heat_cp_dt = (dlog10(specific_heat_cp_1) - &
@@ -563,14 +568,16 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                  log10_density_1, density_1, hydrogen_fraction, &
                  metal_fraction, beta, ion_fraction, dlnrho_dlnt_1, &
                  dlnrho_dlnp_1, specific_heat_cp_1, &
-                 adiabatic_gradient_1, valid_table_point_1)
+                 adiabatic_gradient_1, valid_table_point_1, ierr)
+            if (ierr /= 0) return
             ppl = log10_pressure - dpl
             pressure = 10.0d0**ppl
             call eqscve(log10_temperature, temperature, pressure, &
                  log10_density_1, density_1, hydrogen_fraction, &
                  metal_fraction, beta, ion_fraction, dlnrho_dlnt_2, &
                  dlnrho_dlnp_2, specific_heat_cp_2, &
-                 adiabatic_gradient_2, valid_table_point_2)
+                 adiabatic_gradient_2, valid_table_point_2, ierr)
+            if (ierr /= 0) return
             pressure = 10.0d0**log10_pressure
             dpl2 = 2d0*dpl
             dlnrho_dlnp_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10
@@ -588,7 +595,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       else
 !        CALL TO PRATHER EOS - Either because SCV was not requested or
 !        it has failed.
-         call eqsaha(saha_mass_fractions, log10_temperature, temperature, &
+         call saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               log10_pressure, pressure, log10_density, density, beta, &
               beta_inverse, beta14, ion_fraction, specific_gas_constant, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -621,7 +628,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       ion_fraction(1) = 1.0d0
       ion_fraction(2) = 0.0d0
       ion_fraction(3) = 1.0d0
-      call eqrelv(log10_temperature, temperature, log10_pressure, &
+      call fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
            pressure, log10_density, density, beta, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, &
            electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
@@ -629,7 +636,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp)
 !     INTERPOLATE VALUES
-      ramp_weight = saha_ramp_scale*(saha_log10t_cutoff - log10_temperature)
+      ramp_weight = saha_ramp_scale*(star%ctrl%saha_log10t_cutoff - log10_temperature)
       ramp_weight_sq = ramp_weight*ramp_weight
       ramp_factor = ramp_weight_sq*ramp_weight* &
            (6.0d0*ramp_weight_sq - 15.0d0*ramp_weight + 10.0d0)
@@ -671,7 +678,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     1995 OPAL eqos
-      if (use_opal95_eos) then
+      if (star%ctrl%use_opal95_eos) then
       if (temperature.ge.5.0d3 .and. log10_temperature.le.8.0d0 .and. &
            log10_density.le.5.0d0) then
 
@@ -737,7 +744,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     2001 OPAL eqos  LLP 6/17/03
-      if (use_opal2001_eos) then
+      if (star%ctrl%use_opal2001_eos) then
       if (temperature.ge.2.0d3 .and. temperature.le.100d6 .and. &
            log10_density.le.7.0d0) then
          call oeqos01(log10_temperature, temperature, log10_pressure, &
@@ -804,7 +811,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     2006 OPAL eqos  LLP 10/13/2996
-      if (use_opal2006_eos) then
+      if (star%ctrl%use_opal2006_eos) then
       if (temperature.ge.1.870d3 .and. temperature.le.200d6 .and. &
            log10_density.le.7.0d0) then
          call oeqos06(log10_temperature, temperature, log10_pressure, &

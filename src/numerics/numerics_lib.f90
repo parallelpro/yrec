@@ -20,6 +20,22 @@
 ! GUIDELINES.md's rule that folder/module placement should track
 ! function, not caller.
 module numerics_lib
+! 2026 numerics-gate opt-in: callers that pass the optional ierr of
+! the gated procedures (bsstep/ksplint/splint/splintd2/intpol) can
+! distinguish a NUMERICS TERMINATION -- the historical "solution
+! diverged, stop" mode, e.g. a bsstep envelope-integration failure
+! that is the normal pinned ending of some configurations -- from a
+! hard configuration/table error. The driver maps this negative code
+! to a clean process exit (the legacy stop exited 0), while
+! yrec_capi surfaces it to pyyrec as a distinct status.
+      integer, parameter, public :: numerics_termination = -2
+! 2026 fold-in: the last standalone files in numerics/ (meval and its
+! McAllister-Roulier quadratic-spline helpers, slopes/safedivide,
+! simeqc) moved in as module procedures, giving them explicit
+! interfaces (compile-time argument checking). Only simeqc has a
+! caller outside this module (mixing/solve_composition); the rest
+! are private. splinnr was deleted outright: zero callers tree-wide.
+      private :: cases, choose, search, spline, meval, slopes, safedivide
 contains
 
 !----------------------------------------------------------------------
@@ -118,8 +134,8 @@ end subroutine boole
 ! condition for a natural spline, with zero second derivative on that
 ! boundary.
 subroutine cspline(x, y, n, yp1, ypn, y2)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
       double precision, intent(in) :: x(n), y(n), yp1, ypn
@@ -752,8 +768,8 @@ end subroutine mmid
 ! Upon exit from subroutine 'slopes' -- first_derivs contains the
 ! computed first derivatives at each data point.
 subroutine osplin(xval, yval, xtab, ytab, n, k)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: xval(json)
       double precision, intent(out) :: yval(json)
@@ -873,8 +889,8 @@ end subroutine quint
 ! splinj but with x/y/y2/u dimensioned to the json=5000 maximum
 ! rather than to n, exactly as in the original file.
 subroutine splinc(x, y, y2, n)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
       double precision, intent(in) :: x(json), y(json)
@@ -1011,8 +1027,8 @@ end subroutine splnr
 ! sub-diagonal a, diagonal b, super-diagonal c, and right-hand side
 ! ex_prime, returning the solution in ex.
 subroutine tridiag_gs(a, b, c, ex_prime, npt, ex)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: a(json), b(json), c(json), &
            ex_prime(json)
@@ -1142,9 +1158,9 @@ end subroutine ysplin
 ! per-call data flow (matrix in, solution out), not global
 ! configuration -- see GUIDELINES.md's module-vs-argument distinction.
 subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
+      use star_info_lib, only: json
 
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
 ! sub_diag/diag/super_diag are the tridiagonal matrix's three
@@ -1202,21 +1218,21 @@ end subroutine ctridi
 ! storage); converted (2026, GUIDELINES.md) to explicit arguments
 ! since this is real per-call data flow, not global configuration.
 ! dj_n_seed replaces what was previously smuggled in via
-! gamma_elim(n): the caller (dcoeft.f90, via seculr.f90) computes a
+! gamma_elim(n): the caller (am_diffusion_coeffs.f90, via secular_transport.f90) computes a
 ! surface wind-angular-momentum-loss term and used to stash it in the
 ! shared common block's gamma_elim(num_eq_points) slot specifically so
 ! this routine's very first statement (before gamma_elim is
 ! overwritten as pure solver scratch below) could pick it up as dj(n)'s
 ! initial value. That's now an explicit input instead of a COMMON
-! side-channel; see dcoeft.f90's matching surface_wind_loss_term
+! side-channel; see am_diffusion_coeffs.f90's matching surface_wind_loss_term
 ! output argument.
 ! KC 2025-05-31 removed the unused ej dummy argument (see the
 ! commented-out original signature below).
 !       SUBROUTINE TRIDIA(N,EI,EJ,DJ,SUMDJ)  ! KC 2025-05-31
 subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
      solution, dj_n_seed)
+      use star_info_lib, only: json
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
       double precision, intent(in) :: ei(json)
@@ -1559,9 +1575,9 @@ end subroutine splint
 ! Note: xa/ya/y2a are dimensioned to the json=5000 module-wide
 ! maximum rather than to n, exactly as in the original file.
 subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
+      use star_info_lib, only: json
       use luout_lib
       implicit none
-      integer, parameter :: json = 5000
 
       integer, intent(in) :: n
       double precision, intent(in) :: xa(json), ya(json), y2a(json), x
@@ -1631,7 +1647,6 @@ end subroutine splintd2
 subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
      eta22p, q, qp)
 
-      use const_lib
       implicit none
 
 
@@ -1708,15 +1723,14 @@ end subroutine trapzd
 ! two symmetric abscissas about the interval midpoint. r0, hs, aint,
 ! q, w2, a, and i are passed through unchanged to func on each call.
 subroutine qgauss(integrand, g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
+      use star_info_lib, only: json
 
-      use const_lib
       implicit none
-      integer, parameter :: json = 5000
 
 ! 2026 (phase four, step 2 -- ROADMAP.md): the integrand used to be a
 ! hard-coded call to rotation's shape-integrand `func`, the one
 ! backwards dependency that kept numerics from being a pure leaf. It
-! is now a procedure dummy; rotation/shape/fpft.f90 passes `func` at
+! is now a procedure dummy; rotation/shape/rotation_shape_factors.f90 passes `func` at
 ! the call site. Same argument protocol as before (assumed-size for
 ! the two model-shaped arrays, matching the historical implicit
 ! interface).
@@ -2161,5 +2175,1033 @@ subroutine ratext(est_index, x_est, y_est, y_extrap, y_err, num_vars, &
       end if
       return
 end subroutine ratext
+
+!----------------------------------------------------------------------
+! simeqc
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original simeqc.f; only variable names, source form, and comment
+! style were updated.
+!
+! Gauss-Jordan elimination with partial pivoting, operating on a
+! system matrix stored as a flat array: num_unknowns equations (rows),
+! num_cols columns (num_cols > num_unknowns for one or more augmented
+! right-hand-side columns), stored column-major in system_matrix(56).
+subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
+
+      implicit none
+
+      double precision, intent(inout) :: system_matrix(56)
+      integer, intent(in) :: num_cols, num_unknowns
+      integer :: jj, j, jy, it, i, ij, imax, ia, ib, ic, id, ix, jx, ny, &
+           n1, ig, ih
+      double precision :: biga, swap_val
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
+
+      jj=-num_unknowns
+      do j=1,num_unknowns
+      jy=j+1
+      jj=jj+num_unknowns+1
+      biga=0.0d0
+      it=jj-j
+      do i=j,num_unknowns
+      ij=it+i
+      if(dabs(biga).ge.dabs(system_matrix(ij))) cycle
+      biga=system_matrix(ij)
+      imax=i
+      end do
+      if (dabs(biga).eq.0.0d0) then
+      write (5,1011)
+ 1011 format (1x,'STOPPED AT 1010')
+      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+      ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+      ! preserve the historical stop on a nonzero return.
+      ierr = 1
+      return
+      end if
+      ia=j+num_unknowns*(j-2)
+      it=imax-j
+      do i=j,num_cols
+      ia=ia+num_unknowns
+      ib=ia+it
+      swap_val=system_matrix(ia)
+      system_matrix(ia)=system_matrix(ib)
+      system_matrix(ib)=swap_val
+      system_matrix(ia)=system_matrix(ia)/biga
+      end do
+      if(j.eq.num_unknowns) exit
+      ia=num_unknowns*(j-1)
+      do ix=jy,num_unknowns
+      ib=ia+ix
+      it=j-ix
+      do jx=jy,num_cols
+      ic=num_unknowns*(jx-1)+ix
+      id=ic+it
+      system_matrix(ic)=system_matrix(ic)-system_matrix(ib)*system_matrix(id)
+      end do
+      end do
+      end do
+      ny=num_unknowns-1
+      it=num_unknowns*num_unknowns
+      do j=1,ny
+      ia=it-j
+      ic=num_unknowns*num_cols
+      ib=ic-j
+      do i=1,j
+      system_matrix(ib)=system_matrix(ib)-system_matrix(ia)*system_matrix(ic)
+      n1=num_cols-1
+      ig=ib
+      ih=ic
+      do
+      if(n1.le.num_unknowns) exit
+      ig=ig-num_unknowns
+      ih=ih-num_unknowns
+      system_matrix(ig)=system_matrix(ig)-system_matrix(ia)*system_matrix(ih)
+      n1=n1-1
+      end do
+      ia=ia-num_unknowns
+      ic=ic-1
+      end do
+      end do
+      return
+end subroutine simeqc
+
+!----------------------------------------------------------------------
+! slopes
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original slopes.f; only variable names, source form, and comment
+! style were updated.
+!
+!                                 SHAPE PRESERVING QUADRATIC SPLINES
+!                                   BY D.F.MCALLISTER & J.A.ROULIER
+!                                     CODED BY S.L.DODD & M.ROULIER
+!                                       N.C.STATE UNIVERSITY
+!
+! SLOPES CALCULATES THE DERIVATIVE AT EACH OF THE DATA POINTS. THE
+! SLOPES PROVIDED WILL INSURE THAT AN OSCULATORY QUADRATIC SPLINE WILL
+! HAVE ONE ADDITIONAL KNOT BETWEEN TWO ADJACENT POINTS OF INTERPOLATION.
+! CONVEXITY AND MONOTONICITY ARE PRESERVED WHEREVER THESE CONDITIONS
+! ARE COMPATIBLE WITH THE DATA.
+!
+! ON INPUT--
+!
+!   table_x CONTAINS THE ABSCISSAS OF THE DATA POINTS.
+!
+!   table_y CONTAINS THE ORDINATES OF THE DATA POINTS.
+!
+!   num_points IS THE NUMBER OF DATA POINTS (DIMENSION OF table_x,
+!   table_y).
+!
+!
+! ON OUTPUT--
+!
+!   first_derivs CONTAINS THE VALUE OF THE FIRST DERIVATIVE AT EACH
+!   DATA POINT.
+!
+! AND
+!
+!   SLOPES DOES NOT ALTER table_x,table_y,num_points.
+!
+! NOTE: like search.f, the original slopes.f has no blanket IMPLICIT
+! REAL*8(A-H,O-Z) statement -- it relies on default Fortran implicit
+! typing (I-N integer, else real) except where table_x/table_y/
+! first_derivs and the M1/M2/... scratch variables are explicitly
+! declared REAL*8. Types below match that original default typing.
+!
+!----------------------------------------------------------------------
+!
+subroutine slopes(table_x, table_y, first_derivs, num_points)
+      use star_info_lib, only: json
+
+      implicit none
+
+      double precision, intent(in) :: table_x(json), table_y(json)
+      double precision, intent(out) :: first_derivs(json)
+      integer, intent(in) :: num_points
+      integer :: num_points_m1, prev_idx, idx, next_idx
+      double precision :: slope1, slope2, x_bar, x_hat, y_diff1, y_diff2, &
+           y_x_mid, x_mid, slope1_saved, slope2_saved
+
+      num_points_m1= num_points - 1
+      prev_idx=1
+      idx=2
+      next_idx=3
+!
+! CALCULATE THE SLOPES OF THE TWO LINES JOINING THE FIRST THREE DATA
+! POINTS
+      y_diff1=table_y(2) - table_y(1)
+      y_diff2=table_y(3) - table_y(2)
+      slope1=y_diff1/(table_x(2) - table_x(1))
+      slope1_saved=slope1
+      slope2=y_diff2/(table_x(3)-table_x(2))
+      slope2_saved=slope2
+!
+! MAIN LOOP OVER THE INTERIOR POINTS. (Restructured 2026 from the
+! original goto flow at labels 10-50; arithmetic is unchanged.)
+!
+! IF ONE OF THE PRECEDING SLOPES IS ZERO OR IF THEY HAVE OPPOSITE SIGN,
+! ASSIGN THE VALUE ZERO TO THE DERIVATIVE AT THE MIDDLE POINT.
+      do
+      if (slope1.eq.0.d0 .or. slope2.eq.0.d0 .or. (slope1*slope2).le.0.d0) then
+         first_derivs(idx)= 0.d0
+      else if (abs(slope1) .gt. abs(slope2)) then
+!
+! CALCULATE THE SLOPE BY EXTENDING THE LINE WITH SLOPE M1.
+         x_bar=(y_diff2/slope1) + table_x(idx)
+         x_hat= (x_bar + table_x(next_idx))/2.d0
+         first_derivs(idx)=y_diff2/(x_hat - table_x(idx))
+      else
+!
+! CALCULATE THE SLOPE BY EXTENDING THE LINE WITH SLOPE M2.
+         x_bar=(-y_diff1/slope2) + table_x(idx)
+         x_hat=(table_x(prev_idx) + x_bar)/2.d0
+         first_derivs(idx)=y_diff1/(table_x(idx) - x_hat)
+      end if
+!
+! INCREMENT COUNTERS
+      prev_idx=idx
+      idx=next_idx
+      next_idx=next_idx+1
+      if (idx .gt. num_points_m1) exit
+!
+! CALCULATE THE SLOPES OF THE TWO LINES JOINING THREE CONSECUTIVE DATA
+! POINTS.
+      y_diff1=table_y(idx) - table_y(prev_idx)
+      y_diff2=table_y(next_idx) - table_y(idx)
+      slope1=y_diff1/(table_x(idx) - table_x(prev_idx))
+! KC 2025-05-31 PREVENT FLOATING POINT EXCEPTION
+!       M2=YDIF2/(XTAB(I1) - XTAB(I))
+      call safedivide(y_diff2, (table_x(next_idx) - table_x(idx)), slope2)
+      end do
+!
+! CALCULATE THE SLOPE AT THE LAST POINT, XTAB(NUM).
+      if ((slope1*slope2) .lt. 0.d0) then
+         first_derivs(num_points)=2.d0*slope2
+      else
+         x_mid= (table_x(num_points_m1)+table_x(num_points))/2.d0
+         y_x_mid=first_derivs(num_points_m1)*(x_mid - table_x(num_points_m1)) + &
+              table_y(num_points_m1)
+! KC 2025-05-31 PREVENT FLOATING POINT EXCEPTION
+!       MTAB(NUM)=(YTAB(NUM)-YXMID)/(XTAB(NUM)-XMID)
+         call safedivide((table_y(num_points)-y_x_mid), &
+              (table_x(num_points)-x_mid), first_derivs(num_points))
+         if ((first_derivs(num_points)*slope2) .lt. 0.d0) then
+            first_derivs(num_points)=0.d0
+         end if
+      end if
+!
+! CALCULATE THE SLOPE AT THE FIRST POINT, XTAB(1).
+      if ((slope1_saved*slope2_saved) .lt. 0.d0) then
+         first_derivs(1)=2.d0*slope1_saved
+         return
+      end if
+      x_mid=(table_x(1) + table_x(2))/2.d0
+      y_x_mid=first_derivs(2)*(x_mid - table_x(2)) + table_y(2)
+      first_derivs(1)=(y_x_mid - table_y(1))/(x_mid - table_x(1))
+      if ((first_derivs(1) * slope1_saved) .lt. 0.d0) then
+         first_derivs(1)=0.d0
+      end if
+      return
+!
+end subroutine slopes
+
+!----------------------------------------------------------------------
+! KC 2025-05-31 SAFEDIVIDE
+!----------------------------------------------------------------------
+subroutine safedivide(numerator, denominator, quotient)
+      implicit none
+      double precision, intent(in) :: numerator, denominator
+      double precision, intent(out) :: quotient
+
+      quotient = 0.d0
+      if (numerator .ne. 0.d0 .and. denominator .ne. 0.d0) then
+         quotient = numerator / denominator
+      end if
+
+      return
+end subroutine safedivide
+
+!----------------------------------------------------------------------
+! cases
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original cases.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+!                                 SHAPE PRESERVING QUADRATIC SPLINES
+!                                   BY D.F.MCALLISTER & J.A.ROULIER
+!                                     CODED BY S.L.DODD & M.ROULIER
+!                                       N.C. STATE UNIVERSITY
+!
+! Computes the knots and other parameters of the spline on the
+! interval (x_left,x_right).
+!
+! ON INPUT--
+!
+!   (x_left,y_left) AND (x_right,y_right) ARE THE COORDINATES OF THE
+!   POINTS OF INTERPOLATION.
+!
+!   slope_left IS THE SLOPE AT (x_left,y_left).
+!
+!   slope_right IS THE SLOPE AT (x_right,y_right)
+!
+!   spline_case CONTROLS THE NUMBER AND LOCATION OF THE KNOTS.
+!
+!
+! ON OUTPUT--
+!
+!   (knot_v_x,knot_v_y),(knot_w_x,knot_w_y),(knot_z_x,knot_z_y), AND
+!   (knot_e_x,knot_e_y) ARE THE COORDINATES OF THE KNOTS AND OTHER
+!   PARAMETERS OF THE SPLINE ON (x_left,x_right). (knot_e_x,knot_e_y)
+!   AND (knot_y_x,knot_y_y) ARE USED ONLY IF spline_case=4.
+!
+! AND
+!
+!   CASES DOES NOT ALTER x_left,y_left,slope_left,slope_right,x_right,
+!   y_right.
+!
+!----------------------------------------------------------------------
+subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
+     y_right, knot_e_x, knot_e_y, knot_v_x, knot_v_y, knot_w_x, &
+     knot_w_y, knot_z_x, knot_z_y, knot_y_x, knot_y_y, spline_case)
+
+      double precision :: x_left, y_left, slope_left, slope_right, &
+           x_right, y_right, knot_v_x, knot_v_y, knot_z_x, knot_z_y, &
+           knot_w_x, knot_w_y, knot_e_x, knot_e_y, &
+           mbar1, mbar2, mbar3, c1, d1, h1, j1, knot_y_x, knot_y_y, &
+           k1, ztwo
+      integer :: spline_case
+      if (spline_case .ne. 3 .and. spline_case .ne. 4) then
+      if (spline_case .ne. 2) then
+
+! CALCULATE THE PARAMETERS FOR CASE 1.
+      knot_z_x=(y_left-y_right+slope_right*x_right-slope_left*x_left)/ &
+           (slope_right-slope_left)
+      ztwo=y_left+slope_left*(knot_z_x-x_left)
+      knot_v_x=(x_left+knot_z_x)/2.d0
+      knot_v_y=(y_left+ztwo)/2.d0
+      knot_w_x=(knot_z_x+x_right)/2.d0
+      knot_w_y=(ztwo+y_right)/2.d0
+      knot_z_y=knot_v_y+((knot_w_y-knot_v_y)/(knot_w_x-knot_v_x))* &
+           (knot_z_x-knot_v_x)
+      return
+
+! CALCULATE THE PARAMETERS FOR CASE 2.
+      end if
+      knot_z_x=(x_left+x_right)/2.d0
+      knot_v_x=(x_left+knot_z_x)/2.d0
+      knot_v_y=y_left+slope_left*(knot_v_x-x_left)
+      knot_w_x=(knot_z_x+x_right)/2.d0
+      knot_w_y=y_right+slope_right*(knot_w_x-x_right)
+      knot_z_y=(knot_v_y+knot_w_y)/2.d0
+      return
+
+! CALCULATE THE PARAMETERS USED IN BOTH CASES 3 AND 4.
+      end if
+      c1=x_left+(y_right-y_left)/slope_left
+      d1=x_right+(y_left-y_right)/slope_right
+      h1=2.d0*c1-x_left
+      j1=2.d0*d1-x_right
+      mbar1=(y_right-y_left)/(h1-x_left)
+      mbar2=(y_left-y_right)/(j1-x_right)
+
+      if (spline_case .ne. 4) then
+
+! CALCULATE THE PARAMETERS FOR CASE 3.
+      k1=(y_left-y_right+x_right*mbar2-x_left*mbar1)/(mbar2-mbar1)
+      if (abs(slope_left) .le. abs(slope_right)) then
+      knot_z_x=(k1+x_right)/2.d0
+      knot_v_x=(x_left+knot_z_x)/2.d0
+      knot_v_y=y_left+slope_left*(knot_v_x-x_left)
+      knot_w_x=(x_right+knot_z_x)/2.d0
+      knot_w_y=y_right+slope_right*(knot_w_x-x_right)
+      knot_z_y=knot_v_y+((knot_w_y-knot_v_y)/(knot_w_x-knot_v_x))* &
+      (knot_z_x-knot_v_x)
+      return
+      end if
+      knot_z_x=(k1+x_left)/2.d0
+      knot_v_x=(x_left+knot_z_x)/2.d0
+      knot_v_y=y_left+slope_left*(knot_v_x-x_left)
+      knot_w_x=(x_right+knot_z_x)/2.d0
+      knot_w_y=y_right+slope_right*(knot_w_x-x_right)
+      knot_z_y=knot_v_y+((knot_w_y-knot_v_y)/(knot_w_x-knot_v_x))* &
+           (knot_z_x-knot_v_x)
+      return
+
+! CALCULATE THE PARAMETERS FOR CASE 4.
+      end if
+      knot_y_x=(x_left+c1)/2.d0
+      knot_v_x=(x_left+knot_y_x)/2.d0
+      knot_v_y=slope_left*(knot_v_x-x_left) + y_left
+      knot_z_x=(d1+x_right)/2.d0
+      knot_w_x=(x_right+knot_z_x)/2.d0
+      knot_w_y=slope_right*(knot_w_x-x_right) + y_right
+      mbar3=(knot_w_y-knot_v_y)/(knot_w_x-knot_v_x)
+      knot_y_y=mbar3*(knot_y_x-knot_v_x) + knot_v_y
+      knot_z_y=mbar3*(knot_z_x-knot_v_x) + knot_v_y
+      knot_e_x=(knot_y_x+knot_z_x)/2.d0
+      knot_e_y=mbar3*(knot_e_x-knot_v_x) + knot_v_y
+      return
+
+end subroutine cases
+
+!----------------------------------------------------------------------
+! choose
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original choose.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+!                                 SHAPE PRESERVING QUADRATIC SPLINES
+!                                   BY D.F.MCALLISTER & J.A. ROULIER
+!                                     CODED BY S.L.DODD & M.ROULIER
+!
+! CHOOSE DETERMINES THE CASE NEEDED FOR THE COMPUTATION OF THE PARAME-
+! TERS OF THE QUADRATIC SPLINE AND RETURNS THE VALUE IN THE VARIABLE
+! spline_case.
+!
+! ON INPUT--
+!
+!   (x_left,y_left) GIVES THE COORDINATES OF ONE OF THE POINTS OF
+!   INTERPOLATION.
+!
+!   slope_left SPECIFIES THE DERIVATIVE CONDITION AT (x_left,y_left).
+!
+!   (x_right,y_right) GIVES THE COORDINATES OF ONE OF THE POINTS OF
+!   INTERPOLATION.
+!
+!   slope_right SPECIFIES THE DERIVATIVE CONDITION AT (x_right,y_right).
+!
+!   eps_tol IS AN ERROR TOLERANCE USED TO DISTINGUISH CASES WHEN
+!   slope_left OR slope_right IS RELATIVELY CLOSE TO THE SLOPE OR TWICE
+!   THE SLOPE OF THE LINE SEGMENT JOINING (x_left,y_left) AND
+!   (x_right,y_right). IF eps_tol IS NOT EQUAL TO ZERO, THEN eps_tol
+!   SHOULD BE GREATER THAN OR EQUAL TO MACHINE EPSILON.
+!
+!
+! ON OUTPUT--
+!
+!   spline_case CONTAINS THE VALUE WHICH CONTROLS HOW THE PARAMETERS OF
+!   THE QUADRATIC SPLINE ARE EVALUATED.
+!
+! AND
+!
+!   CHOOSE DOES NOT ALTER x_left,y_left,x_right,y_right,slope_left,
+!   slope_right,eps_tol.
+!
+!----------------------------------------------------------------------
+subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
+     y_right, eps_tol, spline_case)
+
+      double precision :: x_left, y_left, slope_left, slope_right, &
+           x_right, y_right, mref, mref1, mref2, spq, prod, &
+           prod1, prod2, eps_tol
+      integer :: spline_case
+
+! CALCULATE THE SLOPE spq OF THE LINE JOINING (x_left,y_left),(x_right,y_right).
+      spq=(y_right-y_left)/(x_right-x_left)
+
+! CHECK WHETHER OR NOT spq IS 0.
+! ******MODIFICATION BY MARC PINSONNEAULT TO AVOID DIVISION BY ZERO
+! ******IN SR CASES
+      if (slope_left.eq.0.0d0 .or. slope_right.eq.0.0d0) then
+         spline_case=2
+         return
+      end if
+! ******
+      if (spq .eq. 0.d0) then
+         if ((slope_left*slope_right) .ge. 0.d0) then
+            spline_case=2
+         else
+            spline_case=1
+         end if
+         return
+      end if
+
+      prod1=spq*slope_left
+      prod2=spq*slope_right
+
+! FIND THE ABSOLUTE VALUES OF THE SLOPES spq,slope_left,AND slope_right.
+      mref=abs(spq)
+      mref1=abs(slope_left)
+      mref2=abs(slope_right)
+
+! THE SIGN OF AT LEAST ONE OF THE SLOPES slope_left,slope_right DOES NOT
+! AGREE WITH THE SIGN OF THE SLOPE spq.
+      if ((prod1 .lt. 0.d0) .or. (prod2 .lt. 0.d0)) then
+         if ((prod1 .lt. 0.d0) .and. (prod2 .lt. 0.d0)) then
+            spline_case=2
+            return
+         end if
+         if (prod1 .ge. 0.d0) then
+            if (mref1 .gt. ((1.d0+eps_tol)*mref)) then
+               spline_case=1
+            else
+               spline_case=2
+            end if
+            return
+         end if
+         if (mref2 .gt. ((1.d0+eps_tol)*mref)) then
+            spline_case=1
+         else
+            spline_case=2
+         end if
+         return
+      end if
+
+! IF THE RELATIVE DEVIATION OF slope_left OR slope_right FROM spq IS LESS THAN
+! eps_tol, THEN CHOOSE CASE 2 OR CASE 3.
+      if (abs(spq-slope_left).gt.eps_tol*mref .and. abs(spq-slope_right).gt.eps_tol*mref) then
+         prod=(mref-mref1)*(mref-mref2)
+         if (prod .lt. 0.d0) then
+
+! L1, THE LINE THROUGH (x_left,y_left) WITH SLOPE slope_left, AND L2, THE LINE
+! THROUGH (x_right,y_right) WITH SLOPE slope_right, INTERSECT AT A POINT WHOSE
+! ABSCISSA IS BETWEEN x_left AND x_right. THE ABSCISSA BECOMES A KNOT OF THE
+! SPLINE.
+            spline_case=1
+            return
+         end if
+      end if
+
+! IN CASES 3 AND 4, SIGN(slope_left)=SIGN(slope_right)=SIGN(spq).
+! CHOOSE CASE 4 IF THE OTHER SLOPE IS GREATER THAN (2.-eps_tol)*mref
+! (NEITHER L1 NOR L2 CROSSES THE MIDLINE: TWO KNOTS); OTHERWISE CASE 3
+! (EITHER L1 OR L2 CROSSES THE MIDLINE, BUT NOT BOTH).
+      if (mref1 .gt. (2.d0*mref)) then
+         if (mref2 .gt. (2.d0-eps_tol)*mref) then
+            spline_case=4
+         else
+            spline_case=3
+         end if
+         return
+      end if
+      if (mref2 .gt. (2.d0*mref)) then
+         if (mref1 .gt. (2.d0-eps_tol)*mref) then
+            spline_case=4
+         else
+            spline_case=3
+         end if
+         return
+      end if
+
+! BOTH L1 AND L2 CROSS THE LINE THROUGH (x_left+x_right/2.,y_left) AND
+! (x_left+x_right/2.,y_right), WHICH IS THE MIDLINE OF THE RECTANGLE FORMED
+! BY (x_left,y_left),(x_right,y_left),(x_right,y_right), AND (x_left,y_right),
+! OR BOTH slope_left AND slope_right HAVE SIGNS DIFFERENT THAN THE SIGN OF
+! spq, OR ONE OF slope_left AND slope_right HAS OPPOSITE SIGN FROM spq AND L1
+! AND L2 INTERSECT TO THE LEFT OF x_left OR TO THE RIGHT OF x_right. THE
+! POINT (x_left+x_right)/2. IS A KNOT OF THE SPLINE.
+! (Restructured 2026 from the original goto decision tree; two
+! unreachable branches at old labels 60/110 were dropped.)
+      spline_case=2
+      return
+
+end subroutine choose
+
+!----------------------------------------------------------------------
+! search
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original search.f; only variable names, source form, and comment
+! style were updated.
+!
+!                                 SHAPE PRESERVING QUADRATIC SPLINES
+!                                   BY D.F.MCALLISTER & J.A.ROULIER
+!                                     CODED BY S.L.DODD & M.ROULIER
+!                                       N.C. STATE UNIVERSITY
+!
+! SEARCH CONDUCTS A BINARY SEARCH FOR eval_point. SEARCH IS CALLED ONLY
+! IF eval_point IS BETWEEN table_x(1) AND table_x(num_table_points).
+!
+! ON INPUT--
+!
+!   table_x CONTAINS THE ABSCISSAS OF THE DATA POINTS OF INTERPOLATION.
+!
+!   num_table_points IS THE DIMENSION OF table_x
+!
+!   eval_point IS THE VALUE WHOSE RELATIVE POSITION IN table_x IS
+!   LOCATED BY SEARCH.
+!
+!
+! ON OUTPUT--
+!
+!   found_flag IS SET EQUAL TO 1 IF eval_point IS FOUND IN table_x AND
+!   IS SET EQUAL TO 0 OTHERWISE.
+!
+!   table_idx IS THE INDEX OF THE LARGEST VALUE IN table_x FOR WHICH
+!   table_x(I) .LT. eval_point.
+!
+! AND
+!
+!   SEARCH DOES NOT ALTER table_x,num_table_points,eval_point.
+!
+! NOTE: unlike most YREC files, the original search.f has no blanket
+! IMPLICIT REAL*8(A-H,O-Z) statement -- it relies on default Fortran
+! implicit typing (I-N integer, else real) except where XTAB/S and
+! FND/FIRST are explicitly declared. Types below are chosen to match
+! that original default typing exactly (NUM/LCN/MIDDLE/LAST all fall
+! in the I-N default-integer range).
+!
+subroutine search(table_x, num_table_points, eval_point, table_idx, &
+     found_flag)
+      use star_info_lib, only: json
+
+      implicit none
+
+      double precision, intent(in) :: table_x(json), eval_point
+      integer, intent(in) :: num_table_points
+      integer, intent(out) :: table_idx, found_flag
+      integer :: first_idx, last_idx, middle_idx
+
+      first_idx=1
+      last_idx=num_table_points
+      found_flag=0
+!
+! (Restructured 2026 from the original goto binary search at labels
+! 10-60; comparisons are unchanged.)
+      if (table_x(1) .eq. eval_point) then
+         table_idx=1
+         found_flag=1
+         return
+      end if
+      if (table_x(num_table_points) .eq. eval_point) then
+         table_idx=num_table_points
+         found_flag=1
+         return
+      end if
+!
+      do
+!
+! IF (LAST-FIRST) .EQ. 1, S IS NOT IN XTAB.  SET POSITION EQUAL TO
+! FIRST.
+      if ((last_idx-first_idx) .eq. 1) then
+         table_idx=first_idx
+         return
+      end if
+!
+      middle_idx=(first_idx+last_idx)/2
+!
+! CHECK IF S .EQ. XTAB(MIDDLE). IF NOT, CONTINUE THE SEARCH IN THE
+! APPROPRIATE HALF OF THE VECTOR XTAB.
+      if (table_x(middle_idx) .lt. eval_point) then
+         first_idx=middle_idx
+      else if (table_x(middle_idx) .eq. eval_point) then
+         table_idx=middle_idx
+         found_flag =1
+         return
+      else
+         last_idx=middle_idx
+      end if
+      end do
+end subroutine search
+
+!----------------------------------------------------------------------
+! spline
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original spline.f; only variable names, source form, and comment
+! style were updated.
+!
+!                                 SHAPE PRESERVING QUDRATIC SPLINES
+!                                   BY D.F.MCALLISTER & J.A.ROULIER
+!                                     CODED BY S.L.DODD & M.ROULIER
+!                                       N.C. STATE UNIVERSITY
+!
+! SPLINE FINDS THE IMAGE OF A POINT IN eval_point.
+!
+! ON INPUT--
+!
+!   eval_point CONTAINS THE VALUE AT WHICH THE SPLINE IS EVALUATED.
+!
+!   (x_left,y_left) ARE THE COORDINATES OF THE LEFT-HAND DATA POINT
+!   USED IN THE EVALUATION OF eval_point.
+!
+!   (x_right,y_right) ARE THE COORDINATES OF THE RIGHT-HAND DATA POINT
+!   USED IN THE EVALUATION OF eval_point.
+!
+!   z1,z2,y1,y2,e2,w2,v2 ARE THE PARAMETERS OF THE SPLINE.
+!
+!   spline_case CONTROLS THE EVALUATION OF THE SPLINE BY INDICATING
+!   WHETHER ONE OR TWO KNOTS WERE PLACED IN THE INTERVAL
+!   (x_left,x_right).
+!
+!
+! ON OUTPUT--
+!
+!   SPLINE IS THE IMAGE OF eval_point.
+!
+! AND
+!
+!   SPLINE DOES NOT ALTER ANY OF THE INPUT PARAMETERS.
+!
+!----------------------------------------------------------------------
+!
+!  *****MODIFICATION DUE TO MARC PINSONNEAULT 6/87*****
+!  IF DIVISION BY ZERO WOULD BE CAUSED,LINEAR INTERPOLATION IS USED
+!  INSTEAD OF THE SPLINE.
+! IF NCASE .EQ. 4, MORE THAN ONE KNOT WAS PLACED IN THE INTERVAL.
+function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
+     y1, y2, e2, w2, v2, spline_case)
+
+      implicit none
+      double precision :: spline
+      double precision, intent(in) :: eval_point, z1, z2, x_left, y_left, &
+           x_right, y_right, y1, y2, e2, w2, v2
+      integer, intent(in) :: spline_case
+      double precision :: linear_interp_frac
+
+! (Restructured 2026 from the original arithmetic-IF goto fans at
+! labels 10-100; arithmetic is unchanged.)
+      if (spline_case .ne. 4) then
+!
+! CASES 1,2, OR 3.
+!
+! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE KNOT.
+      if (z1 .lt. eval_point) then
+         if(x_right.ne.z1)then
+         spline=(z2*(x_right-eval_point)**2+w2*2.d0*(eval_point-z1)*(x_right-eval_point) &
+                 +y_right*(eval_point-z1)**2)/(x_right-z1)**2
+         else
+          linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+          spline = y_left + linear_interp_frac*(y_right - y_left)
+         end if
+      else if (z1 .eq. eval_point) then
+         spline=z2
+      else
+         if(z1.ne.x_left)then
+         spline=(y_left*(z1-eval_point)**2+v2*2.d0*(eval_point-x_left)*(z1-eval_point)+ &
+                 z2*(eval_point-x_left)**2)/(z1-x_left)**2
+         else
+          linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+          spline = y_left + linear_interp_frac*(y_right - y_left)
+         end if
+      end if
+      return
+      end if
+!
+! CASE 4.
+!
+! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE FIRST KNOT.
+      if (y1 .lt. eval_point) then
+!
+! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE SECOND KNOT.
+         if (z1 .lt. eval_point) then
+            if(x_right.ne.z1)then
+            spline=(z2*(x_right-eval_point)**2+w2*2.d0*(eval_point-z1)*(x_right-eval_point) &
+                    +y_right*(eval_point-z1)**2)/(x_right-z1)**2
+            else
+             linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+             spline = y_left + linear_interp_frac*(y_right - y_left)
+            end if
+         else if (z1 .eq. eval_point) then
+            spline=z2
+         else
+            if(z1.ne.y1)then
+            spline=(y2*(z1-eval_point)**2+e2*2.d0*(eval_point-y1)*(z1-eval_point)+z2*(eval_point &
+                    -y1)**2)/(z1-y1)**2
+            else
+             linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+             spline = y_left + linear_interp_frac*(y_right - y_left)
+            end if
+         end if
+      else if (y1 .eq. eval_point) then
+         spline=y2
+      else
+         if(y1.ne.x_left)then
+         spline=(y_left*(y1-eval_point)**2+v2*2.d0*(eval_point-x_left)*(y1-eval_point)+ &
+                 y2*(eval_point-x_left)**2)/(y1-x_left)**2
+         else
+          linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
+          spline = y_left + linear_interp_frac*(y_right - y_left)
+         end if
+      end if
+      return
+end function spline
+
+!----------------------------------------------------------------------
+! meval
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original meval.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! Controls the evaluation of an osculatory (shape-preserving)
+! quadratic spline, by D.F. McAllister & J.A. Roulier, coded by
+! S.L. Dodd & M. Roulier, N.C. State University. The caller may
+! provide slopes at the points of interpolation directly, or use
+! subroutine SLOPES to compute slopes consistent with the shape of
+! the data.
+!
+! On input --
+!   eval_x must be a nondecreasing vector of points at which the
+!   spline will be evaluated.
+!   table_x contains the abscissas of the data points to be
+!   interpolated. table_x must be increasing.
+!   table_y contains the ordinates of the data points to be
+!   interpolated.
+!   table_slope contains the slope of the spline at each point of
+!   interpolation.
+!   num_table_points is the number of data points (dimension of
+!   table_x and table_y).
+!   num_eval_points is the number of points of evaluation (dimension
+!   of eval_x and eval_y).
+!   eps_tol is a relative error tolerance used in subroutine CHOOSE to
+!   distinguish the situation table_slope(i) or table_slope(i+1) is
+!   relatively close to the slope or twice the slope of the linear
+!   segment between table_x(i) and table_x(i+1). If this situation
+!   occurs, roundoff may cause a change in convexity or monotonicity
+!   of the resulting spline and a change in the case number provided
+!   by CHOOSE. If eps_tol is not equal to zero, then eps_tol should be
+!   greater than or equal to machine epsilon.
+!
+! On output --
+!   eval_y contains the images of the points in eval_x.
+!   err_code is an error code --
+!   err_code=0 - meval ran normally.
+!   err_code=1 - eval_x(i) is less than table_x(1) for at least one i,
+!                or eval_x(i) is greater than table_x(num_table_points)
+!                for at least one i. meval will extrapolate to provide
+!                function values for these abscissas.
+!   err_code=2 - eval_x(i+1) .lt. eval_x(i) for some i.
+!
+! meval does not alter eval_x, table_x, table_y, table_slope,
+! num_table_points, num_eval_points.
+!
+! meval calls the following subroutines or functions:
+!    search
+!    cases
+!    choose
+!    spline
+!----------------------------------------------------------------------
+subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
+     num_table_points, num_eval_points, eps_tol, err_code)
+
+      implicit none
+
+      integer, parameter :: max_points = 5000
+
+      double precision, intent(in) :: eval_x(max_points), &
+           table_x(max_points), table_y(max_points), &
+           table_slope(max_points), eps_tol
+      double precision, intent(out) :: eval_y(max_points)
+      integer, intent(in) :: num_table_points, num_eval_points
+      integer, intent(out) :: err_code
+
+      double precision :: spline_v1, spline_v2, spline_w1, spline_w2, &
+           spline_z1, spline_z2, spline_y1, spline_y2, spline_e1, spline_e2
+      integer :: start_idx, start_idx1, end_idx, end_idx1, found_flag
+      integer :: i, ind, loop_bound, table_idx, table_idx1, spline_case, &
+           num_minus1
+      logical :: recompute_tail_params
+      start_idx = 1
+      end_idx = num_eval_points
+      err_code = 0
+      if (num_eval_points .ne. 1) then
+
+! Determine if eval_x is nondecreasing.
+      loop_bound = num_eval_points - 1
+      do i = 1, loop_bound
+        if (eval_x(i+1) .ge. eval_x(i)) cycle
+        err_code = 2
+        return
+      end do
+
+! If eval_x(i) .lt. table_x(1), then eval_x(i)=table_y(1).
+! If eval_x(i) .gt. table_x(num_table_points), then
+! eval_x(i)=table_y(num_table_points).
+!
+! Determine if any of the points in eval_x are less than the abscissa
+! of the first data point.
+      end if
+      do i = 1, num_eval_points
+        if (eval_x(i) .ge. table_x(1)) exit
+        start_idx = i + 1
+      end do
+
+      loop_bound = num_eval_points + 1
+
+! Determine if any of the points in eval_x are greater than the
+! abscissa of the last data point.
+      do i = 1, num_eval_points
+        ind = loop_bound - i
+        if (eval_x(ind) .le. table_x(num_table_points)) exit
+        end_idx = ind - 1
+      end do
+
+! Calculate the images of points of evaluation whose abscissas are
+! less than the abscissa of the first data point.
+      if (start_idx .ne. 1) then
+! Set the error parameter to indicate that extrapolation has occurred.
+      err_code = 1
+      call choose(table_x(1), table_y(1), table_slope(1), table_slope(2), &
+           table_x(2), table_y(2), eps_tol, spline_case)
+      call cases(table_x(1), table_y(1), table_slope(1), table_slope(2), &
+           table_x(2), table_y(2), spline_e1, spline_e2, spline_v1, &
+           spline_v2, spline_w1, spline_w2, spline_z1, spline_z2, &
+           spline_y1, spline_y2, spline_case)
+      start_idx1 = start_idx - 1
+      do i = 1, start_idx1
+       eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, table_x(1), &
+            table_y(1), table_x(2), table_y(2), spline_y1, spline_y2, &
+            spline_e2, spline_w2, spline_v2, spline_case)
+      end do
+      if (num_eval_points .eq. 1) then
+         return
+      end if
+      end if
+
+! search locates the interval in which the first in-range point of
+! evaluation lies. The single-out-of-range-high case skips straight
+! to the high-extrapolation tail.
+      recompute_tail_params = .true.
+      if (num_eval_points .ne. 1 .or. end_idx .eq. num_eval_points) then
+      call search(table_x, num_table_points, eval_x(start_idx), &
+           table_idx, found_flag)
+
+      table_idx1 = table_idx + 1
+
+! If the first in-range point of evaluation is equal to one of the
+! data points, assign the appropriate value from table_y. Continue
+! until a point of evaluation is found which is not equal to a data
+! point.
+      if (found_flag .ne. 0) then
+      do
+         eval_y(start_idx) = table_y(table_idx)
+      start_idx1 = start_idx
+      start_idx = start_idx + 1
+      if (start_idx .gt. num_eval_points) then
+         return
+      end if
+      if (eval_x(start_idx1) .ne. eval_x(start_idx)) exit
+      end do
+
+! Advance the table pointers until the next point of evaluation lies
+! inside the current table interval, assigning images to any points
+! of evaluation that coincide with data points along the way.
+! (Restructured 2026 from the original arithmetic-IF web at labels
+! 100/110/120; comparisons and order of assignment are unchanged.)
+      do
+         if (eval_x(start_idx) .lt. table_x(table_idx1)) exit
+         if (eval_x(start_idx) .eq. table_x(table_idx1)) then
+            do
+               eval_y(start_idx) = table_y(table_idx1)
+               start_idx1 = start_idx
+               start_idx = start_idx + 1
+               if (start_idx .gt. num_eval_points) then
+                  return
+               end if
+               if (eval_x(start_idx) .ne. eval_x(start_idx1)) exit
+            end do
+         end if
+         table_idx = table_idx1
+         table_idx1 = table_idx1 + 1
+      end do
+
+! Calculate the images of all the points which lie within range of
+! the data.
+      end if
+      if (table_idx .ne. 1 .or. err_code .ne. 1) then
+      call choose(table_x(table_idx), table_y(table_idx), &
+           table_slope(table_idx), table_slope(table_idx1), &
+           table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)
+      call cases(table_x(table_idx), table_y(table_idx), &
+           table_slope(table_idx), table_slope(table_idx1), &
+           table_x(table_idx1), table_y(table_idx1), spline_e1, spline_e2, &
+           spline_v1, spline_v2, spline_w1, spline_w2, spline_z1, &
+           spline_z2, spline_y1, spline_y2, spline_case)
+      end if
+
+      do i = start_idx, end_idx
+
+! If eval_x(i) is beyond the current table interval, advance the
+! pointers (and recompute the spline parameters) first; if it is a
+! data point, its image is known; otherwise evaluate the spline.
+! (Restructured 2026 from the original arithmetic-IF web at labels
+! 150/160/170/180; comparisons and evaluation order are unchanged.)
+      if (eval_x(i) .gt. table_x(table_idx1)) then
+         do
+            table_idx = table_idx1
+            table_idx1 = table_idx + 1
+            if (eval_x(i) .le. table_x(table_idx1)) exit
+         end do
+         if (eval_x(i) .lt. table_x(table_idx1)) then
+! Call choose to determine the appropriate case and then call cases
+! to compute the parameters of the spline.
+            call choose(table_x(table_idx), table_y(table_idx), &
+                 table_slope(table_idx), table_slope(table_idx1), &
+                 table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)
+            call cases(table_x(table_idx), table_y(table_idx), &
+                 table_slope(table_idx), table_slope(table_idx1), &
+                 table_x(table_idx1), table_y(table_idx1), spline_e1, spline_e2, &
+                 spline_v1, spline_v2, spline_w1, spline_w2, spline_z1, &
+                 spline_z2, spline_y1, spline_y2, spline_case)
+         end if
+      end if
+      if (eval_x(i) .eq. table_x(table_idx1)) then
+! If eval_x(i) is a data point, its image is known.
+         eval_y(i) = table_y(table_idx1)
+         cycle
+      end if
+      eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, &
+           table_x(table_idx), table_y(table_idx), table_x(table_idx1), &
+           table_y(table_idx1), spline_y1, spline_y2, spline_e2, &
+           spline_w2, spline_v2, spline_case)
+      end do
+
+! Calculate the images of the points of evaluation whose abscissas
+! are greater than the abscissa of the last data point.
+      if (end_idx .eq. num_eval_points) then
+         return
+      end if
+      if ((table_idx1 .eq. num_table_points) .and. (eval_x(end_idx) .ne. table_x(num_table_points))) then
+         recompute_tail_params = .false.
+      end if
+      end if
+
+! Previously, when we arrived at 200 or 210, NUM1 could be improperly
+! set. The NUM1= lines below protect from that. llp 8/19/08
+
+! Set the error parameter to indicate that extrapolation has occurred.
+      if (recompute_tail_params) then
+      err_code = 1
+      num_minus1 = max(num_table_points - 1, 1)
+      call choose(table_x(num_minus1), table_y(num_minus1), &
+           table_slope(num_minus1), table_slope(num_table_points), &
+           table_x(num_table_points), table_y(num_table_points), &
+           eps_tol, spline_case)
+      call cases(table_x(num_minus1), table_y(num_minus1), &
+           table_slope(num_minus1), table_slope(num_table_points), &
+           table_x(num_table_points), table_y(num_table_points), &
+           spline_e1, spline_e2, spline_v1, spline_v2, spline_w1, &
+           spline_w2, spline_z1, spline_z2, spline_y1, spline_y2, &
+           spline_case)
+      end if
+      end_idx1 = end_idx + 1
+      num_minus1 = max(num_table_points - 1, 1)
+      do i = end_idx1, num_eval_points
+       eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, &
+            table_x(num_minus1), table_y(num_minus1), &
+            table_x(num_table_points), table_y(num_table_points), &
+            spline_y1, spline_y2, spline_e2, spline_w2, spline_v2, &
+            spline_case)
+      end do
+
+      return
+end subroutine meval
 
 end module numerics_lib

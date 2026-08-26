@@ -6,7 +6,7 @@
 ! structure profile (pressure/temperature/mass/density/radius/
 ! composition/convective-flag/gradients/velocity/opacity/luminosity in
 ! log space, indexed 1..num_env_points), computed by the envelope
-! integrator (atm/atm_lib.f90) and read by core/starin.f90 and other
+! integrator (atm/atm_lib.f90) and read by core/read_starting_model.f90 and other
 ! callers that need the just-integrated envelope profile.
 !
 ! Per GUIDELINES.md's module-vs-argument test this is case 1b, same as
@@ -15,9 +15,9 @@
 ! are unchanged from the original COMMON member names, matching that
 ! same precedent.
 module envstruct_lib
+      use star_info_lib, only: json
       implicit none
       private
-      integer, parameter :: json = 5000
 
       type, public :: envelope_structure_state
             double precision :: env_log10_pressure(json), &

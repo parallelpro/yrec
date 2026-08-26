@@ -14,7 +14,7 @@
 ! defines the physical/mathematical constants used throughout the
 ! code (common/const1//const2//const3//const/debhu), loads the
 ! opacity tables (setupopac/mhdtbl), the degenerate-electron
-! (Fermi-Dirac) equation-of-state table used by eqrelv.f90, the
+! (Fermi-Dirac) equation-of-state table used by fully_ionized_eos.f90, the
 ! Kurucz/Castelli surface-pressure table used for the T-tau surface
 ! boundary condition, and (if enabled) the SCVH envelope
 ! equation-of-state tables.
@@ -31,13 +31,12 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       use kap_lib
       use atm_lib
       use atm_table_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use yale_eos_lib
       implicit none
       integer, intent(out) :: ierr
-      integer, parameter :: json = 5000
 ! JNT 06/14 ADD NTC FOR KURUCZ/CASTELLI 2004 ATM
       integer, parameter :: nt = 57, ng = 11
       integer, parameter :: ntc = 76, ngc = 11
@@ -71,8 +70,8 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! --- locals ---
       double precision :: speed_of_light, electron_mass, boltzmann_constant, &
            planck_constant, hydrogen_atom_mass, electron_charge_esu
-      double precision :: hra
-      external hra
+      double precision :: harvard_t_tau
+      external harvard_t_tau
       integer :: teff_idx, logg_idx
       logical :: found_valid_pressure
 
@@ -83,15 +82,15 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       ln10 = clndp
       clni = 1.0d0/ln10
 ! Luminosity of Sun
-      log10_solar_luminosity = dlog10(solar_luminosity_cgs)
-      ln_solar_luminosity = ln10/solar_luminosity_cgs
+      star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
+      star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
 ! Mass of Sun
-      solar_mass_cgs = 1.9891d33
-      log10_solar_mass = dlog10(solar_mass_cgs)
+      star%solar_mass_cgs = 1.9891d33
+      star%log10_solar_mass = dlog10(star%solar_mass_cgs)
 ! Radius of Sun
-      log10_solar_radius = dlog10(solar_radius_cgs)
+      star%log10_solar_radius = dlog10(star%solar_radius_cgs)
 ! Bolometric magnitude of the sun
-      solar_bolometric_magnitude = 4.79d0
+      star%solar_bolometric_magnitude = 4.79d0
 ! No. of seconds per year and other mathematical constants
       seconds_per_year = 3.1558d7
       cc13 = 1.0d0/3.0d0
@@ -154,13 +153,13 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     EVALUATE TAU = 2/3 TEMPERATURE FOR HRA
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      atm_hras = hra(cc23)
+      star%atm_hras = harvard_t_tau(cc23)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ierr = 0
-      call kap_init(star%env_comp%envelope_hydrogen_fraction, &
-           star%env_comp%envelope_metal_fraction, laol_work_array, &
+      call kap_init(star%envelope_hydrogen_fraction, &
+           star%envelope_metal_fraction, laol_work_array, &
            alex06_table_path,kurucz_table_path,kurucz_table2_path, &
            laol_table_path,laol_table2_path, &
            opal95_table_path,opal92_table_path,opal92_table2_path, &

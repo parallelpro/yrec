@@ -25,7 +25,7 @@
 ! in atm_get's header (and eos/eqstat.f90's metal_fraction fix) --
 ! silently tolerated while atm_get (as envint) was a bare external
 ! subroutine with no interface to check against, surfaced once
-! atm_lib.f90 gave it one. core/crrect.f90 (this routine's only
+! atm_lib.f90 gave it one. core/henyey_iterate.f90 (this routine's only
 ! caller) already passes real local variables for these positions, so
 ! widening the intent here changes nothing about how it's called.
 subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
@@ -37,7 +37,8 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
      log10_teff, hydrogen_fraction, metal_fraction, &
      pressure_rotation_factor, temperature_rotation_factor, &
      envelope_recomputed_flag, log10_pressure_limit, convective_flag, &
-     zone_index)
+     zone_index, ierr)
+      use star_info_lib, only: star
 
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
@@ -47,7 +48,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       use atm_table_lib
       use star_info_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       implicit none
       double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
            envelope_coeffs(9)
@@ -69,6 +70,8 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 
       logical :: tri_vertex_valid(3)
 
+      integer, intent(out) :: ierr
+      integer :: jerr_atm
       integer :: numenv
       data numenv/0/
 
@@ -80,43 +83,44 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
            save_boundary_flag, pulse_print_flag
       double precision :: b, gl, rl, adjusted_teffl
 
+      ierr = 0
 ! MHP 9/01
-      if (atm_choice.eq.3) then
+      if (star%job%atm_choice.eq.3) then
          if (log10_teff.ge.3.95d0) then
             write(*,*)
             write(*,5) log10_teff
  5          format('LOG TEFF OF ',F7.3,' ABOVE 3.95 - SWITCH' &
                    ,'TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
-            atm_choice = 0
+            star%job%atm_choice = 0
             start_new_triangle = .true.
 ! MHP 06/13 Remember that flag is switched
-            use_ttau_relation = .true.
+            star%use_ttau_relation = .true.
          endif
       endif
-      if (atm_choice.eq.4) then
+      if (star%job%atm_choice.eq.4) then
          if (log10_teff.ge.atm_table%allard_al_teffl_max) then
             write(*,*)
             write(*,7) log10_teff, atm_table%allard_al_teffl_max
  7          format('LOG TEFF OF ',F7.3,' ABOVE Allard Table max ',F7.3 &
                    ,'  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
-            atm_choice = 0
+            star%job%atm_choice = 0
             start_new_triangle = .true.
 ! MHP 06/13 Remember that flag is switched
-            use_ttau_relation = .true.
+            star%use_ttau_relation = .true.
          endif
       endif
-      if (use_ttau_relation) then
-         if (atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
-            atm_choice = atm_choice_initial
-            use_ttau_relation = .false.
+      if (star%use_ttau_relation) then
+         if (star%atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
+            star%job%atm_choice = star%atm_choice_initial
+            star%use_ttau_relation = .false.
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
-         else if (atm_choice_initial.eq.4.and.log10_teff.lt.atm_table%allard_al_teffl_max) then
-            atm_choice = atm_choice_initial
-            use_ttau_relation = .false.
+         else if (star%atm_choice_initial.eq.4.and.log10_teff.lt.atm_table%allard_al_teffl_max) then
+            star%job%atm_choice = star%atm_choice_initial
+            star%use_ttau_relation = .false.
             write(*,11) log10_teff, atm_table%allard_al_teffl_max
  11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &
            ,'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')
@@ -142,10 +146,10 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! STARTING PROCEDURE
        tri_orientation = +1.0d0
        tri_teffl(3) = log10_teff
-       tri_teffl(1) = tri_teffl(3) - 0.5d0*tri_delta_teffl
-       tri_teffl(2) = tri_teffl(1) + tri_delta_teffl
-       tri_logl(3) = luminosity_linear + 0.5d0*tri_delta_logl
-       tri_logl(1) = tri_logl(3) - tri_delta_logl
+       tri_teffl(1) = tri_teffl(3) - 0.5d0*star%ctrl%tri_delta_teffl
+       tri_teffl(2) = tri_teffl(1) + star%ctrl%tri_delta_teffl
+       tri_logl(3) = luminosity_linear + 0.5d0*star%ctrl%tri_delta_logl
+       tri_logl(1) = tri_logl(3) - star%ctrl%tri_delta_logl
        tri_logl(2) = tri_logl(1)
        start_new_triangle = .false.
       else
@@ -176,7 +180,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           envelope_recomputed_flag = .true.
           log10_teff = tri_teffl(i)
           b = dexp(ln10*tri_logl(i))
-          rl = 0.5d0*(tri_logl(i) + log10_solar_luminosity - 4.0d0*log10_teff - c4pil - csigl)
+          rl = 0.5d0*(tri_logl(i) + star%log10_solar_luminosity - 4.0d0*log10_teff - c4pil - csigl)
           gl = cgl + log10_star_mass - rl - rl
           numenv = numenv + 1
 ! G Somers 11/14, LPENV FUNCTIONALITY NOW INCLUDED IN LSTENV.
@@ -190,8 +194,8 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
             pulse_print_flag = .false.
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-          if (convective_flag(zone_index).and.spot_filling_factor.ne.0.0.and.spot_temp_contrast.ne.1.0) then
-               adjusted_teffl = log10_teff - 0.25*log10(spot_filling_factor * spot_temp_contrast**4.0 + 1.0 - spot_filling_factor)
+          if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
+               adjusted_teffl = log10_teff - 0.25*log10(star%ctrl%spot_filling_factor * star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
           else
              adjusted_teffl = log10_teff
           endif
@@ -201,7 +205,14 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &
                  stored_envelope_state,stored_vertex_index,atm_call_count, &
                  env_call_count,saha_state,vtx_logp, &
-                 vtx_logr,vtx_logt,pulse_print_flag)
+                 vtx_logr,vtx_logt,pulse_print_flag,ierr=jerr_atm)
+! 2026 numerics-gate opt-in: envelope-integration failures
+! (numerics_termination) and table errors surface here instead of
+! stopping inside atm_get; the caller (henyey_iterate) propagates.
+          if (jerr_atm /= 0) then
+             ierr = jerr_atm
+             return
+          end if
 ! G Somers END
           envelope_needs_recompute = .true.
        endif

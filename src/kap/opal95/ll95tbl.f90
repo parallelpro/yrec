@@ -13,9 +13,9 @@
 ! skipping the header, then builds the fixed-Z table via op95ztab.f
 ! (not part of this batch).
 subroutine ll95tbl(opal95_table_path, ierr)
+      use star_info_lib, only: star
 
       use opacity_table_lib
-      use const_lib
       use luout_lib
       implicit none
       integer, intent(out) :: ierr
@@ -63,11 +63,11 @@ subroutine ll95tbl(opal95_table_path, ierr)
 
 !     READ IN OPACITY TABLES, SKIPPING HEADER.  HEY, IT WORKS.
       ierr = 0
-      open(opal95_table_unit,file=opal95_table_path,status='OLD',access='SEQUENTIAL')
+      open(star%ctrl%opal95_table_unit,file=opal95_table_path,status='OLD',access='SEQUENTIAL')
       fmt_start=1
 
       do
-         read(opal95_table_unit,1,end=9999) header_line
+         read(star%ctrl%opal95_table_unit,1,end=9999) header_line
       if (header_line(fmt_start:fmt_start+4).eq.'TABLE') exit
       end do
     1 format(a)
@@ -91,25 +91,25 @@ subroutine ll95tbl(opal95_table_path, ierr)
       endif
 
 !     READ IN HEADER INFO: GRID IN RHO/T6**3
-      read(opal95_table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,num_d)
+      read(star%ctrl%opal95_table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,num_d)
       if (read_status .lt. 0) exit table_loop   ! was end=1000
       if (read_status .gt. 0) stop 'OPAL95 TABLE READ ERROR'
    20 format(///,4x,19f7.1,/)
 !     READ IN FULL TABLE: LOG CAPPA AS A FUNCTION OF LOG T AND
 !     LOG R = RHO/T6**3
       do i = 1,57
-         read(opal95_table_unit,30,end=9999) opacity_table%opal95_grid_logt(i), &
+         read(star%ctrl%opal95_table_unit,30,end=9999) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d)
       end do
    30 format(f4.2,19f7.3)
 ! MHP 12/97 NOW TREAT CORNER WITHOUT DATA.
-      read(opal95_table_unit,31,end=9999) opacity_table%opal95_grid_logt(58), &
+      read(star%ctrl%opal95_table_unit,31,end=9999) opacity_table%opal95_grid_logt(58), &
            (opacity_table%opal95_full_opacity(n,58,j),j=1,num_d-1)
    31 format(f4.2,18f7.3)
 
       opacity_table%opal95_full_opacity(n,58,19) = 9.999d0
       do i = 59,60
-         read(opal95_table_unit,32,end=9999) opacity_table%opal95_grid_logt(i), &
+         read(star%ctrl%opal95_table_unit,32,end=9999) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-2)
    32    format(f4.2,17f7.3)
          do j = 18,19
@@ -117,7 +117,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
          end do
       end do
       do i = 61,64
-         read(opal95_table_unit,33,end=9999) opacity_table%opal95_grid_logt(i), &
+         read(star%ctrl%opal95_table_unit,33,end=9999) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-3)
    33    format(f4.2,16f7.3)
          do j = 17,19
@@ -125,7 +125,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
          end do
       end do
       do i = 65,69
-         read(opal95_table_unit,34,end=9999) opacity_table%opal95_grid_logt(i), &
+         read(star%ctrl%opal95_table_unit,34,end=9999) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-4)
    34    format(f4.2,15f7.3)
          do j = 16,19
@@ -133,7 +133,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
          end do
       end do
       i = 70
-      read(opal95_table_unit,35,end=9999) opacity_table%opal95_grid_logt(i), &
+      read(star%ctrl%opal95_table_unit,35,end=9999) opacity_table%opal95_grid_logt(i), &
            (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-5)
    35 format(f4.2,14f7.3)
       do j = 15,19
@@ -161,21 +161,21 @@ subroutine ll95tbl(opal95_table_path, ierr)
       endif
 
 !     RETURN TO READ IN NEXT TABLE.
-      read(opal95_table_unit,900) xx,zz
+      read(star%ctrl%opal95_table_unit,900) xx,zz
   900 format(/36x,f7.4,11x,f7.4)
       cycle table_loop
       end if
       exit table_loop
       end do table_loop
 
-      close(opal95_table_unit)
+      close(star%ctrl%opal95_table_unit)
 !     NOW GENERATE A TABLE AT A FIXED VALUE OF Z.
 !     NOTE THAT FOR METAL DIFFUSION A 4-D INTERPOLATION (IN X,Z,T,RHO)
 !     IS PERFORMED RATHER THAN A LINEAR INTERPOLATION BETWEEN TWO FIXED
 !     Z TABLES.
-      target_z = opal95_single_table_z
+      target_z = star%ctrl%opal95_single_table_z
 
-      call op95ztab(target_z, ierr)
+      call opal95_fixed_z_table(target_z, ierr)
       if (ierr /= 0) return
  9999 continue
       return

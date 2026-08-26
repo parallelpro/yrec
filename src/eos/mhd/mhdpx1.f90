@@ -22,7 +22,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 !     MHDST MUST BE CALLED IN MAIN.
 !     INTERPOLATION IN TABLES WITH DIFFERENT X AND FIXED Z
       use mhd_eos_lib
-      use const_lib
       use luout_lib
       use numerics_lib
       implicit none

@@ -11,7 +11,7 @@
 !
 ! Initialization notes -- everything here replicates what the full
 ! code does at startup, with the source of each piece cited:
-!  * unit numbers: core/parmin.f90's assignments (short_file_unit=20,
+!  * unit numbers: core/read_input.f90's assignments (short_file_unit=20,
 !    fermi_unit=15, scv units 72-74, iopale=49).
 !  * flags/cutoffs: explicit assignments below (TSCUT=6.0 matching
 !    the reference solar-model namelists; all kap table flags false
@@ -21,13 +21,13 @@
 !    eos_lib's eos_init, with real Fermi/SCV table paths and dummy
 !    paths for everything gated off.
 !  * env_comp (the envelope-composition state eqstat2 consumes):
-!    core/starin.f90's exact mixture algorithm (its statements at the
+!    core/read_starting_model.f90's exact mixture algorithm (its statements at the
 !    "COMPUTE SURFACE MIX VALUES" block), seeded from const_lib's
 !    vnew defaults (the G&N93 12-species mixture) and starin's
 !    atomic_weight data, for X=0.70, Z=0.016492 (matching the shipped
 !    EOSOPAL06Z0.016492 table).
 !  * the OPAL-2006 EOS file is opened on iopale exactly as
-!    core/parmin.f90 does; the table itself is lazily read by esac06
+!    core/read_input.f90 does; the table itself is lazily read by esac06
 !    on first use, as in production.
 !
 ! The MHD path is exercised only if YREC_MHD_TABLES is set to a
@@ -36,7 +36,6 @@
 ! the infrastructure half of closing ROADMAP.md's LMHD coverage gap;
 ! the data half needs tables from outside the repo.
 program test_eos
-      use const_lib
       use luout_lib
       use star_info_lib, only: star
       use eos_lib
@@ -51,7 +50,7 @@ program test_eos
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-! starin.f90's atomic_weight data (12-species set, same order as vnew)
+! read_starting_model.f90's atomic_weight data (12-species set, same order as vnew)
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
@@ -98,67 +97,67 @@ program test_eos
       dummy_paths7 = ""
       laol_work = 0.0d0
 
-! unit numbers, per core/parmin.f90
+! unit numbers, per core/read_input.f90
       short_file_unit = 20
-      fermi_unit = 15
-      scv_h_unit = 72
-      scv_he_unit = 73
-      scv_z_unit = 74
-      iopale = 49
+      star%ctrl%fermi_unit = 15
+      star%ctrl%scv_h_unit = 72
+      star%ctrl%scv_he_unit = 73
+      star%ctrl%scv_z_unit = 74
+      star%ctrl%iopale = 49
       open(short_file_unit, file="test_eos.short", status="replace")
 
 ! eos configuration
-      use_mhd_eos = .false.
+      star%ctrl%use_mhd_eos = .false.
       use_scv_eos = .true.
-      use_opal95_eos = .false.
-      use_opal2001_eos = .false.
-      use_opal2006_eos = .true.
-      use_diffusion_z = .false.
-      use_numerical_derivatives = .false.
+      star%ctrl%use_opal95_eos = .false.
+      star%ctrl%use_opal2001_eos = .false.
+      star%ctrl%use_opal2006_eos = .true.
+      star%job%use_diffusion_z = .false.
+      star%ctrl%use_numerical_derivatives = .false.
       use_debye_huckel_correction = .false.
-      saha_log10t_cutoff = 6.0d0
+      star%ctrl%saha_log10t_cutoff = 6.0d0
 
 ! kap/atm gated off so setups' kap_init/atm_init are no-ops
-      use_opal95_tables = .false.
-      use_opal92_tables = .false.
-      use_laol89_tables = .false.
-      use_alex06_tables = .false.
-      use_alex95_tables = .false.
-      use_kurucz90_tables = .false.
-      use_two_z_tables = .false.
+      star%ctrl%use_opal95_tables = .false.
+      star%ctrl%use_opal92_tables = .false.
+      star%ctrl%use_laol89_tables = .false.
+      star%ctrl%use_alex06_tables = .false.
+      star%ctrl%use_alex95_tables = .false.
+      star%ctrl%use_kurucz90_tables = .false.
+      star%use_two_z_tables = .false.
       use_pure_z_table = .false.
-      use_conductive_opacity = .false.
-      atm_choice = 0
+      star%ctrl%use_conductive_opacity = .false.
+      star%job%atm_choice = 0
 
-! envelope composition state, per starin.f90's mixture algorithm
-      star%env_comp%xnew = 0.70d0
-      star%env_comp%znew = 0.016492d0
-      star%env_comp%envelope_hydrogen_fraction = star%env_comp%xnew
-      star%env_comp%envelope_metal_fraction = star%env_comp%znew
+! envelope composition state, per read_starting_model.f90's mixture algorithm
+      star%xnew = 0.70d0
+      star%znew = 0.016492d0
+      star%envelope_hydrogen_fraction = star%xnew
+      star%envelope_metal_fraction = star%znew
       do i = 1, 12
-         w(i) = vnew(i)
+         w(i) = star%ctrl%vnew(i)
       end do
       wsum = w(1)+w(2)+w(3)+w(4)+w(5)+w(6)+w(8)+w(9)+w(10)+w(11)
-      star%env_comp%zenvm = star%env_comp%envelope_metal_fraction* &
+      star%zenvm = star%envelope_metal_fraction* &
            (wsum - w(6) - w(8) - w(9))/wsum
-      scale = star%env_comp%envelope_metal_fraction/wsum
-      w(7) = star%env_comp%envelope_hydrogen_fraction/scale
-      w(12) = (1.0d0 - star%env_comp%envelope_hydrogen_fraction - &
-           star%env_comp%envelope_metal_fraction)/scale
+      scale = star%envelope_metal_fraction/wsum
+      w(7) = star%envelope_hydrogen_fraction/scale
+      w(12) = (1.0d0 - star%envelope_hydrogen_fraction - &
+           star%envelope_metal_fraction)/scale
       wsum = 0.0d0
       do i = 1, 12
          w(i) = scale*w(i)/atomic_weight(i)
          wsum = wsum + w(i)
       end do
-      star%env_comp%amuenv = wsum
-      scale = 1.0d0/star%env_comp%amuenv
+      star%amuenv = wsum
+      scale = 1.0d0/star%amuenv
       do i = 1, 12
-         star%env_comp%fxenv(i) = w(i)*scale
+         star%fxenv(i) = w(i)*scale
       end do
 ! push the mixture to the eos domain, as starin does (physics-purity)
-      call eos_set_mixture(star%env_comp%envelope_hydrogen_fraction, &
-           star%env_comp%envelope_metal_fraction, star%env_comp%amuenv, &
-           star%env_comp%fxenv)
+      call eos_set_mixture(star%envelope_hydrogen_fraction, &
+           star%envelope_metal_fraction, star%amuenv, &
+           star%fxenv)
 
 ! constants + Fermi/SCV table loads (real setups + eos_init inside it)
       call setups(laol_work, dummy_path, dummy_path, dummy_path, &
@@ -172,9 +171,9 @@ program test_eos
          stop 1
       end if
 
-! OPAL-2006 EOS file, opened as core/parmin.f90 does (esac06 reads it
+! OPAL-2006 EOS file, opened as core/read_input.f90 does (esac06 reads it
 ! lazily on first use)
-      open(iopale, file=opal06_path, status='OLD')
+      open(star%ctrl%iopale, file=opal06_path, status='OLD')
 
       x_frac = 0.70d0
       z_frac = 0.016492d0
@@ -223,7 +222,7 @@ program test_eos
 ! (which set LOPALE06), and not meaningfully pinnable.
       write(*,'(a)') "# test_eos: eos_get_gamma1, Yale/SCV branch " // &
            "(defined regime only)"
-      use_opal2006_eos = .false.
+      star%ctrl%use_opal2006_eos = .false.
       do ipt = 3, ng1
          t6 = g1_t6(ipt)
          rho = g1_rho(ipt)
@@ -233,7 +232,7 @@ program test_eos
               grad_ad, ksaha)
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
-      use_opal2006_eos = .true.
+      star%ctrl%use_opal2006_eos = .true.
 
 ! MHD path: infrastructure for closing the LMHD coverage gap; runs
 ! only when tables are supplied from outside the repository.
@@ -242,7 +241,7 @@ program test_eos
          write(*,'(a)') "# test_eos: MHD path SKIPPED " // &
               "(YREC_MHD_TABLES not set; no MHD tables ship with YREC)"
       else
-         use_mhd_eos = .true.
+         star%ctrl%use_mhd_eos = .true.
          call eos_init(fermi_path, scvh_path, scvhe_path, scvz_path, &
               trim(mhd_dir)//"/zams_a", trim(mhd_dir)//"/zams_b", &
               trim(mhd_dir)//"/zams_c", trim(mhd_dir)//"/centre1", &
@@ -265,7 +264,7 @@ program test_eos
             write(*,'(4(1pe24.15))') logt, logp, logd, beta
             write(*,'(4(1pe24.15))') qdt, qdp, qcp, dela
          end do
-         use_mhd_eos = .false.
+         star%ctrl%use_mhd_eos = .false.
       end if
 
 ! Error paths (2026, ROADMAP.md stage 3): in the eos domain the error

@@ -28,9 +28,9 @@
       ! (legacy name: anewcp)
       change_species_name = ''   ! (implicit)
 
-      ! TODO verify
+      ! VERIFIED 2026: 3-char mode for species rescaling (with anewcp/xnewcp): 'ABS' -> new_species_value is an absolute mass fraction, otherwise relative to H (drives value_relative_to_h). The 'atm_print_flag' guess was wrong -- nothing atmospheric about it.
       ! (legacy name: atmp)
-      atm_print_flag = ''   ! (implicit)
+      new_species_value_mode = ''   ! (implicit)
 
       ! Averaging weight in the fp/ft update (shape, checkj)
       ! (legacy name: acfpft)
@@ -123,13 +123,13 @@
       ! (legacy name: etadh1)
       debye_huckel_eta_max = 0.0   ! (implicit)
 
-      ! TODO verify: under-relaxation factor, first iterations
+      ! VERIFIED 2026: Henyey under-relaxation start: fcorr = |fcorr0| - fcorri at step start (evolve_step); fcorr0>0 enables per-iteration growth.
       ! (legacy name: fcorr0)
-      solver_correction_factor0 = 0.0   ! (implicit)
+      solver_underrelax_start = 0.0   ! (implicit)
 
-      ! TODO verify: under-relaxation factor, later iterations
+      ! VERIFIED 2026: Henyey under-relaxation increment: fcorr grows by this each corrector pass up to 1 (henyey_iterate).
       ! (legacy name: fcorri)
-      solver_correction_factor = 0.0   ! (implicit)
+      solver_underrelax_increment = 0.0   ! (implicit)
 
       ! Kawaler/PMM wind-law constant factor FK in the JDOT formula
       ! (legacy name: fk)
@@ -181,9 +181,9 @@
       ! (legacy name: grtol)
       settling_tolerance = 0.0   ! (implicit)
 
-      ! TODO verify: Henyey convergence tolerance
+      ! VERIFIED 2026: htoler(5,2) Henyey thresholds: rows 1-4 = per-variable convergence (col 1) and correction-too-large (col 2) limits; row 5 = the level-5 residual test.
       ! (legacy name: htoler)
-      solver_tolerance = 0.0   ! (implicit)
+      solver_tolerances = 0.0   ! (implicit)
 
       ! shape/fpft iteration bound 1
       ! (legacy name: itfp1)
@@ -263,9 +263,9 @@
       ! (legacy name: lovste)
       envelope_overshoot_active = .false.
 
-      ! TODO verify: third overshoot switch (with lovstc/lovste)
+      ! VERIFIED 2026: enables overshoot at INTERMEDIATE convection zones (neither the core, lovstc, nor the surface envelope, lovste); overshoot_boundaries skips such zones without it.
       ! (legacy name: lovstm)
-      min_overshoot_active = .false.   ! (implicit)
+      intermediate_overshoot_active = .false.   ! (implicit)
 
       ! oversh: cap overshoot extent option
       ! (legacy name: lovmax)
@@ -404,7 +404,7 @@
       ! (legacy name: tridl)
       tri_delta_logl = 0.0   ! (implicit)
 
-      ! TODO verify: LAOL table Z-match tolerance
+      ! VERIFIED 2026: LAOL89 interpolators allow linear extrapolation within log(tollaol) of a table edge (gtlaol/gtlaol2/gtpurz: log_extrap_tolerance = log(tollaol)).
       ! (legacy name: tollaol)
       laol_z_tolerance = ?
 
@@ -457,12 +457,13 @@
       ! (legacy name: ldisk)
       disk_locking_active = .false.   ! (implicit)
 
-      ! former common/disk/: disk_temperature/disk_pressure/ disk_locking_active are NAMELIST /physics/ values (core/parmin.f90's tdisk/pdisk/ldisk, kept local there and copy-ass
+      ! Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr).
       ! (legacy name: tdisk)
-      disk_temperature = 0.0   ! (implicit)
+      disk_locking_age_gyr = 0.0   ! (implicit)
 
+      ! Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly said period in days; the code has always consumed rad/s).
       ! (legacy name: pdisk)
-      disk_pressure = 0.0   ! (implicit)
+      disk_omega_rad_s = 0.0   ! (implicit)
 
       ! (legacy name: wmax)
       wind_saturation_omega = 0.0   ! (implicit)
@@ -533,9 +534,9 @@
       ! (legacy name: cstdiffmix)
       constant_settling_reduction = 0.0   ! (implicit)
 
-      ! TODO verify: solar wind-loss calibration mode
+      ! VERIFIED 2026: scaled-solar-wind mass loss: Mdot = solar rate * min((omega/omega_ref)^2, cap) in mdot; copied to star%rot%use_rotation_scaled_solar_wind.
       ! (legacy name: lsolwind)
-      calibrate_solar_wind = .false.
+      use_rotation_scaled_solar_wind = .false.
 
       ! (legacy name: lmwind)
       use_pmm_wind_law = .false.   ! (implicit)
@@ -814,10 +815,6 @@
       ! (legacy name: lnewvars)
       use_new_rate_variables = .false.   ! (implicit)
 
-      ! former common/ovrtrn/'s two config members: NAMELIST /physics/ values selecting the newer convective-turnover-timescale calculation and whether to run the full envelope i
-      ! (legacy name: lnewtcz)
-      use_new_turnover_timescale = .false.   ! (implicit)
-
       ! (legacy name: lcalcenv)
       calc_envelope_flag = .false.   ! (implicit)
 
@@ -835,6 +832,9 @@
 
       ! MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)
       write_pulse_flag = .false.
+
+      ! Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run
+      compute_neutrino_fluxes = .false.
 
 /
 

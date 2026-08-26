@@ -46,13 +46,13 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed)
+      use rotation_scratch_lib
       use atm_lib
       use atm_table_lib
-      use star_info_lib, only: star
-      use const_lib
+      use star_info_lib, only: star, json
+      use phys_const_lib
       use eos_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(in) :: log_luminosity_lsun, age_gyr
       double precision, intent(inout) :: timestep
@@ -112,17 +112,18 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       double precision :: hydrogen_fraction_local, metal_fraction_local
       logical :: eos_deriv_flag, eos_atmosphere_flag
       integer :: saha_flag
-      double precision :: beta_local, beta_ion, beta14, ion_fraction(3), &
-           mean_molecular_weight_eos, amu_eos, emu_eos, eta_eos, qdt_eos, &
-           qdp_eos, qcp_eos, dela_eos, qdtt_eos, qdtp_eos, qat_eos, qap_eos, &
-           qcpt_eos, qcpp_eos
+      double precision :: beta_local
+! 2026 named-index results: the former 18-variable eos output soup is
+! one result array (blanket-SAVEd like the locals it replaces, so the
+! inout slots keep their historical cross-call carry).
+      double precision :: eos_res(num_eos_results)
       double precision :: mass_loss_rate_cgs, pressure_from_wind, &
            temperature_from_wind, accretion_specific_entropy2
       integer :: zone_idx
 
 ! INITIALIZE MASS LOSS AT DEFAULT RATE
-      mass_loss_rate_msun_yr = mass_accretion_rate
-      if(use_mass_accretion)then
+      mass_loss_rate_msun_yr = star%ctrl%mass_accretion_rate
+      if(star%job%use_mass_accretion)then
          apply_mass_change = .true.
       else
          apply_mass_change = .false.
@@ -134,31 +135,38 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! TEFFL IS THE BASE 10 LOG OF THE EFFECTIVE TEMPERATURE
 ! COMPUTE GLOBAL QUANTITIES (RADIUS,MASS,AGE) IN CGS UNITS.
 ! RADIUS
-      log10_radius = 0.5d0*(log_luminosity_lsun+log10_solar_luminosity-c4pil- &
+      log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.0d0*log_teff)
       total_radius_cm = 10.0d0**log10_radius
 ! MASS
-      total_mass_grams = total_mass_msun*solar_mass_cgs
+      total_mass_grams = total_mass_msun*star%solar_mass_cgs
 ! AGE
       age_seconds = age_gyr*1.0d9*seconds_per_year
 ! USE A REIMERS FORMULA TO COMPUTE MDOT IF DESIRED; OVERWRITES
 ! CONSTANT MDOT.  IN THIS EXPRESSION MDOT=K*L/G/R.
-      if(apply_mass_change .and. lreimer)then
-         surface_gravity_cgs = 10.0d0**(cgl)*total_mass_grams/total_radius_cm**2
-         mass_loss_rate_msun_yr = creim*10.0d0**(log_luminosity_lsun+ &
-              log10_solar_luminosity)/surface_gravity_cgs/total_radius_cm
+! 2026 config-matrix fix: the historical expression computed
+! creim*L/(g*R) in CGS -- units of g/s -- but stored it in the
+! Msun/yr variable, which mdot then converted to CGS AGAIN (a
+! ~1e25 rate inflation). Unreachable before the mdot argument-count
+! fix, so never caught. Now implements the standard Reimers law the
+! comment above describes: Mdot[Msun/yr] = creim*(L/Lsun)(R/Rsun)/(M/Msun),
+! creim default -4e-13 (the classical eta=1 coefficient).
+      if(apply_mass_change .and. star%ctrl%lreimer)then
+         mass_loss_rate_msun_yr = star%ctrl%creim* &
+              10.0d0**log_luminosity_lsun* &
+              (total_radius_cm/star%solar_radius_cgs)/total_mass_msun
       endif
 ! 02/12 MHP TAUCZ NOW COMPUTED PRIOR TO CALL IN MIXCZ
 ! CONVECTIVE OVERTURN TIMESCALE
       if(envelope_boundary_zone.lt.num_zones)then
 !         TAUCZ = 0.0D0
 !         DO I = JENV+1,M
-         write(*,*)star%turnover%convective_turnover_timescale/seconds_per_year, &
-              total_radius_cm/solar_radius_cgs
-         star%light_burn%jcz = envelope_boundary_zone
+         write(*,*)star%convective_turnover_timescale/seconds_per_year, &
+              total_radius_cm/star%solar_radius_cgs
+         star%jcz = envelope_boundary_zone
       else
-         star%turnover%convective_turnover_timescale = 0.0d0
-         star%light_burn%jcz = num_zones
+         star%convective_turnover_timescale = 0.0d0
+         star%jcz = num_zones
       endif
 ! MHP 8/10
 ! THE RUNNING TOTAL OF THE MASS OF THE
@@ -193,7 +201,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          sum_thermal_energy = 0.0d0
 !         SUMDM = 0.0D0
          thermal_energy_accreted_bar = 0.0d0
-         star%rot%envelope_specific_entropy = 0.0d0
+         rot_scr%envelope_specific_entropy = 0.0d0
          do zone_idx = envelope_boundary_zone, num_zones
             local_temperature = 10.0d0**log_temperature(zone_idx)
             local_pressure = 10.0d0**log_pressure(zone_idx)
@@ -211,7 +219,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  (local_density*local_temperature)
             local_entropy = mean_molecular_weight_local* &
                  (1.5d0*log(local_temperature)-log(local_density))
-            star%rot%envelope_specific_entropy = star%rot%envelope_specific_entropy+ &
+            rot_scr%envelope_specific_entropy = rot_scr%envelope_specific_entropy+ &
                  local_entropy*shell_mass(zone_idx)
 ! THE THERMAL ENERGY PER GM IN THE JTH SHELL IS
             thermal_energy_per_gram = local_pressure*local_beta/local_density
@@ -227,7 +235,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          mean_thermal_energy = sum_thermal_energy/cz_total_mass_below_fitting
          accretion_specific_energy = thermal_energy_accreted_bar/ &
               cz_total_mass_below_fitting
-         star%rot%envelope_specific_entropy = star%rot%envelope_specific_entropy/ &
+         rot_scr%envelope_specific_entropy = rot_scr%envelope_specific_entropy/ &
               cz_total_mass_below_fitting
          print_flag = .false.
          log10_gravity = cgl+log_total_mass-2.0d0*log10_radius
@@ -244,24 +252,23 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          eos_deriv_flag = .false.
          saha_flag = 1
          eos_atmosphere_flag = .true.
-         call eos_get(log10_temperature_local,temperature_local, &
-              log10_pressure_local,pressure_local,log10_density_local, &
-              density_local,hydrogen_fraction_local,metal_fraction_local, &
-              beta_local,beta_ion,beta14,ion_fraction,mean_molecular_weight_eos, &
-              amu_eos,emu_eos,eta_eos,qdt_eos,qdp_eos,qcp_eos,dela_eos, &
-              qdtt_eos,qdtp_eos,qat_eos,qap_eos,qcpt_eos,qcpp_eos, &
-              eos_deriv_flag,eos_atmosphere_flag,saha_flag)
-         beta_local = 1.0d0-(radiation_constant_over_3*temperature_local**4/ &
-              pressure_local)
-         mean_molecular_weight_local = pressure_local*beta_local/ &
-              (density_local*temperature_local)
-         star%rot%accretion_specific_entropy = mean_molecular_weight_local* &
-              (1.5d0*log(temperature_local)-log(density_local))
+         eos_res(i_log10_density) = log10_density_local
+         eos_res(i_beta) = beta_local
+         call eos_get_r(log10_temperature_local, log10_pressure_local, &
+              hydrogen_fraction_local, metal_fraction_local, eos_res, &
+              eos_deriv_flag, eos_atmosphere_flag, saha_flag)
+         log10_density_local = eos_res(i_log10_density)
+         beta_local = 1.0d0-(radiation_constant_over_3*eos_res(i_temperature)**4/ &
+              eos_res(i_pressure))
+         mean_molecular_weight_local = eos_res(i_pressure)*beta_local/ &
+              (eos_res(i_density)*eos_res(i_temperature))
+         rot_scr%accretion_specific_entropy = mean_molecular_weight_local* &
+              (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
 !         WRITE(*,911)TL,PL,SACC,SCEN
 !  911     FORMAT(' TSUR,PSUR ',2F8.5,' SACC ',1PE12.3,' SCORE ',E12.3)
 ! ALTERNATE EXPRESSION FOR SURFACE PRESSURE AND LUMINOSITY, FROM STAHLER 1988
          if(accretion_efficiency.gt.0.0d0)then
-            mass_loss_rate_cgs = mass_loss_rate_msun_yr*solar_mass_cgs/ &
+            mass_loss_rate_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs/ &
                  seconds_per_year
             pressure_from_wind = mass_loss_rate_cgs/c4pi* &
                  sqrt(2.0d0*accretion_efficiency*10.0d0**log10_gravity/ &
@@ -271,29 +278,34 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  csig)**0.25d0
             log10_pressure_local = log10(pressure_from_wind)
             log10_temperature_local = log10(temperature_from_wind)
-            call eos_get(log10_temperature_local,temperature_from_wind, &
-                 log10_pressure_local,pressure_from_wind,log10_density_local, &
-                 density_local,hydrogen_fraction_local,metal_fraction_local, &
-                 beta_local,beta_ion,beta14,ion_fraction,mean_molecular_weight_eos, &
-                 amu_eos,emu_eos,eta_eos,qdt_eos,qdp_eos,qcp_eos,dela_eos, &
-                 qdtt_eos,qdtp_eos,qat_eos,qap_eos,qcpt_eos,qcpp_eos, &
-                 eos_deriv_flag,eos_atmosphere_flag,saha_flag)
-            beta_local = 1.0d0-(radiation_constant_over_3*temperature_from_wind**4/ &
-                 pressure_from_wind)
-            mean_molecular_weight_local = pressure_from_wind*beta_local/ &
-                 (density_local*temperature_from_wind)
+            eos_res(i_log10_density) = log10_density_local
+            eos_res(i_beta) = beta_local
+            call eos_get_r(log10_temperature_local, log10_pressure_local, &
+                 hydrogen_fraction_local, metal_fraction_local, eos_res, &
+                 eos_deriv_flag, eos_atmosphere_flag, saha_flag)
+            log10_density_local = eos_res(i_log10_density)
+            beta_local = 1.0d0-(radiation_constant_over_3*eos_res(i_temperature)**4/ &
+                 eos_res(i_pressure))
+            mean_molecular_weight_local = eos_res(i_pressure)*beta_local/ &
+                 (eos_res(i_density)*eos_res(i_temperature))
             accretion_specific_entropy2 = mean_molecular_weight_local* &
-                 (1.5d0*log(temperature_from_wind)-log(density_local))
+                 (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
 !            WRITE(*,911)TL,PL,SACC2,SCEN
 !            SACC = MAX(SACC,SACC2)
-            star%rot%envelope_specific_entropy = 0.0d0
+            rot_scr%envelope_specific_entropy = 0.0d0
 !            SCEN = SACC2 - SACC
          else
-            star%rot%envelope_specific_entropy = 0.0d0
+            rot_scr%envelope_specific_entropy = 0.0d0
          endif
       endif
 ! CALL MASS LOSS OR ACCRETION ROUTINE
-      if(apply_mass_change)call mdot(log_luminosity_lsun,timestep,composition, &
+! 2026 config-matrix fix: the historical call passed 24 actuals into
+! mdot's 23 dummies (leading extra log_luminosity_lsun), shifting
+! every later argument one slot -- LMDOT runs dereferenced a scalar
+! as the composition array and crashed. Pre-existing in the original
+! F77 (documented in mdot.f90's header); fixed by dropping the
+! spurious first actual so the list matches mdot's dummies 1:1.
+      if(apply_mass_change)call mdot(timestep,composition, &
            log_density,specific_angular_momentum,log_pressure,log_radius,log_mass, &
            zone_mass_grams,shell_mass,log_total_mass,log_temperature, &
            envelope_boundary_zone,new_surface_bc_needed,num_zones,omega, &

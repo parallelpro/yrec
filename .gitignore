@@ -8,6 +8,7 @@ src/yrec
 **/output/
 **/standard/
 src/*.a
+src/yrec_libs
 src/test_eos
 src/test_kap
 src/test_atm

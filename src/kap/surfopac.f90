@@ -12,11 +12,11 @@
 ! tables have already been read in. Relocated here from atm/ (2026,
 ! atm/ phase-two reorg): zero atm-domain content -- it only refreshes
 ! cached table slices in kap/opal95/, kap/opal92/, kap/alex94/ -- and
-! its callers (core/starin.f90, setup/hpoint.f90) aren't in atm/
+! its callers (core/read_starting_model.f90, setup/rezone.f90) aren't in atm/
 ! either; same "misplaced, meval.f90-style" pattern as alsurfp.f90's
 ! earlier move the other direction (kap/ -> atm/).
 subroutine surfopac(hydrogen_fraction)
-      use const_lib
+      use star_info_lib, only: star
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction
@@ -26,19 +26,19 @@ subroutine surfopac(hydrogen_fraction)
 !     INTERIOR TABLES
 
 !     SETUP OPAL95 TABLES
-      if (use_opal95_tables) then
-      call op95xtab(hydrogen_fraction)
+      if (star%ctrl%use_opal95_tables) then
+      call opal95_surface_table(hydrogen_fraction)
       end if
 !     SETUP IN OPAL92 TABLES AT ZOPAL1 AND ZOPAL2
-      if (use_opal92_tables) then
-        call ll4th(hydrogen_fraction)
+      if (star%ctrl%use_opal92_tables) then
+        call opal92_surface_table(hydrogen_fraction)
       end if
 
 !     LOW TEMP TABLES
 
 !     INTERPOLATE ALEX95 TABLES
-      if (use_alex95_tables) then
-       call alx8th(hydrogen_fraction)
+      if (star%ctrl%use_alex95_tables) then
+       call alex94_surface_table(hydrogen_fraction)
       end if
 
 

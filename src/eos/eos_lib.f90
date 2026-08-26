@@ -9,28 +9,28 @@
 ! interface entry point that replaces the `if (use_mhd_eos) call meqos
 ! else call eqstat` dispatch that used to be duplicated at every call
 ! site, and additionally centralizes the Debye-Huckel composition
-! setup (debye_huckel_x/y/z_total/z(3), read only by eos/yale/eqrelv.f90
+! setup (debye_huckel_x/y/z_total/z(3), read only by eos/yale/fully_ionized_eos.f90
 ! on the non-MHD path) that 6 of those call sites also used to
 ! duplicate verbatim. eos/eqstat.f90 (which also hosts eqstat2, its
-! co-located pair), eos/yale/eqrelv.f90, and eos/mhd/meqos.f90 are all
+! co-located pair), eos/yale/fully_ionized_eos.f90, and eos/mhd/meqos.f90 are all
 ! unchanged; this is a pure dispatch/setup wrapper.
 !
 ! composition_at_zone is OPTIONAL: callers that carry full per-species
-! composition (misc/coefft.f90, io/wrtout.f90, core/starin.f90,
-! misc/physic.f90, mixing/hsubp.f90, mixing/sconvec.f90) pass
+! composition (misc/henyey_coefficients.f90, io/write_legacy_output.f90, core/read_starting_model.f90,
+! misc/shell_physics.f90, mixing/compute_scale_height.f90, mixing/semiconvection.f90) pass
 ! composition(:,idx) and get the same Debye-Huckel setup they used to
 ! compute themselves. Callers that only ever carried bulk
-! hydrogen_fraction/metal_fraction (atm/atm_lib.f90, atm/qatm.f90,
-! atm/qenv.f90, wind/massloss.f90) omit it -- exactly matching their
+! hydrogen_fraction/metal_fraction (atm/atm_lib.f90, atm/atmosphere_derivs.f90,
+! atm/envelope_derivs.f90, wind/massloss.f90) omit it -- exactly matching their
 ! prior behavior, since none of them set these fields before either.
 !
-! core/starin.f90 previously had a bug here (confirmed against the
+! core/read_starting_model.f90 previously had a bug here (confirmed against the
 ! original F77 source via git history): a missing ELSE meant it called
 ! *both* meqos and eqstat when MHD was on, and *neither* when MHD was
 ! off. eos_get's if/else has the structurally-correct form, so
 ! migrating that call site fixes the bug by construction.
 !
-! mixing/hsubp.f90, mixing/sconvec.f90, and wind/massloss.f90
+! mixing/compute_scale_height.f90, mixing/semiconvection.f90, and wind/massloss.f90
 ! previously called eqstat unconditionally, with no LMHD check at all
 ! -- confirmed authentic original YREC behavior (unchanged since the
 ! very first commit, not a modernization artifact). Migrating them to
@@ -39,7 +39,7 @@
 ! an acknowledged numerics change for use_mhd_eos=.true. runs, which
 ! the Stage-0 regression suite cannot verify (no test case sets LMHD).
 !
-! atm/turnover/calcad.f90 (the acoustic-depth diagnostic) was NOT
+! atm/turnover/acoustic_depths.f90 (the acoustic-depth diagnostic) was NOT
 ! migrated to eos_get during phase two: it deliberately bypasses
 ! eqstat2's boundary-ramping, calling esac06 directly under its own
 ! use_opal2006_eos check, confirmed to match the original F77 -- not
@@ -47,10 +47,99 @@
 ! 1) it goes through eos_get_gamma1 below instead, which preserves
 ! that same deliberate dispatch inside the facade boundary.
 module eos_lib
+! 2026 named-index result array (ROADMAP "Named-index result arrays"):
+! eos_get_r packs eos_get's 24 thermodynamic outputs into one
+! res(num_eos_results) array indexed by the constants below (MESA's
+! eosDT_get shape). The independent variables (log10 T, log10 P),
+! composition, mode flags, and the saha state stay explicit
+! arguments. res is intent(inout): the historically-inout slots
+! (i_log10_density, i_beta, the ionization fractions, i_mu_ion_inv,
+! i_dlnrho_dlnt/p, i_cp, i_grada) carry their previous-call values in
+! exactly as the old per-caller locals did; eos_get itself is called
+! unchanged, so results are byte-identical.
       use scv_eos_lib
       use yale_eos_lib
       implicit none
+! result-array slots for eos_get_r
+      integer, parameter, public :: &
+           i_temperature = 1, i_pressure = 2, i_log10_density = 3, &
+           i_density = 4, i_beta = 5, i_beta_inverse = 6, i_beta14 = 7, &
+           i_fxion = 8, &
+           i_gas_constant = 11, i_mu_ion_inv = 12, i_mu_e_inv = 13, &
+           i_eta = 14, i_dlnrho_dlnt = 15, i_dlnrho_dlnp = 16, &
+           i_cp = 17, i_grada = 18, i_dlnrho_dlnt_dt = 19, &
+           i_dlnrho_dlnp_dt = 20, i_grada_dt = 21, i_grada_dp = 22, &
+           i_cp_dt = 23, i_cp_dp = 24
+      integer, parameter, public :: num_eos_results = 24
+
 contains
+
+! ---------------------------------------------------------------
+! Named-index result-array form of eos_get (see module header).
+subroutine eos_get_r(log10_temperature, log10_pressure, &
+     hydrogen_fraction, metal_fraction, res, want_derivatives, &
+     in_atmosphere, saha_state, composition_at_zone, ierr)
+      double precision, intent(inout) :: log10_temperature, log10_pressure
+      double precision, intent(in) :: hydrogen_fraction, metal_fraction
+      double precision, intent(inout) :: res(num_eos_results)
+      logical, intent(in) :: want_derivatives, in_atmosphere
+      integer, intent(inout) :: saha_state
+      double precision, intent(in), optional :: composition_at_zone(15)
+      integer, intent(out), optional :: ierr
+      double precision :: fxion_local(3)
+
+      fxion_local = res(i_fxion:i_fxion+2)
+      if (present(composition_at_zone) .and. present(ierr)) then
+         call eos_get(log10_temperature, res(i_temperature), &
+              log10_pressure, res(i_pressure), res(i_log10_density), &
+              res(i_density), hydrogen_fraction, metal_fraction, &
+              res(i_beta), res(i_beta_inverse), res(i_beta14), &
+              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
+              composition_at_zone=composition_at_zone, ierr=ierr)
+      else if (present(composition_at_zone)) then
+         call eos_get(log10_temperature, res(i_temperature), &
+              log10_pressure, res(i_pressure), res(i_log10_density), &
+              res(i_density), hydrogen_fraction, metal_fraction, &
+              res(i_beta), res(i_beta_inverse), res(i_beta14), &
+              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
+              composition_at_zone=composition_at_zone)
+      else if (present(ierr)) then
+         call eos_get(log10_temperature, res(i_temperature), &
+              log10_pressure, res(i_pressure), res(i_log10_density), &
+              res(i_density), hydrogen_fraction, metal_fraction, &
+              res(i_beta), res(i_beta_inverse), res(i_beta14), &
+              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
+              ierr=ierr)
+      else
+         call eos_get(log10_temperature, res(i_temperature), &
+              log10_pressure, res(i_pressure), res(i_log10_density), &
+              res(i_density), hydrogen_fraction, metal_fraction, &
+              res(i_beta), res(i_beta_inverse), res(i_beta14), &
+              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state)
+      end if
+      res(i_fxion:i_fxion+2) = fxion_local
+end subroutine eos_get_r
+
 
 subroutine eos_get(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
@@ -61,8 +150,9 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
+      use star_info_lib, only: star
 
-      use const_lib
+      use phys_const_lib
       use scv_eos_lib
       implicit none
 
@@ -102,7 +192,7 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
       if (present(ierr)) ierr = 0
       jerr = 0
 
-      if (use_mhd_eos) then
+      if (star%ctrl%use_mhd_eos) then
          call meqos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
@@ -185,10 +275,11 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
      zams_b_table_path, zams_c_table_path, centre1_table_path, &
      centre2_table_path, centre3_table_path, centre4_table_path, &
      centre5_table_path, ierr)
+      use star_info_lib, only: star
 
       use yale_eos_lib
       use luout_lib
-      use const_lib
+      use phys_const_lib
       use scv_eos_lib
       implicit none
       integer, parameter :: nts = 63
@@ -213,7 +304,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       if (present(ierr)) ierr = 0
       jerr = 0
 
-      if (use_mhd_eos) then
+      if (star%ctrl%use_mhd_eos) then
          call mhdtbl(zams_a_table_path, zams_b_table_path, &
               zams_c_table_path, centre1_table_path, centre2_table_path, &
               centre3_table_path, centre4_table_path, centre5_table_path, &
@@ -229,14 +320,14 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
 
 !  INPUT F-TABLES FOR DEGENERATE EQUATION OF STATE
 !  OPEN DATA FILES
-      open(unit=fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
-      read(fermi_unit,150)  (yale_eos%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,150)  (yale_eos%fermi_table_eta(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,160) (grid_idx,iden_idx,(yale_eos%fermi_table_data(col_idx,grid_idx,iden_idx), &
+      open(unit=star%ctrl%fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
+      read(star%ctrl%fermi_unit,150)  (yale_eos%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
+      read(star%ctrl%fermi_unit,150)  (yale_eos%fermi_table_eta(grid_idx), grid_idx = 1,43)
+      read(star%ctrl%fermi_unit,160) (grid_idx,iden_idx,(yale_eos%fermi_table_data(col_idx,grid_idx,iden_idx), &
            col_idx=1,5),card_idx=1,860)
   150 format(8x,9f8.4)
   160 format(2i5,5f12.7)
-      rewind fermi_unit
+      rewind star%ctrl%fermi_unit
       bin_start = 1
       do grid_idx=1,41
 ! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
@@ -263,30 +354,30 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       end do
 
 !  CLOSE EQUATION OF STATE FILE.
-      close(fermi_unit)
+      close(star%ctrl%fermi_unit)
 
 ! MHP 5/97 ADDED OPTION FOR NEW SCV EQUATION OF STATE TABLES.
       if(use_scv_eos)then
-         open(unit=scv_h_unit,file=scv_h_table_path,status='OLD')
-         open(unit=scv_he_unit,file=scv_he_table_path,status='OLD')
-         open(unit=scv_z_unit,file=scv_z_table_path,status='OLD')
+         open(unit=star%ctrl%scv_h_unit,file=scv_h_table_path,status='OLD')
+         open(unit=star%ctrl%scv_he_unit,file=scv_he_table_path,status='OLD')
+         open(unit=star%ctrl%scv_z_unit,file=scv_z_table_path,status='OLD')
 !  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
          do t_idx = 1, nts
-            read(scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
-            read(scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
-            read(scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
+            read(star%ctrl%scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
+            read(star%ctrl%scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
+            read(star%ctrl%scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
     1       format(f5.2,i4)
 ! TABLE GRID POINTS IN T, P(T) ARE THE SAME - NPTSY AND TLOGX
 ! READ IN TO RETAIN PARALLEL COMMON BLOCK STRUCTURE.
             do p_idx = 1, nptsx(t_idx)
-               read(scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
-               read(scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
+               read(star%ctrl%scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
+               read(star%ctrl%scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
     2          format(f6.2,1p2e13.5,0p,8f9.4)
             end do
 !  READ IN METAL EQUATION OF STATE TABLE; COMPUTED USING THE PRATHER
 ! EQUATION OF STATE IN THE OLD YALE CODE.
             do p_idx = nptsx(t_idx),1,-1
-               read(scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
+               read(star%ctrl%scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
  3             format(f6.2,12f9.4)
             end do
          end do
@@ -302,7 +393,7 @@ end subroutine eos_init
 !----------------------------------------------------------------------
 ! Added 2026 (phase three, ROADMAP.md stage 1): a component-accessor
 ! entry in the spirit of MESA's eosDT_get_component, created so
-! atm/turnover/calcad.f90 (the acoustic-depth diagnostic, previously
+! atm/turnover/acoustic_depths.f90 (the acoustic-depth diagnostic, previously
 ! the last file calling eos internals -- esac06/eqstat2 -- directly)
 ! can go through the facade. Given composition and an (unlogged)
 ! T/rho/P point, returns gamma1 and the adiabatic gradient,
@@ -318,9 +409,10 @@ end subroutine eos_init
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
      saha_state, ierr)
+      use star_info_lib, only: star
 
       use opal_eos_lib
-      use const_lib
+      use phys_const_lib
       use scv_eos_lib
       implicit none
 
@@ -354,7 +446,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       if (present(ierr)) ierr = 0
       jerr = 0
 
-      if (use_opal2006_eos) then
+      if (star%ctrl%use_opal2006_eos) then
          eos_interp_order = 9
          eos_rad_flag = 1
          x_local = hydrogen_fraction

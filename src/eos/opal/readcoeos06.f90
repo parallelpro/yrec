@@ -25,9 +25,9 @@
 ! "j" instead of "i" in that READ's variable list) but is
 ! transliterated exactly rather than "fixed".
 subroutine readcoeos06(ierr)
+      use star_info_lib, only: star
 
       use opal_eos_lib
-      use const_lib
       use luout_lib
       implicit none
 
@@ -75,17 +75,17 @@ subroutine readcoeos06(ierr)
 ! .....read  tables
 ! MHP 8/25 Moved opening of file to parmin
       do x_loop_index_06 = 1, mx
-         read (iopale,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
+         read (star%ctrl%iopale,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
               opal_eos%hydrogen_fraction_header_06(x_loop_index_06), &
               opal_eos%z_table_06(x_loop_index_06), &
               opal_eos%moles_per_gram_table_06(x_loop_index_06), &
               opal_eos%mean_molecular_weight_header_06(x_loop_index_06)
-         read (iopale,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
+         read (star%ctrl%iopale,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
               &4X,E11.4)') (opal_eos%species_fraction_header_06(x_loop_index_06,species_read_idx), &
               species_read_idx=1,6)
-         read (iopale,'(A)') blank_line
+         read (star%ctrl%iopale,'(A)') blank_line
          do density_row = 1, nr
-            read (iopale,'(2I5,2F12.7,17X,E15.7)') record_number, &
+            read (star%ctrl%iopale,'(2I5,2F12.7,17X,E15.7)') record_number, &
                  opal_eos%temperature_count_used_06(x_loop_index_06,density_row), &
                  unused_field, unused_field, &
                  opal_eos%density_grid_table_06(x_loop_index_06,density_row)
@@ -97,8 +97,8 @@ subroutine readcoeos06(ierr)
                ierr = 1
                return
             end if
-            read(iopale,'(A)') blank_line
-            read(iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
             if (opal_eos%temperature_count_used_06(x_loop_index_06,density_row).lt. &
                  opal_eos%t6_index_lo_06(density_row)) then
                write (short_file_unit,'("Problem with OEOS96 data files: X=",F6.4, &
@@ -111,20 +111,20 @@ subroutine readcoeos06(ierr)
             end if
             do t6_row = 1, opal_eos%temperature_count_used_06(x_loop_index_06,density_row)
                if (t6_row.gt.opal_eos%t6_index_lo_06(density_row)) then
-                  read (iopale,'(A)') blank_line
+                  read (star%ctrl%iopale,'(A)') blank_line
                   cycle
                end if
-               read (iopale,'(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)') &
+               read (star%ctrl%iopale,'(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)') &
                     opal_eos%t6_list_06(density_row,t6_row), opal_eos%amu_grid_06(density_row,t6_row), &
                     opal_eos%log10_ne_grid_06(density_row,var_idx), &
                     (opal_eos%eos_table_06(x_loop_index_06,opal_eos%eos_var_order_06(table_var_idx), &
                     t6_row,density_row), table_var_idx=1,9)
             end do
-            read(iopale,'(A)') blank_line
-            read(iopale,'(A)') blank_line
-            read(iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
          end do
-         read(iopale,'(A)') blank_line
+         read(star%ctrl%iopale,'(A)') blank_line
       end do
 
       do t6_scan_idx = 1, nt
@@ -156,7 +156,7 @@ subroutine readcoeos06(ierr)
       do x_idx = 2, mx
          opal_eos%x_grid_spacing_inv_06(x_idx) = 1.0d0/(opal_eos%x_grid_copy_06(x_idx) - opal_eos%x_grid_copy_06(x_idx-1))
       end do
-      close (iopale)
+      close (star%ctrl%iopale)
 
       return
 end subroutine readcoeos06

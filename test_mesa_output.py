@@ -166,7 +166,7 @@ def test_mesa_output_contract(tmp_path):
     assert fgongs, "no FGONG files written"
     flines = fgongs[0].read_text().splitlines()
     nn, iconst, ivar, ivers = (int(x) for x in flines[4].split())
-    assert (iconst, ivar, ivers) == (15, 40, 300)
+    assert (iconst, ivar, ivers) == (15, 40, 1300)
     data = flines[5:]
     n_glob_lines = (iconst + 4) // 5
     n_var_lines = (ivar + 4) // 5
@@ -181,7 +181,7 @@ def test_mesa_output_contract(tmp_path):
         vals = []
         for l in lines:
             l = l.rstrip()
-            vals += [float(l[i:i + 16]) for i in range(0, len(l), 16)]
+            vals += [float(x) for x in l.split()]
         return vals
     glob = fgong_vals(data[:n_glob_lines])[:iconst]
     surf = fgong_vals(data[n_glob_lines:n_glob_lines + n_var_lines])[:ivar]

@@ -14,7 +14,7 @@
 ! floor/ceiling failsafes, renormalizes helium via X+Y+Z=1, and
 ! converts DT/STOT/HRU/HTU/HS1/HQPR back out of Bahcall & Loeb units.
 ! Last stage of the microdiff.f90 pipeline (see also
-! microdiff_setup.f90, microdiff_mte.f90, microdiff_cod.f90,
+! microdiff_setup.f90, microdiff_mte.f90, microdiff_coefficients.f90,
 ! microdiff_run.f90).
 !  TRANSFORM BACK TO ORIGINAL GRID OF MODEL POINTS FROM EQUALLY
 !  SPACED GRID.
@@ -22,11 +22,9 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
      composition, dlnp_dr, radius_bl, enclosed_mass, temperature_bl, &
      num_zones, total_mass, num_light, light_element_id)
-      use star_info_lib, only: star
-      use const_lib
+      use star_info_lib, only: star, json
       use numerics_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: timestep
       double precision, intent(in) :: eq_radius(json), &
@@ -58,7 +56,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
 ! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          do i = zone_begin,1,-1
             z_max = 1.0d0 - composition(1,i) - composition(4,i)
             zz=min(composition(3,i)+eq_delta_metal(1),z_max)
@@ -75,7 +73,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          end do
       endif
 ! G SOMERS 5/15; ADD LIGHT ELEMENT DIFFUSION
-      if(ldifli)then
+      if(star%ctrl%ldifli)then
          do kk = 1,num_light
             x_min_floor = 0.0d0
             do i = zone_begin,1,-1
@@ -117,7 +115,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          x_max = 1.0d0 - composition(3,i) - composition(4,i)
          composition(1,i)=min(composition(1,i) + dxmod,x_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
-         if(use_diffusion_z)then
+         if(star%job%use_diffusion_z)then
             z_max = 1.0d0 - composition(1,i) - composition(4,i)
             dzmod = facinterp(1)*eq_delta_metal(k0)+facinterp(2)*eq_delta_metal(k0+1)+ &
                    facinterp(3)*eq_delta_metal(k0+2)+facinterp(4)*eq_delta_metal(k0+3)
@@ -132,7 +130,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
             composition(2,i)=1.0d0-composition(1,i)-composition(3,i)-composition(4,i)
          endif
 ! GES 5/15 ADDED LIGHT ELEMENT DIFFUSION
-         if(ldifli)then
+         if(star%ctrl%ldifli)then
             do kk = 1,num_light
                ii = light_element_id(kk)
                dxmod = facinterp(1)*eq_delta_light(kk,k0)+ &
@@ -149,7 +147,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          composition(1,i)=min(composition(1,i) + eq_delta_hydrogen(num_eq_points),x_max)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
-      if(use_diffusion_z)then
+      if(star%job%use_diffusion_z)then
          do i = zone_end,num_zones
             zz = max(composition(3,i)+eq_delta_metal(num_eq_points),0.0d0)
             zz2 = zz/composition(3,i)
@@ -165,7 +163,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          end do
       endif
 ! GES 5/15 LIGHT ELEMENT DIFFUSION
-      if(ldifli)then
+      if(star%ctrl%ldifli)then
          do kk = 1,num_light
             do i = zone_end,num_zones
                ii = light_element_id(kk)
@@ -175,12 +173,12 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       endif
 !
       do i=1,num_zones
-         radius_bl(i)=radius_bl(i)/star%rot%bl_radius_scale
-         temperature_bl(i)=temperature_bl(i)/star%rot%bl_temp_scale
-         enclosed_mass(i)=enclosed_mass(i)/star%rot%bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)*star%rot%bl_radius_scale
+         radius_bl(i)=radius_bl(i)/star%bl_radius_scale
+         temperature_bl(i)=temperature_bl(i)/star%bl_temp_scale
+         enclosed_mass(i)=enclosed_mass(i)/star%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)*star%bl_radius_scale
       end do
-      timestep=timestep*star%rot%bl_time_scale
-      total_mass=total_mass/star%rot%bl_mass_scale
+      timestep=timestep*star%bl_time_scale
+      total_mass=total_mass/star%bl_mass_scale
       return
 end subroutine microdiff_etm

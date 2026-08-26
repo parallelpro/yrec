@@ -9,7 +9,7 @@
 !
 ! MASS LOSS ROUTINE
 !
-! PRESERVED CALL-SITE BUG (not fixed, per project policy): mdot.f's
+! CALL-SITE BUG FIXED 2026 (config-matrix campaign): mdot.f's
 ! only caller, massloss.f90, calls this routine with 24 actual
 ! arguments (leading with log_luminosity_lsun/BL) while this
 ! subroutine declares only 23 dummy arguments (starting with
@@ -17,6 +17,9 @@
 ! existing argument-count mismatch in the original F77 source
 ! (mdot.f/massloss.f) -- every actual argument after the first is
 ! therefore received one position off from what the caller intended.
+! massloss.f90's call now matches this dummy list 1:1 (the spurious
+! leading luminosity actual was dropped); LMDOT runs are exercised
+! by examples/run_config_matrix/cm_massloss_*.
 ! Reproduced exactly; NOT corrected here.
 subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      log_pressure, log_radius, log_mass, zone_mass_grams, shell_mass, &
@@ -25,10 +28,10 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
-      use star_info_lib, only: star
-      use const_lib
+      use rotation_scratch_lib
+      use star_info_lib, only: star, json
+      use phys_const_lib
       implicit none
-      integer, parameter :: json = 5000
 
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: composition(15,json)
@@ -81,10 +84,10 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 
       old_log_envelope_mass_fraction = log_mass(num_zones) - log_total_mass
 ! MHP 8/10- CHECK FOR SCALED SOLAR WIND MASS LOSS
-      if(star%rot%use_rotation_scaled_solar_wind .and. rotation_active) then
-         omega_ratio_sq = (omega(num_zones)/star%rot%wind_reference_omega)**2
-         omega_max_ratio_sq = (star%rot%wind_max_omega/star%rot%wind_reference_omega)**2
-         mass_loss_rate_msun_yr = star%rot%solar_wind_mass_loss_rate_msun_yr* &
+      if(rot_scr%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
+         omega_ratio_sq = (omega(num_zones)/rot_scr%wind_reference_omega)**2
+         omega_max_ratio_sq = (rot_scr%wind_max_omega/rot_scr%wind_reference_omega)**2
+         mass_loss_rate_msun_yr = rot_scr%solar_wind_mass_loss_rate_msun_yr* &
               min(omega_ratio_sq,omega_max_ratio_sq)
          write(*,*)omega(num_zones),mass_loss_rate_msun_yr
       endif
@@ -94,7 +97,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 !      FRAC = 0.1D0
 !      IF(.NOT.LMDOT)GOTO 9999
 ! CONVERT FROM SOLAR MASSES/YEAR TO GM/SEC
-      mass_loss_rate_cgs = abs(mass_loss_rate_msun_yr)*solar_mass_cgs/ &
+      mass_loss_rate_cgs = abs(mass_loss_rate_msun_yr)*star%solar_mass_cgs/ &
            seconds_per_year
 ! THE SUM OF THE MASSES OF ALL SHELLS (E.G. TO JENV - 1)
 ! SHOULD BE USED RATHER THAN THE SUM OF THE MASSES DOWN
@@ -111,9 +114,9 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       endif
 ! COMPUTE MAXIMUM TIMESTEP BASED ON NOT REMOVING TOO MUCH MASS FROM THE
 ! SURFACE CZ (FCZDMDT) OR AS A FRACTION OF THE TOTAL MASS (FTOTDMDT)
-      timestep_limit_total_mass = ftotdmdt*total_mass_msun*solar_mass_cgs/ &
+      timestep_limit_total_mass = star%ctrl%ftotdmdt*total_mass_msun*star%solar_mass_cgs/ &
            mass_loss_rate_cgs
-      timestep_limit_cz_mass = fczdmdt*cz_mass_grams/mass_loss_rate_cgs
+      timestep_limit_cz_mass = star%ctrl%fczdmdt*cz_mass_grams/mass_loss_rate_cgs
       timestep_limit = min(timestep_limit_total_mass,timestep_limit_cz_mass)
 ! RESTRICT TIMESTEP TO ADD NO MORE THAN 1/2 OF THE CURRENT MASS
 ! BEYOND THE FITTING POINT TO THE STAR.
@@ -128,10 +131,10 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          timestep = timestep_limit
       endif
 ! mhp 8/10 turn mass loss off when disk exhausted only when dm /dt > 0, e.g. accretion
-      if(disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
-         disk_age_test = disk_lifetime + 1.0d-9*timestep/seconds_per_year
-         if(disk_age_test.gt.disk_temperature)then
-            timestep = (disk_temperature-disk_lifetime)*1.0d9*seconds_per_year
+      if(star%job%disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
+         disk_age_test = star%disk_gate_age_gyr + 1.0d-9*timestep/seconds_per_year
+         if(disk_age_test.gt.star%job%disk_locking_age_gyr)then
+            timestep = (star%job%disk_locking_age_gyr-star%disk_gate_age_gyr)*1.0d9*seconds_per_year
             disk_exhausted_flag = .true.
          else
             disk_exhausted_flag = .false.
@@ -140,7 +143,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          disk_exhausted_flag = .false.
       endif
 ! FINAL AMOUNT OF MASS LOSS INFERRED IN CGS UNITS.
-      delta_mass_cgs = mass_loss_rate_msun_yr*solar_mass_cgs*timestep/ &
+      delta_mass_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs*timestep/ &
            seconds_per_year
 ! COMPUTE THE MEAN THERMAL ENERGY
 ! CONTENT OF THE CONVECTION ZONE FOR MODELS WITH ACCRETION.
@@ -161,26 +164,26 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
               (local_density*local_temperature)
 !         DLOGEN = (DELM/DMCZ)*(SACC-SCEN)/RMU
          delta_log_specific_entropy = (delta_mass_cgs/cz_mass_grams)* &
-              star%rot%envelope_specific_entropy/mean_molecular_weight_local
+              rot_scr%envelope_specific_entropy/mean_molecular_weight_local
 !         DLNM = LOG(DMCZ+DELM)-LOG(DMCZ)
          delta_ln_mass = 0.0d0
          delta_log_radius = (cc23*delta_log_specific_entropy- &
               cc13*delta_ln_mass)/ln10
-         star%rot%delta_log_temperature = delta_ln_mass/ln10 - delta_log_radius
-         star%rot%delta_log_pressure = 2.0d0*delta_ln_mass/ln10 - 4.0d0*delta_log_radius
+         rot_scr%delta_log_temperature = delta_ln_mass/ln10 - delta_log_radius
+         rot_scr%delta_log_pressure = 2.0d0*delta_ln_mass/ln10 - 4.0d0*delta_log_radius
 !         WRITE(*,*)DLOGR,DLOGP,DLOGT
          if(envelope_boundary_zone.eq.1)then
             do zone_idx = envelope_boundary_zone,num_zones
                log_radius(zone_idx) = log_radius(zone_idx)+delta_log_radius
-               log_pressure(zone_idx) = log_pressure(zone_idx)+star%rot%delta_log_pressure
+               log_pressure(zone_idx) = log_pressure(zone_idx)+rot_scr%delta_log_pressure
                log_temperature(zone_idx) = &
-                    log_temperature(zone_idx)+star%rot%delta_log_temperature
+                    log_temperature(zone_idx)+rot_scr%delta_log_temperature
             end do
          else
             log_pressure(envelope_boundary_zone) = &
-                 log_pressure(envelope_boundary_zone)+star%rot%delta_log_pressure
+                 log_pressure(envelope_boundary_zone)+rot_scr%delta_log_pressure
             log_temperature(envelope_boundary_zone) = &
-                 log_temperature(envelope_boundary_zone)+star%rot%delta_log_temperature
+                 log_temperature(envelope_boundary_zone)+rot_scr%delta_log_temperature
             boundary_radius_cm = 10.0d0**log_radius(envelope_boundary_zone)
             radius_scale_factor = 10.0d0**delta_log_radius
             do zone_idx = envelope_boundary_zone+1,num_zones
@@ -194,20 +197,20 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 ! FOR MODELS WITH ROTATION AND MASS LOSS REMOVE ANGULAR MOMENTUM.
 ! IN THIS CASE WE ASSUME A THERMAL WIND WHERE THE SURFACE MATTER
 ! CARRIES AWAY ONLY ITS LOCAL ANGULAR MOMENTUM PER UNIT MASS.
-      if(rotation_active .and. delta_mass_cgs.lt.0.0d0)then
+      if(star%job%rotation_active .and. delta_mass_cgs.lt.0.0d0)then
 ! MOMENT OF INERTIA PER UNIT MASS AT THE SURFACE.
          surface_moment_of_inertia_per_mass = 2.0d0/3.0d0*total_radius_cm**2
-         if(walpcz.ge.0.0d0)then
+         if(star%ctrl%walpcz.ge.0.0d0)then
 ! SOLID BODY CZ ROTATION
             delta_angular_momentum = omega(num_zones)* &
                  surface_moment_of_inertia_per_mass*delta_mass_cgs
-         else if(walpcz.le.-2.0d0)then
+         else if(star%ctrl%walpcz.le.-2.0d0)then
 ! CONSTANT J/M
             delta_angular_momentum = specific_angular_momentum(num_zones)* &
                  delta_mass_cgs
          else
             surface_omega_local = omega(num_zones)*10.0d0** &
-                 (log_radius(num_zones)*walpcz)/total_radius_cm**walpcz
+                 (log_radius(num_zones)*star%ctrl%walpcz)/total_radius_cm**star%ctrl%walpcz
             delta_angular_momentum = surface_omega_local* &
                  surface_moment_of_inertia_per_mass*delta_mass_cgs
          endif
@@ -244,15 +247,15 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 !      WRITE(*,*)HS1(M),HS(M)
 ! CORRECT TOTAL MASS IN SOLAR UNITS (SMASS) AND
 ! LOG OF TOTAL MASS IN GRAMS (HSTOT,STOTAL)
-      total_mass_msun = total_mass_msun + delta_mass_cgs/solar_mass_cgs
-      star%rot%updated_mass_msun = total_mass_msun
-      delta_mass_msun = delta_mass_cgs/solar_mass_cgs
+      total_mass_msun = total_mass_msun + delta_mass_cgs/star%solar_mass_cgs
+      rot_scr%updated_mass_msun = total_mass_msun
+      delta_mass_msun = delta_mass_cgs/star%solar_mass_cgs
       write(*,20)total_mass_msun,delta_mass_msun
  20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)
       total_mass_grams_old = 10.0d0**log_total_mass
       total_mass_grams_new = total_mass_grams_old + delta_mass_cgs
       log_total_mass = log10(total_mass_grams_new)
-      star%env_comp%stotal = log_total_mass
+      star%stotal = log_total_mass
 ! CORRECT MASS CONTENTS OF INDIVIDUAL SHELLS (HS2, IN GM)
       do zone_idx = envelope_boundary_zone,num_zones-1
        shell_mass(zone_idx) = 0.5d0*(zone_mass_grams(zone_idx+1)- &
@@ -261,7 +264,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       shell_mass(num_zones) = total_mass_grams_new-0.5d0* &
            (zone_mass_grams(num_zones)+zone_mass_grams(num_zones-1))
 ! 07/02RESET SENV
-      star%env_comp%senv = log_mass(num_zones) - log_total_mass
+      star%senv = log_mass(num_zones) - log_total_mass
 ! RECOMPUTE SURFACE BOUNDRY CONDITION
       new_surface_bc_needed = .true.
 ! REMIX THE SURFACE CONVECTION ZONE IF MDOT IS POSITIVE.
@@ -271,16 +274,16 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       if(delta_mass_cgs.gt.0.0d0)then
          do species_idx = 1,11
             mixed_abundance = (composition(species_idx,envelope_boundary_zone)* &
-                 cz_mass_below_fitting+accreted_composition(species_idx)* &
+                 cz_mass_below_fitting+star%ctrl%accreted_composition(species_idx)* &
                  delta_mass_cgs)/(delta_mass_cgs+cz_mass_below_fitting)
             do zone_idx = envelope_boundary_zone,num_zones
                composition(species_idx,zone_idx) = mixed_abundance
             end do
          end do
-         star%light_burn%accreted_mass_fraction = delta_mass_cgs
+         star%accreted_mass_fraction = delta_mass_cgs
       endif
 !  9999 CONTINUE
-      if(disk_exhausted_flag) use_mass_accretion = .false.
+      if(disk_exhausted_flag) star%job%use_mass_accretion = .false.
 !      WRITE(*,*)M,HS(M),HSTOT
       return
 end subroutine mdot

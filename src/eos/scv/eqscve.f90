@@ -21,13 +21,15 @@
 subroutine eqscve(log10_temperature, temperature, pressure, &
      log10_density, density, hydrogen_fraction, metal_fraction, beta, &
      ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
-     adiabatic_gradient, valid_table_point)
+     adiabatic_gradient, valid_table_point, ierr)
 
-      use const_lib
+      use phys_const_lib
       use eos_mixture_lib, only: eos_mix
       use numerics_lib
       use scv_eos_lib
       implicit none
+      integer, intent(out) :: ierr
+      integer :: jerr_gate
 
       integer, parameter :: nts = 63, nps = 76
 
@@ -78,6 +80,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       logical :: temp_needs_smoothing, press_needs_smoothing
       integer :: temp_smooth_direction, press_smooth_direction
       integer :: i, ii, j, jj, jjj, k
+      ierr = 0
       if (abs(hydrogen_fraction-eos_mix%envelope_hydrogen_fraction).gt.1.0d-5 &
            .or. abs(metal_fraction-eos_mix%envelope_metal_fraction).gt.1.0d-5) then
 !          CALL EQSCVG(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
@@ -216,7 +219,13 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             end do
             call kspline(interp_nodes, ytab_work, spline_second_deriv)
             call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-                 log10_gas_pressure, spline_value)
+                 log10_gas_pressure, spline_value, jerr_gate)
+            ! 2026 numerics-gate opt-in (see numerics_lib): interpolation
+            ! failure returns via ierr instead of stopping.
+            if (jerr_gate /= 0) then
+               ierr = jerr_gate
+               return
+            end if
             temp_grid(i,j) = spline_value
 !            TEMP(I,J)=FP(1)*TABLENV(II,IDP,J+1) +
 !     *      FP(2)*TABLENV(II,IDP+1,J+1) + FP(3)*TABLENV(II,IDP+2,J+1)
@@ -233,7 +242,11 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          end do
          call kspline(interp_nodes, ytab_work, spline_second_deriv)
          call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-              log10_temperature, spline_value)
+              log10_temperature, spline_value, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
          interp_result(j) = spline_value
       end do
 ! perform interpolation at adjacent temperature table points
@@ -251,7 +264,11 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             end do
             call kspline(interp_nodes, ytab_work, spline_second_deriv)
             call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-                 log10_gas_pressure, spline_value)
+                 log10_gas_pressure, spline_value, jerr_gate)
+            if (jerr_gate /= 0) then
+               ierr = jerr_gate
+               return
+            end if
             temp_grid(i,j) = spline_value
 !            TEMP(I,J)=FP(1)*TABLENV(II,IDP,J+1) +
 !     *      FP(2)*TABLENV(II,IDP+1,J+1) + FP(3)*TABLENV(II,IDP+2,J+1)
@@ -269,7 +286,11 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          end do
          call kspline(interp_nodes, ytab_work, spline_second_deriv)
          call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-              log10_temperature, spline_value)
+              log10_temperature, spline_value, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
          interp_result_temp_shift(j) = spline_value
       end do
       if (temp_smooth_direction.eq.-1) then
@@ -302,7 +323,11 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             end do
             call kspline(interp_nodes, ytab_work, spline_second_deriv)
             call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-                 log10_gas_pressure, spline_value)
+                 log10_gas_pressure, spline_value, jerr_gate)
+            if (jerr_gate /= 0) then
+               ierr = jerr_gate
+               return
+            end if
             temp_grid(i,j) = spline_value
 !            TEMP(I,J)=FP(1)*TABLENV(II,IDP,J+1) +
 !     *      FP(2)*TABLENV(II,IDP+1,J+1) + FP(3)*TABLENV(II,IDP+2,J+1)
@@ -319,7 +344,11 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          end do
          call kspline(interp_nodes, ytab_work, spline_second_deriv)
          call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-              log10_temperature, spline_value)
+              log10_temperature, spline_value, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
          interp_result_press_shift(j) = spline_value
       end do
       if (press_smooth_direction.eq.-1) then
@@ -352,7 +381,11 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             end do
             call kspline(interp_nodes, ytab_work, spline_second_deriv)
             call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-                 log10_gas_pressure, spline_value)
+                 log10_gas_pressure, spline_value, jerr_gate)
+            if (jerr_gate /= 0) then
+               ierr = jerr_gate
+               return
+            end if
             temp_grid(i,j) = spline_value
 !            TEMP(I,J)=FP(1)*TABLENV(II,IDP,J+1) +
 !     *      FP(2)*TABLENV(II,IDP+1,J+1) + FP(3)*TABLENV(II,IDP+2,J+1)
@@ -370,7 +403,11 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
          end do
          call kspline(interp_nodes, ytab_work, spline_second_deriv)
          call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-              log10_temperature, spline_value)
+              log10_temperature, spline_value, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
          interp_result_both_shift(j) = spline_value
       end do
       end if

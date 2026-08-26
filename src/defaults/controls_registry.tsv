@@ -67,8 +67,8 @@ control	lzramp	logical	.false.	use_z_ramp	canonical
 control	lteff	logical	.false.*	specify_teff_flag	canonical		
 control	lcalst	logical	.false.*	calibrate_star_flag	canonical		
 control	lpurez	logical	.false.	use_pure_z_table	canonical		
-control	liso	logical	.false.*	isochrone_output_active	canonical		former common/chrone/: lrwsh_placeholder/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
-control	lrwsh	logical	.false.*	lrwsh_placeholder	canonical		former common/chrone/: lrwsh_placeholder/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
+control	liso	logical	.false.*	isochrone_output_active	canonical		former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
+control	lrwsh	logical	.false.*	rewind_short_file	canonical		former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
 control	lsenv0a	logical(50)	.false.*	has_senv0_array	canonical		
 control	lpout	logical	.false.*	po_output_enabled	canonical		
 control	lcals	logical	.false.*	calibrate_solar_model	canonical		
@@ -84,7 +84,7 @@ control	nprtmod	integer	0*	profile_model_interval	proposed		Write a stored model
 control	nprtpt	integer	1	print_point_interval	canonical		
 control	numrun	integer	0*	num_runs	canonical		
 control	nmodls	integer(50)	0*	max_model_number	canonical	mesa: max_model_number	
-control	opecalex	string(7)	'OPACALEXANDER.X00',	alex_z_value	todo		TODO verify: Z of the Alexander opacity table in use
+control	opecalex	string(7)	'OPACALEXANDER.X00',	alex95_table_z_list	canonical		VERIFIED 2026: the seven Alexander-1995 low-T opacity table FILE PATHS (character(len=256)(7)), relayed to star%job%alex95_table_paths -- the old 'alex_z_value' guess was wrong.
 control	poa	real	0.0*	po_weight_l	canonical		former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
 control	pob	real	0.0*	po_weight_teff	canonical		former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
 control	poc	real	0.0*	po_weight_age	canonical		former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
@@ -151,7 +151,7 @@ physics	atmerr	real	0.0*	atm_error_tol	canonical		former common/intatm/: all 5 m
 physics	atmmax	real	0.0*	atm_step_max	canonical		
 physics	atmd0	real	0.0*	atm_step_initial	canonical		former common/intatm/: all 5 members are NAMELIST /physics/ values with different canonical spellings than core/parmin.f90's terse names (atmerr/atmd0/atmbeg/atmmin/atmma
 physics	anewcp	string	''*	change_species_name	verified		Element id whose abundance to override in the start model (with change_species_value)
-physics	atmp	string	''*	atm_print_flag	todo		TODO verify
+physics	atmp	string	''*	new_species_value_mode	canonical		VERIFIED 2026: 3-char mode for species rescaling (with anewcp/xnewcp): 'ABS' -> new_species_value is an absolute mass fraction, otherwise relative to H (drives value_relative_to_h). The 'atm_print_flag' guess was wrong -- nothing atmospheric about it.
 physics	acfpft	real	0.0*	fpft_average_weight	verified		Averaging weight in the fp/ft update (shape, checkj)
 physics	atime	real(14)	0.0*	timestep_factors	verified		Per-phase timestep-control factor array (wtime/ytime governors)
 physics	alphac	real	0.0*	overshoot_alpha_core	proposed	~ MESA overshoot f	Core overshoot extent in pressure scale heights
@@ -176,8 +176,8 @@ physics	envbeg	real	0.0*	env_step_begin	canonical		former common/intenv/: all 4 
 physics	envstp	real	0.0*	envelope_step_size	canonical		former common/envgen/: all 3 members are NAMELIST values with different canonical spellings, kept local in core/parmin.f90 and copy-assigned.
 physics	etadh0	real	0.0*	debye_huckel_eta_min	canonical		
 physics	etadh1	real	0.0*	debye_huckel_eta_max	canonical		
-physics	fcorr0	real	0.0*	solver_correction_factor0	todo		TODO verify: under-relaxation factor, first iterations
-physics	fcorri	real	0.0*	solver_correction_factor	todo		TODO verify: under-relaxation factor, later iterations
+physics	fcorr0	real	0.0*	solver_underrelax_start	canonical		VERIFIED 2026: Henyey under-relaxation start: fcorr = |fcorr0| - fcorri at step start (evolve_step); fcorr0>0 enables per-iteration growth.
+physics	fcorri	real	0.0*	solver_underrelax_increment	canonical		VERIFIED 2026: Henyey under-relaxation increment: fcorr grows by this each corrector pass up to 1 (henyey_iterate).
 physics	fk	real	0.0*	wind_law_constant	verified		Kawaler/PMM wind-law constant factor FK in the JDOT formula
 physics	fw	real	0.0*	difad_velocity_scale	canonical		
 physics	fc	real	0.0*	mixing_velocity_scale	canonical		
@@ -193,7 +193,7 @@ physics	fgsfc	real	0.0*	gsf_mixing_scale	canonical
 physics	fgry	real	0.0*	settling_y_factor	verified		Gravitational settling multiplier for helium (microdiff)
 physics	fgrz	real	0.0*	settling_z_factor	verified		Gravitational settling multiplier for metals (microdiff)
 physics	grtol	real	0.0*	settling_tolerance	canonical		former common/gravst/: all 4 members are NAMELIST /physics/ values, each with a different canonical spelling than core/parmin.f90's terse names (grtol/ilambda/niter_gs/ld
-physics	htoler	real(5,2)	0.0*	solver_tolerance	todo		TODO verify: Henyey convergence tolerance
+physics	htoler	real(5,2)	0.0*	solver_tolerances	canonical		VERIFIED 2026: htoler(5,2) Henyey thresholds: rows 1-4 = per-variable convergence (col 1) and correction-too-large (col 2) limits; row 5 = the level-5 residual test.
 physics	hpttol	real(12)	1.0d-8,8.0d-2,5.0d-2,5.0d-2,1.0d0,1.0d0,0.0d0,5.0d-2, &	rezone_mass_spacing	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 physics	itfp1	integer	0*	fpft_iter1	verified		shape/fpft iteration bound 1
 physics	itfp2	integer	0*	fpft_iter2	verified		shape/fpft iteration bound 2
@@ -219,7 +219,7 @@ physics	lnewcp	logical	.false.*	rescale_species_active	canonical
 physics	lkuthe	logical	.false.	helium_flash_active	canonical		former common/heflsh/: helium_flash_active (originally lkuthe) is a NAMELIST value with a different canonical spelling, kept local in core/parmin.f90 and copy-assigned.
 physics	lovstc	logical	.false.*	core_overshoot_active	proposed		Enable convective-core overshoot
 physics	lovste	logical	.false.	envelope_overshoot_active	canonical		
-physics	lovstm	logical	.false.*	min_overshoot_active	todo		TODO verify: third overshoot switch (with lovstc/lovste)
+physics	lovstm	logical	.false.*	intermediate_overshoot_active	canonical		VERIFIED 2026: enables overshoot at INTERMEDIATE convection zones (neither the core, lovstc, nor the surface envelope, lovste); overshoot_boundaries skips such zones without it.
 physics	lovmax	logical	.false.*	overshoot_max_extent_flag	verified		oversh: cap overshoot extent option
 physics	lexcom	logical	.false.	use_extended_composition	canonical		former common/flag/: single NAMELIST /physics/ member selecting the extended (15-species) vs. default composition array. Same namelist-can't-rename treatment as use_itoh_
 physics	lrot	logical	.false.*	rotation_flag	canonical	mesa: rotation_flag	
@@ -257,7 +257,7 @@ physics	tenv1	real	0.0*	rezone_env_logT1	verified		hpoint envelope rezoning temp
 physics	tgcut	real	0.0*	gradient_logT_cutoff	verified		tpgrad: above this logT simplified gradient handling applies
 physics	tridt	real	0.0*	tri_delta_teffl	canonical		former common/cenv/: lnew0 is a NAMELIST /physics/ value spelled identically to its canonical name. tri_delta_teffl/tri_delta_logl (originally tridt/tridl) are also NAMEL
 physics	tridl	real	0.0*	tri_delta_logl	canonical		former common/cenv/: lnew0 is a NAMELIST /physics/ value spelled identically to its canonical name. tri_delta_teffl/tri_delta_logl (originally tridt/tridl) are also NAMEL
-physics	tollaol	?	?	laol_z_tolerance	todo		TODO verify: LAOL table Z-match tolerance
+physics	tollaol	?	?	laol_z_tolerance	canonical		VERIFIED 2026: LAOL89 interpolators allow linear extrapolation within log(tollaol) of a table edge (gtlaol/gtlaol2/gtpurz: log_extrap_tolerance = log(tollaol)).
 physics	vnew	real(12)	0.0*	mixture_weights_seed	proposed		Species mixture-weight vector seeding starin's mixture algorithm
 physics	walpcz	real	0.0*	new_zone_omega_weight	verified		Omega interpolation weight for newly added envelope zones (getnewenv)
 physics	wnew	real	0.0*	initial_omega	proposed		Initial rotation rate when set_initial_omega
@@ -273,8 +273,8 @@ physics	imend	integer	0*	mc_run_end	proposed		Last Monte-Carlo realization index
 physics	sstandard	real(17)	0.9828,1.0485,0.9815,0.9241,1.3818,1.0542,1.0, &	mc_standard_seed	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 physics	lscv	logical	.false.	use_scv_eos	canonical		
 physics	ldisk	logical	.false.*	disk_locking_active	canonical		
-physics	tdisk	real	0.0*	disk_temperature	canonical		former common/disk/: disk_temperature/disk_pressure/ disk_locking_active are NAMELIST /physics/ values (core/parmin.f90's tdisk/pdisk/ldisk, kept local there and copy-ass
-physics	pdisk	real	0.0*	disk_pressure	canonical		
+physics	tdisk	real	0.0*	disk_locking_age_gyr	canonical		Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr).
+physics	pdisk	real	0.0*	disk_omega_rad_s	canonical		Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly said period in days; the code has always consumed rad/s).
 physics	wmax	real	0.0*	wind_saturation_omega	canonical		
 physics	lsolid	logical	.false.*	force_solid_body_rotation	canonical		former common/sbrot/: force_solid_body_rotation/solid_body_mode_flag (originally lsolid/impjmod) are NAMELIST values with different canonical spellings, kept local in cor
 physics	impjmod	integer	0*	solid_body_mode_flag	canonical		
@@ -294,7 +294,7 @@ physics	alatm_alpha	real	0d0	allard_target_alpha	canonical		former common/alatm0
 physics	laltptau100	logical	.false.	allard_use_tau100	canonical		
 physics	cstmixing	real	0.0*	constant_mixing_coeff	proposed		Constant added diffusion coefficient (mixing)
 physics	cstdiffmix	real	0.0*	constant_settling_reduction	proposed		Constant coefficient mimicking mixing to reduce settling
-physics	lsolwind	logical	.false.	calibrate_solar_wind	todo		TODO verify: solar wind-loss calibration mode
+physics	lsolwind	logical	.false.	use_rotation_scaled_solar_wind	canonical		VERIFIED 2026: scaled-solar-wind mass loss: Mdot = solar rate * min((omega/omega_ref)^2, cap) in mdot; copied to star%rot%use_rotation_scaled_solar_wind.
 physics	lmwind	logical	.false.*	use_pmm_wind_law	canonical		
 physics	lrossby	logical	.false.*	scale_by_rossby_number	canonical		
 physics	lpmm	logical	.false.*	use_pmm_wind	proposed		Use the PMM wind law (Somers pinned Matt-style)
@@ -388,7 +388,6 @@ physics	tol_dx_max	real	0.0*	tol_dx_max	keep
 physics	tol_dz_max	real	0.0*	tol_dz_max	keep		
 physics	time_max_dt_frac	real	0.0*	time_max_dt_frac	keep		
 physics	lnewvars	logical	.false.*	use_new_rate_variables	verified		remap: use the new nuclear-rate variable set
-physics	lnewtcz	logical	.false.*	use_new_turnover_timescale	canonical		former common/ovrtrn/'s two config members: NAMELIST /physics/ values selecting the newer convective-turnover-timescale calculation and whether to run the full envelope i
 physics	lcalcenv	logical	.false.*	calc_envelope_flag	canonical		
 control	use_legacy_output	logical	.true. legacy decks / .false. new-style inlists	use_legacy_output	verified		Output style: .true. = historical .track/.store streams; .false. = MESA-format output (.history now, profiles to follow). Default depends on inlist style.
 control	history_columns_file	string	'' (all columns)	history_columns_file	verified	mesa: same	MESA mode: file listing the history columns to write (one name per line, ! comments); blank = all columns
@@ -398,3 +397,4 @@ physics	profile_interval	integer	50	profile_interval	verified	mesa: same	MESA mo
 physics	pulse_format	string	'GYRE'	pulse_format	verified	mesa: pulse_data_format	MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format}
 physics	write_profile_flag	logical	.false.	write_profile_flag	verified		MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)
 physics	write_pulse_flag	logical	.false.	write_pulse_flag	verified		MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)
+physics	compute_neutrino_fluxes	logical	.false.	compute_neutrino_fluxes	verified		Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run

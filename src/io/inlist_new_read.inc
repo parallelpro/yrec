@@ -74,7 +74,7 @@
       calibrate_star_flag = lcalst
       use_pure_z_table = lpurez
       isochrone_output_active = liso
-      lrwsh_placeholder = lrwsh
+      rewind_short_file = lrwsh
       has_senv0_array = lsenv0a
       po_output_enabled = lpout
       calibrate_solar_model = lcals
@@ -90,7 +90,7 @@
       print_point_interval = nprtpt
       num_runs = numrun
       max_model_number = nmodls
-      alex_z_value = opecalex
+      alex95_table_z_list = opecalex
       po_weight_l = poa
       po_weight_teff = pob
       po_weight_age = poc
@@ -156,7 +156,7 @@
       atm_step_max = atmmax
       atm_step_initial = atmd0
       change_species_name = anewcp
-      atm_print_flag = atmp
+      new_species_value_mode = atmp
       fpft_average_weight = acfpft
       timestep_factors = atime
       overshoot_alpha_core = alphac
@@ -181,8 +181,8 @@
       envelope_step_size = envstp
       debye_huckel_eta_min = etadh0
       debye_huckel_eta_max = etadh1
-      solver_correction_factor0 = fcorr0
-      solver_correction_factor = fcorri
+      solver_underrelax_start = fcorr0
+      solver_underrelax_increment = fcorri
       wind_law_constant = fk
       difad_velocity_scale = fw
       mixing_velocity_scale = fc
@@ -198,7 +198,7 @@
       settling_y_factor = fgry
       settling_z_factor = fgrz
       settling_tolerance = grtol
-      solver_tolerance = htoler
+      solver_tolerances = htoler
       fpft_iter1 = itfp1
       fpft_iter2 = itfp2
       max_stage_index = imax
@@ -221,7 +221,7 @@
       helium_flash_active = lkuthe
       core_overshoot_active = lovstc
       envelope_overshoot_active = lovste
-      min_overshoot_active = lovstm
+      intermediate_overshoot_active = lovstm
       overshoot_max_extent_flag = lovmax
       use_extended_composition = lexcom
       rotation_flag = lrot
@@ -274,8 +274,8 @@
       mc_run_end = imend
       use_scv_eos = lscv
       disk_locking_active = ldisk
-      disk_temperature = tdisk
-      disk_pressure = pdisk
+      disk_locking_age_gyr = tdisk
+      disk_omega_rad_s = pdisk
       wind_saturation_omega = wmax
       force_solid_body_rotation = lsolid
       solid_body_mode_flag = impjmod
@@ -295,7 +295,7 @@
       allard_use_tau100 = laltptau100
       constant_mixing_coeff = cstmixing
       constant_settling_reduction = cstdiffmix
-      calibrate_solar_wind = lsolwind
+      use_rotation_scaled_solar_wind = lsolwind
       use_pmm_wind_law = lmwind
       scale_by_rossby_number = lrossby
       use_pmm_wind = lpmm
@@ -358,7 +358,6 @@
       s0p_be7_p = s0p_1_be7p
       s0pp_be7_p = s0pp_1_be7p
       use_new_rate_variables = lnewvars
-      use_new_turnover_timescale = lnewtcz
       calc_envelope_flag = lcalcenv
 ! Read &star_job from the first file.
       open(unit=standard_unit, file=control_nml_file, status='OLD')
@@ -444,7 +443,7 @@
       lcalst = calibrate_star_flag
       lpurez = use_pure_z_table
       liso = isochrone_output_active
-      lrwsh = lrwsh_placeholder
+      lrwsh = rewind_short_file
       lsenv0a = has_senv0_array
       lpout = po_output_enabled
       lcals = calibrate_solar_model
@@ -460,7 +459,7 @@
       nprtpt = print_point_interval
       numrun = num_runs
       nmodls = max_model_number
-      opecalex = alex_z_value
+      opecalex = alex95_table_z_list
       poa = po_weight_l
       pob = po_weight_teff
       poc = po_weight_age
@@ -526,7 +525,7 @@
       atmmax = atm_step_max
       atmd0 = atm_step_initial
       anewcp = change_species_name
-      atmp = atm_print_flag
+      atmp = new_species_value_mode
       acfpft = fpft_average_weight
       atime = timestep_factors
       alphac = overshoot_alpha_core
@@ -551,8 +550,8 @@
       envstp = envelope_step_size
       etadh0 = debye_huckel_eta_min
       etadh1 = debye_huckel_eta_max
-      fcorr0 = solver_correction_factor0
-      fcorri = solver_correction_factor
+      fcorr0 = solver_underrelax_start
+      fcorri = solver_underrelax_increment
       fk = wind_law_constant
       fw = difad_velocity_scale
       fc = mixing_velocity_scale
@@ -568,7 +567,7 @@
       fgry = settling_y_factor
       fgrz = settling_z_factor
       grtol = settling_tolerance
-      htoler = solver_tolerance
+      htoler = solver_tolerances
       itfp1 = fpft_iter1
       itfp2 = fpft_iter2
       imax = max_stage_index
@@ -591,7 +590,7 @@
       lkuthe = helium_flash_active
       lovstc = core_overshoot_active
       lovste = envelope_overshoot_active
-      lovstm = min_overshoot_active
+      lovstm = intermediate_overshoot_active
       lovmax = overshoot_max_extent_flag
       lexcom = use_extended_composition
       lrot = rotation_flag
@@ -644,8 +643,8 @@
       imend = mc_run_end
       lscv = use_scv_eos
       ldisk = disk_locking_active
-      tdisk = disk_temperature
-      pdisk = disk_pressure
+      tdisk = disk_locking_age_gyr
+      pdisk = disk_omega_rad_s
       wmax = wind_saturation_omega
       lsolid = force_solid_body_rotation
       impjmod = solid_body_mode_flag
@@ -665,7 +664,7 @@
       laltptau100 = allard_use_tau100
       cstmixing = constant_mixing_coeff
       cstdiffmix = constant_settling_reduction
-      lsolwind = calibrate_solar_wind
+      lsolwind = use_rotation_scaled_solar_wind
       lmwind = use_pmm_wind_law
       lrossby = scale_by_rossby_number
       lpmm = use_pmm_wind
@@ -728,5 +727,4 @@
       s0p_1_be7p = s0p_be7_p
       s0pp_1_be7p = s0pp_be7_p
       lnewvars = use_new_rate_variables
-      lnewtcz = use_new_turnover_timescale
       lcalcenv = calc_envelope_flag

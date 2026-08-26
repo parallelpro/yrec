@@ -7,7 +7,7 @@
 ! alatm02/, alatm05/, jtest/ -- into one derived type, following the
 ! pulse_diag_lib/run_diag_lib/rotdiff_lib precedent for grouping many
 ! small, unrelated, per-model or table-load-time blocks into a single
-! module. None of these touch core/parmin.f90. Every declaring file
+! module. None of these touch core/read_input.f90. Every declaring file
 ! for a given block used byte-identical member names/order.
 module atm_table_lib
       implicit none
@@ -20,7 +20,7 @@ module atm_table_lib
 ! purely as an accident of the original COMMON grouping; relocated
 ! to yale_eos_lib in 2026, ROADMAP.md stage 1, alongside moving its
 ! load from an inline setup/setups.f90 block into eos_lib's
-! eos_init. Consumed only by eos/yale/eqrelv.f90.)
+! eos_init. Consumed only by eos/yale/fully_ionized_eos.f90.)
 ! former common/fac/: lower-edge-of-table-in-log-g indices for the
 ! Kurucz (atm_table_nt) and Kurucz/Castelli (atm_table_ntc) surface-
 ! pressure tables.
@@ -84,7 +84,7 @@ module atm_table_lib
 ! (kurucz_castelli_log10_pressure_table/kurucz_castelli_teff_table/
 ! kurucz_castelli_logg_table, originally atmplc/atmtlc/atmglc) is
 ! spelled identically to its canonical name everywhere -- use-associated
-! directly. Unused in core/parmin.f90.
+! directly. Unused in core/read_input.f90.
       double precision :: kurucz_castelli_log10_pressure_table(76,11), &
            kurucz_castelli_teff_table(76), kurucz_castelli_logg_table(11)
 

@@ -8,11 +8,11 @@
 ! Yale (eqrelv/eqsaha) and SCV branches of eqstat2 and by eos/mu.f90.
 !
 ! Previously the eos internals read this straight from the model
-! (star%env_comp%...), the one place the eos domain touched
+! (star%...), the one place the eos domain touched
 ! star_info. Now the STAR LAYER pushes the mixture through the
 ! eos_set_mixture facade entry (eos_lib) whenever it recomputes the
-! envelope composition (core/starin.f90's mixture blocks,
-! setup/rscale.f90's rescale), and the eos domain reads only this,
+! envelope composition (core/read_starting_model.f90's mixture blocks,
+! setup/rescale_model.f90's rescale), and the eos domain reads only this,
 ! its own state -- same pattern as every other physics-domain state
 ! module. MESA-equivalently: composition is an INPUT of the eos,
 ! owned on the physics side of the boundary.

@@ -31,16 +31,16 @@
 ! `use net_lib` (it called `neutrino`) was removed -- a module
 ! cannot use itself; host association already gives every contained
 ! procedure access to every sibling procedure. Callers that didn't
-! already `use net_lib` (setup/midmod.f90, misc/coefft.f90,
-! core/main.f90, util/ytime.f90, rotation/getw.f90,
-! mixing/bursmix.f90) had it added.
+! already `use net_lib` (setup/mid_timestep_model.f90, misc/henyey_coefficients.f90,
+! core/main.f90, util/timestep_limit_heburn.f90, rotation/evolve_angular_momentum.f90,
+! mixing/burn_settle_mix.f90) had it added.
 ! ---------------------------------------------------------------------
 ! MAP OF THE MODULE (2026; updated at the physics-purity split).
 ! net_lib now holds ONLY the pure kernels -- functions of
 ! (logRho, logT, composition, controls), no model state, the surface
 ! test_nuclear pins:
 !     rates      13 reaction rates + branching fractions at one point
-!                (consumes cross_section_scale from setup/remap.f90).
+!                (consumes cross_section_scale from setup/map_user_inputs.f90).
 !     sneut      Itoh et al. (1996) neutrino losses (pure fits).
 !     nulosses   azbar + sneut wrapper for a full mixture.
 !     neutrino   legacy interface to the loss rates.
@@ -1661,10 +1661,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
      rate_c12_p,rate_c13_p,rate_n14_p,rate_o16_p,rate_c13_alpha,rate_zero9, &
      rate_c12_alpha,rate_n14_alpha,rate_triple_alpha,rate_zero13, &
      frac_c12_alpha,frac_be7_electron)
+      use star_info_lib, only: star, json
 
-      use const_lib
+      use phys_const_lib
       implicit none
-      integer, parameter :: json=5000
 
       double precision, intent(in) :: log_density, log_temperature, &
            hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
@@ -1912,7 +1912,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  CORRECTION.
       log_rho_local = log_density
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
-      if(log_temperature.le.tcut(1)) then
+      if(log_temperature.le.star%ctrl%tcut(1)) then
          do i = 1,num_reactions
             rate(i) = 0.
          end do
@@ -1997,7 +1997,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
       do i=1,num_reactions
          weak_screening_u=lambda0_zcurl*charge_product(i)
-         if(weak_screening_u.le.weak_screening_threshold) then
+         if(weak_screening_u.le.star%ctrl%weak_screening_threshold) then
 ! WEAKSCREENING IS A NUMERICAL PARAMETER PASSED IN THE FLUX COMMON
 !  BLOCK. TO OBTAIN THE GRABOSKE ET AL. AND SALPETER STANDARD RESULTS,
 !  USE: WEAKSCREENING = 0.03.  FOR THE STANDARD SOLAR MODEL, THIS IS THE
@@ -2054,10 +2054,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !         R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
 ! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
 ! RATE DERIVATIVES
-         r1=t9m23+q1(i)*t9m13+qs0e_scale(i)*(q2(i)+q3(i)*t9p13)+ &
-            qqs0ee_scale(i)*(q4(i)*t9p23+q5(i)*t9)
+         r1=t9m23+q1(i)*t9m13+star%qs0e_scale(i)*(q2(i)+q3(i)*t9p13)+ &
+            star%qqs0ee_scale(i)*(q4(i)*t9p23+q5(i)*t9)
          rate(i)=density*r1*exp(q6(i)*t9m13+q7(i)+(q8(i)*t9)**2+screening_factor(i))
-         rate(i) = rate(i)*cross_section_scale(i)
+         rate(i) = rate(i)*star%cross_section_scale(i)
          if(rate(i).lt.1.E-30) rate(i)=0.0d0
       end do
 ! ***************************************************************
@@ -2090,9 +2090,9 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! in Be7electron expression was (3.126571E+5). 10/14/97.
 !
          be7_electron_rate = (1.752E-10)*t9m12*(1.0 + 0.004*(1000.*t9-16.))
-         be7_electron_rate = be7_electron_rate*mu_e_inv*cross_section_scale(15)
+         be7_electron_rate = be7_electron_rate*mu_e_inv*star%cross_section_scale(15)
          be7_temp_factor = (-10.2625*t9m13)
-         be7_proton_rate = (3.128813E+5)*hydrogen_fraction*cross_section_scale(16)*exp(be7_temp_factor)
+         be7_proton_rate = (3.128813E+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(be7_temp_factor)
 
 ! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
 !  Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
@@ -2100,15 +2100,15 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !         QRBE7 = T9M23 + Q1(8)*T9M13 + Q2(8)+ Q3(8)*T9P13
 !     $          + Q4(8)*T9P23 + Q5(8)*T9
 ! MHP 9/14 ADDED THE ABILITY TO ALTER DERIVATIVES INDEPENDENTLY
-         be7_q_factor = t9m23 + q1(8)*t9m13 + qs0e_scale(8)*(q2(8)+ q3(8)*t9p13) &
-                + qqs0ee_scale(8)*(q4(8)*t9p23 + q5(8)*t9)
+         be7_q_factor = t9m23 + q1(8)*t9m13 + star%qs0e_scale(8)*(q2(8)+ q3(8)*t9p13) &
+                + star%qqs0ee_scale(8)*(q4(8)*t9p23 + q5(8)*t9)
          be7_proton_rate = be7_proton_rate*be7_q_factor
 ! CALCULATE THE SCREENING CORRECTION FOR BE7 + P REACTION.  USE WEAK AND
 !  INTERMEDIATE SCREENING FORMULAE.
          be7p_charge_product = 4.0
          be7p_z86 = 5.7790
          weak_screening_u = lambda0_zcurl*be7p_charge_product
-         if(weak_screening_u.le.weak_screening_threshold) then
+         if(weak_screening_u.le.star%ctrl%weak_screening_threshold) then
             be7p_screening_u = weak_screening_u
          else
             intermediate_screening_u = 0.38*lambda0_86*xtr*be7p_z86/(mu_ion_inv*z_curl_58*z_bar_28)
@@ -2156,12 +2156,12 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !      O16GAMMA = O16GAMMA*64.
 ! MHP 9/14 ADDED THE OPTION TO MODIFY THE RELATIVE CROSS SECTIONS
 ! FOR N15+P -> C12+ALPHA AND O16+GAMMA
-      o16_gamma_rate = o16_gamma_rate*64*o16_gamma_scale
+      o16_gamma_rate = o16_gamma_rate*64*star%o16_gamma_scale
 !
       c12_alpha_n15p_rate = t9m23 + 0.0273016*t9m13 + 2.01186 + 0.384763*t9p13 &
                 + 17.0579*t9p23 + 8.29580*t9
 !      C12ALPHA = C12ALPHA*67500.
-      c12_alpha_n15p_rate = c12_alpha_n15p_rate*67500*c12_alpha_scale
+      c12_alpha_n15p_rate = c12_alpha_n15p_rate*67500*star%c12_alpha_scale
       c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
       o16_gamma_frac = 1.0d0 - c12_alpha_frac
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
@@ -2177,7 +2177,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if (log_temperature.ge.tcut(4)) then
+      if (log_temperature.ge.star%ctrl%tcut(4)) then
 ! C13(ALPHA,N) O16
       r1=t9m23+0.0129d0*t9m13+2.04d0+0.184d0*t9p13
       a1 = 6.77d15*exp(-32.329d0*t9m13-(t9/1.284d0)**2)

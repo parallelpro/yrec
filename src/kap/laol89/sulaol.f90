@@ -11,9 +11,9 @@
 ! tabulated X and T) for the LAOL89 opacity table(s) read by
 ! rdlaol.f90, for use by gtlaol.f90/gtlaol2.f90.
 subroutine sulaol
+      use star_info_lib, only: star
 
       use opacity_table_lib
-      use const_lib
       use numerics_lib
       implicit none
 
@@ -53,7 +53,7 @@ subroutine sulaol
          end do
       end do
 ! DBG 4/94 Do SPLINE on second opacity table if ZRAMP
-      if (use_two_z_tables) then
+      if (star%use_two_z_tables) then
        do it=1, numt
           opacity_table%ot2(it) = log10(opacity_table%ot2(it))
        end do

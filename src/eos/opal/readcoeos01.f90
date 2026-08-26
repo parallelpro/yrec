@@ -11,9 +11,9 @@
 ! readco.f90's header for why). Called once (guarded by
 ! common/lreadco/) from esac01.f90.
 subroutine readcoeos01(ierr)
+      use star_info_lib, only: star
 
       use opal_eos_lib
-      use const_lib
       use luout_lib
       implicit none
 
@@ -59,17 +59,17 @@ subroutine readcoeos01(ierr)
 ! MHP 8/25 Moved opening of file to parmin
       do x_loop_index_01 = 1, mx
 
-         read (iopale,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
+         read (star%ctrl%iopale,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
               opal_eos%hydrogen_fraction_header_01(x_loop_index_01), &
               opal_eos%z_table_01(x_loop_index_01), &
               opal_eos%moles_per_gram_table_01(x_loop_index_01), &
               opal_eos%mean_molecular_weight_header_01(x_loop_index_01)
-         read (iopale,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
+         read (star%ctrl%iopale,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
               &4X,E11.4)') (opal_eos%species_fraction_header_01(x_loop_index_01,var_idx), &
               var_idx=1,6)
-         read (iopale,'(A)') blank_line
+         read (star%ctrl%iopale,'(A)') blank_line
          do density_row = 1, nr
-            read (iopale,'(2I5,2F12.7,17X,E15.7)') record_number, &
+            read (star%ctrl%iopale,'(2I5,2F12.7,17X,E15.7)') record_number, &
                  opal_eos%temperature_count_used_01(x_loop_index_01,density_row), &
                  unused_field, unused_field, &
                  opal_eos%density_grid_table_01(x_loop_index_01,density_row)
@@ -81,8 +81,8 @@ subroutine readcoeos01(ierr)
                ierr = 1
                return
             end if
-            read(iopale,'(A)') blank_line
-            read(iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
             if (opal_eos%temperature_count_used_01(x_loop_index_01,density_row).lt. &
                  opal_eos%t6_index_lo_01(density_row)) then
                write (short_file_unit,'("problem with data files: X=",F6.4, &
@@ -95,20 +95,20 @@ subroutine readcoeos01(ierr)
             end if
             do t6_row = 1, opal_eos%temperature_count_used_01(x_loop_index_01,density_row)
                if (t6_row.gt.opal_eos%t6_index_lo_01(density_row)) then
-                  read (iopale,'(A)') blank_line
+                  read (star%ctrl%iopale,'(A)') blank_line
                   cycle
                end if
-               read (iopale,'(F9.5,1X,F6.2,3E13.5,6F8.4)') &
+               read (star%ctrl%iopale,'(F9.5,1X,F6.2,3E13.5,6F8.4)') &
                     opal_eos%t6_list_01(density_row,t6_row), &
                     opal_eos%log10_r_value_01(density_row,t6_row), &
                     (opal_eos%eos_table_01(x_loop_index_01,opal_eos%eos_var_order_01(var_idx), &
                     t6_row,density_row), var_idx=1,9)
             end do
-            read(iopale,'(A)') blank_line
-            read(iopale,'(A)') blank_line
-            read(iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
+            read(star%ctrl%iopale,'(A)') blank_line
          end do
-         read(iopale,'(A)') blank_line
+         read(star%ctrl%iopale,'(A)') blank_line
       end do
 
       do t6_scan_idx = 1, nt
@@ -141,7 +141,7 @@ subroutine readcoeos01(ierr)
          opal_eos%x_grid_spacing_inv_01(x_idx) = 1.0d0/(opal_eos%x_grid_copy_01(x_idx) - opal_eos%x_grid_copy_01(x_idx-1))
       end do
 
-      close (iopale)
+      close (star%ctrl%iopale)
 ! MHP 7/2003 ADDED RAMP BETWEEN OPAL AND OTHER EOS
 ! NEED EDGE OF TABLE AT HIGH RHO, FIXED T.
       opal_eos%t_row_index_01 = 1

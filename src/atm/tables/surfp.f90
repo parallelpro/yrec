@@ -15,10 +15,10 @@
 subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
 
       use atm_table_lib
-      use const_lib
       use luout_lib
       use numerics_lib
       implicit none
+      integer :: jerr_gate
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES.
       integer, parameter :: nt = 57, ng = 11
       integer, parameter :: ntc = 76, ngc = 11
@@ -106,7 +106,13 @@ subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
             call kspline(gravity_nodes, pressure_table_vals, &
                  gravity_spline_deriv)
             call ksplint(gravity_nodes, pressure_table_vals, &
-                 gravity_spline_deriv, log10_gravity, interpolated_value)
+                 gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
+            ! 2026 numerics-gate opt-in: interpolation failure returns via
+            ! ierr (diagnostic printed at the gate) instead of stopping.
+            if (jerr_gate /= 0) then
+               ierr = jerr_gate
+               return
+            end if
             pressure_at_nodes(node) = interpolated_value
             atm_table%gravity_interp_indices(node) = ng-3
             cycle
@@ -127,7 +133,11 @@ subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
                call kspline(gravity_nodes, pressure_table_vals, &
                     gravity_spline_deriv)
                call ksplint(gravity_nodes, pressure_table_vals, &
-                    gravity_spline_deriv, log10_gravity, interpolated_value)
+                    gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
+               if (jerr_gate /= 0) then
+                  ierr = jerr_gate
+                  return
+               end if
                pressure_at_nodes(node) = interpolated_value
                atm_table%gravity_interp_indices(node) = kk
                exit
@@ -142,7 +152,11 @@ subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
          end do
          call kspline(gravity_nodes, pressure_table_vals, gravity_spline_deriv)
          call ksplint(gravity_nodes, pressure_table_vals, &
-              gravity_spline_deriv, log10_gravity, interpolated_value)
+              gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
          pressure_at_nodes(node) = interpolated_value
          atm_table%gravity_interp_indices(node) = atm_table%kurucz_gmin_index(row)
          end if
@@ -150,7 +164,11 @@ subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
 ! INTERPOLATE IN TEMPERATURE TO FIND CORRECT LOG P.
       call kspline(teff_nodes, pressure_at_nodes, teff_spline_deriv)
       call ksplint(teff_nodes, pressure_at_nodes, teff_spline_deriv, &
-           log10_teff, interpolated_value)
+           log10_teff, interpolated_value, jerr_gate)
+      if (jerr_gate /= 0) then
+         ierr = jerr_gate
+         return
+      end if
       atm_table%atm_log10_pressure = interpolated_value
       atm_table%atm_log10_temperature = log10_teff
 ! WRITE OUT INFORMATION TO THE MODEL FILE.

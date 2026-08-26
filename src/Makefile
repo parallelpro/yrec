@@ -63,7 +63,7 @@ OBJS := $(patsubst %.f90,%.o,$(SRCS))
 # statement. The order-only prerequisite below (declared once all module
 # sources are known) ensures every module object is built first, safely
 # under parallel (-j) builds, without forcing spurious rebuilds.
-MODULE_SRCS := const/phys_const_lib.f90 const/controls_lib.f90 const/controls_reset_lib.f90 const/const_lib.f90 const/luout_lib.f90 const/intpar_lib.f90 atm/envstruct_lib.f90 atm/atmstruct_lib.f90 eos/scv_eos_lib.f90 eos/eos_mixture_lib.f90 kap/conductive_table_lib.f90 state/star_info_lib.f90 atm/atm_table_lib.f90 eos/mhd_eos_lib.f90 kap/opacity_table_lib.f90 eos/opal_eos_lib.f90 eos/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/yrec_reset.f90 core/yrec_capi.f90 io/yrec_output.f90
+MODULE_SRCS := state/phys_const_lib.f90 io/controls_lib.f90 io/luout_lib.f90 numerics/intpar_lib.f90 atm/envstruct_lib.f90 atm/atmstruct_lib.f90 eos/scv_eos_lib.f90 eos/eos_mixture_lib.f90 kap/conductive_table_lib.f90 state/star_info_lib.f90 rotation/rotation_scratch_lib.f90 atm/atm_table_lib.f90 eos/mhd_eos_lib.f90 kap/opacity_table_lib.f90 eos/opal_eos_lib.f90 eos/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/observables_lib.f90 state/controls_sync_lib.f90 core/yrec_reset.f90 core/yrec_capi.f90 io/yrec_output.f90
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
@@ -73,37 +73,49 @@ $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 # non-module objects after the full set of module objects, not module
 # objects relative to each other, and MODULE_SRCS list position alone
 # does not guarantee build order under parallel (-j) builds.
-const/const_lib.o: | const/phys_const_lib.o const/controls_lib.o
-# parmin embeds the generated new-style inlist reader
-io/parmin.o: io/inlist_new_decl.inc io/inlist_new_read.inc
+# read_input (former parmin) embeds the generated new-style inlist reader
+io/read_input.o: io/inlist_new_decl.inc io/inlist_new_read.inc
 core/yrec_capi.o: | state/star_info_lib.o
-io/yrec_output.o: | const/const_lib.o const/luout_lib.o state/star_info_lib.o \
+core/stop_conditions.o: | state/star_info_lib.o state/phys_const_lib.o \
+	io/luout_lib.o io/controls_lib.o
+core/observables_lib.o: | state/star_info_lib.o eos/eos_lib.o \
+	state/phys_const_lib.o io/luout_lib.o
+# the env/atm struct libs import json from star_info (2026 json dedup)
+atm/envstruct_lib.o atm/atmstruct_lib.o: | state/star_info_lib.o
+io/yrec_output.o: | state/phys_const_lib.o io/luout_lib.o state/star_info_lib.o \
+	core/envint_lib.o atm/envstruct_lib.o atm/atmstruct_lib.o \
+	core/stitched_model.o
+core/stitched_model.o: | state/phys_const_lib.o state/star_info_lib.o \
 	core/envint_lib.o atm/envstruct_lib.o atm/atmstruct_lib.o
-numerics/numerics_lib.o: | const/const_lib.o const/intpar_lib.o \
-	const/luout_lib.o
+numerics/numerics_lib.o: | state/phys_const_lib.o numerics/intpar_lib.o \
+	state/star_info_lib.o \
+	io/luout_lib.o
+# star_info embeds the generated controls_state component list
+state/star_info_lib.o: state/controls_state_def.inc
 state/star_info_lib.o: | eos/scv_eos_lib.o eos/eos_mixture_lib.o \
 	kap/conductive_table_lib.o
-net/net_lib.o: | const/const_lib.o state/star_info_lib.o \
-	const/luout_lib.o numerics/numerics_lib.o
-eos/eos_lib.o: | const/const_lib.o eos/opal_eos_lib.o \
+net/net_lib.o: | state/phys_const_lib.o state/star_info_lib.o \
+	io/luout_lib.o numerics/numerics_lib.o
+eos/eos_lib.o: | state/phys_const_lib.o state/star_info_lib.o eos/opal_eos_lib.o \
 	eos/scv_eos_lib.o eos/eos_mixture_lib.o \
-	eos/yale_eos_lib.o const/luout_lib.o
-kap/kap_lib.o: | const/const_lib.o state/star_info_lib.o \
+	eos/yale_eos_lib.o io/luout_lib.o
+kap/kap_lib.o: | state/phys_const_lib.o state/star_info_lib.o \
 	kap/opacity_table_lib.o \
-	const/luout_lib.o
-const/controls_reset_lib.o: | const/controls_lib.o const/phys_const_lib.o
+	io/luout_lib.o
+state/controls_sync_lib.o: | io/controls_lib.o state/star_info_lib.o
 core/burn_lib.o: | net/net_lib.o state/star_info_lib.o \
-	const/const_lib.o const/luout_lib.o
-core/yrec_reset.o: | state/star_info_lib.o const/controls_reset_lib.o
+	state/phys_const_lib.o io/luout_lib.o
+rotation/rotation_scratch_lib.o: | state/star_info_lib.o
+core/yrec_reset.o: | state/star_info_lib.o rotation/rotation_scratch_lib.o
 atm/atm_lib.o: | atm/atm_table_lib.o atm/atmstruct_lib.o \
 	state/star_info_lib.o \
-	const/const_lib.o atm/envstruct_lib.o \
-	eos/eos_lib.o const/intpar_lib.o kap/kap_lib.o \
-	const/luout_lib.o numerics/numerics_lib.o
+	state/phys_const_lib.o atm/envstruct_lib.o \
+	eos/eos_lib.o numerics/intpar_lib.o kap/kap_lib.o \
+	io/luout_lib.o numerics/numerics_lib.o
 core/envint_lib.o: | atm/atm_lib.o state/star_info_lib.o \
 	eos/eos_lib.o kap/kap_lib.o numerics/numerics_lib.o \
 	atm/atm_table_lib.o atm/atmstruct_lib.o atm/envstruct_lib.o \
-	const/const_lib.o const/luout_lib.o const/intpar_lib.o
+	state/phys_const_lib.o io/luout_lib.o numerics/intpar_lib.o
 
 # Flags for GNU Fortran (gfortran)
 GNU_BASE_FFLAGS = $(HDF5_FFLAGS) -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
@@ -198,7 +210,7 @@ endif
 # object list (the transition to library-based linking can go domain
 # by domain). Standalone per-domain test programs link against these.
 DOMAIN_DIRS := eos kap atm net wind mixing rotation numerics \
-	const state setup io core util
+	state setup io core util
 
 define LIB_template
 lib$(1).a: $$(filter $(1)/%,$$(OBJS))
@@ -210,6 +222,23 @@ LIBS := $(foreach d,$(DOMAIN_DIRS),lib$(d).a)
 
 .PHONY: libs
 libs: $(LIBS)
+
+# Library-linked executable (2026, ROADMAP "Library-based yrec link"):
+# links core/main.o against the per-domain archives instead of the
+# flat object list. Proves every archive is complete and the domain
+# layout self-consistent at link time (an object missing from its
+# domain library surfaces as an undefined symbol here, which the flat
+# link would silently paper over). The archive list is repeated so
+# single-pass archive resolution converges regardless of dependency
+# order. The default `yrec` binary stays flat-linked (byte-stable
+# object order); CI builds this target as the layout check.
+YREC_LIBS_ORDER := libstate.a libio.a libnumerics.a libeos.a libkap.a \
+	libatm.a libnet.a libmixing.a librotation.a libwind.a \
+	libsetup.a libutil.a libcore.a
+yrec_libs: core/main.o $(LIBS)
+	$(FC) $(LDFLAGS) -o $@ core/main.o \
+	$(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) \
+	$(HDF5_LIBS)
 
 # Standalone per-domain test programs (phase three, ROADMAP.md stage
 # 2). Each links the full object set minus core/main.o (the flat-link
