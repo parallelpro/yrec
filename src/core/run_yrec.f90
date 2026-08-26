@@ -251,8 +251,6 @@ subroutine end_of_card_calibration(runs_complete)
 ! MHP 1/93 CHECK AUTOMATIC CALIBRATATION OF SOLAR MODEL.
 !c MHP 5/96 changed solar calibration to perform solar models in 3 kind cards
          if (star%ctrl%calibrate_solar_model) then
-! JVS Turn off calcad - speeds things up
-            star%compute_acoustic_depth=.false.
             if (mod(star%job%nk,solar_calib_cards_per_cycle).eq.0) then
                log_r_rsun = 0.5D0*(star%log_L+star%log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-star%log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables

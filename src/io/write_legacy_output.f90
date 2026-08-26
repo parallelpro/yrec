@@ -46,8 +46,6 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
                   1.137D2,1.139D2/
       data clsnuf/0.0D0,1.6D1,4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0/
 
-      integer :: icheck
-      data icheck/0/
 ! --- locals ---
       logical :: time_scaling_disabled
       integer :: i
@@ -477,39 +475,10 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
 ! JVS 01/11 Added new track file output format, +manipulations for stitching
 ! together the interior and envelope pieces. Columns 68,69,70 are normalized
 ! acoustic depth, depth to CZ and acoustic crossing time, respectively.
-        if (star%ctrl%acoustic_depth_output) then
-            if(star%envelope_cz_bottom_index.gt.1 .and. star%compute_acoustic_depth) then
-                  call compute_acoustic_depths(star%logR, star%envelope_cz_log_radius, star%nz, star%logRho, star%logP,star%logT,star%log_L, star%fp_rot, star%ft_rot, star%log_total_mass, &
-!      *            LPRT, TEFFL, HCOMP, NKK, DAGE, DDAGE, JENV)  ! KC 2025-05-31
-                  star%log_Teff, star%xa, star%dage, star%envelope_cz_bottom_index)
-            else if (star%envelope_cz_bottom_index.eq.1) then
-                  star%acoustic_depth_cz_fraction=0.0D0
-            endif
-            if (star%convective_flag(star%nz)) then
-                  icheck=1
-            else if (.not. star%convective_flag(star%nz)) then
-                  icheck = 0
-            endif
-
-        if (star%job%ageout_model_output_flag) then
-         iwrite = star%ctrl%ageout_model_unit
-         call write_last_model(iwrite,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
-         star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
-         star%dage,timestep_yr,star%omega)
-        endif
-
-            write(itrack, 1800) star%model_number,star%nz,star%dage,star%log_L,radius_log_surface,log_gravity,star%log_Teff,star%core_cz_mass,star%envelope_mass, &
-            star%envelope_radius,star%envelope_cz_temperature,star%envelope_cz_density,star%envelope_cz_pressure,star%envelope_cz_opacity,star%central_log10_temperature,star%central_log10_density,star%central_log10_pressure,star%central_beta,star%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_he4,1), &
-            star%xa(i_metals,1),(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_grav),star%luminosity_breakdown(i_lum_neu), &
-            star%cl37_snu_rate,star%ga71_snu_rate,(star%neutrino_flux_total(i),i=1,10),(star%xa(i,1),i=4,11), &
-            (star%xa(i,star%nz),i=4,15),(star%xa(i,star%nz),i=1,3),star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz), &
-            total_angular_momentum,star%acoustic_depth_cz_fraction,star%acoustic_depth_cz_seconds,star%acoustic_crossing_time_seconds,star%acoustic_depth_heii,star%heii_zone_acoustic_width,star%atmosphere_sound_travel_time,equatorial_velocity_kms,star%convective_turnover_timescale, &
-            h_shell_begin_mass,h_shell_mid_mass2,h_shell_end_mass,h_shell_begin_radius,h_shell_mid_radius,h_shell_end_radius, icheck
- 1800      format(1X,2I8,1P7E16.8,0PF8.4,1P4E12.4,16E16.8,12E10.3, &
-                  39E16.8, I8)
-
-! JVS END
-       endif
+! 2026 retire-legacy: the LACOUT acoustic-depth mode (calcad call,
+! ageout model saves, and the acoustic-columns track record) is
+! retired -- acoustic depths are post-processing on profile columns
+! (csound over the stitched grid).
 
       return
 end subroutine write_legacy_output

@@ -219,8 +219,9 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       endif
 !     DETERMINE WHETHER A 2D (RHO,T); 3D (X,RHO,T); OR 4D (Z,X,RHO,T)
 !     INTERPOLATION IS NEEDED TO GET THE OPACITY.
-!     JVS 04/11 force 4d interpolation for acoustic depth calculations
-      if (.not. (star%compute_acoustic_depth .and. star%ctrl%acoustic_depth_output)) then
+! 2026 retire-legacy: the acoustic-depth mode that forced 4d
+! interpolation here is gone; the guard collapses to always-true.
+      if (.true.) then
       if (abs(metal_fraction-opacity_table%opal95_fixed_z)/max(opacity_table%opal95_fixed_z,1.0d-6).le.1.0d-4) then
          if (abs(hydrogen_fraction-opacity_table%opal95_surface_x).le.1.0d-4) then
 !           2D INTERPOLATION IN SURFACE TABLE

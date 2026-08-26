@@ -478,7 +478,7 @@ subroutine integrate_atmosphere
        endif
 ! DBG PULSE ATMOSPHERE VALUES FOR PULSATION
 ! JVS 02/11 - Added LCLCD option to IF statement
-       if (star%job%calcad_ageout_output_active .or. star%ctrl%lstch) then
+       if (star%ctrl%lstch) then
           star%pulse%qqed = 0.0d0
           pulse_energy_sum = 0.0d0
           star%pulse%qqet = 0.0d0

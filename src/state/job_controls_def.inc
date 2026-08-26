@@ -66,9 +66,6 @@
             double precision :: rsclzm2(50) = -1.0d0
             double precision :: target_teff = 0.0d0
             double precision :: target_radius_rsun = 0.0d0
-            logical :: calcad_ageout_output_active = .false.
-            logical :: ageout_model_output_flag = .false.
-            logical :: ageout_bracket_armed = .false.
             double precision :: structfactor = 0.0d0
             double precision :: wind_saturation_omega = 0.0d0
             logical :: ljdot0 = .true.

@@ -102,7 +102,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       character(len=8) :: mixture_id_table(4)
       double precision :: zx_mix_table(4), frac_c_table(4), &
            frac_n_table(4), frac_o_table(4)
-      character(len=256) :: fcalcad
       character(len=256) :: control_nml_file, physics_nml_file
       character(len=256) :: shell_cmd
       integer :: i, j, last_slash_idx
@@ -712,16 +711,8 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! identically to their const_lib canonical names -- use-associated
 ! directly.
 
-! former common/acdpth/: ageout/lclcd/iclcd/ljlast/ljwrt/lacout are not
-! namelist values and genuinely used in this file -- renamed in place
-! to their canonical const_lib names (output_ages_gyr/
-! calcad_ageout_output_active/calcad_file_unit/ageout_model_output_flag/
-! ageout_bracket_armed/acoustic_depth_output), now use-associated rather
-! than locally declared. Their DATA defaults moved to const_lib.f90
-! since DATA can no longer target them here. tauczn/deladj/tauhe/
-! tnorm/tcz/whe/acatmr/acatmd/acatmp/acatmt/tatmos/iacat/ijlast/ladon/
-! laoly/ijvs/ijent/ijdel (former common/acdpth/'s remaining members)
-! are unused in this file, so they're dropped entirely.
+! former common/acdpth/ (calcad acoustic-depth machinery): retired
+! 2026 with the LACOUT/.calcad output mode.
 
 ! govs: ltrist is a NAMELIST /physics/ member with a different
 ! canonical const_lib spelling (use_envelope_triangle_dt), so kept
@@ -1692,43 +1683,6 @@ subroutine derive_options_and_open_files
 ! JVS 02/11 Acoustic depth/ Asteroseismic glitch output. Puts output
 ! in the same directory as all other output, and names it with the
 ! same conventions
-      if (acoustic_depth_output .and. use_legacy_output) then
-            calcad_file_unit = 91
-            short_prefix_len=index(fshort,'short')
-            fcalcad=fshort(1:short_prefix_len-1)//'calcad'
-            open(unit=calcad_file_unit, file=fcalcad, status='UNKNOWN')
-            write(calcad_file_unit,*) 'Acoustic depth calculation output file'
-            write(calcad_file_unit,*) 'age (Gyr),radius(cm),1/sound speed(s/cm),radius (CZ), 1/cs (CZ)                                         &
-&       delad,gamma1,P, T, X'
-
-
-!      IACAT = 92
-!      FACAT=FSHORT(1:MRK-1)//'acatm'
-!      OPEN(UNIT=IACAT, FILE=FACAT, STATUS='UNKNOWN')
-!      WRITE(IACAT,*) 'Acoustic depth calculation output file: atmosphere integration'
-!      WRITE(IACAT,*) 'age (Gyr),radius(cm),1/sound speed(s/cm),delad,gamma1,
-!     * P, T, X'
-
-!            IJLAST = 93
-!            FJLAST=FSHORT(1:MRK-1)//'jlast'
-!            OPEN(UNIT=IJLAST, FILE=FJLAST, STATUS='UNKNOWN')
-
-!      IJVS = 94
-!      FJVS=FSHORT(1:MRK-1)//'jvs'
-!      OPEN(UNIT=IJVS, FILE=FJVS, STATUS='UNKNOWN')
-!      WRITE(IJVS,*) 'The dels'
-
-!      IJENT = 95
-!      FJENT=FSHORT(1:MRK-1)//'ent'
-!      OPEN(UNIT=IJENT, FILE=FJENT, STATUS='UNKNOWN')
-!      WRITE(IJENT,*) 'Profiles: Age(Gyr), log(R), log(L), Log(LHe3),
-!     * Conv flag, log(T), log(P), log(D)'
-
-!      IJDEL = 96
-!      FJDEL=FSHORT(1:MRK-1)//'del'
-!      OPEN(UNIT=IJDEL, FILE=FJDEL, STATUS='UNKNOWN')
-!      WRITE(IJDEL,*) 'Profiles: Age(Gyr), depth, del, del, del'
-      endif
 
 
 ! JVS END

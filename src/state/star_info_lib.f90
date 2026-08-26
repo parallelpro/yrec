@@ -259,17 +259,11 @@ module star_info_lib
 ! setupopac from the table configuration; disk_lifetime is the
 ! disk-locking countdown evolve_step advances; pulsation_mass_msun
 ! is stamped per kind card by begin_kind_card.
-            double precision :: acoustic_crossing_time_seconds, &
-                 acoustic_depth_cz_fraction, acoustic_depth_cz_seconds, &
-                 acoustic_depth_heii, atmosphere_sound_travel_time, &
-                 heii_zone_acoustic_width
-            double precision :: eos_adiabatic_gradient(json)
             double precision :: age_at_target_radius, age_prev_model, &
                  log_l_at_target_radius, log_l_at_target_radius_prev_run, &
                  log_l_prev_model, log_r_prev_model
             logical :: star_found_flag = .false., &
                  just_passed_target_radius_flag = .false., &
-                 compute_acoustic_depth = .false., &
                  use_two_z_tables = .false.
             double precision :: disk_gate_age_gyr, pulsation_mass_msun
             integer :: iov1, iov2, iovim

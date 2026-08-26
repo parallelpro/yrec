@@ -48,7 +48,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
            evolve_model_flag, in_atmosphere, mixing_active, &
            new_atmosphere_fit_needed, recompute_surface_bc, &
            use_correct_gradients, want_derivatives, wind_loss_active
-      data nao/1/
 ! load-bearing: see header
       save
    ! INTENTIONAL: cross-step driver state; reset via evolve_step_reset_pending
@@ -76,7 +75,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          num_mixed_zones_no_overshoot = 0
          num_radiative_zones = 0
          num_species = 0
-         nao = 1
          conductive_opacity_flag = .false.
          converged = .false.
          evolve_model_flag = .false.
@@ -238,41 +236,8 @@ subroutine update_output_flags_for_step
 ! for the step before and step after the age in AGEOUT. Once the info has
 ! been printed out, AGEOUT is set to the next age.
 !
-! Turn on calcad:
-      if (star%ctrl%acoustic_depth_output) then
-            star%compute_acoustic_depth=.true.
-      else
-            star%compute_acoustic_depth = .false.
-      endif
-! If output has been turned on for a previous step, keep it on for the next
-! step, but then turn it off.
-      if (star%ctrl%acoustic_depth_output) then
-            if (star%job%ageout_bracket_armed) then
-                  print*, 'LJWRT on'
-                  star%job%pulsation_output_active = star%saved_pulse_output_flag
-                  nao=nao+1
-                  star%job%calcad_ageout_output_active =.true.
-                  star%job%ageout_model_output_flag =.false.
-                  star%job%ageout_bracket_armed=.false.
-            else if (.not.star%job%ageout_bracket_armed) then
-                  star%job%calcad_ageout_output_active=.false.
-            endif
-! If this is the step before one of the ages of interest, print everything out.
-! Also, save model structure.
-            if (nao.lt.6) then
-                  if (star%dage+star%timestep_yr/1.0D9-star%ctrl%output_ages_gyr(nao) .le. 0.0D0 .and. &
-                  star%dage+2.0D0*star%timestep_yr/1.0D9-star%ctrl%output_ages_gyr(nao) .ge. 0.0D0 .and. .not. star%job%ageout_bracket_armed) then
-                        print*, 'AGEOUT reached'
-                        star%job%pulsation_output_active = star%saved_pulse_output_flag
-                        star%job%calcad_ageout_output_active = .true.
-                        star%job%ageout_model_output_flag = .true.
-                        star%job%ageout_bracket_armed=.true.
-                  endif
-            endif
-       endif
-
-
-! JVS end
+! 2026 retire-legacy: the calcad/AGEOUT machinery (acoustic depths
+! at ages of interest) is retired.
 !
 ! DBG PULSE:  if endage reached then set LPULSE to LSAVPU
 ! MHP 10/24 GENERALIZE CHECK

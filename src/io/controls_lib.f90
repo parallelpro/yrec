@@ -683,38 +683,9 @@ module controls_lib
 ! directly.
       double precision :: cstmixing = 1.0d0, cstdiffmix = 1.0d0
 
-! former common/acdpth/: output_ages_gyr/calcad_ageout_output_active/
-! calcad_file_unit/ageout_model_output_flag/ageout_bracket_armed/
-! acoustic_depth_output (originally ageout/lclcd/iclcd/ljlast/ljwrt/
-! lacout) are not namelist values -- genuinely used in
-! core/read_input.f90, renamed in place there. Their DATA defaults moved
-! here since DATA can no longer target use-associated entities.
-! acoustic_depth_cz_fraction/eos_adiabatic_gradient/acoustic_depth_heii/
-! acoustic_crossing_time_seconds/acoustic_depth_cz_seconds/heii_zone_acoustic_width/acatmr_placeholder/
-! acatmd_placeholder/acatmp_placeholder/acatmt_placeholder/
-! atmosphere_sound_travel_time/iacat_placeholder/ageout_model_unit/
-! laoly_placeholder/ijvs_placeholder/ijent_placeholder/ijdel_placeholder
-! (former common/acdpth/'s remaining members, originally tauczn/
-! deladj/tauhe/tnorm/tcz/whe/acatmr/acatmd/acatmp/acatmt/tatmos/iacat/
-! ijlast/laoly/ijvs/ijent/ijdel) are unused in core/read_input.f90 --
-! genuinely used (or carried as placeholders) in atm/turnover/acoustic_depths.f90,
-! io/write_legacy_output.f90, core/main.f90, atm/atm_lib.f90, kap/opal95/getopal95.f90, so
-! still declared here, using the majority spelling across those five
-! files (atm/turnover/acoustic_depths.f90 and io/write_legacy_output.f90 give several of these real
-! semantic names instead -- e.g. normalized_acoustic_depth,
-! adiabatic_gradient -- but the 3-file placeholder spelling wins
-! per the majority-name convention). compute_acoustic_depth (LADON) is
-! spelled identically to its canonical name everywhere -- used, not a
-! placeholder.
-      double precision :: acatmr_placeholder(5000), acatmd_placeholder(5000), acatmp_placeholder(5000), acatmt_placeholder(5000)
-      integer :: iacat_placeholder, ageout_model_unit
-      logical :: laoly_placeholder
-      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
-      double precision :: output_ages_gyr(5) = &
-           [0.5d0, 1.0d0, 5.0d0, 10.0d0, 20.0d0]
-      logical :: calcad_ageout_output_active = .false., ageout_model_output_flag = .false., &
-           ageout_bracket_armed = .false., acoustic_depth_output = .false.
-      integer :: calcad_file_unit
+! former common/acdpth/ (the calcad acoustic-depth machinery and
+! its dead acatm*/iacat/laoly/ijvs/ijent/ijdel carriers): retired
+! 2026 with the .calcad/LACOUT output mode.
 
 ! former common/govs/: use_envelope_triangle_dt (originally ltrist) is
 ! a NAMELIST value with a different canonical spelling, kept local in
