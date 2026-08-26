@@ -22,7 +22,7 @@ module stitched_model_lib
       use phys_const_lib
       implicit none
       private
-      public :: build_stitched_model, stitch_due, n_ext, n_ie, stx_prof, &
+      public :: build_stitched_model, n_ext, n_ie, stx_prof, &
            stx_pulse, n_prof_cols, n_pulse_cols, &
            ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, ip_conv, &
            ip_gradr, ip_gradT, ip_grada, ip_conv_vel
@@ -57,21 +57,6 @@ module stitched_model_lib
       integer :: n_ie = 0
 
 contains
-
-! ---------------------------------------------------------------
-! Is a stitched build due this model? One predicate shared by the
-! evolve_step hook (build) and output_write_model (write), so the
-! two can never drift apart. Mirrors the historical profile/pulse
-! trigger exactly.
-logical function stitch_due()
-      use star_info_lib, only: star
-      stitch_due = .false.
-      if (star%ctrl%use_legacy_output) return
-      if (star%ctrl%profile_interval <= 0) return
-      if (.not. (star%ctrl%write_profile_flag .or. &
-           star%ctrl%write_pulse_flag)) return
-      stitch_due = mod(star%model_number, star%ctrl%profile_interval) == 0
-end function stitch_due
 
 ! Regenerate the envelope/atmosphere structures for the CONVERGED
 ! model and build the inward-to-outward index map. The envelope the

@@ -36,7 +36,7 @@ module yrec_output
 ! The stitched full-star model (interior + envelope + atmosphere)
 ! is assembled and materialized by core/stitched_model.f90; the
 ! writers below are pure readers of its stx_* arrays.
-      use stitched_model_lib, only: stitch_due, n_ext, &
+      use stitched_model_lib, only: n_ext, &
            stx_prof, stx_pulse, n_prof_cols, n_pulse_cols
       implicit none
       private
@@ -157,10 +157,10 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
 ! profile<N>.data, and/or profile<N>.data.GYRE / .data.FGONG per
 ! pulse_format. The history profile_number column records N.
          iprof = 0
-! The stitched arrays were built by evolve_step (ahead of
-! compute_observables) under the same stitch_due predicate; this
-! block only numbers and writes.
-         if (stitch_due()) then
+! The stitched arrays are built every step by evolve_step (ahead of
+! compute_observables); this block only decides whether THIS model
+! gets profile/pulse files, then numbers and writes.
+         if (profile_write_due()) then
             profile_counter = profile_counter + 1
             iprof = profile_counter
             if (star%ctrl%write_profile_flag) call write_profile(iprof)
@@ -507,6 +507,21 @@ subroutine profile_column_names(names)
       names(57) = 'gradr_div_grada'
 end subroutine profile_column_names
 
+! ---------------------------------------------------------------
+! Is a profile/pulse write due this model? The historical trigger:
+! MESA-style output, a positive cadence, at least one product
+! enabled, and the model number on the cadence.
+logical function profile_write_due()
+      use star_info_lib, only: star
+      profile_write_due = .false.
+      if (star%ctrl%use_legacy_output) return
+      if (star%ctrl%profile_interval <= 0) return
+      if (.not. (star%ctrl%write_profile_flag .or. &
+           star%ctrl%write_pulse_flag)) return
+      profile_write_due = mod(star%model_number, star%ctrl%profile_interval) == 0
+end function profile_write_due
+
+! ---------------------------------------------------------------
 subroutine write_profile(iprof)
       use star_info_lib, only: star
       integer, intent(in) :: iprof
