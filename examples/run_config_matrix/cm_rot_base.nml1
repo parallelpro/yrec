@@ -71,13 +71,9 @@
   
  FFIRST = "{YREC_START}/seed/p100gs98z01757.ahbl"
  FLAST = "{YREC_OUTPUT}/cm_rot_base.last"
- FMODPT = "{YREC_OUTPUT}/cm_rot_base.full"
  FSTOR = "{YREC_OUTPUT}/cm_rot_base.store"
  FTRACK = "{YREC_OUTPUT}/cm_rot_base.track"
  FSHORT = "{YREC_OUTPUT}/cm_rot_base.short"  
- FPMOD = "{YREC_OUTPUT}/cm_rot_base.pmod"
- FPENV = "{YREC_OUTPUT}/cm_rot_base.penv"
- FPATM = "{YREC_OUTPUT}/cm_rot_base.atm"
  FSNU = "{YREC_OUTPUT}/cm_rot_base.snu"
  FSCOMP = "{YREC_OUTPUT}/cm_rot_base.excomp"
   

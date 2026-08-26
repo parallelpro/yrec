@@ -254,7 +254,6 @@ module controls_lib
 ! assigns them all unconditionally at startup (fixed unit numbers),
 ! so no declaration-time defaults are needed here.
       integer :: first_unit, run_unit, standard_unit, fermi_unit
-      integer :: opal_model_unit, opal_envelope_unit, opal_atm_unit
       integer :: dynamics_unit, laol_table_unit, neutrino_unit
       integer :: composition_unit, kurucz_table_unit
 
@@ -346,7 +345,6 @@ module controls_lib
 ! no declaration-time default; it was unused in core/read_input.f90 itself
 ! and dropped there.
       logical :: pulsation_output_active
-      integer :: pulsation_file_version
 
 ! former common/atmos/: atm_choice (originally kttau) is a NAMELIST
 ! value with a different canonical spelling, kept local in
@@ -517,13 +515,6 @@ module controls_lib
 ! place there.
       integer :: opal95_table_unit
 
-! former common/po/: po_weight_l/po_weight_teff/po_weight_age/
-! po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/
-! lpout) are NAMELIST values with different canonical spellings, kept
-! local in core/read_input.f90 and copy-assigned.
-      double precision :: po_weight_l, po_weight_teff, po_weight_age, &
-           po_max_len_sq
-      logical :: po_output_enabled
 
 ! former common/track/: track_file_version (originally itrver) is a
 ! NAMELIST value with a different canonical spelling, kept local in

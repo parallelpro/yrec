@@ -313,118 +313,12 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                     ' BY ITERATION'/5(1x,e11.3,i4))
          endif
 !
-! G Somers 11/14, I AM TURNING OFF THE OUTPUT TO THE .FULL FILE.
-! THE AM CHANGES WILL NOT BE RECORDED, BUT THIS CAN BE TRIVIALLY
-! EXTRACTED FROM THE EXTENDED .STORE FILE.
-!
-! SKIP OUTPUT IF NOT DESIRED.
-!         IF(.NOT.LPRT)GOTO 240
-         if (.true.) then
-            continue
-            return
-         end if
-! G Somers END
-!
-!  IF NPRTPT IS SET TO A LARGE NUMBER, SKIP DETAILED OUTPUT.
-         if (star%ctrl%print_point_interval.gt.num_zones) then
-            continue
-            return
-         end if
-         write(imodpt,170)
-  170 format(' SHELL',3x,'OMEGA',5x,'DEL OMEGA',6x,'J/M',7x,'DEL J/M')
-!  DETERMINE WHICH SHELLS TO PRINT.
-!  FIRST POINT ALWAYS PRINTED OUT.
-         print_zone_id(1) = 1
-         print_zone_count = 2
-         print_zone_begin = max(zone_min,star%ctrl%print_point_interval)
-         print_zone_end = min(zone_max, &
-              int(zone_max/star%ctrl%print_point_interval)*star%ctrl%print_point_interval)
-! PRINT OUT EVERY NPRTPT POINTS. WHEN V=0, SKIP POINTS.
-         do scan_index = print_zone_begin,print_zone_end,star%ctrl%print_point_interval
-!            IF(HV(J).EQ.0.0D0)GOTO 180
-            print_zone_id(print_zone_count) = scan_index
-            print_zone_count = print_zone_count + 1
-         end do
-! OUTERMOST MODEL POINT (OR POINT AT BASE OF SURFACE C.Z.)ALWAYS PRINTED.
-         if(print_zone_id(print_zone_count-1).ne.zone_max)then
-            print_zone_id(print_zone_count) = zone_max
-         else
-            print_zone_count = print_zone_count-1
-         endif
-!  I/O CONCERNING ANGULAR MOMENTUM TRANSPORT.
-         do zone_index=1,print_zone_count
-            write(imodpt,190)print_zone_id(zone_index), &
-                 omega(print_zone_id(zone_index)), &
-                 omega(print_zone_id(zone_index))- &
-                 omega_start(print_zone_id(zone_index)), &
-                 specific_angular_momentum(print_zone_id(zone_index)), &
-                 specific_angular_momentum(print_zone_id(zone_index))- &
-                 specific_angular_momentum_start(print_zone_id(zone_index))
-  190 format(1x,i5,1p4e12.3)
-         end do
-!  I/O CONCERNING DIFFUSION VELOCITIES AND SCALE LENGTHS.
-         write(imodpt,210)
-  210 format(1x,'SHELL',4x,'VES0',9x,'VES',7x,'VGSF0',8x,'VGSF',9x, &
-              'VSS',9x,'RAT',8x,'VTOT',7x,'LENGTH',8x,'VMU')
-         do zone_index = 1,print_zone_count
-            write(imodpt,220)print_zone_id(zone_index), &
-                 circ_scr%es_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 star%es_circulation_velocity(print_zone_id(zone_index)), &
-                 circ_scr%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 star%gsf_circulation_velocity(print_zone_id(zone_index)), &
-                 star%secular_shear_velocity(print_zone_id(zone_index)), &
-                 rot_scr%circulation_correction_ratio(print_zone_id(zone_index)), &
-                 diffusion_velocity(print_zone_id(zone_index)), &
-                 circ_scr%hle(print_zone_id(zone_index)), &
-                 circ_scr%mu_gradient_velocity(print_zone_id(zone_index))
-  220 format(1x,i5,1p10e12.3)
-         end do
-         if(star%ctrl%use_diffusion_advection_transport)then
-!            DO I = 1,IDM
-!               WRITE(IMODPT,221)ID(I),VES(ID(I)),VESA(ID(I)),
-!     *         VESD(ID(I)),
-!     *         ECOD(ID(I)),ECOD2(ID(I)),ECOD3(ID(I)),ECOD4(ID(I))
-! 221           FORMAT(1X,I5,1P7E12.3)
-!            END DO
-            if(print_zone_count.eq.rot_scr%ntot)then
-            do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
-                    star%es_circulation_velocity(zone_index), &
-                    rot_scr%es_advective_velocity(zone_index), &
-                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
-                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
- 221           format(1x,i5,1p7e12.3)
-            end do
-            else if(print_zone_count.lt.rot_scr%ntot)then
-            do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
-                    star%es_circulation_velocity(zone_index), &
-                    rot_scr%es_advective_velocity(zone_index), &
-                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
-                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
-            end do
-            do zone_index = print_zone_count+1,rot_scr%ntot
-               write(imodpt,222)zone_index,rot_scr%echi(zone_index), &
-                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
- 222           format(1x,i5,48x,1p3e12.3)
-            end do
-            else
-            do zone_index = 1,rot_scr%ntot
-               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
-                    star%es_circulation_velocity(zone_index), &
-                    rot_scr%es_advective_velocity(zone_index), &
-                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
-                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
-            end do
-            do zone_index = rot_scr%ntot+1,print_zone_count
-               write(imodpt,223)zone_index,rot_scr%chi(zone_index), &
-                    star%es_circulation_velocity(zone_index), &
-                    rot_scr%es_advective_velocity(zone_index), &
-                    rot_scr%es_diffusive_velocity(zone_index)
- 223           format(1x,i5,1p4e12.3)
-            end do
-            endif
-         endif
+! 2026 retire-legacy: the .FULL (FMODPT) diagnostics block that
+! lived here -- per-shell omega/J tables, circulation-velocity and
+! transport-coefficient listings -- was hard-disabled in 11/14
+! ('G Somers: I am turning off the output to the .full file') and
+! is deleted with the file itself. The model-grid transport
+! coefficients are profile columns (D_omega, D_mix) instead.
       endif
       return
 end subroutine check_angular_momentum

@@ -85,13 +85,9 @@
 ! FFIRST = "{YREC_INPUT}/models/seed/p100gs98z01757.ahbl" ! Starting model path.
  FFIRST = "{YREC_START}/dbl/m8000gs98z018804_Dbl.first" ! Starting model path.
  FLAST = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.last" ! The last converged model is stored here.
- FMODPT = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.full" ! No longer used.
  FSTOR = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.store" ! Model snapshots during the run are stored here.
  FTRACK = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.pmod" ! Pulsation output for the interior model.
- FPENV = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.penv"! Pulsation output for the envelope model.
- FPATM = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.atm" ! Pulsation output for the atmosphere model.
  FSNU = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/Test_m8000_feh0_noGS_ZAMS.excomp" ! No longer used (light elements vs. time, now included in track file)
   

@@ -460,11 +460,8 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
 ! output is desired, call wrtmod.
       if(.not.(star%ctrl%lstore.and.mod(star%model_number,star%ctrl%nprtmod).eq.0) .and. star%job%pulsation_output_active) then
        if(star%ctrl%lmilne) call write_milne(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%m,star%nz,star%model_number)
-!        CALL WRTMOD(M,LSHELL,JXBEG,JXEND,JCORE,JENV,HCOMP,HS1,HD,HL,
-!      *   HP,HR,HT,LC,MODEL,BL,TEFFL,OMEGA,FP,FT,ETA2,R0,HJM,HI,HS,
-!      *   DAGE)  ! KC 2025-05-31
-       call write_pulsation_model(star%nz,star%envelope_cz_bottom_index,star%xa,star%m,star%logRho,star%luminosity_lsun, &
-         star%logP,star%logR,star%logT,star%model_number,star%log_L,star%log_Teff,star%fp_rot,star%ft_rot,star%log_mass,star%dage)
+! 2026 retire-legacy: wrtmod (.pmod interior pulse + .FULL sound-
+! speed table) deleted; the stitched pulse files carry everything.
       endif
 ! G Somers END
 ! new (2026): GYRE-format periodic pulsation output, independent of

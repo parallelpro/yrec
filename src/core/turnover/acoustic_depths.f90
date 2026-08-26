@@ -143,7 +143,7 @@ subroutine compute_acoustic_depths(log_radius, envelope_cz_log_radius, num_shell
 ! this file's existing cz_radius_cm/spline_interp_value convention.
       double precision :: acoustic_crossing_time_arr(1), acoustic_depth_to_cz_arr(1)
       double precision :: pressure_rotation_factor, temperature_rotation_factor
-      logical :: print_flag, surface_bc_flag, pulsation_output_flag
+      logical :: print_flag, surface_bc_flag
       double precision :: spot_adjusted_teff
 
 ! (The per-zone eos scratch locals that used to live here -- the
@@ -187,7 +187,6 @@ subroutine compute_acoustic_depths(log_radius, envelope_cz_log_radius, num_shell
       katm = 0
       kenv = 0
       ksaha = 0
-      pulsation_output_flag = .true.
       ixx_flag = 0
       print_flag = .true.
       surface_bc_flag = .false.
@@ -214,7 +213,7 @@ subroutine compute_acoustic_depths(log_radius, envelope_cz_log_radius, num_shell
            log10_pressure_limit,log10_radius_local,spot_adjusted_teff, &
            hydrogen_fraction,metal_fraction,atm_get_dummy1,atm_get_unused_flag, &
            katm,kenv,ksaha, &
-           atm_get_dummy2,atm_get_dummy3,atm_get_dummy4,pulsation_output_flag)
+           atm_get_dummy2,atm_get_dummy3,atm_get_dummy4)
 !      G Somers END
 
 

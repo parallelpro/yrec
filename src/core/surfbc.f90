@@ -80,7 +80,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       integer :: i1, i2, i3, i, vertex_being_computed, j
       double precision :: temp, temp1, temp2, tri_err
       logical :: envelope_needs_recompute, print_envelope_flag, &
-           save_boundary_flag, pulse_print_flag
+           save_boundary_flag
       double precision :: b, gl, rl, adjusted_teffl
 
       ierr = 0
@@ -191,7 +191,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           vertex_being_computed=i
           save_boundary_flag = .true.
 ! DBG PULSE: DO NOT DO PULSE OUTPUT
-            pulse_print_flag = .false.
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
           if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
@@ -205,7 +204,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &
                  stored_envelope_state,stored_vertex_index,atm_call_count, &
                  env_call_count,saha_state,vtx_logp, &
-                 vtx_logr,vtx_logt,pulse_print_flag,ierr=jerr_atm)
+                 vtx_logr,vtx_logt,ierr=jerr_atm)
 ! 2026 numerics-gate opt-in: envelope-integration failures
 ! (numerics_termination) and table errors surface here instead of
 ! stopping inside atm_get; the caller (henyey_iterate) propagates.

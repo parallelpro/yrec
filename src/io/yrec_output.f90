@@ -513,6 +513,9 @@ subroutine profile_column_names(names)
       names(55) = 'lamb_S2'
       names(56) = 'gradL'
       names(57) = 'gradr_div_grada'
+      names(58) = 'csound'
+      names(59) = 'D_omega'
+      names(60) = 'D_mix_rot'
 end subroutine profile_column_names
 
 ! ---------------------------------------------------------------

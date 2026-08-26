@@ -84,13 +84,9 @@
   
  FFIRST = "{YREC_START}/dbl/m1000gs98z018804_Dbl.first" ! Starting model path.
  FLAST = "{YREC_OUTPUT}/cm_massloss_const.last" ! The last converged model is stored here.
- FMODPT = "{YREC_OUTPUT}/cm_massloss_const.full" ! No longer used.
  FSTOR = "{YREC_OUTPUT}/cm_massloss_const.store" ! Model snapshots during the run are stored here.
  FTRACK = "{YREC_OUTPUT}/cm_massloss_const.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/cm_massloss_const.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "{YREC_OUTPUT}/cm_massloss_const.pmod" ! Pulsation output for the interior model.
- FPENV = "{YREC_OUTPUT}/cm_massloss_const.penv"! Pulsation output for the envelope model.
- FPATM = "{YREC_OUTPUT}/cm_massloss_const.atm" ! Pulsation output for the atmosphere model.
  FSNU = "{YREC_OUTPUT}/cm_massloss_const.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/cm_massloss_const.excomp" ! No longer used (light elements vs. time, now included in track file)
   

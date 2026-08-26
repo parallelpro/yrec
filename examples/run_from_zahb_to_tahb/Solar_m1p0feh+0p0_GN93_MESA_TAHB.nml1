@@ -70,13 +70,9 @@
   
  FFIRST = "{YREC_START}/zahb/100mSOLpreZAHB.last"
  FLAST = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.first" ! The last converged model is stored here.
- FMODPT = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.full" ! No longer used.
  FSTOR = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.store" ! Model snapshots during the run are stored here.
  FTRACK = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.pmod" ! Pulsation output_gn93_mod for the interior model.
- FPENV = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.penv"! Pulsation output_gn93_mod for the envelope model.
- FPATM = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.atm" ! Pulsation output_gn93_mod for the atmosphere model.
  FSNU = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.snu" ! No longer used (formally, output_gn93_mod if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/Solar_m1p0feh+0p0_GN93_MESA_TAHB.excomp" ! No longer used (light elements vs. time, now included in track file)
 

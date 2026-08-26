@@ -67,7 +67,6 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
       integer :: katm, kenv, ksaha, ixx
       logical :: lprt, lsbc0
       double precision :: x, z, rl, gl, plim, ateffl
-      logical :: lpulpt
       double precision :: rad
 
 !
@@ -155,7 +154,7 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
       end if
       call atm_get(b,fpl,ftl,gl,log_total_mass,ixx,lprt,lsbc0, &
          plim,rl,ateffl,x,z,dum1,idum,katm,kenv,ksaha, &
-         dum2,dum3,dum4,lpulpt)
+         dum2,dum3,dum4)
 
 ! DEFINE SOME ARRAYS WE NEED
       do i=1,env_struct%num_env_points

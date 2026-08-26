@@ -118,9 +118,6 @@ subroutine seed_controls_buffer
       run_unit = star%ctrl%run_unit
       standard_unit = star%ctrl%standard_unit
       fermi_unit = star%ctrl%fermi_unit
-      opal_model_unit = star%ctrl%opal_model_unit
-      opal_envelope_unit = star%ctrl%opal_envelope_unit
-      opal_atm_unit = star%ctrl%opal_atm_unit
       dynamics_unit = star%ctrl%dynamics_unit
       laol_table_unit = star%ctrl%laol_table_unit
       neutrino_unit = star%ctrl%neutrino_unit
@@ -165,7 +162,6 @@ subroutine seed_controls_buffer
       env_step_min = star%job%env_step_min
       env_step_max = star%job%env_step_max
       pulsation_output_active = star%job%pulsation_output_active
-      pulsation_file_version = star%ctrl%pulsation_file_version
       atm_choice = star%job%atm_choice
       vnew = star%ctrl%vnew
       monte_carlo_file1_path = star%ctrl%monte_carlo_file1_path
@@ -233,11 +229,6 @@ subroutine seed_controls_buffer
       relative_tolerance = star%ctrl%relative_tolerance
       max_burn_iterations = star%ctrl%max_burn_iterations
       opal95_table_unit = star%ctrl%opal95_table_unit
-      po_weight_l = star%ctrl%po_weight_l
-      po_weight_teff = star%ctrl%po_weight_teff
-      po_weight_age = star%ctrl%po_weight_age
-      po_max_len_sq = star%ctrl%po_max_len_sq
-      po_output_enabled = star%ctrl%po_output_enabled
       track_file_version = star%ctrl%track_file_version
       extend_core_inward = star%ctrl%extend_core_inward
       num_core_shells_added = star%job%num_core_shells_added
@@ -513,9 +504,6 @@ subroutine store_controls_to_star
       star%ctrl%run_unit = run_unit
       star%ctrl%standard_unit = standard_unit
       star%ctrl%fermi_unit = fermi_unit
-      star%ctrl%opal_model_unit = opal_model_unit
-      star%ctrl%opal_envelope_unit = opal_envelope_unit
-      star%ctrl%opal_atm_unit = opal_atm_unit
       star%ctrl%dynamics_unit = dynamics_unit
       star%ctrl%laol_table_unit = laol_table_unit
       star%ctrl%neutrino_unit = neutrino_unit
@@ -560,7 +548,6 @@ subroutine store_controls_to_star
       star%job%env_step_min = env_step_min
       star%job%env_step_max = env_step_max
       star%job%pulsation_output_active = pulsation_output_active
-      star%ctrl%pulsation_file_version = pulsation_file_version
       star%job%atm_choice = atm_choice
       star%ctrl%vnew = vnew
       star%ctrl%monte_carlo_file1_path = monte_carlo_file1_path
@@ -628,11 +615,6 @@ subroutine store_controls_to_star
       star%ctrl%relative_tolerance = relative_tolerance
       star%ctrl%max_burn_iterations = max_burn_iterations
       star%ctrl%opal95_table_unit = opal95_table_unit
-      star%ctrl%po_weight_l = po_weight_l
-      star%ctrl%po_weight_teff = po_weight_teff
-      star%ctrl%po_weight_age = po_weight_age
-      star%ctrl%po_max_len_sq = po_max_len_sq
-      star%ctrl%po_output_enabled = po_output_enabled
       star%ctrl%track_file_version = track_file_version
       star%ctrl%extend_core_inward = extend_core_inward
       star%job%num_core_shells_added = num_core_shells_added

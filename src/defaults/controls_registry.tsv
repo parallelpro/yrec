@@ -16,11 +16,7 @@ control	ftrack	string	''*	track_output_file	proposed		Evolution track (.track) o
 control	fshort	string	''*	short_output_file	proposed		Model summary (.short) output path
 control	fstch	string	''*	stored_change_file	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 control	fmilne	string	''*	milne_output_file	verified		Milne-format output file (opened when the Milne stream is active)
-control	fmodpt	string	''*	model_print_file	proposed		Per-model print stream (rotational-mixing composition changes etc.)
 control	fstor	string	''*	store_output_file	proposed		Full stored-model (.store) output path
-control	fpmod	string	''*	pulse_model_file	proposed		Pulsation (oscillation-code) model output
-control	fpatm	string	''*	pulse_atm_file	proposed		Pulsation output: atmosphere part
-control	fpenv	string	''*	pulse_env_file	proposed		Pulsation output: envelope part
 control	fdyn	string	''*	dynamics_file	verified		Opened on the dynamics unit (formatted, STATUS=OLD)
 control	flldat	string	''*	ll_data_file	proposed		Livermore opacity auxiliary data file
 control	fsnu	string	''*	neutrino_output_file	proposed		Solar neutrino flux (.snu) output path
@@ -45,7 +41,6 @@ control	fopale	string	''*	opal_eos_table_file	proposed		OPAL 1995/2001 EOS table
 control	fliv95	string	''*	opal95_opacity_table_file	proposed		OPAL/Livermore 1995 opacity tables
 control	fmonte1	string	''*	monte_carlo_file1_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
 control	fmonte2	string	''*	monte_carlo_file2_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
-control	ipver	integer	1	pulsation_file_version	canonical		
 control	itrver	integer	1	track_file_version	canonical		former common/track/: track_file_version (originally itrver) is a NAMELIST value with a different canonical spelling, kept local in core/parmin.f90 and copy-assigned.
 control	kindrn	integer(50)	0*	run_kind	verified		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
 control	ldebug	logical	.false.*	write_debug_output	proposed		Enable the debug output stream
@@ -70,7 +65,6 @@ control	lpurez	logical	.false.	use_pure_z_table	canonical
 control	liso	logical	.false.*	isochrone_output_active	canonical		former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
 control	lrwsh	logical	.false.*	rewind_short_file	canonical		former common/chrone/: rewind_short_file/isochrone_output_active (originally lrwsh/liso) are NAMELIST values with different canonical spellings, kept local in core/parmin
 control	lsenv0a	logical(50)	.false.*	has_senv0_array	canonical		
-control	lpout	logical	.false.*	po_output_enabled	canonical		
 control	lcals	logical	.false.*	calibrate_solar_model	canonical		
 control	lcalsolzx	logical	.false.*	calibrate_solar_zx	canonical		
 control	llaol89	logical	.false.*	use_laol89_tables	canonical		
@@ -85,10 +79,6 @@ control	nprtpt	integer	1	print_point_interval	canonical
 control	numrun	integer	0*	num_runs	canonical		
 control	nmodls	integer(50)	0*	max_model_number	canonical	mesa: max_model_number	
 control	opecalex	string(7)	'OPACALEXANDER.X00',	alex95_table_z_list	canonical		VERIFIED 2026: the seven Alexander-1995 low-T opacity table FILE PATHS (character(len=256)(7)), relayed to star%job%alex95_table_paths -- the old 'alex_z_value' guess was wrong.
-control	poa	real	0.0*	po_weight_l	canonical		former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-control	pob	real	0.0*	po_weight_teff	canonical		former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-control	poc	real	0.0*	po_weight_age	canonical		former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-control	pomax	real	0.0*	po_max_len_sq	canonical		
 control	rsclm	real(50)	0.0*	rescale_mass	proposed	mesa: new_mass	Per-run target mass (Msun) for rescale runs
 control	rsclx	real(50)	0.0*	rescale_x	proposed		Per-run target hydrogen fraction for rescale runs
 control	rsclz	real(50)	0.0*	rescale_z	proposed	mesa: new_Z	Per-run target metallicity for rescale runs

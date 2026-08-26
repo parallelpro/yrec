@@ -118,8 +118,6 @@ module star_info_lib
             character(len=256) :: opal92_table2_path, pure_z_table_path, &
                  scv_h_table_path, scv_he_table_path, scv_z_table_path
             character(len=256) :: alex95_table_paths(7)
-            character(len=256) :: pulse_atm_path, pulse_env_path, &
-                 pulse_mod_path
             double precision :: mixture_weights(12)
             integer :: mc_run_start, mc_run_end
 ! phase C flattening: the Monte-Carlo sample arrays (former
@@ -322,6 +320,12 @@ module star_info_lib
             double precision :: eps_total(json), eps_channels(7,json), &
                  beta(json), eta(json)
             logical :: converged_zone(json)
+! 2026 retire-legacy (.FULL): the model-grid rotational transport
+! coefficients [cm^2/s], stored by secular_transport for the
+! D_omega / D_mix_rot profile columns (zero when rotation is off;
+! last substep of the step wins).
+            double precision :: am_diffusion_coeff(json), &
+                 mixing_diffusion_coeff(json)
             double precision :: opacity_zone(json), gradr(json), gradT(json), &
                  grada(json), fxion_zone(3,json), conv_vel(json), scp(json)
 ! -- former turnover_state (turnover) --
@@ -403,7 +407,6 @@ module star_info_lib
            logical :: solar_calibration_active
 ! former common/sound/
            double precision :: adiabatic_index_gamma1(json)
-           logical :: sound_speed_output_active
 ! former common/monte2/
 ! former common/cent/
            double precision :: central_log10_temperature, central_log10_pressure, &
@@ -441,8 +444,7 @@ module star_info_lib
                  h_shell_zone_begin, ikut_flag, istore_flag
             double precision :: convective_velocity, dt, &
                  dt_saved, dlnrho_dlnp, dlnrho_dlnt, hydrogen_dt, &
-                 max_domega_frac, path_length_sq, prev_age, prev_log_l, &
-                 prev_log_teff, timestep_yr, total_angular_momentum, &
+                 max_domega_frac, timestep_yr, total_angular_momentum, &
                  total_rotational_ke, trial_sign_flag
 ! -- the extended-model pulse physics arrays (former pulse%) --
             double precision :: pulse_dlnrho_dlnp(json), &

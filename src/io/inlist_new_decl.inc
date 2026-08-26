@@ -16,11 +16,7 @@
       character(len=256) :: track_output_file
       character(len=256) :: short_output_file
       character(len=256) :: milne_output_file
-      character(len=256) :: model_print_file
       character(len=256) :: store_output_file
-      character(len=256) :: pulse_model_file
-      character(len=256) :: pulse_atm_file
-      character(len=256) :: pulse_env_file
       character(len=256) :: dynamics_file
       character(len=256) :: ll_data_file
       character(len=256) :: neutrino_output_file
@@ -161,18 +157,16 @@
            & opal92_opacity_table2_file, last_model_file, &
            & first_model_file, fermi_table_file, debug_output_file, &
            & track_output_file, short_output_file, milne_output_file, &
-           & model_print_file, store_output_file, pulse_model_file, &
-           & pulse_atm_file, pulse_env_file, dynamics_file, &
-           & ll_data_file, neutrino_output_file, &
-           & surface_composition_file, kurucz_atm_table_file, &
-           & mhd_table_file_1, mhd_table_file_2, mhd_table_file_3, &
-           & mhd_table_file_4, mhd_table_file_5, mhd_table_file_6, &
-           & mhd_table_file_7, mhd_table_file_8, isochrone_file, &
-           & atm_table_file, kurucz_castelli_atm_table_file, &
-           & allard_atm_table_file, scv_h_table_file, scv_he_table_file, &
-           & scv_z_table_file, opal_eos_table_file, &
-           & opal95_opacity_table_file, monte_carlo_file1_path, &
-           & monte_carlo_file2_path, pulsation_file_version, &
+           & store_output_file, dynamics_file, ll_data_file, &
+           & neutrino_output_file, surface_composition_file, &
+           & kurucz_atm_table_file, mhd_table_file_1, mhd_table_file_2, &
+           & mhd_table_file_3, mhd_table_file_4, mhd_table_file_5, &
+           & mhd_table_file_6, mhd_table_file_7, mhd_table_file_8, &
+           & isochrone_file, atm_table_file, &
+           & kurucz_castelli_atm_table_file, allard_atm_table_file, &
+           & scv_h_table_file, scv_he_table_file, scv_z_table_file, &
+           & opal_eos_table_file, opal95_opacity_table_file, &
+           & monte_carlo_file1_path, monte_carlo_file2_path, &
            & track_file_version, run_kind, write_debug_output, &
            & write_correction_output, write_milne_output, &
            & write_track_output, write_store_output, first_call_flag, &
@@ -183,13 +177,12 @@
            & pulsation_output_active, use_z_ramp, specify_teff_flag, &
            & calibrate_star_flag, use_pure_z_table, &
            & isochrone_output_active, rewind_short_file, &
-           & has_senv0_array, po_output_enabled, calibrate_solar_model, &
-           & calibrate_solar_zx, use_laol89_tables, use_opal92_tables, &
-           & use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
+           & has_senv0_array, calibrate_solar_model, calibrate_solar_zx, &
+           & use_laol89_tables, use_opal92_tables, use_opal95_tables, &
+           & use_kurucz90_tables, use_alex95_tables, &
            & debug_print_interval, envelope_print_points, &
            & profile_model_interval, print_point_interval, num_runs, &
-           & max_model_number, alex95_table_z_list, po_weight_l, &
-           & po_weight_teff, po_weight_age, po_max_len_sq, rescale_mass, &
+           & max_model_number, alex95_table_z_list, rescale_mass, &
            & rescale_x, rescale_z, rescale_core_mass, rescale_core_z, &
            & rescale_z_mix1, rescale_z_mix2, timestep_override, &
            & senv0_array, target_teff, target_radius_rsun, &

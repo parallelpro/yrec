@@ -201,7 +201,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       integer :: old_last_shell
       double precision :: saved_env_step_max, saved_env_step_min, &
            saved_env_step_begin
-      logical :: save_boundary_flag, print_flag, pulse_print_flag
+      logical :: save_boundary_flag, print_flag
       double precision :: log10_gravity
       integer :: vertex_index
       double precision :: log10_pressure_limit
@@ -829,7 +829,6 @@ subroutine rescale_and_refit_envelope
           vertex_index=0
           log10_pressure_limit = star%logP(star%nz)
 ! DBG PULSE: DO NOT DO PULSE OUTPUT
-            pulse_print_flag = .false.
             if (use_debye_huckel_correction) then
                debye_huckel_x = star%xa(i_h1,star%nz)
                debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
@@ -857,7 +856,7 @@ subroutine rescale_and_refit_envelope
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
                  hydrogen_fraction,metal_fraction,atm_get_dummy1, &
                  atm_get_unused_flag,katm,kenv,saha_state,atm_get_dummy2, &
-                 atm_get_dummy3,atm_get_dummy4,pulse_print_flag,ierr=jerr_atm)
+                 atm_get_dummy3,atm_get_dummy4,ierr=jerr_atm)
 ! 2026 numerics-gate opt-in: envelope/atmosphere integration failures
 ! surface here (incl. numerics_termination) instead of stopping in
 ! atm_get; the host's ierr is already threaded to run_yrec.

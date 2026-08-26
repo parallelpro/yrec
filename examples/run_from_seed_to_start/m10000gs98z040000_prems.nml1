@@ -84,13 +84,9 @@ KINDRN(2) = 3 ! 1 = evolve 2= rescale (zero timestep,MS or CHeB); 3 = rescale an
   
  FFIRST = "{YREC_START}/seed/p900gs98z0188.nmo" ! Starting model path.
  FLAST = "{YREC_OUTPUT}/m10000gs98z040000_prems.first" ! The last converged model is stored here.
- FMODPT = "{YREC_OUTPUT}/m10000gs98z040000_prems.full" ! No longer used.
  FSTOR = "{YREC_OUTPUT}/m10000gs98z040000_prems.store" ! Model snapshots during the run are stored here.
  FTRACK = "{YREC_OUTPUT}/m10000gs98z040000_prems.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/m10000gs98z040000_prems.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "{YREC_OUTPUT}/m10000gs98z040000_prems.pmod" ! Pulsation output for the interior model.
- FPENV = "{YREC_OUTPUT}/m10000gs98z040000_prems.penv"! Pulsation output for the envelope model.
- FPATM = "{YREC_OUTPUT}/m10000gs98z040000_prems.atm" ! Pulsation output for the atmosphere model.
  FSNU = "{YREC_OUTPUT}/m10000gs98z040000_prems.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/m10000gs98z040000_prems.excomp" ! No longer used (light elements vs. time, now included in track file)
   

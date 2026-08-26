@@ -71,13 +71,9 @@
   
  FFIRST = "{YREC_START}/seed/p070gs98z01757.ahbl" ! Starting model path.
  FLAST = "{YREC_OUTPUT}/m0700gs98z018804_prems.first" ! The last converged model is stored here.
- FMODPT = "{YREC_OUTPUT}/m0700gs98z018804_prems.full" ! No longer used.
  FSTOR = "{YREC_OUTPUT}/m0700gs98z018804_prems.store" ! Model snapshots during the run are stored here.
  FTRACK = "{YREC_OUTPUT}/m0700gs98z018804_prems.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/m0700gs98z018804_prems.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "{YREC_OUTPUT}/m0700gs98z018804_prems.pmod" ! Pulsation output for the interior model.
- FPENV = "{YREC_OUTPUT}/m0700gs98z018804_prems.penv"! Pulsation output for the envelope model.
- FPATM = "{YREC_OUTPUT}/m0700gs98z018804_prems.atm" ! Pulsation output for the atmosphere model.
  FSNU = "{YREC_OUTPUT}/m0700gs98z018804_prems.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/m0700gs98z018804_prems.excomp" ! No longer used (light elements vs. time, now included in track file)
   

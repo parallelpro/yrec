@@ -21,7 +21,6 @@
 ! itdif2 : USER PARAMETER - MAXIMUM NUMBER OF ITERATIONS.
 ! cut_count : NUMBER OF TIMES DIFFUSION TIMESTEP HAS BEEN CUT.
 ! converged_flag : FLAG SET T IF DIFFUSION COEFFICEINTS HAVE CONVERGED.
-! print_flag : FLAG SET T IF OUTPUT ABOUT CHECMICAL DIFFUSION DESIRED.
 ! num_zones : NUMBER OF MODEL POINTS.
 !
 ! OUTPUT VARIABLES:
@@ -31,7 +30,7 @@
 ! cut_count : NUMBER OF TIMES DIFFUSION TIMESTEP HAS BEEN CUT.
 ! converged_flag : SET F IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 ! redo_flag : SET T IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
-subroutine check_composition(composition, iteration_number, print_flag, num_zones, &
+subroutine check_composition(composition, iteration_number, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
       use rotation_scratch_lib
 
@@ -41,7 +40,6 @@ subroutine check_composition(composition, iteration_number, print_flag, num_zone
 
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: iteration_number
-      logical, intent(in) :: print_flag
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: dt
       integer, intent(inout) :: cut_count
@@ -138,39 +136,9 @@ subroutine check_composition(composition, iteration_number, print_flag, num_zone
             endif
          end do
       end do
-      if(iteration_number.eq.star%ctrl%itdif2.and.print_flag) then
-!  FIND MAXIMUM FRACTIONAL CHANGE IN COMPOSITION AND PRINT IT OUT.
-         max_fractional_comp_change = 0.0d0
-         max_change_zone = 0
-         max_change_species = 0
-         do species_index = 1,num_diffused_species
-            if(species_index.eq.3)cycle
-! min_comp_for_check IS USED TO GUARD AGAINST DIVISION BY ZERO.
-            min_comp_for_check = max(1.0d-6* &
-                 composition(species_index,num_zones),1.0d-20)
-            do zone_index = 1,num_zones
-               if(star%xa_start(species_index,zone_index).lt. &
-                    min_comp_for_check)cycle
-               fractional_comp_change = &
-                    (composition(species_index,zone_index)- &
-                    star%xa_start(species_index,zone_index))/ &
-                    star%xa_start(species_index,zone_index)
-               if(abs(fractional_comp_change).gt. &
-                    abs(max_fractional_comp_change)) then
-                  max_fractional_comp_change = fractional_comp_change
-                  max_change_zone = zone_index
-                  max_change_species = species_index
-               endif
-            end do
-         end do
-         write(*,50)max_fractional_comp_change,max_change_species, &
-              max_change_zone
-   50 format(' MAX FRAC.COMP.CHANGE',1pe12.3,' SPECIES',i2, &
-              ' AT PT.',i5)
-         if(star%job%use_extended_composition)write(*,60) &
-              composition(14,num_zones),star%xa_start(14,num_zones)
-   60 format(5x,'NEW SURFACE LI',1pe14.4,'OLD VALUE',e14.4)
-      endif
+! 2026 retire-legacy: the max-fractional-composition-change print
+! (gated by the caller's hard-false print flag) is deleted with the
+! .FULL retirement.
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
 !  CORRECTION FOR PARTIAL IONIZATION NEEDED IN MASSIVE STARS.

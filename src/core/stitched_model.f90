@@ -27,7 +27,7 @@ module stitched_model_lib
            ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, ip_conv, &
            ip_gradr, ip_gradT, ip_grada, ip_conv_vel
 
-      integer, parameter :: n_prof_cols = 57
+      integer, parameter :: n_prof_cols = 60
       integer, parameter :: n_pulse_cols = 35
 ! Named indices for the stx_prof columns physics consumers read
 ! (column meanings = the profile column registry in io/yrec_output).
@@ -76,7 +76,7 @@ subroutine build_stitched_model
       double precision :: b, gl, rl, ateffl, plim, dum1(4), dum2(3), &
            dum3(3), dum4(3)
       integer :: ixx, idum, katm, kenv, ksaha
-      logical :: lprt, lsbc0, lpulpt
+      logical :: lprt, lsbc0
 
 ! interior always present
       n_ext = 0
@@ -115,7 +115,6 @@ subroutine build_stitched_model
       ksaha = 0
       lprt = .false.
       lsbc0 = .false.
-      lpulpt = .false.
       b = exp(ln10*star%log_L)
       rl = 0.5d0*(star%log_L + star%log10_solar_luminosity - 4.0d0*star%log_Teff &
            - c4pil - csigl)
@@ -136,7 +135,7 @@ subroutine build_stitched_model
       call atm_get(b, star%fp_rot(star%nz), star%ft_rot(star%nz), gl, &
            star%log_total_mass, ixx, lprt, lsbc0, plim, rl, ateffl, &
            star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), dum1, idum, katm, &
-           kenv, ksaha, dum2, dum3, dum4, lpulpt, jerr)
+           kenv, ksaha, dum2, dum3, dum4, jerr)
 
       star%job%atm_step_begin = atm_beg0
       star%job%atm_step_min = atm_min0
@@ -295,6 +294,9 @@ double precision function ext_profile_value(icol, j)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = env_struct%env_specific_heat_cp(i)
          case (51); ext_profile_value = -env_struct%env_dlnrho_dlnt(i)
+         case (58); ext_profile_value = sqrt(env_struct%env_gamma1(i)* &
+              exp(ln10*(env_struct%env_log10_pressure(i) - &
+              env_struct%env_log10_density(i))))
          case default; ext_profile_value = 0.0d0
          end select
       case (3)
@@ -318,6 +320,9 @@ double precision function ext_profile_value(icol, j)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = atmo_struct%atmo_specific_heat_cp(i)
          case (51); ext_profile_value = -atmo_struct%atmo_dlnrho_dlnt(i)
+         case (58); ext_profile_value = sqrt(atmo_struct%atmo_gamma1(i)* &
+              exp(ln10*(atmo_struct%atmo_log10_pressure(i) - &
+              atmo_struct%atmo_log10_density(i))))
          case default; ext_profile_value = 0.0d0
          end select
       case default
@@ -398,6 +403,12 @@ double precision function profile_value(icol, k)
          else
             profile_value = 0.0d0
          end if
+      case (58)
+! sound speed sqrt(Gamma1*P/rho) [cm/s]
+         profile_value = sqrt(star%adiabatic_index_gamma1(k)* &
+              exp(ln10*(star%logP(k) - star%logRho(k))))
+      case (59); profile_value = star%am_diffusion_coeff(k)
+      case (60); profile_value = star%mixing_diffusion_coeff(k)
       case default
          profile_value = 0.0d0
       end select

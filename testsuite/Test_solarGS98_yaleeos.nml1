@@ -69,7 +69,6 @@
  LCORR = .TRUE. ! If true, output verbose details on model convergence to .short.
   
  LPULSE = .TRUE. ! If T, generate pulsation output. LSTATM AND LSTENV are needed to get data for those regions (needed if LPULSE is T)  
- IPVER = 3 ! Format for pulsation output
 
 ! Input files
 ! Opacity tables and options
@@ -99,12 +98,8 @@
  FSTOR = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.store" ! Model snapshots during the run are stored here.
  FTRACK = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.pmod" ! Pulsation output for the interior model.
- FPENV = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.penv"! Pulsation output for the envelope model.
- FPATM = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.patm" ! Pulsation output for the atmosphere model.
   
 ! Legacy output files
- FMODPT = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.full" ! No longer used.
  FSNU = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/Test_solarGS98_yaleeos.excomp" ! No longer used (light elements vs. time, now included in track file)
 

@@ -94,7 +94,6 @@
  LCORR = .TRUE. ! If true, output verbose details on model convergence to .short.
   
  LPULSE = .FALSE. ! If T, generate pulsation output. LSTATM AND LSTENV are needed to get data for those regions (needed if LPULSE is T)  
- IPVER = 3 ! Format for pulsation output
 
 ! Input files
 ! Opacity tables and options
@@ -127,12 +126,8 @@
  FSTOR = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.store" ! Model snapshots during the run are stored here.
  FTRACK = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.track" ! Global variables as a function of time are stored here.
  FSHORT = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.pmod" ! Pulsation output for the interior model.
- FPENV = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.penv"! Pulsation output for the envelope model.
- FPATM = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.patm" ! Pulsation output for the atmosphere model.
   
 ! Legacy output files
- FMODPT = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.full" ! No longer used.
  FSNU = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "output/samplecases/Sample_Class2_m9p0feh+0p0_cnom3_ZAMS.excomp" ! No longer used (light elements vs. time, now included in track file)
 

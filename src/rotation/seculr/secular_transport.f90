@@ -126,7 +126,6 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
            rhs(json), unused_tridia_solution(json), surface_wind_loss_term
 
 ! --- other locals ---
-      logical :: print_diffusion_flag
       logical :: disk_lock_active
       logical :: lcz_first_zone, lcz_last_zone
       double precision :: total_luminosity
@@ -154,8 +153,6 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
       integer :: solid_start_zone
       integer :: species_begin, species_end
       integer :: print_zone_count
-      double precision :: delta_h1, delta_he3, delta_c12, delta_c13, &
-           delta_n14, delta_li7, delta_be9
 ! constant_diffusion_coeff_flag/constant_diffusion_coeff (originally
 ! LCODM/CODM, MHP 8/13 "treat entire domain as unstable if a constant
 ! diffusion coefficient is being added") are implicitly typed in the
@@ -179,7 +176,6 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 
       ierr = 0
 
-      print_diffusion_flag = .false.
 ! MHP 9/94
 ! DISK LOCKING CHECKED
       disk_lock_active = .false.
@@ -335,6 +331,14 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !  FIND DIFFUSION COEFFICIENTS(COD) FOR ALL UNSTABLE REGIONS.
          call diffusion_velocity_scales(radius_unlogged,num_zones,radius_mid, &
               am_diffusion_coeff,mixing_diffusion_coeff)
+! 2026: expose the model-grid transport coefficients as profile
+! columns (D_omega, D_mix) -- the physically meaningful per-zone
+! diffusion coefficients, formerly reachable only through the dead
+! .FULL diagnostics. Last substep of the step wins.
+         do i = 1, num_zones
+            star%am_diffusion_coeff(i) = am_diffusion_coeff(i)
+            star%mixing_diffusion_coeff(i) = mixing_diffusion_coeff(i)
+         end do
 !  EACH UNSTABLE REGION IS SOLVED SEPARATELY STARTING HERE.
 !  LTEST IS SET T IF A NON-ZERO VELOCITY IS ENCOUNTERED.
 !  IBEG IS THE ZONE BELOW THE FIRST NON-ZERO V;IEND IS THE ZONE ABOVE
@@ -504,7 +508,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !         WRITE(*,*)OMEGA(1),OMEGA(M)
 ! CHECK COMPOSITION DIFFUSION AND RECOMPUTE MEAN MOLECULAR WEIGHT.
          if(.not.redo_flag)call check_composition(composition,iteration, &
-              print_diffusion_flag,num_zones,sub_timestep,cut_count, &
+              num_zones,sub_timestep,cut_count, &
               diffusion_solve_ok,redo_flag, ierr)
          if (ierr /= 0) return
 ! MHP 9/93
@@ -543,26 +547,9 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 ! MHP 6/00
       am_transport_convective_flag(1) = lcz_first_zone
       am_transport_convective_flag(num_zones) = lcz_last_zone
-! ADD I/O FOR MIXING.
-      if(print_diffusion_flag)then
-! MHP 8/03 ADDED HEADER LINE.
-      write(imodpt,198)
- 198  format('COMPOSITION CHANGE FROM ROTATIONAL MIXING'/ &
-             5X,'H',8X,'HE3',7X,'C12',7X,'C13',7X,'N14', &
-             7X,'LI7',7X,'BE9')
-      do i = 1,print_zone_count
-         delta_h1 = composition(1,print_zone_id(i))-rot_scr%composition_snapshot(1,print_zone_id(i))
-         delta_he3 = composition(4,print_zone_id(i))-rot_scr%composition_snapshot(4,print_zone_id(i))
-         delta_c12 = composition(5,print_zone_id(i))-rot_scr%composition_snapshot(5,print_zone_id(i))
-         delta_c13 = composition(6,print_zone_id(i))-rot_scr%composition_snapshot(6,print_zone_id(i))
-         delta_n14 = composition(7,print_zone_id(i))-rot_scr%composition_snapshot(7,print_zone_id(i))
-         delta_li7 = composition(14,print_zone_id(i))-rot_scr%composition_snapshot(14,print_zone_id(i))
-         delta_be9 = composition(15,print_zone_id(i))-rot_scr%composition_snapshot(15,print_zone_id(i))
-         write(imodpt,199)print_zone_id(i),delta_h1,delta_he3,delta_c12, &
-              delta_c13,delta_n14,delta_li7,delta_be9
- 199     format(I5,1P7E10.3)
-      end do
-      endif
+! 2026 retire-legacy: the rotational-mixing delta-composition table
+! that printed here to .FULL was dead (its print_diffusion_flag was
+! hard-set .false.); deleted with the file.
 ! MHP 8/03 - OMITTED I/O, COULD REINTRODUCE IN ANOTHER FILE
 !  DETERMINE COUPLING FACTOR (I.E. THE FRACTION OF THE TOTAL ANGULAR
 !  MOMENTUM LOST FROM THE CORE RELATIVE TO ITS FRACTION OF THE TOTAL

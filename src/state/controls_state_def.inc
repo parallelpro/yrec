@@ -79,9 +79,6 @@
             integer :: run_unit = 0
             integer :: standard_unit = 0
             integer :: fermi_unit = 0
-            integer :: opal_model_unit = 0
-            integer :: opal_envelope_unit = 0
-            integer :: opal_atm_unit = 0
             integer :: dynamics_unit = 0
             integer :: laol_table_unit = 0
             integer :: neutrino_unit = 0
@@ -112,7 +109,6 @@
             double precision :: atm_error_tol = 0.0d0
             double precision :: atm_step_initial = 0.0d0
             double precision :: env_error_tol = 0.0d0
-            integer :: pulsation_file_version = 0
             double precision :: vnew(12) = (/0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
             character(len=256) :: monte_carlo_file1_path = ' '
             character(len=256) :: monte_carlo_file2_path = ' '
@@ -167,11 +163,6 @@
             double precision :: relative_tolerance = 0.0d0
             integer :: max_burn_iterations = 0
             integer :: opal95_table_unit = 0
-            double precision :: po_weight_l = 0.0d0
-            double precision :: po_weight_teff = 0.0d0
-            double precision :: po_weight_age = 0.0d0
-            double precision :: po_max_len_sq = 0.0d0
-            logical :: po_output_enabled = .false.
             integer :: track_file_version = 0
             logical :: extend_core_inward = .false.
             logical :: rewind_short_file = .false.

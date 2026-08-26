@@ -314,15 +314,12 @@ subroutine write_store_model(composition, log_density, log_luminosity, log_press
            E11.3)
 
       endif
-! now call wrtmod, with the goal of outputting the envelope and atmosphere, or
-! if required by LPULSE.
+! 2026 retire-legacy: wrtmod (.pmod pulse interior + .FULL sound-
+! speed table) is deleted; only the Milne atmosphere companion
+! output survives here.
       if(star%job%lstatm.or.star%ctrl%lstenv)then
        if(lmilne_local) call write_milne(composition,log_density,log_luminosity, &
             log_pressure,log_radius,mass_coordinate,num_shells,model_number)
-         call write_pulsation_model(num_shells,envelope_cz_bottom_index,composition, &
-              mass_coordinate,log_density,log_luminosity,log_pressure, &
-              log_radius,log_temperature,model_number,log_luminosity_lsun, &
-              log_teff,shape_factor_fp,shape_factor_ft,log_mass,age_gyr)
       endif
 
       write(istor,65)

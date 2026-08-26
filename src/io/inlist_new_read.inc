@@ -22,11 +22,7 @@
       track_output_file = ftrack
       short_output_file = fshort
       milne_output_file = fmilne
-      model_print_file = fmodpt
       store_output_file = fstor
-      pulse_model_file = fpmod
-      pulse_atm_file = fpatm
-      pulse_env_file = fpenv
       dynamics_file = fdyn
       ll_data_file = flldat
       neutrino_output_file = fsnu
@@ -51,7 +47,6 @@
       opal95_opacity_table_file = fliv95
       monte_carlo_file1_path = fmonte1
       monte_carlo_file2_path = fmonte2
-      pulsation_file_version = ipver
       track_file_version = itrver
       run_kind = kindrn
       write_debug_output = ldebug
@@ -76,7 +71,6 @@
       isochrone_output_active = liso
       rewind_short_file = lrwsh
       has_senv0_array = lsenv0a
-      po_output_enabled = lpout
       calibrate_solar_model = lcals
       calibrate_solar_zx = lcalsolzx
       use_laol89_tables = llaol89
@@ -91,10 +85,6 @@
       num_runs = numrun
       max_model_number = nmodls
       alex95_table_z_list = opecalex
-      po_weight_l = poa
-      po_weight_teff = pob
-      po_weight_age = poc
-      po_max_len_sq = pomax
       rescale_mass = rsclm
       rescale_x = rsclx
       rescale_z = rsclz
@@ -391,11 +381,7 @@
       ftrack = track_output_file
       fshort = short_output_file
       fmilne = milne_output_file
-      fmodpt = model_print_file
       fstor = store_output_file
-      fpmod = pulse_model_file
-      fpatm = pulse_atm_file
-      fpenv = pulse_env_file
       fdyn = dynamics_file
       flldat = ll_data_file
       fsnu = neutrino_output_file
@@ -420,7 +406,6 @@
       fliv95 = opal95_opacity_table_file
       fmonte1 = monte_carlo_file1_path
       fmonte2 = monte_carlo_file2_path
-      ipver = pulsation_file_version
       itrver = track_file_version
       kindrn = run_kind
       ldebug = write_debug_output
@@ -445,7 +430,6 @@
       liso = isochrone_output_active
       lrwsh = rewind_short_file
       lsenv0a = has_senv0_array
-      lpout = po_output_enabled
       lcals = calibrate_solar_model
       lcalsolzx = calibrate_solar_zx
       llaol89 = use_laol89_tables
@@ -460,10 +444,6 @@
       numrun = num_runs
       nmodls = max_model_number
       opecalex = alex95_table_z_list
-      poa = po_weight_l
-      pob = po_weight_teff
-      poc = po_weight_age
-      pomax = po_max_len_sq
       rsclm = rescale_mass
       rsclx = rescale_x
       rsclz = rescale_z

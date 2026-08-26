@@ -33,7 +33,7 @@
 ! a fully-local scope with no such restriction.
 subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
      flaol2, fliv95, flldat, fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, &
-     fmhd7, fmhd8, fopal2, fpatm, fpenv, fpmod, fpurez, fscvh, fscvhe, &
+     fmhd7, fmhd8, fopal2, fpurez, fscvh, fscvhe, &
      fscvz, opecalex, ierr)
 
       use star_info_lib, only: star, control_nml_override, physics_nml_override
@@ -78,8 +78,8 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       character(len=256) :: fstch
       character(len=256) :: fallard, fscvh, fscvhe, fscvz
       character(len=256) :: flast, ffirst, ffermi, &
-           fdebug, ftrack, fshort, fmilne, fmodpt, &
-           fstor, fpmod, fpenv, fpatm, fdyn, &
+           fdebug, ftrack, fshort, fmilne, &
+           fstor, fdyn, &
            flldat, fsnu, fscomp, fkur, &
            fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8
       integer :: kindrn(50)
@@ -445,21 +445,14 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! const_lib canonical name -- use-associated directly.
       logical :: lnewdif
 
-! lpulse/ipver: NAMELIST /physics/ members, each with a different
+! lpulse: NAMELIST /physics/ member with a different
 ! canonical const_lib spelling (pulsation_output_active/
 ! pulsation_file_version), so kept local under their NAMELIST spelling
 ! here and copy-assigned after the namelist read below. xmsol (former
 ! common/pulse/'s remaining member) is unused in this file, so it's
 ! dropped entirely.
       logical :: lpulse
-      integer :: ipver
 
-! po: NAMELIST /physics/ members, all renamed in const_lib (poa/pob/poc/
-! pomax/lpout -> po_weight_l/po_weight_teff/po_weight_age/po_max_len_sq/
-! po_output_enabled), so kept local under their NAMELIST spelling and
-! copy-assigned after the namelist read below.
-      double precision :: poa, pob, poc, pomax
-      logical :: lpout
 
 ! track: NAMELIST /physics/ member, renamed in const_lib (itrver ->
 ! track_file_version), kept local and copy-assigned below.
@@ -815,12 +808,12 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    endage, &
            &    flaol, fpurez,flaol2, fopal2, &
            &    flast, ffirst, ffermi, fdebug, ftrack, fshort, fstch, &
-           &    fmilne, fmodpt, fstor, fpmod, fpatm, fpenv, &
+           &    fmilne, fstor, &
            &    fdyn, flldat, fsnu, fscomp, fkur, fmhd1, &
            &    fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8, fiso, fatm, &
            &    fkur2, fallard, fscvh, fscvhe, fscvz, fopale, fliv95, &
            &    fmonte1,fmonte2, &
-           &    ipver, itrver, &
+           &    itrver, &
            &    kindrn, &
            &    ldebug, lcorr, lmilne, ltrack, lstore, lfirst, &
            &    lstpch, lscrib, lstch, &
@@ -829,12 +822,11 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! G Somers END
            &    lpulse, lzramp, lteff, lcalst, lpurez, &
 ! MHP 9/24 add LCALSOLZX to namelist
-           &    liso, lrwsh, lsenv0a, lpout,lcals,lcalsolzx, &
+           &    liso, lrwsh, lsenv0a,lcals,lcalsolzx, &
            &    llaol89,lopal92,lopal95,lkur90,lalex95, &
            &    npoint, &
            &    npenv, nprtmod, nprtpt, numrun, nmodls, &
            &    opecalex, &
-           &    poa, pob, poc, pomax, &
            &    rsclm, rsclx, rsclz, rsclcm, rsclzc, rsclzm1, rsclzm2, &
            &    setdt, senv0a,steff,sr, &
            &    tolr, toll,tolz, &
@@ -1039,7 +1031,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data wmax,wmax_sun/3.0d-4,1000.0/
 ! DBG PULSE DATA CARD FOR PULSATION
       data lpulse/.false./
-      data ipver/1/
       data itrver/1/
       data kttau/0/
       data clsun,crsun/3.8515d33,6.9598d10/
@@ -1076,7 +1067,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! 3/92 DBG
       data lnulos1/.false./
 ! DBG PULSE OUT 7/92
-      data pomax,poa,pob,poc,lpout/0.1d0,1.0d0,10.0d0,0.0d0,.false./
 ! MHP 06/13 ADDED FLAG TO CALIBRATE TO SOLAR Z/X, SOLAR Z/X, SOLAR AGE
       data toll,tolr,tolz,lcals,lcalsolzx,calsolage,calsolzx/1.0d-5, &
            &      1.0d-4,1.0d-3,.false.,.false.,4.57d9,0.02292d0/
@@ -1240,11 +1230,8 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! OUTPUT: SAVED MODELS, CAN BE USED AS STARTING MODEL
       istor = 23
 ! OUTPUT: FOR PULSATION CODE, INTERIOR
-      opal_model_unit = 24
 ! OUTPUT: FOR PULSATION CODE, ENVELOPE
-      opal_envelope_unit = 25
 ! OUTPUT: FOR PULSATION CODE, ATMOSPHERE
-      opal_atm_unit = 26
 ! OUTPUT: BINARY OUTPUT OF LAST MODEL
       last_model_binary_lu = 27
 ! OUTPUT: BINARY OUTPUT OF STORED MODELS
@@ -1466,7 +1453,6 @@ subroutine adopt_canonical_names
       env_step_min = envmin
       env_step_max = envmax
       pulsation_output_active = lpulse
-      pulsation_file_version = ipver
       atm_choice = kttau
       debye_huckel_eta_min = etadh0
       debye_huckel_eta_max = etadh1
@@ -1518,11 +1504,6 @@ subroutine adopt_canonical_names
       absolute_tolerance = abstol
       relative_tolerance = reltol
       max_burn_iterations = kemmax
-      po_weight_l = poa
-      po_weight_teff = pob
-      po_weight_age = poc
-      po_max_len_sq = pomax
-      po_output_enabled = lpout
       track_file_version = itrver
       extend_core_inward = lcore
       num_core_shells_added = mcore
@@ -1672,11 +1653,7 @@ subroutine resolve_output_mode_and_paths
       call expand_value(ffirst)
       call expand_value(flast)
       call expand_value(fliv95)
-      call expand_value(fmodpt)
       call expand_value(fopale06)
-      call expand_value(fpatm)
-      call expand_value(fpenv)
-      call expand_value(fpmod)
       call expand_value(fpurez)
       call expand_value(fscomp)
       call expand_value(fscvh)
@@ -1892,12 +1869,8 @@ subroutine derive_options_and_open_files
       open(unit=ilast,file=flast,form='FORMATTED',status='UNKNOWN')
       end if
       if (use_legacy_output) then
-      open(unit=imodpt,file=fmodpt,form='FORMATTED',status='UNKNOWN')
 !     OPEN ALL PULSE FILES
       if(lpulse) then
-      open(opal_model_unit, file=fpmod,status='UNKNOWN',form='FORMATTED')
-      open(opal_envelope_unit, file=fpenv,status='UNKNOWN',form='FORMATTED')
-      open(opal_atm_unit, file=fpatm,status='UNKNOWN',form='FORMATTED')
       end if
       else
 ! MESA mode: retarget the shared diagnostics unit to CASE.log and

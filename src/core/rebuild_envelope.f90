@@ -74,7 +74,6 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       double precision :: hydrogen_fraction, metal_fraction
       double precision :: fp_surface, ft_surface
       double precision :: pressure_limit
-      logical :: pulsation_output_flag
       integer :: ixx_flag
       integer :: atm_get_unused_flag
       double precision :: spot_adjusted_log_teff
@@ -144,7 +143,6 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! FIRST TIME IT TRIES TO DO SO.
       pressure_limit = log_pressure(num_zones)
 ! DO NOT DO SOLAR PULSATION OUTPUT
-      pulsation_output_flag = .false.
 ! SET UP VALUES FOR THE EQUATION OF STATE CALCULATION
       ixx_flag = 0
       if (use_debye_huckel_correction) then
@@ -173,7 +171,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
            log_radius_surface, &
            spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
            atm_get_dummy1,atm_get_unused_flag,katm,kenv,ksaha,atm_get_dummy2, &
-           atm_get_dummy3,atm_get_dummy4,pulsation_output_flag,ierr=jerr_atm)
+           atm_get_dummy3,atm_get_dummy4,ierr=jerr_atm)
 ! 2026 numerics-gate opt-in: same contract as read_starting_model's
 ! atm_get call; caller (evolve_step) checks ierr.
       if (jerr_atm /= 0) then

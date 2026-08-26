@@ -66,13 +66,9 @@
 
  FFIRST = "{YREC_START}/zahb/090mSOLpreZAHB.last"
  FLAST = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.first" ! The last converged model is stored here.
- FMODPT = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.full" ! No longer used.
  FSTOR = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.store" ! Model snapshots during the run are stored here.
  FTRACK = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.pmod" ! Pulsation output for the interior model.
- FPENV = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.penv"! Pulsation output for the envelope model.
- FPATM = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.atm" ! Pulsation output for the atmosphere model.
  FSNU = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/ZAHB_m0p9feh+0p0_TAHB.excomp" ! No longer used (light elements vs. time, now included in track file)
 

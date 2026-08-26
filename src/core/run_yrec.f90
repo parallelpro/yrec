@@ -273,23 +273,8 @@ subroutine end_of_card_calibration(runs_complete)
                      runs_complete = .true.
                      return
                   end if
-                  if (star%job%pulsation_output_active) then
-! DBG 6/93 Need to delete pulse output because have not got ultimate
-! model yet.
-! MHP 8/25 Replaced delete file with rewind file. This is functionally the same and avoids the need to pass the character string for the file name from parmin.
-                     rewind(star%ctrl%opal_model_unit)
-                     rewind(star%ctrl%opal_envelope_unit)
-                     rewind(star%ctrl%opal_atm_unit)
-!                     CLOSE(IOPMOD, STATUS='DELETE')
-!                     CLOSE(IOPENV, STATUS='DELETE')
-!                     CLOSE(IOPATM, STATUS='DELETE')
-!                     OPEN(IOPMOD, FILE=FPMOD,STATUS='UNKNOWN',
-!     *                    FORM='FORMATTED')
-!                     OPEN(IOPENV, FILE=FPENV,STATUS='UNKNOWN',
-!     *                    FORM='FORMATTED')
-!                     OPEN(IOPATM, FILE=FPATM,STATUS='UNKNOWN',
-!     *                    FORM='FORMATTED')
-                  end if
+! 2026 retire-legacy: the pulse-trio rewind (delete-and-redo on a
+! non-ultimate model) went with the .pmod/.penv/.patm files.
                end if
             endif
          endif
@@ -311,7 +296,6 @@ end subroutine end_of_card_calibration
 ! estimate (htimer), and zero the entropy and light-element-rate
 ! state. Sets ierr on configuration or model-read errors.
 subroutine begin_kind_card
-         star%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
          star%job%initial_envelope_x = star%job%initial_x_array(star%job%nk)
          star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
@@ -365,10 +349,6 @@ subroutine begin_kind_card
       call output_run_header(star%star_mass)
 ! DBG PULSE OUT 7/92
 ! initialize variables for calculating when to dump pulse output
-         star%prev_log_l = star%log_L
-         star%prev_log_teff = star%log_Teff
-         star%prev_age = star%dage
-         star%path_length_sq = 0.0D0
 
        if (star%ctrl%helium_flash_active) then
 ! timestep cutting requires a model stored in logical unit ILAST

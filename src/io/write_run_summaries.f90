@@ -44,7 +44,6 @@ subroutine write_run_summaries(monte_carlo_run_number, &
          rewind(idebug)
          rewind(itrack)
          rewind(short_file_unit)
-         rewind(imodpt)
          rewind(istor)
          write(star%ctrl%neutrino_unit,1525)star%log_L,log_r_rsun
  1525    format(5X,'DID NOT CONVERGE WITHIN 10 ATTEMPTS L,R',2F10.6)
@@ -75,7 +74,6 @@ subroutine write_run_summaries(monte_carlo_run_number, &
          rewind(idebug)
          rewind(itrack)
          rewind(short_file_unit)
-         rewind(imodpt)
          rewind(istor)
 
          surface_z_over_x = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)

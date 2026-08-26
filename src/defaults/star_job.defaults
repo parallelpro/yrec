@@ -67,25 +67,9 @@
       ! (legacy name: fmilne)
       milne_output_file = ''   ! (implicit)
 
-      ! Per-model print stream (rotational-mixing composition changes etc.)
-      ! (legacy name: fmodpt)
-      model_print_file = ''   ! (implicit)
-
       ! Full stored-model (.store) output path
       ! (legacy name: fstor)
       store_output_file = ''   ! (implicit)
-
-      ! Pulsation (oscillation-code) model output
-      ! (legacy name: fpmod)
-      pulse_model_file = ''   ! (implicit)
-
-      ! Pulsation output: atmosphere part
-      ! (legacy name: fpatm)
-      pulse_atm_file = ''   ! (implicit)
-
-      ! Pulsation output: envelope part
-      ! (legacy name: fpenv)
-      pulse_env_file = ''   ! (implicit)
 
       ! Opened on the dynamics unit (formatted, STATUS=OLD)
       ! (legacy name: fdyn)
@@ -183,9 +167,6 @@
       ! (legacy name: fmonte2)
       monte_carlo_file2_path = ''   ! (implicit)
 
-      ! (legacy name: ipver)
-      pulsation_file_version = 1
-
       ! former common/track/: track_file_version (originally itrver) is a NAMELIST value with a different canonical spelling, kept local in core/parmin.f90 and copy-assigned.
       ! (legacy name: itrver)
       track_file_version = 1
@@ -276,9 +257,6 @@
       ! (legacy name: lsenv0a)
       has_senv0_array = .false.   ! (implicit)
 
-      ! (legacy name: lpout)
-      po_output_enabled = .false.   ! (implicit)
-
       ! (legacy name: lcals)
       calibrate_solar_model = .false.   ! (implicit)
 
@@ -324,21 +302,6 @@
       ! VERIFIED 2026: the seven Alexander-1995 low-T opacity table FILE PATHS (character(len=256)(7)), relayed to star%job%alex95_table_paths -- the old 'alex_z_value' guess was wrong.
       ! (legacy name: opecalex)
       alex95_table_z_list = 'OPACALEXANDER.X00',
-
-      ! former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-      ! (legacy name: poa)
-      po_weight_l = 0.0   ! (implicit)
-
-      ! former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-      ! (legacy name: pob)
-      po_weight_teff = 0.0   ! (implicit)
-
-      ! former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-      ! (legacy name: poc)
-      po_weight_age = 0.0   ! (implicit)
-
-      ! (legacy name: pomax)
-      po_max_len_sq = 0.0   ! (implicit)
 
       ! Per-run target mass (Msun) for rescale runs
       ! (legacy name: rsclm)

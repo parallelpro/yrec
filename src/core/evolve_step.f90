@@ -188,7 +188,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          if (abundance_stop_triggered(star%job%nk)) then
 ! SET I/O FLAGS PROPERLY AND EXIT LOOP
             star%job%pulsation_output_active = star%saved_pulse_output_flag
-            star%sound_speed_output_active = .true.
             star%print_rotation_diagnostics = .true.
             step_status = step_kind_card_done
             return
@@ -279,19 +278,11 @@ subroutine update_output_flags_for_step
 ! MHP 10/24 GENERALIZE CHECK
          if (approaching_end_age(star%job%nk)) then
                  star%job%pulsation_output_active = star%saved_pulse_output_flag
-! MHP 7/96 compute sound speed for solar model
-                 star%sound_speed_output_active = .true.
             end if
-
-
-!FD echo LSOUND
-!        print*,'MAIN LSOUND = ',LSOUND
-!FD end
-            if (star%ctrl%po_output_enabled) then
-! MHP 8/25 changed to add file names as declared variables
-             call open_pulse_files(star%prev_log_l,star%prev_log_teff,star%prev_age,star%path_length_sq,star%log_L,star%log_Teff,model_iteration,star%job%pulse_atm_path, &
-             star%job%pulse_env_path,star%job%pulse_mod_path)
-          endif
+! 2026 retire-legacy: the LSOUND sound-speed table, the .pmod/.penv/
+! .patm pulse trio, and their HR-path-length reopen trigger
+! (open_pulse_files, PO* controls) are retired -- the stitched
+! profileN.data + GYRE/FGONG/GSM pulse files carry everything.
 end subroutine update_output_flags_for_step
 
 ! ---------------------------------------------------------------
