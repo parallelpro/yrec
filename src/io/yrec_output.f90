@@ -167,6 +167,12 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
             if (star%ctrl%write_pulse_flag) call write_pulse(iprof)
          end if
          call write_history_row(iprof)
+! The .mod model file (restart + in-run divergence recovery) is
+! written in BOTH output modes -- legacy mode writes it from
+! wrtout; this closes the historical MESA-mode gap where unit
+! ilast was never written and a diverged model had nothing to
+! reload.
+         call write_mod_model(ilast)
 ! Keep the log live during the run, like the history file.
          flush(short_file_unit)
       end if

@@ -352,14 +352,7 @@ subroutine begin_kind_card
 ! timestep cutting requires a model stored in logical unit ILAST
 ! or it will crash - so copy initial model to unit ILAST
           if (star%punch_pending_flag) then
-             call write_last_model(ilast,star%xa,star%logRho,star%luminosity_lsun, &
-                  star%logP,star%logR,star%log_mass,star%logT,star%convective_flag, &
-                  star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
-                  star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
-                  star%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
-                  star%envelope_cz_bottom_index,star%model_number,star%nz, &
-                  star%star_mass,star%log_Teff,star%log_L,star%log_total_mass,star%dage, &
-                  star%timestep_yr,star%omega)
+             call write_mod_model(ilast)
           endif
        endif
 

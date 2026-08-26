@@ -343,7 +343,16 @@ subroutine acquire_starting_model
 ! ATEMP now contains a keyword describing the format of the input stellar
 ! model.  We decide what kind of model format it has and process accordingly.
 
-      if (format_tag .eq. 'NMOD') then
+      if (format_tag .eq. 'YMOD') then
+         write(short_file_unit,11)
+ 11      format('STARIN:  Input model has YREC .mod format')
+         call read_mod_model(iread, timestep_yr, mixing_length0, &
+              use_extended_composition0, rotation_active0, jerr)
+         if (jerr /= 0) then
+            ierr = jerr
+            return
+         end if
+      else if (format_tag .eq. 'NMOD') then
          write(short_file_unit,12)
  12      format('STARIN:  Input model has YREC7 format')
          call read_yrec7(star%log_L,star%envelope_fit_coeffs,mixing_length0, &

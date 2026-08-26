@@ -57,12 +57,7 @@ subroutine write_monte_carlo_model(hcomp, hd, hl, hp, hr, hs, ht, lc, m, age_gyr
 
 !  STORE LAST CONVERGED MODEL IN LOGICAL UNIT IMONTE2
       iwrite = star%ctrl%monte_carlo_unit2
-      call write_last_model(iwrite,hcomp,hd,hl,hp,hr,hs,ht,lc,trial_log_temperature, &
-           trial_log_luminosity,fit_point_pressure,fit_point_temperature, &
-           fit_point_radius,envelope_fit_coeffs,trial_sign_flag, &
-           luminosity_breakdown,core_cz_top_index,envelope_cz_bottom_index, &
-           monte_carlo_run_number,m,total_mass_msun,log_teff,log_luminosity, &
-           log_total_mass,age_gyr,timestep_yr,omega)
+      call write_mod_model(iwrite)
 !  GLOBAL INFORMATION SENT TO FIRST MONTE CARLO OUTPUT FILE
 !  SURFACE Z/X
       surface_z_over_x = hcomp(3,m)/hcomp(1,m)

@@ -122,7 +122,7 @@
  ! FFIRST = "output/testsuite/Test_m1000_feh0_noGS_TAMS.last" ! Sample starting model - TAMS
 
 ! Output files 
- FLAST = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.last" ! The last converged model is stored here.
+ FLAST = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.mod" ! The latest converged model (.mod format) is stored here.
  FSTOR = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.store" ! Model snapshots during the run are stored here.
  FTRACK = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.track" ! Global variables as a function of time are stored here.
  FSHORT = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.short" ! Details about the numerics of the model run are stored here.

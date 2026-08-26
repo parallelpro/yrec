@@ -83,7 +83,7 @@
  FPUREZ = "{YREC_INPUT}/opacity/atomic/lanl/PURECO.DBGLAOL" ! Pure Y/Z  opacity table path
   
  FFIRST = "{YREC_START}/dbl/m1000gs98z018804_Dbl.first" ! Starting model path.
- FLAST = "{YREC_OUTPUT}/cm_semiconvection.last" ! The last converged model is stored here.
+ FLAST = "{YREC_OUTPUT}/cm_semiconvection.mod" ! The latest converged model (.mod format) is stored here.
  FSTOR = "{YREC_OUTPUT}/cm_semiconvection.store" ! Model snapshots during the run are stored here.
  FTRACK = "{YREC_OUTPUT}/cm_semiconvection.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/cm_semiconvection.short" ! Details about the numerics of the model run are stored here.

@@ -1816,17 +1816,13 @@ subroutine derive_options_and_open_files
 !      IF (.NOT.LBNIN) THEN
          open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD')
 !      END IF
-! ilast doubles as the helium-flash timestep-cutting restore file --
-! a functional mechanism, not just output -- so it stays open in MESA
-! mode when that machinery is active (lkuthe).
-      if (use_legacy_output .or. lkuthe) then
+! ilast (the .mod model file) is written every model in BOTH output
+! modes: it is the restart file AND the solver's divergence/timestep-
+! cutting recovery source, so it must always be connected (2026: the
+! legacy-only guard here left MESA-mode runs with an unconnected
+! unit -- no restart file and broken divergence recovery).
       open(unit=ilast,file=flast,form='FORMATTED',status='UNKNOWN')
-      end if
-      if (use_legacy_output) then
-!     OPEN ALL PULSE FILES
-      if(lpulse) then
-      end if
-      else
+      if (.not. use_legacy_output) then
 ! MESA mode: retarget the shared diagnostics unit to CASE.log and
 ! force off the flags behind physics-time legacy streams (envint's
 ! atmosphere/envelope profile blocks, the legacy OPAL pulse files;

@@ -440,9 +440,7 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
 !  IF LSTORE = T, STORE EVERY NPUNCH MODELS IN LOGICAL UNIT ISTOR
 !  IF LSTPCH = T, STORE THE LAST MODEL CALCULATED IN A RUN
       iwrite = ilast
-      call write_last_model(iwrite,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
-           star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
-           star%dage,timestep_yr,star%omega)
+      call write_mod_model(iwrite)
 !
 !  PRINT OUT MODEL DETAILS IF REQUESTED FOR THIS MODEL. THIS IS ALL DONE
 !  IN THE SR PUTSTORE.

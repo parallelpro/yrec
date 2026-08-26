@@ -70,7 +70,7 @@
  FPUREZ = "{YREC_INPUT}/opacity/atomic/lanl/PURECO.DBGLAOL"  
   
  FFIRST = "{YREC_START}/seed/p100gs98z01757.ahbl"
- FLAST = "{YREC_OUTPUT}/cm_rot_settle_he.last"
+ FLAST = "{YREC_OUTPUT}/cm_rot_settle_he.mod"
  FSTOR = "{YREC_OUTPUT}/cm_rot_settle_he.store"
  FTRACK = "{YREC_OUTPUT}/cm_rot_settle_he.track"
  FSHORT = "{YREC_OUTPUT}/cm_rot_settle_he.short"  

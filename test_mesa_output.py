@@ -83,8 +83,8 @@ def test_mesa_output_contract(tmp_path):
     # ---- exact file set ----
     produced = sorted(p.name for p in mesa_out.iterdir())
     profiles = [p for p in produced if p.startswith("profile")]
-    assert produced == sorted([f"{BASE}.log", "history.data"] + profiles), \
-        produced
+    assert produced == sorted([f"{BASE}.log", f"{BASE}.mod", "history.data"]
+                              + profiles), produced
     assert profiles, "no profile files written (profile_interval default)"
 
     # ---- history vs the legacy track ----
