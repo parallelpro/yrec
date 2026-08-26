@@ -358,7 +358,6 @@
       s0p_be7_p = s0p_1_be7p
       s0pp_be7_p = s0pp_1_be7p
       use_new_rate_variables = lnewvars
-      use_new_turnover_timescale = lnewtcz
       calc_envelope_flag = lcalcenv
 ! Read &star_job from the first file.
       open(unit=standard_unit, file=control_nml_file, status='OLD')
@@ -728,5 +727,4 @@
       s0p_1_be7p = s0p_be7_p
       s0pp_1_be7p = s0pp_be7_p
       lnewvars = use_new_rate_variables
-      lnewtcz = use_new_turnover_timescale
       lcalcenv = calc_envelope_flag

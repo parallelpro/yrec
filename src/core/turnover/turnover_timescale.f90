@@ -100,12 +100,10 @@ subroutine compute_turnover_timescale(composition, log_radius, log_pressure, log
       pressure_diff_check = log_pressure(bcz_top_zone)-log_pressure(num_zones)
 ! IF CHKPRS > 1.0, AT LEAST 3 PSCAS, SO LOOK INTERIOR.
 ! IF CHKPRS < 1.0, 1 PSCA UP MIGHT BE IN ENV. STITCH TOGETHER.
-! FINALLY, IF LNEWTCZ = .FALSE., MAKE SURE TO CALC AN ENV.
-      if (pressure_diff_check.lt.1.0.or..not.star%ctrl%use_new_turnover_timescale) then
-         star%job%calc_envelope_flag = .true.
-      else
-         star%job%calc_envelope_flag = .false.
-      endif
+! (2026: the LNEWTCZ=.false. legacy taucal mode is retired; the
+! envelope is integrated only when the CZ base is near the fitting
+! point.)
+      star%job%calc_envelope_flag = pressure_diff_check .lt. 1.0
 !
 ! CALL ENVINT
 !
@@ -144,12 +142,9 @@ subroutine compute_turnover_timescale(composition, log_radius, log_pressure, log
            atm_get_dummy2,atm_get_dummy3,atm_get_dummy4,pulsation_output_flag)
 ! PPHOT is now set, and structure variables are caluclated if
 ! LCALCENV = .TRUE..
-!
-! IF LNEWTCZ IS FALSE, THEN TAUCZ WILL HAVE BEEN SET IN ENVINT, IF THE
-! TOP OF THE INTERIOR MODEL IS RADIATIVE. CHECK IF TAUCZ = 0.0. IF NOT,
-! THEN GO TO THE END.
-!
-      if (star%convective_turnover_timescale.eq.0.0) then
+! (2026: the legacy guard on TAUCZ /= 0 -- "did envint's taucal
+! already set it?" -- is gone with the taucal path; the timescale
+! is always computed here, from the combined structure.)
 !
 ! COLLECT THE NECESSARY STRUCTURE VARIABLES INTO DUMMY VECTORS.
       combined_num_points = num_zones
@@ -172,7 +167,7 @@ subroutine compute_turnover_timescale(composition, log_radius, log_pressure, log
          combined_convective_flag(zone_index) = convective_flag(zone_index)
       enddo
 !
-      if (star%job%calc_envelope_flag.and.star%ctrl%use_new_turnover_timescale) then
+      if (star%job%calc_envelope_flag) then
 ! IF CHKPRS < 1, THEN STITCH THE ENVELOPE ONTO THE INTERIOR.
 ! ENVELOPE WAS JUST INTEGRATED IN ENVINT ABOVE, SO USE THAT RUN.
 ! THIS CODE BORROWED FROM STITCH.F.
@@ -197,23 +192,13 @@ subroutine compute_turnover_timescale(composition, log_radius, log_pressure, log
             combined_convective_flag(zone_index) = env_struct%env_convective_flag(zone_index-num_zones+1)
          enddo
       endif
-! CALL TAUINT
-      if (star%ctrl%use_new_turnover_timescale) then
 !          CALL TAUINTNEW(HCOMPF,HS2,HSF,LCF,HRF,HPF,HDF,HGF,MM,M,HVF,
 !      *                  DELF1,DELF2,HSTOT,RBCZ)  ! KC 2025-05-31
-         call turnover_from_interior_new(combined_mass,combined_convective_flag,combined_radius, &
-              combined_pressure,combined_density,combined_gravity, &
-              combined_num_points,num_zones,combined_velocity, &
-              combined_grad1,combined_grad2,radius_at_bcz)
-      else
-!          CALL TAUINT(HCOMPF,HS2,HSF,LCF,HRF,HPF,HDF,HGF,MM,HVF,
-!      *               DELF1,DELF2,HSTOT)  ! KC 2025-05-31
-         call turnover_from_interior(combined_mass,combined_convective_flag,combined_radius, &
-              combined_pressure,combined_density,combined_gravity, &
-              combined_num_points,combined_velocity,combined_grad1,combined_grad2)
-      endif
+      call turnover_from_interior_new(combined_mass,combined_convective_flag,combined_radius, &
+           combined_pressure,combined_density,combined_gravity, &
+           combined_num_points,num_zones,combined_velocity, &
+           combined_grad1,combined_grad2,radius_at_bcz)
 ! RETURN FULL FUNCTIONALITY TO ENVINT
-      end if
       star%job%calc_envelope_flag = .true.
       return
 end subroutine compute_turnover_timescale

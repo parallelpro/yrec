@@ -45,7 +45,6 @@
             double precision :: be9_pd_rate_scale = 0.0d0
             double precision :: be9_palpha_rate_scale = 0.0d0
             logical :: use_itoh_neutrino_loss = .false.
-            logical :: use_new_turnover_timescale = .true.
             double precision :: spot_filling_factor = 0.00d0
             double precision :: spot_temp_contrast = 1.00d0
             logical :: spot_depth_varies = .false.

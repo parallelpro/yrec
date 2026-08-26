@@ -419,7 +419,6 @@ module star_info_lib
            double precision :: orig_specific_angular_momentum(json), &
                 orig_composition(15,json)
 ! former common/envcz/
-           double precision :: envelope_cz_base_radius_rsun
 ! former common/comp2/
            double precision :: envelope_helium_fraction, envelope_he3_fraction
 ! former common/envprt/

@@ -90,9 +90,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       external harvard_t_tau
 
       double precision :: ion_fraction(3)
-      double precision :: taucal_delta_mass(json), taucal_shell_mass(json), &
-           taucal_local_gravity(json), taucal_radiative_gradient(json), &
-           taucal_adiabatic_gradient(json)
 
 
 ! G Somers END
@@ -140,9 +137,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       integer :: inversion_index1, inversion_index2
       double precision :: swap_temp
       logical :: swap_temp_logical
-      integer :: cz_start_index
-      double precision :: log10_cz_radius
-      double precision :: dd2, dd1, interp_fraction
       double precision :: unused_chdelj, unused_chdeld
       double precision :: radius_linear, depth_fraction, local_log10_gravity, &
            local_gravity_linear
@@ -186,20 +180,11 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       if (present(ierr)) then
          if (ierr /= 0) return
       end if
-! JVS 08/13
-! IF THE CZ IS IN THE ENVELOPE (.I.E. BEYOND THE FITTING POINT) TRACK ITS
-! LOCATION IN MASS AND RADIUS FOR USE WITH AM LOSS ROUTINES
-!
-! G Somers 3/17, SKIP TAUCAL CALL IF USING NEW TAUCZ ROUTINES
-        if (star%ctrl%use_new_turnover_timescale) then
-           continue
-           return
-        end if
-! G Somers END
-      call track_envelope_cz
-      if (present(ierr)) then
-         if (ierr /= 0) return
-      end if
+! 2026: the legacy taucal path (track_envelope_cz, gated by
+! LNEWTCZ=.false.) is retired -- the turnover timescale is computed
+! by core/turnover/turnover_timescale.f90 from the assembled
+! interior+envelope structure, never as a side effect of an
+! envelope integration.
       return
 
 ! error funnel: reached only when a callee (or one of the two
@@ -1063,46 +1048,6 @@ subroutine integrate_envelope
 
 end subroutine integrate_envelope
 
-! ---------------------------------------------------------------
-! If the surface convection zone base lies in the envelope (beyond
-! the fitting point), record its mass and radius for the angular
-! momentum loss routines (legacy taucal path).
-subroutine track_envelope_cz
-      cz_start_index = 0
-      do i=1,env_struct%num_env_points
-            if (cz_start_index .eq. 0 .and. env_struct%env_convective_flag(i) ) cz_start_index = i
-      end do
-
-      if (cz_start_index .gt. 1) then
-            ! Calculate the the location of the base sof the surface CZ in radius
-            dd2 = env_struct%env_gradients(1,cz_start_index-1)-env_struct%env_gradients(2,cz_start_index-1)
-            dd1 = env_struct%env_gradients(1,cz_start_index)-env_struct%env_gradients(2,cz_start_index)
-            interp_fraction = dd2/(dd2-dd1)
-
-            log10_cz_radius = env_struct%env_log10_radius(cz_start_index-1)+interp_fraction* &
-                 (env_struct%env_log10_radius(cz_start_index)-env_struct%env_log10_radius(cz_start_index-1))-star%log10_solar_radius
-            star%envelope_cz_base_radius_rsun = exp(ln10*log10_cz_radius)
-
-            do i=1,env_struct%num_env_points
-                  taucal_shell_mass(i) = dexp(ln10*(env_struct%env_log10_mass(i)+log10_star_mass))
-
-                  if (i.eq.env_struct%num_env_points) then
-                        taucal_delta_mass(i) = 0.0
-                  else
-                        taucal_delta_mass(i)=dexp(ln10*env_struct%env_log10_mass(i+1))-dexp(ln10*env_struct%env_log10_mass(i))
-                  endif
-
-                  taucal_radiative_gradient(i) = env_struct%env_gradients(1,i)
-                  taucal_adiabatic_gradient(i) = env_struct%env_gradients(2,i)
-            end do
-
-!             CALL TAUCAL(ENVX,ENVS2,ENVS1,LCENV,ENVR,ENVP,ENVD,ENVG,NUMENV,  ! KC 2025-05-31
-            call turnover_from_envelope(taucal_delta_mass,taucal_shell_mass,env_struct%env_convective_flag,env_struct%env_log10_radius, &
-                  env_struct%env_log10_pressure,env_struct%env_log10_density,taucal_local_gravity,env_struct%num_env_points, &
-                  env_struct%env_convective_velocity, taucal_radiative_gradient,taucal_adiabatic_gradient)
-      endif
-
-end subroutine track_envelope_cz
 
 end subroutine atm_get
 

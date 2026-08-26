@@ -70,7 +70,6 @@ subroutine seed_controls_buffer
       be9_pd_rate_scale = star%ctrl%be9_pd_rate_scale
       be9_palpha_rate_scale = star%ctrl%be9_palpha_rate_scale
       use_itoh_neutrino_loss = star%ctrl%use_itoh_neutrino_loss
-      use_new_turnover_timescale = star%ctrl%use_new_turnover_timescale
       calc_envelope_flag = star%job%calc_envelope_flag
       use_extended_composition = star%job%use_extended_composition
       spot_filling_factor = star%ctrl%spot_filling_factor
@@ -466,7 +465,6 @@ subroutine store_controls_to_star
       star%ctrl%be9_pd_rate_scale = be9_pd_rate_scale
       star%ctrl%be9_palpha_rate_scale = be9_palpha_rate_scale
       star%ctrl%use_itoh_neutrino_loss = use_itoh_neutrino_loss
-      star%ctrl%use_new_turnover_timescale = use_new_turnover_timescale
       star%job%calc_envelope_flag = calc_envelope_flag
       star%job%use_extended_composition = use_extended_composition
       star%ctrl%spot_filling_factor = spot_filling_factor

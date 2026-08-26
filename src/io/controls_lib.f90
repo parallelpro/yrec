@@ -147,11 +147,11 @@ module controls_lib
 ! values selecting the newer convective-turnover-timescale calculation
 ! and whether to run the full envelope integration. Same
 ! namelist-can't-rename treatment as use_itoh_neutrino_loss above --
-! core/read_input.f90 keeps its local lnewtcz/lcalcenv and copies into
-! these canonical names. The other five former common/ovrtrn/ members
-! are genuinely evolving per-model state, not configuration -- see
-! state/turnover_lib.f90.
-      logical :: use_new_turnover_timescale = .true.
+! core/read_input.f90 keeps its local lcalcenv and copies into the
+! canonical name. (2026: use_new_turnover_timescale/LNEWTCZ retired
+! along with the legacy taucal turnover mode.) The other five former
+! common/ovrtrn/ members are genuinely evolving per-model state, not
+! configuration -- see state/turnover_lib.f90.
       logical :: calc_envelope_flag = .true.
 
 ! former common/const/: solar physical constants (luminosity, mass,

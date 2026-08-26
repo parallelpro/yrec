@@ -761,14 +761,15 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! remaining member) is unused in this file, so it's dropped entirely.
       double precision :: wmax
 
-! lnewtcz/lcalcenv: NAMELIST /physics/ members (must keep this exact
-! spelling); copied into const_lib's use_new_turnover_timescale/
-! calc_envelope_flag after the namelist read below. taucz/taucz0/
+! lcalcenv: NAMELIST /physics/ member (must keep this exact
+! spelling); copied into calc_envelope_flag after the namelist read
+! below. (2026: lnewtcz retired -- the legacy taucal turnover mode
+! is gone; the newer calculation is the only one.) taucz/taucz0/
 ! pphot/pphot0/fracstep (former common/ovrtrn/'s other five members)
 ! are unused in this file -- they're genuinely evolving per-model
 ! state read/written by many distant files, now state/turnover_lib.f90
 ! -- so they're dropped from this file's own declarations entirely.
-      logical :: lnewtcz, lcalcenv
+      logical :: lcalcenv
 
 ! mag: NAMELIST /physics/ members, both renamed in const_lib (codm/
 ! lcodm -> constant_background_diffusion_coeff/
@@ -908,8 +909,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    time_dy_total,tol_czbase_fine_width,tol_dl_max,tol_dm_max, &
            &    tol_dm_min,tol_dp_core_max,tol_dp_czbase_max,tol_dp_env_max, &
            &    tol_dx_max,tol_dz_max,time_max_dt_frac,lnewvars, &
-! G Somers 3/17 USE NEW OVERTURN TIMESCALE CALC?
-           &    lnewtcz, lcalcenv
+           &    lcalcenv
 
 ! 2026 inlist revamp: new-style (&star_job/&controls) machinery,
 ! generated from defaults/controls_registry.tsv.
@@ -1206,8 +1206,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! All 30 former common/newparam/ members' DATA defaults moved to
 ! const_lib.f90: DATA can no longer target them here now that they're
 ! use-associated.
-! DEFAULT TO YES FOR NEW TAUCZ CALCULATION
-      data lnewtcz,lcalcenv /.true.,.true./
+      data lcalcenv /.true./
 !
 ! THIS SUBROUTINE READS ALL USER DEFINED QUANTITIES FROM THE
 ! FILES yrec8.nml1 and yrec8.nml2
@@ -1416,10 +1415,9 @@ subroutine adopt_canonical_names
       mass_accretion_rate = dmdt0
       accreted_composition = compacc
       use_mass_accretion = lmdot
-! use_itoh_neutrino_loss/use_new_turnover_timescale/calc_envelope_flag:
-! same reasoning, copied from their NAMELIST-spelled locals.
+! use_itoh_neutrino_loss/calc_envelope_flag: same reasoning, copied
+! from their NAMELIST-spelled locals.
       use_itoh_neutrino_loss = lnulos1
-      use_new_turnover_timescale = lnewtcz
       calc_envelope_flag = lcalcenv
 ! clsun/crsun must likewise keep their NAMELIST spelling; copy into
 ! const_lib's solar_luminosity_cgs/solar_radius_cgs here (before
