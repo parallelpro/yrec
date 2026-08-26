@@ -45,6 +45,7 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
 
       use star_info_lib, only: star, json
       use luout_lib
+      use numerics_lib, only: simeqc
       implicit none
 
       double precision, intent(in) :: log_temperature(json)
