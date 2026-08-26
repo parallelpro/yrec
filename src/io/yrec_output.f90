@@ -418,12 +418,20 @@ subroutine write_history_row(iprof)
          open(newunit=hist_unit, file=hist_path, status='REPLACE', &
               action='WRITE')
          call history_column_names(names)
-         write(hist_unit, '(3(1x,i40))') 1, 2, 3
-         write(hist_unit, '(3(1x,a40))') adjustr('version_number'), &
-              adjustr('initial_mass'), adjustr('initial_z')
-         write(hist_unit, '(1x,a40,2(1x,es40.16e3))') &
+! Global block: run metadata, matching what the legacy .track header
+! carried (initial composition + mixing length). The initial_* values
+! are the kind card's starting envelope composition (initial_y by
+! closure), not the current surface values.
+         write(hist_unit, '(6(1x,i40))') 1, 2, 3, 4, 5, 6
+         write(hist_unit, '(6(1x,a40))') adjustr('version_number'), &
+              adjustr('initial_mass'), adjustr('initial_x'), &
+              adjustr('initial_y'), adjustr('initial_z'), &
+              adjustr('mixing_length_alpha')
+         write(hist_unit, '(1x,a40,5(1x,es40.16e3))') &
               adjustr('"' // trim(yrec_version_string) // '"'), &
-              star%star_mass, star%xa(i_metals,star%nz)
+              star%star_mass, star%job%initial_envelope_x, &
+              1.0d0 - star%job%initial_envelope_x - star%job%initial_envelope_z, &
+              star%job%initial_envelope_z, star%mixing_length_alpha
          write(hist_unit, '(a)') ''
          write(hist_unit, '(999(1x,i40))') (k, k = 1, hist_nsel)
          write(hist_unit, '(999(1x,a40))') &
