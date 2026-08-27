@@ -39,9 +39,9 @@
       ! (legacy name: fopal2)
       opal92_opacity_table2_file = ''   ! (implicit)
 
-      ! Path for the final model written at end of job
+      ! Path for the final model (.mod) written every model; reloadable
       ! (legacy name: flast)
-      last_model_file = ''   ! (implicit)
+      last_model_file = '{YREC_OUTPUT}/final.mod'
 
       ! Starting model read when read_first_model is set for a run
       ! (legacy name: ffirst)

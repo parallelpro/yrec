@@ -8,7 +8,7 @@ control	flaol	string	''*	laol_opacity_table_file	proposed		LAOL 1989 opacity tab
 control	fpurez	string	''*	pure_z_opacity_table_file	proposed		Pure-Z opacity table (metal diffusion support)
 control	flaol2	string	''*	laol_opacity_table2_file	proposed		LAOL 1989 opacity table, second Z
 control	fopal2	string	''*	opal92_opacity_table2_file	proposed		OPAL 1992 opacity table, second Z
-control	flast	string	''*	last_model_file	proposed		Path for the final model written at end of job
+control	flast	string	'{YREC_OUTPUT}/final.mod'	last_model_file	proposed		Path for the final model (.mod) written every model; reloadable
 control	ffirst	string	''*	first_model_file	proposed		Starting model read when read_first_model is set for a run
 control	ffermi	string	''*	fermi_table_file	proposed		Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS)
 control	fdebug	string	''*	debug_output_file	proposed		Debug output stream

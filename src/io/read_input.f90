@@ -1342,6 +1342,12 @@ subroutine read_namelist_files
       end if
       write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
 
+! Default for the final model file (.mod): {YREC_OUTPUT}/final.mod,
+! expanded by expand_value below ({YREC_OUTPUT} -> $YREC_OUTPUT, or
+! "output" when unset). A deck that sets FLAST/last_model_file
+! overrides it. The other f* path controls remain deck-supplied.
+      flast = '{YREC_OUTPUT}/final.mod'
+
 ! 2026 inlist revamp: dispatch on inlist style. New-style files carry
 ! &star_job (+ &controls, same file or the second); everything else
 ! takes the byte-pinned legacy path unchanged.
