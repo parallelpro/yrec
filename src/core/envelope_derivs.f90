@@ -15,7 +15,7 @@
 !
 ! Dummy-argument names log10_pressure_indep/luminosity_linear/
 ! pressure_rotation_factor/temperature_rotation_factor/log10_gravity/
-! in_atmosphere/want_derivatives/conductive_opacity_flag/print_flag/
+! in_atmosphere/want_derivatives/conductive_opacity_flag/
 ! log10_radius/log10_teff/hydrogen_fraction/metal_fraction match the
 ! sibling routine atmosphere_derivs.f90's naming at the equivalent call-site
 ! positions (both are called via EXTERNAL from atm_lib.f90's atm_get/BSSTEP).
@@ -24,7 +24,7 @@
 ! DELR formula.
 subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
-     in_atmosphere, want_derivatives, conductive_opacity_flag, print_flag, &
+     in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      env_call_count, saha_state)
 
@@ -39,7 +39,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       double precision, intent(in) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, log10_gravity
       logical, intent(in) :: in_atmosphere, want_derivatives, &
-           conductive_opacity_flag, print_flag
+           conductive_opacity_flag
       double precision, intent(inout) :: log10_radius
       double precision, intent(in) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
@@ -131,7 +131,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       star%pulse%qemu = eos_res(i_mu_e_inv)
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
-      if (.false.) print *, log10_gravity, conductive_opacity_flag, print_flag
+      if (.false.) print *, log10_gravity, conductive_opacity_flag
 
       return
 end subroutine envelope_derivs

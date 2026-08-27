@@ -13,7 +13,7 @@
 !   Q(TAU) = 0.6666667
 subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
-     in_atmosphere, want_derivatives, conductive_opacity_flag, print_flag, &
+     in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      atm_call_count, saha_state)
 
@@ -29,7 +29,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       double precision, intent(in) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, log10_gravity
       logical, intent(in) :: in_atmosphere, want_derivatives, &
-           conductive_opacity_flag, print_flag
+           conductive_opacity_flag
       double precision, intent(in) :: log10_radius
       double precision, intent(inout) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
@@ -113,7 +113,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       star%pulse%qemu = eos_res(i_mu_e_inv)
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
-      if (.false.) print *, luminosity_linear, temperature_rotation_factor, conductive_opacity_flag, log10_radius, print_flag
+      if (.false.) print *, luminosity_linear, temperature_rotation_factor, conductive_opacity_flag, log10_radius
 
       return
 end subroutine atmosphere_derivs

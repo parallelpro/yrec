@@ -687,7 +687,7 @@ end subroutine ludcmp
 subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
      luminosity_linear, pressure_rotation_factor, temperature_rotation_factor, &
      log10_gravity, in_atmosphere, want_derivatives, conductive_opacity_flag, &
-     print_flag, log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
+     log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      call_count, saha_state)
       implicit none
 
@@ -700,7 +700,7 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
       double precision, intent(inout) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, log10_gravity
       logical, intent(inout) :: in_atmosphere, want_derivatives, &
-           conductive_opacity_flag, print_flag
+           conductive_opacity_flag
       double precision, intent(inout) :: log10_radius, log10_teff, &
            hydrogen_fraction, metal_fraction
       integer, intent(inout) :: call_count, saha_state
@@ -721,7 +721,7 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
       call deriv(x_current, y_new, y_out, luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity, in_atmosphere, want_derivatives, &
-           conductive_opacity_flag, print_flag, log10_radius, log10_teff, &
+           conductive_opacity_flag, log10_radius, log10_teff, &
            hydrogen_fraction, metal_fraction, call_count, saha_state)
       h_sub2 = 2.0d0*h_sub
 ! general step.
@@ -735,7 +735,7 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
        call deriv(x_current, y_new, y_out, luminosity_linear, &
             pressure_rotation_factor, temperature_rotation_factor, &
             log10_gravity, in_atmosphere, want_derivatives, &
-            conductive_opacity_flag, print_flag, log10_radius, log10_teff, &
+            conductive_opacity_flag, log10_radius, log10_teff, &
             hydrogen_fraction, metal_fraction, call_count, saha_state)
       end do
 ! last step.
@@ -1303,7 +1303,7 @@ end subroutine tridia
 subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      h_did, h_next, deriv, luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, in_atmosphere, &
-     want_derivatives, conductive_opacity_flag, print_flag, log10_radius, &
+     want_derivatives, conductive_opacity_flag, log10_radius, &
      log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
      step_err, ierr)
       use intpar_lib
@@ -1322,7 +1322,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
       double precision, intent(inout) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, log10_gravity
       logical, intent(inout) :: in_atmosphere, want_derivatives, &
-           conductive_opacity_flag, print_flag
+           conductive_opacity_flag
       double precision, intent(inout) :: log10_radius, log10_teff, &
            hydrogen_fraction, metal_fraction
       integer, intent(inout) :: call_count, saha_state
@@ -1350,7 +1350,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
        call mmid(y_sav, dy_sav, num_eqs, x_sav, h, substep_sequence(i), &
             y_seq, deriv, luminosity_linear, pressure_rotation_factor, &
             temperature_rotation_factor, log10_gravity, in_atmosphere, &
-            want_derivatives, conductive_opacity_flag, print_flag, &
+            want_derivatives, conductive_opacity_flag, &
             log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
             call_count, saha_state)
        x_est = (h/substep_sequence(i))**2

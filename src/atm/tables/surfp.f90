@@ -174,11 +174,9 @@ subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
 ! WRITE OUT INFORMATION TO THE MODEL FILE.
       if (print_flag) then
         write(short_file_unit,70)
-        write(istor,70)
 70      format('********PRESSURE AT T=TEFF INTERPOLATED FROM TABULATED' &
               ,  ' VALUES********')
         write(short_file_unit,71) log10_teff, atm_table%atm_log10_pressure
-        write(istor,71) log10_teff, atm_table%atm_log10_pressure
 71      format(' ',20X,'LOG (Teff) =',F10.5,' LOG P =',F10.5)
       endif
       return

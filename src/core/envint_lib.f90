@@ -45,7 +45,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       integer, parameter :: nta=54, nga=5
 
 ! luminosity_linear/pressure_rotation_factor/temperature_rotation_factor/
-! log10_gravity/print_flag/hydrogen_fraction/metal_fraction are
+! log10_gravity/hydrogen_fraction/metal_fraction are
 ! intent(inout), not intent(in): they're relayed unchanged through
 ! this file's own calls to bsstep (numerics_lib) down to mmid and then
 ! to the deriv callback (qatm/qenv/etc, whose actual identity varies
@@ -62,6 +62,11 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            log10_gravity
       double precision, intent(in) :: log10_star_mass
       integer, intent(in) :: vertex_index
+! 2026 (.store convergence): print_flag no longer reaches the
+! integrand callbacks (they save unconditionally) and envint writes
+! nothing to the .store unit anymore. What remains is init-echo
+! verbosity: the surface-table lookup announcements and the fitted
+! envelope-vertex line, both to the .short log.
       logical, intent(inout) :: print_flag
       logical, intent(in) :: save_boundary_flag
       double precision, intent(in) :: log10_pressure_limit
@@ -129,7 +134,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            step_tolerance, h_did, h_next
       double precision :: y(3), dydx(3), y_scale(3), y_start(3), &
            err_sum(3), step_err(3)
-      double precision :: initial_mass_coord, surface_radius_linear
+      double precision :: initial_mass_coord
       logical :: store_flag_set, pressure_limit_test_flag
       logical :: cz_in_envelope
       double precision :: mass_diff_remaining, interp_weight
@@ -137,8 +142,6 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       double precision :: swap_temp
       logical :: swap_temp_logical
       double precision :: unused_chdelj, unused_chdeld
-      double precision :: radius_linear, depth_fraction, local_log10_gravity, &
-           local_gravity_linear
       double precision :: x_start, taucz_env_accum, delta_radius_cz
 
       if (present(ierr)) ierr = 0
@@ -204,12 +207,12 @@ subroutine prepare_surface_boundary
 ! JVS 10/07/13 Always calculate derivatives
       want_derivatives = .true.
 
-! G Somers 11/14 WRITE ATMOSHPHERE HEADER TO .STORE FILE, AND ADDED
-! I/O FLAGS TO THE ATMOSPHERE CALLS
-      if(print_flag.and.star%job%lstatm)then
-         if(.not.star%ctrl%lstch)write(istor,60)
-      endif
- 60   format(/,'******** ATMOSPHERE BEGIN ********')
+! 2026 (.store convergence): the "ATMOSPHERE BEGIN" header and the
+! mid-integration atmosphere/envelope text tables that used to
+! stream into the legacy .store from here are retired -- the same
+! structures are materialized in env_struct/atmo_struct and written
+! by the profile/pulse/.store writers. envint no longer writes to
+! istor at all.
 
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPL.
       tabulated_bc = .false.
@@ -365,23 +368,6 @@ subroutine integrate_atmosphere
       indep_var = log10_pressure - log10_gravity + dlog10(opacity)
       y(1) = log10_pressure
       dydx(1) = dexp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))
-! G Somers 11/14 ADDED I/O FLAG AND CHANGED WRITE OUTS TO .STORE.
-      if(print_flag.and.star%job%lstatm) then
-       if(.not.star%ctrl%lstch) write(istor,10)
-         beta = 1.0d0 - radiation_constant_over_3*(temperature**2)**2/pressure
-         chi_rho = 1.0d0/dlnrho_dlnp
-         chi_t = -chi_rho*dlnrho_dlnt
-         specific_heat_cv = specific_heat_cp - exp(ln10*(log10_pressure-log10_density-log10_temperature))*chi_t**2/chi_rho
-         gamma1 = chi_rho*specific_heat_cp/specific_heat_cv
-           if(.not.star%ctrl%lstch)then
-             write(istor,20)indep_var,log10_pressure,log10_temperature,log10_density,opacity, &
-                         (ion_fraction(i),i=1,3),saha_state,atm_call_count, &
-                         gamma1,dlnrho_dlnp,dlnrho_dlnt,beta,specific_heat_cp,specific_heat_cv
-           endif
-   10    format(6X,'TAU',9X,'P',10X,'T',10X,'D',11X,'O',9X, &
-              'HII  HEII HEIII   SAHA   KATM')
-   20    format(1X,4F11.7,1PE14.7,0P3F6.3,2I7,4F12.8,1P2E12.5)
-      endif
 ! DBG PULSE INITIAL POINT FOR PULSATION
 
 
@@ -429,7 +415,7 @@ subroutine integrate_atmosphere
        call bsstep(y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
             h_next,atmosphere_derivs, luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
-            want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
+            want_derivatives,conductive_opacity_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count, &
             saha_state,step_err,ierr=jerr)
 ! 2026 numerics-gate opt-in: a bsstep failure (the historical
@@ -447,7 +433,7 @@ subroutine integrate_atmosphere
        err_sum(1) = err_sum(1) + step_err(1)
        call atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
-            want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
+            want_derivatives,conductive_opacity_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state)
 ! 2026 (.store convergence): the structure save below was gated on
 ! the print flag (so only the legacy .store stitch, which called
@@ -456,20 +442,12 @@ subroutine integrate_atmosphere
 ! unconditionally: every atmosphere integration materializes the
 ! full atmo_struct, so the stitched model (and any writer reading
 ! it) always sees the atmosphere. Values are identical to what the
-! print-on path stored. Only the .store text table (format 20)
-! remains print-gated.
+! print-on path stored.
        beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_table%atm_log10_temperature-atm_table%atm_log10_pressure))
        chi_rho = 1.0d0/star%pulse%qqdp
        chi_t = -chi_rho*star%pulse%qqdt
        specific_heat_cv = star%pulse%qqcp - exp(ln10*(atm_table%atm_log10_pressure-atm_table%atm_log10_density-atm_table%atm_log10_temperature))*chi_t**2/chi_rho
        gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
-       if(print_flag.and.star%job%lstatm) then
-          if(.not.star%ctrl%lstch)then
-            write(istor,20)atm_table%atm_tau,atm_table%atm_log10_pressure,atm_table%atm_log10_temperature,atm_table%atm_log10_density,atm_table%atm_opacity, &
-                     (atm_table%atm_ion_fraction(i),i=1,3), &
-                     saha_state,atm_call_count,gamma1,star%pulse%qqdp,star%pulse%qqdt,beta,star%pulse%qqcp,specific_heat_cv
-          endif
-       endif
 ! JvS: SAVE STRUCTURE TO COMMON BLOCK
        atmo_struct%atmo_log10_pressure(step_index) = atm_table%atm_log10_pressure
        atmo_struct%atmo_log10_temperature(step_index) = atm_table%atm_log10_temperature
@@ -553,12 +531,6 @@ end subroutine integrate_atmosphere
 ! (inverted to inward-out at the end), with step limiting at the
 ! fitting point; ierr after maxstp steps.
 subroutine integrate_envelope
-! G Somers 11/14 WRITE ENVELOPE HEADER
-      if(print_flag.and.star%ctrl%lstenv)then
-         if(.not.star%ctrl%lstch) write(istor,61)
-      endif
- 61   format(/,'******** ENVELOPE BEGIN ********')
-
 ! DBG PULSE WRITE END OF DATA INDICATOR
 ! DBG
 !  IF ENVELOPE MASS(SENV) SMALL ENOUGH,SKIP ENVELOPE INTEGRATION.
@@ -568,9 +540,6 @@ subroutine integrate_envelope
           vtx_logp(vertex_index) = atm_table%atm_log10_pressure
           vtx_logr(vertex_index) = log10_radius
           vtx_logt(vertex_index) = atm_table%atm_log10_temperature
-          if(print_flag)then
-            if(.not.star%ctrl%lstch)write(istor,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%senv
-          endif
        endif
  230     format(4X,3F16.12,8X,F16.12)
       else
@@ -592,7 +561,6 @@ subroutine integrate_envelope
       h_min = star%job%env_step_min
       h_step = star%job%env_step_begin
       step_tolerance = dabs(tolerance_fraction*star%senv)
-      surface_radius_linear = dexp(ln10*log10_radius)
       if(stored_vertex_index.eq.vertex_index) stored_vertex_index = 0
       store_flag_set = .false.
       if (save_boundary_flag) then
@@ -603,40 +571,10 @@ subroutine integrate_envelope
 !  FIND DY/DX AT THE START OF THE STEP.
       call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
-           want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
+           want_derivatives,conductive_opacity_flag,log10_radius, &
            log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state)
 ! DBG PULSE WRITE FIRST POINT OF ENVELOPE
 ! DBG
-! G Somers 11/14 ADDED I/O FLAG AND CHANGED WRITE OUTS TO .STORE.
-      if(print_flag.and.star%ctrl%lstenv) then
-       if(.not.star%ctrl%lstch) write(istor,240) 'GRAV  ','P   ','T   ','DEPTH    ','M      ', &
-             'D    ','O   ','BETA','DELR  ','DELA','DEL ','HII ', &
-             'HEII','HEIII','V   ','GAM1   ','QQDP   '
- 240     format(1X,3A10,2A14,2A10,A7,A9,5A6,A9,2A12)
-!     X' ',4X,'GRAV',7X,'P',8X,'T',8X,'DEPTH',6X,'M',
-!     *        9X,'D',6X,'O',7X,'BETA',3X,'DELR',5X,'DELA',3X,
-!     *        'DEL',3X,'HII',3X,'HEII',1X,'HEIII',3X,'V')
-
-!c 260        FORMAT(1X,1PE10.3,0P2F10.7,1P2E14.7,0P1F10.7,
-!     *           1PE10.2,0PF7.3,1PE9.2,0P3F6.3,2F6.3,1PE9.2,
-!     *           0P2F12.8)
-
-
-       radius_linear = dexp(ln10*log10_radius)
-       depth_fraction = (surface_radius_linear-radius_linear)/surface_radius_linear
-       local_log10_gravity = cgl+log10_star_mass-2.0d0*log10_radius
-       local_gravity_linear = dexp(ln10*local_log10_gravity)
-         chi_rho = 1.0d0/star%pulse%qqdp
-         chi_t = -chi_rho*star%pulse%qqdt
-         specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%current_log10_pressure-star%current_log10_density- &
-              star%current_log10_temperature))*chi_t**2/chi_rho
-         gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
-       if(.not.star%ctrl%lstch) write(istor,260)local_gravity_linear,star%current_log10_pressure, &
-            star%current_log10_temperature,depth_fraction,star%current_log10_mass, &
-              star%current_log10_density,star%current_opacity,star%current_beta,(star%current_gradients(i),i=1,3), &
-                   (star%current_ion_fraction(i),i=1,3),star%current_velocity, &
-              gamma1,star%pulse%qqdp
-      endif
 ! STORE STARTING VALUES OF THE INTEGRATION
 ! 07/02 INITIALIZE NUMBER OF STORED ENVELOPE POINTS TO 1
       cz_in_envelope = .false.
@@ -710,7 +648,7 @@ subroutine integrate_envelope
        call bsstep(y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did,h_next,envelope_derivs, &
               luminosity_linear,pressure_rotation_factor,temperature_rotation_factor, &
               log10_gravity,in_atmosphere,want_derivatives,conductive_opacity_flag, &
-              print_flag,log10_radius,log10_teff,hydrogen_fraction,metal_fraction, &
+              log10_radius,log10_teff,hydrogen_fraction,metal_fraction, &
               env_call_count,saha_state,step_err,ierr=jerr)
 ! 2026 numerics-gate opt-in: same contract as the atmosphere-side
 ! bsstep call above.
@@ -727,30 +665,10 @@ subroutine integrate_envelope
 !  FIND DY/DX AT THE START OF THE NEXT STEP.
        call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
-              want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
+              want_derivatives,conductive_opacity_flag,log10_radius, &
               log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state)
 ! DBG PULSE
 ! DBG END
-! G Somers 11/14 ADDED I/O FLAG AND CHANGED WRITE OUTS TO .STORE.
-       if(print_flag.and.star%ctrl%lstenv) then
-          radius_linear = dexp(ln10*log10_radius)
-          depth_fraction = (surface_radius_linear-radius_linear)/surface_radius_linear
-          local_log10_gravity = cgl+log10_star_mass-2.0d0*log10_radius
-          local_gravity_linear = dexp(ln10*local_log10_gravity)
-            chi_rho = 1.0d0/star%pulse%qqdp
-            chi_t = -chi_rho*star%pulse%qqdt
-            specific_heat_cv = star%pulse%qqcp - exp(ln10*(star%current_log10_pressure-star%current_log10_density- &
-                 star%current_log10_temperature))*chi_t**2/chi_rho
-            gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
-          if(.not.star%ctrl%lstch) write(istor,260)local_gravity_linear,star%current_log10_pressure, &
-               star%current_log10_temperature,depth_fraction,star%current_log10_mass, &
-                 star%current_log10_density,star%current_opacity,star%current_beta,(star%current_gradients(i),i=1,3), &
-                      (star%current_ion_fraction(i),i=1,3),star%current_velocity, &
-                 gamma1,star%pulse%qqdp
- 260        format(1X,1PE10.3,0P2F10.7,1P2E14.7,0P1F10.7, &
-                 1PE10.2,0PF7.3,1PE9.2,0P3F6.3,2F6.3,1PE9.2, &
-                 0P2F12.8)
-       endif
        if(h_did.eq.h_step) then
           num_ok = num_ok + 1
        else

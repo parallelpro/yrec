@@ -258,17 +258,14 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
       if (print_to_files) then
          if (star%ctrl%allard_use_tau100) then
             write(short_file_unit,70)
-            write(istor,70)
    70       format('********PL,TL at Tau=100 INTERPOLATED' &
                  , ' FROM ALLARD TABULATED VALUES********')
          else
             write(short_file_unit,71)
-            write(istor,71)
    71       format('********PL,TL at T=TEFF,GL INTERPOLATED ' &
                 , 'FROM ALLARD TABULATED VALUES********')
          endif
          write(short_file_unit,72) log_teff,log_g,atm_table%atm_log10_temperature,atm_table%atm_log10_pressure
-         write(istor,72) log_teff,log_g,atm_table%atm_log10_temperature,atm_table%atm_log10_pressure
    72    format(' ',20x,'LOG(Teffl) =',f10.5,' ,LOG(G) =' ,f10.5, &
               ', LOG(T) =',f10.5,', Log(P) =', f10.5)
       endif
