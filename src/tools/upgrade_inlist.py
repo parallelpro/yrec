@@ -58,11 +58,19 @@ def convert_group(text, group_in, group_out, renames, dead):
 
     for line in body.splitlines():
         code, sep, comment = line.partition("!")
-        # drop whole lines that only set dead controls
+        # drop whole lines that only set dead OR retired controls. A name
+        # absent from the registry altogether is a RETIRED control (the
+        # 2026 retire-legacy campaign deletes registry rows outright);
+        # passing it through would make the run's namelist read fail, so
+        # it is dropped with a marker instead.
         assigns = re.findall(r"([A-Za-z]\w*)\s*(?:\([^)]*\))?\s*=", code)
-        if assigns and all(a.lower() in dead for a in assigns):
+        gone = lambda a: a.lower() in dead or a.lower() not in renames
+        if assigns and all(gone(a) for a in assigns):
             dropped.extend(assigns)
-            out_lines.append("! (dropped unused legacy control) " + line.strip())
+            tag = ("dropped unused legacy control"
+                   if all(a.lower() in dead for a in assigns)
+                   else "dropped retired control")
+            out_lines.append(f"! ({tag}) " + line.strip())
             continue
         new_code = pat.sub(rename, code)
         out_lines.append(new_code + (sep + comment if sep else ""))
@@ -91,7 +99,7 @@ def main():
     out.write_text("! Converted from " + args.nml1 + " + " + args.nml2 +
                    " by tools/upgrade_inlist.py\n" + g1 + "\n" + g2)
     for d in d1 + d2:
-        print(f"WARNING: dropped unused legacy control {d}", file=sys.stderr)
+        print(f"WARNING: dropped unused/retired legacy control {d}", file=sys.stderr)
     print(f"wrote {out}")
 
 
