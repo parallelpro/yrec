@@ -14,7 +14,6 @@ control	ffermi	string	''*	fermi_table_file	proposed		Fermi-Dirac integral table 
 control	fdebug	string	''*	debug_output_file	proposed		Debug output stream
 control	fshort	string	''*	short_output_file	proposed		Model summary (.short) output path
 control	fstch	string	''*	stored_change_file	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
-control	fmilne	string	''*	milne_output_file	verified		Milne-format output file (opened when the Milne stream is active)
 control	fstor	string	''*	store_output_file	proposed		Full stored-model (.store) output path
 control	fdyn	string	''*	dynamics_file	verified		Opened on the dynamics unit (formatted, STATUS=OLD)
 control	flldat	string	''*	ll_data_file	proposed		Livermore opacity auxiliary data file
@@ -42,7 +41,6 @@ control	fmonte2	string	''*	monte_carlo_file2_path	canonical		former common/iomon
 control	kindrn	integer(50)	0*	run_kind	verified		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
 control	ldebug	logical	.false.*	write_debug_output	proposed		Enable the debug output stream
 control	lcorr	logical	.false.*	write_correction_output	verified		crrect: print solver correction diagnostics
-control	lmilne	logical	.false.*	write_milne_output	verified		Gate the Milne-format blocks in putstore/wrtout
 control	lstore	logical	.false.*	write_store_output	proposed	~ MESA profiles	Write full stored models (.store)
 control	lfirst	logical(50)	.false.*	first_call_flag	canonical		
 control	lstpch	logical	.false.*	store_final_model_flag	proposed		Store the last model of each run (with write_store_output)

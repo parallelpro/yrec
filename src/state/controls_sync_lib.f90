@@ -111,7 +111,6 @@ subroutine seed_controls_buffer
       print_point_interval = star%ctrl%print_point_interval
       ldebug = star%ctrl%ldebug
       lcorr = star%ctrl%lcorr
-      lmilne = star%ctrl%lmilne
       lstpch = star%ctrl%lstpch
       first_unit = star%ctrl%first_unit
       run_unit = star%ctrl%run_unit
@@ -478,7 +477,6 @@ subroutine store_controls_to_star
       star%ctrl%print_point_interval = print_point_interval
       star%ctrl%ldebug = ldebug
       star%ctrl%lcorr = lcorr
-      star%ctrl%lmilne = lmilne
       star%ctrl%lstpch = lstpch
       star%ctrl%first_unit = first_unit
       star%ctrl%run_unit = run_unit

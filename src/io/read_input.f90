@@ -78,7 +78,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       character(len=256) :: fstch
       character(len=256) :: fallard, fscvh, fscvhe, fscvz
       character(len=256) :: flast, ffirst, ffermi, &
-           fdebug, fshort, fmilne, &
+           fdebug, fshort, &
            fstor, fdyn, &
            flldat, fscomp, fkur, &
            fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8
@@ -798,13 +798,13 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    endage, &
            &    flaol, fpurez,flaol2, fopal2, &
            &    flast, ffirst, ffermi, fdebug, fshort, fstch, &
-           &    fmilne, fstor, &
+           &    fstor, &
            &    fdyn, flldat, fscomp, fkur, fmhd1, &
            &    fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8, fiso, fatm, &
            &    fkur2, fallard, fscvh, fscvhe, fscvz, fopale, fliv95, &
            &    fmonte1,fmonte2, &
            &    kindrn, &
-           &    ldebug, lcorr, lmilne, lstore, lfirst, &
+           &    ldebug, lcorr, lstore, lfirst, &
            &    lstpch, lscrib, lstch, &
 ! G Somers 11/14
            &    lstatm,lstenv,lstmod,lstphys,lstrot, &
@@ -1209,8 +1209,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       idebug = 18
 ! OUTPUT: ALL DIAGNOSTIC INFO
       short_file_unit = 20
-! OUTPUT: MILNE INVARIANT VARIABLES
-      imilne = 21
 ! OUTPUT: SAVED MODELS, CAN BE USED AS STARTING MODEL
       istor = 23
 ! OUTPUT: FOR PULSATION CODE, INTERIOR
@@ -1791,11 +1789,6 @@ subroutine derive_options_and_open_files
             open(idebug,file=fdebug,form='FORMATTED', &
            &          status='UNKNOWN')
       end if
-!     MHP Moved opening of FMILNE here, no need to do elsewhere
-      if(lmilne)then
-         open(unit=imilne,file=fmilne,form='FORMATTED', &
-           &      status='UNKNOWN',access='APPEND')
-      endif
       end if
 !     MHP 10/02 LBNIN never set, ignore loop
 !      IF (.NOT.LBNIN) THEN
@@ -2145,10 +2138,10 @@ subroutine echo_settings
            &        'STANDARD       N/A       N/A  0.00E+00'/3x, &
            &        'CURRENT',1p2e10.0,2x,e8.2)
       if(npoint.le.0) npoint = 9999
-      write(short_file_unit,70) ldebug,lcorr,npoint,lmilne,lstore,lstpch
-      70 format(3x,'LINE  2    LDEBUG     LCORR    NPOINT    LMILNE    LSTORE    LSTPCH'/2x,'STANDARD',2(9x,'T'),6x, &
-           & '9999',9x,'F',2(9x,'T')/3x,'CURRENT',2(9x,l1),6x, &
-           & i4,2(9x,l1),9x,l1)
+      write(short_file_unit,70) ldebug,lcorr,npoint,lstore,lstpch
+      70 format(3x,'LINE  2    LDEBUG     LCORR    NPOINT    LSTORE    LSTPCH'/2x,'STANDARD',2(9x,'T'),6x, &
+           & '9999',2(9x,'T')/3x,'CURRENT',2(9x,l1),6x, &
+           & i4,9x,l1,9x,l1)
       if(npenv.le.0) npenv = 9999
       write(short_file_unit,90) lscrib,lstatm,lstenv,lstmod,lstphys,lstrot
       90 format(3x,'LINE  3    LSCRIB    LSTATM    LSTENV    LSTMOD',5x, &

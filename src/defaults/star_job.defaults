@@ -59,10 +59,6 @@
       ! (legacy name: fshort)
       short_output_file = ''   ! (implicit)
 
-      ! Milne-format output file (opened when the Milne stream is active)
-      ! (legacy name: fmilne)
-      milne_output_file = ''   ! (implicit)
-
       ! Full stored-model (.store) output path
       ! (legacy name: fstor)
       store_output_file = ''   ! (implicit)
@@ -170,10 +166,6 @@
       ! crrect: print solver correction diagnostics
       ! (legacy name: lcorr)
       write_correction_output = .false.   ! (implicit)
-
-      ! Gate the Milne-format blocks in putstore/wrtout
-      ! (legacy name: lmilne)
-      write_milne_output = .false.   ! (implicit)
 
       ! Write full stored models (.store)
       ! (legacy name: lstore)

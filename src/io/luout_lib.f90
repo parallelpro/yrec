@@ -18,7 +18,7 @@
 module luout_lib
       implicit none
 
-      integer :: ilast, idebug, short_file_unit, imilne, &
+      integer :: ilast, idebug, short_file_unit, &
            istor, iowr
 ! 2026 phase A (controls->star% campaign): the two opacity-table
 ! units from former common/zramp/, assigned by parmin like the rest

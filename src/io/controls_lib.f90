@@ -246,7 +246,7 @@ module controls_lib
 ! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are all
 ! NAMELIST /physics/ values, spelled identically to their canonical
 ! names -- same treatment as common/ccout/ above.
-      logical :: ldebug = .false., lcorr = .true., lmilne = .false.
+      logical :: ldebug = .false., lcorr = .true.
       logical :: lstpch = .false.
 
 ! former common/lunum/: logical unit numbers for the various input/

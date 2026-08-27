@@ -14,7 +14,6 @@
       character(len=256) :: fermi_table_file
       character(len=256) :: debug_output_file
       character(len=256) :: short_output_file
-      character(len=256) :: milne_output_file
       character(len=256) :: store_output_file
       character(len=256) :: dynamics_file
       character(len=256) :: ll_data_file
@@ -40,7 +39,6 @@
       integer :: run_kind(50)
       logical :: write_debug_output
       logical :: write_correction_output
-      logical :: write_milne_output
       logical :: write_store_output
       logical :: store_final_model_flag
       logical :: scribe_flag
@@ -153,8 +151,8 @@
            & pure_z_opacity_table_file, laol_opacity_table2_file, &
            & opal92_opacity_table2_file, last_model_file, &
            & first_model_file, fermi_table_file, debug_output_file, &
-           & short_output_file, milne_output_file, store_output_file, &
-           & dynamics_file, ll_data_file, surface_composition_file, &
+           & short_output_file, store_output_file, dynamics_file, &
+           & ll_data_file, surface_composition_file, &
            & kurucz_atm_table_file, mhd_table_file_1, mhd_table_file_2, &
            & mhd_table_file_3, mhd_table_file_4, mhd_table_file_5, &
            & mhd_table_file_6, mhd_table_file_7, mhd_table_file_8, &
@@ -164,7 +162,7 @@
            & opal_eos_table_file, opal95_opacity_table_file, &
            & monte_carlo_file1_path, monte_carlo_file2_path, run_kind, &
            & write_debug_output, write_correction_output, &
-           & write_milne_output, write_store_output, first_call_flag, &
+           & write_store_output, first_call_flag, &
            & store_final_model_flag, scribe_flag, &
            & suppress_store_profiles, store_atm_profile, &
            & store_env_profile, store_interior_profile, &

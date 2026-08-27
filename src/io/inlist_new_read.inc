@@ -20,7 +20,6 @@
       fermi_table_file = ffermi
       debug_output_file = fdebug
       short_output_file = fshort
-      milne_output_file = fmilne
       store_output_file = fstor
       dynamics_file = fdyn
       ll_data_file = flldat
@@ -48,7 +47,6 @@
       run_kind = kindrn
       write_debug_output = ldebug
       write_correction_output = lcorr
-      write_milne_output = lmilne
       write_store_output = lstore
       first_call_flag = lfirst
       store_final_model_flag = lstpch
@@ -375,7 +373,6 @@
       ffermi = fermi_table_file
       fdebug = debug_output_file
       fshort = short_output_file
-      fmilne = milne_output_file
       fstor = store_output_file
       fdyn = dynamics_file
       flldat = ll_data_file
@@ -403,7 +400,6 @@
       kindrn = run_kind
       ldebug = write_debug_output
       lcorr = write_correction_output
-      lmilne = write_milne_output
       lstore = write_store_output
       lfirst = first_call_flag
       lstpch = store_final_model_flag

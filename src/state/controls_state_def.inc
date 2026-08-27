@@ -72,7 +72,6 @@
             integer :: print_point_interval = 0
             logical :: ldebug = .false.
             logical :: lcorr = .true.
-            logical :: lmilne = .false.
             logical :: lstpch = .false.
             integer :: first_unit = 0
             integer :: run_unit = 0

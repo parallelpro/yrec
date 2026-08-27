@@ -280,13 +280,8 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
        punch_pending_flag = .false.
       endif
 ! the call to putstore above creates the necessary pulsation output for LPULSE.
-! however, in the event that the above block is not executed and pulsation
-! output is desired, call wrtmod.
-      if(.not.(star%ctrl%lstore.and.mod(star%model_number,star%ctrl%nprtmod).eq.0) .and. star%job%pulsation_output_active) then
-       if(star%ctrl%lmilne) call write_milne(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%m,star%nz,star%model_number)
-! 2026 retire-legacy: wrtmod (.pmod interior pulse + .FULL sound-
-! speed table) deleted; the stitched pulse files carry everything.
-      endif
+! 2026 retire-legacy: the .milne homology-invariant table is deleted
+! (U, V, W, N+1 are pointwise algebra on profile columns).
 ! G Somers END
 ! new (2026): GYRE-format periodic pulsation output, independent of
 ! the LPULSE/pulsation_output_active mechanism above -- see
