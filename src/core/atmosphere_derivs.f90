@@ -82,34 +82,38 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       atm_call_count = atm_call_count + 1
       atm_table%atm_log10_pressure = log10_pressure
       atm_table%atm_log10_temperature = log10_temperature
-      if (print_flag .or. star%pulse%lpumod) then
-       atm_table%atm_log10_density = eos_res(i_log10_density)
-       atm_table%atm_opacity = kap_res(i_kap)
-       atm_table%atm_ion_fraction(1) = eos_res(i_fxion)
-       atm_table%atm_ion_fraction(2) = eos_res(i_fxion+1)
-       atm_table%atm_ion_fraction(3) = eos_res(i_fxion+2)
-       star%pulse%qtl = log10_temperature
-       star%pulse%qt = dexp(ln10*log10_temperature)
-       star%pulse%qpl = log10_pressure
-       star%pulse%qp = dexp(ln10*log10_pressure)
-       star%pulse%qdl = eos_res(i_log10_density)
-       star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
-       star%pulse%qo = kap_res(i_kap)
-       star%pulse%qol = kap_res(i_log10_kap)
-       star%pulse%qqdp = eos_res(i_dlnrho_dlnp)
-       star%pulse%qqed = 0.0d0
-       star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
-       star%pulse%qqot = kap_res(i_dlnkap_dlnt)
-       star%pulse%qdel = 0.0d0
-       star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
-       star%pulse%qdela = eos_res(i_grada)
-       star%pulse%qqcp = eos_res(i_cp)
-       star%pulse%qrmu = eos_res(i_gas_constant)
-       star%pulse%qemu = eos_res(i_mu_e_inv)
-      endif
+! 2026 (.store convergence): these saves were gated on the print
+! flag (or the retired pulse-derivative mode), which meant the
+! atmosphere structure the stitched model materializes carried
+! stale density/opacity/ionization whenever the caller did not ask
+! for printing. They are output-only scratch (no physics reads
+! them), so save unconditionally: every integration leaves a fully
+! populated atm_table behind.
+      atm_table%atm_log10_density = eos_res(i_log10_density)
+      atm_table%atm_opacity = kap_res(i_kap)
+      atm_table%atm_ion_fraction(1) = eos_res(i_fxion)
+      atm_table%atm_ion_fraction(2) = eos_res(i_fxion+1)
+      atm_table%atm_ion_fraction(3) = eos_res(i_fxion+2)
+      star%pulse%qtl = log10_temperature
+      star%pulse%qt = dexp(ln10*log10_temperature)
+      star%pulse%qpl = log10_pressure
+      star%pulse%qp = dexp(ln10*log10_pressure)
+      star%pulse%qdl = eos_res(i_log10_density)
+      star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
+      star%pulse%qo = kap_res(i_kap)
+      star%pulse%qol = kap_res(i_log10_kap)
+      star%pulse%qqdp = eos_res(i_dlnrho_dlnp)
+      star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
+      star%pulse%qqot = kap_res(i_dlnkap_dlnt)
+      star%pulse%qdel = 0.0d0
+      star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
+      star%pulse%qdela = eos_res(i_grada)
+      star%pulse%qqcp = eos_res(i_cp)
+      star%pulse%qrmu = eos_res(i_gas_constant)
+      star%pulse%qemu = eos_res(i_mu_e_inv)
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
-      if (.false.) print *, luminosity_linear, temperature_rotation_factor, conductive_opacity_flag, log10_radius
+      if (.false.) print *, luminosity_linear, temperature_rotation_factor, conductive_opacity_flag, log10_radius, print_flag
 
       return
 end subroutine atmosphere_derivs

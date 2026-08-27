@@ -81,13 +81,15 @@ module star_info_lib
 
 ! ---- from state/pulse_diag_lib.f90 ----
       type, public :: pulsation_diagnostics_state
-! former common/pulse1/
-            logical :: lpumod
+! former common/pulse1/ (lpumod deleted 2026: the derivs routines
+! save unconditionally, so the mode flag had no readers left)
 ! former common/pulse2/
-            double precision :: qqdp, qqed, qqet, qqod, qqot, qdel, qdela, &
+! 2026 (.store convergence): qqed/qqet/qfs deleted -- write-only
+! since the pulse-model writers were retired.
+            double precision :: qqdp, qqod, qqot, qdel, qdela, &
                  qqcp
             double precision :: qrmu, qtl, qpl, qdl, qo, qol, qt, qp
-            double precision :: qqdt, qemu, qd, qfs
+            double precision :: qqdt, qemu, qd
       end type pulsation_diagnostics_state
 
 

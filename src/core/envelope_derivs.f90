@@ -108,34 +108,30 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
       star%pulse%qqcp = eos_res(i_cp)
 
-      if(print_flag .or. star%pulse%lpumod) then
-       star%current_opacity = kap_res(i_kap)
-       star%current_ion_fraction(1) = eos_res(i_fxion)
-       star%current_ion_fraction(2) = eos_res(i_fxion+1)
-       star%current_ion_fraction(3) = eos_res(i_fxion+2)
-       star%pulse%qtl = log10_temperature
-       star%pulse%qt = dexp(ln10*log10_temperature)
-       star%pulse%qpl = log10_pressure
-       star%pulse%qp = dexp(ln10*log10_pressure)
-       star%pulse%qdl = eos_res(i_log10_density)
-       star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
-       star%pulse%qo = kap_res(i_kap)
-       star%pulse%qol = kap_res(i_log10_kap)
-       star%pulse%qfs = dexp(ln10*(log10_mass-star%stotal))
-       star%pulse%qqdp = eos_res(i_dlnrho_dlnp)
-       star%pulse%qqed = 0.0d0
-       star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
-       star%pulse%qqot = kap_res(i_dlnkap_dlnt)
-       star%pulse%qdel = actual_gradient
-       star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
-       star%pulse%qdela = eos_res(i_grada)
-       star%pulse%qqcp = eos_res(i_cp)
-       star%pulse%qrmu = eos_res(i_gas_constant)
-       star%pulse%qemu = eos_res(i_mu_e_inv)
-      endif
+! 2026 (.store convergence): these saves were gated on the print
+! flag (or the retired pulse-derivative mode), which left
+! current_opacity -- and hence the envelope opacity the stitched
+! model materializes -- stale (typically zero) whenever the caller
+! did not ask for printing. They are output-only scratch (no
+! physics reads them), so save unconditionally.
+      star%current_opacity = kap_res(i_kap)
+      star%pulse%qtl = log10_temperature
+      star%pulse%qt = dexp(ln10*log10_temperature)
+      star%pulse%qpl = log10_pressure
+      star%pulse%qp = dexp(ln10*log10_pressure)
+      star%pulse%qdl = eos_res(i_log10_density)
+      star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
+      star%pulse%qo = kap_res(i_kap)
+      star%pulse%qol = kap_res(i_log10_kap)
+      star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
+      star%pulse%qqot = kap_res(i_dlnkap_dlnt)
+      star%pulse%qdel = actual_gradient
+      star%pulse%qdela = eos_res(i_grada)
+      star%pulse%qrmu = eos_res(i_gas_constant)
+      star%pulse%qemu = eos_res(i_mu_e_inv)
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
-      if (.false.) print *, log10_gravity, conductive_opacity_flag
+      if (.false.) print *, log10_gravity, conductive_opacity_flag, print_flag
 
       return
 end subroutine envelope_derivs

@@ -120,8 +120,8 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
       double precision :: indep_var
       double precision :: chi_rho, chi_t, specific_heat_cv, gamma1
-      double precision :: pulse_energy_sum, prev_tau, prev_opacity, &
-           prev_density, delta_tau_step, electron_pressure, &
+      double precision :: prev_tau, prev_opacity, &
+           prev_density, delta_tau_step, &
            pulse_radiative_gradient, pulse_gradient, opacity_now, &
            density_now, tau_now
       integer :: num_eqs, num_ok, num_bad, step_index, i
@@ -193,10 +193,10 @@ contains
 subroutine prepare_surface_boundary
 ! DBG PULSE TURN ON DERIVATIVE CALCULATOR
 ! 2026 retire-legacy: with the .pmod/.penv/.patm pulse trio gone,
-! the pulse derivative mode (lpumod + want_derivatives + in-
-! envelope eos flags) is never enabled here; the always-taken
-! branch remains.
-      star%pulse%lpumod = .false.
+! the pulse derivative mode (want_derivatives + in-envelope eos
+! flags) is never enabled here; the always-taken branch remains.
+! (.store convergence: lpumod itself is deleted -- the derivs
+! routines now save their output scratch unconditionally.)
       want_derivatives = .false.
       in_atmosphere = .true.
       conductive_opacity_flag = .false.
@@ -274,6 +274,12 @@ end subroutine prepare_surface_boundary
 ! reduced step on failure, ierr after maxstp steps. Skipped
 ! entirely when a tabulated boundary supplied the pressure.
 subroutine integrate_atmosphere
+! 2026 (.store convergence): the count is zeroed on every entry so a
+! skipped integration (tabulated surface boundary) leaves an
+! accurate "no atmosphere points" state rather than the previous
+! integration's stale count. atmo_struct is filled unconditionally
+! below -- it is the atmosphere the stitched model materializes.
+      atmo_struct%num_atm_points = 0
       if (.not. tabulated_bc) then
 ! Start gray atmosphere bounary conditions
 ! GUESS THE TEMPERATURE FOR AN OPTICAL DEPTH NEAR ZERO.
@@ -446,69 +452,71 @@ subroutine integrate_atmosphere
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,print_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state)
-! G Somers 11/14 ADDED I/O FLAG AND CHANGED WRITE OUTS TO .STORE.
+! 2026 (.store convergence): the structure save below was gated on
+! the print flag (so only the legacy .store stitch, which called
+! atm_get with printing on, ever populated atmo_struct), and the
+! depth/gradient save further down was gated on lstch. Both now run
+! unconditionally: every atmosphere integration materializes the
+! full atmo_struct, so the stitched model (and any writer reading
+! it) always sees the atmosphere. Values are identical to what the
+! print-on path stored. Only the .store text table (format 20)
+! remains print-gated.
+       beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_table%atm_log10_temperature-atm_table%atm_log10_pressure))
+       chi_rho = 1.0d0/star%pulse%qqdp
+       chi_t = -chi_rho*star%pulse%qqdt
+       specific_heat_cv = star%pulse%qqcp - exp(ln10*(atm_table%atm_log10_pressure-atm_table%atm_log10_density-atm_table%atm_log10_temperature))*chi_t**2/chi_rho
+       gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
        if(print_flag.and.star%job%lstatm) then
-            beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_table%atm_log10_temperature-atm_table%atm_log10_pressure))
-            chi_rho = 1.0d0/star%pulse%qqdp
-            chi_t = -chi_rho*star%pulse%qqdt
-            specific_heat_cv = star%pulse%qqcp - exp(ln10*(atm_table%atm_log10_pressure-atm_table%atm_log10_density-atm_table%atm_log10_temperature))*chi_t**2/chi_rho
-            gamma1 = chi_rho*star%pulse%qqcp/specific_heat_cv
           if(.not.star%ctrl%lstch)then
             write(istor,20)atm_table%atm_tau,atm_table%atm_log10_pressure,atm_table%atm_log10_temperature,atm_table%atm_log10_density,atm_table%atm_opacity, &
                      (atm_table%atm_ion_fraction(i),i=1,3), &
                      saha_state,atm_call_count,gamma1,star%pulse%qqdp,star%pulse%qqdt,beta,star%pulse%qqcp,specific_heat_cv
           endif
-! JvS: SAVE STRUCTURE TO COMMON BLOCK
-          atmo_struct%atmo_log10_pressure(step_index) = atm_table%atm_log10_pressure
-          atmo_struct%atmo_log10_temperature(step_index) = atm_table%atm_log10_temperature
-          atmo_struct%atmo_log10_density(step_index) = atm_table%atm_log10_density
-          atmo_struct%atmo_beta(step_index) = beta
-          atmo_struct%atmo_gamma1(step_index) = gamma1
-          atmo_struct%atmo_dlnrho_dlnt(step_index) = star%pulse%qqdt
-          atmo_struct%atmo_ion_fraction(1,step_index) = atm_table%atm_ion_fraction(1)
-          atmo_struct%atmo_ion_fraction(2,step_index) = atm_table%atm_ion_fraction(2)
-          atmo_struct%atmo_ion_fraction(3,step_index) = atm_table%atm_ion_fraction(3)
-          atmo_struct%atmo_opacity(step_index) = atm_table%atm_opacity
-          atmo_struct%atmo_specific_heat_cp(step_index) = star%pulse%qqcp
        endif
+! JvS: SAVE STRUCTURE TO COMMON BLOCK
+       atmo_struct%atmo_log10_pressure(step_index) = atm_table%atm_log10_pressure
+       atmo_struct%atmo_log10_temperature(step_index) = atm_table%atm_log10_temperature
+       atmo_struct%atmo_log10_density(step_index) = atm_table%atm_log10_density
+       atmo_struct%atmo_beta(step_index) = beta
+       atmo_struct%atmo_gamma1(step_index) = gamma1
+       atmo_struct%atmo_dlnrho_dlnt(step_index) = star%pulse%qqdt
+       atmo_struct%atmo_ion_fraction(1,step_index) = atm_table%atm_ion_fraction(1)
+       atmo_struct%atmo_ion_fraction(2,step_index) = atm_table%atm_ion_fraction(2)
+       atmo_struct%atmo_ion_fraction(3,step_index) = atm_table%atm_ion_fraction(3)
+       atmo_struct%atmo_opacity(step_index) = atm_table%atm_opacity
+       atmo_struct%atmo_specific_heat_cp(step_index) = star%pulse%qqcp
        if(h_did.eq.h_step) then
           num_ok = num_ok + 1
        else
           num_bad = num_bad + 1
        endif
-! DBG PULSE ATMOSPHERE VALUES FOR PULSATION
-! JVS 02/11 - Added LCLCD option to IF statement
-       if (star%ctrl%lstch) then
-          star%pulse%qqed = 0.0d0
-          pulse_energy_sum = 0.0d0
-          star%pulse%qqet = 0.0d0
-          star%pulse%qfs = 1.0d0
-          opacity_now = star%pulse%qo
-          density_now = dexp(ln10*star%pulse%qdl)
-          tau_now = dexp(ln10*atm_table%atm_tau)
-! SEE J.P. COX PRINC. OF STELL. STRUC. P590
-          delta_tau_step =  (tau_now - prev_tau)/(((density_now*opacity_now)+(prev_density*prev_opacity))/2)
-          electron_pressure = gas_constant * star%pulse%qt * star%pulse%qd * star%pulse%qemu
-          prev_opacity = opacity_now
+! Geometric step length between successive tau points (J.P. Cox,
+! Princ. of Stell. Struc. p590). prev_tau/prev_density/prev_opacity
+! carry across steps; their values entering the FIRST step are
+! whatever the previous integration left (a historical quirk of the
+! .store stitch, preserved -- it only affects the outermost
+! atmosphere point's depth).
+       opacity_now = star%pulse%qo
+       density_now = dexp(ln10*star%pulse%qdl)
+       tau_now = dexp(ln10*atm_table%atm_tau)
+       delta_tau_step =  (tau_now - prev_tau)/(((density_now*opacity_now)+(prev_density*prev_opacity))/2)
+       prev_opacity = opacity_now
 !FROM FIRST LINES OF TPGRAD
-          pulse_radiative_gradient = star%pulse%qo*luminosity_linear*dexp(ln10*(star%pulse%qpl-log10_star_mass-4.0d0*star%pulse%qtl+star%log10_solar_luminosity-cgl+ &
-                 cdelrl))*temperature_rotation_factor/pressure_rotation_factor
-          if (pulse_radiative_gradient-star%pulse%qdela .le. 1.0d-6) then
-            pulse_gradient = pulse_radiative_gradient
-          else
-            pulse_gradient = star%pulse%qdela
-          end if
-! JvS SAVE TO COMMON ATMSTRUCT COMMON BLOCK
-          atmo_struct%atmo_delta_depth(step_index) = delta_tau_step
-          atmo_struct%atmo_gradients(1,step_index) = pulse_radiative_gradient
-          atmo_struct%atmo_gradients(2,step_index) = pulse_gradient
-          atmo_struct%atmo_gradients(3,step_index) = star%pulse%qdela
-          atmo_struct%num_atm_points = step_index
-
-          prev_tau = tau_now
-          prev_density = density_now
+       pulse_radiative_gradient = star%pulse%qo*luminosity_linear*dexp(ln10*(star%pulse%qpl-log10_star_mass-4.0d0*star%pulse%qtl+star%log10_solar_luminosity-cgl+ &
+              cdelrl))*temperature_rotation_factor/pressure_rotation_factor
+       if (pulse_radiative_gradient-star%pulse%qdela .le. 1.0d-6) then
+         pulse_gradient = pulse_radiative_gradient
+       else
+         pulse_gradient = star%pulse%qdela
        end if
-! DBG END
+! JvS SAVE TO COMMON ATMSTRUCT COMMON BLOCK
+       atmo_struct%atmo_delta_depth(step_index) = delta_tau_step
+       atmo_struct%atmo_gradients(1,step_index) = pulse_radiative_gradient
+       atmo_struct%atmo_gradients(2,step_index) = pulse_gradient
+       atmo_struct%atmo_gradients(3,step_index) = star%pulse%qdela
+       atmo_struct%num_atm_points = step_index
+       prev_tau = tau_now
+       prev_density = density_now
 
 
 ! CHECK IF INTEGRATION COMPLETE
