@@ -7,9 +7,15 @@
 ! style were updated.
 !
 ! STITCH: an alternate file format for .store that provides profiles
-! for each desired model. Stitches the envelope and atmosphere
+! for each desired model. Splices the envelope and atmosphere
 ! solutions onto the interior when LSTENV and LSTATM are true. Will
-! not provide atmosphere information when atmosphere tables are used.
+! not provide atmosphere information when atmosphere tables are used
+! (atmo_struct%num_atm_points is 0 then).
+!
+! 2026 (.store convergence): pure reader. The envelope/atmosphere
+! come from env_struct/atmo_struct as build_stitched_model filled
+! them for the converged model (evolve_step runs the stitch before
+! any output); this writer no longer integrates anything itself.
 !
 ! The output columns in the new .store format are:
 ! 1 MODEL, 2 SHELL, 3 log(mass[g]), 4 log(r[cm]), 5 L/Lsun, 6 log(P[cgs]), 7 log(T[K])',
@@ -31,8 +37,6 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
      model)
       use rotation_scratch_lib
 
-      use atm_lib
-      use envint_lib, only: atm_get
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
       use atmstruct_lib
       use envstruct_lib
@@ -56,17 +60,11 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: model
 
-      double precision :: dum1(4), dum2(3), dum3(3), dum4(3)
       double precision :: envs1(json)
 ! --- locals ---
       integer :: i, j, k
       double precision :: cg, sg, fm, duma, a_val, rpoleq, vtot
-      double precision :: abeg0, amin0, amax0, ebeg0, emin0, emax0
-      integer :: idum
-      double precision :: b, fpl, ftl
-      integer :: katm, kenv, ksaha, ixx
-      logical :: lprt, lsbc0
-      double precision :: x, z, rl, gl, plim, ateffl
+      double precision :: b
       double precision :: rad
 
 !
@@ -113,49 +111,18 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
 
 ! **************************   WRITE OUT ENVELOPE INFORMATION   **********************
 
-      if(star%ctrl%lstenv)then ! only provide an envelope if asked to do so
-! Begin by "dropping a sinkline" with the envelope integrator
-      abeg0 = star%job%atm_step_begin
-      amin0 = star%job%atm_step_min
-      amax0 = star%job%atm_step_max
-      ebeg0 = star%job%env_step_begin
-      emin0 = star%job%env_step_min
-      emax0 = star%job%env_step_max
-      star%job%atm_step_begin = star%ctrl%atm_step_size
-      star%job%atm_step_min = star%ctrl%atm_step_size
-      star%job%atm_step_max = star%ctrl%atm_step_size
-      star%job%env_step_begin = star%ctrl%envelope_step_size
-      star%job%env_step_min = star%ctrl%envelope_step_size
-      star%job%env_step_max = star%ctrl%envelope_step_size
-      idum = 0
+! 2026 (.store convergence): this writer no longer "drops a
+! sinkline" of its own -- build_stitched_model already re-integrated
+! the envelope/atmosphere at the converged model with the fixed
+! output step sizes, in evolve_step before any output, and
+! env_struct/atmo_struct hold that integration. Reading them here
+! makes the writer a pure reader and also fixes a long-standing bug:
+! the old sinkline overrode the adaptive envelope/atmosphere step
+! sizes with the fixed output ones and never restored them, so from
+! the first .store write onward the SOLVER's envelope integrations
+! silently ran at output resolution.
       b = dexp(ln10*log_luminosity_lsun)
-      fpl = shape_factor_fp(m)
-      ftl = shape_factor_ft(m)
-      katm = 0
-      kenv = 0
-      ksaha = 0
-      ixx=0
-      lprt=.true.
-      lsbc0 = .false.
-      x = composition(1,m)
-      z = composition(3,m)
-      rl = 0.5d0*(log_luminosity_lsun + star%log10_solar_luminosity - &
-           4.0d0*log_teff - c4pil - csigl)
-      gl = cgl + log_total_mass - rl - rl
-      plim = log_pressure(m)
-! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
-! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
-      if(convective_flag(m).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
-           star%ctrl%spot_temp_contrast.ne.1.0)then
-          ateffl = log_teff - 0.25*log10(star%ctrl%spot_filling_factor* &
-               star%ctrl%spot_temp_contrast**4.0+1.0-star%ctrl%spot_filling_factor)
-      else
-          ateffl = log_teff
-      end if
-      call atm_get(b,fpl,ftl,gl,log_total_mass,ixx,lprt,lsbc0, &
-         plim,rl,ateffl,x,z,dum1,idum,katm,kenv,ksaha, &
-         dum2,dum3,dum4)
-
+      if(star%ctrl%lstenv)then ! only provide an envelope if asked to do so
 ! DEFINE SOME ARRAYS WE NEED
       do i=1,env_struct%num_env_points
           envs1(i) = dexp(ln10*(env_struct%env_log10_mass(i)+log_total_mass))
@@ -184,8 +151,11 @@ subroutine write_stitched_profile(composition, log_radius, log_pressure, log_den
 
 
 ! *************************** WRITE OUT ATMOSPHERE INFORMATION  ************************
-! Finish with the atmosphere, if the atmosphere was computed
-       if(star%job%lstatm)then
+! Finish with the atmosphere, if the atmosphere was computed.
+! num_atm_points is 0 when the surface boundary came from a
+! tabulated atmosphere (no gray integration to stitch) -- that count
+! replaces the old side effect in envint that forced LSTATM off.
+       if(star%job%lstatm .and. atmo_struct%num_atm_points.gt.0)then
             do i=atmo_struct%num_atm_points,1,-1
 ! write out the basic info. Omega and abundances take value of last interior point.
             rad = dlog10(dexp(ln10*env_struct%env_log10_radius(env_struct%num_env_points)) + &

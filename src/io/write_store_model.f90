@@ -81,16 +81,6 @@ subroutine write_store_model(composition, log_density, log_luminosity, log_press
 ! the original putstore.f; not "fixed" here.
       integer :: jxbeg, jxend
       logical :: lshell
-! LMILNE is likewise never declared in any COMMON block of the
-! original putstore.f (unlike wrtout.f/wrtlst.f, which get it from
-! common/ccout2/) -- it is an implicitly-typed, SAVE'd, always-default
-! (.FALSE. in practice) local here, so "IF(LMILNE) CALL WRTMIL(...)"
-! below is effectively dead code. Preserved exactly as in the
-! original; not "fixed" here. Renamed to lmilne_local (2026) since it
-! would otherwise collide with the unrelated const_lib lmilne added
-! for former common/ccout2/.
-      logical :: lmilne_local
-
 ! physics flags:
 ! Determine atmosphere flag, ATM
       if (star%job%atm_choice .eq. 0) then
@@ -315,12 +305,9 @@ subroutine write_store_model(composition, log_density, log_luminosity, log_press
 
       endif
 ! 2026 retire-legacy: wrtmod (.pmod pulse interior + .FULL sound-
-! speed table) is deleted; only the Milne atmosphere companion
-! output survives here.
-      if(star%job%lstatm.or.star%ctrl%lstenv)then
-       if(lmilne_local) call write_milne(composition,log_density,log_luminosity, &
-            log_pressure,log_radius,mass_coordinate,num_shells,model_number)
-      endif
+! speed table) is deleted, and with it the always-false local that
+! guarded a dead write_milne call here (.milne still has its real
+! writer in write_legacy_output, under star%ctrl%lmilne).
 
       write(istor,65)
  65   format(/,/)

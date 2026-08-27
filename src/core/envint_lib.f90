@@ -215,7 +215,6 @@ subroutine prepare_surface_boundary
       tabulated_bc = .false.
       if (star%job%atm_choice .eq. 3) then
 ! KURUCZ ATMOSPHERES
-         if(star%ctrl%lstch) star%job%lstatm=.false.
          call surfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
@@ -229,7 +228,6 @@ subroutine prepare_surface_boundary
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPLC.
       else if (star%job%atm_choice .eq. 5) then
 ! KURUCZ ATMOSPHERES
-         if(star%ctrl%lstch) star%job%lstatm=.false.
          call kcsurfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
@@ -242,7 +240,6 @@ subroutine prepare_surface_boundary
 ! We have Kurucz atmosphere boundary conditions
       else if (star%job%atm_choice .eq. 4) then
 ! ALLARD & HAUSCHILDT ATMOSPHERES
-         if(star%ctrl%lstch) star%job%lstatm=.false.
          call alsurfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,allard_lookup_failed,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
