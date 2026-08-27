@@ -71,7 +71,6 @@
  FLAST = "{YREC_OUTPUT}/cm_rot_base.mod"
  FSTOR = "{YREC_OUTPUT}/cm_rot_base.store"
  FSHORT = "{YREC_OUTPUT}/cm_rot_base.short"  
- FSNU = "{YREC_OUTPUT}/cm_rot_base.snu"
  FSCOMP = "{YREC_OUTPUT}/cm_rot_base.excomp"
   
  FOPALE06 = "{YREC_INPUT}/eos/opal2006/EOSOPAL06Z0.018776"  

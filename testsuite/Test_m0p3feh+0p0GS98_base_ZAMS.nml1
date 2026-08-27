@@ -97,7 +97,6 @@
  FSHORT = "{YREC_OUTPUT}/Test_m0p3feh+0p0GS98_base_ZAMS.short" ! Details about the numerics of the model run are stored here.
   
 ! Legacy output files
- FSNU = "{YREC_OUTPUT}/Test_m0p3feh+0p0GS98_base_ZAMS.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/Test_m0p3feh+0p0GS98_base_ZAMS.excomp" ! No longer used (light elements vs. time, now included in track file)
 
 ! Custom mixture controls - CNO enabled if ISETMIX = 2, Light elements if ISETISO=2

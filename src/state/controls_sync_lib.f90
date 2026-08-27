@@ -119,7 +119,6 @@ subroutine seed_controls_buffer
       fermi_unit = star%ctrl%fermi_unit
       dynamics_unit = star%ctrl%dynamics_unit
       laol_table_unit = star%ctrl%laol_table_unit
-      neutrino_unit = star%ctrl%neutrino_unit
       composition_unit = star%ctrl%composition_unit
       kurucz_table_unit = star%ctrl%kurucz_table_unit
       lmonte = star%ctrl%lmonte
@@ -487,7 +486,6 @@ subroutine store_controls_to_star
       star%ctrl%fermi_unit = fermi_unit
       star%ctrl%dynamics_unit = dynamics_unit
       star%ctrl%laol_table_unit = laol_table_unit
-      star%ctrl%neutrino_unit = neutrino_unit
       star%ctrl%composition_unit = composition_unit
       star%ctrl%kurucz_table_unit = kurucz_table_unit
       star%ctrl%lmonte = lmonte

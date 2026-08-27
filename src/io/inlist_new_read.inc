@@ -24,7 +24,6 @@
       store_output_file = fstor
       dynamics_file = fdyn
       ll_data_file = flldat
-      neutrino_output_file = fsnu
       surface_composition_file = fscomp
       kurucz_atm_table_file = fkur
       mhd_table_file_1 = fmhd1
@@ -380,7 +379,6 @@
       fstor = store_output_file
       fdyn = dynamics_file
       flldat = ll_data_file
-      fsnu = neutrino_output_file
       fscomp = surface_composition_file
       fkur = kurucz_atm_table_file
       fmhd1 = mhd_table_file_1

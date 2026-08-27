@@ -71,7 +71,6 @@
  FLAST = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.mod"
  FSTOR = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.store"
  FSHORT = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.short"  
- FSNU = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.snu"
  FSCOMP = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.excomp"
   
  FOPALE06 = "{YREC_INPUT}/eos/opal2006/EOSOPAL06Z0.018776"  

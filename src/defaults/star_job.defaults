@@ -75,10 +75,6 @@
       ! (legacy name: flldat)
       ll_data_file = ''   ! (implicit)
 
-      ! Solar neutrino flux (.snu) output path
-      ! (legacy name: fsnu)
-      neutrino_output_file = ''   ! (implicit)
-
       ! Surface-composition output file
       ! (legacy name: fscomp)
       surface_composition_file = ''   ! (implicit)

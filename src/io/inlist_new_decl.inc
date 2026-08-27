@@ -18,7 +18,6 @@
       character(len=256) :: store_output_file
       character(len=256) :: dynamics_file
       character(len=256) :: ll_data_file
-      character(len=256) :: neutrino_output_file
       character(len=256) :: surface_composition_file
       character(len=256) :: kurucz_atm_table_file
       character(len=256) :: mhd_table_file_1
@@ -155,18 +154,17 @@
            & opal92_opacity_table2_file, last_model_file, &
            & first_model_file, fermi_table_file, debug_output_file, &
            & short_output_file, milne_output_file, store_output_file, &
-           & dynamics_file, ll_data_file, neutrino_output_file, &
-           & surface_composition_file, kurucz_atm_table_file, &
-           & mhd_table_file_1, mhd_table_file_2, mhd_table_file_3, &
-           & mhd_table_file_4, mhd_table_file_5, mhd_table_file_6, &
-           & mhd_table_file_7, mhd_table_file_8, isochrone_file, &
-           & atm_table_file, kurucz_castelli_atm_table_file, &
-           & allard_atm_table_file, scv_h_table_file, scv_he_table_file, &
-           & scv_z_table_file, opal_eos_table_file, &
-           & opal95_opacity_table_file, monte_carlo_file1_path, &
-           & monte_carlo_file2_path, run_kind, write_debug_output, &
-           & write_correction_output, write_milne_output, &
-           & write_store_output, first_call_flag, &
+           & dynamics_file, ll_data_file, surface_composition_file, &
+           & kurucz_atm_table_file, mhd_table_file_1, mhd_table_file_2, &
+           & mhd_table_file_3, mhd_table_file_4, mhd_table_file_5, &
+           & mhd_table_file_6, mhd_table_file_7, mhd_table_file_8, &
+           & isochrone_file, atm_table_file, &
+           & kurucz_castelli_atm_table_file, allard_atm_table_file, &
+           & scv_h_table_file, scv_he_table_file, scv_z_table_file, &
+           & opal_eos_table_file, opal95_opacity_table_file, &
+           & monte_carlo_file1_path, monte_carlo_file2_path, run_kind, &
+           & write_debug_output, write_correction_output, &
+           & write_milne_output, write_store_output, first_call_flag, &
            & store_final_model_flag, scribe_flag, &
            & suppress_store_profiles, store_atm_profile, &
            & store_env_profile, store_interior_profile, &

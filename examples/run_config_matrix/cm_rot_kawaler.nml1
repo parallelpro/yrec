@@ -71,7 +71,6 @@
  FLAST = "{YREC_OUTPUT}/cm_rot_kawaler.mod"
  FSTOR = "{YREC_OUTPUT}/cm_rot_kawaler.store"
  FSHORT = "{YREC_OUTPUT}/cm_rot_kawaler.short"  
- FSNU = "{YREC_OUTPUT}/cm_rot_kawaler.snu"
  FSCOMP = "{YREC_OUTPUT}/cm_rot_kawaler.excomp"
   
  FOPALE06 = "{YREC_INPUT}/eos/opal2006/EOSOPAL06Z0.018776"  

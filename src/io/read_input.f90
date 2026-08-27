@@ -80,7 +80,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       character(len=256) :: flast, ffirst, ffermi, &
            fdebug, fshort, fmilne, &
            fstor, fdyn, &
-           flldat, fsnu, fscomp, fkur, &
+           flldat, fscomp, fkur, &
            fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8
       integer :: kindrn(50)
       double precision :: rsclm(50), rsclx(50), rsclz(50), rsclcm(50)
@@ -799,7 +799,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    flaol, fpurez,flaol2, fopal2, &
            &    flast, ffirst, ffermi, fdebug, fshort, fstch, &
            &    fmilne, fstor, &
-           &    fdyn, flldat, fsnu, fscomp, fkur, fmhd1, &
+           &    fdyn, flldat, fscomp, fkur, fmhd1, &
            &    fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8, fiso, fatm, &
            &    fkur2, fallard, fscvh, fscvhe, fscvz, fopale, fliv95, &
            &    fmonte1,fmonte2, &
@@ -1228,8 +1228,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       laol_table_unit = 32
 ! YCK INPUT: OPAL95 OPACITY TABLE
       opal95_table_unit = 48
-! OUTPUT: SNU FLUXES
-      neutrino_unit = 33
 ! OUTPUT: EXTENDED COMPOSITION INFO
       composition_unit = 34
 ! YCK INPUT: KURUCZ LOW T OPACITIES
@@ -1649,7 +1647,6 @@ subroutine resolve_output_mode_and_paths
       call expand_value(fscvhe)
       call expand_value(fscvz)
       call expand_value(fshort)
-      call expand_value(fsnu)
       call expand_value(fstor)
 
 ! Create the output directory if it doesn't already exist. It is
@@ -1790,12 +1787,6 @@ subroutine derive_options_and_open_files
       open(short_file_unit,file=fshort,form='FORMATTED',status='UNKNOWN')
       rewind(short_file_unit)
 
-! SNU OUTPUT
-      if(lsnu) then
-          open(unit=neutrino_unit,file=fsnu, form='FORMATTED', &
-           &         status='UNKNOWN')
-          rewind(neutrino_unit)
-      endif
       if(ldebug) then
             open(idebug,file=fdebug,form='FORMATTED', &
            &          status='UNKNOWN')

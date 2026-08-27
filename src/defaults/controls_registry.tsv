@@ -18,7 +18,6 @@ control	fmilne	string	''*	milne_output_file	verified		Milne-format output file (
 control	fstor	string	''*	store_output_file	proposed		Full stored-model (.store) output path
 control	fdyn	string	''*	dynamics_file	verified		Opened on the dynamics unit (formatted, STATUS=OLD)
 control	flldat	string	''*	ll_data_file	proposed		Livermore opacity auxiliary data file
-control	fsnu	string	''*	neutrino_output_file	proposed		Solar neutrino flux (.snu) output path
 control	fscomp	string	''*	surface_composition_file	verified		Surface-composition output file
 control	fkur	string	''*	kurucz_atm_table_file	proposed		Kurucz model-atmosphere boundary-condition table
 control	fmhd1	string	''*	mhd_table_file_1	proposed		MHD EOS table 1 of 8

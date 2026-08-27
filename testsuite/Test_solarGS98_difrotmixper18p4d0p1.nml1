@@ -97,7 +97,6 @@
  FSHORT = "{YREC_OUTPUT}/Test_solarGS98_difrotmixper18p4d0p1.short" ! Details about the numerics of the model run are stored here.
   
 ! Legacy output files
- FSNU = "{YREC_OUTPUT}/Test_solarGS98_difrotmixper18p4d0p1.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/Test_solarGS98_difrotmixper18p4d0p1.excomp" ! No longer used (light elements vs. time, now included in track file)
 
 ! Custom mixture controls - CNO enabled if ISETMIX = 2, Light elements if ISETISO=2

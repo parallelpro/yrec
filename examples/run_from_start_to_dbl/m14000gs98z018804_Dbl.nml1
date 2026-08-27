@@ -76,7 +76,6 @@
  FLAST = "{YREC_OUTPUT}/m14000gs98z018804_Dbl.first" ! The last converged model is stored here.
  FSTOR = "{YREC_OUTPUT}/m14000gs98z018804_Dbl.store" ! Model snapshots during the run are stored here.
  FSHORT = "{YREC_OUTPUT}/m14000gs98z018804_Dbl.short" ! Details about the numerics of the model run are stored here.
- FSNU = "{YREC_OUTPUT}/m14000gs98z018804_Dbl.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/m14000gs98z018804_Dbl.excomp" ! No longer used (light elements vs. time, now included in track file)
   
  FOPALE06 = "{YREC_INPUT}/eos/opal2006/EOSOPAL06Z0.018776" ! OPAL 2006 EoS table path.

@@ -80,7 +80,6 @@
             integer :: fermi_unit = 0
             integer :: dynamics_unit = 0
             integer :: laol_table_unit = 0
-            integer :: neutrino_unit = 0
             integer :: composition_unit = 0
             integer :: kurucz_table_unit = 0
             logical :: lmonte = .false.

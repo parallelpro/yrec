@@ -254,7 +254,7 @@ module controls_lib
 ! assigns them all unconditionally at startup (fixed unit numbers),
 ! so no declaration-time defaults are needed here.
       integer :: first_unit, run_unit, standard_unit, fermi_unit
-      integer :: dynamics_unit, laol_table_unit, neutrino_unit
+      integer :: dynamics_unit, laol_table_unit
       integer :: composition_unit, kurucz_table_unit
 
 ! former common/monte/: lmonte/imbeg/imend are all NAMELIST /physics/
