@@ -78,7 +78,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       character(len=256) :: fstch
       character(len=256) :: fallard, fscvh, fscvhe, fscvz
       character(len=256) :: flast, ffirst, ffermi, &
-           fdebug, ftrack, fshort, fmilne, &
+           fdebug, fshort, fmilne, &
            fstor, fdyn, &
            flldat, fsnu, fscomp, fkur, &
            fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8
@@ -455,7 +455,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 
 ! track: NAMELIST /physics/ member, renamed in const_lib (itrver ->
 ! track_file_version), kept local and copy-assigned below.
-      integer :: itrver
 
 ! kttau: NAMELIST /physics/ member with a different canonical const_lib
 ! spelling (atm_choice), so kept local under its NAMELIST spelling
@@ -798,15 +797,14 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    descrip, &
            &    endage, &
            &    flaol, fpurez,flaol2, fopal2, &
-           &    flast, ffirst, ffermi, fdebug, ftrack, fshort, fstch, &
+           &    flast, ffirst, ffermi, fdebug, fshort, fstch, &
            &    fmilne, fstor, &
            &    fdyn, flldat, fsnu, fscomp, fkur, fmhd1, &
            &    fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8, fiso, fatm, &
            &    fkur2, fallard, fscvh, fscvhe, fscvz, fopale, fliv95, &
            &    fmonte1,fmonte2, &
-           &    itrver, &
            &    kindrn, &
-           &    ldebug, lcorr, lmilne, ltrack, lstore, lfirst, &
+           &    ldebug, lcorr, lmilne, lstore, lfirst, &
            &    lstpch, lscrib, lstch, &
 ! G Somers 11/14
            &    lstatm,lstenv,lstmod,lstphys,lstrot, &
@@ -1022,7 +1020,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       data wmax,wmax_sun/3.0d-4,1000.0/
 ! DBG PULSE DATA CARD FOR PULSATION
       data lpulse/.false./
-      data itrver/1/
       data kttau/0/
       data clsun,crsun/3.8515d33,6.9598d10/
 ! YC  If LMHD is TRUE use MHD equation of state tables.  LU numbers
@@ -1210,14 +1207,10 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       fermi_unit = 15
 ! OUTPUT: RESERVED for DEBUGGING
       idebug = 18
-! OUTPUT: TRACK
-      itrack = 19
 ! OUTPUT: ALL DIAGNOSTIC INFO
       short_file_unit = 20
 ! OUTPUT: MILNE INVARIANT VARIABLES
       imilne = 21
-! OUTPUT: SHELL BY SHELL INFO ON MODELS
-      imodpt = 22
 ! OUTPUT: SAVED MODELS, CAN BE USED AS STARTING MODEL
       istor = 23
 ! OUTPUT: FOR PULSATION CODE, INTERIOR
@@ -1501,7 +1494,6 @@ subroutine adopt_canonical_names
       absolute_tolerance = abstol
       relative_tolerance = reltol
       max_burn_iterations = kemmax
-      track_file_version = itrver
       extend_core_inward = lcore
       num_core_shells_added = mcore
       core_mass_reduction_factor = fcore
@@ -1659,10 +1651,11 @@ subroutine resolve_output_mode_and_paths
       call expand_value(fshort)
       call expand_value(fsnu)
       call expand_value(fstor)
-      call expand_value(ftrack)
 
-! Create output directory as specified in the FTRACK value of CONTROL
-! namelist if it doesn't already exist.
+! Create the output directory if it doesn't already exist. It is
+! taken from the directory part of the .short log path (FSHORT) --
+! every deck keeps its outputs together. (Historically this came
+! from FTRACK, retired with the .track file.)
       shell_cmd = 'mkdir -p '
         ! find index of last '/' char. Use that to snip out the directory name.
 end subroutine resolve_output_mode_and_paths
@@ -1674,14 +1667,14 @@ end subroutine resolve_output_mode_and_paths
 ! ierr nonzero (config error) if semiconvection and overshoot are
 ! both enabled; the caller returns immediately in that case.
 subroutine derive_options_and_open_files
-      do i = len_trim(ftrack), 1, -1
-          if (ftrack(i:i) .eq. '/') then
+      do i = len_trim(fshort), 1, -1
+          if (fshort(i:i) .eq. '/') then
               last_slash_idx = i
               exit
           endif
       end do
-      shell_cmd(len_trim(shell_cmd)+2:len_trim(ftrack(1:last_slash_idx))+len_trim(shell_cmd)) = ftrack(1:last_slash_idx)
-      print *,"OUTPUT placed in :  ",ftrack(1:last_slash_idx)
+      shell_cmd(len_trim(shell_cmd)+2:len_trim(fshort(1:last_slash_idx))+len_trim(shell_cmd)) = fshort(1:last_slash_idx)
+      print *,"OUTPUT placed in :  ",fshort(1:last_slash_idx)
       print *, ''
       call system(shell_cmd)
 
@@ -1796,11 +1789,6 @@ subroutine derive_options_and_open_files
 
       open(short_file_unit,file=fshort,form='FORMATTED',status='UNKNOWN')
       rewind(short_file_unit)
-      if (ltrack) then
-          open(unit=itrack,file=ftrack, form='FORMATTED', &
-           &         status='UNKNOWN')
-          rewind(itrack)
-      endif
 
 ! SNU OUTPUT
       if(lsnu) then
@@ -2166,11 +2154,10 @@ subroutine echo_settings
            &        'STANDARD       N/A       N/A  0.00E+00'/3x, &
            &        'CURRENT',1p2e10.0,2x,e8.2)
       if(npoint.le.0) npoint = 9999
-      write(short_file_unit,70) ldebug,lcorr,npoint,lmilne,ltrack,lstore,lstpch
-      70 format(3x,'LINE  2    LDEBUG     LCORR    NPOINT    LMILNE    LTRA                                                            &
-&CK    LSTORE    LSTPCH'/2x,'STANDARD',2(9x,'T'),6x, &
-           & '9999',9x,'F',2(9x,'T'),9x,'T'/3x,'CURRENT',2(9x,l1),6x, &
-           & i4,3(9x,l1),9x,l1)
+      write(short_file_unit,70) ldebug,lcorr,npoint,lmilne,lstore,lstpch
+      70 format(3x,'LINE  2    LDEBUG     LCORR    NPOINT    LMILNE    LSTORE    LSTPCH'/2x,'STANDARD',2(9x,'T'),6x, &
+           & '9999',9x,'F',2(9x,'T')/3x,'CURRENT',2(9x,l1),6x, &
+           & i4,2(9x,l1),9x,l1)
       if(npenv.le.0) npenv = 9999
       write(short_file_unit,90) lscrib,lstatm,lstenv,lstmod,lstphys,lstrot
       90 format(3x,'LINE  3    LSCRIB    LSTATM    LSTENV    LSTMOD',5x, &
@@ -2279,24 +2266,13 @@ subroutine echo_settings
           write(short_file_unit,*) ' USING PURE C AND N OPACITY TABLES'
       end if
 
-      write(imodpt,310) descrip(1),  descrip(2)
-
       write(short_file_unit,314)
+      314    format('#',/,'#',100('='))
       write(short_file_unit,version_fmt) yrec_version_string, git_hash_string
       write(short_file_unit,310) descrip(1),  descrip(2)
       310    format('# DESCRIPTION OF RUN:',a80,/, '#',9x,'  ',8x,': ', &
            &           a80,/,'#', 100('='))
 
-      if(ltrack) then
-
-         write(itrack,314)
-      314    format('#',/,'#',100('='))
-         write(itrack,version_fmt) yrec_version_string, git_hash_string
-         write(itrack,320) descrip(1), descrip(2)
-      320    format('# DESCRIPTION OF RUN:',a80,/, '#',9x,'  ',8x,': ', &
-           &           a80,/,'#', 100('='))
-
-      endif
       write(short_file_unit,323)
       323 format(' USING OSCILATORY SPLINE INTERPOLATION IN HPOINT')
 

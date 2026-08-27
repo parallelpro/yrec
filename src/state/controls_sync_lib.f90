@@ -112,7 +112,6 @@ subroutine seed_controls_buffer
       ldebug = star%ctrl%ldebug
       lcorr = star%ctrl%lcorr
       lmilne = star%ctrl%lmilne
-      ltrack = star%ctrl%ltrack
       lstpch = star%ctrl%lstpch
       first_unit = star%ctrl%first_unit
       run_unit = star%ctrl%run_unit
@@ -229,7 +228,6 @@ subroutine seed_controls_buffer
       relative_tolerance = star%ctrl%relative_tolerance
       max_burn_iterations = star%ctrl%max_burn_iterations
       opal95_table_unit = star%ctrl%opal95_table_unit
-      track_file_version = star%ctrl%track_file_version
       extend_core_inward = star%ctrl%extend_core_inward
       num_core_shells_added = star%job%num_core_shells_added
       core_mass_reduction_factor = star%job%core_mass_reduction_factor
@@ -482,7 +480,6 @@ subroutine store_controls_to_star
       star%ctrl%ldebug = ldebug
       star%ctrl%lcorr = lcorr
       star%ctrl%lmilne = lmilne
-      star%ctrl%ltrack = ltrack
       star%ctrl%lstpch = lstpch
       star%ctrl%first_unit = first_unit
       star%ctrl%run_unit = run_unit
@@ -599,7 +596,6 @@ subroutine store_controls_to_star
       star%ctrl%relative_tolerance = relative_tolerance
       star%ctrl%max_burn_iterations = max_burn_iterations
       star%ctrl%opal95_table_unit = opal95_table_unit
-      star%ctrl%track_file_version = track_file_version
       star%ctrl%extend_core_inward = extend_core_inward
       star%job%num_core_shells_added = num_core_shells_added
       star%job%core_mass_reduction_factor = core_mass_reduction_factor

@@ -3,14 +3,14 @@
 Runs the solar noGS/norot case from one converted inlist in three
 configurations and checks the whole MESA-mode output contract:
 
-  legacy   (stamped use_legacy_output = .true.)  -- the oracle .track
+  legacy   (stamped use_legacy_output = .true.)  -- the .store oracle
   mesa     (stamp removed)                       -- default MESA mode
   custom   (mesa + history_columns_file)         -- column selection
 
 Assertions: MESA mode writes exactly {history.data, profile*.data,
 CASE.log}; the history file has MESA's layout (data from line 7,
-names on line 6) with one row per converged model matching the
-legacy .track numerically; profiles appear every profile_interval
+names on line 6) with rows matching the legacy .store MOD2 model
+headers numerically; profiles appear every profile_interval
 models with zone 1 = the surface and num_zones rows; the history
 profile_number column maps models to profiles (YREC's replacement
 for profiles.index); a history_columns_file selects exactly the
@@ -87,23 +87,29 @@ def test_mesa_output_contract(tmp_path):
                               + profiles), produced
     assert profiles, "no profile files written (profile_interval default)"
 
-    # ---- history vs the legacy track ----
-    track_rows = [l.split() for l in
-                  (legacy_out / f"{BASE}.track").read_text().splitlines()
-                  if l.strip() and not l.lstrip().startswith("#")
-                  and not l.lstrip().startswith("Step")]
+    # ---- history vs the legacy .store model headers ----
+    # (.track is retired; the MOD2 header lines carry the same
+    # cross-format oracle content -- model number, zones, log_Teff,
+    # log_L, age -- at every stored model)
+    store_hdrs = [l.split() for l in
+                  (legacy_out / f"{BASE}.store").read_text().splitlines()
+                  if l.startswith("MOD2")]
+    assert store_hdrs, "legacy .store has no MOD2 headers"
     names, hist_rows, icol = _parse_mesa_file(mesa_out / "history.data")
     assert names[:3] == ["model_number", "profile_number", "num_zones"]
     # integer id columns are written as true integers
     assert "." not in hist_rows[0][0] and "." not in hist_rows[0][2]
-    assert len(hist_rows) == len(track_rows)
-    for tr, hr in zip(track_rows, hist_rows):
-        assert int(float(hr[icol["model_number"]])) == int(tr[0])
-        assert abs(float(hr[icol["star_age"]]) / 1e9 - float(tr[2])) <= \
-            1e-7 * max(1.0, abs(float(tr[2])))
-        for name, j in (("log_L", 3), ("log_Teff", 6)):
-            a, b = float(hr[icol[name]]), float(tr[j])
-            assert abs(a - b) <= 1e-7 * max(1.0, abs(b)), (name, a, b)
+    by_model = {int(float(hr[icol["model_number"]])): hr for hr in hist_rows}
+    for sh in store_hdrs:
+        model, nz = int(sh[1]), int(sh[2])
+        hr = by_model[model]
+        assert int(float(hr[icol["num_zones"]])) == nz, (model, nz)
+        age_gyr, log_teff, log_l = float(sh[7]), float(sh[4]), float(sh[5])
+        assert abs(float(hr[icol["star_age"]]) / 1e9 - age_gyr) <= \
+            1e-7 * max(1.0, abs(age_gyr))
+        for name, ref in (("log_L", log_l), ("log_Teff", log_teff)):
+            a = float(hr[icol[name]])
+            assert abs(a - ref) <= 1e-7 * max(1.0, abs(ref)), (name, a, ref)
 
     # ---- profile_number column maps models to profiles ----
     expect_num = 0

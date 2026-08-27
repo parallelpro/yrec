@@ -42,7 +42,6 @@ subroutine write_run_summaries(monte_carlo_run_number, &
          rewind(ilast)
          rewind(star%ctrl%first_unit)
          rewind(idebug)
-         rewind(itrack)
          rewind(short_file_unit)
          rewind(istor)
          write(star%ctrl%neutrino_unit,1525)star%log_L,log_r_rsun
@@ -72,7 +71,6 @@ subroutine write_run_summaries(monte_carlo_run_number, &
          rewind(ilast)
          rewind(star%ctrl%first_unit)
          rewind(idebug)
-         rewind(itrack)
          rewind(short_file_unit)
          rewind(istor)
 

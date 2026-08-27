@@ -27,8 +27,6 @@ END_YCEN(1) = 0.5 ! Run stops if NMODLS(I) is reached or this central helium is 
  NPRTPT = 1
  LSTPCH = .TRUE.
 
- LTRACK = .TRUE.
- ITRVER = 0
 
  LRWSH = .FALSE.
  LCORR = .TRUE.
@@ -48,7 +46,6 @@ END_YCEN(1) = 0.5 ! Run stops if NMODLS(I) is reached or this central helium is 
  FFIRST = "{YREC_START}/tams/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_TAMS.last"
  FLAST = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_RGp2diffrotI3cz2.mod"
  FSTOR = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_RGp2diffrotI3cz2.store"
- FTRACK = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_RGp2diffrotI3cz2.track"
  FSHORT = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_RGp2diffrotI3cz2.short"
  FSNU = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_RGp2diffrotI3cz2.snu"
  FSCOMP = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_RGp2diffrotI3cz2.excomp"

@@ -87,8 +87,6 @@
  NPRTPT = 1 ! Output details for every NPRTPT points (if 1000 points and NPRTPT=10, 100 lines are output).
  LSTPCH = .TRUE. ! If T, output details of the final model to the .store file.
 
- LTRACK = .TRUE. ! If T, global properties are output to the .track file. This should almost always be on.
- ITRVER = 0 ! Toggle for different track file formats. 0 (one line per model) strongly recommended.
   
  LRWSH = .FALSE. ! If T, the short file retains only the details from the last model. This minimizes output file size.
  LCORR = .TRUE. ! If true, output verbose details on model convergence to .short.
@@ -124,7 +122,6 @@
 ! Output files 
  FLAST = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.mod" ! The latest converged model (.mod format) is stored here.
  FSTOR = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.store" ! Model snapshots during the run are stored here.
- FTRACK = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.track" ! Global variables as a function of time are stored here.
  FSHORT = "output/samplecases/Sample_Class2_m1p0feh+0p0_s11m2_ZAMS.short" ! Details about the numerics of the model run are stored here.
   
 ! Legacy output files

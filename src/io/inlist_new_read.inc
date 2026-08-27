@@ -19,7 +19,6 @@
       first_model_file = ffirst
       fermi_table_file = ffermi
       debug_output_file = fdebug
-      track_output_file = ftrack
       short_output_file = fshort
       milne_output_file = fmilne
       store_output_file = fstor
@@ -47,12 +46,10 @@
       opal95_opacity_table_file = fliv95
       monte_carlo_file1_path = fmonte1
       monte_carlo_file2_path = fmonte2
-      track_file_version = itrver
       run_kind = kindrn
       write_debug_output = ldebug
       write_correction_output = lcorr
       write_milne_output = lmilne
-      write_track_output = ltrack
       write_store_output = lstore
       first_call_flag = lfirst
       store_final_model_flag = lstpch
@@ -378,7 +375,6 @@
       ffirst = first_model_file
       ffermi = fermi_table_file
       fdebug = debug_output_file
-      ftrack = track_output_file
       fshort = short_output_file
       fmilne = milne_output_file
       fstor = store_output_file
@@ -406,12 +402,10 @@
       fliv95 = opal95_opacity_table_file
       fmonte1 = monte_carlo_file1_path
       fmonte2 = monte_carlo_file2_path
-      itrver = track_file_version
       kindrn = run_kind
       ldebug = write_debug_output
       lcorr = write_correction_output
       lmilne = write_milne_output
-      ltrack = write_track_output
       lstore = write_store_output
       lfirst = first_call_flag
       lstpch = store_final_model_flag

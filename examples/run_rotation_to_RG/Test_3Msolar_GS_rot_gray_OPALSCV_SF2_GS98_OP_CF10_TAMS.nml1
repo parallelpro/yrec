@@ -50,8 +50,6 @@
  NPRTPT = 1 
  LSTPCH = .TRUE. 
 
- LTRACK = .TRUE.  
- ITRVER = 0  
   
  LRWSH = .FALSE.  
  LCORR = .TRUE.  
@@ -71,7 +69,6 @@
  FFIRST = "{YREC_START}/seed/p300gs98z0188.nmo" ! Starting model path.
  FLAST = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_TAMS.mod" ! The latest converged model (.mod format) is stored here.
  FSTOR = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_TAMS.store" ! Model snapshots during the run are stored here.
- FTRACK = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_TAMS.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_TAMS.short"  ! Details about the numerics of the model run are stored here. 
  FSNU = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_TAMS.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_TAMS.excomp" ! No longer used (light elements vs. time, now included in track file)

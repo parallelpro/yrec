@@ -73,7 +73,6 @@
             logical :: ldebug = .false.
             logical :: lcorr = .true.
             logical :: lmilne = .false.
-            logical :: ltrack = .true.
             logical :: lstpch = .false.
             integer :: first_unit = 0
             integer :: run_unit = 0
@@ -163,7 +162,6 @@
             double precision :: relative_tolerance = 0.0d0
             integer :: max_burn_iterations = 0
             integer :: opal95_table_unit = 0
-            integer :: track_file_version = 0
             logical :: extend_core_inward = .false.
             logical :: rewind_short_file = .false.
             logical :: isochrone_output_active = .false.

@@ -247,7 +247,7 @@ module controls_lib
 ! NAMELIST /physics/ values, spelled identically to their canonical
 ! names -- same treatment as common/ccout/ above.
       logical :: ldebug = .false., lcorr = .true., lmilne = .false.
-      logical :: ltrack = .true., lstpch = .false.
+      logical :: lstpch = .false.
 
 ! former common/lunum/: logical unit numbers for the various input/
 ! output files, none of them NAMELIST values -- core/read_input.f90
@@ -515,11 +515,6 @@ module controls_lib
 ! place there.
       integer :: opal95_table_unit
 
-
-! former common/track/: track_file_version (originally itrver) is a
-! NAMELIST value with a different canonical spelling, kept local in
-! core/read_input.f90 and copy-assigned.
-      integer :: track_file_version
 
 ! former common/core/: extend_core_inward/num_core_shells_added/
 ! core_mass_reduction_factor (originally lcore/mcore/fcore) are

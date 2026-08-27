@@ -55,8 +55,6 @@
  NPRTPT = 1 ! Output details for every NPRTPT points (if 1000 points and NPRTPT=10, 100 lines are output).
  LSTPCH = .TRUE. ! If T, output details of the final model to the .store file.
 
- LTRACK = .TRUE. ! If T, global properties are always output to the .track file. This should almost always be on.
- ITRVER = 0 ! Toggle for different track file formats. 0 (one line per model) strongly recommended.
   
  LRWSH = .FALSE. ! If T, the short file retains only the details from the last model. This minimizes output file size.
  LCORR = .TRUE. ! If true, output verbose details on model convergence to .short.
@@ -77,7 +75,6 @@
  FFIRST = "{YREC_START}/start/m0050gs98z003000_prems.first" ! The last converged model is stored here.
  FLAST = "{YREC_OUTPUT}/m0050gs98z003000_Dbl.first" ! The last converged model is stored here.
  FSTOR = "{YREC_OUTPUT}/m0050gs98z003000_Dbl.store" ! Model snapshots during the run are stored here.
- FTRACK = "{YREC_OUTPUT}/m0050gs98z003000_Dbl.track" ! Global variables as a function of time are stored here.
  FSHORT = "{YREC_OUTPUT}/m0050gs98z003000_Dbl.short" ! Details about the numerics of the model run are stored here.
  FSNU = "{YREC_OUTPUT}/m0050gs98z003000_Dbl.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/m0050gs98z003000_Dbl.excomp" ! No longer used (light elements vs. time, now included in track file)

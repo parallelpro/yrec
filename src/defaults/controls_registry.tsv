@@ -12,7 +12,6 @@ control	flast	string	'{YREC_OUTPUT}/final.mod'	last_model_file	proposed		Path fo
 control	ffirst	string	''*	first_model_file	proposed		Starting model read when read_first_model is set for a run
 control	ffermi	string	''*	fermi_table_file	proposed		Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS)
 control	fdebug	string	''*	debug_output_file	proposed		Debug output stream
-control	ftrack	string	''*	track_output_file	proposed		Evolution track (.track) output path
 control	fshort	string	''*	short_output_file	proposed		Model summary (.short) output path
 control	fstch	string	''*	stored_change_file	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 control	fmilne	string	''*	milne_output_file	verified		Milne-format output file (opened when the Milne stream is active)
@@ -41,12 +40,10 @@ control	fopale	string	''*	opal_eos_table_file	proposed		OPAL 1995/2001 EOS table
 control	fliv95	string	''*	opal95_opacity_table_file	proposed		OPAL/Livermore 1995 opacity tables
 control	fmonte1	string	''*	monte_carlo_file1_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
 control	fmonte2	string	''*	monte_carlo_file2_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
-control	itrver	integer	1	track_file_version	canonical		former common/track/: track_file_version (originally itrver) is a NAMELIST value with a different canonical spelling, kept local in core/parmin.f90 and copy-assigned.
 control	kindrn	integer(50)	0*	run_kind	verified		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
 control	ldebug	logical	.false.*	write_debug_output	proposed		Enable the debug output stream
 control	lcorr	logical	.false.*	write_correction_output	verified		crrect: print solver correction diagnostics
 control	lmilne	logical	.false.*	write_milne_output	verified		Gate the Milne-format blocks in putstore/wrtout
-control	ltrack	logical	.false.*	write_track_output	proposed	~ MESA history	Write the .track evolution file
 control	lstore	logical	.false.*	write_store_output	proposed	~ MESA profiles	Write full stored models (.store)
 control	lfirst	logical(50)	.false.*	first_call_flag	canonical		
 control	lstpch	logical	.false.*	store_final_model_flag	proposed		Store the last model of each run (with write_store_output)

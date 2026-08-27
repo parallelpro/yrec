@@ -55,10 +55,6 @@
       ! (legacy name: fdebug)
       debug_output_file = ''   ! (implicit)
 
-      ! Evolution track (.track) output path
-      ! (legacy name: ftrack)
-      track_output_file = ''   ! (implicit)
-
       ! Model summary (.short) output path
       ! (legacy name: fshort)
       short_output_file = ''   ! (implicit)
@@ -167,10 +163,6 @@
       ! (legacy name: fmonte2)
       monte_carlo_file2_path = ''   ! (implicit)
 
-      ! former common/track/: track_file_version (originally itrver) is a NAMELIST value with a different canonical spelling, kept local in core/parmin.f90 and copy-assigned.
-      ! (legacy name: itrver)
-      track_file_version = 1
-
       ! Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
       ! (legacy name: kindrn)
       run_kind = 0   ! (implicit)
@@ -186,10 +178,6 @@
       ! Gate the Milne-format blocks in putstore/wrtout
       ! (legacy name: lmilne)
       write_milne_output = .false.   ! (implicit)
-
-      ! Write the .track evolution file
-      ! (legacy name: ltrack)
-      write_track_output = .false.   ! (implicit)
 
       ! Write full stored models (.store)
       ! (legacy name: lstore)
