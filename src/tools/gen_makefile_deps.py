@@ -11,10 +11,15 @@ from the loop:
   * scans every src/**/*.f90 for `module <name>` definitions and
     `use <name>` references (modules defined in-repo only);
   * emits MODULE_SRCS (every module-defining file);
-  * emits an order-only rule for EVERY object on the module objects
-    it uses -- module and non-module objects alike, so the parallel
-    module phase can never compile a consumer before its .mod is
-    regenerated;
+  * emits a REAL prerequisite for EVERY object on the .mod files of
+    the modules it uses, plus a `<mod>.mod: <definer>.o` rule with an
+    empty recipe (the classic gfortran+make idiom). This fixes BOTH
+    failure modes: build order under -j, and staleness -- when a
+    module's interface changes, gfortran rewrites the .mod and every
+    consumer recompiles; when it doesn't, gfortran leaves the .mod
+    untouched and nothing rebuilds spuriously. (Order-only rules
+    alone fixed only the first: a changed optional-argument interface
+    left stale caller objects passing the old ABI -- a segfault.);
   * emits real prerequisites for `include '<file>.inc'` lines
     (resolved relative to the source's directory, gfortran's own
     search rule), so editing a generated .inc rebuilds its includer.
@@ -70,15 +75,22 @@ def main():
         "",
         "MODULE_SRCS := " + " ".join(sorted(set(mod_of.values()))),
         "",
-        "# order-only rules: each object waits for the module objects",
-        "# whose .mod files it reads",
+        "# each .mod file is produced by compiling its definer; the empty",
+        "# recipe lets make order and compare against the .mod timestamp",
+        "# (gfortran only rewrites a .mod whose content changed, so",
+        "# consumers rebuild exactly when an interface changes)",
     ]
+    for name in sorted(mod_of):
+        lines.append(f"{name}.mod: {mod_of[name][:-4]}.o")
+        lines.append("\t@true")
+    lines += ["", "# real prerequisites: each object depends on the .mod",
+              "# files of every module it uses"]
     for rel in sorted(uses):
-        deps = sorted({mod_of[u] for u in uses[rel]
+        deps = sorted({u for u in uses[rel]
                        if u in mod_of and mod_of[u] != rel})
         if deps:
-            objs = " ".join(d[:-4] + ".o" for d in deps)
-            lines.append(f"{rel[:-4]}.o: | {objs}")
+            mods = " ".join(d + ".mod" for d in deps)
+            lines.append(f"{rel[:-4]}.o: {mods}")
     lines += ["", "# real prerequisites: include files"]
     for rel in sorted(incs):
         lines.append(f"{rel[:-4]}.o: " + " ".join(sorted(set(incs[rel]))))
