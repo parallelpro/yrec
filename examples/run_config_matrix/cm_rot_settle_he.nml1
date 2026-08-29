@@ -44,7 +44,6 @@
 
   
  LRWSH = .FALSE.  
- LCORR = .TRUE.  
   
  LPULSE = .FALSE.  
   

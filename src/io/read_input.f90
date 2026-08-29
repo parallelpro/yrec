@@ -802,7 +802,8 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    fkur2, fallard, fscvh, fscvhe, fscvz, fopale, fliv95, &
            &    fmonte1,fmonte2, &
            &    kindrn, &
-           &    ldebug, lcorr, lfirst, &
+           &    ldebug, lfirst, &
+           &    terminal_interval, report_solver_diagnostics, &
            &    lpulse, lzramp, lteff, lcalst, lpurez, &
 ! MHP 9/24 add LCALSOLZX to namelist
            &    liso, lrwsh, lsenv0a,lcals,lcalsolzx, &
@@ -1612,10 +1613,9 @@ subroutine resolve_output_mode_and_paths
          write(*,*) 'LMONTE requires legacy output; setting use_legacy_output = .true.'
          use_legacy_output = .true.
       end if
-      if (use_legacy_output) then
-      write(short_file_unit,nml=physics)
-      write(short_file_unit,nml=control)
-      end if
+! 2026 log redesign: the full namelist echo into the run log is
+! replaced by the verbatim inlist copy written to the output
+! directory (inlist_used -- see copy_inlists_used below).
 
 ! Post-process all CONTROL namelist vars that hold path values.
 ! Expand any placeholders found in the string with the value taken from a
@@ -1661,6 +1661,7 @@ subroutine derive_options_and_open_files
       print *,"OUTPUT placed in :  ",fshort(1:last_slash_idx)
       print *, ''
       call system(shell_cmd)
+      call copy_inlists_used(fshort(1:last_slash_idx))
 
 
 ! JVS 02/11 Acoustic depth/ Asteroseismic glitch output. Puts output
@@ -1806,15 +1807,43 @@ subroutine derive_options_and_open_files
 end subroutine derive_options_and_open_files
 
 ! ---------------------------------------------------------------
+! Write a verbatim copy of the namelist input file(s) into the
+! output directory as "inlist_used" -- run provenance (2026 log
+! redesign: replaces the STANDARD/CURRENT settings tables and the
+! full namelist echoes the run log used to carry).
+subroutine copy_inlists_used(outdir)
+      character(len=*), intent(in) :: outdir
+      integer :: src_unit, dst_unit
+      character(len=4096) :: line
+      integer :: ios, nfile
+      character(len=256) :: sources(2)
+      sources(1) = control_nml_file
+      sources(2) = physics_nml_file
+      open(newunit=dst_unit, file=trim(outdir)//'inlist_used', &
+           form='FORMATTED', status='UNKNOWN')
+      do nfile = 1, 2
+         if (nfile == 2 .and. trim(sources(2)) == trim(sources(1))) exit
+         open(newunit=src_unit, file=sources(nfile), form='FORMATTED', &
+              status='OLD', iostat=ios)
+         if (ios /= 0) cycle
+         write(dst_unit,'(2a)') '! ==== copied verbatim from: ', &
+              trim(sources(nfile))
+         do
+            read(src_unit,'(a)',iostat=ios) line
+            if (ios /= 0) exit
+            write(dst_unit,'(a)') trim(line)
+         end do
+         close(src_unit)
+      end do
+      close(dst_unit)
+end subroutine copy_inlists_used
+
+! ---------------------------------------------------------------
 ! Write the full settings echo to the short/log stream (legacy
 ! layout, format statements local to this block).
 subroutine echo_settings
-      write(short_file_unit,1)(chi_grid_scale(i),i=1,12),alphae,alphac,linstb,ljdot0, &
-           &               alfa,fk,fw,fc,fo,fmu,rcrit
-      1 format(1x,'PT TOL',12f6.3/1x,'O.S.ENV',f6.3,' O.S.CORE',f6.3, &
-           &        ' LINSTB ',l1,' LJDOT ',l1,' WIND IND.',f6.3,' FK', &
-           &        1pe8.2/1x,' FV',0pf5.2,' FC',f5.2,' COUPLING' &
-           &        ,f6.3, ' F MU',f5.2,' RCRIT',f9.1)
+! 2026 log redesign: the PT TOL / O.S. / wind-index echo is deleted
+! (settings provenance = the inlist_used copy in the output dir).
       star%tenv = 0.5d0*(tenv0 + tenv1)
       if(lrot) then
          lnew0 = .true.
@@ -2092,86 +2121,12 @@ subroutine echo_settings
       target_oxygen_cno_fraction = frac_o
       target_metal_fraction = zxmix
 
-!     WRITE OUT RUN PARAMETERS.
-
-      write(short_file_unit,50)initial_envelope_x,initial_envelope_z
-      50 format(30x,'RUN DATA VALUES'/3x, &
-           &        'LINE  1     XENV0     ZENV0       ZSI'/2x, &
-           &        'STANDARD       N/A       N/A  0.00E+00'/3x, &
-           &        'CURRENT',1p2e10.0,2x,e8.2)
+! 2026 log redesign: the STANDARD/CURRENT settings tables (LINE 1-11)
+! are deleted -- the verbatim inlist copy in the output directory
+! (inlist_used) is the settings provenance now.
       if(npoint.le.0) npoint = 9999
-      write(short_file_unit,70) ldebug,lcorr,npoint
-      70 format(3x,'LINE  2    LDEBUG     LCORR    NPOINT'/2x,'STANDARD',2(9x,'T'),6x, &
-           & '9999'/3x,'CURRENT',2(9x,l1),6x,i4)
       if(npenv.le.0) npenv = 9999
-      write(short_file_unit,110)lenvg,atmstp,envstp
-      110 format(3x,'LINE 4     LENVG    ATMSTP    ENVSTP'/2x,'STANDARD',7x, &
-           &        'N/A',6x,'0.50',6x,'0.50'/3x,'CURRENT',9x,l1,2(4x,f6.3))
       if(pulse_gyre_interval.lt.0) pulse_gyre_interval = 0
-
-!     SPIT OUT NAMELIST VARIABLES TO ISHORT
-
-      write(short_file_unit,25) (tcut(j),j=1,5),tscut,tenv0,tenv1,tgcut
-      25 format(3x,'LINE  2    TCUT-  E  TCUT- PP  TCUT-CNO  TCUT-                                                                     &
-&3A  TCUT- NU TCUT-SAHA     TENV0     TENV1     TGCUT'/2x, 'STANDAR                                                            &
-&D',9x,'6.50',6x,'6.50',6x,'6.82',6x,'7.70',6x,'7.50',6x, &
-           & '6.00',6x,'3.00',6x,'9.00',6x,'6.90'/3x,'CURRENT', &
-           & 9(5x,f5.2))
-      write(short_file_unit,35) atmerr,atmmax,atmd0,enverr,envmax,envmin
-! MHP 10/02 obsolete variables removed
-!      WRITE(ISHORT,35) NIATM,ATMERR,ATMMAX,ATMD0,NIENV,ENVERR,ENVMAX,
-!     *ENVMIN
-      35 format(3x,'LINE  3     NIATM    ATMERR    ATMMAX     ATMD0',5x, &
-           & 'NIENV    ENVERR    ENVMAX    ENVMIN'/2x,'STANDARD',9x,'8',2x, &
-           & '3.00E-04  5.00E-01  1.00E-10',8x,'10  3.00E-04  5.00E-01  2.50E-0                                                            &
-&1'/3x,'CURRENT',10x,3(1pe10.2),10x,3(1pe10.2))
-!     *1'/3X,'CURRENT',7X,I3,3(1PE10.2),7X,I3,3(1PE10.2))
-      write(short_file_unit,45) tridt,tridl/tridt/tridl
-      45 format(3x,'LINE  4     TRIDT     TRIDL    LSENV0',5x, &
-           & 'SENV0'/2x,'STANDARD',6x,'0.01',6x,'0.08',9x,'F',2x, &
-           & '1.00E-07'/3x,'CURRENT',2f10.4)
-      write(short_file_unit,55)(htoler(5,j),j=1,2),((htoler(i,j),i=1,4),j=1,2)
-      55 format(3x,'LINE  5 TOL.RHS-P TOL.RHS-T MIN.COR-P MIN.COR-T MIN.COR                                                            &
-&-R MIN.COR-L MAX.COR-P MAX.COR-T MAX.COR-R MAX.COR-L'/2x,'STANDARD                                                            &
-&  3.00E-05  2.50E-06  6.00E-05  4.50E-05  3.00E-05  9.00E-05  9.00                                                            &
-&E-01  5.00E-01  5.00E-01  2.00E+00'/3x,'CURRENT',10(2x,1pe8.2))
-      write(short_file_unit,65)(chi_grid_scale(j),j=1,8)
-      65 format(3x,'LINE  6  D(S)-MIN  D(S)-MAX   FLAG-DX   FLAG-DZ    MAX                                                             &
-&DP MAX DL/LT    MAX DX    MAX DZ'/2x,'STANDARD  1.00E-08  8.00E-02                                                            &
-&  5.00E-02  1.00E+00  5.00E-02  2.00E-02  1.00E+00  1.00E+00'/3x, &
-           & 'CURRENT',8(2x,1pe8.2))
-      write(short_file_unit,75)lnewcp,anewcp,value_relative_to_h,xnewcp
-      75 format(3x,'LINE  7    LNEWCP    ANEWCP      LREL    XNEWCP'/2x, &
-           & 'STANDARD',9x,'F',7x,'N/A',9x,'T',7x,'N/A'/3x,'CURRENT',9x,l1,7x, &
-           & a3,9x,l1,1pe10.2)
-      write(short_file_unit,85)acfpft,itfp1,itfp2
-      85 format(3x,'LINE  8    ACFPFT     ITFP1     ITFP2'/2x,'STANDARD', &
-           & 1x,'1.000E-20',9x,'2',8x,'20'/3x,'CURRENT',1pe10.3,6x,i4,6x,i4)
-      write(short_file_unit,105) niter1,niter2,fcorr0,fcorri
-      105 format(32x,'RUN DATA VALUES'/3x, &
-           & 'LINE  1    NITER1    NITER2    FCORR0    FCORRI'/2x, &
-           & 'STANDARD',9x,'2',8x,'20',6x,'0.80',6x,'0.10'/3x, &
-           & 'CURRENT',2(6x,i4),2(5x,f5.2))
-      write(short_file_unit,145)(atime(i),i=1,3),atime(7)
-      145 format(3x,'LINE  5 XCORE MIN  DEL.XCORE FRAC.XCORE DEL.XSHELL'/2x, &
-           & 'STANDARD     0.001     0.020     0.500     0.100'/3x,'CURRENT', &
-           & 4(4x,f6.3))
-      write(short_file_unit,155)(atime(i),i=4,6)
-      155 format(3x,'LINE  7 DEL.YCORE  FRAC.YCORE DEL.YSHELL'/2x,'STANDARD                                                             &
-&    0.020     0.300    0.0015'/3x,'CURRENT',2(5x,f5.3),4x,f6.4)
-      write(short_file_unit,165) lkuthe
-      165 format(3x,'LINE  8    LKUTHE'/,2x, &
-           & 'STANDARD',9x,'F'/3x,'CURRENT',9x,l1)
-      write(short_file_unit,175) star%mixing_length_alpha,dpenv,lovstc,alphac,lovste,alphae
-      175 format(3x,'LINE  9   CMIXL     DPENV    LOVSTC    ALPHAC    LOVSTE                                                            &
-&    ALPHAE'/2x,'STANDARD',7x,'N/A',6x,'1.00',2(9x,'F',6x,'0.00')/ &
-           & 3x,'CURRENT',2(5x,f5.2),2(9x,l1,5x,f5.2))
-      write(short_file_unit,185) lnew0,lexcom
-      185 format(3x,'LINE 10   LNEW0    LEXCOM'/2x, &
-           & 'STANDARD',2(9x,'F')/3x,'CURRENT',2(9x,l1))
-      write(short_file_unit,195) lrot,walpcz,linstb
-      195 format(3x,'LINE 11      LROT    WALPCZ    LINSTB'/2x,'STANDARD', &
-           & 7x,'N/A',6x,'0.00',7x,'N/A'/3x,'CURRENT',9x,l1,5x,f5.2,9x,l1)
       if(kttau .eq. 0) then
            write(short_file_unit, 197)
       else if (kttau .eq. 1) then
@@ -2186,31 +2141,30 @@ subroutine echo_settings
       else if (kttau .eq. 5) then
            write(short_file_unit, 1887)
       end if
-      197 format(' USING EDDINGTON T-TAU RELATION.')
-      198 format(' USING KRISHNA-SWAMY T-TAU RELATION.')
-      1999 format(' USING HARVARD-SMITHSONIAN REFERENCE ATMOSPHERE')
-      1888 format(' USING KURUCZ ATMOSPHERE TABLE')
-      1889 format(' USING ALLARD ATMOSPHERE TABLE')
-      1887 format(' USING KURUCZ/CASTELLI ATMOSPHERE TABLE')
+      197 format(1x,'surface boundary: Eddington gray T(tau) relation')
+      198 format(1x,'surface boundary: Krishna-Swamy T(tau) relation')
+      1999 format(1x,'surface boundary: Harvard-Smithsonian reference atmosphere')
+      1888 format(1x,'surface boundary: Kurucz atmosphere tables')
+      1889 format(1x,'surface boundary: Allard atmosphere tables')
+      1887 format(1x,'surface boundary: Kurucz/Castelli atmosphere tables')
 
 ! DBG PULSE
       if (lpulse) then
           write(short_file_unit,196)
-      196     format(/,' CALCULATE PULSATION OUTPUT ON LAST MODEL')
+      196     format(1x,'pulsation output will be written for the last model')
       end if
       if (lpurez) then
-          write(short_file_unit,*) ' USING PURE C AND N OPACITY TABLES'
+          write(short_file_unit,'(1x,a)') 'opacity: pure C and N tables enabled'
       end if
 
       write(short_file_unit,314)
-      314    format('#',/,'#',100('='))
+      314    format(/,1x,100('='))
       write(short_file_unit,version_fmt) yrec_version_string, git_hash_string
-      write(short_file_unit,310) descrip(1),  descrip(2)
-      310    format('# DESCRIPTION OF RUN:',a80,/, '#',9x,'  ',8x,': ', &
-           &           a80,/,'#', 100('='))
+      write(short_file_unit,'(1x,2a)') 'description: ', trim(descrip(1))
+      if (len_trim(descrip(2)) > 0) &
+           write(short_file_unit,'(14x,a)') trim(descrip(2))
+      write(short_file_unit,'(1x,100(''=''))')
 
-      write(short_file_unit,323)
-      323 format(' USING OSCILATORY SPLINE INTERPOLATION IN HPOINT')
 
 end subroutine echo_settings
 
@@ -2221,7 +2175,7 @@ subroutine interpret_kind_cards
 !     INTERPRET RUN FROM SEQUENCE OF "KIND" CARDS
 
       write(short_file_unit,200)
-      200 format(/35x,'RUN CARDS'/)
+      200 format(/1x,'run plan',/)
 
       lfirst(1) = .true.
 
@@ -2244,27 +2198,23 @@ subroutine interpret_kind_cards
           if (lfirst(nkind)) then
              write(iowr,350) nkind,nmodls(nkind)
              write(short_file_unit,350) nkind,nmodls(nkind)
-      350          format(/1x,'RUN #',i3,'   EVOLVE ',i5, &
-           &          ' MODELS, STARTING', &
-           &          ' WITH THE INPUT "FIRST MODEL".')
+      350          format(1x,'card',i3,': evolve up to',i6, &
+           &          ' models from the starting model')
           else
              write(iowr,351) nkind, nmodls(nkind)
              write(short_file_unit,351) nkind, nmodls(nkind)
-      351          format(/1x,'RUN #',i3,'   EVOLVE ',i5, &
-           &          ' MODELS, STARTING', &
-           &          ' WITH THE PREVIOUS RUN''S LAST MODEL.')
+      351          format(1x,'card',i3,': evolve up to',i6, &
+           &          ' models from the previous card''s model')
           end if
 ! GENERALIZE STOP CONDITIONS
           if(end_age_stop_active(nkind).or.timestep_override_active(nkind)) then
-             write(iowr,370)end_age_stop_active(nkind),timestep_override_active(nkind), &
-           &               endage(nkind), setdt(nkind),end_dcen(nkind), &
-           &          end_xcen(nkind),end_ycen(nkind)
-             write(short_file_unit,370)end_age_stop_active(nkind),timestep_override_active(nkind), &
-           &          endage(nkind), setdt(nkind),end_dcen(nkind), &
-           &          end_xcen(nkind),end_ycen(nkind)
-      370          format(1x,'EVOLVE TO AGE ',l1,' SET DELT ', &
-           &               l1,' FINAL AGE ', e9.2,' FIXED TSTEP ',e9.2, &
-           &   ' CENTRAL D ',e10.4,' CENTRAL X ',e12.4,' CENTRAL Y ',e12.4)
+             write(iowr,370) endage(nkind), setdt(nkind), &
+           &          end_dcen(nkind), end_xcen(nkind), end_ycen(nkind)
+             write(short_file_unit,370) endage(nkind), setdt(nkind), &
+           &          end_dcen(nkind), end_xcen(nkind), end_ycen(nkind)
+      370          format(9x,'stop conditions (0 = unused): age =',es9.2, &
+           &          ' yr   fixed dt =',es9.2,' yr   central: log rho =',es10.3, &
+           &          '  X =',es10.3,'  Y =',es10.3)
           endif
             end if
        else if(kindrn(nkind).eq.2) then
@@ -2279,22 +2229,20 @@ subroutine interpret_kind_cards
           if (lfirst(nkind)) then
              write(iowr,450) nkind
              write(short_file_unit,450) nkind
-      450          format(/1x,'RUN #',i3, &
-           &          '   RESCALE THE INPUT MODEL: "FIRST MODEL".')
+      450          format(1x,'card',i3,': rescale the starting model')
           else
              write(iowr,451) nkind
              write(short_file_unit,451) nkind
-      451          format(/1x,'RUN #',i3, &
-           &          '   RESCALE THE PREVIOUS RUN''S LAST MODEL.')
+      451          format(1x,'card',i3, &
+           &          ': rescale the previous card''s model')
           end if
           write(iowr,452) nmodls(nkind),(rescale_params(i,nkind),i = 1,4)
           write(short_file_unit,452) nmodls(nkind), &
            &       (rescale_params(i,nkind),i = 1,4)
-      452       format(1x,'RELAX RESCALED MODEL',i3, &
-           &       ' TIMES. RESCALE THE FOLLOW', &
-           &       'ING(0=USE CURRENT VALUE):'/1x,'MASS ', &
-           &       f9.6,3x,'X',f9.6,3x,'Z', &
-           &       f9.6,3x,'CORE MASS',f9.6)
+      452       format(9x,'relax for',i3,' models; targets', &
+           &       ' (0 or negative = keep current):', &
+           &       '  M =',f9.6,'  X =',f9.6,'  Z =',f9.6, &
+           &       '  core mass =',f10.6)
             end if
          else if(kindrn(nkind).eq.3) then
 ! RESCALE AND EVOLVE CARD:  RESCALE STARTING MODEL
@@ -2307,8 +2255,8 @@ subroutine interpret_kind_cards
             if (lfirst(nkind)) then
                write(iowr,550) nkind
                write(short_file_unit,550) nkind
-      550          format(/1x,'RUN #',i3, &
-           &          '   RESCALE & EVOLVE THE INPUT MODEL: "FIRST MODEL".')
+      550          format(1x,'card',i3, &
+           &          ': rescale and evolve the starting model')
             else
                write(iowr,451) nkind
                write(short_file_unit,451) nkind

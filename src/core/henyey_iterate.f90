@@ -90,6 +90,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
      iteration_level, ierr)
       use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use yale_eos_lib
 
@@ -268,10 +269,13 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
                star%max_residual(2).le.star%ctrl%htoler(5,2) .and. &
                star%max_residual(3).le.star%ctrl%htoler(5,1) .and. &
                star%max_residual(4).le. star%ctrl%htoler(5,2)) then
-             write(short_file_unit,20) (star%max_residual(j),j=1,4)
-   20          format(' R.H.S. BELOW TOLERANCES--P',1PE9.2,'  T ',E9.2, &
-             '  R ',E9.2,'  L ',E9.2)
-             write(short_file_unit,75) iterations_done+1
+             star%newton_iterations = iterations_done + 1
+             if (solver_diagnostics()) then
+                write(short_file_unit,20) (star%max_residual(j),j=1,4)
+   20           format(' R.H.S. BELOW TOLERANCES--P',1PE9.2,'  T ',E9.2, &
+              '  R ',E9.2,'  L ',E9.2)
+                write(short_file_unit,75) iterations_done+1
+             end if
              converged = .true.
              return
           endif
@@ -344,7 +348,10 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        hydrogen_burn_luminosity = star%luminosity_breakdown(i_lum_pp1) + star%luminosity_breakdown(i_lum_pp2) &
             + star%luminosity_breakdown(i_lum_pp3) + star%luminosity_breakdown(i_lum_cno)
        helium_burn_luminosity= star%luminosity_breakdown(i_lum_3alpha) + star%luminosity_breakdown(i_lum_he_c)
-       if (star%ctrl%lcorr) then
+       if (converged) star%newton_iterations = iterations_done + 1
+! 2026 log redesign: the correction trace was gated on the retired
+! LCORR control; it is solver forensics, behind the diagnostics flag.
+       if (solver_diagnostics()) then
           write (short_file_unit,60) converged,star%max_residual(4), &
                star%ctrl%htoler(4,1),star%max_correction_index(4)
    60       format (1X,'DEL-L/L  ',L2,1P2E12.4,5X,I5)

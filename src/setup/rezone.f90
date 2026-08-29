@@ -20,6 +20,7 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_metals, i_o16, json
       use kap_lib
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use numerics_lib
 
@@ -353,7 +354,9 @@ subroutine flag_fixed_points
       if (i.gt.flag_count) exit
       end do
       end if
-      write(short_file_unit,185) (flag_point(j),j=1,flag_count)
+      if (solver_diagnostics()) then
+         write(short_file_unit,185) (flag_point(j),j=1,flag_count)
+      end if
   185 format(1X,'FLAG-POINTS',20I4)
 end subroutine flag_fixed_points
 
@@ -858,7 +861,9 @@ subroutine interpolate_onto_new_grid
          call osplin(star%old_shell_mass,rot_scr%old_eps,star%log_mass,spline_y, &
               old_point_count,new_point_count)
       endif
-      write(short_file_unit,1020) star%nz,new_num_zones
+      if (solver_diagnostics()) then
+         write(short_file_unit,1020) star%nz,new_num_zones
+      end if
  1020 format(' POINTS  OLD',I5,'   NEW',I5)
       star%nz = new_num_zones
 ! SET UP WEIGHTS AND MASSES

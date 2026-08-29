@@ -33,6 +33,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       use rotation_scratch_lib
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use net_lib
       use burn_lib
@@ -404,7 +405,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
       end if
 !  WRITE OUT THE LOCATIONS OF MIXED REGIONS.
-      if (num_mixed_zones.ge.1) then
+      if (num_mixed_zones.ge.1 .and. solver_diagnostics()) then
          write(short_file_unit,110) ((star%mixed_zone_bounds(zone_idx,inner_zone_idx), &
               inner_zone_idx=1,2),zone_idx=1,num_mixed_zones)
   110    format(' ZONES MIXED IN ORDER--',12('(',i5,',',i5,') ') )

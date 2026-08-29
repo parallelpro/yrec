@@ -63,7 +63,7 @@ OBJS := $(patsubst %.f90,%.o,$(SRCS))
 # statement. The order-only prerequisite below (declared once all module
 # sources are known) ensures every module object is built first, safely
 # under parallel (-j) builds, without forcing spurious rebuilds.
-MODULE_SRCS := state/phys_const_lib.f90 io/controls_lib.f90 io/luout_lib.f90 numerics/intpar_lib.f90 atm/envstruct_lib.f90 atm/atmstruct_lib.f90 eos/scv_eos_lib.f90 eos/eos_mixture_lib.f90 kap/conductive_table_lib.f90 state/star_info_lib.f90 rotation/rotation_scratch_lib.f90 atm/atm_table_lib.f90 eos/mhd_eos_lib.f90 kap/opacity_table_lib.f90 eos/opal_eos_lib.f90 eos/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/observables_lib.f90 state/controls_sync_lib.f90 core/yrec_reset.f90 core/yrec_capi.f90 io/yrec_output.f90
+MODULE_SRCS := state/phys_const_lib.f90 io/controls_lib.f90 io/luout_lib.f90 numerics/intpar_lib.f90 atm/envstruct_lib.f90 atm/atmstruct_lib.f90 eos/scv_eos_lib.f90 eos/eos_mixture_lib.f90 kap/conductive_table_lib.f90 state/star_info_lib.f90 io/run_log.f90 rotation/rotation_scratch_lib.f90 atm/atm_table_lib.f90 eos/mhd_eos_lib.f90 kap/opacity_table_lib.f90 eos/opal_eos_lib.f90 eos/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/observables_lib.f90 state/controls_sync_lib.f90 core/yrec_reset.f90 core/yrec_capi.f90 io/yrec_output.f90
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)

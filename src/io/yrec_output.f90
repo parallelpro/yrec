@@ -129,6 +129,7 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
      total_rotational_kinetic_energy)
       use star_info_lib, only: star
       use luout_lib
+      use run_log_lib, only: log_model_line
       double precision, intent(in) :: timestep_yr
       double precision, intent(out) :: log_gravity
       logical, intent(in) :: has_h_shell
@@ -140,6 +141,9 @@ subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
            total_rotational_kinetic_energy
       integer :: iprof
 
+! 2026 log redesign: the compact progress line prints in BOTH modes
+! (throttled by terminal_interval; run_log_lib).
+      call log_model_line()
       if (star%ctrl%use_legacy_output) then
          call write_legacy_output(timestep_yr, log_gravity, has_h_shell, &
               h_shell_begin_index, h_shell_end_index, h_shell_mid_index, &

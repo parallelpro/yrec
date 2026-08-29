@@ -37,7 +37,6 @@
       character(len=256) :: opal95_opacity_table_file
       integer :: run_kind(50)
       logical :: write_debug_output
-      logical :: write_correction_output
       integer :: debug_print_interval
       integer :: envelope_print_points
       integer :: max_model_number(50)
@@ -150,9 +149,8 @@
            & scv_z_table_file, opal_eos_table_file, &
            & opal95_opacity_table_file, monte_carlo_file1_path, &
            & monte_carlo_file2_path, run_kind, write_debug_output, &
-           & write_correction_output, first_call_flag, &
-           & pulsation_output_active, use_z_ramp, specify_teff_flag, &
-           & calibrate_star_flag, use_pure_z_table, &
+           & first_call_flag, pulsation_output_active, use_z_ramp, &
+           & specify_teff_flag, calibrate_star_flag, use_pure_z_table, &
            & isochrone_output_active, rewind_short_file, &
            & has_senv0_array, calibrate_solar_model, calibrate_solar_zx, &
            & use_laol89_tables, use_opal92_tables, use_opal95_tables, &
@@ -275,6 +273,7 @@
            & tol_dm_max, tol_dm_min, tol_dp_core_max, tol_dp_czbase_max, &
            & tol_dp_env_max, tol_dx_max, tol_dz_max, time_max_dt_frac, &
            & use_new_rate_variables, calc_envelope_flag, &
-           & star_history_name, profile_interval, pulse_format, &
+           & star_history_name, terminal_interval, &
+           & report_solver_diagnostics, profile_interval, pulse_format, &
            & write_profile_flag, write_pulse_flag, &
            & compute_neutrino_fluxes

@@ -159,10 +159,6 @@
       ! (legacy name: ldebug)
       write_debug_output = .false.   ! (implicit)
 
-      ! crrect: print solver correction diagnostics
-      ! (legacy name: lcorr)
-      write_correction_output = .false.   ! (implicit)
-
       ! (legacy name: lfirst)
       first_call_flag = .false.   ! (implicit)
 

@@ -98,8 +98,10 @@ subroutine compute_observables(ierr)
 ! (star% members read by write_history). Formulas are the legacy
 ! .track v0 branch's, verbatim. Legacy mode skips this: wrtout
 ! computes the same values internally with pinned print ordering.
+! surface radius/gravity run in BOTH modes since the run-log model
+! line (2026 log redesign) reads log_R_surface.
+      call compute_surface_globals
       if (.not. star%ctrl%use_legacy_output) then
-         call compute_surface_globals
          call compute_moment_of_inertia
          call compute_snu_rates
          call compute_rotation_observables

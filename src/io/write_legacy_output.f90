@@ -47,7 +47,6 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
       data clsnuf/0.0D0,1.6D1,4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0/
 
 ! --- locals ---
-      logical :: time_scaling_disabled
       integer :: i
 ! core_boundary_log_radius/core_boundary_radius (CORERL/CORER) are
 ! computed below but never read afterward anywhere in the original
@@ -89,143 +88,22 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
 !       REAL*8 DEL1(JSON), DEL2(JSON)
 ! end JVS
 
-      time_scaling_disabled=.false.
 !  WRITE HEADER FILE DESCRIBING THE GLOBAL PROPERTIES OF THE STAR
 !  AND THE CENTRAL CONDITIONS TO THE SHORT OUTPUT FILE
 !  THIS INFORMATION IS ALSO WRITTEN TO THE MODEL OUTPUT FILE IF
 !  A DETAILED BREAKDOWN OF THE STELLAR STRUCTURE IS TO BE PRINTED
 !  FOR THIS MODEL.
 !
-      write(short_file_unit,21)
-   20 format(1X,127('*'))
-   21 format(/,1X,127('*'))
-      if(.not.star%ctrl%helium_flash_active) then
-       write(short_file_unit,30)star%model_number,star%star_mass,star%xnew,star%znew,star%dage,timestep_yr
-   30    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
-          ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',F12.0)
-      else
-       write(short_file_unit,40)star%model_number,star%star_mass,star%xnew,star%znew,star%dage,timestep_yr
-   40    format(1X,'MODEL NO.',I5,2X,'MASS',F13.7,2X,'(X,Z)=(',F11.9, &
-          ',',F11.9,')',2X,'AGE(GYRS)',F14.8,' STEP(YRS)=',1PE12.4)
-      endif
-
-      bolometric_magnitude = star%solar_bolometric_magnitude-2.5D0*star%log_L
+! 2026 log redesign: the per-model physical summary block (MODEL
+! NO. / SHELLS / LOG(TEFF) / CENTER / ENERGY / H-SHELL / NEUTRINOS /
+! FIT-POINT) is deleted -- history.data is the only home for
+! per-model physical data, and the run-log progress line covers
+! at-a-glance monitoring. What survives below: the surface radius/
+! gravity the isochrone writer and callers need, the .mod dump, and
+! the special-purpose writers.
       radius_log_surface = 0.5D0*(star%log_L + star%log10_solar_luminosity - c4pil - csigl - 4.0D0*star%log_Teff)
       log_gravity = cgl + star%stotal - radius_log_surface - radius_log_surface
-      write(short_file_unit,50)star%nz,star%job%initial_envelope_x,star%job%initial_envelope_z,star%core_cz_mass,star%envelope_mass, star%envelope_radius
-   50 format(1X,'SHELLS=',I5,2X,'(X0,Z0)=(',F9.7,',',F9.7,')',2X, &
-       'CONV. ZONE MASSES(MSUN): CORE',F10.7,' ENV.',F10.7, &
-       ' RAD. FRAC.',F10.7)
       radius_log_surface = radius_log_surface - star%log10_solar_radius
-      write(short_file_unit,60)star%log_Teff,bolometric_magnitude,star%log_L,radius_log_surface,log_gravity
-   60 format(1X,'LOG(TEFF)=',F11.8,'  M(BOL)=',F11.7,'  LOG(L/LSUN)=' &
-       ,F12.8,'  LOG(R/RSUN)=',F12.8,'  LOG(G) =',F12.8)
-! MHP 02/12 MOVED ABOVE SECTION WHERE THESE ARE USED
-!  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
-!  CENTRAL ETA AND BETA ARE ALSO CALCULATED.
-!  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
-!  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-!  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
-! YC  If LMHD then use MHD equation of state.
-!      IF (LMHD) THEN
-!         CALL MEQOS(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
-!     *   AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,
-!     *   LDERIV,LATMO,KSAHA)
-!     *AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,QCPP,LDERIV,
-!     *LATMO,KSAHA)
-!      END IF
-      write(short_file_unit,70)star%central_log10_pressure,star%central_log10_temperature,star%central_log10_density,star%central_beta, &
-           star%central_degeneracy_eta,star%xa(i_h1,1),star%xa(i_metals,1),star%xa(i_o16,1)
-   70 format(1X,'CENTER: LOG P=',F10.7,' LOG T=',F10.8,' LOG D=', &
-       F10.6,' BETA=',F9.7,' ETA=',0PF10.5,'  X=',0PF9.7,' Z=',F9.7, &
-       ' O16=',F9.7)
-      write(short_file_unit,80)(star%luminosity_breakdown(i),i = 1,5),star%luminosity_breakdown(i_lum_he_c),star%luminosity_breakdown(i_lum_neu),star%luminosity_breakdown(i_lum_grav)
-   80 format(1X,'ENERGY: PPI',1PE13.6,'  PPII',E13.6,'  PPIII',E13.6, &
-       '  CNO',E13.6,/,9X,'TRIPLE ALPHA',E13.6,'  HE-C',E13.6, &
-       '  NEUTRINOS',E13.6,'  GRAV',E13.6)
-      h_shell_mid_mass = 0.0D0
-      h_shell_total_mass = 0.0D0
-      if(h_shell_present_flag) then
-! H-SHELL VALUES PRINTED OUT - MASSES IN SOLAR UNITS
-! SS1 - MASS INTERIOR TO CENTER OF H SHELL; SS2 = MASS OF H SHELL;
-! SS3 = HE CORE MASS; SS4 = MASS INTERIOR TO SHELL WITH MAXIMUM T
-       fit_point_mass = star%m(h_shell_mid_index)/star%solar_mass_cgs
-       h_shell_total_mass = (star%m(h_shell_end_index) - star%m(h_shell_begin_index-1))/star%solar_mass_cgs
-       he_core_mass = star%m(h_shell_begin_index-1)/star%solar_mass_cgs
-       max_log_temperature = star%central_log10_temperature
-! LOCATE MAXIMUM T - NOTE DIFFERENT METHOD USED FOR HE FLASH
-       if(.not.star%ctrl%helium_flash_active) then
-          do i = 2,star%nz
-             if(star%logT(i).lt.star%logT(i-1))exit
-          end do
-          if (i > (star%nz)) then
-          i = star%nz + 1
-          end if
-            max_temp_index = i - 1
-          if(max_temp_index.gt.1) then
-             h_shell_mid_mass = star%m(max_temp_index)/star%solar_mass_cgs
-             max_log_temperature = star%logT(max_temp_index)
-          else
-             h_shell_mid_mass = 0.0D0
-             max_log_temperature = star%logT(1)
-          endif
-          write(short_file_unit,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
-  120       format(1X,'H-SHELL MID-PT=',F10.7,' MASS TOTAL=', &
-                F10.7,2X,'HE-CORE MASS=',F10.7,1X,'MAX-T=',F10.7, &
-                ' (MASS=',F9.7,')')
-       else
-!  HE FLASH
-          do i = 2,star%nz
-             if(star%logT(i).lt.star%logT(i-1) .and. star%logT(i-1).gt.7.98D0) exit
-          end do
-          if (i > (star%nz)) then
-          i = star%nz + 1
-          end if
-            max_temp_index = i - 1
-          if(max_temp_index.gt.1) then
-             h_shell_mid_mass = star%m(max_temp_index)/star%solar_mass_cgs
-             max_log_temperature = star%logT(max_temp_index)
-!  ADDITIONAL OUTPUT FOR HE FLASH
-             max_temp_log_radius = star%logR(max_temp_index)
-             max_temp_convective_flag = star%convective_flag(max_temp_index)
-             write(short_file_unit,120)fit_point_mass,h_shell_total_mass,he_core_mass,max_log_temperature,h_shell_mid_mass
-             write(short_file_unit,150)max_temp_convective_flag,max_temp_log_radius
-  150          format(1X,'CONVECTION = ',L1,5X,'LOG(R) MAX-T =',F8.5)
-          endif
-       endif
-!  END H-SHELL SECTION
-      endif
-!     PRINT OUT NEUTRINO RATES FROM ENGEB CALCULATION
-      write(short_file_unit,160) (star%neutrino_flux_total(i),i=1,8)
-  160 format(1X,'NEUTRINOS 1E10ERG/CM^2 PP,PEP,HEP,BE7,', &
-         'B8,N13,O15,F17:', 1P8E9.2)
-! DBG 7/93 from Bahcall's book p 207 table 8.2
-      fl7li = 0.0D0*star%neutrino_flux_total(i_nu_pp)+665.0D0*star%neutrino_flux_total(i_nu_pep)+8.4D4*star%neutrino_flux_total(i_nu_hep)+ &
-              9.6D0*star%neutrino_flux_total(i_nu_be7)+3.9D4*star%neutrino_flux_total(i_nu_b8)+42.4D0*star%neutrino_flux_total(i_nu_n13)+ &
-              246.0D0*star%neutrino_flux_total(i_nu_o15)+249.0D0*star%neutrino_flux_total(i_nu_f17)
-      fl37cl = 0.0D0*star%neutrino_flux_total(i_nu_pp)+16.0D0*star%neutrino_flux_total(i_nu_pep)+4.26D4*star%neutrino_flux_total(i_nu_hep)+ &
-              2.4D0*star%neutrino_flux_total(i_nu_be7)+1.09D4*star%neutrino_flux_total(i_nu_b8)+1.7D0*star%neutrino_flux_total(i_nu_n13)+ &
-              6.8D0*star%neutrino_flux_total(i_nu_o15)+6.9D0*star%neutrino_flux_total(i_nu_f17)
-      fl71ga = 11.8D0*star%neutrino_flux_total(i_nu_pp)+215.0D0*star%neutrino_flux_total(i_nu_pep)+7.3D4*star%neutrino_flux_total(i_nu_hep)+ &
-              73.2D0*star%neutrino_flux_total(i_nu_be7)+2.43D4*star%neutrino_flux_total(i_nu_b8)+61.8D0*star%neutrino_flux_total(i_nu_n13)+ &
-              116.0D0*star%neutrino_flux_total(i_nu_o15)+117.0D0*star%neutrino_flux_total(i_nu_f17)
-      fl81br = 0.0D0*star%neutrino_flux_total(i_nu_pp)+75.0D0*star%neutrino_flux_total(i_nu_pep)+9.0D4*star%neutrino_flux_total(i_nu_hep)+ &
-              18.3D0*star%neutrino_flux_total(i_nu_be7)+2.7D4*star%neutrino_flux_total(i_nu_b8)+14.5D0*star%neutrino_flux_total(i_nu_n13)+ &
-              36.7D0*star%neutrino_flux_total(i_nu_o15)+37.0D0*star%neutrino_flux_total(i_nu_f17)
-      fl98mo = 0.0D0*star%neutrino_flux_total(i_nu_pp)+0.0D0*star%neutrino_flux_total(i_nu_pep)+10.0D4*star%neutrino_flux_total(i_nu_hep)+ &
-              0.0D0*star%neutrino_flux_total(i_nu_be7)+3.0D4*star%neutrino_flux_total(i_nu_b8)+0.0D0*star%neutrino_flux_total(i_nu_n13)+ &
-              0.0D0*star%neutrino_flux_total(i_nu_o15)+0.0D0*star%neutrino_flux_total(i_nu_f17)
-      fl115in = 78.0D0*star%neutrino_flux_total(i_nu_pp)+576.0D0*star%neutrino_flux_total(i_nu_pep)+6.1D4*star%neutrino_flux_total(i_nu_hep)+ &
-              248.0D0*star%neutrino_flux_total(i_nu_be7)+2.5D4*star%neutrino_flux_total(i_nu_b8)+224.0D0*star%neutrino_flux_total(i_nu_n13)+ &
-              355.0D0*star%neutrino_flux_total(i_nu_o15)+356.0D0*star%neutrino_flux_total(i_nu_f17)
-      write(short_file_unit,2160) fl7li,fl37cl,fl71ga,fl81br,fl98mo,fl115in
- 2160 format(1X,'NEUTRINO ENERGIES (1.E-36ERG): 7Li=', 1PE9.2, &
-       ' 37Cl=',1PE9.2,' 71Ga=',1PE9.2,' 81Br=',1PE9.2,' 98Mo=', &
-       1PE9.2, ' 115In=', 1PE9.2)
-      fit_point_mass = star%m(star%nz)/star%solar_mass_cgs
-      write(short_file_unit,170)fit_point_mass,star%logP(star%nz),star%logT(star%nz),star%logR(star%nz)
-  170 format(1X,'FIT-POINT    M/MSUN=',F16.12,5X,'(P,T,R) =',3F12.7)
-      write(short_file_unit,20)
 ! 2026 retire-legacy: the .track writer block is deleted -- every
 ! quantity it wrote is in history.data (see the .track-vs-history
 ! audit; initial_x/initial_y/mixing_length_alpha were added to the

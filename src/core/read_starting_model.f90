@@ -345,7 +345,7 @@ subroutine acquire_starting_model
 
       if (format_tag .eq. 'YMOD') then
          write(short_file_unit,11)
- 11      format('STARIN:  Input model has YREC .mod format')
+ 11      format(1x,'loading starting model (YREC .mod format)')
          call read_mod_model(iread, timestep_yr, mixing_length0, &
               use_extended_composition0, rotation_active0, jerr)
          if (jerr /= 0) then
@@ -354,7 +354,7 @@ subroutine acquire_starting_model
          end if
       else if (format_tag .eq. 'NMOD') then
          write(short_file_unit,12)
- 12      format('STARIN:  Input model has YREC7 format')
+ 12      format(1x,'loading starting model (YREC7 format)')
          call read_yrec7(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
               star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
               star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
@@ -377,7 +377,7 @@ subroutine acquire_starting_model
 
       else if (format_tag .eq. 'MOD2 ') then
          write(short_file_unit,16)
- 16      format('STARIN:  Input model has MODEL2 format')
+ 16      format(1x,'loading starting model (MODEL2 format)')
          call read_model2(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
               star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
               star%luminosity_lsun,star%logP,star%logR,star%log_mass, &

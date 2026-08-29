@@ -48,6 +48,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       use atm_table_lib
       use star_info_lib
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       implicit none
       double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
@@ -230,15 +231,17 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
        envelope_coeffs(3) =   vtx_logr(1) - envelope_coeffs(1)*vtx_logp(1) - envelope_coeffs(2)*vtx_logt(1)
        envelope_coeffs(6) = tri_logl(1) - envelope_coeffs(4)*vtx_logp(1) - envelope_coeffs(5)*vtx_logt(1)
        envelope_coeffs(9) = tri_teffl(1) - envelope_coeffs(7)*vtx_logp(1) - envelope_coeffs(8)*vtx_logt(1)
-       write(short_file_unit,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
+       if (solver_diagnostics()) then
+        write(short_file_unit,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
               (envelope_coeffs(i+i+i-3+j),j=1,3), i=1,3)
+       end if
  50      format(' ENVELOPE TRIANGLE  LOG(TE)  LOG(L)   LOG(P)   LOG(T)', &
               3X,'LOG(R)   COEFFICIENTS'/I14,L1,2X,5F9.5,8X,'LOG(R)', &
               3F10.5/ I14,L1,2X,5F9.5,5X,'LOG(L/L0)',3F10.5/ &
               I14,L1,2X,5F9.5,7X,'LOG(TE)',3F10.5)
 ! 60      FORMAT(' COUNTS  KATM',I5,'  KENV',I5,'  KSAHA',I5)
       else
-       write(short_file_unit,70)
+       if (solver_diagnostics()) write(short_file_unit,70)
  70      format(' ENVELOPE TRIANGLE NOT CHANGED')
       endif
       return

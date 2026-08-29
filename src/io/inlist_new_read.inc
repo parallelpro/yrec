@@ -45,7 +45,6 @@
       monte_carlo_file2_path = fmonte2
       run_kind = kindrn
       write_debug_output = ldebug
-      write_correction_output = lcorr
       first_call_flag = lfirst
       pulsation_output_active = lpulse
       use_z_ramp = lzramp
@@ -386,7 +385,6 @@
       fmonte2 = monte_carlo_file2_path
       kindrn = run_kind
       ldebug = write_debug_output
-      lcorr = write_correction_output
       lfirst = first_call_flag
       lpulse = pulsation_output_active
       lzramp = use_z_ramp

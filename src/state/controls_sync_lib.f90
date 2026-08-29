@@ -26,6 +26,8 @@ subroutine seed_controls_buffer
       pulse_format = star%job%pulse_format
       write_profile_flag = star%ctrl%write_profile_flag
       write_pulse_flag = star%ctrl%write_pulse_flag
+      terminal_interval = star%ctrl%terminal_interval
+      report_solver_diagnostics = star%ctrl%report_solver_diagnostics
       compute_neutrino_fluxes = star%ctrl%compute_neutrino_fluxes
       atime = star%ctrl%atime
       tcut = star%ctrl%tcut
@@ -99,7 +101,6 @@ subroutine seed_controls_buffer
       npenv = star%ctrl%npenv
       npoint = star%ctrl%npoint
       ldebug = star%ctrl%ldebug
-      lcorr = star%ctrl%lcorr
       first_unit = star%ctrl%first_unit
       run_unit = star%ctrl%run_unit
       standard_unit = star%ctrl%standard_unit
@@ -380,6 +381,8 @@ subroutine store_controls_to_star
       star%job%pulse_format = pulse_format
       star%ctrl%write_profile_flag = write_profile_flag
       star%ctrl%write_pulse_flag = write_pulse_flag
+      star%ctrl%terminal_interval = terminal_interval
+      star%ctrl%report_solver_diagnostics = report_solver_diagnostics
       star%ctrl%compute_neutrino_fluxes = compute_neutrino_fluxes
       star%ctrl%atime = atime
       star%ctrl%tcut = tcut
@@ -453,7 +456,6 @@ subroutine store_controls_to_star
       star%ctrl%npenv = npenv
       star%ctrl%npoint = npoint
       star%ctrl%ldebug = ldebug
-      star%ctrl%lcorr = lcorr
       star%ctrl%first_unit = first_unit
       star%ctrl%run_unit = run_unit
       star%ctrl%standard_unit = standard_unit

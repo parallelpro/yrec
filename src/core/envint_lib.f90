@@ -36,6 +36,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       use phys_const_lib
       use intpar_lib
       use numerics_lib
+      use run_log_lib, only: solver_diagnostics
       implicit none
 ! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES OF KURUCZ.
       integer, parameter :: nt=57, ng=11
@@ -256,8 +257,10 @@ subroutine prepare_surface_boundary
             star%use_ttau_relation = .true.
 ! Set to gray atmosphere (KTTAU=0), as
 ! TeffL is above Allard max, or GL is out of range.
-            write(*,*) 'ENVINT: Change to gray atmosphere (KTTAU=0)'
-            write(short_file_unit,*)'ENVINT: Change to gray atmosphere (KTTAU=0)'
+            write(*,'(1x,a)') 'note: Allard table lookup out of range;' &
+                 // ' switching to a gray atmosphere'
+            write(short_file_unit,'(1x,a)') 'note: Allard table lookup' &
+                 // ' out of range; switching to a gray atmosphere'
          else
             tabulated_bc = .true.
          endif
@@ -495,7 +498,7 @@ subroutine integrate_atmosphere
 
 ! CHECK IF INTEGRATION COMPLETE
        if(dabs(indep_var - x_limit).le.step_tolerance) then
-          write(short_file_unit,35)num_ok,num_bad,err_sum(1)
+          if (solver_diagnostics()) write(short_file_unit,35)num_ok,num_bad,err_sum(1)
    35       format(1X,'ATMOSPHERE INTEGRATION COMPLETE',1X, &
                  'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
                  I5/5X,'MAXIMUM RELATIVE ERROR IN P ',1PE22.13)
@@ -725,7 +728,7 @@ subroutine integrate_envelope
              vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)
              vtx_logr(vertex_index) = y(3) + interp_weight*(y_start(3) - y(3))
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
-             if(print_flag)write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%senv
+             if(print_flag .and. solver_diagnostics())write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%senv
           endif
           exit
        else if(.not.store_flag_set) then
@@ -837,7 +840,7 @@ subroutine integrate_envelope
       endif
 ! DBG PULSE WRITE END OF DATA INDICATOR
 
-      write(short_file_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)
+      if (solver_diagnostics()) write(short_file_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)
  215  format(1X,'ENVELOPE INTEGRATION COMPLETE',1X, &
            'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
            I5/5X,'SENV-LAST M=',1PE22.13,'  LAST M=',E22.13/ &

@@ -194,6 +194,9 @@ module star_info_lib
 ! its own locals; mix writes them) and its
 ! mixed_zone_bounds_no_overshoot (same reason, see step 3).
             integer :: nz, model_number
+! Newton iterations the last converged model took (set by
+! henyey_iterate at convergence; shown in the run-log model line).
+            integer :: newton_iterations = 0
             integer :: core_cz_top_index, envelope_cz_bottom_index
             double precision :: log_total_mass, star_mass
             double precision :: log_Teff, log_L

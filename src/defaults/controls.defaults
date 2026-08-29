@@ -821,6 +821,12 @@
       ! MESA mode: history file name (written to the output directory)
       star_history_name = 'history.data'
 
+      ! Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints
+      terminal_interval = 50
+
+      ! Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping
+      report_solver_diagnostics = .false.
+
       ! MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles
       profile_interval = 50
 

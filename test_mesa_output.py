@@ -83,38 +83,38 @@ def test_mesa_output_contract(tmp_path):
     # ---- exact file set ----
     produced = sorted(p.name for p in mesa_out.iterdir())
     profiles = [p for p in produced if p.startswith("profile")]
-    assert produced == sorted([f"{BASE}.log", f"{BASE}.mod", "history.data"]
-                              + profiles), produced
+    assert produced == sorted([f"{BASE}.log", f"{BASE}.mod", "history.data",
+                               "inlist_used"] + profiles), produced
     assert profiles, "no profile files written (profile_interval default)"
 
-    # ---- history vs the legacy .short model blocks ----
-    # (.track and .store are retired; the .short run log prints a
-    # per-model block whose MODEL NO. / SHELLS= / LOG(TEFF)= lines
-    # carry the same cross-format oracle content for EVERY model)
+    # ---- history vs the legacy run-log progress lines ----
+    # (.track and .store are retired; the run log prints the compact
+    # MESA-style progress line -- model nz age dt logTeff logL logR
+    # Xc iters -- every terminal_interval models plus card-final
+    # models, in both output modes)
     import re as _re
     short_text = (legacy_out / f"{BASE}.short").read_text()
-    blocks = _re.findall(
-        r"MODEL NO\.\s+(\d+)\s+MASS.*?AGE\(GYRS\)\s+([\d.Ee+-]+)"
-        r".*?SHELLS=\s*(\d+)"
-        r".*?LOG\(TEFF\)=\s*([\d.Ee+-]+)\s+M\(BOL\)=\s*[\d.Ee+-]+"
-        r"\s+LOG\(L/LSUN\)=\s*([\d.Ee+-]+)",
-        short_text, _re.S)
-    assert blocks, "no MODEL blocks found in the legacy .short"
+    prog = _re.findall(
+        r"^\s*(\d+)\s+(\d+)\s+([\d.]+E[+-]\d+)\s+([\d.]+E[+-]\d+)"
+        r"\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+(\d+)\s*$",
+        short_text, _re.M)
+    assert prog, "no progress lines found in the legacy run log"
     names, hist_rows, icol = _parse_mesa_file(mesa_out / "history.data")
     assert names[:3] == ["model_number", "profile_number", "num_zones"]
     # integer id columns are written as true integers
     assert "." not in hist_rows[0][0] and "." not in hist_rows[0][2]
     by_model = {int(float(hr[icol["model_number"]])): hr for hr in hist_rows}
-    assert len(blocks) == len(hist_rows)
-    for model_s, age_s, nz_s, teff_s, logl_s in blocks:
+    for model_s, nz_s, age_s, dt_s, teff_s, logl_s, logr_s, xc_s, it_s in prog:
         hr = by_model[int(model_s)]
         assert int(float(hr[icol["num_zones"]])) == int(nz_s), (model_s, nz_s)
-        # .short prints ~8 decimals; compare at that granularity
-        assert abs(float(hr[icol["star_age"]]) / 1e9 - float(age_s)) <= 1e-6
+        assert abs(float(hr[icol["star_age"]]) / 1e9 - float(age_s)) <= \
+            1e-7 * max(1.0, float(age_s))
+        # f10.6 columns: compare at print granularity
         for name, ref in (("log_L", float(logl_s)),
-                          ("log_Teff", float(teff_s))):
+                          ("log_Teff", float(teff_s)),
+                          ("log_R", float(logr_s))):
             a = float(hr[icol[name]])
-            assert abs(a - ref) <= 1e-6, (name, a, ref)
+            assert abs(a - ref) <= 2e-6, (name, a, ref)
 
     # ---- profile_number column maps models to profiles ----
     expect_num = 0

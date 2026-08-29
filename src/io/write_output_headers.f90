@@ -27,12 +27,12 @@ subroutine write_output_headers(total_mass_msun)
          write(iowr, 49) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
               star%mixing_length_alpha, star%job%num_models(star%job%nk)
       end if
-  47  format(/, ' RUN=',I2,' EVOLVE  ', ' X=',F8.6, &
-             ' Z=',F8.6,' CMIXL=', F8.6, ' NO.MODS=', I5)
-  48  format(/, ' RUN=',I2,' RESCALE ', ' X=',F8.6, &
-             ' Z=',F8.6,' CMIXL=', F8.6, ' NO.MODS=', I5)
-  49  format(/, ' RUN=',I2,' RESCALE&EVOLVE ', ' X=',F8.6, &
-             ' Z=',F8.6,' CMIXL=', F8.6, ' NO.MODS=', I5)
+  47  format(/,1x,'card',i3,' (evolve):          X =',f8.6, &
+             '  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)
+  48  format(/,1x,'card',i3,' (rescale):         X =',f8.6, &
+             '  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)
+  49  format(/,1x,'card',i3,' (rescale+evolve):  X =',f8.6, &
+             '  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)
 
       if (star%ctrl%isochrone_output_active) then
 ! header stuff for isochrone output

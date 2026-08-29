@@ -46,6 +46,13 @@ module controls_lib
 ! (cadence stays with profile_interval / pulse_gyre_interval):
       logical, public :: write_profile_flag = .false.
       logical, public :: write_pulse_flag = .false.
+! Run-log verbosity (both output modes): the compact per-model
+! progress line prints every terminal_interval models (0 = off; the
+! final model always prints), and report_solver_diagnostics restores
+! the verbose solver forensics (Henyey iteration trace, envelope/
+! atmosphere integration statistics, triangle/rezoning bookkeeping).
+      integer, public :: terminal_interval = 50
+      logical, public :: report_solver_diagnostics = .false.
 ! diagnostic: per-zone solar neutrino production table (engeb per
 ! shell) written to the short/log stream at the start of each run
       logical, public :: compute_neutrino_fluxes = .false.
@@ -243,7 +250,7 @@ module controls_lib
 ! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are all
 ! NAMELIST /physics/ values, spelled identically to their canonical
 ! names -- same treatment as common/ccout/ above.
-      logical :: ldebug = .false., lcorr = .true.
+      logical :: ldebug = .false.
 
 ! former common/lunum/: logical unit numbers for the various input/
 ! output files, none of them NAMELIST values -- core/read_input.f90

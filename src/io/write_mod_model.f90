@@ -27,6 +27,7 @@ subroutine write_mod_model(iwrite)
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, &
            i_li6, i_li7, i_be9
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       implicit none
 
       integer, intent(in) :: iwrite
@@ -65,17 +66,16 @@ subroutine write_mod_model(iwrite)
       end do
       flush(iwrite)
 
-! the historical per-save announcements (terminal echo + the .short
-! "DUMPED MODEL" line), kept byte-for-byte from write_last_model
-      write(iowr,360) star%model_number, star%nz, star%log_Teff, &
-           star%log_L, star%dage
-  360 format(I6,'  #SHELLS=', I4, '  LogTeff=',F8.5, &
-             '  Log(L/Lsun)=',F8.5,'  Age=',F12.5)
-      if (iwrite .eq. ilast) then
-       write(short_file_unit,330) star%model_number, iwrite
-      else
-       write(short_file_unit,340) star%model_number, star%dage, iwrite
-      endif
+! 2026 log redesign: the per-model terminal echo is replaced by the
+! run-log progress line (run_log_lib); the "DUMPED MODEL" bookkeeping
+! is solver forensics behind the diagnostics flag.
+      if (solver_diagnostics()) then
+         if (iwrite .eq. ilast) then
+          write(short_file_unit,330) star%model_number, iwrite
+         else
+          write(short_file_unit,340) star%model_number, star%dage, iwrite
+         endif
+      end if
   330 format(' DUMPED MODEL',I5,'  FILE',I3)
   340 format(' DUMPED MODEL',I5,' AGE',F13.9,'  FILE',I3)
 

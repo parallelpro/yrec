@@ -392,9 +392,13 @@ end subroutine begin_kind_card
 ! Finish one kind card: store the last model to the .store stream
 ! when configured (putstore) and clear the punch flag.
 subroutine end_kind_card
+      use run_log_lib, only: log_final_model_line
 ! 2026 retire-legacy: the end-of-card putstore call is deleted with
 ! the .store file (punch_pending_flag keeps its helium-flash reload
 ! role above).
+! 2026 log redesign: the last converged model of a card always gets
+! a progress line, whatever the terminal_interval phase.
+      call log_final_model_line()
 ! 110  CONTINUE
 ! G Somers END
 end subroutine end_kind_card

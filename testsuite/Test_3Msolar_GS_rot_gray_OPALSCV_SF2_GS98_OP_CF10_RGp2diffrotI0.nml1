@@ -20,7 +20,6 @@ END_YCEN(1) = 0.5 ! Run stops if NMODLS(I) is reached or this central helium is 
 
 
  LRWSH = .FALSE.
- LCORR = .TRUE.
 
  LPULSE = .FALSE.
 

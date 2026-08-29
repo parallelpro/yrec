@@ -41,7 +41,6 @@
  END_YCEN(3) = 0.0001 ! Run stops if NMODLS(I) is reached or this central helium is reached (TAHB)
 
  LRWSH = .FALSE. ! If T, the short file retains only the details from the last model. This minimizes output file size.
- LCORR = .TRUE. ! If true, output verbose details on model convergence to .short.
  LPULSE = .FALSE. ! If T, generate pulsation output. LSTATM AND LSTENV are needed to get data for those regions (highly recommended if LPULSE is T)  
   
  LALEX06 = .TRUE. ! If T, use Ferguson+2005 molecular opacities (recommended)
