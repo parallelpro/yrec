@@ -103,6 +103,7 @@ kap/kap_lib.o: | state/phys_const_lib.o state/star_info_lib.o \
 	kap/opacity_table_lib.o \
 	io/luout_lib.o
 state/controls_sync_lib.o: | io/controls_lib.o state/star_info_lib.o
+io/run_log.o: | state/star_info_lib.o io/luout_lib.o
 core/burn_lib.o: | net/net_lib.o state/star_info_lib.o \
 	state/phys_const_lib.o io/luout_lib.o
 rotation/rotation_scratch_lib.o: | state/star_info_lib.o
@@ -305,9 +306,15 @@ $(SHLIB): $(OBJS)
 lib: $(SHLIB)
 .PHONY: lib
 
-# Remove all object files, libraries, and executable
+# Remove all object files, libraries, and executable.
+# *.mod removal is load-bearing: a module .mod that survives clean can
+# be picked up by a parallel (-j) module-phase compile BEFORE its
+# regenerating module object builds, silently baking stale derived-type
+# offsets into the consumer (2026: run_log.o read a shifted
+# star%ctrl%report_solver_diagnostics this way).
 clean:
 	@rm -f $(NAME)
+	@rm -f *.mod
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
