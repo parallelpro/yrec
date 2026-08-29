@@ -213,9 +213,6 @@ end subroutine apply_monte_carlo_parameters
 ! pairs. Also saves the pulse-output flag the calibration cycles
 ! toggle.
 subroutine begin_calibration
-! DBG PULSE: save LPULSE flag, set LPULSE to F except on last model of
-! last run, then set LPULSE to saved value of LPULSE.
-      star%saved_pulse_output_flag = star%job%pulsation_output_active
 ! MHP 1/93 add option to automatically calibrate solar model.
 ! MHP 3/96 added counter for # of iterations per converged model and
 ! starting estimate of ALPHA and X

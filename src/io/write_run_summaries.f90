@@ -33,7 +33,6 @@ subroutine write_run_summaries(monte_carlo_run_number, &
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES BETWEEN CYCLES.
 ! RUN FAILED TO CONVERGE: DUMP THE MODEL WITH THE FAILURE COUNT.
-      if (star%ctrl%use_legacy_output) then
       if (star%ctrl%lmonte .and. convergence_iterations.ge.11 .and. .not.star%solar_calibration_active) then
          rewind(ilast)
          rewind(star%ctrl%first_unit)
@@ -57,6 +56,5 @@ subroutine write_run_summaries(monte_carlo_run_number, &
                  star%envelope_fit_coeffs,star%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,star%job%nk,monte_carlo_run_number)
          endif
       endif
-      end if
       return
 end subroutine write_run_summaries

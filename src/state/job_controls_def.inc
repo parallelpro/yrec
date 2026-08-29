@@ -38,7 +38,6 @@
             double precision :: env_step_begin = 0.0d0
             double precision :: env_step_min = 0.0d0
             double precision :: env_step_max = 0.0d0
-            logical :: pulsation_output_active = .false.
             integer :: atm_choice = 0
             double precision :: requested_envelope_mass = 0.0d0
             logical :: change_envelope_mass_flag = .false.

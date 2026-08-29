@@ -1,14 +1,10 @@
 !----------------------------------------------------------------------
 ! yrec_output
 !----------------------------------------------------------------------
-! Added 2026 (MESA-style output centralization). The output-mode
-! branch (controls_lib's use_legacy_output) has exactly three
-! decision points: parmin's legacy open-block (wrapped there; its
-! MESA else-branch calls output_init_mesa), output_run_header, and
-! output_write_model. run_yrec's final-model store and calibration
-! chain are legacy-only blocks wrapped in place.
+! Added 2026 (MESA-style output centralization); use_legacy_output
+! retired 2026-08-28 -- there is ONE output path for every run.
 !
-! MESA-mode output per job:
+! Output per job:
 !   <outdir>/<star_history_name>   MESA history.data layout, one row
 !                                  per converged model; columns
 !                                  selectable via history_columns_file
@@ -58,22 +54,33 @@ contains
 subroutine output_init_mesa(fshort, ierr)
       use star_info_lib, only: star
       use luout_lib
+      use run_log_lib, only: log_reset
       character(len=*), intent(in) :: fshort
       integer, intent(out) :: ierr
       logical :: gsm_supported
       external gsm_supported
       character(len=256) :: log_path
       character(len=24) :: hist_names(n_hist_cols), prof_names(n_prof_cols)
-      integer :: n, islash
+      integer :: n, islash, prior_unit
+      logical :: prior_open
 
-      n = index(fshort, '.short')
-      if (n > 0) then
-         log_path = fshort(1:n) // 'log'
+! run-log name: keep an explicit .log name as-is, swap a legacy
+! .short name to .log, append .log otherwise (so the default
+! run.log stays run.log, not run.log.log).
+      n = len_trim(fshort)
+      if (n >= 4 .and. fshort(max(1,n-3):n) == '.log') then
+         log_path = fshort
       else
-         log_path = trim(fshort) // '.log'
+         n = index(fshort, '.short')
+         if (n > 0) then
+            log_path = fshort(1:n) // 'log'
+         else
+            log_path = trim(fshort) // '.log'
+         end if
       end if
       open(short_file_unit, file=log_path, form='FORMATTED', &
            status='REPLACE')
+      call log_reset()
 
       islash = index(fshort, '/', back=.true.)
       if (islash > 0) then
@@ -82,6 +89,11 @@ subroutine output_init_mesa(fshort, ierr)
          out_dir = ' '
       end if
       hist_path = trim(out_dir) // trim(star%ctrl%star_history_name)
+! in-process re-entry: a history unit still connected from a
+! previous job would silently accumulate; close it so the lazy
+! open in write_history_row starts the file over.
+      inquire(file=hist_path, opened=prior_open, number=prior_unit)
+      if (prior_open) close(prior_unit)
       profile_counter = 0
 
       ierr = 0
@@ -117,69 +129,76 @@ subroutine output_run_header(star_mass_msun)
       use star_info_lib, only: star
       double precision, intent(in) :: star_mass_msun
 
-      if (star%ctrl%use_legacy_output) then
-         call write_output_headers(star_mass_msun)
-      end if
+      call write_output_headers(star_mass_msun)
 end subroutine output_run_header
 
 ! ---------------------------------------------------------------
-subroutine output_write_model(timestep_yr, log_gravity, has_h_shell, &
-     h_shell_begin_index, h_shell_end_index, h_shell_mid_index, &
-     trial_sign_flag, punch_pending_flag, total_angular_momentum, &
-     total_rotational_kinetic_energy)
-      use star_info_lib, only: star
+subroutine output_write_model()
+! 2026 use_legacy_output retirement: ONE output path for every run.
+! Per converged model: the run-log progress line, the isochrone
+! record (if enabled), profiles/pulse files when due, the history
+! row, the .mod restart model, and the interval GYRE pulse. The
+! remnants of the deleted write_legacy_output (wrtout) live here.
+      use star_info_lib, only: star, i_he4
       use luout_lib
       use run_log_lib, only: log_model_line
-      double precision, intent(in) :: timestep_yr
-      double precision, intent(out) :: log_gravity
-      logical, intent(in) :: has_h_shell
-      integer, intent(in) :: h_shell_begin_index, h_shell_end_index, &
-           h_shell_mid_index
-      double precision, intent(in) :: trial_sign_flag
-      logical, intent(inout) :: punch_pending_flag
-      double precision, intent(in) :: total_angular_momentum, &
-           total_rotational_kinetic_energy
       integer :: iprof
+      double precision :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
+           gravity_cgs, ycenter_local, he_core_mass_grams
+      character(len=5) :: gyre_suffix
+      character(len=64) :: gyre_path
 
-! 2026 log redesign: the compact progress line prints in BOTH modes
-! (throttled by terminal_interval; run_log_lib).
+! the compact progress line (throttled by terminal_interval)
       call log_model_line()
-      if (star%ctrl%use_legacy_output) then
-         call write_legacy_output(timestep_yr, log_gravity, has_h_shell, &
-              h_shell_begin_index, h_shell_end_index, h_shell_mid_index, &
-              trial_sign_flag, punch_pending_flag, total_angular_momentum, &
-              total_rotational_kinetic_energy)
-      else
-! Every quantity below was computed by compute_observables and
-! stored in star_info; the writers are pure readers. wrtout computes
-! log_gravity as an output on the legacy path; hand back the stored
-! value here.
-         log_gravity = star%log_g_surface
+
+! isochrone record: model no., age (yr), L (erg/s), R (cm), Teff (K),
+! g (cm/s**2), Ycenter, He-core mass (g)
+      if (star%ctrl%isochrone_output_active) then
+        age_yr = star%dage*1.0D9
+        luminosity_erg_s = 10.0D0**star%log_L*star%solar_luminosity_cgs
+        radius_cm = 10.0D0**star%log_R_surface*star%solar_radius_cgs
+        teff_k = 10.0D0**star%log_Teff
+        gravity_cgs = 10.0D0**star%log_g_surface
+        ycenter_local = star%xa(i_he4,1)
+        if (star%has_h_shell) then
+           he_core_mass_grams = star%m(star%h_shell_zone_begin-1)
+        else
+           he_core_mass_grams = 0.0D0
+        end if
+        write(star%ctrl%isochrone_file_unit,1005) star%model_number, &
+             age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs, &
+             ycenter_local,he_core_mass_grams
+ 1005   format(1X, I5, 1P7E17.8)
+      end if
+
 ! Profiles and pulse files share the trigger and the number (MESA's
 ! write_pulse_data_with_profile coupling): every profile_interval
 ! models, the counter advances and each enabled product is written --
 ! profile<N>.data, and/or profile<N>.data.GYRE / .data.FGONG per
-! pulse_format. The history profile_number column records N.
-         iprof = 0
-! The stitched arrays are built every step by evolve_step (ahead of
+! pulse_format. The history profile_number column records N. The
+! stitched arrays are built every step by evolve_step (ahead of
 ! compute_observables); this block only decides whether THIS model
 ! gets profile/pulse files, then numbers and writes.
-         if (profile_write_due()) then
-            profile_counter = profile_counter + 1
-            iprof = profile_counter
-            if (star%ctrl%write_profile_flag) call write_profile(iprof)
-            if (star%ctrl%write_pulse_flag) call write_pulse(iprof)
-         end if
-         call write_history_row(iprof)
-! The .mod model file (restart + in-run divergence recovery) is
-! written in BOTH output modes -- legacy mode writes it from
-! wrtout; this closes the historical MESA-mode gap where unit
-! ilast was never written and a diverged model had nothing to
-! reload.
-         call write_mod_model(ilast)
-! Keep the log live during the run, like the history file.
-         flush(short_file_unit)
+      iprof = 0
+      if (profile_write_due()) then
+         profile_counter = profile_counter + 1
+         iprof = profile_counter
+         if (star%ctrl%write_profile_flag) call write_profile(iprof)
+         if (star%ctrl%write_pulse_flag) call write_pulse(iprof)
       end if
+      call write_history_row(iprof)
+! The .mod model file: restart + in-run divergence recovery.
+      call write_mod_model(ilast)
+
+! interval GYRE pulse output (independent of write_pulse_flag)
+      if (star%ctrl%pulse_gyre_interval.gt.0 .and. &
+          mod(star%model_number,star%ctrl%pulse_gyre_interval).eq.0) then
+         write(gyre_suffix,'(I5.5)') star%model_number
+         gyre_path = 'gyre_profile_'//gyre_suffix//'.data.GYRE'
+         call write_gyre_pulse(star%nz,star%model_number,star%m, &
+              star%logRho,star%luminosity_lsun,star%logP,star%logR, &
+              star%logT,star%omega, gyre_path)
+      endif
 end subroutine output_write_model
 
 ! ---------------------------------------------------------------
@@ -535,7 +554,6 @@ end subroutine profile_column_names
 logical function profile_write_due()
       use star_info_lib, only: star
       profile_write_due = .false.
-      if (star%ctrl%use_legacy_output) return
       if (star%ctrl%profile_interval <= 0) return
       if (.not. (star%ctrl%write_profile_flag .or. &
            star%ctrl%write_pulse_flag)) return

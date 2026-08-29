@@ -523,8 +523,6 @@ subroutine acquire_starting_model
               total_nitrogen_cno_fraction
          oxygen_scale_ratio = star%ctrl%target_oxygen_cno_fraction/ &
               total_oxygen_cno_fraction
-         write(*,*)star%ctrl%target_carbon_cno_fraction,star%ctrl%target_nitrogen_cno_fraction, &
-              star%ctrl%target_oxygen_cno_fraction
          do i = 5,6
             do j = 1,star%nz
                star%xa(i,j)=carbon_scale_ratio*star%xa(i,j)
@@ -544,8 +542,9 @@ subroutine acquire_starting_model
               (star%xa(k,1),k=5,11)
          write(short_file_unit,594)(reference_composition(k),k=5,11), &
               (star%xa(k,1),k=5,11)
- 594     format('CNO MIX CHANGED IN STARIN. OLD C12 C13 N14' &
-           ' N15 O16 O17 O18 ',7e12.4,' NEW ',7e12.4)
+ 594     format(1x,'CNO mixture applied to the starting model:',/, &
+             4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
+             4x,'new (C12 C13 N14 N15 O16 O17 O18):',7es12.4)
       endif
 ! DESIRED ISOTOPE RATIOS AND LIGHT ELEMENT ABUNDANCES ASSIGNED.
 !     AT PRESENT B10,B11,N15,O17 ARE NOT USED AND THUS NOT ALTERED.
@@ -570,9 +569,12 @@ subroutine acquire_starting_model
               (star%xa(k,1),k=4,15)
          write(short_file_unit,593)(reference_composition(k),k=4,15), &
               (star%xa(k,1),k=4,15)
- 593     format('CNO ISOTOPES AND LIGHT ELEMENTS CHANGED IN ', &
-              'STARIN. OLD HE3 C12 C13 N14 N15 O16 O17 O18 H2 LI6 ', &
-               'LI7 BE9',12e12.4,' NEW ',12e12.4)
+ 593     format(1x,'isotope/light-element mixture applied to the', &
+             ' starting model:',/, &
+             4x,'old (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
+             12es12.4,/, &
+             4x,'new (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
+             12es12.4)
       endif
       end if
       end if

@@ -35,7 +35,6 @@ module controls_lib
 ! every legacy deck byte-pinned; parmin's new-style inlist path
 ! flips the default to .false. before the read (either format can set
 ! it explicitly).
-      logical, public :: use_legacy_output = .true.
 ! MESA-style output controls (new-format inlists only):
       character(len=256), public :: star_history_name = 'history.data'
       character(len=256), public :: history_columns_file = ' '
@@ -347,7 +346,6 @@ module controls_lib
 ! core/main.f90 sets it at runtime (from total_mass_msun) -- so it has
 ! no declaration-time default; it was unused in core/read_input.f90 itself
 ! and dropped there.
-      logical :: pulsation_output_active
 
 ! former common/atmos/: atm_choice (originally kttau) is a NAMELIST
 ! value with a different canonical spelling, kept local in

@@ -14,7 +14,7 @@
 module run_log_lib
       implicit none
       private
-      public :: solver_diagnostics, log_model_line, log_final_model_line
+      public :: solver_diagnostics, log_model_line, log_final_model_line, log_reset
 
 ! Reprint the column header every so many printed lines (MESA's
 ! write_header_frequency), and never print the same model twice
@@ -24,6 +24,13 @@ module run_log_lib
       integer :: last_printed_model = -1
 
 contains
+
+! Reset the per-run formatting state (in-process re-entry: called
+! from output_init_mesa at every job start).
+subroutine log_reset()
+      lines_since_header = header_every
+      last_printed_model = -1
+end subroutine log_reset
 
 ! The gate for verbose solver forensics in the run log.
 logical function solver_diagnostics()

@@ -18,7 +18,6 @@ module controls_sync_lib
 contains
 
 subroutine seed_controls_buffer
-      use_legacy_output = star%ctrl%use_legacy_output
       star_history_name = star%ctrl%star_history_name
       history_columns_file = star%ctrl%history_columns_file
       profile_columns_file = star%ctrl%profile_columns_file
@@ -147,7 +146,6 @@ subroutine seed_controls_buffer
       env_step_begin = star%job%env_step_begin
       env_step_min = star%job%env_step_min
       env_step_max = star%job%env_step_max
-      pulsation_output_active = star%job%pulsation_output_active
       atm_choice = star%job%atm_choice
       vnew = star%ctrl%vnew
       monte_carlo_file1_path = star%ctrl%monte_carlo_file1_path
@@ -373,7 +371,6 @@ subroutine seed_controls_buffer
 end subroutine seed_controls_buffer
 
 subroutine store_controls_to_star
-      star%ctrl%use_legacy_output = use_legacy_output
       star%ctrl%star_history_name = star_history_name
       star%ctrl%history_columns_file = history_columns_file
       star%ctrl%profile_columns_file = profile_columns_file
@@ -502,7 +499,6 @@ subroutine store_controls_to_star
       star%job%env_step_begin = env_step_begin
       star%job%env_step_min = env_step_min
       star%job%env_step_max = env_step_max
-      star%job%pulsation_output_active = pulsation_output_active
       star%job%atm_choice = atm_choice
       star%ctrl%vnew = vnew
       star%ctrl%monte_carlo_file1_path = monte_carlo_file1_path

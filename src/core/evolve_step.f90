@@ -38,7 +38,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       integer, intent(out) :: step_status, ierr
 
       double precision :: delta_lum_step, delta_pressure_step, &
-           delta_radius_step, delta_temp_step, log_gravity, &
+           delta_radius_step, delta_temp_step, &
            target_envelope_mass, teff_kelvin_unused
       integer :: envelope_cz_zone_end, envelope_cz_zone_prev, &
            iteration_level, iterations_done, max_iterations, nao, &
@@ -63,7 +63,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          delta_pressure_step = 0.0d0
          delta_radius_step = 0.0d0
          delta_temp_step = 0.0d0
-         log_gravity = 0.0d0
          target_envelope_mass = 0.0d0
          teff_kelvin_unused = 0.0d0
          envelope_cz_zone_end = 0
@@ -169,10 +168,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        call compute_observables(ierr)
        if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
-       call output_write_model(star%timestep_yr, log_gravity, star%has_h_shell, &
-            star%h_shell_zone_begin, star%h_shell_midpoint_zone, star%h_shell_end_index, &
-            star%trial_sign_flag, star%punch_pending_flag, star%total_angular_momentum, &
-            star%total_rotational_ke)
+       call output_write_model()
 
 ! MHP 10/24 GENERALIZED STOP CONDITIONS
 !     IF EVOLVING TO A GIVEN AGE AND AGE IS REACHED, KIND CARD IS DONE
@@ -185,7 +181,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! (2026: the D/X/Y checks are one table walk in stop_conditions)
          if (abundance_stop_triggered(star%job%nk)) then
 ! SET I/O FLAGS PROPERLY AND EXIT LOOP
-            star%job%pulsation_output_active = star%saved_pulse_output_flag
             star%print_rotation_diagnostics = .true.
             step_status = step_kind_card_done
             return
@@ -225,10 +220,6 @@ subroutine update_output_flags_for_step
           if (star%ctrl%rewind_short_file) then
              rewind(short_file_unit)
           endif
-! DBG PULSE:  if last model of last run then set LPULSE to LSAVPU
-            if (model_iteration.eq.star%job%num_models(star%job%nk) .and. star%job%nk .eq. star%job%num_runs) then
-                 star%job%pulsation_output_active = star%saved_pulse_output_flag
-            end if
 
 ! JVS 02/11: Also allow pulse output at particular ages along the way
 !
@@ -239,11 +230,6 @@ subroutine update_output_flags_for_step
 ! 2026 retire-legacy: the calcad/AGEOUT machinery (acoustic depths
 ! at ages of interest) is retired.
 !
-! DBG PULSE:  if endage reached then set LPULSE to LSAVPU
-! MHP 10/24 GENERALIZE CHECK
-         if (approaching_end_age(star%job%nk)) then
-                 star%job%pulsation_output_active = star%saved_pulse_output_flag
-            end if
 ! 2026 retire-legacy: the LSOUND sound-speed table, the .pmod/.penv/
 ! .patm pulse trio, and their HR-path-length reopen trigger
 ! (open_pulse_files, PO* controls) are retired -- the stitched

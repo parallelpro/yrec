@@ -21,7 +21,6 @@
   
  LRWSH = .FALSE.  
   
- LPULSE = .FALSE.  
   
  LALEX06 = .TRUE.  
  FALEX06 = "{YREC_INPUT}/opacity/molecular/alex06/alexmol06gs98.tab"  

@@ -2,7 +2,6 @@
 ! io/controls_lib.f90 -- do not edit; regenerate instead.
 ! One component per buffer member, declaration order, every
 ! one default-initialized (see the generator's header).
-            logical :: use_legacy_output = .true.
             character(len=256) :: star_history_name = 'history.data'
             character(len=256) :: history_columns_file = ' '
             character(len=256) :: profile_columns_file = ' '

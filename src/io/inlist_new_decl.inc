@@ -149,8 +149,8 @@
            & scv_z_table_file, opal_eos_table_file, &
            & opal95_opacity_table_file, monte_carlo_file1_path, &
            & monte_carlo_file2_path, run_kind, write_debug_output, &
-           & first_call_flag, pulsation_output_active, use_z_ramp, &
-           & specify_teff_flag, calibrate_star_flag, use_pure_z_table, &
+           & first_call_flag, use_z_ramp, specify_teff_flag, &
+           & calibrate_star_flag, use_pure_z_table, &
            & isochrone_output_active, rewind_short_file, &
            & has_senv0_array, calibrate_solar_model, calibrate_solar_zx, &
            & use_laol89_tables, use_opal92_tables, use_opal95_tables, &
@@ -179,8 +179,7 @@
            & initial_li6_fraction, initial_li7_fraction, &
            & initial_be9_fraction, initial_b10_fraction, &
            & initial_b11_fraction, pulse_gyre_interval, &
-           & use_legacy_output, history_columns_file, &
-           & profile_columns_file
+           & history_columns_file, profile_columns_file
       namelist /controls/ &
            & atm_step_min, atm_step_begin, atm_error_tol, atm_step_max, &
            & atm_step_initial, change_species_name, &

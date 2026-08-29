@@ -46,7 +46,6 @@
       run_kind = kindrn
       write_debug_output = ldebug
       first_call_flag = lfirst
-      pulsation_output_active = lpulse
       use_z_ramp = lzramp
       specify_teff_flag = lteff
       calibrate_star_flag = lcalst
@@ -386,7 +385,6 @@
       kindrn = run_kind
       ldebug = write_debug_output
       lfirst = first_call_flag
-      lpulse = pulsation_output_active
       lzramp = use_z_ramp
       lteff = specify_teff_flag
       lcalst = calibrate_star_flag

@@ -449,7 +449,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! here and copy-assigned after the namelist read below. xmsol (former
 ! common/pulse/'s remaining member) is unused in this file, so it's
 ! dropped entirely.
-      logical :: lpulse
 
 
 ! track: NAMELIST /physics/ member, renamed in const_lib (itrver ->
@@ -791,7 +790,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       integer, intent(out) :: ierr
 
       namelist /control/ &
-           &    use_legacy_output, &
            &    cmixla, calsolage, calsolzx, &
            &    descrip, &
            &    endage, &
@@ -804,7 +802,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    kindrn, &
            &    ldebug, lfirst, &
            &    terminal_interval, report_solver_diagnostics, &
-           &    lpulse, lzramp, lteff, lcalst, lpurez, &
+           &    lzramp, lteff, lcalst, lpurez, &
 ! MHP 9/24 add LCALSOLZX to namelist
            &    liso, lrwsh, lsenv0a,lcals,lcalsolzx, &
            &    llaol89,lopal92,lopal95,lkur90,lalex95, &
@@ -1013,7 +1011,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! MHP 8/17 INITIALIZED WMAX_SUN
       data wmax,wmax_sun/3.0d-4,1000.0/
 ! DBG PULSE DATA CARD FOR PULSATION
-      data lpulse/.false./
       data kttau/0/
       data clsun,crsun/3.8515d33,6.9598d10/
 ! YC  If LMHD is TRUE use MHD equation of state tables.  LU numbers
@@ -1334,11 +1331,8 @@ subroutine read_namelist_files
 
 ! 2026 inlist revamp: dispatch on inlist style. New-style files carry
 ! &star_job (+ &controls, same file or the second); everything else
-! takes the byte-pinned legacy path unchanged.
+! takes the legacy reader path.
       if (nml_file_has_group(control_nml_file, 'star_job')) then
-! New-style inlists default to MESA-style output; legacy decks keep
-! the compile default (.true.). Either format may set it explicitly.
-      use_legacy_output = .false.
       include 'inlist_new_read.inc'
       else
       open(unit=standard_unit, file=control_nml_file, status='OLD')
@@ -1432,7 +1426,6 @@ subroutine adopt_canonical_names
       env_step_begin = envbeg
       env_step_min = envmin
       env_step_max = envmax
-      pulsation_output_active = lpulse
       atm_choice = kttau
       debye_huckel_eta_min = etadh0
       debye_huckel_eta_max = etadh1
@@ -1612,10 +1605,6 @@ end subroutine adopt_canonical_names
 ! writers), echo the namelists in legacy mode, and expand
 ! environment variables in every configured file path.
 subroutine resolve_output_mode_and_paths
-      if (lmonte .and. .not. use_legacy_output) then
-         write(*,*) 'LMONTE requires legacy output; setting use_legacy_output = .true.'
-         use_legacy_output = .true.
-      end if
 ! 2026 log redesign: the full namelist echo into the run log is
 ! replaced by the verbatim inlist copy written to the output
 ! directory (inlist_used -- see copy_inlists_used below).
@@ -1735,32 +1724,10 @@ subroutine derive_options_and_open_files
       use_alex95_tables = lalex95
       use_kurucz90_tables = lkur90
 
-! 2026 MESA-style output: every legacy output-file open below is
-! legacy-mode only; MESA mode opens no legacy files (see the else
-! branch after the pulse opens).
-      if (use_legacy_output) then
-! 2026 retire-legacy: the .store open/header block is deleted with
-! the .store file (profiles/pulse files carry the stitched model).
-! 1013 FORMAT('# JCORE  JENV  CMIXL  EOS  ATM  ALOK HIK  LPUREZ  COMPMIX',
-!     1 '  LEXCOM  LDIFY  LDIFZ  LSEMIC  LOVSTC  LOVSTE  LOVSTM',
-!     1 '  LROT  LINSTB  LJDOT0  LDISK  TDISK  PDISK  WMAX  LSTORE',
-!     1 '  LSTATM  LSTENV  LSTMOD  LSTPHYS  LSTROT'
-!     1 ,/)
-! 1014     FORMAT(
-!     1'MODEL SHELL MASS RADIUS LUMINOSITY PRESSURE TEMPERATURE DENSITY OMEGA ',
-!     1'CONVECTIVE INTERIOR_PT H1 He4 METALS He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 ',
-!     1'Be9 OPACITY GRAV DELR DEL DELAD V_CONV GAM1 HII HEII HEIII BETA ',
-!     1'ETA PPI PPII PPIII CNO TRIPLE_ALPHA E_NUC E_NEU E_GRAV CP DLNRHODLNT A RP/RE FP ',
-!     1'FT J/M MOMENT DEL_KE V_ES V_GSF V_SS VTOT ')
-! G Somers END
-
-      open(short_file_unit,file=fshort,form='FORMATTED',status='UNKNOWN')
-      rewind(short_file_unit)
-
+! 2026 use_legacy_output retirement: one open path for every run.
       if(ldebug) then
             open(idebug,file=fdebug,form='FORMATTED', &
            &          status='UNKNOWN')
-      end if
       end if
 !     MHP 10/02 LBNIN never set, ignore loop
 !      IF (.NOT.LBNIN) THEN
@@ -1772,15 +1739,10 @@ subroutine derive_options_and_open_files
 ! legacy-only guard here left MESA-mode runs with an unconnected
 ! unit -- no restart file and broken divergence recovery).
       open(unit=ilast,file=flast,form='FORMATTED',status='UNKNOWN')
-      if (.not. use_legacy_output) then
-! MESA mode: retarget the shared diagnostics unit to CASE.log and
-! force off the flags behind physics-time legacy streams (envint's
-! atmosphere/envelope profile blocks, the legacy OPAL pulse files;
-! GYRE under pulse_gyre_interval is the MESA-mode pulse mechanism).
-         call output_init_mesa(fshort, ierr)
-         if (ierr /= 0) return
-         lpulse = .false.
-      end if
+! open the run log (fshort's dir; .short renamed .log) and the
+! history stream, parse the column selections
+      call output_init_mesa(fshort, ierr)
+      if (ierr /= 0) return
 ! MHP 6/98
 ! MHP 8/25 Moved call from main to here for opening dynamics_unit
       if(lmonte)then
@@ -1792,7 +1754,7 @@ subroutine derive_options_and_open_files
       if(lcondopacp)then
          open(icondopacp,file=fcondopacp,status='OLD')
       endif
-      if(liso .and. use_legacy_output) then
+      if(liso) then
          open(isochrone_file_unit, file=fiso,status='UNKNOWN', form='FORMATTED')
       endif
       if(lsemic)then
@@ -2031,15 +1993,15 @@ subroutine echo_settings
 !     NO VALID MIX SPECIFIED
          write(*,589)amix
          write(short_file_unit,589)amix
-      589    format('DESIRED CNO MIXTURE ',a8,' NOT FOUND. MIX NOT ALTERED.')
+      589    format(1x,'warning: CNO mixture ',a8,' not recognized; mixture not altered')
          end if
       endif
       endif
       if(change_cno_mixture_active)then
          write(*,604)amix,frac_c,frac_n,frac_o
          write(short_file_unit,604)amix,frac_c,frac_n,frac_o
-      604    format('CNO MIXTURE ',a8,' C ',e12.4,' N ',e12.4,' O ', &
-           &         e12.4,' APPLIED TO STARTING MODEL.')
+      604    format(1x,'CNO mixture ',a8,': C =',es12.4,'  N =',es12.4, &
+           &         '  O =',es12.4,' (fractions of Z); applied to the starting model')
       endif
 !     CHECK IF ISOTOPE RATIOS NEED TO BE ALTERED
       if(isetiso.eq.1)then
@@ -2054,9 +2016,8 @@ subroutine echo_settings
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini
                write(short_file_unit,596)r12_13,r14_15,r16_17,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini
-      596          format('NEGATIVE INPUT ISOTOPE RATIO OR LIGHT ELEMENT' &
-           &   ' MASS FRACTION ',11e12.4, &
-           &              ' MIX NOT MODIFIED')
+      596          format(1x,'warning: negative isotope ratio or light-element', &
+           &   ' mass fraction (',11es12.4,'); mixture not modified')
             else
             sum_frac= xh2_ini+xhe3_ini+xli6_ini+xli7_ini+xbe9_ini+ &
            &                 xb10_ini+xb11_ini
@@ -2065,8 +2026,8 @@ subroutine echo_settings
            &  xb10_ini,xb11_ini
                write(short_file_unit,595)xh2_ini,xhe3_ini,xli6_ini,xli7_ini, &
            &  xbe9_ini,xb10_ini,xb11_ini
-      595          format('SUM OF LIGHT ELEMENT MASS FRACTIONS EXCEEDS 1', &
-           &  11e12.4,' MIX NOT MODIFIED')
+      595          format(1x,'warning: light-element mass fractions sum above 1', &
+           &  ' (',11es12.4,'); mixture not modified')
             else
 !     PASSED ALL CHECKS - THE CUSTOM SETTINGS WILL BE APPLIED
             change_isotope_ratios_active = .true.
@@ -2084,9 +2045,10 @@ subroutine echo_settings
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini
          write(short_file_unit,605)aiso,r12_13,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini
-      605    format('ISOTOPE AND LIGHT ELEMENT MIXTURE ',a8,' C12/C13 ', &
-           &    e12.4,' O16/O18 ',e12.4,' H2 ',e12.4,' HE3 ',e12.4,' LI6 ', &
-           &    e12.4,' LI7 ',e12.4,' BE9 ',e12.4,' APPLIED TO STARTING MODEL.')
+      605    format(1x,'isotope/light-element mixture ',a8,': C12/C13 =', &
+           &    es12.4,'  O16/O18 =',es12.4,'  H2 =',es12.4,'  He3 =',es12.4, &
+           &    '  Li6 =',es12.4,'  Li7 =',es12.4,'  Be9 =',es12.4, &
+           &    '; applied to the starting model')
       endif
 ! DBG 12/95 ENSURE CORRECT PARAMETERS FOR Z DIFFUSION
       if (ldifz) then
@@ -2152,10 +2114,6 @@ subroutine echo_settings
       1887 format(1x,'surface boundary: Kurucz/Castelli atmosphere tables')
 
 ! DBG PULSE
-      if (lpulse) then
-          write(short_file_unit,196)
-      196     format(1x,'pulsation output will be written for the last model')
-      end if
       if (lpurez) then
           write(short_file_unit,'(1x,a)') 'opacity: pure C and N tables enabled'
       end if

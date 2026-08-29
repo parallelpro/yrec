@@ -92,10 +92,8 @@ def main():
                            dead["physics"])
     out = pathlib.Path(args.output or
                        ("inlist_" + pathlib.Path(args.nml1).stem))
-    # A conversion's contract is "reproduce the legacy run exactly",
-    # which includes the legacy output streams.
-    g1 = g1.replace("\n", "\n use_legacy_output = .true."
-                    "  ! stamped by upgrade_inlist.py (drop for MESA-style output)\n", 1)
+    # (use_legacy_output is retired: every run produces the unified
+    # MESA-style output set, so nothing is stamped any more.)
     out.write_text("! Converted from " + args.nml1 + " + " + args.nml2 +
                    " by tools/upgrade_inlist.py\n" + g1 + "\n" + g2)
     for d in d1 + d2:

@@ -437,8 +437,7 @@ module star_info_lib
            character(len=4) :: initial_composition_code
 ! -- former evolve_state (evo (driver-step state)) --
             logical :: has_h_shell, model_diverged_flag, punch_pending_flag, &
-                 recompute_envelope_triangle, reset_triangle, &
-                 saved_pulse_output_flag
+                 recompute_envelope_triangle, reset_triangle
             integer :: h_shell_end_index, h_shell_midpoint_zone, &
                  h_shell_zone_begin, ikut_flag, istore_flag
             double precision :: convective_velocity, dt, &

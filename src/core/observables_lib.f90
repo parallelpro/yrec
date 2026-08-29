@@ -101,12 +101,10 @@ subroutine compute_observables(ierr)
 ! surface radius/gravity run in BOTH modes since the run-log model
 ! line (2026 log redesign) reads log_R_surface.
       call compute_surface_globals
-      if (.not. star%ctrl%use_legacy_output) then
-         call compute_moment_of_inertia
-         call compute_snu_rates
-         call compute_rotation_observables
-         call compute_h_shell_boundaries
-      end if
+      call compute_moment_of_inertia
+      call compute_snu_rates
+      call compute_rotation_observables
+      call compute_h_shell_boundaries
 
 end subroutine compute_observables
 

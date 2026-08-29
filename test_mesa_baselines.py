@@ -49,9 +49,7 @@ def _mesa_inlist(case, tmp):
         capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     text = conv.read_text()
-    assert "use_legacy_output = .true." in text
-    text = text.replace("use_legacy_output = .true.",
-                        "use_legacy_output = .false.", 1)
+    assert "use_legacy_output" not in text   # retired; nothing stamped
     text = text.replace(
         "&controls",
         "&controls\n write_profile_flag = .true.\n write_pulse_flag = .true.\n",

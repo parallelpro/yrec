@@ -40,7 +40,6 @@ control	fmonte2	string	''*	monte_carlo_file2_path	canonical		former common/iomon
 control	kindrn	integer(50)	0*	run_kind	verified		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
 control	ldebug	logical	.false.*	write_debug_output	proposed		Enable the debug output stream
 control	lfirst	logical(50)	.false.*	first_call_flag	canonical		
-control	lpulse	logical	.false.	pulsation_output_active	canonical		former common/pulse/: pulsation_output_active/pulsation_file_version (originally lpulse/ipver) are NAMELIST values with different canonical spellings, kept local in core/
 control	lzramp	logical	.false.	use_z_ramp	canonical		
 control	lteff	logical	.false.*	specify_teff_flag	canonical		
 control	lcalst	logical	.false.*	calibrate_star_flag	canonical		
@@ -360,7 +359,6 @@ physics	tol_dz_max	real	0.0*	tol_dz_max	keep
 physics	time_max_dt_frac	real	0.0*	time_max_dt_frac	keep		
 physics	lnewvars	logical	.false.*	use_new_rate_variables	verified		remap: use the new nuclear-rate variable set
 physics	lcalcenv	logical	.false.*	calc_envelope_flag	canonical		
-control	use_legacy_output	logical	.true. legacy decks / .false. new-style inlists	use_legacy_output	verified		Output style: .true. = historical .track/.store streams; .false. = MESA-format output (.history now, profiles to follow). Default depends on inlist style.
 control	history_columns_file	string	'' (all columns)	history_columns_file	verified	mesa: same	MESA mode: file listing the history columns to write (one name per line, ! comments); blank = all columns
 control	profile_columns_file	string	'' (all columns)	profile_columns_file	verified	mesa: same	MESA mode: file listing the profile columns to write; blank = all columns
 physics	star_history_name	string	'history.data'	star_history_name	verified	mesa: same	MESA mode: history file name (written to the output directory)

@@ -1,11 +1,10 @@
 """MESA-style output acceptance test (2026).
 
-Runs the solar noGS/norot case from one converted inlist in three
-configurations and checks the whole MESA-mode output contract:
+Runs the solar noGS/norot case from one converted inlist and checks
+the unified output contract (use_legacy_output is retired):
 
-  legacy   (stamped use_legacy_output = .true.)  -- the .short oracle
-  mesa     (stamp removed)                       -- default MESA mode
-  custom   (mesa + history_columns_file)         -- column selection
+  mesa     (converter output)                    -- default run
+  custom   (+ history_columns_file)              -- column selection
 
 Assertions: MESA mode writes exactly {history.data, profile*.data,
 CASE.log}; the history file has MESA's layout (data from line 7,
@@ -68,16 +67,14 @@ def test_mesa_output_contract(tmp_path):
         [sys.executable, str(CONVERTER), str(CASE / NML1), str(CASE / NML2),
          "-o", str(inlist)], capture_output=True, text=True)
     assert conv.returncode == 0, conv.stderr
-    stamped = inlist.read_text()
-    assert "use_legacy_output = .true." in stamped
-    unstamped = "\n".join(l for l in stamped.splitlines()
-                          if "use_legacy_output" not in l) + "\n"
+    unstamped = inlist.read_text()
+    # use_legacy_output is retired: the converter no longer stamps it
+    assert "use_legacy_output" not in unstamped
     # write_profile_flag and write_pulse_flag both default to .false.;
     # the mesa run opts into profiles to test that contract
     with_profiles = unstamped.replace(
         "&controls", "&controls\n write_profile_flag = .true.\n", 1)
 
-    legacy_out = _run(tmp_path / "legacy", stamped)
     mesa_out = _run(tmp_path / "mesa", with_profiles)
 
     # ---- exact file set ----
@@ -87,13 +84,13 @@ def test_mesa_output_contract(tmp_path):
                                "inlist_used"] + profiles), produced
     assert profiles, "no profile files written (profile_interval default)"
 
-    # ---- history vs the legacy run-log progress lines ----
-    # (.track and .store are retired; the run log prints the compact
-    # MESA-style progress line -- model nz age dt logTeff logL logR
-    # Xc iters -- every terminal_interval models plus card-final
-    # models, in both output modes)
+    # ---- history vs the run-log progress lines ----
+    # (the run log prints the compact MESA-style progress line --
+    # model nz age dt logTeff logL logR Xc iters -- every
+    # terminal_interval models plus card-final models; the two
+    # streams must agree)
     import re as _re
-    short_text = (legacy_out / f"{BASE}.short").read_text()
+    short_text = (mesa_out / f"{BASE}.log").read_text()
     prog = _re.findall(
         r"^\s*(\d+)\s+(\d+)\s+([\d.]+E[+-]\d+)\s+([\d.]+E[+-]\d+)"
         r"\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+(\d+)\s*$",
