@@ -72,7 +72,6 @@
             integer :: composition_unit = 0
             integer :: kurucz_table_unit = 0
             logical :: monte_carlo_active = .false.
-            integer :: imbeg = 1
             double precision :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
             double precision :: fcorr0 = 0.8d0
             double precision :: fcorri = 0.1d0

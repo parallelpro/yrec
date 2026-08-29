@@ -31,20 +31,20 @@ module monte_carlo_lib
 contains
 
 ! ---------------------------------------------------------------
-! Establish the run range (mc_run_start/mc_run_end) and, for a
-! Monte-Carlo job, read each run's sampled parameters from the
-! dynamics file (opened on dynamics_unit at namelist-read time).
+! Establish the run range and, for a Monte-Carlo job, read each
+! run's sampled parameters from the dynamics file (opened on
+! dynamics_unit at namelist-read time). mc_run_start/mc_run_end are
+! the namelist-backed star%job members (legacy IMBEG/IMEND);
+! outside Monte Carlo the range is forced to a single run.
 ! MHP 3/96 changed I/O to read in only up to max run needed.
 subroutine setup_monte_carlo_runs
       integer :: i
       if (star%ctrl%monte_carlo_active) then
 !c MHP 8/25 moved file open to parmin
 !     OPEN(UNIT=IDYN,FILE=FDYN,FORM='FORMATTED',STATUS='OLD')
-         star%job%mc_run_start = star%ctrl%imbeg
-         star%job%imend = min(star%job%imend,1000)
-         star%job%mc_run_end = star%job%imend
+         star%job%mc_run_end = min(star%job%mc_run_end,1000)
 ! read in monte carlo data
-         do i = 1,star%job%imend
+         do i = 1,star%job%mc_run_end
             read(star%ctrl%dynamics_unit,1511)star%job%s11_rate(i),star%job%s33_rate(i),star%job%s34_rate(i), &
                  star%job%s17_rate(i),star%job%metal_to_h_ratio(i),star%job%helium_fraction_param(i), &
                  star%job%luminosity_target(i),star%job%age_target(i)

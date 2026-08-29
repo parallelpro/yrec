@@ -60,7 +60,7 @@ JOB_MEMBERS = {
     "calc_envelope_flag", "initial_envelope_x",
     "initial_envelope_z", "requested_envelope_mass",
     "change_envelope_mass_flag", "core_mass_reduction_factor",
-    "num_core_shells_added", "fcorr", "num_rotation_structure_iters", "diffusion_timestep_factor", "imend",
+    "num_core_shells_added", "fcorr", "num_rotation_structure_iters", "diffusion_timestep_factor", "mc_run_start", "mc_run_end",
     "acfpft", "max_domega_global", "structfactor", "fgrz",
     "diffuse_helium_active", "use_mass_accretion", "new_species_value",
     "target_radius_rsun", "target_teff", "pulse_format",

@@ -257,11 +257,11 @@ module controls_lib
       integer :: dynamics_unit, laol_table_unit
       integer :: composition_unit, kurucz_table_unit
 
-! former common/monte/: monte_carlo_active/imbeg/imend are all NAMELIST /physics/
+! former common/monte/: monte_carlo_active/mc_run_start/mc_run_end are all NAMELIST /physics/
 ! values spelled identically to their canonical names -- same
 ! treatment as common/ccout/ above.
       logical :: monte_carlo_active = .false.
-      integer :: imbeg = 1, imend = 1
+      integer :: mc_run_start = 1, mc_run_end = 1
 
 ! former common/ctol/: htoler/fcorr0/fcorri/max_iter_level1/max_iter_level2/max_iter_level3 are
 ! NAMELIST /physics/ values spelled identically to their canonical

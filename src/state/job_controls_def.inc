@@ -25,7 +25,8 @@
             double precision :: central_helium_stop(50) = 0.0d0
             logical :: end_age_stop_active(50) = .false.
             logical :: timestep_override_active(50) = .false.
-            integer :: imend = 1
+            integer :: mc_run_start = 1
+            integer :: mc_run_end = 1
             double precision :: fcorr = 0.0d0
             double precision :: diffusion_timestep_factor = 1.0d-2
             integer :: num_rotation_structure_iters = 1

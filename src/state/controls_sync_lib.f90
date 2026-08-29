@@ -109,8 +109,8 @@ subroutine seed_controls_buffer
       composition_unit = star%ctrl%composition_unit
       kurucz_table_unit = star%ctrl%kurucz_table_unit
       monte_carlo_active = star%ctrl%monte_carlo_active
-      imbeg = star%ctrl%imbeg
-      imend = star%job%imend
+      mc_run_start = star%job%mc_run_start
+      mc_run_end = star%job%mc_run_end
       htoler = star%ctrl%htoler
       fcorr0 = star%ctrl%fcorr0
       fcorri = star%ctrl%fcorri
@@ -462,8 +462,8 @@ subroutine store_controls_to_star
       star%ctrl%composition_unit = composition_unit
       star%ctrl%kurucz_table_unit = kurucz_table_unit
       star%ctrl%monte_carlo_active = monte_carlo_active
-      star%ctrl%imbeg = imbeg
-      star%job%imend = imend
+      star%job%mc_run_start = mc_run_start
+      star%job%mc_run_end = mc_run_end
       star%ctrl%htoler = htoler
       star%ctrl%fcorr0 = fcorr0
       star%ctrl%fcorri = fcorri

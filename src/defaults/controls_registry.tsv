@@ -235,8 +235,8 @@ physics	ymin	real	0.0*	helium_diffusion_min	canonical
 physics	tmolmin	real	0.0*	molecular_opacity_logt_min	canonical		
 physics	tmolmax	real	0.0*	molecular_opacity_logt_max	canonical		
 physics	lmonte	logical	.false.*	monte_carlo_active	canonical		Monte-Carlo multi-realization mode
-physics	imbeg	integer	0*	mc_run_start	proposed		First Monte-Carlo realization index
-physics	imend	integer	0*	mc_run_end	proposed		Last Monte-Carlo realization index
+physics	imbeg	integer	0*	mc_run_start	canonical		First Monte-Carlo realization index
+physics	imend	integer	0*	mc_run_end	canonical		Last Monte-Carlo realization index
 physics	sstandard	real(17)	0.9828,1.0485,0.9815,0.9241,1.3818,1.0542,1.0, &	mc_standard_seed	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 physics	lscv	logical	.false.	use_scv_eos	canonical		
 physics	ldisk	logical	.false.*	disk_locking_active	canonical		

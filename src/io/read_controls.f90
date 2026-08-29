@@ -683,6 +683,7 @@ subroutine read_input(ierr)
       logical :: lwnew = .false., ljdot0 = .true., lthoul = .false.
       logical :: lsemic = .false., lnews = .false., lmonte = .false.
       logical :: lreimer = .false.
+      integer :: imbeg = 1, imend = 1
 
 ! newcross: s0_1_1/s0_3_3/s0_3_4/s0_1_12/s0_1_13/s0_1_14/s0_1_16/
 ! s0_1_be7e/s0_1_be7p/s0_1_15_c12alp/s0_1_15_o16/s0p_1_1/s0p_3_3/
@@ -1510,6 +1511,8 @@ subroutine adopt_canonical_names
       mixture_weights_seed = vnew
       initial_omega = wnew
       monte_carlo_active = lmonte
+      mc_run_start = imbeg
+      mc_run_end = imend
       reimers_scaling_factor = creim
       use_reimers_wind = lreimer
       constant_mixing_coeff = cstmixing

@@ -121,7 +121,6 @@ module star_info_lib
                  scv_h_table_path, scv_he_table_path, scv_z_table_path
             character(len=256) :: alex95_table_paths(7)
             double precision :: mixture_weights(12)
-            integer :: mc_run_start, mc_run_end
 ! phase C flattening: the Monte-Carlo sample arrays (former
 ! common/monte2/), read from the MC input file by star_setup -- job
 ! configuration, moved here from the old run_diagnostics grab-bag.
