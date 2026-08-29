@@ -55,9 +55,9 @@
       ! (legacy name: fdebug)
       debug_output_file = ''   ! (implicit)
 
-      ! Model summary (.short) output path
+      ! Run log path; its directory part defines the output directory
       ! (legacy name: fshort)
-      short_output_file = ''   ! (implicit)
+      short_output_file = '{YREC_OUTPUT}/run.log'
 
       ! Opened on the dynamics unit (formatted, STATUS=OLD)
       ! (legacy name: fdyn)

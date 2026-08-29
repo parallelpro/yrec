@@ -12,7 +12,7 @@ control	flast	string	'{YREC_OUTPUT}/final.mod'	last_model_file	proposed		Path fo
 control	ffirst	string	''*	first_model_file	proposed		Starting model read when read_first_model is set for a run
 control	ffermi	string	''*	fermi_table_file	proposed		Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS)
 control	fdebug	string	''*	debug_output_file	proposed		Debug output stream
-control	fshort	string	''*	short_output_file	proposed		Model summary (.short) output path
+control	fshort	string	'{YREC_OUTPUT}/run.log'	short_output_file	proposed		Run log path; its directory part defines the output directory
 control	fstch	string	''*	stored_change_file	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 control	fdyn	string	''*	dynamics_file	verified		Opened on the dynamics unit (formatted, STATUS=OLD)
 control	flldat	string	''*	ll_data_file	proposed		Livermore opacity auxiliary data file
