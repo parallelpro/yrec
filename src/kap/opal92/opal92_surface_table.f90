@@ -9,7 +9,7 @@
 ! THIS IS THE 4TH TABLE OF THE LAWRENCE LIVERMORE OPACITY TABLES.
 ! IT CONTAINS THE OPACITIES FOR THE SURFACE ABUNDANCES OF X AND Z, AND
 ! IS USED TO AVOID MANY INTERPOLATIONS TO THE SAME X.
-subroutine opal92_surface_table(hydrogen_fraction)
+subroutine opal92_surface_table(hydrogen_fraction, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
@@ -24,6 +24,7 @@ subroutine opal92_surface_table(hydrogen_fraction)
       integer, parameter :: np = 100
 
       double precision, intent(in) :: hydrogen_fraction
+      integer, intent(out) :: ierr
 
       double precision :: coeff(4,np)
       integer :: x_index, temp_index, rho_search_index, im2, im3, &
@@ -34,12 +35,17 @@ subroutine opal92_surface_table(hydrogen_fraction)
            opacity_final
 
 !     KEEP THE COMPOSITION OF THE 4TH TABLE.
+      ierr = 0
       opacity_table%opal92_surface_x=hydrogen_fraction
       opacity_table%opal92_surface_z=star%ctrl%opal_table_z1
       call findex(opacity_table%opal92_grid_x, num_x, hydrogen_fraction, x_index)
       if (x_index.lt.0) x_index=-x_index
       if (x_index.ge.3) x_index=2
-      if (x_index.le.0) stop ' ERROR IN X GRID'
+      if (x_index.le.0) then
+         write(*,*) 'opal92_surface_table: surface X outside table X grid'
+         ierr = 1
+         return
+      end if
       opacity_table%opal92_surface_x_index=x_index
       do im2=1,opacity_table%opal92_num_temps
          x_index=opacity_table%opal92_surface_x_index
@@ -47,7 +53,11 @@ subroutine opal92_surface_table(hydrogen_fraction)
          temp_index=im2
          row_index=im2+(x_index-1)*opacity_table%opal92_num_temps
          density_start=opacity_table%opal92_density_start_index(row_index)
-         if (density_start.ne.1) stop ' LL4TH NDSS '
+         if (density_start.ne.1) then
+            write(*,*) 'opal92_surface_table: surface-table density grid does not start at index 1'
+            ierr = 1
+            return
+         end if
          density_end=density_start+opacity_table%opal92_density_count(row_index)-1
          do im3=density_start,density_end
             density_rhot3=opacity_table%opal92_grid_logr(im3)
@@ -79,7 +89,11 @@ subroutine opal92_surface_table(hydrogen_fraction)
          call findex(opacity_table%opal92_grid_x_z2, num_x, hydrogen_fraction, x_index)
          if (x_index.lt.0) x_index=-x_index
          if (x_index.ge.3) x_index=2
-         if (x_index.le.0) stop ' ERROR IN X GRID'
+         if (x_index.le.0) then
+            write(*,*) 'opal92_surface_table: surface X outside second-Z table X grid'
+            ierr = 1
+            return
+         end if
          opacity_table%opal92_surface_x_index_z2=x_index
          do im2=1,opacity_table%opal92_num_temps_z2
             x_index=opacity_table%opal92_surface_x_index_z2
@@ -87,7 +101,11 @@ subroutine opal92_surface_table(hydrogen_fraction)
             temp_index=im2
             row_index=im2+(x_index-1)*opacity_table%opal92_num_temps_z2
             density_start=opacity_table%opal92_density_start_index_z2(row_index)
-            if (density_start.ne.1) stop ' LL4TH Z1 CHECK NDSS '
+            if (density_start.ne.1) then
+               write(*,*) 'opal92_surface_table: second-Z surface-table density grid does not start at index 1'
+               ierr = 1
+               return
+            end if
             density_end=density_start+opacity_table%opal92_density_count_z2(row_index)-1
             do im3=density_start,density_end
                density_rhot3=opacity_table%opal92_grid_logr_z2(im3)

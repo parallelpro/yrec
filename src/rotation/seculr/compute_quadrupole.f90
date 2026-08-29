@@ -22,7 +22,7 @@
 ! conditions. The central B.C. is that QUAD(0)=0; the surface B.C.
 ! is that there is no contribution to the quadrupole from outside the
 ! final shell, such that QUAD(I) varies as 1/R**4.
-subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, num_zones)
+subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, num_zones, ierr)
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
@@ -32,6 +32,7 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
       double precision, intent(in) :: log_density(json), gravity(json), &
            radius(json), angular_velocity(json)
       integer, intent(in) :: num_zones
+      integer, intent(out) :: ierr
 
 
 
@@ -55,6 +56,7 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
       double precision :: radius_plus, outer_boundary_ratio
       double precision :: pivot
 
+      ierr = 0
       do zone_index = 1,num_zones
          density_omega2(zone_index) = exp(ln10*log_density(zone_index))* &
               angular_velocity(zone_index)**2
@@ -114,13 +116,21 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
       super_diag(num_zones) = 0.0D0
       rhs(num_zones) = 0.0D0
 ! SOLUTION OF SYSTEM FROM NUMERICAL RECIPES.
-      if (diag(1).eq.0.0D0) stop
+      if (diag(1).eq.0.0D0) then
+         write(*,*) 'compute_quadrupole: singular first pivot'
+         ierr = 1
+         return
+      end if
       pivot = diag(1)
       solution(1) = rhs(1)/pivot
       do matrix_row = 2,num_zones
          gamma_elim(matrix_row) = super_diag(matrix_row-1)/pivot
          pivot = diag(matrix_row) - sub_diag(matrix_row)*gamma_elim(matrix_row)
-         if (pivot.eq.0.0D0) stop
+         if (pivot.eq.0.0D0) then
+            write(*,*) 'compute_quadrupole: singular pivot in elimination'
+            ierr = 1
+            return
+         end if
          solution(matrix_row) = (rhs(matrix_row) - &
               sub_diag(matrix_row)*solution(matrix_row-1))/pivot
       end do

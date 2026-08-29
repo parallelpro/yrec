@@ -60,3 +60,46 @@ def test_config_error_exits_nonzero(tmp_path):
     assert any("SEMI-CONVECTION" in b for b in blobs), (
         "expected the PARMIN conflict diagnostic in the run output"
     )
+
+
+def test_bad_opacity_table_exits_nonzero(tmp_path):
+    """A malformed opacity table must surface as a clean nonzero exit
+    (2026 ierr-not-stop: the table-reader stops became ierr returns
+    threaded up through setupopac/kap_init/setups/star_setup)."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    for name in (NML1, NML2):
+        shutil.copy(CASE_DIR / name, tmp_path / name)
+    bad_table = tmp_path / "bad_opal95_table"
+    # a TABLE header whose X/Z fields (cols 37-43 / 55-61) read as
+    # 0.9 -- incompatible with the expected first grid table, failing
+    # the reader's compatibility check: the shortest path into the
+    # table-reader ierr plumbing
+    bad_table.write_text("TABLE" + " " * 31 + " 0.9000"
+                         + " " * 11 + " 0.9000\n")
+    nml1 = tmp_path / NML1
+    text = nml1.read_text()
+    text = re.sub(r'FLIV95\s*=\s*"[^"]*"', f'FLIV95 = "{bad_table}"', text)
+    nml1.write_text(text)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ)
+    env["YREC_INPUT"] = str(REPO / "input")
+    env["YREC_START"] = str(REPO / "startmodels")
+    result = subprocess.run(
+        [str(YREC), NML1, NML2], cwd=tmp_path,
+        env=env, capture_output=True, text=True, timeout=120,
+    )
+    assert result.returncode == 1, (
+        "malformed OPAL95 table must exit 1 "
+        f"(got {result.returncode}); stderr tail: {result.stderr[-300:]}"
+    )
+    blobs = [result.stdout, result.stderr]
+    for f in tmp_path.rglob("*"):
+        if f.is_file() and f.suffix not in (".nml1", ".nml2"):
+            try:
+                blobs.append(f.read_text(errors="replace"))
+            except OSError:
+                pass
+    assert any("OPAL95" in b for b in blobs), (
+        "expected the table-reader diagnostic in the run output"
+    )

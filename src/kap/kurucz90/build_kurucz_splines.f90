@@ -11,12 +11,13 @@
 ! Kurucz table set when use_two_z_tables is set. common/krz/,
 ! common/gkrz/, common/intpl2/ (and their "2" siblings) match the
 ! names established in read_kurucz_tables.f90/kurucz.f90/kurucz2.f90.
-subroutine build_kurucz_splines
+subroutine build_kurucz_splines(ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
       use numerics_lib
       implicit none
+      integer, intent(out) :: ierr
       integer, parameter :: num_t = 60
       integer, parameter :: num_d = 50
       integer, parameter :: num_x = 1
@@ -29,6 +30,7 @@ subroutine build_kurucz_splines
       integer :: it, index1, jd, ids, idf, id, index2, j, i
       double precision :: chkd, chko
 
+      ierr = 0
       do it = 1,opacity_table%kurucz_num_temps
          index1 = it
          jd = 0
@@ -44,8 +46,16 @@ subroutine build_kurucz_splines
             spline_work(1,jd) = dlog10(chko)
          end do
          opacity_table%kurucz_density_count(index1) = jd
-         if (opacity_table%kurucz_density_start_index(index1).ne.1) stop ' ERROR KURUCZ OPACITY NDS'
-         if (opacity_table%kurucz_density_count(index1).lt.25) stop ' ERROR KURUCZ OPACITY NDD'
+         if (opacity_table%kurucz_density_start_index(index1).ne.1) then
+            write(*,*) 'build_kurucz_splines: kurucz table density grid does not start at index 1'
+            ierr = 1
+            return
+         end if
+         if (opacity_table%kurucz_density_count(index1).lt.25) then
+            write(*,*) 'build_kurucz_splines: kurucz table has fewer than 25 density points'
+            ierr = 1
+            return
+         end if
          if (jd.le.1) cycle
          call ysplin(density_nodes, spline_work, jd)
          do j = 1,jd
@@ -75,8 +85,16 @@ subroutine build_kurucz_splines
                spline_work(1,jd) = dlog10(chko)
             end do
             opacity_table%kurucz2_density_count(index1) = jd
-            if (opacity_table%kurucz2_density_start_index(index1).ne.1) stop ' NDS2'
-            if (opacity_table%kurucz2_density_count(index1).lt.25) stop ' NDD2'
+            if (opacity_table%kurucz2_density_start_index(index1).ne.1) then
+               write(*,*) 'build_kurucz_splines: second kurucz table density grid does not start at index 1'
+               ierr = 1
+               return
+            end if
+            if (opacity_table%kurucz2_density_count(index1).lt.25) then
+               write(*,*) 'build_kurucz_splines: second kurucz table has fewer than 25 density points'
+               ierr = 1
+               return
+            end if
             if (jd.le.1) cycle
             call ysplin(density_nodes, spline_work, jd)
             do j = 1,jd

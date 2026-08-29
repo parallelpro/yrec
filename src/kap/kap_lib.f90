@@ -498,14 +498,21 @@ end subroutine kap_init
 ! fraction changes. Wraps surfopac.f90; core/read_starting_model.f90 and
 ! setup/rezone.f90 previously called surfopac directly -- a
 ! legitimate lifecycle operation that simply had no facade name.
-subroutine kap_update_surface_tables(hydrogen_fraction)
+subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
 
       use opacity_table_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction
+! OPTIONAL ierr: same transitional ierr-not-stop form as kap_get --
+! callers that pass ierr get table errors returned; callers that
+! omit it keep the historical stop.
+      integer, intent(out), optional :: ierr
+      integer :: jerr
 
-      call surfopac(hydrogen_fraction)
+      call surfopac(hydrogen_fraction, jerr)
+      if (present(ierr)) ierr = jerr
+      if (jerr /= 0 .and. .not. present(ierr)) stop
 
       return
 end subroutine kap_update_surface_tables

@@ -85,7 +85,10 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       write(*,*) '  make clean && make USE_HDF5=1'
       write(*,*) '(HDF5_DIR defaults to the MESA SDK; see the Makefile.)'
       write(run_log_unit,*) 'pulse_format = GSM requires USE_HDF5=1 build'
-      stop 1
+! 2026 ierr-not-stop: an output-format misconfiguration no longer
+! kills the run -- the pulse file is skipped (warned above, once per
+! attempt); the evolution itself is unaffected.
+      return
 end subroutine write_gsm_pulse
 #endif
 

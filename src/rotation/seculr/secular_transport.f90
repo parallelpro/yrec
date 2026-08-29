@@ -197,7 +197,8 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
               1.0D0/ln10/(log_radius_center-log_radius(i-1))
          dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
       end do
-      call compute_quadrupole(log_density,local_gravity,radius_unlogged,omega,num_zones)
+      call compute_quadrupole(log_density,local_gravity,radius_unlogged,omega,num_zones,ierr)
+      if (ierr /= 0) return
       do i = 1,num_zones
          star%vfc(i) = 0.0D0
       end do

@@ -12,7 +12,7 @@
 ! Reads the OPAL92 (Lawrence Livermore) opacity table(s) and builds
 ! the spline interpolation coefficients used later by opal92_surface_table.f90 and
 ! the OPAL92 lookup routines (yllo3d/yllo3d2, not part of this batch).
-subroutine read_opal92_tables(opal92_table_path, opal92_table2_path)
+subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
@@ -30,11 +30,13 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path)
 
 ! MHP 8/25 removed variables not used in subroutine
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
+      integer, intent(out) :: ierr
       double precision :: local_grid_y(num_x), local_grid_z(num_x)
       integer :: i, k, density_index, num_temps_read
       double precision :: grid_temp_k
 
 !     OPEN TABLE
+      ierr = 0
       open(unit=star%ctrl%laol_table_unit,file=opal92_table_path)
       do i=1,num_x
 !        READ GRID POINT FOR ABUNDANCE
@@ -81,8 +83,10 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path)
          opacity_table%opal92_num_x_z2=i-1
       end if
 !
-      call opal92_table_prep
+      call opal92_table_prep(ierr)
 
       return
-   99 stop 'ERROR IN FILE CLOSING'
+   99 continue
+      write(*,*) 'read_opal92_tables: error closing table file'
+      ierr = 1
 end subroutine read_opal92_tables
