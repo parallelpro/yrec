@@ -62,11 +62,10 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            log10_gravity
       double precision, intent(in) :: log10_star_mass
       integer, intent(in) :: vertex_index
-! 2026 (.store convergence): print_flag no longer reaches the
-! integrand callbacks (they save unconditionally) and envint writes
-! nothing to the .store unit anymore. What remains is init-echo
-! verbosity: the surface-table lookup announcements and the fitted
-! envelope-vertex line, both to the .short log.
+! 2026 (.store convergence + retirement): print_flag no longer
+! reaches the integrand callbacks (they save unconditionally) and
+! envint writes no output files anymore. What remains is init-echo
+! verbosity: the fitted envelope-vertex line to the .short log.
       logical, intent(inout) :: print_flag
       logical, intent(in) :: save_boundary_flag
       double precision, intent(in) :: log10_pressure_limit
@@ -218,7 +217,7 @@ subroutine prepare_surface_boundary
       tabulated_bc = .false.
       if (star%job%atm_choice .eq. 3) then
 ! KURUCZ ATMOSPHERES
-         call surfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,jerr)
+         call surfp(log10_teff,log10_gravity,.false.,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
                ierr = jerr
@@ -231,7 +230,7 @@ subroutine prepare_surface_boundary
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPLC.
       else if (star%job%atm_choice .eq. 5) then
 ! KURUCZ ATMOSPHERES
-         call kcsurfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,jerr)
+         call kcsurfp(log10_teff,log10_gravity,.false.,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
                ierr = jerr
@@ -243,7 +242,7 @@ subroutine prepare_surface_boundary
 ! We have Kurucz atmosphere boundary conditions
       else if (star%job%atm_choice .eq. 4) then
 ! ALLARD & HAUSCHILDT ATMOSPHERES
-         call alsurfp(log10_teff,log10_gravity,print_flag.and.star%job%lstatm,allard_lookup_failed,jerr)
+         call alsurfp(log10_teff,log10_gravity,.false.,allard_lookup_failed,jerr)
          if (jerr /= 0) then
             if (present(ierr)) then
                ierr = jerr

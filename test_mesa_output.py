@@ -3,14 +3,14 @@
 Runs the solar noGS/norot case from one converted inlist in three
 configurations and checks the whole MESA-mode output contract:
 
-  legacy   (stamped use_legacy_output = .true.)  -- the .store oracle
+  legacy   (stamped use_legacy_output = .true.)  -- the .short oracle
   mesa     (stamp removed)                       -- default MESA mode
   custom   (mesa + history_columns_file)         -- column selection
 
 Assertions: MESA mode writes exactly {history.data, profile*.data,
 CASE.log}; the history file has MESA's layout (data from line 7,
-names on line 6) with rows matching the legacy .store MOD2 model
-headers numerically; profiles appear every profile_interval
+names on line 6) with rows matching the legacy .short per-model
+blocks numerically; profiles appear every profile_interval
 models with zone 1 = the surface and num_zones rows; the history
 profile_number column maps models to profiles (YREC's replacement
 for profiles.index); a history_columns_file selects exactly the
@@ -87,29 +87,34 @@ def test_mesa_output_contract(tmp_path):
                               + profiles), produced
     assert profiles, "no profile files written (profile_interval default)"
 
-    # ---- history vs the legacy .store model headers ----
-    # (.track is retired; the MOD2 header lines carry the same
-    # cross-format oracle content -- model number, zones, log_Teff,
-    # log_L, age -- at every stored model)
-    store_hdrs = [l.split() for l in
-                  (legacy_out / f"{BASE}.store").read_text().splitlines()
-                  if l.startswith("MOD2")]
-    assert store_hdrs, "legacy .store has no MOD2 headers"
+    # ---- history vs the legacy .short model blocks ----
+    # (.track and .store are retired; the .short run log prints a
+    # per-model block whose MODEL NO. / SHELLS= / LOG(TEFF)= lines
+    # carry the same cross-format oracle content for EVERY model)
+    import re as _re
+    short_text = (legacy_out / f"{BASE}.short").read_text()
+    blocks = _re.findall(
+        r"MODEL NO\.\s+(\d+)\s+MASS.*?AGE\(GYRS\)\s+([\d.Ee+-]+)"
+        r".*?SHELLS=\s*(\d+)"
+        r".*?LOG\(TEFF\)=\s*([\d.Ee+-]+)\s+M\(BOL\)=\s*[\d.Ee+-]+"
+        r"\s+LOG\(L/LSUN\)=\s*([\d.Ee+-]+)",
+        short_text, _re.S)
+    assert blocks, "no MODEL blocks found in the legacy .short"
     names, hist_rows, icol = _parse_mesa_file(mesa_out / "history.data")
     assert names[:3] == ["model_number", "profile_number", "num_zones"]
     # integer id columns are written as true integers
     assert "." not in hist_rows[0][0] and "." not in hist_rows[0][2]
     by_model = {int(float(hr[icol["model_number"]])): hr for hr in hist_rows}
-    for sh in store_hdrs:
-        model, nz = int(sh[1]), int(sh[2])
-        hr = by_model[model]
-        assert int(float(hr[icol["num_zones"]])) == nz, (model, nz)
-        age_gyr, log_teff, log_l = float(sh[7]), float(sh[4]), float(sh[5])
-        assert abs(float(hr[icol["star_age"]]) / 1e9 - age_gyr) <= \
-            1e-7 * max(1.0, abs(age_gyr))
-        for name, ref in (("log_L", log_l), ("log_Teff", log_teff)):
+    assert len(blocks) == len(hist_rows)
+    for model_s, age_s, nz_s, teff_s, logl_s in blocks:
+        hr = by_model[int(model_s)]
+        assert int(float(hr[icol["num_zones"]])) == int(nz_s), (model_s, nz_s)
+        # .short prints ~8 decimals; compare at that granularity
+        assert abs(float(hr[icol["star_age"]]) / 1e9 - float(age_s)) <= 1e-6
+        for name, ref in (("log_L", float(logl_s)),
+                          ("log_Teff", float(teff_s))):
             a = float(hr[icol[name]])
-            assert abs(a - ref) <= 1e-7 * max(1.0, abs(ref)), (name, a, ref)
+            assert abs(a - ref) <= 1e-6, (name, a, ref)
 
     # ---- profile_number column maps models to profiles ----
     expect_num = 0

@@ -248,7 +248,7 @@ def test_yrec(tdir, nml1, nml2):
     all_outputs = glob(f"{outdir}/{tbase}.*")
     print(f"output file base = {outdir}/{tbase}")
     print(f"{all_outputs=}")
-    outputs = [f for f in all_outputs if re.search(r'(\.short|\.store)', f)]
+    outputs = [f for f in all_outputs if re.search(r'\.short', f)]
     print(f"{outputs=}")
 
     # Fail on missing outputs

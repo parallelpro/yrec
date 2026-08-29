@@ -231,8 +231,6 @@ module controls_lib
 ! separate readable rename ever established for this block), so
 ! core/read_input.f90 use-associates them directly rather than keeping
 ! separate locals.
-      logical :: lstore = .false., lstatm, lstenv, lstmod, lstphys
-      logical :: lstrot, lscrib = .true., lstch = .false., lphhd
 
 ! former common/ccout1/: npenv/nprtmod/npoint are NAMELIST /physics/
 ! values, spelled identically to their canonical names (use-associated
@@ -240,14 +238,12 @@ module controls_lib
 ! nprtpt) is also a NAMELIST value but needed a different, more
 ! readable name established elsewhere, so core/read_input.f90 keeps a
 ! local nprtpt and copy-assigns.
-      integer :: npenv, nprtmod = 1, npoint = 1
-      integer :: print_point_interval
+      integer :: npenv, npoint = 1
 
 ! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are all
 ! NAMELIST /physics/ values, spelled identically to their canonical
 ! names -- same treatment as common/ccout/ above.
       logical :: ldebug = .false., lcorr = .true.
-      logical :: lstpch = .false.
 
 ! former common/lunum/: logical unit numbers for the various input/
 ! output files, none of them NAMELIST values -- core/read_input.f90

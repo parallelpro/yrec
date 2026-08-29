@@ -41,15 +41,6 @@
 ! END_DCEN(2) = 2.75d-5 ! Run stops if NMODLS(I) is reached or this central deuterium is reached
  
  ! The starting and last models include only abundances and structure variables. These options allow snapshots to be generated with more information. 
- LSTORE = .TRUE. ! If T, store model structures at specified points to the .store file. 
- LSTATM = .FALSE. ! If T, append an atmosphere to the stored model file.
- LSTENV = .FALSE. ! If T, append an envelope to the stored model file. If LSTENV and LSTATM = F, no information is output beyond the fitting point.
- LSTMOD = .TRUE. ! Set the same as LSTORE. May be redundant.
- LSTPHYS = .TRUE. ! If T, output microphysics (e.g. epsilon, kappa) to store file.
- LSTROT = .FALSE. ! If T, append rotation data to store file.
- NPRTMOD = 50 ! Output detailed model structures every NPRTMOD models.
- NPRTPT = 1 ! Output details for every NPRTPT points (if 1000 points and NPRTPT=10, 100 lines are output).
- LSTPCH = .TRUE. ! If T, output details of the final model to the .store file.
 
   
  LRWSH = .FALSE. ! If T, the short file retains only the details from the last model. This minimizes output file size.
@@ -69,7 +60,6 @@
   
  FFIRST = "{YREC_START}/seed/p900gs98z0188.nmo" ! Starting model path.
  FLAST = "{YREC_OUTPUT}/m9000gs98z018804_prems.first" ! The last converged model is stored here.
- FSTOR = "{YREC_OUTPUT}/m9000gs98z018804_prems.store" ! Model snapshots during the run are stored here.
  FSHORT = "{YREC_OUTPUT}/m9000gs98z018804_prems.short" ! Details about the numerics of the model run are stored here.
  FSCOMP = "{YREC_OUTPUT}/m9000gs98z018804_prems.excomp" ! No longer used (light elements vs. time, now included in track file)
   

@@ -79,7 +79,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       character(len=256) :: fallard, fscvh, fscvhe, fscvz
       character(len=256) :: flast, ffirst, ffermi, &
            fdebug, fshort, &
-           fstor, fdyn, &
+           fdyn, &
            flldat, fscomp, fkur, &
            fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8
       integer :: kindrn(50)
@@ -160,7 +160,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! needs a different canonical spelling (print_point_interval), so it
 ! keeps its local NAMELIST-spelled name here and is copy-assigned
 ! after the namelist read below, per this file's usual pattern.
-      integer :: nprtpt
 
 ! former common/pulsegyre/: new (2026) dedicated block for the
 ! GYRE-format periodic pulsation-structure output feature
@@ -798,23 +797,18 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    endage, &
            &    flaol, fpurez,flaol2, fopal2, &
            &    flast, ffirst, ffermi, fdebug, fshort, fstch, &
-           &    fstor, &
            &    fdyn, flldat, fscomp, fkur, fmhd1, &
            &    fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8, fiso, fatm, &
            &    fkur2, fallard, fscvh, fscvhe, fscvz, fopale, fliv95, &
            &    fmonte1,fmonte2, &
            &    kindrn, &
-           &    ldebug, lcorr, lstore, lfirst, &
-           &    lstpch, lscrib, lstch, &
-! G Somers 11/14
-           &    lstatm,lstenv,lstmod,lstphys,lstrot, &
-! G Somers END
+           &    ldebug, lcorr, lfirst, &
            &    lpulse, lzramp, lteff, lcalst, lpurez, &
 ! MHP 9/24 add LCALSOLZX to namelist
            &    liso, lrwsh, lsenv0a,lcals,lcalsolzx, &
            &    llaol89,lopal92,lopal95,lkur90,lalex95, &
            &    npoint, &
-           &    npenv, nprtmod, nprtpt, numrun, nmodls, &
+           &    npenv, numrun, nmodls, &
            &    opecalex, &
            &    rsclm, rsclx, rsclz, rsclcm, rsclzc, rsclzm1, rsclzm2, &
            &    setdt, senv0a,steff,sr, &
@@ -925,7 +919,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
 ! no longer target them here now that they're use-associated from
 ! const_lib.
       data lenvg, atmstp, envstp/.false.,0.5,0.5/
-      data nprtpt/1/
 ! pulse_gyre_interval default moved to const_lib.f90 (former
 ! common/pulsegyre/).
       data numrun, kindrn, lfirst, nmodls &
@@ -1209,8 +1202,6 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
       idebug = 18
 ! OUTPUT: ALL DIAGNOSTIC INFO
       short_file_unit = 20
-! OUTPUT: SAVED MODELS, CAN BE USED AS STARTING MODEL
-      istor = 23
 ! OUTPUT: FOR PULSATION CODE, INTERIOR
 ! OUTPUT: FOR PULSATION CODE, ENVELOPE
 ! OUTPUT: FOR PULSATION CODE, ATMOSPHERE
@@ -1417,7 +1408,6 @@ subroutine adopt_canonical_names
       central_helium_stop = end_ycen
       use_mhd_eos = lmhd
       metal_fraction_match_tolerance = optol
-      print_point_interval = nprtpt
       convergence_tolerance = djok
       settling_tolerance = grtol
       coulomb_log_choice = ilambda
@@ -1645,7 +1635,6 @@ subroutine resolve_output_mode_and_paths
       call expand_value(fscvhe)
       call expand_value(fscvz)
       call expand_value(fshort)
-      call expand_value(fstor)
 
 ! Create the output directory if it doesn't already exist. It is
 ! taken from the directory part of the .short log path (FSHORT) --
@@ -1746,29 +1735,8 @@ subroutine derive_options_and_open_files
 ! legacy-mode only; MESA mode opens no legacy files (see the else
 ! branch after the pulse opens).
       if (use_legacy_output) then
-      open(istor,file=fstor,form='FORMATTED',status='UNKNOWN')
-      rewind(istor)
-! G Somers 11/14 write the new header for the .store file, if LSTORE = TRUE.
-      if(lstore)then
-! JvS 08/25 Added stitched interior and envelope option      
-         if(lstch)then
-            lphhd = .true.
-         else
-            write(istor,version_fmt) yrec_version_string, git_hash_string
-            write(istor,1012)
-         endif   
-      endif
-      1012 format('# Header Key',/,'# ModType    ModNum    #Shells    ', &
-           &  'M/Msun    log(Teff)    log(L/Lsun)    log(M/gram)    Age/Gyr', &
-           &  '    Timestep/yr    log(M_inner/gram)    log(M_outer/gram)',/, &
-           &  '# JCORE  JENV  CMIXL  EOS  ATM  ALOK HIK  LPUREZ  COMPMIX', &
-           &  '  LEXCOM  LDIFY  LDIFZ  LSEMIC  LOVSTC  LOVSTE  LOVSTM', &
-           &  '  LROT  LINSTB  LJDOT0  LDISK  TDISK  PDISK  WMAX  LSTORE', &
-           &  '  LSTATM  LSTENV  LSTMOD  LSTPHYS  LSTROT',/,'# PPI_lum', &
-           &  '    PPII_lum    PPIII_lum    CNO_lum    3He_lum    ', &
-           &  'OldNeu_lum    Grav_lum',/,'# ENV1-3   log(Teff)', &
-           &  '    log(L/Lsun)    P_base    T_base    R_base    MatrixElements' &
-           &  ,/)
+! 2026 retire-legacy: the .store open/header block is deleted with
+! the .store file (profiles/pulse files carry the stitched model).
 ! 1013 FORMAT('# JCORE  JENV  CMIXL  EOS  ATM  ALOK HIK  LPUREZ  COMPMIX',
 !     1 '  LEXCOM  LDIFY  LDIFZ  LSEMIC  LOVSTC  LOVSTE  LOVSTM',
 !     1 '  LROT  LINSTB  LJDOT0  LDISK  TDISK  PDISK  WMAX  LSTORE',
@@ -1807,12 +1775,6 @@ subroutine derive_options_and_open_files
 ! GYRE under pulse_gyre_interval is the MESA-mode pulse mechanism).
          call output_init_mesa(fshort, ierr)
          if (ierr /= 0) return
-         lstore = .false.
-         lstatm = .false.
-         lstenv = .false.
-         lstmod = .false.
-         lstphys = .false.
-         lstrot = .false.
          lpulse = .false.
       end if
 ! MHP 6/98
@@ -2138,24 +2100,14 @@ subroutine echo_settings
            &        'STANDARD       N/A       N/A  0.00E+00'/3x, &
            &        'CURRENT',1p2e10.0,2x,e8.2)
       if(npoint.le.0) npoint = 9999
-      write(short_file_unit,70) ldebug,lcorr,npoint,lstore,lstpch
-      70 format(3x,'LINE  2    LDEBUG     LCORR    NPOINT    LSTORE    LSTPCH'/2x,'STANDARD',2(9x,'T'),6x, &
-           & '9999',2(9x,'T')/3x,'CURRENT',2(9x,l1),6x, &
-           & i4,9x,l1,9x,l1)
+      write(short_file_unit,70) ldebug,lcorr,npoint
+      70 format(3x,'LINE  2    LDEBUG     LCORR    NPOINT'/2x,'STANDARD',2(9x,'T'),6x, &
+           & '9999'/3x,'CURRENT',2(9x,l1),6x,i4)
       if(npenv.le.0) npenv = 9999
-      write(short_file_unit,90) lscrib,lstatm,lstenv,lstmod,lstphys,lstrot
-      90 format(3x,'LINE  3    LSCRIB    LSTATM    LSTENV    LSTMOD',5x, &
-           & 'LSTPHYS    LSTROT'/2x,'STANDARD',9x,'T',2(9x,'F'), &
-           & 9x,'T',2(9x,'F'),9x,'2'/3x,'CURRENT',5(9x,l1),9x,l1)
       write(short_file_unit,110)lenvg,atmstp,envstp
       110 format(3x,'LINE 4     LENVG    ATMSTP    ENVSTP'/2x,'STANDARD',7x, &
            &        'N/A',6x,'0.50',6x,'0.50'/3x,'CURRENT',9x,l1,2(4x,f6.3))
-      if(nprtmod.le.0) nprtmod = 9999
-      if(nprtpt.le.0) nprtpt = 9999
       if(pulse_gyre_interval.lt.0) pulse_gyre_interval = 0
-      write(short_file_unit,130) nprtmod,nprtpt
-      130 format(3x,'LINE  4  NPRTMOD    NPRTPT'/2x,'STANDARD', &
-           & 1(7x,'N/A'),9x,'5'/3x,'CURRENT',2(6x,i4))
 
 !     SPIT OUT NAMELIST VARIABLES TO ISHORT
 

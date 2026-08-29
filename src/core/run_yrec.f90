@@ -392,14 +392,9 @@ end subroutine begin_kind_card
 ! Finish one kind card: store the last model to the .store stream
 ! when configured (putstore) and clear the punch flag.
 subroutine end_kind_card
-! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
-! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
-         if (star%ctrl%lstore.and.star%ctrl%lstpch.and.star%punch_pending_flag) then
-          call write_store_model(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,star%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
-                 star%dage,star%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
-            star%punch_pending_flag = .false.
-       endif
+! 2026 retire-legacy: the end-of-card putstore call is deleted with
+! the .store file (punch_pending_flag keeps its helium-flash reload
+! role above).
 ! 110  CONTINUE
 ! G Somers END
 end subroutine end_kind_card

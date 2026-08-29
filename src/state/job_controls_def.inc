@@ -25,8 +25,6 @@
             double precision :: central_helium_stop(50) = 0.0d0
             logical :: end_age_stop_active(50) = .false.
             logical :: timestep_override_active(50) = .false.
-            logical :: lstatm = .false.
-            logical :: lphhd = .false.
             integer :: imend = 1
             double precision :: fcorr = 0.0d0
             double precision :: dtdif = 1.0d-2

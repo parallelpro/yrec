@@ -59,10 +59,6 @@
       ! (legacy name: fshort)
       short_output_file = ''   ! (implicit)
 
-      ! Full stored-model (.store) output path
-      ! (legacy name: fstor)
-      store_output_file = ''   ! (implicit)
-
       ! Opened on the dynamics unit (formatted, STATUS=OLD)
       ! (legacy name: fdyn)
       dynamics_file = ''   ! (implicit)
@@ -167,44 +163,8 @@
       ! (legacy name: lcorr)
       write_correction_output = .false.   ! (implicit)
 
-      ! Write full stored models (.store)
-      ! (legacy name: lstore)
-      write_store_output = .false.   ! (implicit)
-
       ! (legacy name: lfirst)
       first_call_flag = .false.   ! (implicit)
-
-      ! Store the last model of each run (with write_store_output)
-      ! (legacy name: lstpch)
-      store_final_model_flag = .false.   ! (implicit)
-
-      ! Echoed in the .short header (LINE 3 flags); no other functional use
-      ! (legacy name: lscrib)
-      scribe_flag = .false.   ! (implicit)
-
-      ! Suppress per-model structure blocks in the .store stream (also disables atm profile)
-      ! (legacy name: lstch)
-      suppress_store_profiles = .false.   ! (implicit)
-
-      ! Include the atmosphere layers in stored models
-      ! (legacy name: lstatm)
-      store_atm_profile = .false.   ! (implicit)
-
-      ! Include the envelope in stored models
-      ! (legacy name: lstenv)
-      store_env_profile = .false.   ! (implicit)
-
-      ! Include the interior in stored models
-      ! (legacy name: lstmod)
-      store_interior_profile = .false.   ! (implicit)
-
-      ! Include physics (EOS/opacity) columns in stored models
-      ! (legacy name: lstphys)
-      store_physics_columns = .false.   ! (implicit)
-
-      ! Include rotation columns in stored models
-      ! (legacy name: lstrot)
-      store_rotation_columns = .false.   ! (implicit)
 
       ! former common/pulse/: pulsation_output_active/pulsation_file_version (originally lpulse/ipver) are NAMELIST values with different canonical spellings, kept local in core/
       ! (legacy name: lpulse)
@@ -261,13 +221,6 @@
       ! Envelope profile print count (values <= 0 become 9999 = off)
       ! (legacy name: npenv)
       envelope_print_points = 0   ! (implicit)
-
-      ! Write a stored model every N models
-      ! (legacy name: nprtmod)
-      profile_model_interval = 0   ! (implicit)
-
-      ! (legacy name: nprtpt)
-      print_point_interval = 1
 
       ! (legacy name: numrun)
       num_runs = 0   ! (implicit)

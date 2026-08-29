@@ -20,7 +20,6 @@
       fermi_table_file = ffermi
       debug_output_file = fdebug
       short_output_file = fshort
-      store_output_file = fstor
       dynamics_file = fdyn
       ll_data_file = flldat
       surface_composition_file = fscomp
@@ -47,16 +46,7 @@
       run_kind = kindrn
       write_debug_output = ldebug
       write_correction_output = lcorr
-      write_store_output = lstore
       first_call_flag = lfirst
-      store_final_model_flag = lstpch
-      scribe_flag = lscrib
-      suppress_store_profiles = lstch
-      store_atm_profile = lstatm
-      store_env_profile = lstenv
-      store_interior_profile = lstmod
-      store_physics_columns = lstphys
-      store_rotation_columns = lstrot
       pulsation_output_active = lpulse
       use_z_ramp = lzramp
       specify_teff_flag = lteff
@@ -74,8 +64,6 @@
       use_alex95_tables = lalex95
       debug_print_interval = npoint
       envelope_print_points = npenv
-      profile_model_interval = nprtmod
-      print_point_interval = nprtpt
       num_runs = numrun
       max_model_number = nmodls
       alex95_table_z_list = opecalex
@@ -373,7 +361,6 @@
       ffermi = fermi_table_file
       fdebug = debug_output_file
       fshort = short_output_file
-      fstor = store_output_file
       fdyn = dynamics_file
       flldat = ll_data_file
       fscomp = surface_composition_file
@@ -400,16 +387,7 @@
       kindrn = run_kind
       ldebug = write_debug_output
       lcorr = write_correction_output
-      lstore = write_store_output
       lfirst = first_call_flag
-      lstpch = store_final_model_flag
-      lscrib = scribe_flag
-      lstch = suppress_store_profiles
-      lstatm = store_atm_profile
-      lstenv = store_env_profile
-      lstmod = store_interior_profile
-      lstphys = store_physics_columns
-      lstrot = store_rotation_columns
       lpulse = pulsation_output_active
       lzramp = use_z_ramp
       lteff = specify_teff_flag
@@ -427,8 +405,6 @@
       lalex95 = use_alex95_tables
       npoint = debug_print_interval
       npenv = envelope_print_points
-      nprtmod = profile_model_interval
-      nprtpt = print_point_interval
       numrun = num_runs
       nmodls = max_model_number
       opecalex = alex95_table_z_list

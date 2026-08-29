@@ -5,9 +5,10 @@ profiles + pulse on) and byte-compares every produced data file --
 history.data, profile{N}.data, pulse files, and the .mod model --
 against examples/run_standard_solar_model/standard/mesa/<case>/.
 
-This is the MESA-format counterpart of the legacy .short/.track/.store
-pins: the retire-legacy campaign only removes a legacy file once its
-content is pinned here in the format that replaces it. Unlike the
+This is the MESA-format counterpart of the legacy .short pin (the
+.track/.store pins it superseded are retired): the retire-legacy
+campaign only removes a legacy file once its content is pinned here
+in the format that replaces it. Unlike the
 legacy files, the MESA files carry no git hash (version_number is the
 bare release string), so the comparison is byte-exact with no masking.
 

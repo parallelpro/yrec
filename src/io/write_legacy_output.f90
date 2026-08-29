@@ -269,19 +269,9 @@ subroutine write_legacy_output(timestep_yr, log_gravity, h_shell_present_flag, &
 !  IF LSTPCH = T, STORE THE LAST MODEL CALCULATED IN A RUN
       iwrite = ilast
       call write_mod_model(iwrite)
-!
-!  PRINT OUT MODEL DETAILS IF REQUESTED FOR THIS MODEL. THIS IS ALL DONE
-!  IN THE SR PUTSTORE.
-!
-      if(star%ctrl%lstore.and.mod(star%model_number,star%ctrl%nprtmod).eq.0) then
-       call write_store_model(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
-         star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs,trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L, &
-         star%log_total_mass,star%dage,timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
-       punch_pending_flag = .false.
-      endif
-! the call to putstore above creates the necessary pulsation output for LPULSE.
-! 2026 retire-legacy: the .milne homology-invariant table is deleted
-! (U, V, W, N+1 are pointwise algebra on profile columns).
+! 2026 retire-legacy: the .store writers (putstore + the LSTCH
+! stitch) are deleted -- profiles/pulse files carry the stitched
+! model, history carries the per-model globals.
 ! G Somers END
 ! new (2026): GYRE-format periodic pulsation output, independent of
 ! the LPULSE/pulsation_output_active mechanism above -- see
