@@ -51,11 +51,11 @@ module yrec_output
 contains
 
 ! ---------------------------------------------------------------
-subroutine output_init_mesa(fshort, ierr)
+subroutine output_init_mesa(log_output_file, ierr)
       use star_info_lib, only: star
       use luout_lib
       use run_log_lib, only: log_reset
-      character(len=*), intent(in) :: fshort
+      character(len=*), intent(in) :: log_output_file
       integer, intent(out) :: ierr
       logical :: gsm_supported
       external gsm_supported
@@ -67,24 +67,24 @@ subroutine output_init_mesa(fshort, ierr)
 ! run-log name: keep an explicit .log name as-is, swap a legacy
 ! .short name to .log, append .log otherwise (so the default
 ! run.log stays run.log, not run.log.log).
-      n = len_trim(fshort)
-      if (n >= 4 .and. fshort(max(1,n-3):n) == '.log') then
-         log_path = fshort
+      n = len_trim(log_output_file)
+      if (n >= 4 .and. log_output_file(max(1,n-3):n) == '.log') then
+         log_path = log_output_file
       else
-         n = index(fshort, '.short')
+         n = index(log_output_file, '.short')
          if (n > 0) then
-            log_path = fshort(1:n) // 'log'
+            log_path = log_output_file(1:n) // 'log'
          else
-            log_path = trim(fshort) // '.log'
+            log_path = trim(log_output_file) // '.log'
          end if
       end if
       open(run_log_unit, file=log_path, form='FORMATTED', &
            status='REPLACE')
       call log_reset()
 
-      islash = index(fshort, '/', back=.true.)
+      islash = index(log_output_file, '/', back=.true.)
       if (islash > 0) then
-         out_dir = fshort(1:islash)
+         out_dir = log_output_file(1:islash)
       else
          out_dir = ' '
       end if
