@@ -66,7 +66,7 @@ def main():
         rows.append(dict(group=parts[0], legacy=parts[1], typ=parts[2],
                          default=parts[3], new=parts[4], status=parts[5],
                          mesa=parts[6], doc=parts[7] if len(parts) > 7 else ""))
-    parmin = (SRC / "io" / "read_input.f90").read_text()
+    parmin = (SRC / "io" / "read_controls.f90").read_text()
     decls = joined_decl_lines(parmin)
     for extra in ("io/controls_lib.f90", "state/phys_const_lib.f90",
                   "numerics/intpar_lib.f90",

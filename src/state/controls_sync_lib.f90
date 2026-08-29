@@ -100,8 +100,6 @@ subroutine seed_controls_buffer
       metal_fraction_match_tolerance = star%ctrl%metal_fraction_match_tolerance
       zsi = star%ctrl%zsi
       npenv = star%ctrl%npenv
-      npoint = star%ctrl%npoint
-      ldebug = star%ctrl%ldebug
       first_unit = star%ctrl%first_unit
       run_unit = star%ctrl%run_unit
       standard_unit = star%ctrl%standard_unit
@@ -455,8 +453,6 @@ subroutine store_controls_to_star
       star%ctrl%metal_fraction_match_tolerance = metal_fraction_match_tolerance
       star%ctrl%zsi = zsi
       star%ctrl%npenv = npenv
-      star%ctrl%npoint = npoint
-      star%ctrl%ldebug = ldebug
       star%ctrl%first_unit = first_unit
       star%ctrl%run_unit = run_unit
       star%ctrl%standard_unit = standard_unit

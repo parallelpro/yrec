@@ -63,8 +63,6 @@
             double precision :: metal_fraction_match_tolerance = 0.0d0
             double precision :: zsi = 0.0d0
             integer :: npenv = 0
-            integer :: npoint = 1
-            logical :: ldebug = .false.
             integer :: first_unit = 0
             integer :: run_unit = 0
             integer :: standard_unit = 0

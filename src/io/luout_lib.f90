@@ -15,16 +15,14 @@
 ! opacity-table units became newunit locals of their readers).
 !
 ! 2026 descriptive-rename pass (formerly short_file_unit/iowr/
-! ilast/idebug):
+! ilast; idebug retired with the .debug stream):
 !   run_log_unit    -- the run log (log_output_file, default run.log)
 !   terminal_unit   -- stdout (always 6; kept as a named unit only
 !                      because ~20 files write through it)
 !   last_model_unit -- the final .mod model (last_model_file)
-!   debug_file_unit -- the opt-in debug stream (ldebug/fdebug)
 module luout_lib
       implicit none
 
-      integer :: last_model_unit, debug_file_unit, run_log_unit, &
-           terminal_unit
+      integer :: last_model_unit, run_log_unit, terminal_unit
 
 end module luout_lib

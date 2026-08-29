@@ -102,7 +102,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       integer :: point_insert_flag, chi_start_index
       integer :: old_point_count, new_point_count
       integer :: zone_index
-      integer :: min_common_count
       double precision :: sum_angular_momentum, sum_rotational_ke
       double precision :: angular_momentum_shell
       double precision :: delta_radius, delta_omega, omega_mid, log_factor
@@ -796,38 +795,10 @@ subroutine interpolate_onto_new_grid
       endif
 !
 
-!     SPIT OUT POINT DISTRIBUTION DETAILS IF REQUESTED
-      if (star%ctrl%ldebug .and.  star%ctrl%npoint.lt.9999) then
-      if (mod(star%model_number,star%ctrl%npoint).eq.0) then
-         min_common_count = min0(star%nz,new_num_zones)
-!
-         write(debug_file_unit,910)
-  910    format('1',20X,'OLD POINTS',54X,'NEW POINTS'/2(3X,'N',5X,'S', &
-     8X,'P',7X,'T',7X,'R',8X,'L',7X,'X',4X,'Z',3X,'O16',1X) )
-         write(debug_file_unit,920) (i,star%log_mass(i),star%logP(i), &
-              star%logT(i),star%logR(i),star%luminosity_lsun(i), &
-              x_new(i),z_new(i),star%xa(i_o16,i),i,star%old_shell_mass(i), &
-              star%logP_start(i),star%logT_start(i),star%logR_start(i), &
-              star%luminosity_lsun_start(i),star%xa(i_h1,i),star%xa(i_metals,i), &
-              star%xa(i_o16,i), i = 1,min_common_count)
-  920    format( 2(1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3) )
-         if (star%nz.gt.min_common_count) then
-            min_common_count = min_common_count + 1
-            write(debug_file_unit,930) (i,star%log_mass(i),star%logP(i), &
-                 star%logT(i),star%logR(i),star%luminosity_lsun(i), &
-                 x_new(i),z_new(i),star%xa(i_o16,i),i=min_common_count, &
-                 star%nz)
-  930       format( 1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
-         else if (new_num_zones.gt.min_common_count) then
-            min_common_count = min_common_count + 1
-            write(debug_file_unit,940)(i,star%old_shell_mass(i),star%logP_start(i), &
-                 star%logT_start(i),star%logR_start(i),star%luminosity_lsun_start(i), &
-                 star%xa(i_h1,i),star%xa(i_metals,i),star%xa(i_o16,i), &
-                 i=min_common_count,new_num_zones)
-  940       format(65X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
-         endif
-      endif
-      endif
+! (2026: the LDEBUG/NPOINT old-vs-new point-distribution table that
+! printed here is retired with the .debug stream -- per-zone
+! structure lives in the MESA profile files, and the rezone
+! bookkeeping is in the run log under report_solver_diagnostics.)
 
 
 ! TRANSFER NEW POINTS.

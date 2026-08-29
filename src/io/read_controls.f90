@@ -117,7 +117,7 @@ subroutine read_input(ierr)
       character(len=256) :: fstch
       character(len=256) :: fallard, fscvh, fscvhe, fscvz
       character(len=256) :: flast, ffirst, ffermi, &
-           fdebug, fshort, &
+           fshort, &
            fdyn, &
            flldat, fscomp, fkur, &
            fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8
@@ -206,10 +206,6 @@ subroutine read_input(ierr)
 ! NAMELIST /control/ value spelled identically to its const_lib
 ! canonical name -- use-associated directly.
 
-! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are
-! NAMELIST /physics/ values, spelled identically to their const_lib
-! canonical names -- use-associated directly, same reasoning as
-! lstore etc above.
 
 ! lnew0: NAMELIST /physics/ member spelled identically to its
 ! const_lib canonical name -- use-associated directly. tridt/tridl are
@@ -832,20 +828,19 @@ subroutine read_input(ierr)
            &    descrip, &
            &    endage, &
            &    flaol, fpurez,flaol2, fopal2, &
-           &    flast, ffirst, ffermi, fdebug, fshort, fstch, &
+           &    flast, ffirst, ffermi, fshort, fstch, &
            &    fdyn, flldat, fscomp, fkur, fmhd1, &
            &    fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8, fiso, fatm, &
            &    fkur2, fallard, fscvh, fscvhe, fscvz, fopale, fliv95, &
            &    fmonte1,fmonte2, &
            &    kindrn, &
-           &    ldebug, lfirst, &
+           &    lfirst, &
            &    terminal_interval, report_solver_diagnostics, &
            &    inlist_used_file, profile_data_prefix, &
            &    lzramp, lteff, lcalst, lpurez, &
 ! MHP 9/24 add LCALSOLZX to namelist
            &    liso, lrwsh, lsenv0a,lcals,lcalsolzx, &
            &    llaol89,lopal92,lopal95,lkur90,lalex95, &
-           &    npoint, &
            &    npenv, numrun, nmodls, &
            &    opecalex, &
            &    rsclm, rsclx, rsclz, rsclcm, rsclzc, rsclzm1, rsclzm2, &
@@ -958,7 +953,7 @@ subroutine read_input(ierr)
 ! they're use-associated.
       data lsenv0a, senv0a /50*.false.,50*1.26d-4/
       ! xenv0/zenv0 defaults moved to const_lib.f90 (former common/label/).
-! ldebug/lcorr/npoint/lmilne/ltrack/lstore/lstpch/lscrib/lstch/nprtmod
+! lcorr/lmilne/ltrack/lstore/lstpch/lscrib/lstch/nprtmod
 ! defaults moved to const_lib.f90 (see its own header note): DATA can
 ! no longer target them here now that they're use-associated from
 ! const_lib.
@@ -1241,8 +1236,6 @@ subroutine read_input(ierr)
       standard_unit = 14
 ! INPUT: FERMI TABLES
       fermi_unit = 15
-! OUTPUT: RESERVED for DEBUGGING
-      debug_file_unit = 18
 ! OUTPUT: THE RUN LOG
       run_log_unit = 20
 ! OUTPUT: FOR PULSATION CODE, INTERIOR
@@ -1831,10 +1824,7 @@ subroutine derive_options_and_open_files
       use_kurucz90_tables = lkur90
 
 ! 2026 use_legacy_output retirement: one open path for every run.
-      if(ldebug) then
-            open(debug_file_unit,file=fdebug,form='FORMATTED', &
-           &          status='UNKNOWN')
-      end if
+! (the LDEBUG/.debug stream open that sat here is retired)
 !     MHP 10/02 LBNIN never set, ignore loop
 !      IF (.NOT.LBNIN) THEN
          open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD')
@@ -2195,7 +2185,6 @@ subroutine echo_settings
 ! 2026 log redesign: the STANDARD/CURRENT settings tables (LINE 1-11)
 ! are deleted -- the verbatim inlist copy in the output directory
 ! (inlist_used) is the settings provenance now.
-      if(npoint.le.0) npoint = 9999
       if(npenv.le.0) npenv = 9999
       if(pulse_gyre_interval.lt.0) pulse_gyre_interval = 0
       if(kttau .eq. 0) then

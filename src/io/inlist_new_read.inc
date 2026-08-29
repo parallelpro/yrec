@@ -18,7 +18,6 @@
       last_model_file = flast
       first_model_file = ffirst
       fermi_table_file = ffermi
-      debug_output_file = fdebug
       log_output_file = fshort
       dynamics_file = fdyn
       ll_data_file = flldat
@@ -44,7 +43,6 @@
       monte_carlo_file1_path = fmonte1
       monte_carlo_file2_path = fmonte2
       run_kind = kindrn
-      write_debug_output = ldebug
       first_call_flag = lfirst
       use_z_ramp = lzramp
       specify_teff_flag = lteff
@@ -60,7 +58,6 @@
       use_opal95_tables = lopal95
       use_kurucz90_tables = lkur90
       use_alex95_tables = lalex95
-      debug_print_interval = npoint
       envelope_print_points = npenv
       num_runs = numrun
       max_model_number = nmodls
@@ -357,7 +354,6 @@
       flast = last_model_file
       ffirst = first_model_file
       ffermi = fermi_table_file
-      fdebug = debug_output_file
       fshort = log_output_file
       fdyn = dynamics_file
       flldat = ll_data_file
@@ -383,7 +379,6 @@
       fmonte1 = monte_carlo_file1_path
       fmonte2 = monte_carlo_file2_path
       kindrn = run_kind
-      ldebug = write_debug_output
       lfirst = first_call_flag
       lzramp = use_z_ramp
       lteff = specify_teff_flag
@@ -399,7 +394,6 @@
       lopal95 = use_opal95_tables
       lkur90 = use_kurucz90_tables
       lalex95 = use_alex95_tables
-      npoint = debug_print_interval
       npenv = envelope_print_points
       numrun = num_runs
       nmodls = max_model_number

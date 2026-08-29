@@ -135,14 +135,12 @@ subroutine write_run_summaries(monte_carlo_run_number, &
       if (star%ctrl%lmonte .and. convergence_iterations.ge.11 .and. .not.star%solar_calibration_active) then
          rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
-         rewind(debug_file_unit)
          rewind(run_log_unit)
          call write_monte_carlo_model(log_r_rsun, convergence_iterations, &
               star%job%nk, monte_carlo_run_number)
       else if (star%ctrl%calibrate_solar_model .and. star%ctrl%lsnu .and. star%solar_calibration_active) then
          rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
-         rewind(debug_file_unit)
          rewind(run_log_unit)
 
          surface_z_over_x = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)

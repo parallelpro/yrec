@@ -12,7 +12,6 @@
       character(len=256) :: last_model_file
       character(len=256) :: first_model_file
       character(len=256) :: fermi_table_file
-      character(len=256) :: debug_output_file
       character(len=256) :: log_output_file
       character(len=256) :: dynamics_file
       character(len=256) :: ll_data_file
@@ -36,8 +35,6 @@
       character(len=256) :: opal_eos_table_file
       character(len=256) :: opal95_opacity_table_file
       integer :: run_kind(50)
-      logical :: write_debug_output
-      integer :: debug_print_interval
       integer :: envelope_print_points
       integer :: max_model_number(50)
       character(len=256) :: alex95_table_z_list(7)
@@ -138,8 +135,8 @@
            & run_description, max_age, laol_opacity_table_file, &
            & pure_z_opacity_table_file, laol_opacity_table2_file, &
            & opal92_opacity_table2_file, last_model_file, &
-           & first_model_file, fermi_table_file, debug_output_file, &
-           & dynamics_file, ll_data_file, surface_composition_file, &
+           & first_model_file, fermi_table_file, dynamics_file, &
+           & ll_data_file, surface_composition_file, &
            & kurucz_atm_table_file, mhd_table_file_1, mhd_table_file_2, &
            & mhd_table_file_3, mhd_table_file_4, mhd_table_file_5, &
            & mhd_table_file_6, mhd_table_file_7, mhd_table_file_8, &
@@ -148,23 +145,23 @@
            & scv_h_table_file, scv_he_table_file, scv_z_table_file, &
            & opal_eos_table_file, opal95_opacity_table_file, &
            & monte_carlo_file1_path, monte_carlo_file2_path, run_kind, &
-           & write_debug_output, first_call_flag, use_z_ramp, &
-           & specify_teff_flag, calibrate_star_flag, use_pure_z_table, &
+           & first_call_flag, use_z_ramp, specify_teff_flag, &
+           & calibrate_star_flag, use_pure_z_table, &
            & isochrone_output_active, rewind_short_file, &
            & has_senv0_array, calibrate_solar_model, calibrate_solar_zx, &
            & use_laol89_tables, use_opal92_tables, use_opal95_tables, &
            & use_kurucz90_tables, use_alex95_tables, &
-           & debug_print_interval, envelope_print_points, num_runs, &
-           & max_model_number, alex95_table_z_list, rescale_mass, &
-           & rescale_x, rescale_z, rescale_core_mass, rescale_core_z, &
-           & rescale_z_mix1, rescale_z_mix2, timestep_override, &
-           & senv0_array, target_teff, target_radius_rsun, &
-           & radius_tolerance, luminosity_tolerance, zx_tolerance, &
-           & initial_x_array, target_luminosity_lsun, &
-           & target_star_luminosity_tolerance, initial_z_array, &
-           & laol_table_z1, laol_table_z2, opal_table_z1, opal_table_z2, &
-           & opal95_single_table_z, opal95_z2, alex_table_z1, alex_z2, &
-           & kurucz_table_z1, kurucz_table_z2, opal01_eos_table_file, &
+           & envelope_print_points, num_runs, max_model_number, &
+           & alex95_table_z_list, rescale_mass, rescale_x, rescale_z, &
+           & rescale_core_mass, rescale_core_z, rescale_z_mix1, &
+           & rescale_z_mix2, timestep_override, senv0_array, &
+           & target_teff, target_radius_rsun, radius_tolerance, &
+           & luminosity_tolerance, zx_tolerance, initial_x_array, &
+           & target_luminosity_lsun, target_star_luminosity_tolerance, &
+           & initial_z_array, laol_table_z1, laol_table_z2, &
+           & opal_table_z1, opal_table_z2, opal95_single_table_z, &
+           & opal95_z2, alex_table_z1, alex_z2, kurucz_table_z1, &
+           & kurucz_table_z2, opal01_eos_table_file, &
            & conductive_opacity_table_file, opal06_eos_table_file, &
            & alex06_opacity_table_file, use_alex06_tables, &
            & central_deuterium_stop, central_hydrogen_stop, &

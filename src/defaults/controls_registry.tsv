@@ -11,7 +11,6 @@ control	fopal2	string	''*	opal92_opacity_table2_file	proposed		OPAL 1992 opacity
 control	flast	string	'{YREC_OUTPUT}/final.mod'	last_model_file	proposed		Path for the final model (.mod) written every model; reloadable
 control	ffirst	string	''*	first_model_file	proposed		Starting model read when read_first_model is set for a run
 control	ffermi	string	''*	fermi_table_file	proposed		Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS)
-control	fdebug	string	''*	debug_output_file	proposed		Debug output stream
 physics	fshort	string	'{YREC_OUTPUT}/run.log'	log_output_file	proposed		Run log path; its directory part defines the output directory (legacy FSHORT)
 control	fstch	string	''*	stored_change_file	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 control	fdyn	string	''*	dynamics_file	verified		Opened on the dynamics unit (formatted, STATUS=OLD)
@@ -38,7 +37,6 @@ control	fliv95	string	''*	opal95_opacity_table_file	proposed		OPAL/Livermore 199
 control	fmonte1	string	''*	monte_carlo_file1_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
 control	fmonte2	string	''*	monte_carlo_file2_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
 control	kindrn	integer(50)	0*	run_kind	verified		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
-control	ldebug	logical	.false.*	write_debug_output	proposed		Enable the debug output stream
 control	lfirst	logical(50)	.false.*	first_call_flag	canonical		
 control	lzramp	logical	.false.	use_z_ramp	canonical		
 control	lteff	logical	.false.*	specify_teff_flag	canonical		
@@ -54,7 +52,6 @@ control	lopal92	logical	.false.*	use_opal92_tables	canonical
 control	lopal95	logical	.false.*	use_opal95_tables	canonical		
 control	lkur90	logical	.false.*	use_kurucz90_tables	canonical		
 control	lalex95	logical	.false.*	use_alex95_tables	canonical		
-control	npoint	integer	0*	debug_print_interval	verified		hpoint debug print every N models (9999 = off)
 control	npenv	integer	0*	envelope_print_points	verified		Envelope profile print count (values <= 0 become 9999 = off)
 control	numrun	integer	0*	num_runs	canonical		
 control	nmodls	integer(50)	0*	max_model_number	canonical	mesa: max_model_number	

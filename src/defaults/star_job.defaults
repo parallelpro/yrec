@@ -51,10 +51,6 @@
       ! (legacy name: ffermi)
       fermi_table_file = ''   ! (implicit)
 
-      ! Debug output stream
-      ! (legacy name: fdebug)
-      debug_output_file = ''   ! (implicit)
-
       ! Opened on the dynamics unit (formatted, STATUS=OLD)
       ! (legacy name: fdyn)
       dynamics_file = ''   ! (implicit)
@@ -151,10 +147,6 @@
       ! (legacy name: kindrn)
       run_kind = 0   ! (implicit)
 
-      ! Enable the debug output stream
-      ! (legacy name: ldebug)
-      write_debug_output = .false.   ! (implicit)
-
       ! (legacy name: lfirst)
       first_call_flag = .false.   ! (implicit)
 
@@ -201,10 +193,6 @@
 
       ! (legacy name: lalex95)
       use_alex95_tables = .false.   ! (implicit)
-
-      ! hpoint debug print every N models (9999 = off)
-      ! (legacy name: npoint)
-      debug_print_interval = 0   ! (implicit)
 
       ! Envelope profile print count (values <= 0 become 9999 = off)
       ! (legacy name: npenv)

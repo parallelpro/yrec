@@ -246,12 +246,8 @@ module controls_lib
 ! nprtpt) is also a NAMELIST value but needed a different, more
 ! readable name established elsewhere, so core/read_input.f90 keeps a
 ! local nprtpt and copy-assigns.
-      integer :: npenv, npoint = 1
+      integer :: npenv
 
-! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are all
-! NAMELIST /physics/ values, spelled identically to their canonical
-! names -- same treatment as common/ccout/ above.
-      logical :: ldebug = .false.
 
 ! former common/lunum/: logical unit numbers for the various input/
 ! output files, none of them NAMELIST values -- core/read_input.f90
