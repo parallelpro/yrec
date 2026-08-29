@@ -39,7 +39,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 
       double precision :: delta_lum_step, delta_pressure_step, &
            delta_radius_step, delta_temp_step, &
-           target_envelope_mass, teff_kelvin_unused
+           target_envelope_mass
       integer :: envelope_cz_zone_end, envelope_cz_zone_prev, &
            iteration_level, iterations_done, max_iterations, nao, &
            num_mixed_zones, num_mixed_zones_no_overshoot, &
@@ -64,7 +64,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          delta_radius_step = 0.0d0
          delta_temp_step = 0.0d0
          target_envelope_mass = 0.0d0
-         teff_kelvin_unused = 0.0d0
          envelope_cz_zone_end = 0
          envelope_cz_zone_prev = 0
          iteration_level = 0
@@ -171,40 +170,10 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        call output_write_model()
 
 ! MHP 10/24 GENERALIZED STOP CONDITIONS
-!     IF EVOLVING TO A GIVEN AGE AND AGE IS REACHED, KIND CARD IS DONE
-!       IF(LENDAG(NK).AND.ENDAGE(NK)-DAGE*1.0D9.LE.1.0D0)GOTO 110
-       if (reached_end_age(star%job%nk)) then
-          step_status = step_kind_card_done
-          return
-       end if
-! MHP 10/24 CHECK ALL STOP CONDITIONS, EXIT IF ANY SATISFIED
-! (2026: the D/X/Y checks are one table walk in stop_conditions)
-         if (abundance_stop_triggered(star%job%nk)) then
-! SET I/O FLAGS PROPERLY AND EXIT LOOP
-            star%print_rotation_diagnostics = .true.
-            step_status = step_kind_card_done
-            return
-         endif
-! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
-         if (star%ctrl%calibrate_star_flag .and. .not. star%star_found_flag) then
-            if (mod(star%job%nk,2).eq.0) then
-! chkscal protocol: iteration 1 only primes its previous-model state
-! (the value computed here is never read -- see check_star_calibration.f90)
-             if (model_iteration.eq.1) then
-                teff_kelvin_unused = 10.0D0**star%log_Teff
-             else
-                call check_star_calibration(star%log_L, star%log_Teff, star%dage, star%job%nk)
-                if (star%just_passed_target_radius_flag) then
-                   step_status = step_leave_run_loop
-                   return
-                end if
-             end if
-          endif
-       endif
-
-! END OF RUN
-
-      step_status = step_continue
+! (2026: one entry in stop_conditions -- end-age stop, the D/X/Y
+! central-abundance table, and the star-calibration target-radius
+! check, in that order)
+      call check_stop_conditions(model_iteration, step_status)
       return
 contains
 
@@ -523,14 +492,9 @@ subroutine converge_with_rotation
                      star%j_rot(i) = star%orig_specific_angular_momentum(i)
                   end do
                endif
-! MHP 9/94 ADDED FLAG TO TURN ON ROTATION OUTPUT WHEN END OF KIND
-! CARD REACHED.
-! MHP 10/24 GENERALIZE CHECK
-               if (approaching_end_age(star%job%nk)) then
-                  star%print_rotation_diagnostics = .true.
-               else
-                  star%print_rotation_diagnostics = .false.
-               endif
+! (2026: the print_rotation_diagnostics pre-arm that lived here --
+! MHP 9/94's end-of-card QUAD/PHIS terminal line, the flag's only
+! effect -- is retired along with the flag.)
 ! FIND THE NEW RUN OF OMEGA
 ! JENV0 ADDED TO SR CALL.
                wind_loss_active = star%job%ljdot0

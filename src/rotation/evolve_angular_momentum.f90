@@ -98,8 +98,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! exactly as in the original.
       logical :: mix_grads_flag
       integer :: iend
-      double precision :: surface_quad_term, surface_potential
-      double precision :: log_radius_surface
       double precision :: omega_avg, domega_dr, delta_radius_step
 
       integer, intent(out) :: ierr
@@ -481,16 +479,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
            star%i_rot,star%omega,star%qiw,star%mean_radius)
       end if
       endif
-      if(star%print_rotation_diagnostics)then
-         star%log_L = log10(star%luminosity_lsun(star%nz))
-         log_radius_surface = 0.5D0*(star%log_L + star%log10_solar_luminosity &
-              - 4.0D0*star%log_Teff - c4pil - csigl)
-         fx = exp(ln10*3.0D0*(star%logR(star%nz)-log_radius_surface))
-         surface_quad_term = fx*rot_scr%quadrupole_moment(star%nz)
-         surface_potential = exp(ln10*(cgl+star%log_total_mass-log_radius_surface))
-         write(*,9911)surface_quad_term,surface_potential,-1.5D0*surface_quad_term/surface_potential
- 9911    format(1X,'QUAD ',1PE12.3,' PHIS ',E12.3,' 3/2 QUAD/G ', &
-     E12.3)
-      endif
+! (2026: the MHP 9/94 end-of-card QUAD/PHIS surface-quadrupole
+! terminal line, gated by the retired print_rotation_diagnostics
+! flag, was deleted here -- its only reader.)
       return
 end subroutine evolve_angular_momentum

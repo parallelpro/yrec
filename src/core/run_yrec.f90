@@ -29,7 +29,7 @@ subroutine run_yrec(ierr)
       use phys_const_lib
       use yrec_reset_lib, only: yrec_run_prologue
       use stop_conditions, only: step_kind_card_done, &
-           step_leave_run_loop, disarm_satisfied_stops
+           step_leave_run_loop, init_stop_conditions
       implicit none
       integer :: step_status
 
@@ -327,7 +327,7 @@ subroutine begin_kind_card
 ! (2026: one table walk in stop_conditions -- the hand-written D/X/Y
 ! triple that used to live here carried the disarm-the-wrong-stop bug
 ! fixed in phase 1.)
-         call disarm_satisfied_stops(star%job%nk)
+         call init_stop_conditions(star%job%nk)
 ! Opt-in diagnostic (2026): the former LNUTAB per-zone neutrino
 ! table, off since 2004, is now the compute_neutrino_fluxes control
 ! (core/neutrino_flux_table.f90); it describes the starting model

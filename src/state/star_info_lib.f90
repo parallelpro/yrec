@@ -395,8 +395,6 @@ module star_info_lib
                 pressure_entropy_term(json), &
                 luminosity_entropy_term(json), &
                 radius_entropy_term(json)
-! former common/rotprt/
-           logical :: print_rotation_diagnostics
 ! former common/theage/
            double precision :: dage
 ! former common/stch/
