@@ -16,10 +16,7 @@ subroutine star_setup(ierr)
 
       ierr = 0
 ! set up constants and read in tabular data
-! MHP 8/25 directly pass file names instead of using common blocks
-      call setups(star%job%mixture_weights,star%job%alex06_table_path,star%job%allard_table_path,star%job%atm_table_path,star%job%fermi_table_path,star%job%kurucz_table_path,star%job%kurucz_table2_path, &
-           star%job%laol_table_path,star%job%laol_table2_path,star%job%opal95_table_path,star%job%opal92_table_path,star%job%zams_a_table_path,star%job%zams_b_table_path,star%job%zams_c_table_path,star%job%centre1_table_path,star%job%centre2_table_path,star%job%centre3_table_path, &
-           star%job%centre4_table_path,star%job%centre5_table_path,star%job%opal92_table2_path,star%job%pure_z_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path,star%job%scv_z_table_path,star%job%alex95_table_paths, ierr)
+      call setups(ierr)
       if (ierr /= 0) return
 ! Monte-Carlo run range and per-run sampled-parameter read (2026:
 ! core/monte_carlo.f90 -- the standalone MC home).

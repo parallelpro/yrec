@@ -18,15 +18,7 @@
 ! Kurucz/Castelli surface-pressure table used for the T-tau surface
 ! boundary condition, and (if enabled) the SCVH envelope
 ! equation-of-state tables.
-subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
-     atm_table_path, fermi_table_path, kurucz_table_path, &
-     kurucz_table2_path, laol_table_path, laol_table2_path, &
-     opal95_table_path, opal92_table_path, zams_a_table_path, &
-     zams_b_table_path, zams_c_table_path, centre1_table_path, &
-     centre2_table_path, centre3_table_path, centre4_table_path, &
-     centre5_table_path, opal92_table2_path, pure_z_table_path, &
-     scv_h_table_path, scv_he_table_path, scv_z_table_path, &
-     alex95_table_paths, ierr)
+subroutine setups(ierr)
       use eos_lib
       use kap_lib
       use atm_lib
@@ -43,19 +35,12 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! MHP 8/97 ADDED NTA AND NGA FOR ALLARD ATMOSPHERE
       integer, parameter :: nta = 54, nga = 5
 
-      double precision, intent(inout) :: laol_work_array(12)
+
 ! MHP 8/25 Reduced declared variables to ones actually used here or
 ! passed to other routine
-      character(len=256), intent(in) :: alex06_table_path, &
-           allard_table_path, atm_table_path, fermi_table_path, &
-           kurucz_table_path, kurucz_table2_path, opal95_table_path, &
-           laol_table_path, laol_table2_path, opal92_table_path, &
-           zams_a_table_path, zams_b_table_path, zams_c_table_path, &
-           centre1_table_path, centre2_table_path, centre3_table_path, &
-           centre4_table_path, centre5_table_path, &
-           opal92_table2_path, pure_z_table_path, scv_h_table_path, &
-           scv_he_table_path, scv_z_table_path
-      character(len=256), intent(in) :: alex95_table_paths(7)
+! 2026 de-tramp: the 24 table paths and the mixture work array come
+! from star%job directly (they were only ever star%job members passed
+! positionally through star_setup) -- callers set star%job first.
 
 ! former common/lunum/: all 12 members now use-associated from
 ! const_lib (see that file's header note) rather than locally
@@ -158,11 +143,11 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ierr = 0
       call kap_init(star%envelope_hydrogen_fraction, &
-           star%envelope_metal_fraction, laol_work_array, &
-           alex06_table_path,kurucz_table_path,kurucz_table2_path, &
-           laol_table_path,laol_table2_path, &
-           opal95_table_path,opal92_table_path,opal92_table2_path, &
-           pure_z_table_path,alex95_table_paths, ierr)
+           star%envelope_metal_fraction, star%job%mixture_weights, &
+           star%job%alex06_table_path,star%job%kurucz_table_path,star%job%kurucz_table2_path, &
+           star%job%laol_table_path,star%job%laol_table2_path, &
+           star%job%opal95_table_path,star%job%opal92_table_path,star%job%opal92_table2_path, &
+           star%job%pure_z_table_path,star%job%alex95_table_paths, ierr)
       if (ierr /= 0) return
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     READ IN MHD EOS TABLES
@@ -173,10 +158,10 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! eos_lib's eos_init; a no-op when MHD is off, exactly as before.
 ! eos_init also reads the Fermi-Dirac degenerate-electron table
 ! (the F-tables block that used to sit inline just below).
-      call eos_init(fermi_table_path,scv_h_table_path,scv_he_table_path, &
-           scv_z_table_path,zams_a_table_path,zams_b_table_path, &
-           zams_c_table_path,centre1_table_path,centre2_table_path, &
-           centre3_table_path,centre4_table_path,centre5_table_path, ierr)
+      call eos_init(star%job%fermi_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path, &
+           star%job%scv_z_table_path,star%job%zams_a_table_path,star%job%zams_b_table_path, &
+           star%job%zams_c_table_path,star%job%centre1_table_path,star%job%centre2_table_path, &
+           star%job%centre3_table_path,star%job%centre4_table_path,star%job%centre5_table_path, ierr)
       if (ierr /= 0) return
 !
 !
@@ -191,7 +176,7 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
 ! 2026 (ROADMAP.md stage 1): the Kurucz (atm_choice 3/4), Allard
 ! (atm_choice 4), and Kurucz/Castelli (atm_choice 5) surface table
 ! loads that lived inline here moved into atm_lib's atm_init.
-      call atm_init(atm_table_path,allard_table_path, ierr)
+      call atm_init(star%job%atm_table_path,star%job%allard_table_path, ierr)
       if (ierr /= 0) return
 
 ! (The SCV equation-of-state table reads that lived here moved into

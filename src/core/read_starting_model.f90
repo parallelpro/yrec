@@ -355,21 +355,16 @@ subroutine acquire_starting_model
       else if (format_tag .eq. 'NMOD') then
          write(run_log_unit,12)
  12      format(1x,'loading starting model (YREC7 format)')
-         call read_yrec7(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
-              star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
-              star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
-              star%log_total_mass,star%logT,iread,run_log_unit, &
-              core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
-              use_extended_composition0,rotation_active0,star%nz, &
-              star%model_number,star%omega,star%fit_point_pressure,star%fit_point_radius, &
-              star%star_mass,star%log_Teff,star%luminosity_breakdown, &
-              star%trial_log_luminosity,star%trial_log_temperature, &
-              star%fit_point_temperature, &
+! (2026 de-tramp: the star%-shaped slots are read/written by
+! read_yrec7 directly; only genuine locals -- the model file's own
+! header values, latched below -- remain arguments.)
+         call read_yrec7(mixing_length0,timestep_yr,trial_sign_flag,iread, &
+              core_cz_top_index0,envelope_cz_bottom_index0, &
+              use_extended_composition0,rotation_active0, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
               disk_locking_active0,instability_transport_active0,ljdot00, &
-              alok_code, &
-              lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,star%initial_composition_code,disk_pressure0, &
+              alok_code,lovstc0,envelope_overshoot_active0,lovstm0, &
+              use_pure_z_table0,lsemic0,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0, ierr)
          if (ierr /= 0) return
 ! First three lines above are YREC7 inputs
@@ -378,21 +373,14 @@ subroutine acquire_starting_model
       else if (format_tag .eq. 'MOD2 ') then
          write(run_log_unit,16)
  16      format(1x,'loading starting model (MODEL2 format)')
-         call read_model2(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
-              star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
-              star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
-              star%log_total_mass,star%logT,iread, &
-              core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
-              use_extended_composition0,rotation_active0,star%nz, &
-              star%model_number,star%omega,star%fit_point_pressure,star%fit_point_radius, &
-              star%star_mass,star%log_Teff,star%luminosity_breakdown, &
-              star%trial_log_luminosity,star%trial_log_temperature, &
-              star%fit_point_temperature, &
+! (2026 de-tramp: same treatment as the read_yrec7 call above.)
+         call read_model2(mixing_length0,timestep_yr,trial_sign_flag,iread, &
+              core_cz_top_index0,envelope_cz_bottom_index0, &
+              use_extended_composition0,rotation_active0, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
               disk_locking_active0,instability_transport_active0,ljdot00, &
-              alok_code, &
-              lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,star%initial_composition_code,disk_pressure0, &
+              alok_code,lovstc0,envelope_overshoot_active0,lovstm0, &
+              use_pure_z_table0,lsemic0,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0)
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons

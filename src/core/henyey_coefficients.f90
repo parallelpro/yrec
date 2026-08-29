@@ -10,8 +10,8 @@
 ! 2/91 MHP FLAG TO TOGGLE BETWEEN OLD/NEW ENERGY GENERATION ROUTINES
 ! ADDED (COMMON BLOCK NEWENG).
 !
-! Builds the Henyey structure-equation coefficients (elim_coeff/
-! elim_rhs, via reduce) for every mesh point: at each shell, calls the
+! Builds the Henyey structure-equation coefficients (star%elim_coeff/
+! star%elim_rhs, via reduce) for every mesh point: at each shell, calls the
 ! equation of state (via eos_lib's eos_get), opacity (via kap_lib's
 ! kap_get), and
 ! temperature-gradient (tpgrad) routines to get the local physics,
@@ -41,15 +41,10 @@
 !       SUBROUTINE COEFFT(DELTS,M,HD,HHA,HHB,HHC,HL,HMAX,HP,HPP,HR,HS,
 !      *HS1,HS2,HT,HTT,HCOMP,LC,TLUMX,LATMO,LDERIV,LMIX,LOCOND,QDT,QDP,
 !      *KSAHA,MODEL,FP,FT,HKEROT,HKEROTO,JENV,TEFFL)  ! KC 2025-05-31
-subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff, &
-     elim_rhs, gravitational_luminosity, luminosity_lsun, max_residual, &
-     log_pressure, log_pressure_delta, log_radius, log_mass, &
-     mass_weight_ln, shell_mass, log_temperature, log_temperature_delta, &
-     composition, convective_flag, luminosity_terms, in_atmosphere, &
+subroutine henyey_coefficients(delta_time, in_atmosphere, &
      want_derivatives, mixing_active, conductive_opacity_flag, &
-     dlnrho_dlnt, dlnrho_dlnp, saha_state, &
-     rotation_p_factor, rotation_t_factor, kinetic_energy_rot, &
-     kinetic_energy_rot_old, envelope_zone_index, log_teff, ierr)
+     dlnrho_dlnt, dlnrho_dlnp, saha_state, envelope_zone_index, &
+     ierr)
       use rotation_scratch_lib
 
       use net_lib
@@ -61,29 +56,11 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
       implicit none
 
       double precision, intent(in) :: delta_time
-      integer, intent(in) :: num_points
-      double precision, intent(inout) :: log10_density(json)
-      double precision, intent(inout) :: elim_coeff(4,2,json), &
-           elim_rhs(4,json)
-      double precision, intent(inout) :: gravitational_luminosity(json)
-      double precision, intent(in) :: luminosity_lsun(json)
-      double precision, intent(inout) :: max_residual(4)
-      double precision, intent(in) :: log_pressure(json), &
-           log_pressure_delta(json), log_radius(json), log_mass(json), &
-           mass_weight_ln(json), shell_mass(json), log_temperature(json), &
-           log_temperature_delta(json)
-      double precision, intent(in) :: composition(15,json)
-      logical, intent(out) :: convective_flag(json)
-      double precision, intent(out) :: luminosity_terms(8)
       logical, intent(out) :: in_atmosphere, want_derivatives, &
            mixing_active, conductive_opacity_flag
       double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
       integer, intent(inout) :: saha_state
-      double precision, intent(in) :: rotation_p_factor(json), &
-           rotation_t_factor(json), kinetic_energy_rot(json), &
-           kinetic_energy_rot_old(json)
       integer, intent(in) :: envelope_zone_index
-      double precision, intent(in) :: log_teff
 
 
 ! JVS end
@@ -161,50 +138,50 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
        one_year_sec_inv = 3.1688d-8
       end if
       do j = 1,8
-       luminosity_terms(j) = 0.0d0
+       star%luminosity_breakdown(j) = 0.0d0
       end do
-      do im = 1,num_points
+      do im = 1,star%nz
 ! SET UP LOCAL VARIABLES FOR CALLS TO BASIC PHYSICS ROUTINES
        zone_energy_luminosity = 0.0d0
-       zone_log_mass = log_mass(im)
-       zone_log_temperature = log_temperature(im)
-       zone_log_pressure = log_pressure(im)
-       zone_log_radius = log_radius(im)
-       zone_luminosity_lsun = luminosity_lsun(im)
-       hydrogen_fraction = composition(1,im)
-       helium_fraction = composition(2,im)
-       metal_fraction = composition(3,im)
-       he3_fraction = composition(4,im)
-       c12_fraction = composition(5,im)
-       c13_fraction = composition(6,im)
-       n14_fraction = composition(7,im)
-       n15_fraction = composition(8,im)
-       o16_fraction = composition(9,im)
-       o17_fraction = composition(10,im)
-       o18_fraction = composition(11,im)
+       zone_log_mass = star%log_mass(im)
+       zone_log_temperature = star%logT(im)
+       zone_log_pressure = star%logP(im)
+       zone_log_radius = star%logR(im)
+       zone_luminosity_lsun = star%luminosity_lsun(im)
+       hydrogen_fraction = star%xa(1,im)
+       helium_fraction = star%xa(2,im)
+       metal_fraction = star%xa(3,im)
+       he3_fraction = star%xa(4,im)
+       c12_fraction = star%xa(5,im)
+       c13_fraction = star%xa(6,im)
+       n14_fraction = star%xa(7,im)
+       n15_fraction = star%xa(8,im)
+       o16_fraction = star%xa(9,im)
+       o17_fraction = star%xa(10,im)
+       o18_fraction = star%xa(11,im)
 ! MHP 05/02 DEFINE THESE ALWAYS; THEY
 ! ARE PASSED TO THE SR ANYWAY.
 !       IF(LEXCOM) THEN
-          deuterium_fraction = composition(12,im)
-          li6_fraction = composition(13,im)
-          li7_fraction = composition(14,im)
-          be9_fraction = composition(15,im)
+          deuterium_fraction = star%xa(12,im)
+          li6_fraction = star%xa(13,im)
+          li7_fraction = star%xa(14,im)
+          be9_fraction = star%xa(15,im)
 !       ENDIF
        shell_index = im
-       zone_log10_density = log10_density(im)
-       pressure_rotation_factor = rotation_p_factor(im)
-        temperature_rotation_factor = rotation_t_factor(im)
+       zone_log10_density = star%logRho(im)
+       pressure_rotation_factor = star%fp_rot(im)
+        temperature_rotation_factor = star%ft_rot(im)
          eos_res(i_log10_density) = zone_log10_density
          eos_res(i_dlnrho_dlnt) = dlnrho_dlnt
          eos_res(i_dlnrho_dlnp) = dlnrho_dlnp
          call eos_get_r(zone_log_temperature, zone_log_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_state, &
-              composition_at_zone=composition(:,im))
+              composition_at_zone=star%xa(:,im))
          dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
          dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
 ! eqstat historically updated zone_log10_density in place; the tail
-! (eq_r_val, energy generation, elim_rhs) reads the updated value.
+! (eq_r_val, energy generation, star%elim_rhs) reads the updated value.
          zone_log10_density = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density -- the
 ! historical inout dataflow)
@@ -218,9 +195,9 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
               convective_velocity, want_derivatives, is_convective, &
               pressure_rotation_factor, temperature_rotation_factor, &
-              log_teff, ierr)
+              star%log_Teff, ierr)
          if (ierr /= 0) return
-       log10_density(im) = eos_res(i_log10_density)
+       star%logRho(im) = eos_res(i_log10_density)
 ! COMPUTE DERIVATIVES
 !       IF(LROT) THEN
 !  CALCULATE D(LOG FP)/D(LOG R) AND D(LOG FT)/D(LOG R)
@@ -243,11 +220,11 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
        dqr_dp = -eq_r_val*dlnrho_dlnp
        dqr_dt = -eq_r_val*dlnrho_dlnt
        star%pulse%qp =-dexp(ln10*(cgl + zone_log_mass + zone_log_mass - &
-            zone_log_pressure - qtemp - zone_log_radius ))*rotation_p_factor(im)
+            zone_log_pressure - qtemp - zone_log_radius ))*star%fp_rot(im)
 !       QPR = -QP - QP - QP - QP*(1.0D0 - QFPR)
        dqp_dr = -star%pulse%qp - star%pulse%qp - star%pulse%qp - star%pulse%qp
        dqp_dp = -star%pulse%qp
-       convective_flag(im) = is_convective
+       star%convective_flag(im) = is_convective
        star%pulse%qt = actual_gradient*star%pulse%qp
        dqt_dr = -star%pulse%qt - star%pulse%qt - star%pulse%qt - star%pulse%qt
 !       QTR = -QT - QT - QT - QT*(1.0D0 - QFTR)
@@ -291,27 +268,27 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
             if (star%ctrl%calc_neutrinos) then
                do j = 1,10
                   star%neutrino_flux_total(j) = star%neutrino_flux_total(j) + &
-                       star%neutrino_flux(j)*shell_mass(im)
+                       star%neutrino_flux(j)*star%dm(im)
                end do
             end if
             do j = 1,6
-               luminosity_terms(j) = luminosity_terms(j) + &
-                    (shell_mass(im)/star%solar_luminosity_cgs)* &
+               star%luminosity_breakdown(j) = star%luminosity_breakdown(j) + &
+                    (star%dm(im)/star%solar_luminosity_cgs)* &
                     energy_gen_component(j)
                zone_energy_luminosity = zone_energy_luminosity + &
-                    (shell_mass(im)/star%solar_luminosity_cgs)* &
+                    (star%dm(im)/star%solar_luminosity_cgs)* &
                     energy_gen_component(j)
             end do
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
-            star%he3_he3_luminosity_zone(im) = (shell_mass(im)/ &
+            star%he3_he3_luminosity_zone(im) = (star%dm(im)/ &
                  star%solar_luminosity_cgs)*star%he3_he3_energy_rate
-            star%he3_burning_luminosity_zone(im) = (shell_mass(im)/ &
+            star%he3_burning_luminosity_zone(im) = (star%dm(im)/ &
                  star%solar_luminosity_cgs)*star%he3_burning_energy_rate
 ! JVS end
-            luminosity_terms(8)=luminosity_terms(8)+(shell_mass(im)/ &
+            star%luminosity_breakdown(8)=star%luminosity_breakdown(8)+(star%dm(im)/ &
                  star%solar_luminosity_cgs)*alpha_capture_energy_zone
             zone_energy_luminosity = zone_energy_luminosity + &
-                 (shell_mass(im)/star%solar_luminosity_cgs)* &
+                 (star%dm(im)/star%solar_luminosity_cgs)* &
                  alpha_capture_energy_zone
             eq_l_val = energy_gen_rate
             dql_dt = dql_dt + zone_dlnepsilon_dlnt + &
@@ -323,19 +300,19 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
             zone_dt = delta_time_inv
             if (star%job%use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0) then
                if (im.ge.envelope_zone_index) then
-                  zone_log_temperature_delta = log_temperature_delta(im)+ &
+                  zone_log_temperature_delta = star%log_temperature_delta(im)+ &
                        rot_scr%delta_log_temperature
-                  zone_log_pressure_delta = log_pressure_delta(im)+ &
+                  zone_log_pressure_delta = star%log_pressure_delta(im)+ &
                        rot_scr%delta_log_pressure
                else
-                  zone_log_temperature_delta = log_temperature_delta(im)
-                  zone_log_pressure_delta = log_pressure_delta(im)
+                  zone_log_temperature_delta = star%log_temperature_delta(im)
+                  zone_log_pressure_delta = star%log_pressure_delta(im)
                end if
             else
-               zone_log_temperature_delta = log_temperature_delta(im)
-               zone_log_pressure_delta = log_pressure_delta(im)
+               zone_log_temperature_delta = star%log_temperature_delta(im)
+               zone_log_pressure_delta = star%log_pressure_delta(im)
             end if
-            if (composition(1,im).gt.0.01d0 .and. delta_time.lt.one_year_sec) &
+            if (star%xa(1,im).gt.0.01d0 .and. delta_time.lt.one_year_sec) &
                  zone_dt = one_year_sec_inv
             entropy_term1 = eos_res(i_pressure)*dlnrho_dlnt/eos_res(i_density)
             entropy_term2 = entropy_term1/eos_res(i_grada)
@@ -345,8 +322,8 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 !            ENTR = (ENTR2*HTT(IM) - ENTR1*HPP(IM))*CLN
 !            ENTR3 = ENTR2*CLN*HTT(IM)
             egrav = zone_dt*entropy_term
-            gravitational_luminosity(im) = egrav
-            luminosity_terms(7) = luminosity_terms(7) + (shell_mass(im)/ &
+            star%gravitational_luminosity(im) = egrav
+            star%luminosity_breakdown(7) = star%luminosity_breakdown(7) + (star%dm(im)/ &
                  star%solar_luminosity_cgs)*egrav
             eq_l_val = eq_l_val + egrav
             dql_dp = dql_dp + zone_dt*(entropy_term*(1.0d0-dlnrho_dlnp+ &
@@ -357,34 +334,34 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
                  eos_res(i_grada_dt))
 ! 7/92 INCLUDE CHANGE IN ROTATIONAL KINETIC ENERGY IN ENERGY EQUATION.
             if (star%job%rotation_active) then
-               rot_scr%rotational_energy_term(im) = zone_dt*(kinetic_energy_rot(im)- &
-                    kinetic_energy_rot_old(im))/shell_mass(im)
+               rot_scr%rotational_energy_term(im) = zone_dt*(star%kinetic_energy_rot(im)- &
+                    star%kinetic_energy_rot_old(im))/star%dm(im)
                eq_l_val = eq_l_val - rot_scr%rotational_energy_term(im)
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
          end if
-         cccql = star%ln_solar_luminosity*mass_weight_ln(im)
+         cccql = star%ln_solar_luminosity*star%m(im)
          eq_l_val = cccql*eq_l_val
          dql_dp = cccql*dql_dp
          dql_dt = cccql*dql_dt
          if (im.gt.1) then
 ! REDUCE MATRIX FOR PAIR OF POINTS (IM-1,IM)
             im1 = im
-            call henyey_eliminate(im1,elim_coeff,elim_rhs,luminosity_lsun,max_residual, &
-                 log_pressure,log_radius,log_mass,log_temperature, &
+            call henyey_eliminate(im1,star%elim_coeff,star%elim_rhs,star%luminosity_lsun,star%max_residual, &
+                 star%logP,star%logR,star%log_mass,star%logT, &
                  eq_p_val0,star%pulse%qp,dqp_dr0,dqp_dr,dqp_dp0,dqp_dp,eq_t_val0,star%pulse%qt, &
                  dqt_dr0,dqt_dr,dqt_dl0,star%pulse%qtl,dqt_dp0,dqt_dp,dqt_dt0,dqt_dt, &
                  eq_r_val0,eq_r_val,dqr_dr0,dqr_dr,dqr_dp0,dqr_dp,dqr_dt0, &
                  dqr_dt,eq_l_val0,eq_l_val,dql_dp0,dql_dp,dql_dt0,dql_dt)
          else
 ! SETUP CENTRAL BOUNDARY CONDITIONS
-            elim_coeff(3,1,1) = cc13*dlnrho_dlnp
-            elim_coeff(3,2,1) = cc13*dlnrho_dlnt
-            elim_rhs(3,1) = -cc13*(c4pi3l + zone_log10_density - &
+            star%elim_coeff(3,1,1) = cc13*dlnrho_dlnp
+            star%elim_coeff(3,2,1) = cc13*dlnrho_dlnt
+            star%elim_rhs(3,1) = -cc13*(c4pi3l + zone_log10_density - &
                  zone_log_mass) - zone_log_radius
-            elim_coeff(4,1,1) = -dql_dp
-            elim_coeff(4,2,1) = -dql_dt
-            elim_rhs(4,1) = clni*eq_l_val - zone_luminosity_lsun
+            star%elim_coeff(4,1,1) = -dql_dp
+            star%elim_coeff(4,2,1) = -dql_dt
+            star%elim_rhs(4,1) = clni*eq_l_val - zone_luminosity_lsun
          end if
          eq_p_val0 = star%pulse%qp
          dqp_dr0 = dqp_dr
@@ -414,9 +391,9 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 ! MHP 10/02 LSHORT NOT USED, OMIT
 !         LSHORT = .NOT.LONG .AND. MOD(MODEL,NPRT1).EQ.0
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
-         if (log_temperature(im).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
+         if (star%logT(im).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
             star%eps_total(im) = 0.0d0
-            star%eps_channels(i_eps_grav,im) = gravitational_luminosity(im)
+            star%eps_channels(i_eps_grav,im) = star%gravitational_luminosity(im)
             do j = 1,6
                star%eps_channels(j,im) = 0.0d0
            end do
@@ -427,7 +404,7 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
                  energy_gen_component(3)+energy_gen_component(4)+ &
                  energy_gen_component(5)
             star%eps_channels(i_eps_neu,im) = energy_gen_component(6)
-            star%eps_channels(i_eps_grav,im) = gravitational_luminosity(im)
+            star%eps_channels(i_eps_grav,im) = star%gravitational_luminosity(im)
             if (star%eps_total(im).gt.1.0d-22) then
                energy_sum_inverse = 1.0d0/star%eps_total(im)
             else
@@ -457,8 +434,8 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 ! JVS 01/11 always want gamma:
             chi_rho = 1.0d0/dlnrho_dlnp
             chi_t = -chi_rho*dlnrho_dlnt
-            specific_heat_cv = eos_res(i_cp) - exp(ln10*(log_pressure(im)- &
-                 log10_density(im)-log_temperature(im)))*chi_t**2/chi_rho
+            specific_heat_cv = eos_res(i_cp) - exp(ln10*(star%logP(im)- &
+                 star%logRho(im)-star%logT(im)))*chi_t**2/chi_rho
             star%adiabatic_index_gamma1(im) = chi_rho*eos_res(i_cp)/ &
                  specific_heat_cv
             star%pulse_dlnrho_dlnp(im) = dlnrho_dlnp

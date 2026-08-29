@@ -234,17 +234,11 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        star%max_residual(2) = 0.0d0
        star%max_residual(3) = 0.0d0
        star%max_residual(4) = 0.0d0
-       call henyey_coefficients(delta_time,star%nz,star%logRho,star%elim_coeff,star%elim_rhs, &
-            star%gravitational_luminosity,star%luminosity_lsun,star%max_residual, &
-            star%logP,star%log_pressure_delta,star%logR,star%log_mass, &
-            star%m,star%dm,star%logT,star%log_temperature_delta, &
-            star%xa,star%convective_flag,star%luminosity_breakdown,in_atmosphere, &
+! (2026 de-tramp: the star%-shaped slots are read/written by
+! henyey_coefficients directly; only the per-call locals remain.)
+       call henyey_coefficients(delta_time,in_atmosphere, &
             want_derivatives,mixing_active,conductive_opacity_flag, &
-            dlnrho_dlnt,dlnrho_dlnp, &
-!      *   KSAHA,MODEL,FP,FT,HKEROT,HKEROT0,JENV,TEFFL)  ! KC 2025-05-31
-            ksaha,star%fp_rot,star%ft_rot, &
-            star%kinetic_energy_rot,star%kinetic_energy_rot_old,envelope_zone_index, &
-            star%log_Teff, jerr)
+            dlnrho_dlnt,dlnrho_dlnp,ksaha,envelope_zone_index, jerr)
        if (jerr /= 0) then
        ! 2026 (phase five, step B): propagate instead of stopping
           ierr = jerr

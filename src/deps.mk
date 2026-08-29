@@ -153,7 +153,7 @@ io/print_allard_tables.o: atm_table_lib.mod luout_lib.mod
 io/read_controls.o: atm_table_lib.mod controls_lib.mod controls_sync_lib.mod eos_lib.mod intpar_lib.mod luout_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod yrec_output.mod
 io/read_mod_model.o: luout_lib.mod star_info_lib.mod
 io/read_model2.o: star_info_lib.mod
-io/read_yrec7.o: star_info_lib.mod
+io/read_yrec7.o: luout_lib.mod star_info_lib.mod
 io/run_log.o: luout_lib.mod star_info_lib.mod
 io/write_fgong_pulse.o: phys_const_lib.mod star_info_lib.mod
 io/write_gsm_pulse.o: luout_lib.mod
