@@ -36,7 +36,7 @@ subroutine star_setup(ierr)
                  star%job%s17_rate(i),star%job%metal_to_h_ratio(i),star%job%helium_fraction_param(i), &
                  star%job%luminosity_target(i),star%job%age_target(i)
  1511       format(7X,1P7E10.3/E9.3)
-            write(iowr,*)i,star%job%s11_rate(i),star%job%s33_rate(i),star%job%s34_rate(i),star%job%s17_rate(i), &
+            write(terminal_unit,*)i,star%job%s11_rate(i),star%job%s33_rate(i),star%job%s34_rate(i),star%job%s17_rate(i), &
                  star%job%metal_to_h_ratio(i),star%job%helium_fraction_param(i), &
                  star%job%luminosity_target(i),star%job%age_target(i)
             star%job%diffusion_factor(i) = star%job%helium_fraction_param(i)

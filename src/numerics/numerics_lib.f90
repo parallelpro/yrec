@@ -1467,8 +1467,8 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
          endif
     end do
       if((k_hi-k_lo).le.0)then
-         write(iowr, *) 'ERROR COX OP: INTERPOLATION'
-         write(short_file_unit, *) 'ERROR COX OP: INTERPOLATION'
+         write(terminal_unit, *) 'ERROR COX OP: INTERPOLATION'
+         write(run_log_unit, *) 'ERROR COX OP: INTERPOLATION'
          ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its
@@ -1539,7 +1539,7 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
     end do
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
-           write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
+           write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
          ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its
@@ -1604,7 +1604,7 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
     end do
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
-           write(short_file_unit,*) 'ERROR IN SPLINT ROUTINE.'
+           write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
          ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its

@@ -406,7 +406,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       end if
 !  WRITE OUT THE LOCATIONS OF MIXED REGIONS.
       if (num_mixed_zones.ge.1 .and. solver_diagnostics()) then
-         write(short_file_unit,110) ((star%mixed_zone_bounds(zone_idx,inner_zone_idx), &
+         write(run_log_unit,110) ((star%mixed_zone_bounds(zone_idx,inner_zone_idx), &
               inner_zone_idx=1,2),zone_idx=1,num_mixed_zones)
   110    format(' ZONES MIXED IN ORDER--',12('(',i5,',',i5,') ') )
       end if
@@ -438,7 +438,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !
 !   LOCATE OUTER BOUNDARY.
          if (.not.star%convective_flag(star%nz)) then
-            write(short_file_unit,911)
+            write(run_log_unit,911)
 ! DBG 2/92 CHANGED STOP TO JUST A WARNING MESSAGE, EXECUTION CONTINUES
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL')
             exit settling

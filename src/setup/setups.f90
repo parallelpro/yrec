@@ -32,7 +32,6 @@ subroutine setups(laol_work_array, alex06_table_path, allard_table_path, &
       use atm_lib
       use atm_table_lib
       use star_info_lib, only: star, json
-      use luout_lib
       use phys_const_lib
       use yale_eos_lib
       implicit none

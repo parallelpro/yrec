@@ -47,7 +47,7 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
       rewind iread
       read(iread,'(a)') line
       if (line(1:6) .ne. 'YMOD 1') then
-         write(short_file_unit,'(a)') 'READ_MOD_MODEL: not a YMOD 1 file'
+         write(run_log_unit,'(a)') 'READ_MOD_MODEL: not a YMOD 1 file'
          ierr = 1
          return
       end if
@@ -56,7 +56,7 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
       do
          read(iread,'(a)',iostat=ios) line
          if (ios /= 0) then
-            write(short_file_unit,'(a)') &
+            write(run_log_unit,'(a)') &
                  'READ_MOD_MODEL: file ended before columns line'
             ierr = 1
             return
@@ -88,20 +88,20 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
          case ('rotation_active')
             read(line,*) name, rotation_active0
          case default
-            write(short_file_unit,'(2a)') &
+            write(run_log_unit,'(2a)') &
                  'READ_MOD_MODEL: ignoring unknown global ', trim(name)
          end select
       end do
 
       if (trim(line) .ne. expected_columns) then
-         write(short_file_unit,'(a)') &
+         write(run_log_unit,'(a)') &
               'READ_MOD_MODEL: unexpected column layout:'
-         write(short_file_unit,'(a)') trim(line)
+         write(run_log_unit,'(a)') trim(line)
          ierr = 1
          return
       end if
       if (star%nz < 1 .or. star%nz > json) then
-         write(short_file_unit,'(a,i9)') &
+         write(run_log_unit,'(a,i9)') &
               'READ_MOD_MODEL: bad num_zones ', star%nz
          ierr = 1
          return
@@ -118,7 +118,7 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
               star%xa(slots(10),k), star%xa(slots(11),k), star%xa(slots(12),k), &
               star%xa(slots(13),k), star%xa(slots(14),k), star%xa(slots(15),k)
          if (ios /= 0) then
-            write(short_file_unit,'(a,i7)') &
+            write(run_log_unit,'(a,i7)') &
                  'READ_MOD_MODEL: read error at shell ', k
             ierr = 1
             return

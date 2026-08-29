@@ -92,7 +92,7 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
             j_idx = j_idx + 1
          end if
          if (j_idx.lt.12) cycle
-         write(short_file_unit,661)
+         write(run_log_unit,661)
   661    format(' -----TOO MANY MIX ZONES')
          exit
       end do
@@ -157,7 +157,7 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
       if (mixed_zone_bounds(j_idx,2).ge.mixed_zone_bounds(j_idx+1,1)) then
 !  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
-         write(short_file_unit,93) ((mixed_zone_bounds(k_idx,pair_idx), &
+         write(run_log_unit,93) ((mixed_zone_bounds(k_idx,pair_idx), &
               pair_idx=1,2),k_idx=j_idx,j_idx+1), mixed_zone_bounds(j_idx,1), &
               mixed_zone_bounds(j_idx+1,2)
    93    format(2x,'CONVECTION ZONES MERGED DUE TO OVERSHOOT'/2x, &

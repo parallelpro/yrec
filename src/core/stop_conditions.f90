@@ -135,7 +135,7 @@ subroutine init_stop_conditions(nk)
             write(*,'(A,E12.4,A,E12.4,A)') 'STARTING '//stop_letter(k)//' ', &
                  star%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(k,nk), ' STOP DISABLED.'
-            write(short_file_unit,'(A,E12.4,A,E12.4,A)') &
+            write(run_log_unit,'(A,E12.4,A,E12.4,A)') &
                  'STARTING '//stop_letter(k)//' ', &
                  star%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(k,nk), ' STOP DISABLED.'

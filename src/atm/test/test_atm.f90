@@ -56,16 +56,16 @@ program test_atm
       laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
-      short_file_unit = 20
+      run_log_unit = 20
       star%ctrl%fermi_unit = 15
       atm_table_file_unit = 38
       star%ctrl%allard_table_unit = 66
-      open(short_file_unit, file="test_atm.short", status="replace")
-! surfp/kcsurfp write their out-of-table diagnostic to iowr (the main
-! output unit in production, per parmin) as well as short_file_unit;
+      open(run_log_unit, file="test_atm.short", status="replace")
+! surfp/kcsurfp write their out-of-table diagnostic to terminal_unit (the main
+! output unit in production, per parmin) as well as run_log_unit;
 ! point both at the scratch .short file so the byte-compared stdout
 ! stays deterministic when the error paths below fire.
-      iowr = short_file_unit
+      terminal_unit = run_log_unit
 
 ! everything else gated off (setups calls eos_init/kap_init/atm_init
 ! unconditionally; only the Fermi table is a hard requirement)
@@ -138,7 +138,7 @@ program test_atm
 
 ! Error paths (2026, ROADMAP.md stage 3): surfp's out-of-table check
 ! (logTeff < 3.5 or logG < -0.5) used to stop the run; with the new
-! required ierr it returns 1 -- diagnostics go to iowr/short_file_unit
+! required ierr it returns 1 -- diagnostics go to terminal_unit/run_log_unit
 ! as always (both pointed at the scratch .short file here). The
 ! facade check asserts the optional-ierr success path threads
 ! ierr = 0 end to end (atm_get_surface_pt -> alsurfp).
@@ -152,6 +152,6 @@ program test_atm
       call atm_get_surface_pt(teffl, gl, .false., failed, ierr=atm_ierr)
       write(*,'(a,i4)') "err facade-success ierr = ", atm_ierr
 
-      close(short_file_unit)
+      close(run_log_unit)
       write(*,'(a)') "test_atm: done"
 end program test_atm

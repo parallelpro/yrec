@@ -259,7 +259,7 @@ subroutine prepare_surface_boundary
 ! TeffL is above Allard max, or GL is out of range.
             write(*,'(1x,a)') 'note: Allard table lookup out of range;' &
                  // ' switching to a gray atmosphere'
-            write(short_file_unit,'(1x,a)') 'note: Allard table lookup' &
+            write(run_log_unit,'(1x,a)') 'note: Allard table lookup' &
                  // ' out of range; switching to a gray atmosphere'
          else
             tabulated_bc = .true.
@@ -388,8 +388,8 @@ subroutine integrate_atmosphere
       end if
 
       if  (indep_var .gt. x_limit) then ! Check that starting point is before endpoint
-         write(short_file_unit,*)"ENVINT: X0>XLIM, X0,XLIM:",indep_var,x_limit
-       write(short_file_unit,*)"ENVINT: get new X0 by dividing ATMD0 by 10"
+         write(run_log_unit,*)"ENVINT: X0>XLIM, X0,XLIM:",indep_var,x_limit
+       write(run_log_unit,*)"ENVINT: get new X0 by dividing ATMD0 by 10"
        atm_density_guess = atm_density_guess / 10d0   ! If not before, divide starting density by 10
        cycle atm_retry        ! and retry.
       endif
@@ -498,7 +498,7 @@ subroutine integrate_atmosphere
 
 ! CHECK IF INTEGRATION COMPLETE
        if(dabs(indep_var - x_limit).le.step_tolerance) then
-          if (solver_diagnostics()) write(short_file_unit,35)num_ok,num_bad,err_sum(1)
+          if (solver_diagnostics()) write(run_log_unit,35)num_ok,num_bad,err_sum(1)
    35       format(1X,'ATMOSPHERE INTEGRATION COMPLETE',1X, &
                  'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
                  I5/5X,'MAXIMUM RELATIVE ERROR IN P ',1PE22.13)
@@ -510,8 +510,8 @@ subroutine integrate_atmosphere
       if (step_index .gt. maxstp) then
 ! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
 ! PRINT NASTY MESSAGE AND QUIT.
-      write(iowr,50)
-      write(short_file_unit,50)
+      write(terminal_unit,50)
+      write(run_log_unit,50)
    50 format(5X,'ATMOSPHERE INTEGRATION FAILED AFTER MAXSTP',1X, &
              'INTEGRATIONS.I QUIT.')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
@@ -728,7 +728,7 @@ subroutine integrate_envelope
              vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)
              vtx_logr(vertex_index) = y(3) + interp_weight*(y_start(3) - y(3))
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
-             if(print_flag .and. solver_diagnostics())write(short_file_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%senv
+             if(print_flag .and. solver_diagnostics())write(run_log_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),star%senv
           endif
           exit
        else if(.not.store_flag_set) then
@@ -747,8 +747,8 @@ subroutine integrate_envelope
       if (step_index .gt. maxstp) then
 ! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
 ! PRINT NASTY MESSAGE AND QUIT.
-      write(iowr,911)
-      write(short_file_unit,911)
+      write(terminal_unit,911)
+      write(run_log_unit,911)
  911  format(5X,'ENVELOPE INTEGRATION FAILED AFTER MAXSTP TRIES.',1X, &
            'I QUIT')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
@@ -840,7 +840,7 @@ subroutine integrate_envelope
       endif
 ! DBG PULSE WRITE END OF DATA INDICATOR
 
-      if (solver_diagnostics()) write(short_file_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)
+      if (solver_diagnostics()) write(run_log_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)
  215  format(1X,'ENVELOPE INTEGRATION COMPLETE',1X, &
            'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
            I5/5X,'SENV-LAST M=',1PE22.13,'  LAST M=',E22.13/ &

@@ -15,7 +15,6 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
-      use luout_lib
       implicit none
 
       double precision, intent(in) :: log_density(json)

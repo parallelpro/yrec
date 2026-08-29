@@ -242,10 +242,10 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       ierr = 0
 
       if (model_failed_flag) then
-          write(short_file_unit,1000)
+          write(run_log_unit,1000)
  1000       format(1x,39('>'),40('<')/, &
                   "STARIN:        ***** RUN STOPPED *****")
-          write(short_file_unit,1010)
+          write(run_log_unit,1010)
  1010       format("STARIN: ***** MODEL FAILED TO CONVERGE *****")
             ! 2026 (phase five, step B): stop converted to ierr; run_yrec
             ! returns the error and the CLI wrapper (main) stops.
@@ -344,7 +344,7 @@ subroutine acquire_starting_model
 ! model.  We decide what kind of model format it has and process accordingly.
 
       if (format_tag .eq. 'YMOD') then
-         write(short_file_unit,11)
+         write(run_log_unit,11)
  11      format(1x,'loading starting model (YREC .mod format)')
          call read_mod_model(iread, timestep_yr, mixing_length0, &
               use_extended_composition0, rotation_active0, jerr)
@@ -353,12 +353,12 @@ subroutine acquire_starting_model
             return
          end if
       else if (format_tag .eq. 'NMOD') then
-         write(short_file_unit,12)
+         write(run_log_unit,12)
  12      format(1x,'loading starting model (YREC7 format)')
          call read_yrec7(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
               star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
               star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
-              star%log_total_mass,star%logT,iread,short_file_unit, &
+              star%log_total_mass,star%logT,iread,run_log_unit, &
               core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
               use_extended_composition0,rotation_active0,star%nz, &
               star%model_number,star%omega,star%fit_point_pressure,star%fit_point_radius, &
@@ -376,7 +376,7 @@ subroutine acquire_starting_model
 ! Last three lines are MODEL2 add-ons
 
       else if (format_tag .eq. 'MOD2 ') then
-         write(short_file_unit,16)
+         write(run_log_unit,16)
  16      format(1x,'loading starting model (MODEL2 format)')
          call read_model2(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
               star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
@@ -398,7 +398,7 @@ subroutine acquire_starting_model
 ! Last three lines are MODEL2 add-ons
 
       else
-         write(short_file_unit,20)
+         write(run_log_unit,20)
  20      format('STARIN: ***** RUN TERMINATED, INVALID INPUT', &
                 ' MODEL FILE.  *****')
          ! 2026 (phase five, step B): stop converted to ierr; run_yrec
@@ -427,9 +427,9 @@ subroutine acquire_starting_model
 ! MHP 9/03 FIXED TYPO
        if (.not.mixing_length_matches .or. use_extended_composition0.neqv. &
             star%job%use_extended_composition) then
-          write(short_file_unit,1040) star%mixing_length_alpha,mixing_length0, &
+          write(run_log_unit,1040) star%mixing_length_alpha,mixing_length0, &
                star%job%use_extended_composition,lexcp0
-          write(iowr,1040) star%mixing_length_alpha,mixing_length0,star%job%use_extended_composition, &
+          write(terminal_unit,1040) star%mixing_length_alpha,mixing_length0,star%job%use_extended_composition, &
                lexcp0
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
@@ -495,7 +495,7 @@ subroutine acquire_starting_model
                fraction_diff = abs(star%xa(i,j)-reference_composition(i))
                if (fraction_diff.gt.1.0d-6) then
                   write(*,592)i,j,fraction_diff
-                  write(short_file_unit,592)i,j,fraction_diff
+                  write(run_log_unit,592)i,j,fraction_diff
  592              format('SPECIES ',i3,' IN SHELL ',i5, &
                     ' DIFFERS FROM CENTER BY ',e12.4, &
                     ' MIX NOT MODIFIED IN EVOLVED MODEL')
@@ -540,7 +540,7 @@ subroutine acquire_starting_model
          end do
          write(*,594)(reference_composition(k),k=5,11), &
               (star%xa(k,1),k=5,11)
-         write(short_file_unit,594)(reference_composition(k),k=5,11), &
+         write(run_log_unit,594)(reference_composition(k),k=5,11), &
               (star%xa(k,1),k=5,11)
  594     format(1x,'CNO mixture applied to the starting model:',/, &
              4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
@@ -567,7 +567,7 @@ subroutine acquire_starting_model
          end do
          write(*,593)(reference_composition(k),k=4,15), &
               (star%xa(k,1),k=4,15)
-         write(short_file_unit,593)(reference_composition(k),k=4,15), &
+         write(run_log_unit,593)(reference_composition(k),k=4,15), &
               (star%xa(k,1),k=4,15)
  593     format(1x,'isotope/light-element mixture applied to the', &
              ' starting model:',/, &
@@ -609,11 +609,11 @@ subroutine extend_core_toward_center
                star%ctrl%chi_grid_scale(2)
           num_shells_extended = star%nz + star%job%num_core_shells_added
           if (num_shells_extended .gt. json) then
-             write(short_file_unit,476)"STARIN: Unable to extend core inward ", &
+             write(run_log_unit,476)"STARIN: Unable to extend core inward ", &
                    "- JSON too small"
-             write(short_file_unit,477) "STARIN: Required size =", &
+             write(run_log_unit,477) "STARIN: Required size =", &
                     num_shells_extended, ", JSON = ", json
-             write(short_file_unit,478) "STARIN:  ***** RUN TERMINATED *****"
+             write(run_log_unit,478) "STARIN:  ***** RUN TERMINATED *****"
   476        format(2a)
   477        format(a, i8, a, i8)
   478        format(a)
@@ -736,7 +736,7 @@ subroutine rescale_and_refit_envelope
           if (i < (1)) then
 ! ENVELOPE MASS DESIRED WITHIN FIRST POINT;PRINT NASTY MESSAGE
 ! AND ABORT.
-          write(short_file_unit,576)star%job%requested_envelope_mass
+          write(run_log_unit,576)star%job%requested_envelope_mass
  576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
@@ -936,7 +936,7 @@ subroutine rescale_and_refit_envelope
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
 ! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
 ! returns the error (run_yrec propagates, the CLI wrapper stops).
-                        write(short_file_unit,*) 'STARIN: degenerate', &
+                        write(run_log_unit,*) 'STARIN: degenerate', &
                              ' envelope interpolation interval (was STOP 9998)'
                         ierr = 1
                         return
@@ -984,7 +984,7 @@ subroutine rescale_and_refit_envelope
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
 ! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
 ! returns the error (run_yrec propagates, the CLI wrapper stops).
-                        write(short_file_unit,*) 'STARIN: degenerate', &
+                        write(run_log_unit,*) 'STARIN: degenerate', &
                              ' envelope interpolation interval (was STOP 9998)'
                         ierr = 1
                         return
@@ -1053,7 +1053,7 @@ subroutine rescale_and_refit_envelope
 !          DO 590 J = 1,JEND
        endif
        envelope_recomputed_flag = .true.
-       write(short_file_unit,597)old_senv,star%senv
+       write(run_log_unit,597)old_senv,star%senv
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
       exit envelope_rescale
@@ -1107,7 +1107,7 @@ subroutine initialize_rotation_state
           angular_momentum_sum = angular_momentum_sum+shell_angular_momentum
           rotational_ke_sum = rotational_ke_sum + star%kinetic_energy_rot(i)
        end do
-       write(short_file_unit,560)total_angular_momentum, &
+       write(run_log_unit,560)total_angular_momentum, &
             angular_momentum_sum,total_rotational_ke,rotational_ke_sum
  560     format(1x,'TOTAL J OF STAR - PREVIOUS ',1pe21.13,' NEW ', &
               1pe21.13/1x,'TOTAL ROTATIONAL K.E. OF STAR - PREVIOUS ', &

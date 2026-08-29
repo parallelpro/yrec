@@ -201,7 +201,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
        dml = dml + corr
        nden = nden + 1
        if(nden.le.20) cycle density_iter
-       write(short_file_unit,40) log10_temperature,log10_pressure,ptl,dml,corr
+       write(run_log_unit,40) log10_temperature,log10_pressure,ptl,dml,corr
    40    format('EQRELV: Did not Converge: T,P,Pcalc,Dcalc,CORR', &
                 4F10.6,F20.12)
 !       PAUSE

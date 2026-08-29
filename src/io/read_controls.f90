@@ -576,7 +576,7 @@ subroutine read_input(ierr)
       double precision :: toll, tolr, tolz, calsolzx, calsolage
       logical :: lcals, lcalsolzx
 
-! zramp: rsclzc/rsclzm1/rsclzm2/iolaol2/ioopal2/nk are spelled
+! zramp: rsclzc/rsclzm1/rsclzm2/nk are spelled
 ! identically to their const_lib canonical names -- use-associated
 ! directly. lzramp is a NAMELIST /physics/ member with a different
 ! canonical spelling (use_z_ramp), so kept local under its NAMELIST
@@ -1229,10 +1229,10 @@ subroutine read_input(ierr)
 ! LOGICAL UNIT 5 = READ FROM SCREEN
 ! LOGICAL UNIT 6 = WRITE TO SCREEN: FOR BATCH USE STATUS FILE INSTEAD
 ! SPECIFY ALL LOGICAL UNIT NUMBERS HERE:
-! OUTPUT: STATUS FILE
-      iowr = 6
+! OUTPUT: TERMINAL (STDOUT)
+      terminal_unit = 6
 ! OUTPUT: LAST MODEL (TEXT)
-      ilast = 11
+      last_model_unit = 11
 ! INPUT: FIRST MODEL (TEXT)
       first_unit = 12
 ! INPUT: PHYSICS NAMELIST
@@ -1242,9 +1242,9 @@ subroutine read_input(ierr)
 ! INPUT: FERMI TABLES
       fermi_unit = 15
 ! OUTPUT: RESERVED for DEBUGGING
-      idebug = 18
-! OUTPUT: ALL DIAGNOSTIC INFO
-      short_file_unit = 20
+      debug_file_unit = 18
+! OUTPUT: THE RUN LOG
+      run_log_unit = 20
 ! OUTPUT: FOR PULSATION CODE, INTERIOR
 ! OUTPUT: FOR PULSATION CODE, ENVELOPE
 ! OUTPUT: FOR PULSATION CODE, ATMOSPHERE
@@ -1288,8 +1288,8 @@ subroutine read_input(ierr)
 ! DBG 4/94
 !     INPUT:
 ! DBG 8/95 SECOND OPOACITY TABLES FOR ZRAMP AND Z DIFFUSION
-      iolaol2 = 63
-      ioopal2 = 64
+! (2026: the second LAOL/OPAL92 table units are runtime-allocated
+! locals of their readers now, not fixed luout_lib units.)
       ikur2 = 65
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES
       allard_table_unit = 66
@@ -1832,19 +1832,19 @@ subroutine derive_options_and_open_files
 
 ! 2026 use_legacy_output retirement: one open path for every run.
       if(ldebug) then
-            open(idebug,file=fdebug,form='FORMATTED', &
+            open(debug_file_unit,file=fdebug,form='FORMATTED', &
            &          status='UNKNOWN')
       end if
 !     MHP 10/02 LBNIN never set, ignore loop
 !      IF (.NOT.LBNIN) THEN
          open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD')
 !      END IF
-! ilast (the .mod model file) is written every model in BOTH output
+! last_model_unit (the .mod model file) is written every model in BOTH output
 ! modes: it is the restart file AND the solver's divergence/timestep-
 ! cutting recovery source, so it must always be connected (2026: the
 ! legacy-only guard here left MESA-mode runs with an unconnected
 ! unit -- no restart file and broken divergence recovery).
-      open(unit=ilast,file=flast,form='FORMATTED',status='UNKNOWN')
+      open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN')
 ! open the run log (fshort's dir; .short renamed .log) and the
 ! history stream, parse the column selections
       call output_init_mesa(fshort, ierr)
@@ -1865,7 +1865,7 @@ subroutine derive_options_and_open_files
       endif
       if(lsemic)then
          if(lovstc.or.lovste.or.lovstm)then
-            write(short_file_unit,2)lsemic,lovste,lovstc,lovstm
+            write(run_log_unit,2)lsemic,lovste,lovstc,lovstm
       2       format(1x,'ERROR IN SUBROUTINE PARMIN'/'SEMI-CONVECTION', &
            &  ' AND OVERSHOOT FLAGS BOTH TURNED ON'/'FLAGS LSEMIC',l2, &
            &  ' OVERSHOOT - CORE,ENVELOPE,INTERMEDIATE-',3l2/'RUN STOPPED')
@@ -2050,7 +2050,7 @@ subroutine echo_settings
        if (i > 12) then
 ! ANEWCP NOT A RECOGNIZED ELEMENT
        lnewcp = .false.
-       write(short_file_unit,20) anewcp
+       write(run_log_unit,20) anewcp
       20    format(1x,'VARIABLE',a4,1x,'NOT A RECOGNIZED ELEMENT'/1x, &
            &    'RESCALING NOT PERFORMED')
        end if
@@ -2067,14 +2067,14 @@ subroutine echo_settings
          if(amix.eq.'CUS')then
             if(frac_c.lt.0.0d0.or.frac_n.lt.0.0d0.or.frac_o.lt.0.0d0)then
                write(*,591)frac_c,frac_n,frac_o
-               write(short_file_unit,591)frac_c,frac_n,frac_o
+               write(run_log_unit,591)frac_c,frac_n,frac_o
       591          format('NEGATIVE INPUT CNO FRACTION ',3e12.4, &
            &              ' MIX NOT MODIFIED')
             else
             sum_frac=frac_c+frac_n+frac_o
             if(sum_frac.ge.1.0d0)then
                write(*,598)frac_c,frac_n,frac_o
-               write(short_file_unit,598)frac_c,frac_n,frac_o
+               write(run_log_unit,598)frac_c,frac_n,frac_o
       598          format('INPUT CNO FRACTION ',3e12.4, &
            &              ' EXCEEDS 1. MIX NOT MODIFIED')
             else
@@ -2098,14 +2098,14 @@ subroutine echo_settings
          if (.not. change_cno_mixture_active) then
 !     NO VALID MIX SPECIFIED
          write(*,589)amix
-         write(short_file_unit,589)amix
+         write(run_log_unit,589)amix
       589    format(1x,'warning: CNO mixture ',a8,' not recognized; mixture not altered')
          end if
       endif
       endif
       if(change_cno_mixture_active)then
          write(*,604)amix,frac_c,frac_n,frac_o
-         write(short_file_unit,604)amix,frac_c,frac_n,frac_o
+         write(run_log_unit,604)amix,frac_c,frac_n,frac_o
       604    format(1x,'CNO mixture ',a8,': C =',es12.4,'  N =',es12.4, &
            &         '  O =',es12.4,' (fractions of Z); applied to the starting model')
       endif
@@ -2120,7 +2120,7 @@ subroutine echo_settings
            &  xbe9_ini.lt.0.0d0.or.xb10_ini.lt.0.0d0 .or.xb11_ini.lt.0.0d0)then
                write(*,596)r12_13,r14_15,r16_17,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini
-               write(short_file_unit,596)r12_13,r14_15,r16_17,r16_18, &
+               write(run_log_unit,596)r12_13,r14_15,r16_17,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini
       596          format(1x,'warning: negative isotope ratio or light-element', &
            &   ' mass fraction (',11es12.4,'); mixture not modified')
@@ -2130,7 +2130,7 @@ subroutine echo_settings
             if(sum_frac.ge.1.0d0)then
                write(*,595)xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini, &
            &  xb10_ini,xb11_ini
-               write(short_file_unit,595)xh2_ini,xhe3_ini,xli6_ini,xli7_ini, &
+               write(run_log_unit,595)xh2_ini,xhe3_ini,xli6_ini,xli7_ini, &
            &  xbe9_ini,xb10_ini,xb11_ini
       595          format(1x,'warning: light-element mass fractions sum above 1', &
            &  ' (',11es12.4,'); mixture not modified')
@@ -2149,7 +2149,7 @@ subroutine echo_settings
       if(change_isotope_ratios_active)then
          write(*,605)aiso,r12_13,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini
-         write(short_file_unit,605)aiso,r12_13,r16_18, &
+         write(run_log_unit,605)aiso,r12_13,r16_18, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini
       605    format(1x,'isotope/light-element mixture ',a8,': C12/C13 =', &
            &    es12.4,'  O16/O18 =',es12.4,'  H2 =',es12.4,'  He3 =',es12.4, &
@@ -2199,18 +2199,18 @@ subroutine echo_settings
       if(npenv.le.0) npenv = 9999
       if(pulse_gyre_interval.lt.0) pulse_gyre_interval = 0
       if(kttau .eq. 0) then
-           write(short_file_unit, 197)
+           write(run_log_unit, 197)
       else if (kttau .eq. 1) then
-           write(short_file_unit, 198)
+           write(run_log_unit, 198)
       else if (kttau .eq. 2) then
-           write(short_file_unit, 1999)
+           write(run_log_unit, 1999)
       else if (kttau .eq. 3) then
-           write(short_file_unit, 1888)
+           write(run_log_unit, 1888)
       else if (kttau .eq. 4) then
-           write(short_file_unit, 1889)
+           write(run_log_unit, 1889)
 ! JNT 6/14 ADD FOR NEW KURUCZ/CASTELLI ATMOSPHERE TABLES
       else if (kttau .eq. 5) then
-           write(short_file_unit, 1887)
+           write(run_log_unit, 1887)
       end if
       197 format(1x,'surface boundary: Eddington gray T(tau) relation')
       198 format(1x,'surface boundary: Krishna-Swamy T(tau) relation')
@@ -2221,16 +2221,16 @@ subroutine echo_settings
 
 ! DBG PULSE
       if (lpurez) then
-          write(short_file_unit,'(1x,a)') 'opacity: pure C and N tables enabled'
+          write(run_log_unit,'(1x,a)') 'opacity: pure C and N tables enabled'
       end if
 
-      write(short_file_unit,314)
+      write(run_log_unit,314)
       314    format(/,1x,100('='))
-      write(short_file_unit,version_fmt) yrec_version_string, git_hash_string
-      write(short_file_unit,'(1x,2a)') 'description: ', trim(descrip(1))
+      write(run_log_unit,version_fmt) yrec_version_string, git_hash_string
+      write(run_log_unit,'(1x,2a)') 'description: ', trim(descrip(1))
       if (len_trim(descrip(2)) > 0) &
-           write(short_file_unit,'(14x,a)') trim(descrip(2))
-      write(short_file_unit,'(1x,100(''=''))')
+           write(run_log_unit,'(14x,a)') trim(descrip(2))
+      write(run_log_unit,'(1x,100(''=''))')
 
 
 end subroutine echo_settings
@@ -2241,7 +2241,7 @@ end subroutine echo_settings
 subroutine interpret_kind_cards
 !     INTERPRET RUN FROM SEQUENCE OF "KIND" CARDS
 
-      write(short_file_unit,200)
+      write(run_log_unit,200)
       200 format(/1x,'run plan',/)
 
       lfirst(1) = .true.
@@ -2263,21 +2263,21 @@ subroutine interpret_kind_cards
           timestep_override_active(nkind) = setdt(nkind).gt.0d0
             if (nmodls(nkind).gt.0) then
           if (lfirst(nkind)) then
-             write(iowr,350) nkind,nmodls(nkind)
-             write(short_file_unit,350) nkind,nmodls(nkind)
+             write(terminal_unit,350) nkind,nmodls(nkind)
+             write(run_log_unit,350) nkind,nmodls(nkind)
       350          format(1x,'card',i3,': evolve up to',i6, &
            &          ' models from the starting model')
           else
-             write(iowr,351) nkind, nmodls(nkind)
-             write(short_file_unit,351) nkind, nmodls(nkind)
+             write(terminal_unit,351) nkind, nmodls(nkind)
+             write(run_log_unit,351) nkind, nmodls(nkind)
       351          format(1x,'card',i3,': evolve up to',i6, &
            &          ' models from the previous card''s model')
           end if
 ! GENERALIZE STOP CONDITIONS
           if(end_age_stop_active(nkind).or.timestep_override_active(nkind)) then
-             write(iowr,370) endage(nkind), setdt(nkind), &
+             write(terminal_unit,370) endage(nkind), setdt(nkind), &
            &          end_dcen(nkind), end_xcen(nkind), end_ycen(nkind)
-             write(short_file_unit,370) endage(nkind), setdt(nkind), &
+             write(run_log_unit,370) endage(nkind), setdt(nkind), &
            &          end_dcen(nkind), end_xcen(nkind), end_ycen(nkind)
       370          format(9x,'stop conditions (0 = unused): age =',es9.2, &
            &          ' yr   fixed dt =',es9.2,' yr   central: log rho =',es10.3, &
@@ -2294,17 +2294,17 @@ subroutine interpret_kind_cards
           rescale_params(4,nkind) = rsclcm(nkind)
             if (nmodls(nkind) .gt. 0) then
           if (lfirst(nkind)) then
-             write(iowr,450) nkind
-             write(short_file_unit,450) nkind
+             write(terminal_unit,450) nkind
+             write(run_log_unit,450) nkind
       450          format(1x,'card',i3,': rescale the starting model')
           else
-             write(iowr,451) nkind
-             write(short_file_unit,451) nkind
+             write(terminal_unit,451) nkind
+             write(run_log_unit,451) nkind
       451          format(1x,'card',i3, &
            &          ': rescale the previous card''s model')
           end if
-          write(iowr,452) nmodls(nkind),(rescale_params(i,nkind),i = 1,4)
-          write(short_file_unit,452) nmodls(nkind), &
+          write(terminal_unit,452) nmodls(nkind),(rescale_params(i,nkind),i = 1,4)
+          write(run_log_unit,452) nmodls(nkind), &
            &       (rescale_params(i,nkind),i = 1,4)
       452       format(9x,'relax for',i3,' models; targets', &
            &       ' (0 or negative = keep current):', &
@@ -2320,18 +2320,18 @@ subroutine interpret_kind_cards
             rescale_params(3,nkind) = rsclz(nkind)
             rescale_params(4,nkind) = rsclcm(nkind)
             if (lfirst(nkind)) then
-               write(iowr,550) nkind
-               write(short_file_unit,550) nkind
+               write(terminal_unit,550) nkind
+               write(run_log_unit,550) nkind
       550          format(1x,'card',i3, &
            &          ': rescale and evolve the starting model')
             else
-               write(iowr,451) nkind
-               write(short_file_unit,451) nkind
+               write(terminal_unit,451) nkind
+               write(run_log_unit,451) nkind
 !   551          FORMAT(/1X,'RUN #',I3,
 !      1         '   RESCALE & EVOLVE THE PREVIOUS RUN''S LAST MODEL.')
             end if
-            write(iowr,452) nmodls(nkind),(rescale_params(i,nkind),i = 1,4)
-            write(short_file_unit,452) nmodls(nkind), &
+            write(terminal_unit,452) nmodls(nkind),(rescale_params(i,nkind),i = 1,4)
+            write(run_log_unit,452) nmodls(nkind), &
            &       (rescale_params(i,nkind),i = 1,4)
        end if
          if(rescale_params(3,nkind).ge.0.0d0)  star%envelope_metal_fraction=rescale_params(3,nkind)

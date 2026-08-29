@@ -51,7 +51,6 @@
 subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, eq_composition, &
      eq_mass, num_eq_points, sub_diag, diag, super_diag, rhs)
       use star_info_lib, only: json
-      use luout_lib
       implicit none
 
       double precision, intent(in) :: diffusion_coeff(json)

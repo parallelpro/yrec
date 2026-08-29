@@ -3,26 +3,28 @@
 !----------------------------------------------------------------------
 ! New (2026) as part of the YREC module-modernization project (see
 ! GUIDELINES.md). Replaces common/luout/: I/O logical unit numbers,
-! assigned once at run startup (core/read_input.f90) and read broadly --
-! global configuration, not per-call data, so (like const_lib) this
-! becomes a module of plain module-level variables rather than
-! subroutine arguments. Lives alongside const_lib in this folder for
-! the same reason: a codebase-wide foundational module, not belonging
-! to any one physics domain.
+! assigned once at run startup (io/read_controls.f90) and read
+! broadly -- global configuration, not per-call data, so (like
+! const_lib) this is a module of plain module-level variables rather
+! than subroutine arguments.
 !
-! Canonical names below were chosen as the majority spelling already
-! used across the converted files (short_file_unit/imilne/iowr); a
-! handful of files used non-canonical local names for these three
-! slots (ishort, milne_file_unit, main_output_unit) and had their
-! body references renamed to the canonical names when converted.
+! This module is the residue of the F77 fixed-unit convention. The
+! MESA-style writers (history/profile/pulse, io/yrec_output.f90) use
+! open(newunit=...) and never appear here; streams migrate out of
+! this module as they modernize (2026: the second LAOL/OPAL92
+! opacity-table units became newunit locals of their readers).
+!
+! 2026 descriptive-rename pass (formerly short_file_unit/iowr/
+! ilast/idebug):
+!   run_log_unit    -- the run log (log_output_file, default run.log)
+!   terminal_unit   -- stdout (always 6; kept as a named unit only
+!                      because ~20 files write through it)
+!   last_model_unit -- the final .mod model (last_model_file)
+!   debug_file_unit -- the opt-in debug stream (ldebug/fdebug)
 module luout_lib
       implicit none
 
-      integer :: ilast, idebug, short_file_unit, &
-           iowr
-! 2026 phase A (controls->star% campaign): the two opacity-table
-! units from former common/zramp/, assigned by parmin like the rest
-! of this module, moved here from controls_lib.
-      integer :: iolaol2, ioopal2
+      integer :: last_model_unit, debug_file_unit, run_log_unit, &
+           terminal_unit
 
 end module luout_lib

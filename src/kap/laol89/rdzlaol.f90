@@ -27,7 +27,7 @@ subroutine rdzlaol(pure_z_table_path, ierr)
       read(iopurez,100) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (n.ne.1.or.opacity_table%zlaol_num_rho.gt.104.or.opacity_table%zlaol_num_t.gt.52) then
-         write(short_file_unit,*)' Z OPACITY INPUT ERROR.'
+         write(run_log_unit,*)' Z OPACITY INPUT ERROR.'
          ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
          return

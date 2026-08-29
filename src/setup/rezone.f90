@@ -150,7 +150,7 @@ subroutine check_envelope_temperature_range
       if (star%logT(star%nz).lt.star%ctrl%tenv0) then
        do i = star%nz-1,1,-1
           if (star%logT(i).gt.star%ctrl%tenv0) then
-             write(short_file_unit,10) star%nz,i
+             write(run_log_unit,10) star%nz,i
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              star%nz = i
              star%senv = star%log_mass(star%nz) - star%log_total_mass
@@ -160,8 +160,8 @@ subroutine check_envelope_temperature_range
        end do
        if (i < (1)) then
 !  ENTIRE MODEL HAS T<TENV0 - UNLIKELY - BUT STOP IF TRUE
-       write(short_file_unit,30)
-       write(iowr,30)
+       write(run_log_unit,30)
+       write(terminal_unit,30)
    30    format(1X,39('>'),40('<')/1X,'ERROR IN HPOINT'/ &
      1X,'MAX. STAR T LESS THAN MINIMUM ENVELOPE T.RUN STOPPED')
        ! 2026 (phase five, step B): stop converted to ierr; run_yrec
@@ -189,7 +189,7 @@ subroutine check_envelope_temperature_range
        star%logRho(star%nz) = star%logP(star%nz) - &
             star%logT(star%nz) - 8.0D0
        j = star%nz - 1
-       write(short_file_unit,60) j,star%log_mass(j),star%logP(j), &
+       write(run_log_unit,60) j,star%log_mass(j),star%logP(j), &
             star%logT(j),star%logR(j),star%nz,star%log_mass(star%nz), &
             star%logP(star%nz),star%logT(star%nz), &
             star%logR(star%nz)
@@ -243,7 +243,7 @@ subroutine flag_fixed_points
           endif
        endif
        if (flag_count.ge.100) then
-          write(short_file_unit,110)
+          write(run_log_unit,110)
   110       format(1X,'MORE THAN 100 FLAG POINTS-FIRST 100 RETAINED')
           exit
        endif
@@ -355,7 +355,7 @@ subroutine flag_fixed_points
       end do
       end if
       if (solver_diagnostics()) then
-         write(short_file_unit,185) (flag_point(j),j=1,flag_count)
+         write(run_log_unit,185) (flag_point(j),j=1,flag_count)
       end if
   185 format(1X,'FLAG-POINTS',20I4)
 end subroutine flag_fixed_points
@@ -801,10 +801,10 @@ subroutine interpolate_onto_new_grid
       if (mod(star%model_number,star%ctrl%npoint).eq.0) then
          min_common_count = min0(star%nz,new_num_zones)
 !
-         write(idebug,910)
+         write(debug_file_unit,910)
   910    format('1',20X,'OLD POINTS',54X,'NEW POINTS'/2(3X,'N',5X,'S', &
      8X,'P',7X,'T',7X,'R',8X,'L',7X,'X',4X,'Z',3X,'O16',1X) )
-         write(idebug,920) (i,star%log_mass(i),star%logP(i), &
+         write(debug_file_unit,920) (i,star%log_mass(i),star%logP(i), &
               star%logT(i),star%logR(i),star%luminosity_lsun(i), &
               x_new(i),z_new(i),star%xa(i_o16,i),i,star%old_shell_mass(i), &
               star%logP_start(i),star%logT_start(i),star%logR_start(i), &
@@ -813,14 +813,14 @@ subroutine interpolate_onto_new_grid
   920    format( 2(1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3) )
          if (star%nz.gt.min_common_count) then
             min_common_count = min_common_count + 1
-            write(idebug,930) (i,star%log_mass(i),star%logP(i), &
+            write(debug_file_unit,930) (i,star%log_mass(i),star%logP(i), &
                  star%logT(i),star%logR(i),star%luminosity_lsun(i), &
                  x_new(i),z_new(i),star%xa(i_o16,i),i=min_common_count, &
                  star%nz)
   930       format( 1X,I3,F11.7,F8.4,F8.5,F8.4,1PE9.2,0PF6.3,2F5.3)
          else if (new_num_zones.gt.min_common_count) then
             min_common_count = min_common_count + 1
-            write(idebug,940)(i,star%old_shell_mass(i),star%logP_start(i), &
+            write(debug_file_unit,940)(i,star%old_shell_mass(i),star%logP_start(i), &
                  star%logT_start(i),star%logR_start(i),star%luminosity_lsun_start(i), &
                  star%xa(i_h1,i),star%xa(i_metals,i),star%xa(i_o16,i), &
                  i=min_common_count,new_num_zones)
@@ -862,7 +862,7 @@ subroutine interpolate_onto_new_grid
               old_point_count,new_point_count)
       endif
       if (solver_diagnostics()) then
-         write(short_file_unit,1020) star%nz,new_num_zones
+         write(run_log_unit,1020) star%nz,new_num_zones
       end if
  1020 format(' POINTS  OLD',I5,'   NEW',I5)
       star%nz = new_num_zones
@@ -919,7 +919,7 @@ subroutine interpolate_onto_new_grid
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + star%kinetic_energy_rot(i)
        end do
-       write(short_file_unit,1120)total_angular_momentum, &
+       write(run_log_unit,1120)total_angular_momentum, &
             sum_angular_momentum,total_rotational_ke,sum_rotational_ke
  1120    format(1X,'TOTAL J OF STAR - PREVIOUS ',1PE21.13,' NEW ', &
      1PE21.13/' TOTAL ROTATIONAL K.E. OF STAR-PREVIOUS ',1PE21.13, &

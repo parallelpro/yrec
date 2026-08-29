@@ -17,7 +17,7 @@
 !                                  surface); columns selectable via
 !                                  profile_columns_file.
 !   CASE.log                       everything the code writes to
-!                                  short_file_unit (diagnostics).
+!                                  run_log_unit (diagnostics).
 !   GYRE/FGONG pulse files         every pulse_gyre_interval models,
 !                                  format per pulse_format.
 !
@@ -78,7 +78,7 @@ subroutine output_init_mesa(fshort, ierr)
             log_path = trim(fshort) // '.log'
          end if
       end if
-      open(short_file_unit, file=log_path, form='FORMATTED', &
+      open(run_log_unit, file=log_path, form='FORMATTED', &
            status='REPLACE')
       call log_reset()
 
@@ -116,7 +116,7 @@ subroutine output_init_mesa(fshort, ierr)
          if (.not. gsm_supported()) then
             write(*,*) 'pulse_format = GSM requires an HDF5-enabled build:'
             write(*,*) '  make clean && make USE_HDF5=1'
-            write(short_file_unit,*) &
+            write(run_log_unit,*) &
                  'pulse_format = GSM requires USE_HDF5=1 build'
             ierr = 1
             return
@@ -188,7 +188,7 @@ subroutine output_write_model()
       end if
       call write_history_row(iprof)
 ! The .mod model file: restart + in-run divergence recovery.
-      call write_mod_model(ilast)
+      call write_mod_model(last_model_unit)
 
 ! interval GYRE pulse output (independent of write_pulse_flag);
 ! model-numbered (zero-padded), same prefix and directory as the
@@ -231,7 +231,7 @@ subroutine parse_columns(fname, names, ncol, sel, nsel, label, ierr)
       if (ios /= 0) then
          write(*,*) 'cannot open ', trim(label), '_columns_file: ', &
               trim(fname)
-         write(short_file_unit,*) 'cannot open ', trim(label), &
+         write(run_log_unit,*) 'cannot open ', trim(label), &
               '_columns_file: ', trim(fname)
 ! 2026 io-writer stops -> ierr (stage-3 pattern): config error
 ! returned to output_init_mesa -> read_input -> read_controls.
@@ -257,11 +257,11 @@ subroutine parse_columns(fname, names, ncol, sel, nsel, label, ierr)
          end do
          if (.not. found) then
             write(*,*) 'unknown ', trim(label), ' column: ', trim(line)
-            write(short_file_unit,*) 'unknown ', trim(label), &
+            write(run_log_unit,*) 'unknown ', trim(label), &
                  ' column: ', trim(line)
-            write(short_file_unit,*) 'valid ', trim(label), ' columns:'
+            write(run_log_unit,*) 'valid ', trim(label), ' columns:'
             do j = 1, ncol
-               write(short_file_unit,'(2x,a)') trim(names(j))
+               write(run_log_unit,'(2x,a)') trim(names(j))
             end do
             ierr = 1
             return

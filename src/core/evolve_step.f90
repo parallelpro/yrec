@@ -187,7 +187,7 @@ subroutine update_output_flags_for_step
 
 ! rewind ISHORT if LRWSH is true (keeps ISHORT small)
           if (star%ctrl%rewind_short_file) then
-             rewind(short_file_unit)
+             rewind(run_log_unit)
           endif
 
 ! JVS 02/11: Also allow pulse output at particular ages along the way

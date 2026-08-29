@@ -200,15 +200,15 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
                max_change_zone = i
             endif
          enddo
-         write(short_file_unit,90)iter,max_abundance_change,max_change_zone
+         write(run_log_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
          if(max_abundance_change.lt.star%ctrl%settling_tolerance)exit
       end do
       if (iter > star%ctrl%settling_num_iterations) then
-      write(iowr,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
+      write(terminal_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
            max_abundance_change,max_change_zone
-      write(short_file_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
+      write(run_log_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
            max_abundance_change,max_change_zone
   110 format(1x,'MICRODIFF FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
            'ITERATIONS'/1x,'LAST ITERATION CHANGE IN D ',1pe9.3, &

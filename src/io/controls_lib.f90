@@ -16,7 +16,7 @@
 ! 2026 controls->star% campaign evicted every non-namelist straggler
 ! the original COMMON blocks mixed in (ctlim's tenv, atmos's
 ! kttau0/lttau/hras, the cross/weak scale arrays, the solar octet,
-! cmixl, nk -- flat star% members now; iolaol2/ioopal2 to luout_lib).
+! cmixl, nk -- flat star% members now).
 !
 ! Phase B: this module is now formally the namelist read BUFFER.
 ! read_controls re-seeds it from pristine star%ctrl defaults before
@@ -561,8 +561,9 @@ module controls_lib
 ! since DATA can no longer target use-associated entities.
 ! use_z_ramp (originally lzramp) is a NAMELIST value with a
 ! different canonical spelling, kept local in core/read_input.f90 and
-! copy-assigned. Evicted 2026 phase A: iolaol2/ioopal2 to luout_lib
-! (parmin-assigned units), nk to star%job%nk (the run-list cursor).
+! copy-assigned. Evicted 2026 phase A: iolaol2/ioopal2 (now
+! newunit locals of their table readers), nk to star%job%nk (the
+! run-list cursor).
       double precision :: rsclzc(50) = -1.0d0, rsclzm1(50) = -1.0d0, &
            rsclzm2(50) = -1.0d0
       logical :: use_z_ramp

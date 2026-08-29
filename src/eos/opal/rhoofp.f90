@@ -16,7 +16,6 @@ double precision function rhoofp(hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
       use opal_eos_lib
-      use luout_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, t6_temperature, &

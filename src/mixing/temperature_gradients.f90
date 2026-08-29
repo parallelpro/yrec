@@ -196,7 +196,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       end do
       if (iter > 25) then
 !  15   CONTINUE
-      write(short_file_unit,20) log_pressure,log_temperature,opacity, &
+      write(run_log_unit,20) log_pressure,log_temperature,opacity, &
            specific_heat_cp,dlnrho_dlnt
    20 format(' -----CUBIC NON-CONVERGENCE(PL,TL,CAPPA,CP,QDT)=' &
              ,2f10.6/1p3e12.6)

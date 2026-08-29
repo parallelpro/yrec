@@ -59,7 +59,6 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
       use star_info_lib, only: star
 
       use star_info_lib
-      use luout_lib
       use phys_const_lib
       use numerics_lib
       implicit none

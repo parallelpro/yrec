@@ -271,10 +271,10 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
                star%max_residual(4).le. star%ctrl%htoler(5,2)) then
              star%newton_iterations = iterations_done + 1
              if (solver_diagnostics()) then
-                write(short_file_unit,20) (star%max_residual(j),j=1,4)
+                write(run_log_unit,20) (star%max_residual(j),j=1,4)
    20           format(' R.H.S. BELOW TOLERANCES--P',1PE9.2,'  T ',E9.2, &
               '  R ',E9.2,'  L ',E9.2)
-                write(short_file_unit,75) iterations_done+1
+                write(run_log_unit,75) iterations_done+1
              end if
              converged = .true.
              return
@@ -352,23 +352,23 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
 ! 2026 log redesign: the correction trace was gated on the retired
 ! LCORR control; it is solver forensics, behind the diagnostics flag.
        if (solver_diagnostics()) then
-          write (short_file_unit,60) converged,star%max_residual(4), &
+          write (run_log_unit,60) converged,star%max_residual(4), &
                star%ctrl%htoler(4,1),star%max_correction_index(4)
    60       format (1X,'DEL-L/L  ',L2,1P2E12.4,5X,I5)
-          write(short_file_unit,70)(star%max_correction_index(j),star%max_residual(j), &
+          write(run_log_unit,70)(star%max_correction_index(j),star%max_residual(j), &
                j=1,4),correction_factor,hydrogen_burn_luminosity, &
                helium_burn_luminosity,(star%luminosity_breakdown(j),j=6,7)
    70       format(' CORR',I5,'P',1PE9.2,I5,'T',E9.2,I5,'R',E9.2,I5,'L', &
             E9.2,'  F=',0PF5.3,'  E-HY',1PE10.3,' HE',E10.3,' NU',E10.3, &
             ' G',E10.3)
           if (converged) then
-             write(short_file_unit,75) iterations_done+1
+             write(run_log_unit,75) iterations_done+1
    75          format(10X,'MODEL CONVERGED AFTER ',I4,'  ITERATIONS')
           endif
        endif
        if (corrections_too_large) then
-          write(iowr,80)
-          write(short_file_unit,80)
+          write(terminal_unit,80)
+          write(run_log_unit,80)
    80       format(1X,'-----CORRECTIONS EXCEEDED TOLERANCES')
             return
          endif

@@ -151,7 +151,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
             search_full_range = .false.
             cycle full_search
          endif
-         write(short_file_unit,*) 'ERROR KURUCZ OP: NO TABLE VALUE ', &
+         write(run_log_unit,*) 'ERROR KURUCZ OP: NO TABLE VALUE ', &
               local_logrho, local_logt
 ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1

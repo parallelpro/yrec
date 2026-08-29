@@ -49,8 +49,8 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
       log10_density = mhd_eos%mhd_output(1)
       return
 !   999 CONTINUE
-      write(iowr,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
-      write(short_file_unit,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
+      write(terminal_unit,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
+      write(run_log_unit,*) 'ERROR (MHD): OUT OF TABLE RANGE. RETURN'
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1

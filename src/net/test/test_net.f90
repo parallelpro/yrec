@@ -55,9 +55,9 @@ program test_net
       laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
-      short_file_unit = 20
+      run_log_unit = 20
       star%ctrl%fermi_unit = 15
-      open(short_file_unit, file="test_net.short", status="replace")
+      open(run_log_unit, file="test_net.short", status="replace")
 
 ! everything gated off; only the Fermi table is a hard requirement
       star%ctrl%use_mhd_eos = .false.
@@ -159,6 +159,6 @@ program test_net
       call deutrate(1.5d0, 6.2d0, 0.70d0, 1, 1)
       write(*,'(1pe20.12)') star%deuterium_burning_rate(1)
 
-      close(short_file_unit)
+      close(run_log_unit)
       write(*,'(a)') "test_net: done"
 end program test_net

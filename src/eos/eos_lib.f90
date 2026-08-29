@@ -333,7 +333,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
 ! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
        if (yale_eos%fermi_table_x_grid(grid_idx+1).le.yale_eos%fermi_table_x_grid(grid_idx)) then
 !       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
-          write(short_file_unit,1000) grid_idx
+          write(run_log_unit,1000) grid_idx
  1000       format(1x,39('>'),40('<')/1x,'ERROR IN SUBROUTINE SETUPS'/ &
            1x,'GLITCH IN FERMI TABLE ELEMENT',i4/1x,'RUN STOPPED')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.

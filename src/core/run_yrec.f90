@@ -64,7 +64,6 @@ subroutine run_yrec(ierr)
 
       call setversion()
 
-      iowr = 9
 ! LPUNCH is TRUE once first model is calculated
       star%punch_pending_flag = .false.
 ! 2026 (phase five): controls read and setup are now star-layer
@@ -349,7 +348,7 @@ subroutine begin_kind_card
 ! timestep cutting requires a model stored in logical unit ILAST
 ! or it will crash - so copy initial model to unit ILAST
           if (star%punch_pending_flag) then
-             call write_mod_model(ilast)
+             call write_mod_model(last_model_unit)
           endif
        endif
 

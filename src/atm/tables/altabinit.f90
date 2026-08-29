@@ -100,7 +100,7 @@ subroutine altabinit(ierr)
          do j = j1, j2
             if (atm_table%allard_log10_pressure(i,j) .lt. -998d0) then
               table_is_bad = .true.
-              write(short_file_unit,900) 'ALTABINIT: Bad input Allard Table: ', &
+              write(run_log_unit,900) 'ALTABINIT: Bad input Allard Table: ', &
                  'TEFF, GL: ', 10d0**atm_table%allard_teffl_grid(i), atm_table%allard_gl_grid(j)
   900              format(2a,f5.0,f7.2)
             endif
@@ -110,7 +110,7 @@ subroutine altabinit(ierr)
 !        (b) Ensure that every row has at least 4 valid entries and that there are at least 4 columns.
       if (atm_table%allard_num_teff .lt. 4) then
          table_is_bad = .true.
-         write(short_file_unit,910) 'ALTABINIT: Bad input Allard Table: ', &
+         write(run_log_unit,910) 'ALTABINIT: Bad input Allard Table: ', &
             'Less than 4 rows: nTeff = ',atm_table%allard_num_teff
   910         format(a,i3)
       endif
@@ -119,7 +119,7 @@ subroutine altabinit(ierr)
          j2 = atm_table%allard_gl_index_max(i)
          if ((j2 - j1 + 1) .lt. 4) then
             table_is_bad = .true.
-            write(short_file_unit,920) 'ALTABINIT: Bad input Allard Table: ', &
+            write(run_log_unit,920) 'ALTABINIT: Bad input Allard Table: ', &
               'Row with less that 4 elements: i,#,Teff,GLMin,GLmax: ', &
                i,j2-j1+1,10d0**atm_table%allard_teffl_grid(i),atm_table%allard_gl_row_min(i),atm_table%allard_gl_row_max(i)
   920            format(2a,2i4,2x,3f7.2)
@@ -134,9 +134,9 @@ subroutine altabinit(ierr)
        write(*,*)
        write(*,*)'******** ALTABINIT: Program Terminated ********'
        write(*,*)
-       write(short_file_unit,*)
-       write(short_file_unit,*)'******** ALTABINIT: Program Terminated ********'
-       write(short_file_unit,*)
+       write(run_log_unit,*)
+       write(run_log_unit,*)'******** ALTABINIT: Program Terminated ********'
+       write(run_log_unit,*)
        call print_allard_tables
        ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
        ! facades stop when their caller passes no ierr.

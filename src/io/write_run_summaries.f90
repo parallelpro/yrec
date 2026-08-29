@@ -34,19 +34,19 @@ subroutine write_run_summaries(monte_carlo_run_number, &
 ! FOR MONTE CARLO, REWIND OUTPUT FILES BETWEEN CYCLES.
 ! RUN FAILED TO CONVERGE: DUMP THE MODEL WITH THE FAILURE COUNT.
       if (star%ctrl%lmonte .and. convergence_iterations.ge.11 .and. .not.star%solar_calibration_active) then
-         rewind(ilast)
+         rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
-         rewind(idebug)
-         rewind(short_file_unit)
+         rewind(debug_file_unit)
+         rewind(run_log_unit)
          call write_monte_carlo_model(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%dage, &
               star%timestep_yr,star%star_mass,star%log_Teff,star%log_L, &
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%luminosity_breakdown,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
               star%envelope_fit_coeffs,star%trial_sign_flag,star%log_total_mass,star%omega,log_r_rsun,convergence_iterations,star%job%nk,monte_carlo_run_number)
       else if (star%ctrl%calibrate_solar_model .and. star%ctrl%lsnu .and. star%solar_calibration_active) then
-         rewind(ilast)
+         rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
-         rewind(idebug)
-         rewind(short_file_unit)
+         rewind(debug_file_unit)
+         rewind(run_log_unit)
 
          surface_z_over_x = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
          if (star%ctrl%lmonte) then

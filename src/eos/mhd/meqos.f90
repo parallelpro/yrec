@@ -91,14 +91,14 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, beta)
       if (abs((specific_gas_constant-specific_gas_constant_check)/ &
            specific_gas_constant).gt.5.0d-7) then
-          write(iowr,*)' ERROR(MHD) IN MEAN WEIGHTS ... '
-          write(iowr,*) specific_gas_constant, &
+          write(terminal_unit,*)' ERROR(MHD) IN MEAN WEIGHTS ... '
+          write(terminal_unit,*) specific_gas_constant, &
                specific_gas_constant_check
-        write(iowr,*) 'ERROR (MHD): CHECK MU'
-          write(short_file_unit,*)' ERROR(MHD): IN MEAN WEIGHTS ... '
-          write(short_file_unit,*) specific_gas_constant, &
+        write(terminal_unit,*) 'ERROR (MHD): CHECK MU'
+          write(run_log_unit,*)' ERROR(MHD): IN MEAN WEIGHTS ... '
+          write(run_log_unit,*) specific_gas_constant, &
                specific_gas_constant_check
-        write(short_file_unit,*) 'ERROR (MHD): CHECK MU'
+        write(run_log_unit,*) 'ERROR (MHD): CHECK MU'
           ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
           ! facades stop when their caller passes no ierr.
           ierr = 1
@@ -106,7 +106,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
       end if
       return
 !   999 CONTINUE
-      write(short_file_unit,*) 'ERROR(MHD):... MHD TABLE FAIL'
+      write(run_log_unit,*) 'ERROR(MHD):... MHD TABLE FAIL'
       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1

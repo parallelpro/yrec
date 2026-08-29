@@ -84,10 +84,10 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          x_grid_origin = table_hfrac(1)
          x_grid_spacing  = table_hfrac(2) - table_hfrac(1)
          if (abs(table_hfrac(3)-table_hfrac(2)-x_grid_spacing).gt.1.d-4) then
-            write(iowr,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
-            write(iowr,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
-            write(short_file_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
-            write(short_file_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
+            write(terminal_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
+            write(terminal_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
+            write(run_log_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
+            write(run_log_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
             ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
             ! facades stop when their caller passes no ierr.
             ierr = 1

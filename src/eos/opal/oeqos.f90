@@ -83,7 +83,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       if (ierr /= 0) return
 
       if (abs((p_e12-opal_eos%eos_output(1))/p_e12).gt.0.5d-6) then
-         write(short_file_unit,*) p_e12, opal_eos%eos_output(1)
+         write(run_log_unit,*) p_e12, opal_eos%eos_output(1)
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
@@ -110,7 +110,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       end if
 
       return
-  999 write(short_file_unit, *) 'WARNNING... OPAL TBL FAIL'
+  999 write(run_log_unit, *) 'WARNNING... OPAL TBL FAIL'
 
       return 1
 end subroutine oeqos

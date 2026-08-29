@@ -2295,7 +2295,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          if (refine_idx > 11) then
 ! IF THE PROGRAM GETS HERE THEN IT FAILED TO CONVERGE TO WITHIN
 ! THE SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
-         write(short_file_unit,911)zone_idx,(extrap_err(species_idx),species_idx=1,3)
+         write(run_log_unit,911)zone_idx,(extrap_err(species_idx),species_idx=1,3)
   911    format(1x,'***LIBURN CONVERGENCE FAILURE IN SHELL ',i4, &
          'ERRORS '/1p3e10.3)
          end if
@@ -2516,7 +2516,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       if (refine_idx .gt. 11) then
 ! IF THE PROGRAM GETS HERE THEN IT FAILED TO CONVERGE TO WITHIN
 ! THE SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
-      write(short_file_unit,911)cz_base_zone,(extrap_err(species_idx),species_idx=1,3)
+      write(run_log_unit,911)cz_base_zone,(extrap_err(species_idx),species_idx=1,3)
       end if
 ! WRITE NEW ABUNDANCES AND EXIT.
       li6_cz_end = extrap_result(1)

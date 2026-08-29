@@ -60,14 +60,14 @@ subroutine write_model_line()
            '      log_L      log_R center_h1  iters'
       if (star%model_number == last_printed_model) return
       if (lines_since_header >= header_every) then
-         write(iowr,'(a)') header
-         write(short_file_unit,'(a)') header
+         write(terminal_unit,'(a)') header
+         write(run_log_unit,'(a)') header
          lines_since_header = 0
       end if
-      write(iowr,10) star%model_number, star%nz, star%dage, &
+      write(terminal_unit,10) star%model_number, star%nz, star%dage, &
            star%timestep_yr, star%log_Teff, star%log_L, &
            star%log_R_surface, star%xa(i_h1,1), star%newton_iterations
-      write(short_file_unit,10) star%model_number, star%nz, star%dage, &
+      write(run_log_unit,10) star%model_number, star%nz, star%dage, &
            star%timestep_yr, star%log_Teff, star%log_L, &
            star%log_R_surface, star%xa(i_h1,1), star%newton_iterations
    10 format(1x,i7,1x,i6,1x,es15.8,1x,es12.5,3(1x,f10.6),2x,f8.6,1x,i6)

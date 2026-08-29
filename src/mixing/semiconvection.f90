@@ -298,7 +298,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                mixed_zone_bounds(zone_idx,edge_side) = search_zone_idx - 1
                new_edge_idx = search_zone_idx - 1
             end if
-            write(short_file_unit,601) cz_edge_idx, new_edge_idx, &
+            write(run_log_unit,601) cz_edge_idx, new_edge_idx, &
                  reached_max_extent, perturbed_radiative_gradient, &
                  local_radiative_gradient
   601       format(1x,'CZ OLD EDGE ',i3,' EXTENDED TO-', &
@@ -312,7 +312,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
       if (mixed_zone_bounds(k_idx,2).gt.mixed_zone_bounds(k_idx+1,1)) then
 !  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
-         write(short_file_unit,93) ((mixed_zone_bounds(zone_idx,pair_idx), &
+         write(run_log_unit,93) ((mixed_zone_bounds(zone_idx,pair_idx), &
               pair_idx=1,2),zone_idx=k_idx,k_idx+1), &
               mixed_zone_bounds(k_idx,1), mixed_zone_bounds(k_idx+1,2)
    93    format(2x,'MIXED ZONES MERGED DUE TO SEMICONVECTION' &

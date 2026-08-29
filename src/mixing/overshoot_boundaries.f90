@@ -44,9 +44,9 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
 ! CONVECTIVE CORE
 ! CHECK FOR A FULLY CONVECTIVE STAR; SKIP THIS SR IF THERE IS ONE.
             if (mixed_zone_bounds(zone_idx,2).eq.num_zones) then
-               write(short_file_unit,5)
+               write(run_log_unit,5)
     5          format(1x,'FULLY CONVECTIVE MODEL - NO OVERSHOOT')
-               write(short_file_unit,200) (mixed_zone_bounds_no_overshoot( &
+               write(run_log_unit,200) (mixed_zone_bounds_no_overshoot( &
                     1,j_idx), j_idx=1,2)
                return
             end if
@@ -153,11 +153,11 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
          end if
       end do
 ! OUTPUT : THE OLD AND NEW MIXED REGIONS ARE PRINTED OUT IN ISHORT.
-      write(short_file_unit,200) ((mixed_zone_bounds_no_overshoot( &
+      write(run_log_unit,200) ((mixed_zone_bounds_no_overshoot( &
            zone_idx,j_idx), j_idx=1,2), zone_idx=1,num_mixed_zones)
   200 format(1x,'MIXED REGIONS WITHOUT OVERSHOOT', &
            4('[',i4,'-',i4,' ]'))
-      write(short_file_unit,210) ((mixed_zone_bounds(zone_idx,j_idx), &
+      write(run_log_unit,210) ((mixed_zone_bounds(zone_idx,j_idx), &
            j_idx=1,2), zone_idx=1,num_mixed_zones)
   210 format(1x,'MIXED REGIONS WITH OVERSHOOT   ', &
            4('[',i4,'-',i4,' ]'))

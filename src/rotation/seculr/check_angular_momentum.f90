@@ -130,7 +130,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 !            IF(IREDO.GT.3)THEN
             if(cut_count.gt.0)then
                write(6,1000) zone_index
-               write(short_file_unit,1000) zone_index
+               write(run_log_unit,1000) zone_index
  1000          format(1x,39('>'),39('<')/5x,'ERROR IN SR CHECKJ'/ &
                        5x,'NEGATIVE J/M ENCOUNTERED IN ZONE',i5, &
                        ' AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED'/ &
@@ -144,7 +144,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                redo_flag = .true.
                dt = 0.5d0*dt
                write(6,1005)cut_count,zone_index
-               write(short_file_unit,1005)cut_count,zone_index
+               write(run_log_unit,1005)cut_count,zone_index
  1005          format(5x,'ERROR IN SR CHECKJ'/5x,'TIMESTEP CUT,',1x, &
                        'NUMBER',i5,' DUE TO NEGATIVE J/M IN ZONE',i5)
                continue

@@ -107,7 +107,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
                if(cut_count.gt.3)then
                   write(6,1010) species_index,zone_index, &
                        composition(species_index,zone_index)
-                  write(short_file_unit,1010) species_index,zone_index, &
+                  write(run_log_unit,1010) species_index,zone_index, &
                        composition(species_index,zone_index)
  1010 format(1x,39('>'),39('>')/' ERROR IN SR CHECKC'/ &
               ' ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5,' ABUNDANCE ', &
@@ -124,7 +124,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
                   dt = 0.5d0*dt
                   write(6,1015)cut_count,species_index,zone_index, &
                        composition(species_index,zone_index)
-                  write(short_file_unit,1015)cut_count,species_index, &
+                  write(run_log_unit,1015)cut_count,species_index, &
                        zone_index,composition(species_index,zone_index)
  1015 format(' ERROR IN SR CHECKC'/' TIMESTEP CUT NUMBER ',i2, &
               ' DUE TO ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5, &

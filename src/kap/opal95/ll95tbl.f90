@@ -84,7 +84,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
          xxt = 1.0d0 - opacity_table%opal95_grid_z(iz)
       endif
       if (opacity_table%opal95_grid_z(iz).ne.zz .or. xxt.ne.xx) then
-       write(short_file_unit,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
+       write(run_log_unit,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
          ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
          return

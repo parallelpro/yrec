@@ -92,7 +92,7 @@ subroutine t6rinteos01(slr, slt, ierr)
          end if
       end if
       if (opal_eos%esact_01.gt.1.0d+15) then
-         write(short_file_unit,'("Interpolation indices out of range", &
+         write(run_log_unit,'("Interpolation indices out of range", &
               &";please report conditions.")')
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.

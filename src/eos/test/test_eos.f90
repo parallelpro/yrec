@@ -11,7 +11,7 @@
 !
 ! Initialization notes -- everything here replicates what the full
 ! code does at startup, with the source of each piece cited:
-!  * unit numbers: core/read_input.f90's assignments (short_file_unit=20,
+!  * unit numbers: core/read_input.f90's assignments (run_log_unit=20,
 !    fermi_unit=15, scv units 72-74, iopale=49).
 !  * flags/cutoffs: explicit assignments below (TSCUT=6.0 matching
 !    the reference solar-model namelists; all kap table flags false
@@ -98,13 +98,13 @@ program test_eos
       laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
-      short_file_unit = 20
+      run_log_unit = 20
       star%ctrl%fermi_unit = 15
       star%ctrl%scv_h_unit = 72
       star%ctrl%scv_he_unit = 73
       star%ctrl%scv_z_unit = 74
       star%ctrl%iopale = 49
-      open(short_file_unit, file="test_eos.short", status="replace")
+      open(run_log_unit, file="test_eos.short", status="replace")
 
 ! eos configuration
       star%ctrl%use_mhd_eos = .false.
@@ -277,7 +277,7 @@ program test_eos
 ! domain internal -- this test is in-domain, white-box by design)
 ! with an invalid rad_flag, the same class of internal error the
 ! converted stops guarded, and asserts ierr = 1 with no crash; its
-! diagnostic goes to short_file_unit as always.
+! diagnostic goes to run_log_unit as always.
       write(*,'(a)') "# test_eos: error paths via ierr"
       logt = 6.30d0
       logp = 14.0d0
@@ -296,6 +296,6 @@ program test_eos
   300 continue
       write(*,'(a,i4)') "err bad-rad-flag   ierr = ", eos_ierr
 
-      close(short_file_unit)
+      close(run_log_unit)
       write(*,'(a)') "test_eos: done"
 end program test_eos

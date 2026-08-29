@@ -166,7 +166,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 !   LOCATE OUTER BOUNDARY.
          if (.not.convective_flag(num_zones)) then
             write(*,911)
-            write(short_file_unit,911)
+            write(run_log_unit,911)
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL'/ &
                  'STOPPED IN SUBROUTINE MIX')
             ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side

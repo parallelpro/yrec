@@ -77,7 +77,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          if (i > num_zones) then
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
          fully_convective_flag=.true.
-         write(short_file_unit,15)
+         write(run_log_unit,15)
    15    format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
          continue
          return
@@ -93,7 +93,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       end do
       if (i > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
-      write(short_file_unit,16)star%ctrl%hydrogen_diffusion_floor
+      write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
    16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
       continue
@@ -117,7 +117,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       end do
       if (i < (1)) then
 !     HYDROGEN-FREE MODEL - EXIT.
-      write(short_file_unit,17)star%ctrl%helium_diffusion_min
+      write(run_log_unit,17)star%ctrl%helium_diffusion_min
    17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
       fully_convective_flag = .true.
       continue

@@ -70,10 +70,10 @@ subroutine write_mod_model(iwrite)
 ! run-log progress line (run_log_lib); the "DUMPED MODEL" bookkeeping
 ! is solver forensics behind the diagnostics flag.
       if (solver_diagnostics()) then
-         if (iwrite .eq. ilast) then
-          write(short_file_unit,330) star%model_number, iwrite
+         if (iwrite .eq. last_model_unit) then
+          write(run_log_unit,330) star%model_number, iwrite
          else
-          write(short_file_unit,340) star%model_number, star%dage, iwrite
+          write(run_log_unit,340) star%model_number, star%dage, iwrite
          endif
       end if
   330 format(' DUMPED MODEL',I5,'  FILE',I3)

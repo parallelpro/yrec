@@ -45,10 +45,10 @@ program test_kap
       laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
-      short_file_unit = 20
+      run_log_unit = 20
       star%ctrl%fermi_unit = 15
       star%ctrl%opal95_table_unit = 48
-      open(short_file_unit, file="test_kap.short", status="replace")
+      open(run_log_unit, file="test_kap.short", status="replace")
 
 ! kap configuration: OPAL95 atomic tables only, per the reference
 ! solar namelists (LOPAL95=T, ZOPAL951=0.016232, TMOLMIN/TMOLMAX
@@ -108,7 +108,7 @@ program test_kap
 ! Error paths (2026, ROADMAP.md stage 3): with the optional ierr
 ! passed, out-of-range points and misconfiguration return ierr /= 0
 ! instead of stopping -- the first time these paths are testable at
-! all. The diagnostic each failure writes goes to short_file_unit /
+! all. The diagnostic each failure writes goes to run_log_unit /
 ! stdout at the point of failure, as always.
       write(*,'(a)') "# test_kap: error paths via optional ierr"
       logt = 3.5d0
@@ -126,6 +126,6 @@ program test_kap
       write(*,'(a,i4)') "err no-table-chosen ierr = ", kap_ierr
       star%ctrl%use_opal95_tables = .true.
 
-      close(short_file_unit)
+      close(run_log_unit)
       write(*,'(a)') "test_kap: done"
 end program test_kap

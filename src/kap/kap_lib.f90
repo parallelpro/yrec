@@ -185,7 +185,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
 !     temperatures
       if ((metal_fraction.gt.0.1d0) .and. (log10_temperature.gt.7.0d0)) then
          if (.not.use_pure_z_table) then
-            write(short_file_unit, *) ' ERROR: Z>0.10 T > 5 X 10^7 K', &
+            write(run_log_unit, *) ' ERROR: Z>0.10 T > 5 X 10^7 K', &
                  ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=', &
                  metal_fraction, log10_temperature
             jerr = 1
@@ -254,7 +254,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
            .and. .not.star%ctrl%use_opal95_tables)) then
 !        JCZ 211125 changed to 10^7 K in message to reflect above
 !        change in logic.
-         write(short_file_unit,*) ' Z>0.12 T < 10^7 K', &
+         write(run_log_unit,*) ' Z>0.12 T < 10^7 K', &
               ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z', &
               ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=', &
               metal_fraction, kap_envelope_metal_fraction, log10_temperature
@@ -338,7 +338,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
 !     mhp 7/12 insert final trap - no opacity computed
 !     should not be able to get here.
       else
-         write(short_file_unit,*) 'NO OPACITY TABLE CHOSEN', &
+         write(run_log_unit,*) 'NO OPACITY TABLE CHOSEN', &
               ' RUN STOPPED. X Z TL=', hydrogen_fraction, metal_fraction, &
               log10_temperature
          jerr = 1

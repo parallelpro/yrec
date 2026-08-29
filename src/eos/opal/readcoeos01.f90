@@ -74,7 +74,7 @@ subroutine readcoeos01(ierr)
                  unused_field, unused_field, &
                  opal_eos%density_grid_table_01(x_loop_index_01,density_row)
             if (record_number.ne.density_row) then
-               write (short_file_unit,'(" Data file incorrect: numtot,jcs= ",2I5)') &
+               write (run_log_unit,'(" Data file incorrect: numtot,jcs= ",2I5)') &
                     record_number, density_row
                ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
                ! facades stop when their caller passes no ierr.
@@ -85,7 +85,7 @@ subroutine readcoeos01(ierr)
             read(star%ctrl%iopale,'(A)') blank_line
             if (opal_eos%temperature_count_used_01(x_loop_index_01,density_row).lt. &
                  opal_eos%t6_index_lo_01(density_row)) then
-               write (short_file_unit,'("problem with data files: X=",F6.4, &
+               write (run_log_unit,'("problem with data files: X=",F6.4, &
                     &" density=",E14.4)') opal_eos%hydrogen_fraction_header_01(x_loop_index_01), &
                     opal_eos%density_grid_table_01(x_loop_index_01,density_row)
                ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
@@ -113,7 +113,7 @@ subroutine readcoeos01(ierr)
 
       do t6_scan_idx = 1, nt
          if (opal_eos%t6_list_01(1,t6_scan_idx).eq.0.0d0) then
-            write(short_file_unit,'("READCOEOS01: Error:",I4, &
+            write(run_log_unit,'("READCOEOS01: Error:",I4, &
                  &"-th T6 value is zero")') t6_scan_idx
             ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
             ! facades stop when their caller passes no ierr.

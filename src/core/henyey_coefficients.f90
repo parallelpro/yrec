@@ -54,7 +54,6 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 
       use net_lib
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
-      use luout_lib
       use phys_const_lib
       use eos_lib
       use kap_lib

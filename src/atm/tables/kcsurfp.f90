@@ -43,8 +43,8 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
       ierr = 0
 
       if (log10_teff.lt.3.5d0 .or. log10_gravity.lt.-0.5d0) then
-         write(iowr,911) log10_teff, log10_gravity
-         write(short_file_unit,911) log10_teff, log10_gravity
+         write(terminal_unit,911) log10_teff, log10_gravity
+         write(run_log_unit,911) log10_teff, log10_gravity
   911    format(1X,'DESIRED ATMOSPHERE OUTSIDE TABLE RANGE'/ &
               ' LOG TEFF',F10.6,' LOG G',F10.6/' RUN STOPPED')
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
@@ -177,10 +177,10 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
       atm_table%atm_log10_temperature = log10_teff
 ! WRITE OUT INFORMATION TO THE MODEL FILE.
       if (print_flag) then
-        write(short_file_unit,70)
+        write(run_log_unit,70)
 70      format('********PRESSURE AT T=TEFF INTERPOLATED FROM TABULATED' &
               ,  ' VALUES********')
-        write(short_file_unit,71) log10_teff, atm_table%atm_log10_pressure
+        write(run_log_unit,71) log10_teff, atm_table%atm_log10_pressure
 71      format(' ',20X,'LOG (Teff) =',F10.5,' LOG P =',F10.5)
       endif
       return

@@ -293,7 +293,7 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
          if(converged) exit
       end do
       if (isaha .gt. max_saha_iterations) then
-      write(short_file_unit,99) log10_temperature,log10_pressure, &
+      write(run_log_unit,99) log10_temperature,log10_pressure, &
            mean_electrons_per_ion,delta_electrons_per_ion
  99   format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
       end if

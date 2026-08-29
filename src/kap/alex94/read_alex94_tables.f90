@@ -70,7 +70,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
    10       format(18x,f6.2,2x,f7.2)
             if (header_x.ne.opacity_table%alex95_grid_x(table_index) .or. &
                  header_z.ne.opacity_table%alex95_grid_z(i)) then
-               write(short_file_unit,20) header_x, opacity_table%alex95_grid_x(table_index), &
+               write(run_log_unit,20) header_x, opacity_table%alex95_grid_x(table_index), &
                     header_z, opacity_table%alex95_grid_z(i)
    20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
@@ -89,7 +89,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
    30          format(i2,i3,f6.3,f5.1,8f8.3/9f8.3)
                if (row_density_count.ne.17 .or. row_temp.ne.opacity_table%alex95_grid_logt(j) &
                     .or. row_logr0.ne.opacity_table%alex95_grid_logr(1)) then
-                  write(short_file_unit,40) row_density_count, row_temp, &
+                  write(run_log_unit,40) row_density_count, row_temp, &
                        opacity_table%alex95_grid_logt(j), row_logr0, opacity_table%alex95_grid_logr(1)
    40             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T,RHO',i3,4f7.2, &

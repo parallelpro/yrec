@@ -18,13 +18,13 @@ subroutine write_output_headers(total_mass_msun)
       double precision :: total_mass_grams
 
       if (star%job%rescale_kind(star%job%nk) .eq. 1) then
-         write(iowr, 47) star%job%nk, &
+         write(terminal_unit, 47) star%job%nk, &
               star%mixing_length_alpha, star%job%num_models(star%job%nk)
       else if (star%job%rescale_kind(star%job%nk) .eq. 2) then
-         write(iowr, 48) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
+         write(terminal_unit, 48) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
               star%mixing_length_alpha, star%job%num_models(star%job%nk)
       else if (star%job%rescale_kind(star%job%nk) .eq. 3) then
-         write(iowr, 49) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
+         write(terminal_unit, 49) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
               star%mixing_length_alpha, star%job%num_models(star%job%nk)
       end if
   47  format(/,1x,'card',i3,' (evolve):  mixing length =',f8.6, &

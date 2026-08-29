@@ -19,7 +19,7 @@ subroutine read_yrec7(log_luminosity_lsun, envelope_fit_coeffs, &
      mixing_length, age_gyr, timestep_yr, trial_sign_flag, composition, &
      log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_total_mass, log_temperature, &
-     iread, short_file_unit, core_cz_top_index, envelope_cz_bottom_index, &
+     iread, run_log_unit, core_cz_top_index, envelope_cz_bottom_index, &
      convective_flag, use_extended_composition, rotation_active, num_shells, &
      model_number, omega, fit_point_pressure, fit_point_radius, &
      total_mass_msun, log_teff, luminosity_breakdown, trial_log_luminosity, &
@@ -52,7 +52,7 @@ subroutine read_yrec7(log_luminosity_lsun, envelope_fit_coeffs, &
            log_mass(json)
       double precision, intent(out) :: log_total_mass
       double precision, intent(out) :: log_temperature(json)
-      integer, intent(in) :: iread, short_file_unit
+      integer, intent(in) :: iread, run_log_unit
       integer, intent(out) :: core_cz_top_index, envelope_cz_bottom_index
       logical, intent(out) :: convective_flag(json)
       logical, intent(out) :: use_extended_composition, rotation_active
@@ -188,8 +188,8 @@ subroutine read_yrec7(log_luminosity_lsun, envelope_fit_coeffs, &
             ix,iz
  100     format(0PF13.10,F10.7,1PE14.7,0PF10.7,2F10.7,L1,2I6)
        if(log_mass(i).lt.0D0.or.log_mass(i).gt.log_total_mass) then
-          write(short_file_unit,1000)
-          write(short_file_unit,1050) i
+          write(run_log_unit,1000)
+          write(run_log_unit,1050) i
  1000       format(1X,39('>'),40('<')/1X,'RUN STOPPED')
  1050       format(' ERROR IN SUBROUTINE GETY7'/1X,'GLITCH IN SHELL', &
            I3,', SHELL MASS LESS THAN ZERO OR GREATER THAN STAR MASS')
@@ -302,7 +302,7 @@ subroutine read_yrec7(log_luminosity_lsun, envelope_fit_coeffs, &
 ! Come here if OMEGA records are missing -- Can happen if
 ! a new omega file is being generated (LWNEW is true in STARIN)
 
-9999  write(short_file_unit,9998) "GETYREC7: OMEGA records are missing from ", &
+9999  write(run_log_unit,9998) "GETYREC7: OMEGA records are missing from ", &
         " input model file - OMEGA array zeroed"
 9998  format(2A)
 
