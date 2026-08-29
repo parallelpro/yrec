@@ -9,12 +9,10 @@
 subroutine star_setup(ierr)
 
       use star_info_lib, only: star
-      use luout_lib
+      use monte_carlo_lib, only: setup_monte_carlo_runs
       implicit none
 
       integer, intent(out) :: ierr
-
-      integer :: i
 
       ierr = 0
 ! set up constants and read in tabular data
@@ -23,28 +21,9 @@ subroutine star_setup(ierr)
            star%job%laol_table_path,star%job%laol_table2_path,star%job%opal95_table_path,star%job%opal92_table_path,star%job%zams_a_table_path,star%job%zams_b_table_path,star%job%zams_c_table_path,star%job%centre1_table_path,star%job%centre2_table_path,star%job%centre3_table_path, &
            star%job%centre4_table_path,star%job%centre5_table_path,star%job%opal92_table2_path,star%job%pure_z_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path,star%job%scv_z_table_path,star%job%alex95_table_paths, ierr)
       if (ierr /= 0) return
-! MHP 3/96 changed I/O to read in only up to max run needed.
-      if (star%ctrl%lmonte) then
-!c MHP 8/25 moved file open to parmin
-!     OPEN(UNIT=IDYN,FILE=FDYN,FORM='FORMATTED',STATUS='OLD')
-         star%job%mc_run_start = star%ctrl%imbeg
-         star%job%imend = min(star%job%imend,1000)
-         star%job%mc_run_end = star%job%imend
-! read in monte carlo data
-         do i = 1,star%job%imend
-            read(star%ctrl%dynamics_unit,1511)star%job%s11_rate(i),star%job%s33_rate(i),star%job%s34_rate(i), &
-                 star%job%s17_rate(i),star%job%metal_to_h_ratio(i),star%job%helium_fraction_param(i), &
-                 star%job%luminosity_target(i),star%job%age_target(i)
- 1511       format(7X,1P7E10.3/E9.3)
-            write(terminal_unit,*)i,star%job%s11_rate(i),star%job%s33_rate(i),star%job%s34_rate(i),star%job%s17_rate(i), &
-                 star%job%metal_to_h_ratio(i),star%job%helium_fraction_param(i), &
-                 star%job%luminosity_target(i),star%job%age_target(i)
-            star%job%diffusion_factor(i) = star%job%helium_fraction_param(i)
-         end do
-      else
-         star%job%mc_run_start = 1
-         star%job%mc_run_end = 1
-      endif
+! Monte-Carlo run range and per-run sampled-parameter read (2026:
+! core/monte_carlo.f90 -- the standalone MC home).
+      call setup_monte_carlo_runs
 
       return
 end subroutine star_setup

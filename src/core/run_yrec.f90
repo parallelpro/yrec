@@ -28,6 +28,8 @@ subroutine run_yrec(ierr)
       use luout_lib
       use phys_const_lib
       use yrec_reset_lib, only: yrec_run_prologue
+      use monte_carlo_lib, only: apply_monte_carlo_parameters, &
+           write_run_summaries
       use stop_conditions, only: step_kind_card_done, &
            step_leave_run_loop, init_stop_conditions
       implicit none
@@ -41,7 +43,6 @@ subroutine run_yrec(ierr)
       integer :: monte_carlo_run_number
       double precision :: age_scale_factor
       integer :: convergence_iterations
-      double precision :: initial_x_guess, initial_alpha_guess
       logical :: saved_use_structure_dt_limits
       integer :: saved_atm_choice
       integer :: i
@@ -76,7 +77,8 @@ subroutine run_yrec(ierr)
       do monte_carlo_run_number = star%job%mc_run_start,star%job%mc_run_end
 ! Per-run setup (2026): the two prologue blocks are contained
 ! subroutines below, mirroring begin_kind_card/end_kind_card.
-      call apply_monte_carlo_parameters
+      call apply_monte_carlo_parameters(monte_carlo_run_number, &
+           age_scale_factor)
       call begin_calibration
 
 !**********
@@ -146,14 +148,12 @@ subroutine run_yrec(ierr)
       if (.not. runs_complete) star%job%nk = star%job%num_runs + 1
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
-! MODEL PARAMETERS (legacy mode only; io/write_run_summaries.f90 --
-! 2026, core/ phase 4: the last writer left in the driver moved to
-! io/. surface_z_over_x is inout: the failed-convergence branch
-! reports the value carried from a previous cycle, historical
-! SAVE semantics preserved).
+! MODEL PARAMETERS (legacy mode only; core/monte_carlo.f90.
+! surface_z_over_x is inout: the failed-convergence branch reports
+! the value carried from a previous cycle, historical SAVE
+! semantics preserved).
       call write_run_summaries(monte_carlo_run_number, &
-           convergence_iterations, initial_x_guess, initial_alpha_guess, &
-           log_r_rsun, surface_z_over_x)
+           convergence_iterations, log_r_rsun, surface_z_over_x)
       end do
 
 ! 2026 (phase five, step B): the normal end-of-job stop became this
@@ -162,47 +162,6 @@ subroutine run_yrec(ierr)
 
 contains
 
-! ---------------------------------------------------------------
-! For a Monte-Carlo run, apply the current run's sampled parameters:
-! nuclear cross-section scales (against the Bahcall & Pinsonneault
-! 1996 reference values), the metal diffusion factor, and the solar
-! luminosity/age targets. Outside Monte Carlo only the age scale
-! factor (1.0) is set.
-subroutine apply_monte_carlo_parameters
-! latest values (Bahcall and Pinsonneault 1996). NOTE: the literals
-! are default-real on purpose -- the original data statement's
-! single-precision constants, widened exactly as before; do not
-! append d0 (it would shift the values in the 8th decimal).
-      double precision, parameter :: bp96_scale_factor(17) = &
-           [0.9558,0.9690,0.9712,1.0,1.0,0.992,1.0,1.0, &
-           1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.92088,0.1625]
-! MHP 3/96 added data for base solar age, L
-      double precision, parameter :: reference_solar_luminosity = 3.844D33
-
-! for monte carlo run, input values of parameters being changed.
-      if (star%ctrl%lmonte) then
-         star%cross_section_scale(1) = star%job%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
-         star%cross_section_scale(2) = star%job%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
-         star%cross_section_scale(3) = star%job%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
-         star%cross_section_scale(16) = star%job%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
-! NOTE (2026): write-only since the original F77 (FGRSET = FHE(NN))
-! -- the sampled helium diffusion factor never reaches the physics;
-! only the metal factor (fgrz) is wired through. Preserved, not
-! fixed; a candidate for an upstream report.
-         monte_helium_diffusion_fraction = star%job%helium_fraction_param(monte_carlo_run_number)
-         star%job%fgrz = star%job%diffusion_factor(monte_carlo_run_number)
-         star%solar_luminosity_cgs = reference_solar_luminosity*star%job%luminosity_target(monte_carlo_run_number)
-         star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
-         star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
-         age_scale_factor = star%job%age_target(monte_carlo_run_number)
-! timestep and final age are altered in SR SETCAL; input #s should be
-! scaled for a solar age of 4.57 Gyr
-         star%job%target_end_age(2)=1.0D8
-         star%job%target_end_age(3)=4.57D9
-      else
-         age_scale_factor = 1.0D0
-      endif
-end subroutine apply_monte_carlo_parameters
 
 ! ---------------------------------------------------------------
 ! Arm the calibration protocols for this run, if configured: setcal
@@ -213,13 +172,10 @@ end subroutine apply_monte_carlo_parameters
 ! toggle.
 subroutine begin_calibration
 ! MHP 1/93 add option to automatically calibrate solar model.
-! MHP 3/96 added counter for # of iterations per converged model and
-! starting estimate of ALPHA and X
+! MHP 3/96 added counter for # of iterations per converged model
       if (star%ctrl%calibrate_solar_model) then
          call setup_solar_calibration(age_scale_factor)
          convergence_iterations = 1
-         initial_x_guess = star%job%rescale_params(2,1)
-         initial_alpha_guess = star%job%mixing_length_array(1)
          saved_use_structure_dt_limits = star%job%use_structure_dt_limits   ! save LPTIME for reuse during calibration
          saved_atm_choice  = star%job%atm_choice    ! save KTTAU for reuse during calibration
       else
