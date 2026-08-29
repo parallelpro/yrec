@@ -219,7 +219,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          metal_fraction_total = composition(3,zone_idx) + composition(4,zone_idx)
          iron_fraction = composition(3,zone_idx)
          hydrogen_fraction_sq = hydrogen_fraction*hydrogen_fraction
-         if(.not.star%ctrl%lthoul)then
+         if(.not.star%ctrl%use_thoul_diffusion)then
             hydrogen_metal_product = hydrogen_fraction*metal_fraction_total
             hydrogen_fraction_cubed = hydrogen_fraction_sq*hydrogen_fraction
             thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
@@ -306,9 +306,9 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
             dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
 !CFD 10/09 Mimic Mixing to reduce settling.
 !            COD1(I) = FAC*HQPR(I)*X*(AP+AT)
-            diffusion_coeff1(zone_idx) = star%ctrl%cstmixing*settling_prefactor*dlnp_dr(zone_idx)* &
+            diffusion_coeff1(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor*dlnp_dr(zone_idx)* &
                  hydrogen_fraction*(settling_coeff_p+settling_coeff_t)
-            diffusion_coeff2(zone_idx) = star%ctrl%cstmixing*settling_prefactor*ac_scratch
+            diffusion_coeff2(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor*ac_scratch
             diffusion_coeff1_dx(zone_idx) = settling_prefactor*dlnp_dr(zone_idx)* &
                  (settling_coeff_p+settling_coeff_t+hydrogen_fraction*(dap_dx+dat_dx))
             diffusion_coeff2_dx(zone_idx) = settling_prefactor*dac_dx
@@ -318,7 +318,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          if(star%job%use_diffusion_z)then
 
             settling_prefactor=star%job%fgrz*radius_bl(zone_idx)**2*temperature_bl(zone_idx)**2.5d0/ln_lambda
-            if(star%ctrl%lthoul)then
+            if(star%ctrl%use_thoul_diffusion)then
                if(star%ctrl%use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq
                   settling_coeff_t = star%gradT(zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
@@ -328,17 +328,17 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                   settling_coeff_t = -star%gradT(zone_idx)*settling_at(3)
                endif
                iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
-!CFD 10/09 Mimic Mixing to reduce settling (cstmixing)
-!         and add the uncertainties of differential mixing (cstdiffmix).
+!CFD 10/09 Mimic Mixing to reduce settling (constant_mixing_coeff)
+!         and add the uncertainties of differential mixing (constant_settling_reduction).
 !
 ! old ver      COD1Z(I) = FAC*HQPR(I)*ZZ*(AP+AT)
-               rot_scr%src_grid_metal_diffusion_coeff1(zone_idx) = star%ctrl%cstdiffmix*star%ctrl%cstmixing* &
+               rot_scr%src_grid_metal_diffusion_coeff1(zone_idx) = star%ctrl%constant_settling_reduction*star%ctrl%constant_mixing_coeff* &
                     settling_prefactor*dlnp_dr(zone_idx)*iron_fraction*(settling_coeff_p+settling_coeff_t)
 !              POSITIVE DIFFUSION COEFFICIENTS NEEDED!
 ! old ver.     COD2Z(I) = ABS(FAC*AH)
 ! old ver.     QCOD1Z(I) = FAC*HQPR(I)*(AP+AT)
-               rot_scr%src_grid_metal_diffusion_coeff2(zone_idx) = star%ctrl%cstmixing*abs(settling_prefactor*iron_settling_ah)
-               rot_scr%src_grid_metal_diffusion_coeff1_dz(zone_idx) = star%ctrl%cstmixing*settling_prefactor* &
+               rot_scr%src_grid_metal_diffusion_coeff2(zone_idx) = star%ctrl%constant_mixing_coeff*abs(settling_prefactor*iron_settling_ah)
+               rot_scr%src_grid_metal_diffusion_coeff1_dz(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor* &
                     dlnp_dr(zone_idx)*(settling_coeff_p+settling_coeff_t)
                rot_scr%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
             endif

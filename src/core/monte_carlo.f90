@@ -18,7 +18,7 @@
 !
 ! The MC loop itself stays in run_yrec -- it is the run driver; this
 ! module is everything the loop body calls. No Stage-0 deck sets
-! lmonte, so the regression suite verifies the non-MC path is
+! monte_carlo_active, so the regression suite verifies the non-MC path is
 ! byte-identical; the MC path is compile-verified only.
 module monte_carlo_lib
       use star_info_lib, only: star, json, i_h1, i_metals, i_lum_grav
@@ -37,7 +37,7 @@ contains
 ! MHP 3/96 changed I/O to read in only up to max run needed.
 subroutine setup_monte_carlo_runs
       integer :: i
-      if (star%ctrl%lmonte) then
+      if (star%ctrl%monte_carlo_active) then
 !c MHP 8/25 moved file open to parmin
 !     OPEN(UNIT=IDYN,FILE=FDYN,FORM='FORMATTED',STATUS='OLD')
          star%job%mc_run_start = star%ctrl%imbeg
@@ -83,7 +83,7 @@ subroutine apply_monte_carlo_parameters(monte_carlo_run_number, &
       double precision :: monte_helium_diffusion_fraction
 
 ! for monte carlo run, input values of parameters being changed.
-      if (star%ctrl%lmonte) then
+      if (star%ctrl%monte_carlo_active) then
          star%cross_section_scale(1) = star%job%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
          star%cross_section_scale(2) = star%job%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
          star%cross_section_scale(3) = star%job%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
@@ -132,19 +132,19 @@ subroutine write_run_summaries(monte_carlo_run_number, &
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES BETWEEN CYCLES.
 ! RUN FAILED TO CONVERGE: DUMP THE MODEL WITH THE FAILURE COUNT.
-      if (star%ctrl%lmonte .and. convergence_iterations.ge.11 .and. .not.star%solar_calibration_active) then
+      if (star%ctrl%monte_carlo_active .and. convergence_iterations.ge.11 .and. .not.star%solar_calibration_active) then
          rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
          rewind(run_log_unit)
          call write_monte_carlo_model(log_r_rsun, convergence_iterations, &
               star%job%nk, monte_carlo_run_number)
-      else if (star%ctrl%calibrate_solar_model .and. star%ctrl%lsnu .and. star%solar_calibration_active) then
+      else if (star%ctrl%calibrate_solar_model .and. star%ctrl%calc_neutrinos .and. star%solar_calibration_active) then
          rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
          rewind(run_log_unit)
 
          surface_z_over_x = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
-         if (star%ctrl%lmonte) then
+         if (star%ctrl%monte_carlo_active) then
             call write_monte_carlo_model(log_r_rsun, convergence_iterations, &
                  star%job%nk, monte_carlo_run_number)
          endif

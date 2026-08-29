@@ -38,7 +38,7 @@
 !   *NOTE: zone_min = 2 AND zone_max = NUMBER OF MODEL POINTS UNLESS A
 !    SURFACE OR CENTRAL CONVECTION ZONE EXISTS.
 ! iteration_number : ITERATION NUMBER.
-! itdif2 : MAXIMUM NUMBER OF ITERATIONS ALLOWED IN A GIVEN
+! max_diffusion_iters : MAXIMUM NUMBER OF ITERATIONS ALLOWED IN A GIVEN
 !    DIFFUSION TIMESTEP.
 ! am_transport_convective_flag : ARRAY SET T IF A ZONE IS CONVECTIVE
 !    FOR ANGULAR MOMENTUM REDISTRIBUTION PURPOSES (I.E. INCLUDES
@@ -186,7 +186,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 !  FINAL STEP.
       saved_tolerance = rot_scr%moment_of_inertia_tolerance
       saved_acc_tolerance = star%job%acfpft
-      if(iteration_number.lt.star%ctrl%itdif2.and..not.converged_flag)then
+      if(iteration_number.lt.star%ctrl%max_diffusion_iters.and..not.converged_flag)then
          rot_scr%moment_of_inertia_tolerance = &
               max(star%ctrl%convergence_tolerance*1.0d-2,saved_tolerance)
          star%job%acfpft = max(star%ctrl%convergence_tolerance*1.0d-2,saved_acc_tolerance)
@@ -275,7 +275,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                        shell_mass,zone_bottom,zone_top,eta_squared, &
                        moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do
-         if(iteration_number.eq.star%ctrl%itdif2.or.converged_flag) &
+         if(iteration_number.eq.star%ctrl%max_diffusion_iters.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number
   120    format(5x,'OMEGA GRADIENT REVERSAL BETWEEN ZONES ', &
                  i5,' AND ',i5,' ITERATION ',i5)
@@ -287,7 +287,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       if(zone_index.le.1) exit zone_scan
       end do zone_scan
 !  I/O FOR END OF DIFFUSION STEP.
-      if(iteration_number.eq.star%ctrl%itdif2.or.converged_flag)then
+      if(iteration_number.eq.star%ctrl%max_diffusion_iters.or.converged_flag)then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN J/M OVER TIMESTEP.
          max_fractional_dj = 0.0d0
          max_dj_zone = 0

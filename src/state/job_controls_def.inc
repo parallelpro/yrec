@@ -5,10 +5,10 @@
 ! into star_job. Default-initialized like controls_state, so
 ! declaration/star0-restore state is pristine.
             character(len=8) :: pulse_format = 'GYRE'
-            logical :: lovstc = .false.
+            logical :: core_overshoot_active = .false.
             logical :: envelope_overshoot_active = .false.
             logical :: lovstm = .false.
-            logical :: lsemic = .false.
+            logical :: use_semiconvection = .false.
             double precision :: acfpft = 1.0d-36
             logical :: rotation_active = .false.
             logical :: instability_transport_active = .false.
@@ -27,8 +27,8 @@
             logical :: timestep_override_active(50) = .false.
             integer :: imend = 1
             double precision :: fcorr = 0.0d0
-            double precision :: dtdif = 1.0d-2
-            integer :: itdif1 = 1
+            double precision :: diffusion_timestep_factor = 1.0d-2
+            integer :: num_rotation_structure_iters = 1
             logical :: diffuse_helium_active = .false.
             double precision :: fgrz = 1.0d0
             logical :: use_diffusion_z = .false.
@@ -65,4 +65,4 @@
             double precision :: target_radius_rsun = 0.0d0
             double precision :: structfactor = 0.0d0
             double precision :: wind_saturation_omega = 0.0d0
-            logical :: ljdot0 = .true.
+            logical :: use_wind_torque = .true.

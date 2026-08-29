@@ -322,7 +322,7 @@ subroutine compute_snu_rates
 
       star%cl37_snu_rate = 0.0d0
       star%ga71_snu_rate = 0.0d0
-      if (star%ctrl%lsnu) then
+      if (star%ctrl%calc_neutrinos) then
          do i = 1, 8
             star%cl37_snu_rate = star%cl37_snu_rate + &
                  clsnuf_diag(i)*star%neutrino_flux_total(i)

@@ -273,7 +273,7 @@ subroutine flag_fixed_points
        else
           do overshoot_base_zone = star%envelope_cz_bottom_index-1,1,-1
              if (star%logP(overshoot_base_zone)- &
-                  star%logP(star%envelope_cz_bottom_index).gt.star%ctrl%alphae) exit
+                  star%logP(star%envelope_cz_bottom_index).gt.star%ctrl%overshoot_alpha_envelope) exit
           end do
             overshoot_base_zone = overshoot_base_zone + 1
           delta_log_pressure = star%logP(overshoot_base_zone)- &

@@ -229,7 +229,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !  ITERATION IS USED TO GET THE VELOCITIES.  THIS 'NEW' VELOCITY IS THEN
 !  AVERAGED WITH THE VELOCITY FOUND IN THE PREVIOUS ITERATION TO GET A
 !  CORRECTED V AND THUS A MORE ACCURATE RUN OF DIFFUSION COEFFICIENTS.
-      do iteration = 1,star%ctrl%itdif2
+      do iteration = 1,star%ctrl%max_diffusion_iters
          omega_surface = omega(num_zones)
          if(iteration.gt.1)then
 !  COMPUTE NEW RUN OF ANGULAR VELOCITIES (AVERAGE OF INITIAL AND
@@ -292,7 +292,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
             do i = zone_max,num_zones
                cz_moment_of_inertia = cz_moment_of_inertia + moment_of_inertia(i)
             end do
-            wind_loss_active = star%job%ljdot0
+            wind_loss_active = star%job%use_wind_torque
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
             call matt_wind(log_luminosity_lsun,sub_timestep,cz_mass_bottom, &
                  cz_mass_top,zone_max,num_zones,wind_loss_active,omega_surface, &
@@ -303,7 +303,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 SAME AS LSOLID
          else if(surface_cz_active .and. (star%ctrl%force_solid_body_rotation .or. &
               (star%ctrl%solid_body_mode_flag.eq.1)))then
-            wind_loss_active = star%job%ljdot0
+            wind_loss_active = star%job%use_wind_torque
             solid_cz_mass_bottom = 0.0D0
             solid_cz_mass_top = exp(ln10*log_total_mass)
             solid_start_zone = 1
@@ -421,7 +421,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
                fix_omega_at_surface = .true.
             else
                fix_omega_at_surface = .false.
-               if(star%job%ljdot0)then
+               if(star%job%use_wind_torque)then
                   cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%ntot)
                   omega_surface = omega(num_zones)
                   call wind_spindown_matt(log_luminosity_lsun,sub_timestep, &

@@ -121,7 +121,7 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
          end do
       endif
 !  skip burning calculations if starting shell below t cutoff for reactions.
-      if(log_temperature(zone_begin).lt.star%ctrl%tcut(1)) then
+      if(log_temperature(zone_begin).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
          do zone_idx = zone_begin,zone_end
             do species_idx = 1,11
                composition(species_idx,zone_idx) = avg_abundance(species_idx)

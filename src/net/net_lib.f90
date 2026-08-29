@@ -1912,7 +1912,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  CORRECTION.
       log_rho_local = log_density
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
-      if(log_temperature.le.star%ctrl%tcut(1)) then
+      if(log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) then
          do i = 1,num_reactions
             rate(i) = 0.
          end do
@@ -2177,7 +2177,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if (log_temperature.ge.star%ctrl%tcut(4)) then
+      if (log_temperature.ge.star%ctrl%nuclear_logT_cutoffs(4)) then
 ! C13(ALPHA,N) O16
       r1=t9m23+0.0129d0*t9m13+2.04d0+0.184d0*t9p13
       a1 = 6.77d15*exp(-32.329d0*t9m13-(t9/1.284d0)**2)

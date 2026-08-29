@@ -83,7 +83,7 @@ def main():
     for r in live:
         if r["new"] == r["legacy"]:
             r["cls"] = "keep"
-        elif canon.get(r["legacy"]) == r["new"]:
+        elif canon.get(r["legacy"]) == r["new"].lower():
             r["cls"] = "direct"
         else:
             r["cls"] = "newlocal"

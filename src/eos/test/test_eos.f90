@@ -23,7 +23,7 @@
 !  * env_comp (the envelope-composition state eqstat2 consumes):
 !    core/read_starting_model.f90's exact mixture algorithm (its statements at the
 !    "COMPUTE SURFACE MIX VALUES" block), seeded from const_lib's
-!    vnew defaults (the G&N93 12-species mixture) and starin's
+!    mixture_weights_seed defaults (the G&N93 12-species mixture) and starin's
 !    atomic_weight data, for X=0.70, Z=0.016492 (matching the shipped
 !    EOSOPAL06Z0.016492 table).
 !  * the OPAL-2006 EOS file is opened on iopale exactly as
@@ -50,7 +50,7 @@ program test_eos
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-! read_starting_model.f90's atomic_weight data (12-species set, same order as vnew)
+! read_starting_model.f90's atomic_weight data (12-species set, same order as mixture_weights_seed)
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
@@ -135,7 +135,7 @@ program test_eos
       star%envelope_hydrogen_fraction = star%xnew
       star%envelope_metal_fraction = star%znew
       do i = 1, 12
-         w(i) = star%ctrl%vnew(i)
+         w(i) = star%ctrl%mixture_weights_seed(i)
       end do
       wsum = w(1)+w(2)+w(3)+w(4)+w(5)+w(6)+w(8)+w(9)+w(10)+w(11)
       star%zenvm = star%envelope_metal_fraction* &

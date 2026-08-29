@@ -123,7 +123,7 @@
 !     file's crrect calls) -- reusing it for the (here-unused) common
 !     member would alias two different entities to the same name, so
 !     the common member is instead kept at its lowercased-cryptic
-!     spelling, itdif2, here.
+!     spelling, max_diffusion_iters, here.
 !   - common/cals2/'s 1st member and common/calstar/'s 2nd member are
 !     both independently established as "luminosity_tolerance" (in
 !     check_solar_calibration.f90 and check_star_calibration.f90 respectively) -- distinct physical

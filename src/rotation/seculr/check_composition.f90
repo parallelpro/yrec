@@ -18,7 +18,7 @@
 !    FUNCTION OF MASS.
 ! iteration_number : THE PROGRAM ITERATES FOR THE DIFFUSION
 !    COEFFICIENTS; IT IS THE ITERATION NUMBER.
-! itdif2 : USER PARAMETER - MAXIMUM NUMBER OF ITERATIONS.
+! max_diffusion_iters : USER PARAMETER - MAXIMUM NUMBER OF ITERATIONS.
 ! cut_count : NUMBER OF TIMES DIFFUSION TIMESTEP HAS BEEN CUT.
 ! converged_flag : FLAG SET T IF DIFFUSION COEFFICEINTS HAVE CONVERGED.
 ! num_zones : NUMBER OF MODEL POINTS.
@@ -75,7 +75,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
 
       ierr = 0
 
-      if(iteration_number.eq.star%ctrl%itdif2)then
+      if(iteration_number.eq.star%ctrl%max_diffusion_iters)then
          num_diffused_species = 11
       else
          num_diffused_species = 4

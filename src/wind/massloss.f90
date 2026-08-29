@@ -145,14 +145,14 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! USE A REIMERS FORMULA TO COMPUTE MDOT IF DESIRED; OVERWRITES
 ! CONSTANT MDOT.  IN THIS EXPRESSION MDOT=K*L/G/R.
 ! 2026 config-matrix fix: the historical expression computed
-! creim*L/(g*R) in CGS -- units of g/s -- but stored it in the
+! reimers_scaling_factor*L/(g*R) in CGS -- units of g/s -- but stored it in the
 ! Msun/yr variable, which mdot then converted to CGS AGAIN (a
 ! ~1e25 rate inflation). Unreachable before the mdot argument-count
 ! fix, so never caught. Now implements the standard Reimers law the
-! comment above describes: Mdot[Msun/yr] = creim*(L/Lsun)(R/Rsun)/(M/Msun),
-! creim default -4e-13 (the classical eta=1 coefficient).
-      if(apply_mass_change .and. star%ctrl%lreimer)then
-         mass_loss_rate_msun_yr = star%ctrl%creim* &
+! comment above describes: Mdot[Msun/yr] = reimers_scaling_factor*(L/Lsun)(R/Rsun)/(M/Msun),
+! reimers_scaling_factor default -4e-13 (the classical eta=1 coefficient).
+      if(apply_mass_change .and. star%ctrl%use_reimers_wind)then
+         mass_loss_rate_msun_yr = star%ctrl%reimers_scaling_factor* &
               10.0d0**log_luminosity_lsun* &
               (total_radius_cm/star%solar_radius_cgs)/total_mass_msun
       endif

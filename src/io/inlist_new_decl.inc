@@ -57,15 +57,12 @@
       character(len=3) :: new_species_value_mode
       double precision :: fpft_average_weight
       double precision :: timestep_factors(14)
-      double precision :: overshoot_alpha_core
-      double precision :: overshoot_alpha_envelope
       double precision :: wind_law_index
       double precision :: overshoot_alpha_min
       double precision :: overshoot_beta_core
       double precision :: solar_luminosity_cgs
       double precision :: solar_radius_cgs
       double precision :: envelope_logP_step
-      double precision :: diffusion_timestep_factor
       double precision :: solver_underrelax_start
       double precision :: solver_underrelax_increment
       double precision :: wind_law_constant
@@ -75,46 +72,24 @@
       double precision :: solver_tolerances(5,2)
       integer :: fpft_iter1
       integer :: fpft_iter2
-      integer :: num_rotation_structure_iters
-      integer :: max_diffusion_iters
       logical :: velocity_form_correction
-      logical :: diffuse_lithium
-      logical :: calc_neutrinos
-      logical :: core_overshoot_active
       logical :: intermediate_overshoot_active
       logical :: overshoot_max_extent_flag
       logical :: rotation_flag
       logical :: new_triangle_init_flag
-      logical :: set_initial_omega
-      logical :: use_wind_torque
       logical :: adiabatic_overshoot_active
-      logical :: use_thoul_diffusion
-      logical :: use_semiconvection
-      logical :: improved_first_guess_flag
-      integer :: max_iter_level1
-      integer :: max_iter_level2
-      integer :: max_iter_level3
-      integer :: max_iter_level4
-      double precision :: nuclear_logT_cutoffs(5)
       double precision :: rezone_env_logT0
       double precision :: rezone_env_logT1
       double precision :: gradient_logT_cutoff
       double precision :: laol_z_tolerance
-      double precision :: mixture_weights_seed(12)
       double precision :: new_zone_omega_weight
-      double precision :: initial_omega
       double precision :: change_species_value
-      logical :: monte_carlo_active
       integer :: mc_run_start
       integer :: mc_run_end
       double precision :: mass_change
       double precision :: accretion_cz_fraction
       double precision :: accretion_total_fraction
-      double precision :: reimers_scaling_factor
-      logical :: use_reimers_wind
       logical :: use_mass_change
-      double precision :: constant_mixing_coeff
-      double precision :: constant_settling_reduction
       logical :: use_rotation_scaled_solar_wind
       logical :: use_pmm_wind
       double precision :: pmm_omega_sat

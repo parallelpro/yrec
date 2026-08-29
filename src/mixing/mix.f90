@@ -154,7 +154,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       end if
       do zone_idx = 1, star%nz
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-         if (star%logT(zone_idx).le.star%ctrl%tcut(1)) exit
+         if (star%logT(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
 ! SCALAR VARIABLES ARE USED IN THE CALLS TO THE ENERGY GENERATION ROUTINES.
 ! SET SCALARS EQUAL TO THE GLOBAL ARRAYS FOR THE VARIABLES OF INTEREST.
 ! DL-LOG(DENSITY),TL-LOG TEMPERATURE,X***-MASS FRACTION OF SPECIES ***,
@@ -226,7 +226,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          do inner_zone_idx = radiative_zone_bounds(radiative_region_idx,1), &
               radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
+            if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
             call solve_composition(star%logT, zone_begin, zone_end, rate_pp, &
@@ -291,7 +291,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
+               if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call eqburn(rate_pp, rate_he3_he3, rate_he3_he4, &
@@ -356,7 +356,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !
 ! DETERMINE EXTENT OF SEMI-CONVECTION IF APPLICABLE.
 !
-      if (star%job%lsemic) then
+      if (star%job%use_semiconvection) then
          if (iteration_level.gt.1) &
               call semiconvection(timestep, star%xa, star%logRho, &
               star%luminosity_lsun, star%logP, star%logR, star%log_mass, &
@@ -364,7 +364,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               num_mixed_zones, star%log_Teff, ierr)
               if (ierr /= 0) return
       end if
-      if (star%job%lsemic .or. (iteration_level .eq. 1)) then
+      if (star%job%use_semiconvection .or. (iteration_level .eq. 1)) then
 !
 !    MIX CONVECTIVE REGIONS IN ORDER.
 !    THIS NEEDS TO BE DONE IF SEMI-CONVECTION IS BEING CHECKED, OR
@@ -514,7 +514,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
+               if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call dburn(zone_begin, zone_end, star%nz, star%dm, &

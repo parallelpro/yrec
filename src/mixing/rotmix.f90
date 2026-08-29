@@ -110,7 +110,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          do zone_idx = radiative_zone_bounds(region_idx,1), &
               radiative_zone_bounds(region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (log_temperature(zone_idx).le.star%ctrl%tcut(1)) exit
+            if (log_temperature(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
             burn_zone_start = zone_idx
             burn_zone_end = zone_idx
             call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &

@@ -324,7 +324,7 @@ subroutine rezone_or_snapshot
                star%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = star%envelope_cz_bottom_index
                if (star%job%envelope_overshoot_active) then
-                  star%pressure_scale_height_start = star%ctrl%alphae*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
+                  star%pressure_scale_height_start = star%ctrl%overshoot_alpha_envelope*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
                            -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
                   star%pressure_scale_height_start = 0.0D0
@@ -354,7 +354,7 @@ subroutine solve_structure
             iterations_done = 0
             star%model_diverged_flag = .false.
             converged = .false.
-            if (.not.star%ctrl%lnews .or. star%dt.le.0.0D0) then
+            if (.not.star%ctrl%improved_first_guess_flag .or. star%dt.le.0.0D0) then
                do i = 1,star%nz
 ! zero entropy terms
                   star%log_temperature_delta(i) = 0.0D0
@@ -391,12 +391,12 @@ subroutine solve_structure
 ! CALL TO CRRECT - ADDED ITERATION LEVEL (2026: the four-level ladder
 ! goes through the solve_level wrapper below; per-level differences
 ! are only (level, max iterations, recompute surface BC))
-            call solve_level(1, star%ctrl%niter1, .false.)
+            call solve_level(1, star%ctrl%max_iter_level1, .false.)
             if (ierr /= 0) return
 ! SECOND LEVEL OF ITERATIONS
 ! CHECK ENVELOPE TRIANGLE BEFORE ITERATING FOR SOLUTION
             if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
-            call solve_level(2, star%ctrl%niter2, .true.)
+            call solve_level(2, star%ctrl%max_iter_level2, .true.)
             if (ierr /= 0) return
             if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
@@ -410,13 +410,13 @@ subroutine solve_structure
                end do
             endif
 ! THIRD LEVEL OF ITERATIONS
-            call solve_level(3, star%ctrl%niter3, .false.)
+            call solve_level(3, star%ctrl%max_iter_level3, .false.)
             if (ierr /= 0) return
             if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 end subroutine solve_structure
 
 ! ---------------------------------------------------------------
-! The structure <-> rotation iteration (itdif1 passes): corrector
+! The structure <-> rotation iteration (num_rotation_structure_iters passes): corrector
 ! level 4 INSIDE the loop, convergence check, convection-zone
 ! re-mix (mixcz), then the angular momentum update (getw) and the
 ! new shape factors (fpft). Start-of-timestep composition and
@@ -424,14 +424,14 @@ end subroutine solve_structure
 ! double-counted.
 subroutine converge_with_rotation
             if (.not.star%job%rotation_active) then
-               star%job%itdif1 = 1
+               star%job%num_rotation_structure_iters = 1
             endif
 ! MHP 05/02
 ! IF THE CODE IS ITERATING BETWEEN THE STRUCTURE AND ROTATION
 ! SOLUTIONS, ENSURE THAT THE START-OF-TIMESTEP QUANTITIES
 ! HCOMPP (COMPOSITION) AND HJMSAV (ANGULAR MOMENTUM) ARE ONLY
 ! OVERWRITTEN ON THE LAST RUN THROUGH.
-            if (star%job%itdif1.gt.1) then
+            if (star%job%num_rotation_structure_iters.gt.1) then
                do i = 1,star%nz
                   star%orig_specific_angular_momentum(i) = star%j_rot(i)
                   do j = 1,15
@@ -439,7 +439,7 @@ subroutine converge_with_rotation
                   end do
                end do
             endif
-            do itrot = 1, star%job%itdif1
+            do itrot = 1, star%job%num_rotation_structure_iters
 ! MHP 05/02 RESTORE ORIGINAL "START OF TIMESTEP"
 ! VALUES FOR THE COMPOSITION MATRIX
                if (itrot.gt.1) then
@@ -459,7 +459,7 @@ subroutine converge_with_rotation
 ! (to be implemented when I know the rest of it works!)
 ! (level 4 runs INSIDE the structure<->rotation iteration above,
 ! unlike levels 1-3 -- deliberate, see the itrot loop)
-            call solve_level(4, star%ctrl%niter4, .false.)
+            call solve_level(4, star%ctrl%max_iter_level4, .false.)
             if (ierr /= 0) return
 !  25         CONTINUE
             if (.not.converged) then
@@ -497,7 +497,7 @@ subroutine converge_with_rotation
 ! effect -- is retired along with the flag.)
 ! FIND THE NEW RUN OF OMEGA
 ! JENV0 ADDED TO SR CALL.
-               wind_loss_active = star%job%ljdot0
+               wind_loss_active = star%job%use_wind_torque
                call evolve_angular_momentum(star%dt, star%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
                if (jerr /= 0) then
@@ -526,7 +526,7 @@ subroutine burn_light_elements
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index
                if (star%job%envelope_overshoot_active) then
-                  star%pressure_scale_height_end = star%ctrl%alphae*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
+                  star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
                            -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
                   star%pressure_scale_height_end = 0.0D0

@@ -144,7 +144,7 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 
       ierr = 0
 
-      if (star%ctrl%lsnu) then
+      if (star%ctrl%calc_neutrinos) then
          do j = 1,10
             star%neutrino_flux_total(j) = 0.0d0
          end do
@@ -266,7 +266,7 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
        eq_l_val = 0.0d0
        dql_dt = 0.0d0
        dql_dp = 0.0d0
-       if (zone_log_temperature.gt.star%ctrl%tcut(1)) then
+       if (zone_log_temperature.gt.star%ctrl%nuclear_logT_cutoffs(1)) then
 ! SET UP NUCLEAR ENERGY TERMS
             call engeb(pp_chain_gen, he3he4_be7_electron_gen, &
                  he3he4_be7_proton_gen, cno_gen, triple_alpha_gen, &
@@ -288,7 +288,7 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 ! 7/91 MHP
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
-            if (star%ctrl%lsnu) then
+            if (star%ctrl%calc_neutrinos) then
                do j = 1,10
                   star%neutrino_flux_total(j) = star%neutrino_flux_total(j) + &
                        star%neutrino_flux(j)*shell_mass(im)
@@ -414,7 +414,7 @@ subroutine henyey_coefficients(delta_time, num_points, log10_density, elim_coeff
 ! MHP 10/02 LSHORT NOT USED, OMIT
 !         LSHORT = .NOT.LONG .AND. MOD(MODEL,NPRT1).EQ.0
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
-         if (log_temperature(im).lt.star%ctrl%tcut(1)) then
+         if (log_temperature(im).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
             star%eps_total(im) = 0.0d0
             star%eps_channels(i_eps_grav,im) = gravitational_luminosity(im)
             do j = 1,6

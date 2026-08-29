@@ -25,8 +25,8 @@ subroutine read_yrec7(log_luminosity_lsun, envelope_fit_coeffs, &
      total_mass_msun, log_teff, luminosity_breakdown, trial_log_luminosity, &
      trial_log_temperature, fit_point_temperature, &
      atm_code, eos_code, hik_code, use_diffusion_y, use_diffusion_z, &
-     disk_locking_active, instability_transport_active, ljdot0, alok_code, &
-     lovstc, envelope_overshoot_active, lovstm, use_pure_z_table, lsemic, &
+     disk_locking_active, instability_transport_active, use_wind_torque, alok_code, &
+     core_overshoot_active, envelope_overshoot_active, lovstm, use_pure_z_table, use_semiconvection, &
      compmix_code, disk_pressure, disk_temperature, wind_saturation_omega, ierr)
       use star_info_lib, only: star, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
 ! First three lines above are YREC7 inputs
@@ -34,8 +34,8 @@ subroutine read_yrec7(log_luminosity_lsun, envelope_fit_coeffs, &
 
 ! Several of this subroutine's own dummy arguments below (values read
 ! from the old model-file format -- rotation_active,
-! envelope_overshoot_active, instability_transport_active, lovstc,
-! lovstm, lsemic) happen to share names with unrelated const_lib
+! envelope_overshoot_active, instability_transport_active, core_overshoot_active,
+! lovstm, use_semiconvection) happen to share names with unrelated const_lib
 ! runtime-config module variables, so `use, only:` the one member
 ! actually needed here rather than a blanket `use const_lib` (which
 ! would conflict with the dummy-argument declarations below).
@@ -72,10 +72,10 @@ subroutine read_yrec7(log_luminosity_lsun, envelope_fit_coeffs, &
       character*6, intent(out) :: eos_code
       character*4, intent(out) :: hik_code
       logical, intent(out) :: use_diffusion_y, use_diffusion_z, &
-           disk_locking_active, instability_transport_active, ljdot0
+           disk_locking_active, instability_transport_active, use_wind_torque
       character*4, intent(out) :: alok_code
-      logical, intent(out) :: lovstc, envelope_overshoot_active, lovstm, &
-           use_pure_z_table, lsemic
+      logical, intent(out) :: core_overshoot_active, envelope_overshoot_active, lovstm, &
+           use_pure_z_table, use_semiconvection
       character*4, intent(out) :: compmix_code
       double precision, intent(out) :: disk_pressure, disk_temperature, &
            wind_saturation_omega
@@ -120,12 +120,12 @@ subroutine read_yrec7(log_luminosity_lsun, envelope_fit_coeffs, &
       use_diffusion_z = .false.
       disk_locking_active = .false.
       instability_transport_active = .false.
-      ljdot0 = .false.
-      lovstc = .false.
+      use_wind_torque = .false.
+      core_overshoot_active = .false.
       envelope_overshoot_active = .false.
       lovstm = .false.
       use_pure_z_table = .false.
-      lsemic = .false.
+      use_semiconvection = .false.
 
 ! Set Model2-specific constants to default
       disk_pressure = 7.2722D-6

@@ -25,8 +25,8 @@ subroutine read_model2(log_luminosity_lsun, envelope_fit_coeffs, &
      total_mass_msun, log_teff, luminosity_breakdown, trial_log_luminosity, &
      trial_log_temperature, fit_point_temperature, &
      atm_code, eos_code, hik_code, use_diffusion_y, use_diffusion_z, &
-     disk_locking_active, instability_transport_active, ljdot0, alok_code, &
-     lovstc, envelope_overshoot_active, lovstm, use_pure_z_table, lsemic, &
+     disk_locking_active, instability_transport_active, use_wind_torque, alok_code, &
+     core_overshoot_active, envelope_overshoot_active, lovstm, use_pure_z_table, use_semiconvection, &
      compmix_code, disk_pressure, disk_temperature, wind_saturation_omega)
       use star_info_lib, only: star, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
 ! First three lines above are YREC7 inputs
@@ -35,7 +35,7 @@ subroutine read_model2(log_luminosity_lsun, envelope_fit_coeffs, &
 
 ! Several of this subroutine's own dummy arguments below (values read
 ! from the model file -- rotation_active, envelope_overshoot_active,
-! instability_transport_active, lovstc, lovstm, lsemic, etc.) happen
+! instability_transport_active, core_overshoot_active, lovstm, use_semiconvection, etc.) happen
 ! to share names with unrelated const_lib runtime-config module
 ! variables, so `use, only:` the one member actually needed here
 ! rather than a blanket `use const_lib` (which would conflict with the
@@ -73,10 +73,10 @@ subroutine read_model2(log_luminosity_lsun, envelope_fit_coeffs, &
       character*6, intent(out) :: eos_code
       character*4, intent(out) :: hik_code
       logical, intent(out) :: use_diffusion_y, use_diffusion_z, &
-           disk_locking_active, instability_transport_active, ljdot0
+           disk_locking_active, instability_transport_active, use_wind_torque
       character*4, intent(out) :: alok_code
-      logical, intent(out) :: lovstc, envelope_overshoot_active, lovstm, &
-           use_pure_z_table, lsemic
+      logical, intent(out) :: core_overshoot_active, envelope_overshoot_active, lovstm, &
+           use_pure_z_table, use_semiconvection
       character*4, intent(out) :: compmix_code
       double precision, intent(out) :: disk_pressure, disk_temperature, &
            wind_saturation_omega
@@ -100,9 +100,9 @@ subroutine read_model2(log_luminosity_lsun, envelope_fit_coeffs, &
       read(iread,30) core_cz_top_index,envelope_cz_bottom_index, &
            mixing_length,eos_code,atm_code,alok_code,hik_code, &
            use_pure_z_table,compmix_code,use_extended_composition, &
-           use_diffusion_y,use_diffusion_z,lsemic,lovstc, &
+           use_diffusion_y,use_diffusion_z,use_semiconvection,core_overshoot_active, &
            envelope_overshoot_active,lovstm,rotation_active, &
-           instability_transport_active,ljdot0,disk_locking_active, &
+           instability_transport_active,use_wind_torque,disk_locking_active, &
            disk_temperature,disk_pressure,wind_saturation_omega
    30 format(2I8,F16.10,1X,A6,1X,3(A4,1X),L1,1X,A4,1X,11(L1,1X), &
            3(1PE18.10))

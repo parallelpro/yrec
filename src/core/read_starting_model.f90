@@ -91,7 +91,7 @@
 !     names instead (see the common block declarations below for the
 !     mapping back to read_input.f90's spelling).
 !   - common/alexmix/ (XALEX/ZALEX) and common/vnewcb/ (VNEW) are
-!     likewise only otherwise established in read_input.f90.  vnew is kept
+!     likewise only otherwise established in read_input.f90.  mixture_weights_seed is kept
 !     as-is (already a plain, adequately descriptive name, and it is
 !     the name used directly in this file's own pre-existing
 !     comments); alexmix's members are given descriptive names since
@@ -462,11 +462,11 @@ subroutine acquire_starting_model
 ! FOURTH PART:  - LOG J/M STORED
 
       if (star%job%rotation_active) then
-       if (star%ctrl%lwnew) then
+       if (star%ctrl%set_initial_omega) then
 ! GENERATE A SOLID BODY ROTATION CURVE WITH OMEGA = WNEW;
 ! THIS IS DONE TO CONVERT A NON-ROTATING MODEL TO A ROTATING ONE.
           do i = 1,star%nz
-             star%omega(i) = star%ctrl%wnew
+             star%omega(i) = star%ctrl%initial_omega
           end do
        endif
       else
@@ -1133,7 +1133,7 @@ subroutine update_surface_mixture
 ! VIA RDLAOL OTHERWISE USE VNEW.
       if (.not.llaol) then
          do i=1, 12
-            species_mix_weights(i)=star%ctrl%vnew(i)
+            species_mix_weights(i)=star%ctrl%mixture_weights_seed(i)
          end do
       end if
 

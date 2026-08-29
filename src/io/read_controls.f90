@@ -662,6 +662,28 @@ subroutine read_input(ierr)
       double precision :: sstandard(17)
       logical :: lnewnuc
 
+! 2026 phase-C rename campaign: these NAMELIST-spelled locals carry
+! the legacy /control//physics spellings for controls whose
+! controls_lib buffers now bear their canonical names (copied into
+! them in adopt_canonical_names below). Initializers duplicate the
+! buffer defaults exactly so both read paths agree; the initializer
+! implies SAVE, preserving the historical value-retention across
+! in-process re-reads.
+      double precision :: alphac = 0.0d0, alphae = 0.0d0
+      double precision :: dtdif = 1.0d-2
+      double precision :: wnew = 0.0d0, creim = -4.0d-13
+      double precision :: cstmixing = 1.0d0, cstdiffmix = 1.0d0
+      double precision :: tcut(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
+      double precision :: vnew(12) = (/0.001999d0, 0.003238d0, &
+           0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, &
+           0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
+      integer :: itdif1 = 1, itdif2 = 1
+      integer :: niter1 = 2, niter2 = 20, niter3 = 2, niter4 = 0
+      logical :: ldifli = .false., lsnu = .false., lovstc = .false.
+      logical :: lwnew = .false., ljdot0 = .true., lthoul = .false.
+      logical :: lsemic = .false., lnews = .false., lmonte = .false.
+      logical :: lreimer = .false.
+
 ! newcross: s0_1_1/s0_3_3/s0_3_4/s0_1_12/s0_1_13/s0_1_14/s0_1_16/
 ! s0_1_be7e/s0_1_be7p/s0_1_15_c12alp/s0_1_15_o16/s0p_1_1/s0p_3_3/
 ! s0p_3_4/s0p_1_12/s0p_1_13/s0p_1_14/s0p_1_16/s0pp_1_12/s0pp_1_13/
@@ -1464,6 +1486,34 @@ subroutine adopt_canonical_names
 ! const_lib's cross-section-scale members.
       use_new_nuclear_rates = lnewnuc
       weak_screening_threshold = weakscreening
+! 2026 phase-C rename campaign: copy the NAMELIST-spelled locals
+! into their canonically-named controls_lib buffers (see the local
+! declaration block above).
+      overshoot_alpha_core = alphac
+      overshoot_alpha_envelope = alphae
+      diffusion_timestep_factor = dtdif
+      num_rotation_structure_iters = itdif1
+      max_diffusion_iters = itdif2
+      diffuse_lithium = ldifli
+      calc_neutrinos = lsnu
+      core_overshoot_active = lovstc
+      set_initial_omega = lwnew
+      use_wind_torque = ljdot0
+      use_thoul_diffusion = lthoul
+      use_semiconvection = lsemic
+      improved_first_guess_flag = lnews
+      max_iter_level1 = niter1
+      max_iter_level2 = niter2
+      max_iter_level3 = niter3
+      max_iter_level4 = niter4
+      nuclear_logT_cutoffs = tcut
+      mixture_weights_seed = vnew
+      initial_omega = wnew
+      monte_carlo_active = lmonte
+      reimers_scaling_factor = creim
+      use_reimers_wind = lreimer
+      constant_mixing_coeff = cstmixing
+      constant_settling_reduction = cstdiffmix
 ! envelope_overshoot_active/rotation_active/instability_transport_
 ! active/mass_accretion_rate/accreted_composition/use_mass_accretion:
 ! same reasoning, copied from their NAMELIST-spelled locals. Order
@@ -2172,6 +2222,7 @@ subroutine echo_settings
       use_new_diffusion_routines = lnewdif
       use_thoul_fit = lthoulfit
       coulomb_log_choice = ilambda
+      use_thoul_diffusion = lthoul
 ! lnewcp/frac_c/frac_n/frac_o/zxmix can likewise be overridden above
 ! (the ANEWCP-rescaling and CNO-mixture validation blocks), after
 ! already being copy-assigned into their const_lib canonical names
