@@ -22,6 +22,8 @@ subroutine seed_controls_buffer
       history_columns_file = star%ctrl%history_columns_file
       profile_columns_file = star%ctrl%profile_columns_file
       profile_interval = star%ctrl%profile_interval
+      profile_data_prefix = star%ctrl%profile_data_prefix
+      inlist_used_file = star%ctrl%inlist_used_file
       pulse_format = star%job%pulse_format
       write_profile_flag = star%ctrl%write_profile_flag
       write_pulse_flag = star%ctrl%write_pulse_flag
@@ -375,6 +377,8 @@ subroutine store_controls_to_star
       star%ctrl%history_columns_file = history_columns_file
       star%ctrl%profile_columns_file = profile_columns_file
       star%ctrl%profile_interval = profile_interval
+      star%ctrl%profile_data_prefix = profile_data_prefix
+      star%ctrl%inlist_used_file = inlist_used_file
       star%job%pulse_format = pulse_format
       star%ctrl%write_profile_flag = write_profile_flag
       star%ctrl%write_pulse_flag = write_pulse_flag

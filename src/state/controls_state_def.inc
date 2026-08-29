@@ -6,6 +6,8 @@
             character(len=256) :: history_columns_file = ' '
             character(len=256) :: profile_columns_file = ' '
             integer :: profile_interval = 50
+            character(len=256) :: profile_data_prefix = 'profile'
+            character(len=256) :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
             logical :: write_profile_flag = .false.
             logical :: write_pulse_flag = .false.
             integer :: terminal_interval = 50

@@ -19,7 +19,7 @@
       first_model_file = ffirst
       fermi_table_file = ffermi
       debug_output_file = fdebug
-      short_output_file = fshort
+      log_output_file = fshort
       dynamics_file = fdyn
       ll_data_file = flldat
       surface_composition_file = fscomp
@@ -358,7 +358,7 @@
       ffirst = first_model_file
       ffermi = fermi_table_file
       fdebug = debug_output_file
-      fshort = short_output_file
+      fshort = log_output_file
       fdyn = dynamics_file
       flldat = ll_data_file
       fscomp = surface_composition_file

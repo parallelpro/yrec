@@ -146,7 +146,7 @@ subroutine output_write_model()
       double precision :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
            gravity_cgs, ycenter_local, he_core_mass_grams
       character(len=5) :: gyre_suffix
-      character(len=64) :: gyre_path
+      character(len=320) :: gyre_path
 
 ! the compact progress line (throttled by terminal_interval)
       call log_model_line()
@@ -190,11 +190,13 @@ subroutine output_write_model()
 ! The .mod model file: restart + in-run divergence recovery.
       call write_mod_model(ilast)
 
-! interval GYRE pulse output (independent of write_pulse_flag)
+! interval GYRE pulse output (independent of write_pulse_flag);
+! model-numbered (zero-padded), same prefix and directory as the
+! counter-numbered profile/pulse stream
       if (star%ctrl%pulse_gyre_interval.gt.0 .and. &
           mod(star%model_number,star%ctrl%pulse_gyre_interval).eq.0) then
          write(gyre_suffix,'(I5.5)') star%model_number
-         gyre_path = 'gyre_profile_'//gyre_suffix//'.data.GYRE'
+         gyre_path = trim(out_dir)//trim(star%ctrl%profile_data_prefix)//gyre_suffix//'.data.GYRE'
          call write_gyre_pulse(star%nz,star%model_number,star%m, &
               star%logRho,star%luminosity_lsun,star%logP,star%logR, &
               star%logT,star%omega, gyre_path)
@@ -572,7 +574,7 @@ subroutine write_profile(iprof)
 
       call profile_column_names(names)
       write(numstr, '(i0)') iprof
-      path = trim(out_dir) // 'profile' // trim(numstr) // '.data'
+      path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data'
       open(newunit=u, file=path, status='REPLACE', action='WRITE')
 ! global block (MESA profile shape: numbers / names / values)
       write(u, '(8(1x,i40))') 1, 2, 3, 4, 5, 6, 7, 8
@@ -633,16 +635,16 @@ subroutine write_pulse(iprof)
       write(numstr, '(i0)') iprof
       if (star%job%pulse_format(1:5) == 'FGONG' .or. &
           star%job%pulse_format(1:5) == 'fgong') then
-         path = trim(out_dir) // 'profile' // trim(numstr) // '.data.FGONG'
+         path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.FGONG'
          call write_fgong_pulse(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path)
       else if (star%job%pulse_format(1:3) == 'GSM' .or. &
                star%job%pulse_format(1:3) == 'gsm') then
-         path = trim(out_dir) // 'profile' // trim(numstr) // '.data.GSM'
+         path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.GSM'
          call write_gsm_pulse(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path)
       else
-         path = trim(out_dir) // 'profile' // trim(numstr) // '.data.GYRE'
+         path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.GYRE'
          call write_gyre_ext(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path)
       end if

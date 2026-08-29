@@ -13,7 +13,7 @@
       character(len=256) :: first_model_file
       character(len=256) :: fermi_table_file
       character(len=256) :: debug_output_file
-      character(len=256) :: short_output_file
+      character(len=256) :: log_output_file
       character(len=256) :: dynamics_file
       character(len=256) :: ll_data_file
       character(len=256) :: surface_composition_file
@@ -139,18 +139,17 @@
            & pure_z_opacity_table_file, laol_opacity_table2_file, &
            & opal92_opacity_table2_file, last_model_file, &
            & first_model_file, fermi_table_file, debug_output_file, &
-           & short_output_file, dynamics_file, ll_data_file, &
-           & surface_composition_file, kurucz_atm_table_file, &
-           & mhd_table_file_1, mhd_table_file_2, mhd_table_file_3, &
-           & mhd_table_file_4, mhd_table_file_5, mhd_table_file_6, &
-           & mhd_table_file_7, mhd_table_file_8, isochrone_file, &
-           & atm_table_file, kurucz_castelli_atm_table_file, &
-           & allard_atm_table_file, scv_h_table_file, scv_he_table_file, &
-           & scv_z_table_file, opal_eos_table_file, &
-           & opal95_opacity_table_file, monte_carlo_file1_path, &
-           & monte_carlo_file2_path, run_kind, write_debug_output, &
-           & first_call_flag, use_z_ramp, specify_teff_flag, &
-           & calibrate_star_flag, use_pure_z_table, &
+           & dynamics_file, ll_data_file, surface_composition_file, &
+           & kurucz_atm_table_file, mhd_table_file_1, mhd_table_file_2, &
+           & mhd_table_file_3, mhd_table_file_4, mhd_table_file_5, &
+           & mhd_table_file_6, mhd_table_file_7, mhd_table_file_8, &
+           & isochrone_file, atm_table_file, &
+           & kurucz_castelli_atm_table_file, allard_atm_table_file, &
+           & scv_h_table_file, scv_he_table_file, scv_z_table_file, &
+           & opal_eos_table_file, opal95_opacity_table_file, &
+           & monte_carlo_file1_path, monte_carlo_file2_path, run_kind, &
+           & write_debug_output, first_call_flag, use_z_ramp, &
+           & specify_teff_flag, calibrate_star_flag, use_pure_z_table, &
            & isochrone_output_active, rewind_short_file, &
            & has_senv0_array, calibrate_solar_model, calibrate_solar_zx, &
            & use_laol89_tables, use_opal92_tables, use_opal95_tables, &
@@ -179,16 +178,17 @@
            & initial_li6_fraction, initial_li7_fraction, &
            & initial_be9_fraction, initial_b10_fraction, &
            & initial_b11_fraction, pulse_gyre_interval, &
-           & history_columns_file, profile_columns_file
+           & history_columns_file, profile_columns_file, &
+           & inlist_used_file
       namelist /controls/ &
-           & atm_step_min, atm_step_begin, atm_error_tol, atm_step_max, &
-           & atm_step_initial, change_species_name, &
-           & new_species_value_mode, fpft_average_weight, &
-           & timestep_factors, overshoot_alpha_core, &
-           & overshoot_alpha_envelope, wind_law_index, &
-           & overshoot_alpha_min, atm_step_size, absolute_tolerance, &
-           & overshoot_beta_core, min_abundance, solar_luminosity_cgs, &
-           & solar_radius_cgs, envelope_logP_step, &
+           & log_output_file, atm_step_min, atm_step_begin, &
+           & atm_error_tol, atm_step_max, atm_step_initial, &
+           & change_species_name, new_species_value_mode, &
+           & fpft_average_weight, timestep_factors, &
+           & overshoot_alpha_core, overshoot_alpha_envelope, &
+           & wind_law_index, overshoot_alpha_min, atm_step_size, &
+           & absolute_tolerance, overshoot_beta_core, min_abundance, &
+           & solar_luminosity_cgs, solar_radius_cgs, envelope_logP_step, &
            & diffusion_timestep_factor, max_domega_global, &
            & convergence_tolerance, settling_timestep_fraction, &
            & env_error_tol, env_step_max, env_step_min, env_step_begin, &
@@ -272,7 +272,7 @@
            & tol_dm_max, tol_dm_min, tol_dp_core_max, tol_dp_czbase_max, &
            & tol_dp_env_max, tol_dx_max, tol_dz_max, time_max_dt_frac, &
            & use_new_rate_variables, calc_envelope_flag, &
-           & star_history_name, terminal_interval, &
+           & profile_data_prefix, star_history_name, terminal_interval, &
            & report_solver_diagnostics, profile_interval, pulse_format, &
            & write_profile_flag, write_pulse_flag, &
            & compute_neutrino_fluxes

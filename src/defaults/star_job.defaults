@@ -55,10 +55,6 @@
       ! (legacy name: fdebug)
       debug_output_file = ''   ! (implicit)
 
-      ! Run log path; its directory part defines the output directory
-      ! (legacy name: fshort)
-      short_output_file = '{YREC_OUTPUT}/run.log'
-
       ! Opened on the dynamics unit (formatted, STATUS=OLD)
       ! (legacy name: fdyn)
       dynamics_file = ''   ! (implicit)
@@ -422,6 +418,9 @@
 
       ! MESA mode: file listing the profile columns to write; blank = all columns
       profile_columns_file = '' (all columns)
+
+      ! Verbatim copy of the input namelist file(s), written at startup as run provenance
+      inlist_used_file = '{YREC_OUTPUT}/inlist_used'
 
 /
 

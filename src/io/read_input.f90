@@ -802,6 +802,7 @@ subroutine read_input(falex06, fallard, fatm, ffermi, fkur, fkur2, flaol, &
            &    kindrn, &
            &    ldebug, lfirst, &
            &    terminal_interval, report_solver_diagnostics, &
+           &    inlist_used_file, profile_data_prefix, &
            &    lzramp, lteff, lcalst, lpurez, &
 ! MHP 9/24 add LCALSOLZX to namelist
            &    liso, lrwsh, lsenv0a,lcals,lcalsolzx, &
@@ -1627,6 +1628,7 @@ subroutine resolve_output_mode_and_paths
       call expand_value(fscvhe)
       call expand_value(fscvz)
       call expand_value(fshort)
+      call expand_value(inlist_used_file)
 
 ! Create the output directory if it doesn't already exist. It is
 ! taken from the directory part of the .short log path (FSHORT) --
@@ -1653,7 +1655,7 @@ subroutine derive_options_and_open_files
       print *,"OUTPUT placed in :  ",fshort(1:last_slash_idx)
       print *, ''
       call system(shell_cmd)
-      call copy_inlists_used(fshort(1:last_slash_idx))
+      call copy_inlists_used(trim(inlist_used_file))
 
 
 ! JVS 02/11 Acoustic depth/ Asteroseismic glitch output. Puts output
@@ -1776,15 +1778,15 @@ end subroutine derive_options_and_open_files
 ! output directory as "inlist_used" -- run provenance (2026 log
 ! redesign: replaces the STANDARD/CURRENT settings tables and the
 ! full namelist echoes the run log used to carry).
-subroutine copy_inlists_used(outdir)
-      character(len=*), intent(in) :: outdir
+subroutine copy_inlists_used(dest)
+      character(len=*), intent(in) :: dest
       integer :: src_unit, dst_unit
       character(len=4096) :: line
       integer :: ios, nfile
       character(len=256) :: sources(2)
       sources(1) = control_nml_file
       sources(2) = physics_nml_file
-      open(newunit=dst_unit, file=trim(outdir)//'inlist_used', &
+      open(newunit=dst_unit, file=dest, &
            form='FORMATTED', status='UNKNOWN')
       do nfile = 1, 2
          if (nfile == 2 .and. trim(sources(2)) == trim(sources(1))) exit

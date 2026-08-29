@@ -12,7 +12,7 @@ control	flast	string	'{YREC_OUTPUT}/final.mod'	last_model_file	proposed		Path fo
 control	ffirst	string	''*	first_model_file	proposed		Starting model read when read_first_model is set for a run
 control	ffermi	string	''*	fermi_table_file	proposed		Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS)
 control	fdebug	string	''*	debug_output_file	proposed		Debug output stream
-control	fshort	string	'{YREC_OUTPUT}/run.log'	short_output_file	proposed		Run log path; its directory part defines the output directory
+physics	fshort	string	'{YREC_OUTPUT}/run.log'	log_output_file	proposed		Run log path; its directory part defines the output directory (legacy FSHORT)
 control	fstch	string	''*	stored_change_file	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
 control	fdyn	string	''*	dynamics_file	verified		Opened on the dynamics unit (formatted, STATUS=OLD)
 control	flldat	string	''*	ll_data_file	proposed		Livermore opacity auxiliary data file
@@ -361,6 +361,8 @@ physics	lnewvars	logical	.false.*	use_new_rate_variables	verified		remap: use th
 physics	lcalcenv	logical	.false.*	calc_envelope_flag	canonical		
 control	history_columns_file	string	'' (all columns)	history_columns_file	verified	mesa: same	MESA mode: file listing the history columns to write (one name per line, ! comments); blank = all columns
 control	profile_columns_file	string	'' (all columns)	profile_columns_file	verified	mesa: same	MESA mode: file listing the profile columns to write; blank = all columns
+physics	profile_data_prefix	string	'profile'	profile_data_prefix	verified	mesa: same	Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory
+control	inlist_used_file	string	'{YREC_OUTPUT}/inlist_used'	inlist_used_file	verified		Verbatim copy of the input namelist file(s), written at startup as run provenance
 physics	star_history_name	string	'history.data'	star_history_name	verified	mesa: same	MESA mode: history file name (written to the output directory)
 physics	terminal_interval	integer	50	terminal_interval	verified	mesa: same	Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints
 physics	report_solver_diagnostics	logical	.false.	report_solver_diagnostics	verified	~ mesa report_solver_progress	Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping

@@ -40,6 +40,8 @@ module controls_lib
       character(len=256), public :: history_columns_file = ' '
       character(len=256), public :: profile_columns_file = ' '
       integer, public :: profile_interval = 50
+      character(len=256), public :: profile_data_prefix = 'profile'
+      character(len=256), public :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
       character(len=8), public :: pulse_format = 'GYRE'
 ! Independent toggles: profiles only, pulse only, both, or neither
 ! (cadence stays with profile_interval / pulse_gyre_interval):

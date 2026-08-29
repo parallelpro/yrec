@@ -6,6 +6,10 @@
 
 &controls
 
+      ! Run log path; its directory part defines the output directory (legacy FSHORT)
+      ! (legacy name: fshort)
+      log_output_file = '{YREC_OUTPUT}/run.log'
+
       ! (legacy name: atmmin)
       atm_step_min = 0.0   ! (implicit)
 
@@ -817,6 +821,9 @@
 
       ! (legacy name: lcalcenv)
       calc_envelope_flag = .false.   ! (implicit)
+
+      ! Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory
+      profile_data_prefix = 'profile'
 
       ! MESA mode: history file name (written to the output directory)
       star_history_name = 'history.data'
