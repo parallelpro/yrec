@@ -6,10 +6,12 @@
 ! target (core/read_input.f90 reads into these), grouped by their former
 ! COMMON blocks with the original per-block commentary retained.
 ! 2026 phase D: RELOCATED to io/ and PARMIN-PRIVATE. The only
-! legitimate users are the read path -- io/read_input.f90 (namelist
+! legitimate users are the read path -- io/read_controls.f90 (namelist
 ! targets), setup/map_user_inputs.f90 (reads+writes the buffer), the generated
 ! state/controls_sync_lib.f90 (seed/store), and net/test/test_net.f90
 ! (sets remap inputs). Everything else reads star%ctrl / star%job.
+! ENFORCED (2026): tools/check_boundaries.py fails on any other
+! `use controls_lib` (see its CONTROLS_BUFFER_IMPORTERS list).
 ! The const_lib umbrella is gone.
 !
 ! Contract: read-only after read_controls/parmin. Phase A of the
