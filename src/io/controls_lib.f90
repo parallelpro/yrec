@@ -53,6 +53,12 @@ module controls_lib
       double precision, public :: log_g_lower_limit(50) = -1.0d99
       double precision, public :: nu_max_upper_limit(50) = 1.0d99
       double precision, public :: nu_max_lower_limit(50) = -1.0d99
+! physical constants (2026): the solar mass and Newton's G, formerly
+! hard-coded in setup/setups.f90. G_cgs < 0 (the default) keeps the
+! historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set a
+! positive value (e.g. 6.6743d-8, CODATA 2018) to override.
+      double precision, public :: solar_mass_cgs = 1.9891d33
+      double precision, public :: G_cgs = -1.0d0
 ! solar reference values for the asteroseismic scaling relations:
       double precision, public :: nu_max_sun = 3090.0d0
       double precision, public :: delta_nu_sun = 135.1d0

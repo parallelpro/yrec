@@ -892,7 +892,7 @@ subroutine read_input(ierr)
       namelist /physics/ &
            &    atmmin, atmbeg, atmerr, atmmax, atmd0, anewcp, atmp, acfpft, &
            &    atime, alphac, alphae, alfa, alpham, atmstp, abstol, betac, &
-           &    cmin, clsun, crsun, &
+           &    cmin, clsun, crsun, solar_mass_cgs, G_cgs, &
            &    dpenv, dtdif, dtwind, djok, dt_gs, &
            &    enverr, envmax, envmin, envbeg, envstp,etadh0,etadh1, &
            &    fcorr0, fcorri, fk,  fw, fc, fo, fmu, fes, &

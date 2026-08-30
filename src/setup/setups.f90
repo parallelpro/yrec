@@ -68,8 +68,8 @@ subroutine setups(ierr)
 ! Luminosity of Sun
       star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
       star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
-! Mass of Sun
-      star%solar_mass_cgs = 1.9891d33
+! Mass of Sun (namelist control since 2026; default 1.9891d33)
+      star%solar_mass_cgs = star%ctrl%solar_mass_cgs
       star%log10_solar_mass = dlog10(star%solar_mass_cgs)
 ! Radius of Sun
       star%log10_solar_radius = dlog10(star%solar_radius_cgs)
@@ -93,8 +93,14 @@ subroutine setups(ierr)
       ca3l = dlog10(radiation_constant_over_3)
 ! molar gas constant
       gas_constant = 8.314510d7
-! log of Gravitational constant G=6.67259D-8
-      cgl = -7.17571d0
+! log of the gravitational constant. G_cgs < 0 (default) keeps the
+! historical hard-coded log10 G = -7.17571 (G=6.6726D-8) bit-for-bit;
+! a positive G_cgs (namelist control since 2026) overrides it.
+      if (star%ctrl%G_cgs > 0.0d0) then
+         cgl = dlog10(star%ctrl%G_cgs)
+      else
+         cgl = -7.17571d0
+      end if
 ! mass of the electron
       electron_mass = 9.1093897d-28
 ! Boltzmann constant

@@ -132,6 +132,8 @@ physics	betac	real	0.0*	overshoot_beta_core	verified		oversh: core overshoot sha
 physics	cmin	real	0.0*	min_abundance	canonical		former common/burtol/: min_abundance/absolute_tolerance/ relative_tolerance/max_burn_iterations (originally cmin/abstol/ reltol/kemmax) are NAMELIST values with different
 physics	clsun	real	0.0*	solar_luminosity_cgs	canonical		former common/const/: solar physical constants (luminosity, mass, radius in cgs, plus their log10/ln/bolometric-magnitude derivatives), all computed once at startup in se
 physics	crsun	real	0.0*	solar_radius_cgs	canonical		
+physics	solar_mass_cgs	real	1.9891d33	solar_mass_cgs	canonical		Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g, seismic scalings). Formerly hard-coded in setups.
+physics	G_cgs	real	-1.0d0	G_cgs	canonical		Newton's G (cgs). Negative (default) keeps YREC's historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA 2018) to override. Formerly hard-coded in setups.
 physics	dpenv	real	0.0*	envelope_logP_step	verified		mix: envelope pressure step control
 physics	dtdif	real	0.0*	diffusion_timestep_factor	canonical		Sub-timestep factor for rotation diffusion
 physics	dtwind	real	1.0d1	max_domega_global	canonical		former common/ct2/: max_domega_global (originally dtwind) is a NAMELIST value with a different canonical spelling, kept local in core/parmin.f90 and copy-assigned.

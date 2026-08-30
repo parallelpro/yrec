@@ -83,6 +83,12 @@
       ! (legacy name: crsun)
       solar_radius_cgs = 0.0   ! (implicit)
 
+      ! Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g, seismic scalings). Formerly hard-coded in setups.
+      solar_mass_cgs = 1.9891d33
+
+      ! Newton's G (cgs). Negative (default) keeps YREC's historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA 2018) to override. Formerly hard-coded in setups.
+      G_cgs = -1.0d0
+
       ! mix: envelope pressure step control
       ! (legacy name: dpenv)
       envelope_logP_step = 0.0   ! (implicit)

@@ -135,7 +135,7 @@ subroutine neutrino_flux_table
 ! ELECTRON DENSITY.
          log_electron_density = star%logRho(i)+log10((1.0d0+star%xa(i_h1,i))/2.0d0)
 ! MASS FRACTION.
-         zone_mass_fraction = shell_mass(i)/1.9891d33
+         zone_mass_fraction = shell_mass(i)/star%solar_mass_cgs
 ! RADIUS FRACTION.
          zone_radius_fraction = exp(ln10*star%logR(i))/star%solar_radius_cgs
 ! FLUXES ARE PRINTED IN THE SAME ORDER AS BAHCALL AND PINSONNEAULT.

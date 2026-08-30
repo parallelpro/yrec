@@ -160,23 +160,24 @@
            & overshoot_alpha_core, overshoot_alpha_envelope, &
            & wind_law_index, overshoot_alpha_min, atm_step_size, &
            & absolute_tolerance, overshoot_beta_core, min_abundance, &
-           & solar_luminosity_cgs, solar_radius_cgs, envelope_logP_step, &
-           & diffusion_timestep_factor, max_domega_global, &
-           & convergence_tolerance, settling_timestep_fraction, &
-           & env_error_tol, env_step_max, env_step_min, env_step_begin, &
-           & envelope_step_size, debye_huckel_eta_min, &
-           & debye_huckel_eta_max, solver_underrelax_start, &
-           & solver_underrelax_increment, wind_law_constant, &
-           & difad_velocity_scale, mixing_velocity_scale, &
-           & coupling_factor, mu_gradient_scale, es_velocity_scale, &
-           & core_mass_reduction_factor, gsf_velocity_scale, &
-           & secular_shear_velocity_scale, es_mixing_scale, &
-           & secular_shear_mixing_scale, gsf_mixing_scale, &
-           & settling_y_factor, settling_z_factor, settling_tolerance, &
-           & solver_tolerances, fpft_iter1, fpft_iter2, max_stage_index, &
-           & num_rotation_structure_iters, max_diffusion_iters, &
-           & gsf_inhibition_mode, coulomb_log_choice, atm_choice, &
-           & max_burn_iterations, velocity_form_correction, &
+           & solar_luminosity_cgs, solar_radius_cgs, solar_mass_cgs, &
+           & G_cgs, envelope_logP_step, diffusion_timestep_factor, &
+           & max_domega_global, convergence_tolerance, &
+           & settling_timestep_fraction, env_error_tol, env_step_max, &
+           & env_step_min, env_step_begin, envelope_step_size, &
+           & debye_huckel_eta_min, debye_huckel_eta_max, &
+           & solver_underrelax_start, solver_underrelax_increment, &
+           & wind_law_constant, difad_velocity_scale, &
+           & mixing_velocity_scale, coupling_factor, mu_gradient_scale, &
+           & es_velocity_scale, core_mass_reduction_factor, &
+           & gsf_velocity_scale, secular_shear_velocity_scale, &
+           & es_mixing_scale, secular_shear_mixing_scale, &
+           & gsf_mixing_scale, settling_y_factor, settling_z_factor, &
+           & settling_tolerance, solver_tolerances, fpft_iter1, &
+           & fpft_iter2, max_stage_index, num_rotation_structure_iters, &
+           & max_diffusion_iters, gsf_inhibition_mode, &
+           & coulomb_log_choice, atm_choice, max_burn_iterations, &
+           & velocity_form_correction, &
            & use_diffusion_advection_transport, no_am_transport_in_core, &
            & use_new_diffusion_routines, diffuse_helium_active, &
            & use_diffusion_z, diffuse_lithium, calc_neutrinos, &

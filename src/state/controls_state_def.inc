@@ -6,6 +6,8 @@
             character(len=256) :: history_columns_file = ' '
             character(len=256) :: profile_columns_file = ' '
             integer :: profile_interval = 50
+            double precision :: solar_mass_cgs = 1.9891d33
+            double precision :: G_cgs = -1.0d0
             double precision :: nu_max_sun = 3090.0d0
             double precision :: delta_nu_sun = 135.1d0
             double precision :: Teff_sun = 5772.0d0

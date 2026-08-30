@@ -30,6 +30,8 @@ subroutine seed_controls_buffer
       log_g_lower_limit = star%job%log_g_lower_limit
       nu_max_upper_limit = star%job%nu_max_upper_limit
       nu_max_lower_limit = star%job%nu_max_lower_limit
+      solar_mass_cgs = star%ctrl%solar_mass_cgs
+      G_cgs = star%ctrl%G_cgs
       nu_max_sun = star%ctrl%nu_max_sun
       delta_nu_sun = star%ctrl%delta_nu_sun
       Teff_sun = star%ctrl%Teff_sun
@@ -395,6 +397,8 @@ subroutine store_controls_to_star
       star%job%log_g_lower_limit = log_g_lower_limit
       star%job%nu_max_upper_limit = nu_max_upper_limit
       star%job%nu_max_lower_limit = nu_max_lower_limit
+      star%ctrl%solar_mass_cgs = solar_mass_cgs
+      star%ctrl%G_cgs = G_cgs
       star%ctrl%nu_max_sun = nu_max_sun
       star%ctrl%delta_nu_sun = delta_nu_sun
       star%ctrl%Teff_sun = Teff_sun
