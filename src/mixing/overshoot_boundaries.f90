@@ -12,7 +12,7 @@
 ! regions based on the user-specified extent.
 subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, num_zones, mixed_zone_bounds, &
-     mixed_zone_bounds_no_overshoot, num_mixed_zones)
+     mixed_zone_bounds_no_overshoot, num_mixed_zones, ierr)
       use star_info_lib, only: star
       use star_info_lib, only: star, json
       use luout_lib
@@ -27,6 +27,7 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
       integer, intent(inout) :: mixed_zone_bounds(12,2)
       integer, intent(in) :: mixed_zone_bounds_no_overshoot(12,2)
       integer, intent(in) :: num_mixed_zones
+      integer, intent(out) :: ierr
       logical :: up_overshoot_flag, down_overshoot_flag
       integer :: zone_idx, edge_idx, j_idx
       double precision :: pscale_up, pscale_down
@@ -36,6 +37,7 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
 ! adiabatic extension.
       star%iov1 = -1
       star%iov2 = -1
+      ierr = 0
       do zone_idx = 1, num_mixed_zones
 ! DETERMINE IF THIS REGION IS A CORE CONVECTION ZONE, SURFACE CZ,
 ! OR INTERMEDIATE CZ. THERE ARE SEPARATE FLAGS GOVERNING WHETHER
@@ -57,7 +59,8 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
             down_overshoot_flag = .false.
             edge_idx = mixed_zone_bounds(zone_idx,2)
             call compute_scale_height(composition, log_density, log_pressure, log_radius, &
-                 log_mass, log_temperature, edge_idx, pscale_up)
+                 log_mass, log_temperature, edge_idx, pscale_up, ierr)
+            if (ierr /= 0) return
 ! PSCALU IS THE PRESSURE SCALE HEIGHT ABOVE THE CONVECTIVE REGION;
 ! ALPHAC IS THE DESIRED OVERSHOOT (IN SCALE HEIGHTS).
 !            PSCALU = PSCALU*ALPHAC
@@ -78,7 +81,8 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
             down_overshoot_flag = .true.
             edge_idx = mixed_zone_bounds(zone_idx,1)
             call compute_scale_height(composition, log_density, log_pressure, log_radius, &
-                 log_mass, log_temperature, edge_idx, pscale_down)
+                 log_mass, log_temperature, edge_idx, pscale_down, ierr)
+            if (ierr /= 0) return
 ! PSCALD IS THE PRESSURE SCALE HEIGHT BELOW THE CONVECTIVE REGION;
 ! ALPHAE IS THE DESIRED OVERSHOOT (IN SCALE HEIGHTS).
             pscale_down = pscale_down*star%ctrl%overshoot_alpha_envelope
@@ -92,11 +96,13 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
 ! AND ABOVE IS PERFORMED BY AN AMOUNT ALPHAM.
             edge_idx = mixed_zone_bounds(zone_idx,1)
             call compute_scale_height(composition, log_density, log_pressure, log_radius, &
-                 log_mass, log_temperature, edge_idx, pscale_down)
+                 log_mass, log_temperature, edge_idx, pscale_down, ierr)
+            if (ierr /= 0) return
             pscale_down = pscale_down*star%ctrl%alpham
             edge_idx = mixed_zone_bounds(zone_idx,2)
             call compute_scale_height(composition, log_density, log_pressure, log_radius, &
-                 log_mass, log_temperature, edge_idx, pscale_up)
+                 log_mass, log_temperature, edge_idx, pscale_up, ierr)
+            if (ierr /= 0) return
             pscale_up = pscale_up*star%ctrl%alpham
          end if
 ! COMPUTE EXTENSION OF CONVECTION ZONE BELOW SCHWARTZSCHILD BOUNDARY.

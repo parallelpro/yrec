@@ -50,7 +50,7 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
      log_mass, log_temperature, convective_flag, num_zones, &
      radiative_zone_bounds, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
-     num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot)
+     num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot, ierr)
       use star_info_lib, only: star, json
       use luout_lib
       implicit none
@@ -66,11 +66,13 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
       integer, intent(out) :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
+      integer, intent(out) :: ierr
       integer :: j_idx, zone_idx, zone_start, k_idx, pair_idx
       logical :: in_convection_zone
 
 ! LOCATE BOUNDARIES OF STANDARD CONVECTION ZONES
 
+      ierr = 0
       j_idx = 1
       in_convection_zone = .false.
       convective_flag(num_zones+1) = .false.
@@ -149,7 +151,8 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
       if (star%job%core_overshoot_active .or. star%job%envelope_overshoot_active .or. star%job%lovstm) then
       call overshoot_boundaries(composition, log_density, log_pressure, log_radius, &
            log_mass, log_temperature, num_zones, mixed_zone_bounds, &
-           mixed_zone_bounds_no_overshoot, num_mixed_zones)
+           mixed_zone_bounds_no_overshoot, num_mixed_zones, ierr)
+      if (ierr /= 0) return
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY OVERSHOOT.
       if (num_mixed_zones.ne.1) then
       j_idx = 1

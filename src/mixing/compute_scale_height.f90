@@ -13,7 +13,7 @@
 ! edge zone, then returns the density-based pressure scale height
 ! (pscahe).
 subroutine compute_scale_height(composition, density, pressure, radius, mass, &
-     temperature, edge_zone, pscahe)
+     temperature, edge_zone, pscahe, ierr)
       use star_info_lib, only: json
 
       use phys_const_lib
@@ -25,6 +25,7 @@ subroutine compute_scale_height(composition, density, pressure, radius, mass, &
            pressure(json), radius(json), mass(json), temperature(json)
       integer, intent(in) :: edge_zone
       double precision, intent(out) :: pscahe
+      integer, intent(out) :: ierr
 
 
       logical :: lderiv, latmo
@@ -42,6 +43,7 @@ subroutine compute_scale_height(composition, density, pressure, radius, mass, &
 !     CONVECTIVE REGION (PD DEC. 1984) 2/91 MHP REVISED FOR YREC/MARK6***
 !
 !  CALL EQUATION OF STATE TO DETERMINE THE MEAN MOLECULAR WEIGHT.
+      ierr = 0
       lderiv = .false.
       latmo = .true.
       ksaha = 0
@@ -54,7 +56,8 @@ subroutine compute_scale_height(composition, density, pressure, radius, mass, &
       eos_res(i_log10_density) = log10_density
       call eos_get(log10_temperature, log10_pressure, &
            hydrogen_fraction, metal_fraction, eos_res, lderiv, latmo, &
-           ksaha, composition_at_zone=composition(:,edge_zone))
+           ksaha, composition_at_zone=composition(:,edge_zone), ierr=ierr)
+      if (ierr /= 0) return
 !  COMPUTE PRESSURE SCALE HEIGHT.
       log10_mass = mass(edge_zone)
       log10_radius = radius(edge_zone)

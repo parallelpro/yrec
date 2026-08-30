@@ -360,7 +360,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       call am_convective_regions(star%xa,log_density_mid,log_pressure_mid,log_radius_mid, &
            star%log_mass,log_temperature_mid,convective_flag_mid,star%nz, &
            am_transport_convective_flag_mid,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones)
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+      if (ierr /= 0) return
 !  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
 ! MHP 6/00 - FOR THERMODYNAMIC CONSISTENCY USE CURRENT T, NOT END OF
 ! TIMESTEP T (REPLACED HT IN CALL WITH HTM)

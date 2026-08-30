@@ -45,7 +45,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      log_mass, zone_mass_grams, shell_mass, log_total_mass, log_temperature, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
-     new_atmosphere_fit_needed)
+     new_atmosphere_fit_needed, ierr)
       use rotation_scratch_lib
       use atm_lib
       use atm_table_lib
@@ -75,6 +75,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       double precision, intent(in) :: log_teff
       double precision, intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: new_atmosphere_fit_needed
+      integer, intent(out) :: ierr
 
 
 
@@ -123,6 +124,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       integer :: zone_idx
 
 ! INITIALIZE MASS LOSS AT DEFAULT RATE
+      ierr = 0
       mass_loss_rate_msun_yr = star%ctrl%mass_accretion_rate
       if(star%job%use_mass_accretion)then
          apply_mass_change = .true.
@@ -243,7 +245,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! This is experimental code and valid for Allard atmospheres only.
 !   llp  06/15/2009
          call atm_get_surface_pt(log_teff,log10_gravity,print_flag, &
-              allard_surface_failed)
+              allard_surface_failed, ierr)
+         if (ierr /= 0) return
          temperature_local = exp10(atm_table%atm_log10_temperature)
          pressure_local = exp10(atm_table%atm_log10_pressure)
          log10_temperature_local = atm_table%atm_log10_temperature
@@ -257,7 +260,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          eos_res(i_beta) = beta_local
          call eos_get(log10_temperature_local, log10_pressure_local, &
               hydrogen_fraction_local, metal_fraction_local, eos_res, &
-              eos_deriv_flag, eos_atmosphere_flag, saha_flag)
+              eos_deriv_flag, eos_atmosphere_flag, saha_flag, ierr=ierr)
+         if (ierr /= 0) return
          log10_density_local = eos_res(i_log10_density)
          beta_local = 1.0d0-(radiation_constant_over_3*eos_res(i_temperature)**4/ &
               eos_res(i_pressure))
@@ -283,7 +287,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
             eos_res(i_beta) = beta_local
             call eos_get(log10_temperature_local, log10_pressure_local, &
                  hydrogen_fraction_local, metal_fraction_local, eos_res, &
-                 eos_deriv_flag, eos_atmosphere_flag, saha_flag)
+                 eos_deriv_flag, eos_atmosphere_flag, saha_flag, ierr=ierr)
+            if (ierr /= 0) return
             log10_density_local = eos_res(i_log10_density)
             beta_local = 1.0d0-(radiation_constant_over_3*eos_res(i_temperature)**4/ &
                  eos_res(i_pressure))
@@ -312,6 +317,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
            envelope_boundary_zone,new_surface_bc_needed,num_zones,omega, &
            mean_molecular_weight_local,total_radius_cm,total_mass_msun, &
            mass_loss_rate_msun_yr,accretion_specific_energy,mean_thermal_energy, &
-           cz_total_mass_below_fitting,old_log_envelope_mass_fraction)
+           cz_total_mass_below_fitting,old_log_envelope_mass_fraction, ierr)
+      if (ierr /= 0) return
       return
 end subroutine massloss

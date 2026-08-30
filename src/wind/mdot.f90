@@ -27,7 +27,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      new_surface_bc_needed, num_zones, omega, mean_molecular_weight_local, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
-     cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
+     cz_total_mass_below_fitting, old_log_envelope_mass_fraction, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
       use phys_const_lib
@@ -57,6 +57,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
            mean_thermal_energy
       double precision, intent(in) :: cz_total_mass_below_fitting
       double precision, intent(out) :: old_log_envelope_mass_fraction
+      integer, intent(out) :: ierr
 ! --- locals ---
       double precision :: omega_ratio_sq, omega_max_ratio_sq
       double precision :: mass_loss_rate_cgs
@@ -83,6 +84,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       double precision :: total_mass_grams_old, total_mass_grams_new
       double precision :: mixed_abundance
 
+      ierr = 0
       old_log_envelope_mass_fraction = log_mass(num_zones) - log_total_mass
 ! MHP 8/10- CHECK FOR SCALED SOLAR WIND MASS LOSS
       if(rot_scr%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
@@ -106,7 +108,11 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 !      DMCZT = 10.0D0**HSTOT - HS1(JENV)
       cz_mass_below_fitting = cz_total_mass_below_fitting
 ! COMPUTE MASS OF SURFACE CONVECTION ZONE BELOW FITTING POINT
-      if(envelope_boundary_zone.eq.num_zones) stop 911
+      if(envelope_boundary_zone.eq.num_zones) then
+         write(*,*) 'mdot: envelope boundary at the surface (911)'
+         ierr = 1
+         return
+      end if
       if(envelope_boundary_zone.gt.1) then
          cz_mass_grams = zone_mass_grams(num_zones)- &
               zone_mass_grams(envelope_boundary_zone)

@@ -863,7 +863,8 @@ subroutine interpolate_onto_new_grid
        call am_convective_regions(star%xa,star%logRho,star%logP,star%logR, &
             star%log_mass,star%logT,star%convective_flag,star%nz, &
             am_transport_convective_flag,radiative_zone_bounds, &
-            convective_zone_bounds,num_radiative_zones,num_convective_zones)
+            convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+       if (ierr /= 0) return
 ! JNT 2025/09/03 duplicating 2015/04/06 recompute moment of interia
 ! before recomputing the rotation I am less confident that this is
 ! necessary since WALPCZ does run in this version but I don't think

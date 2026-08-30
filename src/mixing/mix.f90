@@ -144,7 +144,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
            radiative_zone_bounds, star%mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
            num_radiative_zones, num_mixed_zones, &
-           num_mixed_zones_no_overshoot)
+           num_mixed_zones_no_overshoot, ierr)
+      if (ierr /= 0) return
 
 ! FIND BURNING RATES (HR1- HR13,HF1,HF2).
       if (star%job%use_mass_accretion .and. star%ctrl%mass_accretion_rate.gt.0.0d0) then
@@ -503,7 +504,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               radiative_zone_bounds, star%mixed_zone_bounds, &
               mixed_zone_bounds_no_overshoot, core_cz_edge, &
               envelope_cz_edge, num_radiative_zones, num_mixed_zones, &
-              num_mixed_zones_no_overshoot)
+              num_mixed_zones_no_overshoot, ierr)
+         if (ierr /= 0) return
       end if
 ! MHP 5/02 ADDED DEUTERIUM BURNING
       if (star%job%use_extended_composition) then

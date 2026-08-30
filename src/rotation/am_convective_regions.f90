@@ -16,7 +16,7 @@
 subroutine am_convective_regions(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, convective_flag, num_zones, &
      am_transport_convective_flag, radiative_zone_bounds, &
-     convective_zone_bounds, num_radiative_zones, num_convective_zones)
+     convective_zone_bounds, num_radiative_zones, num_convective_zones, ierr)
       use star_info_lib, only: json
       implicit none
 
@@ -29,6 +29,7 @@ subroutine am_convective_regions(composition, log_density, log_pressure, log_rad
       integer, intent(out) :: radiative_zone_bounds(13,2), &
            convective_zone_bounds(12,2)
       integer, intent(out) :: num_radiative_zones, num_convective_zones
+      integer, intent(out) :: ierr
 
       integer :: convective_zone_bounds_raw(12,2)
       integer :: i, j, core_zone_boundary, envelope_zone_boundary, &
@@ -40,7 +41,8 @@ subroutine am_convective_regions(composition, log_density, log_pressure, log_rad
            radiative_zone_bounds,convective_zone_bounds, &
            convective_zone_bounds_raw, &
            core_zone_boundary,envelope_zone_boundary,num_radiative_zones, &
-           num_convective_zones,num_convective_zones_raw)
+           num_convective_zones,num_convective_zones_raw, ierr)
+      if (ierr /= 0) return
       do j = 1,num_radiative_zones
          do i = radiative_zone_bounds(j,1),radiative_zone_bounds(j,2)
 ! KC 2025-05-30 ADDED IF CHECK TO AVOID RUNTIME ERROR.

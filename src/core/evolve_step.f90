@@ -253,7 +253,8 @@ subroutine advance_composition_and_age
 ! ADD MASS LOSS CALCULATION
                call massloss(star%log_L,star%dage,star%dt,star%xa,star%logRho,star%j_rot,star%logP,star%logR, &
                              star%log_mass,star%m,star%dm,star%log_total_mass,star%logT,star%envelope_cz_bottom_index,star%recompute_envelope_triangle, &
-                             star%nz,star%omega,star%star_mass,star%log_Teff,target_envelope_mass,new_atmosphere_fit_needed)
+                             star%nz,star%omega,star%star_mass,star%log_Teff,target_envelope_mass,new_atmosphere_fit_needed, ierr)
+               if (ierr /= 0) return
 ! STORE COMPOSITION MATRIX AT THE BEGINNING OF THE TIMESTEP.
                num_species = 11
                if (star%job%use_extended_composition) num_species=15
@@ -524,7 +525,8 @@ subroutine burn_light_elements
             if (.not.star%job%rotation_active .or. .not.star%job%instability_transport_active) then
 ! FIND CONVECTION ZONE DEPTH AT THE END OF THE TIME STEP.
                call find_convection_zones(star%xa,star%logRho,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%radiative_zone_bounds,star%mixed_zone_bounds, &
-                            star%mixed_zone_bounds_no_overshoot,star%core_cz_top_index,star%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot)
+                            star%mixed_zone_bounds_no_overshoot,star%core_cz_top_index,star%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, ierr)
+               if (ierr /= 0) return
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index
                if (star%job%envelope_overshoot_active) then

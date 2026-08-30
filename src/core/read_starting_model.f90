@@ -290,7 +290,8 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
                  star%logT,star%convective_flag,star%nz, &
                  am_transport_convective_flag,radiative_zone_bounds, &
                  convective_zone_bounds,num_radiative_zones, &
-                 num_convective_zones)
+                 num_convective_zones, ierr)
+      if (ierr /= 0) return
 ! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP (2026: build the stitched
 ! model first -- the turnover walker reads it; this also seeds
 ! star%pphot. The historical call passed env_log10_radius as the

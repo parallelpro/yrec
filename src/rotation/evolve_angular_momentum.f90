@@ -125,7 +125,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       call am_convective_regions(star%xa,star%logRho,star%logP,star%logR,star%log_mass, &
            star%logT,star%convective_flag,star%nz, &
            am_transport_convective_flag,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones)
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+      if (ierr /= 0) return
 ! MHP 9/94 ADDED DISK LOCKING OPTION.
       disk_lock_engaged = .false.
       if(star%job%disk_locking_active .and. star%disk_gate_age_gyr.le.star%job%disk_locking_age_gyr) &
@@ -382,7 +383,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
               radiative_zone_bounds,convective_zone_bounds, &
               convective_zone_bounds_burn,core_boundary_zone_cur, &
               envelope_boundary_zone_cur,num_radiative_zones,num_convective_zones, &
-              num_convective_zones_burn)
+              num_convective_zones_burn, ierr)
+         if (ierr /= 0) return
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
          if(star%job%lovstm .and. convective_flag_mid(star%nz))then
             star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
