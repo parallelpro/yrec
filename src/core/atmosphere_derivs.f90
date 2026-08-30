@@ -21,6 +21,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       use kap_lib
       use atm_table_lib
       use star_info_lib, only: star, json
+      use point_scratch_lib
       use phys_const_lib
       use math_lib
       implicit none
@@ -101,23 +102,23 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       atm_table%atm_ion_fraction(1) = eos_res(i_fxion)
       atm_table%atm_ion_fraction(2) = eos_res(i_fxion+1)
       atm_table%atm_ion_fraction(3) = eos_res(i_fxion+2)
-      star%pulse%qtl = log10_temperature
-      star%pulse%qt = exp(ln10*log10_temperature)
-      star%pulse%qpl = log10_pressure
-      star%pulse%qp = exp(ln10*log10_pressure)
-      star%pulse%qdl = eos_res(i_log10_density)
-      star%pulse%qd = exp(ln10*eos_res(i_log10_density))
-      star%pulse%qo = kap_res(i_kap)
-      star%pulse%qol = kap_res(i_log10_kap)
-      star%pulse%qqdp = eos_res(i_dlnrho_dlnp)
-      star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
-      star%pulse%qqot = kap_res(i_dlnkap_dlnt)
-      star%pulse%qdel = 0.0d0
-      star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
-      star%pulse%qdela = eos_res(i_grada)
-      star%pulse%qqcp = eos_res(i_cp)
-      star%pulse%qrmu = eos_res(i_gas_constant)
-      star%pulse%qemu = eos_res(i_mu_e_inv)
+      pt_scr%qtl = log10_temperature
+      pt_scr%qt = exp(ln10*log10_temperature)
+      pt_scr%qpl = log10_pressure
+      pt_scr%qp = exp(ln10*log10_pressure)
+      pt_scr%qdl = eos_res(i_log10_density)
+      pt_scr%qd = exp(ln10*eos_res(i_log10_density))
+      pt_scr%qo = kap_res(i_kap)
+      pt_scr%qol = kap_res(i_log10_kap)
+      pt_scr%qqdp = eos_res(i_dlnrho_dlnp)
+      pt_scr%qqod = kap_res(i_dlnkap_dlnrho)
+      pt_scr%qqot = kap_res(i_dlnkap_dlnt)
+      pt_scr%qdel = 0.0d0
+      pt_scr%qqdt = eos_res(i_dlnrho_dlnt)
+      pt_scr%qdela = eos_res(i_grada)
+      pt_scr%qqcp = eos_res(i_cp)
+      pt_scr%qrmu = eos_res(i_gas_constant)
+      pt_scr%qemu = eos_res(i_mu_e_inv)
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
       if (.false.) print *, luminosity_linear, temperature_rotation_factor, conductive_opacity_flag, log10_radius

@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 core/burn_lib.f90 core/envint_lib.f90 core/monte_carlo.f90 core/observables_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/rotation_scratch_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 core/burn_lib.f90 core/envint_lib.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/rotation_scratch_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -58,6 +58,8 @@ output_columns_lib.mod: io/output_columns.o
 	@true
 phys_const_lib.mod: state/phys_const_lib.o
 	@true
+point_scratch_lib.mod: core/point_scratch_lib.o
+	@true
 profile_output.mod: io/profile_output.o
 	@true
 rotation_scratch_lib.mod: rotation/rotation_scratch_lib.o
@@ -92,14 +94,14 @@ atm/tables/altabinit.o: atm_table_lib.mod luout_lib.mod math_lib.mod
 atm/tables/kcsurfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod
 atm/tables/surfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod
 atm/test/test_atm.o: atm_lib.mod atm_table_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
-core/atmosphere_derivs.o: atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
+core/atmosphere_derivs.o: atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod
 core/burn_lib.o: luout_lib.mod math_lib.mod net_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 core/check_solar_calibration.o: luout_lib.mod math_lib.mod star_info_lib.mod
 core/check_star_calibration.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/envelope_derivs.o: eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/envint_lib.o: atm_table_lib.mod atmstruct_lib.mod envstruct_lib.mod eos_lib.mod intpar_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
+core/envelope_derivs.o: eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod
+core/envint_lib.o: atm_table_lib.mod atmstruct_lib.mod envstruct_lib.mod eos_lib.mod intpar_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod point_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 core/evolve_step.o: burn_lib.mod luout_lib.mod math_lib.mod net_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod stop_conditions.mod yrec_output.mod
-core/henyey_coefficients.o: burn_lib.mod eos_lib.mod kap_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+core/henyey_coefficients.o: burn_lib.mod eos_lib.mod kap_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 core/henyey_iterate.o: luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod yale_eos_lib.mod
 core/henyey_solve.o: star_info_lib.mod
 core/monte_carlo.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
@@ -115,7 +117,7 @@ core/stop_conditions.o: luout_lib.mod math_lib.mod star_info_lib.mod
 core/surfbc.o: atm_lib.mod atm_table_lib.mod envint_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
 core/turnover_timescale.o: math_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
 core/yrec_capi.o: star_info_lib.mod
-core/yrec_reset.o: rotation_scratch_lib.mod star_info_lib.mod
+core/yrec_reset.o: point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 eos/eos_lib.o: eos_mixture_lib.mod luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
 eos/eqstat.o: eos_mixture_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod
 eos/mhd/meqos.o: luout_lib.mod math_lib.mod mhd_eos_lib.mod star_info_lib.mod

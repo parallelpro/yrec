@@ -31,6 +31,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       use eos_lib
       use kap_lib
       use star_info_lib, only: star, json
+      use point_scratch_lib
       use phys_const_lib
       use math_lib
       implicit none
@@ -93,24 +94,24 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
            eos_res(i_log10_density)))*pressure_rotation_factor
       env_call_count = env_call_count + 1
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
-      star%current_log10_pressure = log10_pressure
-      star%current_log10_temperature = log10_temperature
-      star%current_log10_mass = log10_mass - star%stotal
-      star%current_log10_radius = log10_radius
-      star%current_log10_density = eos_res(i_log10_density)
-      star%current_velocity = convective_velocity
+      pt_scr%current_log10_pressure = log10_pressure
+      pt_scr%current_log10_temperature = log10_temperature
+      pt_scr%current_log10_mass = log10_mass - star%stotal
+      pt_scr%current_log10_radius = log10_radius
+      pt_scr%current_log10_density = eos_res(i_log10_density)
+      pt_scr%current_velocity = convective_velocity
 ! JVS 08/13 ALWAYS STORE GRADIENTS (FOR TRACKING CZ)
-       star%current_gradients(1) = radiative_gradient
-       star%current_gradients(2) = eos_res(i_grada)
-       star%current_gradients(3) = actual_gradient
-       star%current_beta = eos_res(i_beta) ! added 03/14
+       pt_scr%current_gradients(1) = radiative_gradient
+       pt_scr%current_gradients(2) = eos_res(i_grada)
+       pt_scr%current_gradients(3) = actual_gradient
+       pt_scr%current_beta = eos_res(i_beta) ! added 03/14
 ! JVS 08/25 ALSO ALWAYS SAVE ADDITIONAL INFO FOR PROFILE
-      star%current_ion_fraction(1) = eos_res(i_fxion)
-      star%current_ion_fraction(2) = eos_res(i_fxion+1)
-      star%current_ion_fraction(3) = eos_res(i_fxion+2)
-      star%pulse%qqdp = eos_res(i_dlnrho_dlnp)
-      star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
-      star%pulse%qqcp = eos_res(i_cp)
+      pt_scr%current_ion_fraction(1) = eos_res(i_fxion)
+      pt_scr%current_ion_fraction(2) = eos_res(i_fxion+1)
+      pt_scr%current_ion_fraction(3) = eos_res(i_fxion+2)
+      pt_scr%qqdp = eos_res(i_dlnrho_dlnp)
+      pt_scr%qqdt = eos_res(i_dlnrho_dlnt)
+      pt_scr%qqcp = eos_res(i_cp)
 
 ! 2026 (.store convergence): these saves were gated on the print
 ! flag (or the retired pulse-derivative mode), which left
@@ -118,21 +119,21 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
 ! model materializes -- stale (typically zero) whenever the caller
 ! did not ask for printing. They are output-only scratch (no
 ! physics reads them), so save unconditionally.
-      star%current_opacity = kap_res(i_kap)
-      star%pulse%qtl = log10_temperature
-      star%pulse%qt = exp(ln10*log10_temperature)
-      star%pulse%qpl = log10_pressure
-      star%pulse%qp = exp(ln10*log10_pressure)
-      star%pulse%qdl = eos_res(i_log10_density)
-      star%pulse%qd = exp(ln10*eos_res(i_log10_density))
-      star%pulse%qo = kap_res(i_kap)
-      star%pulse%qol = kap_res(i_log10_kap)
-      star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
-      star%pulse%qqot = kap_res(i_dlnkap_dlnt)
-      star%pulse%qdel = actual_gradient
-      star%pulse%qdela = eos_res(i_grada)
-      star%pulse%qrmu = eos_res(i_gas_constant)
-      star%pulse%qemu = eos_res(i_mu_e_inv)
+      pt_scr%current_opacity = kap_res(i_kap)
+      pt_scr%qtl = log10_temperature
+      pt_scr%qt = exp(ln10*log10_temperature)
+      pt_scr%qpl = log10_pressure
+      pt_scr%qp = exp(ln10*log10_pressure)
+      pt_scr%qdl = eos_res(i_log10_density)
+      pt_scr%qd = exp(ln10*eos_res(i_log10_density))
+      pt_scr%qo = kap_res(i_kap)
+      pt_scr%qol = kap_res(i_log10_kap)
+      pt_scr%qqod = kap_res(i_dlnkap_dlnrho)
+      pt_scr%qqot = kap_res(i_dlnkap_dlnt)
+      pt_scr%qdel = actual_gradient
+      pt_scr%qdela = eos_res(i_grada)
+      pt_scr%qrmu = eos_res(i_gas_constant)
+      pt_scr%qemu = eos_res(i_mu_e_inv)
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
       if (.false.) print *, log10_gravity, conductive_opacity_flag

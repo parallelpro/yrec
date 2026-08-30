@@ -24,7 +24,7 @@
 ! output (common/scrtch/, common/pulse1/, common/sound/, common/
 ! rotder/, common/roten/).
 !
-! Three dummy arguments below (star%pulse%qt, star%pulse%qp, star%pulse%qtl -- see common/pulse2/) are
+! Three dummy arguments below (pt_scr%qt, pt_scr%qp, pt_scr%qtl -- see common/pulse2/) are
 ! simultaneously common-block storage: COMMON/PULSE2/ was first
 ! declared (unused, as placeholders) in an earlier-converted file
 ! (write_pulsation_model.f90) with generic member names kept close to the original;
@@ -32,7 +32,7 @@
 ! live temperature/pressure Henyey-equation scratch terms (they also
 ! double as the eq_t_val/eq_p_val/dqt_dl arguments passed to reduce),
 ! so per the project's COMMON-block-reuse rule they keep the
-! write_pulsation_model.f90 names (star%pulse%qt/star%pulse%qp/star%pulse%qtl) here too, despite those names no
+! write_pulsation_model.f90 names (pt_scr%qt/pt_scr%qp/pt_scr%qtl) here too, despite those names no
 ! longer being very descriptive of their role in this file.
 !
 ! KC 2025-05-31 removed the unused MODEL argument and reordered the
@@ -49,6 +49,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
 
       use net_lib
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
+      use point_scratch_lib
       use phys_const_lib
       use eos_lib
       use kap_lib
@@ -222,26 +223,26 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
        dqr_dr = - eq_r_val - eq_r_val - eq_r_val
        dqr_dp = -eq_r_val*dlnrho_dlnp
        dqr_dt = -eq_r_val*dlnrho_dlnt
-       star%pulse%qp =-exp(ln10*(cgl + zone_log_mass + zone_log_mass - &
+       pt_scr%qp =-exp(ln10*(cgl + zone_log_mass + zone_log_mass - &
             zone_log_pressure - qtemp - zone_log_radius ))*star%fp_rot(im)
 !       QPR = -QP - QP - QP - QP*(1.0D0 - QFPR)
-       dqp_dr = -star%pulse%qp - star%pulse%qp - star%pulse%qp - star%pulse%qp
-       dqp_dp = -star%pulse%qp
+       dqp_dr = -pt_scr%qp - pt_scr%qp - pt_scr%qp - pt_scr%qp
+       dqp_dp = -pt_scr%qp
        star%convective_flag(im) = is_convective
-       star%pulse%qt = actual_gradient*star%pulse%qp
-       dqt_dr = -star%pulse%qt - star%pulse%qt - star%pulse%qt - star%pulse%qt
+       pt_scr%qt = actual_gradient*pt_scr%qp
+       dqt_dr = -pt_scr%qt - pt_scr%qt - pt_scr%qt - pt_scr%qt
 !       QTR = -QT - QT - QT - QT*(1.0D0 - QFTR)
        if (.not.is_convective) then
 ! TEMPERATURE GRADIENT IS RADIATIVE
-          star%pulse%qtl = clni*star%pulse%qt/zone_luminosity_lsun
-          dqt_dp = star%pulse%qt*kap_res(i_dlnkap_dlnrho)*dlnrho_dlnp
-          dqt_dt = star%pulse%qt*(-4.0d0 + kap_res(i_dlnkap_dlnt) + kap_res(i_dlnkap_dlnrho)*dlnrho_dlnt)
+          pt_scr%qtl = clni*pt_scr%qt/zone_luminosity_lsun
+          dqt_dp = pt_scr%qt*kap_res(i_dlnkap_dlnrho)*dlnrho_dlnp
+          dqt_dt = pt_scr%qt*(-4.0d0 + kap_res(i_dlnkap_dlnt) + kap_res(i_dlnkap_dlnrho)*dlnrho_dlnt)
        else
 ! TEMPERATURE GRADIENT IS CONVECTIVE
-          star%pulse%qtl = 0.0d0
-          dqt_dp = star%pulse%qt*(-1.0d0 + dgrad_dp_component)
-          dqt_dt = star%pulse%qt*dgrad_dt_component
-          dqt_dr = dqt_dr + star%pulse%qt*dgrad_dr_component
+          pt_scr%qtl = 0.0d0
+          dqt_dp = pt_scr%qt*(-1.0d0 + dgrad_dp_component)
+          dqt_dt = pt_scr%qt*dgrad_dt_component
+          dqt_dr = dqt_dr + pt_scr%qt*dgrad_dr_component
        end if
        eq_l_val = 0.0d0
        dql_dt = 0.0d0
@@ -352,8 +353,8 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             im1 = im
             call henyey_eliminate(im1,star%elim_coeff,star%elim_rhs,star%luminosity_lsun,star%max_residual, &
                  star%logP,star%logR,star%log_mass,star%logT, &
-                 eq_p_val0,star%pulse%qp,dqp_dr0,dqp_dr,dqp_dp0,dqp_dp,eq_t_val0,star%pulse%qt, &
-                 dqt_dr0,dqt_dr,dqt_dl0,star%pulse%qtl,dqt_dp0,dqt_dp,dqt_dt0,dqt_dt, &
+                 eq_p_val0,pt_scr%qp,dqp_dr0,dqp_dr,dqp_dp0,dqp_dp,eq_t_val0,pt_scr%qt, &
+                 dqt_dr0,dqt_dr,dqt_dl0,pt_scr%qtl,dqt_dp0,dqt_dp,dqt_dt0,dqt_dt, &
                  eq_r_val0,eq_r_val,dqr_dr0,dqr_dr,dqr_dp0,dqr_dp,dqr_dt0, &
                  dqr_dt,eq_l_val0,eq_l_val,dql_dp0,dql_dp,dql_dt0,dql_dt)
          else
@@ -366,12 +367,12 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             star%elim_coeff(4,2,1) = -dql_dt
             star%elim_rhs(4,1) = clni*eq_l_val - zone_luminosity_lsun
          end if
-         eq_p_val0 = star%pulse%qp
+         eq_p_val0 = pt_scr%qp
          dqp_dr0 = dqp_dr
          dqp_dp0 = dqp_dp
-         eq_t_val0 = star%pulse%qt
+         eq_t_val0 = pt_scr%qt
          dqt_dr0 = dqt_dr
-         dqt_dl0 = star%pulse%qtl
+         dqt_dl0 = pt_scr%qtl
          dqt_dp0 = dqt_dp
          dqt_dt0 = dqt_dt
          eq_r_val0 = eq_r_val

@@ -79,19 +79,8 @@ module star_info_lib
 
 
 
-! ---- from state/pulse_diag_lib.f90 ----
-      type, public :: pulsation_diagnostics_state
-! former common/pulse1/ (lpumod deleted 2026: the derivs routines
-! save unconditionally, so the mode flag had no readers left)
-! former common/pulse2/
-! 2026 (.store convergence): qqed/qqet/qfs deleted -- write-only
-! since the pulse-model writers were retired.
-            double precision :: qqdp, qqod, qqot, qdel, qdela, &
-                 qqcp
-            double precision :: qrmu, qtl, qpl, qdl, qo, qol, qt, qp
-            double precision :: qqdt, qemu, qd
-      end type pulsation_diagnostics_state
-
+! (2026 envint purity split: the pulse q* scratch moved to
+! core/point_scratch_lib.f90 -- see rotation_scratch_lib precedent.)
 
 ! ---- from state/star_job_lib.f90 ----
 ! 2026 controls->star% campaign, phase B: the authoritative home of
@@ -431,10 +420,7 @@ module star_info_lib
 ! former common/comp2/
            double precision :: envelope_helium_fraction, envelope_he3_fraction
 ! former common/envprt/
-           double precision :: current_log10_pressure, current_log10_temperature, &
-                current_log10_radius, current_log10_mass, current_log10_density, &
-                current_opacity, current_beta, current_gradients(3), &
-                current_ion_fraction(3), current_velocity
+! (current_* point scratch moved to core/point_scratch_lib.f90)
 ! former common/oldrot/
            double precision :: old_omega(json), &
                 old_specific_angular_momentum(json), &
@@ -466,7 +452,6 @@ module star_info_lib
 ! own files, the single instances live here. See ROADMAP.md phase six
 ! for the per-module classification (envstruct/atmstruct deliberately
 ! stay atm-domain state and are NOT here).
-            type(pulsation_diagnostics_state) :: pulse
 ! job configuration and driver-step state (2026 MESA-convention pass:
 ! folded in as nested sub-structs -- MESA's s% job precedent; one
 ! root means yrec_reset's star snapshot covers them automatically)
