@@ -88,7 +88,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       star%alfmlt=0.0d0
       star%phmlt=0.0d0
       star%cmxmlt=0.0d0
-      radiative_gradient = opacity*luminosity_lsun*dexp(ln10*(log_pressure - &
+      radiative_gradient = opacity*luminosity_lsun*exp(ln10*(log_pressure - &
            log_mass - 4d0*log_temperature + star%log10_solar_luminosity - cgl + &
            cdelrl))* &
            temperature_rotation_factor/pressure_rotation_factor
@@ -153,7 +153,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
               1.0 - star%ctrl%spot_filling_factor) - adiabatic_gradient
       endif
 ! G Somers END
-      g = dexp(ln10*(cgl + log_mass - log_radius - log_radius))
+      g = exp(ln10*(cgl + log_mass - log_radius - log_radius))
       presht = pressure/(density*g)
       phi = star%mixing_length_alpha*density*opacity*presht
       phi2 = phi*phi

@@ -37,7 +37,7 @@
 ! batches). Judgment calls made below, all verified against the
 ! actual physics/usage in this file:
 !   - HL is the linear luminosity (L/Lsun) -- STOTAL/SENV bookkeeping
-!     and DLOG10(HL(M))-style usage elsewhere in the codebase confirm
+!     and log10(HL(M))-style usage elsewhere in the codebase confirm
 !     this. Named star%luminosity_lsun (matches henyey_iterate.f90's slot name for
 !     the same physical quantity). read_yrec7.f90/read_model2.f90/
 !     shell_physics.f90's slot name for the same array is "log_luminosity",
@@ -591,7 +591,7 @@ subroutine extend_core_toward_center
 ! MULTIPLES OF THE CENTRAL POINT SPACING.
 !     MCORE is number of shells to extrapolate to new core.
 !     FCORE is factor to reduce inner mass shell.
-          star%job%num_core_shells_added = int(dlog10(star%job%core_mass_reduction_factor)/ &
+          star%job%num_core_shells_added = int(log10(star%job%core_mass_reduction_factor)/ &
                star%ctrl%chi_grid_scale(2))+1
           star%job%core_mass_reduction_factor = dble(star%job%num_core_shells_added)* &
                star%ctrl%chi_grid_scale(2)
@@ -817,7 +817,7 @@ subroutine rescale_and_refit_envelope
           katm = 0
           kenv = 0
           saha_state = 0
-          shell_luminosity_lsun = dexp(ln10*star%log_L)
+          shell_luminosity_lsun = exp(ln10*star%log_L)
           log10_radius = 0.5d0*(star%log_L + star%solar_luminosity_cgs - &
                4.0d0*star%log_Teff - c4pil - csigl)
           log10_gravity = cgl + star%stotal - log10_radius - log10_radius
@@ -1056,17 +1056,17 @@ end subroutine rescale_and_refit_envelope
 subroutine build_shell_masses
 ! SET UP WEIGHTS AND MASSES
 ! HS1 IS THE UNLOGGED HS; HS2 IS THE MASS OF THE SHELL(ALSO NOT LOG).
-      next_mass = dexp(ln10*star%log_mass(1))
+      next_mass = exp(ln10*star%log_mass(1))
       curr_mass = - next_mass
       do i = 2,star%nz
        prev_mass = curr_mass
        curr_mass = next_mass
-       next_mass = dexp(ln10*star%log_mass(i))
+       next_mass = exp(ln10*star%log_mass(i))
        star%m(i-1) = curr_mass
        star%dm(i-1) = 0.5d0*(next_mass-prev_mass)
       end do
       star%m(star%nz) = next_mass
-      star%dm(star%nz) = dexp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
+      star%dm(star%nz) = exp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
            next_mass)
 
 end subroutine build_shell_masses

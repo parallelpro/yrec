@@ -132,7 +132,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 !  ON A LOGARITHMIC SCALE WHERE X ABUNDANCE = 12.0
 !  E.G. AN ABUNDANCE OF 3.0 MEANS 1.0D-9* SURFACE H ABUNDANCE
             if(star%ctrl%value_relative_to_h) star%job%new_species_value = &
-                 dexp(ln10*(star%job%new_species_value-12.0d0))*composition(1,num_zones)
+                 exp(ln10*(star%job%new_species_value-12.0d0))*composition(1,num_zones)
             if(star%job%new_species_value.lt.1.0d0) then
                do zone_idx = 1,num_zones
                   composition(star%ctrl%new_species_index,zone_idx) = star%job%new_species_value
@@ -150,7 +150,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 !  A SCALE FACTOR(MNEW/MOLD) WHILE LEAVING ALL OTHER LOCAL VARIABLES
 !  UNCHANGED.
          if(star%job%rescale_params(1,run_index).gt.0.0d0) then
-            log_mass_shift = dlog10(star%job%rescale_params(1,run_index)/star_mass)
+            log_mass_shift = log10(star%job%rescale_params(1,run_index)/star_mass)
             total_mass_log = total_mass_log + log_mass_shift
             star_mass = star%job%rescale_params(1,run_index)
             star%stotal = total_mass_log
@@ -230,19 +230,19 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 
 ! ***** Calculate scale factor for mass rescaling *****
 
-!            HSTOT1 = DLOG10(RESCAL(1,NK)/SMASS)
+!            HSTOT1 = log10(RESCAL(1,NK)/SMASS)
         mass_scale_factor =(star%job%rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_end))/star%solar_mass_cgs)/ &
                           (star_mass-exp(ln10*shell_mass_log(shell_end))/star%solar_mass_cgs)
 
 ! *****************************************************
 
 !            HSTOT = HSTOT + HSTOT1
-        total_mass_log=dlog10(10**shell_mass_log(shell_end)+mass_scale_factor*(10**total_mass_log-10**shell_mass_log(shell_end)))
+        total_mass_log=log10(10**shell_mass_log(shell_end)+mass_scale_factor*(10**total_mass_log-10**shell_mass_log(shell_end)))
 
             star_mass = star%job%rescale_params(1,run_index)
             star%stotal = total_mass_log
             do zone_idx = shell_end+1,num_zones
-        shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_end)+ &
+        shell_mass_log(zone_idx)=log10(10**shell_mass_log(shell_end)+ &
              mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_end)))
             end do
             env_mass_old = env_mass_new
@@ -269,20 +269,20 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 
 ! **** Calculate scale factor *****
 
-!           HSTOT1 = DLOG10(RESCAL(1,NK)/SMASS)
+!           HSTOT1 = log10(RESCAL(1,NK)/SMASS)
         mass_scale_factor =(star%job%rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs)/ &
                           (star_mass-exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs)
 !        write(*,*)'hstot1',(10**HSTOT1)
 !        write(*,*)'smass',SMASS
 
 !            HSTOT = HSTOT + HSTOT1
-       total_mass_log=dlog10(10**shell_mass_log(shell_begin-1)+ &
+       total_mass_log=log10(10**shell_mass_log(shell_begin-1)+ &
             mass_scale_factor*(10**total_mass_log-10**shell_mass_log(shell_begin-1)))
 
             star_mass = star%job%rescale_params(1,run_index)
             star%stotal = total_mass_log
             do zone_idx = shell_begin,num_zones
-      shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(shell_begin-1)+ &
+      shell_mass_log(zone_idx)=log10(10**shell_mass_log(shell_begin-1)+ &
            mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_begin-1)))
             end do
             env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
@@ -319,7 +319,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
                ierr = 1
                return
             endif
-            log_mass_shift = dlog10(star%job%rescale_params(4,run_index)/core_mass_old)
+            log_mass_shift = log10(star%job%rescale_params(4,run_index)/core_mass_old)
             do zone_idx = 1,shell_begin-1
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
             end do
@@ -338,7 +338,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
                           (exp(ln10*shell_mass_log(num_zones))-shell_mass_prev)
 
             do zone_idx = shell_end+1,num_zones
-        shell_mass_log(zone_idx)=dlog10(10**shell_mass_log(num_zones)- &
+        shell_mass_log(zone_idx)=log10(10**shell_mass_log(num_zones)- &
              mass_scale_factor*(10**shell_mass_log(num_zones)-10**shell_mass_log(zone_idx)))
             end do
 

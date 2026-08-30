@@ -126,7 +126,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       ksaha = 0
 ! SET THE PHYSICAL PROPERTIES OF THE ENVELOPE SOLUTION
 ! LUMINOSITY
-      luminosity_linear = dexp(ln10*log_luminosity_lsun)
+      luminosity_linear = exp(ln10*log_luminosity_lsun)
 ! RADIUS
       log_radius_surface = 0.5D0*(log_luminosity_lsun + star%log10_solar_luminosity &
            - 4.0D0*log_teff - c4pil - csigl)

@@ -1950,7 +1950,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       if(fermi_energy_over_kt.le.1.E-2) then
          f_prime_over_f=1.0
       else
-         log_degeneracy=dlog10(fermi_energy_over_kt)
+         log_degeneracy=log10(fermi_energy_over_kt)
          if(log_degeneracy.ge.1.5) then
             f_prime_over_f=0.0
          else

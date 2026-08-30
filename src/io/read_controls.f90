@@ -2085,7 +2085,7 @@ subroutine echo_settings
       scale_by_b_field = lbscale
       wind_saturation_omega = wmax
 !
-      parmin_ln10 = dlog(10.0d0)
+      parmin_ln10 = log(10.0d0)
       if(lnewcp) then
        value_relative_to_h = .true.
        if(atmp.eq.'ABS') value_relative_to_h = .false.

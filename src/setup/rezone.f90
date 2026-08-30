@@ -234,8 +234,8 @@ subroutine flag_fixed_points
           flag_count = flag_count + 1
 ! TEST FOR FLAGGING DUE TO GRADIENT IN LOG OMEGA.
        else if (star%job%rotation_active) then
-          log_omega_top = dlog10(star%omega(i))
-          log_omega_bot = dlog10(star%omega(i-1))
+          log_omega_top = log10(star%omega(i))
+          log_omega_bot = log10(star%omega(i-1))
           if (dabs(log_omega_top-log_omega_bot).gt.star%ctrl%chi_grid_scale(12)) then
              flag_point(flag_count) = i
              flag_count = flag_count + 1
@@ -370,7 +370,7 @@ subroutine assign_new_points
       if (star%job%rotation_active) then
        do i = 1,star%nz
           if (star%omega(i).gt.0.0D0) then
-             log10_omega(i) = dlog10(star%omega(i))
+             log10_omega(i) = log10(star%omega(i))
           else
              log10_omega(i) = 0.0D0
           endif
@@ -838,23 +838,23 @@ subroutine interpolate_onto_new_grid
  1020 format(' POINTS  OLD',I5,'   NEW',I5)
       star%nz = new_num_zones
 ! SET UP WEIGHTS AND MASSES
-      mass_curr = dexp(clndp*star%log_mass(1))
+      mass_curr = exp(clndp*star%log_mass(1))
       mass_prev = - mass_curr
       do i = 2,star%nz
        mass_two_back = mass_prev
        mass_prev = mass_curr
-       mass_curr = dexp(clndp*star%log_mass(i))
+       mass_curr = exp(clndp*star%log_mass(i))
        star%m(i-1) = mass_prev
        star%dm(i-1) = 0.5D0*(mass_curr-mass_two_back)
       end do
       star%m(star%nz) = mass_curr
-      star%dm(star%nz) = dexp(ln10*star%log_total_mass) - &
+      star%dm(star%nz) = exp(ln10*star%log_total_mass) - &
            0.5D0*(mass_prev+mass_curr)
       if (star%job%rotation_active) then
 !  FIRST GUESS AT MOMENT OF INERTIA(HI)
        do i=1,star%nz
           star%i_rot(i) = cc23*star%dm(i)* &
-               dexp(ln10*2.0D0*star%logR(i))
+               exp(ln10*2.0D0*star%logR(i))
        end do
 !   CALCULATE OVERSHOOT
        call am_convective_regions(star%xa,star%logRho,star%logP,star%logR, &

@@ -153,10 +153,10 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               in_atmosphere_local, saha_state_local, ierr)
          if (ierr /= 0) return
          dlnrho_dlnt_dt_1 = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
-         specific_heat_cp_dt_1 = (dlog10(specific_heat_cp_1) - &
-              dlog10(specific_heat_cp_2))/dtl2
-         adiabatic_gradient_dt_1 = (dlog10(adiabatic_gradient_1) - &
-              dlog10(adiabatic_gradient_2))/dtl2
+         specific_heat_cp_dt_1 = (log10(specific_heat_cp_1) - &
+              log10(specific_heat_cp_2))/dtl2
+         adiabatic_gradient_dt_1 = (log10(adiabatic_gradient_1) - &
+              log10(adiabatic_gradient_2))/dtl2
          log10_temperature = log10_temperature_orig
          temperature = 10.0d0**log10_temperature_orig   ! Restore original T
 
@@ -193,10 +193,10 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
          log10_pressure = log10_pressure_orig
          pressure = 10.0d0**log10_pressure_orig   ! Restore original P
          dlnrho_dlnp_dt_1 = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10
-         specific_heat_cp_dp_1 = (dlog10(specific_heat_cp_1) - &
-              dlog10(specific_heat_cp_2))/dpl2
-         adiabatic_gradient_dp_1 = (dlog10(adiabatic_gradient_1) - &
-              dlog10(adiabatic_gradient_2))/dpl2
+         specific_heat_cp_dp_1 = (log10(specific_heat_cp_1) - &
+              log10(specific_heat_cp_2))/dpl2
+         adiabatic_gradient_dp_1 = (log10(adiabatic_gradient_1) - &
+              log10(adiabatic_gradient_2))/dpl2
 
          dlnrho_dlnt_dt = dlnrho_dlnt_dt_1
          dlnrho_dlnp_dt = dlnrho_dlnp_dt_1
@@ -466,8 +466,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          end if
       end if
 !     COMPUTE RADIATION PRESSURE
-      temperature = dexp(ln10*log10_temperature)
-      pressure = dexp(ln10*log10_pressure)
+      temperature = exp(ln10*log10_temperature)
+      pressure = exp(ln10*log10_pressure)
       beta14 = radiation_constant_over_3*(temperature**2)**2/pressure
       beta = 1 - beta14
 
@@ -556,10 +556,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
             if (ierr /= 0) return
             dtl2 = 2d0*dtl
             dlnrho_dlnt_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
-            specific_heat_cp_dt = (dlog10(specific_heat_cp_1) - &
-                 dlog10(specific_heat_cp_2))/dtl2
-            adiabatic_gradient_dt = (dlog10(adiabatic_gradient_1) - &
-                 dlog10(adiabatic_gradient_2))/dtl2
+            specific_heat_cp_dt = (log10(specific_heat_cp_1) - &
+                 log10(specific_heat_cp_2))/dtl2
+            adiabatic_gradient_dt = (log10(adiabatic_gradient_1) - &
+                 log10(adiabatic_gradient_2))/dtl2
 
             temperature = 10.0d0**log10_temperature
             ppl = log10_pressure + dpl
@@ -581,10 +581,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
             pressure = 10.0d0**log10_pressure
             dpl2 = 2d0*dpl
             dlnrho_dlnp_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10
-            specific_heat_cp_dp = (dlog10(specific_heat_cp_1) - &
-                 dlog10(specific_heat_cp_2))/dpl2
-            adiabatic_gradient_dp = (dlog10(adiabatic_gradient_1) - &
-                 dlog10(adiabatic_gradient_2))/dpl2
+            specific_heat_cp_dp = (log10(specific_heat_cp_1) - &
+                 log10(specific_heat_cp_2))/dpl2
+            adiabatic_gradient_dp = (log10(adiabatic_gradient_1) - &
+                 log10(adiabatic_gradient_2))/dpl2
             dlnrho_dlnt_dt = dlnrho_dlnt_dt
             dlnrho_dlnp_dt = dlnrho_dlnp_dt
             adiabatic_gradient_dt = adiabatic_gradient_dt
@@ -650,7 +650,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       saha_adiabatic_gradient_dt = saha_adiabatic_gradient_dt - adiabatic_gradient_dt
       saha_adiabatic_gradient_dp = saha_adiabatic_gradient_dp - adiabatic_gradient_dp
       log10_density = log10_density + ramp_factor*saha_log10_density
-      density = dexp(ln10*log10_density)
+      density = exp(ln10*log10_density)
       specific_gas_constant = beta*pressure/(density*temperature)
       electron_mean_weight_inverse = specific_gas_constant/gas_constant - &
            ion_mean_weight_inverse

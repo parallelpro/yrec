@@ -126,12 +126,12 @@ subroutine build_scv_envelope_table
                     helium_number_density
                smix(t_idx,p_idx) = one_minus_y_local/hydrogen_atom_mass*2.0d0/ &
                     (1.0d0+tablex(t_idx,p_idx,3)+3.0d0*tablex(t_idx,p_idx,2))* &
-                    (dlog(1.0d0+mixing_beta*mixing_gamma)- &
+                    (log(1.0d0+mixing_beta*mixing_gamma)- &
                     hydrogen_electron_density/total_number_density* &
-                    dlog(1.0d0 + mix_de)+mixing_beta*mixing_gamma* &
-                    dlog(1.0d0+1.0d0/mixing_beta/mixing_gamma)- &
+                    log(1.0d0 + mix_de)+mixing_beta*mixing_gamma* &
+                    log(1.0d0+1.0d0/mixing_beta/mixing_gamma)- &
                     helium_electron_density/total_number_density* &
-                    dlog(1.0d0+mix_dei))
+                    log(1.0d0+mix_dei))
                smix(t_idx,p_idx) = boltzmann_constant*smix(t_idx,p_idx)
             end if
          end do
@@ -271,14 +271,14 @@ subroutine build_scv_envelope_table
                 +tablenv(idtt+2,p_idx,3)*t_interp_dweight(3)
 ! DERIVATIVES OF LN CP
            do k_idx = 1,3
-              interp_x(k_idx) = dlog(tablenv(t_idx,idp+k_idx-1,5))
+              interp_x(k_idx) = log(tablenv(t_idx,idp+k_idx-1,5))
            end do
            dlncp_dlnp = interp_x(1)*p_interp_dweight(1)+ &
                 interp_x(2)*p_interp_dweight(2)+interp_x(3)*p_interp_dweight(3)
            do k_idx = 1,3
               ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
-            interp_x(k_idx) = dlog(tablenv(ii,jj,5))
+            interp_x(k_idx) = log(tablenv(ii,jj,5))
            end do
            dlncp_dlnt = interp_x(1)*t_interp_dweight(1)+ &
                 interp_x(2)*t_interp_dweight(2)+interp_x(3)*t_interp_dweight(3)

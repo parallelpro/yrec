@@ -34,12 +34,12 @@
 ! conversion order, but the callees' names were fixed by earlier
 ! batches). Judgment calls made below, all verified against the
 ! actual physics/usage in this file:
-!   - BL is log10(L/Lsun) here (see BL = DLOG10(HL(M)) below), named
+!   - BL is log10(L/Lsun) here (see BL = log10(HL(M)) below), named
 !     star%log_L. It is passed into surfbc.f90's parameter
 !     named "luminosity_linear" -- that surfbc.f90 name is a misnomer
 !     inherited from that file's own earlier conversion; out of scope
 !     to fix here.
-!   - HL is the linear luminosity (L/Lsun); DLOG10(HL(M)) above proves
+!   - HL is the linear luminosity (L/Lsun); log10(HL(M)) above proves
 !     it is not itself a log quantity. Named star%luminosity_lsun (matches
 !     henyey_coefficients.f90's slot name for it). mix.f90's slot name for this
 !     same array is "log_luminosity", which is the same kind of
@@ -150,7 +150,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       ierr = 0
 
       if (max_iterations.le.0) return
-      star%log_L = dlog10(star%luminosity_lsun(star%nz))
+      star%log_L = log10(star%luminosity_lsun(star%nz))
 ! ZERO COUNTERS
       kenv = 0
       katm = 0
@@ -378,7 +378,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
           star%luminosity_lsun(i) = star%luminosity_lsun(i) + &
                correction_factor*star%elim_rhs(4,i)
        end do
-       star%log_L = dlog10(star%luminosity_lsun(star%nz))
+       star%log_L = log10(star%luminosity_lsun(star%nz))
        star%log_Teff = star%envelope_fit_coeffs(7)*star%logP(star%nz) + &
             star%envelope_fit_coeffs(8)*star%logT(star%nz) + &
             star%envelope_fit_coeffs(9)

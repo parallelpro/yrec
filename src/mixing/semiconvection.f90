@@ -218,8 +218,8 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 ! THE INSTABILITY (VP IN EQUATION 5PRIME, P. 347).
             max_overshoot_radius = max_overshoot_radius*(log_luminosity( &
                  cz_edge_idx)*star%solar_luminosity_cgs/(10.0d0*c4pi* &
-                 dexp(ln10*log_pressure(cz_edge_idx))))* &
-                 (timestep/dexp(ln10*(log_radius(cz_edge_idx)+ &
+                 exp(ln10*log_pressure(cz_edge_idx))))* &
+                 (timestep/exp(ln10*(log_radius(cz_edge_idx)+ &
                  log_radius(cz_edge_idx))))
 ! INITIALIZE SUM.
             radius_sum = 0.0d0

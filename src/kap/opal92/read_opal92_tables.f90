@@ -52,7 +52,7 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
          do k=1, num_t
          read(star%ctrl%laol_table_unit,196,end=93) grid_temp_k, &
               (opacity_table%opal92_log10_opacity(k+(i-1)*num_t,density_index),density_index=1,num_d)
-         opacity_table%opal92_grid_logt(k)=dlog10(grid_temp_k)
+         opacity_table%opal92_grid_logt(k)=log10(grid_temp_k)
          end do
    93    num_temps_read=k-1
   196    format(18f7.3)
@@ -74,7 +74,7 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
             do k=1, num_t
                read(opal92b_unit,196,end=593) grid_temp_k, &
                     (opacity_table%opal92_log10_opacity_z2(k+(i-1)*num_t,density_index),density_index=1,num_d)
-               opacity_table%opal92_grid_logt_z2(k)=dlog10(grid_temp_k)
+               opacity_table%opal92_grid_logt_z2(k)=log10(grid_temp_k)
             end do
   593       num_temps_read=k-1
          end do

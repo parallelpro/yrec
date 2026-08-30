@@ -73,7 +73,7 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
          return 1
       end if
       density = density_cgs
-      log10_density = dlog10(density)
+      log10_density = log10(density)
 
       call esac06(hydrogen_fraction_work, t_million_k, density_cgs, &
            deriv_order, rad_flag, ierr, *999)

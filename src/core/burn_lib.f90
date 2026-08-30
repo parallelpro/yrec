@@ -1233,7 +1233,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       if (efmkt.le.1.e-2) then
          fprf=1.0
       else
-         degd=dlog10(efmkt)
+         degd=log10(efmkt)
          if (degd.ge.1.5) then
             fprf=0.0
          else
@@ -1984,16 +1984,16 @@ subroutine compute_neutrino_emission
             polx10=(1.+el2*(-13.04+el2*(133.5+el2*(1534.+el2*918.6))))
             polx11 = v1(1) + ez*(v1(2) + ez*v1(3))
             polx12 = ez3 + eli*(v1(4) + eli*(v1(5) + eli*v1(6)))
-            ex1 = dexp(-ez*v1(7)-eli-eli-ln10*dd)*polx10*polx11/polx12
+            ex1 = exp(-ez*v1(7)-eli-eli-ln10*dd)*polx10*polx11/polx12
          end if
 !C PHOTO NEUTRINOS
          polx21 = v2(1) + ez*(v2(2) + ez*v2(3))
          polx22 = ez3 + eli*(v2(4) + eli*(v2(5) + eli*v2(6)))
-         ex2 = emue*el**5*dexp(-ez*v2(7))*polx21/polx22
+         ex2 = emue*el**5*exp(-ez*v2(7))*polx21/polx22
 !C PLASMA NEUTRINOS
          polx31 = v3(1) + ez*(v3(2) + ez*v3(3))
          polx32 = ez3 + eli*(v3(4) + eli*(v3(5) + eli*v3(6)))
-         ex3 = emue**3*dexp(-ez*v3(7)+ln10*(dd+dd))*polx31/polx32
+         ex3 = emue**3*exp(-ez*v3(7)+ln10*(dd+dd))*polx31/polx32
          star%neutrino_loss_rate = -(ex1 + ex2 + ex3)
          total_energy_gen_rate = total_energy_gen_rate + star%neutrino_loss_rate
          qetnx = 0.0

@@ -81,7 +81,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       pr = beta1*pressure
       ramu = gas_constant*ion_mean_weight_inverse
       ramut = ramu*temperature
-      emul = dlog10(electron_mean_weight_inverse)
+      emul = log10(electron_mean_weight_inverse)
       emul8 = emul
 !  PE IS TABULATED AS A FUNCTION OF X(=LOG D - LOG MUE - 3/2LOG T) AND
 !  Y(= LOG T). FIND INDEX(JT1,JT2,JT3) FOR 3 PT INTERPOLATION IN Y.
@@ -163,9 +163,9 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       pel =  cl1*ff(1,1) +  cl2*ff(1,2) +  cl3*ff(1,3)
       dpel1 = dcl1*ff(1,1) + dcl2*ff(1,2) + dcl3*ff(1,3)
       dl8 = dml - emul8
-      d8 = dexp(ln10*dl8)
+      d8 = exp(ln10*dl8)
       pa = ramut*d8
-      pe = dexp(ln10*pel)
+      pe = exp(ln10*pel)
       if (use_debye_huckel_correction) then
          pdh = debye_huckel_coefficient*cmfdh*sqrt(d8/temperature)*d8
       end if
@@ -174,7 +174,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
          pt = pt + pdh
          pdhp = pdh/pt
       end if
-      ptl = dlog10(pt)
+      ptl = log10(pt)
       pr7 = (pa + pe*dpel1)/pt
       if (use_debye_huckel_correction) then
          pr7 = pr7 + 1.5d0*pdhp
@@ -188,10 +188,10 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
 ! AND THE TRUE P; IF TOO LARGE INCREMENT RHO AND TRY AGAIN.
       factor=dabs(pr8)
       if(factor .lt. 1d-15) factor = 1d-15
-      pr8l=dlog10(factor)
-      pr9l=dlog10(dabs(pr9))
-      factl=dlog10(0.5d0)+pr9l+2.d0*pr8l
-      fact=dexp(ln10*factl)
+      pr8l=log10(factor)
+      pr9l=log10(dabs(pr9))
+      factl=log10(0.5d0)+pr9l+2.d0*pr8l
+      fact=exp(ln10*factl)
       fact=dsign(fact,pr9)
       corr=-pr8-fact
 !  limit range of changes in density to a factor of 10**4   llp  1/31/07
@@ -222,7 +222,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
        ffe(kk) = cl1*ff(kk,1) + cl2*ff(kk,2) + cl3*ff(kk,3)
       end do
 ! DERIVATIVES OF P
-      peq = dexp(ln10*ffe(3))
+      peq = exp(ln10*ffe(3))
       qped = ffe(4)
       qqpedd =(dcl1*ff(4,1) + dcl2*ff(4,2) + dcl3*ff(4,3))*clni
       pr1 = df1(3,1)+ttdcu*df2(3,1)
@@ -260,8 +260,8 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       dlnrho_dlnp_dt = -qpt*qdpp - qqpdt*pr1
       dlnrho_dlnt_dt = -qpt*dlnrho_dlnp_dt - dlnrho_dlnp*(qqptt + dlnrho_dlnt*qqpdt)
 ! INTERNAL ENERGY TERM(U) AND ITS DERIVATIVES
-      ue  = dexp(ln10*(ffe(2) + emul))
-      ueq = dexp(ln10*(ffe(5) + emul))
+      ue  = exp(ln10*(ffe(2) + emul))
+      ueq = exp(ln10*(ffe(5) + emul))
       pr1 = df1(5,1)+ttdcu*df2(5,1)
       pr2 = df1(5,2)+ttdcu*df2(5,2)
       pr3 = df1(5,3)+ttdcu*df2(5,3)

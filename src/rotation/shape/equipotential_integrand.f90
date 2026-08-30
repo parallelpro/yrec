@@ -45,7 +45,7 @@ subroutine equipotential_integrand(colatitude, local_gravity, area_element, r0, 
 ! CALCULATE THE DERIVATIVES OF PHI WITH RESPECT TO R AND THETA
 ! D(PHI)/DR = GM/R2 + 12PI*G*P2*AINT/5R**4 -4PI*G*P2*Q*(DR0/DR)/5R**3
 ! -OMEGA**2*R*SIN(THETA)**2 - ASSUME DR0/DR = 1
-      qphir = dexp(ln10*(cgl+log_mass(i)))/r2 - const*p2*(3.0d0*aint &
+      qphir = exp(ln10*(cgl+log_mass(i)))/r2 - const*p2*(3.0d0*aint &
            - r*q*qr0r) - w2*r*ss
 ! D(PHI)/D(THETA) = 4PI*G*3DCOS(THETA)DSIN(THETA)*AINT/5R**4 -
 ! 4PI*G*P2*Q*DR0/D(THETA)/5R**4 - OMEGA**2*R*DCOS(THETA)SIN(THETA)

@@ -62,9 +62,9 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
             mean_charge = mean_charge+number_density(species_idx)*z(species_idx)
          end do
          mean_charge = mean_charge/number_density_sum
-         temperature_cgs = dexp(ln10*log_temperature(shell_idx))
+         temperature_cgs = exp(ln10*log_temperature(shell_idx))
          temperature_sq = temperature_cgs**2
-         density_cgs = dexp(ln10*log_density(shell_idx))
+         density_cgs = exp(ln10*log_density(shell_idx))
          electron_number_density = mean_charge*density_cgs/amu
 !  RADIATIVE DYNAMIC VISCOSITY (ELECTRON SCATTERING ONLY):
 !  METHOD USED(VISCR) IS FROM LEDOUX,1958,HANDBUCH DER PHYSIK VOL.LI,P.445
@@ -79,7 +79,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 !  AGAIN, ENDAL-SOFIA METHOD STORED IN VISMO2 FOR COMPARISON PURPOSES.
 !  ACTUAL MOLECULAR VISCOSITY USED STORED IN VISMOL.
          mfp_temperature_factor = dmin1(1.0d0,4.2d5/temperature_cgs)
-         coulomb_log_factor = 9.424536845d0+0.5d0*dlog(temperature_sq* &
+         coulomb_log_factor = 9.424536845d0+0.5d0*log(temperature_sq* &
               temperature_cgs*mfp_temperature_factor/ &
               (electron_number_density*mean_charge**2))
          molecular_coeff = 3.125d-15*dsqrt(temperature_cgs)*temperature_sq
@@ -89,7 +89,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
             if(species_idx.eq.3) cycle
             species_coeff = molecular_coeff*number_density(species_idx)* &
                  dsqrt(weight(species_idx))/ &
-                 ((coulomb_log_factor-dlog(z(species_idx)))*z(species_idx)**2)
+                 ((coulomb_log_factor-log(z(species_idx)))*z(species_idx)**2)
             species_sum = 0.0d0
             do species_idx2 = 1,11
                if(species_idx2.eq.3) cycle
@@ -114,7 +114,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
             viscosity_endal_sofia_species(species_idx) = endal_sofia_coeff* &
                  composition(species_idx,shell_idx)/ &
                  (dsqrt(weight(species_idx))*z(species_idx)**4* &
-                 (coulomb_log_factor-dlog(z(species_idx))))
+                 (coulomb_log_factor-log(z(species_idx))))
             if(viscosity_endal_sofia_species(species_idx).gt.0.0d0) &
                  viscosity_molecular_endal_sofia = viscosity_molecular_endal_sofia+ &
                  viscosity_endal_sofia_species(species_idx)

@@ -367,7 +367,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             ramp_weight = (log10_temperature - star%ctrl%molecular_opacity_logt_min) / &
                  (star%ctrl%molecular_opacity_logt_max - star%ctrl%molecular_opacity_logt_min)
             opacity = ramp_weight*opacity + (1.0d0 - ramp_weight)*atm_opacity
-            log10_opacity = dlog10(opacity)
+            log10_opacity = log10(opacity)
             dlnkap_dlnrho = ramp_weight*dlnkap_dlnrho + &
                  (1.0d0 - ramp_weight)*atm_dlnkap_dlnrho
             dlnkap_dlnt = ramp_weight*dlnkap_dlnt + &
@@ -409,7 +409,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          else
 !           Do Hubbard Lampe conductive opacity calculation
             log10_conductive_opacity = &
-                 dlog10(1.0d0 - 0.6d0*hydrogen_fraction) - 14.6196d0 - &
+                 log10(1.0d0 - 0.6d0*hydrogen_fraction) - 14.6196d0 - &
                  (3.5853d0 + 0.1386d0*log10_density)*log10_density + &
                  (5.1324d0 - 0.3219d0*log10_temperature)*log10_temperature + &
                  0.3901d0*log10_density*log10_temperature
@@ -427,7 +427,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     Add the opacities appropriately
       opacity = radiative_opacity*conductive_opacity / &
            (radiative_opacity + conductive_opacity)  ! e.g. 1/O = 1/OX + 1/OC
-      log10_opacity = dlog10(opacity)
+      log10_opacity = log10(opacity)
       dlnkap_dlnrho = (radiative_dlnkap_dlnrho + conductive_dlnkap_dlnrho - &
            (radiative_opacity*radiative_dlnkap_dlnrho + &
            conductive_opacity*conductive_dlnkap_dlnrho) / &

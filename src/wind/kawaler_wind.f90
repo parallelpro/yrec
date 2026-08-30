@@ -75,10 +75,10 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       endif
       if (wind_loss_active) then
 ! FIND TOTAL RADIUS OF STAR.
-         gravity_cgs = dexp(ln10*cgl)
+         gravity_cgs = exp(ln10*cgl)
          log10_radius=0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
               csigl-4.d0*log_teff)
-         total_radius_cm = dexp(ln10*log10_radius)
+         total_radius_cm = exp(ln10*log10_radius)
 ! DMDOT IS THE MASS LOSS RATE IN SOLAR MASSES PER YEAR.
          mass_loss_rate_msun_yr = 2.0d-14
 ! DJ/DT = DT*CONSTFACTOR*(DMDOT/1.0D-14)**EXMD*OMEGA**EXW*(M/MSUN)**EXM

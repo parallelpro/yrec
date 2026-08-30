@@ -202,24 +202,24 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
 !       IF(LROT) THEN
 !  CALCULATE D(LOG FP)/D(LOG R) AND D(LOG FT)/D(LOG R)
 !     *                 (CLN*(HR(IM+1) - HR(IM-1)))
-!              QFTR = (DLOG(FT(IM+1)) - DLOG(FT(IM-1)))/
+!              QFTR = (log(FT(IM+1)) - log(FT(IM-1)))/
 !     *                 (CLN*(HR(IM+1) - HR(IM-1)))
 !             ELSE
-!              QFPR = (DLOG(FP(M)) - DLOG(FP(M-1)))/
+!              QFPR = (log(FP(M)) - log(FP(M-1)))/
 !     *                 (CLN*(HR(M) - HR(M-1)))
-!              QFTR = (DLOG(FT(M)) - DLOG(FT(M-1)))/
+!              QFTR = (log(FT(M)) - log(FT(M-1)))/
 !     *                 (CLN*(HR(M) - HR(M-1)))
 !     *              (CLN*(HR(2) - HR(1)))
-!             QFTR = (DLOG(FT(2)) - DLOG(FT(1)))/
+!             QFTR = (log(FT(2)) - log(FT(1)))/
 !     *              (CLN*(HR(2) - HR(1)))
 !          ENDIF
 !       ENDIF
        qtemp = c4pil + zone_log_radius + zone_log_radius + zone_log_radius
-       eq_r_val =+dexp(ln10*(zone_log_mass - zone_log10_density - qtemp))
+       eq_r_val =+exp(ln10*(zone_log_mass - zone_log10_density - qtemp))
        dqr_dr = - eq_r_val - eq_r_val - eq_r_val
        dqr_dp = -eq_r_val*dlnrho_dlnp
        dqr_dt = -eq_r_val*dlnrho_dlnt
-       star%pulse%qp =-dexp(ln10*(cgl + zone_log_mass + zone_log_mass - &
+       star%pulse%qp =-exp(ln10*(cgl + zone_log_mass + zone_log_mass - &
             zone_log_pressure - qtemp - zone_log_radius ))*star%fp_rot(im)
 !       QPR = -QP - QP - QP - QP*(1.0D0 - QFPR)
        dqp_dr = -star%pulse%qp - star%pulse%qp - star%pulse%qp - star%pulse%qp

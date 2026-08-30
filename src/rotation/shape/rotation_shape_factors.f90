@@ -60,7 +60,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       call shape(log_density, log_radius, log_mass, 1, num_points, omega, &
            eta2, r0)
       b_coefficient = 0.125d0*c4pi
-      newton_g = dexp(ln10*cgl)
+      newton_g = exp(ln10*cgl)
       eps = 1.0d-6
       jmax = 2
       k = 2
@@ -79,12 +79,12 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
 ! NOW CALCULATE FP AND FT USING THE ETA2 AND R0 VALUES
       do i = 1,num_points
          density = exp(ln10*log_density(i))
-         g_times_mass = newton_g*dexp(ln10*log_mass(i))
+         g_times_mass = newton_g*exp(ln10*log_mass(i))
          centrifugal_factor = 5.0d0*cc13*omega(i)**2/ &
               (g_times_mass*(2.0d0+eta2(i)))
          r0_cubed = r0(i)**3
          distortion_a = centrifugal_factor*r0_cubed
-         shell_mass = dexp(ln10*log_mass(i))
+         shell_mass = exp(ln10*log_mass(i))
          eta22 = eta2(i)+2.0d0
          omega_sq = omega(i)**2
          extrap_step(1) = 1.0d0
@@ -112,12 +112,12 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
          call qgauss(equipotential_integrand, g0, ginv0, sphi, b_coefficient, r0, log_mass, &
               aint, q, omega_sq, distortion_a, i)
          mean_gravity(i) = g0/sphi
-         ginv = dlog10(ginv0)
+         ginv = log10(ginv0)
          f0 = c4pil + 4.0d0*log_radius(i) - ginv
-         pressure_rotation_factor(i) = dexp(ln10*(f0 - cgl - log_mass(i)))
-         temperature_rotation_factor(i) = dexp(ln10*(f0 + c4pil))/g0
+         pressure_rotation_factor(i) = exp(ln10*(f0 - cgl - log_mass(i)))
+         temperature_rotation_factor(i) = exp(ln10*(f0 + c4pil))/g0
 ! OUTPUT DATA
-         rphi = dexp(ln10*log_radius(i))
+         rphi = exp(ln10*log_radius(i))
          rphi3 = rphi**3
          rot_scr%phisp(i) = g_times_mass/rphi
          rot_scr%phirot(i) =  omega_sq*rphi**2

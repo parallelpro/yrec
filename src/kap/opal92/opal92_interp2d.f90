@@ -11,7 +11,7 @@
 ! TWO DIMENSIONAL INTERPOLATION FOR OPACITY AND THE DERIVATIVES
 ! (OPAL92 tables). abund_index, temp_index, and dens_index are the
 ! nearest grid point of abundance, temperature, and density found by
-! yllo3d. opacity is opacity, log10_opacity is dlog(opacity),
+! yllo3d. opacity is opacity, log10_opacity is log(opacity),
 ! dlnkap_dlnrho is the partial derivative of opacity wrt density,
 ! dlnkap_dlnt is the partial derivative of opacity wrt temperature.
 subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &

@@ -287,9 +287,9 @@ subroutine integrate_atmosphere
 ! GUESS THE TEMPERATURE FOR AN OPTICAL DEPTH NEAR ZERO.
       err_sum(1) = 0.0d0
       if(star%job%atm_choice .eq. 0) then
-            log10_temperature = log10_teff - 0.031235d0 + 0.25d0*dlog10(cc23)
+            log10_temperature = log10_teff - 0.031235d0 + 0.25d0*log10(cc23)
       else if (star%job%atm_choice .eq. 1) then
-            log10_temperature = log10_teff - 0.031235d0 + 0.25d0*dlog10(0.550d0)
+            log10_temperature = log10_teff - 0.031235d0 + 0.25d0*log10(0.550d0)
       else if (star%job%atm_choice .eq. 2) then
             log10_temperature = log10_teff + harvard_t_tau(cc23) - star%atm_hras
       end if
@@ -300,12 +300,12 @@ subroutine integrate_atmosphere
       atm_density_guess = star%ctrl%atm_step_initial
       atm_retry: do
 ! Return point if X0 > XLIM (was label 1998)
-      temperature = dexp(ln10*log10_temperature)
+      temperature = exp(ln10*log10_temperature)
 ! FIND THE PRESSURE CORRESPONDING TO THIS T AND THE DENSITY CHOSEN
 ! FOR THE START OF THE ATMOSPHERE INTEGRATION.
 
-!      PL = DLOG10((CGAS*ATMD0 + CA3*T**3)*T)
-      log10_pressure = dlog10((gas_constant*atm_density_guess + &
+!      PL = log10((CGAS*ATMD0 + CA3*T**3)*T)
+      log10_pressure = log10((gas_constant*atm_density_guess + &
            radiation_constant_over_3*temperature**3)*temperature)
 
 ! NOW FIND THE OPTICAL DEPTH(X0) WHERE THE ATMOSPHERE INTEGRATION BEGINS.
@@ -367,9 +367,9 @@ subroutine integrate_atmosphere
       log10_opacity = kap_res(i_log10_kap)
       dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
       dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
-      indep_var = log10_pressure - log10_gravity + dlog10(opacity)
+      indep_var = log10_pressure - log10_gravity + log10(opacity)
       y(1) = log10_pressure
-      dydx(1) = dexp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))
+      dydx(1) = exp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))
 ! DBG PULSE INITIAL POINT FOR PULSATION
 
 
@@ -474,12 +474,12 @@ subroutine integrate_atmosphere
 ! .store stitch, preserved -- it only affects the outermost
 ! atmosphere point's depth).
        opacity_now = star%pulse%qo
-       density_now = dexp(ln10*star%pulse%qdl)
-       tau_now = dexp(ln10*atm_table%atm_tau)
+       density_now = exp(ln10*star%pulse%qdl)
+       tau_now = exp(ln10*atm_table%atm_tau)
        delta_tau_step =  (tau_now - prev_tau)/(((density_now*opacity_now)+(prev_density*prev_opacity))/2)
        prev_opacity = opacity_now
 !FROM FIRST LINES OF TPGRAD
-       pulse_radiative_gradient = star%pulse%qo*luminosity_linear*dexp(ln10*(star%pulse%qpl-log10_star_mass-4.0d0*star%pulse%qtl+star%log10_solar_luminosity-cgl+ &
+       pulse_radiative_gradient = star%pulse%qo*luminosity_linear*exp(ln10*(star%pulse%qpl-log10_star_mass-4.0d0*star%pulse%qtl+star%log10_solar_luminosity-cgl+ &
               cdelrl))*temperature_rotation_factor/pressure_rotation_factor
        if (pulse_radiative_gradient-star%pulse%qdela .le. 1.0d-6) then
          pulse_gradient = pulse_radiative_gradient

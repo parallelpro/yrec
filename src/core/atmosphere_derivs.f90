@@ -51,16 +51,16 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       external harvard_t_tau
 
 ! EDDINGTON APPROXIMATION
-      ttaul0(yy) = log10_teff - 0.031235d0 + 0.25d0*dlog10(yy + cc23)
+      ttaul0(yy) = log10_teff - 0.031235d0 + 0.25d0*log10(yy + cc23)
 
 ! KRISHNA-SWAMY APPROXIMATION (BASED ON FIT TO SOLAR ATMOSPHER)
 ! SEE KRISHNA-SWAMY, AP.J. 1966, 145, 176.
-      ttaul1(yy) = log10_teff - 0.031235d0 + 0.25d0*dlog10(yy + &
+      ttaul1(yy) = log10_teff - 0.031235d0 + 0.25d0*log10(yy + &
           1.39d0 - 0.815d0*exp(-2.54d0*yy) - 0.025d0*exp(-30.0d0*yy))
 
-      effective_gravity = dexp(ln10*log10_gravity)*pressure_rotation_factor
+      effective_gravity = exp(ln10*log10_gravity)*pressure_rotation_factor
       atm_table%atm_tau = log10_optical_depth
-      optical_depth = dexp(ln10*atm_table%atm_tau)
+      optical_depth = exp(ln10*atm_table%atm_tau)
 ! USE KTTAU TO IMPLIMENT FUTURE T TAU RELATIONS
       if (star%job%atm_choice .eq. 0) then
             log10_temperature = ttaul0(optical_depth)
@@ -95,11 +95,11 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       atm_table%atm_ion_fraction(2) = eos_res(i_fxion+1)
       atm_table%atm_ion_fraction(3) = eos_res(i_fxion+2)
       star%pulse%qtl = log10_temperature
-      star%pulse%qt = dexp(ln10*log10_temperature)
+      star%pulse%qt = exp(ln10*log10_temperature)
       star%pulse%qpl = log10_pressure
-      star%pulse%qp = dexp(ln10*log10_pressure)
+      star%pulse%qp = exp(ln10*log10_pressure)
       star%pulse%qdl = eos_res(i_log10_density)
-      star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
+      star%pulse%qd = exp(ln10*eos_res(i_log10_density))
       star%pulse%qo = kap_res(i_kap)
       star%pulse%qol = kap_res(i_log10_kap)
       star%pulse%qqdp = eos_res(i_dlnrho_dlnp)

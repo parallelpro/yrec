@@ -157,7 +157,7 @@ subroutine locate_core_cz
              (star%grada(star%core_cz_top_index+1)-star%gradr(star%core_cz_top_index))
        core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
             (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-star%log10_solar_radius
-       core_boundary_radius = dexp(ln10*core_boundary_log_radius)
+       core_boundary_radius = exp(ln10*core_boundary_log_radius)
       else
        core_boundary_radius = 0.0D0
       endif
@@ -184,11 +184,11 @@ subroutine compute_central_conditions(ierr)
       eos_res = 0.0d0
 
 !  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
-      temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+star%logRho(1)-star%log_mass(1))+star%logRho(1)+cgl+star%log_mass(1)))
-      pressure_linear = dexp(ln10*star%logP(1))
-      log_pressure_center = dlog10(pressure_linear + temp_value)
+      temp_value =0.5D0*exp(ln10*(cc13*(c4pi3l+star%logRho(1)-star%log_mass(1))+star%logRho(1)+cgl+star%log_mass(1)))
+      pressure_linear = exp(ln10*star%logP(1))
+      log_pressure_center = log10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%gradT(1)/pressure_linear)
+      log_temperature_center = star%logT(1) + log10(1.0D0+ temp_value*star%gradT(1)/pressure_linear)
       eos_res(i_log10_density) = star%logRho(1)
       hydrogen_fraction_center = star%xa(i_h1,1)
       metal_fraction_center = star%xa(i_metals,1)

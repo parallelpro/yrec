@@ -93,7 +93,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       end if
 ! find gas pressure (which is the quantity which is tabulated).
       beta_complement = 1.0d0 - beta
-      log10_gas_pressure = dlog10(beta*pressure)
+      log10_gas_pressure = log10(beta*pressure)
 !  check if the point is within the table
       if (log10_temperature.lt.tlogx(1) .or. &
            log10_temperature.gt.tlogx(nts) .or. &

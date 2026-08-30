@@ -1673,7 +1673,7 @@ subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
 !  q is the integrand (ro'**7,etc.) evaluated at r0(i)
 !  aint and its derivatives w/r/to r and theta are needed to find <g>
        q = (rho*w2*r03*(3.0d0+eta22)/(sm*eta22))*r03*r0
-!        q(i) = dexp(cln*(hd(i)-hs(i)))*omega(i)**2*r0(i)**6
+!        q(i) = exp(cln*(hd(i)-hs(i)))*omega(i)**2*r0(i)**6
 !    *   *(5.0d0+eta2(i))/(2.0d0+eta2(i))
        s = 0.5d0*(b2-b1)*(qp+q)
        it = 1

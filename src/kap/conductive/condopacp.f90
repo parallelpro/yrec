@@ -80,7 +80,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
          read(file_unit,'(A)') ! skip the first line
         do z_index=1,n_z_grid
            read(file_unit,*) z_grid_value,(cond_table%temp_grid(t_index),t_index=1,n_temp_grid)
-           cond_table%z_grid(z_index)=dlog10(z_grid_value)
+           cond_table%z_grid(z_index)=log10(z_grid_value)
           do r_index=1,n_rho_grid
              read(file_unit,*) cond_table%rho_grid(r_index), &
                   (cond_table%log10_kappa_table(t_index,r_index,z_index),t_index=1,n_temp_grid)
@@ -95,7 +95,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
 !         print*,'Potekhin Conductivity File read in.'
       endif
       ierr = 0
-      log10_ion_charge=dlog10(ion_charge)
+      log10_ion_charge=log10(ion_charge)
       call hunt(cond_table%z_grid,n_z_grid,log10_ion_charge,z_index)
       if (z_index.eq.0.or.z_index.eq.n_z_grid) stop 'CONINTER: Z out of range'
       call hunt(cond_table%temp_grid,n_temp_grid,log10_temperature,t_index)

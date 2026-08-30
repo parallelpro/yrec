@@ -180,7 +180,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! NEW ENVELOPE NEEDED
           envelope_recomputed_flag = .true.
           log10_teff = tri_teffl(i)
-          b = dexp(ln10*tri_logl(i))
+          b = exp(ln10*tri_logl(i))
           rl = 0.5d0*(tri_logl(i) + star%log10_solar_luminosity - 4.0d0*log10_teff - c4pil - csigl)
           gl = cgl + log10_star_mass - rl - rl
           numenv = numenv + 1

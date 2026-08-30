@@ -82,10 +82,10 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
            want_derivatives, is_convective, pressure_rotation_factor, &
            temperature_rotation_factor, log10_teff, jerr)
       if (jerr /= 0) stop
-      dydx(1) = -dexp(ln10*(c4pil+4.0d0*log10_radius+log10_pressure-cgl- &
+      dydx(1) = -exp(ln10*(c4pil+4.0d0*log10_radius+log10_pressure-cgl- &
            log10_mass-log10_mass))/pressure_rotation_factor
       dydx(2) = actual_gradient
-      dydx(3) = -dexp(ln10*(log10_pressure+log10_radius-cgl-log10_mass- &
+      dydx(3) = -exp(ln10*(log10_pressure+log10_radius-cgl-log10_mass- &
            eos_res(i_log10_density)))*pressure_rotation_factor
       env_call_count = env_call_count + 1
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
@@ -116,11 +116,11 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
 ! physics reads them), so save unconditionally.
       star%current_opacity = kap_res(i_kap)
       star%pulse%qtl = log10_temperature
-      star%pulse%qt = dexp(ln10*log10_temperature)
+      star%pulse%qt = exp(ln10*log10_temperature)
       star%pulse%qpl = log10_pressure
-      star%pulse%qp = dexp(ln10*log10_pressure)
+      star%pulse%qp = exp(ln10*log10_pressure)
       star%pulse%qdl = eos_res(i_log10_density)
-      star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
+      star%pulse%qd = exp(ln10*eos_res(i_log10_density))
       star%pulse%qo = kap_res(i_kap)
       star%pulse%qol = kap_res(i_log10_kap)
       star%pulse%qqod = kap_res(i_dlnkap_dlnrho)

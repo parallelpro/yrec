@@ -13,7 +13,7 @@
 ! (OPAL92 second-Z tables). abund_index, temp_index, and dens_index
 ! are the nearest grid point of abundance, temperature, and density
 ! found by yllo3d2. opacity is opacity, log10_opacity is
-! dlog(opacity), dlnkap_dlnrho is the partial derivative of opacity
+! log(opacity), dlnkap_dlnrho is the partial derivative of opacity
 ! wrt density, dlnkap_dlnt is the partial derivative of opacity wrt
 ! temperature.
 subroutine opal92_interp2d_z2(temperature, density, abund_index, temp_index, &

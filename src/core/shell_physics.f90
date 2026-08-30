@@ -193,7 +193,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
               star%grada(k+3)*interp_weights(4)
          gravity_mid = hg(k)*interp_weights(1) + hg(k+1)*interp_weights(2) + &
               hg(k+2)*interp_weights(3) + hg(k+3)*interp_weights(4)
-         temp_scratch = dexp(ln10*(density_mid - pressure_mid))* &
+         temp_scratch = exp(ln10*(density_mid - pressure_mid))* &
               (adiabatic_grad_mid - actual_grad_mid)*gravity_mid**2
          if (temp_scratch.gt.0.0d0) then
             rot_scr%max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)

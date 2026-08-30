@@ -54,20 +54,20 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
 ! DETACHED FROM WHAT IS HAPPENING IN THE CONVECTION ZONE
       else if(star%ctrl%solid_body_mode_flag.eq.2)then
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
-         cz_total_mass = dexp(ln10*star%ctrl%walpcz*log_radius(istart))* &
+         cz_total_mass = exp(ln10*star%ctrl%walpcz*log_radius(istart))* &
               moment_of_inertia(istart)
          do zone_idx = istart+1,iend
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + &
-                 dexp(ln10*star%ctrl%walpcz*log_radius(zone_idx))* &
+                 exp(ln10*star%ctrl%walpcz*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
          end do
 
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
          power_law_norm = cz_total_am/cz_total_mass
          do zone_idx = istart,iend
-            omega(zone_idx) = power_law_norm*dexp(ln10*star%ctrl%walpcz* &
+            omega(zone_idx) = power_law_norm*exp(ln10*star%ctrl%walpcz* &
                  log_radius(zone_idx))
             specific_angular_momentum(zone_idx) = omega(zone_idx)* &
                  moment_of_inertia(zone_idx)/shell_mass(zone_idx)
@@ -87,14 +87,14 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
 ! SOLID BODY AT THE RATE OF THE BASE OF THE CONVECTION ZONE.
       else if(star%ctrl%solid_body_mode_flag.eq.3) then
          cz_total_am = specific_angular_momentum(1)*shell_mass(1)
-         cz_total_mass = dexp(ln10*star%ctrl%walpcz*log_radius(istart))* &
+         cz_total_mass = exp(ln10*star%ctrl%walpcz*log_radius(istart))* &
               moment_of_inertia(1)
          if (istart.gt.1) then
             do zone_idx = 2,istart
                cz_total_am = cz_total_am + &
                     specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
                cz_total_mass = cz_total_mass + &
-                    dexp(ln10*star%ctrl%walpcz*log_radius(istart))* &
+                    exp(ln10*star%ctrl%walpcz*log_radius(istart))* &
                     moment_of_inertia(zone_idx)
             end do
          endif
@@ -102,14 +102,14 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + &
-                 dexp(ln10*star%ctrl%walpcz*log_radius(zone_idx))* &
+                 exp(ln10*star%ctrl%walpcz*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
          end do
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
 
          power_law_norm = cz_total_am/cz_total_mass
          do zone_idx = istart,iend
-            omega(zone_idx) = power_law_norm*dexp(ln10*star%ctrl%walpcz* &
+            omega(zone_idx) = power_law_norm*exp(ln10*star%ctrl%walpcz* &
                  log_radius(zone_idx))
             specific_angular_momentum(zone_idx) = omega(zone_idx)* &
                  moment_of_inertia(zone_idx)/shell_mass(zone_idx)
@@ -160,19 +160,19 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
 !  MASS).
 !  FIND TOTAL MASS AND ANGULAR MOMENTUM OF C.Z.
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
-         cz_total_mass = dexp(ln10*star%ctrl%walpcz*log_radius(istart))* &
+         cz_total_mass = exp(ln10*star%ctrl%walpcz*log_radius(istart))* &
               moment_of_inertia(istart)
          do zone_idx = istart+1,iend
             cz_total_am = cz_total_am + &
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + &
-                 dexp(ln10*star%ctrl%walpcz*log_radius(zone_idx))* &
+                 exp(ln10*star%ctrl%walpcz*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
          end do
 !  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
          power_law_norm = cz_total_am/cz_total_mass
          do zone_idx = istart,iend
-            omega(zone_idx) = power_law_norm*dexp(ln10*star%ctrl%walpcz* &
+            omega(zone_idx) = power_law_norm*exp(ln10*star%ctrl%walpcz* &
                  log_radius(zone_idx))
             specific_angular_momentum(zone_idx) = omega(zone_idx)* &
                  moment_of_inertia(zone_idx)/shell_mass(zone_idx)

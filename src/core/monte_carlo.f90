@@ -95,7 +95,7 @@ subroutine apply_monte_carlo_parameters(monte_carlo_run_number, &
          monte_helium_diffusion_fraction = star%job%helium_fraction_param(monte_carlo_run_number)
          star%job%fgrz = star%job%diffusion_factor(monte_carlo_run_number)
          star%solar_luminosity_cgs = reference_solar_luminosity*star%job%luminosity_target(monte_carlo_run_number)
-         star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
+         star%log10_solar_luminosity = log10(star%solar_luminosity_cgs)
          star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
          age_scale_factor = star%job%age_target(monte_carlo_run_number)
 ! timestep and final age are altered in SR SETCAL; input #s should be

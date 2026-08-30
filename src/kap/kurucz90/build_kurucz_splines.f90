@@ -43,7 +43,7 @@ subroutine build_kurucz_splines(ierr)
             if (jd.le.0) opacity_table%kurucz_density_start_index(index1) = id
             jd = jd + 1
             density_nodes(jd) = chkd
-            spline_work(1,jd) = dlog10(chko)
+            spline_work(1,jd) = log10(chko)
          end do
          opacity_table%kurucz_density_count(index1) = jd
          if (opacity_table%kurucz_density_start_index(index1).ne.1) then
@@ -82,7 +82,7 @@ subroutine build_kurucz_splines(ierr)
                if (jd.le.0) opacity_table%kurucz2_density_start_index(index1) = id
                jd = jd + 1
                density_nodes(jd) = chkd
-               spline_work(1,jd) = dlog10(chko)
+               spline_work(1,jd) = log10(chko)
             end do
             opacity_table%kurucz2_density_count(index1) = jd
             if (opacity_table%kurucz2_density_start_index(index1).ne.1) then

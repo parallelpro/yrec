@@ -477,10 +477,10 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          x_local = hydrogen_fraction
          temperature_local = temperature_1e6k*1.0d6
          d_local = density
-         log10_density = dlog10(density)
-         log10_temperature = dlog10(temperature_local)
+         log10_density = log10(density)
+         log10_temperature = log10(temperature_local)
          pressure_local = pressure
-         log10_pressure = dlog10(pressure_local)
+         log10_pressure = log10(pressure_local)
          eos_deriv_flag = .false.
          eos_atmosphere_flag = .true.
          call eqstat2(log10_temperature, temperature_local, &
