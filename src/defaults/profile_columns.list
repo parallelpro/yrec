@@ -1,11 +1,15 @@
 ! profile_columns.list
-! YREC's analogue of MESA's profile_columns.list.
-! Usage: copy this file to your run directory, delete or comment
-! out (with '!') the columns you do not want, and point the
-! &star_job control profile_columns_file at it. One column name per
-! line; order in this file is the order in the output file
-! (model_number / profile_number / num_zones always lead the
-! history file when selected). A blank control means ALL columns.
+! YREC's analogue of MESA's profile_columns.list -- and the AUTHORITY
+! on the default profile output: a blank profile_columns_file control
+! writes exactly the uncommented names below, in this order. The
+! selection is compiled in at build time (tools/gen_default_columns.py
+! -> io/default_columns.inc; make reruns it when this file changes),
+! so edit here and REBUILD to change the default output. To drop a
+! column from the default, comment it out as '!name' (no space).
+! To customize a single run instead, copy this file to the run
+! directory, comment/uncomment as desired, and point the &star_job
+! control profile_columns_file at the copy. One column name per
+! line; order in the file is the order in the output file.
 ! Unknown names are fatal, with the valid list written to the log.
 
 zone                      ! 1 = surface (integer)

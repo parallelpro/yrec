@@ -108,6 +108,9 @@ jobs:
       - name: Generated dependencies are fresh
         run: python3 src/tools/gen_makefile_deps.py --check
 
+      - name: Generated default column selections are fresh
+        run: python3 src/tools/gen_default_columns.py --check
+
       - name: Build yrec
         run: make -C src -j4
 

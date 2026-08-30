@@ -40,10 +40,12 @@ module yrec_output
 
       integer, parameter :: max_cols = 128
       integer, parameter :: n_hist_cols = 86
-! columns beyond n_hist_default exist but are NOT written by default
-! (blank history_columns_file selects 1..n_hist_default); list them
-! in a history_columns_file to get them (2026: the seismic pair).
-      integer, parameter :: n_hist_default = 84
+! the default column selections (blank history_columns_file /
+! profile_columns_file) are compiled in from
+! defaults/{history,profile}_columns.list: uncommented names, file
+! order. Opt-in columns (2026: the seismic pair) ship commented out
+! there; uncomment and rebuild to write them by default.
+      include 'default_columns.inc'
 
       character(len=256) :: out_dir = ' '
       character(len=256) :: hist_path = ' '
@@ -103,7 +105,7 @@ subroutine output_init_mesa(log_output_file, ierr)
       ierr = 0
       call history_column_names(hist_names)
       call parse_columns(star%ctrl%history_columns_file, hist_names, n_hist_cols, &
-           n_hist_default, hist_sel, hist_nsel, 'history', ierr)
+           hist_default_names, n_hist_default, hist_sel, hist_nsel, 'history', ierr)
       if (ierr /= 0) return
 ! model_number / profile_number / num_zones lead the file whenever
 ! they are selected, in that fixed order (they are columns 1-3 of the
@@ -111,7 +113,7 @@ subroutine output_init_mesa(log_output_file, ierr)
       call hoist_id_columns(hist_sel, hist_nsel)
       call profile_column_names(prof_names)
       call parse_columns(star%ctrl%profile_columns_file, prof_names, n_prof_cols, &
-           n_prof_cols, prof_sel, prof_nsel, 'profile', ierr)
+           prof_default_names, n_prof_default, prof_sel, prof_nsel, 'profile', ierr)
       if (ierr /= 0) return
 ! 2026 io-writer stops -> ierr: fail GSM-without-HDF5 at config time
 ! (the stub's stop at first write remains only as a last resort).
@@ -212,24 +214,26 @@ end subroutine output_write_model
 ! blank lines ignored. Blank/absent control -> all columns in the
 ! built-in order. Unknown names are fatal (config error), with the
 ! valid names listed in the log.
-subroutine parse_columns(fname, names, ncol, ndefault, sel, nsel, label, ierr)
+subroutine parse_columns(fname, names, ncol, default_names, ndefault, &
+           sel, nsel, label, ierr)
       use luout_lib
       character(len=*), intent(in) :: fname, label
       integer, intent(out) :: ierr
       integer, intent(in) :: ncol, ndefault
-      character(len=24), intent(in) :: names(ncol)
+      character(len=24), intent(in) :: names(ncol), default_names(ndefault)
       integer, intent(out) :: sel(max_cols), nsel
       character(len=256) :: line
-      integer :: u, ios, i, j
-      logical :: found
+      integer :: u, ios, i
 
       ierr = 0
+      nsel = 0
       if (len_trim(fname) == 0) then
-! blank columns file: the default column set (columns past ndefault
-! are opt-in -- name them in a columns file to write them)
-         nsel = ndefault
+! blank columns file: the compiled-in default selection (generated
+! from defaults/<label>_columns.list -- see default_columns.inc)
          do i = 1, ndefault
-            sel(i) = i
+            call append_column(default_names(i), names, ncol, sel, nsel, &
+                 label, ierr)
+            if (ierr /= 0) return
          end do
          return
       end if
@@ -244,7 +248,6 @@ subroutine parse_columns(fname, names, ncol, ndefault, sel, nsel, label, ierr)
          ierr = 1
          return
       end if
-      nsel = 0
       do
          read(u, '(a)', iostat=ios) line
          if (ios /= 0) exit
@@ -252,26 +255,8 @@ subroutine parse_columns(fname, names, ncol, ndefault, sel, nsel, label, ierr)
          if (i > 0) line = line(1:i-1)
          line = adjustl(line)
          if (len_trim(line) == 0) cycle
-         found = .false.
-         do j = 1, ncol
-            if (trim(line) == trim(names(j))) then
-               nsel = nsel + 1
-               sel(nsel) = j
-               found = .true.
-               exit
-            end if
-         end do
-         if (.not. found) then
-            write(*,*) 'unknown ', trim(label), ' column: ', trim(line)
-            write(run_log_unit,*) 'unknown ', trim(label), &
-                 ' column: ', trim(line)
-            write(run_log_unit,*) 'valid ', trim(label), ' columns:'
-            do j = 1, ncol
-               write(run_log_unit,'(2x,a)') trim(names(j))
-            end do
-            ierr = 1
-            return
-         end if
+         call append_column(line, names, ncol, sel, nsel, label, ierr)
+         if (ierr /= 0) return
       end do
       close(u)
       if (nsel == 0) then
@@ -281,6 +266,37 @@ subroutine parse_columns(fname, names, ncol, ndefault, sel, nsel, label, ierr)
          return
       end if
 end subroutine parse_columns
+
+! ---------------------------------------------------------------
+! Look a column name up in the writer's table and append its index
+! to the selection; unknown names are fatal, with the valid list
+! written to the run log.
+subroutine append_column(name, names, ncol, sel, nsel, label, ierr)
+      use luout_lib
+      character(len=*), intent(in) :: name, label
+      integer, intent(in) :: ncol
+      character(len=24), intent(in) :: names(ncol)
+      integer, intent(inout) :: sel(max_cols), nsel
+      integer, intent(out) :: ierr
+      integer :: j
+
+      ierr = 0
+      do j = 1, ncol
+         if (trim(name) == trim(names(j))) then
+            nsel = nsel + 1
+            sel(nsel) = j
+            return
+         end if
+      end do
+      write(*,*) 'unknown ', trim(label), ' column: ', trim(name)
+      write(run_log_unit,*) 'unknown ', trim(label), &
+           ' column: ', trim(name)
+      write(run_log_unit,*) 'valid ', trim(label), ' columns:'
+      do j = 1, ncol
+         write(run_log_unit,'(2x,a)') trim(names(j))
+      end do
+      ierr = 1
+end subroutine append_column
 
 ! ---------------------------------------------------------------
 subroutine history_column_names(names)
@@ -370,7 +386,7 @@ subroutine history_column_names(names)
       names(82) = 'log_P_photosphere'
       names(83) = 'star_mass'
       names(84) = 'star_age'
-! non-default columns (see n_hist_default)
+! opt-in columns (commented out in defaults/history_columns.list)
       names(85) = 'nu_max'
       names(86) = 'delta_nu'
 end subroutine history_column_names

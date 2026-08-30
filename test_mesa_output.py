@@ -199,10 +199,16 @@ def test_mesa_output_contract(tmp_path):
 
 
 def test_default_columns_lists_in_sync():
-    """defaults/{history,profile}_columns.list must list exactly the
-    writers' column tables (they are the user-facing documentation of
-    what history_columns_file / profile_columns_file may contain)."""
+    """defaults/{history,profile}_columns.list are the authority on
+    the default output columns, compiled in by
+    tools/gen_default_columns.py (uncommented entries; '!name' marks
+    an opt-in column excluded from the default). Invariants: every
+    writer column appears in its .list exactly once, in table order
+    (so the files fully document what the columns files may contain,
+    and the default selection is a subset in output-stable order),
+    and the generated include is fresh."""
     import re
+    import subprocess
     src = (REPO / "src" / "io" / "yrec_output.f90").read_text()
 
     def harvest(sub):
@@ -211,16 +217,22 @@ def test_default_columns_lists_in_sync():
         return [n for _, n in
                 re.findall(r"names\((\d+)\)\s*=\s*'([^']+)'", m.group(1))]
 
-    def listed(fname):
+    def entries(fname):
+        # ('!name' = commented-out opt-in entry; '! prose' is skipped)
         out = []
         for line in (REPO / "src" / "defaults" / fname).read_text().splitlines():
-            line = line.split("!")[0].strip()
-            if line:
-                out.append(line)
+            m = re.match(r"^(!?)([A-Za-z]\w*)", line)
+            if m:
+                out.append(m.group(2))
         return out
 
-    assert listed("history_columns.list") == harvest("history_column_names")
-    assert listed("profile_columns.list") == harvest("profile_column_names")
+    assert entries("history_columns.list") == harvest("history_column_names")
+    assert entries("profile_columns.list") == harvest("profile_column_names")
+
+    r = subprocess.run(
+        [sys.executable, str(REPO / "src" / "tools" / "gen_default_columns.py"),
+         "--check"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
 
 
 def test_gsm_pulse_output(tmp_path):

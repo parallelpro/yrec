@@ -281,4 +281,5 @@ wind/wind_spindown_matt.o: phys_const_lib.mod star_info_lib.mod
 
 # real prerequisites: include files
 io/read_controls.o: io/inlist_new_decl.inc io/inlist_new_read.inc
+io/yrec_output.o: io/default_columns.inc
 state/star_info_lib.o: state/controls_state_def.inc state/job_controls_def.inc

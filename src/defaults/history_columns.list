@@ -1,12 +1,19 @@
 ! history_columns.list
-! YREC's analogue of MESA's history_columns.list.
-! Usage: copy this file to your run directory, delete or comment
-! out (with '!') the columns you do not want, and point the
-! &star_job control history_columns_file at it. One column name per
-! line; order in this file is the order in the output file
+! YREC's analogue of MESA's history_columns.list -- and the AUTHORITY
+! on the default history output: a blank history_columns_file control
+! writes exactly the uncommented names below, in this order. The
+! selection is compiled in at build time (tools/gen_default_columns.py
+! -> io/default_columns.inc; make reruns it when this file changes),
+! so edit here and REBUILD to change the default output. An opt-in
+! column ships commented out as '!name' (no space): remove the '!'
+! to promote it.
+! To customize a single run instead, copy this file to the run
+! directory, comment/uncomment as desired, and point the &star_job
+! control history_columns_file at the copy. One column name per
+! line; order in the file is the order in the output file
 ! (model_number / profile_number / num_zones always lead the
-! history file when selected). A blank control means ALL columns.
-! Unknown names are fatal, with the valid list written to the log.
+! history file when selected). Unknown names are fatal, with the
+! valid list written to the log.
 
 model_number              ! model counter (integer)
 profile_number            ! profile written at this model, 0 otherwise (integer)
@@ -92,7 +99,5 @@ h_shell_top_radius
 log_P_photosphere         ! log10 photospheric pressure
 star_mass                 ! total mass (Msun)
 star_age                  ! age in years
-! -- opt-in columns (NOT written by default; list them in a
-!    history_columns_file to get them) --
-nu_max                    ! scaling-relation nu_max [uHz] (nu_max_sun reference)
-delta_nu                  ! mean-density scaling delta_nu [uHz] (delta_nu_sun reference)
+!nu_max                   ! scaling-relation nu_max [uHz] (nu_max_sun reference)
+!delta_nu                 ! mean-density scaling delta_nu [uHz] (delta_nu_sun reference)

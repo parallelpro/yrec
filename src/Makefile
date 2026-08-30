@@ -65,6 +65,15 @@ OBJS := $(patsubst %.f90,%.o,$(SRCS))
 # (CI verifies with --check). The blanket order-only rule below stays
 # as coarse belt-and-braces on top of deps.mk's precise rules.
 include deps.mk
+
+# the default output column selections are GENERATED from the
+# authoritative defaults/{history,profile}_columns.list (uncommented
+# names, file order) -- edit a .list and make reruns the generator,
+# and deps.mk makes io/yrec_output.o depend on the include
+io/default_columns.inc: defaults/history_columns.list \
+                        defaults/profile_columns.list \
+                        tools/gen_default_columns.py
+	python3 tools/gen_default_columns.py
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
