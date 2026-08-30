@@ -83,7 +83,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! atm internals is returned here instead, ierr /= 0, no stop. Omitted:
 ! exactly the historical diagnostics, then a stop -- now in the funnel
 ! at the end of this subroutine rather than at the point of failure.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
 ! DBG CHANGED MAXSTEP FROM 200 TO 2000 TO GIVE ATMOSPHERE INTEGRATER A CHANCE.
       integer, parameter :: maxstp = 2000
@@ -144,17 +144,13 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       double precision :: unused_chdelj, unused_chdeld
       double precision :: x_start, taucz_env_accum, delta_radius_cz
 
-      if (present(ierr)) ierr = 0
+      ierr = 0
       jerr = 0
 
       call prepare_surface_boundary
-      if (present(ierr)) then
-         if (ierr /= 0) return
-      end if
+      if (ierr /= 0) return
       call integrate_atmosphere
-      if (present(ierr)) then
-         if (ierr /= 0) return
-      end if
+      if (ierr /= 0) return
 ! ENVELOPE INTEGRATION
 ! HERE P IS THE INDEPENDENT VARIABLE AND M,R,AND T ARE
 ! DEPENDENT VARIABLES.  INTEGRATE FROM TAU = 2/3 TO THE LAST
@@ -170,9 +166,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       end if
 
       call integrate_envelope
-      if (present(ierr)) then
-         if (ierr /= 0) return
-      end if
+      if (ierr /= 0) return
 ! 2026: the legacy taucal path (track_envelope_cz, gated by
 ! LNEWTCZ=.false.) is retired -- the turnover timescale is computed
 ! by core/turnover/turnover_timescale.f90 from the assembled
@@ -220,11 +214,8 @@ subroutine prepare_surface_boundary
 ! KURUCZ ATMOSPHERES
          call surfp(log10_teff,log10_gravity,.false.,jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
          tabulated_bc = .true.
 ! JNT 06/14
@@ -233,11 +224,8 @@ subroutine prepare_surface_boundary
 ! KURUCZ ATMOSPHERES
          call kcsurfp(log10_teff,log10_gravity,.false.,jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
          tabulated_bc = .true.
 ! We have Kurucz atmosphere boundary conditions
@@ -245,11 +233,8 @@ subroutine prepare_surface_boundary
 ! ALLARD & HAUSCHILDT ATMOSPHERES
          call alsurfp(log10_teff,log10_gravity,.false.,allard_lookup_failed,jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
 ! Changed to Allard atmosphere code
          if(allard_lookup_failed) then
@@ -339,11 +324,8 @@ subroutine integrate_atmosphere
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
            saha_state, ierr=jerr)
       if (jerr /= 0) then
-         if (present(ierr)) then
-            ierr = jerr
-            return
-         end if
-         stop
+         ierr = jerr
+         return
       end if
       temperature = eos_res(i_temperature)
       pressure = eos_res(i_pressure)
@@ -372,11 +354,8 @@ subroutine integrate_atmosphere
       call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
            metal_fraction, kap_res, ion_fraction, ierr=jerr)
       if (jerr /= 0) then
-         if (present(ierr)) then
-            ierr = jerr
-            return
-         end if
-         stop
+         ierr = jerr
+         return
       end if
       opacity = kap_res(i_kap)
       log10_opacity = kap_res(i_log10_kap)
@@ -440,11 +419,8 @@ subroutine integrate_atmosphere
 ! gate) becomes the graceful numerics-termination code when the
 ! caller opted in via ierr; without ierr the historical stop stands.
        if (jerr /= 0) then
-          if (present(ierr)) then
-             ierr = numerics_termination
-             return
-          end if
-          stop
+          ierr = numerics_termination
+          return
        end if
 ! FIND DP/DTAU AT THE START OF THE NEXT STEP.
        err_sum(1) = err_sum(1) + step_err(1)
@@ -453,11 +429,8 @@ subroutine integrate_atmosphere
             want_derivatives,conductive_opacity_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state, jerr)
        if (jerr /= 0) then
-          if (present(ierr)) then
-             ierr = jerr
-             return
-          end if
-          stop
+          ierr = jerr
+          return
        end if
 ! 2026 (.store convergence): the structure save below was gated on
 ! the print flag (so only the legacy .store stitch, which called
@@ -538,11 +511,8 @@ subroutine integrate_atmosphere
              'INTEGRATIONS.I QUIT.')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
       jerr = 1
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
+      ierr = jerr
+      return
       end if
       exit atm_retry
       end do atm_retry
@@ -599,11 +569,8 @@ subroutine integrate_envelope
            want_derivatives,conductive_opacity_flag,log10_radius, &
            log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state, jerr)
       if (jerr /= 0) then
-         if (present(ierr)) then
-            ierr = jerr
-            return
-         end if
-         stop
+         ierr = jerr
+         return
       end if
 ! DBG PULSE WRITE FIRST POINT OF ENVELOPE
 ! DBG
@@ -685,11 +652,8 @@ subroutine integrate_envelope
 ! 2026 numerics-gate opt-in: same contract as the atmosphere-side
 ! bsstep call above.
        if (jerr /= 0) then
-          if (present(ierr)) then
-             ierr = numerics_termination
-             return
-          end if
-          stop
+          ierr = numerics_termination
+          return
        end if
        do i = 1,3
           err_sum(i) = err_sum(i) + step_err(i)
@@ -700,11 +664,8 @@ subroutine integrate_envelope
               want_derivatives,conductive_opacity_flag,log10_radius, &
               log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state, jerr)
        if (jerr /= 0) then
-          if (present(ierr)) then
-             ierr = jerr
-             return
-          end if
-          stop
+          ierr = jerr
+          return
        end if
 ! DBG PULSE
 ! DBG END
@@ -790,11 +751,8 @@ subroutine integrate_envelope
            'I QUIT')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
       jerr = 1
-      if (present(ierr)) then
-         ierr = jerr
-         return
-      end if
-      stop
+      ierr = jerr
+      return
       end if
       end if
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR.

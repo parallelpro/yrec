@@ -67,14 +67,22 @@ concurrently in the tree.
 
 ---
 
-## 1. Finish ierr-not-stop (next up; mechanical)
+## 1. ierr-not-stop -- DONE 2026-08-30
 
-52 sites still carry the transitional `if (present(ierr)) ... else
-stop` fallback (kap_lib 14 stops, envint_lib 7, eos_lib 6,
-numerics_lib 5, atm_lib 1). Finish = make every caller pass ierr,
-then delete the fallbacks so the libraries have a single error
-contract. Byte-gated per domain; do this BEFORE the envint split so
-the split inherits a clean contract.
+Every optional-ierr fallback is gone: ierr is REQUIRED on all 16
+library entries (module procedures, so the compiler enforces every
+caller), the eos_get dispatch collapsed, and the integrand-callback
+protocol (bsstep/mmid/atmosphere_derivs/envelope_derivs) carries
+ierr -- resolving envelope_derivs' documented residual. New error
+paths reach the drivers through compute_scale_height ->
+overshoot_boundaries -> find_convection_zones, massloss/mdot,
+burn_mix_extrapolated, turnover, and the opal92 interpolation chain
+(whose EXTRAPOLATION/X-GRID stops are now ierr).
+
+Remaining stops, all deliberate: core/main.f90 (the CLI exit),
+numerics_lib x5 (ludcmp/tridia/rational-interp singular-matrix
+stops -- a separate hardening if ever needed), condopacp x3
+(conductive-table setup; init-time).
 
 ## 2. envint purity split (the flagship remaining architecture item)
 

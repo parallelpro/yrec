@@ -18,6 +18,7 @@ program test_kap
       use opacity_table_lib
       use scv_eos_lib
       implicit none
+      integer :: gerr
 
       character(len=256) :: yrec_input
       character(len=256) :: fermi_path, opal95_path, dummy_path
@@ -121,7 +122,8 @@ program test_kap
          logt = grid_logt(ipt)
          logd = grid_logd(ipt)
          fxion = 0.0d0
-         call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion)
+         call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, gerr)
+         if (gerr /= 0) stop 1
          write(*,'(a,i2,4(1pe24.15))') "kap ", ipt, o, ol, qod, qot
       end do
 

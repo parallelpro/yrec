@@ -94,11 +94,11 @@ subroutine eos_get(log10_temperature, log10_pressure, &
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
       double precision, intent(in), optional :: composition_at_zone(15)
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
       double precision :: fxion_local(3)
 
       fxion_local = res(i_fxion:i_fxion+2)
-      if (present(composition_at_zone) .and. present(ierr)) then
+      if (present(composition_at_zone)) then
          call eos_eval(log10_temperature, res(i_temperature), &
               log10_pressure, res(i_pressure), res(i_log10_density), &
               res(i_density), hydrogen_fraction, metal_fraction, &
@@ -110,19 +110,7 @@ subroutine eos_get(log10_temperature, log10_pressure, &
               res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
               res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
               composition_at_zone=composition_at_zone, ierr=ierr)
-      else if (present(composition_at_zone)) then
-         call eos_eval(log10_temperature, res(i_temperature), &
-              log10_pressure, res(i_pressure), res(i_log10_density), &
-              res(i_density), hydrogen_fraction, metal_fraction, &
-              res(i_beta), res(i_beta_inverse), res(i_beta14), &
-              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
-              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
-              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
-              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
-              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
-              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
-              composition_at_zone=composition_at_zone)
-      else if (present(ierr)) then
+      else
          call eos_eval(log10_temperature, res(i_temperature), &
               log10_pressure, res(i_pressure), res(i_log10_density), &
               res(i_density), hydrogen_fraction, metal_fraction, &
@@ -134,17 +122,6 @@ subroutine eos_get(log10_temperature, log10_pressure, &
               res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
               res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
               ierr=ierr)
-      else
-         call eos_eval(log10_temperature, res(i_temperature), &
-              log10_pressure, res(i_pressure), res(i_log10_density), &
-              res(i_density), hydrogen_fraction, metal_fraction, &
-              res(i_beta), res(i_beta_inverse), res(i_beta14), &
-              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
-              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
-              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
-              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
-              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
-              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state)
       end if
       res(i_fxion:i_fxion+2) = fxion_local
 end subroutine eos_get
@@ -194,11 +171,11 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
 ! and no stop occurs. When the caller omits ierr, behavior is exactly
 ! historical: the same diagnostic messages, then a stop -- now located
 ! in this facade's funnel rather than at the point of failure.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
       integer :: jerr
 
-      if (present(ierr)) ierr = 0
+      ierr = 0
       jerr = 0
 
       if (star%ctrl%use_mhd_eos) then
@@ -212,11 +189,8 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
               adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp, jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
       else
          if (present(composition_at_zone) .and. use_debye_huckel_correction) then
@@ -239,11 +213,8 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
               specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
               in_atmosphere, saha_state, jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
       end if
 
@@ -301,7 +272,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
            centre5_table_path
 ! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_eval's.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
       integer :: jerr
       integer :: grid_idx, iden_idx, col_idx, card_idx
@@ -310,7 +281,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       double precision :: scvhe_dummy_val, scvz_dummy_val
       integer :: scvhe_dummy_npts, scvz_dummy_npts
 
-      if (present(ierr)) ierr = 0
+      ierr = 0
       jerr = 0
 
       if (star%ctrl%use_mhd_eos) then
@@ -319,11 +290,8 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
               centre3_table_path, centre4_table_path, centre5_table_path, &
               jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
       end if
 
@@ -347,11 +315,8 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
            1x,'GLITCH IN FERMI TABLE ELEMENT',i4/1x,'RUN STOPPED')
 ! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
           jerr = 1
-          if (present(ierr)) then
-             ierr = jerr
-             return
-          end if
-          stop
+          ierr = jerr
+          return
        endif
        bin_width = int((yale_eos%fermi_table_x_grid(grid_idx+1) - yale_eos%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
        bin_end = bin_start + bin_width - 1
@@ -434,7 +399,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
 ! Note the out-of-table alternate return of esac06 is NOT an error
 ! here: it falls through with the previous point's results, preserved
 ! verbatim from calcad's original handling.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
       integer :: jerr
 
@@ -453,7 +418,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       double precision :: chi_rho, chi_t, specific_heat_cv
       logical :: eos_deriv_flag, eos_atmosphere_flag
 
-      if (present(ierr)) ierr = 0
+      ierr = 0
       jerr = 0
 
       if (star%ctrl%use_opal2006_eos) then
@@ -465,11 +430,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          call esac06(x_local, t6_local, d_local, eos_interp_order, &
               eos_rad_flag, jerr, *100)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
   100    continue
          gamma1 = opal_eos%eos_output_06(8)
@@ -494,11 +456,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
               qat_eos, qap_eos, qcpt_eos, qcpp_eos, eos_deriv_flag, &
               eos_atmosphere_flag, saha_state, jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
          chi_rho = 1.0d0/qdp_eos
          chi_t = -chi_rho*qdt_eos

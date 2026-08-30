@@ -446,10 +446,9 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
       double precision :: h, a, b
       integer :: klo, khi, k
 
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       klo = 1
       khi = nm
     do while (khi-klo .gt. 1)
@@ -468,11 +467,8 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
             ! error returns instead; without it, the historical stop stands
             ! (numerics has no facade -- each public procedure carries its
             ! own gate).
-            if (present(ierr)) then
-               ierr = 1
-               return
-            end if
-            stop
+            ierr = 1
+            return
       end if
 !      if (h .eq. 0d0) stop 911
       a = (xa(khi)-x)/h
@@ -1343,11 +1339,10 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
       save   ! INTENTIONAL: NR step-size memory (epsold/step tables) -- algorithm state; byte-pinned by Stage-0
       data substep_sequence /2,4,6,8,12,16,24,32,48,64,96/
 
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
       integer :: jerr_integrand
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       h = h_step
       x_sav = indep_var
       do i = 1,num_eqs
@@ -1365,11 +1360,8 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
        ! integrand (eos/kap/gradient) failure inside the midpoint
        ! substeps: same treatment as a diverged step
        if (jerr_integrand /= 0) then
-          if (present(ierr)) then
-             ierr = jerr_integrand
-             return
-          end if
-          stop
+          ierr = jerr_integrand
+          return
        end if
        x_est = (h/substep_sequence(i))**2
        call ratext(i, x_est, y_seq, y, y_err, num_eqs, extrap_order)
@@ -1401,11 +1393,8 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
        ! error returns instead; without it, the historical stop stands
        ! (numerics has no facade -- each public procedure carries its
        ! own gate).
-       if (present(ierr)) then
-          ierr = 1
-          return
-       end if
-       stop
+       ierr = 1
+       return
       end if
       end do
 
@@ -1455,10 +1444,9 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       data spline_coeff/400*0.0d0/
 
 ! the coefficients for the zero-th order term
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       do i=1,n_grid
          spline_coeff(1,i)=y_grid(i)
       end do
@@ -1491,11 +1479,8 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its
          ! own gate).
-         if (present(ierr)) then
-            ierr = 1
-            return
-         end if
-         stop
+         ierr = 1
+         return
       endif
       end if
 ! now, (k_lo,k_hi) is sub-range of x_grid which contains x_eval_copy.
@@ -1541,10 +1526,9 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
       integer :: k
       double precision :: h, a, b
 
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       klo = 1
       khi = n
     do while (khi-klo .gt. 1)
@@ -1562,11 +1546,8 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its
          ! own gate).
-         if (present(ierr)) then
-            ierr = 1
-            return
-         end if
-         stop
+         ierr = 1
+         return
       end if
       a = (xa(khi)-x)/h
       b = (x - xa(klo))/h
@@ -1606,10 +1587,9 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
       integer :: k
       double precision :: h, a, b
 
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       klo = 1
       khi = n
     do while (khi-klo .gt. 1)
@@ -1627,11 +1607,8 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its
          ! own gate).
-         if (present(ierr)) then
-            ierr = 1
-            return
-         end if
-         stop
+         ierr = 1
+         return
       end if
       a = (xa(khi)-x)/h
       b = (x - xa(klo))/h
