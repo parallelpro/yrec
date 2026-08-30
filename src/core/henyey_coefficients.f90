@@ -11,29 +11,28 @@
 ! ADDED (COMMON BLOCK NEWENG).
 !
 ! Builds the Henyey structure-equation coefficients (star%elim_coeff/
-! star%elim_rhs, via reduce) for every mesh point: at each shell, calls the
+! star%elim_rhs, via henyey_eliminate) for every mesh point: at each
+! shell, calls the
 ! equation of state (via eos_lib's eos_get), opacity (via kap_lib's
 ! kap_get), and
 ! temperature-gradient (tpgrad) routines to get the local physics,
 ! optionally the nuclear energy generation (engeb) and gravitational/
 ! entropy ("Kelvin-Helmholtz") energy term, assembles the pressure/
 ! temperature/radius/luminosity equation residuals and derivatives
-! (eq_p_val/dqp_dr/.../eq_l_val/dql_dt and their previous-shell "0"
-! counterparts), and forward-eliminates each shell pair via reduce.
+! (a henyey_shell_terms record, cur; prev carries the shell below),
+! and forward-eliminates each shell pair via henyey_eliminate.
 ! Also stores the diagnostic per-zone physics used elsewhere for
 ! output (common/scrtch/, common/pulse1/, common/sound/, common/
 ! rotder/, common/roten/).
 !
-! Three dummy arguments below (pt_scr%qt, pt_scr%qp, pt_scr%qtl -- see common/pulse2/) are
-! simultaneously common-block storage: COMMON/PULSE2/ was first
-! declared (unused, as placeholders) in an earlier-converted file
-! (write_pulsation_model.f90) with generic member names kept close to the original;
-! this file is the first to actually USE those three slots, as the
-! live temperature/pressure Henyey-equation scratch terms (they also
-! double as the eq_t_val/eq_p_val/dqt_dl arguments passed to reduce),
-! so per the project's COMMON-block-reuse rule they keep the
-! write_pulsation_model.f90 names (pt_scr%qt/pt_scr%qp/pt_scr%qtl) here too, despite those names no
-! longer being very descriptive of their role in this file.
+! Three of the shell terms (pt_scr%qt, pt_scr%qp, pt_scr%qtl -- the
+! historical COMMON/PULSE2/ slots, now point_scratch_lib) are
+! simultaneously pulse-output scratch: this file computes them as the
+! live temperature/pressure Henyey-equation terms and mirrors them
+! into cur%qt/cur%qp/cur%qt_dl for the elimination, while the pulse
+! writers read them from pt_scr afterwards. They keep the historical
+! pt_scr names here despite those names no longer being very
+! descriptive of their role in this file.
 !
 ! KC 2025-05-31 removed the unused MODEL argument and reordered the
 ! trailing argument list slightly (see the commented-out original
@@ -46,6 +45,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
      dlnrho_dlnt, dlnrho_dlnp, saha_state, envelope_zone_index, &
      ierr)
       use rotation_scratch_lib
+      use henyey_eliminate_lib
 
       use net_lib
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
@@ -95,13 +95,11 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
            convective_velocity
       logical :: is_convective
       double precision :: qtemp
-      double precision :: eq_p_val0, dqp_dr, dqp_dr0, dqp_dp, dqp_dp0
-      double precision :: eq_t_val0, dqt_dr, dqt_dr0, dqt_dl0, dqt_dp, &
-           dqt_dp0, dqt_dt, dqt_dt0
-      double precision :: eq_r_val0, eq_r_val, dqr_dr, dqr_dr0, dqr_dp, &
-           dqr_dp0, dqr_dt, dqr_dt0
-      double precision :: eq_l_val0, eq_l_val, dql_dp, dql_dp0, dql_dt, &
-           dql_dt0
+! Henyey structure-equation terms at the current shell (cur) and,
+! carried from the previous loop iteration, at the shell below (prev);
+! the qp/qt/qt_dl slots live in pt_scr (pulse scratch) and are
+! mirrored into cur just before the elimination.
+      type(henyey_shell_terms) :: prev, cur
       double precision :: pp_chain_gen, he3he4_be7_electron_gen, &
            he3he4_be7_proton_gen, cno_gen, triple_alpha_gen, &
            zone_dlnepsilon_dlnrho, zone_dlnepsilon_dlnt, total_energy_gen
@@ -184,7 +182,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
          dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
 ! eqstat historically updated zone_log10_density in place; the tail
-! (eq_r_val, energy generation, star%elim_rhs) reads the updated value.
+! (cur%qr, energy generation, star%elim_rhs) reads the updated value.
          zone_log10_density = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density -- the
 ! historical inout dataflow)
@@ -219,34 +217,34 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
 !          ENDIF
 !       ENDIF
        qtemp = c4pil + zone_log_radius + zone_log_radius + zone_log_radius
-       eq_r_val =+exp(ln10*(zone_log_mass - zone_log10_density - qtemp))
-       dqr_dr = - eq_r_val - eq_r_val - eq_r_val
-       dqr_dp = -eq_r_val*dlnrho_dlnp
-       dqr_dt = -eq_r_val*dlnrho_dlnt
+       cur%qr =+exp(ln10*(zone_log_mass - zone_log10_density - qtemp))
+       cur%qr_dr = - cur%qr - cur%qr - cur%qr
+       cur%qr_dp = -cur%qr*dlnrho_dlnp
+       cur%qr_dt = -cur%qr*dlnrho_dlnt
        pt_scr%qp =-exp(ln10*(cgl + zone_log_mass + zone_log_mass - &
             zone_log_pressure - qtemp - zone_log_radius ))*star%fp_rot(im)
 !       QPR = -QP - QP - QP - QP*(1.0D0 - QFPR)
-       dqp_dr = -pt_scr%qp - pt_scr%qp - pt_scr%qp - pt_scr%qp
-       dqp_dp = -pt_scr%qp
+       cur%qp_dr = -pt_scr%qp - pt_scr%qp - pt_scr%qp - pt_scr%qp
+       cur%qp_dp = -pt_scr%qp
        star%convective_flag(im) = is_convective
        pt_scr%qt = actual_gradient*pt_scr%qp
-       dqt_dr = -pt_scr%qt - pt_scr%qt - pt_scr%qt - pt_scr%qt
+       cur%qt_dr = -pt_scr%qt - pt_scr%qt - pt_scr%qt - pt_scr%qt
 !       QTR = -QT - QT - QT - QT*(1.0D0 - QFTR)
        if (.not.is_convective) then
 ! TEMPERATURE GRADIENT IS RADIATIVE
           pt_scr%qtl = clni*pt_scr%qt/zone_luminosity_lsun
-          dqt_dp = pt_scr%qt*kap_res(i_dlnkap_dlnrho)*dlnrho_dlnp
-          dqt_dt = pt_scr%qt*(-4.0d0 + kap_res(i_dlnkap_dlnt) + kap_res(i_dlnkap_dlnrho)*dlnrho_dlnt)
+          cur%qt_dp = pt_scr%qt*kap_res(i_dlnkap_dlnrho)*dlnrho_dlnp
+          cur%qt_dt = pt_scr%qt*(-4.0d0 + kap_res(i_dlnkap_dlnt) + kap_res(i_dlnkap_dlnrho)*dlnrho_dlnt)
        else
 ! TEMPERATURE GRADIENT IS CONVECTIVE
           pt_scr%qtl = 0.0d0
-          dqt_dp = pt_scr%qt*(-1.0d0 + dgrad_dp_component)
-          dqt_dt = pt_scr%qt*dgrad_dt_component
-          dqt_dr = dqt_dr + pt_scr%qt*dgrad_dr_component
+          cur%qt_dp = pt_scr%qt*(-1.0d0 + dgrad_dp_component)
+          cur%qt_dt = pt_scr%qt*dgrad_dt_component
+          cur%qt_dr = cur%qt_dr + pt_scr%qt*dgrad_dr_component
        end if
-       eq_l_val = 0.0d0
-       dql_dt = 0.0d0
-       dql_dp = 0.0d0
+       cur%ql = 0.0d0
+       cur%ql_dt = 0.0d0
+       cur%ql_dp = 0.0d0
        if (zone_log_temperature.gt.star%ctrl%nuclear_logT_cutoffs(1)) then
 ! SET UP NUCLEAR ENERGY TERMS
             call engeb(pp_chain_gen, he3he4_be7_electron_gen, &
@@ -294,10 +292,10 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             zone_energy_luminosity = zone_energy_luminosity + &
                  (star%dm(im)/star%solar_luminosity_cgs)* &
                  alpha_capture_energy_zone
-            eq_l_val = energy_gen_rate
-            dql_dt = dql_dt + zone_dlnepsilon_dlnt + &
+            cur%ql = energy_gen_rate
+            cur%ql_dt = cur%ql_dt + zone_dlnepsilon_dlnt + &
                  zone_dlnepsilon_dlnrho*dlnrho_dlnt
-            dql_dp = dql_dp + zone_dlnepsilon_dlnrho*dlnrho_dlnp
+            cur%ql_dp = cur%ql_dp + zone_dlnepsilon_dlnrho*dlnrho_dlnp
          end if
          if (compute_entropy_term) then
 ! SET UP ENTROPY TERMS
@@ -329,59 +327,46 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             star%gravitational_luminosity(im) = egrav
             star%luminosity_breakdown(7) = star%luminosity_breakdown(7) + (star%dm(im)/ &
                  star%solar_luminosity_cgs)*egrav
-            eq_l_val = eq_l_val + egrav
-            dql_dp = dql_dp + zone_dt*(entropy_term*(1.0d0-dlnrho_dlnp+ &
+            cur%ql = cur%ql + egrav
+            cur%ql_dp = cur%ql_dp + zone_dt*(entropy_term*(1.0d0-dlnrho_dlnp+ &
                  eos_res(i_dlnrho_dlnp_dt))-entropy_term1 - entropy_term3* &
                  eos_res(i_grada_dp))
-            dql_dt = dql_dt + zone_dt*(entropy_term*(-dlnrho_dlnt+ &
+            cur%ql_dt = cur%ql_dt + zone_dt*(entropy_term*(-dlnrho_dlnt+ &
                  eos_res(i_dlnrho_dlnt_dt)) + entropy_term2 - entropy_term3* &
                  eos_res(i_grada_dt))
 ! 7/92 INCLUDE CHANGE IN ROTATIONAL KINETIC ENERGY IN ENERGY EQUATION.
             if (star%job%rotation_active) then
                rot_scr%rotational_energy_term(im) = zone_dt*(star%kinetic_energy_rot(im)- &
                     star%kinetic_energy_rot_old(im))/star%dm(im)
-               eq_l_val = eq_l_val - rot_scr%rotational_energy_term(im)
+               cur%ql = cur%ql - rot_scr%rotational_energy_term(im)
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
          end if
          cccql = star%ln_solar_luminosity*star%m(im)
-         eq_l_val = cccql*eq_l_val
-         dql_dp = cccql*dql_dp
-         dql_dt = cccql*dql_dt
+         cur%ql = cccql*cur%ql
+         cur%ql_dp = cccql*cur%ql_dp
+         cur%ql_dt = cccql*cur%ql_dt
+! the qp/qt/qt_dl slots live in pt_scr (pulse scratch); mirror them
+! into the current shell's term record before eliminating
+         cur%qp = pt_scr%qp
+         cur%qt = pt_scr%qt
+         cur%qt_dl = pt_scr%qtl
          if (im.gt.1) then
 ! REDUCE MATRIX FOR PAIR OF POINTS (IM-1,IM)
             im1 = im
-            call henyey_eliminate(im1,star%elim_coeff,star%elim_rhs,star%luminosity_lsun,star%max_residual, &
-                 star%logP,star%logR,star%log_mass,star%logT, &
-                 eq_p_val0,pt_scr%qp,dqp_dr0,dqp_dr,dqp_dp0,dqp_dp,eq_t_val0,pt_scr%qt, &
-                 dqt_dr0,dqt_dr,dqt_dl0,pt_scr%qtl,dqt_dp0,dqt_dp,dqt_dt0,dqt_dt, &
-                 eq_r_val0,eq_r_val,dqr_dr0,dqr_dr,dqr_dp0,dqr_dp,dqr_dt0, &
-                 dqr_dt,eq_l_val0,eq_l_val,dql_dp0,dql_dp,dql_dt0,dql_dt)
+            call henyey_eliminate(im1, prev, cur)
          else
 ! SETUP CENTRAL BOUNDARY CONDITIONS
             star%elim_coeff(3,1,1) = cc13*dlnrho_dlnp
             star%elim_coeff(3,2,1) = cc13*dlnrho_dlnt
             star%elim_rhs(3,1) = -cc13*(c4pi3l + zone_log10_density - &
                  zone_log_mass) - zone_log_radius
-            star%elim_coeff(4,1,1) = -dql_dp
-            star%elim_coeff(4,2,1) = -dql_dt
-            star%elim_rhs(4,1) = clni*eq_l_val - zone_luminosity_lsun
+            star%elim_coeff(4,1,1) = -cur%ql_dp
+            star%elim_coeff(4,2,1) = -cur%ql_dt
+            star%elim_rhs(4,1) = clni*cur%ql - zone_luminosity_lsun
          end if
-         eq_p_val0 = pt_scr%qp
-         dqp_dr0 = dqp_dr
-         dqp_dp0 = dqp_dp
-         eq_t_val0 = pt_scr%qt
-         dqt_dr0 = dqt_dr
-         dqt_dl0 = pt_scr%qtl
-         dqt_dp0 = dqt_dp
-         dqt_dt0 = dqt_dt
-         eq_r_val0 = eq_r_val
-         dqr_dr0 = dqr_dr
-         dqr_dp0 = dqr_dp
-         dqr_dt0 = dqr_dt
-         eq_l_val0 = eq_l_val
-         dql_dp0 = dql_dp
-         dql_dt0 = dql_dt
+! carry this shell's terms into the next pair's elimination
+         prev = cur
 ! MHP 02/12 REMOVED RESTRICTIONS ON WHERE INTERMEDIATE VARIABLES
 ! SUCH AS OPACITY ARE SAVED; PRIOR RESTRICTIONS WERE BASED ON OBSOLETE
 ! MEMORY RESTRICTIONS IN LEGACY CODE
