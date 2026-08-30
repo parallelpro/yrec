@@ -831,30 +831,6 @@
       ! Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints
       terminal_interval = 50
 
-      ! Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off)
-      log_L_upper_limit = 1.0d99
-
-      ! Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off)
-      log_L_lower_limit = -1.0d99
-
-      ! Per kind card: stop the card when Teff [K] exceeds this (1d99 = off)
-      Teff_upper_limit = 1.0d99
-
-      ! Per kind card: stop the card when Teff [K] drops below this (-1d99 = off)
-      Teff_lower_limit = -1.0d99
-
-      ! Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off)
-      log_g_upper_limit = 1.0d99
-
-      ! Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off)
-      log_g_lower_limit = -1.0d99
-
-      ! Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off)
-      nu_max_upper_limit = 1.0d99
-
-      ! Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off)
-      nu_max_lower_limit = -1.0d99
-
       ! Solar nu_max [uHz] for the scaling relation (Huber et al. 2011)
       nu_max_sun = 3090.0d0
 

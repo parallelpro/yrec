@@ -62,8 +62,9 @@ def _assert_stopped_early(log, hist, needle):
     assert len(hist) < 40, f"run did not stop early: {len(hist)} history lines"
 
 
-# per-kind-card arrays, like the other stopping criteria: the solar
-# deck's card 2 is the evolving card, so the limits are set on (2)
+# per-kind-card arrays living in &star_job with the other kind-card
+# settings (moved from &controls 2026-08-29): the solar deck's card 2
+# is the evolving card, so the limits are set on (2)
 @pytest.mark.parametrize("control,needle", [
     ("Teff_upper_limit(2) = 4.0d3", "STOP: Teff"),
     ("log_L_lower_limit(2) = 2.0d0", "STOP: log_L"),
@@ -71,7 +72,7 @@ def _assert_stopped_early(log, hist, needle):
     ("log_g_upper_limit(2) = 3.0d0", "STOP: log_g"),
 ])
 def test_structure_limit_stops_run(tmp_path, control, needle):
-    log, hist = _run_with_controls(tmp_path, f" {control}\n")
+    log, hist = _run_with_controls(tmp_path, "", extra_star_job=f" {control}\n")
     _assert_stopped_early(log, hist, needle)
 
 
@@ -80,8 +81,9 @@ def test_seismic_columns_are_opt_in(tmp_path):
     cols.write_text(
         "model_number\nlog_Teff\nnu_max\ndelta_nu_rho\ndelta_nu\ndelta_Pg\n")
     log, hist = _run_with_controls(
-        tmp_path, " nu_max_lower_limit(2) = 5.0d3\n",
-        extra_star_job=f" history_columns_file = '{cols}'\n")
+        tmp_path, "",
+        extra_star_job=" nu_max_lower_limit(2) = 5.0d3\n"
+        f" history_columns_file = '{cols}'\n")
     _assert_stopped_early(log, hist, "STOP: nu_max")
     names = hist[5].split()
     assert names == ["model_number", "log_Teff", "nu_max", "delta_nu_rho",
@@ -108,7 +110,8 @@ def test_seismic_columns_are_opt_in(tmp_path):
 
 
 def test_seismic_columns_absent_by_default(tmp_path):
-    log, hist = _run_with_controls(tmp_path, " Teff_upper_limit(2) = 4.0d3\n")
+    log, hist = _run_with_controls(
+        tmp_path, "", extra_star_job=" Teff_upper_limit(2) = 4.0d3\n")
     _assert_stopped_early(log, hist, "STOP: Teff")
     names = hist[5].split()
     assert "nu_max" not in names and "delta_nu_rho" not in names, (
