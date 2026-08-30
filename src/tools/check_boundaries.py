@@ -130,6 +130,22 @@ def mask_strings(line):
     return "".join(out)
 
 
+STAR_BLIND_FILES = [
+    # envint purity split (2026): the integration kernel takes its
+    # configuration explicitly and must never touch the star layer
+    "core/envint_kernel.f90",
+]
+
+def check_star_blind(src_root):
+    problems = []
+    for rel in STAR_BLIND_FILES:
+        text = (src_root / rel).read_text(errors="replace")
+        code = "\n".join(l.split("!")[0] for l in text.splitlines())
+        if "star_info_lib" in code or "star%" in code:
+            problems.append(f"{rel}: declared star-blind but references star_info")
+    return problems
+
+
 def check_math_lib(src_root):
     """Reproducibility contract (2026): every file calling an elementary
     transcendental must `use math_lib` (so USE_CRMATH builds shadow the
@@ -207,6 +223,13 @@ def main():
         print("\nRoute these through the domain's <domain>_lib facade, "
               "or (deliberately) add the name to PUBLIC in "
               "tools/check_boundaries.py.")
+        return 1
+
+    blind_problems = check_star_blind(SRC)
+    if blind_problems:
+        print("STAR-BLIND CONTRACT VIOLATIONS:")
+        for b in blind_problems:
+            print("  " + b)
         return 1
 
     math_problems = check_math_lib(SRC)
