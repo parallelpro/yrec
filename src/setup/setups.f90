@@ -27,6 +27,7 @@ subroutine setups(ierr)
       use phys_const_lib
       use yale_eos_lib
       use math_lib
+      use ttau_lib, only: hsra_t_tau_offset
       implicit none
       integer, intent(out) :: ierr
 ! JNT 06/14 ADD NTC FOR KURUCZ/CASTELLI 2004 ATM
@@ -55,8 +56,6 @@ subroutine setups(ierr)
 ! --- locals ---
       double precision :: speed_of_light, electron_mass, boltzmann_constant, &
            planck_constant, hydrogen_atom_mass, electron_charge_esu
-      double precision :: harvard_t_tau
-      external harvard_t_tau
       integer :: teff_idx, logg_idx
       logical :: found_valid_pressure
 
@@ -144,7 +143,7 @@ subroutine setups(ierr)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     EVALUATE TAU = 2/3 TEMPERATURE FOR HRA
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      star%atm_hras = harvard_t_tau(cc23)
+      star%atm_hras = hsra_t_tau_offset()
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

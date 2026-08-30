@@ -59,6 +59,8 @@ PUBLIC = {
     # condition wrapper, sole caller core/crrect.f90) and the turnover/
     # diagnostics consumed by core/io/rotation (calcad, gettau).
     "atm": {"atm_get_surface_pt", "atm_init",
+            "ttau_log10_temperature", "ttau_start_log10_temperature",
+            "ttau_photosphere_x_limit", "hsra_t_tau_offset",
             # pure surface-pressure lookups, called by the star
             # layer's envelope integrator (core/envint_lib) since the
             # atm split -- clean physics services
@@ -134,7 +136,7 @@ STAR_BLIND_FILES = [
     # envint purity split (2026): the integration kernel takes its
     # configuration explicitly and must never touch the star layer
     "core/envint_kernel.f90",
-    "core/ttau_lib.f90",
+    "atm/ttau_lib.f90",
 ]
 
 def check_star_blind(src_root):

@@ -16,6 +16,13 @@
 !   2  Harvard-Smithsonian reference atmosphere (polynomial fit in
 !      setup/harvard_t_tau.f90; atm_hras is the run's HSRA offset)
 !
+! Lives in atm/ (2026): pure atmosphere physics, exactly what the
+! domain taxonomy assigns here -- the solver integration that CALLS
+! these stays in core/ (envint_kernel). The HSRA polynomial fit
+! (formerly setup/harvard_t_tau.f90, a misplaced pure function) is a
+! private module procedure; hsra_t_tau_offset() gives setups the
+! anchor value it stores as star%atm_hras.
+!
 ! Star-blind (enforced by check_boundaries' STAR_BLIND_FILES):
 ! atm_hras arrives as an argument. Expressions are verbatim from the
 ! former atmosphere_derivs statement functions and envint kernel
@@ -28,10 +35,7 @@ module ttau_lib
       implicit none
       private
       public :: ttau_log10_temperature, ttau_start_log10_temperature, &
-           ttau_photosphere_x_limit
-
-      double precision :: harvard_t_tau
-      external harvard_t_tau
+           ttau_photosphere_x_limit, hsra_t_tau_offset
 
 contains
 
@@ -85,5 +89,43 @@ function ttau_photosphere_x_limit(atm_choice) result(x_limit)
          x_limit = -0.176091259d0
       end if
 end function ttau_photosphere_x_limit
+
+
+! ---------------------------------------------------------------
+! The HSRA anchor: the fit evaluated at tau = 2/3, stored by setups
+! as the run's atm_hras offset.
+function hsra_t_tau_offset() result(offset)
+      double precision :: offset
+      offset = harvard_t_tau(cc23)
+end function hsra_t_tau_offset
+
+! ---------------------------------------------------------------
+! Polynomial fit to the Harvard-Smithsonian reference atmosphere
+! T-tau relation (formerly setup/harvard_t_tau.f90, verbatim).
+function harvard_t_tau(optical_depth) result(fit_value)
+      double precision, intent(in) :: optical_depth
+      double precision :: log10_tau, log10_tau2, log10_tau3, log10_tau4, &
+           log10_tau5, log10_tau6, log10_tau7, log10_tau8, log10_tau9
+      double precision :: fit_value
+      log10_tau = log10(optical_depth)
+      fit_value = 3.81152046471d0
+      fit_value = fit_value + 0.146133736471d0*log10_tau
+      log10_tau2 = log10_tau*log10_tau
+      fit_value = fit_value + 0.0267719174279d0*log10_tau2
+      log10_tau3 = log10_tau2*log10_tau
+      fit_value = fit_value - 0.029280655317d0*log10_tau3
+      log10_tau4 = log10_tau3*log10_tau
+      fit_value = fit_value - 0.0123814456666d0*log10_tau4
+      log10_tau5 = log10_tau4*log10_tau
+      fit_value = fit_value + 0.00285734990893d0*log10_tau5
+      log10_tau6 = log10_tau5*log10_tau
+      fit_value = fit_value + 0.0024575213331d0*log10_tau6
+      log10_tau7 = log10_tau6*log10_tau
+      fit_value = fit_value + 0.000521560431455d0*log10_tau7
+      log10_tau8 = log10_tau7*log10_tau
+      fit_value = fit_value + 4.71770176883d-5*log10_tau8
+      log10_tau9 = log10_tau8*log10_tau
+      fit_value = fit_value + 1.58685112637d-6*log10_tau9
+end function harvard_t_tau
 
 end module ttau_lib
