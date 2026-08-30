@@ -100,16 +100,40 @@ arguments are all genuinely per-call (each caller computes its own
 L/g/Teff; the triangle-vertex protocol; the fixed integrand-callback
 tail) -- no de-tramp forced.
 
-## 3. De-tramp queue
+## 3. De-tramp queue -- DONE 2026-08-30 (mhdst1 deferred)
 
-By argument count: henyey_eliminate (39), secular_transport (37),
-mhdst1 (36), engeb (35), microdiff_mte (33), temperature_gradients
-(33), mid_timestep_model (29). CONSTRAINT for
-temperature_gradients: it is on the star-blind kernel's call path
-(envelope_derivs -> temperature_gradients_r), so its de-tramp must
-NOT absorb star% reads -- explicit-argument consolidation only. The
-eos engines (eos_eval/eqstat, 30-31) are documented internals --
-lowest value.
+All byte-gated (gate1 + 19-case config matrix per commit):
+- henyey_eliminate 39 -> 3: star% arrays read directly; the 30
+  per-shell equation terms are two henyey_shell_terms records
+  (prev/cur, "prev = cur" replaces the 15-line copy block); module
+  procedure, relocated setup/ -> core/.
+- secular_transport 37 -> 15 and mid_timestep_model 29 -> 16: the 13
+  midpoint-in-time structure arrays moved into rot_scr (they are the
+  seculr/midmod pipeline workspace; yrec_reset already snapshots
+  it); seculr's 10 star-model args read from star directly; both are
+  module procedures; midmod relocated setup/ -> rotation/.
+- engeb 35 -> 20: the 15 trailing reaction-rate arrays (vestigial
+  COMMON relay) written to star%reaction_rate_* directly; knock-on:
+  timestep_limit_hburn keeps them as locals (real rates->eqburn flow
+  at one zone), hburn/heburn/compute_timestep drop the relay.
+- microdiff pipeline: mte 33 -> 15, run 27 -> 13, coefficients
+  13 -> 9 via a microdiff_grid record (eq/eq_mid instances); pinned
+  by the cm_settle_he* matrix cases.
+- temperature_gradients 33 -> 19: merged with its _r result-array
+  wrapper (named-index values unpacked into locals at entry); all
+  callers now use the plain name. Per the recorded constraint, no
+  star% absorption -- it is on the star-blind kernel's integrand
+  path, and the module header now says so.
+
+DEFERRED: mhdst1 (36). Analysis done: its 13 trailing args
+(log10t_down..mass_fraction_up) are the same caller scratch at all 8
+call sites and would become locals (36 -> 23); but the MHD path has
+ZERO runtime coverage (no tables ship -- item 6), so a byte-gate
+passes trivially and verifies nothing. Do it together with the MHD
+table acquisition in item 6.
+
+The eos engines (eos_eval/eqstat, 30-31) are documented internals --
+judged not worth touching.
 
 ## 4. Log verbosity + terminal output
 
