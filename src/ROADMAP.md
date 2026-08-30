@@ -84,22 +84,32 @@ numerics_lib x5 (ludcmp/tridia/rational-interp singular-matrix
 stops -- a separate hardening if ever needed), condopacp x3
 (conductive-table setup; init-time).
 
-## 2. envint purity split (the flagship remaining architecture item)
+## 2. envint purity split -- DONE 2026-08-30
 
-core/envint_lib.f90 (857 lines, ~90 star% references, 27-argument
-atm_get) integrates the envelope/atmosphere while writing model
-state directly. Target: a driver/kernel split like burn_lib's -- a
-star-blind integration kernel with explicit inputs/outputs, a thin
-star-layer driver. The readability pass already decomposed atm_get
-into named phases, so the seams exist. Fold in the de-tramp of the
-routines on its call path (temperature_gradients, 33 args;
-mid_timestep_model, 29).
+Phase A: the per-point side channel (star%pulse's q* scratch +
+star%current_*) moved out of star_info into core/point_scratch_lib
+(pt_scr; yrec_reset snapshots it) -- clearing the long-standing
+"pulse q* residue" note. Phase B: core/envint_kernel.f90 hosts the
+star-blind integrate_envelope_atmosphere (surface boundary, gray
+atmosphere, envelope integration; atmo_struct/env_struct are its
+product), configured by an envint_config the driver builds;
+core/envint_lib's atm_get is now a 98-line driver applying the
+star-state consequences (pphot, Allard gray fallback). Enforced by
+check_boundaries' STAR_BLIND_FILES rule. atm_get's remaining 21
+arguments are all genuinely per-call (each caller computes its own
+L/g/Teff; the triangle-vertex protocol; the fixed integrand-callback
+tail) -- no de-tramp forced.
 
-## 3. De-tramp queue (independent of the split)
+## 3. De-tramp queue
 
 By argument count: henyey_eliminate (39), secular_transport (37),
-mhdst1 (36), engeb (35), microdiff_mte (33). The eos engines
-(eos_eval/eqstat, 30-31) are documented internals -- lowest value.
+mhdst1 (36), engeb (35), microdiff_mte (33), temperature_gradients
+(33), mid_timestep_model (29). CONSTRAINT for
+temperature_gradients: it is on the star-blind kernel's call path
+(envelope_derivs -> temperature_gradients_r), so its de-tramp must
+NOT absorb star% reads -- explicit-argument consolidation only. The
+eos engines (eos_eval/eqstat, 30-31) are documented internals --
+lowest value.
 
 ## 4. Log verbosity + terminal output
 
