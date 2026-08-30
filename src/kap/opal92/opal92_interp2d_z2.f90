@@ -17,7 +17,7 @@
 ! wrt density, dlnkap_dlnt is the partial derivative of opacity wrt
 ! temperature.
 subroutine opal92_interp2d_z2(temperature, density, abund_index, temp_index, &
-     dens_index, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+     dens_index, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use opacity_table_lib
       use numerics_lib
@@ -30,6 +30,8 @@ subroutine opal92_interp2d_z2(temperature, density, abund_index, temp_index, &
       integer, parameter :: num_4d = 4*num_d
 
       double precision, intent(in) :: temperature, density
+! 2026 ierr campaign: failures return via ierr (kap_eval gates).
+      integer, intent(out) :: ierr
       integer, intent(in) :: abund_index, temp_index
       integer, intent(inout) :: dens_index
       double precision, intent(out) :: opacity, log10_opacity, &
@@ -43,6 +45,7 @@ subroutine opal92_interp2d_z2(temperature, density, abund_index, temp_index, &
       double precision :: dx, c1, c2, c3, c4, ol0, qodi
       double precision :: ol00, unused_ddensity_dtemp
 
+      ierr = 0
       lmore = .true.
 !!! FOR SIX GRID POINTS OF TEMPERATURE
       its = temp_index - 2
@@ -58,7 +61,11 @@ subroutine opal92_interp2d_z2(temperature, density, abund_index, temp_index, &
       do it = its,itf
         index1 = it + (mm1-1)*opacity_table%opal92_num_temps_z2
         ndss = opacity_table%opal92_density_start_index_z2(index1)
-        if (ndss.ne.1) stop ' OPAL95 2D2 CHECK NDSS '
+        if (ndss.ne.1) then
+           write(*,*) 'opal92_interp2d_z2: CHECK NDSS'
+           ierr = 1
+           return
+        end if
         ndf = ndss + opacity_table%opal92_density_count_z2(index1) - 1
         call findex(opacity_table%opal92_grid_logr_z2, ndf, density, dens_index)
         if (dens_index.lt.0) then
@@ -104,15 +111,21 @@ subroutine opal92_interp2d_z2(temperature, density, abund_index, temp_index, &
         yto(jt) = ol0
         aqod(jt) = qodi
       end do
-      if (xt(1).gt.temperature.or.xt(jt).lt.temperature) stop ' EXTRAPOLATION FAILS '
+      if (xt(1).gt.temperature.or.xt(jt).lt.temperature) then
+         write(*,*) 'opal92_interp2d_z2: extrapolation fails'
+         ierr = 1
+         return
+      end if
 !! INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.
 !! GET THE PARTIAL DERIVATIVE OF OL WRT T.
-      call intpol(xt, yto, jt, temperature, ol00, dlnkap_dlnt)
+      call intpol(xt, yto, jt, temperature, ol00, dlnkap_dlnt, ierr)
+      if (ierr /= 0) return
       log10_opacity = ol00
       opacity = exp10(log10_opacity)
 ! QOTF = D LN(O)/D LN(T)
 !! FIND THE PARTIAL DERIVATIVE VALUE OF OL WRT D IN THE GIVEN T AND D
-      call intpol(xt, aqod, jt, temperature, dlnkap_dlnrho, unused_ddensity_dtemp)
+      call intpol(xt, aqod, jt, temperature, dlnkap_dlnrho, unused_ddensity_dtemp, ierr)
+      if (ierr /= 0) return
 ! QODF = D LN(O)/D LN(D)
       return
 end subroutine opal92_interp2d_z2

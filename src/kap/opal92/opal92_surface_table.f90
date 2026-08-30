@@ -63,9 +63,11 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
          do im3=density_start,density_end
             density_rhot3=opacity_table%opal92_grid_logr(im3)
             call opal92_interp2d(temp6,density_rhot3,x_index,temp_index,rho_search_index, &
-                 opacity0,log10_opacity0,dlnkap_dlnrho0,dlnkap_dlnt0)
+                 opacity0,log10_opacity0,dlnkap_dlnrho0,dlnkap_dlnt0, ierr)
+            if (ierr /= 0) return
             call opal92_interp2d(temp6,density_rhot3,x_index+1,temp_index,rho_search_index, &
-                 opacity1,log10_opacity1,dlnkap_dlnrho1,dlnkap_dlnt1)
+                 opacity1,log10_opacity1,dlnkap_dlnrho1,dlnkap_dlnt1, ierr)
+            if (ierr /= 0) return
             x_fraction_within=(hydrogen_fraction-opacity_table%opal92_grid_x(x_index))/ &
                  (opacity_table%opal92_grid_x(x_index+1)-opacity_table%opal92_grid_x(x_index))
             log10_opacity_final=(log10_opacity1-log10_opacity0)*x_fraction_within+log10_opacity0
@@ -111,9 +113,11 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
             do im3=density_start,density_end
                density_rhot3=opacity_table%opal92_grid_logr_z2(im3)
                call opal92_interp2d_z2(temp6,density_rhot3,x_index,temp_index,rho_search_index, &
-                    opacity0,log10_opacity0,dlnkap_dlnrho0,dlnkap_dlnt0)
+                    opacity0,log10_opacity0,dlnkap_dlnrho0,dlnkap_dlnt0, ierr)
+               if (ierr /= 0) return
                call opal92_interp2d_z2(temp6,density_rhot3,x_index+1,temp_index,rho_search_index, &
-                    opacity1,log10_opacity1,dlnkap_dlnrho1,dlnkap_dlnt1)
+                    opacity1,log10_opacity1,dlnkap_dlnrho1,dlnkap_dlnt1, ierr)
+               if (ierr /= 0) return
                x_fraction_within=(hydrogen_fraction-opacity_table%opal92_grid_x_z2(x_index))/ &
                     (opacity_table%opal92_grid_x_z2(x_index+1)-opacity_table%opal92_grid_x_z2(x_index))
                log10_opacity_final=(log10_opacity1-log10_opacity0)*x_fraction_within+log10_opacity0

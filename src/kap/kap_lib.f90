@@ -231,7 +231,14 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          else if (star%ctrl%use_opal92_tables) then
             call opal92_interp3d(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
-                 dlnkap_dlnrho, dlnkap_dlnt)
+                 dlnkap_dlnrho, dlnkap_dlnt, jerr)
+            if (jerr /= 0) then
+               if (present(ierr)) then
+                  ierr = jerr
+                  return
+               end if
+               stop
+            end if
             table_metal_fraction = star%ctrl%opal_table_z1
          else if (star%ctrl%use_laol89_tables) then
             call gtlaol(log10_density, log10_temperature, &
@@ -291,11 +298,25 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          end if
       else if (star%ctrl%use_opal92_tables) then
          call opal92_interp3d(log10_density, log10_temperature, hydrogen_fraction, &
-              opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+              opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
+         if (jerr /= 0) then
+            if (present(ierr)) then
+               ierr = jerr
+               return
+            end if
+            stop
+         end if
          if (star%use_two_z_tables) then
             call opal92_interp3d_z2(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
-                 dlnkap_dlnrho_2, dlnkap_dlnt_2)
+                 dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)
+            if (jerr /= 0) then
+               if (present(ierr)) then
+                  ierr = jerr
+                  return
+               end if
+               stop
+            end if
             slope = (log10_opacity - log10_opacity_2) / &
                  (star%ctrl%opal_table_z1 - star%ctrl%opal_table_z2)
             log10_opacity = log10_opacity_2 + &
