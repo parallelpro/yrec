@@ -857,7 +857,7 @@ subroutine read_input(ierr)
            &    fkur2, fallard, fscvh, fscvhe, fscvz, fopale, fliv95, &
            &    fmonte1,fmonte2, &
            &    kindrn, &
-           &    lfirst, &
+           &    lfirst, set_initial_model_number, &
            &    terminal_interval, report_solver_diagnostics, &
            &    log_L_upper_limit, log_L_lower_limit, &
            &    Teff_upper_limit, Teff_lower_limit, &

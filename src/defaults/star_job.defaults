@@ -151,6 +151,9 @@
       ! (legacy name: lfirst)
       first_call_flag = .true.
 
+      ! Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior).
+      set_initial_model_number = 1
+
       ! (legacy name: lzramp)
       use_z_ramp = .false.
 

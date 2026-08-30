@@ -267,6 +267,17 @@ subroutine begin_kind_card
             star%convective_velocity, star%job%mixture_weights, ierr)
        if (ierr /= 0) return
 
+! 2026: a fresh start-model load restarts the model counter, so history
+! numbering begins at set_initial_model_number (default 1) instead of
+! whatever counter the model file stored (the birthline library files
+! carry ~63). <= 0 keeps the stored counter (restart continuation).
+! Placed after read_starting_model so the stored number still gates the
+! evolved-model consistency warnings there.
+       if (star%job%first_call_flag(star%job%nk) .and. &
+           star%ctrl%set_initial_model_number > 0) then
+          star%model_number = star%ctrl%set_initial_model_number - 1
+       end if
+
       if ((star%omega(1) .eq. 0) .and. (star%job%rotation_active)) then
 
 1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &

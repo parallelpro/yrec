@@ -14,6 +14,7 @@
             logical :: write_profile_flag = .false.
             logical :: write_pulse_flag = .false.
             integer :: terminal_interval = 50
+            integer :: set_initial_model_number = 1
             logical :: report_solver_diagnostics = .false.
             logical :: compute_neutrino_fluxes = .false.
             double precision :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, 3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, 1.5d0,0.25d0/)

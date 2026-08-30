@@ -70,6 +70,11 @@ module controls_lib
 ! the verbose solver forensics (Henyey iteration trace, envelope/
 ! atmosphere integration statistics, triangle/rezoning bookkeeping).
       integer, public :: terminal_interval = 50
+! model numbering for fresh start-model loads: the first converged
+! model after a first_call_flag load is numbered this (default 1);
+! <= 0 keeps the counter stored in the model file (restart-
+! continuation, the pre-2026 behavior).
+      integer, public :: set_initial_model_number = 1
       logical, public :: report_solver_diagnostics = .false.
 ! diagnostic: per-zone solar neutrino production table (engeb per
 ! shell) written to the short/log stream at the start of each run

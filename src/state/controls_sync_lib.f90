@@ -39,6 +39,7 @@ subroutine seed_controls_buffer
       write_profile_flag = star%ctrl%write_profile_flag
       write_pulse_flag = star%ctrl%write_pulse_flag
       terminal_interval = star%ctrl%terminal_interval
+      set_initial_model_number = star%ctrl%set_initial_model_number
       report_solver_diagnostics = star%ctrl%report_solver_diagnostics
       compute_neutrino_fluxes = star%ctrl%compute_neutrino_fluxes
       atime = star%ctrl%atime
@@ -403,6 +404,7 @@ subroutine store_controls_to_star
       star%ctrl%write_profile_flag = write_profile_flag
       star%ctrl%write_pulse_flag = write_pulse_flag
       star%ctrl%terminal_interval = terminal_interval
+      star%ctrl%set_initial_model_number = set_initial_model_number
       star%ctrl%report_solver_diagnostics = report_solver_diagnostics
       star%ctrl%compute_neutrino_fluxes = compute_neutrino_fluxes
       star%ctrl%atime = atime

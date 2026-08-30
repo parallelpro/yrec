@@ -118,8 +118,8 @@
            & scv_h_table_file, scv_he_table_file, scv_z_table_file, &
            & opal_eos_table_file, opal95_opacity_table_file, &
            & monte_carlo_file1_path, monte_carlo_file2_path, run_kind, &
-           & first_call_flag, use_z_ramp, specify_teff_flag, &
-           & calibrate_star_flag, use_pure_z_table, &
+           & first_call_flag, set_initial_model_number, use_z_ramp, &
+           & specify_teff_flag, calibrate_star_flag, use_pure_z_table, &
            & isochrone_output_active, rewind_short_file, &
            & has_senv0_array, calibrate_solar_model, calibrate_solar_zx, &
            & use_laol89_tables, use_opal92_tables, use_opal95_tables, &

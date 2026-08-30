@@ -38,6 +38,7 @@ control	fmonte1	string	''*	monte_carlo_file1_path	canonical		former common/iomon
 control	fmonte2	string	''*	monte_carlo_file2_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
 control	kindrn	integer(50)	0*	run_kind	verified		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
 control	lfirst	logical(50)	.true.	first_call_flag	canonical		DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly.
+control	set_initial_model_number	integer	1	set_initial_model_number	canonical		Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior).
 control	lzramp	logical	.false.	use_z_ramp	canonical		
 control	lteff	logical	.false.*	specify_teff_flag	canonical		
 control	lcalst	logical	.false.*	calibrate_star_flag	canonical		
