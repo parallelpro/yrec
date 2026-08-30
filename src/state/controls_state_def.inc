@@ -8,6 +8,7 @@
             integer :: profile_interval = 50
             double precision :: nu_max_sun = 3090.0d0
             double precision :: delta_nu_sun = 135.1d0
+            double precision :: Teff_sun = 5772.0d0
             character(len=256) :: profile_data_prefix = 'profile'
             character(len=256) :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
             logical :: write_profile_flag = .false.

@@ -246,6 +246,6 @@
            & log_L_upper_limit, log_L_lower_limit, Teff_upper_limit, &
            & Teff_lower_limit, log_g_upper_limit, log_g_lower_limit, &
            & nu_max_upper_limit, nu_max_lower_limit, nu_max_sun, &
-           & delta_nu_sun, report_solver_diagnostics, profile_interval, &
-           & pulse_format, write_profile_flag, write_pulse_flag, &
-           & compute_neutrino_fluxes
+           & delta_nu_sun, Teff_sun, report_solver_diagnostics, &
+           & profile_interval, pulse_format, write_profile_flag, &
+           & write_pulse_flag, compute_neutrino_fluxes

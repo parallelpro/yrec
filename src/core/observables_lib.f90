@@ -296,19 +296,17 @@ end subroutine compute_surface_globals
 ! ---------------------------------------------------------------
 ! Asteroseismic scaling-relation observables (2026): nu_max from
 ! (log g, Teff) and delta_nu from the mean density, against the
-! namelist solar references nu_max_sun / delta_nu_sun. The solar
-! log g is derived from the run's own solar constants, so Monte-
-! Carlo-scaled solar values stay self-consistent. Teff_sun is the
-! IAU nominal value.
+! namelist solar references nu_max_sun / delta_nu_sun / Teff_sun.
+! The solar log g is derived from the run's own solar constants, so
+! Monte-Carlo-scaled solar values stay self-consistent.
 subroutine compute_seismic_observables
       use star_info_lib, only: star
-      double precision, parameter :: teff_solar_k = 5772.0d0
       double precision :: log_g_solar
       log_g_solar = cgl + log10(star%solar_mass_cgs) &
            - 2.0d0*log10(star%solar_radius_cgs)
       star%nu_max = star%ctrl%nu_max_sun &
            * 10.0d0**(star%log_g_surface - log_g_solar) &
-           * sqrt(teff_solar_k/10.0d0**star%log_Teff)
+           * sqrt(star%ctrl%Teff_sun/10.0d0**star%log_Teff)
 ! mean-density scaling: sqrt( (M/Msun) / (R/Rsun)^3 )
       star%delta_nu = star%ctrl%delta_nu_sun &
            * sqrt(star%star_mass) * 10.0d0**(-1.5d0*star%log_R_surface)

@@ -861,6 +861,9 @@
       ! Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011)
       delta_nu_sun = 135.1d0
 
+      ! Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value)
+      Teff_sun = 5772.0d0
+
       ! Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping
       report_solver_diagnostics = .false.
 

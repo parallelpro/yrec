@@ -863,7 +863,7 @@ subroutine read_input(ierr)
            &    Teff_upper_limit, Teff_lower_limit, &
            &    log_g_upper_limit, log_g_lower_limit, &
            &    nu_max_upper_limit, nu_max_lower_limit, &
-           &    nu_max_sun, delta_nu_sun, &
+           &    nu_max_sun, delta_nu_sun, Teff_sun, &
            &    inlist_used_file, profile_data_prefix, &
            &    lzramp, lteff, lcalst, lpurez, &
 ! MHP 9/24 add LCALSOLZX to namelist

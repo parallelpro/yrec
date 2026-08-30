@@ -32,6 +32,7 @@ subroutine seed_controls_buffer
       nu_max_lower_limit = star%job%nu_max_lower_limit
       nu_max_sun = star%ctrl%nu_max_sun
       delta_nu_sun = star%ctrl%delta_nu_sun
+      Teff_sun = star%ctrl%Teff_sun
       profile_data_prefix = star%ctrl%profile_data_prefix
       inlist_used_file = star%ctrl%inlist_used_file
       pulse_format = star%job%pulse_format
@@ -395,6 +396,7 @@ subroutine store_controls_to_star
       star%job%nu_max_lower_limit = nu_max_lower_limit
       star%ctrl%nu_max_sun = nu_max_sun
       star%ctrl%delta_nu_sun = delta_nu_sun
+      star%ctrl%Teff_sun = Teff_sun
       star%ctrl%profile_data_prefix = profile_data_prefix
       star%ctrl%inlist_used_file = inlist_used_file
       star%job%pulse_format = pulse_format

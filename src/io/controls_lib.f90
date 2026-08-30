@@ -56,6 +56,7 @@ module controls_lib
 ! solar reference values for the asteroseismic scaling relations:
       double precision, public :: nu_max_sun = 3090.0d0
       double precision, public :: delta_nu_sun = 135.1d0
+      double precision, public :: Teff_sun = 5772.0d0
       character(len=256), public :: profile_data_prefix = 'profile'
       character(len=256), public :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
       character(len=8), public :: pulse_format = 'GYRE'
