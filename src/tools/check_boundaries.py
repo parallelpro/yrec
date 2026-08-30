@@ -79,7 +79,7 @@ PUBLIC = {
     "mixing": {"mix", "homogenize_convection_zones", "find_convection_zones",
                "burn_settle_mix", "rotmix", "compute_scale_height",
                "overshoot_boundaries", "semiconvection",
-               "temperature_gradients", "temperature_gradients_r"},
+               "temperature_gradients"},
     # rotation deliberately has no facade (multi-primitive surface,
     # user decision during the phase-two sweep). "func" was here
     # because numerics' qgauss hard-coded a call to it; phase four's

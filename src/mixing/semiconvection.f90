@@ -37,6 +37,7 @@
 subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
      mixed_zone_bounds, num_zones_mixed, log_teff, ierr)
+      use temperature_gradients_lib
       use star_info_lib, only: star, json
 
       use luout_lib
@@ -173,7 +174,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                  hydrogen_fraction, metal_fraction, kap_res, &
                  eos_res(i_fxion:i_fxion+2), ierr=ierr)
             if (ierr /= 0) return
-            call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
+            call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
                  log_luminosity_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -206,7 +207,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                  hydrogen_fraction, metal_fraction, kap_res, &
                  eos_res(i_fxion:i_fxion+2), ierr=ierr)
             if (ierr /= 0) return
-            call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
+            call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
                  log_luminosity_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -278,7 +279,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                     hydrogen_fraction, metal_fraction, kap_res, &
                     eos_res(i_fxion:i_fxion+2), ierr=ierr)
                if (ierr /= 0) return
-               call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
+               call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                     eos_res, kap_res, log_radius_zone, log_mass_zone, &
                     log_luminosity_zone, actual_gradient, radiative_gradient, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &

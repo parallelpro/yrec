@@ -21,6 +21,7 @@
 subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
+      use temperature_gradients_lib
       use rotation_scratch_lib
 
       use star_info_lib, only: star, i_grad_actual, i_grad_ad, i_grad_rad, json
@@ -114,7 +115,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
               eos_res(i_fxion:i_fxion+2), ierr=ierr)
          if (ierr /= 0) return
          star%iovim = im
-         call temperature_gradients_r(log10_temperature, log10_pressure, &
+         call temperature_gradients(log10_temperature, log10_pressure, &
               eos_res, kap_res, log10_radius, log10_mass, &
               luminosity_lsun, actual_gradient, radiative_gradient, &
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &

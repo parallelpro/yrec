@@ -28,6 +28,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      env_call_count, saha_state, ierr)
 
+      use temperature_gradients_lib
       use eos_lib
       use kap_lib
       use star_info_lib, only: star, json
@@ -77,7 +78,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
            eos_res(i_fxion:i_fxion+2), ierr=ierr)
       if (ierr /= 0) return
       star%iovim = -1
-      call temperature_gradients_r(log10_temperature, log10_pressure, &
+      call temperature_gradients(log10_temperature, log10_pressure, &
            eos_res, kap_res, log10_radius, log10_mass, luminosity_linear, &
            actual_gradient, radiative_gradient, dgrad_dt_component, &
            dgrad_dp_component, dgrad_dr_component, convective_velocity, &

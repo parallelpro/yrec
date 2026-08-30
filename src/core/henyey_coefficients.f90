@@ -44,6 +44,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
      want_derivatives, mixing_active, conductive_opacity_flag, &
      dlnrho_dlnt, dlnrho_dlnp, saha_state, envelope_zone_index, &
      ierr)
+      use temperature_gradients_lib
       use rotation_scratch_lib
       use henyey_eliminate_lib
 
@@ -187,7 +188,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
               eos_res(i_fxion:i_fxion+2), ierr=ierr)
          if (ierr /= 0) return
          star%iovim = im
-         call temperature_gradients_r(zone_log_temperature, zone_log_pressure, &
+         call temperature_gradients(zone_log_temperature, zone_log_pressure, &
               eos_res, kap_res, zone_log_radius, zone_log_mass, &
               zone_luminosity_lsun, actual_gradient, radiative_gradient, &
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
