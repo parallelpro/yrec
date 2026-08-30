@@ -209,7 +209,7 @@ physics	lnews	logical	.false.*	improved_first_guess_flag	canonical		Use stored s
 physics	mcore	integer	0*	num_core_shells_added	canonical		
 physics	niter1	integer	0*	max_iter_level1	canonical		Henyey iteration limit, level 1 (fresh surface BC)
 physics	niter2	integer	0*	max_iter_level2	canonical		Henyey iteration limit, level 2
-physics	niter3	integer	0*	max_iter_level3	canonical		Henyey iteration limit, level 3
+physics	niter3	integer	2	max_iter_level3	canonical		Henyey iteration limit, level 3 DEFAULT IS 2 (read_controls inline init niter3 = 2), not implicit 0.
 physics	niter4	integer	0*	max_iter_level4	canonical		Henyey iteration limit, level 4 (high precision)
 physics	nuse	integer	0*	extrap_order	canonical		
 physics	niter_gs	integer	0*	settling_num_iterations	canonical		

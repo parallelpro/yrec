@@ -354,9 +354,9 @@
       ! (legacy name: niter2)
       max_iter_level2 = 0   ! (implicit)
 
-      ! Henyey iteration limit, level 3
+      ! Henyey iteration limit, level 3 DEFAULT IS 2 (read_controls inline init niter3 = 2), not implicit 0.
       ! (legacy name: niter3)
-      max_iter_level3 = 0   ! (implicit)
+      max_iter_level3 = 2
 
       ! Henyey iteration limit, level 4 (high precision)
       ! (legacy name: niter4)
