@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 atm/ttau_lib.f90 core/burn_lib.f90 core/envint_kernel.f90 core/envint_lib.f90 core/henyey_eliminate.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/secular_transport.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 atm/ttau_lib.f90 core/burn_lib.f90 core/envint_kernel.f90 core/envint_lib.f90 core/henyey_eliminate.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/secular_transport.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -45,6 +45,12 @@ luout_lib.mod: io/luout_lib.o
 math_lib.mod: math/math_lib.o
 	@true
 mhd_eos_lib.mod: eos/mhd_eos_lib.o
+	@true
+microdiff_coefficients_lib.mod: rotation/microdiff/microdiff_coefficients.o
+	@true
+microdiff_mte_lib.mod: rotation/microdiff/microdiff_mte.o
+	@true
+microdiff_run_lib.mod: rotation/microdiff/microdiff_run.o
 	@true
 mid_timestep_model_lib.mod: rotation/mid_timestep_model.o
 	@true
@@ -248,11 +254,11 @@ rotation/microdiff/gravitational_settling_setup.o: luout_lib.mod math_lib.mod ph
 rotation/microdiff/implicit_diffusion_coeffs.o: star_info_lib.mod
 rotation/microdiff/lax_wendroff_step1.o: phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/microdiff/lax_wendroff_step2.o: phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/microdiff/microdiff.o: star_info_lib.mod
-rotation/microdiff/microdiff_coefficients.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
+rotation/microdiff/microdiff.o: microdiff_mte_lib.mod microdiff_run_lib.mod star_info_lib.mod
+rotation/microdiff/microdiff_coefficients.o: math_lib.mod microdiff_mte_lib.mod phys_const_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_etm.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_mte.o: numerics_lib.mod star_info_lib.mod
-rotation/microdiff/microdiff_run.o: luout_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod
+rotation/microdiff/microdiff_run.o: luout_lib.mod microdiff_coefficients_lib.mod microdiff_mte_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_setup.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 rotation/microdiff/thoul_diffusion.o: numerics_lib.mod
 rotation/mid_timestep_model.o: burn_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
