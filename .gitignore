@@ -22,3 +22,6 @@ COMMENTS.md
 src/libyrec.dylib
 src/libyrec.so
 fort.*
+*.smod
+src/.crmath_mode_*
+src/.hdf5_mode_*

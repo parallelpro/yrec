@@ -322,7 +322,7 @@ lib: $(SHLIB)
 .PHONY: lib
 
 # Remove all object files, libraries, and executable.
-# *.mod removal is load-bearing: a module .mod that survives clean can
+# *.mod *.smod removal is load-bearing: a module .mod that survives clean can
 # be picked up by a parallel (-j) module-phase compile BEFORE its
 # regenerating module object builds, silently baking stale derived-type
 # offsets into the consumer (2026: run_log.o read a shifted
