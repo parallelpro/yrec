@@ -61,12 +61,13 @@ contains
 ! work. Data that are not already so are interpolated onto an even
 ! grid using spline interpolation (Numerical Recipes SPLINE, renamed
 ! splinj here, and SPLINT).
-subroutine boole(x, y, n, n_grid, integral)
+subroutine boole(x, y, n, n_grid, integral, ierr)
       implicit none
       double precision, parameter :: scalex = 1e-11
       double precision, parameter :: scaley = 1e7
 
       double precision, intent(in) :: x(n), y(n)
+      integer, intent(out) :: ierr
       integer, intent(in) :: n, n_grid
       double precision, intent(out) :: integral(1)
 
@@ -76,6 +77,7 @@ subroutine boole(x, y, n, n_grid, integral)
       integer :: i, num_quads, klo, khi
 
 ! rescale radius and cs vectors to have values ~1
+      ierr = 0
       do i = 1, n
             x_scaled(i) = x(i)*scalex
             y_scaled(i) = y(i)*scaley
@@ -84,7 +86,8 @@ subroutine boole(x, y, n, n_grid, integral)
             call splinj(x_scaled, y_scaled, y2_deriv, n) ! get derivs of interp. fn.
             do i = 1, n_grid
                   x_even(i) = x_scaled(1)+(i-1)*(x_scaled(n)-x_scaled(1))/(n_grid-1)
-                  call splint(x_scaled, y_scaled, n, y2_deriv, x_even(i), y_even(i), klo, khi)
+                  call splint(x_scaled, y_scaled, n, y2_deriv, x_even(i), y_even(i), klo, khi, ierr)
+                  if (ierr /= 0) return
             end do
 
 ! how many sets of four points do we have?

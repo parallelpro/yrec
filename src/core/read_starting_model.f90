@@ -297,7 +297,8 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
 ! scalar BCZ-radius out-arg, clobbering env_log10_radius(1) by
 ! sequence association; the sane out-arg is used now.)
       call build_stitched_model
-      call compute_turnover_timescale(star%envelope_radius)
+      call compute_turnover_timescale(star%envelope_radius, ierr)
+      if (ierr /= 0) return
       star%convective_turnover_timescale_old = star%convective_turnover_timescale
       star%pphot0 = star%pphot
       star%fracstep = 0.5

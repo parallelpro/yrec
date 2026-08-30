@@ -91,7 +91,8 @@ subroutine compute_observables(ierr)
 ! read it -- so it refreshes in BOTH output modes. (Pre-2026-
 ! restructure, legacy mode refreshed it via wrtout's own gettau
 ! call at write time; that call is gone.)
-      call refresh_turnover_timescale
+      call refresh_turnover_timescale(ierr)
+      if (ierr /= 0) return
 
 ! ---- 2026 MESA-style output: fill the per-model history sources ----
 ! (star% members read by write_history). Formulas are the legacy
@@ -277,9 +278,10 @@ end subroutine locate_surface_cz_base
 ! lag bookkeeping (the physics consumers -- getw, the wind, the
 ! deuterium limiter -- drive their own gettau calls; this one only
 ! freshens the reported value).
-subroutine refresh_turnover_timescale
+subroutine refresh_turnover_timescale(ierr)
       use star_info_lib, only: star
-      call compute_turnover_timescale(star%envelope_radius)
+      integer, intent(out) :: ierr
+      call compute_turnover_timescale(star%envelope_radius, ierr)
       star%convective_turnover_timescale_old = &
            star%convective_turnover_timescale
       star%pphot0 = star%pphot

@@ -20,7 +20,7 @@
 ! saturation, the deuterium limiter) read the stored step-start
 ! values, which is what the *_old/pphot0 lag bookkeeping always
 ! assumed.
-subroutine compute_turnover_timescale(radius_at_bcz)
+subroutine compute_turnover_timescale(radius_at_bcz, ierr)
       use stitched_model_lib, only: stx_prof, n_ie, &
            ip_mass, ip_logR, ip_logRho, ip_logP, ip_conv, ip_gradr, &
            ip_grada, ip_conv_vel
@@ -30,6 +30,7 @@ subroutine compute_turnover_timescale(radius_at_bcz)
       implicit none
 
       double precision, intent(out) :: radius_at_bcz
+      integer, intent(out) :: ierr
 
       double precision :: combined_radius(json), combined_pressure(json), &
            combined_density(json), combined_mass(json), &
@@ -38,6 +39,7 @@ subroutine compute_turnover_timescale(radius_at_bcz)
       logical :: combined_convective_flag(json)
       integer :: j, num_points
 
+      ierr = 0
 ! TAUCZ = 0.0 (pphot is NOT reset here -- the stitched build owns it)
       star%convective_turnover_timescale = 0.0
 
@@ -76,6 +78,7 @@ subroutine compute_turnover_timescale(radius_at_bcz)
            combined_radius, combined_pressure, combined_density, &
            combined_gravity, num_points, star%nz, combined_velocity, &
            combined_grad1, combined_grad2, radius_at_bcz)
+      if (ierr /= 0) return
 
       return
 
@@ -284,19 +287,22 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
                   spline_y_velocity(3) = convective_velocity(kk)
                   spline_y_velocity(4) = convective_velocity(kk+1)
                   call kspline(spline_x_delta,spline_y_velocity,spline_deriv)
-                  call ksplint(spline_x_delta,spline_y_velocity,spline_deriv,0.0d0,convective_velocity_bcz)
+                  call ksplint(spline_x_delta,spline_y_velocity,spline_deriv,0.0d0,convective_velocity_bcz, ierr)
+                  if (ierr /= 0) return
                   spline_y_pscale(1) = exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
                   spline_y_pscale(2) = exp(ln10*(log10_pressure(kk-1)-log10_density(kk-1)))/local_gravity(kk-1)
                   spline_y_pscale(3) = exp(ln10*(log10_pressure(kk)-log10_density(kk)))/local_gravity(kk)
                   spline_y_pscale(4) = exp(ln10*(log10_pressure(kk+1)-log10_density(kk+1)))/local_gravity(kk+1)
                   call kspline(spline_x_delta,spline_y_pscale,spline_deriv)
-                  call ksplint(spline_x_delta,spline_y_pscale,spline_deriv,0.0d0,pressure_scale_height)
+                  call ksplint(spline_x_delta,spline_y_pscale,spline_deriv,0.0d0,pressure_scale_height, ierr)
+                  if (ierr /= 0) return
                   spline_y_radius(1) = log10_radius(kk-2)
                   spline_y_radius(2) = log10_radius(kk-1)
                   spline_y_radius(3) = log10_radius(kk)
                   spline_y_radius(4) = log10_radius(kk+1)
                   call kspline(spline_x_delta,spline_y_radius,spline_deriv)
-                  call ksplint(spline_x_delta,spline_y_radius,spline_deriv,0.0d0,log10_radius_interp)
+                  call ksplint(spline_x_delta,spline_y_radius,spline_deriv,0.0d0,log10_radius_interp, ierr)
+                  if (ierr /= 0) return
 ! DEFINE TAUCZ
                   star%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
                   spline_taucz_done = .true.
@@ -341,7 +347,8 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
             spline_y_velocity(3) = convective_velocity(kk)
             spline_y_velocity(4) = convective_velocity(kk+1)
             call kspline(spline_x_radius,spline_y_velocity,spline_deriv)
-            call ksplint(spline_x_radius,spline_y_velocity,spline_deriv,radius_test,convective_velocity_bcz)
+            call ksplint(spline_x_radius,spline_y_velocity,spline_deriv,radius_test,convective_velocity_bcz, ierr)
+            if (ierr /= 0) return
 ! DEFINE TAUCZ
             star%convective_turnover_timescale = cz_width/convective_velocity_bcz
          end if
