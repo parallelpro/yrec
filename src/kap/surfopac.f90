@@ -15,11 +15,14 @@
 ! its callers (core/read_starting_model.f90, setup/rezone.f90) aren't in atm/
 ! either; same "misplaced, meval.f90-style" pattern as alsurfp.f90's
 ! earlier move the other direction (kap/ -> atm/).
-subroutine surfopac(hydrogen_fraction)
+subroutine surfopac(hydrogen_fraction, ierr)
       use star_info_lib, only: star
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction
+      integer, intent(out) :: ierr
+
+      ierr = 0
 !     THIS SUBROUTINE SETS UP SURF OPACITY TABLES
 !     ASSUMES TABLES HAVE ALREADY BEEN READ IN
 
@@ -31,7 +34,8 @@ subroutine surfopac(hydrogen_fraction)
       end if
 !     SETUP IN OPAL92 TABLES AT ZOPAL1 AND ZOPAL2
       if (star%ctrl%use_opal92_tables) then
-        call opal92_surface_table(hydrogen_fraction)
+        call opal92_surface_table(hydrogen_fraction, ierr)
+        if (ierr /= 0) return
       end if
 
 !     LOW TEMP TABLES

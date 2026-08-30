@@ -46,8 +46,10 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
 
 !     READ IN OPAL92 TABLES AT ZOPAL1 AND ZOPAL2
       if (star%ctrl%use_opal92_tables) then
-         call read_opal92_tables(opal92_table_path, opal92_table2_path)
-         call opal92_surface_table(envelope_hydrogen_fraction)
+         call read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
+         if (ierr /= 0) return
+         call opal92_surface_table(envelope_hydrogen_fraction, ierr)
+         if (ierr /= 0) return
       end if
 !     READ IN LAOL89 TABLES AT ZLAOL1 AND ZLAOL2
       if (star%ctrl%use_laol89_tables) then
@@ -77,7 +79,8 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
          call alex94_surface_table(envelope_hydrogen_fraction)
 !     READ IN KURUCZ TABLE AT ZKUR1 AND ZKUR2
       else if (star%ctrl%use_kurucz90_tables) then
-         call read_kurucz_tables(kurucz_table_path, kurucz_table2_path)
+         call read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
+         if (ierr /= 0) return
       end if
       return
 end subroutine setupopac

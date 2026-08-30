@@ -54,23 +54,10 @@
 ! ENDAGE(3) = 4.568D9 
  
  ! The starting and last models include only abundances and structure variables. These options allow snapshots to be generated with more information. 
- LSTORE = .TRUE. ! If T, store model structures at specified points to the .store file. 
- LSTATM = .FALSE. ! If T, append an atmosphere to the stored model file.
- LSTENV = .FALSE. ! If T, append an envelope to the stored model file. If LSTENV and LSTATM = F, no information is output beyond the fitting point.
- LSTMOD = .TRUE. ! Set the same as LSTORE. May be redundant.
- LSTPHYS = .TRUE. ! If T, output microphysics (e.g. epsilon, kappa) to store file.
- LSTROT = .FALSE. ! If T, append rotation data to store file.
- NPRTMOD = 50 ! Output detailed model structures every NPRTMOD models.
- NPRTPT = 1 ! Output details for every NPRTPT points (if 1000 points and NPRTPT=10, 100 lines are output).
- LSTPCH = .TRUE. ! If T, output details of the final model to the .store file.
 
- LTRACK = .TRUE. ! If T, global properties are always output to the .track file. This should almost always be on.
- ITRVER = 0 ! Toggle for different track file formats. 0 (one line per model) strongly recommended.
   
  LRWSH = .FALSE. ! If T, the short file retains only the details from the last model. This minimizes output file size.
- LCORR = .TRUE. ! If true, output verbose details on model convergence to .short.
   
- LPULSE = .FALSE. ! If T, generate pulsation output. LSTATM AND LSTENV are needed to get data for those regions (highly recommended if LPULSE is T)  
   
  LALEX06 = .TRUE. ! If T, use Ferguson+2005 molecular opacities (recommended)
  FALEX06 = "{YREC_INPUT}/opacity/molecular/alex06/alexmol06gs98.tab" ! Molecular opacity table path  
@@ -83,15 +70,8 @@
  FPUREZ = "{YREC_INPUT}/opacity/atomic/lanl/PURECO.DBGLAOL" ! Pure Y/Z  opacity table path
   
  FFIRST = "{YREC_START}/dbl/m1000gs98z018804_Dbl.first" ! Starting model path.
- FLAST = "{YREC_OUTPUT}/Test_solar_noGS_norot.last" ! The last converged model is stored here.
- FMODPT = "{YREC_OUTPUT}/Test_solar_noGS_norot.full" ! No longer used.
- FSTOR = "{YREC_OUTPUT}/Test_solar_noGS_norot.store" ! Model snapshots during the run are stored here.
- FTRACK = "{YREC_OUTPUT}/Test_solar_noGS_norot.track" ! Global variables as a function of time are stored here.
+ FLAST = "{YREC_OUTPUT}/Test_solar_noGS_norot.mod" ! The latest converged model (.mod format) is stored here.
  FSHORT = "{YREC_OUTPUT}/Test_solar_noGS_norot.short" ! Details about the numerics of the model run are stored here.
- FPMOD = "{YREC_OUTPUT}/Test_solar_noGS_norot.pmod" ! Pulsation output for the interior model.
- FPENV = "{YREC_OUTPUT}/Test_solar_noGS_norot.penv"! Pulsation output for the envelope model.
- FPATM = "{YREC_OUTPUT}/Test_solar_noGS_norot.atm" ! Pulsation output for the atmosphere model.
- FSNU = "{YREC_OUTPUT}/Test_solar_noGS_norot.snu" ! No longer used (formally, output if LSNU = T).
  FSCOMP = "{YREC_OUTPUT}/Test_solar_noGS_norot.excomp" ! No longer used (light elements vs. time, now included in track file)
   
  FOPALE06 = "{YREC_INPUT}/eos/opal2006/EOSOPAL06Z0.016492" ! OPAL 2006 EoS table path.

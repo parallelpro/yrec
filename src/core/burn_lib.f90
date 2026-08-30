@@ -81,7 +81,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       dy_dt = 0.0d0
       dc_dt = 0.0d0
       do_dt = 0.0d0
-      if (shell_temperature(zone_begin).lt.star%ctrl%tcut(1)) return
+      if (shell_temperature(zone_begin).lt.star%ctrl%nuclear_logT_cutoffs(1)) return
 !     COMPUTE EXPLICIT HYDROGEN AND HELIUM BURNING RATES ASSUMING EQUILIBRIUM
 !     HE3 AND CN CYCLE ABUNDANCES.
 !     THIS IS USED FOR AN INITIAL GUESS AT THE BURNING RATES AT THE START
@@ -188,7 +188,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       local_xn14 = zone_avg_abundance(7)
       equilibrium_xo16 = zone_avg_abundance(9)
       if (hydrogen_fraction.gt.1.0d-10 .and. &
-           shell_temperature(zone_begin).gt.star%ctrl%tcut(2)) then
+           shell_temperature(zone_begin).gt.star%ctrl%nuclear_logT_cutoffs(2)) then
 !        FIND EQUILIBRIUM HELIUM-3 ABUNDANCE, USING THE QUADRATIC FORMULA.
 !        THE EQUATION IS -2*R(3,3)*XHE3**2 - R(3,4)*XHE3*XHE4 + R(1,1)X**2 = 0.
          pp_reaction_term = pp_rate*hydrogen_fraction**2
@@ -205,7 +205,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
               - he3_he4_reaction_term*local_xhe3
 ! (Restructured 2026: the CN block below runs only on the hydrogen-
 ! burning branch; the old `goto 100` skipped it from the else.)
-      if (shell_temperature(zone_begin).gt.star%ctrl%tcut(3)) then
+      if (shell_temperature(zone_begin).gt.star%ctrl%nuclear_logT_cutoffs(3)) then
 !        FIND EQUILIBRIUM C12,C13,N14 ABUNDANCES TREATING CN PROCESSING AS
 !        A CLOSED LOOP.
          cno_sum = equilibrium_xc12/1.2d1 + local_xc13/1.3d1 + &
@@ -234,7 +234,7 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       end if
 !     HELIUM BURNING REACTIONS.
       if (helium_fraction.gt.1.0d-10 .and. &
-           shell_temperature(zone_begin).gt.star%ctrl%tcut(4)) then
+           shell_temperature(zone_begin).gt.star%ctrl%nuclear_logT_cutoffs(4)) then
          triple_alpha_term = triple_alpha_rate*helium_fraction**3
          c12_alpha_term = c12_alpha_rate*helium_fraction*equilibrium_xc12
          dy_dt = -4.0d0*(c12_alpha_term + 3.0d0*triple_alpha_term)
@@ -839,7 +839,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            cno_cycle_energy_gen, triple_alpha_energy_gen, &
            dlnepsilon_dlnrho, dlnepsilon_dlnt
 ! total_energy_gen_rate (originally SUM1) is intent(inout), not
-! intent(out): in the log_temperature.le.tcut(1) early-return branch
+! intent(out): in the log_temperature.le.nuclear_logT_cutoffs(1) early-return branch
 ! below (preserved verbatim from the original), it is never assigned,
 ! so the caller's incoming value is left untouched on that path -- a
 ! real property of the original F77 code, not a bug introduced here.
@@ -1151,7 +1151,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < 6.0.
 ! REPLACED FIXED 1 MILLION K THRESHOLD WITH TCUT(1).
 !      IF(TL.LE.6.0) THEN
-      if (log_temperature.le.star%ctrl%tcut(1)) then
+      if (log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) then
 ! MHP 5/02 DEUTERIUM BURNING
          dgdeut = 0.0d0
          qrtdeut = 0.0d0
@@ -1491,7 +1491,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  RATE(10) HE4+C12=>O16
 !  RATE(11) HE4+N14=>O18
 !  RATE(12) TRIPLE ALPHA
-      if (log_temperature.ge.star%ctrl%tcut(4)) then
+      if (log_temperature.ge.star%ctrl%nuclear_logT_cutoffs(4)) then
 ! C13(ALPHA,N) O16
       r1=t9_m23+0.0129d0*t9_m13+2.04d0+0.184d0*t9_p13
       a1 = 6.77d15*exp(-32.329d0*t9_m13-(t9/1.284d0)**2)
@@ -1769,8 +1769,8 @@ end subroutine compute_energy_generation
 
 ! ---------------------------------------------------------------
 ! Rates per 1e9 yr per amu (hrk), the pp/CNO energy split, and --
-! above tcut(5) -- the eight solar neutrino fluxes (pp, pep, hep,
-! Be7, B8, N13, O15, F17) with hep screening. The tcut(5) early
+! above nuclear_logT_cutoffs(5) -- the eight solar neutrino fluxes (pp, pep, hep,
+! Be7, B8, N13, O15, F17) with hep screening. The nuclear_logT_cutoffs(5) early
 ! RETURN is equivalent in or out of the section: nothing follows
 ! this call in engeb.
 subroutine compute_neutrino_emission
@@ -1836,7 +1836,7 @@ subroutine compute_neutrino_emission
 ! ENERGY FROM ALPHA CAPTURE REACTIONS.
       star%alpha_capture_energy=reaction_energy_gen(8)+reaction_energy_gen(10)+ &
            reaction_energy_gen(11)
-      if (star%ctrl%lsnu) then
+      if (star%ctrl%calc_neutrinos) then
 ! MHP 9/91 CHANGE TO TURN OFF NEUTRINO CALC FOR HYDROGEN-EXHAUSTED CORE.
          if (hydrogen_fraction.le.1.0d-6) then
             do i=1,10
@@ -1929,7 +1929,7 @@ subroutine compute_neutrino_emission
 ! routines.  See subroutine NEUTR for complete description.
 
 
-      if (log_temperature.le.star%ctrl%tcut(5)) return
+      if (log_temperature.le.star%ctrl%nuclear_logT_cutoffs(5)) return
 
 
           carbon_fraction_total = c12_fraction+c13_fraction
@@ -2295,7 +2295,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          if (refine_idx > 11) then
 ! IF THE PROGRAM GETS HERE THEN IT FAILED TO CONVERGE TO WITHIN
 ! THE SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
-         write(short_file_unit,911)zone_idx,(extrap_err(species_idx),species_idx=1,3)
+         write(run_log_unit,911)zone_idx,(extrap_err(species_idx),species_idx=1,3)
   911    format(1x,'***LIBURN CONVERGENCE FAILURE IN SHELL ',i4, &
          'ERRORS '/1p3e10.3)
          end if
@@ -2516,7 +2516,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       if (refine_idx .gt. 11) then
 ! IF THE PROGRAM GETS HERE THEN IT FAILED TO CONVERGE TO WITHIN
 ! THE SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
-      write(short_file_unit,911)cz_base_zone,(extrap_err(species_idx),species_idx=1,3)
+      write(run_log_unit,911)cz_base_zone,(extrap_err(species_idx),species_idx=1,3)
       end if
 ! WRITE NEW ABUNDANCES AND EXIT.
       li6_cz_end = extrap_result(1)

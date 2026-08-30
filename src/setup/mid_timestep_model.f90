@@ -398,7 +398,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          do k = 1,num_radiative_zones
             do j = radiative_zone_bounds(k,1),radiative_zone_bounds(k,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (log_temperature_mid(j).le.star%ctrl%tcut(1)) exit
+               if (log_temperature_mid(j).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                burn_zone_begin = j
                burn_zone_end = j
                call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &

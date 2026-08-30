@@ -124,9 +124,9 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
       if (log_teff .ge. atm_table%allard_teffl_max) then
          bad_point = .true.
-         write(short_file_unit,*)
-         write(short_file_unit,*)'ALSURFP: TEFFL greater than TeffLmax: '
-         write(short_file_unit,*)'    TEFFLmin,TEFFL,TEFFLmax; ', &
+         write(run_log_unit,*)
+         write(run_log_unit,*)'ALSURFP: TEFFL greater than TeffLmax: '
+         write(run_log_unit,*)'    TEFFLmin,TEFFL,TEFFLmax; ', &
                atm_table%allard_teffl_min,log_teff,atm_table%allard_teffl_max
          write(*,*)
          write(*,*)'ALSURFP: TEFFL greater than TeffLmax: '
@@ -137,10 +137,10 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
       if ((log_g .ge. atm_table%allard_gl_max) .or. (log_g .le. atm_table%allard_gl_min)) then
          bad_point = .true.
-         write(short_file_unit,*)
+         write(run_log_unit,*)
          write(*,*)
-         write(short_file_unit,*)'ALSURFP: GL out of max range: '
-         write(short_file_unit,*)'    GLXmin,GL,GLXmax; ', &
+         write(run_log_unit,*)'ALSURFP: GL out of max range: '
+         write(run_log_unit,*)'    GLXmin,GL,GLXmax; ', &
                atm_table%allard_gl_min,log_g,atm_table%allard_gl_max
          write(*,*)'ALSURFP: GL out of max range: '
          write(*,*)'    GLXmin,GL,GLXmax; ', &
@@ -159,9 +159,9 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 !    to the error exit.
 
       if (log_teff .le. atm_table%allard_teffl_min) then
-         write(short_file_unit,*)
-         write(short_file_unit,*)'ALSURFP: TEFFL less than TEFFLmin: '
-         write(short_file_unit,*)'    TEFFLmin,TEFFL,TEFFLmax; ', &
+         write(run_log_unit,*)
+         write(run_log_unit,*)'ALSURFP: TEFFL less than TEFFLmin: '
+         write(run_log_unit,*)'    TEFFLmin,TEFFL,TEFFLmax; ', &
                atm_table%allard_teffl_min,log_teff,atm_table%allard_teffl_max
          write(*,*)
          write(*,*)'ALSURFP: TEFFL less than TEFFLmin: '
@@ -171,9 +171,9 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
         write(*,*)
         write(*,*)'******** ALSURFP: Program Terminated ********'
         write(*,*)
-        write(short_file_unit,*)
-        write(short_file_unit,*)'******** ALSURF: Program Terminated ********'
-        write(short_file_unit,*)
+        write(run_log_unit,*)
+        write(run_log_unit,*)'******** ALSURF: Program Terminated ********'
+        write(run_log_unit,*)
         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
         ! facades stop when their caller passes no ierr.
         ierr = 1
@@ -210,9 +210,9 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 !        Next, make sue that GL is in range in the current row.  If not, set out of table flag
          if ((log_g .lt. atm_table%allard_gl_row_min(i1)) .or. (log_g .gt. atm_table%allard_gl_row_max(i1))) then      ! and exit
             bad_point = .true.
-            write(short_file_unit,*)
-            write(short_file_unit,*)'ALSURFP: GL out of extended range: '
-            write(short_file_unit,*)'    GLmin,GL,GLmax; ', &
+            write(run_log_unit,*)
+            write(run_log_unit,*)'ALSURFP: GL out of extended range: '
+            write(run_log_unit,*)'    GLmin,GL,GLmax; ', &
                atm_table%allard_gl_row_min(i1),log_g,atm_table%allard_gl_row_max(i1)
             write(*,*)
             write(*,*)'ALSURFP: GL out of extended range: '
@@ -257,18 +257,15 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 !     If requested, WRITE OUT INFORMATION TO THE MODEL FILE.
       if (print_to_files) then
          if (star%ctrl%allard_use_tau100) then
-            write(short_file_unit,70)
-            write(istor,70)
+            write(run_log_unit,70)
    70       format('********PL,TL at Tau=100 INTERPOLATED' &
                  , ' FROM ALLARD TABULATED VALUES********')
          else
-            write(short_file_unit,71)
-            write(istor,71)
+            write(run_log_unit,71)
    71       format('********PL,TL at T=TEFF,GL INTERPOLATED ' &
                 , 'FROM ALLARD TABULATED VALUES********')
          endif
-         write(short_file_unit,72) log_teff,log_g,atm_table%atm_log10_temperature,atm_table%atm_log10_pressure
-         write(istor,72) log_teff,log_g,atm_table%atm_log10_temperature,atm_table%atm_log10_pressure
+         write(run_log_unit,72) log_teff,log_g,atm_table%atm_log10_temperature,atm_table%atm_log10_pressure
    72    format(' ',20x,'LOG(Teffl) =',f10.5,' ,LOG(G) =' ,f10.5, &
               ', LOG(T) =',f10.5,', Log(P) =', f10.5)
       endif
@@ -276,15 +273,15 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 !     If not requested via LPRT, WRITE OUT INFORMATION TO THE SHORT FILE.
       if (.not. print_to_files) then
         if (star%ctrl%allard_use_tau100) then
-           write(short_file_unit,73)
+           write(run_log_unit,73)
    73      format('ALSURFP:  PL,TL at Tau=100 INTERPOLATED' &
                 , ' FROM ALLARD TABULATED VALUES:')
         else
-           write(short_file_unit,74)
+           write(run_log_unit,74)
    74      format('ALSURFP: PL,TL at T=TEFF,GL INTERPOLATED ' &
                 , 'FROM ALLARD TABULATED VALUES:')
         endif
-        write(short_file_unit,75) log_teff,log_g,atm_table%atm_log10_temperature,atm_table%atm_log10_pressure
+        write(run_log_unit,75) log_teff,log_g,atm_table%atm_log10_temperature,atm_table%atm_log10_pressure
    75   format(' ',10x,'LOG(Teffl) =',f10.5,', LOG(G) =',f10.5, &
              ', LOG(T) =',f10.5,', Log(P) =',f10.5)
       endif

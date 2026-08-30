@@ -56,16 +56,16 @@ program test_atm
       laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
-      short_file_unit = 20
+      run_log_unit = 20
       star%ctrl%fermi_unit = 15
       atm_table_file_unit = 38
       star%ctrl%allard_table_unit = 66
-      open(short_file_unit, file="test_atm.short", status="replace")
-! surfp/kcsurfp write their out-of-table diagnostic to iowr (the main
-! output unit in production, per parmin) as well as short_file_unit;
+      open(run_log_unit, file="test_atm.short", status="replace")
+! surfp/kcsurfp write their out-of-table diagnostic to terminal_unit (the main
+! output unit in production, per parmin) as well as run_log_unit;
 ! point both at the scratch .short file so the byte-compared stdout
 ! stays deterministic when the error paths below fire.
-      iowr = short_file_unit
+      terminal_unit = run_log_unit
 
 ! everything else gated off (setups calls eos_init/kap_init/atm_init
 ! unconditionally; only the Fermi table is a hard requirement)
@@ -87,12 +87,32 @@ program test_atm
 ! constants (real setups; its atm_init call is a no-op at
 ! atm_choice=0 -- the per-option loads happen explicitly below)
       star%job%atm_choice = 0
-      call setups(laol_work, dummy_path, dummy_path, dummy_path, &
-           fermi_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_paths7, setups_ierr)
+      star%job%mixture_weights = laol_work
+      star%job%alex06_table_path = dummy_path
+      star%job%allard_table_path = dummy_path
+      star%job%atm_table_path = dummy_path
+      star%job%fermi_table_path = fermi_path
+      star%job%kurucz_table_path = dummy_path
+      star%job%kurucz_table2_path = dummy_path
+      star%job%laol_table_path = dummy_path
+      star%job%laol_table2_path = dummy_path
+      star%job%opal95_table_path = dummy_path
+      star%job%opal92_table_path = dummy_path
+      star%job%zams_a_table_path = dummy_path
+      star%job%zams_b_table_path = dummy_path
+      star%job%zams_c_table_path = dummy_path
+      star%job%centre1_table_path = dummy_path
+      star%job%centre2_table_path = dummy_path
+      star%job%centre3_table_path = dummy_path
+      star%job%centre4_table_path = dummy_path
+      star%job%centre5_table_path = dummy_path
+      star%job%opal92_table2_path = dummy_path
+      star%job%pure_z_table_path = dummy_path
+      star%job%scv_h_table_path = dummy_path
+      star%job%scv_he_table_path = dummy_path
+      star%job%scv_z_table_path = dummy_path
+      star%job%alex95_table_paths = dummy_paths7
+      call setups(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_atm: FAIL (setups error)"
          stop 1
@@ -138,7 +158,7 @@ program test_atm
 
 ! Error paths (2026, ROADMAP.md stage 3): surfp's out-of-table check
 ! (logTeff < 3.5 or logG < -0.5) used to stop the run; with the new
-! required ierr it returns 1 -- diagnostics go to iowr/short_file_unit
+! required ierr it returns 1 -- diagnostics go to terminal_unit/run_log_unit
 ! as always (both pointed at the scratch .short file here). The
 ! facade check asserts the optional-ierr success path threads
 ! ierr = 0 end to end (atm_get_surface_pt -> alsurfp).
@@ -152,6 +172,6 @@ program test_atm
       call atm_get_surface_pt(teffl, gl, .false., failed, ierr=atm_ierr)
       write(*,'(a,i4)') "err facade-success ierr = ", atm_ierr
 
-      close(short_file_unit)
+      close(run_log_unit)
       write(*,'(a)') "test_atm: done"
 end program test_atm

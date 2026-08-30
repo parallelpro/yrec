@@ -56,66 +56,27 @@ PREFIX ?= /usr/local/bin
 SRCS := $(shell find . -name '*.f90' -not -path '*/test/*' | sed 's|^\./||')
 OBJS := $(patsubst %.f90,%.o,$(SRCS))
 
-# Files that define a Fortran MODULE must be compiled before anything that
-# `use`s them, so the compiler can find the resulting .mod file. GNU Make
-# has no built-in Fortran module dependency scanning, so this list is
-# maintained by hand -- add a source here whenever it gains a `module`
-# statement. The order-only prerequisite below (declared once all module
-# sources are known) ensures every module object is built first, safely
-# under parallel (-j) builds, without forcing spurious rebuilds.
-MODULE_SRCS := state/phys_const_lib.f90 io/controls_lib.f90 io/luout_lib.f90 numerics/intpar_lib.f90 atm/envstruct_lib.f90 atm/atmstruct_lib.f90 eos/scv_eos_lib.f90 eos/eos_mixture_lib.f90 kap/conductive_table_lib.f90 state/star_info_lib.f90 rotation/rotation_scratch_lib.f90 atm/atm_table_lib.f90 eos/mhd_eos_lib.f90 kap/opacity_table_lib.f90 eos/opal_eos_lib.f90 eos/yale_eos_lib.f90 eos/eos_lib.f90 kap/kap_lib.f90 numerics/numerics_lib.f90 net/net_lib.f90 core/burn_lib.f90 atm/atm_lib.f90 core/envint_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/observables_lib.f90 state/controls_sync_lib.f90 core/yrec_reset.f90 core/yrec_capi.f90 io/yrec_output.f90
+# Fortran module and include dependencies are GENERATED -- deps.mk
+# defines MODULE_SRCS (every module-defining source), an order-only
+# rule for every object on the module objects whose .mod files it
+# reads, and real prerequisites on include files. Regenerate with
+#   python3 tools/gen_makefile_deps.py
+# whenever a module, use statement, or include is added or removed
+# (CI verifies with --check). The blanket order-only rule below stays
+# as coarse belt-and-braces on top of deps.mk's precise rules.
+include deps.mk
+
+# the default output column selections are GENERATED from the
+# authoritative defaults/{history,profile}_columns.list (uncommented
+# names, file order) -- edit a .list and make reruns the generator,
+# and deps.mk makes io/yrec_output.o depend on the include
+io/default_columns.inc: defaults/history_columns.list \
+                        defaults/profile_columns.list \
+                        tools/gen_default_columns.py
+	python3 tools/gen_default_columns.py
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
-
-# Module objects that `use` other module objects need an explicit
-# order-only prerequisite too -- the block rule above only orders
-# non-module objects after the full set of module objects, not module
-# objects relative to each other, and MODULE_SRCS list position alone
-# does not guarantee build order under parallel (-j) builds.
-# read_input (former parmin) embeds the generated new-style inlist reader
-io/read_input.o: io/inlist_new_decl.inc io/inlist_new_read.inc
-core/yrec_capi.o: | state/star_info_lib.o
-core/stop_conditions.o: | state/star_info_lib.o state/phys_const_lib.o \
-	io/luout_lib.o io/controls_lib.o
-core/observables_lib.o: | state/star_info_lib.o eos/eos_lib.o \
-	state/phys_const_lib.o io/luout_lib.o
-# the env/atm struct libs import json from star_info (2026 json dedup)
-atm/envstruct_lib.o atm/atmstruct_lib.o: | state/star_info_lib.o
-io/yrec_output.o: | state/phys_const_lib.o io/luout_lib.o state/star_info_lib.o \
-	core/envint_lib.o atm/envstruct_lib.o atm/atmstruct_lib.o \
-	core/stitched_model.o
-core/stitched_model.o: | state/phys_const_lib.o state/star_info_lib.o \
-	core/envint_lib.o atm/envstruct_lib.o atm/atmstruct_lib.o
-numerics/numerics_lib.o: | state/phys_const_lib.o numerics/intpar_lib.o \
-	state/star_info_lib.o \
-	io/luout_lib.o
-# star_info embeds the generated controls_state component list
-state/star_info_lib.o: state/controls_state_def.inc
-state/star_info_lib.o: | eos/scv_eos_lib.o eos/eos_mixture_lib.o \
-	kap/conductive_table_lib.o
-net/net_lib.o: | state/phys_const_lib.o state/star_info_lib.o \
-	io/luout_lib.o numerics/numerics_lib.o
-eos/eos_lib.o: | state/phys_const_lib.o state/star_info_lib.o eos/opal_eos_lib.o \
-	eos/scv_eos_lib.o eos/eos_mixture_lib.o \
-	eos/yale_eos_lib.o io/luout_lib.o
-kap/kap_lib.o: | state/phys_const_lib.o state/star_info_lib.o \
-	kap/opacity_table_lib.o \
-	io/luout_lib.o
-state/controls_sync_lib.o: | io/controls_lib.o state/star_info_lib.o
-core/burn_lib.o: | net/net_lib.o state/star_info_lib.o \
-	state/phys_const_lib.o io/luout_lib.o
-rotation/rotation_scratch_lib.o: | state/star_info_lib.o
-core/yrec_reset.o: | state/star_info_lib.o rotation/rotation_scratch_lib.o
-atm/atm_lib.o: | atm/atm_table_lib.o atm/atmstruct_lib.o \
-	state/star_info_lib.o \
-	state/phys_const_lib.o atm/envstruct_lib.o \
-	eos/eos_lib.o numerics/intpar_lib.o kap/kap_lib.o \
-	io/luout_lib.o numerics/numerics_lib.o
-core/envint_lib.o: | atm/atm_lib.o state/star_info_lib.o \
-	eos/eos_lib.o kap/kap_lib.o numerics/numerics_lib.o \
-	atm/atm_table_lib.o atm/atmstruct_lib.o atm/envstruct_lib.o \
-	state/phys_const_lib.o io/luout_lib.o numerics/intpar_lib.o
 
 # Flags for GNU Fortran (gfortran)
 GNU_BASE_FFLAGS = $(HDF5_FFLAGS) -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
@@ -305,9 +266,15 @@ $(SHLIB): $(OBJS)
 lib: $(SHLIB)
 .PHONY: lib
 
-# Remove all object files, libraries, and executable
+# Remove all object files, libraries, and executable.
+# *.mod removal is load-bearing: a module .mod that survives clean can
+# be picked up by a parallel (-j) module-phase compile BEFORE its
+# regenerating module object builds, silently baking stale derived-type
+# offsets into the consumer (2026: run_log.o read a shifted
+# star%ctrl%report_solver_diagnostics this way).
 clean:
 	@rm -f $(NAME)
+	@rm -f *.mod
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so

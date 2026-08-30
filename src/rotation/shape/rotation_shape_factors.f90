@@ -24,7 +24,6 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
-      use luout_lib
       use phys_const_lib
       use numerics_lib
       implicit none

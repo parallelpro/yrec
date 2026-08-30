@@ -123,7 +123,7 @@ subroutine alfilein(allard_table_path, ierr)
 
 !     Process old-stype nextgen input file.
        atm_table%allard_is_old_nextgen = .true.
-       write(short_file_unit,*) 'ALFileIn: File Description: 1999 NEXTGEN', &
+       write(run_log_unit,*) 'ALFileIn: File Description: 1999 NEXTGEN', &
            ' (Old NEXTGEN)'
 
 !     Ensure that we are not requesting PL,TL at Tau-100. These are not
@@ -132,8 +132,8 @@ subroutine alfilein(allard_table_path, ierr)
          write(*,*)
          write(*,*) 'ALFileIN: Invalid old Allard input file ', &
                'for requested PT,TL at Tau=100'
-         write(short_file_unit,*)
-         write(short_file_unit,*) 'ALFileIN: Invalid old Allard input file ', &
+         write(run_log_unit,*)
+         write(run_log_unit,*) 'ALFileIN: Invalid old Allard input file ', &
                'for requested PT,TL at Tau=100'
          call fail_9999
          ierr = 1
@@ -161,7 +161,7 @@ subroutine alfilein(allard_table_path, ierr)
        atm_table%allard_is_old_nextgen = .false.
       read(star%ctrl%allard_table_unit,911) nhdr, header_line  ! nhdr is number of header recoreds to skip over
   911      format(i2,x,a)
-       write(short_file_unit,912) 'ALFilein: New Allard Atm: File Description: ',header_line(1:47)
+       write(run_log_unit,912) 'ALFilein: New Allard Atm: File Description: ',header_line(1:47)
   912  format(2a)
 !     Skip over rest of header, if any
       if (nhdr .gt. 1) then
@@ -337,8 +337,8 @@ subroutine alfilein(allard_table_path, ierr)
 
       else
 !     If we get here, the input file is invalid
-      write(short_file_unit,*)'*** Invalid Allard Atmosphere input file ***'
-      write(short_file_unit,*) "First record was '",first_record,"'"
+      write(run_log_unit,*)'*** Invalid Allard Atmosphere input file ***'
+      write(run_log_unit,*) "First record was '",first_record,"'"
       write(*,*)'*** Invalid Allard Atmosphere input file ***'
       write(*,*) "First record was '",first_record,"'"
       call fail_9999
@@ -363,11 +363,11 @@ subroutine fail_9999
        write(*,*)
        write(*,*)
        write(*,*)
-       write(short_file_unit,*)
-       write(short_file_unit,*) '**************** PROGRAM ALFilein TERMINATED ', &
+       write(run_log_unit,*)
+       write(run_log_unit,*) '**************** PROGRAM ALFilein TERMINATED ', &
             '@ 9999 *************'
-       write(short_file_unit,*)
-       write(short_file_unit,*)
+       write(run_log_unit,*)
+       write(run_log_unit,*)
 end subroutine fail_9999
 
 end subroutine alfilein      ! END OF ALINITTAB

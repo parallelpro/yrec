@@ -41,23 +41,10 @@
  ENDAGE(3) = 4.568D9 
  
 
- LSTORE = .TRUE.       
- LSTATM = .FALSE.
- LSTENV = .FALSE.
- LSTMOD = .TRUE.
- LSTPHYS = .TRUE.
- LSTROT = .TRUE.
- NPRTMOD = 50              
- NPRTPT = 1 
- LSTPCH = .TRUE. 
 
- LTRACK = .TRUE.  
- ITRVER = 0  
   
  LRWSH = .FALSE.  
- LCORR = .TRUE.  
   
- LPULSE = .FALSE.  
   
  LALEX06 = .TRUE.  
  FALEX06 = "{YREC_INPUT}/opacity/molecular/alex06/alexmol06gs98.tab"  
@@ -70,15 +57,8 @@
  FPUREZ = "{YREC_INPUT}/opacity/atomic/lanl/PURECO.DBGLAOL"  
   
  FFIRST = "{YREC_START}/seed/p100gs98z01757.ahbl"
- FLAST = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.last"
- FMODPT = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.full"
- FSTOR = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.store"
- FTRACK = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.track"
+ FLAST = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.mod"
  FSHORT = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.short"  
- FPMOD = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.pmod"
- FPENV = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.penv"
- FPATM = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.atm"
- FSNU = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.snu"
  FSCOMP = "{YREC_OUTPUT}/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.excomp"
   
  FOPALE06 = "{YREC_INPUT}/eos/opal2006/EOSOPAL06Z0.018776"  

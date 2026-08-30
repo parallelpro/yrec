@@ -6,6 +6,10 @@
 
 &controls
 
+      ! Run log path; its directory part defines the output directory (legacy FSHORT)
+      ! (legacy name: fshort)
+      log_output_file = '{YREC_OUTPUT}/run.log'
+
       ! (legacy name: atmmin)
       atm_step_min = 0.0   ! (implicit)
 
@@ -78,6 +82,12 @@
 
       ! (legacy name: crsun)
       solar_radius_cgs = 0.0   ! (implicit)
+
+      ! Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g, seismic scalings). Formerly hard-coded in setups.
+      solar_mass_cgs = 1.9891d33
+
+      ! Newton's G (cgs). Negative (default) keeps YREC's historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA 2018) to override. Formerly hard-coded in setups.
+      G_cgs = -1.0d0
 
       ! mix: envelope pressure step control
       ! (legacy name: dpenv)
@@ -350,9 +360,9 @@
       ! (legacy name: niter2)
       max_iter_level2 = 0   ! (implicit)
 
-      ! Henyey iteration limit, level 3
+      ! Henyey iteration limit, level 3 DEFAULT IS 2 (read_controls inline init niter3 = 2), not implicit 0.
       ! (legacy name: niter3)
-      max_iter_level3 = 0   ! (implicit)
+      max_iter_level3 = 2
 
       ! Henyey iteration limit, level 4 (high precision)
       ! (legacy name: niter4)
@@ -818,8 +828,26 @@
       ! (legacy name: lcalcenv)
       calc_envelope_flag = .false.   ! (implicit)
 
+      ! Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory
+      profile_data_prefix = 'profile'
+
       ! MESA mode: history file name (written to the output directory)
       star_history_name = 'history.data'
+
+      ! Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints
+      terminal_interval = 50
+
+      ! Solar nu_max [uHz] for the scaling relation (Huber et al. 2011)
+      nu_max_sun = 3090.0d0
+
+      ! Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011)
+      delta_nu_sun = 135.1d0
+
+      ! Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value)
+      Teff_sun = 5772.0d0
+
+      ! Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping
+      report_solver_diagnostics = .false.
 
       ! MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles
       profile_interval = 50

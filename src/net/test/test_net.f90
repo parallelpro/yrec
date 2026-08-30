@@ -55,9 +55,9 @@ program test_net
       laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
-      short_file_unit = 20
+      run_log_unit = 20
       star%ctrl%fermi_unit = 15
-      open(short_file_unit, file="test_net.short", status="replace")
+      open(run_log_unit, file="test_net.short", status="replace")
 
 ! everything gated off; only the Fermi table is a hard requirement
       star%ctrl%use_mhd_eos = .false.
@@ -76,12 +76,32 @@ program test_net
       star%ctrl%use_conductive_opacity = .false.
       star%job%atm_choice = 0
 
-      call setups(laol_work, dummy_path, dummy_path, dummy_path, &
-           fermi_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_paths7, setups_ierr)
+      star%job%mixture_weights = laol_work
+      star%job%alex06_table_path = dummy_path
+      star%job%allard_table_path = dummy_path
+      star%job%atm_table_path = dummy_path
+      star%job%fermi_table_path = fermi_path
+      star%job%kurucz_table_path = dummy_path
+      star%job%kurucz_table2_path = dummy_path
+      star%job%laol_table_path = dummy_path
+      star%job%laol_table2_path = dummy_path
+      star%job%opal95_table_path = dummy_path
+      star%job%opal92_table_path = dummy_path
+      star%job%zams_a_table_path = dummy_path
+      star%job%zams_b_table_path = dummy_path
+      star%job%zams_c_table_path = dummy_path
+      star%job%centre1_table_path = dummy_path
+      star%job%centre2_table_path = dummy_path
+      star%job%centre3_table_path = dummy_path
+      star%job%centre4_table_path = dummy_path
+      star%job%centre5_table_path = dummy_path
+      star%job%opal92_table2_path = dummy_path
+      star%job%pure_z_table_path = dummy_path
+      star%job%scv_h_table_path = dummy_path
+      star%job%scv_he_table_path = dummy_path
+      star%job%scv_z_table_path = dummy_path
+      star%job%alex95_table_paths = dummy_paths7
+      call setups(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_net: FAIL (setups error)"
          stop 1
@@ -159,6 +179,6 @@ program test_net
       call deutrate(1.5d0, 6.2d0, 0.70d0, 1, 1)
       write(*,'(1pe20.12)') star%deuterium_burning_rate(1)
 
-      close(short_file_unit)
+      close(run_log_unit)
       write(*,'(a)') "test_net: done"
 end program test_net

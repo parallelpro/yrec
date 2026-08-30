@@ -38,7 +38,7 @@
 !   *NOTE: zone_min = 2 AND zone_max = NUMBER OF MODEL POINTS UNLESS A
 !    SURFACE OR CENTRAL CONVECTION ZONE EXISTS.
 ! iteration_number : ITERATION NUMBER.
-! itdif2 : MAXIMUM NUMBER OF ITERATIONS ALLOWED IN A GIVEN
+! max_diffusion_iters : MAXIMUM NUMBER OF ITERATIONS ALLOWED IN A GIVEN
 !    DIFFUSION TIMESTEP.
 ! am_transport_convective_flag : ARRAY SET T IF A ZONE IS CONVECTIVE
 !    FOR ANGULAR MOMENTUM REDISTRIBUTION PURPOSES (I.E. INCLUDES
@@ -130,7 +130,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 !            IF(IREDO.GT.3)THEN
             if(cut_count.gt.0)then
                write(6,1000) zone_index
-               write(short_file_unit,1000) zone_index
+               write(run_log_unit,1000) zone_index
  1000          format(1x,39('>'),39('<')/5x,'ERROR IN SR CHECKJ'/ &
                        5x,'NEGATIVE J/M ENCOUNTERED IN ZONE',i5, &
                        ' AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED'/ &
@@ -144,7 +144,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                redo_flag = .true.
                dt = 0.5d0*dt
                write(6,1005)cut_count,zone_index
-               write(short_file_unit,1005)cut_count,zone_index
+               write(run_log_unit,1005)cut_count,zone_index
  1005          format(5x,'ERROR IN SR CHECKJ'/5x,'TIMESTEP CUT,',1x, &
                        'NUMBER',i5,' DUE TO NEGATIVE J/M IN ZONE',i5)
                continue
@@ -186,7 +186,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 !  FINAL STEP.
       saved_tolerance = rot_scr%moment_of_inertia_tolerance
       saved_acc_tolerance = star%job%acfpft
-      if(iteration_number.lt.star%ctrl%itdif2.and..not.converged_flag)then
+      if(iteration_number.lt.star%ctrl%max_diffusion_iters.and..not.converged_flag)then
          rot_scr%moment_of_inertia_tolerance = &
               max(star%ctrl%convergence_tolerance*1.0d-2,saved_tolerance)
          star%job%acfpft = max(star%ctrl%convergence_tolerance*1.0d-2,saved_acc_tolerance)
@@ -275,7 +275,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                        shell_mass,zone_bottom,zone_top,eta_squared, &
                        moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do
-         if(iteration_number.eq.star%ctrl%itdif2.or.converged_flag) &
+         if(iteration_number.eq.star%ctrl%max_diffusion_iters.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number
   120    format(5x,'OMEGA GRADIENT REVERSAL BETWEEN ZONES ', &
                  i5,' AND ',i5,' ITERATION ',i5)
@@ -287,7 +287,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       if(zone_index.le.1) exit zone_scan
       end do zone_scan
 !  I/O FOR END OF DIFFUSION STEP.
-      if(iteration_number.eq.star%ctrl%itdif2.or.converged_flag)then
+      if(iteration_number.eq.star%ctrl%max_diffusion_iters.or.converged_flag)then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN J/M OVER TIMESTEP.
          max_fractional_dj = 0.0d0
          max_dj_zone = 0
@@ -313,118 +313,12 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                     ' BY ITERATION'/5(1x,e11.3,i4))
          endif
 !
-! G Somers 11/14, I AM TURNING OFF THE OUTPUT TO THE .FULL FILE.
-! THE AM CHANGES WILL NOT BE RECORDED, BUT THIS CAN BE TRIVIALLY
-! EXTRACTED FROM THE EXTENDED .STORE FILE.
-!
-! SKIP OUTPUT IF NOT DESIRED.
-!         IF(.NOT.LPRT)GOTO 240
-         if (.true.) then
-            continue
-            return
-         end if
-! G Somers END
-!
-!  IF NPRTPT IS SET TO A LARGE NUMBER, SKIP DETAILED OUTPUT.
-         if (star%ctrl%print_point_interval.gt.num_zones) then
-            continue
-            return
-         end if
-         write(imodpt,170)
-  170 format(' SHELL',3x,'OMEGA',5x,'DEL OMEGA',6x,'J/M',7x,'DEL J/M')
-!  DETERMINE WHICH SHELLS TO PRINT.
-!  FIRST POINT ALWAYS PRINTED OUT.
-         print_zone_id(1) = 1
-         print_zone_count = 2
-         print_zone_begin = max(zone_min,star%ctrl%print_point_interval)
-         print_zone_end = min(zone_max, &
-              int(zone_max/star%ctrl%print_point_interval)*star%ctrl%print_point_interval)
-! PRINT OUT EVERY NPRTPT POINTS. WHEN V=0, SKIP POINTS.
-         do scan_index = print_zone_begin,print_zone_end,star%ctrl%print_point_interval
-!            IF(HV(J).EQ.0.0D0)GOTO 180
-            print_zone_id(print_zone_count) = scan_index
-            print_zone_count = print_zone_count + 1
-         end do
-! OUTERMOST MODEL POINT (OR POINT AT BASE OF SURFACE C.Z.)ALWAYS PRINTED.
-         if(print_zone_id(print_zone_count-1).ne.zone_max)then
-            print_zone_id(print_zone_count) = zone_max
-         else
-            print_zone_count = print_zone_count-1
-         endif
-!  I/O CONCERNING ANGULAR MOMENTUM TRANSPORT.
-         do zone_index=1,print_zone_count
-            write(imodpt,190)print_zone_id(zone_index), &
-                 omega(print_zone_id(zone_index)), &
-                 omega(print_zone_id(zone_index))- &
-                 omega_start(print_zone_id(zone_index)), &
-                 specific_angular_momentum(print_zone_id(zone_index)), &
-                 specific_angular_momentum(print_zone_id(zone_index))- &
-                 specific_angular_momentum_start(print_zone_id(zone_index))
-  190 format(1x,i5,1p4e12.3)
-         end do
-!  I/O CONCERNING DIFFUSION VELOCITIES AND SCALE LENGTHS.
-         write(imodpt,210)
-  210 format(1x,'SHELL',4x,'VES0',9x,'VES',7x,'VGSF0',8x,'VGSF',9x, &
-              'VSS',9x,'RAT',8x,'VTOT',7x,'LENGTH',8x,'VMU')
-         do zone_index = 1,print_zone_count
-            write(imodpt,220)print_zone_id(zone_index), &
-                 circ_scr%es_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 star%es_circulation_velocity(print_zone_id(zone_index)), &
-                 circ_scr%gsf_circulation_velocity_prev(print_zone_id(zone_index)), &
-                 star%gsf_circulation_velocity(print_zone_id(zone_index)), &
-                 star%secular_shear_velocity(print_zone_id(zone_index)), &
-                 rot_scr%circulation_correction_ratio(print_zone_id(zone_index)), &
-                 diffusion_velocity(print_zone_id(zone_index)), &
-                 circ_scr%hle(print_zone_id(zone_index)), &
-                 circ_scr%mu_gradient_velocity(print_zone_id(zone_index))
-  220 format(1x,i5,1p10e12.3)
-         end do
-         if(star%ctrl%use_diffusion_advection_transport)then
-!            DO I = 1,IDM
-!               WRITE(IMODPT,221)ID(I),VES(ID(I)),VESA(ID(I)),
-!     *         VESD(ID(I)),
-!     *         ECOD(ID(I)),ECOD2(ID(I)),ECOD3(ID(I)),ECOD4(ID(I))
-! 221           FORMAT(1X,I5,1P7E12.3)
-!            END DO
-            if(print_zone_count.eq.rot_scr%ntot)then
-            do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
-                    star%es_circulation_velocity(zone_index), &
-                    rot_scr%es_advective_velocity(zone_index), &
-                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
-                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
- 221           format(1x,i5,1p7e12.3)
-            end do
-            else if(print_zone_count.lt.rot_scr%ntot)then
-            do zone_index = 1,print_zone_count
-               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
-                    star%es_circulation_velocity(zone_index), &
-                    rot_scr%es_advective_velocity(zone_index), &
-                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
-                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
-            end do
-            do zone_index = print_zone_count+1,rot_scr%ntot
-               write(imodpt,222)zone_index,rot_scr%echi(zone_index), &
-                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
- 222           format(1x,i5,48x,1p3e12.3)
-            end do
-            else
-            do zone_index = 1,rot_scr%ntot
-               write(imodpt,221)zone_index,rot_scr%chi(zone_index), &
-                    star%es_circulation_velocity(zone_index), &
-                    rot_scr%es_advective_velocity(zone_index), &
-                    rot_scr%es_diffusive_velocity(zone_index),rot_scr%echi(zone_index), &
-                    rot_scr%am_advective_coeff(zone_index),rot_scr%am_diffusive_coeff(zone_index)
-            end do
-            do zone_index = rot_scr%ntot+1,print_zone_count
-               write(imodpt,223)zone_index,rot_scr%chi(zone_index), &
-                    star%es_circulation_velocity(zone_index), &
-                    rot_scr%es_advective_velocity(zone_index), &
-                    rot_scr%es_diffusive_velocity(zone_index)
- 223           format(1x,i5,1p4e12.3)
-            end do
-            endif
-         endif
+! 2026 retire-legacy: the .FULL (FMODPT) diagnostics block that
+! lived here -- per-shell omega/J tables, circulation-velocity and
+! transport-coefficient listings -- was hard-disabled in 11/14
+! ('G Somers: I am turning off the output to the .full file') and
+! is deleted with the file itself. The model-grid transport
+! coefficients are profile columns (D_omega, D_mix) instead.
       endif
       return
 end subroutine check_angular_momentum

@@ -13,6 +13,16 @@ so 1e-9 keeps two orders of margin over the noise while remaining far
 below anything a genuine physics or refactor defect would produce.
 """
 import os
+import pathlib
+
+# Absolute table/startmodel roots for every test-driven yrec run.
+# Decks reference {YREC_INPUT}/{YREC_START}; the in-code fallback
+# ('../../input') assumes the examples/<case>/ depth and silently
+# breaks for testsuite/ (one level deep), so the harness pins the
+# real locations once, absolutely, unless the caller already did.
+_REPO = pathlib.Path(__file__).parent
+os.environ.setdefault("YREC_INPUT", str(_REPO / "input"))
+os.environ.setdefault("YREC_START", str(_REPO / "startmodels"))
 
 REL_TOL = 1.0e-9
 

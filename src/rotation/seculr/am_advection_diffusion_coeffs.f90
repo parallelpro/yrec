@@ -178,7 +178,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          substep_frac = timestep/full_timestep
 ! LOOP FOR ITERATION ON THE D THETA/DT TERM;
 ! COEFFICIENTS UPDATED ONCE PER NNN
-      do theta_iter_idx = 1,star%ctrl%itdif2
+      do theta_iter_idx = 1,star%ctrl%max_diffusion_iters
 ! LOOP FOR ITERATION ON THE OTHER COEFFICIENTS
 ! THAT ARE FUNCTIONS OF OMEGA; UPDATED ONCE PER
 ! NN.
@@ -213,7 +213,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
                  (star%ctrl%wind_law_omega_exponent-1.0d0)* &
                  (omega_working(num_eq_points)/eq_omega(num_eq_points))
          end if
-      do coeff_iter_idx = 1,star%ctrl%itdif2
+      do coeff_iter_idx = 1,star%ctrl%max_diffusion_iters
 ! COMPUTE THE DIFFUSION COEFFICIENTS FOR
 ! THE FIRST AND SECOND ORDER TERMS.
       if (substep_idx.eq.1) then

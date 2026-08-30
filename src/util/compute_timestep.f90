@@ -85,7 +85,8 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       if(star%job%use_structure_dt_limits) then
          if(log_temperature(1).gt.7.1d0 .and. luminosity_components(7).lt. 0.0d0) then
             write(*, 100) log_temperature(1), luminosity_components(7)
- 100        format('LPTIME SET FALSE - TC ',F7.4,' EGRAV ',E10.2)
+ 100        format(1x,'timestep control: structure-based limits', &
+                 ' disabled (log Tc =',f7.4,', L_grav =',es10.2,' Lsun)')
             star%job%use_structure_dt_limits = .false.
          endif
       endif

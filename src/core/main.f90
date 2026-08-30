@@ -123,7 +123,7 @@
 !     file's crrect calls) -- reusing it for the (here-unused) common
 !     member would alias two different entities to the same name, so
 !     the common member is instead kept at its lowercased-cryptic
-!     spelling, itdif2, here.
+!     spelling, max_diffusion_iters, here.
 !   - common/cals2/'s 1st member and common/calstar/'s 2nd member are
 !     both independently established as "luminosity_tolerance" (in
 !     check_solar_calibration.f90 and check_star_calibration.f90 respectively) -- distinct physical
@@ -139,9 +139,8 @@
 !     ageout_bracket_armed; common/rotprt/'s star%lprt0_placeholder;
 !     common/chrone/'s lrwsh_placeholder; common/cenv/'s
 !     lnew0). Per the precedent set by atm_lib.f90 (keeps
-!     calcad_ageout_output_active despite noting its own active use) and
-!     evolve_angular_momentum.f90 (keeps star%print_rotation_diagnostics despite noting its own active
-!     use), these established names are reused verbatim here too
+!     calcad_ageout_output_active despite noting its own active use),
+!     these established names are reused verbatim here too
 !     rather than renamed, even though this file actively assigns/
 !     reads them; each active use is called out in a comment at its
 !     point of use below.

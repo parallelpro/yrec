@@ -2,16 +2,25 @@
 ! io/controls_lib.f90 -- do not edit; regenerate instead.
 ! One component per buffer member, declaration order, every
 ! one default-initialized (see the generator's header).
-            logical :: use_legacy_output = .true.
             character(len=256) :: star_history_name = 'history.data'
             character(len=256) :: history_columns_file = ' '
             character(len=256) :: profile_columns_file = ' '
             integer :: profile_interval = 50
+            double precision :: solar_mass_cgs = 1.9891d33
+            double precision :: G_cgs = -1.0d0
+            double precision :: nu_max_sun = 3090.0d0
+            double precision :: delta_nu_sun = 135.1d0
+            double precision :: Teff_sun = 5772.0d0
+            character(len=256) :: profile_data_prefix = 'profile'
+            character(len=256) :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
             logical :: write_profile_flag = .false.
             logical :: write_pulse_flag = .false.
+            integer :: terminal_interval = 50
+            integer :: set_initial_model_number = 1
+            logical :: report_solver_diagnostics = .false.
             logical :: compute_neutrino_fluxes = .false.
             double precision :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, 3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, 1.5d0,0.25d0/)
-            double precision :: tcut(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
+            double precision :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
             double precision :: saha_log10t_cutoff = 6.0d0
             double precision :: tenv0 = 3.0d0
             double precision :: tenv1 = 9.0d0
@@ -19,8 +28,8 @@
             logical :: use_new_nuclear_rates = .false.
             double precision :: weak_screening_threshold = 0.0d0
             double precision :: dpenv = 1.0d0
-            double precision :: alphac = 0.0d0
-            double precision :: alphae = 0.0d0
+            double precision :: overshoot_alpha_core = 0.0d0
+            double precision :: overshoot_alpha_envelope = 0.0d0
             double precision :: alpham = 0.0d0
             logical :: ladov = .false.
             logical :: lovmax = .false.
@@ -28,17 +37,17 @@
             integer :: itfp1 = 5
             integer :: itfp2 = 20
             double precision :: walpcz = 0.0d0
-            logical :: lwnew = .false.
-            double precision :: wnew = 0.0d0
+            logical :: set_initial_omega = .false.
+            double precision :: initial_omega = 0.0d0
             double precision :: mass_accretion_rate = -1.0d-14
             double precision :: fczdmdt = 0.1d0
             double precision :: ftotdmdt = 1.0d-2
             double precision :: accreted_composition(15) = (/0.71668d0, 0.265721d0,0.01757d0,2.9d-5,3.013d-3,3.385d-5,9.346d-4, 0.0d0,8.462d-3,0.0d0,1.696d-5,0.0d0,2.0d-9,2.0d-9,3.0d-11/)
-            double precision :: creim = -4.0d-13
-            logical :: lreimer = .false.
-            integer :: niter4 = 0
-            logical :: lnews = .false.
-            logical :: lsnu = .false.
+            double precision :: reimers_scaling_factor = -4.0d-13
+            logical :: use_reimers_wind = .false.
+            integer :: max_iter_level4 = 0
+            logical :: improved_first_guess_flag = .false.
+            logical :: calc_neutrinos = .false.
             double precision :: li6_rate_scale = 0.0d0
             double precision :: li7_rate_scale = 0.0d0
             double precision :: be9_pg_rate_scale = 0.0d0
@@ -59,45 +68,25 @@
             integer :: unit_centre5 = 0
             double precision :: metal_fraction_match_tolerance = 0.0d0
             double precision :: zsi = 0.0d0
-            logical :: lstore = .false.
-            logical :: lstenv = .false.
-            logical :: lstmod = .false.
-            logical :: lstphys = .false.
-            logical :: lstrot = .false.
-            logical :: lscrib = .true.
-            logical :: lstch = .false.
             integer :: npenv = 0
-            integer :: nprtmod = 1
-            integer :: npoint = 1
-            integer :: print_point_interval = 0
-            logical :: ldebug = .false.
-            logical :: lcorr = .true.
-            logical :: lmilne = .false.
-            logical :: ltrack = .true.
-            logical :: lstpch = .false.
             integer :: first_unit = 0
             integer :: run_unit = 0
             integer :: standard_unit = 0
             integer :: fermi_unit = 0
-            integer :: opal_model_unit = 0
-            integer :: opal_envelope_unit = 0
-            integer :: opal_atm_unit = 0
             integer :: dynamics_unit = 0
             integer :: laol_table_unit = 0
-            integer :: neutrino_unit = 0
             integer :: composition_unit = 0
             integer :: kurucz_table_unit = 0
-            logical :: lmonte = .false.
-            integer :: imbeg = 1
+            logical :: monte_carlo_active = .false.
             double precision :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
             double precision :: fcorr0 = 0.8d0
             double precision :: fcorri = 0.1d0
             double precision :: chi_grid_scale(12) = 0.0d0
-            integer :: niter1 = 2
-            integer :: niter2 = 20
-            integer :: niter3 = 2
+            integer :: max_iter_level1 = 2
+            integer :: max_iter_level2 = 20
+            integer :: max_iter_level3 = 2
             double precision :: convergence_tolerance = 0.0d0
-            integer :: itdif2 = 1
+            integer :: max_diffusion_iters = 1
             double precision :: settling_tolerance = 0.0d0
             integer :: coulomb_log_choice = 0
             integer :: settling_num_iterations = 0
@@ -106,14 +95,13 @@
             double precision :: helium_diffusion_min = 0.0d0
             logical :: use_thoul_fit = .false.
             double precision :: fgry = 1.0d0
-            logical :: lthoul = .false.
+            logical :: use_thoul_diffusion = .false.
             logical :: use_new_diffusion_routines = .false.
-            logical :: ldifli = .false.
+            logical :: diffuse_lithium = .false.
             double precision :: atm_error_tol = 0.0d0
             double precision :: atm_step_initial = 0.0d0
             double precision :: env_error_tol = 0.0d0
-            integer :: pulsation_file_version = 0
-            double precision :: vnew(12) = (/0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
+            double precision :: mixture_weights_seed(12) = (/0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
             character(len=256) :: monte_carlo_file1_path = ' '
             character(len=256) :: monte_carlo_file2_path = ' '
             integer :: monte_carlo_unit1 = 0
@@ -167,12 +155,6 @@
             double precision :: relative_tolerance = 0.0d0
             integer :: max_burn_iterations = 0
             integer :: opal95_table_unit = 0
-            double precision :: po_weight_l = 0.0d0
-            double precision :: po_weight_teff = 0.0d0
-            double precision :: po_weight_age = 0.0d0
-            double precision :: po_max_len_sq = 0.0d0
-            logical :: po_output_enabled = .false.
-            integer :: track_file_version = 0
             logical :: extend_core_inward = .false.
             logical :: rewind_short_file = .false.
             logical :: isochrone_output_active = .false.
@@ -229,21 +211,8 @@
             integer :: allard_table_unit = 0
             logical :: force_solid_body_rotation = .false.
             integer :: solid_body_mode_flag = 0
-            double precision :: cstmixing = 1.0d0
-            double precision :: cstdiffmix = 1.0d0
-            double precision :: acatmr_placeholder(5000) = 0.0d0
-            double precision :: acatmd_placeholder(5000) = 0.0d0
-            double precision :: acatmp_placeholder(5000) = 0.0d0
-            double precision :: acatmt_placeholder(5000) = 0.0d0
-            integer :: iacat_placeholder = 0
-            integer :: ageout_model_unit = 0
-            logical :: laoly_placeholder = .false.
-            integer :: ijvs_placeholder = 0
-            integer :: ijent_placeholder = 0
-            integer :: ijdel_placeholder = 0
-            double precision :: output_ages_gyr(5) = [0.5d0, 1.0d0, 5.0d0, 10.0d0, 20.0d0]
-            logical :: acoustic_depth_output = .false.
-            integer :: calcad_file_unit = 0
+            double precision :: constant_mixing_coeff = 1.0d0
+            double precision :: constant_settling_reduction = 1.0d0
             logical :: use_envelope_triangle_dt = .false.
             double precision :: pmm_exponent_a = 0.0d0
             double precision :: pmm_exponent_b = 0.0d0

@@ -48,6 +48,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       use atm_table_lib
       use star_info_lib
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       implicit none
       double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
@@ -80,7 +81,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       integer :: i1, i2, i3, i, vertex_being_computed, j
       double precision :: temp, temp1, temp2, tri_err
       logical :: envelope_needs_recompute, print_envelope_flag, &
-           save_boundary_flag, pulse_print_flag
+           save_boundary_flag
       double precision :: b, gl, rl, adjusted_teffl
 
       ierr = 0
@@ -191,7 +192,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           vertex_being_computed=i
           save_boundary_flag = .true.
 ! DBG PULSE: DO NOT DO PULSE OUTPUT
-            pulse_print_flag = .false.
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
           if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
@@ -205,7 +205,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &
                  stored_envelope_state,stored_vertex_index,atm_call_count, &
                  env_call_count,saha_state,vtx_logp, &
-                 vtx_logr,vtx_logt,pulse_print_flag,ierr=jerr_atm)
+                 vtx_logr,vtx_logt,ierr=jerr_atm)
 ! 2026 numerics-gate opt-in: envelope-integration failures
 ! (numerics_termination) and table errors surface here instead of
 ! stopping inside atm_get; the caller (henyey_iterate) propagates.
@@ -231,15 +231,17 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
        envelope_coeffs(3) =   vtx_logr(1) - envelope_coeffs(1)*vtx_logp(1) - envelope_coeffs(2)*vtx_logt(1)
        envelope_coeffs(6) = tri_logl(1) - envelope_coeffs(4)*vtx_logp(1) - envelope_coeffs(5)*vtx_logt(1)
        envelope_coeffs(9) = tri_teffl(1) - envelope_coeffs(7)*vtx_logp(1) - envelope_coeffs(8)*vtx_logt(1)
-       write(short_file_unit,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
+       if (solver_diagnostics()) then
+        write(run_log_unit,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
               (envelope_coeffs(i+i+i-3+j),j=1,3), i=1,3)
+       end if
  50      format(' ENVELOPE TRIANGLE  LOG(TE)  LOG(L)   LOG(P)   LOG(T)', &
               3X,'LOG(R)   COEFFICIENTS'/I14,L1,2X,5F9.5,8X,'LOG(R)', &
               3F10.5/ I14,L1,2X,5F9.5,5X,'LOG(L/L0)',3F10.5/ &
               I14,L1,2X,5F9.5,7X,'LOG(TE)',3F10.5)
 ! 60      FORMAT(' COUNTS  KATM',I5,'  KENV',I5,'  KSAHA',I5)
       else
-       write(short_file_unit,70)
+       if (solver_diagnostics()) write(run_log_unit,70)
  70      format(' ENVELOPE TRIANGLE NOT CHANGED')
       endif
       return

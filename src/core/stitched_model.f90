@@ -25,15 +25,17 @@ module stitched_model_lib
       public :: build_stitched_model, n_ext, n_ie, stx_prof, &
            stx_pulse, n_prof_cols, n_pulse_cols, &
            ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, ip_conv, &
-           ip_gradr, ip_gradT, ip_grada, ip_conv_vel
+           ip_gradr, ip_gradT, ip_grada, ip_conv_vel, ip_brunt_N2, &
+           ip_csound
 
-      integer, parameter :: n_prof_cols = 57
+      integer, parameter :: n_prof_cols = 60
       integer, parameter :: n_pulse_cols = 35
 ! Named indices for the stx_prof columns physics consumers read
 ! (column meanings = the profile column registry in io/yrec_output).
       integer, parameter :: ip_mass = 2, ip_logR = 3, ip_logT = 4, &
            ip_logRho = 5, ip_logP = 6, ip_conv = 9, ip_gradr = 12, &
-           ip_gradT = 13, ip_grada = 14, ip_conv_vel = 15
+           ip_gradT = 13, ip_grada = 14, ip_conv_vel = 15, &
+           ip_brunt_N2 = 54, ip_csound = 58
 ! The extended model: interior (center -> fitting point) + envelope
 ! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
 ! assembled inward-to-outward, exactly the regions io/write_stitched_profile.f90
@@ -49,6 +51,10 @@ module stitched_model_lib
 ! by compute_seismic_columns (called from build_extended): brunt_N2,
 ! lamb_S2 (l=1), gradL, gradr_div_grada.
       double precision :: ext_seismic(4,max_ext)
+! Geometric height of each atmosphere point above the photosphere,
+! indexed like atmo_struct (1 = outermost): the cumulative sum of
+! envint's per-step lengths, built by build_stitched_model.
+      double precision :: atm_height(max_ext)
       double precision :: stx_prof(n_prof_cols, max_ext)
       double precision :: stx_pulse(n_pulse_cols, max_ext)
 ! Index of the last NON-atmosphere point: the turnover calculation
@@ -76,7 +82,7 @@ subroutine build_stitched_model
       double precision :: b, gl, rl, ateffl, plim, dum1(4), dum2(3), &
            dum3(3), dum4(3)
       integer :: ixx, idum, katm, kenv, ksaha
-      logical :: lprt, lsbc0, lpulpt
+      logical :: lprt, lsbc0
 
 ! interior always present
       n_ext = 0
@@ -115,7 +121,6 @@ subroutine build_stitched_model
       ksaha = 0
       lprt = .false.
       lsbc0 = .false.
-      lpulpt = .false.
       b = exp(ln10*star%log_L)
       rl = 0.5d0*(star%log_L + star%log10_solar_luminosity - 4.0d0*star%log_Teff &
            - c4pil - csigl)
@@ -136,7 +141,7 @@ subroutine build_stitched_model
       call atm_get(b, star%fp_rot(star%nz), star%ft_rot(star%nz), gl, &
            star%log_total_mass, ixx, lprt, lsbc0, plim, rl, ateffl, &
            star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), dum1, idum, katm, &
-           kenv, ksaha, dum2, dum3, dum4, lpulpt, jerr)
+           kenv, ksaha, dum2, dum3, dum4, jerr)
 
       star%job%atm_step_begin = atm_beg0
       star%job%atm_step_min = atm_min0
@@ -165,8 +170,27 @@ subroutine build_stitched_model
       end do
       n_ie = n_ext
 ! atmosphere: atmo_struct runs outward-in, so walk it in reverse.
+! atmo_delta_depth(k) is the PER-STEP geometric length between tau
+! points k-1 and k (envint's Cox p590 quadrature), not a height, so
+! accumulate it into atm_height: point i sits sum(delta(i+1:num))
+! above the deepest point (tau = 2/3, the photosphere). The legacy
+! .store stitch added the raw per-step value to the photosphere
+! radius -- a longstanding bug that left the atmosphere radii
+! non-monotonic (and made every atmosphere point hug r_phot); it is
+! fixed here, not preserved. delta(1), the one value polluted by the
+! stale-prev_tau quirk envint notes, never enters any height. The
+! deepest point (height 0) repeats the envelope's photosphere radius
+! and is skipped, same as the fitting-point repeat above.
+      if (atmo_struct%num_atm_points > 0) then
+         atm_height(atmo_struct%num_atm_points) = 0.0d0
+         do i = atmo_struct%num_atm_points - 1, 1, -1
+            atm_height(i) = atm_height(i+1) + &
+                 atmo_struct%atmo_delta_depth(i+1)
+         end do
+      end if
       do i = atmo_struct%num_atm_points, 1, -1
          if (n_ext >= max_ext) exit
+         if (atm_height(i) <= 0.0d0) cycle
          n_ext = n_ext + 1
          ext_region(n_ext) = 3
          ext_index(n_ext) = i
@@ -295,6 +319,9 @@ double precision function ext_profile_value(icol, j)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = env_struct%env_specific_heat_cp(i)
          case (51); ext_profile_value = -env_struct%env_dlnrho_dlnt(i)
+         case (58); ext_profile_value = sqrt(env_struct%env_gamma1(i)* &
+              exp(ln10*(env_struct%env_log10_pressure(i) - &
+              env_struct%env_log10_density(i))))
          case default; ext_profile_value = 0.0d0
          end select
       case (3)
@@ -302,7 +329,7 @@ double precision function ext_profile_value(icol, j)
          case (2);  ext_profile_value = star%star_mass
          case (3);  ext_profile_value = log10(exp(ln10* &
                        env_struct%env_log10_radius(env_struct%num_env_points)) &
-                       + atmo_struct%atmo_delta_depth(i))
+                       + atm_height(i))
          case (4);  ext_profile_value = atmo_struct%atmo_log10_temperature(i)
          case (5);  ext_profile_value = atmo_struct%atmo_log10_density(i)
          case (6);  ext_profile_value = atmo_struct%atmo_log10_pressure(i)
@@ -318,6 +345,9 @@ double precision function ext_profile_value(icol, j)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = atmo_struct%atmo_specific_heat_cp(i)
          case (51); ext_profile_value = -atmo_struct%atmo_dlnrho_dlnt(i)
+         case (58); ext_profile_value = sqrt(atmo_struct%atmo_gamma1(i)* &
+              exp(ln10*(atmo_struct%atmo_log10_pressure(i) - &
+              atmo_struct%atmo_log10_density(i))))
          case default; ext_profile_value = 0.0d0
          end select
       case default
@@ -398,6 +428,12 @@ double precision function profile_value(icol, k)
          else
             profile_value = 0.0d0
          end if
+      case (58)
+! sound speed sqrt(Gamma1*P/rho) [cm/s]
+         profile_value = sqrt(star%adiabatic_index_gamma1(k)* &
+              exp(ln10*(star%logP(k) - star%logRho(k))))
+      case (59); profile_value = star%am_diffusion_coeff(k)
+      case (60); profile_value = star%mixing_diffusion_coeff(k)
       case default
          profile_value = 0.0d0
       end select
@@ -474,7 +510,7 @@ subroutine build_pulse_points(pts)
          case default   ! atmosphere
             r = exp(ln10* &
                  env_struct%env_log10_radius(env_struct%num_env_points)) &
-                 + atmo_struct%atmo_delta_depth(i)
+                 + atm_height(i)
             m = exp(ln10*star%log_total_mass)
             P = exp(ln10*atmo_struct%atmo_log10_pressure(i))
             T = exp(ln10*atmo_struct%atmo_log10_temperature(i))

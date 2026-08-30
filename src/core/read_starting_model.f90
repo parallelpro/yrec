@@ -91,7 +91,7 @@
 !     names instead (see the common block declarations below for the
 !     mapping back to read_input.f90's spelling).
 !   - common/alexmix/ (XALEX/ZALEX) and common/vnewcb/ (VNEW) are
-!     likewise only otherwise established in read_input.f90.  vnew is kept
+!     likewise only otherwise established in read_input.f90.  mixture_weights_seed is kept
 !     as-is (already a plain, adequately descriptive name, and it is
 !     the name used directly in this file's own pre-existing
 !     comments); alexmix's members are given descriptive names since
@@ -201,7 +201,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       integer :: old_last_shell
       double precision :: saved_env_step_max, saved_env_step_min, &
            saved_env_step_begin
-      logical :: save_boundary_flag, print_flag, pulse_print_flag
+      logical :: save_boundary_flag, print_flag
       double precision :: log10_gravity
       integer :: vertex_index
       double precision :: log10_pressure_limit
@@ -242,10 +242,10 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       ierr = 0
 
       if (model_failed_flag) then
-          write(short_file_unit,1000)
+          write(run_log_unit,1000)
  1000       format(1x,39('>'),40('<')/, &
                   "STARIN:        ***** RUN STOPPED *****")
-          write(short_file_unit,1010)
+          write(run_log_unit,1010)
  1010       format("STARIN: ***** MODEL FAILED TO CONVERGE *****")
             ! 2026 (phase five, step B): stop converted to ierr; run_yrec
             ! returns the error and the CLI wrapper (main) stops.
@@ -343,53 +343,50 @@ subroutine acquire_starting_model
 ! ATEMP now contains a keyword describing the format of the input stellar
 ! model.  We decide what kind of model format it has and process accordingly.
 
-      if (format_tag .eq. 'NMOD') then
-         write(short_file_unit,12)
- 12      format('STARIN:  Input model has YREC7 format')
-         call read_yrec7(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
-              star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
-              star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
-              star%log_total_mass,star%logT,iread,short_file_unit, &
-              core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
-              use_extended_composition0,rotation_active0,star%nz, &
-              star%model_number,star%omega,star%fit_point_pressure,star%fit_point_radius, &
-              star%star_mass,star%log_Teff,star%luminosity_breakdown, &
-              star%trial_log_luminosity,star%trial_log_temperature, &
-              star%fit_point_temperature, &
+      if (format_tag .eq. 'YMOD') then
+         write(run_log_unit,11)
+ 11      format(1x,'loading starting model (YREC .mod format)')
+         call read_mod_model(iread, timestep_yr, mixing_length0, &
+              use_extended_composition0, rotation_active0, jerr)
+         if (jerr /= 0) then
+            ierr = jerr
+            return
+         end if
+      else if (format_tag .eq. 'NMOD') then
+         write(run_log_unit,12)
+ 12      format(1x,'loading starting model (YREC7 format)')
+! (2026 de-tramp: the star%-shaped slots are read/written by
+! read_yrec7 directly; only genuine locals -- the model file's own
+! header values, latched below -- remain arguments.)
+         call read_yrec7(mixing_length0,timestep_yr,trial_sign_flag,iread, &
+              core_cz_top_index0,envelope_cz_bottom_index0, &
+              use_extended_composition0,rotation_active0, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
               disk_locking_active0,instability_transport_active0,ljdot00, &
-              alok_code, &
-              lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,star%initial_composition_code,disk_pressure0, &
+              alok_code,lovstc0,envelope_overshoot_active0,lovstm0, &
+              use_pure_z_table0,lsemic0,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0, ierr)
          if (ierr /= 0) return
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons
 
       else if (format_tag .eq. 'MOD2 ') then
-         write(short_file_unit,16)
- 16      format('STARIN:  Input model has MODEL2 format')
-         call read_model2(star%log_L,star%envelope_fit_coeffs,mixing_length0, &
-              star%dage,timestep_yr,trial_sign_flag,star%xa,star%logRho, &
-              star%luminosity_lsun,star%logP,star%logR,star%log_mass, &
-              star%log_total_mass,star%logT,iread, &
-              core_cz_top_index0,envelope_cz_bottom_index0,star%convective_flag, &
-              use_extended_composition0,rotation_active0,star%nz, &
-              star%model_number,star%omega,star%fit_point_pressure,star%fit_point_radius, &
-              star%star_mass,star%log_Teff,star%luminosity_breakdown, &
-              star%trial_log_luminosity,star%trial_log_temperature, &
-              star%fit_point_temperature, &
+         write(run_log_unit,16)
+ 16      format(1x,'loading starting model (MODEL2 format)')
+! (2026 de-tramp: same treatment as the read_yrec7 call above.)
+         call read_model2(mixing_length0,timestep_yr,trial_sign_flag,iread, &
+              core_cz_top_index0,envelope_cz_bottom_index0, &
+              use_extended_composition0,rotation_active0, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
               disk_locking_active0,instability_transport_active0,ljdot00, &
-              alok_code, &
-              lovstc0,envelope_overshoot_active0,lovstm0,use_pure_z_table0, &
-              lsemic0,star%initial_composition_code,disk_pressure0, &
+              alok_code,lovstc0,envelope_overshoot_active0,lovstm0, &
+              use_pure_z_table0,lsemic0,disk_pressure0, &
               disk_temperature0,wind_saturation_omega0)
 ! First three lines above are YREC7 inputs
 ! Last three lines are MODEL2 add-ons
 
       else
-         write(short_file_unit,20)
+         write(run_log_unit,20)
  20      format('STARIN: ***** RUN TERMINATED, INVALID INPUT', &
                 ' MODEL FILE.  *****')
          ! 2026 (phase five, step B): stop converted to ierr; run_yrec
@@ -418,9 +415,9 @@ subroutine acquire_starting_model
 ! MHP 9/03 FIXED TYPO
        if (.not.mixing_length_matches .or. use_extended_composition0.neqv. &
             star%job%use_extended_composition) then
-          write(short_file_unit,1040) star%mixing_length_alpha,mixing_length0, &
+          write(run_log_unit,1040) star%mixing_length_alpha,mixing_length0, &
                star%job%use_extended_composition,lexcp0
-          write(iowr,1040) star%mixing_length_alpha,mixing_length0,star%job%use_extended_composition, &
+          write(terminal_unit,1040) star%mixing_length_alpha,mixing_length0,star%job%use_extended_composition, &
                lexcp0
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
@@ -453,11 +450,11 @@ subroutine acquire_starting_model
 ! FOURTH PART:  - LOG J/M STORED
 
       if (star%job%rotation_active) then
-       if (star%ctrl%lwnew) then
+       if (star%ctrl%set_initial_omega) then
 ! GENERATE A SOLID BODY ROTATION CURVE WITH OMEGA = WNEW;
 ! THIS IS DONE TO CONVERT A NON-ROTATING MODEL TO A ROTATING ONE.
           do i = 1,star%nz
-             star%omega(i) = star%ctrl%wnew
+             star%omega(i) = star%ctrl%initial_omega
           end do
        endif
       else
@@ -486,7 +483,7 @@ subroutine acquire_starting_model
                fraction_diff = abs(star%xa(i,j)-reference_composition(i))
                if (fraction_diff.gt.1.0d-6) then
                   write(*,592)i,j,fraction_diff
-                  write(short_file_unit,592)i,j,fraction_diff
+                  write(run_log_unit,592)i,j,fraction_diff
  592              format('SPECIES ',i3,' IN SHELL ',i5, &
                     ' DIFFERS FROM CENTER BY ',e12.4, &
                     ' MIX NOT MODIFIED IN EVOLVED MODEL')
@@ -514,8 +511,6 @@ subroutine acquire_starting_model
               total_nitrogen_cno_fraction
          oxygen_scale_ratio = star%ctrl%target_oxygen_cno_fraction/ &
               total_oxygen_cno_fraction
-         write(*,*)star%ctrl%target_carbon_cno_fraction,star%ctrl%target_nitrogen_cno_fraction, &
-              star%ctrl%target_oxygen_cno_fraction
          do i = 5,6
             do j = 1,star%nz
                star%xa(i,j)=carbon_scale_ratio*star%xa(i,j)
@@ -533,10 +528,11 @@ subroutine acquire_starting_model
          end do
          write(*,594)(reference_composition(k),k=5,11), &
               (star%xa(k,1),k=5,11)
-         write(short_file_unit,594)(reference_composition(k),k=5,11), &
+         write(run_log_unit,594)(reference_composition(k),k=5,11), &
               (star%xa(k,1),k=5,11)
- 594     format('CNO MIX CHANGED IN STARIN. OLD C12 C13 N14' &
-           ' N15 O16 O17 O18 ',7e12.4,' NEW ',7e12.4)
+ 594     format(1x,'CNO mixture applied to the starting model:',/, &
+             4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
+             4x,'new (C12 C13 N14 N15 O16 O17 O18):',7es12.4)
       endif
 ! DESIRED ISOTOPE RATIOS AND LIGHT ELEMENT ABUNDANCES ASSIGNED.
 !     AT PRESENT B10,B11,N15,O17 ARE NOT USED AND THUS NOT ALTERED.
@@ -559,11 +555,14 @@ subroutine acquire_starting_model
          end do
          write(*,593)(reference_composition(k),k=4,15), &
               (star%xa(k,1),k=4,15)
-         write(short_file_unit,593)(reference_composition(k),k=4,15), &
+         write(run_log_unit,593)(reference_composition(k),k=4,15), &
               (star%xa(k,1),k=4,15)
- 593     format('CNO ISOTOPES AND LIGHT ELEMENTS CHANGED IN ', &
-              'STARIN. OLD HE3 C12 C13 N14 N15 O16 O17 O18 H2 LI6 ', &
-               'LI7 BE9',12e12.4,' NEW ',12e12.4)
+ 593     format(1x,'isotope/light-element mixture applied to the', &
+             ' starting model:',/, &
+             4x,'old (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
+             12es12.4,/, &
+             4x,'new (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
+             12es12.4)
       endif
       end if
       end if
@@ -598,11 +597,11 @@ subroutine extend_core_toward_center
                star%ctrl%chi_grid_scale(2)
           num_shells_extended = star%nz + star%job%num_core_shells_added
           if (num_shells_extended .gt. json) then
-             write(short_file_unit,476)"STARIN: Unable to extend core inward ", &
+             write(run_log_unit,476)"STARIN: Unable to extend core inward ", &
                    "- JSON too small"
-             write(short_file_unit,477) "STARIN: Required size =", &
+             write(run_log_unit,477) "STARIN: Required size =", &
                     num_shells_extended, ", JSON = ", json
-             write(short_file_unit,478) "STARIN:  ***** RUN TERMINATED *****"
+             write(run_log_unit,478) "STARIN:  ***** RUN TERMINATED *****"
   476        format(2a)
   477        format(a, i8, a, i8)
   478        format(a)
@@ -725,7 +724,7 @@ subroutine rescale_and_refit_envelope
           if (i < (1)) then
 ! ENVELOPE MASS DESIRED WITHIN FIRST POINT;PRINT NASTY MESSAGE
 ! AND ABORT.
-          write(short_file_unit,576)star%job%requested_envelope_mass
+          write(run_log_unit,576)star%job%requested_envelope_mass
  576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
@@ -778,12 +777,12 @@ subroutine rescale_and_refit_envelope
              point_pressure_rotation_factor = 1.0d0
              point_temperature_rotation_factor = 1.0d0
                eos_res(i_log10_density) = log10_density
-               call eos_get_r(log10_temperature, log10_pressure, &
+               call eos_get(log10_temperature, log10_pressure, &
                     hydrogen_fraction, metal_fraction, eos_res, &
                     want_derivatives, in_atmosphere, saha_state, &
                     composition_at_zone=star%xa(:,star%nz))
 ! kap at eqstat's returned density -- the historical inout dataflow
-               call kap_get_r(eos_res(i_log10_density), log10_temperature, &
+               call kap_get(eos_res(i_log10_density), log10_temperature, &
                     hydrogen_fraction, metal_fraction, kap_res, &
                     eos_res(i_fxion:i_fxion+2))
                star%iovim = -1
@@ -829,7 +828,6 @@ subroutine rescale_and_refit_envelope
           vertex_index=0
           log10_pressure_limit = star%logP(star%nz)
 ! DBG PULSE: DO NOT DO PULSE OUTPUT
-            pulse_print_flag = .false.
             if (use_debye_huckel_correction) then
                debye_huckel_x = star%xa(i_h1,star%nz)
                debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
@@ -857,7 +855,7 @@ subroutine rescale_and_refit_envelope
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
                  hydrogen_fraction,metal_fraction,atm_get_dummy1, &
                  atm_get_unused_flag,katm,kenv,saha_state,atm_get_dummy2, &
-                 atm_get_dummy3,atm_get_dummy4,pulse_print_flag,ierr=jerr_atm)
+                 atm_get_dummy3,atm_get_dummy4,ierr=jerr_atm)
 ! 2026 numerics-gate opt-in: envelope/atmosphere integration failures
 ! surface here (incl. numerics_termination) instead of stopping in
 ! atm_get; the host's ierr is already threaded to run_yrec.
@@ -926,7 +924,7 @@ subroutine rescale_and_refit_envelope
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
 ! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
 ! returns the error (run_yrec propagates, the CLI wrapper stops).
-                        write(short_file_unit,*) 'STARIN: degenerate', &
+                        write(run_log_unit,*) 'STARIN: degenerate', &
                              ' envelope interpolation interval (was STOP 9998)'
                         ierr = 1
                         return
@@ -974,7 +972,7 @@ subroutine rescale_and_refit_envelope
                      if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
 ! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
 ! returns the error (run_yrec propagates, the CLI wrapper stops).
-                        write(short_file_unit,*) 'STARIN: degenerate', &
+                        write(run_log_unit,*) 'STARIN: degenerate', &
                              ' envelope interpolation interval (was STOP 9998)'
                         ierr = 1
                         return
@@ -1043,7 +1041,7 @@ subroutine rescale_and_refit_envelope
 !          DO 590 J = 1,JEND
        endif
        envelope_recomputed_flag = .true.
-       write(short_file_unit,597)old_senv,star%senv
+       write(run_log_unit,597)old_senv,star%senv
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
       exit envelope_rescale
@@ -1097,7 +1095,7 @@ subroutine initialize_rotation_state
           angular_momentum_sum = angular_momentum_sum+shell_angular_momentum
           rotational_ke_sum = rotational_ke_sum + star%kinetic_energy_rot(i)
        end do
-       write(short_file_unit,560)total_angular_momentum, &
+       write(run_log_unit,560)total_angular_momentum, &
             angular_momentum_sum,total_rotational_ke,rotational_ke_sum
  560     format(1x,'TOTAL J OF STAR - PREVIOUS ',1pe21.13,' NEW ', &
               1pe21.13/1x,'TOTAL ROTATIONAL K.E. OF STAR - PREVIOUS ', &
@@ -1123,7 +1121,7 @@ subroutine update_surface_mixture
 ! VIA RDLAOL OTHERWISE USE VNEW.
       if (.not.llaol) then
          do i=1, 12
-            species_mix_weights(i)=star%ctrl%vnew(i)
+            species_mix_weights(i)=star%ctrl%mixture_weights_seed(i)
          end do
       end if
 

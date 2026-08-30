@@ -160,14 +160,14 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
             temperature_rotation_factor = 1.0d0
             current_zone_idx = cz_edge_idx
             eos_res(i_log10_density) = log_density_zone
-            call eos_get_r(log_temperature_zone, log_pressure_zone, &
+            call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
                  want_derivatives, in_atmosphere, saha_state, &
                  composition_at_zone=composition(:,cz_edge_idx))
             log_density_zone = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density -- the
 ! historical inout dataflow)
-            call kap_get_r(eos_res(i_log10_density), log_temperature_zone, &
+            call kap_get(eos_res(i_log10_density), log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, kap_res, &
                  eos_res(i_fxion:i_fxion+2))
             call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
@@ -192,13 +192,13 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
             metal_fraction = composition(3,adjacent_radiative_idx)
             current_zone_idx = adjacent_radiative_idx
             eos_res(i_log10_density) = log_density_zone
-            call eos_get_r(log_temperature_zone, log_pressure_zone, &
+            call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
                  want_derivatives, in_atmosphere, saha_state, &
                  composition_at_zone=composition(:,adjacent_radiative_idx))
             log_density_zone = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density)
-            call kap_get_r(eos_res(i_log10_density), log_temperature_zone, &
+            call kap_get(eos_res(i_log10_density), log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, kap_res, &
                  eos_res(i_fxion:i_fxion+2))
             call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
@@ -262,13 +262,13 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                metal_fraction = composition(3,search_zone_idx)
                current_zone_idx = search_zone_idx
                eos_res(i_log10_density) = log_density_zone
-               call eos_get_r(log_temperature_zone, log_pressure_zone, &
+               call eos_get(log_temperature_zone, log_pressure_zone, &
                     hydrogen_fraction, metal_fraction, eos_res, &
                     want_derivatives, in_atmosphere, saha_state, &
                     composition_at_zone=composition(:,search_zone_idx))
                log_density_zone = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density)
-               call kap_get_r(eos_res(i_log10_density), log_temperature_zone, &
+               call kap_get(eos_res(i_log10_density), log_temperature_zone, &
                     hydrogen_fraction, metal_fraction, kap_res, &
                     eos_res(i_fxion:i_fxion+2))
                call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
@@ -298,7 +298,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                mixed_zone_bounds(zone_idx,edge_side) = search_zone_idx - 1
                new_edge_idx = search_zone_idx - 1
             end if
-            write(short_file_unit,601) cz_edge_idx, new_edge_idx, &
+            write(run_log_unit,601) cz_edge_idx, new_edge_idx, &
                  reached_max_extent, perturbed_radiative_gradient, &
                  local_radiative_gradient
   601       format(1x,'CZ OLD EDGE ',i3,' EXTENDED TO-', &
@@ -312,7 +312,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
       if (mixed_zone_bounds(k_idx,2).gt.mixed_zone_bounds(k_idx+1,1)) then
 !  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
-         write(short_file_unit,93) ((mixed_zone_bounds(zone_idx,pair_idx), &
+         write(run_log_unit,93) ((mixed_zone_bounds(zone_idx,pair_idx), &
               pair_idx=1,2),zone_idx=k_idx,k_idx+1), &
               mixed_zone_bounds(k_idx,1), mixed_zone_bounds(k_idx+1,2)
    93    format(2x,'MIXED ZONES MERGED DUE TO SEMICONVECTION' &

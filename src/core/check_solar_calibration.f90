@@ -95,18 +95,18 @@ subroutine check_solar_calibration(log_l_lsun, log_r_rsun, run_index, current_zx
          star%job%initial_x_array(run_index+1) = star%job%rescale_params(2,run_index+1)
          star%job%initial_x_array(run_index+2) = star%job%rescale_params(2,run_index+1)
          star%job%initial_x_array(run_index+3) = star%job%rescale_params(2,run_index+1)
-         write(iowr,*) "New BL, Old BL, Delta BL: ", &
+         write(terminal_unit,*) "New BL, Old BL, Delta BL: ", &
              log_l_lsun, star%log_l_prev, log_l_lsun-star%log_l_prev
-         write(iowr,*) "New RL, Old RL, Delta RL: ", &
+         write(terminal_unit,*) "New RL, Old RL, Delta RL: ", &
              log_r_rsun, star%log_r_prev, log_r_rsun-star%log_r_prev
-         write(iowr,*) "New X, Old X, DX: ", &
+         write(terminal_unit,*) "New X, Old X, DX: ", &
              star%job%rescale_params(2,run_index+1), star%job%rescale_params(2,run_index-2), &
              star%delta_x
-         write(iowr,*) "New A, Old A, DA: ", &
+         write(terminal_unit,*) "New A, Old A, DA: ", &
              star%job%mixing_length_array(run_index+1), &
              star%job%mixing_length_array(run_index-2), star%delta_alpha
          if(star%ctrl%calibrate_solar_zx)then
-            write(iowr,*) "New Z, Old Z, DZ: ", &
+            write(terminal_unit,*) "New Z, Old Z, DZ: ", &
              star%job%rescale_params(3,run_index+1), star%job%rescale_params(3,run_index-2), &
              delta_z
          endif

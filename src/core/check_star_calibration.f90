@@ -83,7 +83,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 !     times. If not store L and age and return.
 ! ZZZ
       write(*,*) ' Just passed R*'
-      write(itrack,*) '#Just passed R*'
+      write(run_log_unit,*) '#Just passed R*'
       star%just_passed_target_radius_flag = .true.
 !
 !     Have previous L,Age and current L,Age (one before R* and
@@ -98,7 +98,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
            dage_dlogr*(star%job%target_radius_rsun-log_r_rsun_current)
       write(*,*) ' X, LogL/Lsun at R* =', star%job%rescale_params(2,run_index-1), &
            star%log_l_at_target_radius
-      write(itrack,*) '#X, LogL/Lsun at R* =', &
+      write(run_log_unit,*) '#X, LogL/Lsun at R* =', &
            star%job%rescale_params(2,run_index-1), star%log_l_at_target_radius
       if (abs(10.0d0**star%log_l_at_target_radius-star%ctrl%target_luminosity_lsun) &
            .le. star%ctrl%target_star_luminosity_tolerance) then
@@ -117,7 +117,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 !
       write(*,*) ' Have hit R* & L*, prepare final run to age:', &
         star%age_at_target_radius
-      write(itrack,*)'#Have hit R* & L*, prepare final run to age:', &
+      write(run_log_unit,*)'#Have hit R* & L*, prepare final run to age:', &
         star%age_at_target_radius
          return
       else
@@ -132,7 +132,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
           star%job%initial_x_array(run_index+2) = new_x
 !
       write(*,*) ' NK=2, Y=Y+0.01, Setup next run, X=', new_x
-      write(itrack,*) '#NK=2, Y=Y+0.01, Setup next run, X=', new_x
+      write(run_log_unit,*) '#NK=2, Y=Y+0.01, Setup next run, X=', new_x
             return
        else
 !           If NK=4,6,8,... (second and more times through) then
@@ -146,7 +146,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
                star%log_l_at_target_radius)+new_x
 !
       write(*,*) ' Setup next run, NK, X =', run_index, new_x
-      write(itrack, *) ' Setup next run, NK, X =', run_index, new_x
+      write(run_log_unit, *) ' Setup next run, NK, X =', run_index, new_x
           star%log_l_at_target_radius_prev_run = star%log_l_at_target_radius
           star%job%rescale_params(2,run_index+1) = new_x
           star%job%initial_x_array(run_index+1) = new_x

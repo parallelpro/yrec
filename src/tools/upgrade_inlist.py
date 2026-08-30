@@ -34,8 +34,14 @@ def load_registry():
     return ren, dead
 
 
-def convert_group(text, group_in, group_out, renames, dead):
-    """Rename variables inside one namelist group's record text."""
+def convert_group(text, group_in, group_out, renames, dead, other_renames):
+    """Rename variables inside one namelist group's record text.
+
+    A line whose assignments all resolve in the OTHER group's rename
+    map belongs to a control whose new-style home moved across groups
+    (e.g. legacy &control FSHORT -> &controls log_output_file); such
+    lines are renamed and returned separately for the caller to splice
+    into the other output group."""
     # capture the record: &group ... / (terminator on its own or line end)
     m = re.search(r"[$&]" + group_in + r"\b(.*?)(^\s*/\s*$|[$&]end)",
                   text, re.S | re.I | re.M)
@@ -44,6 +50,7 @@ def convert_group(text, group_in, group_out, renames, dead):
     body = m.group(1)
     out_lines = []
     dropped = []
+    moved = []
     # a variable assignment starts a line or follows a comma:
     # rename NAME when followed by '=' or '(' (array element)
     pat = re.compile(r"(^|[,\s])([A-Za-z]\w*)(\s*(?:\([^)]*\))?\s*=)")
@@ -58,15 +65,33 @@ def convert_group(text, group_in, group_out, renames, dead):
 
     for line in body.splitlines():
         code, sep, comment = line.partition("!")
-        # drop whole lines that only set dead controls
+        # drop whole lines that only set dead OR retired controls. A name
+        # absent from the registry altogether is a RETIRED control (the
+        # 2026 retire-legacy campaign deletes registry rows outright);
+        # passing it through would make the run's namelist read fail, so
+        # it is dropped with a marker instead.
         assigns = re.findall(r"([A-Za-z]\w*)\s*(?:\([^)]*\))?\s*=", code)
-        if assigns and all(a.lower() in dead for a in assigns):
+        gone = lambda a: a.lower() in dead or a.lower() not in renames
+        migrated = lambda a: (a.lower() in other_renames
+                              and a.lower() not in renames
+                              and a.lower() not in dead)
+        if assigns and all(migrated(a) for a in assigns):
+            def rename_other(mm):
+                return (mm.group(1) + other_renames[mm.group(2).lower()]
+                        + mm.group(3))
+            moved.append(pat.sub(rename_other, code)
+                         + (sep + comment if sep else ""))
+            continue
+        if assigns and all(gone(a) for a in assigns):
             dropped.extend(assigns)
-            out_lines.append("! (dropped unused legacy control) " + line.strip())
+            tag = ("dropped unused legacy control"
+                   if all(a.lower() in dead for a in assigns)
+                   else "dropped retired control")
+            out_lines.append(f"! ({tag}) " + line.strip())
             continue
         new_code = pat.sub(rename, code)
         out_lines.append(new_code + (sep + comment if sep else ""))
-    return "&" + group_out + "\n".join(out_lines) + "\n/\n", dropped
+    return "&" + group_out + "\n".join(out_lines) + "\n/\n", dropped, moved
 
 
 def main():
@@ -78,20 +103,23 @@ def main():
     ren, dead = load_registry()
     t1 = pathlib.Path(args.nml1).read_text(errors="replace")
     t2 = pathlib.Path(args.nml2).read_text(errors="replace")
-    g1, d1 = convert_group(t1, "control", "star_job", ren["control"],
-                           dead["control"])
-    g2, d2 = convert_group(t2, "physics", "controls", ren["physics"],
-                           dead["physics"])
+    g1, d1, m1 = convert_group(t1, "control", "star_job", ren["control"],
+                               dead["control"], ren["physics"])
+    g2, d2, m2 = convert_group(t2, "physics", "controls", ren["physics"],
+                               dead["physics"], ren["control"])
+    # splice cross-group migrations into their new home (before the '/')
+    if m1:
+        g2 = g2[:g2.rfind("\n/\n")] + "\n" + "\n".join(m1) + "\n/\n"
+    if m2:
+        g1 = g1[:g1.rfind("\n/\n")] + "\n" + "\n".join(m2) + "\n/\n"
     out = pathlib.Path(args.output or
                        ("inlist_" + pathlib.Path(args.nml1).stem))
-    # A conversion's contract is "reproduce the legacy run exactly",
-    # which includes the legacy output streams.
-    g1 = g1.replace("\n", "\n use_legacy_output = .true."
-                    "  ! stamped by upgrade_inlist.py (drop for MESA-style output)\n", 1)
+    # (use_legacy_output is retired: every run produces the unified
+    # MESA-style output set, so nothing is stamped any more.)
     out.write_text("! Converted from " + args.nml1 + " + " + args.nml2 +
                    " by tools/upgrade_inlist.py\n" + g1 + "\n" + g2)
     for d in d1 + d2:
-        print(f"WARNING: dropped unused legacy control {d}", file=sys.stderr)
+        print(f"WARNING: dropped unused/retired legacy control {d}", file=sys.stderr)
     print(f"wrote {out}")
 
 

@@ -80,7 +80,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 !  DESIRED X >100%; X NOT CHANGED
 !            ACOMP = ' X '
             error_species_index = 2
-            write(short_file_unit,1000)run_index,star%job%rescale_params(error_species_index,run_index)
+            write(run_log_unit,1000)run_index,star%job%rescale_params(error_species_index,run_index)
  1000       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF X', &
            ' IN KIND CARD #',i3,1x,'FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  X NOT RESCALED')
@@ -113,7 +113,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 !  DESIRED Z >100%; Z NOT CHANGED
 !            ACOMP = ' Z '
             error_species_index = 3
-            write(short_file_unit,1002)run_index,star%job%rescale_params(error_species_index,run_index)
+            write(run_log_unit,1002)run_index,star%job%rescale_params(error_species_index,run_index)
  1002       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF Z', &
            ' IN KIND CARD #',i3,1x,'FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
@@ -140,7 +140,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             else
 !  ERROR - RESCALED ABUNDANCE >100% - ABUNDANCE NOT CHANGED
 !               ACOMP = ANEWCP
-               write(short_file_unit,1004)icomp,run_index,star%job%new_species_value
+               write(run_log_unit,1004)icomp,run_index,star%job%new_species_value
  1004       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF ', &
            'SPECIES ',i3,' IN KIND CARD # ',i3,' FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
@@ -189,7 +189,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             shell_mass_old = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
             delta_env_mass = 0.0d0
             delta_core_mass = 0.0d0
-            write(short_file_unit,63)core_mass_old,shell_mass_old,env_mass_old,star_mass
+            write(run_log_unit,63)core_mass_old,shell_mass_old,env_mass_old,star_mass
    63       format(1x,'HB-OLD MASSES: CORE ', &
            f9.6,' SHELL ',f9.6,' ENV ',f9.6,' TOTAL',f9.6)
          endif
@@ -217,7 +217,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 ! **************************************************************************
 !               write(*,*)JXBEG-1,JXMID,JXEND,M
             if(env_mass_new.le.0.0d0)then
-               write(short_file_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
+               write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
    69          format(1x,'ERROR IN SUBROUTINE RSCALE'/1x, &
            'DESIRED NEW ENVELOPE MASS LESS THAN ZERO'/1x, &
            'OLD ENVELOPE MASS ',1pe9.2,' NEW ENVELOPE ',e9.2, &
@@ -260,7 +260,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 !           *** print debug info ***
             env_mass_check = ((10**total_mass_log)/star%solar_mass_cgs)-core_mass_old
             if(env_mass_check.le.0.0d0)then
-               write(short_file_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
+               write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
                ! 2026 (phase five, step B): stop converted to ierr; run_yrec
                ! returns the error and the CLI wrapper (main) stops.
                ierr = 1
@@ -308,7 +308,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             delta_env_mass = - delta_core_mass
             env_mass_new = env_mass_old2 + delta_env_mass
             if(env_mass_new.le.0.0d0)then
-               write(short_file_unit,71)env_mass_old,env_mass_new,star%job%rescale_params(4,run_index),core_mass_old
+               write(run_log_unit,71)env_mass_old,env_mass_new,star%job%rescale_params(4,run_index),core_mass_old
    71          format(1x,'ERROR IN SUBROUTINE RSCALE'/1x, &
            'NEW ENVELOPE MASS LESS THAN ZERO BECAUSE OF CORE', &
            ' RESCALING'/1x, &
@@ -348,7 +348,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             core_mass_new = exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs
             env_mass_new = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
             shell_mass_new = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
-            write(short_file_unit,101)core_mass_new,shell_mass_new,env_mass_new,star_mass
+            write(run_log_unit,101)core_mass_new,shell_mass_new,env_mass_new,star_mass
   101       format(1x,'HB-RESCALED MASSES: CORE ', &
            f9.6,' SHELL ',f9.6,' ENV ',f9.6,' TOTAL ',f9.6)
 

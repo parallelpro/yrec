@@ -84,7 +84,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
          xxt = 1.0d0 - opacity_table%opal95_grid_z(iz)
       endif
       if (opacity_table%opal95_grid_z(iz).ne.zz .or. xxt.ne.xx) then
-       write(short_file_unit,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
+       write(run_log_unit,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
          ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
          return
@@ -93,7 +93,11 @@ subroutine ll95tbl(opal95_table_path, ierr)
 !     READ IN HEADER INFO: GRID IN RHO/T6**3
       read(star%ctrl%opal95_table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,num_d)
       if (read_status .lt. 0) exit table_loop   ! was end=1000
-      if (read_status .gt. 0) stop 'OPAL95 TABLE READ ERROR'
+      if (read_status .gt. 0) then
+         write(*,*) 'll95tbl: malformed OPAL95 opacity table (header read failed)'
+         ierr = 1
+         return
+      end if
    20 format(///,4x,19f7.1,/)
 !     READ IN FULL TABLE: LOG CAPPA AS A FUNCTION OF LOG T AND
 !     LOG R = RHO/T6**3

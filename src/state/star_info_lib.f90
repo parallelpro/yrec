@@ -81,13 +81,15 @@ module star_info_lib
 
 ! ---- from state/pulse_diag_lib.f90 ----
       type, public :: pulsation_diagnostics_state
-! former common/pulse1/
-            logical :: lpumod
+! former common/pulse1/ (lpumod deleted 2026: the derivs routines
+! save unconditionally, so the mode flag had no readers left)
 ! former common/pulse2/
-            double precision :: qqdp, qqed, qqet, qqod, qqot, qdel, qdela, &
+! 2026 (.store convergence): qqed/qqet/qfs deleted -- write-only
+! since the pulse-model writers were retired.
+            double precision :: qqdp, qqod, qqot, qdel, qdela, &
                  qqcp
             double precision :: qrmu, qtl, qpl, qdl, qo, qol, qt, qp
-            double precision :: qqdt, qemu, qd, qfs
+            double precision :: qqdt, qemu, qd
       end type pulsation_diagnostics_state
 
 
@@ -118,10 +120,7 @@ module star_info_lib
             character(len=256) :: opal92_table2_path, pure_z_table_path, &
                  scv_h_table_path, scv_he_table_path, scv_z_table_path
             character(len=256) :: alex95_table_paths(7)
-            character(len=256) :: pulse_atm_path, pulse_env_path, &
-                 pulse_mod_path
             double precision :: mixture_weights(12)
-            integer :: mc_run_start, mc_run_end
 ! phase C flattening: the Monte-Carlo sample arrays (former
 ! common/monte2/), read from the MC input file by star_setup -- job
 ! configuration, moved here from the old run_diagnostics grab-bag.
@@ -194,6 +193,9 @@ module star_info_lib
 ! its own locals; mix writes them) and its
 ! mixed_zone_bounds_no_overshoot (same reason, see step 3).
             integer :: nz, model_number
+! Newton iterations the last converged model took (set by
+! henyey_iterate at convergence; shown in the run-log model line).
+            integer :: newton_iterations = 0
             integer :: core_cz_top_index, envelope_cz_bottom_index
             double precision :: log_total_mass, star_mass
             double precision :: log_Teff, log_L
@@ -261,17 +263,11 @@ module star_info_lib
 ! setupopac from the table configuration; disk_lifetime is the
 ! disk-locking countdown evolve_step advances; pulsation_mass_msun
 ! is stamped per kind card by begin_kind_card.
-            double precision :: acoustic_crossing_time_seconds, &
-                 acoustic_depth_cz_fraction, acoustic_depth_cz_seconds, &
-                 acoustic_depth_heii, atmosphere_sound_travel_time, &
-                 heii_zone_acoustic_width
-            double precision :: eos_adiabatic_gradient(json)
             double precision :: age_at_target_radius, age_prev_model, &
                  log_l_at_target_radius, log_l_at_target_radius_prev_run, &
                  log_l_prev_model, log_r_prev_model
             logical :: star_found_flag = .false., &
                  just_passed_target_radius_flag = .false., &
-                 compute_acoustic_depth = .false., &
                  use_two_z_tables = .false.
             double precision :: disk_gate_age_gyr, pulsation_mass_msun
             integer :: iov1, iov2, iovim
@@ -322,6 +318,12 @@ module star_info_lib
             double precision :: eps_total(json), eps_channels(7,json), &
                  beta(json), eta(json)
             logical :: converged_zone(json)
+! 2026 retire-legacy (.FULL): the model-grid rotational transport
+! coefficients [cm^2/s], stored by secular_transport for the
+! D_omega / D_mix_rot profile columns (zero when rotation is off;
+! last substep of the step wins).
+            double precision :: am_diffusion_coeff(json), &
+                 mixing_diffusion_coeff(json)
             double precision :: opacity_zone(json), gradr(json), gradT(json), &
                  grada(json), fxion_zone(3,json), conv_vel(json), scp(json)
 ! -- former turnover_state (turnover) --
@@ -382,6 +384,16 @@ module star_info_lib
 ! writers (write_history) only read them. Zero at run start
 ! (star0 snapshot / static zero), refreshed every converged model.
            double precision :: log_R_surface, log_g_surface
+! asteroseismic observables (2026): nu_max from (log g, Teff);
+! delta_nu_rho [uHz] from the mean density (a scaling estimate,
+! hence the _rho suffix); delta_nu [uHz], the asymptotic p-mode
+! large separation, from the sound-travel-time integral; delta_Pg
+! [s], the asymptotic l=1 g-mode period spacing, from the
+! Brunt-Vaisala integral -- computed by observables_lib's seismic
+! theme, consumed by the stop conditions and the optional history
+! columns
+           double precision :: nu_max, delta_nu_rho
+           double precision :: delta_nu, delta_Pg
            double precision :: total_moment_of_inertia, cz_moment_of_inertia
            double precision :: rotation_period_days, surf_velocity_kms
            double precision :: h_shell_bot_mass, h_shell_mid_mass, &
@@ -392,8 +404,6 @@ module star_info_lib
                 pressure_entropy_term(json), &
                 luminosity_entropy_term(json), &
                 radius_entropy_term(json)
-! former common/rotprt/
-           logical :: print_rotation_diagnostics
 ! former common/theage/
            double precision :: dage
 ! former common/stch/
@@ -403,7 +413,6 @@ module star_info_lib
            logical :: solar_calibration_active
 ! former common/sound/
            double precision :: adiabatic_index_gamma1(json)
-           logical :: sound_speed_output_active
 ! former common/monte2/
 ! former common/cent/
            double precision :: central_log10_temperature, central_log10_pressure, &
@@ -435,14 +444,12 @@ module star_info_lib
            character(len=4) :: initial_composition_code
 ! -- former evolve_state (evo (driver-step state)) --
             logical :: has_h_shell, model_diverged_flag, punch_pending_flag, &
-                 recompute_envelope_triangle, reset_triangle, &
-                 saved_pulse_output_flag
+                 recompute_envelope_triangle, reset_triangle
             integer :: h_shell_end_index, h_shell_midpoint_zone, &
                  h_shell_zone_begin, ikut_flag, istore_flag
             double precision :: convective_velocity, dt, &
                  dt_saved, dlnrho_dlnp, dlnrho_dlnt, hydrogen_dt, &
-                 max_domega_frac, path_length_sq, prev_age, prev_log_l, &
-                 prev_log_teff, timestep_yr, total_angular_momentum, &
+                 max_domega_frac, timestep_yr, total_angular_momentum, &
                  total_rotational_ke, trial_sign_flag
 ! -- the extended-model pulse physics arrays (former pulse%) --
             double precision :: pulse_dlnrho_dlnp(json), &

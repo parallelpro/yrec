@@ -11,7 +11,7 @@
 !   - engeb receives star%xa(i_h2,k) and the loop index;
 !   - the integration weights are LOCAL arrays (shell_center_mass,
 !     shell_mass), star%m/star%dm are not touched;
-!   - output goes to short_file_unit (the .short / CASE.log stream)
+!   - output goes to run_log_unit (the .short / CASE.log stream)
 !     instead of the historical bare unit 76 (a stray fort.76 file)
 !     and stdout.
 ! Called from run_yrec once per kind card, right after starin, so the
@@ -109,14 +109,14 @@ subroutine neutrino_flux_table
             star%neutrino_flux_total(j) = star%neutrino_flux_total(j) &
                  + star%neutrino_flux_zone(j,i)
          end do
-         write(short_file_unit,911)i,shell_mass(i), &
+         write(run_log_unit,911)i,shell_mass(i), &
               (star%neutrino_flux_zone(j,i),j=1,10)
  911     format(I5,1P11E10.3)
       end do
 
 ! WRITE OUT TOTAL NEUTRINO FLUXES.
 ! ***NOTE THAT THESE ARE IN UNITS OF 10**10. ***
-      write(short_file_unit,222)(star%neutrino_flux_total(i),i=1,10)
+      write(run_log_unit,222)(star%neutrino_flux_total(i),i=1,10)
  222  format(1P10E10.3)
 
 ! NORMALIZE FLUXES.
@@ -135,11 +135,11 @@ subroutine neutrino_flux_table
 ! ELECTRON DENSITY.
          log_electron_density = star%logRho(i)+log10((1.0d0+star%xa(i_h1,i))/2.0d0)
 ! MASS FRACTION.
-         zone_mass_fraction = shell_mass(i)/1.9891d33
+         zone_mass_fraction = shell_mass(i)/star%solar_mass_cgs
 ! RADIUS FRACTION.
          zone_radius_fraction = exp(ln10*star%logR(i))/star%solar_radius_cgs
 ! FLUXES ARE PRINTED IN THE SAME ORDER AS BAHCALL AND PINSONNEAULT.
-         write(short_file_unit,145)zone_radius_fraction,t6_million_k, &
+         write(run_log_unit,145)zone_radius_fraction,t6_million_k, &
               log_electron_density,zone_mass_fraction, &
               star%be7_mass_fraction_zone(i), &
               star%neutrino_flux_zone(i_nu_pp,i), &

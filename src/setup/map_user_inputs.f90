@@ -253,7 +253,7 @@ subroutine map_user_inputs
          max_domega_global = time_dw_global
 ! THE CODE CAN MIX IN A SERIES OF SMALLER TIMESTEPS; THIS IS
 ! THE MAX PERMITTED CHANGE IN OMEGA IN A SMALL, ROTATIONAL MIXING STEP
-         dtdif = time_dw_mix
+         diffusion_timestep_factor = time_dw_mix
 ! THE TIMESTEP IS NOT PERMITTED TO CHANGE FROM ONE MODEL TO THE NEXT BY
 ! MORE THAN THIS SCALE FACTOR
 !          ATIME(13) = TIME_MAX_DT_FAC

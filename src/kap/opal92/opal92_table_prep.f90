@@ -12,11 +12,12 @@
 ! table). Builds the cubic-spline coefficients (in density) for the
 ! OPAL92 opacity tables, and for the second (different-Z) OPAL92
 ! table set when use_two_z_tables is set.
-subroutine opal92_table_prep
+subroutine opal92_table_prep(ierr)
       use star_info_lib, only: star
       use opacity_table_lib
       use numerics_lib
       implicit none
+      integer, intent(out) :: ierr
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17
       integer, parameter :: num_x = 3
@@ -28,6 +29,8 @@ subroutine opal92_table_prep
       double precision :: spline_work(4,np), density_nodes(num_d)
       integer :: ix, it, index1, jd, ids, idf, id, index2, j, i
       double precision :: chkd, chko
+
+      ierr = 0
 
       do ix = 1,opacity_table%opal92_num_x
       do it = 1,opacity_table%opal92_num_temps
@@ -42,7 +45,11 @@ subroutine opal92_table_prep
           if (chko.le.-9.999d0) cycle
           if (jd.le.0) then
              opacity_table%opal92_density_start_index(index1) = id
-             if (id.ne.1) stop ' CHECK NDS '
+             if (id.ne.1) then
+                write(*,*) 'opal92_table_prep: opal92 table density grid does not start at index 1'
+                ierr = 1
+                return
+             end if
           endif
           jd = jd + 1
           density_nodes(jd) = chkd
@@ -75,7 +82,11 @@ subroutine opal92_table_prep
                   if (chko.le.-9.999d0) cycle
                   if (jd.le.0) then
                      opacity_table%opal92_density_start_index_z2(index1) = id
-                     if (id.ne.1) stop ' CHECK NDS2 '
+                     if (id.ne.1) then
+                        write(*,*) 'opal92_table_prep: second opal92 table density grid does not start at index 1'
+                        ierr = 1
+                        return
+                     end if
                   endif
                   jd = jd + 1
                   density_nodes(jd) = chkd

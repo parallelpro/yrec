@@ -39,8 +39,12 @@ class colors:
     ENDC = '\033[0m'
 
 def collect_tests(testreqs):
-    '''Traverse testing directories and define a test for each applicable pair
-    of YREC .nml1, .nml2 input files.'''
+    '''Traverse testing directories and define a test case for each
+    new-style single inlist (*.inlist -- the canonical deck form since
+    the 2026 migration) and each remaining legacy .nml1/.nml2 pair
+    (kept only as legacy-reader fixtures, e.g. the standard solar
+    case). A pair case carries its .nml2 name; an inlist case carries
+    an empty third component.'''
     tcases = []
     for testreq in testreqs:
         if "," in testreq:
@@ -53,6 +57,8 @@ def collect_tests(testreqs):
             curdir = os.getcwd()
             os.chdir(testreq)
             shortdir = os.path.basename(testreq)
+            for inlist in sorted(glob(f'*.inlist')):
+                tcases.append([testreq, inlist, ""])
             for nml1 in sorted(glob(f'*.nml1')):
                 tbase = nml1.replace(".nml1", "")
                 test_nml2 = f"{tbase}.nml2"
@@ -213,11 +219,13 @@ def test_yrec(tdir, nml1, nml2):
     for any test case failures. '''
     startdir = os.getcwd()
 
-    # Run the executable with the inputs for a given test case.
+    # Run the executable with the inputs for a given test case
+    # (single new-style inlist, or a legacy .nml1/.nml2 pair).
     os.chdir(tdir)
     for direc in ['output', 'standard']:
         os.makedirs(direc, exist_ok=True)
-    proc = sp.run([yrec_exe, nml1, nml2],
+    args = [yrec_exe, nml1] if not nml2 else [yrec_exe, nml1, nml2]
+    proc = sp.run(args,
             stdout=sp.PIPE,
             stderr=sp.PIPE)
     os.chdir(startdir)
@@ -244,11 +252,11 @@ def test_yrec(tdir, nml1, nml2):
     # check for the presence of a reference standard.
     # If no reference standard, copy outputs to
     # reference standard location and return.
-    tbase = nml1.replace(".nml1", "")
+    tbase = nml1.replace(".nml1", "").replace(".inlist", "")
     all_outputs = glob(f"{outdir}/{tbase}.*")
     print(f"output file base = {outdir}/{tbase}")
     print(f"{all_outputs=}")
-    outputs = [f for f in all_outputs if re.search(r'(\.short|\.store|\.track)', f)]
+    outputs = [f for f in all_outputs if re.search(r'\.log', f)]
     print(f"{outputs=}")
 
     # Fail on missing outputs

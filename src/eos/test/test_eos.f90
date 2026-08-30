@@ -11,7 +11,7 @@
 !
 ! Initialization notes -- everything here replicates what the full
 ! code does at startup, with the source of each piece cited:
-!  * unit numbers: core/read_input.f90's assignments (short_file_unit=20,
+!  * unit numbers: core/read_input.f90's assignments (run_log_unit=20,
 !    fermi_unit=15, scv units 72-74, iopale=49).
 !  * flags/cutoffs: explicit assignments below (TSCUT=6.0 matching
 !    the reference solar-model namelists; all kap table flags false
@@ -23,7 +23,7 @@
 !  * env_comp (the envelope-composition state eqstat2 consumes):
 !    core/read_starting_model.f90's exact mixture algorithm (its statements at the
 !    "COMPUTE SURFACE MIX VALUES" block), seeded from const_lib's
-!    vnew defaults (the G&N93 12-species mixture) and starin's
+!    mixture_weights_seed defaults (the G&N93 12-species mixture) and starin's
 !    atomic_weight data, for X=0.70, Z=0.016492 (matching the shipped
 !    EOSOPAL06Z0.016492 table).
 !  * the OPAL-2006 EOS file is opened on iopale exactly as
@@ -50,7 +50,7 @@ program test_eos
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-! read_starting_model.f90's atomic_weight data (12-species set, same order as vnew)
+! read_starting_model.f90's atomic_weight data (12-species set, same order as mixture_weights_seed)
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
@@ -58,7 +58,7 @@ program test_eos
       double precision :: w(12), wsum, scale
       integer :: setups_ierr, i, ipt, eos_ierr
 
-! eos_get argument set
+! eos_eval argument set
       double precision :: logt, t, logp, p, logd, d
       double precision :: x_frac, z_frac
       double precision :: beta, betai, beta14, fxion(3), rmu, amu, emu, eta
@@ -98,13 +98,13 @@ program test_eos
       laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
-      short_file_unit = 20
+      run_log_unit = 20
       star%ctrl%fermi_unit = 15
       star%ctrl%scv_h_unit = 72
       star%ctrl%scv_he_unit = 73
       star%ctrl%scv_z_unit = 74
       star%ctrl%iopale = 49
-      open(short_file_unit, file="test_eos.short", status="replace")
+      open(run_log_unit, file="test_eos.short", status="replace")
 
 ! eos configuration
       star%ctrl%use_mhd_eos = .false.
@@ -135,7 +135,7 @@ program test_eos
       star%envelope_hydrogen_fraction = star%xnew
       star%envelope_metal_fraction = star%znew
       do i = 1, 12
-         w(i) = star%ctrl%vnew(i)
+         w(i) = star%ctrl%mixture_weights_seed(i)
       end do
       wsum = w(1)+w(2)+w(3)+w(4)+w(5)+w(6)+w(8)+w(9)+w(10)+w(11)
       star%zenvm = star%envelope_metal_fraction* &
@@ -160,12 +160,32 @@ program test_eos
            star%fxenv)
 
 ! constants + Fermi/SCV table loads (real setups + eos_init inside it)
-      call setups(laol_work, dummy_path, dummy_path, dummy_path, &
-           fermi_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, scvh_path, scvhe_path, scvz_path, &
-           dummy_paths7, setups_ierr)
+      star%job%mixture_weights = laol_work
+      star%job%alex06_table_path = dummy_path
+      star%job%allard_table_path = dummy_path
+      star%job%atm_table_path = dummy_path
+      star%job%fermi_table_path = fermi_path
+      star%job%kurucz_table_path = dummy_path
+      star%job%kurucz_table2_path = dummy_path
+      star%job%laol_table_path = dummy_path
+      star%job%laol_table2_path = dummy_path
+      star%job%opal95_table_path = dummy_path
+      star%job%opal92_table_path = dummy_path
+      star%job%zams_a_table_path = dummy_path
+      star%job%zams_b_table_path = dummy_path
+      star%job%zams_c_table_path = dummy_path
+      star%job%centre1_table_path = dummy_path
+      star%job%centre2_table_path = dummy_path
+      star%job%centre3_table_path = dummy_path
+      star%job%centre4_table_path = dummy_path
+      star%job%centre5_table_path = dummy_path
+      star%job%opal92_table2_path = dummy_path
+      star%job%pure_z_table_path = dummy_path
+      star%job%scv_h_table_path = scvh_path
+      star%job%scv_he_table_path = scvhe_path
+      star%job%scv_z_table_path = scvz_path
+      star%job%alex95_table_paths = dummy_paths7
+      call setups(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_eos: FAIL (setups error)"
          stop 1
@@ -178,7 +198,7 @@ program test_eos
       x_frac = 0.70d0
       z_frac = 0.016492d0
 
-      write(*,'(a)') "# test_eos: eos_get over (logT, logP) grid, " // &
+      write(*,'(a)') "# test_eos: eos_eval over (logT, logP) grid, " // &
            "X=0.70 Z=0.016492, SCV+OPAL2006, no MHD, no DH"
       do ipt = 1, npts
          logt = grid_logt(ipt)
@@ -189,7 +209,7 @@ program test_eos
          lderiv = .true.
          latmo = .false.
          fxion = 0.0d0
-         call eos_get(logt, t, logp, p, logd, d, x_frac, z_frac, &
+         call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
               beta, betai, beta14, fxion, rmu, amu, emu, eta, &
               qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
               lderiv, latmo, ksaha)
@@ -247,7 +267,7 @@ program test_eos
               trim(mhd_dir)//"/zams_c", trim(mhd_dir)//"/centre1", &
               trim(mhd_dir)//"/centre2", trim(mhd_dir)//"/centre3", &
               trim(mhd_dir)//"/centre4", trim(mhd_dir)//"/centre5")
-         write(*,'(a)') "# test_eos: eos_get over the same grid, MHD"
+         write(*,'(a)') "# test_eos: eos_eval over the same grid, MHD"
          do ipt = 1, npts
             logt = grid_logt(ipt)
             logp = grid_logp(ipt)
@@ -256,7 +276,7 @@ program test_eos
             lderiv = .true.
             latmo = .false.
             fxion = 0.0d0
-            call eos_get(logt, t, logp, p, logd, d, x_frac, z_frac, &
+            call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
                  beta, betai, beta14, fxion, rmu, amu, emu, eta, &
                  qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
                  lderiv, latmo, ksaha)
@@ -277,7 +297,7 @@ program test_eos
 ! domain internal -- this test is in-domain, white-box by design)
 ! with an invalid rad_flag, the same class of internal error the
 ! converted stops guarded, and asserts ierr = 1 with no crash; its
-! diagnostic goes to short_file_unit as always.
+! diagnostic goes to run_log_unit as always.
       write(*,'(a)') "# test_eos: error paths via ierr"
       logt = 6.30d0
       logp = 14.0d0
@@ -287,7 +307,7 @@ program test_eos
       lderiv = .true.
       latmo = .false.
       fxion = 0.0d0
-      call eos_get(logt, t, logp, p, logd, d, x_frac, z_frac, &
+      call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
            beta, betai, beta14, fxion, rmu, amu, emu, eta, &
            qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
            lderiv, latmo, ksaha, ierr=eos_ierr)
@@ -296,6 +316,6 @@ program test_eos
   300 continue
       write(*,'(a,i4)') "err bad-rad-flag   ierr = ", eos_ierr
 
-      close(short_file_unit)
+      close(run_log_unit)
       write(*,'(a)') "test_eos: done"
 end program test_eos

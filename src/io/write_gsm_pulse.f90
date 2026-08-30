@@ -4,8 +4,8 @@
 ! New (2026, MESA-style output): writes the converged model as a GSM
 ! (GYRE Stellar Model) HDF5 file -- root attributes n / M_star /
 ! R_star / L_star / version plus one double dataset per column, the
-! schema ported from mesa-26.04.1/star/private/pulse_gsm.f90 (data
-! schema 101, the same 18 columns yrec_output's GYRE text writer
+! schema ported from mesa-26.04.1/star/private/pulse_gsm.f90 (GSM
+! v1.10, the same 18 columns yrec_output's GYRE text writer
 ! emits; both consume the identical build_pulse_points array, so the
 ! text and HDF5 products are numerically identical).
 !
@@ -32,7 +32,12 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
 
-      integer, parameter :: gyre_schema = 101
+      ! GSM schema version, stamped in the root 'version' attribute.
+      ! 110 = GSM v1.10, the schema whose 18-column layout (kap_kap_T,
+      ! eps_eps_rho, ... naming) is written below -- matching MESA's
+      ! pulse_gsm.f90 case(110).  (101 is the *text* GYRE format's schema
+      ! number and is not a valid GSM version; GYRE aborts on it.)
+      integer, parameter :: gyre_schema = 110
       integer :: i, herr
       integer(hid_t) :: file_id
       integer(hsize_t) :: dims1(1)
@@ -84,8 +89,11 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       write(*,*) 'pulse_format = GSM requires an HDF5-enabled build:'
       write(*,*) '  make clean && make USE_HDF5=1'
       write(*,*) '(HDF5_DIR defaults to the MESA SDK; see the Makefile.)'
-      write(short_file_unit,*) 'pulse_format = GSM requires USE_HDF5=1 build'
-      stop 1
+      write(run_log_unit,*) 'pulse_format = GSM requires USE_HDF5=1 build'
+! 2026 ierr-not-stop: an output-format misconfiguration no longer
+! kills the run -- the pulse file is skipped (warned above, once per
+! attempt); the evolution itself is unaffected.
+      return
 end subroutine write_gsm_pulse
 #endif
 

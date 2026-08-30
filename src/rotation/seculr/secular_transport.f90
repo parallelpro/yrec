@@ -59,7 +59,6 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
       use star_info_lib, only: star
 
       use star_info_lib
-      use luout_lib
       use phys_const_lib
       use numerics_lib
       implicit none
@@ -126,7 +125,6 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
            rhs(json), unused_tridia_solution(json), surface_wind_loss_term
 
 ! --- other locals ---
-      logical :: print_diffusion_flag
       logical :: disk_lock_active
       logical :: lcz_first_zone, lcz_last_zone
       double precision :: total_luminosity
@@ -154,8 +152,6 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
       integer :: solid_start_zone
       integer :: species_begin, species_end
       integer :: print_zone_count
-      double precision :: delta_h1, delta_he3, delta_c12, delta_c13, &
-           delta_n14, delta_li7, delta_be9
 ! constant_diffusion_coeff_flag/constant_diffusion_coeff (originally
 ! LCODM/CODM, MHP 8/13 "treat entire domain as unstable if a constant
 ! diffusion coefficient is being added") are implicitly typed in the
@@ -179,7 +175,6 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 
       ierr = 0
 
-      print_diffusion_flag = .false.
 ! MHP 9/94
 ! DISK LOCKING CHECKED
       disk_lock_active = .false.
@@ -202,7 +197,8 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
               1.0D0/ln10/(log_radius_center-log_radius(i-1))
          dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
       end do
-      call compute_quadrupole(log_density,local_gravity,radius_unlogged,omega,num_zones)
+      call compute_quadrupole(log_density,local_gravity,radius_unlogged,omega,num_zones,ierr)
+      if (ierr /= 0) return
       do i = 1,num_zones
          star%vfc(i) = 0.0D0
       end do
@@ -234,7 +230,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !  ITERATION IS USED TO GET THE VELOCITIES.  THIS 'NEW' VELOCITY IS THEN
 !  AVERAGED WITH THE VELOCITY FOUND IN THE PREVIOUS ITERATION TO GET A
 !  CORRECTED V AND THUS A MORE ACCURATE RUN OF DIFFUSION COEFFICIENTS.
-      do iteration = 1,star%ctrl%itdif2
+      do iteration = 1,star%ctrl%max_diffusion_iters
          omega_surface = omega(num_zones)
          if(iteration.gt.1)then
 !  COMPUTE NEW RUN OF ANGULAR VELOCITIES (AVERAGE OF INITIAL AND
@@ -297,7 +293,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
             do i = zone_max,num_zones
                cz_moment_of_inertia = cz_moment_of_inertia + moment_of_inertia(i)
             end do
-            wind_loss_active = star%job%ljdot0
+            wind_loss_active = star%job%use_wind_torque
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
             call matt_wind(log_luminosity_lsun,sub_timestep,cz_mass_bottom, &
                  cz_mass_top,zone_max,num_zones,wind_loss_active,omega_surface, &
@@ -308,7 +304,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 SAME AS LSOLID
          else if(surface_cz_active .and. (star%ctrl%force_solid_body_rotation .or. &
               (star%ctrl%solid_body_mode_flag.eq.1)))then
-            wind_loss_active = star%job%ljdot0
+            wind_loss_active = star%job%use_wind_torque
             solid_cz_mass_bottom = 0.0D0
             solid_cz_mass_top = exp(ln10*log_total_mass)
             solid_start_zone = 1
@@ -335,6 +331,14 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !  FIND DIFFUSION COEFFICIENTS(COD) FOR ALL UNSTABLE REGIONS.
          call diffusion_velocity_scales(radius_unlogged,num_zones,radius_mid, &
               am_diffusion_coeff,mixing_diffusion_coeff)
+! 2026: expose the model-grid transport coefficients as profile
+! columns (D_omega, D_mix) -- the physically meaningful per-zone
+! diffusion coefficients, formerly reachable only through the dead
+! .FULL diagnostics. Last substep of the step wins.
+         do i = 1, num_zones
+            star%am_diffusion_coeff(i) = am_diffusion_coeff(i)
+            star%mixing_diffusion_coeff(i) = mixing_diffusion_coeff(i)
+         end do
 !  EACH UNSTABLE REGION IS SOLVED SEPARATELY STARTING HERE.
 !  LTEST IS SET T IF A NON-ZERO VELOCITY IS ENCOUNTERED.
 !  IBEG IS THE ZONE BELOW THE FIRST NON-ZERO V;IEND IS THE ZONE ABOVE
@@ -418,7 +422,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
                fix_omega_at_surface = .true.
             else
                fix_omega_at_surface = .false.
-               if(star%job%ljdot0)then
+               if(star%job%use_wind_torque)then
                   cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%ntot)
                   omega_surface = omega(num_zones)
                   call wind_spindown_matt(log_luminosity_lsun,sub_timestep, &
@@ -504,7 +508,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 !         WRITE(*,*)OMEGA(1),OMEGA(M)
 ! CHECK COMPOSITION DIFFUSION AND RECOMPUTE MEAN MOLECULAR WEIGHT.
          if(.not.redo_flag)call check_composition(composition,iteration, &
-              print_diffusion_flag,num_zones,sub_timestep,cut_count, &
+              num_zones,sub_timestep,cut_count, &
               diffusion_solve_ok,redo_flag, ierr)
          if (ierr /= 0) return
 ! MHP 9/93
@@ -543,26 +547,9 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
 ! MHP 6/00
       am_transport_convective_flag(1) = lcz_first_zone
       am_transport_convective_flag(num_zones) = lcz_last_zone
-! ADD I/O FOR MIXING.
-      if(print_diffusion_flag)then
-! MHP 8/03 ADDED HEADER LINE.
-      write(imodpt,198)
- 198  format('COMPOSITION CHANGE FROM ROTATIONAL MIXING'/ &
-             5X,'H',8X,'HE3',7X,'C12',7X,'C13',7X,'N14', &
-             7X,'LI7',7X,'BE9')
-      do i = 1,print_zone_count
-         delta_h1 = composition(1,print_zone_id(i))-rot_scr%composition_snapshot(1,print_zone_id(i))
-         delta_he3 = composition(4,print_zone_id(i))-rot_scr%composition_snapshot(4,print_zone_id(i))
-         delta_c12 = composition(5,print_zone_id(i))-rot_scr%composition_snapshot(5,print_zone_id(i))
-         delta_c13 = composition(6,print_zone_id(i))-rot_scr%composition_snapshot(6,print_zone_id(i))
-         delta_n14 = composition(7,print_zone_id(i))-rot_scr%composition_snapshot(7,print_zone_id(i))
-         delta_li7 = composition(14,print_zone_id(i))-rot_scr%composition_snapshot(14,print_zone_id(i))
-         delta_be9 = composition(15,print_zone_id(i))-rot_scr%composition_snapshot(15,print_zone_id(i))
-         write(imodpt,199)print_zone_id(i),delta_h1,delta_he3,delta_c12, &
-              delta_c13,delta_n14,delta_li7,delta_be9
- 199     format(I5,1P7E10.3)
-      end do
-      endif
+! 2026 retire-legacy: the rotational-mixing delta-composition table
+! that printed here to .FULL was dead (its print_diffusion_flag was
+! hard-set .false.); deleted with the file.
 ! MHP 8/03 - OMITTED I/O, COULD REINTRODUCE IN ANOTHER FILE
 !  DETERMINE COUPLING FACTOR (I.E. THE FRACTION OF THE TOTAL ANGULAR
 !  MOMENTUM LOST FROM THE CORE RELATIVE TO ITS FRACTION OF THE TOTAL

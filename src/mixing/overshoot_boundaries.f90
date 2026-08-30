@@ -44,14 +44,14 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
 ! CONVECTIVE CORE
 ! CHECK FOR A FULLY CONVECTIVE STAR; SKIP THIS SR IF THERE IS ONE.
             if (mixed_zone_bounds(zone_idx,2).eq.num_zones) then
-               write(short_file_unit,5)
+               write(run_log_unit,5)
     5          format(1x,'FULLY CONVECTIVE MODEL - NO OVERSHOOT')
-               write(short_file_unit,200) (mixed_zone_bounds_no_overshoot( &
+               write(run_log_unit,200) (mixed_zone_bounds_no_overshoot( &
                     1,j_idx), j_idx=1,2)
                return
             end if
 ! SKIP IF NO CORE OVERSHOOT IS DESIRED.
-            if (.not.star%job%lovstc) cycle
+            if (.not.star%job%core_overshoot_active) cycle
             up_overshoot_flag = .true.
             down_overshoot_flag = .false.
             edge_idx = mixed_zone_bounds(zone_idx,2)
@@ -63,10 +63,10 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
 ! JVS 07/13 ALLOW FOR THE LIMITING OF OVERSHOOTING ABOVE THE CONVECTIVE
 ! CORES OF LOVE MASS STARS AS PER WOO & DEMARQUE 2001
             if (star%ctrl%lovmax) then
-               pscale_up = min(pscale_up*star%ctrl%alphac, &
+               pscale_up = min(pscale_up*star%ctrl%overshoot_alpha_core, &
                     star%ctrl%betac*exp(ln10*log_radius(edge_idx)))
             else
-               pscale_up = pscale_up*star%ctrl%alphac
+               pscale_up = pscale_up*star%ctrl%overshoot_alpha_core
             end if
 
          else if (mixed_zone_bounds(zone_idx,2).eq.num_zones) then
@@ -80,7 +80,7 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
                  log_mass, log_temperature, edge_idx, pscale_down)
 ! PSCALD IS THE PRESSURE SCALE HEIGHT BELOW THE CONVECTIVE REGION;
 ! ALPHAE IS THE DESIRED OVERSHOOT (IN SCALE HEIGHTS).
-            pscale_down = pscale_down*star%ctrl%alphae
+            pscale_down = pscale_down*star%ctrl%overshoot_alpha_envelope
          else
 ! INTERMEDIATE CONVECTION ZONE (NOT INCLUDING CENTRAL OR SURFACE POINT).
 ! SKIP IF NO INTERMEDIATE CONVECTION.
@@ -153,11 +153,11 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
          end if
       end do
 ! OUTPUT : THE OLD AND NEW MIXED REGIONS ARE PRINTED OUT IN ISHORT.
-      write(short_file_unit,200) ((mixed_zone_bounds_no_overshoot( &
+      write(run_log_unit,200) ((mixed_zone_bounds_no_overshoot( &
            zone_idx,j_idx), j_idx=1,2), zone_idx=1,num_mixed_zones)
   200 format(1x,'MIXED REGIONS WITHOUT OVERSHOOT', &
            4('[',i4,'-',i4,' ]'))
-      write(short_file_unit,210) ((mixed_zone_bounds(zone_idx,j_idx), &
+      write(run_log_unit,210) ((mixed_zone_bounds(zone_idx,j_idx), &
            j_idx=1,2), zone_idx=1,num_mixed_zones)
   210 format(1x,'MIXED REGIONS WITH OVERSHOOT   ', &
            4('[',i4,'-',i4,' ]'))

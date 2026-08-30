@@ -20,7 +20,6 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
       use star_info_lib, only: star
       use star_info_lib, only: star, json
-      use luout_lib
       use phys_const_lib
       implicit none
 

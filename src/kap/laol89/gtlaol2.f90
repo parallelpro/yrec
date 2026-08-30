@@ -110,7 +110,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
                   dlnkap_dlnrho_by_t(num_valid_t) = slope
                end if
             else
-               write(short_file_unit,120) log10_density, log10_temperature
+               write(run_log_unit,120) log10_density, log10_temperature
   120          format(' OUTSIDE OPACITY TABLE #2, IN DENSITY.  ', &
                     'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
 ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
@@ -139,7 +139,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
                  (logt_values(spline_index_hi)-logt_values(spline_index_lo))
             x_values(num_valid_x) = opacity_table%oxa2(x_loop_index)
          else
-            write(short_file_unit,121) log10_density, log10_temperature
+            write(run_log_unit,121) log10_density, log10_temperature
   121       format(' OUTSIDE OPACITY TABLE #2, IN TEMPERATURE.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
 ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
@@ -162,7 +162,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
             log10_opacity = log10_opacity_value
          end if
       else
-         write(short_file_unit,122) log10_density, log10_temperature
+         write(run_log_unit,122) log10_density, log10_temperature
   122    format(' OUTSIDE OPACITY TABLE #2.  ', &
               'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
 ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).

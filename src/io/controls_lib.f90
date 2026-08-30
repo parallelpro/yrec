@@ -6,17 +6,19 @@
 ! target (core/read_input.f90 reads into these), grouped by their former
 ! COMMON blocks with the original per-block commentary retained.
 ! 2026 phase D: RELOCATED to io/ and PARMIN-PRIVATE. The only
-! legitimate users are the read path -- io/read_input.f90 (namelist
+! legitimate users are the read path -- io/read_controls.f90 (namelist
 ! targets), setup/map_user_inputs.f90 (reads+writes the buffer), the generated
 ! state/controls_sync_lib.f90 (seed/store), and net/test/test_net.f90
 ! (sets remap inputs). Everything else reads star%ctrl / star%job.
+! ENFORCED (2026): tools/check_boundaries.py fails on any other
+! `use controls_lib` (see its CONTROLS_BUFFER_IMPORTERS list).
 ! The const_lib umbrella is gone.
 !
 ! Contract: read-only after read_controls/parmin. Phase A of the
 ! 2026 controls->star% campaign evicted every non-namelist straggler
 ! the original COMMON blocks mixed in (ctlim's tenv, atmos's
 ! kttau0/lttau/hras, the cross/weak scale arrays, the solar octet,
-! cmixl, nk -- flat star% members now; iolaol2/ioopal2 to luout_lib).
+! cmixl, nk -- flat star% members now).
 !
 ! Phase B: this module is now formally the namelist read BUFFER.
 ! read_controls re-seeds it from pristine star%ctrl defaults before
@@ -35,17 +37,51 @@ module controls_lib
 ! every legacy deck byte-pinned; parmin's new-style inlist path
 ! flips the default to .false. before the read (either format can set
 ! it explicitly).
-      logical, public :: use_legacy_output = .true.
 ! MESA-style output controls (new-format inlists only):
       character(len=256), public :: star_history_name = 'history.data'
       character(len=256), public :: history_columns_file = ' '
       character(len=256), public :: profile_columns_file = ' '
       integer, public :: profile_interval = 50
+! 2026 structure-limit stop conditions (MESA-style; a limit at its
+! +-1d99 sentinel is disabled). Per kind card, like the other
+! stopping criteria (target_end_age, central_*_stop):
+      double precision, public :: log_L_upper_limit(50) = 1.0d99
+      double precision, public :: log_L_lower_limit(50) = -1.0d99
+      double precision, public :: Teff_upper_limit(50) = 1.0d99
+      double precision, public :: Teff_lower_limit(50) = -1.0d99
+      double precision, public :: log_g_upper_limit(50) = 1.0d99
+      double precision, public :: log_g_lower_limit(50) = -1.0d99
+      double precision, public :: nu_max_upper_limit(50) = 1.0d99
+      double precision, public :: nu_max_lower_limit(50) = -1.0d99
+! physical constants (2026): the solar mass and Newton's G, formerly
+! hard-coded in setup/setups.f90. G_cgs < 0 (the default) keeps the
+! historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set a
+! positive value (e.g. 6.6743d-8, CODATA 2018) to override.
+      double precision, public :: solar_mass_cgs = 1.9891d33
+      double precision, public :: G_cgs = -1.0d0
+! solar reference values for the asteroseismic scaling relations:
+      double precision, public :: nu_max_sun = 3090.0d0
+      double precision, public :: delta_nu_sun = 135.1d0
+      double precision, public :: Teff_sun = 5772.0d0
+      character(len=256), public :: profile_data_prefix = 'profile'
+      character(len=256), public :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
       character(len=8), public :: pulse_format = 'GYRE'
 ! Independent toggles: profiles only, pulse only, both, or neither
 ! (cadence stays with profile_interval / pulse_gyre_interval):
       logical, public :: write_profile_flag = .false.
       logical, public :: write_pulse_flag = .false.
+! Run-log verbosity (both output modes): the compact per-model
+! progress line prints every terminal_interval models (0 = off; the
+! final model always prints), and report_solver_diagnostics restores
+! the verbose solver forensics (Henyey iteration trace, envelope/
+! atmosphere integration statistics, triangle/rezoning bookkeeping).
+      integer, public :: terminal_interval = 50
+! model numbering for fresh start-model loads: the first converged
+! model after a first_call_flag load is numbered this (default 1);
+! <= 0 keeps the counter stored in the model file (restart-
+! continuation, the pre-2026 behavior).
+      integer, public :: set_initial_model_number = 1
+      logical, public :: report_solver_diagnostics = .false.
 ! diagnostic: per-zone solar neutrino production table (engeb per
 ! shell) written to the short/log stream at the start of each run
       logical, public :: compute_neutrino_fluxes = .false.
@@ -58,7 +94,7 @@ module controls_lib
       double precision :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
            3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
            1.5d0,0.25d0/)
-      double precision :: tcut(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
+      double precision :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
       double precision :: saha_log10t_cutoff = 6.0d0
       double precision :: tenv0 = 3.0d0, tenv1 = 9.0d0, tgcut = 6.9d0
 
@@ -81,16 +117,16 @@ module controls_lib
 ! for them in core/read_input.f90 either -- COMMON left them at whatever
 ! the loader zero-filled).
       double precision :: dpenv = 1.0d0
-      logical :: lovstc = .false.
-      double precision :: alphac = 0.0d0
+      logical :: core_overshoot_active = .false.
+      double precision :: overshoot_alpha_core = 0.0d0
       logical :: envelope_overshoot_active = .false.
-      double precision :: alphae = 0.0d0
+      double precision :: overshoot_alpha_envelope = 0.0d0
       logical :: lovstm = .false.
       double precision :: alpham = 0.0d0
       logical :: ladov = .false.
       logical :: lovmax = .false.
       double precision :: betac = 0.15d0
-      logical :: lsemic = .false.
+      logical :: use_semiconvection = .false.
 
 ! former common/rot/: rotation control parameters/flags, all
 ! NAMELIST /physics/ values. walpcz is clamped once at startup
@@ -100,8 +136,8 @@ module controls_lib
       integer :: itfp1 = 5, itfp2 = 20
       logical :: rotation_active = .false.
       double precision :: walpcz = 0.0d0
-      logical :: instability_transport_active = .false., lwnew = .false.
-      double precision :: wnew = 0.0d0
+      logical :: instability_transport_active = .false., set_initial_omega = .false.
+      double precision :: initial_omega = 0.0d0
 
 ! former common/masschg/: mass-accretion/Reimers-wind parameters, all
 ! NAMELIST /physics/ values. use_mass_accretion can be flipped off
@@ -113,14 +149,14 @@ module controls_lib
       double precision :: accreted_composition(15) = (/0.71668d0, &
            0.265721d0,0.01757d0,2.9d-5,3.013d-3,3.385d-5,9.346d-4, &
            0.0d0,8.462d-3,0.0d0,1.696d-5,0.0d0,2.0d-9,2.0d-9,3.0d-11/)
-      double precision :: creim = -4.0d-13
-      logical :: lreimer = .false., use_mass_accretion = .false.
+      double precision :: reimers_scaling_factor = -4.0d-13
+      logical :: use_reimers_wind = .false., use_mass_accretion = .false.
 
 ! former common/neweng/: all 3 members are NAMELIST /physics/ values,
 ! already canonically spelled in core/read_input.f90 (no rename needed
 ! there).
-      integer :: niter4 = 0
-      logical :: lnews = .false., lsnu = .false.
+      integer :: max_iter_level4 = 0
+      logical :: improved_first_guess_flag = .false., calc_neutrinos = .false.
 
 ! former common/burnscs/: light-element cross-section scale factors.
 ! core/read_input.f90's own local names (sli6 etc) are themselves NAMELIST
@@ -231,8 +267,6 @@ module controls_lib
 ! separate readable rename ever established for this block), so
 ! core/read_input.f90 use-associates them directly rather than keeping
 ! separate locals.
-      logical :: lstore = .false., lstatm, lstenv, lstmod, lstphys
-      logical :: lstrot, lscrib = .true., lstch = .false., lphhd
 
 ! former common/ccout1/: npenv/nprtmod/npoint are NAMELIST /physics/
 ! values, spelled identically to their canonical names (use-associated
@@ -240,31 +274,24 @@ module controls_lib
 ! nprtpt) is also a NAMELIST value but needed a different, more
 ! readable name established elsewhere, so core/read_input.f90 keeps a
 ! local nprtpt and copy-assigns.
-      integer :: npenv, nprtmod = 1, npoint = 1
-      integer :: print_point_interval
+      integer :: npenv
 
-! former common/ccout2/: ldebug/lcorr/lmilne/ltrack/lstpch are all
-! NAMELIST /physics/ values, spelled identically to their canonical
-! names -- same treatment as common/ccout/ above.
-      logical :: ldebug = .false., lcorr = .true., lmilne = .false.
-      logical :: ltrack = .true., lstpch = .false.
 
 ! former common/lunum/: logical unit numbers for the various input/
 ! output files, none of them NAMELIST values -- core/read_input.f90
 ! assigns them all unconditionally at startup (fixed unit numbers),
 ! so no declaration-time defaults are needed here.
       integer :: first_unit, run_unit, standard_unit, fermi_unit
-      integer :: opal_model_unit, opal_envelope_unit, opal_atm_unit
-      integer :: dynamics_unit, laol_table_unit, neutrino_unit
+      integer :: dynamics_unit, laol_table_unit
       integer :: composition_unit, kurucz_table_unit
 
-! former common/monte/: lmonte/imbeg/imend are all NAMELIST /physics/
+! former common/monte/: monte_carlo_active/mc_run_start/mc_run_end are all NAMELIST /physics/
 ! values spelled identically to their canonical names -- same
 ! treatment as common/ccout/ above.
-      logical :: lmonte = .false.
-      integer :: imbeg = 1, imend = 1
+      logical :: monte_carlo_active = .false.
+      integer :: mc_run_start = 1, mc_run_end = 1
 
-! former common/ctol/: htoler/fcorr0/fcorri/niter1/niter2/niter3 are
+! former common/ctol/: htoler/fcorr0/fcorri/max_iter_level1/max_iter_level2/max_iter_level3 are
 ! NAMELIST /physics/ values spelled identically to their canonical
 ! names -- use-associated directly in core/read_input.f90. chi_grid_scale
 ! (originally hpttol) is also a NAMELIST value but needed a different,
@@ -278,17 +305,17 @@ module controls_lib
            9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
       double precision :: fcorr0 = 0.8d0, fcorri = 0.1d0, fcorr
       double precision :: chi_grid_scale(12)
-      integer :: niter1 = 2, niter2 = 20, niter3 = 2
+      integer :: max_iter_level1 = 2, max_iter_level2 = 20, max_iter_level3 = 2
 
-! former common/difus/: dtdif/itdif1/itdif2 are NAMELIST /physics/
+! former common/difus/: diffusion_timestep_factor/num_rotation_structure_iters/max_diffusion_iters are NAMELIST /physics/
 ! values spelled identically to their canonical names -- use-
 ! associated directly. convergence_tolerance (originally djok) is also
 ! a NAMELIST value but needed a different, more readable name
 ! established elsewhere, so core/read_input.f90 keeps a local djok and
 ! copy-assigns.
-      double precision :: dtdif = 1.0d-2
+      double precision :: diffusion_timestep_factor = 1.0d-2
       double precision :: convergence_tolerance
-      integer :: itdif1 = 1, itdif2 = 1
+      integer :: num_rotation_structure_iters = 1, max_diffusion_iters = 1
 
 ! former common/gravst/: all 4 members are NAMELIST /physics/ values,
 ! each with a different canonical spelling than core/read_input.f90's
@@ -306,22 +333,22 @@ module controls_lib
            hydrogen_diffusion_floor, helium_diffusion_min
       logical :: use_thoul_fit
 
-! former common/gravs3/: fgry/fgrz/lthoul are NAMELIST /physics/
+! former common/gravs3/: fgry/fgrz/use_thoul_diffusion are NAMELIST /physics/
 ! values spelled identically to their canonical names -- use-
 ! associated directly. use_diffusion_z (originally ldifz) is also a
 ! NAMELIST value but needed a different, more readable name, so
 ! core/read_input.f90 keeps a local ldifz and copy-assigns.
       double precision :: fgry = 1.0d0, fgrz = 1.0d0
-      logical :: lthoul = .false.
+      logical :: use_thoul_diffusion = .false.
       logical :: use_diffusion_z
 
 ! former common/gravs4/: use_new_diffusion_routines (originally
 ! lnewdif) is a NAMELIST value with a different canonical spelling, so
-! core/read_input.f90 keeps a local lnewdif and copy-assigns. ldifli is a
+! core/read_input.f90 keeps a local lnewdif and copy-assigns. diffuse_lithium is a
 ! NAMELIST value spelled identically to its canonical name -- use-
 ! associated directly.
       logical :: use_new_diffusion_routines
-      logical :: ldifli = .false.
+      logical :: diffuse_lithium = .false.
 
 ! former common/intatm/: all 5 members are NAMELIST /physics/ values
 ! with different canonical spellings than core/read_input.f90's terse
@@ -345,8 +372,6 @@ module controls_lib
 ! core/main.f90 sets it at runtime (from total_mass_msun) -- so it has
 ! no declaration-time default; it was unused in core/read_input.f90 itself
 ! and dropped there.
-      logical :: pulsation_output_active
-      integer :: pulsation_file_version
 
 ! former common/atmos/: atm_choice (originally kttau) is a NAMELIST
 ! value with a different canonical spelling, kept local in
@@ -360,10 +385,10 @@ module controls_lib
 ! members (2026 phase A).
       integer :: atm_choice
 
-! former common/vnewcb/: vnew (initial abundances for a 12-species
+! former common/vnewcb/: mixture_weights_seed (initial abundances for a 12-species
 ! set, Na/Al/Mg/Fe/Si/C/H/O/N/Ar/Ne/He for a G&N93 solar mixture) is a
 ! NAMELIST /physics/ value spelled identically to its canonical name.
-      double precision :: vnew(12) = (/0.001999d0, 0.003238d0, &
+      double precision :: mixture_weights_seed(12) = (/0.001999d0, 0.003238d0, &
            0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, &
            0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
 
@@ -517,18 +542,6 @@ module controls_lib
 ! place there.
       integer :: opal95_table_unit
 
-! former common/po/: po_weight_l/po_weight_teff/po_weight_age/
-! po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/
-! lpout) are NAMELIST values with different canonical spellings, kept
-! local in core/read_input.f90 and copy-assigned.
-      double precision :: po_weight_l, po_weight_teff, po_weight_age, &
-           po_max_len_sq
-      logical :: po_output_enabled
-
-! former common/track/: track_file_version (originally itrver) is a
-! NAMELIST value with a different canonical spelling, kept local in
-! core/read_input.f90 and copy-assigned.
-      integer :: track_file_version
 
 ! former common/core/: extend_core_inward/num_core_shells_added/
 ! core_mass_reduction_factor (originally lcore/mcore/fcore) are
@@ -572,8 +585,9 @@ module controls_lib
 ! since DATA can no longer target use-associated entities.
 ! use_z_ramp (originally lzramp) is a NAMELIST value with a
 ! different canonical spelling, kept local in core/read_input.f90 and
-! copy-assigned. Evicted 2026 phase A: iolaol2/ioopal2 to luout_lib
-! (parmin-assigned units), nk to star%job%nk (the run-list cursor).
+! copy-assigned. Evicted 2026 phase A: iolaol2/ioopal2 (now
+! newunit locals of their table readers), nk to star%job%nk (the
+! run-list cursor).
       double precision :: rsclzc(50) = -1.0d0, rsclzm1(50) = -1.0d0, &
            rsclzm2(50) = -1.0d0
       logical :: use_z_ramp
@@ -687,43 +701,14 @@ module controls_lib
       logical :: force_solid_body_rotation
       integer :: solid_body_mode_flag
 
-! former common/cmixing/: cstmixing/cstdiffmix are NAMELIST values
+! former common/cmixing/: constant_mixing_coeff/constant_settling_reduction are NAMELIST values
 ! spelled identically to their canonical names -- use-associated
 ! directly.
-      double precision :: cstmixing = 1.0d0, cstdiffmix = 1.0d0
+      double precision :: constant_mixing_coeff = 1.0d0, constant_settling_reduction = 1.0d0
 
-! former common/acdpth/: output_ages_gyr/calcad_ageout_output_active/
-! calcad_file_unit/ageout_model_output_flag/ageout_bracket_armed/
-! acoustic_depth_output (originally ageout/lclcd/iclcd/ljlast/ljwrt/
-! lacout) are not namelist values -- genuinely used in
-! core/read_input.f90, renamed in place there. Their DATA defaults moved
-! here since DATA can no longer target use-associated entities.
-! acoustic_depth_cz_fraction/eos_adiabatic_gradient/acoustic_depth_heii/
-! acoustic_crossing_time_seconds/acoustic_depth_cz_seconds/heii_zone_acoustic_width/acatmr_placeholder/
-! acatmd_placeholder/acatmp_placeholder/acatmt_placeholder/
-! atmosphere_sound_travel_time/iacat_placeholder/ageout_model_unit/
-! laoly_placeholder/ijvs_placeholder/ijent_placeholder/ijdel_placeholder
-! (former common/acdpth/'s remaining members, originally tauczn/
-! deladj/tauhe/tnorm/tcz/whe/acatmr/acatmd/acatmp/acatmt/tatmos/iacat/
-! ijlast/laoly/ijvs/ijent/ijdel) are unused in core/read_input.f90 --
-! genuinely used (or carried as placeholders) in atm/turnover/acoustic_depths.f90,
-! io/write_legacy_output.f90, core/main.f90, atm/atm_lib.f90, kap/opal95/getopal95.f90, so
-! still declared here, using the majority spelling across those five
-! files (atm/turnover/acoustic_depths.f90 and io/write_legacy_output.f90 give several of these real
-! semantic names instead -- e.g. normalized_acoustic_depth,
-! adiabatic_gradient -- but the 3-file placeholder spelling wins
-! per the majority-name convention). compute_acoustic_depth (LADON) is
-! spelled identically to its canonical name everywhere -- used, not a
-! placeholder.
-      double precision :: acatmr_placeholder(5000), acatmd_placeholder(5000), acatmp_placeholder(5000), acatmt_placeholder(5000)
-      integer :: iacat_placeholder, ageout_model_unit
-      logical :: laoly_placeholder
-      integer :: ijvs_placeholder, ijent_placeholder, ijdel_placeholder
-      double precision :: output_ages_gyr(5) = &
-           [0.5d0, 1.0d0, 5.0d0, 10.0d0, 20.0d0]
-      logical :: calcad_ageout_output_active = .false., ageout_model_output_flag = .false., &
-           ageout_bracket_armed = .false., acoustic_depth_output = .false.
-      integer :: calcad_file_unit
+! former common/acdpth/ (the calcad acoustic-depth machinery and
+! its dead acatm*/iacat/laoly/ijvs/ijent/ijdel carriers): retired
+! 2026 with the .calcad/LACOUT output mode.
 
 ! former common/govs/: use_envelope_triangle_dt (originally ltrist) is
 ! a NAMELIST value with a different canonical spelling, kept local in
@@ -750,8 +735,8 @@ module controls_lib
 ! NAMELIST value with a different canonical spelling, kept local in
 ! core/read_input.f90 and copy-assigned (also re-synced after the K97/V13
 ! PMM-windlaw branch may override it). exmd/extau/exr/exm/exl/expr/
-! constfactor/excen/c_2/ljdot0 are spelled identically to their
-! canonical names -- use-associated directly; ljdot0's DATA default
+! constfactor/excen/c_2/use_wind_torque are spelled identically to their
+! canonical names -- use-associated directly; use_wind_torque's DATA default
 ! moved here since DATA can no longer target a use-associated entity.
 ! wind_law_omega_exponent (originally exw) is not a namelist value --
 ! genuinely used in core/read_input.f90, renamed in place there.
@@ -760,7 +745,7 @@ module controls_lib
       double precision :: exmd, extau, exr, exm, exl, expr, constfactor, &
            structfactor, excen, c_2, wind_law_omega_exponent
       double precision :: wind_saturation_omega
-      logical :: ljdot0 = .true.
+      logical :: use_wind_torque = .true.
 
 ! former common/mag/: constant_background_diffusion_coeff/
 ! use_constant_background_diffusion (originally codm/lcodm) are

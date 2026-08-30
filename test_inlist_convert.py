@@ -81,6 +81,10 @@ def test_converted_inlist_is_byte_identical(tmp_path, nml1, nml2):
     legacy_files = sorted(p.name for p in (legacy / "output").iterdir())
     new_files = sorted(p.name for p in (newstyle / "output").iterdir())
     assert legacy_files == new_files, (legacy_files, new_files)
+    # inlist_used is the verbatim copy of the INPUT inlists -- it
+    # legitimately differs between the legacy pair and the converted
+    # single inlist; everything the run COMPUTES must still match.
+    legacy_files = [n for n in legacy_files if n != "inlist_used"]
     diffs = [n for n in legacy_files
              if _strip(legacy / "output" / n) != _strip(newstyle / "output" / n)]
     assert not diffs, (

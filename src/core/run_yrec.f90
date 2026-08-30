@@ -28,8 +28,10 @@ subroutine run_yrec(ierr)
       use luout_lib
       use phys_const_lib
       use yrec_reset_lib, only: yrec_run_prologue
+      use monte_carlo_lib, only: apply_monte_carlo_parameters, &
+           write_run_summaries
       use stop_conditions, only: step_kind_card_done, &
-           step_leave_run_loop, disarm_satisfied_stops
+           step_leave_run_loop, init_stop_conditions
       implicit none
       integer :: step_status
 
@@ -41,7 +43,6 @@ subroutine run_yrec(ierr)
       integer :: monte_carlo_run_number
       double precision :: age_scale_factor
       integer :: convergence_iterations
-      double precision :: initial_x_guess, initial_alpha_guess
       logical :: saved_use_structure_dt_limits
       integer :: saved_atm_choice
       integer :: i
@@ -64,7 +65,6 @@ subroutine run_yrec(ierr)
 
       call setversion()
 
-      iowr = 9
 ! LPUNCH is TRUE once first model is calculated
       star%punch_pending_flag = .false.
 ! 2026 (phase five): controls read and setup are now star-layer
@@ -77,7 +77,8 @@ subroutine run_yrec(ierr)
       do monte_carlo_run_number = star%job%mc_run_start,star%job%mc_run_end
 ! Per-run setup (2026): the two prologue blocks are contained
 ! subroutines below, mirroring begin_kind_card/end_kind_card.
-      call apply_monte_carlo_parameters
+      call apply_monte_carlo_parameters(monte_carlo_run_number, &
+           age_scale_factor)
       call begin_calibration
 
 !**********
@@ -147,14 +148,12 @@ subroutine run_yrec(ierr)
       if (.not. runs_complete) star%job%nk = star%job%num_runs + 1
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
-! MODEL PARAMETERS (legacy mode only; io/write_run_summaries.f90 --
-! 2026, core/ phase 4: the last writer left in the driver moved to
-! io/. surface_z_over_x is inout: the failed-convergence branch
-! reports the value carried from a previous cycle, historical
-! SAVE semantics preserved).
+! MODEL PARAMETERS (legacy mode only; core/monte_carlo.f90.
+! surface_z_over_x is inout: the failed-convergence branch reports
+! the value carried from a previous cycle, historical SAVE
+! semantics preserved).
       call write_run_summaries(monte_carlo_run_number, &
-           convergence_iterations, initial_x_guess, initial_alpha_guess, &
-           log_r_rsun, surface_z_over_x)
+           convergence_iterations, log_r_rsun, surface_z_over_x)
       end do
 
 ! 2026 (phase five, step B): the normal end-of-job stop became this
@@ -163,47 +162,6 @@ subroutine run_yrec(ierr)
 
 contains
 
-! ---------------------------------------------------------------
-! For a Monte-Carlo run, apply the current run's sampled parameters:
-! nuclear cross-section scales (against the Bahcall & Pinsonneault
-! 1996 reference values), the metal diffusion factor, and the solar
-! luminosity/age targets. Outside Monte Carlo only the age scale
-! factor (1.0) is set.
-subroutine apply_monte_carlo_parameters
-! latest values (Bahcall and Pinsonneault 1996). NOTE: the literals
-! are default-real on purpose -- the original data statement's
-! single-precision constants, widened exactly as before; do not
-! append d0 (it would shift the values in the 8th decimal).
-      double precision, parameter :: bp96_scale_factor(17) = &
-           [0.9558,0.9690,0.9712,1.0,1.0,0.992,1.0,1.0, &
-           1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.92088,0.1625]
-! MHP 3/96 added data for base solar age, L
-      double precision, parameter :: reference_solar_luminosity = 3.844D33
-
-! for monte carlo run, input values of parameters being changed.
-      if (star%ctrl%lmonte) then
-         star%cross_section_scale(1) = star%job%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
-         star%cross_section_scale(2) = star%job%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
-         star%cross_section_scale(3) = star%job%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
-         star%cross_section_scale(16) = star%job%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
-! NOTE (2026): write-only since the original F77 (FGRSET = FHE(NN))
-! -- the sampled helium diffusion factor never reaches the physics;
-! only the metal factor (fgrz) is wired through. Preserved, not
-! fixed; a candidate for an upstream report.
-         monte_helium_diffusion_fraction = star%job%helium_fraction_param(monte_carlo_run_number)
-         star%job%fgrz = star%job%diffusion_factor(monte_carlo_run_number)
-         star%solar_luminosity_cgs = reference_solar_luminosity*star%job%luminosity_target(monte_carlo_run_number)
-         star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
-         star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
-         age_scale_factor = star%job%age_target(monte_carlo_run_number)
-! timestep and final age are altered in SR SETCAL; input #s should be
-! scaled for a solar age of 4.57 Gyr
-         star%job%target_end_age(2)=1.0D8
-         star%job%target_end_age(3)=4.57D9
-      else
-         age_scale_factor = 1.0D0
-      endif
-end subroutine apply_monte_carlo_parameters
 
 ! ---------------------------------------------------------------
 ! Arm the calibration protocols for this run, if configured: setcal
@@ -213,17 +171,11 @@ end subroutine apply_monte_carlo_parameters
 ! pairs. Also saves the pulse-output flag the calibration cycles
 ! toggle.
 subroutine begin_calibration
-! DBG PULSE: save LPULSE flag, set LPULSE to F except on last model of
-! last run, then set LPULSE to saved value of LPULSE.
-      star%saved_pulse_output_flag = star%job%pulsation_output_active
 ! MHP 1/93 add option to automatically calibrate solar model.
-! MHP 3/96 added counter for # of iterations per converged model and
-! starting estimate of ALPHA and X
+! MHP 3/96 added counter for # of iterations per converged model
       if (star%ctrl%calibrate_solar_model) then
          call setup_solar_calibration(age_scale_factor)
          convergence_iterations = 1
-         initial_x_guess = star%job%rescale_params(2,1)
-         initial_alpha_guess = star%job%mixing_length_array(1)
          saved_use_structure_dt_limits = star%job%use_structure_dt_limits   ! save LPTIME for reuse during calibration
          saved_atm_choice  = star%job%atm_choice    ! save KTTAU for reuse during calibration
       else
@@ -251,8 +203,6 @@ subroutine end_of_card_calibration(runs_complete)
 ! MHP 1/93 CHECK AUTOMATIC CALIBRATATION OF SOLAR MODEL.
 !c MHP 5/96 changed solar calibration to perform solar models in 3 kind cards
          if (star%ctrl%calibrate_solar_model) then
-! JVS Turn off calcad - speeds things up
-            star%compute_acoustic_depth=.false.
             if (mod(star%job%nk,solar_calib_cards_per_cycle).eq.0) then
                log_r_rsun = 0.5D0*(star%log_L+star%log10_solar_luminosity-c4pil-csigl-4.0D0*star%log_Teff)-star%log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
@@ -273,23 +223,8 @@ subroutine end_of_card_calibration(runs_complete)
                      runs_complete = .true.
                      return
                   end if
-                  if (star%job%pulsation_output_active) then
-! DBG 6/93 Need to delete pulse output because have not got ultimate
-! model yet.
-! MHP 8/25 Replaced delete file with rewind file. This is functionally the same and avoids the need to pass the character string for the file name from parmin.
-                     rewind(star%ctrl%opal_model_unit)
-                     rewind(star%ctrl%opal_envelope_unit)
-                     rewind(star%ctrl%opal_atm_unit)
-!                     CLOSE(IOPMOD, STATUS='DELETE')
-!                     CLOSE(IOPENV, STATUS='DELETE')
-!                     CLOSE(IOPATM, STATUS='DELETE')
-!                     OPEN(IOPMOD, FILE=FPMOD,STATUS='UNKNOWN',
-!     *                    FORM='FORMATTED')
-!                     OPEN(IOPENV, FILE=FPENV,STATUS='UNKNOWN',
-!     *                    FORM='FORMATTED')
-!                     OPEN(IOPATM, FILE=FPATM,STATUS='UNKNOWN',
-!     *                    FORM='FORMATTED')
-                  end if
+! 2026 retire-legacy: the pulse-trio rewind (delete-and-redo on a
+! non-ultimate model) went with the .pmod/.penv/.patm files.
                end if
             endif
          endif
@@ -311,7 +246,6 @@ end subroutine end_of_card_calibration
 ! estimate (htimer), and zero the entropy and light-element-rate
 ! state. Sets ierr on configuration or model-read errors.
 subroutine begin_kind_card
-         star%sound_speed_output_active = .false.
 !         LPULSE=.FALSE.
          star%job%initial_envelope_x = star%job%initial_x_array(star%job%nk)
          star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
@@ -333,6 +267,17 @@ subroutine begin_kind_card
             star%convective_velocity, star%job%mixture_weights, ierr)
        if (ierr /= 0) return
 
+! 2026: a fresh start-model load restarts the model counter, so history
+! numbering begins at set_initial_model_number (default 1) instead of
+! whatever counter the model file stored (the birthline library files
+! carry ~63). <= 0 keeps the stored counter (restart continuation).
+! Placed after read_starting_model so the stored number still gates the
+! evolved-model consistency warnings there.
+       if (star%job%first_call_flag(star%job%nk) .and. &
+           star%ctrl%set_initial_model_number > 0) then
+          star%model_number = star%ctrl%set_initial_model_number - 1
+       end if
+
       if ((star%omega(1) .eq. 0) .and. (star%job%rotation_active)) then
 
 1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
@@ -348,7 +293,7 @@ subroutine begin_kind_card
 ! (2026: one table walk in stop_conditions -- the hand-written D/X/Y
 ! triple that used to live here carried the disarm-the-wrong-stop bug
 ! fixed in phase 1.)
-         call disarm_satisfied_stops(star%job%nk)
+         call init_stop_conditions(star%job%nk)
 ! Opt-in diagnostic (2026): the former LNUTAB per-zone neutrino
 ! table, off since 2004, is now the compute_neutrino_fluxes control
 ! (core/neutrino_flux_table.f90); it describes the starting model
@@ -365,23 +310,12 @@ subroutine begin_kind_card
       call output_run_header(star%star_mass)
 ! DBG PULSE OUT 7/92
 ! initialize variables for calculating when to dump pulse output
-         star%prev_log_l = star%log_L
-         star%prev_log_teff = star%log_Teff
-         star%prev_age = star%dage
-         star%path_length_sq = 0.0D0
 
        if (star%ctrl%helium_flash_active) then
 ! timestep cutting requires a model stored in logical unit ILAST
 ! or it will crash - so copy initial model to unit ILAST
           if (star%punch_pending_flag) then
-             call write_last_model(ilast,star%xa,star%logRho,star%luminosity_lsun, &
-                  star%logP,star%logR,star%log_mass,star%logT,star%convective_flag, &
-                  star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure, &
-                  star%fit_point_temperature,star%fit_point_radius,star%envelope_fit_coeffs, &
-                  star%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index, &
-                  star%envelope_cz_bottom_index,star%model_number,star%nz, &
-                  star%star_mass,star%log_Teff,star%log_L,star%log_total_mass,star%dage, &
-                  star%timestep_yr,star%omega)
+             call write_mod_model(last_model_unit)
           endif
        endif
 
@@ -421,14 +355,13 @@ end subroutine begin_kind_card
 ! Finish one kind card: store the last model to the .store stream
 ! when configured (putstore) and clear the punch flag.
 subroutine end_kind_card
-! G Somers 11/14, CHANGE CALL TO PUTSTORE INSTEAD OF WRTLST.
-! STORE LAST MODEL IN ISTOR IF LSTORE, LSTPCH, AND LPUNCH ARE .TRUE.
-         if (star%ctrl%lstore.and.star%ctrl%lstpch.and.star%punch_pending_flag) then
-          call write_store_model(star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%trial_log_temperature,star%trial_log_luminosity,star%fit_point_pressure,star%fit_point_temperature,star%fit_point_radius, &
-                 star%envelope_fit_coeffs,star%trial_sign_flag,star%luminosity_breakdown,star%core_cz_top_index,star%envelope_cz_bottom_index,star%model_number,star%nz,star%star_mass,star%log_Teff,star%log_L,star%log_total_mass, &
-                 star%dage,star%timestep_yr,star%omega,star%m,star%eta_squared,star%mean_radius,star%fp_rot,star%ft_rot,star%j_rot,star%i_rot)
-            star%punch_pending_flag = .false.
-       endif
+      use run_log_lib, only: log_final_model_line
+! 2026 retire-legacy: the end-of-card putstore call is deleted with
+! the .store file (punch_pending_flag keeps its helium-flash reload
+! role above).
+! 2026 log redesign: the last converged model of a card always gets
+! a progress line, whatever the terminal_interval phase.
+      call log_final_model_line()
 ! 110  CONTINUE
 ! G Somers END
 end subroutine end_kind_card

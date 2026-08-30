@@ -31,7 +31,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       use rotation_scratch_lib
       use star_info_lib, only: star, json
       use net_lib
-      use luout_lib
       use phys_const_lib
       use burn_lib
       implicit none
@@ -98,8 +97,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! exactly as in the original.
       logical :: mix_grads_flag
       integer :: iend
-      double precision :: surface_quad_term, surface_potential
-      double precision :: log_radius_surface
       double precision :: omega_avg, domega_dr, delta_radius_step
 
       integer, intent(out) :: ierr
@@ -149,7 +146,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
               star%log_mass,star%dm,am_transport_convective_flag,star%nz, &
               star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
 !  ANGULAR MOMENTUM LOSS WITHOUT INTERNAL ANGULAR MOMENTUM TRANSPORT.
-         if(.not.disk_lock_engaged .and. star%job%ljdot0 .and. star%convective_flag(star%nz)) then
+         if(.not.disk_lock_engaged .and. star%job%use_wind_torque .and. star%convective_flag(star%nz)) then
 !  FIND MOMENT OF INERTIA OF THE SURFACE C.Z.
             moment_of_inertia_cz = 0.0D0
 !  ENFORCE SB ROTATION (OR UNIFORM ROTATION LAW IN ENTIRE STAR) IF DESIRED.
@@ -172,7 +169,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
             else
                cz_mass_bottom = 0.0D0
             endif
-            wind_loss_active = star%job%ljdot0
+            wind_loss_active = star%job%use_wind_torque
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
 ! MHP 10/17 timestep average loss rate
 !            FRACSTEP = 1.
@@ -203,10 +200,10 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 !  NOW LIMIT THE DIFFUSION TIMESTEP TO A MAXIMUM CHANGE IN OMEGA
 !  FROM THE PREVIOUS MODEL.
       if(max_domega_step.eq.0.0D0) max_domega_step = star%job%max_domega_global
-      num_diffusion_steps = int(max_domega_step/star%job%dtdif)
-      if (mod(max_domega_step,star%job%dtdif).ne.0.0D0) num_diffusion_steps = num_diffusion_steps + 1
-      num_wind_diffusion_steps = int(star%job%max_domega_global/star%job%dtdif)
-      if (mod(star%job%max_domega_global,star%job%dtdif).ne.0.0D0) num_wind_diffusion_steps = num_wind_diffusion_steps + 1
+      num_diffusion_steps = int(max_domega_step/star%job%diffusion_timestep_factor)
+      if (mod(max_domega_step,star%job%diffusion_timestep_factor).ne.0.0D0) num_diffusion_steps = num_diffusion_steps + 1
+      num_wind_diffusion_steps = int(star%job%max_domega_global/star%job%diffusion_timestep_factor)
+      if (mod(star%job%max_domega_global,star%job%diffusion_timestep_factor).ne.0.0D0) num_wind_diffusion_steps = num_wind_diffusion_steps + 1
 !     NSTEP = MAX(NSTEP,NSTEP2/2)
       num_diffusion_steps = min(num_diffusion_steps,num_wind_diffusion_steps)
       sub_timestep = full_timestep/dfloat(num_diffusion_steps)
@@ -387,7 +384,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
               num_convective_zones_burn)
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
          if(star%job%lovstm .and. convective_flag_mid(star%nz))then
-            star%pressure_scale_height_end = star%ctrl%alphae*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
+            star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
                  2.0D0*log_radius_mid(envelope_boundary_zone_cur) &
                  -log_density_mid(envelope_boundary_zone_cur)-cgl-star%log_mass(envelope_boundary_zone_cur)))
          else
@@ -481,16 +478,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
            star%i_rot,star%omega,star%qiw,star%mean_radius)
       end if
       endif
-      if(star%print_rotation_diagnostics)then
-         star%log_L = log10(star%luminosity_lsun(star%nz))
-         log_radius_surface = 0.5D0*(star%log_L + star%log10_solar_luminosity &
-              - 4.0D0*star%log_Teff - c4pil - csigl)
-         fx = exp(ln10*3.0D0*(star%logR(star%nz)-log_radius_surface))
-         surface_quad_term = fx*rot_scr%quadrupole_moment(star%nz)
-         surface_potential = exp(ln10*(cgl+star%log_total_mass-log_radius_surface))
-         write(*,9911)surface_quad_term,surface_potential,-1.5D0*surface_quad_term/surface_potential
- 9911    format(1X,'QUAD ',1PE12.3,' PHIS ',E12.3,' 3/2 QUAD/G ', &
-     E12.3)
-      endif
+! (2026: the MHP 9/94 end-of-card QUAD/PHIS surface-quadrupole
+! terminal line, gated by the retired print_rotation_diagnostics
+! flag, was deleted here -- its only reader.)
       return
 end subroutine evolve_angular_momentum

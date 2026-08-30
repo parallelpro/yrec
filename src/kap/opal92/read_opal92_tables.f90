@@ -12,12 +12,14 @@
 ! Reads the OPAL92 (Lawrence Livermore) opacity table(s) and builds
 ! the spline interpolation coefficients used later by opal92_surface_table.f90 and
 ! the OPAL92 lookup routines (yllo3d/yllo3d2, not part of this batch).
-subroutine read_opal92_tables(opal92_table_path, opal92_table2_path)
+subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
-      use luout_lib
       implicit none
+! runtime-allocated unit for the second (Z-ramp) OPAL92 table
+! (formerly luout_lib's fixed ioopal2 = 64)
+      integer :: opal92b_unit
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17
       integer, parameter :: num_x = 3
@@ -28,11 +30,13 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path)
 
 ! MHP 8/25 removed variables not used in subroutine
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
+      integer, intent(out) :: ierr
       double precision :: local_grid_y(num_x), local_grid_z(num_x)
       integer :: i, k, density_index, num_temps_read
       double precision :: grid_temp_k
 
 !     OPEN TABLE
+      ierr = 0
       open(unit=star%ctrl%laol_table_unit,file=opal92_table_path)
       do i=1,num_x
 !        READ GRID POINT FOR ABUNDANCE
@@ -61,26 +65,28 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path)
 
 ! DBG 5/94 Second Opacity Table read here
       if (star%use_two_z_tables) then
-         open(unit=ioopal2,file=opal92_table2_path)
+         open(newunit=opal92b_unit,file=opal92_table2_path)
          do i=1,num_x
-            read(ioopal2,190,end=597) opacity_table%opal92_grid_x_z2(i), local_grid_z(i)
+            read(opal92b_unit,190,end=597) opacity_table%opal92_grid_x_z2(i), local_grid_z(i)
             local_grid_y(i)=1.0d0-opacity_table%opal92_grid_x_z2(i)-local_grid_z(i)
-            read(ioopal2,'()')
-            read(ioopal2, 200) (opacity_table%opal92_grid_logr_z2(density_index), density_index=1, num_d)
+            read(opal92b_unit,'()')
+            read(opal92b_unit, 200) (opacity_table%opal92_grid_logr_z2(density_index), density_index=1, num_d)
             do k=1, num_t
-               read(ioopal2,196,end=593) grid_temp_k, &
+               read(opal92b_unit,196,end=593) grid_temp_k, &
                     (opacity_table%opal92_log10_opacity_z2(k+(i-1)*num_t,density_index),density_index=1,num_d)
                opacity_table%opal92_grid_logt_z2(k)=dlog10(grid_temp_k)
             end do
   593       num_temps_read=k-1
          end do
-  597    close(ioopal2,err=99)
+  597    close(opal92b_unit,err=99)
          opacity_table%opal92_num_temps_z2 = num_temps_read
          opacity_table%opal92_num_x_z2=i-1
       end if
 !
-      call opal92_table_prep
+      call opal92_table_prep(ierr)
 
       return
-   99 stop 'ERROR IN FILE CLOSING'
+   99 continue
+      write(*,*) 'read_opal92_tables: error closing table file'
+      ierr = 1
 end subroutine read_opal92_tables

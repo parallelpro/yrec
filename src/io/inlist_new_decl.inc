@@ -12,18 +12,9 @@
       character(len=256) :: last_model_file
       character(len=256) :: first_model_file
       character(len=256) :: fermi_table_file
-      character(len=256) :: debug_output_file
-      character(len=256) :: track_output_file
-      character(len=256) :: short_output_file
-      character(len=256) :: milne_output_file
-      character(len=256) :: model_print_file
-      character(len=256) :: store_output_file
-      character(len=256) :: pulse_model_file
-      character(len=256) :: pulse_atm_file
-      character(len=256) :: pulse_env_file
+      character(len=256) :: log_output_file
       character(len=256) :: dynamics_file
       character(len=256) :: ll_data_file
-      character(len=256) :: neutrino_output_file
       character(len=256) :: surface_composition_file
       character(len=256) :: kurucz_atm_table_file
       character(len=256) :: mhd_table_file_1
@@ -44,22 +35,7 @@
       character(len=256) :: opal_eos_table_file
       character(len=256) :: opal95_opacity_table_file
       integer :: run_kind(50)
-      logical :: write_debug_output
-      logical :: write_correction_output
-      logical :: write_milne_output
-      logical :: write_track_output
-      logical :: write_store_output
-      logical :: store_final_model_flag
-      logical :: scribe_flag
-      logical :: suppress_store_profiles
-      logical :: store_atm_profile
-      logical :: store_env_profile
-      logical :: store_interior_profile
-      logical :: store_physics_columns
-      logical :: store_rotation_columns
-      integer :: debug_print_interval
       integer :: envelope_print_points
-      integer :: profile_model_interval
       integer :: max_model_number(50)
       character(len=256) :: alex95_table_z_list(7)
       double precision :: rescale_mass(50)
@@ -81,15 +57,12 @@
       character(len=3) :: new_species_value_mode
       double precision :: fpft_average_weight
       double precision :: timestep_factors(14)
-      double precision :: overshoot_alpha_core
-      double precision :: overshoot_alpha_envelope
       double precision :: wind_law_index
       double precision :: overshoot_alpha_min
       double precision :: overshoot_beta_core
       double precision :: solar_luminosity_cgs
       double precision :: solar_radius_cgs
       double precision :: envelope_logP_step
-      double precision :: diffusion_timestep_factor
       double precision :: solver_underrelax_start
       double precision :: solver_underrelax_increment
       double precision :: wind_law_constant
@@ -99,46 +72,22 @@
       double precision :: solver_tolerances(5,2)
       integer :: fpft_iter1
       integer :: fpft_iter2
-      integer :: num_rotation_structure_iters
-      integer :: max_diffusion_iters
       logical :: velocity_form_correction
-      logical :: diffuse_lithium
-      logical :: calc_neutrinos
-      logical :: core_overshoot_active
       logical :: intermediate_overshoot_active
       logical :: overshoot_max_extent_flag
       logical :: rotation_flag
       logical :: new_triangle_init_flag
-      logical :: set_initial_omega
-      logical :: use_wind_torque
       logical :: adiabatic_overshoot_active
-      logical :: use_thoul_diffusion
-      logical :: use_semiconvection
-      logical :: improved_first_guess_flag
-      integer :: max_iter_level1
-      integer :: max_iter_level2
-      integer :: max_iter_level3
-      integer :: max_iter_level4
-      double precision :: nuclear_logT_cutoffs(5)
       double precision :: rezone_env_logT0
       double precision :: rezone_env_logT1
       double precision :: gradient_logT_cutoff
       double precision :: laol_z_tolerance
-      double precision :: mixture_weights_seed(12)
       double precision :: new_zone_omega_weight
-      double precision :: initial_omega
       double precision :: change_species_value
-      logical :: monte_carlo_active
-      integer :: mc_run_start
-      integer :: mc_run_end
       double precision :: mass_change
       double precision :: accretion_cz_fraction
       double precision :: accretion_total_fraction
-      double precision :: reimers_scaling_factor
-      logical :: use_reimers_wind
       logical :: use_mass_change
-      double precision :: constant_mixing_coeff
-      double precision :: constant_settling_reduction
       logical :: use_rotation_scaled_solar_wind
       logical :: use_pmm_wind
       double precision :: pmm_omega_sat
@@ -159,46 +108,33 @@
            & run_description, max_age, laol_opacity_table_file, &
            & pure_z_opacity_table_file, laol_opacity_table2_file, &
            & opal92_opacity_table2_file, last_model_file, &
-           & first_model_file, fermi_table_file, debug_output_file, &
-           & track_output_file, short_output_file, milne_output_file, &
-           & model_print_file, store_output_file, pulse_model_file, &
-           & pulse_atm_file, pulse_env_file, dynamics_file, &
-           & ll_data_file, neutrino_output_file, &
-           & surface_composition_file, kurucz_atm_table_file, &
-           & mhd_table_file_1, mhd_table_file_2, mhd_table_file_3, &
-           & mhd_table_file_4, mhd_table_file_5, mhd_table_file_6, &
-           & mhd_table_file_7, mhd_table_file_8, isochrone_file, &
-           & atm_table_file, kurucz_castelli_atm_table_file, &
-           & allard_atm_table_file, scv_h_table_file, scv_he_table_file, &
-           & scv_z_table_file, opal_eos_table_file, &
-           & opal95_opacity_table_file, monte_carlo_file1_path, &
-           & monte_carlo_file2_path, pulsation_file_version, &
-           & track_file_version, run_kind, write_debug_output, &
-           & write_correction_output, write_milne_output, &
-           & write_track_output, write_store_output, first_call_flag, &
-           & store_final_model_flag, scribe_flag, &
-           & suppress_store_profiles, store_atm_profile, &
-           & store_env_profile, store_interior_profile, &
-           & store_physics_columns, store_rotation_columns, &
-           & pulsation_output_active, use_z_ramp, specify_teff_flag, &
-           & calibrate_star_flag, use_pure_z_table, &
+           & first_model_file, fermi_table_file, dynamics_file, &
+           & ll_data_file, surface_composition_file, &
+           & kurucz_atm_table_file, mhd_table_file_1, mhd_table_file_2, &
+           & mhd_table_file_3, mhd_table_file_4, mhd_table_file_5, &
+           & mhd_table_file_6, mhd_table_file_7, mhd_table_file_8, &
+           & isochrone_file, atm_table_file, &
+           & kurucz_castelli_atm_table_file, allard_atm_table_file, &
+           & scv_h_table_file, scv_he_table_file, scv_z_table_file, &
+           & opal_eos_table_file, opal95_opacity_table_file, &
+           & monte_carlo_file1_path, monte_carlo_file2_path, run_kind, &
+           & first_call_flag, set_initial_model_number, use_z_ramp, &
+           & specify_teff_flag, calibrate_star_flag, use_pure_z_table, &
            & isochrone_output_active, rewind_short_file, &
-           & has_senv0_array, po_output_enabled, calibrate_solar_model, &
-           & calibrate_solar_zx, use_laol89_tables, use_opal92_tables, &
-           & use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           & debug_print_interval, envelope_print_points, &
-           & profile_model_interval, print_point_interval, num_runs, &
-           & max_model_number, alex95_table_z_list, po_weight_l, &
-           & po_weight_teff, po_weight_age, po_max_len_sq, rescale_mass, &
-           & rescale_x, rescale_z, rescale_core_mass, rescale_core_z, &
-           & rescale_z_mix1, rescale_z_mix2, timestep_override, &
-           & senv0_array, target_teff, target_radius_rsun, &
-           & radius_tolerance, luminosity_tolerance, zx_tolerance, &
-           & initial_x_array, target_luminosity_lsun, &
-           & target_star_luminosity_tolerance, initial_z_array, &
-           & laol_table_z1, laol_table_z2, opal_table_z1, opal_table_z2, &
-           & opal95_single_table_z, opal95_z2, alex_table_z1, alex_z2, &
-           & kurucz_table_z1, kurucz_table_z2, opal01_eos_table_file, &
+           & has_senv0_array, calibrate_solar_model, calibrate_solar_zx, &
+           & use_laol89_tables, use_opal92_tables, use_opal95_tables, &
+           & use_kurucz90_tables, use_alex95_tables, &
+           & envelope_print_points, num_runs, max_model_number, &
+           & alex95_table_z_list, rescale_mass, rescale_x, rescale_z, &
+           & rescale_core_mass, rescale_core_z, rescale_z_mix1, &
+           & rescale_z_mix2, timestep_override, senv0_array, &
+           & target_teff, target_radius_rsun, radius_tolerance, &
+           & luminosity_tolerance, zx_tolerance, initial_x_array, &
+           & target_luminosity_lsun, target_star_luminosity_tolerance, &
+           & initial_z_array, laol_table_z1, laol_table_z2, &
+           & opal_table_z1, opal_table_z2, opal95_single_table_z, &
+           & opal95_z2, alex_table_z1, alex_z2, kurucz_table_z1, &
+           & kurucz_table_z2, opal01_eos_table_file, &
            & conductive_opacity_table_file, opal06_eos_table_file, &
            & alex06_opacity_table_file, use_alex06_tables, &
            & central_deuterium_stop, central_hydrogen_stop, &
@@ -212,33 +148,36 @@
            & initial_li6_fraction, initial_li7_fraction, &
            & initial_be9_fraction, initial_b10_fraction, &
            & initial_b11_fraction, pulse_gyre_interval, &
-           & use_legacy_output, history_columns_file, &
-           & profile_columns_file
+           & history_columns_file, profile_columns_file, &
+           & inlist_used_file, log_L_upper_limit, log_L_lower_limit, &
+           & Teff_upper_limit, Teff_lower_limit, log_g_upper_limit, &
+           & log_g_lower_limit, nu_max_upper_limit, nu_max_lower_limit
       namelist /controls/ &
-           & atm_step_min, atm_step_begin, atm_error_tol, atm_step_max, &
-           & atm_step_initial, change_species_name, &
-           & new_species_value_mode, fpft_average_weight, &
-           & timestep_factors, overshoot_alpha_core, &
-           & overshoot_alpha_envelope, wind_law_index, &
-           & overshoot_alpha_min, atm_step_size, absolute_tolerance, &
-           & overshoot_beta_core, min_abundance, solar_luminosity_cgs, &
-           & solar_radius_cgs, envelope_logP_step, &
-           & diffusion_timestep_factor, max_domega_global, &
-           & convergence_tolerance, settling_timestep_fraction, &
-           & env_error_tol, env_step_max, env_step_min, env_step_begin, &
-           & envelope_step_size, debye_huckel_eta_min, &
-           & debye_huckel_eta_max, solver_underrelax_start, &
-           & solver_underrelax_increment, wind_law_constant, &
-           & difad_velocity_scale, mixing_velocity_scale, &
-           & coupling_factor, mu_gradient_scale, es_velocity_scale, &
-           & core_mass_reduction_factor, gsf_velocity_scale, &
-           & secular_shear_velocity_scale, es_mixing_scale, &
-           & secular_shear_mixing_scale, gsf_mixing_scale, &
-           & settling_y_factor, settling_z_factor, settling_tolerance, &
-           & solver_tolerances, fpft_iter1, fpft_iter2, max_stage_index, &
-           & num_rotation_structure_iters, max_diffusion_iters, &
-           & gsf_inhibition_mode, coulomb_log_choice, atm_choice, &
-           & max_burn_iterations, velocity_form_correction, &
+           & log_output_file, atm_step_min, atm_step_begin, &
+           & atm_error_tol, atm_step_max, atm_step_initial, &
+           & change_species_name, new_species_value_mode, &
+           & fpft_average_weight, timestep_factors, &
+           & overshoot_alpha_core, overshoot_alpha_envelope, &
+           & wind_law_index, overshoot_alpha_min, atm_step_size, &
+           & absolute_tolerance, overshoot_beta_core, min_abundance, &
+           & solar_luminosity_cgs, solar_radius_cgs, solar_mass_cgs, &
+           & G_cgs, envelope_logP_step, diffusion_timestep_factor, &
+           & max_domega_global, convergence_tolerance, &
+           & settling_timestep_fraction, env_error_tol, env_step_max, &
+           & env_step_min, env_step_begin, envelope_step_size, &
+           & debye_huckel_eta_min, debye_huckel_eta_max, &
+           & solver_underrelax_start, solver_underrelax_increment, &
+           & wind_law_constant, difad_velocity_scale, &
+           & mixing_velocity_scale, coupling_factor, mu_gradient_scale, &
+           & es_velocity_scale, core_mass_reduction_factor, &
+           & gsf_velocity_scale, secular_shear_velocity_scale, &
+           & es_mixing_scale, secular_shear_mixing_scale, &
+           & gsf_mixing_scale, settling_y_factor, settling_z_factor, &
+           & settling_tolerance, solver_tolerances, fpft_iter1, &
+           & fpft_iter2, max_stage_index, num_rotation_structure_iters, &
+           & max_diffusion_iters, gsf_inhibition_mode, &
+           & coulomb_log_choice, atm_choice, max_burn_iterations, &
+           & velocity_form_correction, &
            & use_diffusion_advection_transport, no_am_transport_in_core, &
            & use_new_diffusion_routines, diffuse_helium_active, &
            & use_diffusion_z, diffuse_lithium, calc_neutrinos, &
@@ -306,6 +245,8 @@
            & tol_dm_max, tol_dm_min, tol_dp_core_max, tol_dp_czbase_max, &
            & tol_dp_env_max, tol_dx_max, tol_dz_max, time_max_dt_frac, &
            & use_new_rate_variables, calc_envelope_flag, &
-           & star_history_name, profile_interval, pulse_format, &
+           & profile_data_prefix, star_history_name, terminal_interval, &
+           & nu_max_sun, delta_nu_sun, Teff_sun, &
+           & report_solver_diagnostics, profile_interval, pulse_format, &
            & write_profile_flag, write_pulse_flag, &
            & compute_neutrino_fluxes

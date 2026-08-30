@@ -38,8 +38,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       integer, intent(out) :: step_status, ierr
 
       double precision :: delta_lum_step, delta_pressure_step, &
-           delta_radius_step, delta_temp_step, log_gravity, &
-           target_envelope_mass, teff_kelvin_unused
+           delta_radius_step, delta_temp_step, &
+           target_envelope_mass
       integer :: envelope_cz_zone_end, envelope_cz_zone_prev, &
            iteration_level, iterations_done, max_iterations, nao, &
            num_mixed_zones, num_mixed_zones_no_overshoot, &
@@ -48,7 +48,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
            evolve_model_flag, in_atmosphere, mixing_active, &
            new_atmosphere_fit_needed, recompute_surface_bc, &
            use_correct_gradients, want_derivatives, wind_loss_active
-      data nao/1/
 ! load-bearing: see header
       save
    ! INTENTIONAL: cross-step driver state; reset via evolve_step_reset_pending
@@ -64,9 +63,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          delta_pressure_step = 0.0d0
          delta_radius_step = 0.0d0
          delta_temp_step = 0.0d0
-         log_gravity = 0.0d0
          target_envelope_mass = 0.0d0
-         teff_kelvin_unused = 0.0d0
          envelope_cz_zone_end = 0
          envelope_cz_zone_prev = 0
          iteration_level = 0
@@ -76,7 +73,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          num_mixed_zones_no_overshoot = 0
          num_radiative_zones = 0
          num_species = 0
-         nao = 1
          conductive_opacity_flag = .false.
          converged = .false.
          evolve_model_flag = .false.
@@ -171,48 +167,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        call compute_observables(ierr)
        if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
-       call output_write_model(star%timestep_yr, log_gravity, star%has_h_shell, &
-            star%h_shell_zone_begin, star%h_shell_midpoint_zone, star%h_shell_end_index, &
-            star%trial_sign_flag, star%punch_pending_flag, star%total_angular_momentum, &
-            star%total_rotational_ke)
+       call output_write_model()
 
 ! MHP 10/24 GENERALIZED STOP CONDITIONS
-!     IF EVOLVING TO A GIVEN AGE AND AGE IS REACHED, KIND CARD IS DONE
-!       IF(LENDAG(NK).AND.ENDAGE(NK)-DAGE*1.0D9.LE.1.0D0)GOTO 110
-       if (reached_end_age(star%job%nk)) then
-          step_status = step_kind_card_done
-          return
-       end if
-! MHP 10/24 CHECK ALL STOP CONDITIONS, EXIT IF ANY SATISFIED
-! (2026: the D/X/Y checks are one table walk in stop_conditions)
-         if (abundance_stop_triggered(star%job%nk)) then
-! SET I/O FLAGS PROPERLY AND EXIT LOOP
-            star%job%pulsation_output_active = star%saved_pulse_output_flag
-            star%sound_speed_output_active = .true.
-            star%print_rotation_diagnostics = .true.
-            step_status = step_kind_card_done
-            return
-         endif
-! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
-         if (star%ctrl%calibrate_star_flag .and. .not. star%star_found_flag) then
-            if (mod(star%job%nk,2).eq.0) then
-! chkscal protocol: iteration 1 only primes its previous-model state
-! (the value computed here is never read -- see check_star_calibration.f90)
-             if (model_iteration.eq.1) then
-                teff_kelvin_unused = 10.0D0**star%log_Teff
-             else
-                call check_star_calibration(star%log_L, star%log_Teff, star%dage, star%job%nk)
-                if (star%just_passed_target_radius_flag) then
-                   step_status = step_leave_run_loop
-                   return
-                end if
-             end if
-          endif
-       endif
-
-! END OF RUN
-
-      step_status = step_continue
+! (2026: one entry in stop_conditions -- end-age stop, the D/X/Y
+! central-abundance table, and the star-calibration target-radius
+! check, in that order)
+      call check_stop_conditions(model_iteration, step_status)
       return
 contains
 
@@ -226,12 +187,8 @@ subroutine update_output_flags_for_step
 
 ! rewind ISHORT if LRWSH is true (keeps ISHORT small)
           if (star%ctrl%rewind_short_file) then
-             rewind(short_file_unit)
+             rewind(run_log_unit)
           endif
-! DBG PULSE:  if last model of last run then set LPULSE to LSAVPU
-            if (model_iteration.eq.star%job%num_models(star%job%nk) .and. star%job%nk .eq. star%job%num_runs) then
-                 star%job%pulsation_output_active = star%saved_pulse_output_flag
-            end if
 
 ! JVS 02/11: Also allow pulse output at particular ages along the way
 !
@@ -239,59 +196,13 @@ subroutine update_output_flags_for_step
 ! for the step before and step after the age in AGEOUT. Once the info has
 ! been printed out, AGEOUT is set to the next age.
 !
-! Turn on calcad:
-      if (star%ctrl%acoustic_depth_output) then
-            star%compute_acoustic_depth=.true.
-      else
-            star%compute_acoustic_depth = .false.
-      endif
-! If output has been turned on for a previous step, keep it on for the next
-! step, but then turn it off.
-      if (star%ctrl%acoustic_depth_output) then
-            if (star%job%ageout_bracket_armed) then
-                  print*, 'LJWRT on'
-                  star%job%pulsation_output_active = star%saved_pulse_output_flag
-                  nao=nao+1
-                  star%job%calcad_ageout_output_active =.true.
-                  star%job%ageout_model_output_flag =.false.
-                  star%job%ageout_bracket_armed=.false.
-            else if (.not.star%job%ageout_bracket_armed) then
-                  star%job%calcad_ageout_output_active=.false.
-            endif
-! If this is the step before one of the ages of interest, print everything out.
-! Also, save model structure.
-            if (nao.lt.6) then
-                  if (star%dage+star%timestep_yr/1.0D9-star%ctrl%output_ages_gyr(nao) .le. 0.0D0 .and. &
-                  star%dage+2.0D0*star%timestep_yr/1.0D9-star%ctrl%output_ages_gyr(nao) .ge. 0.0D0 .and. .not. star%job%ageout_bracket_armed) then
-                        print*, 'AGEOUT reached'
-                        star%job%pulsation_output_active = star%saved_pulse_output_flag
-                        star%job%calcad_ageout_output_active = .true.
-                        star%job%ageout_model_output_flag = .true.
-                        star%job%ageout_bracket_armed=.true.
-                  endif
-            endif
-       endif
-
-
-! JVS end
+! 2026 retire-legacy: the calcad/AGEOUT machinery (acoustic depths
+! at ages of interest) is retired.
 !
-! DBG PULSE:  if endage reached then set LPULSE to LSAVPU
-! MHP 10/24 GENERALIZE CHECK
-         if (approaching_end_age(star%job%nk)) then
-                 star%job%pulsation_output_active = star%saved_pulse_output_flag
-! MHP 7/96 compute sound speed for solar model
-                 star%sound_speed_output_active = .true.
-            end if
-
-
-!FD echo LSOUND
-!        print*,'MAIN LSOUND = ',LSOUND
-!FD end
-            if (star%ctrl%po_output_enabled) then
-! MHP 8/25 changed to add file names as declared variables
-             call open_pulse_files(star%prev_log_l,star%prev_log_teff,star%prev_age,star%path_length_sq,star%log_L,star%log_Teff,model_iteration,star%job%pulse_atm_path, &
-             star%job%pulse_env_path,star%job%pulse_mod_path)
-          endif
+! 2026 retire-legacy: the LSOUND sound-speed table, the .pmod/.penv/
+! .patm pulse trio, and their HR-path-length reopen trigger
+! (open_pulse_files, PO* controls) are retired -- the stitched
+! profileN.data + GYRE/FGONG/GSM pulse files carry everything.
 end subroutine update_output_flags_for_step
 
 ! ---------------------------------------------------------------
@@ -413,7 +324,7 @@ subroutine rezone_or_snapshot
                star%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = star%envelope_cz_bottom_index
                if (star%job%envelope_overshoot_active) then
-                  star%pressure_scale_height_start = star%ctrl%alphae*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
+                  star%pressure_scale_height_start = star%ctrl%overshoot_alpha_envelope*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
                            -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
                   star%pressure_scale_height_start = 0.0D0
@@ -443,7 +354,7 @@ subroutine solve_structure
             iterations_done = 0
             star%model_diverged_flag = .false.
             converged = .false.
-            if (.not.star%ctrl%lnews .or. star%dt.le.0.0D0) then
+            if (.not.star%ctrl%improved_first_guess_flag .or. star%dt.le.0.0D0) then
                do i = 1,star%nz
 ! zero entropy terms
                   star%log_temperature_delta(i) = 0.0D0
@@ -480,12 +391,12 @@ subroutine solve_structure
 ! CALL TO CRRECT - ADDED ITERATION LEVEL (2026: the four-level ladder
 ! goes through the solve_level wrapper below; per-level differences
 ! are only (level, max iterations, recompute surface BC))
-            call solve_level(1, star%ctrl%niter1, .false.)
+            call solve_level(1, star%ctrl%max_iter_level1, .false.)
             if (ierr /= 0) return
 ! SECOND LEVEL OF ITERATIONS
 ! CHECK ENVELOPE TRIANGLE BEFORE ITERATING FOR SOLUTION
             if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
-            call solve_level(2, star%ctrl%niter2, .true.)
+            call solve_level(2, star%ctrl%max_iter_level2, .true.)
             if (ierr /= 0) return
             if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 ! 7/91 STORE CHANGES IN THE STRUCTURE. THESE CHANGES ARE USED TO GET AN
@@ -499,13 +410,13 @@ subroutine solve_structure
                end do
             endif
 ! THIRD LEVEL OF ITERATIONS
-            call solve_level(3, star%ctrl%niter3, .false.)
+            call solve_level(3, star%ctrl%max_iter_level3, .false.)
             if (ierr /= 0) return
             if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 end subroutine solve_structure
 
 ! ---------------------------------------------------------------
-! The structure <-> rotation iteration (itdif1 passes): corrector
+! The structure <-> rotation iteration (num_rotation_structure_iters passes): corrector
 ! level 4 INSIDE the loop, convergence check, convection-zone
 ! re-mix (mixcz), then the angular momentum update (getw) and the
 ! new shape factors (fpft). Start-of-timestep composition and
@@ -513,14 +424,14 @@ end subroutine solve_structure
 ! double-counted.
 subroutine converge_with_rotation
             if (.not.star%job%rotation_active) then
-               star%job%itdif1 = 1
+               star%job%num_rotation_structure_iters = 1
             endif
 ! MHP 05/02
 ! IF THE CODE IS ITERATING BETWEEN THE STRUCTURE AND ROTATION
 ! SOLUTIONS, ENSURE THAT THE START-OF-TIMESTEP QUANTITIES
 ! HCOMPP (COMPOSITION) AND HJMSAV (ANGULAR MOMENTUM) ARE ONLY
 ! OVERWRITTEN ON THE LAST RUN THROUGH.
-            if (star%job%itdif1.gt.1) then
+            if (star%job%num_rotation_structure_iters.gt.1) then
                do i = 1,star%nz
                   star%orig_specific_angular_momentum(i) = star%j_rot(i)
                   do j = 1,15
@@ -528,7 +439,7 @@ subroutine converge_with_rotation
                   end do
                end do
             endif
-            do itrot = 1, star%job%itdif1
+            do itrot = 1, star%job%num_rotation_structure_iters
 ! MHP 05/02 RESTORE ORIGINAL "START OF TIMESTEP"
 ! VALUES FOR THE COMPOSITION MATRIX
                if (itrot.gt.1) then
@@ -548,7 +459,7 @@ subroutine converge_with_rotation
 ! (to be implemented when I know the rest of it works!)
 ! (level 4 runs INSIDE the structure<->rotation iteration above,
 ! unlike levels 1-3 -- deliberate, see the itrot loop)
-            call solve_level(4, star%ctrl%niter4, .false.)
+            call solve_level(4, star%ctrl%max_iter_level4, .false.)
             if (ierr /= 0) return
 !  25         CONTINUE
             if (.not.converged) then
@@ -581,17 +492,12 @@ subroutine converge_with_rotation
                      star%j_rot(i) = star%orig_specific_angular_momentum(i)
                   end do
                endif
-! MHP 9/94 ADDED FLAG TO TURN ON ROTATION OUTPUT WHEN END OF KIND
-! CARD REACHED.
-! MHP 10/24 GENERALIZE CHECK
-               if (approaching_end_age(star%job%nk)) then
-                  star%print_rotation_diagnostics = .true.
-               else
-                  star%print_rotation_diagnostics = .false.
-               endif
+! (2026: the print_rotation_diagnostics pre-arm that lived here --
+! MHP 9/94's end-of-card QUAD/PHIS terminal line, the flag's only
+! effect -- is retired along with the flag.)
 ! FIND THE NEW RUN OF OMEGA
 ! JENV0 ADDED TO SR CALL.
-               wind_loss_active = star%job%ljdot0
+               wind_loss_active = star%job%use_wind_torque
                call evolve_angular_momentum(star%dt, star%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
                if (jerr /= 0) then
@@ -620,7 +526,7 @@ subroutine burn_light_elements
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index
                if (star%job%envelope_overshoot_active) then
-                  star%pressure_scale_height_end = star%ctrl%alphae*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
+                  star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
                            -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
                else
                   star%pressure_scale_height_end = 0.0D0

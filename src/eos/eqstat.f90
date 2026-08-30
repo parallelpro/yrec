@@ -472,7 +472,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       beta = 1 - beta14
 
       if (beta.lt.0d0) then
-         write(short_file_unit,*) &
+         write(run_log_unit,*) &
               'EQSTAT2: BETA is negative: TL,PL,BETA,1-BETA', &
               log10_temperature, log10_pressure, beta, 1d0 - beta
       end if

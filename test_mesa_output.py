@@ -1,16 +1,15 @@
 """MESA-style output acceptance test (2026).
 
-Runs the solar noGS/norot case from one converted inlist in three
-configurations and checks the whole MESA-mode output contract:
+Runs the solar noGS/norot case from one converted inlist and checks
+the unified output contract (use_legacy_output is retired):
 
-  legacy   (stamped use_legacy_output = .true.)  -- the oracle .track
-  mesa     (stamp removed)                       -- default MESA mode
-  custom   (mesa + history_columns_file)         -- column selection
+  mesa     (converter output)                    -- default run
+  custom   (+ history_columns_file)              -- column selection
 
 Assertions: MESA mode writes exactly {history.data, profile*.data,
 CASE.log}; the history file has MESA's layout (data from line 7,
-names on line 6) with one row per converged model matching the
-legacy .track numerically; profiles appear every profile_interval
+names on line 6) with rows matching the legacy .short per-model
+blocks numerically; profiles appear every profile_interval
 models with zone 1 = the surface and num_zones rows; the history
 profile_number column maps models to profiles (YREC's replacement
 for profiles.index); a history_columns_file selects exactly the
@@ -68,42 +67,51 @@ def test_mesa_output_contract(tmp_path):
         [sys.executable, str(CONVERTER), str(CASE / NML1), str(CASE / NML2),
          "-o", str(inlist)], capture_output=True, text=True)
     assert conv.returncode == 0, conv.stderr
-    stamped = inlist.read_text()
-    assert "use_legacy_output = .true." in stamped
-    unstamped = "\n".join(l for l in stamped.splitlines()
-                          if "use_legacy_output" not in l) + "\n"
+    unstamped = inlist.read_text()
+    # use_legacy_output is retired: the converter no longer stamps it
+    assert "use_legacy_output" not in unstamped
     # write_profile_flag and write_pulse_flag both default to .false.;
     # the mesa run opts into profiles to test that contract
     with_profiles = unstamped.replace(
         "&controls", "&controls\n write_profile_flag = .true.\n", 1)
 
-    legacy_out = _run(tmp_path / "legacy", stamped)
     mesa_out = _run(tmp_path / "mesa", with_profiles)
 
     # ---- exact file set ----
     produced = sorted(p.name for p in mesa_out.iterdir())
     profiles = [p for p in produced if p.startswith("profile")]
-    assert produced == sorted([f"{BASE}.log", "history.data"] + profiles), \
-        produced
+    assert produced == sorted([f"{BASE}.log", f"{BASE}.mod", "history.data",
+                               "inlist_used"] + profiles), produced
     assert profiles, "no profile files written (profile_interval default)"
 
-    # ---- history vs the legacy track ----
-    track_rows = [l.split() for l in
-                  (legacy_out / f"{BASE}.track").read_text().splitlines()
-                  if l.strip() and not l.lstrip().startswith("#")
-                  and not l.lstrip().startswith("Step")]
+    # ---- history vs the run-log progress lines ----
+    # (the run log prints the compact MESA-style progress line --
+    # model nz age dt logTeff logL logR Xc iters -- every
+    # terminal_interval models plus card-final models; the two
+    # streams must agree)
+    import re as _re
+    short_text = (mesa_out / f"{BASE}.log").read_text()
+    prog = _re.findall(
+        r"^\s*(\d+)\s+(\d+)\s+([\d.]+E[+-]\d+)\s+([\d.]+E[+-]\d+)"
+        r"\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+(\d+)\s*$",
+        short_text, _re.M)
+    assert prog, "no progress lines found in the legacy run log"
     names, hist_rows, icol = _parse_mesa_file(mesa_out / "history.data")
     assert names[:3] == ["model_number", "profile_number", "num_zones"]
     # integer id columns are written as true integers
     assert "." not in hist_rows[0][0] and "." not in hist_rows[0][2]
-    assert len(hist_rows) == len(track_rows)
-    for tr, hr in zip(track_rows, hist_rows):
-        assert int(float(hr[icol["model_number"]])) == int(tr[0])
-        assert abs(float(hr[icol["star_age"]]) / 1e9 - float(tr[2])) <= \
-            1e-7 * max(1.0, abs(float(tr[2])))
-        for name, j in (("log_L", 3), ("log_Teff", 6)):
-            a, b = float(hr[icol[name]]), float(tr[j])
-            assert abs(a - b) <= 1e-7 * max(1.0, abs(b)), (name, a, b)
+    by_model = {int(float(hr[icol["model_number"]])): hr for hr in hist_rows}
+    for model_s, nz_s, age_s, dt_s, teff_s, logl_s, logr_s, xc_s, it_s in prog:
+        hr = by_model[int(model_s)]
+        assert int(float(hr[icol["num_zones"]])) == int(nz_s), (model_s, nz_s)
+        assert abs(float(hr[icol["star_age"]]) / 1e9 - float(age_s)) <= \
+            1e-7 * max(1.0, float(age_s))
+        # f10.6 columns: compare at print granularity
+        for name, ref in (("log_L", float(logl_s)),
+                          ("log_Teff", float(teff_s)),
+                          ("log_R", float(logr_s))):
+            a = float(hr[icol[name]])
+            assert abs(a - ref) <= 2e-6, (name, a, ref)
 
     # ---- profile_number column maps models to profiles ----
     expect_num = 0
@@ -191,11 +199,18 @@ def test_mesa_output_contract(tmp_path):
 
 
 def test_default_columns_lists_in_sync():
-    """defaults/{history,profile}_columns.list must list exactly the
-    writers' column tables (they are the user-facing documentation of
-    what history_columns_file / profile_columns_file may contain)."""
+    """defaults/{history,profile}_columns.list are the authority on
+    the default output columns, compiled in by
+    tools/gen_default_columns.py (uncommented entries; '!name' marks
+    an opt-in column excluded from the default). Invariants: every
+    writer column appears in its .list exactly once (so the files
+    fully document what the columns files may contain -- entry order
+    is free, it sets the output column order), and the generated
+    include is fresh."""
     import re
-    src = (REPO / "src" / "io" / "yrec_output.f90").read_text()
+    import subprocess
+    src = ((REPO / "src" / "io" / "history_output.f90").read_text()
+           + (REPO / "src" / "io" / "profile_output.f90").read_text())
 
     def harvest(sub):
         m = re.search(r"subroutine " + sub + r"\(names\)(.*?)end subroutine " + sub,
@@ -203,16 +218,23 @@ def test_default_columns_lists_in_sync():
         return [n for _, n in
                 re.findall(r"names\((\d+)\)\s*=\s*'([^']+)'", m.group(1))]
 
-    def listed(fname):
+    def entries(fname):
+        # ('!name' = commented-out opt-in entry; '! prose' is skipped)
         out = []
         for line in (REPO / "src" / "defaults" / fname).read_text().splitlines():
-            line = line.split("!")[0].strip()
-            if line:
-                out.append(line)
+            m = re.match(r"^(!?)([A-Za-z]\w*)", line)
+            if m:
+                out.append(m.group(2))
         return out
 
-    assert listed("history_columns.list") == harvest("history_column_names")
-    assert listed("profile_columns.list") == harvest("profile_column_names")
+    for fname, sub in [("history_columns.list", "history_column_names"),
+                       ("profile_columns.list", "profile_column_names")]:
+        assert sorted(entries(fname)) == sorted(harvest(sub)), fname
+
+    r = subprocess.run(
+        [sys.executable, str(REPO / "src" / "tools" / "gen_default_columns.py"),
+         "--check"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
 
 
 def test_gsm_pulse_output(tmp_path):

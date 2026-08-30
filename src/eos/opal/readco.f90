@@ -77,7 +77,7 @@ subroutine readco(ierr)
                  unused_field, unused_field, &
                  opal_eos%density_grid_table(x_loop_index,density_row)
             if (record_number.ne.density_row) then
-               write(short_file_unit,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') &
+               write(run_log_unit,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') &
                     record_number, density_row
                ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
                ! facades stop when their caller passes no ierr.
@@ -88,7 +88,7 @@ subroutine readco(ierr)
             read(star%ctrl%iopale,'(A)') blank_line
             if (opal_eos%temperature_count_used(x_loop_index,density_row).lt. &
                  opal_eos%t6_index_lo(density_row)) then
-               write(short_file_unit,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", &
+               write(run_log_unit,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", &
                     &E14.4)') opal_eos%hydrogen_fraction_header(x_loop_index), &
                     opal_eos%density_grid_table(x_loop_index,density_row)
                ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib

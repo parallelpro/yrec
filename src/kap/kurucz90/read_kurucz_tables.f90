@@ -9,7 +9,7 @@
 ! Reads the Kurucz opacity table (and, if a second Z table is
 ! requested, a second Kurucz table) and builds the spline
 ! interpolation coefficients used later by kurucz.f90/kurucz2.f90.
-subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path)
+subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
@@ -21,6 +21,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path)
 
 ! MHP 8/25 Remove unused variables
       character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
+      integer, intent(out) :: ierr
       integer :: x_table_count, num_read, density_index
       integer :: read_status
       double precision :: prev_grid_temp, grid_temp, pressure, &
@@ -28,6 +29,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path)
            log10_opacity4, log10_opacity8, electron_density, &
            atom_density, density, unused_col
 
+      ierr = 0
       x_table_count = num_x_tables
     1 format(2f5.2,5f7.3,3f9.5,f8.3)
 !     OPEN TABLE
@@ -45,12 +47,22 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path)
       if (read_status .lt. 0) exit table_read    ! was end=120
       if (prev_grid_temp.ne.grid_temp) then
          num_read = num_read+1
-         if (num_read.gt.max_num_temps) stop ' KURUCZ INPUT ERROR'
+         if (num_read.gt.max_num_temps) then
+            write(*,*) 'read_kurucz_tables: too many temperature rows in ', &
+                 trim(kurucz_table_path)
+            ierr = 1
+            return
+         end if
          opacity_table%kurucz_grid_logt(num_read) = grid_temp
          prev_grid_temp = grid_temp
          density_index = 1
       endif
-      if (num_read.lt.1) stop ' KURUCZ INPUT ERROR'
+      if (num_read.lt.1) then
+         write(*,*) 'read_kurucz_tables: no header row read from ', &
+              trim(kurucz_table_path)
+         ierr = 1
+         return
+      end if
       opacity_table%kurucz_log10_rho(num_read, density_index) = density
       opacity_table%kurucz_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
       density_index = density_index+1
@@ -77,12 +89,22 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path)
          if (read_status .lt. 0) exit table2_read    ! was end=220
          if (prev_grid_temp.ne.grid_temp) then
             num_read = num_read+1
-            if (num_read.gt.max_num_temps) stop ' KURUCZ INPUT ERROR'
+            if (num_read.gt.max_num_temps) then
+               write(*,*) 'read_kurucz_tables: too many temperature rows in ', &
+                    trim(kurucz_table2_path)
+               ierr = 1
+               return
+            end if
             opacity_table%kurucz2_grid_logt(num_read) = grid_temp
             prev_grid_temp = grid_temp
             density_index = 1
          endif
-         if (num_read.lt.1) stop ' KURUCZ INPUT ERROR'
+         if (num_read.lt.1) then
+            write(*,*) 'read_kurucz_tables: no header row read from ', &
+                 trim(kurucz_table2_path)
+            ierr = 1
+            return
+         end if
          opacity_table%kurucz2_log10_rho(num_read, density_index) = density
          opacity_table%kurucz2_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
          density_index = density_index+1
@@ -93,8 +115,10 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path)
          close(star%ctrl%ikur2,err=99)
       end if
 
-      call build_kurucz_splines
+      call build_kurucz_splines(ierr)
 
       return
-   99 stop 'ERROR IN FILE CLOSING'
+   99 continue
+      write(*,*) 'read_kurucz_tables: error closing table file'
+      ierr = 1
 end subroutine read_kurucz_tables

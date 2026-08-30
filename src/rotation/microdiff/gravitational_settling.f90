@@ -250,15 +250,15 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
             endif
          end do
 !         WRITE(IOWR,90)ITER,DXMAX,IMAX
-         write(short_file_unit,90)iter_count,max_delta_x,max_delta_x_zone
+         write(run_log_unit,90)iter_count,max_delta_x,max_delta_x_zone
  90      format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
          if(max_delta_x.lt.star%ctrl%settling_tolerance)exit
       end do
       if (iter_count > star%ctrl%settling_num_iterations) then
-      write(iowr,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations,max_delta_x, &
+      write(terminal_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations,max_delta_x, &
            max_delta_x_zone
-      write(short_file_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
+      write(run_log_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
            max_delta_x,max_delta_x_zone
  110  format(1x,'GRSETT FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
            'ITERATIONS'/1x,'LAST ITERATION CHANGE IN X ',1pe9.3, &

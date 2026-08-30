@@ -196,7 +196,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       end do
       if (iter > 25) then
 !  15   CONTINUE
-      write(short_file_unit,20) log_pressure,log_temperature,opacity, &
+      write(run_log_unit,20) log_pressure,log_temperature,opacity, &
            specific_heat_cp,dlnrho_dlnt
    20 format(' -----CUBIC NON-CONVERGENCE(PL,TL,CAPPA,CP,QDT)=' &
              ,2f10.6/1p3e12.6)
@@ -260,11 +260,11 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
 end subroutine temperature_gradients
 
 ! ---------------------------------------------------------------
-! Result-array form (2026): takes the eos_get_r and kap_get_r result
+! Result-array form (2026): takes the eos_get and kap_get result
 ! arrays directly, unpacking them into temperature_gradients'
 ! positional arguments -- the same doubles, so byte-identical. This
 ! is what lets the per-shell physics sequence read
-!   call eos_get_r(...)  /  call kap_get_r(...)  /
+!   call eos_get(...)  /  call kap_get(...)  /
 !   call temperature_gradients_r(...)
 ! with two arrays instead of ~20 relay locals.
 subroutine temperature_gradients_r(log_temperature, log_pressure, &

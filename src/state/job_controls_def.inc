@@ -4,11 +4,19 @@
 ! card arrays and latches -- mutable job state), included
 ! into star_job. Default-initialized like controls_state, so
 ! declaration/star0-restore state is pristine.
+            double precision :: log_L_upper_limit(50) = 1.0d99
+            double precision :: log_L_lower_limit(50) = -1.0d99
+            double precision :: Teff_upper_limit(50) = 1.0d99
+            double precision :: Teff_lower_limit(50) = -1.0d99
+            double precision :: log_g_upper_limit(50) = 1.0d99
+            double precision :: log_g_lower_limit(50) = -1.0d99
+            double precision :: nu_max_upper_limit(50) = 1.0d99
+            double precision :: nu_max_lower_limit(50) = -1.0d99
             character(len=8) :: pulse_format = 'GYRE'
-            logical :: lovstc = .false.
+            logical :: core_overshoot_active = .false.
             logical :: envelope_overshoot_active = .false.
             logical :: lovstm = .false.
-            logical :: lsemic = .false.
+            logical :: use_semiconvection = .false.
             double precision :: acfpft = 1.0d-36
             logical :: rotation_active = .false.
             logical :: instability_transport_active = .false.
@@ -25,12 +33,11 @@
             double precision :: central_helium_stop(50) = 0.0d0
             logical :: end_age_stop_active(50) = .false.
             logical :: timestep_override_active(50) = .false.
-            logical :: lstatm = .false.
-            logical :: lphhd = .false.
-            integer :: imend = 1
+            integer :: mc_run_start = 1
+            integer :: mc_run_end = 1
             double precision :: fcorr = 0.0d0
-            double precision :: dtdif = 1.0d-2
-            integer :: itdif1 = 1
+            double precision :: diffusion_timestep_factor = 1.0d-2
+            integer :: num_rotation_structure_iters = 1
             logical :: diffuse_helium_active = .false.
             double precision :: fgrz = 1.0d0
             logical :: use_diffusion_z = .false.
@@ -40,7 +47,6 @@
             double precision :: env_step_begin = 0.0d0
             double precision :: env_step_min = 0.0d0
             double precision :: env_step_max = 0.0d0
-            logical :: pulsation_output_active = .false.
             integer :: atm_choice = 0
             double precision :: requested_envelope_mass = 0.0d0
             logical :: change_envelope_mass_flag = .false.
@@ -66,9 +72,6 @@
             double precision :: rsclzm2(50) = -1.0d0
             double precision :: target_teff = 0.0d0
             double precision :: target_radius_rsun = 0.0d0
-            logical :: calcad_ageout_output_active = .false.
-            logical :: ageout_model_output_flag = .false.
-            logical :: ageout_bracket_armed = .false.
             double precision :: structfactor = 0.0d0
             double precision :: wind_saturation_omega = 0.0d0
-            logical :: ljdot0 = .true.
+            logical :: use_wind_torque = .true.

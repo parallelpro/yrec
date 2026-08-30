@@ -107,7 +107,7 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
       end if
 
       return
-  999 write(short_file_unit, *) 'WARNNING... OPAL TBL FAIL'
+  999 write(run_log_unit, *) 'WARNNING... OPAL TBL FAIL'
 
       return 1
 end subroutine oeqos01

@@ -91,7 +91,7 @@ subroutine setup_star_calibration
       end do
       write(*,*) ' Evolve to R*, L* = ', star%job%target_radius_rsun, &
            star%ctrl%target_luminosity_lsun
-      write(itrack,*) '#Evolve to R*, L* = ', star%job%target_radius_rsun, &
+      write(run_log_unit,*) '#Evolve to R*, L* = ', star%job%target_radius_rsun, &
            star%ctrl%target_luminosity_lsun
       return
 end subroutine setup_star_calibration

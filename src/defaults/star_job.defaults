@@ -39,9 +39,9 @@
       ! (legacy name: fopal2)
       opal92_opacity_table2_file = ''   ! (implicit)
 
-      ! Path for the final model written at end of job
+      ! Path for the final model (.mod) written every model; reloadable
       ! (legacy name: flast)
-      last_model_file = ''   ! (implicit)
+      last_model_file = '{YREC_OUTPUT}/final.mod'
 
       ! Starting model read when read_first_model is set for a run
       ! (legacy name: ffirst)
@@ -51,42 +51,6 @@
       ! (legacy name: ffermi)
       fermi_table_file = ''   ! (implicit)
 
-      ! Debug output stream
-      ! (legacy name: fdebug)
-      debug_output_file = ''   ! (implicit)
-
-      ! Evolution track (.track) output path
-      ! (legacy name: ftrack)
-      track_output_file = ''   ! (implicit)
-
-      ! Model summary (.short) output path
-      ! (legacy name: fshort)
-      short_output_file = ''   ! (implicit)
-
-      ! Milne-format output file (opened when the Milne stream is active)
-      ! (legacy name: fmilne)
-      milne_output_file = ''   ! (implicit)
-
-      ! Per-model print stream (rotational-mixing composition changes etc.)
-      ! (legacy name: fmodpt)
-      model_print_file = ''   ! (implicit)
-
-      ! Full stored-model (.store) output path
-      ! (legacy name: fstor)
-      store_output_file = ''   ! (implicit)
-
-      ! Pulsation (oscillation-code) model output
-      ! (legacy name: fpmod)
-      pulse_model_file = ''   ! (implicit)
-
-      ! Pulsation output: atmosphere part
-      ! (legacy name: fpatm)
-      pulse_atm_file = ''   ! (implicit)
-
-      ! Pulsation output: envelope part
-      ! (legacy name: fpenv)
-      pulse_env_file = ''   ! (implicit)
-
       ! Opened on the dynamics unit (formatted, STATUS=OLD)
       ! (legacy name: fdyn)
       dynamics_file = ''   ! (implicit)
@@ -94,10 +58,6 @@
       ! Livermore opacity auxiliary data file
       ! (legacy name: flldat)
       ll_data_file = ''   ! (implicit)
-
-      ! Solar neutrino flux (.snu) output path
-      ! (legacy name: fsnu)
-      neutrino_output_file = ''   ! (implicit)
 
       ! Surface-composition output file
       ! (legacy name: fscomp)
@@ -183,75 +143,16 @@
       ! (legacy name: fmonte2)
       monte_carlo_file2_path = ''   ! (implicit)
 
-      ! (legacy name: ipver)
-      pulsation_file_version = 1
-
-      ! former common/track/: track_file_version (originally itrver) is a NAMELIST value with a different canonical spelling, kept local in core/parmin.f90 and copy-assigned.
-      ! (legacy name: itrver)
-      track_file_version = 1
-
       ! Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
       ! (legacy name: kindrn)
       run_kind = 0   ! (implicit)
 
-      ! Enable the debug output stream
-      ! (legacy name: ldebug)
-      write_debug_output = .false.   ! (implicit)
-
-      ! crrect: print solver correction diagnostics
-      ! (legacy name: lcorr)
-      write_correction_output = .false.   ! (implicit)
-
-      ! Gate the Milne-format blocks in putstore/wrtout
-      ! (legacy name: lmilne)
-      write_milne_output = .false.   ! (implicit)
-
-      ! Write the .track evolution file
-      ! (legacy name: ltrack)
-      write_track_output = .false.   ! (implicit)
-
-      ! Write full stored models (.store)
-      ! (legacy name: lstore)
-      write_store_output = .false.   ! (implicit)
-
+      ! DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly.
       ! (legacy name: lfirst)
-      first_call_flag = .false.   ! (implicit)
+      first_call_flag = .true.
 
-      ! Store the last model of each run (with write_store_output)
-      ! (legacy name: lstpch)
-      store_final_model_flag = .false.   ! (implicit)
-
-      ! Echoed in the .short header (LINE 3 flags); no other functional use
-      ! (legacy name: lscrib)
-      scribe_flag = .false.   ! (implicit)
-
-      ! Suppress per-model structure blocks in the .store stream (also disables atm profile)
-      ! (legacy name: lstch)
-      suppress_store_profiles = .false.   ! (implicit)
-
-      ! Include the atmosphere layers in stored models
-      ! (legacy name: lstatm)
-      store_atm_profile = .false.   ! (implicit)
-
-      ! Include the envelope in stored models
-      ! (legacy name: lstenv)
-      store_env_profile = .false.   ! (implicit)
-
-      ! Include the interior in stored models
-      ! (legacy name: lstmod)
-      store_interior_profile = .false.   ! (implicit)
-
-      ! Include physics (EOS/opacity) columns in stored models
-      ! (legacy name: lstphys)
-      store_physics_columns = .false.   ! (implicit)
-
-      ! Include rotation columns in stored models
-      ! (legacy name: lstrot)
-      store_rotation_columns = .false.   ! (implicit)
-
-      ! former common/pulse/: pulsation_output_active/pulsation_file_version (originally lpulse/ipver) are NAMELIST values with different canonical spellings, kept local in core/
-      ! (legacy name: lpulse)
-      pulsation_output_active = .false.
+      ! Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior).
+      set_initial_model_number = 1
 
       ! (legacy name: lzramp)
       use_z_ramp = .false.
@@ -276,9 +177,6 @@
       ! (legacy name: lsenv0a)
       has_senv0_array = .false.   ! (implicit)
 
-      ! (legacy name: lpout)
-      po_output_enabled = .false.   ! (implicit)
-
       ! (legacy name: lcals)
       calibrate_solar_model = .false.   ! (implicit)
 
@@ -300,20 +198,9 @@
       ! (legacy name: lalex95)
       use_alex95_tables = .false.   ! (implicit)
 
-      ! hpoint debug print every N models (9999 = off)
-      ! (legacy name: npoint)
-      debug_print_interval = 0   ! (implicit)
-
       ! Envelope profile print count (values <= 0 become 9999 = off)
       ! (legacy name: npenv)
       envelope_print_points = 0   ! (implicit)
-
-      ! Write a stored model every N models
-      ! (legacy name: nprtmod)
-      profile_model_interval = 0   ! (implicit)
-
-      ! (legacy name: nprtpt)
-      print_point_interval = 1
 
       ! (legacy name: numrun)
       num_runs = 0   ! (implicit)
@@ -324,21 +211,6 @@
       ! VERIFIED 2026: the seven Alexander-1995 low-T opacity table FILE PATHS (character(len=256)(7)), relayed to star%job%alex95_table_paths -- the old 'alex_z_value' guess was wrong.
       ! (legacy name: opecalex)
       alex95_table_z_list = 'OPACALEXANDER.X00',
-
-      ! former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-      ! (legacy name: poa)
-      po_weight_l = 0.0   ! (implicit)
-
-      ! former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-      ! (legacy name: pob)
-      po_weight_teff = 0.0   ! (implicit)
-
-      ! former common/po/: po_weight_l/po_weight_teff/po_weight_age/ po_max_len_sq/po_output_enabled (originally poa/pob/poc/pomax/ lpout) are NAMELIST values with different cano
-      ! (legacy name: poc)
-      po_weight_age = 0.0   ! (implicit)
-
-      ! (legacy name: pomax)
-      po_max_len_sq = 0.0   ! (implicit)
 
       ! Per-run target mass (Msun) for rescale runs
       ! (legacy name: rsclm)
@@ -533,14 +405,38 @@
       ! former common/pulsegyre/: pulse_gyre_interval is a NAMELIST /control/ value spelled identically to its canonical name.
       pulse_gyre_interval = 0   ! (implicit)
 
-      ! Output style: .true. = historical .track/.store streams; .false. = MESA-format output (.history now, profiles to follow). Default depends on inlist style.
-      use_legacy_output = .true. legacy decks / .false. new-style inlists
-
       ! MESA mode: file listing the history columns to write (one name per line, ! comments); blank = all columns
       history_columns_file = '' (all columns)
 
       ! MESA mode: file listing the profile columns to write; blank = all columns
       profile_columns_file = '' (all columns)
+
+      ! Verbatim copy of the input namelist file(s), written at startup as run provenance
+      inlist_used_file = '{YREC_OUTPUT}/inlist_used'
+
+      ! Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off)
+      log_L_upper_limit = 1.0d99
+
+      ! Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off)
+      log_L_lower_limit = -1.0d99
+
+      ! Per kind card: stop the card when Teff [K] exceeds this (1d99 = off)
+      Teff_upper_limit = 1.0d99
+
+      ! Per kind card: stop the card when Teff [K] drops below this (-1d99 = off)
+      Teff_lower_limit = -1.0d99
+
+      ! Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off)
+      log_g_upper_limit = 1.0d99
+
+      ! Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off)
+      log_g_lower_limit = -1.0d99
+
+      ! Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off)
+      nu_max_upper_limit = 1.0d99
+
+      ! Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off)
+      nu_max_lower_limit = -1.0d99
 
 /
 

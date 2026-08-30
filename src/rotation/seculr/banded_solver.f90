@@ -104,7 +104,11 @@ subroutine banded_solver(coeff_matrix, nm, rhs, ierr)
             end do
          end do
       end do
-      if (abs(coeff_matrix(nm,5)).lt.tiny) stop 999
+      if (abs(coeff_matrix(nm,5)).lt.tiny) then
+         write(*,*) 'banded_solver: singular final pivot'
+         ierr = 1
+         return
+      end if
       rhs(nm) = rhs(nm)/coeff_matrix(nm,5)
 
 ! D2W/DR2 TERM

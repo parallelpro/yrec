@@ -33,6 +33,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       use rotation_scratch_lib
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use net_lib
       use burn_lib
@@ -153,7 +154,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       end if
       do zone_idx = 1, star%nz
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-         if (star%logT(zone_idx).le.star%ctrl%tcut(1)) exit
+         if (star%logT(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
 ! SCALAR VARIABLES ARE USED IN THE CALLS TO THE ENERGY GENERATION ROUTINES.
 ! SET SCALARS EQUAL TO THE GLOBAL ARRAYS FOR THE VARIABLES OF INTEREST.
 ! DL-LOG(DENSITY),TL-LOG TEMPERATURE,X***-MASS FRACTION OF SPECIES ***,
@@ -225,7 +226,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          do inner_zone_idx = radiative_zone_bounds(radiative_region_idx,1), &
               radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
+            if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
             call solve_composition(star%logT, zone_begin, zone_end, rate_pp, &
@@ -290,7 +291,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
+               if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call eqburn(rate_pp, rate_he3_he3, rate_he3_he4, &
@@ -355,7 +356,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !
 ! DETERMINE EXTENT OF SEMI-CONVECTION IF APPLICABLE.
 !
-      if (star%job%lsemic) then
+      if (star%job%use_semiconvection) then
          if (iteration_level.gt.1) &
               call semiconvection(timestep, star%xa, star%logRho, &
               star%luminosity_lsun, star%logP, star%logR, star%log_mass, &
@@ -363,7 +364,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               num_mixed_zones, star%log_Teff, ierr)
               if (ierr /= 0) return
       end if
-      if (star%job%lsemic .or. (iteration_level .eq. 1)) then
+      if (star%job%use_semiconvection .or. (iteration_level .eq. 1)) then
 !
 !    MIX CONVECTIVE REGIONS IN ORDER.
 !    THIS NEEDS TO BE DONE IF SEMI-CONVECTION IS BEING CHECKED, OR
@@ -404,8 +405,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          end do
       end if
 !  WRITE OUT THE LOCATIONS OF MIXED REGIONS.
-      if (num_mixed_zones.ge.1) then
-         write(short_file_unit,110) ((star%mixed_zone_bounds(zone_idx,inner_zone_idx), &
+      if (num_mixed_zones.ge.1 .and. solver_diagnostics()) then
+         write(run_log_unit,110) ((star%mixed_zone_bounds(zone_idx,inner_zone_idx), &
               inner_zone_idx=1,2),zone_idx=1,num_mixed_zones)
   110    format(' ZONES MIXED IN ORDER--',12('(',i5,',',i5,') ') )
       end if
@@ -437,7 +438,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 !
 !   LOCATE OUTER BOUNDARY.
          if (.not.star%convective_flag(star%nz)) then
-            write(short_file_unit,911)
+            write(run_log_unit,911)
 ! DBG 2/92 CHANGED STOP TO JUST A WARNING MESSAGE, EXECUTION CONTINUES
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL')
             exit settling
@@ -513,7 +514,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                  radiative_zone_bounds(radiative_region_idx,1), &
                  radiative_zone_bounds(radiative_region_idx,2)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%logT(inner_zone_idx).le.star%ctrl%tcut(1)) exit
+               if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call dburn(zone_begin, zone_end, star%nz, star%dm, &

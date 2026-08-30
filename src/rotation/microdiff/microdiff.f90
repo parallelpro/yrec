@@ -60,7 +60,6 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      num_zones, total_mass)
       use star_info_lib, only: star
       use star_info_lib, only: star, json
-      use luout_lib
       implicit none
 ! SET NLIGHT TO THE NUMBER OF LIGHT ELEMENTS TO BE DIFFUSED.
       integer, parameter :: num_light = 3
@@ -217,7 +216,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !----------------------------------------------------------------------
 !
 !     DIFFUSE LIGHT ELEMENTS.
-      if(star%ctrl%ldifli)then
+      if(star%ctrl%diffuse_lithium)then
 !        ITERATE OVER THE DIFFUSION ROUTINES FOR EACH LIGHT ELEMENT.
          species_col = 3
          do ii = 1,num_light

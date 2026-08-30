@@ -121,7 +121,7 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
          end do
       endif
 !  skip burning calculations if starting shell below t cutoff for reactions.
-      if(log_temperature(zone_begin).lt.star%ctrl%tcut(1)) then
+      if(log_temperature(zone_begin).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
          do zone_idx = zone_begin,zone_end
             do species_idx = 1,11
                composition(species_idx,zone_idx) = avg_abundance(species_idx)
@@ -394,8 +394,8 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
          iteration_count = iteration_count+1
          if(iteration_count.ge.star%ctrl%max_burn_iterations) then
 !  mhp 10/02 iu not defined
-!            WRITE (short_file_unit,1000) iu
-            write (short_file_unit,1000) zone_begin
+!            WRITE (run_log_unit,1000) iu
+            write (run_log_unit,1000) zone_begin
  1000       format(1X,39('>'),40('<')/1X,'ERROR IN SUBROUTINE KEMCOM'/ &
             1X,'UNABLE TO SOLVE FOR NEW ABUNDANCES IN SHELL',I4/1X, &
             'RUN STOPPED AFTER 50 ATTEMPTS')

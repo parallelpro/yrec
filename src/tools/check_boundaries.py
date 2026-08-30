@@ -28,14 +28,33 @@ SRC = pathlib.Path(__file__).resolve().parent.parent
 DOMAINS = ["eos", "kap", "atm", "net", "wind", "mixing",
            "rotation", "numerics"]
 
+# The controls-read BUFFER (io/controls_lib.f90) is reader-internal:
+# star%ctrl / star%job are the authoritative post-read home, and every
+# consumer reads them. Only the read pipeline itself may import the
+# buffer's bare names -- read_controls (the reader), controls_sync
+# (the generated buffer<->star copies), map_user_inputs (runs inside
+# the read, before the store), and net's test harness (which seeds
+# the buffer to simulate that pipeline). A new name here is a design
+# regression, not an allowlist entry.
+CONTROLS_BUFFER_IMPORTERS = {
+    "io/read_controls.f90",
+    "state/controls_sync_lib.f90",
+    "setup/map_user_inputs.f90",
+    "net/test/test_net.f90",
+}
+
 # domain -> names callable from outside that domain.
 PUBLIC = {
     # The three eos_lib facade entries. Everything else in eos/
     # (eqstat/eqstat2, the OPAL/MHD/SCV/Yale internals, mu) is private.
-    "eos": {"eos_get", "eos_get_r", "eos_get_gamma1", "eos_init", "eos_set_mixture"},
+    # eos_get is the named-index result-array query (the former
+    # eos_get_r); the long-form engine eos_eval is domain-internal.
+    "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture"},
     # The kap_lib facade entries (kap_get_r is the named-index
     # result-array variant of kap_get).
-    "kap": {"kap_get", "kap_get_r", "kap_init", "kap_update_surface_tables"},
+    # kap_get is the named-index result-array query (the former
+    # kap_get_r); the long-form engine kap_eval is domain-internal.
+    "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
     # atm_lib's three entries, plus surfbc (the solver's boundary-
     # condition wrapper, sole caller core/crrect.f90) and the turnover/
     # diagnostics consumed by core/io/rotation (calcad, gettau).
@@ -111,6 +130,22 @@ def main():
             allowed = PUBLIC[dom]
             if allowed is not None and name not in allowed:
                 violations[(dom, name)].add(str(rel))
+
+    buffer_violations = []
+    for path in SRC.rglob("*.f90"):
+        rel = path.relative_to(SRC).as_posix()
+        if rel in CONTROLS_BUFFER_IMPORTERS or rel == "io/controls_lib.f90":
+            continue
+        for line in strip_comments(path.read_text()).splitlines():
+            if line.strip().lower().startswith("use controls_lib"):
+                buffer_violations.append(rel)
+                break
+    if buffer_violations:
+        print("controls_lib buffer imported outside the read pipeline "
+              "(read star%ctrl / star%job instead):")
+        for rel in sorted(buffer_violations):
+            print(f"  {rel}")
+        return 1
 
     if violations:
         print("Domain-boundary violations (cross-domain calls to "

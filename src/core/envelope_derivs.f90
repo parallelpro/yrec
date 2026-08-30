@@ -15,7 +15,7 @@
 !
 ! Dummy-argument names log10_pressure_indep/luminosity_linear/
 ! pressure_rotation_factor/temperature_rotation_factor/log10_gravity/
-! in_atmosphere/want_derivatives/conductive_opacity_flag/print_flag/
+! in_atmosphere/want_derivatives/conductive_opacity_flag/
 ! log10_radius/log10_teff/hydrogen_fraction/metal_fraction match the
 ! sibling routine atmosphere_derivs.f90's naming at the equivalent call-site
 ! positions (both are called via EXTERNAL from atm_lib.f90's atm_get/BSSTEP).
@@ -24,7 +24,7 @@
 ! DELR formula.
 subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
-     in_atmosphere, want_derivatives, conductive_opacity_flag, print_flag, &
+     in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      env_call_count, saha_state)
 
@@ -39,7 +39,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       double precision, intent(in) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, log10_gravity
       logical, intent(in) :: in_atmosphere, want_derivatives, &
-           conductive_opacity_flag, print_flag
+           conductive_opacity_flag
       double precision, intent(inout) :: log10_radius
       double precision, intent(in) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
@@ -67,11 +67,11 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       log10_mass = y(1) + star%stotal
       log10_temperature = y(2)
       log10_radius = y(3)
-      call eos_get_r(log10_temperature, log10_pressure, hydrogen_fraction, &
+      call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
            saha_state)
 ! kap at eqstat's returned density -- the historical inout dataflow
-      call kap_get_r(eos_res(i_log10_density), log10_temperature, &
+      call kap_get(eos_res(i_log10_density), log10_temperature, &
            hydrogen_fraction, metal_fraction, kap_res, &
            eos_res(i_fxion:i_fxion+2))
       star%iovim = -1
@@ -108,31 +108,27 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
       star%pulse%qqcp = eos_res(i_cp)
 
-      if(print_flag .or. star%pulse%lpumod) then
-       star%current_opacity = kap_res(i_kap)
-       star%current_ion_fraction(1) = eos_res(i_fxion)
-       star%current_ion_fraction(2) = eos_res(i_fxion+1)
-       star%current_ion_fraction(3) = eos_res(i_fxion+2)
-       star%pulse%qtl = log10_temperature
-       star%pulse%qt = dexp(ln10*log10_temperature)
-       star%pulse%qpl = log10_pressure
-       star%pulse%qp = dexp(ln10*log10_pressure)
-       star%pulse%qdl = eos_res(i_log10_density)
-       star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
-       star%pulse%qo = kap_res(i_kap)
-       star%pulse%qol = kap_res(i_log10_kap)
-       star%pulse%qfs = dexp(ln10*(log10_mass-star%stotal))
-       star%pulse%qqdp = eos_res(i_dlnrho_dlnp)
-       star%pulse%qqed = 0.0d0
-       star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
-       star%pulse%qqot = kap_res(i_dlnkap_dlnt)
-       star%pulse%qdel = actual_gradient
-       star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
-       star%pulse%qdela = eos_res(i_grada)
-       star%pulse%qqcp = eos_res(i_cp)
-       star%pulse%qrmu = eos_res(i_gas_constant)
-       star%pulse%qemu = eos_res(i_mu_e_inv)
-      endif
+! 2026 (.store convergence): these saves were gated on the print
+! flag (or the retired pulse-derivative mode), which left
+! current_opacity -- and hence the envelope opacity the stitched
+! model materializes -- stale (typically zero) whenever the caller
+! did not ask for printing. They are output-only scratch (no
+! physics reads them), so save unconditionally.
+      star%current_opacity = kap_res(i_kap)
+      star%pulse%qtl = log10_temperature
+      star%pulse%qt = dexp(ln10*log10_temperature)
+      star%pulse%qpl = log10_pressure
+      star%pulse%qp = dexp(ln10*log10_pressure)
+      star%pulse%qdl = eos_res(i_log10_density)
+      star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
+      star%pulse%qo = kap_res(i_kap)
+      star%pulse%qol = kap_res(i_log10_kap)
+      star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
+      star%pulse%qqot = kap_res(i_dlnkap_dlnt)
+      star%pulse%qdel = actual_gradient
+      star%pulse%qdela = eos_res(i_grada)
+      star%pulse%qrmu = eos_res(i_gas_constant)
+      star%pulse%qemu = eos_res(i_mu_e_inv)
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
       if (.false.) print *, log10_gravity, conductive_opacity_flag

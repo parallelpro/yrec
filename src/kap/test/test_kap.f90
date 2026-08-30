@@ -6,7 +6,7 @@
 ! initialization conventions; each piece below cites its source the
 ! same way). Boots the OPAL95 atomic-opacity configuration used by
 ! the reference solar models (LOPAL95 with the GS98.OP17 table,
-! ZOPAL951=0.016232), evaluates kap_get over a fixed (logT, logRho)
+! ZOPAL951=0.016232), evaluates kap_eval over a fixed (logT, logRho)
 ! grid entirely above the molecular ramp (logT >= TMOLMAX=4.1, so no
 ! molecular tables are needed), with the conductive correction off,
 ! and prints the results for byte-comparison against the checked-in
@@ -45,10 +45,10 @@ program test_kap
       laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
-      short_file_unit = 20
+      run_log_unit = 20
       star%ctrl%fermi_unit = 15
       star%ctrl%opal95_table_unit = 48
-      open(short_file_unit, file="test_kap.short", status="replace")
+      open(run_log_unit, file="test_kap.short", status="replace")
 
 ! kap configuration: OPAL95 atomic tables only, per the reference
 ! solar namelists (LOPAL95=T, ZOPAL951=0.016232, TMOLMIN/TMOLMAX
@@ -80,12 +80,32 @@ program test_kap
 
 ! constants + table loads (real setups; kap_init inside it reads the
 ! OPAL95 table and builds the surface-X slice)
-      call setups(laol_work, dummy_path, dummy_path, dummy_path, &
-           fermi_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           opal95_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_paths7, setups_ierr)
+      star%job%mixture_weights = laol_work
+      star%job%alex06_table_path = dummy_path
+      star%job%allard_table_path = dummy_path
+      star%job%atm_table_path = dummy_path
+      star%job%fermi_table_path = fermi_path
+      star%job%kurucz_table_path = dummy_path
+      star%job%kurucz_table2_path = dummy_path
+      star%job%laol_table_path = dummy_path
+      star%job%laol_table2_path = dummy_path
+      star%job%opal95_table_path = opal95_path
+      star%job%opal92_table_path = dummy_path
+      star%job%zams_a_table_path = dummy_path
+      star%job%zams_b_table_path = dummy_path
+      star%job%zams_c_table_path = dummy_path
+      star%job%centre1_table_path = dummy_path
+      star%job%centre2_table_path = dummy_path
+      star%job%centre3_table_path = dummy_path
+      star%job%centre4_table_path = dummy_path
+      star%job%centre5_table_path = dummy_path
+      star%job%opal92_table2_path = dummy_path
+      star%job%pure_z_table_path = dummy_path
+      star%job%scv_h_table_path = dummy_path
+      star%job%scv_he_table_path = dummy_path
+      star%job%scv_z_table_path = dummy_path
+      star%job%alex95_table_paths = dummy_paths7
+      call setups(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_kap: FAIL (setups error)"
          stop 1
@@ -94,38 +114,38 @@ program test_kap
       x_frac = 0.70d0
       z_frac = 0.016232d0
 
-      write(*,'(a)') "# test_kap: kap_get over (logT, logRho) grid, " // &
+      write(*,'(a)') "# test_kap: kap_eval over (logT, logRho) grid, " // &
            "X=0.70 Z=0.016232, OPAL95/GS98.OP17, no molecular, " // &
            "no conductive"
       do ipt = 1, npts
          logt = grid_logt(ipt)
          logd = grid_logd(ipt)
          fxion = 0.0d0
-         call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion)
+         call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion)
          write(*,'(a,i2,4(1pe24.15))') "kap ", ipt, o, ol, qod, qot
       end do
 
 ! Error paths (2026, ROADMAP.md stage 3): with the optional ierr
 ! passed, out-of-range points and misconfiguration return ierr /= 0
 ! instead of stopping -- the first time these paths are testable at
-! all. The diagnostic each failure writes goes to short_file_unit /
+! all. The diagnostic each failure writes goes to run_log_unit /
 ! stdout at the point of failure, as always.
       write(*,'(a)') "# test_kap: error paths via optional ierr"
       logt = 3.5d0
       logd = -8.0d0
       fxion = 0.0d0
-      call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
+      call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
            kap_ierr)
       write(*,'(a,i4)') "err out-of-table   ierr = ", kap_ierr
       star%ctrl%use_opal95_tables = .false.
       logt = 6.0d0
       logd = -3.0d0
       fxion = 0.0d0
-      call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
+      call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
            kap_ierr)
       write(*,'(a,i4)') "err no-table-chosen ierr = ", kap_ierr
       star%ctrl%use_opal95_tables = .true.
 
-      close(short_file_unit)
+      close(run_log_unit)
       write(*,'(a)') "test_kap: done"
 end program test_kap
