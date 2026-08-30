@@ -254,7 +254,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          eos_atmosphere_flag = .true.
          eos_res(i_log10_density) = log10_density_local
          eos_res(i_beta) = beta_local
-         call eos_get_r(log10_temperature_local, log10_pressure_local, &
+         call eos_get(log10_temperature_local, log10_pressure_local, &
               hydrogen_fraction_local, metal_fraction_local, eos_res, &
               eos_deriv_flag, eos_atmosphere_flag, saha_flag)
          log10_density_local = eos_res(i_log10_density)
@@ -280,7 +280,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
             log10_temperature_local = log10(temperature_from_wind)
             eos_res(i_log10_density) = log10_density_local
             eos_res(i_beta) = beta_local
-            call eos_get_r(log10_temperature_local, log10_pressure_local, &
+            call eos_get(log10_temperature_local, log10_pressure_local, &
                  hydrogen_fraction_local, metal_fraction_local, eos_res, &
                  eos_deriv_flag, eos_atmosphere_flag, saha_flag)
             log10_density_local = eos_res(i_log10_density)

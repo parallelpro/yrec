@@ -194,7 +194,7 @@ subroutine compute_central_conditions(ierr)
       is_atmosphere_point = .true.
       compute_derivatives = .false.
 !  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
-      call eos_get_r(log_temperature_center, log_pressure_center, &
+      call eos_get(log_temperature_center, log_pressure_center, &
            hydrogen_fraction_center, metal_fraction_center, eos_res, &
            compute_derivatives, is_atmosphere_point, ksaha_center, &
            composition_at_zone=star%xa(:,1), ierr=ierr)

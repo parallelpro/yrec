@@ -6,7 +6,7 @@
 ! initialization conventions; each piece below cites its source the
 ! same way). Boots the OPAL95 atomic-opacity configuration used by
 ! the reference solar models (LOPAL95 with the GS98.OP17 table,
-! ZOPAL951=0.016232), evaluates kap_get over a fixed (logT, logRho)
+! ZOPAL951=0.016232), evaluates kap_eval over a fixed (logT, logRho)
 ! grid entirely above the molecular ramp (logT >= TMOLMAX=4.1, so no
 ! molecular tables are needed), with the conductive correction off,
 ! and prints the results for byte-comparison against the checked-in
@@ -114,14 +114,14 @@ program test_kap
       x_frac = 0.70d0
       z_frac = 0.016232d0
 
-      write(*,'(a)') "# test_kap: kap_get over (logT, logRho) grid, " // &
+      write(*,'(a)') "# test_kap: kap_eval over (logT, logRho) grid, " // &
            "X=0.70 Z=0.016232, OPAL95/GS98.OP17, no molecular, " // &
            "no conductive"
       do ipt = 1, npts
          logt = grid_logt(ipt)
          logd = grid_logd(ipt)
          fxion = 0.0d0
-         call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion)
+         call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion)
          write(*,'(a,i2,4(1pe24.15))') "kap ", ipt, o, ol, qod, qot
       end do
 
@@ -134,14 +134,14 @@ program test_kap
       logt = 3.5d0
       logd = -8.0d0
       fxion = 0.0d0
-      call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
+      call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
            kap_ierr)
       write(*,'(a,i4)') "err out-of-table   ierr = ", kap_ierr
       star%ctrl%use_opal95_tables = .false.
       logt = 6.0d0
       logd = -3.0d0
       fxion = 0.0d0
-      call kap_get(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
+      call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
            kap_ierr)
       write(*,'(a,i4)') "err no-table-chosen ierr = ", kap_ierr
       star%ctrl%use_opal95_tables = .true.

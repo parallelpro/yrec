@@ -58,7 +58,7 @@ program test_eos
       double precision :: w(12), wsum, scale
       integer :: setups_ierr, i, ipt, eos_ierr
 
-! eos_get argument set
+! eos_eval argument set
       double precision :: logt, t, logp, p, logd, d
       double precision :: x_frac, z_frac
       double precision :: beta, betai, beta14, fxion(3), rmu, amu, emu, eta
@@ -198,7 +198,7 @@ program test_eos
       x_frac = 0.70d0
       z_frac = 0.016492d0
 
-      write(*,'(a)') "# test_eos: eos_get over (logT, logP) grid, " // &
+      write(*,'(a)') "# test_eos: eos_eval over (logT, logP) grid, " // &
            "X=0.70 Z=0.016492, SCV+OPAL2006, no MHD, no DH"
       do ipt = 1, npts
          logt = grid_logt(ipt)
@@ -209,7 +209,7 @@ program test_eos
          lderiv = .true.
          latmo = .false.
          fxion = 0.0d0
-         call eos_get(logt, t, logp, p, logd, d, x_frac, z_frac, &
+         call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
               beta, betai, beta14, fxion, rmu, amu, emu, eta, &
               qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
               lderiv, latmo, ksaha)
@@ -267,7 +267,7 @@ program test_eos
               trim(mhd_dir)//"/zams_c", trim(mhd_dir)//"/centre1", &
               trim(mhd_dir)//"/centre2", trim(mhd_dir)//"/centre3", &
               trim(mhd_dir)//"/centre4", trim(mhd_dir)//"/centre5")
-         write(*,'(a)') "# test_eos: eos_get over the same grid, MHD"
+         write(*,'(a)') "# test_eos: eos_eval over the same grid, MHD"
          do ipt = 1, npts
             logt = grid_logt(ipt)
             logp = grid_logp(ipt)
@@ -276,7 +276,7 @@ program test_eos
             lderiv = .true.
             latmo = .false.
             fxion = 0.0d0
-            call eos_get(logt, t, logp, p, logd, d, x_frac, z_frac, &
+            call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
                  beta, betai, beta14, fxion, rmu, amu, emu, eta, &
                  qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
                  lderiv, latmo, ksaha)
@@ -307,7 +307,7 @@ program test_eos
       lderiv = .true.
       latmo = .false.
       fxion = 0.0d0
-      call eos_get(logt, t, logp, p, logd, d, x_frac, z_frac, &
+      call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
            beta, betai, beta14, fxion, rmu, amu, emu, eta, &
            qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
            lderiv, latmo, ksaha, ierr=eos_ierr)

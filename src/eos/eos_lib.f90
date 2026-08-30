@@ -5,7 +5,7 @@
 ! (disentangling the solver from the physics domains -- see
 ! GUIDELINES.md's "Physics domains still entangled with the solver").
 !
-! eos_get is the first facade of this phase: a single explicit-
+! eos_eval is the first facade of this phase: a single explicit-
 ! interface entry point that replaces the `if (use_mhd_eos) call meqos
 ! else call eqstat` dispatch that used to be duplicated at every call
 ! site, and additionally centralizes the Debye-Huckel composition
@@ -27,20 +27,20 @@
 ! core/read_starting_model.f90 previously had a bug here (confirmed against the
 ! original F77 source via git history): a missing ELSE meant it called
 ! *both* meqos and eqstat when MHD was on, and *neither* when MHD was
-! off. eos_get's if/else has the structurally-correct form, so
+! off. eos_eval's if/else has the structurally-correct form, so
 ! migrating that call site fixes the bug by construction.
 !
 ! mixing/compute_scale_height.f90, mixing/semiconvection.f90, and wind/massloss.f90
 ! previously called eqstat unconditionally, with no LMHD check at all
 ! -- confirmed authentic original YREC behavior (unchanged since the
 ! very first commit, not a modernization artifact). Migrating them to
-! eos_get extends real MHD support to these three secondary/diagnostic
+! eos_eval extends real MHD support to these three secondary/diagnostic
 ! calculations for the first time, per explicit user sign-off; this is
 ! an acknowledged numerics change for use_mhd_eos=.true. runs, which
 ! the Stage-0 regression suite cannot verify (no test case sets LMHD).
 !
 ! atm/turnover/acoustic_depths.f90 (the acoustic-depth diagnostic) was NOT
-! migrated to eos_get during phase two: it deliberately bypasses
+! migrated to eos_eval during phase two: it deliberately bypasses
 ! eqstat2's boundary-ramping, calling esac06 directly under its own
 ! use_opal2006_eos check, confirmed to match the original F77 -- not
 ! part of this dispatch pattern. As of phase three (ROADMAP.md stage
@@ -48,19 +48,28 @@
 ! that same deliberate dispatch inside the facade boundary.
 module eos_lib
 ! 2026 named-index result array (ROADMAP "Named-index result arrays"):
-! eos_get_r packs eos_get's 24 thermodynamic outputs into one
+! eos_get packs eos_eval's 24 thermodynamic outputs into one
 ! res(num_eos_results) array indexed by the constants below (MESA's
 ! eosDT_get shape). The independent variables (log10 T, log10 P),
 ! composition, mode flags, and the saha state stay explicit
 ! arguments. res is intent(inout): the historically-inout slots
 ! (i_log10_density, i_beta, the ionization fractions, i_mu_ion_inv,
 ! i_dlnrho_dlnt/p, i_cp, i_grada) carry their previous-call values in
-! exactly as the old per-caller locals did; eos_get itself is called
+! exactly as the old per-caller locals did; eos_eval itself is called
 ! unchanged, so results are byte-identical.
       use scv_eos_lib
       use yale_eos_lib
       implicit none
-! result-array slots for eos_get_r
+! Everything is private unless exported below (2026: eos_get is the
+! single public query -- the named-index result-array form; the
+! long-argument engine underneath it, eos_eval, is exported ONLY for
+! the domain's own standalone test and stays outside the
+! check_boundaries.py cross-domain allowlist). The i_*/num_eos_results
+! index parameters carry their own public attributes.
+      private
+      public :: eos_get, eos_get_gamma1, eos_init, eos_set_mixture
+      public :: eos_eval
+! result-array slots for eos_get
       integer, parameter, public :: &
            i_temperature = 1, i_pressure = 2, i_log10_density = 3, &
            i_density = 4, i_beta = 5, i_beta_inverse = 6, i_beta14 = 7, &
@@ -75,8 +84,8 @@ module eos_lib
 contains
 
 ! ---------------------------------------------------------------
-! Named-index result-array form of eos_get (see module header).
-subroutine eos_get_r(log10_temperature, log10_pressure, &
+! Named-index result-array form of eos_eval (see module header).
+subroutine eos_get(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, res, want_derivatives, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
       double precision, intent(inout) :: log10_temperature, log10_pressure
@@ -90,7 +99,7 @@ subroutine eos_get_r(log10_temperature, log10_pressure, &
 
       fxion_local = res(i_fxion:i_fxion+2)
       if (present(composition_at_zone) .and. present(ierr)) then
-         call eos_get(log10_temperature, res(i_temperature), &
+         call eos_eval(log10_temperature, res(i_temperature), &
               log10_pressure, res(i_pressure), res(i_log10_density), &
               res(i_density), hydrogen_fraction, metal_fraction, &
               res(i_beta), res(i_beta_inverse), res(i_beta14), &
@@ -102,7 +111,7 @@ subroutine eos_get_r(log10_temperature, log10_pressure, &
               res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
               composition_at_zone=composition_at_zone, ierr=ierr)
       else if (present(composition_at_zone)) then
-         call eos_get(log10_temperature, res(i_temperature), &
+         call eos_eval(log10_temperature, res(i_temperature), &
               log10_pressure, res(i_pressure), res(i_log10_density), &
               res(i_density), hydrogen_fraction, metal_fraction, &
               res(i_beta), res(i_beta_inverse), res(i_beta14), &
@@ -114,7 +123,7 @@ subroutine eos_get_r(log10_temperature, log10_pressure, &
               res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
               composition_at_zone=composition_at_zone)
       else if (present(ierr)) then
-         call eos_get(log10_temperature, res(i_temperature), &
+         call eos_eval(log10_temperature, res(i_temperature), &
               log10_pressure, res(i_pressure), res(i_log10_density), &
               res(i_density), hydrogen_fraction, metal_fraction, &
               res(i_beta), res(i_beta_inverse), res(i_beta14), &
@@ -126,7 +135,7 @@ subroutine eos_get_r(log10_temperature, log10_pressure, &
               res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
               ierr=ierr)
       else
-         call eos_get(log10_temperature, res(i_temperature), &
+         call eos_eval(log10_temperature, res(i_temperature), &
               log10_pressure, res(i_pressure), res(i_log10_density), &
               res(i_density), hydrogen_fraction, metal_fraction, &
               res(i_beta), res(i_beta_inverse), res(i_beta14), &
@@ -138,10 +147,10 @@ subroutine eos_get_r(log10_temperature, log10_pressure, &
               res(i_cp_dp), want_derivatives, in_atmosphere, saha_state)
       end if
       res(i_fxion:i_fxion+2) = fxion_local
-end subroutine eos_get_r
+end subroutine eos_get
 
 
-subroutine eos_get(log10_temperature, temperature, log10_pressure, &
+subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, ion_fraction, specific_gas_constant, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -244,7 +253,7 @@ subroutine eos_get(log10_temperature, temperature, log10_pressure, &
 ! ierr present the caller takes responsibility; without it, preserve
 ! the historical stop (the diagnostic already printed at the point of
 ! failure).
-end subroutine eos_get
+end subroutine eos_eval
 
 !----------------------------------------------------------------------
 ! eos_init
@@ -291,7 +300,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
            zams_b_table_path, zams_c_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
            centre5_table_path
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_get's.
+! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_eval's.
       integer, intent(out), optional :: ierr
 
       integer :: jerr
@@ -385,7 +394,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
 
       return
 
-! error funnel: same contract as eos_get's.
+! error funnel: same contract as eos_eval's.
 end subroutine eos_init
 
 !----------------------------------------------------------------------
@@ -420,7 +429,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
            temperature_1e6k, density, pressure
       double precision, intent(out) :: gamma1, adiabatic_gradient
       integer, intent(inout) :: saha_state
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_get's.
+! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_eval's.
 ! Note the out-of-table alternate return of esac06 is NOT an error
 ! here: it falls through with the previous point's results, preserved
 ! verbatim from calcad's original handling.
@@ -500,7 +509,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
 
       return
 
-! error funnel: same contract as eos_get's.
+! error funnel: same contract as eos_eval's.
 end subroutine eos_get_gamma1
 
 

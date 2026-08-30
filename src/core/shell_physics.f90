@@ -67,7 +67,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
 ! (see eos_lib/kap_lib index constants). Loop-carried inout slots
 ! (log10_density mode input, the gradient/cp guesses, the ionization
 ! fractions) persist across shells in the arrays exactly as the old
-! locals did. NOTE: kap_get_r receives eos_res(i_log10_density) --
+! locals did. NOTE: kap_get receives eos_res(i_log10_density) --
 ! the density eqstat just RETURNED -- matching the historical inout
 ! dataflow (passing the model's log_density instead drifts rotating
 ! runs, caught by the byte gate).
@@ -103,11 +103,11 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          temperature_rotation_factor = ft(im)
 
          eos_res(i_log10_density) = log10_density
-         call eos_get_r(log10_temperature, log10_pressure, &
+         call eos_get(log10_temperature, log10_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_state, &
               composition_at_zone=composition(:,im))
-         call kap_get_r(eos_res(i_log10_density), log10_temperature, &
+         call kap_get(eos_res(i_log10_density), log10_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &
               eos_res(i_fxion:i_fxion+2))
          star%iovim = im

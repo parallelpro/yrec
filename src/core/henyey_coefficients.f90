@@ -174,7 +174,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          eos_res(i_log10_density) = zone_log10_density
          eos_res(i_dlnrho_dlnt) = dlnrho_dlnt
          eos_res(i_dlnrho_dlnp) = dlnrho_dlnp
-         call eos_get_r(zone_log_temperature, zone_log_pressure, &
+         call eos_get(zone_log_temperature, zone_log_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_state, &
               composition_at_zone=star%xa(:,im))
@@ -185,7 +185,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          zone_log10_density = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density -- the
 ! historical inout dataflow)
-         call kap_get_r(eos_res(i_log10_density), zone_log_temperature, &
+         call kap_get(eos_res(i_log10_density), zone_log_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &
               eos_res(i_fxion:i_fxion+2))
          star%iovim = im

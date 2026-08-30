@@ -5,23 +5,32 @@
 ! (disentangling the solver from the physics domains -- see
 ! GUIDELINES.md's "Physics domains still entangled with the solver").
 ! Unlike eos_lib.f90's eos_get, this is not a new dispatch consolidation:
-! getopac (renamed kap_get) was already the single, clean, explicit-
+! getopac (renamed kap_eval) was already the single, clean, explicit-
 ! interface entry point every external caller used uniformly -- no
 ! duplicated dispatch logic existed at any of its 8 call sites. This
 ! rename/module-wrap is purely to give kap/ the same public-facade
 ! shape as eos_lib (a module named `<domain>_lib`, matching
 ! GUIDELINES.md's naming rule, which already anticipated `kap_lib` by
 ! name) and the same numerics_lib/eos_lib precedent for "a module
-! hosting a real callable subroutine." kap_get's body, dispatch logic,
+! hosting a real callable subroutine." kap_eval's body, dispatch logic,
 ! and argument list are otherwise unchanged from getopac.
 module kap_lib
       use opacity_table_lib
       implicit none
+! Everything is private unless exported below (2026: kap_get is the
+! single public query -- the named-index result-array form; the
+! long-argument engine underneath it, kap_eval, is exported ONLY for
+! the domain's own standalone test and stays outside the
+! check_boundaries.py cross-domain allowlist). The i_*/num_kap_results
+! index parameters carry their own public attributes.
+      private
+      public :: kap_get, kap_init, kap_update_surface_tables
+      public :: kap_eval
 ! the envelope metal fraction the surface-table machinery was
 ! initialized with (set by kap_init; physics-purity pass 2026 -- the
 ! kap domain no longer reads star_info)
       double precision, save :: kap_envelope_metal_fraction
-! result-array slots for kap_get_r (2026, MESA kap-results shape)
+! result-array slots for kap_get (2026, MESA kap-results shape)
       integer, parameter, public :: &
            i_kap = 1, i_log10_kap = 2, i_dlnkap_dlnrho = 3, &
            i_dlnkap_dlnt = 4
@@ -30,11 +39,11 @@ module kap_lib
 contains
 
 ! ---------------------------------------------------------------
-! Named-index result-array form of kap_get: the four opacity
+! Named-index result-array form of kap_eval: the four opacity
 ! outputs packed into res(num_kap_results). ion_fraction stays an
 ! explicit inout argument (it is shared eos/kap ionization state,
 ! typically the caller's eos_res(i_fxion:i_fxion+2) slice).
-subroutine kap_get_r(log10_density, log10_temperature, &
+subroutine kap_get(log10_density, log10_temperature, &
      hydrogen_fraction, metal_fraction, res, ion_fraction, ierr)
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
@@ -43,24 +52,24 @@ subroutine kap_get_r(log10_density, log10_temperature, &
       integer, intent(out), optional :: ierr
 
       if (present(ierr)) then
-         call kap_get(log10_density, log10_temperature, &
+         call kap_eval(log10_density, log10_temperature, &
               hydrogen_fraction, metal_fraction, res(i_kap), &
               res(i_log10_kap), res(i_dlnkap_dlnrho), &
               res(i_dlnkap_dlnt), ion_fraction, ierr)
       else
-         call kap_get(log10_density, log10_temperature, &
+         call kap_eval(log10_density, log10_temperature, &
               hydrogen_fraction, metal_fraction, res(i_kap), &
               res(i_log10_kap), res(i_dlnkap_dlnrho), &
               res(i_dlnkap_dlnt), ion_fraction)
       end if
-end subroutine kap_get_r
+end subroutine kap_get
 
 
 ! Computes the opacity for a given composition (X, Z), blending
 ! between molecular/atmosphere tables, interior tables (OPAL/LAOL/
 ! Kurucz families, optionally interpolated between two Z values or a
 ! pure-Z table), and a conductive-opacity correction.
-subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
+subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction, ierr)
       use star_info_lib, only: star
@@ -434,7 +443,7 @@ subroutine kap_get(log10_density, log10_temperature, hydrogen_fraction, &
 ! for whatever failed has already been written at the point of
 ! failure; here we either hand the error to a caller that asked for
 ! it, or preserve the historical stop.
-end subroutine kap_get
+end subroutine kap_eval
 
 !----------------------------------------------------------------------
 ! kap_init
@@ -465,7 +474,7 @@ subroutine kap_init(envelope_hydrogen_fraction, &
            opal92_table2_path, pure_z_table_path
       character(len=256), intent(in) :: alex95_table_paths(7)
 ! 2026 (ROADMAP.md stage 3): optional ierr -- same contract as
-! kap_get's (see there). Table-load failures print their diagnostic
+! kap_eval's (see there). Table-load failures print their diagnostic
 ! at the point of failure, then either surface here or stop here.
       integer, intent(out), optional :: ierr
 
@@ -504,7 +513,7 @@ subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction
-! OPTIONAL ierr: same transitional ierr-not-stop form as kap_get --
+! OPTIONAL ierr: same transitional ierr-not-stop form as kap_eval --
 ! callers that pass ierr get table errors returned; callers that
 ! omit it keep the historical stop.
       integer, intent(out), optional :: ierr

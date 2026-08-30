@@ -51,7 +51,7 @@ subroutine compute_scale_height(composition, density, pressure, radius, mass, &
       log10_density = density(edge_zone)
       eos_res = 0.0d0
       eos_res(i_log10_density) = log10_density
-      call eos_get_r(log10_temperature, log10_pressure, &
+      call eos_get(log10_temperature, log10_pressure, &
            hydrogen_fraction, metal_fraction, eos_res, lderiv, latmo, &
            ksaha, composition_at_zone=composition(:,edge_zone))
 !  COMPUTE PRESSURE SCALE HEIGHT.

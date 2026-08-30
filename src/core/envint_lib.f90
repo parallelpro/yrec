@@ -118,7 +118,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
       double precision :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
-! 2026 named-index call buffers for eos_get_r/kap_get_r. Unlike the
+! 2026 named-index call buffers for eos_get/kap_get. Unlike the
 ! other migrated sites, the relay scalars above STAY: they are host-
 ! associated across the contained routines (and the atm_retry loop),
 ! so the call is wrapped with a symmetric prepack/unpack instead.
@@ -334,7 +334,7 @@ subroutine integrate_atmosphere
       eos_res(i_grada_dp) = adiabatic_gradient_dp
       eos_res(i_cp_dt) = specific_heat_cp_dt
       eos_res(i_cp_dp) = specific_heat_cp_dp
-      call eos_get_r(log10_temperature, log10_pressure, hydrogen_fraction, &
+      call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
            saha_state)
       temperature = eos_res(i_temperature)
@@ -361,7 +361,7 @@ subroutine integrate_atmosphere
       specific_heat_cp_dp = eos_res(i_cp_dp)
 ! DBG 12/95 GET OPACITY (log10_density just unpacked = eqstat's
 ! returned density, the historical inout dataflow)
-      call kap_get_r(log10_density, log10_temperature, hydrogen_fraction, &
+      call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
            metal_fraction, kap_res, ion_fraction)
       opacity = kap_res(i_kap)
       log10_opacity = kap_res(i_log10_kap)

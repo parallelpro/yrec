@@ -47,10 +47,14 @@ CONTROLS_BUFFER_IMPORTERS = {
 PUBLIC = {
     # The three eos_lib facade entries. Everything else in eos/
     # (eqstat/eqstat2, the OPAL/MHD/SCV/Yale internals, mu) is private.
-    "eos": {"eos_get", "eos_get_r", "eos_get_gamma1", "eos_init", "eos_set_mixture"},
+    # eos_get is the named-index result-array query (the former
+    # eos_get_r); the long-form engine eos_eval is domain-internal.
+    "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture"},
     # The kap_lib facade entries (kap_get_r is the named-index
     # result-array variant of kap_get).
-    "kap": {"kap_get", "kap_get_r", "kap_init", "kap_update_surface_tables"},
+    # kap_get is the named-index result-array query (the former
+    # kap_get_r); the long-form engine kap_eval is domain-internal.
+    "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
     # atm_lib's three entries, plus surfbc (the solver's boundary-
     # condition wrapper, sole caller core/crrect.f90) and the turnover/
     # diagnostics consumed by core/io/rotation (calcad, gettau).
