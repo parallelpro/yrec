@@ -4,11 +4,13 @@
 ! files and rebuild (make reruns the generator). These are the
 ! default output column selections used when
 ! history_columns_file / profile_columns_file are blank.
-      integer, parameter :: n_hist_default = 84
+      integer, parameter :: n_hist_default = 30
       character(len=24), parameter :: hist_default_names(n_hist_default) = [ &
            'model_number            ', &
            'profile_number          ', &
            'num_zones               ', &
+           'star_mass               ', &
+           'star_age                ', &
            'log_L                   ', &
            'log_R                   ', &
            'log_g                   ', &
@@ -16,81 +18,25 @@
            'mass_conv_core          ', &
            'cz_bot_mass             ', &
            'cz_bot_radius           ', &
-           'cz_bot_temperature      ', &
-           'cz_bot_density          ', &
-           'cz_bot_pressure         ', &
-           'cz_bot_opacity          ', &
            'log_center_T            ', &
            'log_center_Rho          ', &
            'log_center_P            ', &
-           'center_beta             ', &
-           'center_degeneracy       ', &
            'center_h1               ', &
            'center_he4              ', &
            'center_z                ', &
-           'lum_ppI                 ', &
-           'lum_ppII                ', &
-           'lum_ppIII               ', &
-           'lum_cno                 ', &
-           'lum_3alpha              ', &
-           'lum_heC                 ', &
-           'lum_grav                ', &
-           'lum_neu                 ', &
-           'snu_cl37                ', &
-           'snu_ga71                ', &
-           'neut_pp                 ', &
-           'neut_pep                ', &
-           'neut_hep                ', &
-           'neut_be7                ', &
-           'neut_b8                 ', &
-           'neut_n13                ', &
-           'neut_o15                ', &
-           'neut_f17                ', &
-           'neut_diag_1             ', &
-           'neut_diag_2             ', &
-           'center_he3              ', &
-           'center_c12              ', &
-           'center_c13              ', &
-           'center_n14              ', &
-           'center_n15              ', &
-           'center_o16              ', &
-           'center_o17              ', &
-           'center_o18              ', &
-           'surface_he3             ', &
-           'surface_c12             ', &
-           'surface_c13             ', &
-           'surface_n14             ', &
-           'surface_n15             ', &
-           'surface_o16             ', &
-           'surface_o17             ', &
-           'surface_o18             ', &
-           'surface_h2              ', &
-           'surface_li6             ', &
-           'surface_li7             ', &
-           'surface_be9             ', &
            'surface_h1              ', &
            'surface_he4             ', &
            'surface_z               ', &
            'surface_z_div_x         ', &
            'total_angular_momentum  ', &
-           'total_rotational_ke     ', &
            'total_moment_of_inertia ', &
            'cz_moment_of_inertia    ', &
            'surf_avg_omega          ', &
-           'center_omega            ', &
            'rotation_period_days    ', &
            'surf_avg_v_rot          ', &
            'tau_conv_cz             ', &
-           'h_shell_bot_mass        ', &
-           'h_shell_mid_mass        ', &
-           'h_shell_top_mass        ', &
-           'h_shell_bot_radius      ', &
-           'h_shell_mid_radius      ', &
-           'h_shell_top_radius      ', &
-           'log_P_photosphere       ', &
-           'star_mass               ', &
-           'star_age                ' ]
-      integer, parameter :: n_prof_default = 60
+           'log_P_photosphere       ' ]
+      integer, parameter :: n_prof_default = 12
       character(len=24), parameter :: prof_default_names(n_prof_default) = [ &
            'zone                    ', &
            'mass                    ', &
@@ -100,55 +46,7 @@
            'logP                    ', &
            'luminosity              ', &
            'dm                      ', &
-           'mixing_type             ', &
-           'gamma1                  ', &
-           'opacity                 ', &
-           'gradr                   ', &
-           'gradT                   ', &
-           'grada                   ', &
-           'conv_vel                ', &
-           'beta                    ', &
-           'eta                     ', &
-           'grav                    ', &
-           'eps_ppI                 ', &
-           'eps_ppII                ', &
-           'eps_ppIII               ', &
-           'eps_cno                 ', &
-           'eps_he3                 ', &
-           'eps_nuc                 ', &
-           'eps_neu                 ', &
-           'eps_grav                ', &
            'h1                      ', &
-           'h2                      ', &
-           'he3                     ', &
            'he4                     ', &
-           'li6                     ', &
-           'li7                     ', &
-           'be9                     ', &
-           'c12                     ', &
-           'c13                     ', &
-           'n14                     ', &
-           'n15                     ', &
-           'o16                     ', &
-           'o17                     ', &
-           'o18                     ', &
            'z                       ', &
-           'omega                   ', &
-           'j_rot                   ', &
-           'i_rot                   ', &
-           'fp_rot                  ', &
-           'ft_rot                  ', &
-           'v_es                    ', &
-           'v_gsf                   ', &
-           'v_ss                    ', &
-           'cp                      ', &
-           'delta                   ', &
-           'mu                      ', &
-           'mu_e_inv                ', &
-           'brunt_N2                ', &
-           'lamb_S2                 ', &
-           'gradL                   ', &
-           'gradr_div_grada         ', &
-           'csound                  ', &
-           'D_omega                 ', &
-           'D_mix_rot               ' ]
+           'omega                   ' ]

@@ -18,6 +18,8 @@
 model_number              ! model counter (integer)
 profile_number            ! profile written at this model, 0 otherwise (integer)
 num_zones                 ! number of shells (integer)
+star_mass                 ! total mass (Msun)
+star_age                  ! age in years
 log_L                     ! log10(L/Lsun)
 log_R                     ! log10(R/Rsun)
 log_g                     ! log10 surface gravity (cgs)
@@ -25,79 +27,77 @@ log_Teff                  ! log10 effective temperature
 mass_conv_core            ! convective core mass (Msun)
 cz_bot_mass
 cz_bot_radius
-cz_bot_temperature
-cz_bot_density
-cz_bot_pressure
-cz_bot_opacity
+!cz_bot_temperature
+!cz_bot_density
+!cz_bot_pressure
+!cz_bot_opacity
 log_center_T
 log_center_Rho
 log_center_P
-center_beta
-center_degeneracy
+!center_beta
+!center_degeneracy
 center_h1
 center_he4
 center_z
-lum_ppI
-lum_ppII
-lum_ppIII
-lum_cno
-lum_3alpha
-lum_heC
-lum_grav
-lum_neu
-snu_cl37
-snu_ga71
-neut_pp
-neut_pep
-neut_hep
-neut_be7
-neut_b8
-neut_n13
-neut_o15
-neut_f17
-neut_diag_1
-neut_diag_2
-center_he3
-center_c12
-center_c13
-center_n14
-center_n15
-center_o16
-center_o17
-center_o18
-surface_he3
-surface_c12
-surface_c13
-surface_n14
-surface_n15
-surface_o16
-surface_o17
-surface_o18
-surface_h2
-surface_li6
-surface_li7
-surface_be9
+!lum_ppI
+!lum_ppII
+!lum_ppIII
+!lum_cno
+!lum_3alpha
+!lum_heC
+!lum_grav
+!lum_neu
+!snu_cl37
+!snu_ga71
+!neut_pp
+!neut_pep
+!neut_hep
+!neut_be7
+!neut_b8
+!neut_n13
+!neut_o15
+!neut_f17
+!neut_diag_1
+!neut_diag_2
+!center_he3
+!center_c12
+!center_c13
+!center_n14
+!center_n15
+!center_o16
+!center_o17
+!center_o18
+!surface_he3
+!surface_c12
+!surface_c13
+!surface_n14
+!surface_n15
+!surface_o16
+!surface_o17
+!surface_o18
+!surface_h2
+!surface_li6
+!surface_li7
+!surface_be9
 surface_h1
 surface_he4
 surface_z
 surface_z_div_x
 total_angular_momentum    ! total J (cgs)
-total_rotational_ke
+!total_rotational_ke
 total_moment_of_inertia
 cz_moment_of_inertia
 surf_avg_omega            ! surface angular velocity (rad/s)
-center_omega
+!center_omega
 rotation_period_days      ! surface rotation period (days)
 surf_avg_v_rot            ! surface equatorial velocity (km/s)
 tau_conv_cz               ! convective turnover timescale (s)
-h_shell_bot_mass
-h_shell_mid_mass
-h_shell_top_mass
-h_shell_bot_radius
-h_shell_mid_radius
-h_shell_top_radius
+!h_shell_bot_mass
+!h_shell_mid_mass
+!h_shell_top_mass
+!h_shell_bot_radius
+!h_shell_mid_radius
+!h_shell_top_radius
 log_P_photosphere         ! log10 photospheric pressure
-star_mass                 ! total mass (Msun)
-star_age                  ! age in years
 !nu_max                   ! scaling-relation nu_max [uHz] (nu_max_sun reference)
 !delta_nu                 ! mean-density scaling delta_nu [uHz] (delta_nu_sun reference)

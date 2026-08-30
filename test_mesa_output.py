@@ -203,10 +203,10 @@ def test_default_columns_lists_in_sync():
     the default output columns, compiled in by
     tools/gen_default_columns.py (uncommented entries; '!name' marks
     an opt-in column excluded from the default). Invariants: every
-    writer column appears in its .list exactly once, in table order
-    (so the files fully document what the columns files may contain,
-    and the default selection is a subset in output-stable order),
-    and the generated include is fresh."""
+    writer column appears in its .list exactly once (so the files
+    fully document what the columns files may contain -- entry order
+    is free, it sets the output column order), and the generated
+    include is fresh."""
     import re
     import subprocess
     src = ((REPO / "src" / "io" / "history_output.f90").read_text()
@@ -227,8 +227,9 @@ def test_default_columns_lists_in_sync():
                 out.append(m.group(2))
         return out
 
-    assert entries("history_columns.list") == harvest("history_column_names")
-    assert entries("profile_columns.list") == harvest("profile_column_names")
+    for fname, sub in [("history_columns.list", "history_column_names"),
+                       ("profile_columns.list", "profile_column_names")]:
+        assert sorted(entries(fname)) == sorted(harvest(sub)), fname
 
     r = subprocess.run(
         [sys.executable, str(REPO / "src" / "tools" / "gen_default_columns.py"),
