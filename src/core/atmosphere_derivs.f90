@@ -15,7 +15,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     atm_call_count, saha_state)
+     atm_call_count, saha_state, ierr)
 
       use eos_lib
       use kap_lib
@@ -35,6 +35,9 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       double precision, intent(inout) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: atm_call_count, saha_state
+! 2026: integrand-callback protocol extended with ierr (eos/kap/
+! gradient failures propagate through mmid/bsstep to the caller).
+      integer, intent(out) :: ierr
 
 ! former common/nwlaol/: not used in this file; declared only to
 ! preserve layout.
@@ -59,6 +62,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       ttaul1(yy) = log10_teff - 0.031235d0 + 0.25d0*log10(yy + &
           1.39d0 - 0.815d0*exp(-2.54d0*yy) - 0.025d0*exp(-30.0d0*yy))
 
+      ierr = 0
       effective_gravity = exp(ln10*log10_gravity)*pressure_rotation_factor
       atm_table%atm_tau = log10_optical_depth
       optical_depth = exp(ln10*atm_table%atm_tau)
@@ -73,11 +77,13 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       log10_pressure = y(1)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state)
+           saha_state, ierr=ierr)
+      if (ierr /= 0) return
 ! kap at eqstat's returned density -- the historical inout dataflow
       call kap_get(eos_res(i_log10_density), log10_temperature, &
            hydrogen_fraction, metal_fraction, kap_res, &
-           eos_res(i_fxion:i_fxion+2))
+           eos_res(i_fxion:i_fxion+2), ierr=ierr)
+      if (ierr /= 0) return
       dydx(1) = effective_gravity*optical_depth/ &
            (eos_res(i_pressure)*kap_res(i_kap))
       atm_call_count = atm_call_count + 1

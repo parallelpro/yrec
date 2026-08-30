@@ -26,7 +26,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     env_call_count, saha_state)
+     env_call_count, saha_state, ierr)
 
       use eos_lib
       use kap_lib
@@ -45,6 +45,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       double precision, intent(in) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: env_call_count, saha_state
+      integer, intent(out) :: ierr
 
 ! --- locals ---
       double precision :: log10_pressure, log10_mass, log10_temperature
@@ -56,25 +57,24 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       double precision :: convective_velocity
       logical :: is_convective
 
-      ! 2026 (ROADMAP.md stage 3): tpgrad's error returns here via ierr,
-      ! but qenv's signature is fixed by the bsstep integrand callback
-      ! protocol, so the error cannot propagate further -- the historical
-      ! stop is preserved at this call site. Documented residual, in the
-      ! same class as numerics qgauss's hard-coded call into rotation func;
-      ! resolvable only by extending the callback protocol itself.
+      ! 2026 ierr campaign: the callback protocol now carries ierr, so
+      ! the gradient failure propagates (the former documented residual).
       integer :: jerr
 
+      ierr = 0
       log10_pressure = log10_pressure_indep
       log10_mass = y(1) + star%stotal
       log10_temperature = y(2)
       log10_radius = y(3)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state)
+           saha_state, ierr=ierr)
+      if (ierr /= 0) return
 ! kap at eqstat's returned density -- the historical inout dataflow
       call kap_get(eos_res(i_log10_density), log10_temperature, &
            hydrogen_fraction, metal_fraction, kap_res, &
-           eos_res(i_fxion:i_fxion+2))
+           eos_res(i_fxion:i_fxion+2), ierr=ierr)
+      if (ierr /= 0) return
       star%iovim = -1
       call temperature_gradients_r(log10_temperature, log10_pressure, &
            eos_res, kap_res, log10_radius, log10_mass, luminosity_linear, &
@@ -82,7 +82,10 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
            dgrad_dp_component, dgrad_dr_component, convective_velocity, &
            want_derivatives, is_convective, pressure_rotation_factor, &
            temperature_rotation_factor, log10_teff, jerr)
-      if (jerr /= 0) stop
+      if (jerr /= 0) then
+         ierr = jerr
+         return
+      end if
       dydx(1) = -exp(ln10*(c4pil+4.0d0*log10_radius+log10_pressure-cgl- &
            log10_mass-log10_mass))/pressure_rotation_factor
       dydx(2) = actual_gradient

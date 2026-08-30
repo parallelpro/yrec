@@ -691,13 +691,14 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
      luminosity_linear, pressure_rotation_factor, temperature_rotation_factor, &
      log10_gravity, in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     call_count, saha_state)
+     call_count, saha_state, ierr)
       implicit none
 
       double precision, intent(in) :: y(3), dydx(3)
       integer, intent(in) :: n_var
       double precision, intent(in) :: x_start, h_total
       integer, intent(in) :: n_step
+      integer, intent(out) :: ierr
       double precision, intent(out) :: y_out(3)
       external deriv
       double precision, intent(inout) :: luminosity_linear, &
@@ -713,6 +714,7 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
       double precision :: h_sub, h_sub2, x_current, y_swap
       integer :: i, step_index
 
+      ierr = 0
       h_sub = h_total/dfloat(n_step)
 ! first step
       do i = 1,n_var
@@ -725,7 +727,8 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity, in_atmosphere, want_derivatives, &
            conductive_opacity_flag, log10_radius, log10_teff, &
-           hydrogen_fraction, metal_fraction, call_count, saha_state)
+           hydrogen_fraction, metal_fraction, call_count, saha_state, ierr)
+      if (ierr /= 0) return
       h_sub2 = 2.0d0*h_sub
 ! general step.
       do step_index = 2,n_step
@@ -739,7 +742,8 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
             pressure_rotation_factor, temperature_rotation_factor, &
             log10_gravity, in_atmosphere, want_derivatives, &
             conductive_opacity_flag, log10_radius, log10_teff, &
-            hydrogen_fraction, metal_fraction, call_count, saha_state)
+            hydrogen_fraction, metal_fraction, call_count, saha_state, ierr)
+       if (ierr /= 0) return
       end do
 ! last step.
       do i = 1,n_var
@@ -1340,6 +1344,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
       data substep_sequence /2,4,6,8,12,16,24,32,48,64,96/
 
       integer, intent(out), optional :: ierr
+      integer :: jerr_integrand
 
       if (present(ierr)) ierr = 0
 
@@ -1356,7 +1361,16 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
             temperature_rotation_factor, log10_gravity, in_atmosphere, &
             want_derivatives, conductive_opacity_flag, &
             log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-            call_count, saha_state)
+            call_count, saha_state, jerr_integrand)
+       ! integrand (eos/kap/gradient) failure inside the midpoint
+       ! substeps: same treatment as a diverged step
+       if (jerr_integrand /= 0) then
+          if (present(ierr)) then
+             ierr = jerr_integrand
+             return
+          end if
+          stop
+       end if
        x_est = (h/substep_sequence(i))**2
        call ratext(i, x_est, y_seq, y, y_err, num_eqs, extrap_order)
        err_max = 0.0d0

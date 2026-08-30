@@ -451,7 +451,14 @@ subroutine integrate_atmosphere
        call atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
-            log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state)
+            log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state, jerr)
+       if (jerr /= 0) then
+          if (present(ierr)) then
+             ierr = jerr
+             return
+          end if
+          stop
+       end if
 ! 2026 (.store convergence): the structure save below was gated on
 ! the print flag (so only the legacy .store stitch, which called
 ! atm_get with printing on, ever populated atmo_struct), and the
@@ -590,7 +597,14 @@ subroutine integrate_envelope
       call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,log10_radius, &
-           log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state)
+           log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state, jerr)
+      if (jerr /= 0) then
+         if (present(ierr)) then
+            ierr = jerr
+            return
+         end if
+         stop
+      end if
 ! DBG PULSE WRITE FIRST POINT OF ENVELOPE
 ! DBG
 ! STORE STARTING VALUES OF THE INTEGRATION
@@ -684,7 +698,14 @@ subroutine integrate_envelope
        call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,log10_radius, &
-              log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state)
+              log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state, jerr)
+       if (jerr /= 0) then
+          if (present(ierr)) then
+             ierr = jerr
+             return
+          end if
+          stop
+       end if
 ! DBG PULSE
 ! DBG END
        if(h_did.eq.h_step) then
