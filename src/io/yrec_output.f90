@@ -39,7 +39,11 @@ module yrec_output
       public :: output_init_mesa, output_run_header, output_write_model
 
       integer, parameter :: max_cols = 128
-      integer, parameter :: n_hist_cols = 84
+      integer, parameter :: n_hist_cols = 86
+! columns beyond n_hist_default exist but are NOT written by default
+! (blank history_columns_file selects 1..n_hist_default); list them
+! in a history_columns_file to get them (2026: the seismic pair).
+      integer, parameter :: n_hist_default = 84
 
       character(len=256) :: out_dir = ' '
       character(len=256) :: hist_path = ' '
@@ -99,7 +103,7 @@ subroutine output_init_mesa(log_output_file, ierr)
       ierr = 0
       call history_column_names(hist_names)
       call parse_columns(star%ctrl%history_columns_file, hist_names, n_hist_cols, &
-           hist_sel, hist_nsel, 'history', ierr)
+           n_hist_default, hist_sel, hist_nsel, 'history', ierr)
       if (ierr /= 0) return
 ! model_number / profile_number / num_zones lead the file whenever
 ! they are selected, in that fixed order (they are columns 1-3 of the
@@ -107,7 +111,7 @@ subroutine output_init_mesa(log_output_file, ierr)
       call hoist_id_columns(hist_sel, hist_nsel)
       call profile_column_names(prof_names)
       call parse_columns(star%ctrl%profile_columns_file, prof_names, n_prof_cols, &
-           prof_sel, prof_nsel, 'profile', ierr)
+           n_prof_cols, prof_sel, prof_nsel, 'profile', ierr)
       if (ierr /= 0) return
 ! 2026 io-writer stops -> ierr: fail GSM-without-HDF5 at config time
 ! (the stub's stop at first write remains only as a last resort).
@@ -208,11 +212,11 @@ end subroutine output_write_model
 ! blank lines ignored. Blank/absent control -> all columns in the
 ! built-in order. Unknown names are fatal (config error), with the
 ! valid names listed in the log.
-subroutine parse_columns(fname, names, ncol, sel, nsel, label, ierr)
+subroutine parse_columns(fname, names, ncol, ndefault, sel, nsel, label, ierr)
       use luout_lib
       character(len=*), intent(in) :: fname, label
       integer, intent(out) :: ierr
-      integer, intent(in) :: ncol
+      integer, intent(in) :: ncol, ndefault
       character(len=24), intent(in) :: names(ncol)
       integer, intent(out) :: sel(max_cols), nsel
       character(len=256) :: line
@@ -221,8 +225,10 @@ subroutine parse_columns(fname, names, ncol, sel, nsel, label, ierr)
 
       ierr = 0
       if (len_trim(fname) == 0) then
-         nsel = ncol
-         do i = 1, ncol
+! blank columns file: the default column set (columns past ndefault
+! are opt-in -- name them in a columns file to write them)
+         nsel = ndefault
+         do i = 1, ndefault
             sel(i) = i
          end do
          return
@@ -364,6 +370,9 @@ subroutine history_column_names(names)
       names(82) = 'log_P_photosphere'
       names(83) = 'star_mass'
       names(84) = 'star_age'
+! non-default columns (see n_hist_default)
+      names(85) = 'nu_max'
+      names(86) = 'delta_nu'
 end subroutine history_column_names
 
 subroutine history_values(vals, iprof)
@@ -433,6 +442,8 @@ subroutine history_values(vals, iprof)
       vals(82) = star%pphot
       vals(83) = star%star_mass
       vals(84) = star%dage*1.0d9
+      vals(85) = star%nu_max
+      vals(86) = star%delta_nu
 end subroutine history_values
 
 subroutine write_history_row(iprof)

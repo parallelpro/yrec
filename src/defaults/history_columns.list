@@ -92,3 +92,7 @@ h_shell_top_radius
 log_P_photosphere         ! log10 photospheric pressure
 star_mass                 ! total mass (Msun)
 star_age                  ! age in years
+! -- opt-in columns (NOT written by default; list them in a
+!    history_columns_file to get them) --
+nu_max                    ! scaling-relation nu_max [uHz] (nu_max_sun reference)
+delta_nu                  ! mean-density scaling delta_nu [uHz] (delta_nu_sun reference)

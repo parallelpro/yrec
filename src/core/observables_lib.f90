@@ -100,6 +100,7 @@ subroutine compute_observables(ierr)
 ! surface radius/gravity run in BOTH modes since the run-log model
 ! line (2026 log redesign) reads log_R_surface.
       call compute_surface_globals
+      call compute_seismic_observables
       call compute_moment_of_inertia
       call compute_snu_rates
       call compute_rotation_observables
@@ -291,6 +292,27 @@ subroutine compute_surface_globals
            - 2.0d0*star%log_R_surface
       star%log_R_surface = star%log_R_surface - star%log10_solar_radius
 end subroutine compute_surface_globals
+
+! ---------------------------------------------------------------
+! Asteroseismic scaling-relation observables (2026): nu_max from
+! (log g, Teff) and delta_nu from the mean density, against the
+! namelist solar references nu_max_sun / delta_nu_sun. The solar
+! log g is derived from the run's own solar constants, so Monte-
+! Carlo-scaled solar values stay self-consistent. Teff_sun is the
+! IAU nominal value.
+subroutine compute_seismic_observables
+      use star_info_lib, only: star
+      double precision, parameter :: teff_solar_k = 5772.0d0
+      double precision :: log_g_solar
+      log_g_solar = cgl + log10(star%solar_mass_cgs) &
+           - 2.0d0*log10(star%solar_radius_cgs)
+      star%nu_max = star%ctrl%nu_max_sun &
+           * 10.0d0**(star%log_g_surface - log_g_solar) &
+           * sqrt(teff_solar_k/10.0d0**star%log_Teff)
+! mean-density scaling: sqrt( (M/Msun) / (R/Rsun)^3 )
+      star%delta_nu = star%ctrl%delta_nu_sun &
+           * sqrt(star%star_mass) * 10.0d0**(-1.5d0*star%log_R_surface)
+end subroutine compute_seismic_observables
 
 ! ---------------------------------------------------------------
 ! Total moment of inertia (thin-shell sum without rotation, i_rot

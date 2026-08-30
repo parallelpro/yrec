@@ -4,6 +4,14 @@
 ! card arrays and latches -- mutable job state), included
 ! into star_job. Default-initialized like controls_state, so
 ! declaration/star0-restore state is pristine.
+            double precision :: log_L_upper_limit(50) = 1.0d99
+            double precision :: log_L_lower_limit(50) = -1.0d99
+            double precision :: Teff_upper_limit(50) = 1.0d99
+            double precision :: Teff_lower_limit(50) = -1.0d99
+            double precision :: log_g_upper_limit(50) = 1.0d99
+            double precision :: log_g_lower_limit(50) = -1.0d99
+            double precision :: nu_max_upper_limit(50) = 1.0d99
+            double precision :: nu_max_lower_limit(50) = -1.0d99
             character(len=8) :: pulse_format = 'GYRE'
             logical :: core_overshoot_active = .false.
             logical :: envelope_overshoot_active = .false.

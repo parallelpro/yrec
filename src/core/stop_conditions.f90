@@ -21,9 +21,9 @@
 ! init_stop_conditions once per kind card, right after the starting
 ! model is read; evolve_step calls check_stop_conditions once per
 ! converged model, after the model is written. New stop options
-! (MESA-style model-number/luminosity/core-mass limits, ...) belong
-! as further checks inside check_stop_conditions plus their registry
-! rows -- not as new public entries.
+! (2026: the log_L/Teff/log_g/nu_max structure limits below are the
+! first) belong as further checks inside check_stop_conditions plus
+! their registry rows -- not as new public entries.
 !
 ! The three threshold arrays stay separate namelist-bound variables
 ! in controls_lib (central_deuterium_stop / central_hydrogen_stop /
@@ -75,6 +75,19 @@ subroutine check_stop_conditions(model_iteration, step_status)
          return
       end if
 
+! Structure limits (2026): log_L / Teff / log g / nu_max
+! against the current kind card's *_upper_limit(nk) /
+! *_lower_limit(nk) values -- per-card arrays like the other
+! stopping criteria (a limit at its +-1d99 sentinel is off). Not
+! checked on pure-rescale relax cards, where the structure is
+! mid-relaxation.
+      if (star%job%rescale_kind(star%job%nk) /= 2) then
+         if (structure_limit_stop_triggered()) then
+            step_status = step_kind_card_done
+            return
+         end if
+      end if
+
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
       if (star%ctrl%calibrate_star_flag .and. .not. star%star_found_flag) then
          if (mod(star%job%nk,2).eq.0 .and. model_iteration.ne.1) then
@@ -86,6 +99,47 @@ subroutine check_stop_conditions(model_iteration, step_status)
          end if
       end if
 end subroutine check_stop_conditions
+
+! ---------------------------------------------------------------
+! Structure-limit stops: each configured limit is checked
+! against the freshly computed observables (compute_observables runs
+! before this, so log_g_surface and the scaling-relation nu_max are
+! current). Prints one STOP line per hit to the terminal and the
+! run log.
+logical function structure_limit_stop_triggered()
+      integer :: nk
+      integer, parameter :: nlim = 4
+      character(len=7), parameter :: qname(nlim) = &
+           ['log_L  ', 'Teff   ', 'log_g  ', 'nu_max ']
+      double precision :: qval(nlim), qup(nlim), qlo(nlim)
+      integer :: k
+
+      nk = star%job%nk
+      qval = [star%log_L, 10.0d0**star%log_Teff, star%log_g_surface, &
+              star%nu_max]
+      qup = [star%job%log_L_upper_limit(nk), star%job%Teff_upper_limit(nk), &
+             star%job%log_g_upper_limit(nk), star%job%nu_max_upper_limit(nk)]
+      qlo = [star%job%log_L_lower_limit(nk), star%job%Teff_lower_limit(nk), &
+             star%job%log_g_lower_limit(nk), star%job%nu_max_lower_limit(nk)]
+
+      structure_limit_stop_triggered = .false.
+      do k = 1, nlim
+         if (qup(k) < 0.9d99 .and. qval(k) > qup(k)) then
+            write(*,10) trim(qname(k)), qval(k), 'above', &
+                 trim(qname(k))//'_upper_limit', qup(k)
+            write(run_log_unit,10) trim(qname(k)), qval(k), 'above', &
+                 trim(qname(k))//'_upper_limit', qup(k)
+            structure_limit_stop_triggered = .true.
+         else if (qlo(k) > -0.9d99 .and. qval(k) < qlo(k)) then
+            write(*,10) trim(qname(k)), qval(k), 'below', &
+                 trim(qname(k))//'_lower_limit', qlo(k)
+            write(run_log_unit,10) trim(qname(k)), qval(k), 'below', &
+                 trim(qname(k))//'_lower_limit', qlo(k)
+            structure_limit_stop_triggered = .true.
+         end if
+      end do
+   10 format(1x,'STOP: ',a,' =',es12.4,1x,a,1x,a,' =',es12.4)
+end function structure_limit_stop_triggered
 
 ! ---------------------------------------------------------------
 ! The current age is at (within 1 year of) the kind card's target

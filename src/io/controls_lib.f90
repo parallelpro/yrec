@@ -42,6 +42,20 @@ module controls_lib
       character(len=256), public :: history_columns_file = ' '
       character(len=256), public :: profile_columns_file = ' '
       integer, public :: profile_interval = 50
+! 2026 structure-limit stop conditions (MESA-style; a limit at its
+! +-1d99 sentinel is disabled). Per kind card, like the other
+! stopping criteria (target_end_age, central_*_stop):
+      double precision, public :: log_L_upper_limit(50) = 1.0d99
+      double precision, public :: log_L_lower_limit(50) = -1.0d99
+      double precision, public :: Teff_upper_limit(50) = 1.0d99
+      double precision, public :: Teff_lower_limit(50) = -1.0d99
+      double precision, public :: log_g_upper_limit(50) = 1.0d99
+      double precision, public :: log_g_lower_limit(50) = -1.0d99
+      double precision, public :: nu_max_upper_limit(50) = 1.0d99
+      double precision, public :: nu_max_lower_limit(50) = -1.0d99
+! solar reference values for the asteroseismic scaling relations:
+      double precision, public :: nu_max_sun = 3090.0d0
+      double precision, public :: delta_nu_sun = 135.1d0
       character(len=256), public :: profile_data_prefix = 'profile'
       character(len=256), public :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
       character(len=8), public :: pulse_format = 'GYRE'
