@@ -1,0 +1,89 @@
+#!/bin/bash
+# YREC install script (2026). Checks the prerequisites, builds yrec,
+# and reports what to put in your environment. Usage:
+#
+#   ./install                     # default build (intrinsic math)
+#   ./install USE_HDF5=1          # + GSM (GYRE-HDF5) pulse output
+#   ./install USE_CRMATH=1        # bit-reproducible math (crmath)
+#   ./install USE_CRMATH=1 USE_HDF5=1
+#
+# Extra make variables pass straight through (e.g. MESASDK_DIR=...).
+set -e
+cd "$(dirname "$0")"
+
+echo "=============================================================="
+echo " YREC install"
+echo "=============================================================="
+
+# ---- prerequisites -------------------------------------------------
+fail=0
+
+if command -v gfortran >/dev/null; then
+    GFC_VER=$(gfortran -dumpversion)
+    echo " gfortran:  $(command -v gfortran) (version $GFC_VER)"
+    case "$GFC_VER" in
+        1[5-9]*|[2-9][0-9]*) ;;
+        *) echo "   WARNING: YREC is developed/tested with gfortran 15+;"
+           echo "   bit-reproducibility across machines needs the SAME major version." ;;
+    esac
+else
+    echo " gfortran:  NOT FOUND -- install gfortran (or the MESA SDK's)."
+    fail=1
+fi
+
+SDK="${MESASDK_DIR:-${MESASDK_ROOT:-/Applications/mesasdk}}"
+if [ -f "$SDK/include/crmath.mod" ]; then
+    echo " MESA SDK:  $SDK (crmath: yes; hdf5: $([ -f $SDK/include/hdf5.mod ] && echo yes || echo no))"
+else
+    echo " MESA SDK:  not found at $SDK"
+    echo "   The SDK is a prerequisite for USE_CRMATH=1 (bit-reproducible"
+    echo "   math) and the default HDF5_DIR. Plain and USE_HDF5=1 builds"
+    echo "   with your own HDF5 still work; set MESASDK_DIR if the SDK"
+    echo "   lives elsewhere."
+    case "$*" in *USE_CRMATH*) fail=1 ;; esac
+fi
+
+if command -v python3 >/dev/null; then
+    echo " python3:   $(command -v python3)"
+    python3 tools/gen_makefile_deps.py --check >/dev/null \
+        || { echo "   deps.mk is stale -- regenerating"; python3 tools/gen_makefile_deps.py; }
+    python3 tools/gen_default_columns.py --check >/dev/null \
+        || { echo "   default_columns.inc is stale -- regenerating"; python3 tools/gen_default_columns.py; }
+else
+    echo " python3:   NOT FOUND -- needed to (re)generate build files."
+    fail=1
+fi
+
+[ $fail -ne 0 ] && { echo "Prerequisites missing; aborting."; exit 1; }
+
+# ---- build ---------------------------------------------------------
+if command -v nproc >/dev/null; then JOBS=$(nproc)
+elif command -v sysctl >/dev/null; then JOBS=$(sysctl -n hw.ncpu)
+else JOBS=4; fi
+
+echo
+echo " building: make -j$JOBS $*"
+make -j"$JOBS" "$@"
+
+# ---- report --------------------------------------------------------
+echo
+echo "=============================================================="
+./yrec --version 2>/dev/null | head -2 || true
+echo " Built: $(pwd)/yrec"
+case "$*" in
+    *USE_CRMATH*) echo " Math backend: crmath (bit-reproducible; ~35% slower)";;
+    *)            echo " Math backend: intrinsic (fast; platform-dependent last bits)";;
+esac
+case "$*" in
+    *USE_HDF5*)   echo " GSM (GYRE-HDF5) pulse output: enabled";;
+    *)            echo " GSM (GYRE-HDF5) pulse output: stubbed (build with USE_HDF5=1)";;
+esac
+echo
+echo " Runtime environment (add to your shell profile or job scripts):"
+echo "   export YREC_INPUT=$(cd .. && pwd)/input"
+echo "   export YREC_START=$(cd .. && pwd)/startmodels"
+echo
+echo " Run a job:  yrec <inlist>   (single new-style inlist)"
+echo " NOTE: a later plain 'make' rebuilds with the DEFAULT options --"
+echo " rerun this script with your flags after pulling changes."
+echo "=============================================================="
