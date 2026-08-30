@@ -20,6 +20,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       use eos_lib
       use kap_lib
       use atm_table_lib
+      use ttau_lib
       use star_info_lib, only: star, json
       use point_scratch_lib
       use phys_const_lib
@@ -51,30 +52,14 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
 ! 2026 named-index results: the eos/kap relay soup is two arrays
 ! (fresh each call -- this is an ODE integrand).
       double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
-      double precision :: ttaul0, ttaul1, yy
-      double precision :: harvard_t_tau
-      external harvard_t_tau
-
-! EDDINGTON APPROXIMATION
-      ttaul0(yy) = log10_teff - 0.031235d0 + 0.25d0*log10(yy + cc23)
-
-! KRISHNA-SWAMY APPROXIMATION (BASED ON FIT TO SOLAR ATMOSPHER)
-! SEE KRISHNA-SWAMY, AP.J. 1966, 145, 176.
-      ttaul1(yy) = log10_teff - 0.031235d0 + 0.25d0*log10(yy + &
-          1.39d0 - 0.815d0*exp(-2.54d0*yy) - 0.025d0*exp(-30.0d0*yy))
-
       ierr = 0
       effective_gravity = exp(ln10*log10_gravity)*pressure_rotation_factor
       atm_table%atm_tau = log10_optical_depth
       optical_depth = exp(ln10*atm_table%atm_tau)
-! USE KTTAU TO IMPLIMENT FUTURE T TAU RELATIONS
-      if (star%job%atm_choice .eq. 0) then
-            log10_temperature = ttaul0(optical_depth)
-      else if (star%job%atm_choice .eq. 1) then
-            log10_temperature = ttaul1(optical_depth)
-      else if (star%job%atm_choice .eq. 2) then
-            log10_temperature = log10_teff + harvard_t_tau(optical_depth) - star%atm_hras
-      end if
+! T(tau) from the ONE home of the analytic relations (2026: the
+! former statement-function dispatch lives in core/ttau_lib.f90)
+      log10_temperature = ttau_log10_temperature(optical_depth, &
+           log10_teff, star%job%atm_choice, star%atm_hras)
       log10_pressure = y(1)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &

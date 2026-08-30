@@ -46,6 +46,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       use point_scratch_lib
       use atmstruct_lib
       use envstruct_lib
+      use ttau_lib
       use luout_lib
       use phys_const_lib
       use intpar_lib
@@ -107,8 +108,6 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       logical :: tabulated_bc
       double precision, parameter :: tiny = 1.0d-30
       external atmosphere_derivs, envelope_derivs
-      double precision :: harvard_t_tau
-      external harvard_t_tau
 
       double precision :: ion_fraction(3)
 
@@ -293,13 +292,8 @@ subroutine integrate_atmosphere
 ! Start gray atmosphere bounary conditions
 ! GUESS THE TEMPERATURE FOR AN OPTICAL DEPTH NEAR ZERO.
       err_sum(1) = 0.0d0
-      if(cfg%atm_choice .eq. 0) then
-            log10_temperature = log10_teff - 0.031235d0 + 0.25d0*log10(cc23)
-      else if (cfg%atm_choice .eq. 1) then
-            log10_temperature = log10_teff - 0.031235d0 + 0.25d0*log10(0.550d0)
-      else if (cfg%atm_choice .eq. 2) then
-            log10_temperature = log10_teff + harvard_t_tau(cc23) - cfg%atm_hras
-      end if
+      log10_temperature = ttau_start_log10_temperature(log10_teff, &
+           cfg%atm_choice, cfg%atm_hras)
 !                 For kttau = 0,1,or 2, very occasionally the integration
 !                 fails because the starting point (X0) is past the end
 !                 point (XLIM). When this happens, we divide the effective
@@ -393,14 +387,8 @@ subroutine integrate_atmosphere
 ! SET NUMERICAL PARAMETERS UP.
       num_eqs = 1
       tolerance = cfg%atm_error_tol
-      if (cfg%atm_choice .eq. 1) then
-! KRISHNA-SWAMY T TAU HAS DIFFERENT ZERO THAN EDDINGTON T TAU
-! TAU = 0.312156330 AT TEFF.
-            x_limit = -0.505627854d0
-      else
-! TAU = 2/3 AT TEFF.
-            x_limit = -0.176091259d0
-      end if
+! photospheric integration limit for the chosen relation (ttau_lib)
+      x_limit = ttau_photosphere_x_limit(cfg%atm_choice)
 
       if  (indep_var .gt. x_limit) then ! Check that starting point is before endpoint
          write(run_log_unit,*)"ENVINT: X0>XLIM, X0,XLIM:",indep_var,x_limit

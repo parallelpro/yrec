@@ -134,6 +134,7 @@ STAR_BLIND_FILES = [
     # envint purity split (2026): the integration kernel takes its
     # configuration explicitly and must never touch the star layer
     "core/envint_kernel.f90",
+    "core/ttau_lib.f90",
 ]
 
 def check_star_blind(src_root):
