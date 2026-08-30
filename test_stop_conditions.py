@@ -9,6 +9,7 @@ starting structure already violates it: the run must end the kind
 cards almost immediately (a clean exit-0 with a short history), and
 the STOP diagnostic must appear in the run log.
 """
+import math
 import os
 import pathlib
 import subprocess
@@ -76,20 +77,34 @@ def test_structure_limit_stops_run(tmp_path, control, needle):
 
 def test_seismic_columns_are_opt_in(tmp_path):
     cols = tmp_path / "hist_cols"
-    cols.write_text("model_number\nlog_Teff\nnu_max\ndelta_nu_rho\n")
+    cols.write_text(
+        "model_number\nlog_Teff\nnu_max\ndelta_nu_rho\ndelta_nu\ndelta_Pg\n")
     log, hist = _run_with_controls(
         tmp_path, " nu_max_lower_limit(2) = 5.0d3\n",
         extra_star_job=f" history_columns_file = '{cols}'\n")
     _assert_stopped_early(log, hist, "STOP: nu_max")
     names = hist[5].split()
-    assert names == ["model_number", "log_Teff", "nu_max", "delta_nu_rho"], names
+    assert names == ["model_number", "log_Teff", "nu_max", "delta_nu_rho",
+                     "delta_nu", "delta_Pg"], names
     row = dict(zip(names, hist[-1].split()))
     nu_max = float(row["nu_max"])
-    delta_nu = float(row["delta_nu_rho"])
+    delta_nu_rho = float(row["delta_nu_rho"])
+    delta_nu = float(row["delta_nu"])
+    delta_pg = float(row["delta_Pg"])
     # a ~1 Msun pre-main-sequence/early model: positive, sub-solar
     # nu_max (large radius), physically plausible values
     assert 0.0 < nu_max < 5.0e3, nu_max
+    assert 0.0 < delta_nu_rho < 2.0e2, delta_nu_rho
+    # the sound-travel-time integral should land near the mean-density
+    # scaling estimate (same star, two estimators)
     assert 0.0 < delta_nu < 2.0e2, delta_nu
+    assert 0.5 < delta_nu / delta_nu_rho < 2.0, (delta_nu, delta_nu_rho)
+    # g-mode cavity: zero when the early model has no radiative
+    # region; a nearly-convective pre-MS star has a vanishing cavity
+    # integral, so the spacing can be legitimately enormous -- only
+    # sign and finiteness are guaranteed here (the solar-age value is
+    # checked against the Sun in the commit's validation run)
+    assert delta_pg >= 0.0 and math.isfinite(delta_pg), delta_pg
 
 
 def test_seismic_columns_absent_by_default(tmp_path):

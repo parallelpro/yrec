@@ -301,7 +301,14 @@ end subroutine compute_surface_globals
 ! Monte-Carlo-scaled solar values stay self-consistent.
 subroutine compute_seismic_observables
       use star_info_lib, only: star
+      use stitched_model_lib, only: n_ie, stx_prof, ip_logR, &
+           ip_brunt_N2, ip_csound
       double precision :: log_g_solar
+      double precision :: acoustic_radius, buoyancy_radius, n2, dr, &
+           r_inner, r_here, r_outer
+      logical :: entered_g_mode_cavity
+      integer :: k
+
       log_g_solar = cgl + log10(star%solar_mass_cgs) &
            - 2.0d0*log10(star%solar_radius_cgs)
       star%nu_max = star%ctrl%nu_max_sun &
@@ -310,6 +317,53 @@ subroutine compute_seismic_observables
 ! mean-density scaling: sqrt( (M/Msun) / (R/Rsun)^3 )
       star%delta_nu_rho = star%ctrl%delta_nu_sun &
            * sqrt(star%star_mass) * 10.0d0**(-1.5d0*star%log_R_surface)
+
+! Asymptotic p-mode large separation from the sound travel time:
+! delta_nu = [2 int_0^R dr/c]^-1, trapezoidal over the stitched
+! model's points 1..n_ie (center -> photosphere; the atmosphere
+! points above R_star are excluded, as in MESA's acoustic radius).
+! In uHz (the integral is in seconds).
+      acoustic_radius = 0.0d0
+      do k = 2, n_ie
+         if (stx_prof(ip_csound,k) <= 0.0d0 .or. &
+             stx_prof(ip_csound,k-1) <= 0.0d0) cycle
+         dr = 10.0d0**stx_prof(ip_logR,k) - 10.0d0**stx_prof(ip_logR,k-1)
+         acoustic_radius = acoustic_radius + dr*0.5d0 &
+              *(1.0d0/stx_prof(ip_csound,k) + 1.0d0/stx_prof(ip_csound,k-1))
+      end do
+      if (acoustic_radius > 0.0d0) then
+         star%delta_nu = 1.0d6/(2.0d0*acoustic_radius)
+      else
+         star%delta_nu = 0.0d0
+      end if
+
+! Asymptotic l=1 g-mode period spacing from the Brunt-Vaisala
+! integral: delta_Pg = 2 pi^2 / sqrt(l(l+1)) / int(N/r dr), the
+! integral taken over the INNERMOST g-mode cavity only -- walk
+! outward from the center, accumulate while N^2 > 0, stop on first
+! leaving the cavity after entering it (after WB's MESA treatment).
+! Zero when no cavity exists (e.g. a fully convective interior).
+! In seconds. The center point is skipped (N/r is 0/0 there).
+      buoyancy_radius = 0.0d0
+      entered_g_mode_cavity = .false.
+      do k = 2, n_ie - 1
+         n2 = stx_prof(ip_brunt_N2,k)
+         if (n2 > 0.0d0) then
+            entered_g_mode_cavity = .true.
+            r_inner = 10.0d0**stx_prof(ip_logR,k-1)
+            r_here = 10.0d0**stx_prof(ip_logR,k)
+            r_outer = 10.0d0**stx_prof(ip_logR,k+1)
+            buoyancy_radius = buoyancy_radius &
+                 + sqrt(n2)/r_here*0.5d0*(r_outer - r_inner)
+         else if (entered_g_mode_cavity) then
+            exit
+         end if
+      end do
+      if (buoyancy_radius > 0.0d0) then
+         star%delta_Pg = cpi*cpi*sqrt(2.0d0)/buoyancy_radius
+      else
+         star%delta_Pg = 0.0d0
+      end if
 end subroutine compute_seismic_observables
 
 ! ---------------------------------------------------------------

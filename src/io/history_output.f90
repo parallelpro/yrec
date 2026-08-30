@@ -19,7 +19,7 @@ module history_output
       private
       public :: history_output_init, write_history_row
 
-      integer, parameter :: n_hist_cols = 86
+      integer, parameter :: n_hist_cols = 88
 
       character(len=256) :: hist_path = ' '
       integer :: hist_nsel = 0
@@ -146,6 +146,8 @@ subroutine history_column_names(names)
 ! opt-in columns (commented out in defaults/history_columns.list)
       names(85) = 'nu_max'
       names(86) = 'delta_nu_rho'
+      names(87) = 'delta_nu'
+      names(88) = 'delta_Pg'
 end subroutine history_column_names
 
 subroutine history_values(vals, iprof)
@@ -217,6 +219,8 @@ subroutine history_values(vals, iprof)
       vals(84) = star%dage*1.0d9
       vals(85) = star%nu_max
       vals(86) = star%delta_nu_rho
+      vals(87) = star%delta_nu
+      vals(88) = star%delta_Pg
 end subroutine history_values
 
 subroutine write_history_row(iprof)

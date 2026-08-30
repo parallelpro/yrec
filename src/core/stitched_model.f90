@@ -25,7 +25,8 @@ module stitched_model_lib
       public :: build_stitched_model, n_ext, n_ie, stx_prof, &
            stx_pulse, n_prof_cols, n_pulse_cols, &
            ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, ip_conv, &
-           ip_gradr, ip_gradT, ip_grada, ip_conv_vel
+           ip_gradr, ip_gradT, ip_grada, ip_conv_vel, ip_brunt_N2, &
+           ip_csound
 
       integer, parameter :: n_prof_cols = 60
       integer, parameter :: n_pulse_cols = 35
@@ -33,7 +34,8 @@ module stitched_model_lib
 ! (column meanings = the profile column registry in io/yrec_output).
       integer, parameter :: ip_mass = 2, ip_logR = 3, ip_logT = 4, &
            ip_logRho = 5, ip_logP = 6, ip_conv = 9, ip_gradr = 12, &
-           ip_gradT = 13, ip_grada = 14, ip_conv_vel = 15
+           ip_gradT = 13, ip_grada = 14, ip_conv_vel = 15, &
+           ip_brunt_N2 = 54, ip_csound = 58
 ! The extended model: interior (center -> fitting point) + envelope
 ! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
 ! assembled inward-to-outward, exactly the regions io/write_stitched_profile.f90

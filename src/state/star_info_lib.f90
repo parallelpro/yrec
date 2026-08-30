@@ -384,12 +384,16 @@ module star_info_lib
 ! writers (write_history) only read them. Zero at run start
 ! (star0 snapshot / static zero), refreshed every converged model.
            double precision :: log_R_surface, log_g_surface
-! asteroseismic scaling-relation observables (2026): nu_max from
-! (log g, Teff), delta_nu_rho from the mean density (a scaling
-! estimate, hence the _rho suffix) -- computed by
-! observables_lib's seismic theme, consumed by the stop conditions
-! and the optional history columns
+! asteroseismic observables (2026): nu_max from (log g, Teff);
+! delta_nu_rho [uHz] from the mean density (a scaling estimate,
+! hence the _rho suffix); delta_nu [uHz], the asymptotic p-mode
+! large separation, from the sound-travel-time integral; delta_Pg
+! [s], the asymptotic l=1 g-mode period spacing, from the
+! Brunt-Vaisala integral -- computed by observables_lib's seismic
+! theme, consumed by the stop conditions and the optional history
+! columns
            double precision :: nu_max, delta_nu_rho
+           double precision :: delta_nu, delta_Pg
            double precision :: total_moment_of_inertia, cz_moment_of_inertia
            double precision :: rotation_period_days, surf_velocity_kms
            double precision :: h_shell_bot_mass, h_shell_mid_mass, &

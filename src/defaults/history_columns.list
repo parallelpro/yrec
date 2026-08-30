@@ -101,3 +101,5 @@ tau_conv_cz               ! convective turnover timescale (s)
 log_P_photosphere         ! log10 photospheric pressure
 !nu_max                   ! scaling-relation nu_max [uHz] (nu_max_sun reference)
 !delta_nu_rho             ! mean-density scaling estimate of delta_nu [uHz] (delta_nu_sun reference)
+!delta_nu                 ! asymptotic p-mode large separation [uHz] (sound-travel-time integral, center -> photosphere)
+!delta_Pg                 ! asymptotic l=1 g-mode period spacing [s] (Brunt-Vaisala integral over the innermost cavity)
