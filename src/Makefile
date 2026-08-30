@@ -79,7 +79,10 @@ MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 
 # Flags for GNU Fortran (gfortran)
-GNU_BASE_FFLAGS = $(HDF5_FFLAGS) $(CRMATH_FFLAGS) -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
+# -ffp-contract=off: forbid FMA contraction (gfortran's default is
+# 'fast'), which is hardware-dependent -- required for cross-platform
+# bit reproducibility and load-bearing even for same-platform pins.
+GNU_BASE_FFLAGS = $(HDF5_FFLAGS) $(CRMATH_FFLAGS) -ffp-contract=off -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
 
 # The MESA SDK is a PREREQUISITE of YREC (2026 reproducibility
 # campaign): it supplies crmath/crlibm (correctly-rounded math) and
@@ -156,13 +159,13 @@ GNU_PROF_FFLAGS = -O3 -g -pg
 GNU_REL_FFLAGS = -O3
 
 # Flags for Intel Fortran (ifort)
-IFORT_BASE_FFLAGS = -132 -traceback -warn all -nogen-interfaces -fpp -DGIT_HASH="'$(REPO_HASH)'"
+IFORT_BASE_FFLAGS = -fp-model precise -132 -traceback -warn all -nogen-interfaces -fpp -DGIT_HASH="'$(REPO_HASH)'"
 IFORT_DEV_FFLAGS = -check all -fpe:0
 IFORT_DBG_FFLAGS = -g
 IFORT_REL_FFLAGS = -O3
 
 # Flags for newer Intel Fortran compiler (ifx)
-IFX_BASE_FFLAGS = -132 -traceback -warn all -nogen-interfaces -fpp -DGIT_HASH="'$(REPO_HASH)'"
+IFX_BASE_FFLAGS = -fp-model precise -132 -traceback -warn all -nogen-interfaces -fpp -DGIT_HASH="'$(REPO_HASH)'"
 IFX_DEV_FFLAGS = -check all -fpe:0
 IFX_DBG_FFLAGS = -g
 IFX_REL_FFLAGS = -O3
