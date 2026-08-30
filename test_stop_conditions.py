@@ -1,7 +1,7 @@
 """End-to-end tests for the MESA-style structure-limit stop conditions
 (2026): log_L / Teff / log_g / nu_max upper+lower limits checked by
 check_stop_conditions after every converged model, and the seismic
-scaling-relation observables behind them (nu_max, delta_nu -- optional
+scaling-relation observables behind them (nu_max, delta_nu_rho -- optional
 history columns, off by default).
 
 Each case runs the standard solar model with one limit set so the
@@ -76,16 +76,16 @@ def test_structure_limit_stops_run(tmp_path, control, needle):
 
 def test_seismic_columns_are_opt_in(tmp_path):
     cols = tmp_path / "hist_cols"
-    cols.write_text("model_number\nlog_Teff\nnu_max\ndelta_nu\n")
+    cols.write_text("model_number\nlog_Teff\nnu_max\ndelta_nu_rho\n")
     log, hist = _run_with_controls(
         tmp_path, " nu_max_lower_limit(2) = 5.0d3\n",
         extra_star_job=f" history_columns_file = '{cols}'\n")
     _assert_stopped_early(log, hist, "STOP: nu_max")
     names = hist[5].split()
-    assert names == ["model_number", "log_Teff", "nu_max", "delta_nu"], names
+    assert names == ["model_number", "log_Teff", "nu_max", "delta_nu_rho"], names
     row = dict(zip(names, hist[-1].split()))
     nu_max = float(row["nu_max"])
-    delta_nu = float(row["delta_nu"])
+    delta_nu = float(row["delta_nu_rho"])
     # a ~1 Msun pre-main-sequence/early model: positive, sub-solar
     # nu_max (large radius), physically plausible values
     assert 0.0 < nu_max < 5.0e3, nu_max
@@ -96,5 +96,5 @@ def test_seismic_columns_absent_by_default(tmp_path):
     log, hist = _run_with_controls(tmp_path, " Teff_upper_limit(2) = 4.0d3\n")
     _assert_stopped_early(log, hist, "STOP: Teff")
     names = hist[5].split()
-    assert "nu_max" not in names and "delta_nu" not in names, (
+    assert "nu_max" not in names and "delta_nu_rho" not in names, (
         "seismic columns must be opt-in via history_columns_file")

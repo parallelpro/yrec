@@ -295,7 +295,7 @@ end subroutine compute_surface_globals
 
 ! ---------------------------------------------------------------
 ! Asteroseismic scaling-relation observables (2026): nu_max from
-! (log g, Teff) and delta_nu from the mean density, against the
+! (log g, Teff) and delta_nu_rho from the mean density, against the
 ! namelist solar references nu_max_sun / delta_nu_sun / Teff_sun.
 ! The solar log g is derived from the run's own solar constants, so
 ! Monte-Carlo-scaled solar values stay self-consistent.
@@ -308,7 +308,7 @@ subroutine compute_seismic_observables
            * 10.0d0**(star%log_g_surface - log_g_solar) &
            * sqrt(star%ctrl%Teff_sun/10.0d0**star%log_Teff)
 ! mean-density scaling: sqrt( (M/Msun) / (R/Rsun)^3 )
-      star%delta_nu = star%ctrl%delta_nu_sun &
+      star%delta_nu_rho = star%ctrl%delta_nu_sun &
            * sqrt(star%star_mass) * 10.0d0**(-1.5d0*star%log_R_surface)
 end subroutine compute_seismic_observables
 

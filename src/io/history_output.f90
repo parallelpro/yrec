@@ -145,7 +145,7 @@ subroutine history_column_names(names)
       names(84) = 'star_age'
 ! opt-in columns (commented out in defaults/history_columns.list)
       names(85) = 'nu_max'
-      names(86) = 'delta_nu'
+      names(86) = 'delta_nu_rho'
 end subroutine history_column_names
 
 subroutine history_values(vals, iprof)
@@ -216,7 +216,7 @@ subroutine history_values(vals, iprof)
       vals(83) = star%star_mass
       vals(84) = star%dage*1.0d9
       vals(85) = star%nu_max
-      vals(86) = star%delta_nu
+      vals(86) = star%delta_nu_rho
 end subroutine history_values
 
 subroutine write_history_row(iprof)
