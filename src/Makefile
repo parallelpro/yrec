@@ -89,9 +89,24 @@ GNU_BASE_FFLAGS = $(HDF5_FFLAGS) -ffixed-line-length-132 -ffree-line-length-none
 # stub that reports the missing capability.
 ifdef USE_HDF5
 HDF5_DIR ?= /Applications/mesasdk
+# Fail fast with a clear message instead of a -Wmissing-include-dirs
+# warning per file and a late link error (the classic HPC symptom of
+# building with USE_HDF5=1 but no HDF5_DIR).
+ifeq ($(wildcard $(HDF5_DIR)/include/hdf5.mod),)
+$(error USE_HDF5=1 but $(HDF5_DIR)/include/hdf5.mod not found -- set \
+HDF5_DIR to an HDF5 prefix with Fortran support built by this gfortran \
+(e.g. module load hdf5; make USE_HDF5=1 HDF5_DIR=$$HDF5_ROOT))
+endif
 HDF5_FFLAGS = -DYREC_USE_HDF5 -I$(HDF5_DIR)/include
+# Static archives when the installation ships them (MESA SDK does),
+# otherwise conventional shared linking (typical cluster modules).
+ifneq ($(wildcard $(HDF5_DIR)/lib/libhdf5_fortran.a),)
 HDF5_LIBS = $(HDF5_DIR)/lib/libhdf5hl_fortran.a $(HDF5_DIR)/lib/libhdf5_hl.a \
 	$(HDF5_DIR)/lib/libhdf5_fortran.a $(HDF5_DIR)/lib/libhdf5.a -lz -ldl -lm
+else
+HDF5_LIBS = -L$(HDF5_DIR)/lib -Wl,-rpath,$(HDF5_DIR)/lib \
+	-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm
+endif
 else
 HDF5_FFLAGS =
 HDF5_LIBS =
