@@ -69,10 +69,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
 
 ! --- locals ---
       double precision :: energy_gen_component(6)
-      double precision :: hf1(json), hf2(json), hr1(json), hr2(json), &
-           hr3(json), hr4(json), hr5(json), hr6(json), hr7(json), &
-           hr8(json), hr9(json), hr10(json), hr11(json), hr12(json), &
-           hr13(json)
       double precision :: zone_energy_luminosity, zone_log_mass, &
            zone_log_temperature, zone_log_pressure, zone_log_radius, &
            zone_luminosity_lsun
@@ -254,8 +250,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
                  zone_log_temperature, hydrogen_fraction, helium_fraction, &
                  he3_fraction, c12_fraction, c13_fraction, n14_fraction, &
                  o16_fraction, o18_fraction, deuterium_fraction, &
-                 shell_index, hr1, hr2, hr3, hr4, hr5, hr6, hr7, &
-                 hr8, hr9, hr10, hr11, hr12, hr13, hf1, hf2)
+                 shell_index)
             energy_gen_rate = total_energy_gen
             energy_gen_component(1) = pp_chain_gen
             energy_gen_component(2) = he3he4_be7_electron_gen

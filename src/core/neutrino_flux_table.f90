@@ -92,15 +92,7 @@ subroutine neutrino_flux_table
               total_energy_gen_rate,shell_log_density, &
               shell_log_temperature,hydrogen_fraction,helium_fraction, &
               he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
-              o16_fraction,o18_fraction,star%xa(i_h2,i),i, &
-              star%reaction_rate_1,star%reaction_rate_2, &
-              star%reaction_rate_3,star%reaction_rate_4, &
-              star%reaction_rate_5,star%reaction_rate_6, &
-              star%reaction_rate_7,star%reaction_rate_8, &
-              star%reaction_rate_9,star%reaction_rate_10, &
-              star%reaction_rate_11,star%reaction_rate_12, &
-              star%reaction_rate_13,star%n15_alpha_branch_fraction, &
-              star%be7_electron_capture_fraction)
+              o16_fraction,o18_fraction,star%xa(i_h2,i),i)
 ! BE7 MASS FRACTION.
          star%be7_mass_fraction_zone(i) = star%be7_mass_fraction
 ! CONVERT FROM ERG/GM/S TO ERG/S FOR EACH SHELL BY MULTIPLYING

@@ -67,12 +67,6 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       double precision :: structure_dt, rotation_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
       double precision :: energy_gen_terms(6)
-      double precision :: rate_pp(json), rate_he3_he3(json), &
-           rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
-           rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
-           rate_zero9(json), rate_c12_alpha(json), rate_n14_alpha(json), &
-           rate_triple_alpha(json), rate_zero13(json)
-      double precision :: frac_c12_alpha(json), frac_be7_electron(json)
 
       if (previous_timestep.ge.0.0d0) then
 ! if user is fixing tstep, set dt to given value and exit
@@ -125,11 +119,7 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       if(hydrogen_luminosity.gt.1.0d-34) then
        call timestep_limit_hburn(log_density,composition,luminosity,enclosed_mass,shell_mass, &
             log_temperature,hydrogen_luminosity,convective_core_edge_zone, &
-            h_shell_midpoint_zone,num_points,hydrogen_dt, &
-            rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
-            rate_n14_p,rate_o16_p,rate_c13_alpha,rate_zero9,rate_c12_alpha, &
-            rate_n14_alpha,rate_triple_alpha,rate_zero13, &
-            frac_c12_alpha,frac_be7_electron)
+            h_shell_midpoint_zone,num_points,hydrogen_dt)
       else
        hydrogen_dt = 1.0d20
       endif
@@ -138,11 +128,7 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       if(luminosity_components(5).gt.1.0d-34) then
        call timestep_limit_heburn(energy_gen_terms,composition,log_density,luminosity, &
             enclosed_mass,log_temperature,convective_core_edge_zone, &
-            num_points,helium_dt, &
-            rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
-            rate_n14_p,rate_o16_p,rate_c13_alpha,rate_zero9,rate_c12_alpha, &
-            rate_n14_alpha,rate_triple_alpha,rate_zero13, &
-            frac_c12_alpha,frac_be7_electron,h_shell_zone_begin)
+            num_points,helium_dt,h_shell_zone_begin)
       else
        helium_dt = 1.0d20
       endif

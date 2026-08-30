@@ -819,18 +819,20 @@ end subroutine deutrate
 !   XH2 -> deuterium_fraction          IU -> shell_index
 !   HR1..HR13 -> reaction_rate_1..13 (yr^-1, amu^-1, output for kemcom)
 !   HF1 -> n15_alpha_branch_fraction   HF2 -> be7_electron_capture_fraction
+! 2026 de-tramp (ROADMAP item 3): 35 arguments -> 20. The 15 trailing
+! per-zone reaction-rate arrays (HR1..HR13/HF1/HF2, a vestigial
+! COMMON relay) are gone: engeb writes star%reaction_rate_1..13 /
+! star%n15_alpha_branch_fraction / star%be7_electron_capture_fraction
+! at shell_index directly. Of the old callers, one already passed
+! exactly those star% arrays (neutrino_flux_table) and the other two
+! passed write-only scratch nothing ever read.
 subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      he3he4_be7_proton_energy_gen, cno_cycle_energy_gen, &
      triple_alpha_energy_gen, dlnepsilon_dlnrho, dlnepsilon_dlnt, &
      total_energy_gen_rate, log_density, &
      log_temperature, hydrogen_fraction, helium_fraction, he3_fraction, &
      c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
-     o18_fraction, deuterium_fraction, shell_index, reaction_rate_1, &
-     reaction_rate_2, reaction_rate_3, reaction_rate_4, reaction_rate_5, &
-     reaction_rate_6, reaction_rate_7, reaction_rate_8, reaction_rate_9, &
-     reaction_rate_10, reaction_rate_11, reaction_rate_12, &
-     reaction_rate_13, n15_alpha_branch_fraction, &
-     be7_electron_capture_fraction)
+     o18_fraction, deuterium_fraction, shell_index)
 
       use star_info_lib, only: star, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, json
       use luout_lib
@@ -853,15 +855,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
            deuterium_fraction
       integer, intent(in) :: shell_index
-      double precision, intent(out) :: reaction_rate_1(json), &
-           reaction_rate_2(json), reaction_rate_3(json), &
-           reaction_rate_4(json), reaction_rate_5(json), &
-           reaction_rate_6(json), reaction_rate_7(json), &
-           reaction_rate_8(json), reaction_rate_9(json), &
-           reaction_rate_10(json), reaction_rate_11(json), &
-           reaction_rate_12(json), reaction_rate_13(json), &
-           n15_alpha_branch_fraction(json), &
-           be7_electron_capture_fraction(json)
 
 
 
@@ -1788,21 +1781,21 @@ subroutine compute_neutrino_emission
 !  THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
 ! C21 IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*(1 ATOMIC MASS UNIT/1
 !  GRAM). I HAVE USED HERE SIDEREAL YEAR IN CONVERTING TO SECONDS.
-      reaction_rate_1(shell_index)=reaction_rate(1)*years_per_sec_over_amu
-      reaction_rate_2(shell_index)=reaction_rate(2)*years_per_sec_over_amu
-      reaction_rate_3(shell_index)=reaction_rate(3)*years_per_sec_over_amu
-      reaction_rate_4(shell_index)=reaction_rate(4)*years_per_sec_over_amu
-      reaction_rate_5(shell_index)=reaction_rate(5)*years_per_sec_over_amu
-      reaction_rate_6(shell_index)=reaction_rate(6)*years_per_sec_over_amu
-      reaction_rate_7(shell_index)=reaction_rate(7)*years_per_sec_over_amu
-      reaction_rate_8(shell_index)=reaction_rate(8)*years_per_sec_over_amu
-      reaction_rate_9(shell_index)=reaction_rate(9)*years_per_sec_over_amu
-      reaction_rate_10(shell_index)=reaction_rate(10)*years_per_sec_over_amu
-      reaction_rate_11(shell_index)=reaction_rate(11)*years_per_sec_over_amu
-      reaction_rate_12(shell_index)=reaction_rate(12)*years_per_sec_over_amu
-      reaction_rate_13(shell_index)=reaction_rate(13)*years_per_sec_over_amu
-      n15_alpha_branch_fraction(shell_index)=f3
-      be7_electron_capture_fraction(shell_index)=f1
+      star%reaction_rate_1(shell_index)=reaction_rate(1)*years_per_sec_over_amu
+      star%reaction_rate_2(shell_index)=reaction_rate(2)*years_per_sec_over_amu
+      star%reaction_rate_3(shell_index)=reaction_rate(3)*years_per_sec_over_amu
+      star%reaction_rate_4(shell_index)=reaction_rate(4)*years_per_sec_over_amu
+      star%reaction_rate_5(shell_index)=reaction_rate(5)*years_per_sec_over_amu
+      star%reaction_rate_6(shell_index)=reaction_rate(6)*years_per_sec_over_amu
+      star%reaction_rate_7(shell_index)=reaction_rate(7)*years_per_sec_over_amu
+      star%reaction_rate_8(shell_index)=reaction_rate(8)*years_per_sec_over_amu
+      star%reaction_rate_9(shell_index)=reaction_rate(9)*years_per_sec_over_amu
+      star%reaction_rate_10(shell_index)=reaction_rate(10)*years_per_sec_over_amu
+      star%reaction_rate_11(shell_index)=reaction_rate(11)*years_per_sec_over_amu
+      star%reaction_rate_12(shell_index)=reaction_rate(12)*years_per_sec_over_amu
+      star%reaction_rate_13(shell_index)=reaction_rate(13)*years_per_sec_over_amu
+      star%n15_alpha_branch_fraction(shell_index)=f3
+      star%be7_electron_capture_fraction(shell_index)=f1
 ! ****************************************
 ! END OF COMPUTATION OF HRK(IU).
 ! ****************************************
