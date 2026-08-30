@@ -209,7 +209,8 @@ def test_default_columns_lists_in_sync():
     and the generated include is fresh."""
     import re
     import subprocess
-    src = (REPO / "src" / "io" / "yrec_output.f90").read_text()
+    src = ((REPO / "src" / "io" / "history_output.f90").read_text()
+           + (REPO / "src" / "io" / "profile_output.f90").read_text())
 
     def harvest(sub):
         m = re.search(r"subroutine " + sub + r"\(names\)(.*?)end subroutine " + sub,

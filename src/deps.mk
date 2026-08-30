@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 core/burn_lib.f90 core/envint_lib.f90 core/monte_carlo.f90 core/observables_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_lib.f90 io/luout_lib.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/rotation_scratch_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 core/burn_lib.f90 core/envint_lib.f90 core/monte_carlo.f90 core/observables_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/rotation_scratch_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -30,6 +30,8 @@ eos_lib.mod: eos/eos_lib.o
 	@true
 eos_mixture_lib.mod: eos/eos_mixture_lib.o
 	@true
+history_output.mod: io/history_output.o
+	@true
 intpar_lib.mod: numerics/intpar_lib.o
 	@true
 kap_lib.mod: kap/kap_lib.o
@@ -50,7 +52,11 @@ opacity_table_lib.mod: kap/opacity_table_lib.o
 	@true
 opal_eos_lib.mod: eos/opal_eos_lib.o
 	@true
+output_columns_lib.mod: io/output_columns.o
+	@true
 phys_const_lib.mod: state/phys_const_lib.o
+	@true
+profile_output.mod: io/profile_output.o
 	@true
 rotation_scratch_lib.mod: rotation/rotation_scratch_lib.o
 	@true
@@ -148,8 +154,11 @@ eos/test/test_eos.o: eos_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib
 eos/yale/fully_ionized_eos.o: luout_lib.mod phys_const_lib.mod yale_eos_lib.mod
 eos/yale/saha_eos.o: luout_lib.mod phys_const_lib.mod
 io/equal_to_model.o: numerics_lib.mod star_info_lib.mod
+io/history_output.o: output_columns_lib.mod phys_const_lib.mod star_info_lib.mod
 io/model_to_equal.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+io/output_columns.o: luout_lib.mod
 io/print_allard_tables.o: atm_table_lib.mod luout_lib.mod
+io/profile_output.o: output_columns_lib.mod star_info_lib.mod stitched_model_lib.mod
 io/read_controls.o: atm_table_lib.mod controls_lib.mod controls_sync_lib.mod eos_lib.mod intpar_lib.mod luout_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod yrec_output.mod
 io/read_mod_model.o: luout_lib.mod star_info_lib.mod
 io/read_model2.o: star_info_lib.mod
@@ -160,7 +169,7 @@ io/write_gsm_pulse.o: luout_lib.mod
 io/write_gyre_pulse.o: phys_const_lib.mod star_info_lib.mod
 io/write_mod_model.o: luout_lib.mod run_log_lib.mod star_info_lib.mod
 io/write_output_headers.o: luout_lib.mod star_info_lib.mod
-io/yrec_output.o: luout_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod stitched_model_lib.mod
+io/yrec_output.o: history_output.mod luout_lib.mod phys_const_lib.mod profile_output.mod run_log_lib.mod star_info_lib.mod stitched_model_lib.mod
 kap/alex06/alex06tab.o: numerics_lib.mod opacity_table_lib.mod
 kap/alex06/getalex06.o: numerics_lib.mod opacity_table_lib.mod phys_const_lib.mod
 kap/alex06/readalex06.o: opacity_table_lib.mod star_info_lib.mod
@@ -280,6 +289,6 @@ wind/wind_spindown.o: phys_const_lib.mod star_info_lib.mod
 wind/wind_spindown_matt.o: phys_const_lib.mod star_info_lib.mod
 
 # real prerequisites: include files
+io/output_columns.o: io/default_columns.inc
 io/read_controls.o: io/inlist_new_decl.inc io/inlist_new_read.inc
-io/yrec_output.o: io/default_columns.inc
 state/star_info_lib.o: state/controls_state_def.inc state/job_controls_def.inc
