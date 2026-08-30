@@ -574,6 +574,7 @@ end subroutine acquire_starting_model
 ! innermost shell using constant-epsilon, constant-density
 ! stellar-structure estimates (spacing per hpttol).
 subroutine extend_core_toward_center
+      use math_lib
 
 !     The following code enables us to extend the model from the current
 !     inner most shell to a point ncloser to center, if flag LCORE is set.
@@ -679,6 +680,7 @@ end subroutine extend_core_toward_center
 ! envelope down to the new fitting mass (shallower), with EOS
 ! re-evaluation at the surface point. Sets ierr on failure.
 subroutine rescale_and_refit_envelope
+      use math_lib
 
 ! PERFORM RESCALING OF FIRST MODEL IF REQUIRED
       if (star%job%rescale_kind(run_index).ne.1) call rescale_model(star%luminosity_lsun, &
@@ -844,7 +846,7 @@ subroutine rescale_and_refit_envelope
           if (star%envelope_cz_bottom_index.eq.star%nz.and.star%ctrl%spot_filling_factor.ne. &
                0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
                spot_adjusted_log_teff = star%log_Teff - 0.25*log10(&
-                    star%ctrl%spot_filling_factor * star%ctrl%spot_temp_contrast**4.0 + 1.0 - &
+                    star%ctrl%spot_filling_factor * pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - &
                     star%ctrl%spot_filling_factor)
           else
              spot_adjusted_log_teff = star%log_Teff
@@ -1028,7 +1030,7 @@ subroutine rescale_and_refit_envelope
                do j = old_last_shell+1,star%nz
                   star%omega(j) = star%omega(old_last_shell)
                   star%j_rot(j) = cc23*star%omega(old_last_shell)* &
-                       10.0d0**(2.0d0*star%logR(j))
+                       exp10((2.0d0*star%logR(j)))
                end do
             endif
             write(*,910)
@@ -1054,6 +1056,7 @@ end subroutine rescale_and_refit_envelope
 ! Shell masses (unlogged) and per-shell dm from the (possibly
 ! refitted) log-mass grid.
 subroutine build_shell_masses
+      use math_lib
 ! SET UP WEIGHTS AND MASSES
 ! HS1 IS THE UNLOGGED HS; HS2 IS THE MASS OF THE SHELL(ALSO NOT LOG).
       next_mass = exp(ln10*star%log_mass(1))

@@ -26,6 +26,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       use phys_const_lib
       use star_info_lib
       use luout_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log10_temperature, log10_pressure
@@ -59,8 +60,8 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
 
       ierr = 0
 
-      temperature = 10.0d0**log10_temperature
-      pressure = 10.0d0**log10_pressure
+      temperature = exp10(log10_temperature)
+      pressure = exp10(log10_pressure)
       t_million_k = temperature/1.0d6
       p_e12 = pressure/1.0d12
       if (t_million_k.lt.0.0050d0 .or. t_million_k.gt.100.0d0) return 1

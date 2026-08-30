@@ -13,6 +13,7 @@ subroutine print_allard_tables
 
       use atm_table_lib
       use luout_lib
+      use math_lib
       implicit none
       integer, parameter :: nta = 250, nga = 25
       integer :: i, j
@@ -36,7 +37,7 @@ subroutine print_allard_tables
       write(run_log_unit,*) 'PL at Teff,GL'
       write(run_log_unit,*)
       do i = 1, atm_table%allard_num_teff
-         write(run_log_unit,910) i,10D0**atm_table%allard_teffl_grid(i), &
+         write(run_log_unit,910) i,pow(10D0, atm_table%allard_teffl_grid(i)), &
               atm_table%allard_gl_index_min(i),atm_table%allard_gl_index_max(i), &
               atm_table%allard_gl_row_min(i),atm_table%allard_gl_row_max(i), &
               (atm_table%allard_log10_pressure(i,j),j=1,atm_table%allard_num_gl)
@@ -46,7 +47,7 @@ subroutine print_allard_tables
       write(run_log_unit,*) 'PL at Tau=100'
       write(run_log_unit,*)
       do i = 1, atm_table%allard_num_teff
-         write(run_log_unit,910) i,10D0**atm_table%allard_teffl_grid(i), &
+         write(run_log_unit,910) i,pow(10D0, atm_table%allard_teffl_grid(i)), &
               atm_table%allard_gl_index_min(i),atm_table%allard_gl_index_max(i), &
               atm_table%allard_gl_row_min(i),atm_table%allard_gl_row_max(i), &
               (atm_table%allard_log10_pressure_tau100(i,j),j=1,atm_table%allard_num_gl)
@@ -55,7 +56,7 @@ subroutine print_allard_tables
       write(run_log_unit,*) 'TL at Tau=100'
       write(run_log_unit,*)
       do i = 1, atm_table%allard_num_teff
-         write(run_log_unit,910) i,10D0**atm_table%allard_teffl_grid(i), &
+         write(run_log_unit,910) i,pow(10D0, atm_table%allard_teffl_grid(i)), &
               atm_table%allard_gl_index_min(i),atm_table%allard_gl_index_max(i), &
               atm_table%allard_gl_row_min(i),atm_table%allard_gl_row_max(i), &
               (atm_table%allard_log10_temp_tau100(i,j),j=1,atm_table%allard_num_gl)

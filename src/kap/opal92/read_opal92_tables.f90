@@ -16,6 +16,7 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
+      use math_lib
       implicit none
 ! runtime-allocated unit for the second (Z-ramp) OPAL92 table
 ! (formerly luout_lib's fixed ioopal2 = 64)

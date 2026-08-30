@@ -14,6 +14,7 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
 
       use opacity_table_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17
@@ -68,7 +69,7 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
             x_fraction_within=(hydrogen_fraction-opacity_table%opal92_grid_x(x_index))/ &
                  (opacity_table%opal92_grid_x(x_index+1)-opacity_table%opal92_grid_x(x_index))
             log10_opacity_final=(log10_opacity1-log10_opacity0)*x_fraction_within+log10_opacity0
-            opacity_final=10.0d0**log10_opacity_final
+            opacity_final=exp10(log10_opacity_final)
 !     CONVERSION FROM THE DERIVATIVE WITH CONSTANT RHOT3 TO CONSTANT RHO
             coeff(1,im3)=log10_opacity_final
          end do
@@ -116,7 +117,7 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
                x_fraction_within=(hydrogen_fraction-opacity_table%opal92_grid_x_z2(x_index))/ &
                     (opacity_table%opal92_grid_x_z2(x_index+1)-opacity_table%opal92_grid_x_z2(x_index))
                log10_opacity_final=(log10_opacity1-log10_opacity0)*x_fraction_within+log10_opacity0
-               opacity_final=10.0d0**log10_opacity_final
+               opacity_final=exp10(log10_opacity_final)
 ! CONVERSION FROM THE DERIVATIVE WITH CONSTANT RHOT3 TO CONSTANT RHO
                coeff(1,im3)=log10_opacity_final
             end do

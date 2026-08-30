@@ -20,6 +20,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
       use star_info_lib, only: star
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_l_lsun, log_teff, current_age
@@ -58,8 +59,8 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 !     Check if star has passed R*.
 !     If not store L and age and return.
       star%just_passed_target_radius_flag=.false.
-      teff_current = 10.0d0**log_teff
-      log_r_rsun_current = sqrt((10.0d0**log_l_lsun)*star%solar_luminosity_cgs/ &
+      teff_current = exp10(log_teff)
+      log_r_rsun_current = sqrt((exp10(log_l_lsun))*star%solar_luminosity_cgs/ &
            (c4pi*csig))/(teff_current*teff_current*star%solar_radius_cgs)
       if(log_r_rsun_current.gt.star%log_r_prev_model) then
          if(.not.(log_r_rsun_current.gt.star%job%target_radius_rsun.and. &
@@ -100,7 +101,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
            star%log_l_at_target_radius
       write(run_log_unit,*) '#X, LogL/Lsun at R* =', &
            star%job%rescale_params(2,run_index-1), star%log_l_at_target_radius
-      if (abs(10.0d0**star%log_l_at_target_radius-star%ctrl%target_luminosity_lsun) &
+      if (abs(exp10(star%log_l_at_target_radius)-star%ctrl%target_luminosity_lsun) &
            .le. star%ctrl%target_star_luminosity_tolerance) then
 !        Get here then have track that passes through specified
 !        L and R. Use age at R for final

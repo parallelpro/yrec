@@ -38,6 +38,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       use net_lib
       use burn_lib
 
+      use math_lib
       implicit none
 
       double precision, intent(in) :: timestep

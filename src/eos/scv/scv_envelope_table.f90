@@ -25,6 +25,7 @@ subroutine build_scv_envelope_table
       use phys_const_lib
       use numerics_lib
       use scv_eos_lib
+      use math_lib
       implicit none
       integer, parameter :: nts = 63, nps = 76
 
@@ -139,7 +140,7 @@ subroutine build_scv_envelope_table
 !  NOW COMPUTE EQUATION OF STATE VARIABLES FOR THE SURFACE MIXTURE.
       do t_idx=1,nts
          log_t_work = tlogx(t_idx)
-         temp_value = (10.0d0**log_t_work)
+         temp_value = (exp10(log_t_work))
 ! TEMPERATURE INTERPOLATION FACTORS
         if (t_idx.eq.1) then
            idtt = 1
@@ -160,7 +161,7 @@ subroutine build_scv_envelope_table
             metal_fraction_local = star%envelope_metal_fraction
             helium_fraction_local = 1.0d0 - hydrogen_fraction_local - &
                  metal_fraction_local
-            pressure_value = (10.0d0**log_p_work)
+            pressure_value = (exp10(log_p_work))
 ! INCLUDE RADIATION PRESSURE IN THE EQUATION OF STATE.
             radiation_pressure = radiation_constant_over_3*(temp_value**2)**2
             gas_pressure = pressure_value

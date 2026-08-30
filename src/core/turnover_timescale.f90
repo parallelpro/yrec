@@ -26,6 +26,7 @@ subroutine compute_turnover_timescale(radius_at_bcz)
            ip_grada, ip_conv_vel
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(out) :: radius_at_bcz
@@ -106,6 +107,7 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
      log10_pressure, log10_density, local_gravity, num_points, &
      num_interior_points, convective_velocity, radiative_gradient, &
      adiabatic_gradient, radius_at_bcz)
+      use math_lib
       use numerics_lib
 
       double precision, intent(in) :: shell_mass(json)

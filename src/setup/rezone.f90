@@ -205,6 +205,7 @@ end subroutine check_envelope_temperature_range
 ! gradient jumps, the overshoot base and the finely-zoned region
 ! around the surface CZ; sort and de-duplicate them.
 subroutine flag_fixed_points
+      use math_lib
 ! SET UP FLAGGED POINTS - PROGRAM WILL NOT REZONE ACROSS FLAGGED POINTS
       flag_count = 1
 ! FLAG EDGES OF CENTRAL AND SURFACE CONVECTION ZONES
@@ -366,6 +367,7 @@ end subroutine flag_fixed_points
 ! delete new points that land too close together. ierr if the
 ! requested point count exceeds json.
 subroutine assign_new_points
+      use math_lib
 ! BEGIN REFLOATING OF POINTS
       if (star%job%rotation_active) then
        do i = 1,star%nz
@@ -663,6 +665,7 @@ end subroutine locate_new_cz_edges
 ! auxiliaries, re-run physic, and update the surface opacity
 ! tables if the surface composition moved.
 subroutine interpolate_onto_new_grid
+      use math_lib
       use rotation_scratch_lib
 !  NOW USE AN OSCILLATORY SPLINE TO FIT THE OLD RUN OF PHYSICAL VARIABLES
 !  AT THE NEW RUN OF MASS POINTS.

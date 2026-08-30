@@ -25,6 +25,7 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
 
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_density(json), local_gravity(json), &
@@ -464,8 +465,8 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          rot_scr%second_deriv_geom_factor(zone_idx) = c1_factor
          qc1r = 4.0d0*cc23*ff_factor/grav_const* &
               (1.0d0-cpi*rot_scr%dm(zone_idx)*ff_factor)
-         dr_local = 10.0d0**log_radius(zone_idx)-10.0d0**log_radius(zone_idx-1)
-         qdr_local = (10.0d0**log_density(zone_idx)-10.0d0**log_density(zone_idx-1))/dr_local
+         dr_local = exp10(log_radius(zone_idx))-exp10(log_radius(zone_idx-1))
+         qdr_local = (exp10(log_density(zone_idx))-exp10(log_density(zone_idx-1)))/dr_local
          qqc1rr = 8.0d0*ff_factor/grav_const/rot_scr%interface_radius(zone_idx)* &
          (1.0d0-cc13*cpi*ff_factor*(1.0d1*rot_scr%dm(zone_idx)-rot_scr%interface_radius(zone_idx)*qdr_local) &
           + cc13*8.0d0*(cpi*rot_scr%dm(zone_idx)*ff_factor)**2)

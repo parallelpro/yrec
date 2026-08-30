@@ -28,6 +28,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       use star_info_lib, only: star, i_grad_actual, json
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(inout) :: timestep_seconds
@@ -214,7 +215,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
             ln_lambda = 2.2d0
          end if
 !
-         settling_prefactor=star%ctrl%fgry*radius_bl(zone_idx)**2*temperature_bl(zone_idx)**2.5d0/ln_lambda
+         settling_prefactor=star%ctrl%fgry*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
 !         X = HCOMP(1,I)
          metal_fraction_total = composition(3,zone_idx) + composition(4,zone_idx)
          iron_fraction = composition(3,zone_idx)
@@ -267,7 +268,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                   do species_a_idx=1,num_species-1
                      ion_number_density=ion_number_density+concentration(species_a_idx)*electron_number_density
                   enddo
-                  interion_distance=(0.23873d0/ion_number_density)**cc13
+                  interion_distance=pow((0.23873d0/ion_number_density), cc13)
 !                 calculate Debye length (LAMBDAD):
                   mean_charge_sq=0.d0
                   do species_a_idx=1,num_species
@@ -282,7 +283,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                       coulomb_xij=2.3939d3*temp_local*coulomb_lambda/ &
                            abs(atomic_charge(species_a_idx)*atomic_charge(species_b_idx))
                       coulomb_log(species_a_idx,species_b_idx)=0.81245d0 &
-                             *log(1.d0+0.18769d0*coulomb_xij**1.2d0)
+                             *log(1.d0+0.18769d0*pow(coulomb_xij, 1.2d0))
                    enddo
                   enddo
                else
@@ -317,7 +318,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !        IONIZED IRON.
          if(star%job%use_diffusion_z)then
 
-            settling_prefactor=star%job%fgrz*radius_bl(zone_idx)**2*temperature_bl(zone_idx)**2.5d0/ln_lambda
+            settling_prefactor=star%job%fgrz*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
             if(star%ctrl%use_thoul_diffusion)then
                if(star%ctrl%use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq

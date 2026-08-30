@@ -68,6 +68,7 @@ end subroutine setup_monte_carlo_runs
 ! factor (1.0) is set.
 subroutine apply_monte_carlo_parameters(monte_carlo_run_number, &
      age_scale_factor)
+      use math_lib
       use phys_const_lib
       integer, intent(in) :: monte_carlo_run_number
       double precision, intent(out) :: age_scale_factor
@@ -159,6 +160,7 @@ end subroutine write_run_summaries
 ! to the Monte-Carlo output files.
 subroutine write_monte_carlo_model(local_log_radius, &
      convergence_iterations, run_index, monte_carlo_run_number)
+      use math_lib
       double precision, intent(in) :: local_log_radius
       integer, intent(in) :: convergence_iterations, run_index, &
            monte_carlo_run_number
@@ -191,9 +193,9 @@ subroutine write_monte_carlo_model(local_log_radius, &
       write(star%ctrl%monte_carlo_unit1,30) star%cl37_snu_rate,star%ga71_snu_rate,(star%neutrino_flux_total(j),j=1,8)
  30   format(1X,2F8.3,1P8E10.3)
 !  SUMMARY OF STRUCTURE : TC, RHOC, PC, XC, ZC (ADD MU C)
-      tcen = 10.0d0**(star%central_log10_temperature-6.0d0)
-      pcen = 10.0d0**(star%central_log10_pressure-17.0d0)
-      dcen = 10.0d0**star%central_log10_density
+      tcen = exp10((star%central_log10_temperature-6.0d0))
+      pcen = exp10((star%central_log10_pressure-17.0d0))
+      dcen = exp10(star%central_log10_density)
       write(star%ctrl%monte_carlo_unit1,40)tcen,dcen,pcen,star%xa(1,1),star%xa(3,1)
  40   format(1X,F7.3,F7.2,F6.3,2F8.5)
 !  #SHELLS, INITIAL ALPHA, Y, Z; FINAL R, L

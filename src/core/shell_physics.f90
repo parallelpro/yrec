@@ -28,6 +28,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       use eos_lib
       use kap_lib
       use numerics_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: fp(json), ft(json)

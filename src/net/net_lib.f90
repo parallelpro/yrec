@@ -217,6 +217,7 @@ end subroutine azbar
 ! plasma, photoneutrino, bremsstrahlung, and recombination processes.
 subroutine sneut(temp,den,abar,zbar, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
+      use math_lib
 implicit none
 !..this routine computes neutrino losses from the analytic fits of
 !..itoh et al. apjs 102, 411, 1996, and also returns their derivatives.
@@ -441,7 +442,7 @@ rmi    = 1.0d0/rm
 
 
 a0     = rm * 1.0d-9
-a1     = a0**oneth
+a1     = pow(a0, oneth)
 zeta   = a1 * xlm1
 zetadt = -a1 * xlm2 * xldt
 a2     = oneth * a1*rmi * xlm1
@@ -531,7 +532,7 @@ c      = 1.0d0/a1
 b1     = 1.0d0 + rm*c
 
 
-xden   = b1**(-0.3d0)
+xden   = pow(b1, (-0.3d0))
 
 
 d      = -0.3d0*xden/b1
@@ -591,7 +592,7 @@ spairdz = a1*spairdz + a2*qpairdz*a3
 
 
 a1   = 1.019d-6*rm
-a2   = a1**twoth
+a2   = pow(a1, twoth)
 a3   = twoth*a2/a1
 
 
@@ -1006,7 +1007,7 @@ fphotdz = (xnumdz - fphot*xdendz)*dum
 
 !..equation 3.3
 a0     = 1.0d0 + 2.045d0 * xl
-xnum   = 0.666d0*a0**(-2.066d0)
+xnum   = 0.666d0*pow(a0, (-2.066d0))
 xnumdt = -2.066d0*xnum/a0 * 2.045d0*xldt
 
 
@@ -1096,7 +1097,7 @@ t8m6   = t8m5*t8m1
 
 
 
-tfermi = 5.9302d9*(sqrt(1.0d0+1.018d0*(den6*ye)**twoth)-1.0d0)
+tfermi = 5.9302d9*(sqrt(1.0d0+1.018d0*pow((den6*ye), twoth))-1.0d0)
 
 
 !.."weak" degenerate electrons only
@@ -1184,23 +1185,23 @@ if (temp .gt. 0.01d0 * tfermi) then
  xnumdz = z*dumdz
 
 
- c00   = 7.75d5*t832 + 247.0d0*t8**(3.85d0)
- dd00  = (1.5d0*7.75d5*t812 + 3.85d0*247.0d0*t8**(2.85d0))*1.0d-8
+ c00   = 7.75d5*t832 + 247.0d0*pow(t8, (3.85d0))
+ dd00  = (1.5d0*7.75d5*t812 + 3.85d0*247.0d0*pow(t8, (2.85d0)))*1.0d-8
 
 
- c01   = 4.07d0 + 0.0240d0 * t8**(1.4d0)
- dd01  = 1.4d0*0.0240d0*t8**(0.4d0)*1.0d-8
+ c01   = 4.07d0 + 0.0240d0 * pow(t8, (1.4d0))
+ dd01  = 1.4d0*0.0240d0*pow(t8, (0.4d0))*1.0d-8
 
 
- c02   = 4.59d-5 * t8**(-0.110d0)
- dd02  = -0.11d0*4.59d-5 * t8**(-1.11d0)*1.0d-8
+ c02   = 4.59d-5 * pow(t8, (-0.110d0))
+ dd02  = -0.11d0*4.59d-5 * pow(t8, (-1.11d0))*1.0d-8
 
 
- z     = den**(0.656d0)
+ z     = pow(den, (0.656d0))
  dum   = c00*rmi  + c01  + c02*z
  dumdt = dd00*rmi + dd01 + dd02*z
  z     = -c00*rmi*rmi
- dumdd = z*rmdd + 0.656d0*c02*den**(-0.454d0)
+ dumdd = z*rmdd + 0.656d0*c02*pow(den, (-0.454d0))
  dumda = z*rmda
  dumdz = z*rmdz
 
@@ -1336,7 +1337,7 @@ else
 
 
 
- dum   = 2.275d-1 * zbar * zbar*t8m1 * (den6*abari)**oneth
+ dum   = 2.275d-1 * zbar * zbar*t8m1 * pow((den6*abari), oneth)
  dumdt = -dum*tempi
  dumdd = oneth*dum*deni
  dumda = -oneth*dum*abari
@@ -1344,7 +1345,7 @@ else
 
  gm1   = 1.0d0/dum
  gm2   = gm1*gm1
- gm13  = gm1**oneth
+ gm13  = pow(gm1, oneth)
  gm23  = gm13 * gm13
  gm43  = gm13*gm1
  gm53  = gm23*gm1
@@ -1472,8 +1473,8 @@ if (nu .ge. -20.0  .and.  nu .le. 10.0) then
 
 
  z      = 1.0d0/dum
- dd00   = dum**(-2.25)
- dd01   = dum**(-4.55)
+ dd00   = pow(dum, (-2.25))
+ dd01   = pow(dum, (-4.55))
  c00    = a1*z + a2*dd00 + a3*dd01
  c01    = -(a1*z + 2.25*a2*dd00 + 4.55*a3*dd01)*z
 
@@ -1664,6 +1665,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       use star_info_lib, only: star, json
 
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_density, log_temperature, &
@@ -1894,7 +1896,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          trm = mass_frac(i)/atomic_mass(i)
          mu_ion_inv = mu_ion_inv+trm
          mu_e_inv = mu_e_inv+trm*atomic_charge(i)
-         xtr = xtr+trm*atomic_charge(i)**1.58
+         xtr = xtr+trm*pow(atomic_charge(i), 1.58)
          zeta0 = zeta0+trm*atomic_charge(i)**2
       end do
 ! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
@@ -1923,7 +1925,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  CGS UNITS.
       density=exp(ln10*log_rho_local)
       t9 = exp(ln10*(log_temperature - 9.0d0))
-      t9p13 = t9**cc13
+      t9p13 = pow(t9, cc13)
       t9p23 = t9p13**2
       t9m13=1./t9p13
       t9m23=t9m13**2
@@ -1945,7 +1947,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  IN THIS PART OF THE SUBROUTINE WERE THE CORRECTION OF THE ERROR IN
 !  THE DEFINITION OF RWE (SEE ABOVE) AND REFINEMENTS OF THE COEFFICIENTS
 !  IN THE EXPRESSIONS FOR PFMC2 AND EFMKT.
-      fermi_mom_sq=1.017677E-4*rho_over_mu_e**0.6666667
+      fermi_mom_sq=1.017677E-4*pow(rho_over_mu_e, 0.6666667)
       fermi_energy_over_kt=5.92986*t9m1*(dsqrt(1.+fermi_mom_sq)-1.)
       if(fermi_energy_over_kt.le.1.E-2) then
          f_prime_over_f=1.0
@@ -1986,13 +1988,13 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  FORMULA, WHICH INCLUDES A DEGENERACY CORRECTION. THE MORE GENERAL
 !  EXPRESSIONS ARE GIVEN IN TABLE 4 AND EQUATION (19) OF GRABOSKE ET AL.
       lambda0=5.9426E-6*t9m32*dsqrt(density*mu_ion_inv)
-      lambda0_23=lambda0**0.666667
-      lambda0_86=lambda0**0.86
+      lambda0_23=pow(lambda0, 0.666667)
+      lambda0_86=pow(lambda0, 0.86)
       z_curl=dsqrt((zeta0+f_prime_over_f*mu_e_inv)/mu_ion_inv)
       z_bar=mu_e_inv/mu_ion_inv
-      z_curl_58=z_curl**0.58
-      z_bar_28=z_bar**0.28
-      z_bar_13=z_bar**cc13
+      z_curl_58=pow(z_curl, 0.58)
+      z_bar_28=pow(z_bar, 0.28)
+      z_bar_13=pow(z_bar, cc13)
       lambda0_zcurl=lambda0*z_curl
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
       do i=1,num_reactions
@@ -2249,6 +2251,7 @@ end subroutine rates
 ! KC 2025-05-31 SAFEDIVEXP
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 subroutine safedivexp(numerator, exponent)
+      use math_lib
       double precision :: numerator, exponent
 
       if (exponent .lt. 709.7827d0) then
@@ -2275,6 +2278,7 @@ end subroutine safedivexp
 ! Maximum error is 4.19d-9. Reference: Antia, ApJS 84,101 1993.
 double precision function ifermi12(fermi_half_integral)
 
+      use math_lib
       implicit none
 
 ! fermi_half_integral: value of the order-1/2 Fermi-Dirac integral
@@ -2317,7 +2321,7 @@ double precision function ifermi12(fermi_half_integral)
        ifermi12 = log(fermi_half_integral * numerator/denominator)
 
       else
-       scaled_arg = 1.0d0/fermi_half_integral**(1.0d0/(1.0d0 + fd_order))
+       scaled_arg = 1.0d0/pow(fermi_half_integral, (1.0d0/(1.0d0 + fd_order)))
        numerator = scaled_arg + coef_num_large(deg_num_large)
        do term_idx=deg_num_large-1,1,-1
         numerator = numerator*scaled_arg + coef_num_large(term_idx)
@@ -2344,6 +2348,7 @@ end function ifermi12
 !..maximum error is 1.23d-12. reference: antia apjs 84,101 1993.
 double precision function zfermim12(degeneracy_parameter)
 
+      use math_lib
       implicit none
 
 ! degeneracy_parameter: electron degeneracy parameter eta at which the

@@ -18,6 +18,7 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
 
       use opal_eos_lib
+      use math_lib
       implicit none
 
       integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
@@ -32,7 +33,7 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
            t6_ramp_factor
 
       t6 = temperature*1.0d-6
-      density = 10d0**log10_density
+      density = pow(10d0, log10_density)
 
 !     Exit if outside table in rho
       if ((density.lt.opal_eos%density_grid_06(1)) .or. (density.ge.opal_eos%density_grid_06(nr))) then

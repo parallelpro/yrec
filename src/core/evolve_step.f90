@@ -286,6 +286,7 @@ end subroutine advance_composition_and_age
 ! rotational KE distribution and the light-element burning
 ! start-of-step state (lirate88). Sets ierr on failure.
 subroutine rezone_or_snapshot
+      use math_lib
 !***MHP 1/04 OPACITY TEST
 ! DBG 12/95 GET OPACITY
 !*** END TEST
@@ -516,6 +517,7 @@ end subroutine converge_with_rotation
 ! models: end-of-step convection-zone depth (convec), end-of-step
 ! rates (lirate88), then the burn (liburn).
 subroutine burn_light_elements
+      use math_lib
 ! PERFORM LIGHT ELEMENT BURNING
          if (star%job%use_extended_composition .and. star%model_number.ge.0 .and. star%dt.gt.0.0D0) then
 ! ONLY FOR MODELS WITHOUT ROTATION, OR WITHOUT ROTATIONAL MIXING.

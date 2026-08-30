@@ -50,6 +50,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
+      use math_lib
       implicit none
       double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
            envelope_coeffs(9)
@@ -195,7 +196,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
           if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
-               adjusted_teffl = log10_teff - 0.25*log10(star%ctrl%spot_filling_factor * star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
+               adjusted_teffl = log10_teff - 0.25*log10(star%ctrl%spot_filling_factor * pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
           else
              adjusted_teffl = log10_teff
           endif

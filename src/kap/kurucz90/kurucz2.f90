@@ -35,6 +35,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       use opacity_table_lib
       use luout_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer :: jerr_gate
       integer, parameter :: max_num_temps = 60
@@ -172,7 +173,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
          return
       end if
       log10_opacity = log10_opacity_interp
-      opacity = 10.0d0**log10_opacity
+      opacity = exp10(log10_opacity)
 !     QOTF = D LN(O)/D LN(T)
 !     FIND THE PARTIAL DERIVATIVE VALUE OF OL WRT D IN THE GIVEN T AND D
       call intpol(temp_subset_logt, temp_subset_dlnkap_dlnrho, &

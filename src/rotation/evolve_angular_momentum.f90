@@ -33,6 +33,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       use net_lib
       use phys_const_lib
       use burn_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: full_timestep
@@ -258,8 +259,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          rot_scr%wmst(1) = star%omega(1)
          do zone_index = 2,star%nz
             omega_avg = 0.5D0*(star%omega(zone_index)+star%omega(zone_index-1))
-            delta_radius_step = 10.0D0**log_radius_mid(zone_index)- &
-                 10.0D0**log_radius_mid(zone_index-1)
+            delta_radius_step = exp10(log_radius_mid(zone_index))- &
+                 exp10(log_radius_mid(zone_index-1))
             domega_dr = (star%omega(zone_index)-star%omega(zone_index-1))/delta_radius_step
             rot_scr%theta_prev(zone_index) = rot_scr%theta_mean(zone_index)*omega_avg*domega_dr
             rot_scr%qwrmst(zone_index) = domega_dr

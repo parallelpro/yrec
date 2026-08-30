@@ -32,6 +32,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       use phys_const_lib
       use burn_lib
 
+      use math_lib
       implicit none
 
       double precision, intent(in) :: full_timestep, sub_timestep
@@ -269,7 +270,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                         radius_interp = rot_scr%radius_prev(ii)+ &
                              convective_fraction*(star%logR(ii)-star%logR_start(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
-                             cc23*star%dm(ii)*10.0D0**(2.0D0*radius_interp)
+                             cc23*star%dm(ii)*exp10((2.0D0*radius_interp))
                         cz_angular_momentum = cz_angular_momentum + &
                              star%j_rot(ii)*star%dm(ii)
                      end do
@@ -280,7 +281,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                           convective_fraction*(star%logR(j)-rot_scr%radius_prev(j)))
                      specific_angular_momentum_corrected = &
                           cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
-                          10.0D0**radius_shell_factor
+                          exp10(radius_shell_factor)
                      delta_angular_momentum = &
                           (star%j_rot(j)- &
                           specific_angular_momentum_corrected)*star%dm(j)
@@ -322,7 +323,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                         radius_interp = rot_scr%radius_prev(ii)+ &
                              convective_fraction*(star%logR(ii)-star%logR_start(ii))
                         cz_moment_of_inertia = cz_moment_of_inertia+ &
-                             cc23*star%dm(ii)*10.0D0**(2.0D0*radius_interp)
+                             cc23*star%dm(ii)*exp10((2.0D0*radius_interp))
                         cz_angular_momentum = cz_angular_momentum + &
                              star%j_rot(ii)*star%dm(ii)
                      end do
@@ -333,7 +334,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                           convective_fraction*(star%logR(j)-rot_scr%radius_prev(j)))
                      specific_angular_momentum_corrected = &
                           cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
-                          10.0D0**radius_shell_factor
+                          exp10(radius_shell_factor)
                      delta_angular_momentum = &
                           (star%j_rot(j)- &
                           specific_angular_momentum_corrected)*star%dm(j)

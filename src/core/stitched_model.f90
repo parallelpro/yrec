@@ -20,6 +20,7 @@
 ! themes may read them too (profile-based observables).
 module stitched_model_lib
       use phys_const_lib
+      use math_lib
       implicit none
       private
       public :: build_stitched_model, n_ext, n_ie, stx_prof, &
@@ -129,7 +130,7 @@ subroutine build_stitched_model
       if (star%convective_flag(star%nz) .and. star%ctrl%spot_filling_factor /= 0.0d0 &
           .and. star%ctrl%spot_temp_contrast /= 1.0d0) then
          ateffl = star%log_Teff - 0.25d0*log10(star%ctrl%spot_filling_factor* &
-              star%ctrl%spot_temp_contrast**4.0d0 + 1.0d0 - star%ctrl%spot_filling_factor)
+              pow(star%ctrl%spot_temp_contrast, 4.0d0) + 1.0d0 - star%ctrl%spot_filling_factor)
       else
          ateffl = star%log_Teff
       end if
@@ -210,6 +211,7 @@ end subroutine build_stitched_model
 !   4 gradr_div_grada
 ! Endpoints copy their neighbor's derivative-based values.
 subroutine compute_seismic_columns
+      use math_lib
       use star_info_lib, only: star
       integer :: j
       double precision :: r(max_ext), lnp(max_ext), lnrho(max_ext), &
@@ -274,6 +276,7 @@ end subroutine compute_seismic_columns
 ! (per-species abundances beyond X/Z, burning terms, rotation
 ! internals) are zero, as io/write_stitched_profile.f90 also writes them.
 double precision function ext_profile_value(icol, j)
+      use math_lib
       use star_info_lib, only: star, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
@@ -359,6 +362,7 @@ end function ext_profile_value
 ! (1 = center .. nz = surface). Sources match putstore's per-shell
 ! block and the pulse arrays coefft fills every model.
 double precision function profile_value(icol, k)
+      use math_lib
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       integer, intent(in) :: icol, k
 
@@ -448,6 +452,7 @@ end function profile_value
 ! composition above the fitting point is the surface composition, as
 ! io/write_stitched_profile.f90 also writes.
 subroutine build_pulse_points(pts)
+      use math_lib
       use star_info_lib, only: star, i_eps_grav, i_grad_actual, i_grad_ad, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib

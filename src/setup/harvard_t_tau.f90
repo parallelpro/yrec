@@ -11,6 +11,7 @@
 ! given the optical depth tau, returns log10(T). Called (as an
 ! external double precision function) from atmosphere_derivs.f90 and atm_lib.f90.
 double precision function harvard_t_tau(optical_depth)
+      use math_lib
       implicit none
 
       double precision, intent(in) :: optical_depth

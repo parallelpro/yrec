@@ -26,6 +26,7 @@ subroutine setups(ierr)
       use star_info_lib, only: star, json
       use phys_const_lib
       use yale_eos_lib
+      use math_lib
       implicit none
       integer, intent(out) :: ierr
 ! JNT 06/14 ADD NTC FOR KURUCZ/CASTELLI 2004 ATM

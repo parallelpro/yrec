@@ -52,6 +52,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       use star_info_lib, only: star, json
       use phys_const_lib
       use eos_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, age_gyr
@@ -137,7 +138,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! RADIUS
       log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.0d0*log_teff)
-      total_radius_cm = 10.0d0**log10_radius
+      total_radius_cm = exp10(log10_radius)
 ! MASS
       total_mass_grams = total_mass_msun*star%solar_mass_cgs
 ! AGE
@@ -153,7 +154,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! reimers_scaling_factor default -4e-13 (the classical eta=1 coefficient).
       if(apply_mass_change .and. star%ctrl%use_reimers_wind)then
          mass_loss_rate_msun_yr = star%ctrl%reimers_scaling_factor* &
-              10.0d0**log_luminosity_lsun* &
+              exp10(log_luminosity_lsun)* &
               (total_radius_cm/star%solar_radius_cgs)/total_mass_msun
       endif
 ! 02/12 MHP TAUCZ NOW COMPUTED PRIOR TO CALL IN MIXCZ
@@ -179,9 +180,9 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! COMPUTE THE MEAN MOLECULAR WEIGHT FOR THE CZ
       if(mass_loss_rate_msun_yr.gt.0.0d0)then
          new_atmosphere_fit_needed = .true.
-         local_temperature = 10.0d0**log_temperature(envelope_boundary_zone)
-         local_pressure = 10.0d0**log_pressure(envelope_boundary_zone)
-         local_density = 10.0d0**log_density(envelope_boundary_zone)
+         local_temperature = exp10(log_temperature(envelope_boundary_zone))
+         local_pressure = exp10(log_pressure(envelope_boundary_zone))
+         local_density = exp10(log_density(envelope_boundary_zone))
          local_beta = 1.0d0-(radiation_constant_over_3*local_temperature**4/ &
               local_pressure)
          mean_molecular_weight_local = local_pressure*local_beta/ &
@@ -194,7 +195,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! WITH THE MEAN THERMAL ENERGY CONTENT OF THE
 ! CONVECTION ZONE.
          accretion_specific_energy = accretion_efficiency*total_mass_grams* &
-              (10.0d0**cgl)/total_radius_cm
+              (exp10(cgl))/total_radius_cm
          accretion_specific_energy0 = accretion_specific_energy
 ! DETERMINE THE MASS-WEIGHTED THERMAL ENERGY (PER GM)
 ! IN EACH SHELL OF THE CONVECTIVE ENV.
@@ -203,10 +204,10 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          thermal_energy_accreted_bar = 0.0d0
          rot_scr%envelope_specific_entropy = 0.0d0
          do zone_idx = envelope_boundary_zone, num_zones
-            local_temperature = 10.0d0**log_temperature(zone_idx)
-            local_pressure = 10.0d0**log_pressure(zone_idx)
-            local_density = 10.0d0**log_density(zone_idx)
-            local_radius_cm = 10.0d0**log_radius(zone_idx)
+            local_temperature = exp10(log_temperature(zone_idx))
+            local_pressure = exp10(log_pressure(zone_idx))
+            local_density = exp10(log_density(zone_idx))
+            local_radius_cm = exp10(log_radius(zone_idx))
             delta_accretion_energy = 0.5d0*accretion_specific_energy* &
                  (total_radius_cm/local_radius_cm-1.0d0)
             thermal_energy_accreted = accretion_specific_energy+ &
@@ -243,8 +244,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 !   llp  06/15/2009
          call atm_get_surface_pt(log_teff,log10_gravity,print_flag, &
               allard_surface_failed)
-         temperature_local = 10.0d0**atm_table%atm_log10_temperature
-         pressure_local = 10.0d0**atm_table%atm_log10_pressure
+         temperature_local = exp10(atm_table%atm_log10_temperature)
+         pressure_local = exp10(atm_table%atm_log10_pressure)
          log10_temperature_local = atm_table%atm_log10_temperature
          log10_pressure_local = atm_table%atm_log10_pressure
          hydrogen_fraction_local = composition(1,num_zones)
@@ -271,11 +272,11 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
             mass_loss_rate_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs/ &
                  seconds_per_year
             pressure_from_wind = mass_loss_rate_cgs/c4pi* &
-                 sqrt(2.0d0*accretion_efficiency*10.0d0**log10_gravity/ &
+                 sqrt(2.0d0*accretion_efficiency*exp10(log10_gravity)/ &
                  total_radius_cm**3)
-            temperature_from_wind = (mass_loss_rate_cgs* &
+            temperature_from_wind = pow(mass_loss_rate_cgs* &
                  accretion_specific_energy0*0.75d0/c4pi/total_radius_cm**2/ &
-                 csig)**0.25d0
+                 csig, 0.25d0)
             log10_pressure_local = log10(pressure_from_wind)
             log10_temperature_local = log10(temperature_from_wind)
             eos_res(i_log10_density) = log10_density_local

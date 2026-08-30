@@ -14,6 +14,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
       use opacity_table_lib
       use luout_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer :: jerr_gate
       double precision, intent(in) :: log10_density, log10_temperature, &
@@ -158,7 +159,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
             opacity = 1.0d35
             log10_opacity = 35.0d0
          else
-            opacity = 10.0d0**log10_opacity_value
+            opacity = exp10(log10_opacity_value)
             log10_opacity = log10_opacity_value
          end if
       else

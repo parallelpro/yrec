@@ -18,6 +18,7 @@ subroutine compute_scale_height(composition, density, pressure, radius, mass, &
 
       use phys_const_lib
       use eos_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: composition(15,json), density(json), &

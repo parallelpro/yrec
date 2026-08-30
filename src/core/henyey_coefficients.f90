@@ -53,6 +53,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
       use eos_lib
       use kap_lib
       use burn_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: delta_time

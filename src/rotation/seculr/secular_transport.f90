@@ -61,6 +61,7 @@ subroutine secular_transport(sub_timestep, log_density, local_gravity, &
       use star_info_lib
       use phys_const_lib
       use numerics_lib
+      use math_lib
       implicit none
       double precision, intent(inout) :: sub_timestep
       double precision, intent(inout) :: log_density(json)

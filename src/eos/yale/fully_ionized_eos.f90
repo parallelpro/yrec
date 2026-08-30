@@ -34,6 +34,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       use yale_eos_lib
       use phys_const_lib
       use luout_lib
+      use math_lib
       implicit none
 
       double precision, intent(inout) :: log10_temperature

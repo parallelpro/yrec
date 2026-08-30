@@ -43,6 +43,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
       use phys_const_lib
       use eos_lib
       use kap_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: timestep

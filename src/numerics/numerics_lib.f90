@@ -1307,6 +1307,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
      step_err, ierr)
       use intpar_lib
+      use math_lib
       implicit none
 
       double precision, parameter :: one = 1.0d0, shrink_factor = 0.95d0, &
@@ -1375,7 +1376,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
           return
        endif
       end do
-      h = 0.25d0*h/2.0d0**int((max_stage_index-extrap_order)/2)
+      h = 0.25d0*h/pow(2.0d0, int((max_stage_index-extrap_order)/2))
 !      H = 0.25D0*H/2**((IMAX-NUSE)/2)
       if(hydrogen_fraction+h.eq.hydrogen_fraction) then
          write(*,*) 'ERROR IN BSSTEP'

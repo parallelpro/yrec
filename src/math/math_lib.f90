@@ -45,6 +45,16 @@ module math_lib
       private
 
       public :: pow, exp10
+
+! pow is generic over real and integer exponents: pow(x, iy) with
+! integer iy exists so ** conversions never need to know the
+! exponent's type (integer-typed sites route through the exact
+! integer path; under the intrinsic backend it is x**iy verbatim).
+      interface pow
+         module procedure pow_r
+         module procedure pow_i
+         module procedure pow_r_sp
+      end interface pow
 #ifdef YREC_CRMATH
 ! re-export crmath's correctly-rounded shadows of the intrinsics for
 ! every elementary function YREC uses (plus the common siblings) so a
@@ -72,7 +82,7 @@ contains
 ! exact repeated multiplication; otherwise the exp(log(x)*y)
 ! composition, fully determined by crmath. x = 0 returns 0 (the
 ! composition would take log(0)).
-elemental function pow(x, y) result(pow_x)
+elemental function pow_r(x, y) result(pow_x)
       double precision, intent(in) :: x, y
       double precision :: pow_x
       integer :: iy, i
@@ -91,7 +101,35 @@ elemental function pow(x, y) result(pow_x)
       else
          pow_x = exp(log(x)*y)
       end if
-end function pow
+end function pow_r
+
+! integer exponent: exact repeated multiplication (MESA's pow_i)
+elemental function pow_i(x, iy) result(pow_x)
+      double precision, intent(in) :: x
+      integer, intent(in) :: iy
+      double precision :: pow_x
+      integer :: i
+
+      if (x == 0.0d0) then
+         pow_x = 0.0d0
+         return
+      end if
+      pow_x = 1.0d0
+      do i = 1, abs(iy)
+         pow_x = pow_x*x
+      end do
+      if (iy < 0) pow_x = 1.0d0/pow_x
+end function pow_i
+
+! single-precision exponent (legacy literals like 0.6666667): Fortran's
+! mixed-mode ** promotes the exponent to dp, so pow_r(x, dble(y))
+! matches x**y exactly
+elemental function pow_r_sp(x, y) result(pow_x)
+      double precision, intent(in) :: x
+      real, intent(in) :: y
+      double precision :: pow_x
+      pow_x = pow_r(x, dble(y))
+end function pow_r_sp
 
 ! ---------------------------------------------------------------
 ! 10**x for real x (MESA's definition): exact for integer x,
@@ -118,11 +156,25 @@ end function exp10
 ! ---------------------------------------------------------------
 ! Intrinsic backend: pure passthroughs, bit-identical to the
 ! expressions they replace at the call sites.
-elemental function pow(x, y) result(pow_x)
+elemental function pow_r(x, y) result(pow_x)
       double precision, intent(in) :: x, y
       double precision :: pow_x
       pow_x = x**y
-end function pow
+end function pow_r
+
+elemental function pow_i(x, iy) result(pow_x)
+      double precision, intent(in) :: x
+      integer, intent(in) :: iy
+      double precision :: pow_x
+      pow_x = x**iy
+end function pow_i
+
+elemental function pow_r_sp(x, y) result(pow_x)
+      double precision, intent(in) :: x
+      real, intent(in) :: y
+      double precision :: pow_x
+      pow_x = x**y
+end function pow_r_sp
 
 elemental function exp10(x) result(exp10_x)
       double precision, intent(in) :: x

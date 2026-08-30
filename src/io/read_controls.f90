@@ -1964,6 +1964,7 @@ end subroutine copy_inlists_used
 ! Write the full settings echo to the short/log stream (legacy
 ! layout, format statements local to this block).
 subroutine echo_settings
+      use math_lib
 ! 2026 log redesign: the PT TOL / O.S. / wind-index echo is deleted
 ! (settings provenance = the inlist_used copy in the output dir).
       star%tenv = 0.5d0*(tenv0 + tenv1)
@@ -1986,7 +1987,7 @@ subroutine echo_settings
 !CCCCC MOMENTUM LOSS.
             one_third = 1.0d0/3.0d0
             two_thirds = 2.0d0/3.0d0
-            constfactor = fk*2.036d33*1.452d9**alfa
+            constfactor = fk*2.036d33*pow(1.452d9, alfa)
             exmd = 1.0d0 - two_thirds*alfa
             wind_law_omega_exponent = 1.0d0 + 2.0d0*two_thirds*alfa
             exr = 2.0d0 - alfa
@@ -2057,7 +2058,7 @@ subroutine echo_settings
 ! INITIALIZE CONSTANT FACTOR FOR CENTRIFUGAL TERM
             c_2 = 0.0506
 ! SET THE CONSTANT FACTOR
-            constfactor = fk*pmmjd/pmmsolw**wind_law_omega_exponent
+            constfactor = fk*pmmjd/pow(pmmsolw, wind_law_omega_exponent)
 ! IF RELEVANT RESET THE SATURATION THRESHOLD IN
 ! TERMS OF THE SOLAR ROTATION RATE.  WMAX_SUN<1000
 ! INDICATES SATURATION (AT THE SUN), SO

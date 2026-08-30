@@ -25,6 +25,7 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
 
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: saha_mass_fractions(12)

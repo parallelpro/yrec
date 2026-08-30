@@ -94,6 +94,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       use phys_const_lib
       use yale_eos_lib
 
+      use math_lib
       implicit none
 
       double precision, intent(in) :: delta_time

@@ -33,6 +33,7 @@
 module stop_conditions
       use star_info_lib, only: star, i_h1, i_h2, i_he4
       use luout_lib
+      use math_lib
       implicit none
       private
       public :: step_continue, step_kind_card_done, step_leave_run_loop
@@ -115,7 +116,7 @@ logical function structure_limit_stop_triggered()
       integer :: k
 
       nk = star%job%nk
-      qval = [star%log_L, 10.0d0**star%log_Teff, star%log_g_surface, &
+      qval = [star%log_L, exp10(star%log_Teff), star%log_g_surface, &
               star%nu_max]
       qup = [star%job%log_L_upper_limit(nk), star%job%Teff_upper_limit(nk), &
              star%job%log_g_upper_limit(nk), star%job%nu_max_upper_limit(nk)]

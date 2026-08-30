@@ -39,6 +39,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       use star_info_lib, only: star
 
       use conductive_table_lib, only: cond_table
+      use math_lib
       implicit none
 
       double precision, intent(in) :: ion_charge, log10_temperature, &

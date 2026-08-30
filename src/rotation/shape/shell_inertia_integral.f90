@@ -18,6 +18,7 @@
 subroutine shell_inertia_integral(rotation_param, eta_squared, dlnr0_dlnr, r0_geom_factor, &
      moment_of_inertia_per_mass, di_domega_per_mass)
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: rotation_param, eta_squared, &
@@ -41,10 +42,10 @@ subroutine shell_inertia_integral(rotation_param, eta_squared, dlnr0_dlnr, r0_ge
       series_sum_domega = 0.0d0
       do term_idx = 1,5
          series_sum = series_sum + series_coeff(term_idx)* &
-              (term_idx*eta_squared + 5.0d0)*rotation_param**term_idx
+              (term_idx*eta_squared + 5.0d0)*pow(rotation_param, term_idx)
          series_sum_domega = series_sum_domega + &
               term_idx*series_coeff(term_idx)*(term_idx*eta_squared + &
-              5.0d0)*rotation_param**term_idx
+              5.0d0)*pow(rotation_param, term_idx)
       end do
       moment_of_inertia_per_mass = leading_factor*(1.0d0 + 1.5d-1*series_sum)
       di_domega_per_mass = leading_factor*(1.5d-1*series_sum_domega)

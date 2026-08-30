@@ -43,6 +43,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       use star_info_lib, only: star, json
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 !  DL,OL,X,Z,LOCOND USED BY OPACTY
 ! COMPUTES RADIATIVE GRADIENT AND COMPARES WITH ADIABATIC GRADIENT
@@ -144,12 +145,12 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       if(star%ctrl%spot_filling_factor .ne. 0.00)then
          if(star%ctrl%spot_depth_varies)then
             ateffl = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
-                 star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
-            deepx = 1.0 - (1.0 - star%ctrl%spot_temp_contrast)*(10.**ateffl)/(10.**log_temperature)
+                 pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
+            deepx = 1.0 - (1.0 - star%ctrl%spot_temp_contrast)*(exp10(ateffl))/(exp10(log_temperature))
          else
             deepx = star%ctrl%spot_temp_contrast
          endif
-         deldel = radiative_gradient/(star%ctrl%spot_filling_factor * deepx**4.0 + &
+         deldel = radiative_gradient/(star%ctrl%spot_filling_factor * pow(deepx, 4.0) + &
               1.0 - star%ctrl%spot_filling_factor) - adiabatic_gradient
       endif
 ! G Somers END
@@ -185,7 +186,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       v = 1.0d0/a1
       a3 = 0.75d0*phi2*phiphi/a1
       a3p = 3.0d0*a3
-      if(a3.gt.1.0d+3) v = a3**(-0.333333333d0)
+      if(a3.gt.1.0d+3) v = pow(a3, (-0.333333333d0))
       do iter = 1,25
        v = dmin1(v,1.0d0)
        vp = a1 + v*(2.0d0 + v*a3p)
@@ -224,7 +225,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
 ! delpm (originally DELPM) is computed here but never subsequently
 ! read; preserved as dead code from the original.
       delpm = actual_gradient-v*v*deldel
-      rrr = 10.0d0**log_radius
+      rrr = exp10(log_radius)
       if(want_derivatives) then
 ! DERIVATIVES OF CONVECTIVE GRADIENT
        qdelat = adiabatic_gradient_dt*adiabatic_gradient

@@ -26,6 +26,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       use star_info_lib, only: star, json
       use phys_const_lib
       use numerics_lib
+      use math_lib
       implicit none
 ! the shape integrand passed to numerics' qgauss (phase four, step 2)
       external equipotential_integrand

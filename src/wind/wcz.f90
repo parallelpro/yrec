@@ -23,6 +23,7 @@ subroutine wcz(log_density, specific_angular_momentum, log_radius, &
       use star_info_lib, only: star
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_density(json)

@@ -423,6 +423,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       use opal_eos_lib
       use phys_const_lib
       use scv_eos_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, metal_fraction, &

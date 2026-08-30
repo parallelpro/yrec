@@ -31,6 +31,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
 
       use star_info_lib
       use phys_const_lib
+      use math_lib
       implicit none
       integer, intent(in) :: num_eq_points
       double precision, intent(in) :: species_fraction(3,json), &
@@ -120,7 +121,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
          do ii=1,num_species-1
             ni=ni+concen(ii)*ne
          enddo
-         ao=(0.23873d0/ni)**cc13
+         ao=pow((0.23873d0/ni), cc13)
 !        calculate Debye length (LAMBDAD):
          cz=0.d0
          do ii=1,num_species
@@ -134,7 +135,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
             do jj=1,num_species
                xij=2.3939d3*t*lambda/abs(atomic_charge(ii)*atomic_charge(jj))
                coulomb_log(ii,jj)=0.81245d0 &
-               *log(1.d0+0.18769d0*xij**1.2d0)
+               *log(1.d0+0.18769d0*pow(xij, 1.2d0))
           enddo
          enddo
 !
@@ -149,12 +150,12 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
 !        JvS 01/26 Added support for FGRY and FGRZ modifications
 !        to diffusion coefficients.
 !         FAC=HRU_I**2*HTU_I**2.5D0/LN_LAMBDA
-         fac=hru_i**2*htu_i**2.5d0/ln_lambda
+         fac=hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          if(species_col.eq.1)then
-            fac=star%ctrl%fgry*hru_i**2*htu_i**2.5d0/ln_lambda
+            fac=star%ctrl%fgry*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          endif
          if(species_col.eq.3)then
-            fac=star%job%fgrz*hru_i**2*htu_i**2.5d0/ln_lambda
+            fac=star%job%fgrz*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          endif
 !        collect the first diffusion terms for hydroden.
 !        collect the third diffusion terms for everything else.

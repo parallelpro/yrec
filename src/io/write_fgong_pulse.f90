@@ -22,6 +22,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
       use star_info_lib, only: star
       use phys_const_lib
+      use math_lib
       implicit none
 
       integer, intent(in) :: n
@@ -45,7 +46,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
 ! glob(6) (mixing length alpha), glob(11)/glob(12) (central second
 ! derivatives) not tracked here -- zero, as tools tolerate.
       glob(13) = star%dage*1.0d9
-      glob(14) = 10.0d0**star%log_Teff
+      glob(14) = exp10(star%log_Teff)
       glob(15) = exp(ln10*cgl)
 
 ! MESA-style 4-line comment header (FGONG spec: lines 1-4 free text),

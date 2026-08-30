@@ -21,6 +21,7 @@ subroutine opal92_interp2d_z2(temperature, density, abund_index, temp_index, &
 
       use opacity_table_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17
@@ -108,7 +109,7 @@ subroutine opal92_interp2d_z2(temperature, density, abund_index, temp_index, &
 !! GET THE PARTIAL DERIVATIVE OF OL WRT T.
       call intpol(xt, yto, jt, temperature, ol00, dlnkap_dlnt)
       log10_opacity = ol00
-      opacity = 10.0d0**log10_opacity
+      opacity = exp10(log10_opacity)
 ! QOTF = D LN(O)/D LN(T)
 !! FIND THE PARTIAL DERIVATIVE VALUE OF OL WRT D IN THE GIVEN T AND D
       call intpol(xt, aqod, jt, temperature, dlnkap_dlnrho, unused_ddensity_dtemp)

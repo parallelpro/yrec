@@ -16,6 +16,7 @@ subroutine build_kurucz_splines(ierr)
 
       use opacity_table_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer, intent(out) :: ierr
       integer, parameter :: num_t = 60

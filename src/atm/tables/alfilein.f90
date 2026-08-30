@@ -41,6 +41,7 @@ subroutine alfilein(allard_table_path, ierr)
 
       use atm_table_lib
       use luout_lib
+      use math_lib
       implicit none
       integer, parameter :: nta = 250
       integer, parameter :: nga = 25

@@ -22,6 +22,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       use atm_table_lib
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(inout) :: log10_optical_depth

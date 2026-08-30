@@ -276,6 +276,7 @@ end subroutine prepare_surface_boundary
 ! reduced step on failure, ierr after maxstp steps. Skipped
 ! entirely when a tabulated boundary supplied the pressure.
 subroutine integrate_atmosphere
+      use math_lib
 ! 2026 (.store convergence): the count is zeroed on every entry so a
 ! skipped integration (tabulated surface boundary) leaves an
 ! accurate "no atmosphere points" state rather than the previous
@@ -533,6 +534,7 @@ end subroutine integrate_atmosphere
 ! (inverted to inward-out at the end), with step limiting at the
 ! fitting point; ierr after maxstp steps.
 subroutine integrate_envelope
+      use math_lib
 ! DBG PULSE WRITE END OF DATA INDICATOR
 ! DBG
 !  IF ENVELOPE MASS(SENV) SMALL ENOUGH,SKIP ENVELOPE INTEGRATION.
@@ -716,8 +718,8 @@ subroutine integrate_envelope
                   cz_in_envelope = .true.
                endif
             else if(star%current_velocity.gt.0.0d0)then
-               delta_radius_cz = 10.0d0**env_struct%env_log10_radius(env_struct%num_env_points-1) - &
-                    10.0d0**env_struct%env_log10_radius(env_struct%num_env_points)
+               delta_radius_cz = exp10(env_struct%env_log10_radius(env_struct%num_env_points-1)) - &
+                    exp10(env_struct%env_log10_radius(env_struct%num_env_points))
                taucz_env_accum = taucz_env_accum + delta_radius_cz/star%current_velocity
             endif
          endif

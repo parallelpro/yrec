@@ -21,6 +21,7 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
       use star_info_lib, only: star
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: eta_squared(json), log_radius(json), &

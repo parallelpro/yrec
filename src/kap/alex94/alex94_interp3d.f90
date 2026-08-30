@@ -15,6 +15,7 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
       use opacity_table_lib
       use phys_const_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer, parameter :: num_x = 7
       integer, parameter :: num_z = 15

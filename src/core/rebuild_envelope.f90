@@ -25,6 +25,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       use envstruct_lib
       use phys_const_lib
       use yale_eos_lib
+      use math_lib
       implicit none
       integer, intent(out) :: ierr
       integer :: jerr_atm
@@ -162,7 +163,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       if(convective_flag(num_zones).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
            star%ctrl%spot_temp_contrast.ne.1.0)then
          spot_adjusted_log_teff = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
-              star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
+              pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
       else
          spot_adjusted_log_teff = log_teff
       endif
@@ -326,13 +327,13 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! ADD THE UNLOGGED MASSES OF THE NEW SHELLS (HS1) AND COMPUTE THE
 ! MASS CONTENTS OF THE NEW SHELLS (HS2).
       do zone_index = old_num_zones,num_zones
-         enclosed_mass(zone_index) = 10.0D0**log_mass(zone_index)
+         enclosed_mass(zone_index) = exp10(log_mass(zone_index))
       end do
       do zone_index = old_num_zones,num_zones-1
          shell_mass(zone_index) = 0.5D0*(enclosed_mass(zone_index+1)-enclosed_mass(zone_index-1))
       end do
       mass_at_base = 0.5D0*(enclosed_mass(num_zones)+enclosed_mass(num_zones-1))
-      shell_mass(num_zones) = 10.0D0**log_total_mass - mass_at_base
+      shell_mass(num_zones) = exp10(log_total_mass) - mass_at_base
 ! RECOMPUTE TERMS RELATED TO ROTATION.
       if(star%job%rotation_active)then
 ! FIRST GUESS AT THE ROTATION RATES; ASSIGN A
@@ -342,22 +343,22 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! CONSTANT J/M
             do zone_index = old_num_zones+1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum(old_num_zones)
-               moment_of_inertia(zone_index) = cc23*10.0D0**(2.0D0*log_radius(zone_index))
+               moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
             end do
          else if(star%ctrl%walpcz.ge.0.0D0)then
 ! SOLID BODY ROTATION
             do zone_index = old_num_zones+1,num_zones
                omega(zone_index) = omega(old_num_zones)
-               moment_of_inertia(zone_index) = cc23*10.0D0**(2.0D0*log_radius(zone_index))
+               moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                specific_angular_momentum(zone_index) = omega(old_num_zones)*moment_of_inertia(zone_index)
             end do
          else
 ! GENERAL CASE
-            omega_ref = omega(old_num_zones)*10.0D0**(log_radius(old_num_zones)*star%ctrl%walpcz)
+            omega_ref = omega(old_num_zones)*exp10((log_radius(old_num_zones)*star%ctrl%walpcz))
             do zone_index = old_num_zones+1,num_zones
-               omega(zone_index) = omega_ref/10.0D0**(log_radius(zone_index)*star%ctrl%walpcz)
-               moment_of_inertia(zone_index) = cc23*10.0D0**(2.0D0*log_radius(zone_index))
+               omega(zone_index) = omega_ref/exp10((log_radius(zone_index)*star%ctrl%walpcz))
+               moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                specific_angular_momentum(zone_index) = omega(zone_index)*moment_of_inertia(zone_index)
             end do
          endif

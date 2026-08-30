@@ -31,6 +31,7 @@ subroutine altabinit(ierr)
 
       use atm_table_lib
       use luout_lib
+      use math_lib
       implicit none
       integer, parameter :: nta = 250
       integer, parameter :: nga = 25
@@ -101,7 +102,7 @@ subroutine altabinit(ierr)
             if (atm_table%allard_log10_pressure(i,j) .lt. -998d0) then
               table_is_bad = .true.
               write(run_log_unit,900) 'ALTABINIT: Bad input Allard Table: ', &
-                 'TEFF, GL: ', 10d0**atm_table%allard_teffl_grid(i), atm_table%allard_gl_grid(j)
+                 'TEFF, GL: ', pow(10d0, atm_table%allard_teffl_grid(i)), atm_table%allard_gl_grid(j)
   900              format(2a,f5.0,f7.2)
             endif
          enddo
@@ -121,7 +122,7 @@ subroutine altabinit(ierr)
             table_is_bad = .true.
             write(run_log_unit,920) 'ALTABINIT: Bad input Allard Table: ', &
               'Row with less that 4 elements: i,#,Teff,GLMin,GLmax: ', &
-               i,j2-j1+1,10d0**atm_table%allard_teffl_grid(i),atm_table%allard_gl_row_min(i),atm_table%allard_gl_row_max(i)
+               i,j2-j1+1,pow(10d0, atm_table%allard_teffl_grid(i)),atm_table%allard_gl_row_min(i),atm_table%allard_gl_row_max(i)
   920            format(2a,2i4,2x,3f7.2)
          endif
       enddo

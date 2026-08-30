@@ -26,6 +26,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
       use star_info_lib, only: star, json
       use luout_lib
       use eos_lib, only: eos_set_mixture
+      use math_lib
       implicit none
 
       double precision, intent(in) :: luminosity_array(json)
@@ -206,12 +207,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             env_mass_new = env_mass_old + delta_env_mass
 
 ! ** Reduce either total mass outside core OR the standard envelope only ***
-            if((((10d0**total_mass_log)/star%solar_mass_cgs)-core_mass_old).ge.0.01d0) then
+            if((((pow(10d0, total_mass_log))/star%solar_mass_cgs)-core_mass_old).ge.0.01d0) then
 ! ************
-      write(*,*)'Entering old method ',(10**total_mass_log-10**shell_mass_log(num_zones))/ &
-                                        (10**shell_mass_log(num_zones)-10**shell_mass_log(shell_begin-1))
-      write(*,*)'SENV ',10**total_mass_log - 10**shell_mass_log(num_zones)
-      write(*,*)'Envelope ',10**shell_mass_log(num_zones) - 10**shell_mass_log(shell_begin-1)
+      write(*,*)'Entering old method ',(exp10(total_mass_log)-exp10(shell_mass_log(num_zones)))/ &
+                                        (exp10(shell_mass_log(num_zones))-exp10(shell_mass_log(shell_begin-1)))
+      write(*,*)'SENV ',exp10(total_mass_log) - exp10(shell_mass_log(num_zones))
+      write(*,*)'Envelope ',exp10(shell_mass_log(num_zones)) - exp10(shell_mass_log(shell_begin-1))
 ! ************
 
 ! **************************************************************************
@@ -237,13 +238,13 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 ! *****************************************************
 
 !            HSTOT = HSTOT + HSTOT1
-        total_mass_log=log10(10**shell_mass_log(shell_end)+mass_scale_factor*(10**total_mass_log-10**shell_mass_log(shell_end)))
+        total_mass_log=log10(exp10(shell_mass_log(shell_end))+mass_scale_factor*(exp10(total_mass_log)-exp10(shell_mass_log(shell_end))))
 
             star_mass = star%job%rescale_params(1,run_index)
             star%stotal = total_mass_log
             do zone_idx = shell_end+1,num_zones
-        shell_mass_log(zone_idx)=log10(10**shell_mass_log(shell_end)+ &
-             mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_end)))
+        shell_mass_log(zone_idx)=log10(exp10(shell_mass_log(shell_end))+ &
+             mass_scale_factor*(exp10(shell_mass_log(zone_idx))-exp10(shell_mass_log(shell_end))))
             end do
             env_mass_old = env_mass_new
 ! *****
@@ -252,13 +253,13 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
          else
 
 ! ************
-      write(*,*)'Entering new method ',(10**total_mass_log-10**shell_mass_log(num_zones))/ &
-                                        (10**shell_mass_log(num_zones)-10**shell_mass_log(shell_begin-1))
-      write(*,*)'SENV ',10**total_mass_log - 10**shell_mass_log(num_zones)
-      write(*,*)'Envelope ',10**shell_mass_log(num_zones) - 10**shell_mass_log(shell_begin-1)
+      write(*,*)'Entering new method ',(exp10(total_mass_log)-exp10(shell_mass_log(num_zones)))/ &
+                                        (exp10(shell_mass_log(num_zones))-exp10(shell_mass_log(shell_begin-1)))
+      write(*,*)'SENV ',exp10(total_mass_log) - exp10(shell_mass_log(num_zones))
+      write(*,*)'Envelope ',exp10(shell_mass_log(num_zones)) - exp10(shell_mass_log(shell_begin-1))
 ! ************
 !           *** print debug info ***
-            env_mass_check = ((10**total_mass_log)/star%solar_mass_cgs)-core_mass_old
+            env_mass_check = ((exp10(total_mass_log))/star%solar_mass_cgs)-core_mass_old
             if(env_mass_check.le.0.0d0)then
                write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
                ! 2026 (phase five, step B): stop converted to ierr; run_yrec
@@ -276,14 +277,14 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 !        write(*,*)'smass',SMASS
 
 !            HSTOT = HSTOT + HSTOT1
-       total_mass_log=log10(10**shell_mass_log(shell_begin-1)+ &
-            mass_scale_factor*(10**total_mass_log-10**shell_mass_log(shell_begin-1)))
+       total_mass_log=log10(exp10(shell_mass_log(shell_begin-1))+ &
+            mass_scale_factor*(exp10(total_mass_log)-exp10(shell_mass_log(shell_begin-1))))
 
             star_mass = star%job%rescale_params(1,run_index)
             star%stotal = total_mass_log
             do zone_idx = shell_begin,num_zones
-      shell_mass_log(zone_idx)=log10(10**shell_mass_log(shell_begin-1)+ &
-           mass_scale_factor*(10**shell_mass_log(zone_idx)-10**shell_mass_log(shell_begin-1)))
+      shell_mass_log(zone_idx)=log10(exp10(shell_mass_log(shell_begin-1))+ &
+           mass_scale_factor*(exp10(shell_mass_log(zone_idx))-exp10(shell_mass_log(shell_begin-1))))
             end do
             env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
             env_mass_total_check=(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
@@ -338,8 +339,8 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
                           (exp(ln10*shell_mass_log(num_zones))-shell_mass_prev)
 
             do zone_idx = shell_end+1,num_zones
-        shell_mass_log(zone_idx)=log10(10**shell_mass_log(num_zones)- &
-             mass_scale_factor*(10**shell_mass_log(num_zones)-10**shell_mass_log(zone_idx)))
+        shell_mass_log(zone_idx)=log10(exp10(shell_mass_log(num_zones))- &
+             mass_scale_factor*(exp10(shell_mass_log(num_zones))-exp10(shell_mass_log(zone_idx))))
             end do
 
          endif
@@ -366,7 +367,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
            .and.(star%job%rsclzm2(run_index).gt.0d0))then
             z_ramp_slope = (star%znew - star%job%rsclzc(run_index))/(star%job%rsclzm2(run_index)-star%job%rsclzm1(run_index))
             do zone_idx = 1,num_zones
-               mass_fraction_local = 10.0d0**shell_mass_log(zone_idx)/(star_mass*star%solar_mass_cgs)
+               mass_fraction_local = exp10(shell_mass_log(zone_idx))/(star_mass*star%solar_mass_cgs)
                if (mass_fraction_local .lt. star%job%rsclzm1(run_index)) then
                   z_rescale_factor = (composition(3,zone_idx)-star%job%rsclzc(run_index))/composition(3,zone_idx)
                   composition(3,zone_idx) = star%job%rsclzc(run_index)

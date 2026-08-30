@@ -14,6 +14,7 @@ subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fractio
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       use opacity_table_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17
@@ -80,7 +81,7 @@ subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fractio
          log10_opacity = (ol1-ol0)*grdnt + ol0
          qodi = (qod1-qod0)*grdnt + qod0
          qoti = (qot1-qot0)*grdnt + qot0
-         opacity = 10.0d0**log10_opacity
+         opacity = exp10(log10_opacity)
       endif
 ! CONVERSION FROM THE DERIVATIVE WITH CONSTANT RHOT3 TO CONSTANT RHO
       dlnkap_dlnrho = qodi

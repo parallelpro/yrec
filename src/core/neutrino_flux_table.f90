@@ -31,6 +31,7 @@ subroutine neutrino_flux_table
       use luout_lib
       use phys_const_lib
       use burn_lib
+      use math_lib
       implicit none
 
       double precision :: shell_center_mass(json), shell_mass(json)

@@ -22,6 +22,7 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
@@ -91,10 +92,10 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! IF NOT, USE A SERIES OF SMALL STEPS.
 ! MHP 12/91 CAP LOSS RATE AT WSAT.
          domega_test = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
-              (mass_loss_rate_msun_yr/1.0d-14)**star%ctrl%exmd &
-              *omega_surface*(total_radius_cm/star%solar_radius_cgs)**star%ctrl%exr* &
-              total_mass_msun**star%ctrl%exm &
-              *min(omega_surface,omega_saturation)**(star%ctrl%wind_law_omega_exponent-1.0d0)
+              pow((mass_loss_rate_msun_yr/1.0d-14), star%ctrl%exmd) &
+              *omega_surface*pow((total_radius_cm/star%solar_radius_cgs), star%ctrl%exr)* &
+              pow(total_mass_msun, star%ctrl%exm) &
+              *pow(min(omega_surface,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))
          if(domega_test.gt.omega_surface)then
             num_substeps = int(domega_test/omega_surface)+1
             sub_timestep = full_timestep/dfloat(num_substeps)
@@ -119,10 +120,10 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             iter_count = iter_count + 1
             omega_iter_new = omega_substep_start - (sub_timestep/ &
                  cz_moment_of_inertia)*star%ctrl%constfactor* &
-                 (mass_loss_rate_msun_yr/1.0d-14)**star%ctrl%exmd &
-                 *omega_iter*(total_radius_cm/star%solar_radius_cgs)**star%ctrl%exr* &
-                 total_mass_msun**star%ctrl%exm &
-                 *min(omega_iter,omega_saturation)**(star%ctrl%wind_law_omega_exponent-1.0d0)
+                 pow((mass_loss_rate_msun_yr/1.0d-14), star%ctrl%exmd) &
+                 *omega_iter*pow((total_radius_cm/star%solar_radius_cgs), star%ctrl%exr)* &
+                 pow(total_mass_msun, star%ctrl%exm) &
+                 *pow(min(omega_iter,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))
             domega_relative_change = 2.0d0*abs((omega_iter_prev-omega_iter_new)/ &
                  (omega_iter_prev+omega_iter_new))
 !         WRITE(*,4)WS,W,WNEW,DW,HICZ

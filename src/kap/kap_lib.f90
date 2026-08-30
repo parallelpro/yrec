@@ -16,6 +16,7 @@
 ! and argument list are otherwise unchanged from getopac.
 module kap_lib
       use opacity_table_lib
+      use math_lib
       implicit none
 ! Everything is private unless exported below (2026: kap_get is the
 ! single public query -- the named-index result-array form; the
@@ -166,7 +167,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                     (star%ctrl%kurucz_table_z1 - star%ctrl%kurucz_table_z2)
                atm_log10_opacity = atm_log10_opacity_2 + &
                     (metal_fraction - star%ctrl%kurucz_table_z2)*slope
-               atm_opacity = 10.0d0**atm_log10_opacity
+               atm_opacity = exp10(atm_log10_opacity)
                slope = (atm_dlnkap_dlnrho - atm_dlnkap_dlnrho_2) / &
                     (star%ctrl%kurucz_table_z1 - star%ctrl%kurucz_table_z2)
                atm_dlnkap_dlnrho = atm_dlnkap_dlnrho_2 + &
@@ -248,7 +249,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          slope = (log10_opacity - purez_log10_opacity) / &
               (table_metal_fraction - 1.0d0)
          log10_opacity = purez_log10_opacity + (metal_fraction - 1.0d0)*slope
-         opacity = 10.0d0**log10_opacity
+         opacity = exp10(log10_opacity)
          slope = (dlnkap_dlnrho - purez_dlnkap_dlnrho) / &
               (table_metal_fraction - 1.0d0)
          dlnkap_dlnrho = purez_dlnkap_dlnrho + &
@@ -299,7 +300,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  (star%ctrl%opal_table_z1 - star%ctrl%opal_table_z2)
             log10_opacity = log10_opacity_2 + &
                  (metal_fraction - star%ctrl%opal_table_z2)*slope
-            opacity = 10.0d0**log10_opacity
+            opacity = exp10(log10_opacity)
             slope = (dlnkap_dlnrho - dlnkap_dlnrho_2) / &
                  (star%ctrl%opal_table_z1 - star%ctrl%opal_table_z2)
             dlnkap_dlnrho = dlnkap_dlnrho_2 + &
@@ -334,7 +335,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  (star%ctrl%laol_table_z1 - star%ctrl%laol_table_z2)
             log10_opacity = log10_opacity_2 + &
                  (metal_fraction - star%ctrl%laol_table_z2)*slope
-            opacity = 10.0d0**log10_opacity
+            opacity = exp10(log10_opacity)
             slope = (dlnkap_dlnrho - dlnkap_dlnrho_2) / &
                  (star%ctrl%laol_table_z1 - star%ctrl%laol_table_z2)
             dlnkap_dlnrho = dlnkap_dlnrho_2 + &
@@ -413,7 +414,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  (3.5853d0 + 0.1386d0*log10_density)*log10_density + &
                  (5.1324d0 - 0.3219d0*log10_temperature)*log10_temperature + &
                  0.3901d0*log10_density*log10_temperature
-            conductive_opacity = 10.0d0**log10_conductive_opacity
+            conductive_opacity = exp10(log10_conductive_opacity)
             conductive_dlnkap_dlnrho = 0.3901d0*log10_temperature - &
                  0.2772d0*log10_density - 3.5853d0
             conductive_dlnkap_dlnt = 0.3901d0*log10_density - &

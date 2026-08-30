@@ -17,6 +17,7 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
      species_begin, species_end, substep_counts, converged)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
+      use math_lib
       implicit none
 
       double precision, intent(in) :: timestep

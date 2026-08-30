@@ -15,6 +15,7 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
       use star_info_lib, only: star, json
+      use math_lib
       implicit none
 
 ! previous_timestep: previous model timestep.
