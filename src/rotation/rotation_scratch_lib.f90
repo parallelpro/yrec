@@ -171,6 +171,22 @@ module rotation_scratch_lib
            double precision :: solar_wind_mass_loss_rate_msun_yr, &
                 wind_reference_omega, wind_max_omega
            logical :: use_rotation_scaled_solar_wind
+! ---- midpoint-in-time structure (2026 de-tramp, ROADMAP item 3) ----
+! The stellar structure interpolated to the middle of the current
+! diffusion sub-step: filled by mid_timestep_model, consumed by
+! secular_transport and evolve_angular_momentum's other callees.
+! Formerly 13 locals of evolve_angular_momentum trampled through both
+! signatures. Reads only ever follow a write in the same driver call
+! (the .not.first_call seeding reads the previous sub-step's values),
+! so module lifetime changes nothing; yrec_reset snapshots it anyway.
+           double precision :: eta_squared_mid(json), &
+                log_density_mid(json), hg_mid(json), &
+                moment_of_inertia_mid(json), log_luminosity_mid(json), &
+                log_pressure_mid(json), log_radius_mid(json), &
+                log_temperature_mid(json), omega_mid(json), &
+                mean_radius_mid(json), qiw_mid(json)
+           logical :: convective_flag_mid(json), &
+                am_transport_convective_flag_mid(json)
       end type rotation_diffusion_state
 ! ---- from state/mdphy_lib.f90 ----
       type, public :: mdphy_state
