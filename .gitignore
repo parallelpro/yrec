@@ -25,3 +25,4 @@ fort.*
 *.smod
 src/.crmath_mode_*
 src/.hdf5_mode_*
+src/*/test/test_*.short
