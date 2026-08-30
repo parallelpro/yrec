@@ -37,7 +37,7 @@ control	fliv95	string	''*	opal95_opacity_table_file	verified		OPAL/Livermore 199
 control	fmonte1	string	''*	monte_carlo_file1_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
 control	fmonte2	string	''*	monte_carlo_file2_path	canonical		former common/iomonte/: monte_carlo_file1_path/monte_carlo_file2_path (originally fmonte1/fmonte2) are NAMELIST values with different canonical spellings, kept local in c
 control	kindrn	integer(50)	0*	run_kind	verified		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)
-control	lfirst	logical(50)	.false.*	first_call_flag	canonical		
+control	lfirst	logical(50)	.true.	first_call_flag	canonical		DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly.
 control	lzramp	logical	.false.	use_z_ramp	canonical		
 control	lteff	logical	.false.*	specify_teff_flag	canonical		
 control	lcalst	logical	.false.*	calibrate_star_flag	canonical		

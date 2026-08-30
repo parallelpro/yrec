@@ -147,8 +147,9 @@
       ! (legacy name: kindrn)
       run_kind = 0   ! (implicit)
 
+      ! DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly.
       ! (legacy name: lfirst)
-      first_call_flag = .false.   ! (implicit)
+      first_call_flag = .true.
 
       ! (legacy name: lzramp)
       use_z_ramp = .false.
