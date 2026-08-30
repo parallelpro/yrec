@@ -337,7 +337,14 @@ subroutine integrate_atmosphere
       eos_res(i_cp_dp) = specific_heat_cp_dp
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state)
+           saha_state, ierr=jerr)
+      if (jerr /= 0) then
+         if (present(ierr)) then
+            ierr = jerr
+            return
+         end if
+         stop
+      end if
       temperature = eos_res(i_temperature)
       pressure = eos_res(i_pressure)
       log10_density = eos_res(i_log10_density)
@@ -363,7 +370,14 @@ subroutine integrate_atmosphere
 ! DBG 12/95 GET OPACITY (log10_density just unpacked = eqstat's
 ! returned density, the historical inout dataflow)
       call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
-           metal_fraction, kap_res, ion_fraction)
+           metal_fraction, kap_res, ion_fraction, ierr=jerr)
+      if (jerr /= 0) then
+         if (present(ierr)) then
+            ierr = jerr
+            return
+         end if
+         stop
+      end if
       opacity = kap_res(i_kap)
       log10_opacity = kap_res(i_log10_kap)
       dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)

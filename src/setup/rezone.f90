@@ -969,7 +969,8 @@ subroutine interpolate_onto_new_grid
       if (dabs(star%xnew-star%xa(i_h1,star%nz)).gt.1.0D-8) then
                star%xnew = star%xa(i_h1,star%nz)
                star%znew = star%xa(i_metals,star%nz)
-               call kap_update_surface_tables(star%xnew)
+               call kap_update_surface_tables(star%xnew, ierr=ierr)
+               if (ierr /= 0) return
 
       end if
 end subroutine interpolate_onto_new_grid

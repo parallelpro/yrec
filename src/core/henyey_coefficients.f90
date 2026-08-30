@@ -178,7 +178,8 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          call eos_get(zone_log_temperature, zone_log_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_state, &
-              composition_at_zone=star%xa(:,im))
+              composition_at_zone=star%xa(:,im), ierr=ierr)
+         if (ierr /= 0) return
          dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
          dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
 ! eqstat historically updated zone_log10_density in place; the tail
@@ -188,7 +189,8 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
 ! historical inout dataflow)
          call kap_get(eos_res(i_log10_density), zone_log_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &
-              eos_res(i_fxion:i_fxion+2))
+              eos_res(i_fxion:i_fxion+2), ierr=ierr)
+         if (ierr /= 0) return
          star%iovim = im
          call temperature_gradients_r(zone_log_temperature, zone_log_pressure, &
               eos_res, kap_res, zone_log_radius, zone_log_mass, &

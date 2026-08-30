@@ -783,11 +783,13 @@ subroutine rescale_and_refit_envelope
                call eos_get(log10_temperature, log10_pressure, &
                     hydrogen_fraction, metal_fraction, eos_res, &
                     want_derivatives, in_atmosphere, saha_state, &
-                    composition_at_zone=star%xa(:,star%nz))
+                    composition_at_zone=star%xa(:,star%nz), ierr=ierr)
+               if (ierr /= 0) return
 ! kap at eqstat's returned density -- the historical inout dataflow
                call kap_get(eos_res(i_log10_density), log10_temperature, &
                     hydrogen_fraction, metal_fraction, kap_res, &
-                    eos_res(i_fxion:i_fxion+2))
+                    eos_res(i_fxion:i_fxion+2), ierr=ierr)
+               if (ierr /= 0) return
                star%iovim = -1
                call temperature_gradients_r(log10_temperature, log10_pressure, &
                     eos_res, kap_res, log10_radius, log10_mass, &
@@ -1173,7 +1175,8 @@ subroutine update_surface_mixture
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
       end if
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
-      call kap_update_surface_tables(star%envelope_hydrogen_fraction)
+      call kap_update_surface_tables(star%envelope_hydrogen_fraction, ierr=ierr)
+      if (ierr /= 0) return
       if (use_scv_eos) then
          call build_scv_envelope_table
       endif

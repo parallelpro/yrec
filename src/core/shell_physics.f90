@@ -107,10 +107,12 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          call eos_get(log10_temperature, log10_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_state, &
-              composition_at_zone=composition(:,im))
+              composition_at_zone=composition(:,im), ierr=ierr)
+         if (ierr /= 0) return
          call kap_get(eos_res(i_log10_density), log10_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &
-              eos_res(i_fxion:i_fxion+2))
+              eos_res(i_fxion:i_fxion+2), ierr=ierr)
+         if (ierr /= 0) return
          star%iovim = im
          call temperature_gradients_r(log10_temperature, log10_pressure, &
               eos_res, kap_res, log10_radius, log10_mass, &
