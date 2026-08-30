@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 core/burn_lib.f90 core/envint_lib.f90 core/monte_carlo.f90 core/observables_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/rotation_scratch_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 core/burn_lib.f90 core/envint_lib.f90 core/monte_carlo.f90 core/observables_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/rotation_scratch_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -37,6 +37,8 @@ intpar_lib.mod: numerics/intpar_lib.o
 kap_lib.mod: kap/kap_lib.o
 	@true
 luout_lib.mod: io/luout_lib.o
+	@true
+math_lib.mod: math/math_lib.o
 	@true
 mhd_eos_lib.mod: eos/mhd_eos_lib.o
 	@true
