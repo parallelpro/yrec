@@ -1345,7 +1345,10 @@ subroutine read_input(ierr)
 !      CLOSE(IRUN)
 
 ! Dynamically create format string so version info is nicely spaced
-      write(version_fmt, 315) len_trim(yrec_version_string), len_trim(git_hash_string)
+! max(1,...): a zero width (A00) is illegal -- belt and braces on top
+! of setversion's empty-hash guard
+      write(version_fmt, 315) max(1, len_trim(yrec_version_string)), &
+           max(1, len_trim(git_hash_string))
       315 format('(''# YREC v'', A', i2.2, ', '' ('', A', i2.2, &
            &        ', '')'')')
 

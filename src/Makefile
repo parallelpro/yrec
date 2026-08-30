@@ -164,14 +164,20 @@ endif
 # Test for presence of git command for version hash collection.
 GIT_AVAIL := $(shell command -v git)
 ifdef GIT_AVAIL
-REPO_DIRTY := $(shell command git diff --name-only --quiet .; echo $$?)
-SHORT_HASH := $(shell command git rev-parse --short HEAD)
+REPO_DIRTY := $(shell command git diff --name-only --quiet . 2>/dev/null; echo $$?)
+SHORT_HASH := $(shell command git rev-parse --short HEAD 2>/dev/null)
 ifeq ($(REPO_DIRTY),1)
   REPO_HASH=$(SHORT_HASH)-dirty
 else
   REPO_HASH=$(SHORT_HASH)
 endif
 else
+  REPO_HASH=unknown
+endif
+# git present but the tree is not a checkout (an rsync-deployed source
+# tree on a cluster): rev-parse fails and SHORT_HASH is empty, leaving
+# REPO_HASH "" or "-dirty" -- normalize to unknown.
+ifeq ($(strip $(SHORT_HASH)),)
   REPO_HASH=unknown
 endif
 
