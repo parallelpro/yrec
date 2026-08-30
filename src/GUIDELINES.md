@@ -178,6 +178,46 @@ For each file:
   code pattern for domains still entangled with the solver (`eos`,
   `kap`, etc. -- see below).
 
+
+## Verification tiers (2026): match the gate to the blast radius
+
+Running the full battery on every commit is waste; running too little
+invites silent physics drift. The tiers below match what a change can
+actually break. CI (build + domain tests + the Linux solar-regression
+job with its run-twice byte-compare, physics tolerances, and error-path
+checks) backstops every push, and the generated .mod-prerequisite
+dependencies (deps.mk) have removed the stale-object risk that once
+justified blanket clean-build paranoia.
+
+**Tier 0 -- always (seconds):** `make -j4` + `tools/check_boundaries.py`.
+
+**Tier 1 -- the default per-commit gate (~1.5 min):** Tier 0 plus ONE
+legacy solar byte-pin (the noGS_norot case, git-hash line excluded).
+Sufficient for: comment/doc changes, tools/tests/CI changes, renames
+with no layout change, io changes that a pin would catch.
+
+**Tier 2 -- targeted (add the affected suite):** Tier 1 plus exactly
+the test file(s) owning the touched subsystem:
+  registry / converter / reader namelists  -> test_inlist_convert.py
+  module state, init/reset paths           -> test_reentry.py
+  error paths                              -> test_error_exit.py
+  history/profile/pulse writers            -> test_mesa_output.py +
+                                              the MESA byte pins
+  flag-gated physics (mixing/rotation/wind)-> the config-matrix cases
+  stop conditions                          -> test_stop_conditions.py
+
+**Tier 3 -- full battery (only for these change classes):** derived-type
+layout changes (star_info / controls_state members), output-format
+changes (with the deliberate reseed ritual), cross-cutting renames or
+interface changes touching many domains, and anything where a Tier-1/2
+result surprised you. Full battery = gate3 (3 legacy pins + MESA pins)
++ config matrix + reentry + convert + error_exit + physics + domain
+tests + boundaries.
+
+Never run two batteries (or a battery and a build) concurrently in this
+tree -- concurrent makes and shared example output/ dirs corrupt both
+(learned the hard way, twice).
+
 ## Physics domains still entangled with the solver (eos, kap, nuclear,
 ## atm, wind, mixing, rotation)
 
