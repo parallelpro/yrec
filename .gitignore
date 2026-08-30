@@ -21,3 +21,4 @@ src/test_net.short
 COMMENTS.md
 src/libyrec.dylib
 src/libyrec.so
+fort.*

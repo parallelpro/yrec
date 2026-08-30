@@ -25,6 +25,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 
       use star_info_lib, only: star, i_grad_actual, json
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       implicit none
 
@@ -207,14 +208,19 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
                  exp(ln10*1.5d0*log_temperature(outer_boundary_zone))
 !  RESTRICT TIMESTEP TO THE MINIMUM OF THE MODEL TIMESTEP AND
 !  A USER SPECIFIED FRACTION (DT_GS) OF THE SETTLING TIMESCALE.
-            write(69,*) 'JMAX=',outer_boundary_zone,' FM= ', &
+! (2026: this settling diagnostic wrote to never-opened unit 69,
+! leaving stray fort.69 files -- now solver forensics in the run
+! log, like its peers)
+            if (solver_diagnostics()) write(run_log_unit,*) 'JMAX=', &
+                 outer_boundary_zone,' FM= ', &
                  mass_fraction_above,' TSCALE=',settling_timescale
             max_settling_dt = star%ctrl%settling_timestep_fraction*settling_timescale
             num_settling_substeps = int(timestep/max_settling_dt)
             if (mod(max_settling_dt,timestep).ne.0.0d0.or. &
                  num_settling_substeps.eq.0) &
                  num_settling_substeps=num_settling_substeps+1
-            write(69,*)'DTMAX=',max_settling_dt,' DELTS=',timestep, &
+            if (solver_diagnostics()) write(run_log_unit,*) &
+                 'DTMAX=',max_settling_dt,' DELTS=',timestep, &
                  ' NSTEP=',num_settling_substeps
             settling_dt = timestep/dfloat(num_settling_substeps)
          else
