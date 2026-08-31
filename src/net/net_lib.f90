@@ -394,7 +394,7 @@ dsnuda  = 0.0d0
 dsnudz  = 0.0d0
 
 
-if (temp .lt. 1.0e7) return
+if (temp .lt. 1.0d7) return
 
 
 
@@ -1432,7 +1432,7 @@ if (nu .ge. -20.0  .and. nu .lt. 0.0) then
  a2 = 2.42d-1
  a3 = 1.21d0
  b  = 3.71d-2
- c  = 9.06e-1
+ c  = 9.06d-1
  d  = 9.28d-1
  f1 = 0.0d0
  f2 = 0.0d0
@@ -1442,7 +1442,7 @@ else if (nu .ge. 0.0  .and. nu .le. 10.0) then
  a2 = 2.66d-1
  a3 = 1.30d0
  b  = 1.17d-1
- c  = 8.97e-1
+ c  = 8.97d-1
  d  = 1.77d-1
  f1 = -1.20d-2
  f2 = 2.29d-2

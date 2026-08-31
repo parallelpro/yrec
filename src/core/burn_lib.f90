@@ -1225,9 +1225,9 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  IN THIS PART OF THE SUBROUTINE WERE THE CORRECTION OF THE ERROR IN
 !  THE DEFINITION OF RWE (SEE ABOVE) AND REFINEMENTS OF THE COEFFICIENTS
 !  IN THE EXPRESSIONS FOR PFMC2 AND EFMKT.
-      pfmc2=1.017677e-4*pow(electron_number_density_na, 0.6666667)
+      pfmc2=1.017677d-4*pow(electron_number_density_na, 0.6666667)
       efmkt=5.92986*t9_m1*(dsqrt(1.+pfmc2)-1.)
-      if (efmkt.le.1.e-2) then
+      if (efmkt.le.1.d-2) then
          fprf=1.0
       else
          degd=log10(efmkt)
@@ -1265,7 +1265,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! THE FINAL EXPRESSION FOR WEAK SCREENING IS EXACTLY EQUAL TO SALPETER'S
 !  FORMULA, WHICH INCLUDES A DEGENERACY CORRECTION. THE MORE GENERAL
 !  EXPRESSIONS ARE GIVEN IN TABLE 4 AND EQUATION (19) OF GRABOSKE ET AL.
-      xxl=5.9426e-6*t9_m32*dsqrt(density*ion_mean_weight_inverse)
+      xxl=5.9426d-6*t9_m32*dsqrt(density*ion_mean_weight_inverse)
       xxl6=pow(xxl, 0.666667)
       xxl8=pow(xxl, 0.86)
       zcurl=dsqrt((zeta_sum+fprf*electron_mean_weight_inverse)/ &
@@ -1361,7 +1361,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          reaction_rate(i)=density*r1*exp(q6(i)*t9_m13+q7(i)+(q8(i)*t9)**2+ &
               screening_factor(i))
          reaction_rate(i) = reaction_rate(i)*star%cross_section_scale(i)
-         if (reaction_rate(i).lt.1.e-30) then
+         if (reaction_rate(i).lt.1.d-30) then
             reaction_rate(i)=0.
             dlnrate_dlnt(i)=0.
          else
@@ -1398,10 +1398,10 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! electron capture, since that is done in SStandard. Previous coefficient
 ! in Be7electron expression was (3.126571E+5). 10/14/97.
 !
-         be7electron = (1.752e-10)*t9_m12*(1.0 + 0.004*(1000.*t9 - 16.))
+         be7electron = (1.752d-10)*t9_m12*(1.0 + 0.004*(1000.*t9 - 16.))
          be7electron = be7electron*electron_mean_weight_inverse*star%cross_section_scale(15)
          temp3 = (-10.2625*t9_m13)
-         be7proton = (3.128813e+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(temp3)
+         be7proton = (3.128813d+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(temp3)
 ! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
 !  Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
 !  CORRECTIONS ARE DEFINED EARLIER IN THIS SUBROUTINE.
@@ -1429,7 +1429,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! mass number. Previously used 8.582295E+22 in the expression below.
 ! These corrections were made on 10/14/97.
 !
-         camube7 = density*8.584981e+22
+         camube7 = density*8.584981d+22
          be7proton = camube7*be7proton
          be7electron = camube7*be7electron
 ! END OF MULTIPLICATION INSERTED NOVEMBER 6, 1990.
@@ -1539,7 +1539,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
               (2.798d0*t9_m1-1.5d0)+a3*(5.054d0*t9_m1-1.5d0)+ &
               a4*(12.310d0*t9_m1-cc23))
 ! TRIPLE ALPHA
-      reaction_rate(12) = 1.565315d21*density**2*t9_m1*t9_m2*2.79e-8* &
+      reaction_rate(12) = 1.565315d21*density**2*t9_m1*t9_m2*2.79d-8* &
                  exp(-4.4027*t9_m1+screening_factor(12))
       dlnrate_dlnrho(12) = 2.0d0+dscreen_dlnrho(12)
       dlnrate_dlnt(12) = -3.0d0+dscreen_dlnt(12)+4.4027d0*t9_m1
@@ -1676,7 +1676,7 @@ subroutine compute_energy_generation
 ! THE FINAL NUMBERS ARE IN ERG PER GM PER SECOND.
 ! DEFINE THE CONSTANT TO CONVERT MEV'S TO ERGS. THE NUMBERS THAT APPEAR
 !  ARE IN MEV SO THEY CAN BE EASILY IDENTIFIED.
-      convert = 1.602177e-6
+      convert = 1.602177d-6
 ! THE MULTIPLYING CONSTANTS BELOW ARE IN MEV.
 ! JNB changed the pp energy release by 0.002 MeV because of a better
 ! estimate of the neutrino energy loss on 9/25/97. See pg. 139 of
@@ -1737,7 +1737,7 @@ subroutine compute_energy_generation
       total_energy_gen_rate = total_energy_gen_rate + dgdeut
       sum2 = sum2 + dgdeut
       sum3 = sum3 + dgdeut*qrtdeut
-      if (total_energy_gen_rate.le.1.e-12) then
+      if (total_energy_gen_rate.le.1.d-12) then
          en=-20.
          dlnepsilon_dlnrho=0.
          dlnepsilon_dlnt=0.
@@ -1760,7 +1760,7 @@ subroutine compute_energy_generation
 ! END OF COMPUTATION OF THE GLOBAL QUANTITIES.
 ! *****************************************************
       do i=1,nrxns
-         if (reaction_rate(i).le.1.e-5) reaction_rate(i) = 0.0
+         if (reaction_rate(i).le.1.d-5) reaction_rate(i) = 0.0
       end do
 ! ******************************************************
 end subroutine compute_energy_generation
@@ -1852,20 +1852,20 @@ subroutine compute_neutrino_emission
 !  FOR THE REACTIONS. THE ORDER OF THE REACTIONS IS THE SAME AS IN
 !  EQUATIONS 6.1-6.8 .
 ! DEFINE 4*PI*(AU)**2 .
-         fourpiau2 = 2.812295e+27
+         fourpiau2 = 2.812295d+27
 ! FLUX OF PP NEUTRINOS.
          star%neutrino_flux(i_nu_pp) = eg(1)/fourpiau2
 ! FLUX OF PEP NEUTRINOS. USE EQUATION 3.17 OF NEUTRINO ASTROPHYSICS.
 ! Note that should not change SStandard(14) unless the ratio of pep to pp
 !  is changed.  Pep rate is explicitly scaled here with respect to the pp
 !  rate.
-         star%neutrino_flux(i_nu_pep) = (3.4848e-6)*electron_number_density_na*t9_m12* &
+         star%neutrino_flux(i_nu_pep) = (3.4848d-6)*electron_number_density_na*t9_m12* &
               (1.0 + 20.*t9)*eg(1)
          star%neutrino_flux(i_nu_pep) = star%neutrino_flux(i_nu_pep)*star%cross_section_scale(14)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
          q6hep = -6.1399
 ! Q6 IS THE NEGATIVE OF THE COEFFICIENT OF T9M13 IN TAU, EQUATION 3.10.
-         star%neutrino_flux(i_nu_hep) = (1.71724e+11)*density*t9_m23*exp(q6hep*t9_m13)
+         star%neutrino_flux(i_nu_hep) = (1.71724d+11)*density*t9_m23*exp(q6hep*t9_m13)
 ! THE DERIVATIVES OF THE CROSS SECTION FACTOR ARE NOT KNOWN AND ARE
 !  TAKEN TO BE ZERO.  THE ONLY TERM FROM EQUATION 3.14 THAT SURVIVES
 !  IS 5/(12*TAU).
@@ -1910,7 +1910,7 @@ subroutine compute_neutrino_emission
 !  EARTH. MULTIPLY BY 10**-10.
 !  IF THE VALUE FOR THIS SHELL IS NEGLIGIBLY SMALL, SET EQUAL TO ZERO.
          do k = 1,10
-            star%neutrino_flux(k) = (1.0e-10)*star%neutrino_flux(k)
+            star%neutrino_flux(k) = (1.0d-10)*star%neutrino_flux(k)
             flux_value = star%neutrino_flux(k)
 ! KC 2025-05-30 CHANGED 1.E-50 TO 0.0 TO AVOID UNDERFLOW
             if (flux_value.le.0.0) then
