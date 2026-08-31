@@ -1439,7 +1439,16 @@ end subroutine store_table_paths
 ! the control file carries a star_job group, else the legacy
 ! NAMELIST /control/ + /physics/ pair.
 subroutine read_namelist_files
-      write(*,*) 'CONTROL namelist :  ',control_nml_file(1:len_trim(control_nml_file))
+! 2026: detect the inlist style BEFORE printing the banner, so a
+! single-inlist run announces its one file instead of a phantom
+! legacy PHYSICS namelist (the getarg(2) default used to print
+! 'yrec8.nml2' even though the new-style dispatch never reads it).
+      logical :: new_style, single_inlist
+
+      new_style = nml_file_has_group(control_nml_file, 'star_job')
+      single_inlist = .false.
+      if (new_style) &
+           single_inlist = nml_file_has_group(control_nml_file, 'controls')
 
       if (physics_nml_override .ne. ' ') then
          physics_nml_file = physics_nml_override
@@ -1447,7 +1456,16 @@ subroutine read_namelist_files
       call getarg(2, physics_nml_file)
       if (physics_nml_file(1:2) .eq. ' ') physics_nml_file = 'yrec8.nml2'
       end if
+! single-inlist style: both groups live in the one file; point the
+! physics slot at it too (copy_inlists_used then dedupes it).
+      if (single_inlist) physics_nml_file = control_nml_file
+
+      if (single_inlist) then
+         write(*,*) 'inlist           :  ',control_nml_file(1:len_trim(control_nml_file))
+      else
+      write(*,*) 'CONTROL namelist :  ',control_nml_file(1:len_trim(control_nml_file))
       write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
+      end if
 
 ! Defaults for the two output paths every run needs: the final
 ! model file (.mod) and the run log -- whose directory part also
@@ -1461,7 +1479,7 @@ subroutine read_namelist_files
 ! 2026 inlist revamp: dispatch on inlist style. New-style files carry
 ! &star_job (+ &controls, same file or the second); everything else
 ! takes the legacy reader path.
-      if (nml_file_has_group(control_nml_file, 'star_job')) then
+      if (new_style) then
       include 'inlist_new_read.inc'
       else
       open(unit=standard_unit, file=control_nml_file, status='OLD')
