@@ -565,9 +565,19 @@ subroutine build_pulse_points(pts)
 ! g-cavity buoyancy by ~30% (12% in the period spacing DeltaPi_1)
 ! and shifted l=1 mixed-mode frequencies by up to ~16 uHz. The
 ! actual density gradient carries the composition term for free.
+! CONVECTIVE zones keep the first-pass thermal value: there the
+! mixture is homogeneous by mixing (mu-gradient zero), so the thermal
+! form is already exact -- and correctly, smoothly negative -- while
+! the centered difference of a near-adiabatic stratification is
+! cancellation noise of random sign. The switch is the sign of the
+! thermal value itself (< 0 means Schwarzschild-unstable). The
+! positive N^2 spike the difference produces AT a convective-zone
+! base (the mu-discontinuity's buoyancy interface) lands on the
+! radiative side and is kept -- it is physics, not noise.
 ! Endpoints copy their neighbor, matching compute_seismic_columns.
       do j = 2, n_ext - 1
-         if (pts(1,j) > 0.0d0 .and. pts(1,j+1) > pts(1,j-1) .and. &
+         if (pts(8,j) >= 0.0d0 .and. &
+              pts(1,j) > 0.0d0 .and. pts(1,j+1) > pts(1,j-1) .and. &
               pts(9,j) > 0.0d0) then
             grav = exp(ln10*cgl)*pts(2,j)/(pts(1,j)*pts(1,j))
             pts(8,j) = grav*( &

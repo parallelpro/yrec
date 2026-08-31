@@ -58,17 +58,27 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
 ! mu-gradient term that dominates N^2 in composition-gradient layers
 ! (see the matching note in core/stitched_model.f90's
 ! build_pulse_points, which fixes the same formula for the
-! profile-coupled GSM/FGONG/GYRE writers).
+! profile-coupled GSM/FGONG/GYRE writers). CONVECTIVE shells (where
+! the thermal form is negative) keep the thermal value: the mixture is
+! homogeneous there, so the thermal form is exact and smooth, while
+! the centered difference of a near-adiabatic stratification is
+! cancellation noise of random sign.
       do i = 2, num_shells - 1
          radius_cm = exp(ln10*log_radius(i))
          dr = exp(ln10*log_radius(i+1)) - exp(ln10*log_radius(i-1))
          if (radius_cm > 0.0d0 .and. dr > 0.0d0 .and. &
               star%adiabatic_index_gamma1(i) > 0.0d0) then
             grav = exp(ln10*cgl)*mass_coordinate(i)/(radius_cm*radius_cm)
-            brunt_n2(i) = grav*ln10*( &
-                 (log_pressure(i+1) - log_pressure(i-1)) / &
-                 star%adiabatic_index_gamma1(i) - &
-                 (log_density(i+1) - log_density(i-1)) ) / dr
+            brunt_n2(i) = grav*grav* &
+                 (exp(ln10*(log_density(i) - log_pressure(i))))* &
+                 (-star%pulse_dlnrho_dlnt(i))* &
+                 (star%grada(i) - star%gradT(i))
+            if (brunt_n2(i) >= 0.0d0) then
+               brunt_n2(i) = grav*ln10*( &
+                    (log_pressure(i+1) - log_pressure(i-1)) / &
+                    star%adiabatic_index_gamma1(i) - &
+                    (log_density(i+1) - log_density(i-1)) ) / dr
+            end if
          else
             brunt_n2(i) = 0.0d0
          end if
