@@ -32,6 +32,7 @@ subroutine run_yrec(ierr)
            write_run_summaries
       use stop_conditions, only: step_kind_card_done, &
            step_leave_run_loop, init_stop_conditions
+      use run_log_lib, only: log_run_summary
       implicit none
       integer :: step_status
 
@@ -43,6 +44,8 @@ subroutine run_yrec(ierr)
       integer :: monte_carlo_run_number
       double precision :: age_scale_factor
       integer :: convergence_iterations
+! end-of-run wall-clock (terminal-only summary line)
+      integer(kind=8) :: clock_start, clock_now, clock_rate
       logical :: saved_use_structure_dt_limits
       integer :: saved_atm_choice
       integer :: i
@@ -91,6 +94,7 @@ subroutine run_yrec(ierr)
 ! semantics (nk = num_runs+1 when the list runs out, current card
 ! when the calibration verdict exits early) for the post-loop
 ! readers (write_run_summaries' nk-2 indexing).
+      call system_clock(clock_start, clock_rate)
       runs_complete = .false.
       run_loop: do kind_card = 1, star%job%num_runs
          star%job%nk = kind_card
@@ -146,6 +150,11 @@ subroutine run_yrec(ierr)
       end do run_loop
 ! EXIT RUN LOOP
       if (.not. runs_complete) star%job%nk = star%job%num_runs + 1
+
+! End-of-run summary: why the run ended + the final model (2026,
+! run-log verbosity item; wall-clock goes to the terminal only).
+      call system_clock(clock_now)
+      call log_run_summary(dble(clock_now-clock_start)/dble(clock_rate))
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
 ! MODEL PARAMETERS (legacy mode only; core/monte_carlo.f90.
@@ -212,6 +221,7 @@ subroutine end_of_card_calibration(runs_complete)
                star%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                star%job%atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
                if (star%solar_calibration_active) then
+                  star%termination_reason = 'solar calibration converged'
                   runs_complete = .true.
                   return
                else
@@ -220,6 +230,8 @@ subroutine end_of_card_calibration(runs_complete)
 ! MHP 6/97 STOP AFTER 10 ATTEMPTS AT CALIBRATION
 !                  IF(ICONV.GE.11) GOTO 250
                   if (convergence_iterations.ge.15) then
+                     star%termination_reason = &
+                          'solar calibration NOT converged after 15 cycles'
                      runs_complete = .true.
                      return
                   end if
@@ -231,6 +243,7 @@ subroutine end_of_card_calibration(runs_complete)
 
 ! DBG 12/94 NO MORE RUNS NEEDED. HAVE CALIBRATED STELLAR MODEL
          if (star%ctrl%calibrate_star_flag .and. star%star_found_flag.and.(mod(star%job%nk,star_calib_cards_per_cycle).eq.0)) then
+            star%termination_reason = 'star calibration converged'
             runs_complete = .true.
             return
          end if

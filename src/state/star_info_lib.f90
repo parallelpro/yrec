@@ -255,6 +255,10 @@ module star_info_lib
             double precision :: age_at_target_radius, age_prev_model, &
                  log_l_at_target_radius, log_l_at_target_radius_prev_run, &
                  log_l_prev_model, log_r_prev_model
+! run-log bookkeeping: why the (last) kind card ended -- the default
+! set per card by init_stop_conditions, overridden by whichever stop
+! fires; read by run_log_lib's end-of-run summary.
+            character(len=96) :: termination_reason = 'model budget exhausted'
 ! run-log bookkeeping: the "fully convective - no settling" message
 ! prints once per suspension (per-model repeats only under
 ! report_solver_diagnostics); this latch remembers it was reported.

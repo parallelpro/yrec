@@ -67,6 +67,9 @@ subroutine check_stop_conditions(model_iteration, step_status)
       step_status = step_continue
 
       if (reached_end_age(star%job%nk)) then
+         write(star%termination_reason,'(a,es10.3,a)') &
+              'target age reached (', &
+              star%job%target_end_age(star%job%nk), ' yr)'
          step_status = step_kind_card_done
          return
       end if
@@ -130,12 +133,16 @@ logical function structure_limit_stop_triggered()
                  trim(qname(k))//'_upper_limit', qup(k)
             write(run_log_unit,10) trim(qname(k)), qval(k), 'above', &
                  trim(qname(k))//'_upper_limit', qup(k)
+            star%termination_reason = &
+                 trim(qname(k))//' above '//trim(qname(k))//'_upper_limit'
             structure_limit_stop_triggered = .true.
          else if (qlo(k) > -0.9d99 .and. qval(k) < qlo(k)) then
             write(*,10) trim(qname(k)), qval(k), 'below', &
                  trim(qname(k))//'_lower_limit', qlo(k)
             write(run_log_unit,10) trim(qname(k)), qval(k), 'below', &
                  trim(qname(k))//'_lower_limit', qlo(k)
+            star%termination_reason = &
+                 trim(qname(k))//' below '//trim(qname(k))//'_lower_limit'
             structure_limit_stop_triggered = .true.
          end if
       end do
@@ -167,6 +174,8 @@ logical function abundance_stop_triggered(nk)
             write(*,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
                  star%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(k,nk)
+            star%termination_reason = &
+                 'central '//stop_letter(k)//' below stop value'
             abundance_stop_triggered = .true.
          end if
       end do
@@ -182,6 +191,9 @@ end function abundance_stop_triggered
 subroutine init_stop_conditions(nk)
       integer, intent(in) :: nk
       integer :: k
+! default end-of-card reason; overridden by whichever stop fires
+! (read by run_log_lib's end-of-run summary)
+      star%termination_reason = 'model budget exhausted'
       if (.not. star%job%end_age_stop_active(nk)) return
       do k = 1, nstops
          if (stop_value(k,nk).gt.0.0d0 .and. &
