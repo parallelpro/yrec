@@ -202,7 +202,22 @@ harvest) after the pulse-physics fixes (exact Brunt N2, kap/eps
 derivative factors, GSM version, atmosphere radii). Items ordered
 bugs -> design -> validation; each carries its verification tier.
 
-## 7. Correctness bugs found
+## 7. Correctness bugs found -- items 1-5 DONE 2026-08-31
+
+Done (commits fb28dac, 212a652, d853a29): rezone flag_point guarded
+appends + ceiling(); the inherited radiative_zone_bounds(1,2)=M typo
+(convec.f) fixed alongside; ierr on ludcmp/polint/tridiag_gs/ctridi/
+tridia + the condopacp/cinterp3 range stops, threaded through the
+microdiff, seculr, alsurfp and rotation_shape_factors chains;
+eqstat's dead SCV-derivative branch deleted; the 19 e-notation
+single-precision constants in burn/net/turnover converted to
+d-notation (solar drift at the 9th significant digit; net baseline
+reseeded). Also done from section 8: the ipul_* named pulse-column
+indices (008b12e) and the controls sanity checker (b57c1a3, warns
+terminal-only on inert combinations). Float-equality audit and
+read_starting_model's ideal-gas core extension remain below.
+
+## 7-remaining. Correctness bugs still open
 
 - **rezone flag_point overflow** (setup/rezone.f90): the discontinuity
   scan guards flag_count at 100, but the THREE appends after the loop
