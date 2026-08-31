@@ -135,12 +135,32 @@ table acquisition in item 6.
 The eos engines (eos_eval/eqstat, 30-31) are documented internals --
 judged not worth touching.
 
-## 4. Log verbosity + terminal output
+## 4. Log verbosity + terminal output -- DONE 2026-08-31
 
-CASE.log still carries full solver iteration traces; add a
-verbosity control, MESA-style terminal output behind a control, and
-quiet the .short-style config echo (which still prints the legacy
-namelist group for new-style runs) in the same stroke.
+Most of this had already landed with the MESA-style run log
+(b38ec9c: compact progress line on terminal + run.log,
+terminal_interval, report_solver_diagnostics, run.log default
+location, inlist_used; the .short config echo was retired with the
+one-output-path change). The 2026-08-31 close-out:
+
+- Verbosity sweep: the settling ITERATION trace, the per-rezone
+  TOTAL J / K.E. bookkeeping, and the per-model settling-suspension
+  messages were still unconditional -- the GS_rot solar log was 8586
+  lines, now 39. Forensics behind report_solver_diagnostics;
+  suspension messages print once per suspension (reset-covered
+  latch star%settling_suspended_reported) + SETTLING RESUMED.
+- End-of-run summary: 'run finished: <reason>' + final model/age to
+  terminal and run log (star%termination_reason, set by
+  init_stop_conditions default 'model budget exhausted' and
+  overridden by the age / central-abundance / structure-limit stops
+  and the calibration verdicts); wall-clock line terminal-only so
+  the run log stays byte-pinnable.
+- Banner: single-inlist runs print 'inlist : <file>' instead of the
+  phantom legacy 'PHYSICS namelist : yrec8.nml2'.
+
+NOT done (judged out of scope): MESA-style retry/backup lines on
+timestep cuts; a header-reprint cadence beyond the existing
+per-card + every-10-lines reprints.
 
 ## 5. Reproducibility follow-ups
 
@@ -167,6 +187,11 @@ namelist group for new-style runs) in the same stroke.
   lowest value; only if a concrete A/B use case appears.
 - Domain test binaries write test_X.short files in cwd (legacy
   naming leftover).
+- PRE-EXISTING RUN FAILURE (found 2026-08-31 during the verbosity
+  rebaseline, reproduced identically on 249b60d): run_from_zahb_to_
+  tahb/Solar_m1p0feh+0p0_GN93_MESA_TAHB dies with a NaN in the MLT
+  cubic (tpgrad sqrt-of-negative -> ierr stop) near model 950. Not
+  part of the standing battery; needs its own investigation.
 
 ---
 
