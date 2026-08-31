@@ -167,3 +167,133 @@ namelist group for new-style runs) in the same stroke.
   lowest value; only if a concrete A/B use case appears.
 - Domain test binaries write test_X.short files in cwd (legacy
   naming leftover).
+
+---
+
+# 2026-08-31 full-codebase audit -- next roadmap
+
+Folder-by-folder sweep (all 235 .f90, cross-cutting greps, -Wall
+harvest) after the pulse-physics fixes (exact Brunt N2, kap/eps
+derivative factors, GSM version, atmosphere radii). Items ordered
+bugs -> design -> validation; each carries its verification tier.
+
+## 7. Correctness bugs found
+
+- **rezone flag_point overflow** (setup/rezone.f90): the discontinuity
+  scan guards flag_count at 100, but the THREE appends after the loop
+  (overshoot_base_zone, fine_zone_base, star%nz) have no bound check --
+  a model with >~97 flagged points writes past flag_point(100).
+  Fix: size by parameter, guard every append. Also
+  radiative_zone_bounds(13,2)/convective_zone_bounds(12,2) have no
+  overflow guards. Tier 1.
+- **Library stops missed by the ierr campaign**: kap/conductive/
+  condopacp.f90 (3 raw stops on table range) and numerics_lib
+  (ludcmp 'Singular matrix', tridia x2, polint den<1e-20). Library
+  code must return ierr; a singular Henyey matrix should surface as
+  numerics_termination, not kill a batch job. Tier 1 + owning suite.
+- **Single-precision literals in double expressions**: burn_lib (18:
+  reaction-rate and neutrino-flux constants like 2.79e-8, 1.017677e-4),
+  net_lib (3), turnover_timescale (1.0e20 guard). Silent truncation to
+  ~7 digits; also off-message for the crmath reproducibility story.
+  Convert to d-literals. BYTE-CHANGING: deliberate rebaseline; check
+  the solar-pin drift is at rounding level. Tier 3 (output change).
+- **rezone ceiling idiom** `mod(dp,dp).ne.0d0` (twice): float-equality
+  as a ceiling test -- effectively always true, so it over-counts by
+  one point when the division is exact-in-reals. Replace with
+  ceiling(); byte-gate (expected: identical except pathological
+  spacings). Tier 1.
+- **eqstat dead+broken SCV derivative branch** (~line 525): reads
+  specific_heat_cp_2/adiabatic_gradient_2 that nothing assigns;
+  unreachable (do_scv_derivatives hardcoded .false.). Delete the
+  branch. Byte-safe. Tier 0.
+- **read_starting_model core extension** uses an ideal-gas
+  logRho = logP - logT - offset ("MHP 4/12 replaced broken eqstat
+  call"). eos_get exists now -- use it for consistent extended-core
+  densities. Affects only loads that extend the model inward. Tier 2.
+- **Float-equality guards on physics values**: burn_lib
+  hydrogen_fraction.eq.0.0, microdiff_coefficients species .eq.0.0.
+  Each is probably benign (exact-zero sentinels) -- audit and either
+  document or convert to explicit sentinels. Tier 1.
+
+## 8. Design debt
+
+- **Silently-static local arrays** (24 x -Wsurprising): gfortran moved
+  large locals (light_element_save, compute_seismic_columns' work
+  arrays, henyey solve buffers, ...) to static storage -- implicit
+  shared state that undercuts the yrec_reset re-entrancy guarantee and
+  forbids threading libyrec. Convert to allocatable locals or owned
+  module workspace; then the warning class becomes a boundary-checker
+  assertion (zero tolerated). Tier 2 (reentry suite owns it).
+- **Blanket save + manual reset lists** (evolve_step, run_yrec):
+  adding a local silently leaks state across in-process runs unless
+  the author remembers the reset block. Replace with a derived-type
+  state (default initializers; reset = default-init assignment) so
+  forgetting is impossible. Tier 2 (test_reentry).
+- **-finit-local-zero masks uninitialized-variable bugs** (it made
+  them deterministic zeros instead of crashes). Add a CI/dev lane
+  building with -Wmaybe-uninitialized (+ GNU_DEV_FFLAGS run of the
+  solar case), fix what it finds, then decide whether prod keeps the
+  flag as belt-and-braces. Tier 2.
+- **Numerical Recipes provenance** in numerics_lib (SPLINE, LUDCMP,
+  LUBKSB, POLINT, MMID, bsstep lineage -- self-documented in the
+  headers): NR's license does not permit source redistribution, and
+  this repo is public. Replace: LAPACK (already an SDK dependency)
+  for LU; independently-licensed spline + Bulirsch-Stoer, or
+  clean-room rewrites. Byte-rebaseline per replacement. The single
+  highest-liability item in the repo. Tier 3.
+- **Pulse column magic numbers**: build_pulse_points fills pts(35,*)
+  by bare index; every consumer (FGONG/GSM/GYRE-ext writers) indexes
+  numerically. This audit had to reverse-engineer the map to fix
+  N2/kap/eps. Add named indices (ipul_r=1, ..., ipul_N2=8, ...) in
+  stitched_model_lib and use them everywhere. Tier 0/1.
+- **Duplicate physics site**: io/write_gyre_pulse.f90 (the
+  pulse_gyre_interval path) recomputes its columns independently of
+  build_pulse_points -- that duplication is exactly why the N2 bug had
+  to be fixed twice. Either make it consume the interior slice of
+  stx_pulse, or retire the interval path outright (the profile-coupled
+  pulse stream has superseded it). While there: its dummy
+  `log_luminosity` actually receives LINEAR L/Lsun -- rename. Tier 2.
+- **Controls sanity checker**: the template shipped
+  overshoot_alpha_envelope = 0.5 with envelope_overshoot_active unset
+  -- silently inert physics for years. Add a startup pass that warns
+  on inconsistent combinations (alpha>0 with its active flag off,
+  lovmax with betac=0 [caps overshoot to zero], rotation_active with
+  omega=0 [exists], diffusion+rotation exclusive flags, ...). The
+  registry gives the list a natural home. Tier 1.
+- **Unused variables** (54, hotspot read_starting_model with 24) and
+  unused dummies (7): delete; gets the -Wall build to (near) silence
+  so new warnings are visible. Tier 0.
+- **Rotation naming unification**: the alias table in
+  secular_transport's header (QWRMAX/HRU/COD2/... each with 2-3 names
+  across callees) is debt the de-tramp left; one name per quantity.
+  Tier 1.
+- **json = 5000 static sizing** (69 arrays in star_info alone):
+  acceptable footprint (~75 MB RSS measured), but it is a hard zone
+  cap and static state. Long-term: allocatable star arrays. Low
+  urgency; pairs naturally with the threading item. Tier 3.
+- **dlog/dexp/dabs archaic intrinsics** (~330 across 27 files):
+  mechanical modernization sweep, byte-identical. Tier 1.
+
+## 9. Physics validation tier (new)
+
+The N2 bug survived every byte-pin because pins freeze outputs, not
+truth. Add a small validation layer that checks physics against
+independent references:
+
+- **Pulse-file contract test** (pytest): read a produced GSM file and
+  independently re-derive N2 from rho/P/Gamma_1/r, check kap/eps
+  derivative column magnitudes, monotonic r, version attr, column
+  set. Directly encodes this week's four bugs against regression.
+  Cheap; run in CI. Tier: owning suite.
+- **Cross-code benchmark**: one (M, Z, alpha) track YREC vs MESA;
+  compare Teff/L/R at matched central-hydrogen points and GYRE
+  frequencies at matched Delta_nu. Documented tolerances, manual
+  script under testsuite/. Would have caught the N2 bug on day one.
+- **Rotation benchmark**: reproduce a published YREC solar spin-down
+  or open-cluster omega evolution; pin the omega(r) profile at
+  landmark ages. The rotation folder is the largest body of physics
+  with no truth-level test.
+- **Seismic-observable spot checks**: delta_nu (sound-travel) and
+  delta_Pg (Brunt integral) audited clean this pass -- add them to the
+  contract test against GYRE-derived values from the same model so
+  they stay clean.
