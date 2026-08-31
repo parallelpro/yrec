@@ -58,6 +58,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 
       use star_info_lib, only: star, json
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use numerics_lib
       implicit none
@@ -250,7 +251,9 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
             endif
          end do
 !         WRITE(IOWR,90)ITER,DXMAX,IMAX
-         write(run_log_unit,90)iter_count,max_delta_x,max_delta_x_zone
+! solver forensics (2026 run-log verbosity sweep)
+         if (solver_diagnostics()) &
+              write(run_log_unit,90)iter_count,max_delta_x,max_delta_x_zone
  90      format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
          if(max_delta_x.lt.star%ctrl%settling_tolerance)exit

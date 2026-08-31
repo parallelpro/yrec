@@ -255,6 +255,10 @@ module star_info_lib
             double precision :: age_at_target_radius, age_prev_model, &
                  log_l_at_target_radius, log_l_at_target_radius_prev_run, &
                  log_l_prev_model, log_r_prev_model
+! run-log bookkeeping: the "fully convective - no settling" message
+! prints once per suspension (per-model repeats only under
+! report_solver_diagnostics); this latch remembers it was reported.
+            logical :: settling_suspended_reported = .false.
             logical :: star_found_flag = .false., &
                  just_passed_target_radius_flag = .false., &
                  use_two_z_tables = .false.

@@ -251,8 +251,8 @@ rotation/am_convective_regions.o: star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 rotation/equal_spaced_grid.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/evolve_angular_momentum.o: burn_lib.mod math_lib.mod mid_timestep_model_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod secular_transport_lib.mod star_info_lib.mod
-rotation/microdiff/gravitational_settling.o: luout_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/microdiff/gravitational_settling_setup.o: luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/microdiff/gravitational_settling.o: luout_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
+rotation/microdiff/gravitational_settling_setup.o: luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 rotation/microdiff/implicit_diffusion_coeffs.o: star_info_lib.mod
 rotation/microdiff/lax_wendroff_step1.o: phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/microdiff/lax_wendroff_step2.o: phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
@@ -260,8 +260,8 @@ rotation/microdiff/microdiff.o: microdiff_mte_lib.mod microdiff_run_lib.mod star
 rotation/microdiff/microdiff_coefficients.o: math_lib.mod microdiff_mte_lib.mod phys_const_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_etm.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_mte.o: numerics_lib.mod star_info_lib.mod
-rotation/microdiff/microdiff_run.o: luout_lib.mod microdiff_coefficients_lib.mod microdiff_mte_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod
-rotation/microdiff/microdiff_setup.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
+rotation/microdiff/microdiff_run.o: luout_lib.mod microdiff_coefficients_lib.mod microdiff_mte_lib.mod numerics_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
+rotation/microdiff/microdiff_setup.o: luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
 rotation/microdiff/thoul_diffusion.o: numerics_lib.mod
 rotation/mid_timestep_model.o: burn_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/omega_from_j.o: star_info_lib.mod

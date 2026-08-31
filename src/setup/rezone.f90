@@ -894,7 +894,10 @@ subroutine interpolate_onto_new_grid
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + star%kinetic_energy_rot(i)
        end do
-       write(run_log_unit,1120)total_angular_momentum, &
+! per-rezone conservation bookkeeping: solver forensics (2026
+! run-log verbosity sweep)
+       if (solver_diagnostics()) &
+            write(run_log_unit,1120)total_angular_momentum, &
             sum_angular_momentum,total_rotational_ke,sum_rotational_ke
  1120    format(1X,'TOTAL J OF STAR - PREVIOUS ',1PE21.13,' NEW ', &
      1PE21.13/' TOTAL ROTATIONAL K.E. OF STAR-PREVIOUS ',1PE21.13, &

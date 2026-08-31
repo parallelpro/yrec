@@ -42,6 +42,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 
       use star_info_lib, only: star, json
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use math_lib
       implicit none
@@ -78,8 +79,14 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          if (i > num_zones) then
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
          fully_convective_flag=.true.
-         write(run_log_unit,15)
-   15    format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
+! print once per suspension; every model only under
+! report_solver_diagnostics (2026 run-log verbosity sweep)
+         if (solver_diagnostics() .or. &
+              .not. star%settling_suspended_reported) then
+            write(run_log_unit,15)
+   15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
+            star%settling_suspended_reported = .true.
+         end if
          continue
          return
          end if
@@ -94,8 +101,14 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       end do
       if (i > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
-      write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
-   16 format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
+! print once per suspension; every model only under
+! report_solver_diagnostics (2026 run-log verbosity sweep)
+      if (solver_diagnostics() .or. &
+           .not. star%settling_suspended_reported) then
+         write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
+   16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
+         star%settling_suspended_reported = .true.
+      end if
       fully_convective_flag = .true.
       continue
       return
@@ -118,13 +131,25 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       end do
       if (i < (1)) then
 !     HYDROGEN-FREE MODEL - EXIT.
-      write(run_log_unit,17)star%ctrl%helium_diffusion_min
-   17 format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
+! print once per suspension; every model only under
+! report_solver_diagnostics (2026 run-log verbosity sweep)
+      if (solver_diagnostics() .or. &
+           .not. star%settling_suspended_reported) then
+         write(run_log_unit,17)star%ctrl%helium_diffusion_min
+   17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
+         star%settling_suspended_reported = .true.
+      end if
       fully_convective_flag = .true.
       continue
       return
       end if
       zone_end = i
+! all suspension checks passed: settling proceeds this model
+      if (star%settling_suspended_reported) then
+         write(run_log_unit,916)
+  916    format(1x,' SETTLING RESUMED')
+         star%settling_suspended_reported = .false.
+      end if
 !     star%bl_mass_scale=CONVERSION FACTOR FOR MASS.
 !     star%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
 !     star%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.

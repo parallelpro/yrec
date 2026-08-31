@@ -35,6 +35,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 
       use star_info_lib
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use numerics_lib
       implicit none
@@ -199,7 +200,9 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
                max_change_zone = i
             endif
          enddo
-         write(run_log_unit,90)iter,max_abundance_change,max_change_zone
+! solver forensics (2026 run-log verbosity sweep)
+         if (solver_diagnostics()) &
+              write(run_log_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
          if(max_abundance_change.lt.star%ctrl%settling_tolerance)exit
