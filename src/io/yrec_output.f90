@@ -39,7 +39,7 @@ module yrec_output
 ! The stitched full-star model (interior + envelope + atmosphere)
 ! is assembled and materialized by core/stitched_model.f90; the
 ! writers below are pure readers of its stx_* arrays.
-      use stitched_model_lib, only: n_ext, stx_pulse, n_pulse_cols
+      use stitched_model_lib, only: n_ext, stx_pulse, n_pulse_cols, ipul_gyre_last
       use history_output, only: history_output_init, write_history_row
       use profile_output, only: profile_output_init, write_profile
       use math_lib
@@ -242,7 +242,7 @@ end subroutine write_pulse
 subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path)
       use star_info_lib, only: star
       integer, intent(in) :: n
-      double precision, intent(in) :: pts(35, n)
+      double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: path
       integer, parameter :: gyre_schema = 101
@@ -252,7 +252,7 @@ subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path)
       write(u,'(I6,3(1X,1PE26.16),1X,I6)') n, mstar_g, rstar_cm, &
            lstar_cgs, gyre_schema
       do j = 1, n
-         write(u,'(I6,99(1X,1PE26.16))') j, (pts(i,j), i = 1, 18)
+         write(u,'(I6,99(1X,1PE26.16))') j, (pts(i,j), i = 1, ipul_gyre_last)
       end do
       close(u)
 end subroutine write_gyre_ext
