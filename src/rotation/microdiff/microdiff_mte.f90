@@ -16,13 +16,31 @@
 ! batch). Part of the microdiff.f90 pipeline (see also
 ! microdiff_setup.f90, microdiff_coefficients.f90, microdiff_run.f90,
 ! microdiff_etm.f90).
+! 2026 de-tramp (ROADMAP item 3): 33 arguments -> 15. The 22
+! equally-spaced-grid output arrays are two microdiff_grid records
+! (zone centers, eq; zone midpoints, eq_mid), defined here and
+! threaded through microdiff_run/microdiff_coefficients, which are
+! called once per grid instance.
+module microdiff_mte_lib
+      use star_info_lib, only: json
+      implicit none
+
+! One equally spaced radial grid of the microdiff settling pipeline
+! (Bahcall & Loeb units): structure plus interpolated composition.
+! light is dimensioned for the pipeline's three light elements
+! (Li6/Li7/Be9; num_light in microdiff.f90).
+      type :: microdiff_grid
+         double precision :: mass(json), radius(json), density(json), &
+              temperature(json), dlnp_dr(json), del_grad(json), &
+              hydrogen(json), helium(json), metal(json), &
+              light(3,json)
+      end type microdiff_grid
+contains
+
 subroutine microdiff_mte(num_light, light_element_id, composition, &
      dlnp_dr, radius_bl, enclosed_mass, zone_begin, zone_end, num_zones, &
-     grid_spacing, num_eq_points, density_orig, temperature_orig, eq_mass, &
-     eq_radius, eq_density, eq_temperature, eq_dlnp_dr, eq_del_grad, &
-     eq_hydrogen, eq_helium, eq_metal, eq_light, eq_mass_mid, eq_radius_mid, &
-     eq_density_mid, eq_temperature_mid, eq_dlnp_dr_mid, eq_del_grad_mid, &
-     eq_hydrogen_mid, eq_helium_mid, eq_metal_mid, eq_light_mid)
+     grid_spacing, num_eq_points, density_orig, temperature_orig, &
+     eq, eq_mid)
 
       use star_info_lib, only: star, i_grad_actual, json
       use numerics_lib
@@ -36,16 +54,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       double precision, intent(out) :: grid_spacing
       integer, intent(out) :: num_eq_points
       double precision, intent(in) :: density_orig(json), temperature_orig(json)
-      double precision, intent(out) :: eq_mass(json), eq_radius(json), &
-           eq_density(json), eq_temperature(json), eq_dlnp_dr(json), &
-           eq_del_grad(json), eq_hydrogen(json), eq_helium(json), &
-           eq_metal(json)
-      double precision, intent(out) :: eq_light(num_light,json)
-      double precision, intent(out) :: eq_mass_mid(json), eq_radius_mid(json), &
-           eq_density_mid(json), eq_temperature_mid(json), &
-           eq_dlnp_dr_mid(json), eq_del_grad_mid(json), eq_hydrogen_mid(json), &
-           eq_helium_mid(json), eq_metal_mid(json)
-      double precision, intent(out) :: eq_light_mid(num_light,json)
+      type(microdiff_grid), intent(out) :: eq, eq_mid
 
 
 
@@ -75,14 +84,14 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       num_eq_points=min(num_eq_points,half_json)
       grid_spacing = drtot/dfloat(num_eq_points-1)
 !  SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE MIDPOINTS.
-      eq_radius_mid(1)=radius_bl(zone_begin)+0.5d0*grid_spacing
+      eq_mid%radius(1)=radius_bl(zone_begin)+0.5d0*grid_spacing
 ! JVS added logic trap (IF statement)
       if (num_eq_points .eq. 2) then
-         eq_radius_mid(2)=eq_radius_mid(1)+grid_spacing
+         eq_mid%radius(2)=eq_mid%radius(1)+grid_spacing
       else
          do i = 2,num_eq_points-1! old piece
             if(i-1 .eq. 0) print*, 'mte line 47'
-            eq_radius_mid(i)=eq_radius_mid(i-1)+grid_spacing  ! old piece
+            eq_mid%radius(i)=eq_mid%radius(i-1)+grid_spacing  ! old piece
          end do
       endif
 
@@ -91,25 +100,25 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !
 !  FIRST POINT : LINEAR INTERPOLATION BETWEEN STARTING POINT AND 2ND PT.
       do iu=2,num_eq_points
-         if(radius_bl(iu).ge.eq_radius_mid(1))exit
+         if(radius_bl(iu).ge.eq_mid%radius(1))exit
       end do
       if (iu > num_eq_points) then
       iu=num_eq_points
       end if
-      fx=(eq_radius_mid(1)-radius_bl(iu-1))/(radius_bl(iu)-radius_bl(iu-1))
-      eq_mass_mid(1) = enclosed_mass(iu-1)+fx*(enclosed_mass(iu)-enclosed_mass(iu-1))
-      eq_density_mid(1) = density_orig(iu-1)+fx*(density_orig(iu)-density_orig(iu-1))
-      eq_temperature_mid(1) = temperature_orig(iu-1)+ &
+      fx=(eq_mid%radius(1)-radius_bl(iu-1))/(radius_bl(iu)-radius_bl(iu-1))
+      eq_mid%mass(1) = enclosed_mass(iu-1)+fx*(enclosed_mass(iu)-enclosed_mass(iu-1))
+      eq_mid%density(1) = density_orig(iu-1)+fx*(density_orig(iu)-density_orig(iu-1))
+      eq_mid%temperature(1) = temperature_orig(iu-1)+ &
            fx*(temperature_orig(iu)-temperature_orig(iu-1))
-      eq_dlnp_dr_mid(1) = dlnp_dr(iu-1)+fx*(dlnp_dr(iu)-dlnp_dr(iu-1))
-      eq_del_grad_mid(1) = star%gradT(iu-1)+fx*(star%gradT(iu)-star%gradT(iu-1))
-      eq_hydrogen_mid(1) = composition(1,iu-1)+fx*(composition(1,iu)-composition(1,iu-1))
-      eq_helium_mid(1) = composition(2,iu-1)+fx*(composition(2,iu)-composition(2,iu-1))
-      eq_metal_mid(1) = composition(3,iu-1)+fx*(composition(3,iu)-composition(3,iu-1))
+      eq_mid%dlnp_dr(1) = dlnp_dr(iu-1)+fx*(dlnp_dr(iu)-dlnp_dr(iu-1))
+      eq_mid%del_grad(1) = star%gradT(iu-1)+fx*(star%gradT(iu)-star%gradT(iu-1))
+      eq_mid%hydrogen(1) = composition(1,iu-1)+fx*(composition(1,iu)-composition(1,iu-1))
+      eq_mid%helium(1) = composition(2,iu-1)+fx*(composition(2,iu)-composition(2,iu-1))
+      eq_mid%metal(1) = composition(3,iu-1)+fx*(composition(3,iu)-composition(3,iu-1))
       if(star%ctrl%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)
-            eq_light_mid(kk,1) = composition(ii,iu-1)+ &
+            eq_mid%light(kk,1) = composition(ii,iu-1)+ &
                  fx*(composition(ii,iu)-composition(ii,iu-1))
          end do
       endif
@@ -123,7 +132,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       do i=2,num_eq_points-1
          do j = jmin,zone_end
 !  FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
-            if(radius_bl(j).ge.eq_radius_mid(i))then
+            if(radius_bl(j).ge.eq_mid%radius(i))then
 !  ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
                k0 = max(j-2,1)
 !  ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
@@ -139,36 +148,36 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          do k=1,4
             tabler(k)=radius_bl(k0+k-1)
          end do
-         gridrad=eq_radius_mid(i)
+         gridrad=eq_mid%radius(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
 !  FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
 !  RADII IN TABLER; FACDERIV=SAME FOR DERIVATIVES AT POINT GRIDRAD.
          call interp(tabler,facinterp,facderiv,gridrad)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 !  MASS WITHIN THE RADIUS ER
-         eq_mass_mid(i) = facinterp(1)*enclosed_mass(k0)+facinterp(2)*enclosed_mass(k0+1)+ &
+         eq_mid%mass(i) = facinterp(1)*enclosed_mass(k0)+facinterp(2)*enclosed_mass(k0+1)+ &
                    facinterp(3)*enclosed_mass(k0+2)+facinterp(4)*enclosed_mass(k0+3)
 !  RELAVENT PHYSICAL VARIABLES
-         eq_density_mid(i) = facinterp(1)*density_orig(k0)+facinterp(2)*density_orig(k0+1)+ &
+         eq_mid%density(i) = facinterp(1)*density_orig(k0)+facinterp(2)*density_orig(k0+1)+ &
                    facinterp(3)*density_orig(k0+2)+facinterp(4)*density_orig(k0+3)
-         eq_temperature_mid(i) = facinterp(1)*temperature_orig(k0)+facinterp(2)*temperature_orig(k0+1)+ &
+         eq_mid%temperature(i) = facinterp(1)*temperature_orig(k0)+facinterp(2)*temperature_orig(k0+1)+ &
                    facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
-         eq_dlnp_dr_mid(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
+         eq_mid%dlnp_dr(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
                    facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_del_grad_mid(i) = facinterp(1)*star%gradT(k0)+facinterp(2)*star%gradT(k0+1)+ &
+         eq_mid%del_grad(i) = facinterp(1)*star%gradT(k0)+facinterp(2)*star%gradT(k0+1)+ &
                    facinterp(3)*star%gradT(k0+2)+facinterp(4)*star%gradT(k0+3)
 !  MASS FRACTION OF HYDROGEN
-         eq_hydrogen_mid(i)=facinterp(1)*composition(1,k0) &
+         eq_mid%hydrogen(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
               +facinterp(3)*composition(1,k0+2) &
               +facinterp(4)*composition(1,k0+3)
 !  MASS FRACTION OF HELIUM
-         eq_helium_mid(i)=facinterp(1)*composition(2,k0) &
+         eq_mid%helium(i)=facinterp(1)*composition(2,k0) &
               +facinterp(2)*composition(2,k0+1) &
               +facinterp(3)*composition(2,k0+2) &
               +facinterp(4)*composition(2,k0+3)
 !  MASS FRACTION OF METALS
-         eq_metal_mid(i)=facinterp(1)*composition(3,k0) &
+         eq_mid%metal(i)=facinterp(1)*composition(3,k0) &
               +facinterp(2)*composition(3,k0+1) &
               +facinterp(3)*composition(3,k0+2) &
               +facinterp(4)*composition(3,k0+3)
@@ -176,7 +185,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          if(star%ctrl%diffuse_lithium)then
             do kk=1,num_light
                ii = light_element_id(kk)
-               eq_light_mid(kk,i)=facinterp(1)*composition(ii,k0) &
+               eq_mid%light(kk,i)=facinterp(1)*composition(ii,k0) &
                        +facinterp(2)*composition(ii,k0+1) &
                        +facinterp(3)*composition(ii,k0+2) &
                        +facinterp(4)*composition(ii,k0+3)
@@ -185,9 +194,9 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       end do
 
 !  SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE CENTERS.
-      eq_radius(1)=radius_bl(zone_begin)
+      eq%radius(1)=radius_bl(zone_begin)
       do i = 2,num_eq_points
-         eq_radius(i)=eq_radius(i-1)+grid_spacing
+         eq%radius(i)=eq%radius(i-1)+grid_spacing
       end do
 
 !  NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
@@ -195,18 +204,18 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 !
 !  FIRST POINT : BY DEFINITION, AT STARTING POINT.
 ! G Somers; added interpolation for Xfrac, Rho, T, and HQPR.
-      eq_mass(1) = enclosed_mass(zone_begin)
-      eq_density(1) = density_orig(zone_begin)
-      eq_temperature(1) = temperature_orig(zone_begin)
-      eq_dlnp_dr(1) = dlnp_dr(zone_begin)
-      eq_del_grad(1) = star%gradT(zone_begin)
-      eq_hydrogen(1) = composition(1,zone_begin)
-      eq_helium(1) = composition(2,zone_begin)
-      eq_metal(1) = composition(3,zone_begin)
+      eq%mass(1) = enclosed_mass(zone_begin)
+      eq%density(1) = density_orig(zone_begin)
+      eq%temperature(1) = temperature_orig(zone_begin)
+      eq%dlnp_dr(1) = dlnp_dr(zone_begin)
+      eq%del_grad(1) = star%gradT(zone_begin)
+      eq%hydrogen(1) = composition(1,zone_begin)
+      eq%helium(1) = composition(2,zone_begin)
+      eq%metal(1) = composition(3,zone_begin)
       if(star%ctrl%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)
-            eq_light(kk,1) = composition(ii,zone_begin)
+            eq%light(kk,1) = composition(ii,zone_begin)
          end do
       endif
 !  FOR OTHER POINTS: FIRST FIND 4 NEAREST (IN RADIUS) MODEL POINTS
@@ -218,7 +227,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       do i=2,num_eq_points-1
          do j = jmin,zone_end
 !  FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
-            if(radius_bl(j).ge.eq_radius(i))then
+            if(radius_bl(j).ge.eq%radius(i))then
 !  ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
                k0 = max(j-2,1)
 !  ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
@@ -234,39 +243,39 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          do k=1,4
             tabler(k)=radius_bl(k0+k-1)
          end do
-         gridrad=eq_radius(i)
+         gridrad=eq%radius(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
 !  FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
 !  RADII IN TABLER; FACDERIV=SAME FOR DERIVATIVES AT POINT GRIDRAD.
          call interp(tabler,facinterp,facderiv,gridrad)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 !  MASS WITHIN THE RADIUS ER
-         eq_mass(i) = facinterp(1)*enclosed_mass(k0)+facinterp(2)*enclosed_mass(k0+1)+ &
+         eq%mass(i) = facinterp(1)*enclosed_mass(k0)+facinterp(2)*enclosed_mass(k0+1)+ &
                    facinterp(3)*enclosed_mass(k0+2)+facinterp(4)*enclosed_mass(k0+3)
-         eq_density(i) = facinterp(1)*density_orig(k0)+facinterp(2)*density_orig(k0+1)+ &
+         eq%density(i) = facinterp(1)*density_orig(k0)+facinterp(2)*density_orig(k0+1)+ &
                    facinterp(3)*density_orig(k0+2)+facinterp(4)*density_orig(k0+3)
-         eq_temperature(i) = facinterp(1)*temperature_orig(k0)+facinterp(2)*temperature_orig(k0+1)+ &
+         eq%temperature(i) = facinterp(1)*temperature_orig(k0)+facinterp(2)*temperature_orig(k0+1)+ &
                    facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
-         eq_dlnp_dr(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
+         eq%dlnp_dr(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
                    facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_del_grad(i) = facinterp(1)*star%gradT(k0)+facinterp(2)*star%gradT(k0+1)+ &
+         eq%del_grad(i) = facinterp(1)*star%gradT(k0)+facinterp(2)*star%gradT(k0+1)+ &
                    facinterp(3)*star%gradT(k0+2)+facinterp(4)*star%gradT(k0+3)
-         eq_hydrogen(i)=facinterp(1)*composition(1,k0) &
+         eq%hydrogen(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
               +facinterp(3)*composition(1,k0+2) &
               +facinterp(4)*composition(1,k0+3)
-         eq_helium(i)=facinterp(1)*composition(2,k0) &
+         eq%helium(i)=facinterp(1)*composition(2,k0) &
               +facinterp(2)*composition(2,k0+1) &
               +facinterp(3)*composition(2,k0+2) &
               +facinterp(4)*composition(2,k0+3)
-         eq_metal(i)=facinterp(1)*composition(3,k0) &
+         eq%metal(i)=facinterp(1)*composition(3,k0) &
               +facinterp(2)*composition(3,k0+1) &
               +facinterp(3)*composition(3,k0+2) &
               +facinterp(4)*composition(3,k0+3)
          if(star%ctrl%diffuse_lithium)then
             do kk=1,num_light
                ii = light_element_id(kk)
-               eq_light(kk,i)=facinterp(1)*composition(ii,k0) &
+               eq%light(kk,i)=facinterp(1)*composition(ii,k0) &
                     +facinterp(2)*composition(ii,k0+1) &
                     +facinterp(3)*composition(ii,k0+2) &
                     +facinterp(4)*composition(ii,k0+3)
@@ -274,19 +283,21 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          endif
       end do
 !  LAST POINT : BY DEFINITION, AT ENDING POINT.
-      eq_mass(num_eq_points) = enclosed_mass(zone_end)
-      eq_density(num_eq_points) = density_orig(zone_end)
-      eq_temperature(num_eq_points) = temperature_orig(zone_end)
-      eq_dlnp_dr(num_eq_points) = dlnp_dr(zone_end)
-      eq_del_grad(num_eq_points) = star%gradT(zone_end)
-      eq_hydrogen(num_eq_points) = composition(1,zone_end)
-      eq_helium(num_eq_points) = composition(2,zone_end)
-      eq_metal(num_eq_points) = composition(3,zone_end)
+      eq%mass(num_eq_points) = enclosed_mass(zone_end)
+      eq%density(num_eq_points) = density_orig(zone_end)
+      eq%temperature(num_eq_points) = temperature_orig(zone_end)
+      eq%dlnp_dr(num_eq_points) = dlnp_dr(zone_end)
+      eq%del_grad(num_eq_points) = star%gradT(zone_end)
+      eq%hydrogen(num_eq_points) = composition(1,zone_end)
+      eq%helium(num_eq_points) = composition(2,zone_end)
+      eq%metal(num_eq_points) = composition(3,zone_end)
       if(star%ctrl%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)
-            eq_light(kk,num_eq_points) = composition(ii,zone_end)
+            eq%light(kk,num_eq_points) = composition(ii,zone_end)
          end do
       endif
       return
 end subroutine microdiff_mte
+
+end module microdiff_mte_lib

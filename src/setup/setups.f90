@@ -26,6 +26,8 @@ subroutine setups(ierr)
       use star_info_lib, only: star, json
       use phys_const_lib
       use yale_eos_lib
+      use math_lib
+      use ttau_lib, only: hsra_t_tau_offset
       implicit none
       integer, intent(out) :: ierr
 ! JNT 06/14 ADD NTC FOR KURUCZ/CASTELLI 2004 ATM
@@ -54,25 +56,23 @@ subroutine setups(ierr)
 ! --- locals ---
       double precision :: speed_of_light, electron_mass, boltzmann_constant, &
            planck_constant, hydrogen_atom_mass, electron_charge_esu
-      double precision :: harvard_t_tau
-      external harvard_t_tau
       integer :: teff_idx, logg_idx
       logical :: found_valid_pressure
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! SETUP CONSTANTS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      clndp = dlog(10.0d0)
+      clndp = log(10.0d0)
       ln10 = clndp
       clni = 1.0d0/ln10
 ! Luminosity of Sun
-      star%log10_solar_luminosity = dlog10(star%solar_luminosity_cgs)
+      star%log10_solar_luminosity = log10(star%solar_luminosity_cgs)
       star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
 ! Mass of Sun (namelist control since 2026; default 1.9891d33)
       star%solar_mass_cgs = star%ctrl%solar_mass_cgs
-      star%log10_solar_mass = dlog10(star%solar_mass_cgs)
+      star%log10_solar_mass = log10(star%solar_mass_cgs)
 ! Radius of Sun
-      star%log10_solar_radius = dlog10(star%solar_radius_cgs)
+      star%log10_solar_radius = log10(star%solar_radius_cgs)
 ! Bolometric magnitude of the sun
       star%solar_bolometric_magnitude = 4.79d0
 ! No. of seconds per year and other mathematical constants
@@ -81,23 +81,23 @@ subroutine setups(ierr)
       cc23 = cc13 + cc13
       cpi = 3.1415926535898d0
       c4pi = 4.0d0*cpi
-      c4pil = dlog10(c4pi)
-      c4pi3l = dlog10(cc13*c4pi)
+      c4pil = log10(c4pi)
+      c4pi3l = log10(cc13*c4pi)
 ! Speed of Light
       speed_of_light = 2.99792458d10
 ! Stefan-Boltzmann constant
       csig = 5.67051d-5
-      csigl = dlog10(csig)
+      csigl = log10(csig)
 ! radiation constant/3
       radiation_constant_over_3 = csig*4.0d0/(3.0d0*speed_of_light)
-      ca3l = dlog10(radiation_constant_over_3)
+      ca3l = log10(radiation_constant_over_3)
 ! molar gas constant
       gas_constant = 8.314510d7
 ! log of the gravitational constant. G_cgs < 0 (default) keeps the
 ! historical hard-coded log10 G = -7.17571 (G=6.6726D-8) bit-for-bit;
 ! a positive G_cgs (namelist control since 2026) overrides it.
       if (star%ctrl%G_cgs > 0.0d0) then
-         cgl = dlog10(star%ctrl%G_cgs)
+         cgl = log10(star%ctrl%G_cgs)
       else
          cgl = -7.17571d0
       end if
@@ -107,10 +107,10 @@ subroutine setups(ierr)
       boltzmann_constant = 1.380658d-16
 ! Planck's constant
       planck_constant = 6.6260755d-27
-      cmkh = 1.50d0*dlog10(2.0d0*cpi*electron_mass)+2.5d0* &
-           dlog10(boltzmann_constant)- &
-           3.0d0*dlog10(planck_constant)
-      cdelrl = -c4pi3l - csigl - dlog10(16.0d0)
+      cmkh = 1.50d0*log10(2.0d0*cpi*electron_mass)+2.5d0* &
+           log10(boltzmann_constant)- &
+           3.0d0*log10(planck_constant)
+      cdelrl = -c4pi3l - csigl - log10(16.0d0)
       cmixl2 = cc13
       cmixl3 = 16.0d0*dsqrt(2.0d0)*csig
 ! DBG CALCULATE DEBYE-HUCKEL CONSTAND CDH
@@ -143,7 +143,7 @@ subroutine setups(ierr)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     EVALUATE TAU = 2/3 TEMPERATURE FOR HRA
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      star%atm_hras = harvard_t_tau(cc23)
+      star%atm_hras = hsra_t_tau_offset()
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

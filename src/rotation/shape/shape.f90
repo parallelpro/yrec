@@ -17,6 +17,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
       use star_info_lib, only: star
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_density(json), log_radius(json), &
@@ -42,7 +43,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 !  R = R0*(1 - A*P2), WHERE A IS A FUNCTION OF ROTATION RATE AND P2 IS
 !  THE SECOND LEGENDRE POLYNOMIAL.  FOR MORE INFORMATION SEE ENDAL AND
 !  SOFIA.
-      cg = dexp(ln10*cgl)
+      cg = exp(ln10*cgl)
       c1 = 0.6d0
       c2 = 2.0d0/3.5d1
       c3 = 3.0d0*c1
@@ -53,12 +54,12 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 !  NOTE THAT THE SUFFIX 'P' DENOTES A QUANTITY FROM THE PREVIOUS SHELL.
 !  E.G. RHOP IS THE DENSITY OF THE LAST SHELL AND RHO IS THE DENSITY OF
 !  THE CURRENT ONE.
-         rho_bar = dexp(ln10*(log_mass(1) - c4pi3l - 3.0d0*log_radius(1)))
-         r_phi = dexp(ln10*log_radius(1))
-         density = dexp(ln10*log_density(1))
+         rho_bar = exp(ln10*(log_mass(1) - c4pi3l - 3.0d0*log_radius(1)))
+         r_phi = exp(ln10*log_radius(1))
+         density = exp(ln10*log_density(1))
          eta2(1) = 6.d0*(1.0d0 - density/rho_bar)
 ! ITERATE FOR R0 GIVEN RPHI AND ETA2
-         gm = cg*dexp(ln10*log_mass(1))
+         gm = cg*exp(ln10*log_mass(1))
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
          fact = 5.0d0*cc13*omega(1)**2/(gm*(2.0d0+eta2(1)))
@@ -69,7 +70,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             r0_cubed = r0_cubed + delta_r0_cubed
             if(dabs(delta_r0_cubed/r0_cubed).le.star%job%acfpft)exit
          end do
-         r0(1) = r0_cubed**cc13
+         r0(1) = pow(r0_cubed, cc13)
          if (zone_end.eq.1) then
             continue
             return
@@ -79,17 +80,17 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          rho_prev = density
          j_begin = 2
       else
-         rho_bar_prev = dexp(ln10*(log_mass(zone_start-1) - c4pi3l - &
+         rho_bar_prev = exp(ln10*(log_mass(zone_start-1) - c4pi3l - &
               3.0d0*log_radius(zone_start-1)))
-         r_phi_prev = dexp(ln10*log_radius(zone_start-1))
-         rho_prev = dexp(ln10*log_density(zone_start-1))
+         r_phi_prev = exp(ln10*log_radius(zone_start-1))
+         rho_prev = exp(ln10*log_density(zone_start-1))
       end if
 !  CALCULATE ETA2 AND R0 FOR REMAINING POINTS
       do i = j_begin,zone_end
-         rho_bar = dexp(ln10*(log_mass(i) - c4pi3l - 3.0d0*log_radius(i)))
-         density = dexp(ln10*log_density(i))
-         r_phi = dexp(ln10*log_radius(i))
-         gm = cg*dexp(ln10*log_mass(i))
+         rho_bar = exp(ln10*(log_mass(i) - c4pi3l - 3.0d0*log_radius(i)))
+         density = exp(ln10*log_density(i))
+         r_phi = exp(ln10*log_radius(i))
+         gm = cg*exp(ln10*log_mass(i))
          dr = r_phi - r_phi_prev
 ! FIND ETA2 USING 4-POINT RUNGE-KUTTE TECHNIQUE
 ! D(ETA2)/D(R0) IS COMPUTED USING RADAU'S EQUATION:
@@ -122,7 +123,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
          r0_estimate = r_phi
-         acc_tol = star%job%acfpft**cc13
+         acc_tol = pow(star%job%acfpft, cc13)
 ! ITERATE BETWEEN SOLUTION FOR ETA2 AND SOLUTION FOR R0 ITFP1 TIMES.
          do k = 1,star%ctrl%itfp1
             fact = 5.0d0*cc13*omega(i)**2/(gm*(2.0d0+eta2(i)))
@@ -136,7 +137,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
                r0_cubed = r0_cubed + delta_r0_cubed
                if(dabs(delta_r0_cubed/r0_cubed).lt.star%job%acfpft)exit
             end do
-            r0(i) = r0_cubed**cc13
+            r0(i) = pow(r0_cubed, cc13)
             err = r0(i) - r0_estimate
 !  ETA2 IS A FUNCTION OF R0, AND R0=RPHI WAS USED TO CALCULATE ETA2
 !  CORRECT ETA2 HERE IF DR/R0 > CUBE ROOT OF ACFPFT

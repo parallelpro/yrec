@@ -26,6 +26,7 @@ program test_atm
       use opacity_table_lib
       use scv_eos_lib
       implicit none
+      integer :: gerr
 
       character(len=256) :: yrec_input
       character(len=256) :: fermi_path, kurucz_atm_path, castelli_path, &
@@ -120,7 +121,8 @@ program test_atm
 
 ! --- Kurucz (1993), atm_choice=3, looked up via surfp ---
       star%job%atm_choice = 3
-      call atm_init(kurucz_atm_path, dummy_path)
+      call atm_init(kurucz_atm_path, dummy_path, gerr)
+      if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Kurucz (choice 3), surfp lookups"
       do ipt = 1, npts
          teffl = grid_teffl(ipt)
@@ -132,7 +134,8 @@ program test_atm
 
 ! --- Castelli & Kurucz (2003), atm_choice=5, via kcsurfp ---
       star%job%atm_choice = 5
-      call atm_init(castelli_path, dummy_path)
+      call atm_init(castelli_path, dummy_path, gerr)
+      if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Castelli/Kurucz (choice 5), " // &
            "kcsurfp lookups"
       do ipt = 1, npts
@@ -145,13 +148,15 @@ program test_atm
 
 ! --- Allard NextGen, atm_choice=4, through the facade entry ---
       star%job%atm_choice = 4
-      call atm_init(kurucz_atm_path, allard_path)
+      call atm_init(kurucz_atm_path, allard_path, gerr)
+      if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Allard (choice 4), " // &
            "atm_get_surface_pt lookups"
       do ipt = 1, npts
          teffl = grid_teffl(ipt)
          gl = grid_gl(ipt)
-         call atm_get_surface_pt(teffl, gl, .false., failed)
+         call atm_get_surface_pt(teffl, gl, .false., failed, gerr)
+         if (gerr /= 0) stop 1
          write(*,'(a,i2,l2,2(1pe24.15))') "al  ", ipt, failed, &
               atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
       end do

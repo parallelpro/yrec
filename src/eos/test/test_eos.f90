@@ -43,6 +43,7 @@ program test_eos
       use yale_eos_lib
       use scv_eos_lib
       implicit none
+      integer :: gerr
 
       character(len=256) :: yrec_input, mhd_dir
       character(len=256) :: fermi_path, scvh_path, scvhe_path, scvz_path, &
@@ -212,7 +213,8 @@ program test_eos
          call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
               beta, betai, beta14, fxion, rmu, amu, emu, eta, &
               qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
-              lderiv, latmo, ksaha)
+              lderiv, latmo, ksaha, ierr=gerr)
+      if (gerr /= 0) stop 1
          write(*,'(a,i2)') "point ", ipt
          write(*,'(4(1pe24.15))') logt, logp, logd, beta
          write(*,'(4(1pe24.15))') qdt, qdp, qcp, dela
@@ -229,7 +231,8 @@ program test_eos
          pres = g1_p(ipt)
          ksaha = 0
          call eos_get_gamma1(x_frac, z_frac, t6, rho, pres, gamma1, &
-              grad_ad, ksaha)
+              grad_ad, ksaha, ierr=gerr)
+      if (gerr /= 0) stop 1
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
 
@@ -249,7 +252,8 @@ program test_eos
          pres = g1_p(ipt)
          ksaha = 0
          call eos_get_gamma1(x_frac, z_frac, t6, rho, pres, gamma1, &
-              grad_ad, ksaha)
+              grad_ad, ksaha, ierr=gerr)
+      if (gerr /= 0) stop 1
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
       star%ctrl%use_opal2006_eos = .true.
@@ -266,7 +270,8 @@ program test_eos
               trim(mhd_dir)//"/zams_a", trim(mhd_dir)//"/zams_b", &
               trim(mhd_dir)//"/zams_c", trim(mhd_dir)//"/centre1", &
               trim(mhd_dir)//"/centre2", trim(mhd_dir)//"/centre3", &
-              trim(mhd_dir)//"/centre4", trim(mhd_dir)//"/centre5")
+              trim(mhd_dir)//"/centre4", trim(mhd_dir)//"/centre5", gerr)
+      if (gerr /= 0) stop 1
          write(*,'(a)') "# test_eos: eos_eval over the same grid, MHD"
          do ipt = 1, npts
             logt = grid_logt(ipt)
@@ -279,7 +284,8 @@ program test_eos
             call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
                  beta, betai, beta14, fxion, rmu, amu, emu, eta, &
                  qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
-                 lderiv, latmo, ksaha)
+                 lderiv, latmo, ksaha, ierr=gerr)
+      if (gerr /= 0) stop 1
             write(*,'(a,i2)') "mhd point ", ipt
             write(*,'(4(1pe24.15))') logt, logp, logd, beta
             write(*,'(4(1pe24.15))') qdt, qdp, qcp, dela

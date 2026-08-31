@@ -32,6 +32,7 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
 
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_radius(json), radius(json)
@@ -357,7 +358,7 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
 ! BY D LN(J/M)/DR < 0, WHICH SOMETIMES OCCURS.
 ! IF D LN(J/M)/DR < 0, CHECK SECOND CRITERIA AND USE THE LARGEST
 ! VELOCITY; OTHERWISE,USE ONLY D OMEGA/DZ NON-ZERO CRITERION.
-         if (omega(i)*radius(i)**2.lt.omega(i-1)*radius(i-1)**2) then
+         if (omega(i)*radius(i)**2 .lt. omega(i-1)*radius(i-1)**2) then
             dlnjmdr = abs(2.0d0/rmid+(log(omega(i))- &
                       log(omega(i-1)))/dr)
             fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
@@ -417,7 +418,7 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
 ! kippenhahn (1980) estimate
 ! OMIT BRANCH FOR JAMES AND KAHN.
 !            IF(IGSF.EQ.2 .OR. IGSF.EQ.1 .OR. IGSF.EQ.0)THEN
-            if (omega(i)*radius(i)**2.lt.wmin*radius(i-1)**2) then
+            if (omega(i)*radius(i)**2 .lt. wmin*radius(i-1)**2) then
                fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
                qwrmx_dyn = max(2.0d0*dlnjmdr0,0.25d0*dlnwdr0)
                star%gsf_circulation_velocity(i) = star%gsf_circulation_velocity(i)* &

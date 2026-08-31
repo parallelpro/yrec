@@ -172,7 +172,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !     EXTENDED SET OF VARIABLES (TDVAR2(N,M,IVAR1+1...IVAR2))
 !     FOR T-RHO REGIONS WITH INHOMOGENEOUS COMPOSITION.
 !     IN THE COMMENTS,R AND T DENOTE LOG10(RHO) AND LOG10(T).
-!     DLOG10(P)/DX,DLOG10(U)/DX,DDELAD/DX,DLOG10(CP)/DX
+!     log10(P)/DX,log10(U)/DX,DDELAD/DX,log10(CP)/DX
       table_vars2(temp_deriv_index,density_deriv_index,21)=(table_vars_up(temp_deriv_index,density_deriv_index, 2)-table_vars_down(temp_deriv_index,density_deriv_index, 2))/(2.d0*delta_x)
       table_vars2(temp_deriv_index,density_deriv_index,22)=(table_vars_up(temp_deriv_index,density_deriv_index, 3)-table_vars_down(temp_deriv_index,density_deriv_index, 3))/(2.d0*delta_x)
       table_vars2(temp_deriv_index,density_deriv_index,23)=(table_vars_up(temp_deriv_index,density_deriv_index, 8)-table_vars_down(temp_deriv_index,density_deriv_index, 8))/(2.d0*delta_x)

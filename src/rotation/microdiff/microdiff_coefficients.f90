@@ -23,19 +23,27 @@
 ! microdiff_mte.f90, microdiff_run.f90, microdiff_etm.f90); calls
 ! thoul_diffusion.f90 (the Thoul et al. 1994 Burgers-equation solver) once per
 ! equally spaced grid point.
-subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
-     eq_density, eq_temperature, eq_dlnp_dr, eq_del_grad, diffusion_coeff1, &
+! 2026 de-tramp (ROADMAP item 3): the five equally-spaced-grid arrays
+! are one microdiff_grid record (grid) -- this routine is called once
+! for the zone-center grid and once for the zone-midpoint grid.
+module microdiff_coefficients_lib
+      implicit none
+contains
+
+subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
+     diffusion_coeff1, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col)
+      use microdiff_mte_lib, only: microdiff_grid
       use star_info_lib, only: star
 
       use star_info_lib
       use phys_const_lib
+      use math_lib
       implicit none
       integer, intent(in) :: num_eq_points
-      double precision, intent(in) :: species_fraction(3,json), &
-           eq_radius(json), eq_density(json), eq_temperature(json), &
-           eq_dlnp_dr(json), eq_del_grad(json)
+      double precision, intent(in) :: species_fraction(3,json)
+      type(microdiff_grid), intent(in) :: grid
       double precision, intent(out) :: diffusion_coeff1(json), &
            diffusion_coeff2(json)
       double precision, intent(inout) :: hydrogen_dlnc_dr(json)
@@ -107,8 +115,8 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
             endif
          endif
 !        set relevant physical variables.
-         rho = eq_density(i)
-         t = eq_temperature(i)
+         rho = grid%density(i)
+         t = grid%temperature(i)
 !        calculate density of electrons (NE) from mass density (RHO):
          ac=0.d0
          do ii=1,num_species
@@ -120,7 +128,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
          do ii=1,num_species-1
             ni=ni+concen(ii)*ne
          enddo
-         ao=(0.23873d0/ni)**cc13
+         ao=pow((0.23873d0/ni), cc13)
 !        calculate Debye length (LAMBDAD):
          cz=0.d0
          do ii=1,num_species
@@ -134,7 +142,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
             do jj=1,num_species
                xij=2.3939d3*t*lambda/abs(atomic_charge(ii)*atomic_charge(jj))
                coulomb_log(ii,jj)=0.81245d0 &
-               *log(1.d0+0.18769d0*xij**1.2d0)
+               *log(1.d0+0.18769d0*pow(xij, 1.2d0))
           enddo
          enddo
 !
@@ -143,23 +151,23 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
          call thoul_diffusion(num_species,atomic_weight,atomic_charge,mass_frac, &
               coulomb_log,pressure_coeff,temp_coeff,conc_coeff)
 !
-         hru_i = eq_radius(i)
+         hru_i = grid%radius(i)
          htu_i = t*bl_temp_scale_local
 !         FAC=FGRLI(KK)*HRU_I**2*HTU_I**2.5D0/LN_LAMBDA
 !        JvS 01/26 Added support for FGRY and FGRZ modifications
 !        to diffusion coefficients.
 !         FAC=HRU_I**2*HTU_I**2.5D0/LN_LAMBDA
-         fac=hru_i**2*htu_i**2.5d0/ln_lambda
+         fac=hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          if(species_col.eq.1)then
-            fac=star%ctrl%fgry*hru_i**2*htu_i**2.5d0/ln_lambda
+            fac=star%ctrl%fgry*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          endif
          if(species_col.eq.3)then
-            fac=star%job%fgrz*hru_i**2*htu_i**2.5d0/ln_lambda
+            fac=star%job%fgrz*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          endif
 !        collect the first diffusion terms for hydroden.
 !        collect the third diffusion terms for everything else.
          ap = -pressure_coeff(species_col)
-         at = -temp_coeff(species_col)*eq_del_grad(i)
+         at = -temp_coeff(species_col)*grid%del_grad(i)
          ah = -conc_coeff(species_col,1)
          ad = -conc_coeff(species_col,species_col)
 !        store the numbers so the hydrogen gradient can finish
@@ -202,7 +210,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
                coni = log(hydrogen_concen(i))
                conip1 = log(hydrogen_concen(i+1))
                conim1 = log(hydrogen_concen(i-1))
-               dradi = eq_radius(i+1)-eq_radius(i)
+               dradi = grid%radius(i+1)-grid%radius(i)
                t1 = (coni-conim1)/dradi
                t2 = (conip1-coni)/dradi
                dlncdr = 0.5*(t1+t2)
@@ -214,9 +222,11 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, eq_radius, &
 !           if not the hydrogen call, retrieve the gradient
             dlncdr = hydrogen_dlnc_dr(i)
          endif
-         diffusion_coeff1(i) = fac*(eq_dlnp_dr(i)*(ap+at)+dlncdr*ah)* &
+         diffusion_coeff1(i) = fac*(grid%dlnp_dr(i)*(ap+at)+dlncdr*ah)* &
               species_fraction(species_col,i)
          diffusion_coeff2(i) = fac*ad
       end do
       return
 end subroutine microdiff_coefficients
+
+end module microdiff_coefficients_lib

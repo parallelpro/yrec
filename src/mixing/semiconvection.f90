@@ -37,12 +37,14 @@
 subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
      mixed_zone_bounds, num_zones_mixed, log_teff, ierr)
+      use temperature_gradients_lib
       use star_info_lib, only: star, json
 
       use luout_lib
       use phys_const_lib
       use eos_lib
       use kap_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: timestep
@@ -163,14 +165,16 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
             call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
                  want_derivatives, in_atmosphere, saha_state, &
-                 composition_at_zone=composition(:,cz_edge_idx))
+                 composition_at_zone=composition(:,cz_edge_idx), ierr=ierr)
+            if (ierr /= 0) return
             log_density_zone = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density -- the
 ! historical inout dataflow)
             call kap_get(eos_res(i_log10_density), log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, kap_res, &
-                 eos_res(i_fxion:i_fxion+2))
-            call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
+                 eos_res(i_fxion:i_fxion+2), ierr=ierr)
+            if (ierr /= 0) return
+            call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
                  log_luminosity_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -195,13 +199,15 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
             call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
                  want_derivatives, in_atmosphere, saha_state, &
-                 composition_at_zone=composition(:,adjacent_radiative_idx))
+                 composition_at_zone=composition(:,adjacent_radiative_idx), ierr=ierr)
+            if (ierr /= 0) return
             log_density_zone = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density)
             call kap_get(eos_res(i_log10_density), log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, kap_res, &
-                 eos_res(i_fxion:i_fxion+2))
-            call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
+                 eos_res(i_fxion:i_fxion+2), ierr=ierr)
+            if (ierr /= 0) return
+            call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
                  log_luminosity_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -218,8 +224,8 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 ! THE INSTABILITY (VP IN EQUATION 5PRIME, P. 347).
             max_overshoot_radius = max_overshoot_radius*(log_luminosity( &
                  cz_edge_idx)*star%solar_luminosity_cgs/(10.0d0*c4pi* &
-                 dexp(ln10*log_pressure(cz_edge_idx))))* &
-                 (timestep/dexp(ln10*(log_radius(cz_edge_idx)+ &
+                 exp(ln10*log_pressure(cz_edge_idx))))* &
+                 (timestep/exp(ln10*(log_radius(cz_edge_idx)+ &
                  log_radius(cz_edge_idx))))
 ! INITIALIZE SUM.
             radius_sum = 0.0d0
@@ -265,13 +271,15 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                call eos_get(log_temperature_zone, log_pressure_zone, &
                     hydrogen_fraction, metal_fraction, eos_res, &
                     want_derivatives, in_atmosphere, saha_state, &
-                    composition_at_zone=composition(:,search_zone_idx))
+                    composition_at_zone=composition(:,search_zone_idx), ierr=ierr)
+               if (ierr /= 0) return
                log_density_zone = eos_res(i_log10_density)
 ! DBG 12/95 GET OPACITY (at eqstat's returned density)
                call kap_get(eos_res(i_log10_density), log_temperature_zone, &
                     hydrogen_fraction, metal_fraction, kap_res, &
-                    eos_res(i_fxion:i_fxion+2))
-               call temperature_gradients_r(log_temperature_zone, log_pressure_zone, &
+                    eos_res(i_fxion:i_fxion+2), ierr=ierr)
+               if (ierr /= 0) return
+               call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                     eos_res, kap_res, log_radius_zone, log_mass_zone, &
                     log_luminosity_zone, actual_gradient, radiative_gradient, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &

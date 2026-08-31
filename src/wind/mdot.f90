@@ -27,10 +27,11 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      new_surface_bc_needed, num_zones, omega, mean_molecular_weight_local, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
-     cz_total_mass_below_fitting, old_log_envelope_mass_fraction)
+     cz_total_mass_below_fitting, old_log_envelope_mass_fraction, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(inout) :: timestep
@@ -56,6 +57,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
            mean_thermal_energy
       double precision, intent(in) :: cz_total_mass_below_fitting
       double precision, intent(out) :: old_log_envelope_mass_fraction
+      integer, intent(out) :: ierr
 ! --- locals ---
       double precision :: omega_ratio_sq, omega_max_ratio_sq
       double precision :: mass_loss_rate_cgs
@@ -82,6 +84,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       double precision :: total_mass_grams_old, total_mass_grams_new
       double precision :: mixed_abundance
 
+      ierr = 0
       old_log_envelope_mass_fraction = log_mass(num_zones) - log_total_mass
 ! MHP 8/10- CHECK FOR SCALED SOLAR WIND MASS LOSS
       if(rot_scr%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
@@ -105,7 +108,11 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 !      DMCZT = 10.0D0**HSTOT - HS1(JENV)
       cz_mass_below_fitting = cz_total_mass_below_fitting
 ! COMPUTE MASS OF SURFACE CONVECTION ZONE BELOW FITTING POINT
-      if(envelope_boundary_zone.eq.num_zones) stop 911
+      if(envelope_boundary_zone.eq.num_zones) then
+         write(*,*) 'mdot: envelope boundary at the surface (911)'
+         ierr = 1
+         return
+      end if
       if(envelope_boundary_zone.gt.1) then
          cz_mass_grams = zone_mass_grams(num_zones)- &
               zone_mass_grams(envelope_boundary_zone)
@@ -121,8 +128,8 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 ! RESTRICT TIMESTEP TO ADD NO MORE THAN 1/2 OF THE CURRENT MASS
 ! BEYOND THE FITTING POINT TO THE STAR.
       if(mass_loss_rate_cgs.gt.0.0d0)then
-         timestep_limit_envelope = 0.5d0*(10.0d0**log_total_mass- &
-              10.0d0**log_mass(num_zones))/mass_loss_rate_cgs
+         timestep_limit_envelope = 0.5d0*(exp10(log_total_mass)- &
+              exp10(log_mass(num_zones)))/mass_loss_rate_cgs
          timestep_limit = min(timestep_limit,timestep_limit_envelope)
       endif
       if(timestep_limit.lt.timestep)then
@@ -155,9 +162,9 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 !         WRITE(*,912) JENV,EACC,ETHAV,ETHNEW,FAC,SUMDM,DELM
 ! 912     FORMAT(I5,1P6E12.3)
 ! OVERALL SCALE FACTOR IN R
-         local_temperature = 10.0d0**log_temperature(envelope_boundary_zone)
-         local_pressure = 10.0d0**log_pressure(envelope_boundary_zone)
-         local_density = 10.0d0**log_density(envelope_boundary_zone)
+         local_temperature = exp10(log_temperature(envelope_boundary_zone))
+         local_pressure = exp10(log_pressure(envelope_boundary_zone))
+         local_density = exp10(log_density(envelope_boundary_zone))
          local_beta = 1.0d0-(radiation_constant_over_3*local_temperature**4/ &
               local_pressure)
          mean_molecular_weight_local = local_pressure*local_beta/ &
@@ -184,10 +191,10 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
                  log_pressure(envelope_boundary_zone)+rot_scr%delta_log_pressure
             log_temperature(envelope_boundary_zone) = &
                  log_temperature(envelope_boundary_zone)+rot_scr%delta_log_temperature
-            boundary_radius_cm = 10.0d0**log_radius(envelope_boundary_zone)
-            radius_scale_factor = 10.0d0**delta_log_radius
+            boundary_radius_cm = exp10(log_radius(envelope_boundary_zone))
+            radius_scale_factor = exp10(delta_log_radius)
             do zone_idx = envelope_boundary_zone+1,num_zones
-               radius_before_cm = 10.0d0**log_radius(zone_idx)
+               radius_before_cm = exp10(log_radius(zone_idx))
                radius_after_cm = boundary_radius_cm+radius_scale_factor* &
                     (radius_before_cm-boundary_radius_cm)
                log_radius(zone_idx) = log10(radius_after_cm)
@@ -209,8 +216,8 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
             delta_angular_momentum = specific_angular_momentum(num_zones)* &
                  delta_mass_cgs
          else
-            surface_omega_local = omega(num_zones)*10.0d0** &
-                 (log_radius(num_zones)*star%ctrl%walpcz)/total_radius_cm**star%ctrl%walpcz
+            surface_omega_local = omega(num_zones)*exp10( &
+                 log_radius(num_zones)*star%ctrl%walpcz)/pow(total_radius_cm, star%ctrl%walpcz)
             delta_angular_momentum = surface_omega_local* &
                  surface_moment_of_inertia_per_mass*delta_mass_cgs
          endif
@@ -252,7 +259,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       delta_mass_msun = delta_mass_cgs/star%solar_mass_cgs
       write(*,20)total_mass_msun,delta_mass_msun
  20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)
-      total_mass_grams_old = 10.0d0**log_total_mass
+      total_mass_grams_old = exp10(log_total_mass)
       total_mass_grams_new = total_mass_grams_old + delta_mass_cgs
       log_total_mass = log10(total_mass_grams_new)
       star%stotal = log_total_mass

@@ -41,6 +41,7 @@ subroutine wind_spindown(log_luminosity_lsun, full_timestep, cz_moment_of_inerti
      omega_old, domega_start, domega_end, ierr)
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
@@ -91,14 +92,14 @@ subroutine wind_spindown(log_luminosity_lsun, full_timestep, cz_moment_of_inerti
 !  THE CONSTANT AND EXPONENTS ARE SET IN PARMIN BASED ON THE INPUT
 !  INDEX ALFA;SEE PARMIN FOR DETAILS ON THE DEPENDENCE OF EACH ON ALFA.
       wind_coefficient = full_timestep/cz_moment_of_inertia*star%ctrl%constfactor* &
-           (mass_loss_rate_msun_yr/1.0d-14)**star%ctrl%exmd &
-           *(total_radius_cm/star%solar_radius_cgs)**star%ctrl%exr*total_mass_msun**star%ctrl%exm
+           pow((mass_loss_rate_msun_yr/1.0d-14), star%ctrl%exmd) &
+           *pow((total_radius_cm/star%solar_radius_cgs), star%ctrl%exr)*pow(total_mass_msun, star%ctrl%exm)
       omega_old_capped = min(omega_old,omega_saturation)
       omega_new_capped = min(omega_surface,omega_saturation)
-      domega_start = wind_coefficient*omega_old_capped** &
-           (star%ctrl%wind_law_omega_exponent-1.0d0)*omega_old
-      domega_end_this_iter = wind_coefficient*omega_new_capped** &
-           (star%ctrl%wind_law_omega_exponent-1.0d0)*omega_surface
+      domega_start = wind_coefficient*pow(omega_old_capped, &
+           star%ctrl%wind_law_omega_exponent-1.0d0)*omega_old
+      domega_end_this_iter = wind_coefficient*pow(omega_new_capped, &
+           star%ctrl%wind_law_omega_exponent-1.0d0)*omega_surface
       if(iteration_number.eq.1) then
          domega_end = domega_end_this_iter
       else

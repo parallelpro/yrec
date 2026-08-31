@@ -19,6 +19,7 @@ subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin,
       use star_info_lib, only: star, json
       use phys_const_lib
       use numerics_lib
+      use math_lib
       implicit none
 
 ! log_luminosity (originally HL): this file's own comment describes

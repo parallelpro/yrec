@@ -24,6 +24,7 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
       use star_info_lib, only: star, json
       use phys_const_lib
       use numerics_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: diffusion_coeff(json), &

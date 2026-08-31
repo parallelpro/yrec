@@ -21,6 +21,7 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 !      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
@@ -120,10 +121,10 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
            csigl-4.d0*log_teff)
       fcorr_local = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
            total_mass_msun/star%solar_mass_cgs
-      fcen = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local))**star%ctrl%excen
+      fcen = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local)), star%ctrl%excen)
       domega_test = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
            star%job%structfactor*omega_surface &
-           *min(omega_now,omega_saturation)**(star%ctrl%wind_law_omega_exponent-1.0d0)*fcen
+           *pow(min(omega_now,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))*fcen
 !      DWTEST = (DELTS/HICZ)*CONSTFACTOR*STRUCTFACTOR*OMEGAS
 !     *          *MIN(OMEGAS,WSAT)**(EXW-1.0D0)
 ! G Somers END
@@ -164,10 +165,10 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
          fcorr_local = 0.5*omega_iter**2*exp(ln10*(3.0*log10_radius-cgl))/ &
               total_mass_msun/star%solar_mass_cgs
-         fcen = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local))**star%ctrl%excen
+         fcen = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local)), star%ctrl%excen)
          omega_iter_new = omega_substep_start - (sub_timestep/ &
               cz_moment_of_inertia)*star%ctrl%constfactor*star%job%structfactor*omega_iter &
-              *min(omega_now,omega_saturation)**(star%ctrl%wind_law_omega_exponent-1.0d0)*fcen
+              *pow(min(omega_now,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))*fcen
 !         WNEW = WS - (DT/HICZ)*CONSTFACTOR*STRUCTFACTOR*W
 !     *          *MIN(W,WSAT)**(EXW-1.0D0)
 ! G Somers END

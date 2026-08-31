@@ -21,6 +21,7 @@
 subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
+      use temperature_gradients_lib
       use rotation_scratch_lib
 
       use star_info_lib, only: star, i_grad_actual, i_grad_ad, i_grad_rad, json
@@ -28,6 +29,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       use eos_lib
       use kap_lib
       use numerics_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: fp(json), ft(json)
@@ -106,12 +108,14 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          call eos_get(log10_temperature, log10_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_state, &
-              composition_at_zone=composition(:,im))
+              composition_at_zone=composition(:,im), ierr=ierr)
+         if (ierr /= 0) return
          call kap_get(eos_res(i_log10_density), log10_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &
-              eos_res(i_fxion:i_fxion+2))
+              eos_res(i_fxion:i_fxion+2), ierr=ierr)
+         if (ierr /= 0) return
          star%iovim = im
-         call temperature_gradients_r(log10_temperature, log10_pressure, &
+         call temperature_gradients(log10_temperature, log10_pressure, &
               eos_res, kap_res, log10_radius, log10_mass, &
               luminosity_lsun, actual_gradient, radiative_gradient, &
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -193,7 +197,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
               star%grada(k+3)*interp_weights(4)
          gravity_mid = hg(k)*interp_weights(1) + hg(k+1)*interp_weights(2) + &
               hg(k+2)*interp_weights(3) + hg(k+3)*interp_weights(4)
-         temp_scratch = dexp(ln10*(density_mid - pressure_mid))* &
+         temp_scratch = exp(ln10*(density_mid - pressure_mid))* &
               (adiabatic_grad_mid - actual_grad_mid)*gravity_mid**2
          if (temp_scratch.gt.0.0d0) then
             rot_scr%max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)

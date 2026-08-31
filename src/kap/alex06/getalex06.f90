@@ -16,6 +16,7 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       use opacity_table_lib
       use phys_const_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer, parameter :: num_x = 9
       integer, parameter :: num_z = 16

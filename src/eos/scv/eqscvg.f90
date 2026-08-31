@@ -22,6 +22,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
       use star_info_lib
       use numerics_lib
       use scv_eos_lib
+      use math_lib
       implicit none
 
       integer, parameter :: nts = 63, nps = 76
@@ -65,7 +66,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
            xtf_he_e, xtf_hepp, xhp, xhep, xhepp
       integer :: i, ii, j, jj, jjj, k
       beta_complement = 1.0d0 - beta
-      log10_gas_pressure = dlog10(beta*pressure)
+      log10_gas_pressure = log10(beta*pressure)
 ! check if the point is within the table
       if (log10_temperature.lt.tlogx(1) .or. &
            log10_temperature.gt.tlogx(nts) .or. &

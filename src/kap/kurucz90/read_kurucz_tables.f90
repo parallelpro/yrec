@@ -13,6 +13,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
+      use math_lib
       implicit none
       integer, parameter :: max_num_temps = 60
       integer, parameter :: max_num_densities = 50
@@ -64,7 +65,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
          return
       end if
       opacity_table%kurucz_log10_rho(num_read, density_index) = density
-      opacity_table%kurucz_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
+      opacity_table%kurucz_log10_opacity(num_read, density_index) = exp10(log10_opacity0)
       density_index = density_index+1
       end do table_read
 
@@ -106,7 +107,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
             return
          end if
          opacity_table%kurucz2_log10_rho(num_read, density_index) = density
-         opacity_table%kurucz2_log10_opacity(num_read, density_index) = 10.0d0**log10_opacity0
+         opacity_table%kurucz2_log10_opacity(num_read, density_index) = exp10(log10_opacity0)
          density_index = density_index+1
          end do table2_read
 

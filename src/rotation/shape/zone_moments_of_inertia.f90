@@ -21,6 +21,7 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
       use star_info_lib, only: star
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: eta_squared(json), log_radius(json), &
@@ -46,10 +47,10 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
          prev_log_mean_radius = 0.0d0
          prev_log_true_radius = 0.0d0
       else
-         prev_log_mean_radius = dlog(mean_radius(zone_start - 1))
+         prev_log_mean_radius = log(mean_radius(zone_start - 1))
          prev_log_true_radius = ln10*log_radius(zone_start - 1)
       end if
-      rotation_param_const = cc13*5.0d0/dexp(ln10*cgl)
+      rotation_param_const = cc13*5.0d0/exp(ln10*cgl)
       if (star%ctrl%walpcz.ne.0.0d0) then
          do zone_idx = zone_start,zone_end
             moment_of_inertia(zone_idx) = cc23*shell_mass(zone_idx)* &
@@ -70,13 +71,13 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
 ! spherical_moment_of_inertia (originally H0) is computed here but
 ! never subsequently read; preserved as dead code from the original.
          spherical_moment_of_inertia = cc23*shell_mass(zone_idx)* &
-              dexp(ln10*2.0d0*log_radius(zone_idx))
+              exp(ln10*2.0d0*log_radius(zone_idx))
          mean_radius_cubed = mean_radius(zone_idx)**3
-         true_radius_cubed = dexp(ln10*3.0d0*log_radius(zone_idx))
+         true_radius_cubed = exp(ln10*3.0d0*log_radius(zone_idx))
          r0_geom_factor = (mean_radius_cubed/true_radius_cubed)* &
               mean_radius(zone_idx)**2
          rotation_param = rotation_param_const*omega(zone_idx)**2* &
-              mean_radius_cubed/(dexp(ln10*log_mass(zone_idx))* &
+              mean_radius_cubed/(exp(ln10*log_mass(zone_idx))* &
               (2.0d0+eta_squared(zone_idx)))
          eta_squared_zone = eta_squared(zone_idx)
 !  EVALUATE INTEGRAL AT THE ZONE CENTER
@@ -85,7 +86,7 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
          moment_of_inertia(zone_idx) = moment_of_inertia_per_mass* &
               shell_mass(zone_idx)
          di_domega(zone_idx) = di_domega_per_mass*shell_mass(zone_idx)
-         prev_log_mean_radius = dlog(mean_radius(zone_idx))
+         prev_log_mean_radius = log(mean_radius(zone_idx))
          prev_log_true_radius = ln10*log_radius(zone_idx)
       end do
 

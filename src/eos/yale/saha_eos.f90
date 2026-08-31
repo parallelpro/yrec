@@ -25,6 +25,7 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
 
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: saha_mass_fractions(12)
@@ -143,7 +144,7 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               ionization_temp_over_t(i)
          if(saha_ratio(i).lt.-saha_exponent_tol) exit
          if (saha_ratio(i).le.+saha_exponent_tol) then
-         saha_ratio(i) = beta_inverse*dexp(saha_ratio(i))
+         saha_ratio(i) = beta_inverse*exp(saha_ratio(i))
          cycle
          end if
          saha_ratio(i) = 1.0d16
@@ -161,14 +162,14 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
            helium_ionization_temp_1/temperature
       if (helium_saha_ratio_1.ge.-saha_exponent_tol) then
       skip_helium_i = .false.
-      helium_saha_ratio_1 = beta_inverse*dexp(helium_saha_ratio_1)
+      helium_saha_ratio_1 = beta_inverse*exp(helium_saha_ratio_1)
       helium_saha_ratio_2 = ln10*(saha_weight_term(13) + stemp) - &
            helium_ionization_temp_2/temperature
       if(helium_saha_ratio_2.lt.-saha_exponent_tol) then
       helium_ion_fraction_2 = 0.0d0
       else
       skip_helium_ii= .false.
-      helium_saha_ratio_2 = beta_inverse*dexp(helium_saha_ratio_2)
+      helium_saha_ratio_2 = beta_inverse*exp(helium_saha_ratio_2)
       end if
       else
       helium_ion_fraction_1 = 0.0d0
@@ -225,16 +226,16 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
          c23 = c23 + cr12*c13
          c33 = c33 + cr13*c13
          if (r1.ne.0.0d0) then
-         r1l=dlog10(dabs(r1))
+         r1l=log10(dabs(r1))
          if (cr12.ne.0.0d0) then
-         cr12l=dlog10(dabs(cr12))
+         cr12l=log10(dabs(cr12))
          fact=cr12l+r1l
          if (fact.ge.-38.0d0) then
          r2 = r2 + cr12*r1
          end if
          end if
          if (cr13.ne.0.0d0) then
-         cr13l=dlog10(dabs(cr13))
+         cr13l=log10(dabs(cr13))
          fact=cr13l+r1l
          if (fact.ge.-38.0d0) then
          r3 = r3 + cr13*r1
@@ -256,12 +257,12 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
          if (.not. skip_helium_ii) then
 !CC   STATEMENT RECALCULATED FOR DEC-20 SYSTEM
          if (c12.ne.0.d0 .and. deltx1.ne.0.d0) then
-         c12l=dlog10(dabs(c12))
-         delx1l=dlog10(dabs(deltx1))
+         c12l=log10(dabs(c12))
+         delx1l=log10(dabs(deltx1))
          fact1=c12l+delx1l
          if (fact1.lt.-38.0d0) then
          fact1=-38.0d0
-         fact1=dexp(ln10*fact1)*dsign(1.0d0,c12)*dsign(1.0d0,deltx1)
+         fact1=exp(ln10*fact1)*dsign(1.0d0,c12)*dsign(1.0d0,deltx1)
          else
          fact1=c12*deltx1
          end if
@@ -269,12 +270,12 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
          fact1=c12*deltx1
          end if
          if (c13.ne.0.d0 .and. delta_electrons_per_ion.ne.0.d0) then
-         c13l=dlog10(dabs(c13))
-         deltel=dlog10(dabs(delta_electrons_per_ion))
+         c13l=log10(dabs(c13))
+         deltel=log10(dabs(delta_electrons_per_ion))
          fact2=c13l+deltel
          if (fact2.lt.-38.0d0) then
          fact2=-38.0d0
-         fact2=dexp(ln10*fact2)*dsign(1.0d0,c13)*dsign(1.0d0,delta_electrons_per_ion)
+         fact2=exp(ln10*fact2)*dsign(1.0d0,c13)*dsign(1.0d0,delta_electrons_per_ion)
          else
          fact2=c13*delta_electrons_per_ion
          end if
@@ -302,7 +303,7 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       specific_gas_constant = gas_constant*(electron_mean_weight_inverse + &
            ion_mean_weight_inverse)
       density = beta*pressure/(specific_gas_constant*temperature)
-      log10_density = dlog10(density)
+      log10_density = log10(density)
       ion_fraction(1) = 0.0d0
       if(nz0.ge.7) ion_fraction(1) = species_ion_fraction(7)
       ion_fraction(2) = helium_ion_fraction_1

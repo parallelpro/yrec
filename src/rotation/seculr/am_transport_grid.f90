@@ -30,6 +30,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
       use star_info_lib, only: star, json
       use phys_const_lib
       use numerics_lib
+      use math_lib
       implicit none
 
 ! INPUT VARIABLES

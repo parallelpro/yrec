@@ -15,6 +15,7 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
       use star_info_lib, only: star, json
+      use math_lib
       implicit none
 
 ! previous_timestep: previous model timestep.
@@ -44,8 +45,8 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
       dt_scale(2) = star%ctrl%tri_delta_logl
 
       teffl_change = abs(star%log_Teff_start - log_teff)
-      logl_change = abs(dlog10(star%luminosity_lsun_start(star%nz_start)) - &
-           dlog10(luminosity(num_points)))
+      logl_change = abs(log10(star%luminosity_lsun_start(star%nz_start)) - &
+           log10(luminosity(num_points)))
 
 ! now actually limit the timestep by a factor that reduces the
 ! time changes in all quantities to the triangle values or less

@@ -41,6 +41,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       use eos_mixture_lib, only: eos_mix
       use luout_lib
       use scv_eos_lib
+      use math_lib
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -122,7 +123,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
          density_1 = density     ! This can avoid problems in initial table lookups
 
          ttl = log10_temperature + dtl   ! Get derivatives wrt T.
-         temperature = 10.0d0**ttl
+         temperature = exp10(ttl)
          want_derivatives_2 = .false.
          call eqstat2(ttl, temperature, log10_pressure, pressure, &
               log10_density_1, density_1, hydrogen_fraction, &
@@ -138,7 +139,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
          if (ierr /= 0) return
 
          ttl = log10_temperature - dtl
-         temperature = 10.0d0**ttl
+         temperature = exp10(ttl)
          want_derivatives_2 = .false.
          call eqstat2(ttl, temperature, log10_pressure, pressure, &
               log10_density_1, density_1, hydrogen_fraction, &
@@ -153,15 +154,15 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               in_atmosphere_local, saha_state_local, ierr)
          if (ierr /= 0) return
          dlnrho_dlnt_dt_1 = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
-         specific_heat_cp_dt_1 = (dlog10(specific_heat_cp_1) - &
-              dlog10(specific_heat_cp_2))/dtl2
-         adiabatic_gradient_dt_1 = (dlog10(adiabatic_gradient_1) - &
-              dlog10(adiabatic_gradient_2))/dtl2
+         specific_heat_cp_dt_1 = (log10(specific_heat_cp_1) - &
+              log10(specific_heat_cp_2))/dtl2
+         adiabatic_gradient_dt_1 = (log10(adiabatic_gradient_1) - &
+              log10(adiabatic_gradient_2))/dtl2
          log10_temperature = log10_temperature_orig
-         temperature = 10.0d0**log10_temperature_orig   ! Restore original T
+         temperature = exp10(log10_temperature_orig)   ! Restore original T
 
          ppl = log10_pressure + dpl
-         pressure = 10.0d0**ppl
+         pressure = exp10(ppl)
          want_derivatives_2 = .false.
          call eqstat2(log10_temperature, temperature, ppl, pressure, &
               log10_density_1, density_1, hydrogen_fraction, &
@@ -176,7 +177,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               in_atmosphere_local, saha_state_local, ierr)
          if (ierr /= 0) return
          ppl = log10_pressure - dpl
-         pressure = 10.0d0**ppl
+         pressure = exp10(ppl)
          want_derivatives_2 = .false.
          call eqstat2(log10_temperature, temperature, ppl, pressure, &
               log10_density_1, density_1, hydrogen_fraction, &
@@ -191,12 +192,12 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
               in_atmosphere_local, saha_state_local, ierr)
          if (ierr /= 0) return
          log10_pressure = log10_pressure_orig
-         pressure = 10.0d0**log10_pressure_orig   ! Restore original P
+         pressure = exp10(log10_pressure_orig)   ! Restore original P
          dlnrho_dlnp_dt_1 = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10
-         specific_heat_cp_dp_1 = (dlog10(specific_heat_cp_1) - &
-              dlog10(specific_heat_cp_2))/dpl2
-         adiabatic_gradient_dp_1 = (dlog10(adiabatic_gradient_1) - &
-              dlog10(adiabatic_gradient_2))/dpl2
+         specific_heat_cp_dp_1 = (log10(specific_heat_cp_1) - &
+              log10(specific_heat_cp_2))/dpl2
+         adiabatic_gradient_dp_1 = (log10(adiabatic_gradient_1) - &
+              log10(adiabatic_gradient_2))/dpl2
 
          dlnrho_dlnt_dt = dlnrho_dlnt_dt_1
          dlnrho_dlnp_dt = dlnrho_dlnp_dt_1
@@ -306,6 +307,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       use luout_lib
       use phys_const_lib
       use scv_eos_lib
+      use math_lib
       implicit none
 
       integer, parameter :: nts = 63, nps = 76
@@ -466,8 +468,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          end if
       end if
 !     COMPUTE RADIATION PRESSURE
-      temperature = dexp(ln10*log10_temperature)
-      pressure = dexp(ln10*log10_pressure)
+      temperature = exp(ln10*log10_temperature)
+      pressure = exp(ln10*log10_pressure)
       beta14 = radiation_constant_over_3*(temperature**2)**2/pressure
       beta = 1 - beta14
 
@@ -539,7 +541,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
             dpl = .010d0
             dtl = .040d0
             ttl = log10_temperature + dtl
-            temperature = 10.0d0**ttl
+            temperature = exp10(ttl)
             call eqscve(ttl, temperature, pressure, log10_density_1, &
                  density_1, hydrogen_fraction, metal_fraction, beta, &
                  ion_fraction, dlnrho_dlnt_1, dlnrho_dlnp_1, &
@@ -547,7 +549,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                  valid_table_point_1, ierr)
             if (ierr /= 0) return
             ttl = log10_temperature - dtl
-            temperature = 10.0d0**ttl
+            temperature = exp10(ttl)
             call eqscve(ttl, temperature, pressure, log10_density_1, &
                  density_1, hydrogen_fraction, metal_fraction, beta, &
                  ion_fraction, dlnrho_dlnt_1, dlnrho_dlnp_1, &
@@ -556,14 +558,14 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
             if (ierr /= 0) return
             dtl2 = 2d0*dtl
             dlnrho_dlnt_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
-            specific_heat_cp_dt = (dlog10(specific_heat_cp_1) - &
-                 dlog10(specific_heat_cp_2))/dtl2
-            adiabatic_gradient_dt = (dlog10(adiabatic_gradient_1) - &
-                 dlog10(adiabatic_gradient_2))/dtl2
+            specific_heat_cp_dt = (log10(specific_heat_cp_1) - &
+                 log10(specific_heat_cp_2))/dtl2
+            adiabatic_gradient_dt = (log10(adiabatic_gradient_1) - &
+                 log10(adiabatic_gradient_2))/dtl2
 
-            temperature = 10.0d0**log10_temperature
+            temperature = exp10(log10_temperature)
             ppl = log10_pressure + dpl
-            pressure = 10.0d0**ppl
+            pressure = exp10(ppl)
             call eqscve(log10_temperature, temperature, pressure, &
                  log10_density_1, density_1, hydrogen_fraction, &
                  metal_fraction, beta, ion_fraction, dlnrho_dlnt_1, &
@@ -571,20 +573,20 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                  adiabatic_gradient_1, valid_table_point_1, ierr)
             if (ierr /= 0) return
             ppl = log10_pressure - dpl
-            pressure = 10.0d0**ppl
+            pressure = exp10(ppl)
             call eqscve(log10_temperature, temperature, pressure, &
                  log10_density_1, density_1, hydrogen_fraction, &
                  metal_fraction, beta, ion_fraction, dlnrho_dlnt_2, &
                  dlnrho_dlnp_2, specific_heat_cp_2, &
                  adiabatic_gradient_2, valid_table_point_2, ierr)
             if (ierr /= 0) return
-            pressure = 10.0d0**log10_pressure
+            pressure = exp10(log10_pressure)
             dpl2 = 2d0*dpl
             dlnrho_dlnp_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10
-            specific_heat_cp_dp = (dlog10(specific_heat_cp_1) - &
-                 dlog10(specific_heat_cp_2))/dpl2
-            adiabatic_gradient_dp = (dlog10(adiabatic_gradient_1) - &
-                 dlog10(adiabatic_gradient_2))/dpl2
+            specific_heat_cp_dp = (log10(specific_heat_cp_1) - &
+                 log10(specific_heat_cp_2))/dpl2
+            adiabatic_gradient_dp = (log10(adiabatic_gradient_1) - &
+                 log10(adiabatic_gradient_2))/dpl2
             dlnrho_dlnt_dt = dlnrho_dlnt_dt
             dlnrho_dlnp_dt = dlnrho_dlnp_dt
             adiabatic_gradient_dt = adiabatic_gradient_dt
@@ -650,7 +652,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       saha_adiabatic_gradient_dt = saha_adiabatic_gradient_dt - adiabatic_gradient_dt
       saha_adiabatic_gradient_dp = saha_adiabatic_gradient_dp - adiabatic_gradient_dp
       log10_density = log10_density + ramp_factor*saha_log10_density
-      density = dexp(ln10*log10_density)
+      density = exp(ln10*log10_density)
       specific_gas_constant = beta*pressure/(density*temperature)
       electron_mean_weight_inverse = specific_gas_constant/gas_constant - &
            ion_mean_weight_inverse
@@ -705,7 +707,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !           No ramping needed between OPAL 1995 EOS and Yale/SCV. Result
 !           is fully in the OPAL 1995 table
             log10_density = opal_log10_density
-            density = 10.0d0**log10_density
+            density = exp10(log10_density)
             beta = opal_beta
             beta_inverse = 1.0d0/beta
             beta14 = 1.0d0 - beta
@@ -721,7 +723,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !           and Yale/SCV.
             log10_density = log10_density + &
                  ramp_factor*(opal_log10_density - log10_density)
-            density = 10.0d0**log10_density
+            density = exp10(log10_density)
             beta = beta + ramp_factor*(opal_beta - beta)
             beta_inverse = 1.0d0/beta
             beta14 = 1.0d0 - beta
@@ -772,7 +774,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !           No ramping needed between OPAL 2001 EOS and Yale/SCV. Result
 !           is fully in the OPAL 2001 table
             log10_density = opal_log10_density
-            density = 10.0d0**log10_density
+            density = exp10(log10_density)
             beta = opal_beta
             beta_inverse = 1.0d0/beta
             beta14 = 1.0d0 - beta
@@ -788,7 +790,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !           and Yale/SCV.
             log10_density = log10_density + &
                  ramp_factor*(opal_log10_density - log10_density)
-            density = 10.0d0**log10_density
+            density = exp10(log10_density)
             beta = beta + ramp_factor*(opal_beta - beta)
             beta_inverse = 1.0d0/beta
             beta14 = 1.0d0 - beta
@@ -846,7 +848,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !           No ramping needed between OPAL 2006 EOS and Yale/SCV. Result
 !           is fully in the OPAL 2006 table
             log10_density = opal_log10_density
-            density = 10.0d0**log10_density
+            density = exp10(log10_density)
             beta = opal_beta
             beta_inverse = 1.0d0/beta
             beta14 = 1.0d0 - beta
@@ -862,7 +864,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !           and Yale/SCV.
             log10_density = log10_density + &
                  ramp_factor*(opal_log10_density - log10_density)
-            density = 10.0d0**log10_density
+            density = exp10(log10_density)
             beta = beta + ramp_factor*(opal_beta - beta)
             beta_inverse = 1.0d0/beta
             beta14 = 1.0d0 - beta

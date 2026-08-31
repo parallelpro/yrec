@@ -61,12 +61,13 @@ contains
 ! work. Data that are not already so are interpolated onto an even
 ! grid using spline interpolation (Numerical Recipes SPLINE, renamed
 ! splinj here, and SPLINT).
-subroutine boole(x, y, n, n_grid, integral)
+subroutine boole(x, y, n, n_grid, integral, ierr)
       implicit none
       double precision, parameter :: scalex = 1e-11
       double precision, parameter :: scaley = 1e7
 
       double precision, intent(in) :: x(n), y(n)
+      integer, intent(out) :: ierr
       integer, intent(in) :: n, n_grid
       double precision, intent(out) :: integral(1)
 
@@ -76,6 +77,7 @@ subroutine boole(x, y, n, n_grid, integral)
       integer :: i, num_quads, klo, khi
 
 ! rescale radius and cs vectors to have values ~1
+      ierr = 0
       do i = 1, n
             x_scaled(i) = x(i)*scalex
             y_scaled(i) = y(i)*scaley
@@ -84,7 +86,8 @@ subroutine boole(x, y, n, n_grid, integral)
             call splinj(x_scaled, y_scaled, y2_deriv, n) ! get derivs of interp. fn.
             do i = 1, n_grid
                   x_even(i) = x_scaled(1)+(i-1)*(x_scaled(n)-x_scaled(1))/(n_grid-1)
-                  call splint(x_scaled, y_scaled, n, y2_deriv, x_even(i), y_even(i), klo, khi)
+                  call splint(x_scaled, y_scaled, n, y2_deriv, x_even(i), y_even(i), klo, khi, ierr)
+                  if (ierr /= 0) return
             end do
 
 ! how many sets of four points do we have?
@@ -443,10 +446,9 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
       double precision :: h, a, b
       integer :: klo, khi, k
 
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       klo = 1
       khi = nm
     do while (khi-klo .gt. 1)
@@ -465,11 +467,8 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
             ! error returns instead; without it, the historical stop stands
             ! (numerics has no facade -- each public procedure carries its
             ! own gate).
-            if (present(ierr)) then
-               ierr = 1
-               return
-            end if
-            stop
+            ierr = 1
+            return
       end if
 !      if (h .eq. 0d0) stop 911
       a = (xa(khi)-x)/h
@@ -688,13 +687,14 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
      luminosity_linear, pressure_rotation_factor, temperature_rotation_factor, &
      log10_gravity, in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     call_count, saha_state)
+     call_count, saha_state, ierr)
       implicit none
 
       double precision, intent(in) :: y(3), dydx(3)
       integer, intent(in) :: n_var
       double precision, intent(in) :: x_start, h_total
       integer, intent(in) :: n_step
+      integer, intent(out) :: ierr
       double precision, intent(out) :: y_out(3)
       external deriv
       double precision, intent(inout) :: luminosity_linear, &
@@ -710,6 +710,7 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
       double precision :: h_sub, h_sub2, x_current, y_swap
       integer :: i, step_index
 
+      ierr = 0
       h_sub = h_total/dfloat(n_step)
 ! first step
       do i = 1,n_var
@@ -722,7 +723,8 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity, in_atmosphere, want_derivatives, &
            conductive_opacity_flag, log10_radius, log10_teff, &
-           hydrogen_fraction, metal_fraction, call_count, saha_state)
+           hydrogen_fraction, metal_fraction, call_count, saha_state, ierr)
+      if (ierr /= 0) return
       h_sub2 = 2.0d0*h_sub
 ! general step.
       do step_index = 2,n_step
@@ -736,7 +738,8 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
             pressure_rotation_factor, temperature_rotation_factor, &
             log10_gravity, in_atmosphere, want_derivatives, &
             conductive_opacity_flag, log10_radius, log10_teff, &
-            hydrogen_fraction, metal_fraction, call_count, saha_state)
+            hydrogen_fraction, metal_fraction, call_count, saha_state, ierr)
+       if (ierr /= 0) return
       end do
 ! last step.
       do i = 1,n_var
@@ -1307,6 +1310,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
      step_err, ierr)
       use intpar_lib
+      use math_lib
       implicit none
 
       double precision, parameter :: one = 1.0d0, shrink_factor = 0.95d0, &
@@ -1335,10 +1339,10 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
       save   ! INTENTIONAL: NR step-size memory (epsold/step tables) -- algorithm state; byte-pinned by Stage-0
       data substep_sequence /2,4,6,8,12,16,24,32,48,64,96/
 
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
+      integer :: jerr_integrand
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       h = h_step
       x_sav = indep_var
       do i = 1,num_eqs
@@ -1352,7 +1356,13 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
             temperature_rotation_factor, log10_gravity, in_atmosphere, &
             want_derivatives, conductive_opacity_flag, &
             log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-            call_count, saha_state)
+            call_count, saha_state, jerr_integrand)
+       ! integrand (eos/kap/gradient) failure inside the midpoint
+       ! substeps: same treatment as a diverged step
+       if (jerr_integrand /= 0) then
+          ierr = jerr_integrand
+          return
+       end if
        x_est = (h/substep_sequence(i))**2
        call ratext(i, x_est, y_seq, y, y_err, num_eqs, extrap_order)
        err_max = 0.0d0
@@ -1375,7 +1385,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
           return
        endif
       end do
-      h = 0.25d0*h/2.0d0**int((max_stage_index-extrap_order)/2)
+      h = 0.25d0*h/pow(2.0d0, int((max_stage_index-extrap_order)/2))
 !      H = 0.25D0*H/2**((IMAX-NUSE)/2)
       if(hydrogen_fraction+h.eq.hydrogen_fraction) then
          write(*,*) 'ERROR IN BSSTEP'
@@ -1383,11 +1393,8 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
        ! error returns instead; without it, the historical stop stands
        ! (numerics has no facade -- each public procedure carries its
        ! own gate).
-       if (present(ierr)) then
-          ierr = 1
-          return
-       end if
-       stop
+       ierr = 1
+       return
       end if
       end do
 
@@ -1437,10 +1444,9 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       data spline_coeff/400*0.0d0/
 
 ! the coefficients for the zero-th order term
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       do i=1,n_grid
          spline_coeff(1,i)=y_grid(i)
       end do
@@ -1473,11 +1479,8 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its
          ! own gate).
-         if (present(ierr)) then
-            ierr = 1
-            return
-         end if
-         stop
+         ierr = 1
+         return
       endif
       end if
 ! now, (k_lo,k_hi) is sub-range of x_grid which contains x_eval_copy.
@@ -1523,10 +1526,9 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
       integer :: k
       double precision :: h, a, b
 
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       klo = 1
       khi = n
     do while (khi-klo .gt. 1)
@@ -1544,11 +1546,8 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its
          ! own gate).
-         if (present(ierr)) then
-            ierr = 1
-            return
-         end if
-         stop
+         ierr = 1
+         return
       end if
       a = (xa(khi)-x)/h
       b = (x - xa(klo))/h
@@ -1588,10 +1587,9 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
       integer :: k
       double precision :: h, a, b
 
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) ierr = 0
-
+      ierr = 0
       klo = 1
       khi = n
     do while (khi-klo .gt. 1)
@@ -1609,11 +1607,8 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
          ! error returns instead; without it, the historical stop stands
          ! (numerics has no facade -- each public procedure carries its
          ! own gate).
-         if (present(ierr)) then
-            ierr = 1
-            return
-         end if
-         stop
+         ierr = 1
+         return
       end if
       a = (xa(khi)-x)/h
       b = (x - xa(klo))/h
@@ -1673,7 +1668,7 @@ subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
 !  q is the integrand (ro'**7,etc.) evaluated at r0(i)
 !  aint and its derivatives w/r/to r and theta are needed to find <g>
        q = (rho*w2*r03*(3.0d0+eta22)/(sm*eta22))*r03*r0
-!        q(i) = dexp(cln*(hd(i)-hs(i)))*omega(i)**2*r0(i)**6
+!        q(i) = exp(cln*(hd(i)-hs(i)))*omega(i)**2*r0(i)**6
 !    *   *(5.0d0+eta2(i))/(2.0d0+eta2(i))
        s = 0.5d0*(b2-b1)*(qp+q)
        it = 1

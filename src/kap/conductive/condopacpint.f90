@@ -23,6 +23,7 @@ subroutine condopacpint(log10_density, log10_temperature, &
      conductive_log10_opacity, conductive_dlnkap_dlnrho, &
      conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, ierr)
 
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log10_density, log10_temperature, &
@@ -82,7 +83,7 @@ subroutine condopacpint(log10_density, log10_temperature, &
 !       OC = 1D50
 !       OCL = LOG10(OC)
        conductive_log10_opacity = 9.9998D0
-       conductive_opacity = 10D0**conductive_log10_opacity
+       conductive_opacity = pow(10D0, conductive_log10_opacity)
        conductive_dlnkap_dlnrho = conductive_opacity
        conductive_dlnkap_dlnt = conductive_opacity
 
@@ -101,9 +102,9 @@ subroutine condopacpint(log10_density, log10_temperature, &
                 log10_cond_ox,dlnkap_dlnrho_ox,dlnkap_dlnt_ox,ierr)
            if (ierr /= 0) return
 
-           cond_h1 = 10.0D0**(-log10_cond_h1)
-           cond_he4 = 10.0D0**(-log10_cond_he4)
-           cond_ox = 10.0D0**(-log10_cond_ox)
+           cond_h1 = exp10((-log10_cond_h1))
+           cond_he4 = exp10((-log10_cond_he4))
+           cond_ox = exp10((-log10_cond_ox))
 
            mix_log10_cond = -log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
                 weight_ox*cond_ox)
@@ -124,7 +125,7 @@ subroutine condopacpint(log10_density, log10_temperature, &
            conductive_dlnkap_dlnrho = -1.0D0-conductive_dlnkap_dlnrho
            conductive_dlnkap_dlnt = 3.0D0-conductive_dlnkap_dlnt
            got_conductive_opacity=.TRUE.
-           conductive_opacity = 10.0D0**conductive_log10_opacity
+           conductive_opacity = exp10(conductive_log10_opacity)
          end if
          if (log10_density.lt.-6.0D0.and.extrapolation_indicator.ge.0.0D0) then
 ! Extrapolate Conductive opacity
@@ -138,9 +139,9 @@ subroutine condopacpint(log10_density, log10_temperature, &
                 unused_deriv1,unused_deriv2,ierr)
            if (ierr /= 0) return
 
-           cond_h1 = 10.0D0**(-log10_cond_h1)
-           cond_he4 = 10.0D0**(-log10_cond_he4)
-           cond_ox = 10.0D0**(-log10_cond_ox)
+           cond_h1 = exp10((-log10_cond_h1))
+           cond_he4 = exp10((-log10_cond_he4))
+           cond_ox = exp10((-log10_cond_ox))
 
            mix_log10_cond = log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
                 weight_ox*cond_ox)
@@ -152,7 +153,7 @@ subroutine condopacpint(log10_density, log10_temperature, &
            conductive_dlnkap_dlnt = 3.0D0-conductive_dlnkap_dlnt
            conductive_log10_opacity = conductive_log10_opacity + &
                 conductive_dlnkap_dlnrho*(-6.0D0-log10_density)
-           conductive_opacity = 10.0D0**conductive_log10_opacity
+           conductive_opacity = exp10(conductive_log10_opacity)
            got_conductive_opacity=.TRUE.
          end if
       end if

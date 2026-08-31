@@ -26,6 +26,7 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
      log_temperature, omega, pulse_path)
       use star_info_lib, only: star, i_grad_actual, i_grad_ad, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       integer, intent(in) :: num_shells, model_number
@@ -39,7 +40,8 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
       integer, parameter :: gyre_schema = 101
       double precision :: radius_cm, mass_g, luminosity_erg_s, &
            pressure_cgs, temperature_k, density_cgs, delta, grav, &
-           brunt_n2, global_data(3)
+           global_data(3)
+      double precision :: brunt_n2(json), dr
 
       open(newunit=gyre_unit,file=pulse_path,status='UNKNOWN',form='FORMATTED')
 
@@ -48,6 +50,43 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
       global_data(3) = log_luminosity(num_shells)*star%solar_luminosity_cgs
       write(gyre_unit,100) num_shells,global_data,gyre_schema
  100  format(I6,3(1X,1PE26.16),1X,I6)
+
+! Brunt-Vaisala N^2, exact gradient form (centered differences in r):
+!     N^2 = g * [ (1/Gamma_1) dlnP/dr - dlnRho/dr ]
+! The thermal-only form g^2 rho delta (grada - gradT)/P previously used
+! here is exact only for homogeneous composition -- it omits the Ledoux
+! mu-gradient term that dominates N^2 in composition-gradient layers
+! (see the matching note in core/stitched_model.f90's
+! build_pulse_points, which fixes the same formula for the
+! profile-coupled GSM/FGONG/GYRE writers). CONVECTIVE shells (where
+! the thermal form is negative) keep the thermal value: the mixture is
+! homogeneous there, so the thermal form is exact and smooth, while
+! the centered difference of a near-adiabatic stratification is
+! cancellation noise of random sign.
+      do i = 2, num_shells - 1
+         radius_cm = exp(ln10*log_radius(i))
+         dr = exp(ln10*log_radius(i+1)) - exp(ln10*log_radius(i-1))
+         if (radius_cm > 0.0d0 .and. dr > 0.0d0 .and. &
+              star%adiabatic_index_gamma1(i) > 0.0d0) then
+            grav = exp(ln10*cgl)*mass_coordinate(i)/(radius_cm*radius_cm)
+            brunt_n2(i) = grav*grav* &
+                 (exp(ln10*(log_density(i) - log_pressure(i))))* &
+                 (-star%pulse_dlnrho_dlnt(i))* &
+                 (star%grada(i) - star%gradT(i))
+            if (brunt_n2(i) >= 0.0d0) then
+               brunt_n2(i) = grav*ln10*( &
+                    (log_pressure(i+1) - log_pressure(i-1)) / &
+                    star%adiabatic_index_gamma1(i) - &
+                    (log_density(i+1) - log_density(i-1)) ) / dr
+            end if
+         else
+            brunt_n2(i) = 0.0d0
+         end if
+      end do
+      if (num_shells >= 2) then
+         brunt_n2(1) = brunt_n2(2)
+         brunt_n2(num_shells) = brunt_n2(num_shells-1)
+      end if
 
       do i = 1,num_shells
          radius_cm = exp(ln10*log_radius(i))
@@ -59,18 +98,18 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
 ! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho=1/star%pulse_dlnrho_dlnp
 ! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see misc/henyey_coefficients.f90 around line 639).
          delta = -star%pulse_dlnrho_dlnt(i)
-         if (radius_cm.gt.0.0d0) then
-            grav = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)
-            brunt_n2 = grav*grav*(density_cgs/pressure_cgs)*delta* &
-                 (star%grada(i)-star%gradT(i))
-         else
-            brunt_n2 = 0.0d0
-         end if
+! kap_kap_T/eps_eps_T columns follow the GSM/GYRE convention (MESA
+! pulse_gyre.f90): the ABSOLUTE derivatives kap*dlnkap/dlnT and
+! eps*dlneps/dlnT, not the bare log-derivatives.
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
               pressure_cgs,temperature_k,density_cgs,star%gradT(i), &
-              brunt_n2,star%adiabatic_index_gamma1(i),star%grada(i),delta, &
-              star%opacity_zone(i),star%pulse_dlnkap_dlnt(i),star%pulse_dlnkap_dlnrho(i),star%eps_total(i), &
-              star%pulse_dlneps_dlnt(i),star%pulse_dlneps_dlnrho(i),omega(i)
+              brunt_n2(i),star%adiabatic_index_gamma1(i),star%grada(i),delta, &
+              star%opacity_zone(i), &
+              star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i), &
+              star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i), &
+              star%eps_total(i), &
+              star%eps_total(i)*star%pulse_dlneps_dlnt(i), &
+              star%eps_total(i)*star%pulse_dlneps_dlnrho(i),omega(i)
  110     format(I6,99(1X,1PE26.16))
       end do
 

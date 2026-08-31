@@ -64,6 +64,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star
+      use math_lib
       implicit none
       integer, parameter :: json = 5000, nmax = 8000
 
@@ -209,8 +210,8 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
             omega_prev_capped = min(omega_working(num_eq_points), &
                  wind_saturation_threshold)
             wind_loss_implicit = wind_loss_implicit_initial* &
-                 (omega_prev_capped/omega_capped)** &
-                 (star%ctrl%wind_law_omega_exponent-1.0d0)* &
+                 pow(omega_prev_capped/omega_capped, &
+                 star%ctrl%wind_law_omega_exponent-1.0d0)* &
                  (omega_working(num_eq_points)/eq_omega(num_eq_points))
          end if
       do coeff_iter_idx = 1,star%ctrl%max_diffusion_iters

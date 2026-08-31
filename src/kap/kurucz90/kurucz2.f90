@@ -21,7 +21,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
 !     M1, M2, AND M3 ARE NEAREST GRID POINT OF ABUNDANCE, TEMPERATURE,
 !     AND DENSITY WE GOT AT 'GETD'.
 !     O IS OPACITY.
-!     OL IS DLOG(O)
+!     OL IS log(O)
 !     QODF IS THE PARTIAL DERIVATIVE OF O WRT D.
 !     QOTF IS THE PARTIAL DERIVATIVE OF O WRT T.
 !     THE VARIABLES WHICH HAVE 'TEM'-HEAD OR 'TEM'-TAIL ARE TEMPORARILLY
@@ -35,6 +35,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       use opacity_table_lib
       use luout_lib
       use numerics_lib
+      use math_lib
       implicit none
       integer :: jerr_gate
       integer, parameter :: max_num_temps = 60
@@ -172,7 +173,7 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
          return
       end if
       log10_opacity = log10_opacity_interp
-      opacity = 10.0d0**log10_opacity
+      opacity = exp10(log10_opacity)
 !     QOTF = D LN(O)/D LN(T)
 !     FIND THE PARTIAL DERIVATIVE VALUE OF OL WRT D IN THE GIVEN T AND D
       call intpol(temp_subset_logt, temp_subset_dlnkap_dlnrho, &

@@ -91,7 +91,8 @@ subroutine compute_observables(ierr)
 ! read it -- so it refreshes in BOTH output modes. (Pre-2026-
 ! restructure, legacy mode refreshed it via wrtout's own gettau
 ! call at write time; that call is gone.)
-      call refresh_turnover_timescale
+      call refresh_turnover_timescale(ierr)
+      if (ierr /= 0) return
 
 ! ---- 2026 MESA-style output: fill the per-model history sources ----
 ! (star% members read by write_history). Formulas are the legacy
@@ -132,6 +133,7 @@ end subroutine renormalize_luminosity_breakdown
 !  (dead) core-boundary radius with the preserved FX/FX2 stale-carry
 !  bug -- see the module header.
 subroutine locate_core_cz
+      use math_lib
       use star_info_lib, only: star
       double precision :: core_boundary_fx2
 ! core_boundary_log_radius/core_boundary_radius (CORERL/CORER) are
@@ -157,7 +159,7 @@ subroutine locate_core_cz
              (star%grada(star%core_cz_top_index+1)-star%gradr(star%core_cz_top_index))
        core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
             (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-star%log10_solar_radius
-       core_boundary_radius = dexp(ln10*core_boundary_log_radius)
+       core_boundary_radius = exp(ln10*core_boundary_log_radius)
       else
        core_boundary_radius = 0.0D0
       endif
@@ -168,6 +170,7 @@ end subroutine locate_core_cz
 !  DETERMINE CENTRAL T,P, AND DENSITY USING THE FIRST SHELL VALUES.
 !  CENTRAL ETA AND BETA ARE ALSO CALCULATED. Stores star%central_*.
 subroutine compute_central_conditions(ierr)
+      use math_lib
       use star_info_lib, only: star
       integer, intent(out) :: ierr
 
@@ -184,11 +187,11 @@ subroutine compute_central_conditions(ierr)
       eos_res = 0.0d0
 
 !  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
-      temp_value =0.5D0*dexp(ln10*(cc13*(c4pi3l+star%logRho(1)-star%log_mass(1))+star%logRho(1)+cgl+star%log_mass(1)))
-      pressure_linear = dexp(ln10*star%logP(1))
-      log_pressure_center = dlog10(pressure_linear + temp_value)
+      temp_value =0.5D0*exp(ln10*(cc13*(c4pi3l+star%logRho(1)-star%log_mass(1))+star%logRho(1)+cgl+star%log_mass(1)))
+      pressure_linear = exp(ln10*star%logP(1))
+      log_pressure_center = log10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
-      log_temperature_center = star%logT(1) + dlog10(1.0D0+ temp_value*star%gradT(1)/pressure_linear)
+      log_temperature_center = star%logT(1) + log10(1.0D0+ temp_value*star%gradT(1)/pressure_linear)
       eos_res(i_log10_density) = star%logRho(1)
       hydrogen_fraction_center = star%xa(i_h1,1)
       metal_fraction_center = star%xa(i_metals,1)
@@ -218,6 +221,7 @@ end subroutine compute_central_conditions
 ! WERE BEING DEFINED AFTER THIS CODE SECTION (hence central
 ! conditions run first).
 subroutine locate_surface_cz_base
+      use math_lib
       use star_info_lib, only: star
       double precision :: dd1, dd2, cz_base_mass
       double precision :: envelope_cz_log_temperature, &
@@ -254,9 +258,9 @@ subroutine locate_surface_cz_base
        else
           star%envelope_mass = star%star_mass
           star%envelope_radius = 0.0D0
-            star%envelope_cz_temperature = 10.0D0**star%central_log10_temperature
-            star%envelope_cz_density = 10.0D0**star%central_log10_density
-            star%envelope_cz_pressure = 10.0D0**star%central_log10_pressure
+            star%envelope_cz_temperature = exp10(star%central_log10_temperature)
+            star%envelope_cz_density = exp10(star%central_log10_density)
+            star%envelope_cz_pressure = exp10(star%central_log10_pressure)
             star%envelope_cz_opacity = star%opacity_zone(1)
        endif
       else
@@ -274,9 +278,10 @@ end subroutine locate_surface_cz_base
 ! lag bookkeeping (the physics consumers -- getw, the wind, the
 ! deuterium limiter -- drive their own gettau calls; this one only
 ! freshens the reported value).
-subroutine refresh_turnover_timescale
+subroutine refresh_turnover_timescale(ierr)
       use star_info_lib, only: star
-      call compute_turnover_timescale(star%envelope_radius)
+      integer, intent(out) :: ierr
+      call compute_turnover_timescale(star%envelope_radius, ierr)
       star%convective_turnover_timescale_old = &
            star%convective_turnover_timescale
       star%pphot0 = star%pphot
@@ -300,6 +305,7 @@ end subroutine compute_surface_globals
 ! The solar log g is derived from the run's own solar constants, so
 ! Monte-Carlo-scaled solar values stay self-consistent.
 subroutine compute_seismic_observables
+      use math_lib
       use star_info_lib, only: star
       use stitched_model_lib, only: n_ie, stx_prof, ip_logR, &
            ip_brunt_N2, ip_csound
@@ -312,11 +318,11 @@ subroutine compute_seismic_observables
       log_g_solar = cgl + log10(star%solar_mass_cgs) &
            - 2.0d0*log10(star%solar_radius_cgs)
       star%nu_max = star%ctrl%nu_max_sun &
-           * 10.0d0**(star%log_g_surface - log_g_solar) &
-           * sqrt(star%ctrl%Teff_sun/10.0d0**star%log_Teff)
+           * exp10((star%log_g_surface - log_g_solar)) &
+           * sqrt(star%ctrl%Teff_sun/exp10(star%log_Teff))
 ! mean-density scaling: sqrt( (M/Msun) / (R/Rsun)^3 )
       star%delta_nu_rho = star%ctrl%delta_nu_sun &
-           * sqrt(star%star_mass) * 10.0d0**(-1.5d0*star%log_R_surface)
+           * sqrt(star%star_mass) * exp10((-1.5d0*star%log_R_surface))
 
 ! Asymptotic p-mode large separation from the sound travel time:
 ! delta_nu = [2 int_0^R dr/c]^-1, trapezoidal over the stitched
@@ -327,7 +333,7 @@ subroutine compute_seismic_observables
       do k = 2, n_ie
          if (stx_prof(ip_csound,k) <= 0.0d0 .or. &
              stx_prof(ip_csound,k-1) <= 0.0d0) cycle
-         dr = 10.0d0**stx_prof(ip_logR,k) - 10.0d0**stx_prof(ip_logR,k-1)
+         dr = exp10(stx_prof(ip_logR,k)) - exp10(stx_prof(ip_logR,k-1))
          acoustic_radius = acoustic_radius + dr*0.5d0 &
               *(1.0d0/stx_prof(ip_csound,k) + 1.0d0/stx_prof(ip_csound,k-1))
       end do
@@ -350,9 +356,9 @@ subroutine compute_seismic_observables
          n2 = stx_prof(ip_brunt_N2,k)
          if (n2 > 0.0d0) then
             entered_g_mode_cavity = .true.
-            r_inner = 10.0d0**stx_prof(ip_logR,k-1)
-            r_here = 10.0d0**stx_prof(ip_logR,k)
-            r_outer = 10.0d0**stx_prof(ip_logR,k+1)
+            r_inner = exp10(stx_prof(ip_logR,k-1))
+            r_here = exp10(stx_prof(ip_logR,k))
+            r_outer = exp10(stx_prof(ip_logR,k+1))
             buoyancy_radius = buoyancy_radius &
                  + sqrt(n2)/r_here*0.5d0*(r_outer - r_inner)
          else if (entered_g_mode_cavity) then
@@ -370,6 +376,7 @@ end subroutine compute_seismic_observables
 ! Total moment of inertia (thin-shell sum without rotation, i_rot
 ! sum with).
 subroutine compute_moment_of_inertia
+      use math_lib
       use star_info_lib, only: star
       integer :: i
 
@@ -414,6 +421,7 @@ end subroutine compute_snu_rates
 ! Surface rotation period/velocity and the CZ moment of inertia.
 ! (Reads star%log_R_surface -- compute_surface_globals first.)
 subroutine compute_rotation_observables
+      use math_lib
       use star_info_lib, only: star
       integer :: i
 
@@ -446,6 +454,7 @@ end subroutine compute_rotation_observables
 ! H-burning shell boundary masses and (surface-relative) radii.
 ! (Reads star%log_R_surface -- compute_surface_globals first.)
 subroutine compute_h_shell_boundaries
+      use math_lib
       use star_info_lib, only: star
       if (star%has_h_shell) then
          star%h_shell_bot_mass = &

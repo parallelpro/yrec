@@ -61,7 +61,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
       character(len=256), intent(in) :: atm_table_path
       character(len=256), intent(in) :: allard_table_path
 ! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as atm_get's.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
       integer :: jerr
       integer :: teff_idx, logg_idx
@@ -70,7 +70,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! INPUT PRESSURE TABLE FOR SURFACE BOUNDARY CONDITIONS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if (present(ierr)) ierr = 0
+      ierr = 0
       jerr = 0
 
       if ((star%job%atm_choice .eq. 3) .or. (star%job%atm_choice .eq. 4)) then
@@ -128,11 +128,8 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !            ATMZA = 0.02D0
           call alfilein(allard_table_path, jerr)      ! Get Allard Atmospheres files and
           if (jerr /= 0) then
-             if (present(ierr)) then
-                ierr = jerr
-                return
-             end if
-             stop
+             ierr = jerr
+             return
           end if
          endif                  ! initialize tables. 9/23/08 LLP
 
@@ -213,11 +210,11 @@ subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
       logical, intent(in) :: print_to_files
       logical, intent(out) :: lookup_failed
 ! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as atm_get's.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
       integer :: jerr
 
-      if (present(ierr)) ierr = 0
+      ierr = 0
       jerr = 0
 
       call alsurfp(log_teff, log_g, print_to_files, lookup_failed, jerr)

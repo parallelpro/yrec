@@ -101,7 +101,8 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
 ! ROUTINE
       extrap_idx = 1
       call burn_mix_extrapolated(timestep, composition, extrap_idx, num_zones, &
-           species_begin, num_species, burn_rate_sequence, converged)
+           species_begin, num_species, burn_rate_sequence, converged, ierr)
+      if (ierr /= 0) return
       do extrap_idx = 2, num_substeps
 ! RESET COMPOSITION TO INITIAL VALUE.
          do zone_idx = 1, num_zones
@@ -143,7 +144,8 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
             end do
          end do
          call burn_mix_extrapolated(timestep, composition, extrap_idx, num_zones, &
-              species_begin, num_species, burn_rate_sequence, converged)
+              species_begin, num_species, burn_rate_sequence, converged, ierr)
+         if (ierr /= 0) return
          if (converged) then
             do zone_idx = 1, num_zones
                do species_idx = 1, num_species

@@ -38,6 +38,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
 ! would conflict with the dummy-argument declarations below).
 ! (solar_luminosity_cgs now comes from star% -- 2026 phase-A
 ! eviction; the former `use const_lib, only:` import is gone.)
+      use math_lib
       implicit none
 
       double precision, intent(out) :: mixing_length
@@ -267,7 +268,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
  500    format(0P8F10.7)
       do i = 1,star%nz
            if(omega_log10(i) .lt. 58.9D0) then
-              star%omega(i) = 10D0**(-omega_log10(i))
+              star%omega(i) = pow(10D0, (-omega_log10(i)))
            else
               star%omega(i) = 0D0
            endif

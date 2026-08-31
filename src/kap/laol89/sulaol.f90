@@ -15,6 +15,7 @@ subroutine sulaol
 
       use opacity_table_lib
       use numerics_lib
+      use math_lib
       implicit none
 
 ! MHP 8/25 Removed unused variables

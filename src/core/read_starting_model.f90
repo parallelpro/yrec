@@ -37,7 +37,7 @@
 ! batches). Judgment calls made below, all verified against the
 ! actual physics/usage in this file:
 !   - HL is the linear luminosity (L/Lsun) -- STOTAL/SENV bookkeeping
-!     and DLOG10(HL(M))-style usage elsewhere in the codebase confirm
+!     and log10(HL(M))-style usage elsewhere in the codebase confirm
 !     this. Named star%luminosity_lsun (matches henyey_iterate.f90's slot name for
 !     the same physical quantity). read_yrec7.f90/read_model2.f90/
 !     shell_physics.f90's slot name for the same array is "log_luminosity",
@@ -101,6 +101,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
+      use temperature_gradients_lib
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
       use atm_lib
       use envint_lib, only: atm_get
@@ -290,14 +291,16 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
                  star%logT,star%convective_flag,star%nz, &
                  am_transport_convective_flag,radiative_zone_bounds, &
                  convective_zone_bounds,num_radiative_zones, &
-                 num_convective_zones)
+                 num_convective_zones, ierr)
+      if (ierr /= 0) return
 ! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP (2026: build the stitched
 ! model first -- the turnover walker reads it; this also seeds
 ! star%pphot. The historical call passed env_log10_radius as the
 ! scalar BCZ-radius out-arg, clobbering env_log10_radius(1) by
 ! sequence association; the sane out-arg is used now.)
       call build_stitched_model
-      call compute_turnover_timescale(star%envelope_radius)
+      call compute_turnover_timescale(star%envelope_radius, ierr)
+      if (ierr /= 0) return
       star%convective_turnover_timescale_old = star%convective_turnover_timescale
       star%pphot0 = star%pphot
       star%fracstep = 0.5
@@ -574,6 +577,7 @@ end subroutine acquire_starting_model
 ! innermost shell using constant-epsilon, constant-density
 ! stellar-structure estimates (spacing per hpttol).
 subroutine extend_core_toward_center
+      use math_lib
 
 !     The following code enables us to extend the model from the current
 !     inner most shell to a point ncloser to center, if flag LCORE is set.
@@ -591,7 +595,7 @@ subroutine extend_core_toward_center
 ! MULTIPLES OF THE CENTRAL POINT SPACING.
 !     MCORE is number of shells to extrapolate to new core.
 !     FCORE is factor to reduce inner mass shell.
-          star%job%num_core_shells_added = int(dlog10(star%job%core_mass_reduction_factor)/ &
+          star%job%num_core_shells_added = int(log10(star%job%core_mass_reduction_factor)/ &
                star%ctrl%chi_grid_scale(2))+1
           star%job%core_mass_reduction_factor = dble(star%job%num_core_shells_added)* &
                star%ctrl%chi_grid_scale(2)
@@ -679,6 +683,7 @@ end subroutine extend_core_toward_center
 ! envelope down to the new fitting mass (shallower), with EOS
 ! re-evaluation at the surface point. Sets ierr on failure.
 subroutine rescale_and_refit_envelope
+      use math_lib
 
 ! PERFORM RESCALING OF FIRST MODEL IF REQUIRED
       if (star%job%rescale_kind(run_index).ne.1) call rescale_model(star%luminosity_lsun, &
@@ -780,13 +785,15 @@ subroutine rescale_and_refit_envelope
                call eos_get(log10_temperature, log10_pressure, &
                     hydrogen_fraction, metal_fraction, eos_res, &
                     want_derivatives, in_atmosphere, saha_state, &
-                    composition_at_zone=star%xa(:,star%nz))
+                    composition_at_zone=star%xa(:,star%nz), ierr=ierr)
+               if (ierr /= 0) return
 ! kap at eqstat's returned density -- the historical inout dataflow
                call kap_get(eos_res(i_log10_density), log10_temperature, &
                     hydrogen_fraction, metal_fraction, kap_res, &
-                    eos_res(i_fxion:i_fxion+2))
+                    eos_res(i_fxion:i_fxion+2), ierr=ierr)
+               if (ierr /= 0) return
                star%iovim = -1
-               call temperature_gradients_r(log10_temperature, log10_pressure, &
+               call temperature_gradients(log10_temperature, log10_pressure, &
                     eos_res, kap_res, log10_radius, log10_mass, &
                     shell_luminosity_lsun, actual_gradient, radiative_gradient, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -817,7 +824,7 @@ subroutine rescale_and_refit_envelope
           katm = 0
           kenv = 0
           saha_state = 0
-          shell_luminosity_lsun = dexp(ln10*star%log_L)
+          shell_luminosity_lsun = exp(ln10*star%log_L)
           log10_radius = 0.5d0*(star%log_L + star%solar_luminosity_cgs - &
                4.0d0*star%log_Teff - c4pil - csigl)
           log10_gravity = cgl + star%stotal - log10_radius - log10_radius
@@ -844,7 +851,7 @@ subroutine rescale_and_refit_envelope
           if (star%envelope_cz_bottom_index.eq.star%nz.and.star%ctrl%spot_filling_factor.ne. &
                0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
                spot_adjusted_log_teff = star%log_Teff - 0.25*log10(&
-                    star%ctrl%spot_filling_factor * star%ctrl%spot_temp_contrast**4.0 + 1.0 - &
+                    star%ctrl%spot_filling_factor * pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - &
                     star%ctrl%spot_filling_factor)
           else
              spot_adjusted_log_teff = star%log_Teff
@@ -1028,7 +1035,7 @@ subroutine rescale_and_refit_envelope
                do j = old_last_shell+1,star%nz
                   star%omega(j) = star%omega(old_last_shell)
                   star%j_rot(j) = cc23*star%omega(old_last_shell)* &
-                       10.0d0**(2.0d0*star%logR(j))
+                       exp10((2.0d0*star%logR(j)))
                end do
             endif
             write(*,910)
@@ -1054,19 +1061,20 @@ end subroutine rescale_and_refit_envelope
 ! Shell masses (unlogged) and per-shell dm from the (possibly
 ! refitted) log-mass grid.
 subroutine build_shell_masses
+      use math_lib
 ! SET UP WEIGHTS AND MASSES
 ! HS1 IS THE UNLOGGED HS; HS2 IS THE MASS OF THE SHELL(ALSO NOT LOG).
-      next_mass = dexp(ln10*star%log_mass(1))
+      next_mass = exp(ln10*star%log_mass(1))
       curr_mass = - next_mass
       do i = 2,star%nz
        prev_mass = curr_mass
        curr_mass = next_mass
-       next_mass = dexp(ln10*star%log_mass(i))
+       next_mass = exp(ln10*star%log_mass(i))
        star%m(i-1) = curr_mass
        star%dm(i-1) = 0.5d0*(next_mass-prev_mass)
       end do
       star%m(star%nz) = next_mass
-      star%dm(star%nz) = dexp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
+      star%dm(star%nz) = exp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
            next_mass)
 
 end subroutine build_shell_masses
@@ -1169,7 +1177,8 @@ subroutine update_surface_mixture
 !     FIRST FIND INTERPOLATING FACTOR FOR COMPOSITION
       end if
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
-      call kap_update_surface_tables(star%envelope_hydrogen_fraction)
+      call kap_update_surface_tables(star%envelope_hydrogen_fraction, ierr=ierr)
+      if (ierr /= 0) return
       if (use_scv_eos) then
          call build_scv_envelope_table
       endif

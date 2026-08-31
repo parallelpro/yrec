@@ -42,6 +42,7 @@ module yrec_output
       use stitched_model_lib, only: n_ext, stx_pulse, n_pulse_cols
       use history_output, only: history_output_init, write_history_row
       use profile_output, only: profile_output_init, write_profile
+      use math_lib
       implicit none
       private
       public :: output_init_mesa, output_run_header, output_write_model
@@ -139,10 +140,10 @@ subroutine output_write_model()
 ! g (cm/s**2), Ycenter, He-core mass (g)
       if (star%ctrl%isochrone_output_active) then
         age_yr = star%dage*1.0D9
-        luminosity_erg_s = 10.0D0**star%log_L*star%solar_luminosity_cgs
-        radius_cm = 10.0D0**star%log_R_surface*star%solar_radius_cgs
-        teff_k = 10.0D0**star%log_Teff
-        gravity_cgs = 10.0D0**star%log_g_surface
+        luminosity_erg_s = exp10(star%log_L)*star%solar_luminosity_cgs
+        radius_cm = exp10(star%log_R_surface)*star%solar_radius_cgs
+        teff_k = exp10(star%log_Teff)
+        gravity_cgs = exp10(star%log_g_surface)
         ycenter_local = star%xa(i_he4,1)
         if (star%has_h_shell) then
            he_core_mass_grams = star%m(star%h_shell_zone_begin-1)
@@ -206,6 +207,7 @@ end function profile_write_due
 ! photosphere (atmosphere points extend above R_star, as in MESA's
 ! add_atmosphere).
 subroutine write_pulse(iprof)
+      use math_lib
       use star_info_lib, only: star
       integer, intent(in) :: iprof
       character(len=256) :: path

@@ -13,6 +13,7 @@
 subroutine opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
       use opacity_table_lib
+      use math_lib
       implicit none
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19
@@ -85,6 +86,6 @@ subroutine opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
            opacity_table%opal95_weight_x(1,3)*dlogcappa_dlogr_at_x(3) + opacity_table%opal95_weight_x(1,4)*dlogcappa_dlogr_at_x(4)
 ! CORRECT FROM DERIVATE AT FIXED R TO DERIVATIVE AT FIXED RHO.
       dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
-      opacity = 1.0d1**log10_opacity
+      opacity = pow(1.0d1, log10_opacity)
       return
 end subroutine opal95_interp3d

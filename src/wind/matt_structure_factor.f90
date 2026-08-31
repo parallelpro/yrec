@@ -17,6 +17,7 @@
 subroutine matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
       use star_info_lib, only: star
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: total_mass_msun, log_luminosity_lsun, &
@@ -32,13 +33,13 @@ subroutine matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
 !     RADIUS
       log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.d0*log_teff)
-      total_radius_cm = dexp(ln10*log10_radius)
+      total_radius_cm = exp(ln10*log10_radius)
       radius_rsun = total_radius_cm/star%solar_radius_cgs
 !     LUMINOSITY
-      luminosity_lsun = 10.**log_luminosity_lsun
+      luminosity_lsun = exp10(log_luminosity_lsun)
 !     PHOTOSPHERIC PRESSURE
-      photospheric_pressure_ratio = 10.**(star%pphot0+star%fracstep*(star%pphot-star%pphot0))/ &
-           (10.**star%ctrl%pmm_solar_pressure)
+      photospheric_pressure_ratio = exp10((star%pphot0+star%fracstep*(star%pphot-star%pphot0)))/ &
+           (exp10(star%ctrl%pmm_solar_pressure))
 !     CONVECTIVE OVERTURN TIMESCALE
       if(star%ctrl%scale_by_rossby_number)then
          turnover_ratio = (star%convective_turnover_timescale_old+star%fracstep* &
@@ -48,8 +49,8 @@ subroutine matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
          turnover_ratio = 1.
       endif
 !     COMBINE THEM ALL
-      star%job%structfactor = mass_factor**star%ctrl%exm * radius_rsun**star%ctrl%exr * &
-           luminosity_lsun**star%ctrl%exl * photospheric_pressure_ratio**star%ctrl%expr &
-           * turnover_ratio**star%ctrl%extau
+      star%job%structfactor = pow(mass_factor, star%ctrl%exm) * pow(radius_rsun, star%ctrl%exr) * &
+           pow(luminosity_lsun, star%ctrl%exl) * pow(photospheric_pressure_ratio, star%ctrl%expr) &
+           * pow(turnover_ratio, star%ctrl%extau)
       return
 end subroutine matt_structure_factor

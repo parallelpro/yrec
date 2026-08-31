@@ -79,7 +79,41 @@ MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
 
 # Flags for GNU Fortran (gfortran)
-GNU_BASE_FFLAGS = $(HDF5_FFLAGS) -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
+# -ffp-contract=off: forbid FMA contraction (gfortran's default is
+# 'fast'), which is hardware-dependent -- required for cross-platform
+# bit reproducibility and load-bearing even for same-platform pins.
+GNU_BASE_FFLAGS = $(HDF5_FFLAGS) $(CRMATH_FFLAGS) -ffp-contract=off -ffixed-line-length-132 -ffree-line-length-none -finit-local-zero -Wall -cpp -DGIT_HASH="'$(REPO_HASH)'" -fPIC
+
+# The MESA SDK is a PREREQUISITE of YREC (2026 reproducibility
+# campaign): it supplies crmath/crlibm (correctly-rounded math) and
+# HDF5. MESASDK_ROOT from an initialized SDK environment wins;
+# otherwise the standard install location.
+MESASDK_DIR ?= $(or $(MESASDK_ROOT),/Applications/mesasdk)
+
+# Correctly-rounded math backend (crmath/crlibm from the MESA SDK):
+# `make USE_CRMATH=1`. With -ffp-contract=off (always on below) this
+# makes YREC output bit-identical across platforms for the same
+# gfortran major version. Without it, math_lib compiles the intrinsic
+# passthrough backend (historical, platform-dependent last bits).
+ifdef USE_CRMATH
+ifeq ($(wildcard $(MESASDK_DIR)/include/crmath.mod),)
+$(error USE_CRMATH=1 but $(MESASDK_DIR)/include/crmath.mod not found -- \
+install the MESA SDK or point MESASDK_DIR at it)
+endif
+CRMATH_FFLAGS = -DYREC_CRMATH -I$(MESASDK_DIR)/include
+CRMATH_LIBS = $(MESASDK_DIR)/lib/libcrmath.a $(MESASDK_DIR)/lib/libcrlibm.a \
+	$(MESASDK_DIR)/lib/libscs.a
+else
+CRMATH_FFLAGS =
+CRMATH_LIBS =
+endif
+# Rebuild math_lib whenever the backend flips (its module interface
+# differs between backends, so deps.mk then rebuilds every consumer).
+CRMATH_MODE_STAMP = .crmath_mode_$(if $(USE_CRMATH),on,off)
+$(CRMATH_MODE_STAMP):
+	@rm -f .crmath_mode_on .crmath_mode_off
+	@touch $@
+math/math_lib.o: $(CRMATH_MODE_STAMP)
 
 # Optional HDF5 support (GSM / GYRE-HDF5 pulse output): build with
 # `make USE_HDF5=1`. HDF5_DIR defaults to the MESA SDK, which ships
@@ -88,10 +122,25 @@ GNU_BASE_FFLAGS = $(HDF5_FFLAGS) -ffixed-line-length-132 -ffree-line-length-none
 # libhdf5*_fortran). Without USE_HDF5, write_gsm_pulse compiles to a
 # stub that reports the missing capability.
 ifdef USE_HDF5
-HDF5_DIR ?= /Applications/mesasdk
+HDF5_DIR ?= $(MESASDK_DIR)
+# Fail fast with a clear message instead of a -Wmissing-include-dirs
+# warning per file and a late link error (the classic HPC symptom of
+# building with USE_HDF5=1 but no HDF5_DIR).
+ifeq ($(wildcard $(HDF5_DIR)/include/hdf5.mod),)
+$(error USE_HDF5=1 but $(HDF5_DIR)/include/hdf5.mod not found -- set \
+HDF5_DIR to an HDF5 prefix with Fortran support built by this gfortran \
+(e.g. module load hdf5; make USE_HDF5=1 HDF5_DIR=$$HDF5_ROOT))
+endif
 HDF5_FFLAGS = -DYREC_USE_HDF5 -I$(HDF5_DIR)/include
+# Static archives when the installation ships them (MESA SDK does),
+# otherwise conventional shared linking (typical cluster modules).
+ifneq ($(wildcard $(HDF5_DIR)/lib/libhdf5_fortran.a),)
 HDF5_LIBS = $(HDF5_DIR)/lib/libhdf5hl_fortran.a $(HDF5_DIR)/lib/libhdf5_hl.a \
 	$(HDF5_DIR)/lib/libhdf5_fortran.a $(HDF5_DIR)/lib/libhdf5.a -lz -ldl -lm
+else
+HDF5_LIBS = -L$(HDF5_DIR)/lib -Wl,-rpath,$(HDF5_DIR)/lib \
+	-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5 -lz -ldl -lm
+endif
 else
 HDF5_FFLAGS =
 HDF5_LIBS =
@@ -110,13 +159,13 @@ GNU_PROF_FFLAGS = -O3 -g -pg
 GNU_REL_FFLAGS = -O3
 
 # Flags for Intel Fortran (ifort)
-IFORT_BASE_FFLAGS = -132 -traceback -warn all -nogen-interfaces -fpp -DGIT_HASH="'$(REPO_HASH)'"
+IFORT_BASE_FFLAGS = -fp-model precise -132 -traceback -warn all -nogen-interfaces -fpp -DGIT_HASH="'$(REPO_HASH)'"
 IFORT_DEV_FFLAGS = -check all -fpe:0
 IFORT_DBG_FFLAGS = -g
 IFORT_REL_FFLAGS = -O3
 
 # Flags for newer Intel Fortran compiler (ifx)
-IFX_BASE_FFLAGS = -132 -traceback -warn all -nogen-interfaces -fpp -DGIT_HASH="'$(REPO_HASH)'"
+IFX_BASE_FFLAGS = -fp-model precise -132 -traceback -warn all -nogen-interfaces -fpp -DGIT_HASH="'$(REPO_HASH)'"
 IFX_DEV_FFLAGS = -check all -fpe:0
 IFX_DBG_FFLAGS = -g
 IFX_REL_FFLAGS = -O3
@@ -149,14 +198,20 @@ endif
 # Test for presence of git command for version hash collection.
 GIT_AVAIL := $(shell command -v git)
 ifdef GIT_AVAIL
-REPO_DIRTY := $(shell command git diff --name-only --quiet .; echo $$?)
-SHORT_HASH := $(shell command git rev-parse --short HEAD)
+REPO_DIRTY := $(shell command git diff --name-only --quiet . 2>/dev/null; echo $$?)
+SHORT_HASH := $(shell command git rev-parse --short HEAD 2>/dev/null)
 ifeq ($(REPO_DIRTY),1)
   REPO_HASH=$(SHORT_HASH)-dirty
 else
   REPO_HASH=$(SHORT_HASH)
 endif
 else
+  REPO_HASH=unknown
+endif
+# git present but the tree is not a checkout (an rsync-deployed source
+# tree on a cluster): rev-parse fails and SHORT_HASH is empty, leaving
+# REPO_HASH "" or "-dirty" -- normalize to unknown.
+ifeq ($(strip $(SHORT_HASH)),)
   REPO_HASH=unknown
 endif
 
@@ -199,7 +254,7 @@ YREC_LIBS_ORDER := libstate.a libio.a libnumerics.a libeos.a libkap.a \
 yrec_libs: core/main.o $(LIBS)
 	$(FC) $(LDFLAGS) -o $@ core/main.o \
 	$(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) \
-	$(HDF5_LIBS)
+	$(HDF5_LIBS) $(CRMATH_LIBS)
 
 # Standalone per-domain test programs (phase three, ROADMAP.md stage
 # 2). Each links the full object set minus core/main.o (the flat-link
@@ -208,23 +263,23 @@ yrec_libs: core/main.o $(LIBS)
 # pinned expected outputs are flag-stable.
 test_eos: FFLAGS += $(REL_FFLAGS)
 test_eos: eos/test/test_eos.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 test_kap: FFLAGS += $(REL_FFLAGS)
 test_kap: kap/test/test_kap.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 test_atm: FFLAGS += $(REL_FFLAGS)
 test_atm: atm/test/test_atm.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 test_reentry: FFLAGS += $(REL_FFLAGS)
 test_reentry: core/test/test_reentry.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 test_net: FFLAGS += $(REL_FFLAGS)
 test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
-	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS)
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 .PHONY: tests
 tests: test_eos test_kap test_atm test_net test_reentry
@@ -248,7 +303,7 @@ prof: LDFLAGS += $(PROF_LDFLAGS)
 prof: $(NAME)
 
 $(NAME): $(OBJS)
-	$(FC) $(LDFLAGS) -o $(NAME) $(OBJS) $(HDF5_LIBS)
+	$(FC) $(LDFLAGS) -o $(NAME) $(OBJS) $(HDF5_LIBS) $(CRMATH_LIBS)
 
 # libyrec (2026): the embeddable engine as a shared library -- every
 # object except the CLI wrapper. Entry point: core/yrec_capi.f90's
@@ -261,13 +316,13 @@ else
 SHLIB := libyrec.so
 endif
 $(SHLIB): $(OBJS)
-	$(FC) $(LDFLAGS) -shared -o $(SHLIB) $(filter-out core/main.o,$(OBJS)) $(HDF5_LIBS)
+	$(FC) $(LDFLAGS) -shared -o $(SHLIB) $(filter-out core/main.o,$(OBJS)) $(HDF5_LIBS) $(CRMATH_LIBS)
 
 lib: $(SHLIB)
 .PHONY: lib
 
 # Remove all object files, libraries, and executable.
-# *.mod removal is load-bearing: a module .mod that survives clean can
+# *.mod *.smod removal is load-bearing: a module .mod that survives clean can
 # be picked up by a parallel (-j) module-phase compile BEFORE its
 # regenerating module object builds, silently baking stale derived-type
 # offsets into the consumer (2026: run_log.o read a shifted

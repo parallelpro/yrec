@@ -16,6 +16,7 @@
 ! and argument list are otherwise unchanged from getopac.
 module kap_lib
       use opacity_table_lib
+      use math_lib
       implicit none
 ! Everything is private unless exported below (2026: kap_get is the
 ! single public query -- the named-index result-array form; the
@@ -49,19 +50,12 @@ subroutine kap_get(log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
       double precision, intent(inout) :: res(num_kap_results)
       double precision, intent(inout) :: ion_fraction(3)
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
-      if (present(ierr)) then
-         call kap_eval(log10_density, log10_temperature, &
-              hydrogen_fraction, metal_fraction, res(i_kap), &
-              res(i_log10_kap), res(i_dlnkap_dlnrho), &
-              res(i_dlnkap_dlnt), ion_fraction, ierr)
-      else
-         call kap_eval(log10_density, log10_temperature, &
-              hydrogen_fraction, metal_fraction, res(i_kap), &
-              res(i_log10_kap), res(i_dlnkap_dlnrho), &
-              res(i_dlnkap_dlnt), ion_fraction)
-      end if
+      call kap_eval(log10_density, log10_temperature, &
+           hydrogen_fraction, metal_fraction, res(i_kap), &
+           res(i_log10_kap), res(i_dlnkap_dlnrho), &
+           res(i_dlnkap_dlnt), ion_fraction, ierr)
 end subroutine kap_get
 
 
@@ -90,7 +84,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 ! caller omits ierr, behavior is exactly historical: the same
 ! message, then a stop -- now located in this facade rather than the
 ! leaf. Existing call sites need no change.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 ! --- locals ---
       logical :: got_atmosphere_opacity, got_conductive_opacity
       double precision :: atm_opacity, atm_log10_opacity, &
@@ -118,7 +112,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 
 !     GET ATMOSPHERE OPACITY
 
-      if (present(ierr)) ierr = 0
+      ierr = 0
       jerr = 0
       got_atmosphere_opacity = .false.
       if (log10_temperature.le.star%ctrl%molecular_opacity_logt_max) then
@@ -128,11 +122,8 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt, &
                  jerr)
             if (jerr /= 0) then
-               if (present(ierr)) then
-                  ierr = jerr
-                  return
-               end if
-               stop
+               ierr = jerr
+               return
             end if
             got_atmosphere_opacity = .true.
          else if (star%ctrl%use_alex95_tables) then
@@ -145,28 +136,22 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt, &
                  jerr, *100)
             if (jerr /= 0) then
-               if (present(ierr)) then
-                  ierr = jerr
-                  return
-               end if
-               stop
+               ierr = jerr
+               return
             end if
             if (star%use_two_z_tables) then
                call kurucz2(log10_density, log10_temperature, &
                     atm_opacity_2, atm_log10_opacity_2, &
                     atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2, jerr, *100)
                if (jerr /= 0) then
-                  if (present(ierr)) then
-                     ierr = jerr
-                     return
-                  end if
-                  stop
+                  ierr = jerr
+                  return
                end if
                slope = (atm_log10_opacity - atm_log10_opacity_2) / &
                     (star%ctrl%kurucz_table_z1 - star%ctrl%kurucz_table_z2)
                atm_log10_opacity = atm_log10_opacity_2 + &
                     (metal_fraction - star%ctrl%kurucz_table_z2)*slope
-               atm_opacity = 10.0d0**atm_log10_opacity
+               atm_opacity = exp10(atm_log10_opacity)
                slope = (atm_dlnkap_dlnrho - atm_dlnkap_dlnrho_2) / &
                     (star%ctrl%kurucz_table_z1 - star%ctrl%kurucz_table_z2)
                atm_dlnkap_dlnrho = atm_dlnkap_dlnrho_2 + &
@@ -198,21 +183,15 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=', &
                  metal_fraction, log10_temperature
             jerr = 1
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
          call gtpurz(log10_density, log10_temperature, purez_opacity, &
               purez_log10_opacity, purez_dlnkap_dlnrho, purez_dlnkap_dlnt, &
               jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
          if (star%ctrl%use_opal95_tables) then
 !           mhp 7/12 interpolate to maximum z in table
@@ -221,34 +200,32 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  hydrogen_fraction, table_metal_fraction, opacity, &
                  log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
             if (jerr /= 0) then
-               if (present(ierr)) then
-                  ierr = jerr
-                  return
-               end if
-               stop
+               ierr = jerr
+               return
             end if
          else if (star%ctrl%use_opal92_tables) then
             call opal92_interp3d(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
-                 dlnkap_dlnrho, dlnkap_dlnt)
+                 dlnkap_dlnrho, dlnkap_dlnt, jerr)
+            if (jerr /= 0) then
+               ierr = jerr
+               return
+            end if
             table_metal_fraction = star%ctrl%opal_table_z1
          else if (star%ctrl%use_laol89_tables) then
             call gtlaol(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt, jerr)
             if (jerr /= 0) then
-               if (present(ierr)) then
-                  ierr = jerr
-                  return
-               end if
-               stop
+               ierr = jerr
+               return
             end if
             table_metal_fraction = star%ctrl%laol_table_z1
          end if
          slope = (log10_opacity - purez_log10_opacity) / &
               (table_metal_fraction - 1.0d0)
          log10_opacity = purez_log10_opacity + (metal_fraction - 1.0d0)*slope
-         opacity = 10.0d0**log10_opacity
+         opacity = exp10(log10_opacity)
          slope = (dlnkap_dlnrho - purez_dlnkap_dlnrho) / &
               (table_metal_fraction - 1.0d0)
          dlnkap_dlnrho = purez_dlnkap_dlnrho + &
@@ -268,11 +245,8 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
               ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=', &
               metal_fraction, kap_envelope_metal_fraction, log10_temperature
          jerr = 1
-         if (present(ierr)) then
-            ierr = jerr
-            return
-         end if
-         stop
+         ierr = jerr
+         return
 !     NOT HELIUM BURNING REGION (HB EVOLUTION) OR L2Z=T AND
 !     Z STILL NOT TOO LARGE IN CORE (<.15) SO CAN USE
 !     SECOND Z TABLE RATHER THAN PURE Z TABLE
@@ -282,24 +256,29 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
               hydrogen_fraction, metal_fraction, opacity, log10_opacity, &
               dlnkap_dlnrho, dlnkap_dlnt, jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
       else if (star%ctrl%use_opal92_tables) then
          call opal92_interp3d(log10_density, log10_temperature, hydrogen_fraction, &
-              opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+              opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
+         if (jerr /= 0) then
+            ierr = jerr
+            return
+         end if
          if (star%use_two_z_tables) then
             call opal92_interp3d_z2(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
-                 dlnkap_dlnrho_2, dlnkap_dlnt_2)
+                 dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)
+            if (jerr /= 0) then
+               ierr = jerr
+               return
+            end if
             slope = (log10_opacity - log10_opacity_2) / &
                  (star%ctrl%opal_table_z1 - star%ctrl%opal_table_z2)
             log10_opacity = log10_opacity_2 + &
                  (metal_fraction - star%ctrl%opal_table_z2)*slope
-            opacity = 10.0d0**log10_opacity
+            opacity = exp10(log10_opacity)
             slope = (dlnkap_dlnrho - dlnkap_dlnrho_2) / &
                  (star%ctrl%opal_table_z1 - star%ctrl%opal_table_z2)
             dlnkap_dlnrho = dlnkap_dlnrho_2 + &
@@ -313,28 +292,22 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          call gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
          if (star%use_two_z_tables) then
             call gtlaol2(log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)
             if (jerr /= 0) then
-               if (present(ierr)) then
-                  ierr = jerr
-                  return
-               end if
-               stop
+               ierr = jerr
+               return
             end if
             slope = (log10_opacity - log10_opacity_2) / &
                  (star%ctrl%laol_table_z1 - star%ctrl%laol_table_z2)
             log10_opacity = log10_opacity_2 + &
                  (metal_fraction - star%ctrl%laol_table_z2)*slope
-            opacity = 10.0d0**log10_opacity
+            opacity = exp10(log10_opacity)
             slope = (dlnkap_dlnrho - dlnkap_dlnrho_2) / &
                  (star%ctrl%laol_table_z1 - star%ctrl%laol_table_z2)
             dlnkap_dlnrho = dlnkap_dlnrho_2 + &
@@ -351,11 +324,8 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
               ' RUN STOPPED. X Z TL=', hydrogen_fraction, metal_fraction, &
               log10_temperature
          jerr = 1
-         if (present(ierr)) then
-            ierr = jerr
-            return
-         end if
-         stop
+         ierr = jerr
+         return
       end if
 
       end if
@@ -367,7 +337,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             ramp_weight = (log10_temperature - star%ctrl%molecular_opacity_logt_min) / &
                  (star%ctrl%molecular_opacity_logt_max - star%ctrl%molecular_opacity_logt_min)
             opacity = ramp_weight*opacity + (1.0d0 - ramp_weight)*atm_opacity
-            log10_opacity = dlog10(opacity)
+            log10_opacity = log10(opacity)
             dlnkap_dlnrho = ramp_weight*dlnkap_dlnrho + &
                  (1.0d0 - ramp_weight)*atm_dlnkap_dlnrho
             dlnkap_dlnt = ramp_weight*dlnkap_dlnt + &
@@ -389,11 +359,8 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
               conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, &
               jerr)
          if (jerr /= 0) then
-            if (present(ierr)) then
-               ierr = jerr
-               return
-            end if
-            stop
+            ierr = jerr
+            return
          end if
       else
          got_conductive_opacity = .false.
@@ -409,11 +376,11 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          else
 !           Do Hubbard Lampe conductive opacity calculation
             log10_conductive_opacity = &
-                 dlog10(1.0d0 - 0.6d0*hydrogen_fraction) - 14.6196d0 - &
+                 log10(1.0d0 - 0.6d0*hydrogen_fraction) - 14.6196d0 - &
                  (3.5853d0 + 0.1386d0*log10_density)*log10_density + &
                  (5.1324d0 - 0.3219d0*log10_temperature)*log10_temperature + &
                  0.3901d0*log10_density*log10_temperature
-            conductive_opacity = 10.0d0**log10_conductive_opacity
+            conductive_opacity = exp10(log10_conductive_opacity)
             conductive_dlnkap_dlnrho = 0.3901d0*log10_temperature - &
                  0.2772d0*log10_density - 3.5853d0
             conductive_dlnkap_dlnt = 0.3901d0*log10_density - &
@@ -427,7 +394,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     Add the opacities appropriately
       opacity = radiative_opacity*conductive_opacity / &
            (radiative_opacity + conductive_opacity)  ! e.g. 1/O = 1/OX + 1/OC
-      log10_opacity = dlog10(opacity)
+      log10_opacity = log10(opacity)
       dlnkap_dlnrho = (radiative_dlnkap_dlnrho + conductive_dlnkap_dlnrho - &
            (radiative_opacity*radiative_dlnkap_dlnrho + &
            conductive_opacity*conductive_dlnkap_dlnrho) / &
@@ -476,11 +443,11 @@ subroutine kap_init(envelope_hydrogen_fraction, &
 ! 2026 (ROADMAP.md stage 3): optional ierr -- same contract as
 ! kap_eval's (see there). Table-load failures print their diagnostic
 ! at the point of failure, then either surface here or stop here.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
 
       integer :: jerr
 
-      if (present(ierr)) ierr = 0
+      ierr = 0
       kap_envelope_metal_fraction = envelope_metal_fraction
       call setupopac(envelope_hydrogen_fraction, laol_work_array, &
            alex06_table_path, kurucz_table_path, kurucz_table2_path, &
@@ -488,11 +455,8 @@ subroutine kap_init(envelope_hydrogen_fraction, &
            opal92_table_path, opal92_table2_path, pure_z_table_path, &
            alex95_table_paths, jerr)
       if (jerr /= 0) then
-         if (present(ierr)) then
-            ierr = jerr
-            return
-         end if
-         stop
+         ierr = jerr
+         return
       end if
 
       return
@@ -516,12 +480,10 @@ subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
 ! OPTIONAL ierr: same transitional ierr-not-stop form as kap_eval --
 ! callers that pass ierr get table errors returned; callers that
 ! omit it keep the historical stop.
-      integer, intent(out), optional :: ierr
+      integer, intent(out) :: ierr
       integer :: jerr
 
-      call surfopac(hydrogen_fraction, jerr)
-      if (present(ierr)) ierr = jerr
-      if (jerr /= 0 .and. .not. present(ierr)) stop
+      call surfopac(hydrogen_fraction, ierr)
 
       return
 end subroutine kap_update_surface_tables

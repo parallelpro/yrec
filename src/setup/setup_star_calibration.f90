@@ -19,6 +19,7 @@ subroutine setup_star_calibration
       use star_info_lib, only: star
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 !     LSTAR     T - have got a star at Teff and L
 !     LPASSR    T - on run have just passed Teff
@@ -52,9 +53,9 @@ subroutine setup_star_calibration
               star%solar_luminosity_cgs/(c4pi*csig))/(star%job%target_teff*star%job%target_teff* &
               star%solar_radius_cgs)
       else
-         star%job%target_teff = ((star%ctrl%target_luminosity_lsun*star%solar_luminosity_cgs)/ &
+         star%job%target_teff = pow((star%ctrl%target_luminosity_lsun*star%solar_luminosity_cgs)/ &
               (c4pi*csig*star%job%target_radius_rsun*star%job%target_radius_rsun* &
-              star%solar_radius_cgs*star%solar_radius_cgs))**0.25d0
+              star%solar_radius_cgs*star%solar_radius_cgs), 0.25d0)
       end if
       star%log_r_prev_model = 0
 !     SET UP RUN TO EVOLVE TO L, Teff IN HR-DIAGRM.

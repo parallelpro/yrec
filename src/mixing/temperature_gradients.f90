@@ -30,36 +30,57 @@
 ! i.e. is the UNLOGGED luminosity as a fraction of solar (not its
 ! log10). Named accordingly here; not otherwise touched (semiconvection.f90 is
 ! outside this batch).
-subroutine temperature_gradients(log_temperature, temperature, log_pressure, pressure, &
-     density, log_radius, log_mass, luminosity_lsun, opacity, dlnrho_dlnt, &
-     dlnrho_dlnp, dlnkap_dlnt, dlnkap_dlnrho, specific_heat_cp, &
-     actual_gradient, radiative_gradient, adiabatic_gradient, &
-     dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
-     adiabatic_gradient_dp, dgrad_dt_component, dgrad_dp_component, &
-     dgrad_dr_component, specific_heat_cp_dt, specific_heat_cp_dp, &
-     convective_velocity, want_derivatives, is_convective, &
-     pressure_rotation_factor, temperature_rotation_factor, log_teff, ierr)
+! 2026 de-tramp (ROADMAP item 3): 33 arguments -> 19. The former
+! positional form (14 unpacked eos/kap scalars) merged with its
+! result-array wrapper temperature_gradients_r: this single entry now
+! takes the eos_get/kap_get result arrays directly and unpacks the
+! named-index values into locals at the top -- the same doubles, so
+! byte-identical. All per-zone state stays an explicit argument
+! (NEVER absorb star% per-zone reads here: this routine is on the
+! star-blind envint kernel's integrand path, where the state comes
+! from the integration point, not from star%'s zone arrays).
+module temperature_gradients_lib
+      implicit none
+contains
 
+subroutine temperature_gradients(log_temperature, log_pressure, &
+     eos_res, kap_res, log_radius, log_mass, luminosity_lsun, &
+     actual_gradient, radiative_gradient, dgrad_dt_component, &
+     dgrad_dp_component, dgrad_dr_component, convective_velocity, &
+     want_derivatives, is_convective, pressure_rotation_factor, &
+     temperature_rotation_factor, log_teff, ierr)
+
+      use eos_lib, only: num_eos_results, i_temperature, i_pressure, &
+           i_density, i_dlnrho_dlnt, i_dlnrho_dlnp, i_cp, i_grada, &
+           i_dlnrho_dlnt_dt, i_dlnrho_dlnp_dt, i_grada_dt, i_grada_dp, &
+           i_cp_dt, i_cp_dp
+      use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
+           i_dlnkap_dlnt
       use star_info_lib, only: star, json
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 !  DL,OL,X,Z,LOCOND USED BY OPACTY
 ! COMPUTES RADIATIVE GRADIENT AND COMPARES WITH ADIABATIC GRADIENT
 ! COMPUTES CONVECTIVE GRADIENT VIA MIXING LENGTH THEORY IF APPLICABLE
 ! ASSUMES EQSTAT AND OPACTY HAVE BEEN CALLED
 
-      double precision, intent(in) :: log_temperature, temperature, &
-           log_pressure, pressure, density, log_radius, log_mass, &
-           luminosity_lsun, opacity, dlnrho_dlnt, dlnrho_dlnp, dlnkap_dlnt, &
-           dlnkap_dlnrho, specific_heat_cp
+      double precision, intent(in) :: log_temperature, &
+           log_pressure, log_radius, log_mass, luminosity_lsun
+      double precision, intent(in) :: eos_res(num_eos_results), &
+           kap_res(num_kap_results)
       double precision, intent(out) :: actual_gradient, radiative_gradient
-      double precision, intent(in) :: adiabatic_gradient, dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp
       double precision, intent(out) :: dgrad_dt_component, &
            dgrad_dp_component, dgrad_dr_component
-      double precision, intent(in) :: specific_heat_cp_dt, specific_heat_cp_dp
       double precision, intent(out) :: convective_velocity
+! named-index values from the result arrays, unpacked below (same
+! doubles the 33-argument form received positionally)
+      double precision :: temperature, pressure, density, opacity, &
+           dlnrho_dlnt, dlnrho_dlnp, dlnkap_dlnt, dlnkap_dlnrho, &
+           specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
+           dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
+           specific_heat_cp_dt, specific_heat_cp_dp
       logical, intent(in) :: want_derivatives
       logical, intent(out) :: is_convective
       double precision, intent(in) :: pressure_rotation_factor, &
@@ -85,10 +106,27 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
 
       ierr = 0
 
+      temperature = eos_res(i_temperature)
+      pressure = eos_res(i_pressure)
+      density = eos_res(i_density)
+      dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
+      dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
+      specific_heat_cp = eos_res(i_cp)
+      adiabatic_gradient = eos_res(i_grada)
+      dlnrho_dlnt_dt = eos_res(i_dlnrho_dlnt_dt)
+      dlnrho_dlnp_dt = eos_res(i_dlnrho_dlnp_dt)
+      adiabatic_gradient_dt = eos_res(i_grada_dt)
+      adiabatic_gradient_dp = eos_res(i_grada_dp)
+      specific_heat_cp_dt = eos_res(i_cp_dt)
+      specific_heat_cp_dp = eos_res(i_cp_dp)
+      opacity = kap_res(i_kap)
+      dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
+      dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
+
       star%alfmlt=0.0d0
       star%phmlt=0.0d0
       star%cmxmlt=0.0d0
-      radiative_gradient = opacity*luminosity_lsun*dexp(ln10*(log_pressure - &
+      radiative_gradient = opacity*luminosity_lsun*exp(ln10*(log_pressure - &
            log_mass - 4d0*log_temperature + star%log10_solar_luminosity - cgl + &
            cdelrl))* &
            temperature_rotation_factor/pressure_rotation_factor
@@ -144,16 +182,16 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       if(star%ctrl%spot_filling_factor .ne. 0.00)then
          if(star%ctrl%spot_depth_varies)then
             ateffl = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
-                 star%ctrl%spot_temp_contrast**4.0 + 1.0 - star%ctrl%spot_filling_factor)
-            deepx = 1.0 - (1.0 - star%ctrl%spot_temp_contrast)*(10.**ateffl)/(10.**log_temperature)
+                 pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
+            deepx = 1.0 - (1.0 - star%ctrl%spot_temp_contrast)*(exp10(ateffl))/(exp10(log_temperature))
          else
             deepx = star%ctrl%spot_temp_contrast
          endif
-         deldel = radiative_gradient/(star%ctrl%spot_filling_factor * deepx**4.0 + &
+         deldel = radiative_gradient/(star%ctrl%spot_filling_factor * pow(deepx, 4.0) + &
               1.0 - star%ctrl%spot_filling_factor) - adiabatic_gradient
       endif
 ! G Somers END
-      g = dexp(ln10*(cgl + log_mass - log_radius - log_radius))
+      g = exp(ln10*(cgl + log_mass - log_radius - log_radius))
       presht = pressure/(density*g)
       phi = star%mixing_length_alpha*density*opacity*presht
       phi2 = phi*phi
@@ -185,7 +223,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       v = 1.0d0/a1
       a3 = 0.75d0*phi2*phiphi/a1
       a3p = 3.0d0*a3
-      if(a3.gt.1.0d+3) v = a3**(-0.333333333d0)
+      if(a3.gt.1.0d+3) v = pow(a3, (-0.333333333d0))
       do iter = 1,25
        v = dmin1(v,1.0d0)
        vp = a1 + v*(2.0d0 + v*a3p)
@@ -224,7 +262,7 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
 ! delpm (originally DELPM) is computed here but never subsequently
 ! read; preserved as dead code from the original.
       delpm = actual_gradient-v*v*deldel
-      rrr = 10.0d0**log_radius
+      rrr = exp10(log_radius)
       if(want_derivatives) then
 ! DERIVATIVES OF CONVECTIVE GRADIENT
        qdelat = adiabatic_gradient_dt*adiabatic_gradient
@@ -259,51 +297,4 @@ subroutine temperature_gradients(log_temperature, temperature, log_pressure, pre
       return
 end subroutine temperature_gradients
 
-! ---------------------------------------------------------------
-! Result-array form (2026): takes the eos_get and kap_get result
-! arrays directly, unpacking them into temperature_gradients'
-! positional arguments -- the same doubles, so byte-identical. This
-! is what lets the per-shell physics sequence read
-!   call eos_get(...)  /  call kap_get(...)  /
-!   call temperature_gradients_r(...)
-! with two arrays instead of ~20 relay locals.
-subroutine temperature_gradients_r(log_temperature, log_pressure, &
-     eos_res, kap_res, log_radius, log_mass, luminosity_lsun, &
-     actual_gradient, radiative_gradient, dgrad_dt_component, &
-     dgrad_dp_component, dgrad_dr_component, convective_velocity, &
-     want_derivatives, is_convective, pressure_rotation_factor, &
-     temperature_rotation_factor, log_teff, ierr)
-      use eos_lib, only: num_eos_results, i_temperature, i_pressure, &
-           i_density, i_dlnrho_dlnt, i_dlnrho_dlnp, i_cp, i_grada, &
-           i_dlnrho_dlnt_dt, i_dlnrho_dlnp_dt, i_grada_dt, i_grada_dp, &
-           i_cp_dt, i_cp_dp
-      use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
-           i_dlnkap_dlnt
-      implicit none
-      double precision, intent(in) :: log_temperature, log_pressure, &
-           log_radius, log_mass, luminosity_lsun
-      double precision, intent(in) :: eos_res(num_eos_results), &
-           kap_res(num_kap_results)
-      double precision, intent(out) :: actual_gradient, radiative_gradient, &
-           dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
-           convective_velocity
-      logical, intent(in) :: want_derivatives
-      logical, intent(out) :: is_convective
-      double precision, intent(in) :: pressure_rotation_factor, &
-           temperature_rotation_factor, log_teff
-      integer, intent(out) :: ierr
-
-      call temperature_gradients(log_temperature, eos_res(i_temperature), &
-           log_pressure, eos_res(i_pressure), eos_res(i_density), &
-           log_radius, log_mass, luminosity_lsun, kap_res(i_kap), &
-           eos_res(i_dlnrho_dlnt), eos_res(i_dlnrho_dlnp), &
-           kap_res(i_dlnkap_dlnt), kap_res(i_dlnkap_dlnrho), &
-           eos_res(i_cp), actual_gradient, radiative_gradient, &
-           eos_res(i_grada), eos_res(i_dlnrho_dlnt_dt), &
-           eos_res(i_dlnrho_dlnp_dt), eos_res(i_grada_dt), &
-           eos_res(i_grada_dp), dgrad_dt_component, dgrad_dp_component, &
-           dgrad_dr_component, eos_res(i_cp_dt), eos_res(i_cp_dp), &
-           convective_velocity, want_derivatives, is_convective, &
-           pressure_rotation_factor, temperature_rotation_factor, &
-           log_teff, ierr)
-end subroutine temperature_gradients_r
+end module temperature_gradients_lib

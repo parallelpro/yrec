@@ -20,6 +20,7 @@
 ! themes may read them too (profile-based observables).
 module stitched_model_lib
       use phys_const_lib
+      use math_lib
       implicit none
       private
       public :: build_stitched_model, n_ext, n_ie, stx_prof, &
@@ -129,7 +130,7 @@ subroutine build_stitched_model
       if (star%convective_flag(star%nz) .and. star%ctrl%spot_filling_factor /= 0.0d0 &
           .and. star%ctrl%spot_temp_contrast /= 1.0d0) then
          ateffl = star%log_Teff - 0.25d0*log10(star%ctrl%spot_filling_factor* &
-              star%ctrl%spot_temp_contrast**4.0d0 + 1.0d0 - star%ctrl%spot_filling_factor)
+              pow(star%ctrl%spot_temp_contrast, 4.0d0) + 1.0d0 - star%ctrl%spot_filling_factor)
       else
          ateffl = star%log_Teff
       end if
@@ -210,6 +211,7 @@ end subroutine build_stitched_model
 !   4 gradr_div_grada
 ! Endpoints copy their neighbor's derivative-based values.
 subroutine compute_seismic_columns
+      use math_lib
       use star_info_lib, only: star
       integer :: j
       double precision :: r(max_ext), lnp(max_ext), lnrho(max_ext), &
@@ -274,6 +276,7 @@ end subroutine compute_seismic_columns
 ! (per-species abundances beyond X/Z, burning terms, rotation
 ! internals) are zero, as io/write_stitched_profile.f90 also writes them.
 double precision function ext_profile_value(icol, j)
+      use math_lib
       use star_info_lib, only: star, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
@@ -359,6 +362,7 @@ end function ext_profile_value
 ! (1 = center .. nz = surface). Sources match putstore's per-shell
 ! block and the pulse arrays coefft fills every model.
 double precision function profile_value(icol, k)
+      use math_lib
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       integer, intent(in) :: icol, k
 
@@ -448,6 +452,7 @@ end function profile_value
 ! composition above the fitting point is the surface composition, as
 ! io/write_stitched_profile.f90 also writes.
 subroutine build_pulse_points(pts)
+      use math_lib
       use star_info_lib, only: star, i_eps_grav, i_grad_actual, i_grad_ad, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
@@ -471,11 +476,16 @@ subroutine build_pulse_points(pts)
             pts(3,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
             pts(9,j) = star%adiabatic_index_gamma1(i)
             pts(12,j) = star%opacity_zone(i)
-            pts(13,j) = star%pulse_dlnkap_dlnt(i)
-            pts(14,j) = star%pulse_dlnkap_dlnrho(i)
+! GSM/GYRE convention (MESA pulse_gyre.f90): kap_kap_T = kap*dlnkap/dlnT
+! (the absolute derivative dkap/dlnT), NOT the bare log-derivative;
+! likewise eps_eps_T = eps*dlneps/dlnT. Bare log-derivatives were
+! written here originally -- wrong by factors kap and eps (only
+! nonadiabatic GYRE runs read these columns).
+            pts(13,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i)
+            pts(14,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i)
             pts(15,j) = star%eps_total(i)
-            pts(16,j) = star%pulse_dlneps_dlnt(i)
-            pts(17,j) = star%pulse_dlneps_dlnrho(i)
+            pts(16,j) = star%eps_total(i)*star%pulse_dlneps_dlnt(i)
+            pts(17,j) = star%eps_total(i)*star%pulse_dlneps_dlnrho(i)
             pts(18,j) = star%omega(i)
             pts(19,j) = star%pulse_specific_heat(i)
             if (star%pulse_electron_mean_molecular_weight(i) &
@@ -542,6 +552,44 @@ subroutine build_pulse_points(pts)
             pts(8,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
          end if
       end do
+
+! Brunt-Vaisala N^2 (column 8), second pass: overwrite the pointwise
+! thermal-only value computed above with the exact gradient form
+!     N^2 = g * [ (1/Gamma_1) dlnP/dr - dlnRho/dr ]
+! (the same derivative content as FGONG's A4 and profile column 54,
+! centered differences in r). The thermal form g^2 rho delta
+! (nab_ad - nab)/P is exact ONLY for homogeneous composition: it
+! omits the Ledoux mu-gradient term, which dominates N^2 in the
+! composition-gradient layers above a retreating core / around the
+! H-burning shell -- on a 1.2 Msun subgiant it understated the
+! g-cavity buoyancy by ~30% (12% in the period spacing DeltaPi_1)
+! and shifted l=1 mixed-mode frequencies by up to ~16 uHz. The
+! actual density gradient carries the composition term for free.
+! CONVECTIVE zones keep the first-pass thermal value: there the
+! mixture is homogeneous by mixing (mu-gradient zero), so the thermal
+! form is already exact -- and correctly, smoothly negative -- while
+! the centered difference of a near-adiabatic stratification is
+! cancellation noise of random sign. The switch is the sign of the
+! thermal value itself (< 0 means Schwarzschild-unstable). The
+! positive N^2 spike the difference produces AT a convective-zone
+! base (the mu-discontinuity's buoyancy interface) lands on the
+! radiative side and is kept -- it is physics, not noise.
+! Endpoints copy their neighbor, matching compute_seismic_columns.
+      do j = 2, n_ext - 1
+         if (pts(8,j) >= 0.0d0 .and. &
+              pts(1,j) > 0.0d0 .and. pts(1,j+1) > pts(1,j-1) .and. &
+              pts(9,j) > 0.0d0) then
+            grav = exp(ln10*cgl)*pts(2,j)/(pts(1,j)*pts(1,j))
+            pts(8,j) = grav*( &
+                 (log(pts(4,j+1)) - log(pts(4,j-1)))/pts(9,j) - &
+                 (log(pts(6,j+1)) - log(pts(6,j-1))) ) / &
+                 (pts(1,j+1) - pts(1,j-1))
+         end if
+      end do
+      if (n_ext >= 2) then
+         pts(8,1) = pts(8,2)
+         pts(8,n_ext) = pts(8,n_ext-1)
+      end if
 end subroutine build_pulse_points
 
 ! star%xa slot for pulse column 22+k (k = 1..11), in FGONG species

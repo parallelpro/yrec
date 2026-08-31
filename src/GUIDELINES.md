@@ -938,3 +938,33 @@ reports 100% success without having read at least one real diff.
   list must be done as an unordered set comparison, not a sequence
   comparison, or a correct file will be wrongly rejected as
   "mismatched."
+
+
+## Bit-reproducibility (the `reproducibility` branch campaign, 2026)
+
+YREC can produce bit-identical output across platforms (macOS-arm64 vs
+Linux-x86_64) the same way MESA does, via two pieces:
+
+1. **`math/math_lib.f90`** -- the ONE place elementary math comes from.
+   `make USE_CRMATH=1` backs it with crmath/crlibm from the MESA SDK
+   (a PREREQUISITE of YREC): correctly-rounded exp/log/log10/sin/cos
+   shadow the intrinsics, and `pow(x,y)`/`exp10(x)` replace every
+   real-exponent `**` (integer-literal exponents stay `**`; they are
+   exact). The default build keeps the intrinsic backend, where the
+   wrappers reduce to the original expressions byte-for-byte.
+2. **`-ffp-contract=off`** (unconditional): forbids hardware-dependent
+   FMA contraction.
+
+The contract is enforced by `tools/check_boundaries.py` (gate1): any
+file calling an elementary transcendental must `use math_lib`, and no
+real-exponent `**` may appear. Belt-and-braces object audit:
+`nm -u <obj>` under USE_CRMATH must show no `_exp/_log/_log10/_pow`
+from YREC objects (HDF5's C internals are exempt).
+
+Reproducibility across machines additionally requires the same
+gfortran MAJOR version and USE_CRMATH=1 on both ends. Measured cost
+on the solar case: ~35% slower than the intrinsic backend, physics
+drift ~1e-11 (last bits only), identical model counts. The byte-pin
+baselines in the repo are per-backend: they are seeded from the
+DEFAULT (intrinsic) build; a crmath build compares only against
+crmath-seeded baselines.

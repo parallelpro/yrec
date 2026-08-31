@@ -15,13 +15,16 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     atm_call_count, saha_state)
+     atm_call_count, saha_state, ierr)
 
       use eos_lib
       use kap_lib
       use atm_table_lib
+      use ttau_lib
       use star_info_lib, only: star, json
+      use point_scratch_lib
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(inout) :: log10_optical_depth
@@ -34,6 +37,9 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       double precision, intent(inout) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: atm_call_count, saha_state
+! 2026: integrand-callback protocol extended with ierr (eos/kap/
+! gradient failures propagate through mmid/bsstep to the caller).
+      integer, intent(out) :: ierr
 
 ! former common/nwlaol/: not used in this file; declared only to
 ! preserve layout.
@@ -46,37 +52,24 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
 ! 2026 named-index results: the eos/kap relay soup is two arrays
 ! (fresh each call -- this is an ODE integrand).
       double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
-      double precision :: ttaul0, ttaul1, yy
-      double precision :: harvard_t_tau
-      external harvard_t_tau
-
-! EDDINGTON APPROXIMATION
-      ttaul0(yy) = log10_teff - 0.031235d0 + 0.25d0*dlog10(yy + cc23)
-
-! KRISHNA-SWAMY APPROXIMATION (BASED ON FIT TO SOLAR ATMOSPHER)
-! SEE KRISHNA-SWAMY, AP.J. 1966, 145, 176.
-      ttaul1(yy) = log10_teff - 0.031235d0 + 0.25d0*dlog10(yy + &
-          1.39d0 - 0.815d0*exp(-2.54d0*yy) - 0.025d0*exp(-30.0d0*yy))
-
-      effective_gravity = dexp(ln10*log10_gravity)*pressure_rotation_factor
+      ierr = 0
+      effective_gravity = exp(ln10*log10_gravity)*pressure_rotation_factor
       atm_table%atm_tau = log10_optical_depth
-      optical_depth = dexp(ln10*atm_table%atm_tau)
-! USE KTTAU TO IMPLIMENT FUTURE T TAU RELATIONS
-      if (star%job%atm_choice .eq. 0) then
-            log10_temperature = ttaul0(optical_depth)
-      else if (star%job%atm_choice .eq. 1) then
-            log10_temperature = ttaul1(optical_depth)
-      else if (star%job%atm_choice .eq. 2) then
-            log10_temperature = log10_teff + harvard_t_tau(optical_depth) - star%atm_hras
-      end if
+      optical_depth = exp(ln10*atm_table%atm_tau)
+! T(tau) from the ONE home of the analytic relations (2026: the
+! former statement-function dispatch lives in core/ttau_lib.f90)
+      log10_temperature = ttau_log10_temperature(optical_depth, &
+           log10_teff, star%job%atm_choice, star%atm_hras)
       log10_pressure = y(1)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state)
+           saha_state, ierr=ierr)
+      if (ierr /= 0) return
 ! kap at eqstat's returned density -- the historical inout dataflow
       call kap_get(eos_res(i_log10_density), log10_temperature, &
            hydrogen_fraction, metal_fraction, kap_res, &
-           eos_res(i_fxion:i_fxion+2))
+           eos_res(i_fxion:i_fxion+2), ierr=ierr)
+      if (ierr /= 0) return
       dydx(1) = effective_gravity*optical_depth/ &
            (eos_res(i_pressure)*kap_res(i_kap))
       atm_call_count = atm_call_count + 1
@@ -94,23 +87,23 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       atm_table%atm_ion_fraction(1) = eos_res(i_fxion)
       atm_table%atm_ion_fraction(2) = eos_res(i_fxion+1)
       atm_table%atm_ion_fraction(3) = eos_res(i_fxion+2)
-      star%pulse%qtl = log10_temperature
-      star%pulse%qt = dexp(ln10*log10_temperature)
-      star%pulse%qpl = log10_pressure
-      star%pulse%qp = dexp(ln10*log10_pressure)
-      star%pulse%qdl = eos_res(i_log10_density)
-      star%pulse%qd = dexp(ln10*eos_res(i_log10_density))
-      star%pulse%qo = kap_res(i_kap)
-      star%pulse%qol = kap_res(i_log10_kap)
-      star%pulse%qqdp = eos_res(i_dlnrho_dlnp)
-      star%pulse%qqod = kap_res(i_dlnkap_dlnrho)
-      star%pulse%qqot = kap_res(i_dlnkap_dlnt)
-      star%pulse%qdel = 0.0d0
-      star%pulse%qqdt = eos_res(i_dlnrho_dlnt)
-      star%pulse%qdela = eos_res(i_grada)
-      star%pulse%qqcp = eos_res(i_cp)
-      star%pulse%qrmu = eos_res(i_gas_constant)
-      star%pulse%qemu = eos_res(i_mu_e_inv)
+      pt_scr%qtl = log10_temperature
+      pt_scr%qt = exp(ln10*log10_temperature)
+      pt_scr%qpl = log10_pressure
+      pt_scr%qp = exp(ln10*log10_pressure)
+      pt_scr%qdl = eos_res(i_log10_density)
+      pt_scr%qd = exp(ln10*eos_res(i_log10_density))
+      pt_scr%qo = kap_res(i_kap)
+      pt_scr%qol = kap_res(i_log10_kap)
+      pt_scr%qqdp = eos_res(i_dlnrho_dlnp)
+      pt_scr%qqod = kap_res(i_dlnkap_dlnrho)
+      pt_scr%qqot = kap_res(i_dlnkap_dlnt)
+      pt_scr%qdel = 0.0d0
+      pt_scr%qqdt = eos_res(i_dlnrho_dlnt)
+      pt_scr%qdela = eos_res(i_grada)
+      pt_scr%qqcp = eos_res(i_cp)
+      pt_scr%qrmu = eos_res(i_gas_constant)
+      pt_scr%qemu = eos_res(i_mu_e_inv)
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
       if (.false.) print *, luminosity_linear, temperature_rotation_factor, conductive_opacity_flag, log10_radius

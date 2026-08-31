@@ -14,9 +14,10 @@
 ! composition (composition) computed with extrapolation_order
 ! (originally IEST) substeps out of the sequence substep_counts.
 subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num_zones, &
-     species_begin, species_end, substep_counts, converged)
+     species_begin, species_end, substep_counts, converged, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
+      use math_lib
       implicit none
 
       double precision, intent(in) :: timestep
@@ -25,6 +26,7 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
            species_begin, species_end
       integer, intent(in) :: substep_counts(11)
       logical, intent(inout) :: converged
+      integer, intent(out) :: ierr
 
 
       double precision :: step_size_squared(11), current_value(15,json)
@@ -37,6 +39,7 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
            o16_abundance, cno_sum_check, current_step_size_squared, &
            delta, extrap_weight1, extrap_weight2, prev_estimate, &
            max_relative_error
+      ierr = 0
 
 !      SAVE X,D,JJ,LDO,NMAX,LCNO,LCNCHECK
 ! DETERMINE WHICH SPECIES REQUIRE CALCULATION
@@ -89,7 +92,11 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
             end if
          end do
          num_active_species = species_count - 1
-         if (num_active_species.lt.1) stop 999
+         if (num_active_species.lt.1) then
+            write(*,*) 'burn_mix_extrapolated: no active species (999)'
+            ierr = 1
+            return
+         end if
       end if
 ! STORE CURRENT RESULTS IN VECTOR OF COMPOSITION (HCOMPA) AND
 ! ERROR (DCOMPA)

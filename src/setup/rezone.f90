@@ -205,6 +205,7 @@ end subroutine check_envelope_temperature_range
 ! gradient jumps, the overshoot base and the finely-zoned region
 ! around the surface CZ; sort and de-duplicate them.
 subroutine flag_fixed_points
+      use math_lib
 ! SET UP FLAGGED POINTS - PROGRAM WILL NOT REZONE ACROSS FLAGGED POINTS
       flag_count = 1
 ! FLAG EDGES OF CENTRAL AND SURFACE CONVECTION ZONES
@@ -234,8 +235,8 @@ subroutine flag_fixed_points
           flag_count = flag_count + 1
 ! TEST FOR FLAGGING DUE TO GRADIENT IN LOG OMEGA.
        else if (star%job%rotation_active) then
-          log_omega_top = dlog10(star%omega(i))
-          log_omega_bot = dlog10(star%omega(i-1))
+          log_omega_top = log10(star%omega(i))
+          log_omega_bot = log10(star%omega(i-1))
           if (dabs(log_omega_top-log_omega_bot).gt.star%ctrl%chi_grid_scale(12)) then
              flag_point(flag_count) = i
              flag_count = flag_count + 1
@@ -366,11 +367,12 @@ end subroutine flag_fixed_points
 ! delete new points that land too close together. ierr if the
 ! requested point count exceeds json.
 subroutine assign_new_points
+      use math_lib
 ! BEGIN REFLOATING OF POINTS
       if (star%job%rotation_active) then
        do i = 1,star%nz
           if (star%omega(i).gt.0.0D0) then
-             log10_omega(i) = dlog10(star%omega(i))
+             log10_omega(i) = log10(star%omega(i))
           else
              log10_omega(i) = 0.0D0
           endif
@@ -663,6 +665,7 @@ end subroutine locate_new_cz_edges
 ! auxiliaries, re-run physic, and update the surface opacity
 ! tables if the surface composition moved.
 subroutine interpolate_onto_new_grid
+      use math_lib
       use rotation_scratch_lib
 !  NOW USE AN OSCILLATORY SPLINE TO FIT THE OLD RUN OF PHYSICAL VARIABLES
 !  AT THE NEW RUN OF MASS POINTS.
@@ -838,29 +841,30 @@ subroutine interpolate_onto_new_grid
  1020 format(' POINTS  OLD',I5,'   NEW',I5)
       star%nz = new_num_zones
 ! SET UP WEIGHTS AND MASSES
-      mass_curr = dexp(clndp*star%log_mass(1))
+      mass_curr = exp(clndp*star%log_mass(1))
       mass_prev = - mass_curr
       do i = 2,star%nz
        mass_two_back = mass_prev
        mass_prev = mass_curr
-       mass_curr = dexp(clndp*star%log_mass(i))
+       mass_curr = exp(clndp*star%log_mass(i))
        star%m(i-1) = mass_prev
        star%dm(i-1) = 0.5D0*(mass_curr-mass_two_back)
       end do
       star%m(star%nz) = mass_curr
-      star%dm(star%nz) = dexp(ln10*star%log_total_mass) - &
+      star%dm(star%nz) = exp(ln10*star%log_total_mass) - &
            0.5D0*(mass_prev+mass_curr)
       if (star%job%rotation_active) then
 !  FIRST GUESS AT MOMENT OF INERTIA(HI)
        do i=1,star%nz
           star%i_rot(i) = cc23*star%dm(i)* &
-               dexp(ln10*2.0D0*star%logR(i))
+               exp(ln10*2.0D0*star%logR(i))
        end do
 !   CALCULATE OVERSHOOT
        call am_convective_regions(star%xa,star%logRho,star%logP,star%logR, &
             star%log_mass,star%logT,star%convective_flag,star%nz, &
             am_transport_convective_flag,radiative_zone_bounds, &
-            convective_zone_bounds,num_radiative_zones,num_convective_zones)
+            convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+       if (ierr /= 0) return
 ! JNT 2025/09/03 duplicating 2015/04/06 recompute moment of interia
 ! before recomputing the rotation I am less confident that this is
 ! necessary since WALPCZ does run in this version but I don't think
@@ -966,7 +970,8 @@ subroutine interpolate_onto_new_grid
       if (dabs(star%xnew-star%xa(i_h1,star%nz)).gt.1.0D-8) then
                star%xnew = star%xa(i_h1,star%nz)
                star%znew = star%xa(i_metals,star%nz)
-               call kap_update_surface_tables(star%xnew)
+               call kap_update_surface_tables(star%xnew, ierr=ierr)
+               if (ierr /= 0) return
 
       end if
 end subroutine interpolate_onto_new_grid

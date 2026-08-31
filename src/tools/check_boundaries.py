@@ -59,6 +59,8 @@ PUBLIC = {
     # condition wrapper, sole caller core/crrect.f90) and the turnover/
     # diagnostics consumed by core/io/rotation (calcad, gettau).
     "atm": {"atm_get_surface_pt", "atm_init",
+            "ttau_log10_temperature", "ttau_start_log10_temperature",
+            "ttau_photosphere_x_limit", "hsra_t_tau_offset",
             # pure surface-pressure lookups, called by the star
             # layer's envelope integrator (core/envint_lib) since the
             # atm split -- clean physics services
@@ -77,7 +79,7 @@ PUBLIC = {
     "mixing": {"mix", "homogenize_convection_zones", "find_convection_zones",
                "burn_settle_mix", "rotmix", "compute_scale_height",
                "overshoot_boundaries", "semiconvection",
-               "temperature_gradients", "temperature_gradients_r"},
+               "temperature_gradients"},
     # rotation deliberately has no facade (multi-primitive surface,
     # user decision during the phase-two sweep). "func" was here
     # because numerics' qgauss hard-coded a call to it; phase four's
@@ -108,6 +110,74 @@ DEF_RE = re.compile(
 
 def strip_comments(text):
     return "\n".join(line.split("!")[0] for line in text.split("\n"))
+
+
+
+MATH_FUNCS = r"(?:exp|log|log10|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh)"
+
+def mask_strings(line):
+    out, q = [], None
+    for ch in line:
+        if q:
+            out.append(" ")
+            if ch == q:
+                q = None
+        elif ch in "'\"":
+            q = ch
+            out.append(" ")
+        elif ch == "!":
+            break
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+STAR_BLIND_FILES = [
+    # envint purity split (2026): the integration kernel takes its
+    # configuration explicitly and must never touch the star layer
+    "core/envint_kernel.f90",
+    "atm/ttau_lib.f90",
+]
+
+def check_star_blind(src_root):
+    problems = []
+    for rel in STAR_BLIND_FILES:
+        text = (src_root / rel).read_text(errors="replace")
+        code = "\n".join(l.split("!")[0] for l in text.splitlines())
+        if "star_info_lib" in code or "star%" in code:
+            problems.append(f"{rel}: declared star-blind but references star_info")
+    return problems
+
+
+def check_math_lib(src_root):
+    """Reproducibility contract (2026): every file calling an elementary
+    transcendental must `use math_lib` (so USE_CRMATH builds shadow the
+    intrinsics), and no real-exponent ** may exist (a hidden libm pow;
+    write pow()/exp10()). Integer-literal exponents are exact and fine."""
+    import re as _re
+    ref = _re.compile(r"(?i)(?<![a-z0-9_])" + MATH_FUNCS + r"\s*\(")
+    problems = []
+    for f in sorted(src_root.rglob("*.f90")):
+        rel = f.relative_to(src_root).as_posix()
+        if "/test/" in rel or rel.startswith("math/"):
+            continue
+        raw = f.read_text(errors="replace")
+        code_lines = [mask_strings(l) for l in raw.splitlines()]
+        code = "\n".join(code_lines)
+        if ref.search(code) and "use math_lib" not in raw:
+            problems.append(f"{rel}: calls elementary math without `use math_lib`")
+        for i, cl in enumerate(code_lines, 1):
+            for m in _re.finditer(r"\*\*\s*(\(?\s*[+-]?\s*)([A-Za-z0-9_.]+)", cl):
+                tok = m.group(2)
+                if _re.fullmatch(r"\d+", tok):
+                    continue
+                if _re.fullmatch(r"\d+\.(?![0-9dDeE])", tok) and \
+                        cl[m.end(2):].lstrip().startswith(("lt.", "gt.", "le.",
+                                                           "ge.", "eq.", "ne.")):
+                    continue   # maximal-munch: 2.lt. is integer 2 + .lt.
+                problems.append(f"{rel}:{i}: real-exponent ** "
+                                f"(use pow()/exp10()): ...{cl.strip()[:60]}")
+    return problems
 
 
 def main():
@@ -158,8 +228,22 @@ def main():
               "tools/check_boundaries.py.")
         return 1
 
+    blind_problems = check_star_blind(SRC)
+    if blind_problems:
+        print("STAR-BLIND CONTRACT VIOLATIONS:")
+        for b in blind_problems:
+            print("  " + b)
+        return 1
+
+    math_problems = check_math_lib(SRC)
+    if math_problems:
+        print("MATH-LIB CONTRACT VIOLATIONS (reproducibility campaign):")
+        for m in math_problems:
+            print("  " + m)
+        return 1
+
     print("Domain boundaries OK: every cross-domain call goes through "
-          "a public entry.")
+          "a public entry; math-lib contract holds.")
     return 0
 
 

@@ -14,10 +14,7 @@
 ! horizontal branch star.
 subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
-     num_points, helium_dt, rate_pp, rate_he3_he3, rate_he3_he4, &
-     rate_c12_p, rate_c13_p, rate_n14_p, rate_o16_p, rate_c13_alpha, &
-     rate_zero9, rate_c12_alpha, rate_n14_alpha, rate_triple_alpha, &
-     rate_zero13, frac_c12_alpha, frac_be7_electron, h_shell_zone_begin)
+     num_points, helium_dt, h_shell_zone_begin)
 
       use net_lib
       use star_info_lib, only: star, json
@@ -35,13 +32,6 @@ subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, lum
 ! (relying on whatever value the caller's actual argument already
 ! held). This is preserved exactly, not fixed.
       double precision, intent(inout) :: helium_dt
-      double precision, intent(out) :: rate_pp(json), rate_he3_he3(json), &
-           rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
-           rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
-           rate_zero9(json), rate_c12_alpha(json), rate_n14_alpha(json), &
-           rate_triple_alpha(json), rate_zero13(json)
-      double precision, intent(out) :: frac_c12_alpha(json), &
-           frac_be7_electron(json)
       integer, intent(in) :: h_shell_zone_begin
       double precision :: max_temp, local_log_density, local_log_temperature
       integer :: max_temp_zone, zone_idx, engeb_zone
@@ -93,10 +83,7 @@ subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, lum
               local_log_density,local_log_temperature,hydrogen_fraction, &
               helium_fraction,he3_fraction,c12_fraction,c13_fraction, &
               n14_fraction,o16_fraction,o18_fraction,h2_fraction, &
-              engeb_zone,rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p, &
-              rate_c13_p,rate_n14_p,rate_o16_p,rate_c13_alpha,rate_zero9, &
-              rate_c12_alpha,rate_n14_alpha,rate_triple_alpha,rate_zero13, &
-              frac_c12_alpha,frac_be7_electron)
+              engeb_zone)
          total_nuclear_energy_gen = total_energy_gen
          energy_gen_terms(1) = energy_gen_1
          energy_gen_terms(2) = energy_gen_2

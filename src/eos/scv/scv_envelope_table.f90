@@ -25,6 +25,7 @@ subroutine build_scv_envelope_table
       use phys_const_lib
       use numerics_lib
       use scv_eos_lib
+      use math_lib
       implicit none
       integer, parameter :: nts = 63, nps = 76
 
@@ -126,12 +127,12 @@ subroutine build_scv_envelope_table
                     helium_number_density
                smix(t_idx,p_idx) = one_minus_y_local/hydrogen_atom_mass*2.0d0/ &
                     (1.0d0+tablex(t_idx,p_idx,3)+3.0d0*tablex(t_idx,p_idx,2))* &
-                    (dlog(1.0d0+mixing_beta*mixing_gamma)- &
+                    (log(1.0d0+mixing_beta*mixing_gamma)- &
                     hydrogen_electron_density/total_number_density* &
-                    dlog(1.0d0 + mix_de)+mixing_beta*mixing_gamma* &
-                    dlog(1.0d0+1.0d0/mixing_beta/mixing_gamma)- &
+                    log(1.0d0 + mix_de)+mixing_beta*mixing_gamma* &
+                    log(1.0d0+1.0d0/mixing_beta/mixing_gamma)- &
                     helium_electron_density/total_number_density* &
-                    dlog(1.0d0+mix_dei))
+                    log(1.0d0+mix_dei))
                smix(t_idx,p_idx) = boltzmann_constant*smix(t_idx,p_idx)
             end if
          end do
@@ -139,7 +140,7 @@ subroutine build_scv_envelope_table
 !  NOW COMPUTE EQUATION OF STATE VARIABLES FOR THE SURFACE MIXTURE.
       do t_idx=1,nts
          log_t_work = tlogx(t_idx)
-         temp_value = (10.0d0**log_t_work)
+         temp_value = (exp10(log_t_work))
 ! TEMPERATURE INTERPOLATION FACTORS
         if (t_idx.eq.1) then
            idtt = 1
@@ -160,7 +161,7 @@ subroutine build_scv_envelope_table
             metal_fraction_local = star%envelope_metal_fraction
             helium_fraction_local = 1.0d0 - hydrogen_fraction_local - &
                  metal_fraction_local
-            pressure_value = (10.0d0**log_p_work)
+            pressure_value = (exp10(log_p_work))
 ! INCLUDE RADIATION PRESSURE IN THE EQUATION OF STATE.
             radiation_pressure = radiation_constant_over_3*(temp_value**2)**2
             gas_pressure = pressure_value
@@ -271,14 +272,14 @@ subroutine build_scv_envelope_table
                 +tablenv(idtt+2,p_idx,3)*t_interp_dweight(3)
 ! DERIVATIVES OF LN CP
            do k_idx = 1,3
-              interp_x(k_idx) = dlog(tablenv(t_idx,idp+k_idx-1,5))
+              interp_x(k_idx) = log(tablenv(t_idx,idp+k_idx-1,5))
            end do
            dlncp_dlnp = interp_x(1)*p_interp_dweight(1)+ &
                 interp_x(2)*p_interp_dweight(2)+interp_x(3)*p_interp_dweight(3)
            do k_idx = 1,3
               ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
-            interp_x(k_idx) = dlog(tablenv(ii,jj,5))
+            interp_x(k_idx) = log(tablenv(ii,jj,5))
            end do
            dlncp_dlnt = interp_x(1)*t_interp_dweight(1)+ &
                 interp_x(2)*t_interp_dweight(2)+interp_x(3)*t_interp_dweight(3)

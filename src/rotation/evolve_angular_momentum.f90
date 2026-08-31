@@ -29,10 +29,13 @@
 subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
       use rotation_scratch_lib
+      use mid_timestep_model_lib
+      use secular_transport_lib
       use star_info_lib, only: star, json
       use net_lib
       use phys_const_lib
       use burn_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: full_timestep
@@ -45,14 +48,9 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! rezone.f90/mid_timestep_model.f90.
       logical :: am_transport_convective_flag(json)
       double precision :: specific_angular_momentum_saved(json)
-! "_mid" arrays are the midpoint-in-time structure computed by MIDMOD
-! each diffusion sub-step; names match mid_timestep_model.f90's own dummy-argument
-! names for these exact quantities.
-      double precision :: eta_squared_mid(json), log_density_mid(json), &
-           hg_mid(json), moment_of_inertia_mid(json), log_luminosity_mid(json), &
-           log_pressure_mid(json), log_radius_mid(json), log_temperature_mid(json), &
-           omega_mid(json), mean_radius_mid(json), qiw_mid(json)
-      logical :: convective_flag_mid(json), am_transport_convective_flag_mid(json)
+! The "_mid" midpoint-in-time structure arrays (computed by MIDMOD
+! each diffusion sub-step) live in rot_scr (rotation_scratch_lib)
+! since the 2026 de-tramp -- see rot_scr%*_mid uses below.
 ! MHP 6/00 added cod2, diffusion_velocity (HV) to allow BUR-ST mixing plus burning.
 ! Both are produced by SECULR (not yet converted) and consumed by
 ! BURSMIX; their exact roles are not otherwise exercised in this file.
@@ -124,7 +122,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       call am_convective_regions(star%xa,star%logRho,star%logP,star%logR,star%log_mass, &
            star%logT,star%convective_flag,star%nz, &
            am_transport_convective_flag,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones)
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+      if (ierr /= 0) return
 ! MHP 9/94 ADDED DISK LOCKING OPTION.
       disk_lock_engaged = .false.
       if(star%job%disk_locking_active .and. star%disk_gate_age_gyr.le.star%job%disk_locking_age_gyr) &
@@ -258,8 +257,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          rot_scr%wmst(1) = star%omega(1)
          do zone_index = 2,star%nz
             omega_avg = 0.5D0*(star%omega(zone_index)+star%omega(zone_index-1))
-            delta_radius_step = 10.0D0**log_radius_mid(zone_index)- &
-                 10.0D0**log_radius_mid(zone_index-1)
+            delta_radius_step = exp10(rot_scr%log_radius_mid(zone_index))- &
+                 exp10(rot_scr%log_radius_mid(zone_index-1))
             domega_dr = (star%omega(zone_index)-star%omega(zone_index-1))/delta_radius_step
             rot_scr%theta_prev(zone_index) = rot_scr%theta_mean(zone_index)*omega_avg*domega_dr
             rot_scr%qwrmst(zone_index) = domega_dr
@@ -272,21 +271,16 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! START AND END OF THE TIMESTEP.
 ! JVS
       call mid_timestep_model(full_timestep, sub_timestep, fx, first_call, &
-           eta_squared_mid, log_density_mid, hg_mid, &
-           moment_of_inertia_cz, moment_of_inertia_mid, &
-           log_luminosity_mid, log_pressure_mid, log_radius_mid, &
-           cz_mass_bottom, cz_mass_top, log_temperature_mid, &
+           moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
            core_boundary_zone, envelope_boundary_zone, &
-           fully_convective_flag, convective_flag_mid, &
-           am_transport_convective_flag_mid, surface_cz_active, &
-           omega_mid, mean_radius_mid, qiw_mid, radiative_zone_bounds, &
-           convective_zone_bounds, num_radiative_zones, &
-           num_convective_zones, ierr)
+           fully_convective_flag, surface_cz_active, &
+           radiative_zone_bounds, convective_zone_bounds, &
+           num_radiative_zones, num_convective_zones, ierr)
       if (ierr /= 0) return
 ! IF DESIRED, REMOVE ANGULAR MOMENTUM FROM OUTER CONVECTION ZONE
 ! USING A WEBER-DAVIS MAGNETIC WIND MODEL
       if(.not.disk_lock_engaged .and. wind_loss_active .and. surface_cz_active) then
-         omega_surface = omega_mid(star%nz)
+         omega_surface = rot_scr%omega_mid(star%nz)
 !  WIND CALCULATION WITHOUT INSTABILITIES
          if(fully_convective_flag.or..not.star%job%instability_transport_active) then
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
@@ -299,9 +293,9 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! MHP 10/02 REPLACED IEND WITH M IN CALL, DEFINED IEND=M
             iend = star%nz
 ! JNT 09/2025 FOR 05/15 REPLACE WCZ WITH WCZIMP
-            call enforce_rotation_profile(log_density_mid,star%j_rot,log_radius_mid, &
-                 star%log_mass,star%dm,envelope_boundary_zone,iend,eta_squared_mid, &
-                 moment_of_inertia_mid,omega_mid,qiw_mid,mean_radius_mid,star%nz)
+            call enforce_rotation_profile(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
+                 star%log_mass,star%dm,envelope_boundary_zone,iend,rot_scr%eta_squared_mid, &
+                 rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%qiw_mid,rot_scr%mean_radius_mid,star%nz)
          endif
       endif
 !  NOW CHECK FOR INSTABILITIES IN RADIATIVE REGIONS
@@ -315,7 +309,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! G Somers 6/14, SET LIMIX = .FALSE. SO THE CORRECT GRADS ARE USED.
           mix_grads_flag = .false.
 !         CALL MIXCZ(HCOMP,HS2,HS1,LCZM,HRM,HPM,HDM,HGM,M,LIMIX)  ! KC 2025-05-31
-          call homogenize_convection_zones(star%xa,star%dm,am_transport_convective_flag_mid,star%nz)
+          call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
 ! G Somers END
 !  NOW SOLVE FOR LONG-TIMESCALE(SECULAR) INSTABILITIES.
 !  THESE ARE TREATED USING DIFFUSION EQUATIONS.
@@ -328,18 +322,12 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 !      *               HTM,HJMSAV,LCZM,LCM,M,MODEL,OMEGAM,
 !      *               HJM,ETA2M,QIWM,R0M,HCOMP,LFIRST,IMIN,IMAX,BL,
 !      *               HSTOT,SJTOT,SMASS,TEFFL,LREDO,IREDO,  ! KC 2025-05-31
-         call secular_transport(sub_timestep,log_density_mid,hg_mid,moment_of_inertia_mid, &
-              log_luminosity_mid,log_pressure_mid,log_radius_mid,star%log_mass, &
-              star%m,star%dm, &
-              log_temperature_mid,specific_angular_momentum_saved, &
-              am_transport_convective_flag_mid,star%nz,omega_mid, &
-              star%j_rot,eta_squared_mid,qiw_mid,mean_radius_mid, &
-              star%xa,core_boundary_zone,envelope_boundary_zone, &
-              star%log_L, &
-              star%log_total_mass,star%star_mass,star%log_Teff,redo_needed_flag,redo_count, &
-              moment_of_inertia_cz,cz_mass_bottom,cz_mass_top,omega_surface,surface_cz_active, &
-!      *               MRZONE,MXZONE,NRZONE,NZONE,  ! KC 2025-05-31
-              cod2,diffusion_velocity,diffusion_solve_ok, ierr)
+         call secular_transport(sub_timestep, specific_angular_momentum_saved, &
+              core_boundary_zone, envelope_boundary_zone, &
+              redo_needed_flag, redo_count, &
+              moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
+              omega_surface, surface_cz_active, &
+              cod2, diffusion_velocity, diffusion_solve_ok, ierr)
          if (ierr /= 0) return
 !  DIFFUSION TIMESTEP CUTTING REQUIRED IF LREDO IS TRUE.
 !  RESET MEAN MOLECULAR WEIGHT,COMPOSITION,AND SPECIFIC ANGULAR MOMENTUM
@@ -376,22 +364,23 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       if(star%job%use_extended_composition)then
 !  PERFORM LIGHT ELEMENT BURNING.
 ! FIND SURFACE C.Z. DEPTH AT THE END OF THE TIME STEP.
-         call find_convection_zones(star%xa,log_density_mid,log_pressure_mid,log_radius_mid, &
-              star%log_mass,log_temperature_mid,convective_flag_mid,star%nz, &
+         call find_convection_zones(star%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
+              star%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,star%nz, &
               radiative_zone_bounds,convective_zone_bounds, &
               convective_zone_bounds_burn,core_boundary_zone_cur, &
               envelope_boundary_zone_cur,num_radiative_zones,num_convective_zones, &
-              num_convective_zones_burn)
+              num_convective_zones_burn, ierr)
+         if (ierr /= 0) return
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
-         if(star%job%lovstm .and. convective_flag_mid(star%nz))then
-            star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope*exp(clndp*(log_pressure_mid(envelope_boundary_zone_cur)+ &
-                 2.0D0*log_radius_mid(envelope_boundary_zone_cur) &
-                 -log_density_mid(envelope_boundary_zone_cur)-cgl-star%log_mass(envelope_boundary_zone_cur)))
+         if(star%job%lovstm .and. rot_scr%convective_flag_mid(star%nz))then
+            star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope*exp(clndp*(rot_scr%log_pressure_mid(envelope_boundary_zone_cur)+ &
+                 2.0D0*rot_scr%log_radius_mid(envelope_boundary_zone_cur) &
+                 -rot_scr%log_density_mid(envelope_boundary_zone_cur)-cgl-star%log_mass(envelope_boundary_zone_cur)))
          else
             star%pressure_scale_height_end = 0.0D0
          endif
 ! FIND LIGHT ELEMENT BURNING RATES AT THE END OF THE TIME STEP.
-         call lirate88(star%xa,log_density_mid,log_temperature_mid,star%nz,2)
+         call lirate88(star%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,star%nz,2)
 ! STORE CURRENT "END OF STEP" QUANTITIES AS "BEGINNING" ONES FOR
 ! THE NEXT STEP.
 ! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
@@ -399,8 +388,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          if(.not.star%job%instability_transport_active .or. .not.burs_extrapolation_active .or. fully_convective_flag)then
 ! COMPUTE BURNING.
 !             CALL LIBURN(DT,HCOMP,HDM,HRM,HS1,HS2,HTM,JENV1,JENV0,M)  ! KC 2025-05-31
-            call liburn(sub_timestep,star%xa,log_radius_mid,star%m, &
-                 star%dm,log_temperature_mid,envelope_boundary_zone_cur, &
+            call liburn(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
+                 star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)
             envelope_boundary_zone_prev = envelope_boundary_zone_cur
             star%pressure_scale_height_start = star%pressure_scale_height_end
@@ -412,8 +401,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          else
 ! COMPUTE BURNING.
 !             CALL LIBURN2(DT,HCOMP,HDM,HRM,HS1,HS2,HTM,JENV1,JENV0,M)  ! KC 2025-05-31
-            call liburn2(sub_timestep,star%xa,log_radius_mid,star%m, &
-                 star%dm,log_temperature_mid,envelope_boundary_zone_cur, &
+            call liburn2(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
+                 star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)
          endif
 !  ENSURE THAT CONVECTIVE REGIONS ARE FULLY MIXED.
@@ -425,7 +414,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! G Somers 6/14, SET LIMIX = .FALSE. SO THE CORRECT GRADS ARE USED.
           mix_grads_flag = .false.
 !         CALL MIXCZ(HCOMP,HS2,HS1,LCZM,HRM,HPM,HDM,HGM,M,LIMIX)  ! KC 2025-05-31
-          call homogenize_convection_zones(star%xa,star%dm,am_transport_convective_flag_mid,star%nz)
+          call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
 ! G Somers END
 !  ZERO OUT LOW ABUNDANCES.
          do zone_index = 1,star%nz
@@ -454,11 +443,11 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! TO ZERO TIMESTEP FOR THE COMBINATION OF MIXING AND NUCLEAR BURNING.
       if(star%job%instability_transport_active .and. .not.fully_convective_flag)then
          if(burs_extrapolation_active)then
-        call burn_settle_mix(cod2,sub_timestep,star%xa,log_density_mid,log_luminosity_mid, &
-             log_pressure_mid,log_radius_mid,star%log_mass,star%m,star%dm,star%log_total_mass, &
-             log_temperature_mid,diffusion_velocity,envelope_boundary_zone,core_boundary_zone, &
+        call burn_settle_mix(cod2,sub_timestep,star%xa,rot_scr%log_density_mid,rot_scr%log_luminosity_mid, &
+             rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm,star%log_total_mass, &
+             rot_scr%log_temperature_mid,diffusion_velocity,envelope_boundary_zone,core_boundary_zone, &
              envelope_boundary_zone_prev,envelope_boundary_zone_cur,diffusion_solve_ok, &
-             am_transport_convective_flag_mid,star%nz,radiative_zone_bounds, &
+             rot_scr%am_transport_convective_flag_mid,star%nz,radiative_zone_bounds, &
              convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
         if (ierr /= 0) return
          endif
@@ -470,7 +459,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       end do
 !  UPDATE OMEGA ARRAY TO REFLECT NEW ANGULAR MOMENTUM DISTRIBUTION.
       do zone_index = 1,star%nz
-         star%omega(zone_index) = omega_mid(zone_index)
+         star%omega(zone_index) = rot_scr%omega_mid(zone_index)
       end do
 ! MHP 3/96 ADDED CALL TO RECOMPUTE SELF-CONSISTENT SET OF OMEGAS
       call omega_from_j(star%logRho,star%j_rot,star%logR,star%log_mass, &

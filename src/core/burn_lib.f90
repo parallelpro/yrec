@@ -272,6 +272,7 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
 
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       integer, intent(in) :: zone_begin, zone_end, num_zones
@@ -439,6 +440,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
      step_fraction)
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       integer, intent(in) :: zone_begin, zone_end, num_zones
@@ -604,6 +606,7 @@ end subroutine dburnm
 subroutine deutrate(dl,tl,x,i,itlvl)
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: dl, tl, x
@@ -624,7 +627,7 @@ subroutine deutrate(dl,tl,x,i,itlvl)
 
       rho=exp(ln10*dl)
       t9 = exp(ln10*(tl - 9.0d0))
-      t9p13 = t9**cc13
+      t9p13 = pow(t9, cc13)
       t9p23 = t9p13**2
       t9m13=1.0d0/t9p13
       t9m23=t9m13**2
@@ -816,22 +819,25 @@ end subroutine deutrate
 !   XH2 -> deuterium_fraction          IU -> shell_index
 !   HR1..HR13 -> reaction_rate_1..13 (yr^-1, amu^-1, output for kemcom)
 !   HF1 -> n15_alpha_branch_fraction   HF2 -> be7_electron_capture_fraction
+! 2026 de-tramp (ROADMAP item 3): 35 arguments -> 20. The 15 trailing
+! per-zone reaction-rate arrays (HR1..HR13/HF1/HF2, a vestigial
+! COMMON relay) are gone: engeb writes star%reaction_rate_1..13 /
+! star%n15_alpha_branch_fraction / star%be7_electron_capture_fraction
+! at shell_index directly. Of the old callers, one already passed
+! exactly those star% arrays (neutrino_flux_table) and the other two
+! passed write-only scratch nothing ever read.
 subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      he3he4_be7_proton_energy_gen, cno_cycle_energy_gen, &
      triple_alpha_energy_gen, dlnepsilon_dlnrho, dlnepsilon_dlnt, &
      total_energy_gen_rate, log_density, &
      log_temperature, hydrogen_fraction, helium_fraction, he3_fraction, &
      c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
-     o18_fraction, deuterium_fraction, shell_index, reaction_rate_1, &
-     reaction_rate_2, reaction_rate_3, reaction_rate_4, reaction_rate_5, &
-     reaction_rate_6, reaction_rate_7, reaction_rate_8, reaction_rate_9, &
-     reaction_rate_10, reaction_rate_11, reaction_rate_12, &
-     reaction_rate_13, n15_alpha_branch_fraction, &
-     be7_electron_capture_fraction)
+     o18_fraction, deuterium_fraction, shell_index)
 
       use star_info_lib, only: star, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, json
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(out) :: pp_chain_energy_gen, &
@@ -849,15 +855,6 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
            c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
            deuterium_fraction
       integer, intent(in) :: shell_index
-      double precision, intent(out) :: reaction_rate_1(json), &
-           reaction_rate_2(json), reaction_rate_3(json), &
-           reaction_rate_4(json), reaction_rate_5(json), &
-           reaction_rate_6(json), reaction_rate_7(json), &
-           reaction_rate_8(json), reaction_rate_9(json), &
-           reaction_rate_10(json), reaction_rate_11(json), &
-           reaction_rate_12(json), reaction_rate_13(json), &
-           n15_alpha_branch_fraction(json), &
-           be7_electron_capture_fraction(json)
 
 
 
@@ -1172,7 +1169,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  CGS UNITS.
       density=exp(ln10*dd)
       t9 = exp(ln10*(log_temperature - 9.0d0))
-      t9_p13 = t9**cc13
+      t9_p13 = pow(t9, cc13)
       t9_p23 = t9_p13**2
       t9_m13=1./t9_p13
       t9_m23=t9_m13**2
@@ -1228,12 +1225,12 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  IN THIS PART OF THE SUBROUTINE WERE THE CORRECTION OF THE ERROR IN
 !  THE DEFINITION OF RWE (SEE ABOVE) AND REFINEMENTS OF THE COEFFICIENTS
 !  IN THE EXPRESSIONS FOR PFMC2 AND EFMKT.
-      pfmc2=1.017677e-4*electron_number_density_na**0.6666667
+      pfmc2=1.017677e-4*pow(electron_number_density_na, 0.6666667)
       efmkt=5.92986*t9_m1*(dsqrt(1.+pfmc2)-1.)
       if (efmkt.le.1.e-2) then
          fprf=1.0
       else
-         degd=dlog10(efmkt)
+         degd=log10(efmkt)
          if (degd.ge.1.5) then
             fprf=0.0
          else
@@ -1269,14 +1266,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  FORMULA, WHICH INCLUDES A DEGENERACY CORRECTION. THE MORE GENERAL
 !  EXPRESSIONS ARE GIVEN IN TABLE 4 AND EQUATION (19) OF GRABOSKE ET AL.
       xxl=5.9426e-6*t9_m32*dsqrt(density*ion_mean_weight_inverse)
-      xxl6=xxl**0.666667
-      xxl8=xxl**0.86
+      xxl6=pow(xxl, 0.666667)
+      xxl8=pow(xxl, 0.86)
       zcurl=dsqrt((zeta_sum+fprf*electron_mean_weight_inverse)/ &
            ion_mean_weight_inverse)
       zbar=electron_mean_weight_inverse/ion_mean_weight_inverse
-      z58=zcurl**0.58
-      z28=zbar**0.28
-      z33=zbar**cc13
+      z58=pow(zcurl, 0.58)
+      z28=pow(zbar, 0.28)
+      z33=pow(zbar, cc13)
       tm1=xxl*zcurl
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
       do i=1,nrxns
@@ -1585,6 +1582,7 @@ contains
 ! abundances of the burning species, the ion and electron mean
 ! molecular weights, and the screening precursors (xtr, zet).
 subroutine setup_abundances_and_composition
+      use math_lib
 ! ZERO OUT THE ENERGY YIELDS FROM NEUTRINOS(ENU) AND ALPHA CAPTURE
 ! REACTIONS (EALPCA).
       star%neutrino_loss_rate = 0.0d0
@@ -1638,7 +1636,7 @@ subroutine setup_abundances_and_composition
          ion_mean_weight_inverse = ion_mean_weight_inverse+term
          electron_mean_weight_inverse = electron_mean_weight_inverse+ &
               term*atomic_number(i)
-         xtr = xtr+term*atomic_number(i)**1.58
+         xtr = xtr+term*pow(atomic_number(i), 1.58)
          zeta_sum = zeta_sum+term*atomic_number(i)**2
       end do
 ! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
@@ -1774,6 +1772,7 @@ end subroutine compute_energy_generation
 ! RETURN is equivalent in or out of the section: nothing follows
 ! this call in engeb.
 subroutine compute_neutrino_emission
+      use math_lib
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
 ! ******************************************************
 ! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
@@ -1782,21 +1781,21 @@ subroutine compute_neutrino_emission
 !  THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
 ! C21 IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*(1 ATOMIC MASS UNIT/1
 !  GRAM). I HAVE USED HERE SIDEREAL YEAR IN CONVERTING TO SECONDS.
-      reaction_rate_1(shell_index)=reaction_rate(1)*years_per_sec_over_amu
-      reaction_rate_2(shell_index)=reaction_rate(2)*years_per_sec_over_amu
-      reaction_rate_3(shell_index)=reaction_rate(3)*years_per_sec_over_amu
-      reaction_rate_4(shell_index)=reaction_rate(4)*years_per_sec_over_amu
-      reaction_rate_5(shell_index)=reaction_rate(5)*years_per_sec_over_amu
-      reaction_rate_6(shell_index)=reaction_rate(6)*years_per_sec_over_amu
-      reaction_rate_7(shell_index)=reaction_rate(7)*years_per_sec_over_amu
-      reaction_rate_8(shell_index)=reaction_rate(8)*years_per_sec_over_amu
-      reaction_rate_9(shell_index)=reaction_rate(9)*years_per_sec_over_amu
-      reaction_rate_10(shell_index)=reaction_rate(10)*years_per_sec_over_amu
-      reaction_rate_11(shell_index)=reaction_rate(11)*years_per_sec_over_amu
-      reaction_rate_12(shell_index)=reaction_rate(12)*years_per_sec_over_amu
-      reaction_rate_13(shell_index)=reaction_rate(13)*years_per_sec_over_amu
-      n15_alpha_branch_fraction(shell_index)=f3
-      be7_electron_capture_fraction(shell_index)=f1
+      star%reaction_rate_1(shell_index)=reaction_rate(1)*years_per_sec_over_amu
+      star%reaction_rate_2(shell_index)=reaction_rate(2)*years_per_sec_over_amu
+      star%reaction_rate_3(shell_index)=reaction_rate(3)*years_per_sec_over_amu
+      star%reaction_rate_4(shell_index)=reaction_rate(4)*years_per_sec_over_amu
+      star%reaction_rate_5(shell_index)=reaction_rate(5)*years_per_sec_over_amu
+      star%reaction_rate_6(shell_index)=reaction_rate(6)*years_per_sec_over_amu
+      star%reaction_rate_7(shell_index)=reaction_rate(7)*years_per_sec_over_amu
+      star%reaction_rate_8(shell_index)=reaction_rate(8)*years_per_sec_over_amu
+      star%reaction_rate_9(shell_index)=reaction_rate(9)*years_per_sec_over_amu
+      star%reaction_rate_10(shell_index)=reaction_rate(10)*years_per_sec_over_amu
+      star%reaction_rate_11(shell_index)=reaction_rate(11)*years_per_sec_over_amu
+      star%reaction_rate_12(shell_index)=reaction_rate(12)*years_per_sec_over_amu
+      star%reaction_rate_13(shell_index)=reaction_rate(13)*years_per_sec_over_amu
+      star%n15_alpha_branch_fraction(shell_index)=f3
+      star%be7_electron_capture_fraction(shell_index)=f1
 ! ****************************************
 ! END OF COMPUTATION OF HRK(IU).
 ! ****************************************
@@ -1934,8 +1933,8 @@ subroutine compute_neutrino_emission
 
           carbon_fraction_total = c12_fraction+c13_fraction
           oxygen_fraction_total = o16_fraction+o18_fraction
-          neutrino_temp=10.0**log_temperature
-          neutrino_density=10.0**log_density
+          neutrino_temp=exp10(log_temperature)
+          neutrino_density=exp10(log_density)
 
 
 !**** Itoh 1996 Neutrino loss routines - Grant Newsham 9/06 *****
@@ -1984,16 +1983,16 @@ subroutine compute_neutrino_emission
             polx10=(1.+el2*(-13.04+el2*(133.5+el2*(1534.+el2*918.6))))
             polx11 = v1(1) + ez*(v1(2) + ez*v1(3))
             polx12 = ez3 + eli*(v1(4) + eli*(v1(5) + eli*v1(6)))
-            ex1 = dexp(-ez*v1(7)-eli-eli-ln10*dd)*polx10*polx11/polx12
+            ex1 = exp(-ez*v1(7)-eli-eli-ln10*dd)*polx10*polx11/polx12
          end if
 !C PHOTO NEUTRINOS
          polx21 = v2(1) + ez*(v2(2) + ez*v2(3))
          polx22 = ez3 + eli*(v2(4) + eli*(v2(5) + eli*v2(6)))
-         ex2 = emue*el**5*dexp(-ez*v2(7))*polx21/polx22
+         ex2 = emue*el**5*exp(-ez*v2(7))*polx21/polx22
 !C PLASMA NEUTRINOS
          polx31 = v3(1) + ez*(v3(2) + ez*v3(3))
          polx32 = ez3 + eli*(v3(4) + eli*(v3(5) + eli*v3(6)))
-         ex3 = emue**3*dexp(-ez*v3(7)+ln10*(dd+dd))*polx31/polx32
+         ex3 = emue**3*exp(-ez*v3(7)+ln10*(dd+dd))*polx31/polx32
          star%neutrino_loss_rate = -(ex1 + ex2 + ex3)
          total_energy_gen_rate = total_energy_gen_rate + star%neutrino_loss_rate
          qetnx = 0.0
@@ -2076,6 +2075,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       use luout_lib
       use phys_const_lib
       use numerics_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: timestep
@@ -2619,6 +2619,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       use star_info_lib, only: star, i_grad_ad, i_grad_rad, json
       use luout_lib
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: timestep
@@ -2961,6 +2962,7 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
      use_current_model)
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: composition(15,json)
@@ -2990,13 +2992,13 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
             rhox = exp(ln10*star%logRho_start(zone_idx))*star%xa_start(1,zone_idx)
             t9=exp(ln10*(star%logT_start(zone_idx)-9.0d0))
          endif
-         t913=t9**cc13
+         t913=pow(t9, cc13)
          t923=t913*t913
          t943=t923*t923
 ! MHP 10/91 ADDED DEFINITION
          t953 = t943*t913
-         t932=t9**1.5d0
-         t934=t9**7.5d-1
+         t932=pow(t9, 1.5d0)
+         t934=pow(t9, 7.5d-1)
 !
 ! LI6(P,HE3)ALPHA
 !
@@ -3016,8 +3018,8 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
 !    2      +1.54D06/T932*EXP(-4.479/T9)+1.07D10/T932*EXP(-30.443/T9)
          t9a = t9/(1.0d0+0.759d0*t9)
          c56 = 1.25d0*cc23
-         fli7=1.096d9/t923*exp(-8.472d0/t913)-4.830d8*t9a**c56/ &
-         t932*exp(-8.472d0/t9a**cc13)+1.06d10/t932*exp(-30.442d0/t9)
+         fli7=1.096d9/t923*exp(-8.472d0/t913)-4.830d8*pow(t9a, c56)/ &
+         t932*exp(-8.472d0/pow(t9a, cc13))+1.06d10/t932*exp(-30.442d0/t9)
 !
 ! BE9(P,GAMMA)B10
 !

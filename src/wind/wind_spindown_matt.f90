@@ -49,6 +49,7 @@ subroutine wind_spindown_matt(log_luminosity_lsun, full_timestep, cz_moment_of_i
      omega_old, domega_start, domega_end, ierr)
       use star_info_lib, only: star, json
       use phys_const_lib
+      use math_lib
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
@@ -139,16 +140,16 @@ subroutine wind_spindown_matt(log_luminosity_lsun, full_timestep, cz_moment_of_i
            total_mass_msun/star%solar_mass_cgs
       fcorr2 = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
            total_mass_msun/star%solar_mass_cgs
-      fcen1 = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr1))**star%ctrl%excen
-      fcen2 = ((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr2))**star%ctrl%excen
+      fcen1 = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr1)), star%ctrl%excen)
+      fcen2 = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr2)), star%ctrl%excen)
 !
 ! G Somers, END
       omega_old_capped = min(omega_first,omega_saturation)
       omega_new_capped = min(omega_now,omega_saturation)
-      domega_start = wind_coefficient*omega_old_capped** &
-           (star%ctrl%wind_law_omega_exponent-1.0d0)*omega_old*fcen1
-      domega_end_this_iter = wind_coefficient*omega_new_capped** &
-           (star%ctrl%wind_law_omega_exponent-1.0d0)*omega_surface*fcen2
+      domega_start = wind_coefficient*pow(omega_old_capped, &
+           star%ctrl%wind_law_omega_exponent-1.0d0)*omega_old*fcen1
+      domega_end_this_iter = wind_coefficient*pow(omega_new_capped, &
+           star%ctrl%wind_law_omega_exponent-1.0d0)*omega_surface*fcen2
 !      WIND1 = C*WP**(EXW-1.0D0)*WOLD
 !      TEMP = C*WN**(EXW-1.0D0)*OMEGAS
       if(iteration_number.eq.1) then
