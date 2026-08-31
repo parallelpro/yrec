@@ -358,16 +358,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       double precision :: ramp_factor
       logical :: in_opal_table, needs_ramp
 
-! saved (across the dead-code numerical-derivative branch, preserved
-! verbatim from the original -- see the "LSCVD" block below)
-      double precision :: dtl, dtl2, ttl
-      double precision :: dlnrho_dlnt_1, dlnrho_dlnp_1, specific_heat_cp_1, &
-           adiabatic_gradient_1, dlnrho_dlnt_2, dlnrho_dlnp_2, &
-           specific_heat_cp_2, adiabatic_gradient_2
-      double precision :: dpl, dpl2, ppl
-      double precision :: log10_density_1, density_1
-      logical :: valid_table_point_1, valid_table_point_2
-      logical :: do_scv_derivatives
 
 ! values saved across the eqsaha/eqrelv interpolation near the
 ! ionization cutoff
@@ -516,84 +506,13 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               specific_heat_cp, adiabatic_gradient, valid_table_point, ierr)
          if (ierr /= 0) return
 
-         do_scv_derivatives = .false.   ! Do not do SCV derivatives
-         if (do_scv_derivatives .and. valid_table_point) then
-!           LLP 9/6/03 To get reasonable accuracy in numerical derivatives
-!           in the 4-5 decimal place SCV tables, appropriate sizes for
-!           the stepouts in the numerical derivatives must be obtained.
-!           The row to row and column to column spacings are .20 in PL
-!           and .08 in TL. Maximum row to row changes are of the order
-!           of 0.2000 out of 10.0000 (in density). Maximum column to
-!           column changes are of the order of .0500 out of 3.5000 (in
-!           density. It appears that stepouts of plus and minus half a
-!           row and column are needed to get appropriate accuracy for
-!           the derivatives.
-!
-!           NOTE: preserved verbatim from the original, including its
-!           pre-existing bug -- specific_heat_cp_2/adiabatic_gradient_2
-!           below are read before ever being assigned (the "-dtl"/"-dpl"
-!           calls both write into the "_1" locals, never "_2"), so this
-!           whole branch, already unreachable since do_scv_derivatives
-!           is hardcoded .false. just above, would also be broken if it
-!           somehow ran. Not fixed here to keep this a pure
-!           transliteration; flagged for anyone revisiting eqsaha/eqscve.
+! 2026 audit fix: the do_scv_derivatives numerical-derivative branch
+! (unreachable -- its flag was hardcoded .false. -- AND broken: it
+! read specific_heat_cp_2/adiabatic_gradient_2 that its "-dtl" calls
+! never assigned) is deleted. The SCV path keeps saha_eos's
+! analytic derivatives, exactly as every run has always done. See
+! git history for the preserved transliteration.
 
-            dpl = .010d0
-            dtl = .040d0
-            ttl = log10_temperature + dtl
-            temperature = exp10(ttl)
-            call eqscve(ttl, temperature, pressure, log10_density_1, &
-                 density_1, hydrogen_fraction, metal_fraction, beta, &
-                 ion_fraction, dlnrho_dlnt_1, dlnrho_dlnp_1, &
-                 specific_heat_cp_1, adiabatic_gradient_1, &
-                 valid_table_point_1, ierr)
-            if (ierr /= 0) return
-            ttl = log10_temperature - dtl
-            temperature = exp10(ttl)
-            call eqscve(ttl, temperature, pressure, log10_density_1, &
-                 density_1, hydrogen_fraction, metal_fraction, beta, &
-                 ion_fraction, dlnrho_dlnt_1, dlnrho_dlnp_1, &
-                 specific_heat_cp_1, adiabatic_gradient_1, &
-                 valid_table_point_1, ierr)
-            if (ierr /= 0) return
-            dtl2 = 2d0*dtl
-            dlnrho_dlnt_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
-            specific_heat_cp_dt = (log10(specific_heat_cp_1) - &
-                 log10(specific_heat_cp_2))/dtl2
-            adiabatic_gradient_dt = (log10(adiabatic_gradient_1) - &
-                 log10(adiabatic_gradient_2))/dtl2
-
-            temperature = exp10(log10_temperature)
-            ppl = log10_pressure + dpl
-            pressure = exp10(ppl)
-            call eqscve(log10_temperature, temperature, pressure, &
-                 log10_density_1, density_1, hydrogen_fraction, &
-                 metal_fraction, beta, ion_fraction, dlnrho_dlnt_1, &
-                 dlnrho_dlnp_1, specific_heat_cp_1, &
-                 adiabatic_gradient_1, valid_table_point_1, ierr)
-            if (ierr /= 0) return
-            ppl = log10_pressure - dpl
-            pressure = exp10(ppl)
-            call eqscve(log10_temperature, temperature, pressure, &
-                 log10_density_1, density_1, hydrogen_fraction, &
-                 metal_fraction, beta, ion_fraction, dlnrho_dlnt_2, &
-                 dlnrho_dlnp_2, specific_heat_cp_2, &
-                 adiabatic_gradient_2, valid_table_point_2, ierr)
-            if (ierr /= 0) return
-            pressure = exp10(log10_pressure)
-            dpl2 = 2d0*dpl
-            dlnrho_dlnp_dt = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10
-            specific_heat_cp_dp = (log10(specific_heat_cp_1) - &
-                 log10(specific_heat_cp_2))/dpl2
-            adiabatic_gradient_dp = (log10(adiabatic_gradient_1) - &
-                 log10(adiabatic_gradient_2))/dpl2
-            dlnrho_dlnt_dt = dlnrho_dlnt_dt
-            dlnrho_dlnp_dt = dlnrho_dlnp_dt
-            adiabatic_gradient_dt = adiabatic_gradient_dt
-            adiabatic_gradient_dp = adiabatic_gradient_dp
-            specific_heat_cp_dp = specific_heat_cp_dp
-            specific_heat_cp_dt = specific_heat_cp_dt
-         end if
       else
 !        CALL TO PRATHER EOS - Either because SCV was not requested or
 !        it has failed.
