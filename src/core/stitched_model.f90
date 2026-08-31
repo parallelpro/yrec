@@ -476,11 +476,16 @@ subroutine build_pulse_points(pts)
             pts(3,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
             pts(9,j) = star%adiabatic_index_gamma1(i)
             pts(12,j) = star%opacity_zone(i)
-            pts(13,j) = star%pulse_dlnkap_dlnt(i)
-            pts(14,j) = star%pulse_dlnkap_dlnrho(i)
+! GSM/GYRE convention (MESA pulse_gyre.f90): kap_kap_T = kap*dlnkap/dlnT
+! (the absolute derivative dkap/dlnT), NOT the bare log-derivative;
+! likewise eps_eps_T = eps*dlneps/dlnT. Bare log-derivatives were
+! written here originally -- wrong by factors kap and eps (only
+! nonadiabatic GYRE runs read these columns).
+            pts(13,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i)
+            pts(14,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i)
             pts(15,j) = star%eps_total(i)
-            pts(16,j) = star%pulse_dlneps_dlnt(i)
-            pts(17,j) = star%pulse_dlneps_dlnrho(i)
+            pts(16,j) = star%eps_total(i)*star%pulse_dlneps_dlnt(i)
+            pts(17,j) = star%eps_total(i)*star%pulse_dlneps_dlnrho(i)
             pts(18,j) = star%omega(i)
             pts(19,j) = star%pulse_specific_heat(i)
             if (star%pulse_electron_mean_molecular_weight(i) &
@@ -547,6 +552,34 @@ subroutine build_pulse_points(pts)
             pts(8,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
          end if
       end do
+
+! Brunt-Vaisala N^2 (column 8), second pass: overwrite the pointwise
+! thermal-only value computed above with the exact gradient form
+!     N^2 = g * [ (1/Gamma_1) dlnP/dr - dlnRho/dr ]
+! (the same derivative content as FGONG's A4 and profile column 54,
+! centered differences in r). The thermal form g^2 rho delta
+! (nab_ad - nab)/P is exact ONLY for homogeneous composition: it
+! omits the Ledoux mu-gradient term, which dominates N^2 in the
+! composition-gradient layers above a retreating core / around the
+! H-burning shell -- on a 1.2 Msun subgiant it understated the
+! g-cavity buoyancy by ~30% (12% in the period spacing DeltaPi_1)
+! and shifted l=1 mixed-mode frequencies by up to ~16 uHz. The
+! actual density gradient carries the composition term for free.
+! Endpoints copy their neighbor, matching compute_seismic_columns.
+      do j = 2, n_ext - 1
+         if (pts(1,j) > 0.0d0 .and. pts(1,j+1) > pts(1,j-1) .and. &
+              pts(9,j) > 0.0d0) then
+            grav = exp(ln10*cgl)*pts(2,j)/(pts(1,j)*pts(1,j))
+            pts(8,j) = grav*( &
+                 (log(pts(4,j+1)) - log(pts(4,j-1)))/pts(9,j) - &
+                 (log(pts(6,j+1)) - log(pts(6,j-1))) ) / &
+                 (pts(1,j+1) - pts(1,j-1))
+         end if
+      end do
+      if (n_ext >= 2) then
+         pts(8,1) = pts(8,2)
+         pts(8,n_ext) = pts(8,n_ext-1)
+      end if
 end subroutine build_pulse_points
 
 ! star%xa slot for pulse column 22+k (k = 1..11), in FGONG species
