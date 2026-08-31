@@ -33,6 +33,7 @@ subroutine run_yrec(ierr)
       use stop_conditions, only: step_kind_card_done, &
            step_leave_run_loop, init_stop_conditions
       use run_log_lib, only: log_run_summary
+      use controls_check_lib, only: warn_inconsistent_controls
       implicit none
       integer :: step_status
 
@@ -76,6 +77,9 @@ subroutine run_yrec(ierr)
       if (ierr /= 0) return
       call star_setup(ierr)
       if (ierr /= 0) return
+! sanity pass over the adopted controls: warn (terminal only) about
+! silently-inert or self-cancelling combinations (2026 audit)
+      call warn_inconsistent_controls
 
       do monte_carlo_run_number = star%job%mc_run_start,star%job%mc_run_end
 ! Per-run setup (2026): the two prologue blocks are contained
