@@ -130,7 +130,8 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
                  log_mass, enclosed_mass, shell_mass, log_total_mass, &
                  velocity, zone_begin, zone_end, zone_max, zone_min, &
                  convective_flag, final_iteration_flag, num_zones, &
-                 composition, species_begin, species_end)
+                 composition, species_begin, species_end, ierr)
+            if (ierr /= 0) return
             if (star%job%use_extended_composition) then
                call liburn2(substep_dt, composition, log_radius, &
                     enclosed_mass, shell_mass, log_temperature, &

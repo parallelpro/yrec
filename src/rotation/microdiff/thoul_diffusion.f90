@@ -53,7 +53,7 @@
 ! system solved below) and a confident, more descriptive rename is not
 ! attempted here; see the inline comments below for their roles.
 subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
-     coulomb_log, pressure_coeff, temp_coeff, conc_coeff)
+     coulomb_log, pressure_coeff, temp_coeff, conc_coeff, ierr)
 
       use numerics_lib
       implicit none
@@ -67,6 +67,7 @@ subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
       double precision, intent(out) :: pressure_coeff(num_species), &
            temp_coeff(num_species)
       double precision, intent(out) :: conc_coeff(num_species,num_species)
+      integer, intent(out) :: ierr
 
       integer :: indx(nmax)
       double precision :: c(mmax), xx(mmax,mmax), y(mmax,mmax), yy(mmax,mmax)
@@ -90,6 +91,7 @@ subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
 
 ! Initialize parameters:
 
+      ierr = 0
       ko=2
       n=2*num_species+2
       do i=1,num_species
@@ -281,7 +283,8 @@ subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
 ! For I=N-1, we get the electric field
 ! For I=N, we get the gravitational force g
 
-      call ludcmp(delta,n,nmax,indx,d)
+      call ludcmp(delta,n,nmax,indx,d,ierr)
+      if (ierr /= 0) return
 
       call lubksb(delta,n,nmax,indx,alpha)
       call lubksb(delta,n,nmax,indx,nu)

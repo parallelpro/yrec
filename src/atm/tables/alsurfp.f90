@@ -238,18 +238,24 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
             temp_tau100_row(j) = atm_table%allard_log10_temp_tau100(i1,j1)  ! Get this row's four working T100L's
          enddo
          j1 = gl_index(i)
-         call polint(atm_table%allard_gl_grid(j1),pressure_row,4,log_g,pressure_col(i),unused_dy)
-         call polint(atm_table%allard_gl_grid(j1),pressure_tau100_row,4,log_g,pressure_tau100_col(i),unused_dy)
-         call polint(atm_table%allard_gl_grid(j1),temp_tau100_row,4,log_g,temp_tau100_col(i),unused_dy)
+         call polint(atm_table%allard_gl_grid(j1),pressure_row,4,log_g,pressure_col(i),unused_dy, ierr)
+         if (ierr /= 0) return
+         call polint(atm_table%allard_gl_grid(j1),pressure_tau100_row,4,log_g,pressure_tau100_col(i),unused_dy, ierr)
+         if (ierr /= 0) return
+         call polint(atm_table%allard_gl_grid(j1),temp_tau100_row,4,log_g,temp_tau100_col(i),unused_dy, ierr)
+         if (ierr /= 0) return
       enddo
 !     Now do final 4-point Lagrange inerpolations in TEFFL
       if (.not. star%ctrl%allard_use_tau100) then
 !        Current standard alternative. PL for TEFFL,GL, TL=TEFFL
-         call polint(atm_table%allard_teffl_grid(teffl_index),pressure_col,4,log_teff,atm_table%atm_log10_pressure,unused_dy)
+         call polint(atm_table%allard_teffl_grid(teffl_index),pressure_col,4,log_teff,atm_table%atm_log10_pressure,unused_dy, ierr)
+         if (ierr /= 0) return
          atm_table%atm_log10_temperature = log_teff
       else
-         call polint(atm_table%allard_teffl_grid(teffl_index),pressure_tau100_col,4,log_teff,atm_table%atm_log10_pressure,unused_dy)
-         call polint(atm_table%allard_teffl_grid(teffl_index),temp_tau100_col,4,log_teff,atm_table%atm_log10_temperature,unused_dy)
+         call polint(atm_table%allard_teffl_grid(teffl_index),pressure_tau100_col,4,log_teff,atm_table%atm_log10_pressure,unused_dy, ierr)
+         if (ierr /= 0) return
+         call polint(atm_table%allard_teffl_grid(teffl_index),temp_tau100_col,4,log_teff,atm_table%atm_log10_temperature,unused_dy, ierr)
+         if (ierr /= 0) return
       endif
 
 !     We now have obtained the needed temparatures and pressures

@@ -22,7 +22,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
      log_density, mass_grams, log_temperature, convective_flag, &
      num_zones, total_mass, diffusion_coeff1, diffusion_coeff2, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
-     fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx)
+     fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx, ierr)
       use rotation_scratch_lib
 
       use star_info_lib, only: star, i_grad_actual, json
@@ -46,6 +46,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       double precision, intent(out) :: radius_bl(json), temperature_bl(json)
       integer, intent(out) :: zone_begin, zone_end
       logical, intent(out) :: fully_convective_flag
+      integer, intent(out) :: ierr
       double precision, intent(out) :: diffusion_coeff1_dx(json), &
            diffusion_coeff2_dx(json)
 
@@ -115,6 +116,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       seconds_per_year_bl=3.1558d7
 !     fully_convective_flag=T FOR FULLY CONVECTIVE MODEL(AND IF TRUE,
 !     DIFFUSION IS SKIPPED).
+      ierr = 0
       fully_convective_flag=.false.
 !     CHECK FOR CONVECTIVE CORE.
       if(convective_flag(1))then
@@ -319,7 +321,9 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                   end do
                endif
                call thoul_diffusion(num_species,atomic_weight,atomic_charge, &
-                    species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac)
+                    species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac, &
+                    ierr)
+               if (ierr /= 0) return
                settling_coeff_p = -settling_ap(1)
                settling_coeff_t = -star%gradT(zone_idx)*settling_at(1)
             else

@@ -42,7 +42,7 @@
 subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, shell_mass, zone_begin, zone_end, &
      convective_flag, final_iteration_flag, num_zones, composition, &
-     species_begin, species_end)
+     species_begin, species_end, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
       use numerics_lib
@@ -56,6 +56,7 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: species_begin, species_end
+      integer, intent(out) :: ierr
 
 
 
@@ -75,6 +76,8 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
            orig_zone_idx, i0, i1
       double precision :: test_value, dcomp, dcomp2, sum_species_orig, &
            sum_species_updated
+
+      ierr = 0
 
 ! BEFORE THE LAST ITERATION(LOK=F),ONLY DIFFUSION OF H,HE4,HE3 CALCULATED
 ! TO CALCULATE CHANGE IN MU GRADIENTS CAUSED BY DIFFUSION.
@@ -117,7 +120,8 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
               equally_spaced_composition, equally_spaced_mass, rot_scr%ntot, &
               sub_diag, diag, super_diag, rhs)
 ! SOLVE MATRIX FOR THE RUN OF COMP AT TIME N+1 AT THE NEW GRID.
-         call ctridi(rot_scr%ntot, sub_diag, diag, super_diag, rhs, solution)
+         call ctridi(rot_scr%ntot, sub_diag, diag, super_diag, rhs, solution, ierr)
+         if (ierr /= 0) return
 ! TRANSFORM BACK TO THE ORIGINAL GRID AND UPDATE HCOMP IN THE
 ! DIFFUSED REGION. U IS THE NEW RUN OF COMPOSITION IN THE REGION AT THE
 ! EQUALLY SPACED GRID POINTS.

@@ -246,11 +246,13 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             if (star%ctrl%use_new_diffusion_routines) then
                call microdiff(settling_dt,composition,dlnp_dr_settling, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
-                    am_transport_convective_flag,num_zones,total_mass)
+                    am_transport_convective_flag,num_zones,total_mass, ierr)
+               if (ierr /= 0) return
             else
                call gravitational_settling(settling_dt,composition,dlnp_dr_settling, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
-                    am_transport_convective_flag,num_zones,total_mass)
+                    am_transport_convective_flag,num_zones,total_mass, ierr)
+               if (ierr /= 0) return
             end if
          end do
          do zone_idx = 1,num_zones

@@ -189,8 +189,8 @@ io/read_mod_model.o: luout_lib.mod star_info_lib.mod
 io/read_model2.o: star_info_lib.mod
 io/read_yrec7.o: luout_lib.mod math_lib.mod star_info_lib.mod
 io/run_log.o: luout_lib.mod star_info_lib.mod
-io/write_fgong_pulse.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-io/write_gsm_pulse.o: luout_lib.mod
+io/write_fgong_pulse.o: math_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
+io/write_gsm_pulse.o: luout_lib.mod stitched_model_lib.mod
 io/write_gyre_pulse.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 io/write_mod_model.o: luout_lib.mod run_log_lib.mod star_info_lib.mod
 io/write_output_headers.o: luout_lib.mod star_info_lib.mod

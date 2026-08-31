@@ -20,7 +20,7 @@
 ! potential terms rot_scr%phisp/rot_scr%phirot/rot_scr%phidis (common/quadd/) are built.
 subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
-     mean_gravity, r0)
+     mean_gravity, r0, ierr)
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
@@ -38,6 +38,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       double precision, intent(inout) :: eta2(json), r0(json)
       double precision, intent(out) :: pressure_rotation_factor(json), &
            temperature_rotation_factor(json), mean_gravity(json)
+      integer, intent(out) :: ierr
 
 
 
@@ -57,6 +58,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       double precision :: aint1, dint, aint
       double precision :: g0, ginv0, sphi, ginv, f0, q, rphi, rphi3
 
+      ierr = 0
 ! FIND THE RUN OF R0 AND ETA2 FOR THE MODEL
       call shape(log_density, log_radius, log_mass, 1, num_points, omega, &
            eta2, r0)
@@ -101,7 +103,8 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
                   ya(j1) = aint0(n1)
                   n1 = n1 + 1
                end do
-               call polint(xa, ya, k, 0.0d0, aint1, dint)
+               call polint(xa, ya, k, 0.0d0, aint1, dint, ierr)
+               if (ierr /= 0) return
                if (dabs(dint).lt.eps*dabs(aint1)) exit
             end if
             aint0(j+1) = aint0(j)

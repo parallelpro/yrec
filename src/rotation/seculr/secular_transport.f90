@@ -434,7 +434,8 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
             call tridia(rot_scr%ntot,eq_moment_of_inertia, &
                  eq_delta_angular_momentum,sum_delta_angular_momentum, &
                  sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
-                 surface_wind_loss_term)
+                 surface_wind_loss_term, ierr)
+            if (ierr /= 0) return
 !  TRANSFORM THE NEW ANGULAR MOMENTUM DISTRIBUTION BACK TO THE ORIGINAL GRID
 !  POINTS IN THE UNSTABLE REGION.
          else
@@ -466,7 +467,8 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
               rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm, &
               star%log_total_mass,diffusion_velocity,zone_begin,zone_end,zone_max, &
               zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
-              star%nz,star%xa,species_begin,species_end)
+              star%nz,star%xa,species_begin,species_end, ierr)
+         if (ierr /= 0) return
 !         ELSE
 !         CALL DIFCOM(DR,DT,COD2,ECOD2,EM,ES1,HRU,HS,HS1,HS2,HV,
 !     *               IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP)
@@ -521,7 +523,8 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
            rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm, &
            star%log_total_mass,diffusion_velocity,zone_begin,zone_end,zone_max, &
            zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
-           star%nz,star%xa,species_begin,species_end)
+           star%nz,star%xa,species_begin,species_end, ierr)
+      if (ierr /= 0) return
 !      ELSE
 !      CALL DIFCOM(DR,DT,COD2,ECOD2,EM,ES1,HRU,HS,HS1,HS2,HV,
 !     *            IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP)

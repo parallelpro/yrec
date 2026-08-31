@@ -53,7 +53,7 @@
 ! (diffusion_coeff1_dx AND diffusion_coeff2_dx).
 !
 subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, log_density, &
-     mass_grams, log_temperature, convective_flag, num_zones, total_mass)
+     mass_grams, log_temperature, convective_flag, num_zones, total_mass, ierr)
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
@@ -110,12 +110,16 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       integer :: max_delta_x_zone
       double precision :: delta_x_local
       double precision :: z_change_first, z_change_last
+      integer, intent(out) :: ierr
+
+      ierr = 0
 
       call gravitational_settling_setup(timestep,dlnp_dr,log_radius,log_density,mass_grams, &
            log_temperature,convective_flag,num_zones,total_mass, &
            diffusion_coeff1,diffusion_coeff2,composition,radius_bl, &
            temperature_bl,zone_begin,zone_end,fully_convective_flag, &
-           diffusion_coeff1_dx,diffusion_coeff2_dx)
+           diffusion_coeff1_dx,diffusion_coeff2_dx, ierr)
+      if (ierr /= 0) return
 !
 ! SKIP SETTLING FOR FULLY CONVECTIVE MODELS.
       if(fully_convective_flag) return
@@ -237,7 +241,8 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 !  SOLVE THE TRIDIAGONAL MATRIX SYSTEM FOR THE NEW RUN OF X.
 !
          call tridiag_gs(sub_diag,diag,super_diag,hydrogen_x_prime, &
-              num_equal_points,equal_hydrogen_fraction)
+              num_equal_points,equal_hydrogen_fraction, ierr)
+         if (ierr /= 0) return
 !
 !  CHECK TO SEE IF THE CORRECTIONS TO THE HYDROGEN ABUNDANCE ARE SMALL
 !  ENOUGH TO EXIT.

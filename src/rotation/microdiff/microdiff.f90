@@ -57,7 +57,7 @@
 ! microdiff_etm.f90 (transform back to the model grid).
 subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, convective_flag, &
-     num_zones, total_mass)
+     num_zones, total_mass, ierr)
       use microdiff_mte_lib
       use microdiff_run_lib
       use star_info_lib, only: star, json
@@ -74,6 +74,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
+      integer, intent(out) :: ierr
 
 
 
@@ -108,6 +109,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !  BOUNDARIES OF CONVECTIVE CORE AND ENVELOPE IF APPLICABLE;
 !  COLLECT PHYSICAL VARIABLES FOR DIFFCO CALCULATION.
 !
+      ierr = 0
       call microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
            enclosed_mass, log_temperature, convective_flag, num_zones, &
            total_mass, composition, radius_bl, temperature_bl, zone_begin, &
@@ -162,7 +164,8 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
               num_eq_points, eq, species_fraction, &
               hydrogen_dlnc_dr, eq_mid, &
               species_fraction_mid, hydrogen_dlnc_dr_mid, &
-              atomic_weight_diffused, atomic_charge_diffused, species_col)
+              atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
+         if (ierr /= 0) return
 !        STORE THE RUN OF CHANGES TO HYDROGEN
          do i = 1,num_eq_points
             eq_delta_hydrogen(i) = species_fraction(1,i)
@@ -193,7 +196,8 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
               num_eq_points, eq, species_fraction, &
               hydrogen_dlnc_dr, eq_mid, &
               species_fraction_mid, hydrogen_dlnc_dr_mid, &
-              atomic_weight_diffused, atomic_charge_diffused, species_col)
+              atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
+         if (ierr /= 0) return
 !        STORE THE RUN OF CHANGES TO HEAVY METALS
          do i=1,num_eq_points
             eq_delta_metal(i) = species_fraction(3,i)
@@ -222,7 +226,8 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
                  num_eq_points, eq, species_fraction, &
                  hydrogen_dlnc_dr, eq_mid, &
                  species_fraction_mid, hydrogen_dlnc_dr_mid, &
-                 atomic_weight_diffused, atomic_charge_diffused, species_col)
+                 atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
+            if (ierr /= 0) return
 !           STORE THE NEW RUN OF LIGHT METALS
             do i=1,num_eq_points
               eq_delta_light(ii,i) = species_fraction(3,i)
