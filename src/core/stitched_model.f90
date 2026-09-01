@@ -526,8 +526,15 @@ subroutine build_pulse_points(pts)
             T = exp(ln10*env_struct%env_log10_temperature(i))
             rho = exp(ln10*env_struct%env_log10_density(i))
             delta = -env_struct%env_dlnrho_dlnt(i)
-            nab = env_struct%env_gradients(2,i)
-            nab_ad = env_struct%env_gradients(3,i)
+! 2026 sweep fix: env_gradients order is (1) radiative, (2) ADIABATIC,
+! (3) ACTUAL (see the profile-column mapping above and
+! envelope_derivs' current_gradients stores) -- unlike atmo_gradients,
+! whose order is (rad, actual, adiabatic). This block had the two
+! slots swapped (the pulse-side twin of the pre-2026 profile-column
+! swap), flipping the thermal N^2 sign across the envelope region of
+! every pulse file and swapping the grad/grad_ad pulse columns there.
+            nab = env_struct%env_gradients(3,i)
+            nab_ad = env_struct%env_gradients(2,i)
             pts(ipul_L,j) = env_struct%env_luminosity(i)*star%solar_luminosity_cgs
             pts(ipul_gamma1,j) = env_struct%env_gamma1(i)
             pts(ipul_kap,j) = env_struct%env_opacity(i)
