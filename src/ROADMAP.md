@@ -337,3 +337,160 @@ independent references:
   delta_Pg (Brunt integral) audited clean this pass -- add them to the
   contract test against GYRE-derived values from the same model so
   they stay clean.
+
+## 10. File-by-file bug sweep -- 2026-08-31
+
+Eleven parallel domain reviews covered all 231 non-test .f90 files
+(~58k lines); every finding carries F77 provenance against 6cd5673.
+FULL PER-DOMAIN REPORTS: audit/bugsweep-2026-08-31/ (committed).
+Summary below; "VERIFIED" = independently re-derived in the main
+session, others are agent findings at the stated confidence.
+
+### Fixed during the sweep
+
+- rotation_shape_factors called with 10 args (missing the new
+  required ierr) from henyey_iterate + rezone -- a 212a652
+  regression (caller grep truncated by head); UB on every rotating
+  run. Fixed + pushed (955a20d). Lesson: caller sweeps never through
+  head; bare-external signature changes get a multiline-aware audit.
+
+### VERIFIED high -- physics-affecting, fix candidates in order
+
+1. stitched_model.f90:529-530 (new-code): the PULSE builder swaps
+   grad/grad_ad in the ENVELOPE region -- env_gradients order is
+   (rad, ad, actual) per its own profile-writer comment, but the
+   pulse block reads (2) as grad and (3) as grad_ad. Thermal N^2
+   sign flips across the convective envelope of every GYRE/FGONG/GSM
+   file. The profile-side twin of this exact swap was fixed; the
+   pulse site was missed. FIX FIRST -- feeds the live science.
+2. core/burn_lib.f90:1196 + :645 (inherited, engeb.f/deutrate.f):
+   d(p,gamma)3He uses T9^(+2/3) where CF88 has T9^(-2/3) -- the
+   code's own log-derivative (cc13*(-2)) proves the intent.
+   Deuterium burning off by ~T9^(4/3): ~1e4 at 1e6 K. Affects
+   pre-MS/birthline deuterium physics.
+3. net/net_lib.f90:343 (inherited, sneut.f): tfac2 has
+   `cvp*cvp - cap-cap` (parses as cvp^2 - 2*cap) where the Itoh/
+   Timmes form is cvp^2 - cap^2 -- the classic sneut typo MESA
+   fixed. Wrong flavor coefficient in pair/photo/brem neutrino
+   losses (matters for late evolution / cores).
+4. kap/conductive/condopacpint.f90:119 (inherited -- the F77's live
+   line has the same copy-paste, correct formula commented out
+   beside it): conductive dlnkap_dlnT is assembled from the RHO
+   derivatives (dlnkap_dlnrho_*); the T derivatives are computed and
+   discarded. Corrupts the Jacobian whenever Potekhin conduction is
+   on.
+5. io/model_to_equal.f90:125/232 (inherited, HCOMP(8,...)): the
+   metal-diffusion ("MASS FRACTION OF METALS") run is built from
+   composition(8,...) = N15 (~1e-8), and equal_to_model applies the
+   result to slot 3 = Z. use_diffusion_z metal settling in the
+   rotation path has been wrong since the COMMON era.
+6. eos/opal/esac.f90:117-123 (modernization): the mass-fraction
+   guard's GO TO 61 became a single-statement IF guarding only the
+   first write; ierr=1+return run unconditionally on the first call
+   -- every use_opal95_eos run dies at its first OPAL-regime EOS
+   point (esac01/06 converted the same construct correctly).
+7. numerics_lib intpt (:1864, modernization): the table-scan's
+   GOTO-exit became `return` -- returns with outputs unset for any
+   in-range temperature; breaks all 11 mhdpx2 call sites (entire MHD
+   EOS path; zero coverage). Fix is `exit`.
+8. util/timestep_limit_heburn + compute_timestep (modernization-
+   aggravated; PROPOSED ROOT CAUSE of the known TAHB NaN): helium_dt
+   is intent(inout) read-before-write on the "core Y below atime(1)"
+   branch (documented in the file header); the caller's local lost
+   the F77 SAVE carry, so it reads 0 under -finit-local-zero ->
+   helium_dt = const*0 = 0 -> timestep collapses -> Inf/NaN -> the
+   observed DELDEL=NaN in tpgrad at core-He exhaustion. Needs a
+   reproduction run to confirm before fixing.
+9. core_physics agent, VERIFIED reasoning, needs care:
+   stitched_model's eps_eps_T/rho columns are DOUBLE-multiplied by
+   eps -- engeb's accumulators are already eps*dlneps/dlnT, so the
+   2026 "absolute derivative" pulse fix over-corrected (the kap half
+   of that fix is right, the eps half wrong).
+
+### High-confidence agent findings (spot-check before fixing)
+
+- rebuild_envelope.f90:266 X/Z fitting-point interpolation sign
+  reversed (inherited getnewenv.f; parallel branch correct);
+  rebuild_envelope omega() read-before-set (comment claims a SAVE
+  that does not exist).
+- envelope_derivs.f90:94 dydx(3) multiplies by fp where dydx(1)
+  divides -- rotating-envelope structure error ~fp^2 (inherited
+  qenv.f).
+- mid_timestep_model deuterium-rate arrays lost their F77 SAVE:
+  mid-substep D-burning rates ~0 after the first substep
+  (modernization; rotating runs).
+- burn_mix_extrapolated lost cross-call SAVE state: BS extrapolation
+  silently no-ops at order>=2 (modernization; rotation path).
+- diffuse_composition missing `else i1=zone_end`: He4 rebalance over
+  an undefined range when the unstable region's top is radiative
+  (inherited mixcom.f).
+- am_advection_diffusion_coeffs: shear/GSF eq-grid coefficients
+  never assigned -> those mechanisms contribute ZERO in LDIFAD
+  advection-diffusion mode (inherited).
+- compute_quadrupole drho/dr uses rho(i) where rho(i-1) belongs
+  (inherited copy-paste).
+- trapzd interpolates rho/omega^2/eta2 at a loop-invariant offset
+  (+slope*del) instead of at y (+slope*(y-b1)) -- the rotation <g>
+  shape integrals converge to the wrong value (inherited).
+- bsstep's step-underflow guard tests the pass-through hydrogen
+  fraction instead of the independent variable (inherited NR-form
+  deviation).
+- map_user_inputs: qs0e/qqs0ee derivative scales for reactions 2-7
+  divide by the PP S0 instead of each reaction's own (~1e-22
+  factor); Seff derivative corrections effectively zeroed under
+  use_new_nuclear_rates (inherited).
+- Noerdlinger dlnLambda/dX settling correction added with the wrong
+  sign (gravitational_settling_setup:379, inherited); grsett
+  midpoint off-by-one + stale element 1; convergence tests missing
+  abs() in both settling solvers (inherited).
+- engeb Itoh branch: PET = PEP + DSNUDT copy-paste and log-vs-
+  absolute derivative mixing (inherited).
+- liburn/liburn2 radiative_frac = intended-1 (weights in [-1,0]) for
+  zones leaving a retreating CZ -- pre-MS Li depletion (inherited).
+- OPAL95 opacity ll95tbl slot collision (110/119 double-booked;
+  X=0 tables clobbered for Z>0.04); getopal95 density_shifted read
+  uninitialized on the low-X/low-T shortcut (modernization);
+  alex06tab X-node(4)=1-Z regardless of index_x for Z>0.06.
+- mhdpx1 out-of-range T returns ierr=0 with stale/zero output
+  (inherited; MHD); eqstat ionization-cutoff blend adds raw Saha
+  QDTT/QDTP instead of the differenced form (inherited, both eras);
+  SCV ragged-edge unclamped reads (inherited);
+  fully_ionized_eos Newton non-convergence returns unset outputs.
+- read_controls:2317 lfirst(1)=.true. safety force hits a dead local
+  (modernization); output_columns append_column unbounded vs
+  max_cols; read_starting_model core-extension overflow prints "RUN
+  TERMINATED" but continues (inherited).
+- atm: atm_get_surface_pt drops alsurfp's fatal ierr (modernization);
+  surfp/kcsurfp high-gravity branch ignores the gmax index
+  (splines over -999 sentinels; inherited); turnover_timescale
+  spline_taucz_done never set on the innermost-point branch
+  (goto-elimination regression) + core_cz_top_index read
+  uninitialized for sun-like structures.
+- matt_wind PMM path ignores wind_loss_active; check_angular_momentum
+  reversal threshold 1.0 rad/s (dead guard) and cut-once logic;
+  wind_spindown_matt gl-vs-cgl fcen ~1.5e7x (sharpened known item).
+- rezone gradient-insertion has no json bound check (the audit fixed
+  only flag_point).
+
+### Medium/low + weak observations
+
+See audit/bugsweep-2026-08-31/*.md -- ~35 medium/low findings and
+~120 one-line weak observations, each with provenance. Also
+recorded there: verified-clean lists (Henyey algebra, seismic
+integrals, Thoul solver, FGONG slot map, mod-file symmetry,
+controls adoption copies, conductive combination formula).
+
+### Suggested fix order
+
+Batch 1 (science-first, output-changing, one reseed): pulse
+grad/grad_ad swap + eps double-multiplication + condopacpint
+T-derivative + N15-vs-Z metal diffusion.
+Batch 2 (physics constants, reseed): deuterium exponent, sneut
+tfac2, engeb Itoh branch, liburn radiative_frac, Noerdlinger sign.
+Batch 3 (crash/UB class, byte-safe or uncovered): esac guard, intpt
+exit, heburn dt=0 (after reproducing the TAHB crash), dropped-SAVE
+family (rebuild_envelope/mid_timestep_model/burn_mix_extrapolated/
+massloss), read_starting_model overflow stop.
+Every batch: verify the specific claim first (agents are good but
+not infallible), fix, byte-gate or deliberately reseed per tiers.
+
