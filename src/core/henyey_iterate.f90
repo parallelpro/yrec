@@ -390,7 +390,8 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
                  star%mean_radius)
             call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
                  star%eta_squared,star%fp_rot, &
-                 star%ft_rot,star%mean_gravity,star%mean_radius)
+                 star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
+            if (ierr /= 0) return
             do i = 1,star%nz
                shell_angular_momentum = star%j_rot(i)*star%dm(i)
                star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum

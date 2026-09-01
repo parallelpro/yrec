@@ -896,7 +896,8 @@ subroutine interpolate_onto_new_grid
             star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
 !  CALCULATE FP,FT,R0 AND ETA2 GIVEN OMEGA
        call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
-            star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
+            star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
+       if (ierr /= 0) return
 !  FIND CORRECT MOMENT OF INERTIA(HI)
 !        CALL MOMI(ETA2,HD,HR,HS,HS2,1,M,OMEGA,R0,HI,QIW,M)  ! KC 2025-05-31
        call zone_moments_of_inertia(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &
