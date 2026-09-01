@@ -356,7 +356,9 @@ session, others are agent findings at the stated confidence.
 
 ### VERIFIED high -- physics-affecting, fix candidates in order
 
-1. stitched_model.f90:529-530 (new-code): the PULSE builder swaps
+1. FIXED afff605 (impact measured: p modes +0.10-0.72 uHz depending
+   on nu_max, g-dominated modes untouched -- see the commit message).
+   stitched_model.f90:529-530 (new-code): the PULSE builder swaps
    grad/grad_ad in the ENVELOPE region -- env_gradients order is
    (rad, ad, actual) per its own profile-writer comment, but the
    pulse block reads (2) as grad and (3) as grad_ad. Thermal N^2
