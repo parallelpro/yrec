@@ -454,7 +454,7 @@ module star_info_lib
                  pulse_specific_heat(json)
             double precision :: pulse_mean_molecular_weight(json), &
                  pulse_dlnrho_dlnt(json)
-            double precision :: pulse_electron_mean_molecular_weight(json)
+            double precision :: pulse_electron_mean_weight_inverse(json)
 ! 2026 (phase six, step 1): the nine remaining model-state modules,
 ! folded in the same way as prev/diag/run/rot -- types stay in their
 ! own files, the single instances live here. See ROADMAP.md phase six

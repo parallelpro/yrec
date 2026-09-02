@@ -239,7 +239,9 @@ subroutine compute_seismic_columns
            lnmu(max_ext), g1(max_ext), grada_(max_ext), delta_(max_ext), &
            gradr_(max_ext), mass_g(max_ext)
       double precision :: dr, dlnp_dr, dlnrho_dr, grav, dlnmu_dlnp, p, rho
+      logical :: mu_ok(max_ext)
 
+      mu_ok = .true.
       do j = 1, n_ext
          r(j)      = exp(ln10*ext_profile_value(3, j))
          lnp(j)    = ln10*ext_profile_value(6, j)
@@ -249,7 +251,13 @@ subroutine compute_seismic_columns
          gradr_(j) = ext_profile_value(12, j)
          delta_(j) = ext_profile_value(51, j)
          mass_g(j) = ext_profile_value(2, j)*star%solar_mass_cgs
-         lnmu(j)   = log(max(ext_profile_value(52, j), 1.0d-30))
+         lnmu(j)   = ext_profile_value(52, j)
+         if (lnmu(j) > 0.0d0) then
+            lnmu(j) = log(lnmu(j))
+         else
+            lnmu(j) = 0.0d0
+            mu_ok(j) = .false.
+         end if
       end do
       do j = 1, n_ext
          p   = exp(lnp(j))
@@ -277,7 +285,12 @@ subroutine compute_seismic_columns
          else
             ext_seismic(1,j) = 0.0d0
          end if
-         if (lnp(j+1) /= lnp(j-1) .and. delta_(j) /= 0.0d0) then
+! 2026 (bugsweep sec-11): column 52 is now the real mu everywhere
+! (it was R/mu in the interior -- wrong-signed composition term --
+! and 0 in the envelope, a log(1e-30) spike at the junction); where
+! mu is still unavailable the term is dropped rather than faked.
+         if (lnp(j+1) /= lnp(j-1) .and. delta_(j) /= 0.0d0 .and. &
+              mu_ok(j-1) .and. mu_ok(j+1)) then
             dlnmu_dlnp = (lnmu(j+1) - lnmu(j-1))/(lnp(j+1) - lnp(j-1))
             ext_seismic(3,j) = grada_(j) + dlnmu_dlnp/delta_(j)
          else
@@ -338,11 +351,20 @@ double precision function ext_profile_value(icol, j)
          case (13); ext_profile_value = env_struct%env_gradients(3,i)
          case (14); ext_profile_value = env_struct%env_gradients(2,i)
          case (15); ext_profile_value = env_struct%env_convective_velocity(i)
+         case (16); ext_profile_value = env_struct%env_beta(i)
          case (27); ext_profile_value = env_struct%env_hydrogen_fraction(i)
          case (41); ext_profile_value = env_struct%env_metal_fraction(i)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = env_struct%env_specific_heat_cp(i)
          case (51); ext_profile_value = -env_struct%env_dlnrho_dlnt(i)
+! 2026 (bugsweep sec-11): mu from the gas-pressure ideal-gas relation
+! R/mu = beta*P/(rho*T) -- the same identity eqstat uses for its
+! specific gas constant -- so the Ledoux column below sees a
+! continuous mu across the interior/envelope junction instead of 0.
+         case (52); ext_profile_value = ideal_gas_mu( &
+              env_struct%env_log10_pressure(i), &
+              env_struct%env_log10_temperature(i), &
+              env_struct%env_log10_density(i), env_struct%env_beta(i))
          case (58); ext_profile_value = sqrt(env_struct%env_gamma1(i)* &
               exp(ln10*(env_struct%env_log10_pressure(i) - &
               env_struct%env_log10_density(i))))
@@ -369,6 +391,10 @@ double precision function ext_profile_value(icol, j)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = atmo_struct%atmo_specific_heat_cp(i)
          case (51); ext_profile_value = -atmo_struct%atmo_dlnrho_dlnt(i)
+         case (52); ext_profile_value = ideal_gas_mu( &
+              atmo_struct%atmo_log10_pressure(i), &
+              atmo_struct%atmo_log10_temperature(i), &
+              atmo_struct%atmo_log10_density(i), atmo_struct%atmo_beta(i))
          case (58); ext_profile_value = sqrt(atmo_struct%atmo_gamma1(i)* &
               exp(ln10*(atmo_struct%atmo_log10_pressure(i) - &
               atmo_struct%atmo_log10_density(i))))
@@ -378,6 +404,20 @@ double precision function ext_profile_value(icol, j)
          ext_profile_value = 0.0d0
       end select
 end function ext_profile_value
+
+! mu = R*rho*T/(beta*P): the ideal-gas mean molecular weight from the
+! gas pressure (eqstat's own specific-gas-constant identity). Zero
+! when the inputs cannot support it.
+double precision function ideal_gas_mu(log10_p, log10_t, log10_rho, beta)
+      use math_lib
+      use phys_const_lib, only: gas_constant
+      double precision, intent(in) :: log10_p, log10_t, log10_rho, beta
+      if (beta > 0.0d0) then
+         ideal_gas_mu = gas_constant*exp(ln10*(log10_rho + log10_t - log10_p))/beta
+      else
+         ideal_gas_mu = 0.0d0
+      end if
+end function ideal_gas_mu
 
 ! Per-zone value for profile column icol at YREC zone index k
 ! (1 = center .. nz = surface). Sources match putstore's per-shell
@@ -446,13 +486,9 @@ double precision function profile_value(icol, k)
       case (50); profile_value = star%pulse_specific_heat(k)
       case (51); profile_value = -star%pulse_dlnrho_dlnt(k)
       case (52); profile_value = star%pulse_mean_molecular_weight(k)
-      case (53)
-         if (star%pulse_electron_mean_molecular_weight(k) > 0.0d0) then
-            profile_value = &
-                 1.0d0/star%pulse_electron_mean_molecular_weight(k)
-         else
-            profile_value = 0.0d0
-         end if
+! 2026 (bugsweep sec-11): the array already holds 1/mu_e (eos
+! electron_mean_weight_inverse); it used to be inverted again here.
+      case (53); profile_value = star%pulse_electron_mean_weight_inverse(k)
       case (58)
 ! sound speed sqrt(Gamma1*P/rho) [cm/s]
          profile_value = sqrt(star%adiabatic_index_gamma1(k)* &
@@ -509,9 +545,9 @@ subroutine build_pulse_points(pts)
             pts(ipul_eps_eps_rho,j) = star%eps_total(i)*star%pulse_dlneps_dlnrho(i)
             pts(ipul_omega,j) = star%omega(i)
             pts(ipul_cp,j) = star%pulse_specific_heat(i)
-            if (star%pulse_electron_mean_molecular_weight(i) &
-                 > 0.0d0) pts(ipul_mu_e_inv,j) = &
-                 1.0d0/star%pulse_electron_mean_molecular_weight(i)
+! 2026 (bugsweep sec-11): 1/mu_e is what the array holds -- FGONG
+! var(14) wants exactly that (it used to be inverted a second time).
+            pts(ipul_mu_e_inv,j) = star%pulse_electron_mean_weight_inverse(i)
             pts(ipul_h1,j) = star%xa(i_h1,i)
             pts(ipul_z,j) = star%xa(i_metals,i)
             do k = 1, 11

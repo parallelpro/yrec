@@ -729,3 +729,40 @@ cm_rot_* matrix cases): rezone osplin ordering, diffuse_composition
 else-i1, mid_timestep_model deuterium arrays, rebuild_envelope omega
 read-before-set. heburn dt=0 still awaits the TAHB reproduction.
 
+**Rotation-path batch -- 2026-09-02, DONE (0747603).** rezone osplin
+ordering, diffuse_composition else-i1, mid_timestep_model deuterium
+arrays -> rot_scr, rebuild_envelope -> star%omega. Only the three
+testsuite difrotmix cases changed (first difference at model 2 from
+the envelope omega seed; final calibrated models within 2e-5 in log
+Teff, surface X within 0.2%); reseeded. Example GS_rot case and all
+non-rotating pins byte-identical.
+
+**sec-10 item 9 adjudicated -- NOT a bug.** GYRE's mesa_file_m reads
+eps_eps_T and divides by eps to get eps_T = dln eps/dln T, and MESA
+writes d_epsnuc_dlnT (= eps * dln eps/dln T) into that column. YREC's
+eps_total*pulse_dlneps_dlnt is that same absolute derivative
+(pulse_dlneps_dlnt is the log-log derivative used in ql_dt). Leave.
+
+**TAHB NaN -- 2026-09-02, ROOT CAUSE = heburn dt=0 (2be7c30).**
+Reproduced on the post-batch-0 build: Solar_m1p0feh+0p0_GN93_MESA_TAHB
+dies at model 977, the first model with Y_c < atime(1) = 0.002. With
+the He-shell branch computing a fresh limit (time_dy_total /
+time_dy_shell, previously dead controls) the case runs to its stop
+condition at model 998. The alpha-capture Jacobian and ll95tbl slot
+items stay in Batch 2 as physics fixes, not crash candidates.
+
+**Batch 1 -- 2026-09-02, DONE.** pulse_mean_molecular_weight now
+holds mu = R/eos_res(i_gas_constant); the electron slot was renamed
+pulse_electron_mean_weight_inverse and is written straight to profile
+column 53 and FGONG var(14); envelope/atmosphere points supply mu from
+the gas-pressure identity (R rho T/(beta P), same as eqstat's
+specific gas constant) and the envelope now also fills column 16
+(beta); gradL drops its composition term where mu is unavailable
+instead of taking log(1e-30). Checked on a 50-model solar MESA-mode
+run with mu/mu_e_inv/beta/gradL/brunt_N2 enabled: mu 0.62 (centre)
+to 1.28 (neutral atmosphere), continuous across the interior/envelope
+junction; 1/mu_e 0.84 at the centre; gradL-grada bounded (max 0.046
+in the H ionisation zone). No reseed needed: the default profile
+column set and the GYRE pulse format do not carry these columns, so
+the MESA pins are byte-identical.
+
