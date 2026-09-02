@@ -496,3 +496,219 @@ massloss), read_starting_model overflow stop.
 Every batch: verify the specific claim first (agents are good but
 not infallible), fix, byte-gate or deliberately reseed per tiers.
 
+## 11. Second independent bug sweep -- 2026-09-01
+
+Twelve parallel reviews (A-L) on a partition cut along different
+seams from section 10, with the section-10 findings deliberately
+withheld from the reviewers so that overlap is corroboration rather
+than echo. Same F77-provenance rule (6cd5673). One reviewer (C)
+accidentally saw ~15 lines of section 10 mid-sweep and disclosed it;
+its helium_dt finding is therefore counted as weakly corroborated
+only. FULL REPORTS: audit/bugsweep-2026-09-01-pass2/ (committed;
+INSTRUCTIONS.md records the protocol).
+
+Totals: 10 high / 42 medium / 55 low + ~150 one-line weak items.
+"VERIFIED" = re-derived in the main session against the code and
+the F77.
+
+### Concordance with section 10
+
+Corroborated independently (pass 2 reached the same defect from the
+code alone): sec-10 verified highs 2 (deuterium T9 exponent, B), 3
+(sneut cap-cap, B), 4 (condopacpint dlnkap/dlnT from rho
+derivatives, K), 5 (N15-as-Z metal diffusion, G -- rated latent),
+6 (esac OPAL95 guard, I), 7 (intpt return-vs-exit, H AND J; J adds
+the mechanism: zeros -> meqos 1/0 -> every lmhd run dies at its
+first EOS call), 8 (helium_dt read-before-write, C, weak); and the
+agent-level items rebuild_envelope omega read-before-set (A),
+rebuild_envelope X/Z refit sign (D), mid_timestep_model D-rate SAVE
+loss (E), burn_mix_extrapolated SAVE loss (E), diffuse_composition
+missing else-i1 (F, now rated HIGH), shear/GSF coefficients never
+assigned (F), compute_quadrupole rho(i) (F), trapzd offset (F, H),
+bsstep guard (H), map_user_inputs S0 scaling (C), settling
+convergence tests without abs (G), engeb Itoh copy-paste (B),
+liburn radiative_frac (B), ll95tbl slot collision (K), getopal95
+density_shifted (K), alex06tab X node (K), eqstat ramp blend (J),
+mhdpx1 stale return (J), read_starting_model overflow-continues
+(D), atm_get_surface_pt swallowed ierr (L), surfp/kcsurfp -999
+sentinels (L -- now checked against the shipped tables: every
+Castelli-Kurucz table's last row carries one, so atm_choice=5 above
+~48 kK is silently garbage), matt_wind PMM gating (C),
+check_angular_momentum 1 rad/s dead guard (F).
+
+NOT corroborated -- verify before fixing: sec-10 item 9 (pulse
+eps_eps_T/rho double-multiplied by eps; D read the same columns and
+did not flag it); Noerdlinger settling sign (G instead found a
+Coulomb-log double count at the same site, see below).
+
+Disagreement resolved for section 10: envelope_derivs.f90:94
+dydx(3)*fp vs dydx(1)/fp -- A rated the envelope ODEs clean, but
+with x = log P the chain rule gives dlog r/dlog P = -rP/(G m rho
+f_P), so both rows must carry 1/f_P whatever the f_P convention;
+the inconsistency is real (inherited qenv.f:51/53), O(omega^2)
+small for slow rotators.
+
+### NEW in pass 2 -- VERIFIED
+
+1. core/henyey_coefficients.f90:464 + stitched_model.f90:448-455,
+   512-514 (new-code): pulse_mean_molecular_weight is filled from
+   eos_res(i_gas_constant) = R/mu, and
+   pulse_electron_mean_molecular_weight already holds 1/mu_e, so
+   profile column 'mu' is ~1e8, 'mu_e_inv' and FGONG var(14) are
+   mu_e (inverted), and the Ledoux column gradL takes dln(R/mu) =
+   -dln mu (composition term wrong-signed) with a spurious spike at
+   the interior/envelope junction where column 52 is 0 -> ln(1e-30).
+   GYRE ignores var(14) for adiabatic modes, so NO frequency impact;
+   every profile-file analysis of mu/gradL is wrong.
+2. eos/opal/esac06.f90:406-411 + rhoofp06.f90:176 (inherited
+   esac06.f:477; tolerance change 2025-10-10): on the deriv_order=1
+   trial calls from rhoofp06 only eos(1) is re-interpolated, but the
+   tail still rescales the cv slot (x moles*R/tmass ~1e2) from its
+   stale value on every call, so cv compounds until the next
+   full-order call resets it; harmless in production, but it is the
+   "eos(5) growing without bound" that the 2025-10-10 loosening of
+   the rho(P,T) inversion tolerance from 0.5e-7 to 1e-5 was papering
+   over. Consequence today: every OPAL06 run carries ~1e-5 relative,
+   non-smooth solver noise in rho(P,T), 200x worse than the 1995/
+   2001 paths, with oeqos06's P-consistency check commented out.
+   Fix order: guard the tail scalings by deriv_order (byte-safe),
+   THEN restore 0.5e-7 (output-changing).
+3. eos/scv/eqscve.f90:148,202 (inherited eqscve.f:78/126; eqscvg
+   same): the upward-neighbour smoothing weight is 0.5*d/tol
+   (weight on the shifted stencil: 0 at the cell boundary, 0.5 at
+   d=tol, then a jump to 0) where continuity requires 0.5*(1-d/tol)
+   to mirror the downward branch's (d+tol)/(2tol). Instead of
+   removing the stencil discontinuity it halves it and adds a second
+   jump at d=tol, in both logT and logP, over 40% of every cell.
+   Step noise in rho, cp, grad_ad for every SCV-EOS run (the
+   run_from_start_to_dbl and giant_differential_rotation OPALSCV
+   decks). Reseed on fix.
+4. setup/rezone.f90:845-852 (inherited hpoint.f "MHP 6/00" block):
+   the start-of-step osplin of eps/esum onto rot_scr%old_esum/
+   old_eps passes star%log_mass as the table abscissa AFTER the
+   transfer loop overwrote it with the new grid (old count, new
+   abscissae) -- effectively "old eps at the same INDEX", so it is
+   mis-registered wherever points were inserted/deleted below.
+   Feeds mid_timestep_model:165,174 -> Eddington-Sweet velocities in
+   rotation_stability_setup, every rotating timestep. Fix: move the
+   two osplin calls above the transfer loop (they belong with the
+   omega/j/fp/ft/r0/eta2 splines).
+5. core/burn_lib.f90:1504,1519,1537 (inherited engeb.f:823/836/852):
+   dlnrate_dlnT for C13(a,n), C12(a,g), N14(a,g) is dscreen +
+   rho/rate*(dS/dlnT) with rate = 1.157e22*rho*exp(screen)*S, so the
+   analytic part is divided by ~1e22 -- the Jacobian sees only the
+   screening derivative (~0) where the true value is ~20-30. pp/CNO
+   use the analytic form and are fine. Hits every He-burning core
+   (Henyey convergence in exactly the regime of the TAHB NaN).
+6. kap/opal95/ll95tbl.f90:80 sharpened (inherited, DATA
+   NZ/...,100,109,118/): with the X=1-Z tables read last (ix=10),
+   slot 110 (Z=0.08, X=0) and slot 119 (Z=0.10, X=0) are overwritten
+   by the X=0.94/0.92 tables; kap_lib's HB branch (Z>0.1, logT>7)
+   calls getopal95 at Z=0.1 exactly, so a He-burning core (X=0)
+   gets kappa(X=0.92, Z=0.08) -- ~0.28 dex too high at electron-
+   scattering temperatures. Third independent candidate for the
+   TAHB NaN besides helium_dt=0 and item 5.
+7. io/read_controls.f90 (new-code): 72 DATA statements plus
+   initialized declarations make the legacy locals (kttau, clsun,
+   wmax, awind, tdisk, tolerances, s0_*, alphac, ...) implicitly
+   SAVEd, so a second in-process yrec_run inherits whatever the
+   previous inlist set for any control the new inlist omits.
+   Breaks the yrec_capi re-entrancy contract; test_reentry runs the
+   same inlist twice and cannot see it. Fix: explicit reset block at
+   entry (or move them into a derived type reset by yrec_reset).
+8. rotation/seculr/zahn_coupling_factor.f90:62-66 (inherited
+   getfc.f:44-45): the header defines alpha = 1/2 dln(r^2 Omega)/
+   dln r and the variable is even named half_dlnj_dlnr, but the code
+   omits the 1/2 -- the alpha*U term in Zahn's f_c is double-
+   weighted.
+
+### NEW in pass 2 -- high-confidence agent findings (spot-check)
+
+- atmosphere_derivs.f90:61 (modernization): T(tau) integrand reads
+  live star%job%atm_choice instead of the kernel's cfg; on an Allard
+  table failure envint_kernel flips only cfg, so that integration
+  mixes an HSRA T(tau) with an Eddington start point.
+- henyey_iterate.f90:133 -> henyey_coefficients.f90:300
+  (modernization): envelope_zone_index is a plain local set only by
+  mix at level>2 but passed at every level; the accretion entropy
+  correction is applied to every zone at levels 1-2.
+- am_advection_diffusion_coeffs.f90:552-559 (modernization): the
+  "CORRECTIONS TOO LARGE" GOTO 950 (timestep-cut block) became an
+  `exit` of the innermost loop only; the rejected substep closes
+  normally and a later converged substep resets the flag. LDIFAD.
+- microdiff_coefficients.f90:113-118/184-189 (modernization):
+  locals read after a `cycle` that skipped setting them (F77 SAVE);
+  rescued only by -finit-local-zero. Li/Be diffusion every step.
+- gravitational_settling_setup.f90:245,316-321,350 (inherited):
+  variable Coulomb log both fed into every Thoul coulomb_log(i,j)
+  and divided into the prefactor while the time unit already
+  carries the 2.2 -- rate biased by 2.2/lnLambda (Thoul, non-fit,
+  coulomb_log_choice 2|3).
+- equal_to_model.f90 asymmetric X floor/cap (inherited): flagged as
+  a candidate for the 0.8 Msun "UNABLE TO SOLVE FOR NEW ABUNDANCES
+  IN SHELL 1" abort (medium confidence; that message prints
+  zone_begin, i.e. the range starting at zone 1).
+- burn_lib lirate88 mode 2 ignores its arguments, so "end-of-step"
+  Li rates are never computed (both slots hold start-of-step; comment
+  at evolve_step.f90:541 disagrees with the code); dburn/dburnm read
+  total_shell_mass uninitialized on the single-zone accretion path
+  (SAVE lost); Itoh branch also has a 0/0 NaN if TCUT(5) < 7.
+- solve_composition.f90:60: composition is intent(out) but read for
+  the Newton initial guess (works only because gfortran does not
+  exploit undefined-on-entry).
+- rescale_model.f90:372 (inherited rscale.f:343): the Z-ramp block
+  scales CNO by (Zold-Zc)/Zold (the REMOVED fraction) where the main
+  block uses Zc/Zold; negative CNO if Zc > Zold.
+- mdot.f90:267 reads zone_mass_grams(0) for fully convective
+  accretors; secular_transport.f90:270,289 apply the Matt torque
+  without the use_wind_torque gate.
+- SCV pressure search lacks max(1,jj): a first lookup at 4.0 <=
+  logPgas < 4.2 reads index 0 (eqscve+eqscvg, inherited); SCV ion-
+  fraction ramp blend is a no-op (Saha values overwritten first).
+- esac.f90 (OPAL95) has no k3==nt guard (t6_grid(nt+1) at the
+  coolest rows; 2001/2006 added it); 1995 radsub applies the unit
+  revision to P and S but not E/cv; t6rinterp dix (comment claims a
+  SAVE) is a plain local.
+- condopacpint.f90:130-158: the log rho < -6 extrapolation branch
+  flips the sign of log sigma and extrapolates the wrong way.
+- alfilein.f90:81/132 tests an uninitialized local latmtptau100
+  instead of allard_use_tau100 (inherited typo; the tau=100 guard
+  for old NextGen files never works).
+- shape.f90 Radau central seed 6 vs 6/7; solid_body_omega "dI/domega"
+  is really a*dI/da; max_diffusion_iters unbounded vs 16/50-element
+  history arrays; setups.f90:118 Avogadro digit transposition
+  6.0222137e23 (only the Debye-Hueckel coefficient, ~2e-5); lir
+  returns result_y unassigned on the degenerate-table path.
+
+### Verified-clean (negative evidence, pass 2)
+
+Henyey elimination/solve and all coefficient partials; surfbc
+triangle; envelope+atmosphere ODEs (modulo the fp row above); MLT
+cubic; turnover walker; seismic integrals; Thoul matrix + LU;
+Lax-Wendroff fluxes/BCs; Saha and fully-ionized derivatives (non-DH);
+composition Jacobian (kemcom); mass-weighted homogenization; all
+convection-zone modes; Kawaler/Matt/Reimers mappings; all three
+T(tau) relations; ~240 legacy->canonical control copies and the
+legacy-vs-inlist equivalence; controls_sync (364 members each way);
+ludcmp/lubksb/polint/mmid/ratext/qgauss/splines vs NR; Lagrange/
+spline opacity machinery and the rad/cond blend; OPAL95
+extrapolation; all bare-external call sites in every partition
+(argument lists match everywhere).
+
+### Revised fix order (supersedes section 10's)
+
+Batch 0 (byte-safe or uncovered, do first): intpt exit; esac guard;
+esac06 tail-scaling guard; rezone osplin ordering (rotating runs
+only -- check the matrix); read_controls reset block; diffuse_
+composition else-i1; microdiff_coefficients locals; heburn dt=0
+(reproduce TAHB first); dropped-SAVE family.
+Batch 1 (pulse/profile, output-changing, reseed mesa baselines):
+mu/mu_e_inv/gradL columns; then adjudicate sec-10 item 9.
+Batch 2 (physics, reseed): alpha-capture Jacobian; ll95tbl slots;
+condopacpint derivatives; rhoofp06 tolerance restore; SCV weight;
+deuterium exponent; sneut; engeb Itoh; liburn; N15-vs-Z; Zahn 1/2;
+quadrupole; trapzd; envelope fp row.
+Then re-run the TAHB case: items helium_dt / alpha-Jacobian /
+ll95tbl are three independent candidates for that NaN; fix batch 0
+first and see which survives.
+
