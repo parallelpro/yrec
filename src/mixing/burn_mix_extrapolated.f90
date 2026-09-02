@@ -39,9 +39,17 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
            o16_abundance, cno_sum_check, current_step_size_squared, &
            delta, extrap_weight1, extrap_weight2, prev_estimate, &
            max_relative_error
+! Cross-call extrapolation state: set on the extrapolation_order=1
+! call, read on every later order.  The original had a blanket SAVE
+! (its "SAVE X,D,JJ,LDO,NMAX,LCNO,LCNCHECK" comment names exactly this
+! set); the conversion dropped it, so orders >= 2 saw an empty species
+! list and the extrapolation silently no-op'ed.  Not reachable today
+! (evolve_angular_momentum hardcodes burs_extrapolation_active=.false.).
+      save :: step_size_squared, active_species_id, species_active, &
+           use_cno_ratio_method, he3_extrapolate_log, &
+           use_cno_ratio_species, num_active_species
       ierr = 0
 
-!      SAVE X,D,JJ,LDO,NMAX,LCNO,LCNCHECK
 ! DETERMINE WHICH SPECIES REQUIRE CALCULATION
       if (extrapolation_order.eq.1) then
          do j = species_begin,species_end

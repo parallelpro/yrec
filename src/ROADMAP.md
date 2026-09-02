@@ -712,3 +712,20 @@ Then re-run the TAHB case: items helium_dt / alpha-Jacobian /
 ll95tbl are three independent candidates for that NaN; fix batch 0
 first and see which survives.
 
+**Batch 0 status -- 2026-09-02, DONE (byte-safe part).** Landed:
+intpt exit (numerics_lib); esac first-call guard; esac/esac01/esac06
+tail scaling gated on `eos_index_inverse(slot) <= deriv_order`;
+read_controls DATA -> entry-time reset block (all 72 DATA statements
+and 27 initialised declarations in read_input; values unchanged);
+microdiff_coefficients explicit zeros at skipped zones; burn_mix_
+extrapolated explicit SAVE for the seven step-state locals; massloss
+seeds. Gates: gate1 IDENTICAL; config matrix (16) + 4 solar cases
+byte-identical to standard/; MESA pins, test_eos pass. test_reentry
+gained a two-inlist form (A sets S0_1_1, B omits it; B must equal a
+fresh B) -- verified to FAIL on the pre-fix read_controls and pass
+after. Deferred to a rotation-path reseed batch (all output-changing
+for rotating cases -- difrot, 3Msolar_GS_rot, Test_solar_GS_rot, the
+cm_rot_* matrix cases): rezone osplin ordering, diffuse_composition
+else-i1, mid_timestep_model deuterium arrays, rebuild_envelope omega
+read-before-set. heburn dt=0 still awaits the TAHB reproduction.
+

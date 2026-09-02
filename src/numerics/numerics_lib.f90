@@ -1861,11 +1861,14 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
       double precision :: p_min, p_max
       integer :: lir_num_vars, lir_leading_dim, lir_num_points, lir_interp_mode
 
+! Bracket the temperature: the original's GOTO 101 out of this scan
+! is an EXIT, not a RETURN (a RETURN left every output unset for any
+! in-range temperature).  t_indices(1) starts at 1 so a temperature
+! below the first table row clamps to the bottom stencil instead of
+! reading a stale/zero index.
+      t_indices(1)=1
       do n=1,num_t
-         if (table_log10t(n).ge.log10_temperature) then
-            continue
-            return
-         end if
+         if (table_log10t(n).ge.log10_temperature) exit
          t_indices(1)=n
       end do
       if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1

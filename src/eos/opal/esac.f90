@@ -114,13 +114,15 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
          if (ierr /= 0) return
          opal_eos%table_metal_fraction = opal_eos%z_table(1)
 
-         if (opal_eos%table_metal_fraction + hydrogen_fraction - 1.0d-6.gt.1.0d0) &
-              write(run_log_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
-              write(run_log_unit,*) opal_eos%table_metal_fraction, hydrogen_fraction
-              
-              
-              ierr = 1
-              return
+! The original's GO TO 61 guarded the whole abort; the conversion
+! left only the first WRITE under the IF, so ierr=1/return fired on
+! every first call.
+         if (opal_eos%table_metal_fraction + hydrogen_fraction - 1.0d-6.gt.1.0d0) then
+            write(run_log_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
+            write(run_log_unit,*) opal_eos%table_metal_fraction, hydrogen_fraction
+            ierr = 1
+            return
+         end if
       end if
 !
 !
@@ -369,7 +371,12 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
       pressure_scale = t6_temperature*density
       opal_eos%eos_output(opal_eos%eos_index_inverse(1)) = opal_eos%eos_output(opal_eos%eos_index_inverse(1))* &
            pressure_scale   ! interpolated in p/po
-      opal_eos%eos_output(opal_eos%eos_index_inverse(2)) = opal_eos%eos_output(opal_eos%eos_index_inverse(2))* &
+! Only slots that this call actually re-interpolated (index <= deriv_order)
+! are rescaled; the original scaled E and cv unconditionally, so the
+! deriv_order=1 trial calls from the rho(P,T) inversion compounded the
+! stale E and cv slots by T6 and moles*R/mu on every call.
+      if (opal_eos%eos_index_inverse(2) <= deriv_order) &
+           opal_eos%eos_output(opal_eos%eos_index_inverse(2)) = opal_eos%eos_output(opal_eos%eos_index_inverse(2))* &
            t6_temperature   ! interpolated in E/T6
 ! YCK >    EOS(IRI(4))=EOS(IRI(4))/SQRT(R*T6) ! INTERP DE/DR/SQRT(R/T6)
       mean_molecular_weight = gmass(hydrogen_fraction, opal_eos%table_metal_fraction, &
@@ -379,7 +386,8 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
          call radsub(t6_temperature, density, total_moles, &
               mean_molecular_weight)
       else
-         opal_eos%eos_output(opal_eos%eos_index_inverse(5)) = opal_eos%eos_output(opal_eos%eos_index_inverse(5))* &
+         if (opal_eos%eos_index_inverse(5) <= deriv_order) &
+              opal_eos%eos_output(opal_eos%eos_index_inverse(5)) = opal_eos%eos_output(opal_eos%eos_index_inverse(5))* &
               total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return

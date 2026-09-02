@@ -394,7 +394,12 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       pressure_scale = t6_temperature*density
       opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1))* &
            pressure_scale   ! interpolated in p/po
-      opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2))* &
+! Only slots that this call actually re-interpolated (index <= deriv_order)
+! are rescaled; the original scaled E and cv unconditionally, so the
+! deriv_order=1 trial calls from the rho(P,T) inversion compounded the
+! stale E and cv slots by T6 and moles*R/mu on every call.
+      if (opal_eos%eos_index_inverse_06(2) <= deriv_order) &
+           opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2))* &
            t6_temperature   ! interpolated in E/T6
       mean_molecular_weight = gmass06(hydrogen_fraction, opal_eos%table_metal_fraction_06, &
            total_moles, ground_state_energy, metal_mole_fraction, &
@@ -403,7 +408,8 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
          call radsub06(rad_flag, t6_temperature, density, total_moles, &
               mean_molecular_weight)
       else
-         opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5))* &
+         if (opal_eos%eos_index_inverse_06(5) <= deriv_order) &
+              opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5))* &
               total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return
