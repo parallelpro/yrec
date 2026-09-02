@@ -82,8 +82,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
 
 ! MHP 06/02
       logical :: convective_state_changed(json)
-! added vector for deuterium burning
-      double precision :: deuterium_rate_mid(json), deuterium_rate_mid_start(json)
+! (deuterium_rate_mid/_start live in rot_scr: carried across sub-steps)
       integer :: num_species_tracked
       integer :: i, j, k, ii
       double precision :: step_fraction_ratio
@@ -377,15 +376,15 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
 ! INCREMENT THE TIMESTEP
          if (first_call) then
             do i = 1,star%nz
-               deuterium_rate_mid(i) = star%deuterium_burning_rate_start(i)+ &
+               rot_scr%deuterium_rate_mid(i) = star%deuterium_burning_rate_start(i)+ &
                     step_fraction_ratio*(star%deuterium_burning_rate(i)- &
                     star%deuterium_burning_rate_start(i))
-               deuterium_rate_mid_start(i) = star%deuterium_burning_rate_start(i)
+               rot_scr%deuterium_rate_mid_start(i) = star%deuterium_burning_rate_start(i)
             end do
          else
             do i = 1,star%nz
-               deuterium_rate_mid_start(i) = deuterium_rate_mid(i)
-               deuterium_rate_mid(i) = deuterium_rate_mid(i)+ &
+               rot_scr%deuterium_rate_mid_start(i) = rot_scr%deuterium_rate_mid(i)
+               rot_scr%deuterium_rate_mid(i) = rot_scr%deuterium_rate_mid(i)+ &
                     step_fraction_ratio*(star%deuterium_burning_rate(i)- &
                     star%deuterium_burning_rate_start(i))
             end do
@@ -399,8 +398,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                burn_zone_begin = j
                burn_zone_end = j
                call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
-                    star%xa,sub_timestep,deuterium_rate_mid, &
-                    deuterium_rate_mid_start,step_fraction_ratio)
+                    star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
+                    rot_scr%deuterium_rate_mid_start,step_fraction_ratio)
            end do
         end do
          if (k > num_radiative_zones) then
@@ -413,8 +412,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
             burn_zone_begin = convective_zone_bounds(k,1)
             burn_zone_end = convective_zone_bounds(k,2)
             call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
-                 star%xa,sub_timestep,deuterium_rate_mid, &
-                 deuterium_rate_mid_start,step_fraction_ratio)
+                 star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
+                 rot_scr%deuterium_rate_mid_start,step_fraction_ratio)
          end do
       endif
 !  DETERMINE EXTENT OF CENTRAL CONVECTION ZONE.

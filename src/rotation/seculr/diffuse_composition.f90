@@ -163,6 +163,13 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
                end if
             end do
             if (zone_idx .gt. num_zones) i1 = num_zones
+         else
+! 2026 (bugsweep sec-11): the original (mixcom.f) never set I1 on
+! this branch, so when the diffused region's top is radiative or is
+! the surface, the species-mass sum and the He4 renormalisation loop
+! below ran over 1..0 (i1 was zero via -finit-local-zero; whatever
+! the previous call left in F77). Mirror the i0 branch.
+            i1 = zone_end
          end if
          dcomp2 = 0.0d0
 ! COMPUTE SUM OF SPECIES MASS

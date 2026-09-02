@@ -187,6 +187,13 @@ module rotation_scratch_lib
                 mean_radius_mid(json), qiw_mid(json)
            logical :: convective_flag_mid(json), &
                 am_transport_convective_flag_mid(json)
+! 2026 (bugsweep sec-11): the sub-step deuterium burning rates. The
+! .not.first_call branch of mid_timestep_model reads the PREVIOUS
+! sub-step's deuterium_rate_mid before overwriting it; as plain
+! locals (midmod.f had a blanket SAVE) they restarted from zero on
+! every sub-step after the first.
+           double precision :: deuterium_rate_mid(json), &
+                deuterium_rate_mid_start(json)
       end type rotation_diffusion_state
 ! ---- from state/mdphy_lib.f90 ----
       type, public :: mdphy_state

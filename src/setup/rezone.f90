@@ -820,6 +820,24 @@ subroutine interpolate_onto_new_grid
 ! bookkeeping is in the run log under report_solver_diagnostics.)
 
 
+! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
+! 2026 (bugsweep sec-11): this block sat AFTER the transfer loop
+! below, so its x-table star%log_mass had already been overwritten
+! with the NEW grid for j <= new_num_zones while eps_total was still
+! on the old grid -- the mid-step eps/esum for the ES velocities were
+! mis-registered on every rotating rezone (inherited from hpoint.f).
+! It now runs with the other old->new interpolations.
+      if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
+           star%job%envelope_overshoot_active)) then
+         call osplin(star%old_shell_mass,rot_scr%old_esum,star%log_mass,star%eps_total, &
+              old_point_count,new_point_count)
+         do zone_index = 1,star%nz
+            spline_y(zone_index) = star%eps_total(zone_index)+star%eps_channels(i_eps_neu,zone_index)+ &
+                 star%eps_channels(i_eps_grav,zone_index)
+         end do
+         call osplin(star%old_shell_mass,rot_scr%old_eps,star%log_mass,spline_y, &
+              old_point_count,new_point_count)
+      endif
 ! TRANSFER NEW POINTS.
       do j = 1,new_num_zones
        star%log_mass(j) = star%old_shell_mass(j)
@@ -838,18 +856,6 @@ subroutine interpolate_onto_new_grid
           star%eta_squared(j) = star%old_eta_squared(j)
           star%mean_radius(j) = star%old_mean_radius(j)
        end do
-      endif
-! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
-      if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
-           star%job%envelope_overshoot_active)) then
-         call osplin(star%old_shell_mass,rot_scr%old_esum,star%log_mass,star%eps_total, &
-              old_point_count,new_point_count)
-         do zone_index = 1,star%nz
-            spline_y(zone_index) = star%eps_total(zone_index)+star%eps_channels(i_eps_neu,zone_index)+ &
-                 star%eps_channels(i_eps_grav,zone_index)
-         end do
-         call osplin(star%old_shell_mass,rot_scr%old_eps,star%log_mass,spline_y, &
-              old_point_count,new_point_count)
       endif
       if (solver_diagnostics()) then
          write(run_log_unit,1020) star%nz,new_num_zones
