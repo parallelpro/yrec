@@ -721,8 +721,8 @@ microdiff_coefficients explicit zeros at skipped zones; burn_mix_
 extrapolated explicit SAVE for the seven step-state locals; massloss
 seeds. Gates: gate1 IDENTICAL; config matrix (16) + 4 solar cases
 byte-identical to standard/; MESA pins, test_eos pass. test_reentry
-gained a two-inlist form (A sets S0_1_1, B omits it; B must equal a
-fresh B) -- verified to FAIL on the pre-fix read_controls and pass
+gained a two-inlist form (single-inlist style; A sets s0_pp, B omits
+it; B must equal a fresh B) -- verified to FAIL on the pre-fix read_controls and pass
 after. Deferred to a rotation-path reseed batch (all output-changing
 for rotating cases -- difrot, 3Msolar_GS_rot, Test_solar_GS_rot, the
 cm_rot_* matrix cases): rezone osplin ordering, diffuse_composition

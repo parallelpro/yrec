@@ -9,46 +9,44 @@
 ! fresh yrec run.
 !
 ! Usage:
-!   test_reentry A.nml1 A.nml2               -- run A twice (original form)
-!   test_reentry A.nml1 A.nml2 B.nml1 B.nml2  -- run A, then B
+!   test_reentry A.inlist            -- run A twice (original form)
+!   test_reentry A.inlist B.inlist   -- run A, then B
 !
-! The four-argument form (2026, bugsweep sec-11 batch 0) is the one
-! that actually exercises control carry-over: A sets a legacy-spelled
-! NAMELIST control that B omits, and B's outputs must still match a
-! fresh B. The paths go through the libyrec override slots so the
-! engine's own getarg default is bypassed for BOTH calls.
+! The two-inlist form (2026, bugsweep sec-11 batch 0) is the one that
+! actually exercises control carry-over: A sets a control that B
+! omits, and B's outputs must still match a fresh B. The paths go
+! through the libyrec override slots (single-inlist style: the same
+! file fills both slots) so the engine's own getarg default is
+! bypassed for BOTH calls.
 program test_reentry
       use star_info_lib, only: control_nml_override, physics_nml_override
       implicit none
       integer :: ierr, nargs
-      character(len=256) :: nml(4)
+      character(len=256) :: inlist(2)
 
       nargs = command_argument_count()
-      if (nargs /= 2 .and. nargs /= 4) then
-         write(*,'(a)') 'usage: test_reentry A.nml1 A.nml2 [B.nml1 B.nml2]'
+      if (nargs < 1 .or. nargs > 2) then
+         write(*,'(a)') 'usage: test_reentry A.inlist [B.inlist]'
          stop 2
       end if
-      call get_command_argument(1, nml(1))
-      call get_command_argument(2, nml(2))
-      if (nargs == 4) then
-         call get_command_argument(3, nml(3))
-         call get_command_argument(4, nml(4))
+      call get_command_argument(1, inlist(1))
+      if (nargs == 2) then
+         call get_command_argument(2, inlist(2))
       else
-         nml(3) = nml(1)
-         nml(4) = nml(2)
+         inlist(2) = inlist(1)
       end if
 
       ierr = 0
-      control_nml_override = nml(1)
-      physics_nml_override = nml(2)
+      control_nml_override = inlist(1)
+      physics_nml_override = inlist(1)
       call run_yrec(ierr)
       if (ierr /= 0) then
          write(*,'(a,i4)') 'test_reentry: FIRST run failed, ierr = ', ierr
          stop 1
       end if
       write(*,'(a)') 'test_reentry: first run done'
-      control_nml_override = nml(3)
-      physics_nml_override = nml(4)
+      control_nml_override = inlist(2)
+      physics_nml_override = inlist(2)
       call run_yrec(ierr)
       if (ierr /= 0) then
          write(*,'(a,i4)') 'test_reentry: SECOND run failed, ierr = ', ierr
