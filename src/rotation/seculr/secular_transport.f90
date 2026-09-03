@@ -193,7 +193,11 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
            rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid,unstable_zone_found, &
            dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
            total_luminosity,sub_timestep,rot_scr%log_pressure_mid)
-      if(star%ctrl%use_diffusion_advection_transport) &
+! 2026 (bugsweep Batch 2): F77 seculr.f gated GETFC on LVFC; the
+! modernization (94c7f45) switched it to LDIFAD, so lvfc=T with
+! ldifad=F left star%vfc at its zeroed value and silently killed all
+! rotational mixing in diffusion_velocity_scales.
+      if(star%ctrl%lvfc) &
            call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
            zone_min,zone_max,rot_scr%omega_mid)
 !  STORE INITIAL ANGULAR MOMENTUM DISTRIBUTION.
@@ -236,7 +240,7 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
                  iteration,rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid, &
                  unstable_zone_found,dlnomega_dlnr,dynamical_shear_omega_limit, &
                  diffusion_velocity,total_luminosity,sub_timestep,rot_scr%log_pressure_mid)
-            if(star%ctrl%use_diffusion_advection_transport) &
+            if(star%ctrl%lvfc) &
                  call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
                  zone_min,zone_max,rot_scr%omega_mid)
 !  NOW THAT THE NEW DIFFUSION VELOCITIES HAVE BEEN COMPUTED, RESET THE

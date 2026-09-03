@@ -574,7 +574,8 @@ small for slow rotators.
    Fix order: guard the tail scalings by deriv_order (byte-safe),
    THEN restore 0.5e-7 (output-changing).
 3. eos/scv/eqscve.f90:148,202 (inherited eqscve.f:78/126; eqscvg
-   same): the upward-neighbour smoothing weight is 0.5*d/tol
+   has no smoothing at all -- the "eqscvg same" first written here
+   was wrong): the upward-neighbour smoothing weight is 0.5*d/tol
    (weight on the shifted stencil: 0 at the cell boundary, 0.5 at
    d=tol, then a jump to 0) where continuity requires 0.5*(1-d/tol)
    to mirror the downward branch's (d+tol)/(2tol). Instead of
@@ -765,4 +766,34 @@ junction; 1/mu_e 0.84 at the centre; gradL-grada bounded (max 0.046
 in the H ionisation zone). No reseed needed: the default profile
 column set and the GYRE pulse format do not carry these columns, so
 the MESA pins are byte-identical.
+
+**Batch 2 -- 2026-09-02, DONE.** All 14 physics items plus one
+modernization regression found during the pre-fix review
+(audit/batch2-review-2026-09-02.md has the derivations): alpha-
+capture Jacobians (reactions 8/10/11: missing 1/S factor, missing
+T9**-3/2 in the resonant terms, dr1 index), deuterium T9**-2/3 (both
+deutrate and engeb), engeb Itoh branch (absolute derivatives, and
+the T line no longer built from the rho line), liburn/liburn2
+radiative_frac orientation, sneut cap*cap, eqscve upward smoothing
+weight, rhoofp06 tolerance back to 0.5d-7 (+ bracket check, cap 30,
+non-convergence written to the run log), condopacpint derivatives
+(conductivity-weighted mean, T inputs), ll95tbl unpacked slot layout
+(n_opal95_xz 130), secular_transport GETFC gate back to lvfc (94c7f45
+had switched it to ldifad), Zahn alpha/2, quadrupole rho stencil
+(zone-1), trapzd (y-b1) offsets, envelope dr/dlogP 1/f_P,
+model_to_equal Z slot. 13 of 15 are inherited from the F77 source;
+rhoofp06 (2025-10) and the lvfc gate (2026) are not. Reseeded every
+pin. Drift: calibrated solar models end within 1.2e-5 in log Teff,
+5.7e-5 in log L, 2.5e-4 in X_c, with ~25% fewer models (the
+deuterium phase is shorter); the 12/22-model pre-MS matrix cases
+move by 0.02-0.31 dex in log L at model 2 already (deuterium
+luminosity), the 0.3 Msun start->D_bl case reaches its stop at
+1.06e-3 instead of 5.6e-3 Gyr; dbl->ZAMS byte-identical.
+expected_test_net.out (deutrate x5400, sneut pair/photo/brems tens
+of %) and expected_test_eos.out (rho(P,T) at the 1e-7 level)
+reseeded; test_kap and test_atm unchanged. Left open: reaction 11's
+N14(a,g) polynomial coefficients (0.177/3.94 vs CF88), whether
+rotation_stability_setup:482 wants a logarithmic dlneps/dlnT,
+compute_quadrupole's 1/R^4 header vs 1/R^3 code, radsub06's 0/0 on
+the priming call.
 

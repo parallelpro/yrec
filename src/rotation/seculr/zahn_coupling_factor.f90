@@ -59,7 +59,11 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
       do zone_index = zone_min, zone_max
          omega_mid = 0.5D0*(angular_velocity(zone_index)+ &
               angular_velocity(zone_index-1))
-         half_dlnj_dlnr(zone_index) = (angular_velocity(zone_index)* &
+! 2026 (bugsweep Batch 2): the header defines alpha = 1/2 dln(r^2 Omega)/
+! dln r (Zahn 1992) and the consumer forms |2V - alpha U| with
+! circ_velocity already holding 2V; the inherited expression lacked
+! the 1/2.
+         half_dlnj_dlnr(zone_index) = 0.5D0*(angular_velocity(zone_index)* &
               radius(zone_index)**2-angular_velocity(zone_index-1)* &
               radius(zone_index-1)**2)/ &
               (radius(zone_index)-radius(zone_index-1))/ &

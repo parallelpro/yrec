@@ -7,9 +7,10 @@
 ! style were updated.
 !
 ! OPAL 2001 EOS analogue of rhoofp.f90 (see there for the general
-! description). Note the convergence tolerance below (0.5d-7) matches
-! rhoofp.f90's 1995 version; rhoofp06.f90 later loosened this to
-! 1.0d-5 (see its own header note).
+! description). The convergence tolerance below (0.5d-7) matches
+! rhoofp.f90's 1995 version and, since bug-sweep Batch 2 (2026),
+! rhoofp06.f90 again (it was 1.0d-5 there for a while; see its
+! header note).
 double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 

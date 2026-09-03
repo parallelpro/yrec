@@ -18,7 +18,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_metals
       use numerics_lib
       implicit none
 
@@ -122,9 +122,14 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
          rot_scr%eq_metal_diffusion_coeff2_mid(1)=rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1)+ &
               interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index)- &
               rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1))
-         rot_scr%metal_abundance_change_mid(1) = composition(8,interp_search_index-1)+ &
-              interp_fraction*(composition(8,interp_search_index)- &
-              composition(8,interp_search_index-1))
+! 2026 (bugsweep Batch 2): the metal abundance carried to the equal
+! grid is Z (slot i_metals = 3); the inherited code read slot 8 (N15)
+! here and at the four sibling sites below. equal_to_model applies
+! the change back to slot 3, so this was an N15-for-Z mismatch on the
+! old (use_new_diffusion_routines = F) settling path.
+         rot_scr%metal_abundance_change_mid(1) = composition(i_metals,interp_search_index-1)+ &
+              interp_fraction*(composition(i_metals,interp_search_index)- &
+              composition(i_metals,interp_search_index-1))
       endif
 ! CENTER DERIVATIVE.
       dr1=equal_radius(1)-radius(interp_search_index-1)
@@ -231,9 +236,9 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
               interp_factors(4)*rot_scr%src_grid_metal_diffusion_coeff2_dz(k0+3)
 ! MASS FRACTION OF METALS
          rot_scr%metal_abundance_change_mid(zone_index)=interp_factors(1)* &
-              composition(8,k0)+interp_factors(2)*composition(8,k0+1)+ &
-              interp_factors(3)*composition(8,k0+2)+ &
-              interp_factors(4)*composition(8,k0+3)
+              composition(i_metals,k0)+interp_factors(2)*composition(i_metals,k0+1)+ &
+              interp_factors(3)*composition(i_metals,k0+2)+ &
+              interp_factors(4)*composition(i_metals,k0+3)
          endif
       end do
 ! SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE CENTERS.
@@ -252,7 +257,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_hydrogen_fraction(1) = composition(1,zone_begin)
       equal_diffusion_coeff1(1)=diffusion_coeff1(zone_begin)
       if(star%job%use_diffusion_z)then
-         star%metal_abundance_change(1) = composition(8,zone_begin)
+         star%metal_abundance_change(1) = composition(i_metals,zone_begin)
          rot_scr%metal_diffusion_coeff1(1) = rot_scr%src_grid_metal_diffusion_coeff1(zone_begin)
       endif
 ! FOR OTHER POINTS: FIRST FIND 4 NEAREST (IN RADIUS) MODEL POINTS
@@ -314,9 +319,9 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
               rot_scr%src_grid_metal_diffusion_coeff1(k0+3)
 ! MASS FRACTION OF METALS
          star%metal_abundance_change(zone_index)=interp_factors(1)* &
-              composition(8,k0)+interp_factors(2)*composition(8,k0+1)+ &
-              interp_factors(3)*composition(8,k0+2)+ &
-              interp_factors(4)*composition(8,k0+3)
+              composition(i_metals,k0)+interp_factors(2)*composition(i_metals,k0+1)+ &
+              interp_factors(3)*composition(i_metals,k0+2)+ &
+              interp_factors(4)*composition(i_metals,k0+3)
          endif
       end do
 ! LAST POINT : BY DEFINITION, AT ENDING POINT.
@@ -326,7 +331,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_diffusion_coeff1(num_equal_points)=diffusion_coeff1(zone_end)
 
       if(star%job%use_diffusion_z)then
-         star%metal_abundance_change(num_equal_points) = composition(8,zone_end)
+         star%metal_abundance_change(num_equal_points) = composition(i_metals,zone_end)
          rot_scr%metal_diffusion_coeff1(num_equal_points)=rot_scr%src_grid_metal_diffusion_coeff1(zone_end)
       endif
       return

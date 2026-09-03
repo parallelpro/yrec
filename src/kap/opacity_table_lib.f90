@@ -39,9 +39,13 @@ module opacity_table_lib
            kurucz_max_num_densities = 50, kurucz_num_x_tables = 1, &
            kurucz_num_x_temp_entries = kurucz_max_num_temps*kurucz_num_x_tables, &
            kurucz_num_spline_coeffs = 4*kurucz_max_num_densities
-! OPAL95 opacity table dimensions
+! OPAL95 opacity table dimensions. n_opal95_xz is the SLOT count of
+! the unpacked (13 Z rows x 10 X columns) layout used by ll95tbl and
+! opal95_fixed_z_table (slot = start_index(iz) + ix), not the number
+! of tables in the file (126; ll95tbl's num_xz). 2026 (bugsweep
+! Batch 2): was 126 with a packed start_index -- see below.
       integer, parameter :: n_opal95_t = 70, n_opal95_d = 19, &
-           n_opal95_x = 10, n_opal95_z = 13, n_opal95_xz = 126
+           n_opal95_x = 10, n_opal95_z = 13, n_opal95_xz = 130
 
       type, public :: opacity_table_state
 ! former common/gllot/, llot/, lintpl/ (OPAL92, first Z table)
@@ -173,8 +177,16 @@ module opacity_table_lib
            double precision :: opal95_full_opacity(n_opal95_xz,n_opal95_t,n_opal95_d)
            integer :: opal95_num_x_at_z(n_opal95_z) = &
                 [10,10,10,10,10,10,10,10,10,10,9,9,8]
+! 2026 (bugsweep Batch 2): the inherited packed offsets
+! [...,100,109,118] assumed rows 11-13 hold 9/9/8 tables, but the
+! reader/consumers add the UNPACKED ix (1..10, with ix = 9/10 absent
+! at high Z), so the X = 1-Z table of Z = 0.06 (slot 110) landed on
+! (X = 0, Z = 0.08) and that of Z = 0.08 (slot 119) on (X = 0,
+! Z = 0.10), overwriting them. Unpacked offsets of 10 per Z row
+! remove the collision; slots 109, 119, 129, 130 stay unwritten and
+! are never addressed by the stencils.
            integer :: opal95_table_start_index(n_opal95_z) = &
-                [0,10,20,30,40,50,60,70,80,90,100,109,118]
+                [0,10,20,30,40,50,60,70,80,90,100,110,120]
 ! former common/llot95/: the single-Z OPAL95 opacity table, sliced at
 ! the model's actual Z. atm/turnover/acoustic_depths.f90 declared a mismatched single-
 ! scalar layout for this block (never read/set there) -- the majority

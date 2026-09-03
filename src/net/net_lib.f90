@@ -340,7 +340,10 @@ parameter        (theta  = 0.2319d0, &
                   tfac1  = cv*cv + ca*ca + &
                            (xnufam-1.0d0) * (cvp*cvp+cap*cap), &
                   tfac2  = cv*cv - ca*ca + &
-                           (xnufam-1.0d0) * (cvp*cvp - cap-cap), &
+! 2026 (bugsweep Batch 2): was `cvp*cvp - cap-cap` (typo inherited
+! from sneut.f); Itoh et al. 1996 eq. 2.2-2.5 / Timmes sneut5 / MESA
+! mod_neu use cvp**2 - cap**2.
+                           (xnufam-1.0d0) * (cvp*cvp - cap*cap), &
                   tfac3  = tfac2/tfac1, &
                   tfac4  = 0.5d0 * tfac1, &
                   tfac5  = 0.5d0 * tfac2, &

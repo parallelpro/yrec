@@ -91,8 +91,12 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       dydx(1) = -exp(ln10*(c4pil+4.0d0*log10_radius+log10_pressure-cgl- &
            log10_mass-log10_mass))/pressure_rotation_factor
       dydx(2) = actual_gradient
+! 2026 (bugsweep Batch 2): dr/dlogP = (dr/dM_P)(dM_P/dlogP) carries
+! 1/f_P exactly as dydx(1) does (Kippenhahn-Thomas); the inherited
+! `*pressure_rotation_factor` violated mass continuity by f_P^-2 in
+! rotating envelopes. f_P = 1 exactly for non-rotating runs.
       dydx(3) = -exp(ln10*(log10_pressure+log10_radius-cgl-log10_mass- &
-           eos_res(i_log10_density)))*pressure_rotation_factor
+           eos_res(i_log10_density)))/pressure_rotation_factor
       env_call_count = env_call_count + 1
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
       pt_scr%current_log10_pressure = log10_pressure

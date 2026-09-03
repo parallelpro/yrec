@@ -1726,10 +1726,13 @@ subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
        do j = 1, it
           r03t = y**3
 ! interpolate rho,m,omega,eta2+2 between shell i and shell i-1
-          rhot = rhop+drho*del
+! 2026 (bugsweep Batch 2): the linear interpolants must be evaluated
+! at the offset (y - b1) of the current abscissa, as smt already is;
+! the inherited `*del` used the constant sub-interval width instead.
+          rhot = rhop+drho*(y - b1)
           smt = smp+dm*(y**2 - b1**2)
-          w2t = w2p + dw2*del
-          eta22t = eta22p + deta2*del
+          w2t = w2p + dw2*(y - b1)
+          eta22t = eta22p + deta2*(y - b1)
 ! calculate q between shells
           q0 = (rhot*w2t*r03t*(3.0d0+eta22t)/(smt*eta22t))*r03t*y
 ! q0 = rho*w2*r07t*(3.0d0+eta22)/(sm*eta22)

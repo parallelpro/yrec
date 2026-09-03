@@ -642,7 +642,9 @@ subroutine deutrate(dl,tl,x,i,itlvl)
       tfacdeut = 1.0d0+0.112d0*t9p13+3.38d0*t9p23+2.65d0*t9
 ! FACTOR OF 3.0115D23 REFLECTS AVAGADROS NUMBER DIVIDED BY THE
 ! MASS OF THE DEUTERON IN AMU
-      rdeut = rho*2.240d3*t9p23*exp(z)*tfacdeut*3.0115d23
+! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit and
+! in engeb's own derivative of this rate; was T9**(+2/3) (deutrate.f).
+      rdeut = rho*2.240d3*t9m23*exp(z)*tfacdeut*3.0115d23
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
       if(i.ge.star%jcz .and. star%convective_turnover_timescale.gt.1.0d0)then
@@ -870,13 +872,13 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !       COMMON/NULOSS/LNULOS1,DSNUDT,DSNUDD
 ! former common/nuloss/: use_itoh_neutrino_loss (switch selecting the
 ! Itoh 1996 neutrino-loss routines below) is real shared configuration
-! -- now use-associated from const_lib. neutrino_dlnq_dlnt/
-! neutrino_dlnq_dlnd (the log-derivatives of the resulting loss rate
-! w.r.t. T/rho) are set and consumed entirely within this file --
+! -- now use-associated from const_lib. neutrino_dsnu_dt/
+! neutrino_dsnu_drho (the absolute derivatives d snu/dT, d snu/d rho
+! returned by neutrino()) are set and consumed entirely within this file --
 ! core/read_input.f90, which declared the same common block, never
 ! actually touches them -- so they're genuinely local, not shared
 ! state, and become plain locals here rather than moving to a module.
-      double precision :: neutrino_dlnq_dlnt, neutrino_dlnq_dlnd
+      double precision :: neutrino_dsnu_dt, neutrino_dsnu_drho
 
 
 
@@ -1122,7 +1124,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       double precision :: pfmc2, efmkt, fprf, degd
       double precision :: xxl, xxl6, xxl8, zcurl, zbar, z58, z28, z33, tm1
       double precision :: uwk, uint, ustr
-      double precision :: r1, r2, a1, a2, a3, a4, a5, dr1, da1
+      double precision :: r1, r2, a1, a2, a3, a4, a5, dr1, da1, s_sum
       double precision :: be7electron, be7proton, temp3, qrbe7, &
            zprdbe7p, z86be7p, utotbe7p, camube7
       double precision :: f1, f2, f3, f4, o16gamma, c12alpha
@@ -1193,7 +1195,10 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
         tfacdeut = 1.0d0+0.112d0*t9_p13+3.38d0*t9_p23+2.65d0*t9
 ! FACTOR OF 6.023D23/ REFLECTS AVAGADROS NUMBER DIVIDED BY THE
 ! MASS OF THE DEUTERON IN AMU
-        rdeut = density*2.240d3*t9_p23*exp(zz)*tfacdeut*6.023d23/ &
+! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit and
+! in qrtdeut below (which already differentiates the -2/3 form); was
+! T9**(+2/3) (engeb.f).
+        rdeut = density*2.240d3*t9_m23*exp(zz)*tfacdeut*6.023d23/ &
              atomic_mass_amu(3)
         tfacdeut2 = 0.112d0*t9_p13+6.76d0*t9_p23+7.95d0*t9
         qrtdeut = cc13*((tfacdeut2/tfacdeut) -2.0d0 - zz)
@@ -1496,15 +1501,21 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       a3 = 1.41d6*exp(-11.873*t9_m1)
       a4 = 2.00d9*exp(-20.409*t9_m1)
       a5 = 2.92d9*exp(-29.283*t9_m1)
-      reaction_rate(8) = 1.157126d22*density*exp(screening_factor(8))* &
-           (a1*r1+t9_m32*(a2+a3+a4+a5))
+! 2026 (bugsweep Batch 2): the three alpha-capture temperature
+! derivatives below were divided by the full rate (density/rate, i.e.
+! 1/(K rho e^U S) with K ~ 1e22) where only 1/S -- the CF88 polynomial
+! sum -- belongs, so dlnrate_dlnt was ~1e-22 x too small and the He-
+! burning Jacobian saw the screening term alone. Inherited from
+! engeb.f. Reaction 8's resonant terms also lacked their t9_m32 and
+! reaction 10's r1/r2 terms their t9_m23 (both present in the rates).
+      s_sum = a1*r1+t9_m32*(a2+a3+a4+a5)
+      reaction_rate(8) = 1.157126d22*density*exp(screening_factor(8))*s_sum
       dlnrate_dlnrho(8)=1.0d0+dscreen_dlnrho(8)
       dr1 = cc13*(-2.0d0*t9_m23-0.0129d0*t9_m13+0.184d0*t9_p13)
       da1 = a1*(cc13*32.329d0*t9_m13 - 2.0d0*(t9/1.284d0)**2)
-      dlnrate_dlnt(8) = dscreen_dlnt(8)+density/reaction_rate(8)*(dr1*a1 + &
-           r1*da1 + &
-           a2*(9.373*t9_m1-1.5d0)+a3*(11.873*t9_m1-1.5d0)+ &
-           a4*(20.409*t9_m1-1.5d0)+a5*(29.283*t9_m1-1.5d0))
+      dlnrate_dlnt(8) = dscreen_dlnt(8)+(dr1*a1 + r1*da1 + &
+           t9_m32*(a2*(9.373*t9_m1-1.5d0)+a3*(11.873*t9_m1-1.5d0)+ &
+           a4*(20.409*t9_m1-1.5d0)+a5*(29.283*t9_m1-1.5d0)))/s_sum
 ! C12(ALPHA,GAMMA)O16
       r1 = 1.0d0/(1.0d0+0.0489d0*t9_m23)
       r2 = 1.0d0/(1.0d0+0.2654d0*t9_m23)
@@ -1513,14 +1524,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       a3 = 1.76d8*r2**2
       a4 = 1.25d3*t9_m32*exp(-27.499*t9_m1)
       a5 = 1.43d-2*t9**5*exp(-15.541*t9_m1)
-      reaction_rate(10) = 1.25388d22*density*exp(screening_factor(10))* &
-           (a1*(a2+a3)+a4+a5)
+      s_sum = a1*(a2+a3)+a4+a5
+      reaction_rate(10) = 1.25388d22*density*exp(screening_factor(10))*s_sum
       dlnrate_dlnrho(10) = 1.0d0+dscreen_dlnrho(10)
-      dlnrate_dlnt(10) = dscreen_dlnt(10)+density/reaction_rate(10)* &
-           (a1*((cc13*32.120*t9_m13-2.0d0)* &
-           (a2+a3)+a2*(r1*cc13*0.1956-2.0d0*(t9/3.496)**2)+a3* &
-           (cc13*1.0616d0*r2))+a4*(27.499*t9_m1-1.5d0)+a5* &
-           (5.0d0+15.541*t9_m1))
+      dlnrate_dlnt(10) = dscreen_dlnt(10)+ &
+           (a1*((cc13*32.120*t9_m13-2.0d0)*(a2+a3)+ &
+           a2*(cc13*0.1956*t9_m23*r1-2.0d0*(t9/3.496)**2)+ &
+           a3*(cc13*1.0616d0*t9_m23*r2))+ &
+           a4*(27.499*t9_m1-1.5d0)+a5*(5.0d0+15.541*t9_m1))/s_sum
 ! N14(ALPHA,GAMMA)F18 + F18=>O18+EPLUS+NU
       r1 = t9_m23+0.012d0*t9_m13+1.45d0+0.177d0*t9_p13+1.97d0*t9_p23 &
            +0.406d0*t9
@@ -1528,16 +1539,15 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       a2 = t9_m32*2.36d-10*exp(-2.798d0*t9_m1)
       a3 = t9_m32*2.03d0*exp(-5.054d0*t9_m1)
       a4 = t9_m23*1.15d4*exp(-12.310*t9_m1)
-      reaction_rate(11)= 1.07452d22*density*exp(screening_factor(11))* &
-           (a1*r1+a2+a3+a4)
+      s_sum = a1*r1+a2+a3+a4
+      reaction_rate(11)= 1.07452d22*density*exp(screening_factor(11))*s_sum
       dlnrate_dlnrho(11)=1.+dscreen_dlnrho(11)
       dr1 = cc13*(-2.0d0*t9_m23-0.012d0*t9_m13+0.177d0*t9_p13+ &
             3.94d0*t9_p23)+0.406d0*t9
       da1 = a1*(cc13*36.031d0*t9_m13-2.0d0*(t9/0.881d0)**2)
-      dlnrate_dlnt(11) = dscreen_dlnt(11)+density/reaction_rate(11)*(dr1*a1+ &
-              r1*da1+a2* &
-              (2.798d0*t9_m1-1.5d0)+a3*(5.054d0*t9_m1-1.5d0)+ &
-              a4*(12.310d0*t9_m1-cc23))
+      dlnrate_dlnt(11) = dscreen_dlnt(11)+(dr1*a1+r1*da1+ &
+              a2*(2.798d0*t9_m1-1.5d0)+a3*(5.054d0*t9_m1-1.5d0)+ &
+              a4*(12.310d0*t9_m1-cc23))/s_sum
 ! TRIPLE ALPHA
       reaction_rate(12) = 1.565315d21*density**2*t9_m1*t9_m2*2.79d-8* &
                  exp(-4.4027*t9_m1+screening_factor(12))
@@ -1946,19 +1956,23 @@ subroutine compute_neutrino_emission
 
           call neutrino(neutrino_temp,neutrino_density,hydrogen_fraction, &
                helium_fraction,carbon_fraction_total,oxygen_fraction_total, &
-               neutrino_loss_snu,neutrino_dlnq_dlnt,neutrino_dlnq_dlnd)
+               neutrino_loss_snu,neutrino_dsnu_dt,neutrino_dsnu_drho)
 
 
           star%neutrino_loss_rate = -neutrino_loss_snu
-          neutrino_dlnq_dlnt = -neutrino_dlnq_dlnt*neutrino_temp/star%neutrino_loss_rate
-          neutrino_dlnq_dlnd = -neutrino_dlnq_dlnd*neutrino_density/star%neutrino_loss_rate
-
-
           total_energy_gen_rate = total_energy_gen_rate + star%neutrino_loss_rate
 
-
-          dlnepsilon_dlnrho = dlnepsilon_dlnrho + neutrino_dlnq_dlnd
-          dlnepsilon_dlnt = dlnepsilon_dlnrho + neutrino_dlnq_dlnt
+! 2026 (bugsweep Batch 2): neutrino() returns snu >= 0 and the
+! ABSOLUTE derivatives d snu/dT, d snu/d rho. dlnepsilon_dlnt/dlnrho
+! are the absolute d eps/d ln T, d eps/d ln rho accumulated in
+! sum2/sum3 (see the qetnx/qednx terms of the Beaudet branch below),
+! so the loss contributes d(-snu)/d ln T = -T d snu/dT. The original
+! (engeb.f) first converted to dimensionless log-derivatives -- the
+! wrong units for these sums -- and then built the T line from the
+! already-updated rho line (PET = PEP + DSNUDT), discarding the
+! nuclear sum3 altogether.
+          dlnepsilon_dlnrho = dlnepsilon_dlnrho - neutrino_density*neutrino_dsnu_drho
+          dlnepsilon_dlnt = dlnepsilon_dlnt - neutrino_temp*neutrino_dsnu_dt
 
 
 !****************************************************************
@@ -2550,12 +2564,18 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          mass_coord_beg = 0.0d0
       endif
       mass_coord_end = 0.5d0*(mass_coordinate(cz_base_zone)+mass_coordinate(cz_base_zone-1))
-      delta_mass = mass_coord_beg - mass_coord_end
+! 2026 (bugsweep Batch 2): this block runs only for a retreating CZ
+! (cz_base_zone > cz_base_zone_old), so the original
+! delta_mass = beg - end was negative and FRAD = (m - beg)/delta_mass
+! ran from 0 at the old base to -1 at the new one. Per the comment
+! above FRAD must be 1 at the old base and 0 at the new base:
+! FRAD = (end - m)/(end - beg).
+      delta_mass = mass_coord_end - mass_coord_beg
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
          if(star%rate_be9(zone_idx).le.1.0d-32)exit
-         radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
+         radiative_frac = (mass_coord_end - mass_coordinate(zone_idx))/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
          li6_depletion = timestep*exp(radiative_frac*log(star%rate_li6(zone_idx))+ &
               (1.0d0-radiative_frac)*log_rate_li6_cz_start)
@@ -2919,12 +2939,18 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          mass_coord_beg = 0.0d0
       endif
       mass_coord_end = 0.5d0*(mass_coordinate(cz_base_zone)+mass_coordinate(cz_base_zone-1))
-      delta_mass = mass_coord_beg - mass_coord_end
+! 2026 (bugsweep Batch 2): this block runs only for a retreating CZ
+! (cz_base_zone > cz_base_zone_old), so the original
+! delta_mass = beg - end was negative and FRAD = (m - beg)/delta_mass
+! ran from 0 at the old base to -1 at the new one. Per the comment
+! above FRAD must be 1 at the old base and 0 at the new base:
+! FRAD = (end - m)/(end - beg).
+      delta_mass = mass_coord_end - mass_coord_beg
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
          if(star%rate_be9(zone_idx).le.1.0d-32)exit
-         radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
+         radiative_frac = (mass_coord_end - mass_coordinate(zone_idx))/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
          li6_depletion = timestep*exp(radiative_frac*log(star%rate_li6(zone_idx))+ &
               (1.0d0-radiative_frac)*log_rate_li6_cz_start)
