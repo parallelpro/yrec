@@ -11,8 +11,8 @@
 ! (1) pressure_max/pressure_min here do NOT add a radiation term
 ! (rhoofp.f90/rhoofp01.f90 both add rad_flag*4/3*rat*t6**4); (2) the
 ! trial esac06.f90 calls below pass a hardcoded 0 for the radiation
-! flag (not rad_flag) -- only the very first, table-priming call
-! passes rad_flag through.
+! flag (not rad_flag); since Batch 3 so does the table-priming call
+! (see the note at that call).
 !
 ! 2026 (bugsweep Batch 2): the convergence tolerance is back at the
 ! original 0.5d-7 (same as rhoofp/rhoofp01). It had been loosened to
@@ -79,8 +79,13 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          t6_dbg = 1.0d0
          density_dbg = 0.001d0
          ideriv_dbg = 1
+! 2026 (bugsweep Batch 3): radiation flag 0 here, not rad_flag. This
+! call only loads the tables and its output is discarded; with
+! ideriv=1 only the pressure slot is interpolated, so radsub06 would
+! divide by a zero cv (0/0 -> NaN in the gamma slots, a trap under
+! -ffpe-trap=invalid). The next full esac06 call rewrites every slot.
          call esac06(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
-              rad_flag, ierr, *999)
+              0, ierr, *999)
          if (ierr /= 0) then
             continue
             rhoofp06 = -999.0d0

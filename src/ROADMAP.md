@@ -219,41 +219,25 @@ read_starting_model's ideal-gas core extension remain below.
 
 ## 7-remaining. Correctness bugs still open
 
-- **rezone flag_point overflow** (setup/rezone.f90): the discontinuity
-  scan guards flag_count at 100, but the THREE appends after the loop
-  (overshoot_base_zone, fine_zone_base, star%nz) have no bound check --
-  a model with >~97 flagged points writes past flag_point(100).
-  Fix: size by parameter, guard every append. Also
-  radiative_zone_bounds(13,2)/convective_zone_bounds(12,2) have no
-  overflow guards. Tier 1.
-- **Library stops missed by the ierr campaign**: kap/conductive/
-  condopacp.f90 (3 raw stops on table range) and numerics_lib
-  (ludcmp 'Singular matrix', tridia x2, polint den<1e-20). Library
-  code must return ierr; a singular Henyey matrix should surface as
-  numerics_termination, not kill a batch job. Tier 1 + owning suite.
-- **Single-precision literals in double expressions**: burn_lib (18:
-  reaction-rate and neutrino-flux constants like 2.79e-8, 1.017677e-4),
-  net_lib (3), turnover_timescale (1.0e20 guard). Silent truncation to
-  ~7 digits; also off-message for the crmath reproducibility story.
-  Convert to d-literals. BYTE-CHANGING: deliberate rebaseline; check
-  the solar-pin drift is at rounding level. Tier 3 (output change).
-- **rezone ceiling idiom** `mod(dp,dp).ne.0d0` (twice): float-equality
-  as a ceiling test -- effectively always true, so it over-counts by
-  one point when the division is exact-in-reals. Replace with
-  ceiling(); byte-gate (expected: identical except pathological
-  spacings). Tier 1.
-- **eqstat dead+broken SCV derivative branch** (~line 525): reads
-  specific_heat_cp_2/adiabatic_gradient_2 that nothing assigns;
-  unreachable (do_scv_derivatives hardcoded .false.). Delete the
-  branch. Byte-safe. Tier 0.
+(2026-09-03 audit of this list: the rezone flag_point overflow, the
+library stops in condopacp/ludcmp/tridia/polint, the rezone
+mod(dp,dp) ceiling idiom and the eqstat dead SCV derivative branch
+were all already fixed in earlier passes and are dropped from here;
+the single-precision literal item is DONE in Batch 3.)
+
 - **read_starting_model core extension** uses an ideal-gas
   logRho = logP - logT - offset ("MHP 4/12 replaced broken eqstat
-  call"). eos_get exists now -- use it for consistent extended-core
-  densities. Affects only loads that extend the model inward. Tier 2.
+  call") for the shells it adds inside the first original shell.
+  Reviewed 2026-09-03: it is an initial guess that the first Henyey
+  solve relaxes, calibrated on the first original shell, so the
+  error is second order over a few shells -- not a correctness bug.
+  eos_get could replace it for consistency (Tier 2); low value.
 - **Float-equality guards on physics values**: burn_lib
-  hydrogen_fraction.eq.0.0, microdiff_coefficients species .eq.0.0.
-  Each is probably benign (exact-zero sentinels) -- audit and either
-  document or convert to explicit sentinels. Tier 1.
+  hydrogen_fraction.eq.0.0d0 (skip the pp/CNO block in a hydrogen-
+  free zone), microdiff_coefficients species .eq.0.0d0 (skip Thoul
+  where the species is absent in this and the next zone). Reviewed
+  2026-09-03: both are exact-zero "absent" sentinels; a tiny nonzero
+  value takes the full path to the same answer. Leave as is.
 
 ## 8. Design debt
 
@@ -796,4 +780,38 @@ N14(a,g) polynomial coefficients (0.177/3.94 vs CF88), whether
 rotation_stability_setup:482 wants a logarithmic dlneps/dlnT,
 compute_quadrupole's 1/R^4 header vs 1/R^3 code, radsub06's 0/0 on
 the priming call.
+
+**Batch 3 -- 2026-09-03, DONE.** The Batch 2 leftovers plus the
+single-precision literal item from section 7-remaining. N14(a,g)F18
+linear coefficient 0.117 (both copies carried 0.177, a digit
+transposition inherited from the F77; the 3.94 is correct -- it is
+2 x 1.97 in the derivative). Every unsuffixed REAL literal in
+burn_lib and net_lib (362 inexact, 570 total) converted to d0/d-n
+form, the two `**(2./3.)` exponents included. compute_quadrupole
+header fixed to say 1/R**3 (the code always used R**3). rhoofp06's
+table-priming esac06 call passes radiation flag 0 like every other
+call in the file (radsub06 was dividing by a zero cv on that call
+-- harmless because discarded, but an -ffpe-trap=invalid hit).
+New NaN guard: converged_model_is_nan (stop_conditions) checks
+log_L, log_Teff, age/dt and the zone-by-zone logT/logRho/logP/logR/L
+of every converged structure before it is written; a hit is a
+positive-ierr error (exit 1) with the slot named in the terminal and
+run log. Before it, a run that went non-finite kept "converging"
+(every comparison against NaN is false) to the end of its model
+budget and exited 0. Reseeded every pin. Drift: the 12 testsuite
+solar runs end within 5e-6 in log Teff, 3.3e-5 in log L, 8.7e-5 in
+X_c (one case 853->854 models); config matrix, standard-solar and
+run_from_* cases byte-identical or unchanged in the printed
+summary; the ZAHB->TAHB solar case ends at the same model 1108 with
+the He-burning age changed by 2e-8 relative. expected_test_net.out
+reseeded (5.5e-6 max relative change -- exponent coefficients
+amplify the ~6e-8 literal rounding); test_eos/kap/atm unchanged.
+Reviewed and closed without a change: rotation_stability_setup:482
+is dimensionally consistent as written (engeb's derivatives are
+absolute, d eps/d lnT, so f*deps/dlnT + eps*(1-f-chi_T) is fine);
+the read_starting_model ideal-gas core extension and the exact-zero
+"absent species" guards (see section 7-remaining). Still open and
+by design: a negative-ierr numerics_termination (solution diverged)
+exits 0; the envelope/atmosphere pulse rows of stitched_model leave
+the mu_e_inv/kap_T/eps columns unfilled.
 

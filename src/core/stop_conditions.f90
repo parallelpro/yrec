@@ -39,6 +39,7 @@ module stop_conditions
       public :: step_continue, step_kind_card_done, step_leave_run_loop
       public :: reached_end_age
       public :: check_stop_conditions, init_stop_conditions
+      public :: converged_model_is_nan
 
 ! evolve_step -> run_yrec model-loop protocol
       integer, parameter :: step_continue = 0        ! advance accepted
@@ -51,6 +52,47 @@ module stop_conditions
       character(len=1), parameter :: stop_letter(nstops) = ['D','X','Y']
 
 contains
+
+! ---------------------------------------------------------------
+! 2026 (bugsweep Batch 3): NaN guard. Nothing in the solver tests
+! for NaN, and a NaN structure passes every convergence test (all
+! comparisons are false), so a run that went non-finite (the
+! zahb->tahb dt = 0 case before the heburn fix) kept "converging",
+! wrote NaN models to the end of its budget and exited 0. Called by
+! evolve_step on the converged structure, before it is written;
+! a hit is a real error (positive ierr -> exit 1), not a stop.
+logical function converged_model_is_nan()
+      use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+      integer :: nz, k
+      character(len=24) :: what
+
+      converged_model_is_nan = .true.
+      nz = star%nz
+      what = ' '
+      if (ieee_is_nan(star%log_L)) then
+         what = 'log_L'
+      else if (ieee_is_nan(star%log_Teff)) then
+         what = 'log_Teff'
+      else if (ieee_is_nan(star%dage) .or. ieee_is_nan(star%dt)) then
+         what = 'age/timestep'
+      else
+         do k = 1, nz
+            if (ieee_is_nan(star%logT(k)) .or. ieee_is_nan(star%logRho(k)) &
+                 .or. ieee_is_nan(star%logP(k)) .or. ieee_is_nan(star%logR(k)) &
+                 .or. ieee_is_nan(star%luminosity_lsun(k))) then
+               write(what,'(a,i0)') 'structure at zone ', k
+               exit
+            end if
+         end do
+         if (what == ' ') converged_model_is_nan = .false.
+      end if
+      if (converged_model_is_nan) then
+         write(*,10) trim(what), star%model_number + 1
+         write(run_log_unit,10) trim(what), star%model_number + 1
+         star%termination_reason = 'NaN in '//trim(what)
+      end if
+   10 format(1x,'ERROR: NaN in ',a,' after model ',i0,' converged; stopping')
+end function converged_model_is_nan
 
 ! ---------------------------------------------------------------
 ! Per-model stop check, called by evolve_step after the converged

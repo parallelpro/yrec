@@ -476,7 +476,7 @@ a1     = 6.002d19 + 2.084d20*zeta + 1.872d21*zeta2
 a2     = 2.084d20 + 2.0d0*1.872d21*zeta
 
 
-if (t9 .lt. 10.0) then
+if (t9 .lt. 10.0d0) then
  b1     = exp(-5.5924d0*zeta)
  b2     = -b1*5.5924d0
 else
@@ -492,7 +492,7 @@ xnumda = c*zetada
 xnumdz = c*zetadz
 
 
-if (t9 .lt. 10.0) then
+if (t9 .lt. 10.0d0) then
  a1   = 9.383d-1*xlm1 - 4.141d-1*xlm2 + 5.829d-2*xlm3
  a2   = -9.383d-1*xlm2 + 2.0d0*4.141d-1*xlm3 - 3.0d0*5.829d-2*xlm4
 else
@@ -698,7 +698,7 @@ else
 
 
  c   = min(0.0d0, xden - 1.6d0 + 1.25d0*xnum)
- if (c .eq. 0.0) then
+ if (c .eq. 0.0d0) then
   dumdt = 0.0d0
   dumdd = 0.0d0
   dumda = 0.0d0
@@ -1064,7 +1064,7 @@ sphotda = a1*sphotda + a2*qphotda*a3
 sphotdz = a1*sphotdz + a2*qphotdz*a3
 
 
-if (sphot .le. 0.0) then
+if (sphot .le. 0.0d0) then
  sphot   = 0.0d0
  sphotdt = 0.0d0
  sphotdd = 0.0d0
@@ -1430,7 +1430,7 @@ nu3  = nu2 * nu
 
 
 !..table 12
-if (nu .ge. -20.0  .and. nu .lt. 0.0) then
+if (nu .ge. -20.0d0  .and. nu .lt. 0.0d0) then
  a1 = 1.51d-2
  a2 = 2.42d-1
  a3 = 1.21d0
@@ -1440,7 +1440,7 @@ if (nu .ge. -20.0  .and. nu .lt. 0.0) then
  f1 = 0.0d0
  f2 = 0.0d0
  f3 = 0.0d0
-else if (nu .ge. 0.0  .and. nu .le. 10.0) then
+else if (nu .ge. 0.0d0  .and. nu .le. 10.0d0) then
  a1 = 1.23d-2
  a2 = 2.66d-1
  a3 = 1.30d0
@@ -1455,7 +1455,7 @@ end if
 
 
 !..equation 6.7, 6.13 and 6.14
-if (nu .ge. -20.0  .and.  nu .le. 10.0) then
+if (nu .ge. -20.0d0  .and.  nu .le. 10.0d0) then
 
 
  zeta   = 1.579d5*zbar*zbar*tempi
@@ -1476,10 +1476,10 @@ if (nu .ge. -20.0  .and.  nu .le. 10.0) then
 
 
  z      = 1.0d0/dum
- dd00   = pow(dum, (-2.25))
- dd01   = pow(dum, (-4.55))
+ dd00   = pow(dum, (-2.25d0))
+ dd01   = pow(dum, (-4.55d0))
  c00    = a1*z + a2*dd00 + a3*dd01
- c01    = -(a1*z + 2.25*a2*dd00 + 4.55*a3*dd01)*z
+ c01    = -(a1*z + 2.25d0*a2*dd00 + 4.55d0*a3*dd01)*z
 
 
 
@@ -1707,9 +1707,9 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! is used implicitly in this subroutine was, 7.016930, until 13/13/97.
 ! We now use the bare nuclear mass of 7.014735 .
 !
-      data atomic_mass/1.008665,1.007276,2.013553,3.015501,3.014933,4.001506, &
-           11.996709,13.000064,13.999233,15.990526,17.994772,19.986954, &
-           23.978458/,atomic_charge/0.,1.,1.,1.,2.,2.,6.,6.,7.,8.,8.,10.,12./, &
+      data atomic_mass/1.008665d0,1.007276d0,2.013553d0,3.015501d0,3.014933d0,4.001506d0, &
+           11.996709d0,13.000064d0,13.999233d0,15.990526d0,17.994772d0,19.986954d0, &
+           23.978458d0/,atomic_charge/0.d0,1.d0,1.d0,1.d0,2.d0,2.d0,6.d0,6.d0,7.d0,8.d0,8.d0,10.d0,12.d0/, &
            num_isotopes/13/
 ! THE ISOTOPES ARE NEUTRON, H1, D, H3, HE3, HE4, C12, C13, N14, O16, O18,
 !  NE20, MG24, RESPECTIVELY. ALL OF THESE NUMBERS WERE CHECKED.
@@ -1796,14 +1796,14 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !     7Q8/0.,0.,0.,0.0,0.0,0.0,0./,
 !     8NRXNS/13/
 ! MHP 9/14 RESTORED BE7+P DERIVATIVES THAT WERE ZEROED OUT
-      data q1/0.12317,.03392,.0325,.0304,.03035,.0273,.02494,.040572/, &
-      q2/1.08749,-.273,-.2085,.7630,-0.4044,-1.60,-1.224,-0.2095/, &
-      q3/.93833,-.0648,-.0474,.1626,-.08598,-.3064,-.2139,-0.0595/, &
-      q4/0.,0.,0.,4.79,7.456,0.0,.69703,0.16762/, &
-      q5/0.,0.,0.,2.595,4.032,0.0,0.3097,0.12114/, &
-      q6/-3.3804,-12.2757,-12.826,-13.6899,-13.7173,-15.2281,-16.6925/, &
-      q7/20.8964,76.6003,67.8036,69.130,70.3809,69.8517,70.8012/, &
-      q8/0.,0.,0.,0.0,0.0,0.0,0./, &
+      data q1/0.12317d0,.03392d0,.0325d0,.0304d0,.03035d0,.0273d0,.02494d0,.040572d0/, &
+      q2/1.08749d0,-.273d0,-.2085d0,.7630d0,-0.4044d0,-1.60d0,-1.224d0,-0.2095d0/, &
+      q3/.93833d0,-.0648d0,-.0474d0,.1626d0,-.08598d0,-.3064d0,-.2139d0,-0.0595d0/, &
+      q4/0.d0,0.d0,0.d0,4.79d0,7.456d0,0.0d0,.69703d0,0.16762d0/, &
+      q5/0.d0,0.d0,0.d0,2.595d0,4.032d0,0.0d0,0.3097d0,0.12114d0/, &
+      q6/-3.3804d0,-12.2757d0,-12.826d0,-13.6899d0,-13.7173d0,-15.2281d0,-16.6925d0/, &
+      q7/20.8964d0,76.6003d0,67.8036d0,69.130d0,70.3809d0,69.8517d0,70.8012d0/, &
+      q8/0.d0,0.d0,0.d0,0.0d0,0.0d0,0.0d0,0.d0/, &
       num_reactions/13/
 ! For different values of SSTANDARD, check the comments in ENGEB
 ! *********************************************************************
@@ -1827,14 +1827,14 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  ONLY USED IN STRONG SCREENING, THE VALUES OF Z53, Z43, AND Z23
 !  WERE NOT CHECKED.
       double precision :: c21
-      data charge_product/1.,4.,4.,6.,6.,7.,8.,12.,16.,12.,14.,12.,36./,z53/ &
-         1.175,3.73,3.73,4.804,4.804,5.385,5.941,9.014,11.24,9.014, &
-         10.15,9.104,23.28/,z43/0.52,1.31,1.31,1.488,1.488,1.61,1.721, &
-         2.577,3.025,2.577,2.81,2.577,5.668/,z23/-0.413,-0.655,-0.655, &
-         -0.643,-0.643,-0.659,-0.673,-0.889,-0.946,-0.889,-0.92,-0.889, &
-         -1.36/,z86/1.630,5.917,5.917,8.302,8.302,9.520,10.716,16.192, &
-         20.978,16.192,18.606,16.192,45.6635/, &
-         c21/5.240358E-8/
+      data charge_product/1.d0,4.d0,4.d0,6.d0,6.d0,7.d0,8.d0,12.d0,16.d0,12.d0,14.d0,12.d0,36.d0/,z53/ &
+         1.175d0,3.73d0,3.73d0,4.804d0,4.804d0,5.385d0,5.941d0,9.014d0,11.24d0,9.014d0, &
+         10.15d0,9.104d0,23.28d0/,z43/0.52d0,1.31d0,1.31d0,1.488d0,1.488d0,1.61d0,1.721d0, &
+         2.577d0,3.025d0,2.577d0,2.81d0,2.577d0,5.668d0/,z23/-0.413d0,-0.655d0,-0.655d0, &
+         -0.643d0,-0.643d0,-0.659d0,-0.673d0,-0.889d0,-0.946d0,-0.889d0,-0.92d0,-0.889d0, &
+         -1.36d0/,z86/1.630d0,5.917d0,5.917d0,8.302d0,8.302d0,9.520d0,10.716d0,16.192d0, &
+         20.978d0,16.192d0,18.606d0,16.192d0,45.6635d0/, &
+         c21/5.240358d-8/
 ! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
 !  ISOTOPES.
 ! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
@@ -1858,10 +1858,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       double precision :: be7_electron_frac, c12_alpha_frac, o16_gamma_frac
       double precision :: o16_gamma_rate, c12_alpha_n15p_rate
 
-      mass_frac(1) = 0.0
+      mass_frac(1) = 0.0d0
       mass_frac(2) = hydrogen_fraction
-      mass_frac(3) = 0.0
-      mass_frac(4) = 0.0
+      mass_frac(3) = 0.0d0
+      mass_frac(4) = 0.0d0
       mass_frac(5) = he3_fraction
       mass_frac(6) = helium_fraction
       mass_frac(7) = c12_fraction
@@ -1869,8 +1869,8 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       mass_frac(9) = n14_fraction
       mass_frac(10) = o16_fraction
       mass_frac(11) = o18_fraction
-      mass_frac(12) = 0.0
-      mass_frac(13) = 0.0
+      mass_frac(12) = 0.0d0
+      mass_frac(13) = 0.0d0
 ! *******************************************************************
 ! BEGIN CALCULATION OF SCREENING CORRECTION.
 ! *******************************************************************
@@ -1891,15 +1891,15 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
 ! MU = SUM OVER I OF [X(I)/A(I)].
 ! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
-      mu_ion_inv = 0.
-      mu_e_inv = 0.
-      xtr = 0.
-      zeta0 = 0.
+      mu_ion_inv = 0.d0
+      mu_e_inv = 0.d0
+      xtr = 0.d0
+      zeta0 = 0.d0
       do i = 1,num_isotopes
          trm = mass_frac(i)/atomic_mass(i)
          mu_ion_inv = mu_ion_inv+trm
          mu_e_inv = mu_e_inv+trm*atomic_charge(i)
-         xtr = xtr+trm*pow(atomic_charge(i), 1.58)
+         xtr = xtr+trm*pow(atomic_charge(i), 1.58d0)
          zeta0 = zeta0+trm*atomic_charge(i)**2
       end do
 ! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
@@ -1919,7 +1919,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
       if(log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) then
          do i = 1,num_reactions
-            rate(i) = 0.
+            rate(i) = 0.d0
          end do
       else
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
@@ -1930,11 +1930,11 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       t9 = exp(ln10*(log_temperature - 9.0d0))
       t9p13 = pow(t9, cc13)
       t9p23 = t9p13**2
-      t9m13=1./t9p13
+      t9m13=1.d0/t9p13
       t9m23=t9m13**2
-      t9m1=1./t9
+      t9m1=1.d0/t9
       t9m2=t9m1**2
-      t9m12=1./dsqrt(t9)
+      t9m12=1.d0/dsqrt(t9)
       t9m32=t9m1*t9m12
 ! ***********************************
 ! F PRIME/F
@@ -1950,17 +1950,17 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  IN THIS PART OF THE SUBROUTINE WERE THE CORRECTION OF THE ERROR IN
 !  THE DEFINITION OF RWE (SEE ABOVE) AND REFINEMENTS OF THE COEFFICIENTS
 !  IN THE EXPRESSIONS FOR PFMC2 AND EFMKT.
-      fermi_mom_sq=1.017677E-4*pow(rho_over_mu_e, 0.6666667)
-      fermi_energy_over_kt=5.92986*t9m1*(dsqrt(1.+fermi_mom_sq)-1.)
-      if(fermi_energy_over_kt.le.1.E-2) then
-         f_prime_over_f=1.0
+      fermi_mom_sq=1.017677d-4*pow(rho_over_mu_e, (2.0d0/3.0d0))
+      fermi_energy_over_kt=5.92986d0*t9m1*(dsqrt(1.d0+fermi_mom_sq)-1.d0)
+      if(fermi_energy_over_kt.le.1.d-2) then
+         f_prime_over_f=1.0d0
       else
          log_degeneracy=log10(fermi_energy_over_kt)
-         if(log_degeneracy.ge.1.5) then
-            f_prime_over_f=0.0
+         if(log_degeneracy.ge.1.5d0) then
+            f_prime_over_f=0.0d0
          else
-            f_prime_over_f=0.75793-0.54621*log_degeneracy-0.30964*log_degeneracy**2+0.12535*log_degeneracy**3+ &
-            0.1203*log_degeneracy**4-0.012857*log_degeneracy**5-0.014768*log_degeneracy**6
+            f_prime_over_f=0.75793d0-0.54621d0*log_degeneracy-0.30964d0*log_degeneracy**2+0.12535d0*log_degeneracy**3+ &
+            0.1203d0*log_degeneracy**4-0.012857d0*log_degeneracy**5-0.014768d0*log_degeneracy**6
          endif
       endif
 ! END OF CALCULATION OF FERMI ENERGY DIVIDED BY KT AND THE INTERPOLATION
@@ -1990,13 +1990,13 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! THE FINAL EXPRESSION FOR WEAK SCREENING IS EXACTLY EQUAL TO SALPETER'S
 !  FORMULA, WHICH INCLUDES A DEGENERACY CORRECTION. THE MORE GENERAL
 !  EXPRESSIONS ARE GIVEN IN TABLE 4 AND EQUATION (19) OF GRABOSKE ET AL.
-      lambda0=5.9426E-6*t9m32*dsqrt(density*mu_ion_inv)
-      lambda0_23=pow(lambda0, 0.666667)
-      lambda0_86=pow(lambda0, 0.86)
+      lambda0=5.9426d-6*t9m32*dsqrt(density*mu_ion_inv)
+      lambda0_23=pow(lambda0, (2.0d0/3.0d0))
+      lambda0_86=pow(lambda0, 0.86d0)
       z_curl=dsqrt((zeta0+f_prime_over_f*mu_e_inv)/mu_ion_inv)
       z_bar=mu_e_inv/mu_ion_inv
-      z_curl_58=pow(z_curl, 0.58)
-      z_bar_28=pow(z_bar, 0.28)
+      z_curl_58=pow(z_curl, 0.58d0)
+      z_bar_28=pow(z_bar, 0.28d0)
       z_bar_13=pow(z_bar, cc13)
       lambda0_zcurl=lambda0*z_curl
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
@@ -2015,13 +2015,13 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  RATE EXPRESSION AS: EXP(UTOT) .
             screening_factor(i)=weak_screening_u
          else
-            intermediate_screening_u=0.38*lambda0_86*xtr*z86(i)/(mu_ion_inv*z_curl_58*z_bar_28)
-            if(weak_screening_u.le.2.) then
+            intermediate_screening_u=0.38d0*lambda0_86*xtr*z86(i)/(mu_ion_inv*z_curl_58*z_bar_28)
+            if(weak_screening_u.le.2.d0) then
                screening_factor(i)=intermediate_screening_u
             else
-               strong_screening_u=0.624*z_bar_13*lambda0_23*(z53(i)+0.316*z_bar_13*z43(i)+0.737* &
+               strong_screening_u=0.624d0*z_bar_13*lambda0_23*(z53(i)+0.316d0*z_bar_13*z43(i)+0.737d0* &
                z23(i)/(z_bar*lambda0_23))
-               if(strong_screening_u.lt.intermediate_screening_u.or.weak_screening_u.ge.5.) then
+               if(strong_screening_u.lt.intermediate_screening_u.or.weak_screening_u.ge.5.d0) then
                   screening_factor(i)=strong_screening_u
                else
                   screening_factor(i)=intermediate_screening_u
@@ -2035,9 +2035,9 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  NOT RELEVANT FOR THE SUN.
 ! ****************************************************************
       nz=1
-      if(hydrogen_fraction.eq.0.0) then
-         be7_electron_frac=0.
-         c12_alpha_frac=0.
+      if(hydrogen_fraction.eq.0.0d0) then
+         be7_electron_frac=0.d0
+         c12_alpha_frac=0.d0
       else
       nz=8
 ! **************************************************************
@@ -2063,7 +2063,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
             star%qqs0ee_scale(i)*(q4(i)*t9p23+q5(i)*t9)
          rate(i)=density*r1*exp(q6(i)*t9m13+q7(i)+(q8(i)*t9)**2+screening_factor(i))
          rate(i) = rate(i)*star%cross_section_scale(i)
-         if(rate(i).lt.1.E-30) rate(i)=0.0d0
+         if(rate(i).lt.1.d-30) rate(i)=0.0d0
       end do
 ! ***************************************************************
 ! END OF CALCULATION OF REACTION RATES FOR FIRST 7 REACTIONS.
@@ -2094,10 +2094,10 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! electron capture, since that is done in SStandard. Previous coefficient
 ! in Be7electron expression was (3.126571E+5). 10/14/97.
 !
-         be7_electron_rate = (1.752E-10)*t9m12*(1.0 + 0.004*(1000.*t9-16.))
+         be7_electron_rate = (1.752d-10)*t9m12*(1.0d0 + 0.004d0*(1000.d0*t9-16.d0))
          be7_electron_rate = be7_electron_rate*mu_e_inv*star%cross_section_scale(15)
-         be7_temp_factor = (-10.2625*t9m13)
-         be7_proton_rate = (3.128813E+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(be7_temp_factor)
+         be7_temp_factor = (-10.2625d0*t9m13)
+         be7_proton_rate = (3.128813d+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(be7_temp_factor)
 
 ! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
 !  Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
@@ -2110,13 +2110,13 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
          be7_proton_rate = be7_proton_rate*be7_q_factor
 ! CALCULATE THE SCREENING CORRECTION FOR BE7 + P REACTION.  USE WEAK AND
 !  INTERMEDIATE SCREENING FORMULAE.
-         be7p_charge_product = 4.0
-         be7p_z86 = 5.7790
+         be7p_charge_product = 4.0d0
+         be7p_z86 = 5.7790d0
          weak_screening_u = lambda0_zcurl*be7p_charge_product
          if(weak_screening_u.le.star%ctrl%weak_screening_threshold) then
             be7p_screening_u = weak_screening_u
          else
-            intermediate_screening_u = 0.38*lambda0_86*xtr*be7p_z86/(mu_ion_inv*z_curl_58*z_bar_28)
+            intermediate_screening_u = 0.38d0*lambda0_86*xtr*be7p_z86/(mu_ion_inv*z_curl_58*z_bar_28)
             be7p_screening_u = intermediate_screening_u
           endif
          be7_proton_rate = be7_proton_rate*exp(be7p_screening_u)
@@ -2126,7 +2126,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! mass number. Previously used 8.582295E+22 in the expression below.
 ! These corrections were made on 10/14/97.
 !
-         be7_mass_factor = density*8.584981E+22
+         be7_mass_factor = density*8.584981d+22
          be7_proton_rate = be7_mass_factor*be7_proton_rate
          be7_electron_rate = be7_mass_factor*be7_electron_rate
 ! END OF MULTIPLICATION INSERTED NOVEMBER 6, 1990.
@@ -2155,16 +2155,16 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! reactions.  Also, checked that the coefficients are the same as the
 ! ones given earlier in energy.f when we use the older CNO data.
 !
-      o16_gamma_rate = t9m23 + 0.0273016*t9m13 + 0.14374 + 0.027490*t9p13 &
-                + 6.14685*t9p23 + 2.98940*t9
+      o16_gamma_rate = t9m23 + 0.0273016d0*t9m13 + 0.14374d0 + 0.027490d0*t9p13 &
+                + 6.14685d0*t9p23 + 2.98940d0*t9
 ! MULTIPLY BY THE VALUE OF S0 IN KEV-B.
 !      O16GAMMA = O16GAMMA*64.
 ! MHP 9/14 ADDED THE OPTION TO MODIFY THE RELATIVE CROSS SECTIONS
 ! FOR N15+P -> C12+ALPHA AND O16+GAMMA
       o16_gamma_rate = o16_gamma_rate*64*star%o16_gamma_scale
 !
-      c12_alpha_n15p_rate = t9m23 + 0.0273016*t9m13 + 2.01186 + 0.384763*t9p13 &
-                + 17.0579*t9p23 + 8.29580*t9
+      c12_alpha_n15p_rate = t9m23 + 0.0273016d0*t9m13 + 2.01186d0 + 0.384763d0*t9p13 &
+                + 17.0579d0*t9p23 + 8.29580d0*t9
 !      C12ALPHA = C12ALPHA*67500.
       c12_alpha_n15p_rate = c12_alpha_n15p_rate*67500*star%c12_alpha_scale
       c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
@@ -2172,7 +2172,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
       endif
       do i=nz,num_reactions
-         rate(i)=0.
+         rate(i)=0.d0
    end do
 !***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
 !   RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
@@ -2186,38 +2186,43 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! C13(ALPHA,N) O16
       r1=t9m23+0.0129d0*t9m13+2.04d0+0.184d0*t9p13
       a1 = 6.77d15*exp(-32.329d0*t9m13-(t9/1.284d0)**2)
-      a2 = 3.82d5*exp(-9.373*t9m1)
-      a3 = 1.41d6*exp(-11.873*t9m1)
-      a4 = 2.00d9*exp(-20.409*t9m1)
-      a5 = 2.92d9*exp(-29.283*t9m1)
+      a2 = 3.82d5*exp(-9.373d0*t9m1)
+      a3 = 1.41d6*exp(-11.873d0*t9m1)
+      a4 = 2.00d9*exp(-20.409d0*t9m1)
+      a5 = 2.92d9*exp(-29.283d0*t9m1)
       rate(8) = 1.157126d22*density*exp(screening_factor(8))*(a1*r1+t9m32* &
            (a2+a3+a4+a5))
 ! C12(ALPHA,GAMMA)O16
       r1 = 1.0d0/(1.0d0+0.0489d0*t9m23)
       r2 = 1.0d0/(1.0d0+0.2654d0*t9m23)
-      a1 = t9m2*exp(-32.120*t9m13)
-      a2 = 1.04d8*r1**2*exp(-(t9/3.496)**2)
+      a1 = t9m2*exp(-32.120d0*t9m13)
+      a2 = 1.04d8*r1**2*exp(-(t9/3.496d0)**2)
       a3 = 1.76d8*r2**2
-      a4 = 1.25d3*t9m32*exp(-27.499*t9m1)
-      a5 = 1.43d-2*t9**5*exp(-15.541*t9m1)
+      a4 = 1.25d3*t9m32*exp(-27.499d0*t9m1)
+      a5 = 1.43d-2*t9**5*exp(-15.541d0*t9m1)
       rate(10) = 1.25388d22*density*exp(screening_factor(10))*(a1*(a2+a3)+a4+a5)
 ! N14(ALPHA,GAMMA)F18 + F18=>O18+EPLUS+NU
-      r1 = t9m23+0.012d0*t9m13+1.45d0+0.177d0*t9p13+1.97d0*t9p23 &
+! 2026 (bugsweep Batch 3): the linear coefficient of the CF88
+! N14(a,g)F18 polynomial is 0.117 (1 + 0.012 T9^1/3 + 1.45 T9^2/3
+! + 0.117 T9 + 1.97 T9^4/3 + 0.406 T9^5/3); both copies of the rate
+! carried 0.177 -- a digit transposition inherited from the F77
+! source (~0.5% of the rate at T9 = 0.15).
+      r1 = t9m23+0.012d0*t9m13+1.45d0+0.117d0*t9p13+1.97d0*t9p23 &
            +0.406d0*t9
       a1 = 7.78d9*exp(-36.031d0*t9m13-(t9/0.881d0)**2)
       a2 = t9m32*2.36d-10*exp(-2.798d0*t9m1)
       a3 = t9m32*2.03d0*exp(-5.054d0*t9m1)
-      a4 = t9m23*1.15d4*exp(-12.310*t9m1)
+      a4 = t9m23*1.15d4*exp(-12.310d0*t9m1)
       rate(11)= 1.07452d22*density*exp(screening_factor(11))*(a1*r1+a2+a3+a4)
 ! TRIPLE ALPHA
-      rate(12) = 1.565315d21*density**2*t9m1*t9m2*2.79E-8* &
-                 exp(-4.4027*t9m1+screening_factor(12))
+      rate(12) = 1.565315d21*density**2*t9m1*t9m2*2.79d-8* &
+                 exp(-4.4027d0*t9m1+screening_factor(12))
       end if
       rate(9) = 0.0d0
       rate(13) = 0.0d0
 ! END OF XEROING OUT OF REACTIONS 9 AND 13.
       do i=1,num_reactions
-         if(rate(i).le.1.E-5) rate(i) = 0.0
+         if(rate(i).le.1.d-5) rate(i) = 0.0d0
       end do
 ! ******************************************************
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)

@@ -110,6 +110,12 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          if (star%model_diverged_flag) cycle retry_step
          exit retry_step
       end do retry_step
+! 2026 (bugsweep Batch 3): a non-finite converged structure is an
+! error, not a model (see converged_model_is_nan in stop_conditions).
+      if (converged_model_is_nan()) then
+         ierr = 1
+         return
+      end if
 ! LOCATE THE HYDROGEN-BURNING SHELL AND THE BOUNDARIES OF THE CENTRAL
 ! AND SURFACE CONVECTION ZONES (IF APPLICABLE).
        call locate_shell_boundaries(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
