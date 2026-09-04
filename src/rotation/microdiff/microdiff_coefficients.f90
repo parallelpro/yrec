@@ -35,9 +35,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col, ierr)
       use microdiff_mte_lib, only: microdiff_grid
-      use star_info_lib, only: star
-
-      use star_info_lib
+      use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
       implicit none
@@ -51,11 +49,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
            atomic_charge_diffused
       integer, intent(in) :: species_col
       integer, intent(out) :: ierr
-
-
-
-
-
+! --- locals ---
       double precision :: atomic_weight(4), atomic_charge(4), mass_frac(4), &
            coulomb_log(4,4), pressure_coeff(4), temp_coeff(4), &
            conc_coeff(4,4), &
@@ -67,9 +61,8 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
       double precision :: ln_lambda
       integer :: num_species
       data num_species/4/
-!       DATA FGRLI/1.0,1.0,1.0,1.0/
       integer :: i, ii, jj
-      double precision :: bl_radius_scale_local, bl_temp_scale_local, &
+      double precision :: bl_temp_scale_local, &
            hru_i, htu_i, fac, ap, at, ah, ad, dlncdr, coni, conip1, conim1, &
            dradi, t1, t2, rho, t
 
@@ -83,9 +76,8 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
       atomic_charge(2) = 2.0d0
       atomic_charge(3) = atomic_charge_diffused
       atomic_charge(4) = -1.0d0
-! SET LN_LAMBDA, CON_RAD, AND CON_TEMP.
+! SET LN_LAMBDA AND CON_TEMP.
       ln_lambda = 2.2
-      bl_radius_scale_local=1.0d0/6.9598d10
       bl_temp_scale_local=1.0d-7
 ! CALCULATE DIFFUSION COEFFICIENTS FOR EACH LAYER.
       do i = 1,num_eq_points
@@ -164,10 +156,8 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
 !
          hru_i = grid%radius(i)
          htu_i = t*bl_temp_scale_local
-!         FAC=FGRLI(KK)*HRU_I**2*HTU_I**2.5D0/LN_LAMBDA
 !        JvS 01/26 Added support for FGRY and FGRZ modifications
 !        to diffusion coefficients.
-!         FAC=HRU_I**2*HTU_I**2.5D0/LN_LAMBDA
          fac=hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          if(species_col.eq.1)then
             fac=star%ctrl%fgry*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda

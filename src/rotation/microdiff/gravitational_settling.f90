@@ -40,7 +40,7 @@
 ! log_temperature - LOG TEMPERATURE (K)
 ! convective_flag - FLAG T/F FOR CONVECTION
 ! num_zones - NUMBER OF MODEL POINTS
-! [COMMON] del_grad(2,...) - DEL (=DLNT/DLNP)
+! star%gradT - DEL (=DLNT/DLNP)
 !
 ! OUTPUT VARIABLES :
 !
@@ -72,17 +72,12 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
-
-
-
-
-
-
+      integer, intent(out) :: ierr
 ! --- locals ---
 ! Names below are chosen to match the dummy-argument names of the
-! callees (gravitational_settling_setup.f90/model_to_equal.f90/lax_wendroff_step1.f90/
-! lax_wendroff_step2.f90/implicit_diffusion_coeffs.f90/tridiag_gs.f90/
-! equal_to_model.f90) at each corresponding call site.
+! callees (gravitational_settling_setup/model_to_equal/lax_wendroff_step1/
+! lax_wendroff_step2/implicit_diffusion_coeffs/tridiag_gs/
+! equal_to_model) at each corresponding call site.
       double precision :: equal_mass(json), equal_radius(json), &
            sub_diag(json), diag(json), super_diag(json), &
            equal_hydrogen_fraction(json)
@@ -109,8 +104,6 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       double precision :: max_delta_x
       integer :: max_delta_x_zone
       double precision :: delta_x_local
-      double precision :: z_change_first, z_change_last
-      integer, intent(out) :: ierr
 
       ierr = 0
 
@@ -255,7 +248,6 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
                max_delta_x_zone = eq_idx
             endif
          end do
-!         WRITE(IOWR,90)ITER,DXMAX,IMAX
 ! solver forensics (2026 run-log verbosity sweep)
          if (solver_diagnostics()) &
               write(run_log_unit,90)iter_count,max_delta_x,max_delta_x_zone
@@ -278,9 +270,6 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
       if(star%job%use_diffusion_z)then
-         z_change_first=star%metal_abundance_change(1)-metal_x_orig(1)
-         z_change_last=star%metal_abundance_change(num_equal_points)- &
-              metal_x_orig(num_equal_points)
          do eq_idx = 1,num_equal_points
             star%metal_abundance_change(eq_idx) = star%metal_abundance_change(eq_idx) - &
                  metal_x_orig(eq_idx)

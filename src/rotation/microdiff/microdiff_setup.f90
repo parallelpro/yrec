@@ -64,9 +64,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       integer :: i
       double precision :: crsun_bah, csecyr_bah
 
-! DIMENSION dlnp_dr(json),log_radius(json),log_temperature(json), etc.
-! all declared above with intent.
-
       crsun_bah=6.9598d10
       csecyr_bah=3.1558d7
 !     fully_convective_flag=T FOR FULLY CONVECTIVE MODEL(AND IF TRUE, DIFFUSION IS SKIPPED).
@@ -87,7 +84,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
    15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
             star%settling_suspended_reported = .true.
          end if
-         continue
          return
          end if
 !        COMPUTE OVERSHOOT (TO BE ADDED).
@@ -110,7 +106,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          star%settling_suspended_reported = .true.
       end if
       fully_convective_flag = .true.
-      continue
       return
       end if
       zone_begin = i
@@ -129,8 +124,8 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       do i=zone_end,1,-1
          if(composition(2,i).gt.star%ctrl%helium_diffusion_min) exit
       end do
-      if (i < (1)) then
-!     HYDROGEN-FREE MODEL - EXIT.
+      if (i < 1) then
+!     HELIUM-EXHAUSTED MODEL - EXIT.
 ! print once per suspension; every model only under
 ! report_solver_diagnostics (2026 run-log verbosity sweep)
       if (solver_diagnostics() .or. &
@@ -140,7 +135,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          star%settling_suspended_reported = .true.
       end if
       fully_convective_flag = .true.
-      continue
       return
       end if
       zone_end = i
@@ -166,7 +160,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          temperature_bl(i)=exp(ln10*log_temperature(i))*star%bl_temp_scale
          enclosed_mass(i)=enclosed_mass(i)*star%bl_mass_scale
          dlnp_dr(i)=dlnp_dr(i)/star%bl_radius_scale
-!        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
       end do
       timestep=timestep/star%bl_time_scale
       total_mass=total_mass*star%bl_mass_scale

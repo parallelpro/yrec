@@ -38,11 +38,9 @@
 !       convective for angular momentum purposes and F otherwise.
 !   num_points - the total number of model points.
 !
-! Variables in common blocks:
-!
-! common/splin/ contains dummy arrays used to perform an osculatory
-! spline interpolation.
-! common/egrid/ contains the vector of equally spaced grid points.
+! Scratch (rotation_scratch_lib): rot_scr%xtab/ytab/xval/yval are the
+! osculatory-spline work arrays; rot_scr%echi/chi/ntot hold the equally
+! spaced grid.
 !
 ! Output variable:
 !   specific_angular_momentum - the new run of specific angular
@@ -52,7 +50,7 @@ subroutine equal_grid_to_model(delta_angular_momentum, angular_momentum, shell_m
      zone_begin, zone_end, convective_flag, num_points, &
      total_delta_angular_momentum, specific_angular_momentum)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use numerics_lib
       implicit none
 

@@ -45,21 +45,12 @@ subroutine check_composition(composition, iteration_number, num_zones, &
       integer, intent(inout) :: cut_count
       logical, intent(inout) :: converged_flag
       logical, intent(out) :: redo_flag
-
-
-
-
-
-
-
+      integer, intent(out) :: ierr
 
       double precision :: atomic_weight(4)
       data atomic_weight/1.007825d0,4.002603d0,12.0d0,3.01603d0/
 ! locals
       integer :: num_diffused_species, species_index, zone_index
-      double precision :: max_fractional_comp_change
-      integer :: max_change_zone, max_change_species
-      double precision :: min_comp_for_check, fractional_comp_change
       double precision :: delta_hydrogen, delta_helium, delta_metal, &
            delta_helium3
 ! amu_calc_temp is reused for two sequential 1/(mean weight) sums, as
@@ -68,13 +59,11 @@ subroutine check_composition(composition, iteration_number, num_zones, &
       double precision :: amu_calc_temp, ion_mean_weight_inverse, &
            electron_mean_weight_inverse
 
+      ierr = 0
+
 !  CHECK FOR ANOMALOUS COMPOSITIONS.
 !  PRIOR TO THE LAST ITERATION, ONLY DIFFUSION OF H,HE,HE3 PERFORMED.
 !  FIND NUMBER OF SPECIES BEING DIFFUSED.
-      integer, intent(out) :: ierr
-
-      ierr = 0
-
       if(iteration_number.eq.star%ctrl%max_diffusion_iters)then
          num_diffused_species = 11
       else
@@ -129,16 +118,11 @@ subroutine check_composition(composition, iteration_number, num_zones, &
  1015 format(' ERROR IN SR CHECKC'/' TIMESTEP CUT NUMBER ',i2, &
               ' DUE TO ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5, &
               ' ABUNDANCE ',1pe12.3)
-                  continue
-                  
                   return
                endif
             endif
          end do
       end do
-! 2026 retire-legacy: the max-fractional-composition-change print
-! (gated by the caller's hard-false print flag) is deleted with the
-! .FULL retirement.
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
 !  CORRECTION FOR PARTIAL IONIZATION NEEDED IN MASSIVE STARS.

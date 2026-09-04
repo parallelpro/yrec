@@ -60,7 +60,7 @@
 !  THE EQUALLY SPACED GRID POINTS FROM THE LAST UNSTABLE REGION SOLVED
 !  ARE USED INITIALLY, AND THEN THE PROGRAM CHECKS FOR ADDITIONAL UNSTABLE
 !  REGIONS INTERIOR TO THAT.
-! CALL MIXCOM FOR PREVIOUSLY IDENTIFIED UNSTABLE REGION IF THIS IS NOT
+! CALL diffuse_composition FOR THE PREVIOUSLY IDENTIFIED UNSTABLE REGION IF THIS IS NOT
 ! THE CONVERGED CALL
 subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, log_density, log_luminosity, log_pressure, &
@@ -92,13 +92,13 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
       ierr = 0
       if (.not.final_iteration_flag) then
          call diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
-              equally_spaced_mass, shell_mass, zone_begin, zone_end, &
+              equally_spaced_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end, ierr)
          if (ierr /= 0) return
       else
-! FIND UNSTABLE REGIONS IN ORDER, AND CALL MIXGRID TO SET UP THE
-! EQUALLY SPACED GRID AND MIXCOM TO MIX THEM IN ORDER
+! FIND UNSTABLE REGIONS IN ORDER, AND CALL composition_grid TO SET UP THE
+! EQUALLY SPACED GRID AND diffuse_composition TO MIX THEM IN ORDER
 !  EACH UNSTABLE REGION IS SOLVED SEPARATELY STARTING HERE.
 !  unstable_zone_found IS SET T IF A NON-ZERO VELOCITY IS ENCOUNTERED.
 !  zone_begin IS THE ZONE BELOW THE FIRST NON-ZERO V;zone_end IS THE
@@ -151,7 +151,7 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
 !  AFFECT GRADIENTS IN MEAN MOLECULAR WEIGHT IS COMPUTED (H,HE3,HE4).
 !  ON THE FINAL ITERATION, DIFFUSION OF ALL SPECIES IS PERFORMED.
          call diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
-              equally_spaced_mass, shell_mass, zone_begin, zone_end, &
+              equally_spaced_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end, ierr)
          if (ierr /= 0) return

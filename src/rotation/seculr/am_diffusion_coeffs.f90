@@ -81,9 +81,6 @@ subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
       double precision, intent(out) :: sub_diag(json), diag(json), &
            super_diag(json), rhs(json)
       double precision, intent(out) :: surface_wind_loss_term
-
-
-
       logical, intent(in) :: fix_omega_at_surface
       integer :: i
       double precision :: fact0, fact, facta

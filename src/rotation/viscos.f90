@@ -11,7 +11,6 @@
 ! and the radiative thermal diffusivity at every zone, for use by the
 ! rotational-mixing/instability diffusion routines.
 subroutine viscos(composition, log_density, log_temperature, num_zones)
-!       SUBROUTINE VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
       use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
@@ -20,9 +19,6 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       double precision, intent(in) :: composition(15,json), log_density(json), &
            log_temperature(json)
       integer, intent(in) :: num_zones
-
-
-
 
       double precision :: amu
       double precision :: weight(11), z(11)
@@ -37,19 +33,15 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       double precision :: opacity_local, mean_charge, number_density_sum
       double precision :: temperature_cgs, temperature_sq, density_cgs, &
            electron_number_density
-      double precision :: viscosity_radiative, viscosity_radiative_endal_sofia
+      double precision :: viscosity_radiative
       double precision :: number_density(11)
-      double precision :: viscosity_molecular_species(11), &
-           viscosity_endal_sofia_species(11)
+      double precision :: viscosity_molecular_species(11)
       double precision :: coulomb_log_factor
       double precision :: mfp_temperature_factor, molecular_coeff, &
            viscosity_molecular
       double precision :: species_coeff, species_sum
-      double precision :: viscosity_molecular_endal_sofia, &
-           endal_sofia_coeff
-      double precision :: viscosity_endal_sofia
 
-!  SKIP CONVECTIVE ZONES
+!  LOOP OVER ALL ZONES (CONVECTIVE ZONES INCLUDED)
       do shell_idx = 1,num_zones
 !  COMPUTE THE KINEMATIC MICROSCOPIC VISCOSITY DUE TO RADIATION AND IONS
 !  CONVERT TO NUMBER DENSITIES AND FIND MEAN CHARGE PER ION(ZF) AND NE.
@@ -68,17 +60,13 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          density_cgs = exp(ln10*log_density(shell_idx))
          electron_number_density = mean_charge*density_cgs/amu
 !  RADIATIVE DYNAMIC VISCOSITY (ELECTRON SCATTERING ONLY):
-!  METHOD USED(VISCR) IS FROM LEDOUX,1958,HANDBUCH DER PHYSIK VOL.LI,P.445
-!  ENDAL-SOFIA(VISCR2) METHOD REF. THOMAS,L.H. 1930,QUART.J.MATH,1,237
-!  ENDAL-SOFIA VALUES CALCULATED FOR COMPARISON ONLY.
+!  METHOD USED IS FROM LEDOUX,1958,HANDBUCH DER PHYSIK VOL.LI,P.445
+!  (THE ORIGINAL ALSO EVALUATED THE ENDAL-SOFIA / THOMAS 1930 FORMULAE
+!  FOR COMPARISON; THOSE VALUES WERE NEVER USED AND ARE NOT COMPUTED.)
          viscosity_radiative = 6.7282653d-26*temperature_sq*temperature_sq/ &
               (opacity_local*density_cgs**2)
-         viscosity_radiative_endal_sofia = 3.36d-25*temperature_sq*temperature_sq/ &
-              (composition(1,shell_idx)+1.0d0)/density_cgs**2
 !  MOLECULAR DYNAMIC VISCOSITY
 !  REF. SPITZER,1962,PHYSICS OF FULLY IONIZED GASES
-!  AGAIN, ENDAL-SOFIA METHOD STORED IN VISMO2 FOR COMPARISON PURPOSES.
-!  ACTUAL MOLECULAR VISCOSITY USED STORED IN VISMOL.
          mfp_temperature_factor = dmin1(1.0d0,4.2d5/temperature_cgs)
          coulomb_log_factor = 9.424536845d0+0.5d0*log(temperature_sq* &
               temperature_cgs*mfp_temperature_factor/ &
@@ -107,23 +95,6 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          end do
          viscosity_molecular = viscosity_molecular/density_cgs
          star%visc(shell_idx) = viscosity_radiative+viscosity_molecular
-!  NOW COMPUTE USING ENDAL-SOFIA METHOD
-         viscosity_molecular_endal_sofia = 0.0d0
-         endal_sofia_coeff = 2.21d-15*dsqrt(temperature_cgs)*temperature_sq
-         do species_idx = 1,11
-            if(species_idx.eq.3) cycle
-            viscosity_endal_sofia_species(species_idx) = endal_sofia_coeff* &
-                 composition(species_idx,shell_idx)/ &
-                 (dsqrt(weight(species_idx))*z(species_idx)**4* &
-                 (coulomb_log_factor-log(z(species_idx))))
-            if(viscosity_endal_sofia_species(species_idx).gt.0.0d0) &
-                 viscosity_molecular_endal_sofia = viscosity_molecular_endal_sofia+ &
-                 viscosity_endal_sofia_species(species_idx)
-         end do
-         viscosity_molecular_endal_sofia = viscosity_molecular_endal_sofia/ &
-              density_cgs/number_density_sum
-         viscosity_endal_sofia = viscosity_radiative_endal_sofia+ &
-              viscosity_molecular_endal_sofia
 !  THERMAL DIFFUSIVITY(THDIF) DUE TO RADIATION IS CALCULATED
 !  COMPONENT DUE TO THERMAL CONDUCTION OF MATTER IS NEGLECTED
 !  RADIATIVE DIFFUSIVITY = K*T**3/(O*RHO**2*CP)

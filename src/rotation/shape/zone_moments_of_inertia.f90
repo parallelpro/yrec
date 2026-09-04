@@ -18,7 +18,6 @@
 ! formula is used directly.
 subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
-      use star_info_lib, only: star
       use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
@@ -30,26 +29,11 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
       double precision, intent(in) :: omega(json), mean_radius(json)
       double precision, intent(out) :: moment_of_inertia(json), di_domega(json)
       integer :: zone_idx
-      double precision :: prev_log_mean_radius, prev_log_true_radius, &
-           rotation_param_const, mean_zone_radius, dlnr0_dlnr, &
-           spherical_moment_of_inertia, mean_radius_cubed, &
-           true_radius_cubed, r0_geom_factor, rotation_param, &
-           eta_squared_zone, moment_of_inertia_per_mass, di_domega_per_mass
+      double precision :: rotation_param_const, mean_zone_radius, dlnr0_dlnr, &
+           mean_radius_cubed, true_radius_cubed, r0_geom_factor, &
+           rotation_param, eta_squared_zone, moment_of_inertia_per_mass, &
+           di_domega_per_mass
 
-!  FIND THE MOMENT OF INERTIA (HI) AND DI/D(OMEGA) (QIW).
-!  MOMI ASSUMES THAT SHAPE HAS ALREADY BEEN CALLED.
-!  MOMENT OF INERTIA IS CALCULATED BY THE METHOD USED IN WAI-YUEN LAW'S
-!  THESIS(YALE,1980) P.61.
-! prev_log_mean_radius/prev_log_true_radius (originally R0P/RPHIP) are
-! computed below at each zone but never subsequently read; preserved
-! as dead code from the original.
-      if (zone_start.eq.1) then
-         prev_log_mean_radius = 0.0d0
-         prev_log_true_radius = 0.0d0
-      else
-         prev_log_mean_radius = log(mean_radius(zone_start - 1))
-         prev_log_true_radius = ln10*log_radius(zone_start - 1)
-      end if
       rotation_param_const = cc13*5.0d0/exp(ln10*cgl)
       if (star%ctrl%walpcz.ne.0.0d0) then
          do zone_idx = zone_start,zone_end
@@ -68,10 +52,6 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
 !  QR0R = D LN R0/ D LN R
 !
          dlnr0_dlnr = 1.0d0
-! spherical_moment_of_inertia (originally H0) is computed here but
-! never subsequently read; preserved as dead code from the original.
-         spherical_moment_of_inertia = cc23*shell_mass(zone_idx)* &
-              exp(ln10*2.0d0*log_radius(zone_idx))
          mean_radius_cubed = mean_radius(zone_idx)**3
          true_radius_cubed = exp(ln10*3.0d0*log_radius(zone_idx))
          r0_geom_factor = (mean_radius_cubed/true_radius_cubed)* &
@@ -86,8 +66,6 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
          moment_of_inertia(zone_idx) = moment_of_inertia_per_mass* &
               shell_mass(zone_idx)
          di_domega(zone_idx) = di_domega_per_mass*shell_mass(zone_idx)
-         prev_log_mean_radius = log(mean_radius(zone_idx))
-         prev_log_true_radius = ln10*log_radius(zone_idx)
       end do
 
       return

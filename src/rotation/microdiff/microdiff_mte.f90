@@ -12,8 +12,8 @@
 ! Bahcall & Loeb units) used by microdiff_run.f90/microdiff_coefficients.f90,
 ! and interpolates density, temperature, dlnP/dr, the "del" temperature
 ! gradient, and the H/He/metal/light-element mass fractions onto it via
-! 4-point Lagrangian interpolation (see interp.f, not part of this
-! batch). Part of the microdiff.f90 pipeline (see also
+! 4-point Lagrangian interpolation (interp, numerics_lib). Part of
+! the microdiff.f90 pipeline (see also
 ! microdiff_setup.f90, microdiff_coefficients.f90, microdiff_run.f90,
 ! microdiff_etm.f90).
 ! 2026 de-tramp (ROADMAP item 3): 33 arguments -> 15. The 22
@@ -42,7 +42,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
      grid_spacing, num_eq_points, density_orig, temperature_orig, &
      eq, eq_mid)
 
-      use star_info_lib, only: star, i_grad_actual, json
+      use star_info_lib, only: star, json
       use numerics_lib
       implicit none
 
@@ -55,10 +55,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       integer, intent(out) :: num_eq_points
       double precision, intent(in) :: density_orig(json), temperature_orig(json)
       type(microdiff_grid), intent(out) :: eq, eq_mid
-
-
-
-
+! --- locals ---
       integer :: half_json
       integer :: i, ii, iu, j, jmin, k, k0, kk
       double precision :: drtot, drmin, fx, tabler(4), gridrad, &
@@ -79,7 +76,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 ! JVS add additional trap to deal with models with NPT=1
       if (num_eq_points .eq. 1) num_eq_points=num_eq_points+1
 !  ENSURE THAT NUMBER OF POINTS DOES NOT EXCEED JSON.
-
       half_json = 5000
       num_eq_points=min(num_eq_points,half_json)
       grid_spacing = drtot/dfloat(num_eq_points-1)
@@ -89,9 +85,8 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       if (num_eq_points .eq. 2) then
          eq_mid%radius(2)=eq_mid%radius(1)+grid_spacing
       else
-         do i = 2,num_eq_points-1! old piece
-            if(i-1 .eq. 0) print*, 'mte line 47'
-            eq_mid%radius(i)=eq_mid%radius(i-1)+grid_spacing  ! old piece
+         do i = 2,num_eq_points-1
+            eq_mid%radius(i)=eq_mid%radius(i-1)+grid_spacing
          end do
       endif
 

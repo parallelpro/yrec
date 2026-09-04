@@ -32,10 +32,6 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
       integer, intent(in) :: zone_min, zone_max
       double precision, intent(in) :: angular_velocity(json)
 
-
-
-
-
       double precision :: half_dlnj_dlnr(json), circ_velocity(json)
       integer :: zone_index
       double precision :: omega_mid
@@ -51,8 +47,6 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
          do zone_index = zone_min, zone_max
             star%vfc(zone_index) = 0.0D0
          end do
-         continue
-         
          return
       endif
 ! DETERMINE ALPHA.

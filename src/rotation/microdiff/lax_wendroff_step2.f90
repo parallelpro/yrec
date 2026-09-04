@@ -9,7 +9,7 @@
 !
 ! Second (corrector) step of the two-step Lax-Wendroff diffusion
 ! method. Using the zone-midpoint diffusion coefficients from
-! lax_wendrof1's provisional solution, updates diffused_abundance in
+! lax_wendroff_step1's provisional solution, updates diffused_abundance in
 ! place with the full-step change in the diffused species' abundance.
 ! MHP 3/94 added metal diffusion.
 ! Dummy-argument names match the actual arguments used at the call
@@ -39,7 +39,6 @@ subroutine lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
       zone_mass = eq_mass_mid(1)
       delta_abundance = dt_full*diffusion_coeff1_mid(1)/zone_mass
       diffused_abundance(1) = diffused_abundance(1)+delta_abundance
-!    99 format(5x,1p2e15.7)
 ! general case
       do i = 2,num_eq_points-1
          zone_mass = eq_mass_mid(i)-eq_mass_mid(i-1)

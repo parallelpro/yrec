@@ -8,10 +8,10 @@
 ! (examples/run_standard_solar_model).
 !
 ! 2/91 SUBROUTINE ALTERED TO ALLOW DIFFERENT FC'S FOR DIFFERENT
-!      MECHANISMS (COMMON BLOCK VMULT2)
+!      MECHANISMS (star%ctrl%es_mixing_scale etc.)
 !
-!  THIS SR DETERMINES THE RUN OF CHARACTERISTIC VELOCITY LENGTH
-!  SCALES FOR THE DIFFUSION EQUATIONS.
+!  THIS SR DETERMINES THE RUN OF DIFFUSION COEFFICIENTS (VELOCITY
+!  TIMES LENGTH SCALE) FOR THE DIFFUSION EQUATIONS.
 !
 !  INPUT VARIABLES
 !
@@ -32,24 +32,16 @@
 !     TRANSPORT.
 !  radius_mid (RMID) : radius_mid(I) IS DEFINED AS THE AVERAGE OF
 !     radius_mid_prev(I) AND radius_mid_prev(I-1).
-!       FROM COMMON BLOCKS:
-!       IN COMMON BLOCKS
-!  HLE : RUN OF CHARACTERSITIC VELOCITY LENGTH SCALES.
 !
-!  NOTE ON STORAGE: COD,V, AND HLE ARE CALCULATED AT THE MIDPOINT
+!  NOTE ON STORAGE: COD AND V ARE CALCULATED AT THE MIDPOINT
 !  BETWEEN MASS POINTS. ELEMENT I CONTAINS THE INFORMATION FOR THE
 !  (I,I-1) INTERFACE.
 !
-! Note: the original dummy argument name HRU is reused (positionally)
-! both for the radius run and, historically, other quantities in
-! commented-out callers -- here it is unambiguously the run of
-! (unlogged) shell-midpoint radii, matching circulation_velocities.f90's radius(json).
+! radius_mid_prev is the run of (unlogged) shell-midpoint radii,
+! matching circulation_velocities.f90's radius(json).
 subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
-      use rotation_scratch_lib
-      use star_info_lib, only: star
-
-      use star_info_lib
+      use star_info_lib, only: star, json
       use phys_const_lib
       implicit none
       double precision, intent(in) :: radius_mid_prev(json)
@@ -60,12 +52,8 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
       integer :: i
       double precision :: con1, con2
 
-!  THIS SR DETERMINES THE RUN OF CHARACTERISTIC VELOCITY LENGTH
-!  SCALES FOR THE DIFFUSION EQUATIONS.
-      circ_scr%hle(1) = 0.0d0
       radius_mid(1) = 0.0d0
       do i = 2,num_zones
-         circ_scr%hle(i) = 0.0d0
          radius_mid(i) = 0.5d0*(radius_mid_prev(i)+radius_mid_prev(i-1))
       end do
 ! MHP 9/14 ADDED LOOP TO ALLOW A CONSTANT BACKGROUND DIFFUSION COEFFICIENT
@@ -81,7 +69,6 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
                     star%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
                     star%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
                     star%secular_shear_velocity(i))*radius_mid(i)
-!               HLE(I)=RMID(I)
             end do
          else
             do i = 2,num_zones
@@ -89,7 +76,6 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
                     star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
-!               HLE(I) = RMID(I)
             end do
          end if
       else

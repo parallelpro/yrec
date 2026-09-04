@@ -22,12 +22,10 @@
 ! conditions. The central B.C. is that QUAD(0)=0; the surface B.C.
 ! is that there is no contribution to the quadrupole from outside the
 ! final shell, such that QUAD(I) varies as 1/R**3 (the exterior l=2
-! solution; the surface row below and its own comment use R**3 --
-! the "1/R**4" this header used to claim was a stale comment).
+! solution).
 subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, num_zones, ierr)
       use rotation_scratch_lib
-
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use phys_const_lib
       use math_lib
       implicit none
@@ -37,18 +35,10 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
       integer, intent(in) :: num_zones
       integer, intent(out) :: ierr
 
-
-
-! Tridiagonal-solve work arrays (Thomas algorithm) for this file's own
-! self-contained inline solve below (not shared with any other file --
-! was originally common/tridi/, which is genuinely shared elsewhere
-! (ctridi.f90/tridia.f90/composition_diffusion_coeffs.f90/am_diffusion_coeffs.f90/diffuse_composition.f90), but this
-! file never called those solvers, just reused the block's memory
-! layout; converted (2026, GUIDELINES.md) to plain locals since there
-! was never any real data flow to another file here).
+! Tridiagonal-solve work arrays (Thomas algorithm) for the inline
+! solve below.
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), solution(json), gamma_elim(json)
-
 
       double precision :: density_omega2(json)
       integer :: zone_index, matrix_row
@@ -81,8 +71,8 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
       super_diag(1) = weight_plus*(inv_dr2+dr_inv_r)
       rhs(1) = -four_pi_g*drho_dr*(radius(1)*angular_velocity(1))**2/3.0D0/ &
            gravity(1)
-! GENERAL CASE : SECOND DERIVATIVE NUMERICALLY DIFFERENTIATED AS
-!
+! GENERAL CASE : SECOND DERIVATIVE BY A THREE-POINT DIFFERENCE ON THE
+! (UNEQUAL) DR_MINUS/DR_PLUS SPACING, WEIGHTED BY THE SMALLER OF THE TWO.
       do zone_index = 2,num_zones-1
          dr_plus = radius(zone_index+1)-radius(zone_index)
          dr_minus = radius(zone_index)-radius(zone_index-1)

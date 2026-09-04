@@ -55,9 +55,6 @@
 ! NOTE THAT SINCE THE DERIVATIVES ARE DEFINED IN
 ! TERMS OF LOWER ORDER QUANTITIES WE DON'T NEED THE
 ! START OF TIMESTEP VALUES FOR THEM.
-!
-!       SUBROUTINE DADCOEFT(DR,DT,EI,EJ,EW,NTOT,WIND1,WIND2,DJ,  ! KC 2025-05-31
-!                           ECOD2,SUMDJ,LFIX,LOKAD)
 subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_inertia, eq_omega, &
      num_eq_points, wind_loss_explicit, wind_loss_implicit, &
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
@@ -80,28 +77,8 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       double precision, intent(out) :: sum_delta_angular_momentum
       logical, intent(in) :: fix_omega_at_surface
       logical, intent(out) :: diffusion_converged
+      integer, intent(out) :: ierr
 
-
-
-
-
-
-
-
-
-
-
-! MHP 8/17 ADDED EXCEN, C_2 TO COMMON BLOCK FOR MATT ET AL. 2012 CENT. TERM
-! former common/cwind/: wind_saturation_omega/wind_law_omega_exponent
-! (WMAX/EXW) are used here; the rest are unused placeholders (magnetic-
-! braking law parameters -- exponents on mass-loss rate/convective
-! turnover timescale/radius/mass/luminosity/Rossby number, and overall
-! normalization constants, per the Matt et al. 2012-style wind-torque
-! law this block evidently parameterizes).
-!      COMMON/CWIND/WMAX,EXMD,EXW,EXTAU,EXR,EXM,CONSTFACTOR,STRUCTFACTOR,LJDOT0
-
-
-!       DIMENSION EI(JSON),EW(JSON),EJ(JSON),DJ(JSON),  ! KC 2025-05-31
       double precision :: coeff_matrix(nmax,10), rhs(nmax), &
            omega_working(json), max_omega_change_history(50)
       integer :: max_omega_change_zone_history(50)
@@ -109,26 +86,22 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
            omega_mid(json)
       double precision :: omega_mid_start(json), omega_prev_medium_iter(json), &
            omega_prev_medium_iter_avg(json), omega_mid_prev(json), &
-           domega_dr_prev(json), omega_substep_start(json), &
-           omega_mid_init(json), domega_dr_init(json)
-      double precision :: residual_check(nmax), rhs_orig(nmax), &
-           coeff_matrix_orig(nmax,10), omega_curvature(json)
+           domega_dr_prev(json), omega_substep_start(json)
+      double precision :: omega_curvature(json)
 ! locals
       integer :: timestep_cut_count, num_substeps, substep_idx, &
            theta_iter_idx, coeff_iter_idx, num_equations, i, j, ii, k
       double precision :: full_timestep, wind_loss_implicit_initial, tiny, &
            substep_time_sum, total_angular_momentum_start, substep_frac, &
            wind_saturation_threshold
-      logical :: lrossby
-      double precision :: pmmsoltau
-      double precision :: omega_capped, omega_prev_capped, omega_mid_it, &
-           domega_dr_prev_substep, domega_dr_it, advective_term1, &
+      double precision :: omega_capped, omega_prev_capped, &
+           domega_dr_prev_substep, advective_term1, &
            theta_term_n, theta_term_p, diffusive_term2, dt_over_dr, &
            fact_over_ei, facta_half_dt_over_ei_dr, wind_loss_delta, &
-           total_delta_angular_momentum_alt, max_omega_change, &
+           max_omega_change, &
            max_omega_change_total, max_omega_change_medium_iter, &
            omega_change, omega_change_total, omega_change_medium_iter, &
-           damping_factor, total_angular_momentum_updated, &
+           total_angular_momentum_updated, &
            angular_momentum_correction, omega_mid_new, domega_dr_mid_new, &
            advective_velocity_term, domega_dr_velocity_term, &
            domega_dr_velocity_term_alt, curvature_velocity_term, &
@@ -136,9 +109,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
            mixing_diffusion_raw, wind_loss_delta_full_step
       integer :: max_omega_change_zone, max_omega_change_total_zone, &
            max_omega_change_medium_iter_zone
-
-! DCOEFT SETS UP THE COEFFICIENTS FOR THE DIFFUSION DIFFERENCE EQUATION.
-      integer, intent(out) :: ierr
 
       ierr = 0
 
@@ -186,25 +156,11 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          diffusion_converged = .false.
 ! UPDATE JDOT TERM
          if (theta_iter_idx.gt.1 .and. wind_loss_implicit.gt.0.0d0) then
-! G Somers 8/17
-! ADD ROSSBY SCALING IF DESIRED.
-! lrossby/pmmsoltau (originally LROSSBY/PMMSOLTAU, from
-! COMMON/PMMWIND/) are NOT declared via any COMMON block in the
-! original dadcoeft.f -- an apparent pre-existing bug, since
-! COMMON/PMMWIND/ is declared (with these same names) in amcalc.f,
-! mwind.f, mcowind.f, and parmin.f. Left exactly as in the original:
-! plain (uninitialized, SAVEd) locals, NOT wired to COMMON/PMMWIND/,
-! so this IF branch reads whatever value a prior call happened to
-! leave in them rather than the intended global Rossby-scaling flag.
-            if (lrossby) then
-               wind_saturation_threshold = star%job%wind_saturation_omega* &
-                    pmmsoltau/star%convective_turnover_timescale
-            else
-               wind_saturation_threshold = star%job%wind_saturation_omega
-            end if
-! COMMENT OUT OLD WMAX STUFF
-!C MHP 3/09 IF WMAX > 1 THEN ASSUME THAT THE PARAMETER WMAX IS DEFINED BY
-!C WMAX = WMAX(SUN)*TAUCZ(SUN) AND THE SATURATION THRESHOLD WSAT = WMAX/TAUCZ(STAR)
+! The original dadcoeft.f had an "if (LROSSBY)" Rossby-scaled
+! saturation threshold here, but LROSSBY/PMMSOLTAU were plain
+! never-assigned locals (not wired to COMMON/PMMWIND/), so the branch
+! never executed; the plain threshold is the only behaviour.
+            wind_saturation_threshold = star%job%wind_saturation_omega
             omega_capped = min(eq_omega(num_eq_points), &
                  wind_saturation_threshold)
             omega_prev_capped = min(omega_working(num_eq_points), &
@@ -217,17 +173,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       do coeff_iter_idx = 1,star%ctrl%max_diffusion_iters
 ! COMPUTE THE DIFFUSION COEFFICIENTS FOR
 ! THE FIRST AND SECOND ORDER TERMS.
-      if (substep_idx.eq.1) then
-         do i = 2,num_eq_points
-            omega_mid_init(i) = 0.5d0*(rot_scr%omega_avg_start(i)+rot_scr%omega_avg_start(i-1))
-            domega_dr_init(i) = rot_scr%domega_dr_start(i)
-         end do
-      else
-         do i = 2,num_eq_points
-            omega_mid_init(i) = omega_mid_prev(i)
-            domega_dr_init(i) = domega_dr_prev(i)
-         end do
-      end if
       omega_curvature(1) = 0.0d0
       do i = 2,num_eq_points-1
          omega_curvature(i) = (omega_working(i+1)-2.0d0*omega_working(i)+ &
@@ -237,14 +182,8 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       do i = 2,num_eq_points
          omega_mid(i) = 0.5d0*(omega_working(i)+omega_working(i-1)) &
               -0.125d0*(omega_curvature(i)-omega_curvature(i-1))
-!         WM(I) = 0.5D0*(WM(I)+WMINIT(I))
-         omega_mid_it = 0.5d0*(omega_prev_medium_iter_avg(i)+ &
-              omega_prev_medium_iter_avg(i-1))
          domega_dr_prev_substep = rot_scr%dchi_dr_edge(i)*(omega_working(i)- &
               omega_working(i-1))/grid_spacing
-!         QWR2 = 0.5D0*(QWR2+QWRINIT(I))
-         domega_dr_it = rot_scr%dchi_dr_edge(i)*(omega_prev_medium_iter_avg(i)- &
-              omega_prev_medium_iter_avg(i-1))/grid_spacing
          if (abs(domega_dr(i)).gt.tiny) then
             rot_scr%shear_diffusion_coeff_eqgrid(i) = rot_scr%shear_diffusion_coeff_eqgrid(i)* &
                  (domega_dr_prev_substep/domega_dr(i))**2
@@ -254,28 +193,15 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          advective_term1 = star%ctrl%difad_velocity_scale*rot_scr%eq_velocity_coeff0(i)* &
               omega_mid(i)**2*(rot_scr%eq_velocity_coeff1a(i)+ &
               omega_mid(i)**2*rot_scr%eq_velocity_coeff1b(i))
-!         VTH = FW*(ETHVN(I)*WM(I)*QWR2-ETHVP(I))/DT
+! THE D THETA/DT TERMS (VTHN/VTHP IN THE ORIGINAL) ARE DISABLED: BOTH
+! ARE IDENTICALLY ZERO ON EVERY ITERATION.  THE ADDITIONS BELOW ARE
+! KEPT AS WRITTEN.
          theta_term_n = 0.0d0
-!C          VTHP0 = FW/DT0*(ETHVN(I)*WM0(I)*QWR(I)-ETHVP(I))
-!C          VTHP1 = FW/DT*ETHVN(I)*(WMI*QWRI-WMP(I)*QWRP(I))
-!C          IF(NSTEP.LE.2)THEN
-!C             VTHP = VTHP0+VTHP1
-!C          ELSE
-             theta_term_p = 0.0d0
-!C          ENDIF
-!         VTHN = FW*WM(I)*(ETHVN(I)*WM(I)-ETHVP(I)/QWR2)/DT
-!         VTHN = MAX(0.0D0,VTHN)
-! SET D THETA/DT TERM TO ZERO ON THE FIRST ITERATION
-         if (theta_iter_idx.eq.1) then
-!         IF(NTOT.GT.1)THEN
-            theta_term_n=0.0d0
-            theta_term_p=0.0d0
-         end if
+         theta_term_p = 0.0d0
          diffusive_term2 = star%ctrl%difad_velocity_scale*rot_scr%eq_velocity_coeff0(i)* &
               omega_mid(i)**2*(rot_scr%eq_velocity_coeff2a(i)+ &
               rot_scr%eq_velocity_coeff2b(i))+theta_term_n
          advective_term1 = advective_term1 + theta_term_p
-!         ECOD3(I) = 0.2D0*(V1+VTH)*FGEOM(I)
          rot_scr%am_advective_coeff(i) = 0.2d0*advective_term1*rot_scr%geometric_factor(i)
          rot_scr%am_diffusive_coeff(i) = (0.2d0*diffusive_term2+ &
               rot_scr%shear_diffusion_coeff_eqgrid(i)+rot_scr%gsf_diffusion_coeff_eqgrid(i))* &
@@ -296,10 +222,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          rhs(ii+1) = 0.d0
          rhs(ii+2) = 0.d0
          rhs(ii+3) = 0.d0
-         rhs_orig(ii) = omega_substep_start(i)
-         rhs_orig(ii+1) = 0.d0
-         rhs_orig(ii+2) = 0.d0
-         rhs_orig(ii+3) = 0.d0
       end do
 ! INCLUDE ANGULAR MOMENTUM LOSS
       wind_loss_delta = -0.5d0*(wind_loss_explicit+wind_loss_implicit)* &
@@ -307,7 +229,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       rhs(4*num_eq_points-3) = rhs(4*num_eq_points-3)* &
            (1.0d0+wind_loss_delta/eq_moment_of_inertia(num_eq_points)/ &
            omega_substep_start(num_eq_points))
-      rhs_orig(4*num_eq_points-3) = rhs(4*num_eq_points-3)
 ! GLOBAL FACTOR FOR THE DIFFUSION COEFFICIENTS
       dt_over_dr = timestep/grid_spacing
 ! IF LDIFAD=T, WE ARE SOLVING A COMBINED DIFFUSION/ADVECTION EQUATION.
@@ -333,26 +254,20 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
 ! OMEGA TERMS - DW/DR
       coeff_matrix(1,7) = -fact_over_ei*rot_scr%dchi_dr_edge(2)*rot_scr%am_diffusive_coeff(2)
 ! OMEGA TERMS - D2W/DR2
-!      A(1,6) = -FACTA*ECOD5(2)*FX1(2)
-!      FPL = EQQCOD(2)*QCHIRE(2)*FX1(2)
       coeff_matrix(1,10) = -facta_half_dt_over_ei_dr*rot_scr%dchi_dr_edge(2)* &
            rot_scr%am_2nd_deriv_coeff(2)*third_order_ratio_factor(2)
-!     *          +0.125D0*ECOD3(2)*DR**2/FPL
 ! OMEGA TERMS - D3W/DR3
       coeff_matrix(1,8) = fact_over_ei*rot_scr%dchi_dr_edge(2)*rot_scr%am_3rd_deriv_coeff(2)* &
            third_order_ratio_factor(2)
 ! D^2W/DR^2 - SET TO ZERO AT THE LOWER BOUNDARY.
       coeff_matrix(2,5) = 1.0d0
-!      A(2,6) = -EQQCOD(2)*QCHIRE(2)/DR*FX1(2)
 ! D OMEGA/DR TERMS
       coeff_matrix(3,3) = 1.0d0/grid_spacing
       coeff_matrix(3,5) = 1.0d0
       coeff_matrix(3,7) = -1.0d0/grid_spacing
 ! D^3W/DR^3
 ! APPLY B.C. TO THE HIGHEST ORDER TERM
-!      A(4,3) = EQQQCOD(1)*QCHIRE(2)/DR
       coeff_matrix(4,5) = 1.0d0
-!      A(4,7) = -EQQQCOD(2)*QCHIRE(2)/DR
       coeff_matrix(4,9) = -1.0d0/3.0d0
       do ii = 2,num_eq_points-1
          fact_over_ei = dt_over_dr/eq_moment_of_inertia(ii)
@@ -370,21 +285,16 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          coeff_matrix(i,7) = -fact_over_ei*rot_scr%dchi_dr_edge(ii+1)* &
               rot_scr%am_diffusive_coeff(ii+1)
 ! OMEGA TERMS - D2W/DR2
-!         FMI = EQQCOD(II)*QCHIRE(II)*FX1(II)
-!         FPL = EQQCOD(II+1)*QCHIRE(II+1)*FX1(II+1)
          coeff_matrix(i,2) = facta_half_dt_over_ei_dr*rot_scr%dchi_dr_edge(ii)* &
               rot_scr%am_2nd_deriv_coeff(ii)*third_order_ratio_factor(ii)
-!     *           -0.125D0*ECOD3(II)*DR**2/FMI
          coeff_matrix(i,6) = facta_half_dt_over_ei_dr* &
               (rot_scr%am_2nd_deriv_coeff(ii)*rot_scr%dchi_dr_edge(ii)* &
               third_order_ratio_factor(ii) &
               - rot_scr%am_2nd_deriv_coeff(ii+1)*rot_scr%dchi_dr_edge(ii+1)* &
               third_order_ratio_factor(ii+1))
-!     *          +0.125D0*DR**2*(ECOD3(II)/FMI - ECOD3(II+1)/FPL)
          coeff_matrix(i,10) = -facta_half_dt_over_ei_dr* &
               rot_scr%am_2nd_deriv_coeff(ii+1)*rot_scr%dchi_dr_edge(ii+1)* &
               third_order_ratio_factor(ii+1)
-!     *           +0.125D0*ECOD3(II+1)*DR**2/FPL
 ! OMEGA TERMS - D3W/DR3
          coeff_matrix(i,4) = fact_over_ei*rot_scr%am_3rd_deriv_coeff(ii)* &
               rot_scr%dchi_dr_edge(ii)*third_order_ratio_factor(ii)
@@ -425,12 +335,9 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          coeff_matrix(i,3) = fact_over_ei*rot_scr%dchi_dr_edge(num_eq_points)* &
               rot_scr%am_diffusive_coeff(num_eq_points)
 ! OMEGA TERMS - D2W/DR2
-!         FMI = EQQCOD(NTOT)*QCHIRE(NTOT)*FX1(NTOT)
          coeff_matrix(i,2) = facta_half_dt_over_ei_dr* &
               rot_scr%dchi_dr_edge(num_eq_points)*rot_scr%am_2nd_deriv_coeff(num_eq_points)* &
               third_order_ratio_factor(num_eq_points)
-!     *            -0.125D0*ECOD3(NTOT)*DR**2/FMI
-!         A(I,6) = FACTA*QCHIRE(NTOT)*ECOD5(NTOT)*FX1(NTOT)
 ! OMEGA TERMS - D3W/DR3
          coeff_matrix(i,4) = fact_over_ei*rot_scr%dchi_dr_edge(num_eq_points)* &
               rot_scr%am_3rd_deriv_coeff(num_eq_points)
@@ -439,77 +346,15 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          coeff_matrix(i,5) = 1.0d0
       end if
 ! D^2W/DR^2 COEFFICIENTS: ASSUME DW/DR = 0 ABOVE BOUNDARY
-!      A(I+1,2) = EQQCOD(NTOT)*QCHIRC(NTOT)/DR*FX1(NTOT)
       coeff_matrix(i+1,5) = 1.0d0
 ! D W/DR COEFFICIENTS AND D^3 W/DR^3 COEFFICIENTS NOT USED,
 ! SINCE THEY ARE TREATED AS ZERO ABOVE THE UNSTABLE REGION
-! STORE COEFFICIENT MATRIX TO CHECK ON THE MATRIX INVERSION
-      do i = 1,10
-         do j = 1,num_equations
-            coeff_matrix_orig(j,i) = coeff_matrix(j,i)
-         end do
-      end do
-! NOW DECOMPOSE THE BAND MATRIX.  SRS. ARE FROM NUMERICAL
-! RECIPES.
-! SUBDIAGONAL ROWS
-!       M1 = 4  ! KC 2025-05-31
-! SUPERDIAGONAL ROWS
-!       M2 = 5  ! KC 2025-05-31
-! NM = TOTAL NUMBER OF ELEMENTS, 4 PER SHELL
-!      WRITE(*,909)(ECOD3(I),ECOD4(I),ECOD5(I),ECOD6(I),
-!     *             EV0(I),EV1A(I),EV1B(I),EV2A(I),
-!     *             EV2B(I),I=1,NTOT)
+! NOW SOLVE THE BAND SYSTEM (NM = TOTAL NUMBER OF EQUATIONS, 4 PER
+! SHELL).  THE SOLUTION OVERWRITES RHS.
       call banded_solver(coeff_matrix,num_equations,rhs, ierr)
       if (ierr /= 0) return
-! CHECK ON MATRIX INVERSION
-      do i =1,num_equations
-         residual_check(i) = 0.0d0
-      end do
-      do i = 5,10
-         residual_check(1) = residual_check(1) + &
-              coeff_matrix_orig(1,i)*rhs(i-4)
-      end do
-      do i = 4,10
-         residual_check(2) = residual_check(2) + &
-              coeff_matrix_orig(2,i)*rhs(i-3)
-      end do
-      do i = 3,10
-         residual_check(3) = residual_check(3) + &
-              coeff_matrix_orig(3,i)*rhs(i-2)
-      end do
-      do i = 2,10
-         residual_check(4) = residual_check(4) + &
-              coeff_matrix_orig(4,i)*rhs(i-1)
-      end do
-      do j = 5,num_equations-5
-         do i = 1,10
-            residual_check(j) = residual_check(j) + &
-                 coeff_matrix_orig(j,i)*rhs(i-5+j)
-         end do
-      end do
-      do i = 1,9
-         residual_check(num_equations-4) = residual_check(num_equations-4)+ &
-              coeff_matrix_orig(num_equations-4,i)*rhs(i+num_equations-9)
-      end do
-      do i = 1,8
-         residual_check(num_equations-3) = residual_check(num_equations-3)+ &
-              coeff_matrix_orig(num_equations-3,i)*rhs(i+num_equations-8)
-      end do
-      do i = 1,7
-         residual_check(num_equations-2) = residual_check(num_equations-2)+ &
-              coeff_matrix_orig(num_equations-2,i)*rhs(i+num_equations-7)
-      end do
-      do i = 1,6
-         residual_check(num_equations-1) = residual_check(num_equations-1)+ &
-              coeff_matrix_orig(num_equations-1,i)*rhs(i+num_equations-6)
-      end do
-      do i = 1,5
-         residual_check(num_equations) = residual_check(num_equations)+ &
-              coeff_matrix_orig(num_equations,i)*rhs(i+num_equations-5)
-      end do
 ! CONVERT RUN OF OMEGA TO DELTA OMEGA
       sum_delta_angular_momentum = 0.0d0
-      total_delta_angular_momentum_alt = 0.0d0
 ! DWMAX - CHANGE FROM THE PREVIOUS LOW-LEVEL ITERATION
 ! (NN).
       max_omega_change = (rhs(1)-omega_working(1))/omega_working(1)
@@ -526,8 +371,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          ii = 1+4*(i-1)
          eq_delta_angular_momentum(i) = (rhs(ii)-eq_omega(i))* &
               eq_moment_of_inertia(i)
-         total_delta_angular_momentum_alt = total_delta_angular_momentum_alt &
-              + (rhs(ii)-omega_substep_start(i))*eq_moment_of_inertia(i)
          sum_delta_angular_momentum = sum_delta_angular_momentum + &
               eq_delta_angular_momentum(i)
          omega_change = (rhs(ii)-omega_working(i))/omega_working(i)
@@ -554,22 +397,14 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          write(*,*) 'CORRECTIONS TOO LARGE ',max_omega_change, &
               max_omega_change_zone
          diffusion_converged = .false.
-!      WRITE(*,920)((AA(I,J),J=1,10),B(I),C(I),D(I),I=1,NM)
-!  920  FORMAT(1P13E10.3)
          exit
-      else if (abs(max_omega_change).lt.1.0d-2) then
-         damping_factor = 1.0d0
-      else
-!         FX = 0.01D0/ABS(DWMAX)
-         damping_factor = 1.0d0
       end if
+! (THE ORIGINAL'S DAMPING FACTOR ON THE UPDATE WAS HARDWIRED TO 1.)
       total_angular_momentum_updated = 0.0d0
       do i = 1,num_eq_points
          ii = 1+4*(i-1)
-         omega_working(i) = omega_working(i)+damping_factor* &
+         omega_working(i) = omega_working(i)+ &
               (rhs(ii)-omega_working(i))
-         eq_delta_angular_momentum(i) = eq_delta_angular_momentum(i)* &
-              damping_factor
          total_angular_momentum_updated = total_angular_momentum_updated+ &
               omega_working(i)*eq_moment_of_inertia(i)
       end do
@@ -631,8 +466,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
               omega_working(k-1))/grid_spacing
       end do
       end do
-      if (substep_idx > num_substeps) then
-      end if
       if (.not.diffusion_converged) then
          timestep_cut_count = timestep_cut_count + 1
          num_substeps = 2*num_substeps
@@ -686,9 +519,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
               star%ctrl%gsf_mixing_scale*rot_scr%gsf_diffusion_coeff_eqgrid(i))
          eq_mixing_diffusion_coeff(i) = mixing_diffusion_raw* &
               rot_scr%mixing_geometric_factor(i)
-!         WRITE(*,1111)I,VESN(I),DCMIX,ECOD2(I),REQ(I)
  911  format(1p10e12.3)
-!  1111 FORMAT(I5,1P4E12.3)
       end do
       timestep = full_timestep
       wind_loss_delta_full_step = wind_loss_delta/substep_frac

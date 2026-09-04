@@ -9,8 +9,9 @@
 !
 !  GARRETT SOMERS - 05/2015
 !  MICRODIFF IS AN UPDATED HELIUM, METAL, AND LIGHT ELEMENT DIFFUSION
-!  ROUTINE. MUCH IS ADAPTED FROM GRSETT.F, WHICH IS RETAINED FOR BACKWARDS
-!  COMPATABILITY. FOLLOWS THE FORMULISM OF BAHCALL AND LOEB 1989.
+!  ROUTINE. MUCH IS ADAPTED FROM gravitational_settling.f90, WHICH IS
+!  RETAINED FOR BACKWARDS COMPATABILITY. FOLLOWS THE FORMULISM OF
+!  BAHCALL AND LOEB 1989.
 !
 !  MICRODIFF PERFORMS THE FOLLOWING OPERATIONS:
 !  1) TRANSFORMS PYHSICAL VARIABLES TO AN EQUALLY SPACED GRID IN RADIUS
@@ -39,7 +40,7 @@
 !  log_temperature (HT) - LOG TEMPERATURE (K)
 !  convective_flag (LC) - FLAG T/F FOR CONVECTION
 !  num_zones (M) - NUMBER OF MODEL POINTS
-!  [COMMON] SDEL(2,...) - DEL (=DLNT/DLNP)
+!  star%gradT - DEL (=DLNT/DLNP)
 !
 !  OUTPUT VARIABLES :
 !
@@ -75,12 +76,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
       integer, intent(out) :: ierr
-
-
-
-
-
-
+! --- locals ---
       double precision :: radius_bl(json), temperature_bl(json)
       double precision :: density_orig(json), temperature_orig(json)
       double precision :: light_element_weight(num_light), &
@@ -220,7 +216,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
                species_fraction(3,i) = eq%light(ii,i)
                species_fraction_mid(3,i) = eq_mid%light(ii,i)
             enddo
-            species_fraction(3,i) = eq%light(ii,num_eq_points)
+            species_fraction(3,num_eq_points) = eq%light(ii,num_eq_points)
 !           PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
             call microdiff_run(grid_spacing, timestep, total_mass, &
                  num_eq_points, eq, species_fraction, &

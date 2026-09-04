@@ -7,8 +7,6 @@
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! MHP 10/02 ECOD, ECOD2 NO LONGER USED; OMITTED FROM CALL
-!
 ! SR CHECKJ PERFORMS SEVERAL FUNCTIONS.
 ! FIRST, IT CHECKS FOR NEGATIVE SPECIFIC ANGULAR MOMENTA.
 ! IF THEY ARE ENCOUNTERED, THE TIMESTEP IS CUT.
@@ -17,8 +15,9 @@
 ! IF THE RUN HAS CHANGED BY LITTLE ENOUGH THEN THE DIFFUSION EQUATIONS
 ! ARE CONSIDERED CONVERGED.  LOK=T IF THE RUN HAS CONVERGED.
 ! FOURTH, IT CORRECTS THE MOMENT OF INERTIA FOR CHANGES IN OMEGA.
+! FIFTH, IT PRINTS THE MAXIMUM CHANGE IN J/M AT THE END OF THE STEP.
+!
 ! INPUT VARIABLES:
-! FIFTH, IT WRITES OUT DETAILS OF THE DIFFUSION IF REQUESTED.
 !
 ! log_density : RUN OF LOG DENSITY.
 ! specific_angular_momentum : RUN OF SPECIFIC ANGULAR MOMENTUM AFTER
@@ -30,20 +29,12 @@
 ! log_radius : RUN OF LOG RADIUS.
 ! log_mass : RUN OF LOG MASS.
 ! shell_mass : MASS (UNLOGGED) CONTAINED IN EACH OF THE MODEL POINTS.
-! diffusion_velocity : RUN OF CHARACTERISTIC DIFFUSION VELOCITIES. IF
-!    diffusion_velocity(I)>0 THEN ZONE I IS UNSTABLE WITH RESPECT TO
-!    ZONE I-1.
-! zone_min,zone_max : THE FIRST AND LAST ZONES AT WHICH
-!    diffusion_velocity IS COMPUTED.
-!   *NOTE: zone_min = 2 AND zone_max = NUMBER OF MODEL POINTS UNLESS A
-!    SURFACE OR CENTRAL CONVECTION ZONE EXISTS.
 ! iteration_number : ITERATION NUMBER.
 ! max_diffusion_iters : MAXIMUM NUMBER OF ITERATIONS ALLOWED IN A GIVEN
 !    DIFFUSION TIMESTEP.
 ! am_transport_convective_flag : ARRAY SET T IF A ZONE IS CONVECTIVE
 !    FOR ANGULAR MOMENTUM REDISTRIBUTION PURPOSES (I.E. INCLUDES
 !    OVERSHOOT REGION.)
-! LPRT : FLAG SET T IF MODEL I/O DESIRED.
 ! num_zones : NUMBER OF MODEL POINTS.
 !
 ! OUTPUT VARIABLES:
@@ -61,15 +52,15 @@
 ! redo_flag : FLAG SET T IF A PROBLEM REQUIRES CUTTING THE DIFFUSION
 !    TIMESTEP.
 ! omega : RUN OF ANGULAR VELOCITY.
+! already_converged_flag : T IF THE DIFFUSION EQUATIONS WERE ALREADY
+!    CONVERGED ON ENTRY (SUPPRESSES THE END-OF-STEP SUMMARY LINE).
 subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
      specific_angular_momentum_start, log_radius, log_mass, shell_mass, &
-     diffusion_velocity, zone_min, zone_max, iteration_number, &
-! LPRT,M,DT,ETA2,HI,HJM,IREDO,LOK,LREDO,OMEGA,  ! KC 2025-05-31
+     iteration_number, &
      am_transport_convective_flag, num_zones, dt, eta_squared, &
      moment_of_inertia, specific_angular_momentum, cut_count, &
      converged_flag, redo_flag, omega, &
-! QIW,R0,WSAV,ID,IDM,ECOD,ECOD2,LOKAD)
-     qiw, mean_radius, omega_start, print_zone_id, print_zone_count, &
+     qiw, mean_radius, &
      already_converged_flag, ierr)
       use rotation_scratch_lib
 
@@ -82,8 +73,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       double precision, intent(in) :: specific_angular_momentum_start(json)
       double precision, intent(inout) :: log_radius(json), log_mass(json), &
            shell_mass(json)
-      double precision, intent(in) :: diffusion_velocity(json)
-      integer, intent(in) :: zone_min, zone_max, iteration_number
+      integer, intent(in) :: iteration_number
       logical, intent(in) :: am_transport_convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: dt
@@ -95,11 +85,8 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       logical, intent(out) :: redo_flag
       double precision, intent(inout) :: omega(json)
       double precision, intent(inout) :: qiw(json), mean_radius(json)
-      double precision, intent(in) :: omega_start(json)
-      integer, intent(inout) :: print_zone_id(json)
-      integer, intent(inout) :: print_zone_count
-!     ECOD(JSON),ECOD2(JSON)
       logical, intent(in) :: already_converged_flag
+      integer, intent(out) :: ierr
 ! locals
       double precision :: max_delta_j_by_iter(16)
       integer :: max_delta_j_zone_by_iter(16)
@@ -107,13 +94,8 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       double precision :: delta_j_fraction
       double precision :: saved_tolerance, saved_acc_tolerance
       integer :: zone_bottom, zone_top
-      integer :: loop_start
       double precision :: max_fractional_dj
       integer :: max_dj_zone
-      integer :: print_zone_begin, print_zone_end
-
-!  CHECK FOR NEGATIVE J/M.
-      integer, intent(out) :: ierr
 
       ierr = 0
 
@@ -123,11 +105,12 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
          converged_flag = .true.
          redo_flag = .false.
       endif
+!  CHECK FOR NEGATIVE J/M.
       do zone_index = 1,num_zones
          if(specific_angular_momentum(zone_index).le.0.0d0) then
             cut_count = cut_count + 1
-!  STOP IF TIMESTEP CUT MORE THAN 3 TIMES.
-!            IF(IREDO.GT.3)THEN
+!  STOP ON THE FIRST NEGATIVE J/M (THE ORIGINAL ALLOWED THREE TIMESTEP
+!  CUTS BEFORE STOPPING; THE CUT BRANCH BELOW IS THEREFORE UNREACHABLE).
             if(cut_count.gt.0)then
                write(6,1000) zone_index
                write(run_log_unit,1000) zone_index
@@ -147,7 +130,6 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                write(run_log_unit,1005)cut_count,zone_index
  1005          format(5x,'ERROR IN SR CHECKJ'/5x,'TIMESTEP CUT,',1x, &
                        'NUMBER',i5,' DUE TO NEGATIVE J/M IN ZONE',i5)
-               continue
                return
             endif
          endif
@@ -175,8 +157,6 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       end do
       if(abs(max_delta_j_by_iter(iteration_number)).le. &
            star%ctrl%convergence_tolerance) then
-!         LOK = .FALSE.
-!      ELSE
          converged_flag = .true.
       endif
 !  FIND THE RUN OF OMEGA THAT CORRESPONDS TO THE NEW RUN OF J/M.
@@ -291,10 +271,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 !  FIND MAXIMUM FRACTIONAL CHANGE IN J/M OVER TIMESTEP.
          max_fractional_dj = 0.0d0
          max_dj_zone = 0
-! MHP 10/02 ICRIT REMOVED
-!         IF(ICRIT.EQ.0)THEN
-           loop_start = 1
-         do zone_index = loop_start,num_zones
+         do zone_index = 1,num_zones
             delta_j_fraction = &
                  (specific_angular_momentum(zone_index)- &
                  specific_angular_momentum_start(zone_index))/ &

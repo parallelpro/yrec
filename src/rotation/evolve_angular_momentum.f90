@@ -22,10 +22,9 @@
 ! Sofia, and Demarque (1989), Ap.J. vol. 338, p.424.
 ! 11/91 JENV0 added to call.
 !
-! NOTE: this file is only reached (from main.f) inside an IF(LROT)
-! gate; within this file itself, whether SECULR (the rotation-
-! diffusion instability solver) is called is gated by
-! instability_transport_active (LINSTB), preserved exactly below.
+! NOTE: this routine is only reached inside an IF(LROT) gate; within
+! it, whether secular_transport (the rotation-diffusion instability
+! solver) is called is gated by instability_transport_active (LINSTB).
 subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
       use rotation_scratch_lib
@@ -42,25 +41,26 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       double precision, intent(inout) :: max_domega_step
       logical, intent(inout) :: wind_loss_active
       integer, intent(inout) :: envelope_boundary_zone_prev
+      integer, intent(out) :: ierr
 
 ! am_transport_convective_flag (originally LCZ): convective-for-AM-
-! transport-purposes flag, set by OVROT below. Naming matches
-! rezone.f90/mid_timestep_model.f90.
+! transport-purposes flag, set by am_convective_regions below.
       logical :: am_transport_convective_flag(json)
       double precision :: specific_angular_momentum_saved(json)
-! The "_mid" midpoint-in-time structure arrays (computed by MIDMOD
-! each diffusion sub-step) live in rot_scr (rotation_scratch_lib)
-! since the 2026 de-tramp -- see rot_scr%*_mid uses below.
+! The "_mid" midpoint-in-time structure arrays (computed by
+! mid_timestep_model each diffusion sub-step) live in rot_scr
+! (rotation_scratch_lib) -- see rot_scr%*_mid uses below.
 ! MHP 6/00 added cod2, diffusion_velocity (HV) to allow BUR-ST mixing plus burning.
-! Both are produced by SECULR (not yet converted) and consumed by
-! BURSMIX; their exact roles are not otherwise exercised in this file.
+! Both are produced by secular_transport and consumed only by
+! burn_settle_mix.
       double precision :: cod2(json), diffusion_velocity(json)
       integer :: convective_zone_bounds(12,2), &
            convective_zone_bounds_burn(12,2), radiative_zone_bounds(13,2)
       double precision :: cz_mass_bottom, cz_mass_top
-! LBURS is hardcoded .FALSE. here (preserved exactly, per project
-! notes -- this permanently disables the BUR-ST extrapolation branch
-! near the end of this routine regardless of LINSTB/LALLCZ).
+! LBURS is hardcoded .FALSE. here: this permanently disables the BUR-ST
+! extrapolation branch near the end of this routine regardless of
+! LINSTB/LALLCZ. Kept pending an author decision -- see
+! audit/readability-sweep-2026-09-03/SUMMARY.md.
       logical :: burs_extrapolation_active
       integer :: num_species_tracked
       logical :: disk_lock_engaged
@@ -76,7 +76,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       integer :: envelope_boundary_zone, core_boundary_zone
       integer :: zone_index, species_index
       integer :: redo_count
-      logical :: skip_diffusion_flag
       integer :: num_diffusion_steps, num_wind_diffusion_steps
       double precision :: sub_timestep
       double precision :: elapsed_substep_time
@@ -89,15 +88,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       logical :: diffusion_solve_ok
       integer :: core_boundary_zone_cur, envelope_boundary_zone_cur
       integer :: num_convective_zones_burn
-! mix_grads_flag (originally LIMIX) is set ("G Somers 6/14, SET LIMIX
-! = .FALSE. SO THE CORRECT GRADS ARE USED") but the active MIXCZ call
-! below does not actually take it as an argument -- vestigial, kept
-! exactly as in the original.
-      logical :: mix_grads_flag
       integer :: iend
       double precision :: omega_avg, domega_dr, delta_radius_step
-
-      integer, intent(out) :: ierr
 
       ierr = 0
 
@@ -157,8 +149,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
             do zone_index = envelope_boundary_zone,star%nz
                moment_of_inertia_cz = moment_of_inertia_cz + star%i_rot(zone_index)
             end do
-!  FIND LOWEST SHELL IN SURFACE CZ (IMAX)
-!            IMAX = MXZONE(NZONE,1)
 !  HSTOP IS THE MASS AT THE TOP OF THE C.Z.
 !  HSBOT IS THE MASS AT THE BOTTOM OF THE C.Z.
             cz_mass_top = exp(ln10*star%log_total_mass)
@@ -171,7 +161,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
             wind_loss_active = star%job%use_wind_torque
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
 ! MHP 10/17 timestep average loss rate
-!            FRACSTEP = 1.
             star%fracstep = 0.5
             call matt_wind(star%log_L,full_timestep,cz_mass_bottom, &
                  cz_mass_top,envelope_boundary_zone,star%nz,wind_loss_active, &
@@ -194,8 +183,9 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       call omega_from_j(star%logRho,star%j_rot,star%logR,star%log_mass, &
            star%dm,am_transport_convective_flag,star%nz,star%eta_squared, &
            star%i_rot,star%omega,star%qiw,star%mean_radius)
-      skip_diffusion_flag = .not.star%job%instability_transport_active .and. .not.wind_loss_active
-      if (.not.skip_diffusion_flag .and. full_timestep.gt.0.0D0) then
+! (THE ORIGINAL'S "SKIP IF NEITHER INSTABILITIES NOR WIND" TEST IS
+!  ALWAYS FALSE ON THIS BRANCH, WHERE LINSTB=T.)
+      if (full_timestep.gt.0.0D0) then
 !  NOW LIMIT THE DIFFUSION TIMESTEP TO A MAXIMUM CHANGE IN OMEGA
 !  FROM THE PREVIOUS MODEL.
       if(max_domega_step.eq.0.0D0) max_domega_step = star%job%max_domega_global
@@ -203,13 +193,11 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       if (mod(max_domega_step,star%job%diffusion_timestep_factor).ne.0.0D0) num_diffusion_steps = num_diffusion_steps + 1
       num_wind_diffusion_steps = int(star%job%max_domega_global/star%job%diffusion_timestep_factor)
       if (mod(star%job%max_domega_global,star%job%diffusion_timestep_factor).ne.0.0D0) num_wind_diffusion_steps = num_wind_diffusion_steps + 1
-!     NSTEP = MAX(NSTEP,NSTEP2/2)
       num_diffusion_steps = min(num_diffusion_steps,num_wind_diffusion_steps)
       sub_timestep = full_timestep/dfloat(num_diffusion_steps)
 !  FIND BASIC PHYSICAL QUANTITIES NEEDED FOR BOTH SECULAR AND DYNAMICAL
 !  INSTABILITES: ADIABATIC AND ACTUAL TEMPERATURE GRADIENTS,OPACITIES,
 !  KINEMATIC VISCOSITIES,THERMOMETRIC DIFFUSIVITY, AND HEAT CAPACITY.
-!       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
       call shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun,star%logP, &
            star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%log_Teff, ierr)
       if (ierr /= 0) return
@@ -224,12 +212,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! TO CALCULATE DIFFUSION AND WIND BETWEEN MODELS.
       elapsed_substep_time = 0.0D0
       first_call = .true.
-!      DO 20 I = 1,M
-!         WOLD(I) = OMEGA(I)
-!   20 CONTINUE
 !  ENTRY FOR SERIES OF DIFFUSION TIMESTEPS.
       do
-         continue
       redo_count = 0
 !  ENTRY FOR DIFFUSION TIMESTEP CUTTING.
       retry: do
@@ -301,16 +285,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 !  NOW CHECK FOR INSTABILITIES IN RADIATIVE REGIONS
       if(star%job%instability_transport_active.and..not.fully_convective_flag) then
 !  ENSURE THAT CONVECTIVE REGIONS ARE FULLY MIXED.
-!  JVS 0212       CALL MIXCZ(HCOMP,HS2,LCZM,M)
-! KC 2025-05-30 addressed warning messages from Makefile.legacy
-! C G Somers 6/14, SET IMIX = .FALSE. SO THE CORRECT GRADS ARE USED.
-!         IMIX = .FALSE.
-!         CALL MIXCZ(HCOMP,HS2,HS1,LCZM,HRM,HPM,HDM,HGM,M,IMIX)
-! G Somers 6/14, SET LIMIX = .FALSE. SO THE CORRECT GRADS ARE USED.
-          mix_grads_flag = .false.
-!         CALL MIXCZ(HCOMP,HS2,HS1,LCZM,HRM,HPM,HDM,HGM,M,LIMIX)  ! KC 2025-05-31
-          call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
-! G Somers END
+         call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
 !  NOW SOLVE FOR LONG-TIMESCALE(SECULAR) INSTABILITIES.
 !  THESE ARE TREATED USING DIFFUSION EQUATIONS.
          do zone_index = 1,star%nz
@@ -318,10 +293,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          end do
 ! MHP 6/00 ADDED COD2,HV TO LIST RETURNED FROM SECULR
 ! FOR THE BUR-ST MIXING ROUTINES
-!          CALL SECULR(DELTS,DT,HDM,HGM,HIM,HLM,HPM,HRM,HS,HS1,HS2,
-!      *               HTM,HJMSAV,LCZM,LCM,M,MODEL,OMEGAM,
-!      *               HJM,ETA2M,QIWM,R0M,HCOMP,LFIRST,IMIN,IMAX,BL,
-!      *               HSTOT,SJTOT,SMASS,TEFFL,LREDO,IREDO,  ! KC 2025-05-31
          call secular_transport(sub_timestep, specific_angular_momentum_saved, &
               core_boundary_zone, envelope_boundary_zone, &
               redo_needed_flag, redo_count, &
@@ -387,7 +358,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! BURNING - ONLY UPDATED IF NOT USED
          if(.not.star%job%instability_transport_active .or. .not.burs_extrapolation_active .or. fully_convective_flag)then
 ! COMPUTE BURNING.
-!             CALL LIBURN(DT,HCOMP,HDM,HRM,HS1,HS2,HTM,JENV1,JENV0,M)  ! KC 2025-05-31
             call liburn(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
                  star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)
@@ -400,22 +370,12 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
             end do
          else
 ! COMPUTE BURNING.
-!             CALL LIBURN2(DT,HCOMP,HDM,HRM,HS1,HS2,HTM,JENV1,JENV0,M)  ! KC 2025-05-31
             call liburn2(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
                  star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)
          endif
 !  ENSURE THAT CONVECTIVE REGIONS ARE FULLY MIXED.
-!  JVS 0212       CALL MIXCZ(HCOMP,HS2,LCZM,M)
-! KC 2025-05-30 addressed warning messages from Makefile.legacy
-! C G Somers 6/14, SET IMIX = .FALSE. SO THE CORRECT GRADS ARE USED.
-!         IMIX = .FALSE.
-!         CALL MIXCZ(HCOMP,HS2,HS1,LCZM,HRM,HPM,HDM,HGM,M,IMIX)
-! G Somers 6/14, SET LIMIX = .FALSE. SO THE CORRECT GRADS ARE USED.
-          mix_grads_flag = .false.
-!         CALL MIXCZ(HCOMP,HS2,HS1,LCZM,HRM,HPM,HDM,HGM,M,LIMIX)  ! KC 2025-05-31
-          call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
-! G Somers END
+         call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
 !  ZERO OUT LOW ABUNDANCES.
          do zone_index = 1,star%nz
             do species_index = 12,15

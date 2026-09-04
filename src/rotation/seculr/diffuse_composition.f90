@@ -21,7 +21,6 @@
 !          the mass of the entire convection zone.
 ! composition : array of mass fraction of all of the species at the
 !    original model points.
-! shell_mass : masses of the original model points (unlogged).
 ! zone_begin,zone_end : the first/last unstable points in the region.
 !    NOTE: for convective boundaries these are only the first
 !          convective points adjacent to an unstable radiative region.
@@ -40,17 +39,17 @@
 ! either to mix the other species or just the first 4 depending on
 ! final_iteration_flag.
 subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
-     equally_spaced_mass, shell_mass, zone_begin, zone_end, &
+     equally_spaced_mass, zone_begin, zone_end, &
      convective_flag, final_iteration_flag, num_zones, composition, &
      species_begin, species_end, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use numerics_lib
       implicit none
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: equally_spaced_diffusion_coeff(json), &
-           equally_spaced_mass(json), shell_mass(json)
+           equally_spaced_mass(json)
       integer, intent(in) :: zone_begin, zone_end
       logical, intent(in) :: convective_flag(json), final_iteration_flag
       integer, intent(in) :: num_zones
@@ -58,15 +57,9 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
       integer, intent(in) :: species_begin, species_end
       integer, intent(out) :: ierr
 
-
-
-! Tridiagonal-solve work arrays (Thomas algorithm): filled in by the
-! call to ccoeft below, then consumed by the call to ctridi (solution
-! is read back afterward). Was originally common/tridi/ (positional
-! storage, shared with composition_diffusion_coeffs.f90/ctridi.f90); converted (2026,
-! GUIDELINES.md) to explicit arguments since this is real per-call
-! data flow, not global configuration. gamma_elim is no longer needed
-! here at all -- it was always solver-internal to ctridi.f90.
+! Tridiagonal-solve work arrays (Thomas algorithm): filled in by
+! composition_diffusion_coeffs, then consumed by ctridi (solution is
+! read back afterward).
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), solution(json)
 
@@ -74,8 +67,7 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
       integer :: varying_species_id(15)
       integer :: num_varying_species, j_idx, zone_idx, ntab, species_num, &
            orig_zone_idx, i0, i1
-      double precision :: test_value, dcomp, dcomp2, sum_species_orig, &
-           sum_species_updated
+      double precision :: test_value
 
       ierr = 0
 
@@ -129,12 +121,10 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
 ! LAST EQUALLY SPACED GRID POINTS CAN LEAD TO SERIOUS ERRORS.
 ! THEREFORE ADD THE *CHANGE* IN COMPOSITION AT THE EQUALLY SPACED GRID
 ! POINTS TO HCOMP AND DO NOT REPLACE HCOMP WITH U.
-         dcomp = 0.0d0
          do zone_idx = 1, rot_scr%ntot
             rot_scr%xtab(zone_idx) = rot_scr%echi(zone_idx)
             rot_scr%ytab(zone_idx) = solution(zone_idx) - &
                  equally_spaced_composition(zone_idx)
-            dcomp = dcomp + rot_scr%ytab(zone_idx)*equally_spaced_mass(zone_idx)
          end do
          do zone_idx = 1, ntab
             rot_scr%xval(zone_idx) = rot_scr%chi(zone_idx)
@@ -171,34 +161,18 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
 ! the previous call left in F77). Mirror the i0 branch.
             i1 = zone_end
          end if
-         dcomp2 = 0.0d0
-! COMPUTE SUM OF SPECIES MASS
-         sum_species_orig = 0.0d0
-         do zone_idx = i0, i1
-            sum_species_orig = sum_species_orig + shell_mass(zone_idx)* &
-                 composition(varying_species_id(species_num),zone_idx)
-         end do
 ! UPDATE COMPOSITION ARRAY.
-         sum_species_updated = 0.0d0
          do zone_idx = 1, ntab
             j_idx = zone_begin + zone_idx - 1
             composition(varying_species_id(species_num),j_idx) = &
                  composition(varying_species_id(species_num),j_idx) + &
                  rot_scr%yval(zone_idx)
-            dcomp2 = dcomp2 + rot_scr%yval(zone_idx)*shell_mass(j_idx)
-            sum_species_updated = sum_species_updated + &
-                 shell_mass(j_idx)*composition( &
-                 varying_species_id(species_num),j_idx)
          end do
 ! UPDATE INNER CZ COMPOSITION IF APPLICABLE.
          if (i0.lt.zone_begin) then
             do zone_idx = zone_begin-1, i0, -1
                composition(varying_species_id(species_num),zone_idx) = &
                     composition(varying_species_id(species_num),zone_begin)
-               sum_species_updated = sum_species_updated + &
-                    shell_mass(zone_idx)*composition( &
-                    varying_species_id(species_num),zone_idx)
-               dcomp2 = dcomp2 + rot_scr%yval(1)*shell_mass(zone_idx)
             end do
          end if
 ! UPDATE OUTER CZ COMPOSITION IF APPLICABLE.
@@ -206,13 +180,8 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
             do zone_idx = zone_end+1, i1
                composition(varying_species_id(species_num),zone_idx) = &
                     composition(varying_species_id(species_num),zone_end)
-               sum_species_updated = sum_species_updated + &
-                    shell_mass(zone_idx)*composition( &
-                    varying_species_id(species_num),zone_idx)
-               dcomp2 = dcomp2 + rot_scr%yval(ntab)*shell_mass(zone_idx)
             end do
          end if
-! CHECK FOR CONSERVATION OF SPECIES
       end do
 ! ADJUST HE4 FOR CHANGES IN X, Z, AND HE3.
       if (.not.final_iteration_flag) then

@@ -9,7 +9,7 @@
 !
 ! Builds the equally-spaced-grid quantities needed by diffuse_composition.f90's
 ! diffusive composition solve: given the first/last unstable zones of
-! a region (zone_begin/zone_end), calls getgrid to lay down the
+! a region (zone_begin/zone_end), calls equal_spaced_grid to lay down the
 ! equally spaced coordinate rot_scr%chi, then computes the equally spaced grid
 ! masses (equally_spaced_mass) and the geometrically weighted
 ! diffusion coefficients (equally_spaced_diffusion_coeff) at the zone
@@ -38,7 +38,7 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
       double precision, intent(out) :: equally_spaced_diffusion_coeff(json), &
            equally_spaced_mass(json)
       logical, intent(out) :: single_interface_flag
-      integer :: idx, search_idx, i0, i1, ntab, ntabb
+      integer :: idx, search_idx, ntab, ntabb
       double precision :: em_top, em_bot
       double precision :: mass_scale, luminosity_scale, pressure_scale
       double precision :: four_pi_rho_r2, dchidr
@@ -46,7 +46,6 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
 ! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
       if (zone_end - zone_begin.le.1) then
          single_interface_flag = .true.
-         continue
          return
       else
          single_interface_flag = .false.
@@ -54,8 +53,8 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
 ! DEFINE A GRID OF EQUALLY SPACED POINTS.
       call equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin, &
            zone_end, num_zones)
-! GETGRID HAS DEFINED A SET OF CO-ORDINATES (CHI) AND EQUALLY SPACED
-! MASS POINTS.  NOW FIND THE OTHER QUANTITIES OF INTEREST AT ZONE
+! EQUAL_SPACED_GRID HAS DEFINED A SET OF CO-ORDINATES (CHI) AND EQUALLY
+! SPACED MASS POINTS.  NOW FIND THE OTHER QUANTITIES OF INTEREST AT ZONE
 ! CENTERS:
 ! TOTAL ZONE MASSES
 ! INTERMEDIATE POINTS
@@ -76,20 +75,13 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
          em_bot = 0.0d0
       end if
       equally_spaced_mass(1) = em_top - em_bot
+! (INCLUDE EVERY CONVECTIVE SHELL BELOW ZONE_BEGIN.)
       if (zone_begin.gt.1) then
          do search_idx = zone_begin-1, 1, -1
-            if (.not.convective_flag(search_idx)) then
-               i0 = idx + 1
-               exit
-            end if
+            if (.not.convective_flag(search_idx)) exit
             equally_spaced_mass(1) = equally_spaced_mass(1) + &
                  shell_mass(search_idx)
          end do
-         if (search_idx < (1)) then
-         i0 = 1
-         end if
-      else
-         i0 = 1
       end if
 ! SURFACE
       em_bot = 0.5d0*(rot_scr%es1(rot_scr%ntot) + rot_scr%es1(rot_scr%ntot-1))
@@ -100,20 +92,13 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
          em_top = exp(ln10*log_total_mass)
       end if
       equally_spaced_mass(rot_scr%ntot) = em_top - em_bot
+! (INCLUDE EVERY CONVECTIVE SHELL ABOVE ZONE_END.)
       if (zone_end.lt.num_zones) then
          do search_idx = zone_end+1, num_zones
-            if (.not.convective_flag(search_idx)) then
-               i1 = idx - 1
-               exit
-            end if
+            if (.not.convective_flag(search_idx)) exit
             equally_spaced_mass(rot_scr%ntot) = equally_spaced_mass(rot_scr%ntot) + &
                  shell_mass(search_idx)
          end do
-         if (search_idx > num_zones) then
-         i1 = num_zones
-         end if
-      else
-         i1 = num_zones
       end if
 ! NOW SOLVE FOR QUANTITIES NEEDED AT THE ZONE EDGES.  THESE ARE
 ! RELATED TO THE DIFFUSION COEFFICIENTS.  UNLIKE THE EQUALLY SPACED

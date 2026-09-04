@@ -31,9 +31,6 @@ subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin,
            log_mass(json)
       integer, intent(in) :: zone_begin, zone_end, num_zones
 
-
-
-
       double precision :: log_mass_table(json)
       integer :: num_points_in_range, zone_index, range_index
       double precision :: mass_scale, luminosity_scale, pressure_scale
@@ -49,10 +46,9 @@ subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin,
               log_luminosity(zone_index)/luminosity_scale - &
               log_pressure(zone_index)/pressure_scale
       end do
-! DEFINE NTOT EQUAL TO NTAB
+! NUMBER OF EQUALLY SPACED POINTS = NUMBER OF MODEL POINTS IN RANGE
+! (THE ORIGINAL INT(CHI(NTAB)-CHI(1))+1 RULE IS NOT USED).
       rot_scr%ntot = num_points_in_range
-! TOTAL NUMBER OF ZONES IS MODULUS OF FINAL CHI PLUS ONE.
-!      NTOT = INT(CHI(NTAB)-CHI(1))+1
 ! FOR ROTATION PURPOSES, DEFINE THE MINIMUM NUMBER OF
 ! EQUALLY SPACED SHELLS AS 3.
       rot_scr%ntot = max(rot_scr%ntot,3)

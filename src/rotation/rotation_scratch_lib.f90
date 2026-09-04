@@ -150,8 +150,6 @@ module rotation_scratch_lib
                 src_grid_metal_diffusion_coeff1_dz(json), &
                 src_grid_metal_diffusion_coeff2_dz(json)
 ! former common/prevmid/
-           double precision :: del_grad_diff_prev(json), &
-                del_grad_diff_new(json), radius_prev(json)
            logical :: convective_flag_prev(json)
 ! former common/rotder/
            double precision :: dlnkappa_dlnrho(json), &
@@ -211,7 +209,6 @@ module rotation_scratch_lib
 ! the *_prev copies below are solver iteration state and stay here.
             double precision :: es_circulation_velocity_prev(json)
             double precision :: secular_shear_velocity_prev(json)
-            double precision :: hle(json)
             double precision :: gsf_circulation_velocity_prev(json)
             double precision :: mu_gradient_velocity(json)
       end type circulation_velocity_state

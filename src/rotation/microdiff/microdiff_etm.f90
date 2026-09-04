@@ -38,10 +38,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
       integer, intent(in) :: light_element_id(num_light)
-
-
-
-
+! --- locals ---
       double precision :: tabler(4), facinterp(4)
       integer :: i, ii, j, jmin, k, k0, kk
       double precision :: x_min_floor, z_max, zz, zz2, radmod, dxmod, &

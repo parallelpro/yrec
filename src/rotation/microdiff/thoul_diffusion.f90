@@ -266,9 +266,6 @@ subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
       do j=num_species+1,n
          delta(n,j)=0.d0
       enddo
-!      WRITE(*,911)((DELTA(II,JJ),II=1,N),JJ=1,N),(C(JJ),JJ=1,M)
-!911  FORMAT(1P10E10.2)
-
 
 ! Inverse the system for each possible right-hand-side, i.e.,
 ! if alpha is the r.h.s., we obtain the coefficient A_p

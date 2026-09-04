@@ -283,7 +283,7 @@ rotation/seculr/composition_grid.o: math_lib.mod numerics_lib.mod phys_const_lib
 rotation/seculr/compute_quadrupole.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/diffuse_composition.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/diffuse_composition_driver.o: star_info_lib.mod
-rotation/seculr/diffusion_velocity_scales.o: phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/diffusion_velocity_scales.o: phys_const_lib.mod star_info_lib.mod
 rotation/seculr/equal_grid_to_model.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/secular_transport.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/zahn_coupling_factor.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod

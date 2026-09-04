@@ -1,4 +1,3 @@
-!$$$$$$
 !----------------------------------------------------------------------
 ! midmod
 !----------------------------------------------------------------------
@@ -34,22 +33,17 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
      radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
      num_convective_zones, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, json
       use net_lib
       use phys_const_lib
       use burn_lib
-
       use math_lib
       implicit none
 
       double precision, intent(in) :: full_timestep, sub_timestep
       double precision, intent(inout) :: time_fraction
-! LC(JSON),LCZ(JSON),ETA2M(JSON),HDM(JSON),HGM(JSON),  ! KC 2025-05-31
       logical, intent(in) :: first_call
       double precision, intent(out) :: moment_of_inertia_cz
-! rot_scr%log_radius_mid is read here before being (re)computed in
-! this call, in the LFIRST=.false. branch below that seeds
-! rot_scr%radius_prev from the previous MIDMOD call's values.
       double precision, intent(out) :: cz_mass_bottom, cz_mass_top
       integer, intent(out) :: core_boundary_zone, envelope_boundary_zone
       logical, intent(out) :: fully_convective_flag
@@ -57,62 +51,15 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       integer, intent(out) :: radiative_zone_bounds(13,2), &
            convective_zone_bounds(12,2)
       integer, intent(out) :: num_radiative_zones, num_convective_zones
-
-
-
-
-! MHP 8/17 added excen, c_2 to common block for Matt et al. 2012 cent. term
-! former common/cwind/: not used in this file (only referenced in the
-! commented-out taucz calculation below).
-!      COMMON/CWIND/WMAX,EXMD,EXW,EXTAU,EXR,EXM,CONSTFACTOR,STRUCTFACTOR,LJDOT0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-! MHP 06/02
-      logical :: convective_state_changed(json)
+      integer, intent(out) :: ierr
+! --- locals ---
 ! (deuterium_rate_mid/_start live in rot_scr: carried across sub-steps)
       integer :: num_species_tracked
-      integer :: i, j, k, ii
+      integer :: i, j, k
       double precision :: step_fraction_ratio
-      logical :: new_cz_detected
       double precision :: total_epsilon
-      logical :: cz_change_active, redistribute_j_flag
-      integer :: change_region_start, change_region_end
-      integer :: cz_direction_flag
-      integer :: cz_zone_bottom, cz_zone_top
-      double precision :: cz_moment_of_inertia, cz_angular_momentum
-      double precision :: convective_fraction
-      double precision :: radius_interp
-      double precision :: radius_shell_factor
-      double precision :: specific_angular_momentum_corrected
-      double precision :: delta_angular_momentum
-      double precision :: angular_momentum_ratio
-      double precision :: angular_momentum_check_ratio
       integer :: burn_zone_begin, burn_zone_end
       integer :: solid_zone_start, solid_zone_end
-
-! IN GENERAL A DIFFUSION TIMESTEP IS LESS THAN A MODEL TIMESTEP.
-! SR MIDMOD TAKES THE STRUCTURE AT THE BEGINNING AND END OF THE TIMESTEP
-! AND ASSIGNS AN INTERMEDIATE STRUCTURE USING LINEAR INTERPOLATION IN TIME.
-! NUCLEAR BURNING IS ACCOUNTED FOR HERE, AND THE CHANGES IN ANGULAR
-! VELOCITY DUE TO CHANGES IN RADIUS AND CONSERVATION OF ANGULAR MOMENTUM
-! ARE ALSO COMPUTED.
-! MIDMOD ALSO LOCATES THE OUTER EDGE OF A CENTRAL CONVECTION ZONE AND THE INNER
-! EDGE OF A SURFACE C.Z., AND DETERMINES THE MASS AND MOMENT OF INERTIA OF
-! THE SURFACE C.Z.
-      integer, intent(out) :: ierr
 
       ierr = 0
 
@@ -121,13 +68,10 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
 !  INITIALIZE COMPOSITION ARRAY THE FIRST TIME THROUGH.
 !  HCOMPM IS THE ARRAY OF CHANGES IN COMPOSITION DUE TO NUCLEAR BURNING
 !  DURING THE COURSE OF THE MODEL TIMESTEP.
-! MHP 06/02 SAVE CHANGES IN R, CZ DEPTH, DELAD-DELRAD FROM THE
-! PRIOR STEP.
+! MHP 06/02 SAVE THE CONVECTIVE STATE FROM THE PRIOR STEP.
       if (first_call) then
          do j = 1,star%nz
             rot_scr%convective_flag_prev(j) = star%convective_flag_start(j)
-            rot_scr%radius_prev(j) = star%logR_start(j)
-            rot_scr%del_grad_diff_prev(j) = rot_scr%old_del_adiabatic_mix(j)-rot_scr%old_del_radiative_mix(j)
             mix_scr%amum(j) = rot_scr%old_amu(j)
             do i = 1,num_species_tracked
                star%xa(i,j) = star%xa_start(i,j)
@@ -135,12 +79,9 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          end do
       else
          do j = 1,star%nz
-            rot_scr%radius_prev(j) = rot_scr%log_radius_mid(j)
-            rot_scr%del_grad_diff_prev(j) = rot_scr%del_grad_diff_new(j)
             rot_scr%convective_flag_prev(j) = rot_scr%convective_flag_mid(j)
          end do
       endif
-      new_cz_detected = .false.
 !  INTERPOLATE IN THE MODEL VARIABLES AND AUXILLARY PHYSICS.
       step_fraction_ratio = sub_timestep/full_timestep
       do j = 1,star%nz
@@ -154,7 +95,6 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
               time_fraction*(star%logR(j)-star%logR_start(j))
          rot_scr%log_temperature_mid(j) = star%logT_start(j) + &
               time_fraction*(star%logT(j)-star%logT_start(j))
-!        DO 30 I = 1,IEND
          rot_scr%hg_mid(j) = star%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%old_hg(j))
          mix_scr%del_adiabatic_mix(j) = rot_scr%old_del_adiabatic_mix(j) + &
               time_fraction*(star%grada(j)-rot_scr%old_del_adiabatic_mix(j))
@@ -177,14 +117,10 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
 !  OR NOT A ZONE IS CONVECTIVE IF IT CHANGES STATE OVER THE COURSE OF A
 !  TIMESTEP.
       do i = 1,star%nz
-         rot_scr%del_grad_diff_new(i) = mix_scr%del_adiabatic_mix(i)-mix_scr%del_radiative_mix(i)
          if (star%convective_flag(i).eqv.rot_scr%convective_flag_prev(i)) then
             rot_scr%convective_flag_mid(i) = star%convective_flag(i)
             mix_scr%velm(i) = rot_scr%old_vel(i) + time_fraction*(star%conv_vel(i)-rot_scr%old_vel(i))
-            convective_state_changed(i) = .false.
          else
-            convective_state_changed(i) = .true.
-            new_cz_detected = .true.
             if (mix_scr%del_adiabatic_mix(i).lt.mix_scr%del_radiative_mix(i)) then
                rot_scr%convective_flag_mid(i) = .true.
                mix_scr%velm(i) = max(rot_scr%old_vel(i),star%conv_vel(i))
@@ -194,162 +130,9 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
             endif
          endif
       end do
-      new_cz_detected = .false.
-! MHP 06/02 IF THE CZ DEPTHS HAVE CHANGED, RESOLVE
-! OUT WHEN A GIVEN ZONE "DROPPED OUT" OF THE CONVECTION
-! ZONE OR ENTERED IT.  MODIFY THE SPECIFIC ANGULAR MOMENTUM
-! ACCORDINGLY.
-      if (new_cz_detected) then
-         cz_change_active = .false.
-         redistribute_j_flag = .false.
-         do i = 1,star%nz-1
-            if (convective_state_changed(i)) then
-               if (.not.cz_change_active) then
-! START OF CHANGED REGION
-                  cz_change_active = .true.
-                  change_region_start = i
-               endif
-            endif
-            if (.not.convective_state_changed(i)) then
-               if (cz_change_active) then
-! END OF CHANGED REGION
-               change_region_end = i - 1
-               cz_change_active = .false.
-               redistribute_j_flag = .true.
-               write(*,*)change_region_start,change_region_end, &
-                    rot_scr%del_grad_diff_new(change_region_start), &
-                    rot_scr%del_grad_diff_new(change_region_start-1), &
-                    rot_scr%del_grad_diff_new(change_region_end+1)
-! ONLY CHANGE IF THERE IS A RECEDING CONVECTION ZONE;
-! WE CAN ASSUME LOCAL CONSERVATION OF J PRIOR TO HAVING
-! A SHELL INCORPORATED INTO A CZ.
-               if (rot_scr%del_grad_diff_new(change_region_start).gt.0.0D0) then
-                  if (rot_scr%del_grad_diff_new(change_region_start-1).lt.0.0D0) then
-! SUBTRACTED FROM A CORE CZ
-                     cz_direction_flag = -1
-                  else if (rot_scr%del_grad_diff_new(change_region_end+1).lt.0.0D0) then
-! SUBTRACTED FROM AN ENVELOPE CZ
-                     cz_direction_flag = 1
-                  else
-                     redistribute_j_flag = .false.
-                  endif
-               else
-                  redistribute_j_flag = .false.
-               endif
-               endif
-            endif
-            if (redistribute_j_flag) then
-               redistribute_j_flag = .false.
-! CORE CZ
-               if (cz_direction_flag.lt.0) then
-! LOCATE EDGES OF CURRENT LOWER CZ
-                  cz_zone_top = change_region_start - 1
-                  do ii = change_region_start-1,1,-1
-                     if (.not.rot_scr%convective_flag_mid(ii)) then
-                        cz_zone_bottom = ii + 1
-                        exit
-                     endif
-                  end do
-                  if (ii .lt. 1) cz_zone_bottom = 1
-                  do j = change_region_end,change_region_start,-1
-                     if (rot_scr%del_grad_diff_new(j).lt.0.0D0) exit
-                     cz_moment_of_inertia = 0.0D0
-                     cz_angular_momentum = 0.0D0
-! FRACTION OF THE TIMESTEP SHELL WAS RADIATIVE
-                     time_fraction = rot_scr%del_grad_diff_new(j)/ &
-                          (rot_scr%del_grad_diff_new(j)-rot_scr%del_grad_diff_prev(j))
-! FRACTION OF THE TIMESTEP THAT THE SHELL WAS CONVECTIVE
-                     convective_fraction = 1.0D0 - time_fraction
-                     do ii = cz_zone_bottom,j-1
-                        radius_interp = rot_scr%radius_prev(ii)+ &
-                             convective_fraction*(star%logR(ii)-star%logR_start(ii))
-                        cz_moment_of_inertia = cz_moment_of_inertia+ &
-                             cc23*star%dm(ii)*exp10((2.0D0*radius_interp))
-                        cz_angular_momentum = cz_angular_momentum + &
-                             star%j_rot(ii)*star%dm(ii)
-                     end do
-! GET THE CZ MOMENT OF INERTIA AND TOTAL J AT THE TIME THE
-! SHELL WAS RELEASED; THIS GIVES A CORRECTED VALUE FOR
-! J/M.  REDISTRIBUTE THE DIFFERENCE IN J BACK INTO THE CZ.
-                     radius_shell_factor = 2.0D0*(rot_scr%radius_prev(j)+ &
-                          convective_fraction*(star%logR(j)-rot_scr%radius_prev(j)))
-                     specific_angular_momentum_corrected = &
-                          cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
-                          exp10(radius_shell_factor)
-                     delta_angular_momentum = &
-                          (star%j_rot(j)- &
-                          specific_angular_momentum_corrected)*star%dm(j)
-                     angular_momentum_ratio = &
-                          (cz_angular_momentum-delta_angular_momentum)/ &
-                          cz_angular_momentum
-                     star%j_rot(j)=specific_angular_momentum_corrected
-                     angular_momentum_check_ratio = &
-                          specific_angular_momentum_corrected/ &
-                          star%j_rot(j)
-                     write(*,*)j,time_fraction,angular_momentum_check_ratio, &
-                          delta_angular_momentum,angular_momentum_ratio
-                     do ii = cz_zone_bottom,j-1
-                        star%j_rot(ii) = &
-                             star%j_rot(ii)*angular_momentum_ratio
-                     end do
-                  end do
-               else
-! ENVELOPE CZ
-! LOCATE EDGES OF CURRENT LOWER CZ
-                  cz_zone_bottom = change_region_end + 1
-                  do ii = change_region_end+2,star%nz
-                     if (.not.rot_scr%convective_flag_mid(ii)) then
-                        cz_zone_top = ii - 1
-                        exit
-                     endif
-                  end do
-                  if (ii .gt. star%nz) cz_zone_top = star%nz
-                  do j = change_region_start,change_region_end
-                     if (rot_scr%del_grad_diff_new(j).lt.0.0D0) exit
-                     cz_moment_of_inertia = 0.0D0
-                     cz_angular_momentum = 0.0D0
-! FRACTION OF THE TIMESTEP SHELL WAS RADIATIVE
-                     time_fraction = rot_scr%del_grad_diff_new(j)/ &
-                          (rot_scr%del_grad_diff_new(j)-rot_scr%del_grad_diff_prev(j))
-! FRACTION OF THE TIMESTEP THAT THE SHELL WAS CONVECTIVE
-                     convective_fraction = 1.0D0 - time_fraction
-                     do ii = j+1,cz_zone_top
-                        radius_interp = rot_scr%radius_prev(ii)+ &
-                             convective_fraction*(star%logR(ii)-star%logR_start(ii))
-                        cz_moment_of_inertia = cz_moment_of_inertia+ &
-                             cc23*star%dm(ii)*exp10((2.0D0*radius_interp))
-                        cz_angular_momentum = cz_angular_momentum + &
-                             star%j_rot(ii)*star%dm(ii)
-                     end do
-! GET THE CZ MOMENT OF INERTIA AND TOTAL J AT THE TIME THE
-! SHELL WAS RELEASED; THIS GIVES A CORRECTED VALUE FOR
-! J/M.  REDISTRIBUTE THE DIFFERENCE IN J BACK INTO THE CZ.
-                     radius_shell_factor = 2.0D0*(rot_scr%radius_prev(j)+ &
-                          convective_fraction*(star%logR(j)-rot_scr%radius_prev(j)))
-                     specific_angular_momentum_corrected = &
-                          cc23*(cz_angular_momentum/cz_moment_of_inertia)* &
-                          exp10(radius_shell_factor)
-                     delta_angular_momentum = &
-                          (star%j_rot(j)- &
-                          specific_angular_momentum_corrected)*star%dm(j)
-                     angular_momentum_ratio = &
-                          (cz_angular_momentum-delta_angular_momentum)/ &
-                          cz_angular_momentum
-                     star%j_rot(j)=specific_angular_momentum_corrected
-                     angular_momentum_check_ratio = &
-                          specific_angular_momentum_corrected/ &
-                          star%j_rot(j)
-                     write(*,*)j,time_fraction,angular_momentum_check_ratio, &
-                          delta_angular_momentum,angular_momentum_ratio
-                     do ii = j+1,star%nz
-                        star%j_rot(ii) = &
-                             star%j_rot(ii)*angular_momentum_ratio
-                     end do
-                  end do
-               endif
-            endif
-         end do
-      endif
+! (THE ORIGINAL'S MHP 06/02 RE-DISTRIBUTION OF J FOR SHELLS THAT
+!  DROPPED OUT OF A RECEDING CONVECTION ZONE WAS HARDWIRED OFF AND IS
+!  NOT COMPUTED.)
 !  CONVECTIVE OVERSHOOT APPLIED TO NORMAL CONVECTION ZONES.
       call am_convective_regions(star%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
            star%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,star%nz, &
@@ -359,7 +142,6 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
 !  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
 ! MHP 6/00 - FOR THERMODYNAMIC CONSISTENCY USE CURRENT T, NOT END OF
 ! TIMESTEP T (REPLACED HT IN CALL WITH HTM)
-!       CALL ROTMIX(DT,HCOMP,HS2,HTM,5,M,MRZONE,MXZONE,  ! KC 2025-05-31
       call rotmix(sub_timestep,star%xa,star%dm,rot_scr%log_temperature_mid, &
            star%nz,radiative_zone_bounds,convective_zone_bounds, &
            num_radiative_zones,num_convective_zones &
@@ -400,10 +182,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
                     star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
                     rot_scr%deuterium_rate_mid_start,step_fraction_ratio)
-           end do
-        end do
-         if (k > num_radiative_zones) then
-         end if
+            end do
+         end do
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
@@ -423,9 +203,6 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          do i = 2,star%nz
             if (.not.rot_scr%am_transport_convective_flag_mid(i)) exit
          end do
-         if (i > (star%nz)) then
-         i = star%nz + 1
-         end if
          core_boundary_zone = max(2,i-1)
       else
          core_boundary_zone = 2
@@ -438,10 +215,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          do i = star%nz-1,1,-1
             if (.not.rot_scr%am_transport_convective_flag_mid(i)) exit
          end do
-         if (i < (1)) then
-         fully_convective_flag = .true.
-         i = 0
-         end if
+!  (LOOP COMPLETED WITHOUT EXIT, I.E. I = 0: FULLY CONVECTIVE.)
+         if (i < 1) fully_convective_flag = .true.
          envelope_boundary_zone = i + 1
 !  HSTOP IS THE MASS AT THE TOP OF THE C.Z.
 !  HSBOT IS THE MASS AT THE BOTTOM OF THE C.Z.
@@ -463,38 +238,6 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          envelope_boundary_zone = star%nz
          surface_cz_active = .false.
       endif
-! MHP 3/09 ADD ABILITY TO COMPUTE THE CONVECTIVE OVERTURN TIMESCALE 'LOCALLY'.
-! THIS IS DEFINED AS HP/V, WHERE HP IS THE PRESSURE SCALE HEIGHT AT THE BASE
-! AND V IS THE CONVECTIVE VELOCITY ONE PRESSURE SCALE HEIGHT ABOVE THE BASE.
-! FOR FULLY CONVECTIVE STARS THE CENTRAL PRESSURE SCALE HEIGHT DIVERGES, SO
-! INSTEAD DEFINE V AT THE POINT WHERE HP = P/RHO*G = P*R^2/RHO*G*M = R.
-!      IF(LCZSUR)THEN
-!         IF(.NOT.LALLCZ)THEN
-!C PINPOINT RCZ
-!C            WRITE(*,911)IMAX,FX,DD2,DD1
-!C 911        FORMAT(I5,1P3E12.3)
-!C INFER HP
-!C FIND V
-!            DO K = IMAX+1,M
-!C 85         CONTINUE
-!C DEFINE TAUCZ
-!            TAUCZ = PSCA/CVEL
-!C            WRITE(*,911)K,PSCA,CVEL,TAUCZ
-!         ELSE
-!C INFER HP
-!C HP < R AT THE FIRST POINT.  ASSUME V CONSTANT INSIDE AND HP = K/R FOR
-!C SLOWLY VARYING DENSITY AND PRESSURE NEAR THE CENTER.
-!C               WRITE(*,912)PSCA2,RTEST2,PSCA,CVEL,TAUCZ
-!C 912           FORMAT(1P5E12.3)
-!C FIND LOCATION WHERE HP = R
-!                  IF(PSCA2.LE.RTEST2)THEN
-!                     FX = (RTEST1-PSCA1)/((PSCA2-RTEST2)-(PSCA1-RTEST1))
-!C FIND V
-!                     CVEL = VELM(K-1)+FX*(VELM(K)-VELM(K-1))
-!                     PSCA = PSCA1+FX*(PSCA2-PSCA1)
-!C DEFINE TAUCZ
-!C 95            CONTINUE
-!C               WRITE(*,911)K,PSCA,CVEL,TAUCZ
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
       if (.not.star%ctrl%force_solid_body_rotation .and. (star%ctrl%solid_body_mode_flag.ne.1)) then
 !  NOW FIND THE RUN OF ROTATION VARIABLES THAT ARE CONSISTENT WITH THE

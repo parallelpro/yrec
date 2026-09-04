@@ -6,9 +6,11 @@
 ! original solid.f; only variable names, source form, and comment
 ! style were updated.
 !
-! GIVEN THE ANGULAR MOMENTUM PER UNIT MASS, SOLID RETURNS THE ROTATION
-! RATE OMEGA.  IT ALSO CALLS MOMI, WHICH CALCULATES THE MOMENT OF
-! INERTIA AND R0 AND ETA2; R0 AND ETA2 ARE NEEDED BY FPFT.
+! Given the angular momentum per unit mass of zones zone_start..zone_end,
+! returns the single (solid-body) rotation rate omega that carries the
+! same total angular momentum, iterating on omega with shape (r0, eta2)
+! and zone_moments_of_inertia (I, dI/domega) at each guess. r0 and eta2
+! are later needed by rotation_shape_factors.
 subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
@@ -38,9 +40,6 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
            delta_omega
       integer :: zone_idx
 
-!  GIVEN THE ANGULAR MOMENTUM PER UNIT MASS, SOLID RETURNS THE ROTATION
-!  RATE OMEGA.  IT ALSO CALLS MOMI, WHICH CALCULATES THE MOMENT OF INERT
-!  AND R0 AND ETA2; R0 AND ETA2 ARE NEEDED BY FPFT.
       total_angular_momentum = 0.0d0
       omega_sum = 0.0d0
       iteration_count = 0
@@ -65,12 +64,11 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       omega_iter: do
       do zone_idx = zone_start,zone_end
          omega(zone_idx) = omega_guess
-   end do
+      end do
 !  DETERMINE THE MOMENTS OF INERTIA OF SHELLS JSTART TO JEND WITH OMEGA
 !  EQUAL TO WGUESS.
       call shape(log_density,log_radius,log_mass,zone_start,zone_end,omega, &
            eta_squared,mean_radius)
-!       CALL MOMI(ETA2,HD,HR,HS,HS2,JSTART,JEND,OMEGA,R0,HI,QIW,M)  ! KC 2025-05-31
       call zone_moments_of_inertia(eta_squared,log_radius,log_mass,shell_mass,zone_start, &
            zone_end,omega,mean_radius,moment_of_inertia,di_domega)
       total_moment_of_inertia = 0.0d0

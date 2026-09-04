@@ -9,7 +9,7 @@
 !
 ! Builds the equally-spaced-grid quantities needed by am_advection_diffusion_coeffs.f90's
 ! angular-momentum-transport diffusion solve: given the first/last
-! unstable zones of a region (zone_begin/zone_end), calls getgrid to
+! unstable zones of a region (zone_begin/zone_end), calls equal_spaced_grid to
 ! lay down the equally spaced coordinate rot_scr%chi, then computes the
 ! equally spaced grid moment of inertia (eq_moment_of_inertia),
 ! specific angular momentum (eq_angular_momentum), mass (eq_mass),
@@ -51,19 +51,8 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
            eq_mass(json), eq_omega(json)
       logical, intent(out) :: single_interface_flag
 
-
-
-
-
-
-
-
-
-
-
-
       double precision :: eq_reduced_moment_of_inertia(json)
-      integer :: ntab, i, ii, i0, i1, ntabb
+      integer :: ntab, i, ii, ntabb
       double precision :: emtop, embot, mass_scale_factor, &
            luminosity_scale_factor, pressure_scale_factor, scale_factor, &
            dchi_dr
@@ -71,7 +60,6 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 ! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
       if (zone_end-zone_begin.le.1) then
          single_interface_flag = .true.
-         continue
          return
       else
          single_interface_flag = .false.
@@ -79,8 +67,8 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 ! DEFINE A GRID OF EQUALLY SPACED POINTS.
       call equal_spaced_grid(log_luminosity,log_pressure,log_mass,zone_begin, &
            zone_end,num_zones)
-! GETGRID HAS DEFINED A SET OF CO-ORDINATES (CHI) AND EQUALLY SPACED
-! MASS POINTS.  NOW FIND THE OTHER QUANTITIES OF INTEREST AT ZONE
+! EQUAL_SPACED_GRID HAS DEFINED A SET OF CO-ORDINATES (CHI) AND EQUALLY
+! SPACED MASS POINTS.  NOW FIND THE OTHER QUANTITIES OF INTEREST AT ZONE
 ! CENTERS:
 ! J/M (TO GET JTOT)
 ! I/MR^2 (TO GET ITOT)
@@ -145,23 +133,16 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
       eq_moment_of_inertia(1) = eq_reduced_moment_of_inertia(1)*eq_mass(1)* &
            radius(zone_begin)**2
       eq_angular_momentum(1) = eq_angular_momentum(1)*eq_mass(1)
+! (INCLUDE EVERY CONVECTIVE SHELL BELOW ZONE_BEGIN.)
       if (zone_begin.gt.1) then
          do ii = zone_begin-1,1,-1
-            if (.not.am_transport_convective_flag(ii)) then
-               i0 = i + 1
-               exit
-            end if
+            if (.not.am_transport_convective_flag(ii)) exit
             eq_mass(1) = eq_mass(1)+shell_mass(ii)
             eq_moment_of_inertia(1) = eq_moment_of_inertia(1)+ &
                  moment_of_inertia(ii)
             eq_angular_momentum(1) = eq_angular_momentum(1)+ &
                  specific_angular_momentum(ii)*shell_mass(ii)
          end do
-         if (ii < (1)) then
-         i0 = 1
-         end if
-      else
-         i0 = 1
       end if
 ! SURFACE
       embot = 0.5d0*(rot_scr%es1(rot_scr%ntot)+rot_scr%es1(rot_scr%ntot-1))
@@ -176,23 +157,16 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
       eq_moment_of_inertia(rot_scr%ntot) = eq_reduced_moment_of_inertia(rot_scr%ntot)* &
            eq_mass(rot_scr%ntot)*radius(zone_end)**2
       eq_angular_momentum(rot_scr%ntot) = eq_angular_momentum(rot_scr%ntot)*eq_mass(rot_scr%ntot)
+! (INCLUDE EVERY CONVECTIVE SHELL ABOVE ZONE_END.)
       if (zone_end.lt.num_zones) then
          do ii = zone_end+1,num_zones
-            if (.not.am_transport_convective_flag(ii)) then
-               i1 = i -1
-               exit
-            end if
+            if (.not.am_transport_convective_flag(ii)) exit
             eq_mass(rot_scr%ntot) = eq_mass(rot_scr%ntot)+shell_mass(ii)
             eq_moment_of_inertia(rot_scr%ntot) = eq_moment_of_inertia(rot_scr%ntot)+ &
                  moment_of_inertia(ii)
             eq_angular_momentum(rot_scr%ntot) = eq_angular_momentum(rot_scr%ntot)+ &
                  specific_angular_momentum(ii)*shell_mass(ii)
          end do
-         if (ii > num_zones) then
-         i1 = num_zones
-         end if
-      else
-         i1 = num_zones
       end if
 ! NOW SOLVE FOR QUANTITIES NEEDED AT THE ZONE EDGES.  THESE ARE
 ! RELATED TO THE DIFFUSION COEFFICIENTS.  UNLIKE THE EQUALLY SPACED
@@ -274,7 +248,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
       call osplin(rot_scr%xval,rot_scr%yval,rot_scr%xtab,rot_scr%ytab,ntab,rot_scr%ntot)
 ! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
 ! NOTE THAT A FACTOR OF 4PI HAS ALREADY BEEN INCLUDED IN
-! CODIFF.
+! diffusion_velocity_scales.
       do i = 1, rot_scr%ntot
          eq_mixing_diffusion_coeff(i) = eq_mixing_diffusion_coeff(i)* &
               exp(ln10*rot_scr%yval(i))
@@ -283,7 +257,6 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 ! MHP 05/02 ADDED FACTOR OF I/MR^2 - 2/3 FOR A SPHERICAL SHELL
       do i = 1, ntab
          ii = zone_begin + i - 1
-!         YTAB(I) = YTAB(I) + 2.0D0*HR(II) + LOG10(EI0(I))
          rot_scr%ytab(i) = rot_scr%ytab(i)  + log10(moment_of_inertia(ii)/shell_mass(ii))
       end do
       call osplin(rot_scr%xval,rot_scr%yval,rot_scr%xtab,rot_scr%ytab,ntab,rot_scr%ntot)

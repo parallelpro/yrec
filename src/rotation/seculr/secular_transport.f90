@@ -10,14 +10,6 @@
 ! SECULR CALCULATES THE TRANSFER OF ANGULAR MOMENTUM(AND THE ASSOCIATED
 ! TRANSPORT OF COMPOSITION) DUE TO SECULAR ROTATIONAL INSTABILITIES.
 !
-! MHP 6/00 ADDED MRZONE,MXZONE,NRZONE,NZONE FOR BS MIX PLUS BURN
-! (long since removed from the active call list -- see the commented-
-! out historical argument lines this file inherited from the .f
-! version).
-!
-! (The 2026 de-tramp below replaced the historical fixed argument
-! list; see the module header note.)
-!
 ! A few local/dummy quantities are named differently by the various
 ! already-converted callees this file dispatches to. Where that
 ! happens the name used here is the one shared by the most callees (or
@@ -37,7 +29,7 @@
 !  - eq_angular_momentum (EJ): equal_grid_to_model.f90 calls it angular_momentum.
 !  - eq_am_diffusion_coeff (ECOD): am_diffusion_coeffs.f90 calls it diffusion_coeff.
 !  - eq_delta_angular_momentum (DJ): equal_grid_to_model.f90 calls it
-!    delta_angular_momentum; tridia.f90 calls it dj.
+!    delta_angular_momentum; tridia calls it dj.
 !  - eq_mass (EM): diffuse_composition_driver.f90 calls it equally_spaced_mass.
 !  - diffusion_converged (LOKAD): check_angular_momentum.f90 calls it
 !    already_converged_flag.
@@ -79,8 +71,7 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
       double precision, intent(inout) :: mixing_diffusion_coeff(json)
       double precision, intent(inout) :: diffusion_velocity(json)
       logical, intent(inout) :: diffusion_solve_ok
-! MHP 6/00 added MRZONE,MXZONE for BS mixing plus burning (no longer
-! part of the active call list).
+      integer, intent(out) :: ierr
 
 ! --- locals (JSON-dimensioned) ---
       double precision :: dynamical_shear_omega_limit(json), eq_mass(json), &
@@ -90,19 +81,14 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
            dlnomega_dlnr(json), eq_delta_angular_momentum(json), &
            specific_angular_momentum_prev(json), omega_start(json), &
            eq_omega(json)
-      integer :: print_zone_id(json)
 
 ! Tridiagonal-solve work arrays (Thomas algorithm) threaded from
-! dcoeft (fills them) to tridia (solves): were originally shared via
-! common/tridi/ (positional storage), converted (2026, GUIDELINES.md)
-! to explicit arguments since this is real per-call data flow, not
-! global configuration. tridia's solution(:) (the new omega
-! distribution) was never actually read back here -- this call site
-! only used dj/sumdj (eq_delta_angular_momentum/
-! sum_delta_angular_momentum below) -- so it's captured in an unused
-! local. surface_wind_loss_term is dcoeft's computed surface wind
-! angular-momentum-loss term, previously smuggled to tridia via
-! gamma_elim(n) (see tridia.f90's header note).
+! am_diffusion_coeffs (fills them) to tridia (solves). tridia's
+! solution(:) (the new omega distribution) is never read back here --
+! this call site only uses eq_delta_angular_momentum/
+! sum_delta_angular_momentum -- so it is captured in an unused local.
+! surface_wind_loss_term is am_diffusion_coeffs' surface wind
+! angular-momentum-loss term, consumed by tridia.
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), unused_tridia_solution(json), surface_wind_loss_term
 
@@ -133,27 +119,6 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
       double precision :: solid_cz_mass_bottom, solid_cz_mass_top
       integer :: solid_start_zone
       integer :: species_begin, species_end
-      integer :: print_zone_count
-! constant_diffusion_coeff_flag/constant_diffusion_coeff (originally
-! LCODM/CODM, MHP 8/13 "treat entire domain as unstable if a constant
-! diffusion coefficient is being added") are implicitly typed in the
-! original and never assigned anywhere in seculr.f, nor declared in
-! any common block reachable from it, nor referenced by any other file
-! in the already-converted codebase -- they are permanently at their
-! (undefined/zero-initialized) default, so this branch is dead code.
-! Preserved exactly, with explicit types matching the original's
-! implicit rules (L->logical, C->double precision).
-      logical :: constant_diffusion_coeff_flag
-      double precision :: constant_diffusion_coeff
-
-!  PRINT OUT DETAILS OF THE DIFFUSION EVERY TIME SHORT OR LONG
-!  OUTPUT OF THE MODEL IS GENERATED.
-!
-! G Somers 11/14, EXCLUDE THE IO TO THE FULL FILE. THE CODE
-! WILL NO LONGER REPORT THE CHANGES TO J AT EACH POINT, BECAUSE
-! THIS CAN BE EASILY INFERRED FROM THE EXTENDED SHORT FILE. IF
-! DESIRED, THIS OUTPUT CAN BE RETURNED.
-      integer, intent(out) :: ierr
 
       ierr = 0
 
@@ -207,7 +172,6 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
       end do
 !  STORE INITIAL SURFACE ANGULAR VELOCITY FOR USE IN ANGULAR MOMENTUM
 !  LOSS CALCULATIONS.
-!      WBEG = OMEGA(M)
       omega_surface_start = rot_scr%wmst(star%nz)
       diffusion_solve_ok = .false.
 !  ON THE FIRST LEVEL OF ITERATION, THE UNPERTURBED MODEL IS USED TO
@@ -257,18 +221,8 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
 !  CZ IS ASSIGNED TO THE WHOLE CZ - X AND HE3 ONLY, AND ONLY FOR A
 !  CZ WHICH IS BECOMING DEEPER.)
 !  ENSURE THAT CONVECTIVE REGIONS ARE FULLY MIXED.
-!  JVS 0212 CALL MIXCZ(HCOMP,HS2,LCZ,M)
-! KC 2025-05-30 addressed warning messages from Makefile.legacy
-! C G Somers 6/14, SET IMIX = .FALSE. SO THE CORRECT GRADS ARE USED.
-!          IMIX = .FALSE.
-!          CALL MIXCZ(HCOMP,HS2,HS1,LCZ,HR,HP,HD,HG,M,IMIX)
-! G Somers 6/14, SET LIMIX = .FALSE. SO THE CORRECT GRADS ARE USED.
-! mix_grads_flag (originally LIMIX) is set but the active MIXCZ call
-! below does not take it as an argument -- vestigial, kept exactly as
-! in the original.
          call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid, &
               star%nz)
-! G Somers END
          endif
 !  CALCULATE LOSS OF ANGULAR MOMENTUM DUE TO WIND FOR AN
 !  ISOLATED SURFACE C.Z.(NO COUPLING WITH INTERIOR VIA DIFFUSION).
@@ -299,16 +253,14 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
                  omega_surface,star%star_mass,star%log_Teff,cz_moment_of_inertia, &
                  star%j_rot, ierr)
             if (ierr /= 0) return
-!            WRITE(*,*)HJM(1),HJM(M)
             solid_body_zone_start = 1
             solid_body_zone_end = star%nz
             call solid_body_omega(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
                  star%log_mass,star%dm,solid_body_zone_start,solid_body_zone_end, &
                  rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%qiw_mid,rot_scr%mean_radius_mid,star%nz)
-!            WRITE(*,*)OMEGA(1),OMEGA(M)
          endif
 !  IF LDO=F,NO INSTABILITIES OCCUR (STABLE AGAINST ALL MECHANISMS).
-         if(.not.unstable_zone_found) return   ! (label 9999 was a bare return)
+         if(.not.unstable_zone_found) return
 !  TREAT CENTRAL AND SURFACE ZONES AS ALWAYS CONVECTIVE
 !  (SHOULD BE FIXED TO GIVE BETTER CENTRAL/SURFACE B.C.)
          rot_scr%am_transport_convective_flag_mid(1) = .true.
@@ -333,14 +285,6 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
          scan_start_zone = zone_min
          region_loop: do
          unstable_zone_found = .false.
-! MHP 8/13 TREAT ENTIRE DOMAIN AS UNSTABLE IF A CONSTANT DIFFUSION
-! COEFFICIENT IS BEING ADDED
-         if(constant_diffusion_coeff_flag.and.constant_diffusion_coeff.gt.0.0D0)then
-            unstable_zone_found = .true.
-            zone_begin = zone_min - 1
-            zone_end = zone_max
-            scan_start_zone = zone_max + 1
-         else
          do j = scan_start_zone,zone_max
             if(diffusion_velocity(j).gt.0.0D0) then
                unstable_zone_found = .true.
@@ -363,11 +307,8 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
          if(in_unstable_region) zone_end = zone_max
          scan_start_zone = zone_max + 1
          end if
-         endif
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
          if(.not.unstable_zone_found) exit region_loop
-! MHP 08/03 REMOVED OBSOLETE EQUAL ROUTINE
-!         IF(M.GT.1)THEN
 !  TRANSFORM TO EQUAL GRID SPACING IN CHI FOR THE REGION.
 ! CHI IS A NORMALIZED SUM OF THE VARIABLES USED TO PLACE POINTS
 ! IN THE HENYEY SCHEME, CHOSEN SUCH THAT THE GRID USED IN THE
@@ -381,11 +322,6 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
               eq_am_diffusion_coeff,eq_mixing_diffusion_coeff, &
               eq_moment_of_inertia,eq_angular_momentum,eq_mass,eq_omega, &
               single_interface_flag)
-!         ELSE
-!         CALL EQUAL(BL,COD,COD2,HD,HI,HJMSAV,HRU,HS,HS1,HS2,HSTOT,
-!     *              IBEG,IEND,LCZ,M,TEFFL,DR,ECOD,ECOD2,EI,EJ,
-!     *              EM,ES1,EW,WSAV,LDUM2,NTOT)
-!         ENDIF
 !  LDUM2=T IF TWO C.Z.'S ARE SEPARATED BY ONE RADIATIVE ZONE;
 !  SKIP IF THIS OCCURS.
          if(single_interface_flag) then
@@ -440,8 +376,6 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
                  sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
                  surface_wind_loss_term, ierr)
             if (ierr /= 0) return
-!  TRANSFORM THE NEW ANGULAR MOMENTUM DISTRIBUTION BACK TO THE ORIGINAL GRID
-!  POINTS IN THE UNSTABLE REGION.
          else
 ! SOLVE FOR OMEGA AND ITS DERIVATIVES IN A BAND MATRIX
             call am_advection_diffusion_coeffs(grid_spacing,sub_timestep,eq_moment_of_inertia, &
@@ -451,9 +385,8 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
                  diffusion_converged, ierr)
             if (ierr /= 0) return
          endif
-! MHP 08/03 REMOVED OBSOLETE EQUAL2 ROUTINE
-!         IF(M.GT.1)THEN
-! TRANSFORM BACK TO THE ORIGINAL GRID
+!  TRANSFORM THE NEW ANGULAR MOMENTUM DISTRIBUTION BACK TO THE ORIGINAL GRID
+!  POINTS IN THE UNSTABLE REGION.
             call equal_grid_to_model(eq_delta_angular_momentum,eq_angular_momentum, &
                  star%dm,zone_begin,zone_end,rot_scr%am_transport_convective_flag_mid, &
                  star%nz,sum_delta_angular_momentum,star%j_rot)
@@ -461,8 +394,6 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
 !  UNTIL THE FINAL ITERATION, ONLY COMPOSITION DIFFUSION OF SPECIES WHICH
 !  AFFECT GRADIENTS IN MEAN MOLECULAR WEIGHT IS COMPUTED (H,HE3,HE4).
 !  ON THE FINAL ITERATION, DIFFUSION OF ALL SPECIES IS PERFORMED.
-! MHP 08/03 REMOVED OBSOLETE DIFCOM ROUTINE
-!         IF(M.GT.1)THEN
          endif
          species_begin = 1
          species_end = 4
@@ -473,27 +404,20 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
               zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
               star%nz,star%xa,species_begin,species_end, ierr)
          if (ierr /= 0) return
-!         ELSE
-!         CALL DIFCOM(DR,DT,COD2,ECOD2,EM,ES1,HRU,HS,HS1,HS2,HV,
-!     *               IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP)
-!         ENDIF
 !  RETURN FOR NEXT REGION IF APPLICABLE
          if(scan_start_zone.gt.zone_max) exit region_loop
          end do region_loop
 ! CHECK SOLUTION,UPDATE OMEGA,AND SEE IF ANOTHER ITERATION IS NEEDED.
          rot_scr%am_transport_convective_flag_mid(1) = lcz_first_zone
          rot_scr%am_transport_convective_flag_mid(star%nz) = lcz_last_zone
-! mhp 10/02 unused ecod, ecod2 no longer passed
-!         WRITE(*,*)LSOLID,OMEGA(1),OMEGA(M)
          call check_angular_momentum(rot_scr%log_density_mid,specific_angular_momentum_prev, &
               specific_angular_momentum_saved,rot_scr%log_radius_mid,star%log_mass,star%dm, &
-              diffusion_velocity,zone_min,zone_max,iteration, &
+              iteration, &
               rot_scr%am_transport_convective_flag_mid,star%nz,sub_timestep,rot_scr%eta_squared_mid, &
               rot_scr%moment_of_inertia_mid,star%j_rot,cut_count, &
-              diffusion_solve_ok,redo_flag,rot_scr%omega_mid,rot_scr%qiw_mid,rot_scr%mean_radius_mid,omega_start, &
-              print_zone_id,print_zone_count,diffusion_converged, ierr)
+              diffusion_solve_ok,redo_flag,rot_scr%omega_mid,rot_scr%qiw_mid,rot_scr%mean_radius_mid, &
+              diffusion_converged, ierr)
          if (ierr /= 0) return
-!         WRITE(*,*)OMEGA(1),OMEGA(M)
 ! CHECK COMPOSITION DIFFUSION AND RECOMPUTE MEAN MOLECULAR WEIGHT.
          if(.not.redo_flag)call check_composition(star%xa,iteration, &
               star%nz,sub_timestep,cut_count, &
@@ -502,20 +426,17 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
 ! MHP 9/93
          if(star%ctrl%no_am_transport_in_core)diffusion_solve_ok = .true.
 ! IF LOK=T,CONVERGED.
-         if(diffusion_solve_ok)exit   ! the post-loop reassignment is a no-op here
+         if(diffusion_solve_ok)exit
 ! IF LREDO=T, A PROBLEM REQUIRES TIMESTEP CUTTING.
-         if(redo_flag)return   ! (label 9999 was a bare return)
+         if(redo_flag)return
       end do
+! IF THE ITERATION LIMIT WAS REACHED WITHOUT CONVERGENCE, THE LAST
+! ITERATE IS ACCEPTED (NO REDO, NO ERROR) AND DIFFUSION OF THE
+! REMAINING SPECIES PROCEEDS; check_angular_momentum ONLY PRINTS.
       diffusion_solve_ok = .true.
 ! PERFORM COMPOSITION DIFFUSION OF REMAINING SPECIES.
       rot_scr%am_transport_convective_flag_mid(1) = .true.
       rot_scr%am_transport_convective_flag_mid(star%nz) = .true.
-! MHP 6/00 ADDED OPTION OF BS EXTRAPOLATION FOR HE3, CNO
-!     *               IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP,HV,
-!     *           HD,HP,HR,HT,MRZONE,MXZONE,NRZONE,NZONE,HSTOT)
-!      ELSE
-! MHP 08/03 REMOVED OBSOLETE DIFCOM ROUTINE
-!      IF(M.GT.1)THEN
       species_begin = 5
       if(star%job%use_extended_composition)then
          species_end = 15
@@ -529,22 +450,8 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
            zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
            star%nz,star%xa,species_begin,species_end, ierr)
       if (ierr /= 0) return
-!      ELSE
-!      CALL DIFCOM(DR,DT,COD2,ECOD2,EM,ES1,HRU,HS,HS1,HS2,HV,
-!     *            IBEG,IEND,IMIN,LCZ,LOK,M,NTOT,HCOMP)
-!      ENDIF
-! MHP 6/00
       rot_scr%am_transport_convective_flag_mid(1) = lcz_first_zone
       rot_scr%am_transport_convective_flag_mid(star%nz) = lcz_last_zone
-! 2026 retire-legacy: the rotational-mixing delta-composition table
-! that printed here to .FULL was dead (its print_diffusion_flag was
-! hard-set .false.); deleted with the file.
-! MHP 8/03 - OMITTED I/O, COULD REINTRODUCE IN ANOTHER FILE
-!  DETERMINE COUPLING FACTOR (I.E. THE FRACTION OF THE TOTAL ANGULAR
-!  MOMENTUM LOST FROM THE CORE RELATIVE TO ITS FRACTION OF THE TOTAL
-!  MOMENT OF INERTIA).
-!     *               HCOMP(14,M),HCOMP(15,M)
-!  709 FORMAT(1P7E11.3)
       return
 end subroutine secular_transport
 

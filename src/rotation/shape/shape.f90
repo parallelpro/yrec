@@ -14,7 +14,6 @@
 ! SOFIA.
 subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
      omega, eta2, r0)
-      use star_info_lib, only: star
       use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
@@ -37,12 +36,6 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
       double precision :: r0_estimate, acc_tol, err, eta2_temp, r0_avg
       double precision :: a_param
 
-!  SHAPE FINDS THE DISTORTION OF A GIVEN SHELL FROM SPHERICAL SYMMETRY;
-!  IT CALCULATES THE CHARACTERISTIC RADIUS R0 AND ASSOCIATED PARAMETER
-!  ETA2.  IN POLAR CO-ORDINATES THE RADIUS OF A SHELL IS
-!  R = R0*(1 - A*P2), WHERE A IS A FUNCTION OF ROTATION RATE AND P2 IS
-!  THE SECOND LEGENDRE POLYNOMIAL.  FOR MORE INFORMATION SEE ENDAL AND
-!  SOFIA.
       cg = exp(ln10*cgl)
       c1 = 0.6d0
       c2 = 2.0d0/3.5d1
@@ -71,10 +64,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             if(dabs(delta_r0_cubed/r0_cubed).le.star%job%acfpft)exit
          end do
          r0(1) = pow(r0_cubed, cc13)
-         if (zone_end.eq.1) then
-            continue
-            return
-         end if
+         if (zone_end.eq.1) return
          rho_bar_prev = rho_bar
          r_phi_prev = r_phi
          rho_prev = density

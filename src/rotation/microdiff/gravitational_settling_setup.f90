@@ -16,7 +16,7 @@
 ! derivatives with respect to X (diffusion_coeff1_dx/diffusion_
 ! coeff2_dx) at every zone, using either the simple analytic fit
 ! (LTHOUL false) or the full Thoul et al. (1994) coefficients (via
-! thdiff, LTHOUL true) with a choice of Coulomb-logarithm prescription
+! thoul_diffusion, LTHOUL true) with a choice of Coulomb-logarithm prescription
 ! selected by coulomb_log_choice.
 subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
      log_density, mass_grams, log_temperature, convective_flag, &
@@ -25,7 +25,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
      fully_convective_flag, diffusion_coeff1_dx, diffusion_coeff2_dx, ierr)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, i_grad_actual, json
+      use star_info_lib, only: star, json
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -49,19 +49,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       integer, intent(out) :: ierr
       double precision, intent(out) :: diffusion_coeff1_dx(json), &
            diffusion_coeff2_dx(json)
-
-
-
-
-
-
-
-
-
-
-
-
-
 ! MHP 8/94 ADDED ATOMIC WEIGHTS AND CHARGES FOR H,HE,FE,ELECTRONS -
 ! NEEDED FOR FULL THOUL COEFFICIENTS
       double precision :: atomic_weight(4), atomic_charge(4), &
@@ -134,7 +121,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
    15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
             star%settling_suspended_reported = .true.
          end if
-         continue
          return
          end if
 !        COMPUTE OVERSHOOT (TO BE ADDED).
@@ -157,7 +143,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          star%settling_suspended_reported = .true.
       end if
       fully_convective_flag = .true.
-      continue
       return
       end if
       zone_begin = zone_idx
@@ -176,8 +161,8 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       do zone_idx=zone_end,1,-1
          if(composition(2,zone_idx).gt.star%ctrl%helium_diffusion_min) exit
       end do
-      if (zone_idx < (1)) then
-!     HYDROGEN-FREE MODEL - EXIT.
+      if (zone_idx < 1) then
+!     HELIUM-EXHAUSTED MODEL - EXIT.
 ! print once per suspension; every model only under
 ! report_solver_diagnostics (2026 run-log verbosity sweep)
       if (solver_diagnostics() .or. &
@@ -187,7 +172,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          star%settling_suspended_reported = .true.
       end if
       fully_convective_flag = .true.
-      continue
       return
       end if
       zone_end = zone_idx
@@ -198,7 +182,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          star%settling_suspended_reported = .false.
       end if
 !     star%bl_mass_scale=CONVERSION FACTOR FOR MASS.
-!     CON_RADIUS=CONVERSION FACTOR FOR RADIUS.
+!     star%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
 !     star%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
 !     star%bl_time_scale=CONVERSION FACTOR FOR TIME.
       star%bl_radius_scale=1.0d0/solar_radius_bl
@@ -209,12 +193,10 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do zone_idx=1,num_zones
-
          radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*star%bl_radius_scale
          temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*star%bl_temp_scale
          mass_grams(zone_idx)=mass_grams(zone_idx)*star%bl_mass_scale
          dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/star%bl_radius_scale
-!        SDEL(2,I)=0.4D0   !COMMENT OUT IN REAL CODE
       end do
       timestep_seconds=timestep_seconds/star%bl_time_scale
       total_mass=total_mass*star%bl_mass_scale
@@ -226,7 +208,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !          [5/4 + DEL*6*(X-0.32)/(5.4+6.3X-4.5X**2)]
 !     D2 = R**2/LN LAMBDA * T**5/2 * (X+3)/(X+1)/(3+5X)
       do zone_idx = 1,num_zones
-
          hydrogen_fraction = composition(1,zone_idx)
 ! MHP 10/02 INITIALIZED X - WAS NOT DONE PRIOR TO USAGE IN SHELL 1
          if(star%ctrl%coulomb_log_choice.eq.2)then
@@ -243,7 +224,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          end if
 !
          settling_prefactor=star%ctrl%fgry*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
-!         X = HCOMP(1,I)
          metal_fraction_total = composition(3,zone_idx) + composition(4,zone_idx)
          iron_fraction = composition(3,zone_idx)
          hydrogen_fraction_sq = hydrogen_fraction*hydrogen_fraction
@@ -335,7 +315,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
             dat_dx = star%gradT(zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
             dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
 !CFD 10/09 Mimic Mixing to reduce settling.
-!            COD1(I) = FAC*HQPR(I)*X*(AP+AT)
             diffusion_coeff1(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor*dlnp_dr(zone_idx)* &
                  hydrogen_fraction*(settling_coeff_p+settling_coeff_t)
             diffusion_coeff2(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor*ac_scratch
@@ -346,7 +325,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !        METAL DIFFUSION, USING THE THOUL ET AL. COEFFICIENTS FOR FULLY
 !        IONIZED IRON.
          if(star%job%use_diffusion_z)then
-
             settling_prefactor=star%job%fgrz*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
             if(star%ctrl%use_thoul_diffusion)then
                if(star%ctrl%use_thoul_fit)then
@@ -360,13 +338,9 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
 !CFD 10/09 Mimic Mixing to reduce settling (constant_mixing_coeff)
 !         and add the uncertainties of differential mixing (constant_settling_reduction).
-!
-! old ver      COD1Z(I) = FAC*HQPR(I)*ZZ*(AP+AT)
                rot_scr%src_grid_metal_diffusion_coeff1(zone_idx) = star%ctrl%constant_settling_reduction*star%ctrl%constant_mixing_coeff* &
                     settling_prefactor*dlnp_dr(zone_idx)*iron_fraction*(settling_coeff_p+settling_coeff_t)
 !              POSITIVE DIFFUSION COEFFICIENTS NEEDED!
-! old ver.     COD2Z(I) = ABS(FAC*AH)
-! old ver.     QCOD1Z(I) = FAC*HQPR(I)*(AP+AT)
                rot_scr%src_grid_metal_diffusion_coeff2(zone_idx) = star%ctrl%constant_mixing_coeff*abs(settling_prefactor*iron_settling_ah)
                rot_scr%src_grid_metal_diffusion_coeff1_dz(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor* &
                     dlnp_dr(zone_idx)*(settling_coeff_p+settling_coeff_t)

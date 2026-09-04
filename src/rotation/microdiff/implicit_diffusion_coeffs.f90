@@ -11,7 +11,7 @@
 ! (second-derivative) term of the microscopic-diffusion equation
 ! solved in microdiff_run.f90, correcting the zone-midpoint diffusion
 ! coefficient for the change in abundance found on the previous
-! iteration. Also called by grsett.f (not part of this batch).
+! iteration. Also called by gravitational_settling.f90.
 subroutine implicit_diffusion_coeffs(alpha, diffusion_coeff_mid, delta_abundance_mid, &
      diffusion_coeff_deriv_mid, sub_diag, diag, super_diag, npt)
       use star_info_lib, only: json
@@ -36,7 +36,6 @@ subroutine implicit_diffusion_coeffs(alpha, diffusion_coeff_mid, delta_abundance
       sub_diag(1) = 0.0d0
       diag(1) = 1.0d0 + alpha(1)*diffusion_coeff_mid(1)
       super_diag(1) = -alpha(1)*diffusion_coeff_mid(1)
-!   911 FORMAT(5X,I5,1P3E10.2)
       do i=2,npt-1
          sub_diag(i) = -alpha(i)*diffusion_coeff_mid(i-1)
          diag(i) = 1.0d0 + alpha(i)*(diffusion_coeff_mid(i-1)+ &

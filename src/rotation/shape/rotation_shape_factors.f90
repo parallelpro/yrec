@@ -11,24 +11,24 @@
 ! rotation_factor/temperature_rotation_factor (FP/FT) applied to the
 ! hydrostatic/thermal structure equations in henyey_coefficients.f90 to account for
 ! centrifugal flattening (the Kippenhahn-Thomas / Endal-Sofia "shape"
-! formalism): first calls shape (not part of this batch) to get the
-! run of the reference equipotential radius r0 and the distortion
-! parameter eta2, then for each shell integrates the distorted
-! potential (via trapzd/polint Richardson extrapolation) and averages
-! the resulting local effective gravity over the shell (via qgauss/
-! func) to get mean_gravity, from which FP/FT and the diagnostic
-! potential terms rot_scr%phisp/rot_scr%phirot/rot_scr%phidis (common/quadd/) are built.
+! formalism): first calls shape (shape.f90) to get the run of the
+! reference equipotential radius r0 and the distortion parameter eta2,
+! then for each shell integrates the distorted potential (via
+! trapzd/polint Richardson extrapolation) and averages the resulting
+! local effective gravity over the shell (via qgauss with
+! equipotential_integrand) to get mean_gravity, from which FP/FT and
+! the diagnostic potential terms rot_scr%phisp/phirot/phidis are built.
 subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0, ierr)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use phys_const_lib
       use numerics_lib
       use math_lib
       implicit none
-! the shape integrand passed to numerics' qgauss (phase four, step 2)
+! the shape integrand passed to numerics' qgauss
       external equipotential_integrand
 
       double precision, intent(in) :: log_density(json), log_radius(json), &
@@ -39,12 +39,6 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       double precision, intent(out) :: pressure_rotation_factor(json), &
            temperature_rotation_factor(json), mean_gravity(json)
       integer, intent(out) :: ierr
-
-
-
-
-
-
 
       double precision :: extrap_step(20), xa(20), ya(20), aint0(10)
       double precision :: previous_shell_mass

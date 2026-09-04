@@ -15,10 +15,9 @@
 ! the actual two-step Lax-Wendroff + implicit-second-derivative
 ! diffusion solve for one species (hydrogen, metals, or a light
 ! element in turn), calling microdiff_coefficients.f90 for the diffusion
-! coefficients, lax_wendrof1.f/lax_wendrof2.f (not part of this batch)
-! for the explicit first-derivative term, and implicit_diffusion_coeffs.f90 +
-! tridiag_gs.f (not part of this batch) for the implicit second-
-! derivative term.
+! coefficients, lax_wendroff_step1.f90/lax_wendroff_step2.f90 for the
+! explicit first-derivative term, and implicit_diffusion_coeffs.f90 +
+! tridiag_gs for the implicit second-derivative term.
 ! 2026 de-tramp (ROADMAP item 3): 27 arguments -> 13; the two
 ! equally-spaced grids are microdiff_grid records (eq, eq_mid).
 module microdiff_run_lib
@@ -31,9 +30,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
       use microdiff_mte_lib, only: microdiff_grid
       use microdiff_coefficients_lib
-      use star_info_lib, only: star
-
-      use star_info_lib
+      use star_info_lib, only: star, json
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -52,11 +49,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
            atomic_charge_diffused
       integer, intent(in) :: species_col
       integer, intent(out) :: ierr
-
-
-
-
-
+! --- locals ---
       double precision :: diffused_abundance(json), diffused_abundance_mid(json), &
            diffused_abundance_orig(json), diffused_abundance_orig_mid(json), &
            diffused_abundance_prev(json), diffused_abundance_prime(json), &
@@ -67,10 +60,8 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
            super_diag(json)
       integer :: i, iter, num_mid_points, max_change_zone
 ! use_generic_diffusion_vectors (originally LDOLI): set true so that
-! the Lax-Wendroff routines (lax_wendrof1.f/lax_wendrof2.f, not part
-! of this batch) use the current single diffused-species vector rather
-! than any legacy metal-diffusion-specific vectors -- exact downstream
-! effect not confirmed here, only the value set.
+! lax_wendroff_step1/2 skip their separate metal-diffusion pass
+! (rot_scr%metal_* vectors, used only by gravitational_settling).
       logical :: use_generic_diffusion_vectors
       double precision :: fac, max_abundance_change, dx
 
