@@ -24,6 +24,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      num_zones, total_mass, num_light, light_element_id)
       use star_info_lib, only: star, json
       use numerics_lib
+      use microdiff_mte_lib, only: lagrange4
       implicit none
 
       double precision, intent(inout) :: timestep
@@ -107,15 +108,13 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
          call intrp2(tabler,facinterp,radmod)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR CHANGE IN X.
-         dxmod = facinterp(1)*eq_delta_hydrogen(k0)+facinterp(2)*eq_delta_hydrogen(k0+1)+ &
-                   facinterp(3)*eq_delta_hydrogen(k0+2)+facinterp(4)*eq_delta_hydrogen(k0+3)
+         dxmod = lagrange4(facinterp, eq_delta_hydrogen, k0)
          x_max = 1.0d0 - composition(3,i) - composition(4,i)
          composition(1,i)=min(composition(1,i) + dxmod,x_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
          if(star%job%use_diffusion_z)then
             z_max = 1.0d0 - composition(1,i) - composition(4,i)
-            dzmod = facinterp(1)*eq_delta_metal(k0)+facinterp(2)*eq_delta_metal(k0+1)+ &
-                   facinterp(3)*eq_delta_metal(k0+2)+facinterp(4)*eq_delta_metal(k0+3)
+            dzmod = lagrange4(facinterp, eq_delta_metal, k0)
             zz = min(composition(3,i)+dzmod,z_max)
             zz2 = zz/composition(3,i)
             composition(3,i)=zz

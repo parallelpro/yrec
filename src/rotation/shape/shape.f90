@@ -31,9 +31,8 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
       double precision :: rho_bar, r_phi, density, gm, r_phi_cubed, &
            r0_cubed, fact, delta_r0_cubed
       double precision :: rho_bar_prev, r_phi_prev, rho_prev
-      double precision :: dr, deta1, deta2, deta3, deta4, rho_avg, &
-           rho_bar_avg, eta_avg, r_phi_avg
-      double precision :: r0_estimate, acc_tol, err, eta2_temp, r0_avg
+      double precision :: dr, rho_avg, rho_bar_avg
+      double precision :: r0_estimate, acc_tol, err, eta2_temp
       double precision :: a_param
 
       cg = exp(ln10*cgl)
@@ -86,30 +85,11 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 ! D(ETA2)/D(R0) IS COMPUTED USING RADAU'S EQUATION:
 ! R*(DETA2/DR)+6*RHO*(ETA2+1)/RHOBAR+ETA2*(ETA2-1) = 6 ,AND ETA2(0) = 0
 ! FOR A FIRST GUESS,R0 = RPHI IS ASSUMED.
-!    FIRST EVALUATE DETA/DR AT THE BEGINNING OF THE INTERVAL
-         deta1 = dr*(6.0d0 - 6.0d0*rho_prev*(eta2(i-1) + 1.0d0)/rho_bar_prev &
-         - eta2(i-1)*(eta2(i-1) - 1.0d0))/r_phi_prev
 ! RHOA AND RHOBA ARE AVERAGES OF THE RHO,RHOBAR OF OLD AND NEW SHELLS
          rho_avg = 0.5d0*(density+rho_prev)
          rho_bar_avg = 0.5d0*(rho_bar+rho_bar_prev)
-         eta_avg = eta2(i-1) + 0.5d0*deta1
-         r_phi_avg = r_phi_prev + 0.5d0*dr
-!    USING THE ESTIMATED ETA2 AT THE MIDPOINT,FIND DETA/DR AT THE
-!    MIDPOINT.
-         deta2 = dr*(6.0d0 - 6.0d0*rho_avg*(eta_avg + 1.0d0)/rho_bar_avg &
-         - eta_avg*(eta_avg - 1.0d0))/r_phi_avg
-         eta_avg = eta2(i-1) + 0.5d0*deta2
-!    USING THIS REFINED DERIVATIVE TO ESTIMATE ETA2 AT MIDPOINT,
-!    FIND DETA/DR AT THE MIDPOINT AGAIN.
-         deta3 = dr*(6.0d0 - 6.0d0*rho_avg*(eta_avg + 1.0d0)/rho_bar_avg &
-         - eta_avg*(eta_avg - 1.0d0))/r_phi_avg
-         eta_avg = eta2(i-1) + deta3
-!    USING DETA/DR AT THE MIDPOINT TO ESTIMATE ETA2 AT THE END OF
-!    THE INTERVAL,GET DETA/DR AT THE END OF THE INTERVAL.
-         deta4 = dr*(6.0d0 - 6.0d0*density*(eta_avg + 1.0d0)/rho_bar &
-         - eta_avg*(eta_avg - 1.0d0))/r_phi
-!    PERFORM 4TH ORDER RUNGE-KUTTE INTEGRATION USING ABOVE 4 DERIVS.
-         eta2(i) = eta2(i-1)+cc13*(0.5d0*deta1+deta2+deta3+0.5d0*deta4)
+         eta2(i) = radau_rk4_step(dr, eta2(i-1), rho_prev, rho_bar_prev, &
+              r_phi_prev, rho_avg, rho_bar_avg, density, rho_bar, r_phi)
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
          r0_estimate = r_phi
@@ -136,20 +116,8 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 ! ETA2 AT R0(I) RATHER THAN ASSUMING R0 = RPHI.
             eta2_temp = eta2(i)
             dr = r0(i) - r0(i-1)
-            deta1 = dr*(6.0d0 - 6.0d0*rho_prev*(eta2(i-1) + 1.0d0)/rho_bar_prev &
-                    - eta2(i-1)*(eta2(i-1) - 1.0d0))/r0(i-1)
-            eta_avg = eta2(i-1) + 0.5d0*deta1
-            r0_avg = r0(i-1) + 0.5d0*dr
-            deta2 = dr*(6.0d0 - 6.0d0*rho_avg*(eta_avg + 1.0d0)/rho_bar_avg &
-                    - eta_avg*(eta_avg - 1.0d0))/r0_avg
-            eta_avg = eta2(i-1) + 0.5d0*deta2
-            deta3 = dr*(6.0d0 - 6.0d0*rho_avg*(eta_avg + 1.0d0)/rho_bar_avg &
-                    - eta_avg*(eta_avg - 1.0d0))/r0_avg
-            eta_avg = eta2(i-1) + deta3
-            deta4 = dr*(6.0d0 - 6.0d0*density*(eta_avg + 1.0d0)/rho_bar &
-                    - eta_avg*(eta_avg - 1.0d0))/r0(i)
-            eta2(i) = eta2(i-1) + cc13*(0.5d0*deta1+deta2+deta3 &
-                      + 0.5d0*deta4)
+            eta2(i) = radau_rk4_step(dr, eta2(i-1), rho_prev, rho_bar_prev, &
+                 r0(i-1), rho_avg, rho_bar_avg, density, rho_bar, r0(i))
             err = eta2_temp - eta2(i)
             if(dabs(err).le.acc_tol) exit
             r0_estimate = r0(i)
@@ -159,4 +127,41 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r_phi_prev = r_phi
       end do
       return
+
+contains
+
+! One 4th-order Runge-Kutta step of Radau's equation
+!   R*(DETA2/DR) + 6*RHO*(ETA2+1)/RHOBAR + ETA2*(ETA2-1) = 6
+! from (r_prev, eta_prev) to r = r_prev + dr, with rho/rho_bar given
+! at the start, midpoint (rho_avg/rho_bar_avg) and end of the step.
+! Body is token-identical to the two former inline copies.
+      pure function radau_rk4_step(dr, eta_prev, rho_prev, rho_bar_prev, &
+           r_prev, rho_avg, rho_bar_avg, rho, rho_bar, r) result(eta_new)
+      double precision, intent(in) :: dr, eta_prev, rho_prev, rho_bar_prev, &
+           r_prev, rho_avg, rho_bar_avg, rho, rho_bar, r
+      double precision :: eta_new
+      double precision :: deta1, deta2, deta3, deta4, eta_avg, r_avg
+!    FIRST EVALUATE DETA/DR AT THE BEGINNING OF THE INTERVAL
+      deta1 = dr*(6.0d0 - 6.0d0*rho_prev*(eta_prev + 1.0d0)/rho_bar_prev &
+      - eta_prev*(eta_prev - 1.0d0))/r_prev
+      eta_avg = eta_prev + 0.5d0*deta1
+      r_avg = r_prev + 0.5d0*dr
+!    USING THE ESTIMATED ETA2 AT THE MIDPOINT,FIND DETA/DR AT THE
+!    MIDPOINT.
+      deta2 = dr*(6.0d0 - 6.0d0*rho_avg*(eta_avg + 1.0d0)/rho_bar_avg &
+      - eta_avg*(eta_avg - 1.0d0))/r_avg
+      eta_avg = eta_prev + 0.5d0*deta2
+!    USING THIS REFINED DERIVATIVE TO ESTIMATE ETA2 AT MIDPOINT,
+!    FIND DETA/DR AT THE MIDPOINT AGAIN.
+      deta3 = dr*(6.0d0 - 6.0d0*rho_avg*(eta_avg + 1.0d0)/rho_bar_avg &
+      - eta_avg*(eta_avg - 1.0d0))/r_avg
+      eta_avg = eta_prev + deta3
+!    USING DETA/DR AT THE MIDPOINT TO ESTIMATE ETA2 AT THE END OF
+!    THE INTERVAL,GET DETA/DR AT THE END OF THE INTERVAL.
+      deta4 = dr*(6.0d0 - 6.0d0*rho*(eta_avg + 1.0d0)/rho_bar &
+      - eta_avg*(eta_avg - 1.0d0))/r
+!    PERFORM 4TH ORDER RUNGE-KUTTE INTEGRATION USING ABOVE 4 DERIVS.
+      eta_new = eta_prev+cc13*(0.5d0*deta1+deta2+deta3+0.5d0*deta4)
+      end function radau_rk4_step
+
 end subroutine shape

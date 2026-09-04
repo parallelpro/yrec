@@ -118,8 +118,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       if (ierr /= 0) return
 ! MHP 9/94 ADDED DISK LOCKING OPTION.
       disk_lock_engaged = .false.
-      if(star%job%disk_locking_active .and. star%disk_gate_age_gyr.le.star%job%disk_locking_age_gyr) &
-           disk_lock_engaged = .true.
+      if(disk_locking_engaged()) disk_lock_engaged = .true.
       if(.not.star%job%instability_transport_active)then
 !  STORE THE SURFACE ANGULAR VELOCITY FROM THE BEGINNING OF THE TIMESTEP.
          omega_surface = star%omega(star%nz)

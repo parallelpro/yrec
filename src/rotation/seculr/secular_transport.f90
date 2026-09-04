@@ -125,8 +125,7 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
 ! MHP 9/94
 ! DISK LOCKING CHECKED
       disk_lock_active = .false.
-      if(star%job%disk_locking_active .and. star%disk_gate_age_gyr.le.star%job%disk_locking_age_gyr) &
-           disk_lock_active = .true.
+      if(disk_locking_engaged()) disk_lock_active = .true.
 !  FIRST AND LAST SHELL BOUNDARY CONDITIONS REQUIRE THAT THESE SHELLS BE
 !  TREATED AS 'CONVECTIVE' FOR DIFFUSION PURPOSES. FIX THIS.
       lcz_first_zone = rot_scr%am_transport_convective_flag_mid(1)

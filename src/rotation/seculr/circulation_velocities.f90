@@ -80,16 +80,8 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
 !  FOR THE KINEMATIC VISCOSITY AND THERMAL DIFFUSIVITY.
 !  TREATMENT OF FIRST INTERFACE.
       if (zone_min.lt.3) then
-         rot_scr%kinematic_viscosity_interface(2)=exp(log(mix_scr%viscm(1))* &
-              rot_scr%lagrange_interp_weights(1,2)+log(mix_scr%viscm(2))* &
-              rot_scr%lagrange_interp_weights(2,2)+ &
-              log(mix_scr%viscm(3))*rot_scr%lagrange_interp_weights(3,2)+log(mix_scr%viscm(4))* &
-              rot_scr%lagrange_interp_weights(4,2))
-         rot_scr%thermal_diffusivity_interface(2)=exp(log(mix_scr%thdifm(1))* &
-              rot_scr%lagrange_interp_weights(1,2)+log(mix_scr%thdifm(2))* &
-              rot_scr%lagrange_interp_weights(2,2) &
-              +log(mix_scr%thdifm(3))*rot_scr%lagrange_interp_weights(3,2)+log(mix_scr%thdifm(4))* &
-              rot_scr%lagrange_interp_weights(4,2))
+         rot_scr%kinematic_viscosity_interface(2)=log_lagrange4(mix_scr%viscm, 1, 2)
+         rot_scr%thermal_diffusivity_interface(2)=log_lagrange4(mix_scr%thdifm, 1, 2)
          i0=3
       else
          i0=zone_min
@@ -97,32 +89,17 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
 !  TREATMENT OF LAST INTERFACE.
       if (zone_max.eq.num_zones) then
          rot_scr%kinematic_viscosity_interface(num_zones)= &
-              exp(log(mix_scr%viscm(num_zones-3))*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              log(mix_scr%viscm(num_zones-2))*rot_scr%lagrange_interp_weights(2,num_zones) &
-              +log(mix_scr%viscm(num_zones-1))*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              log(mix_scr%viscm(num_zones))*rot_scr%lagrange_interp_weights(4,num_zones))
+              log_lagrange4(mix_scr%viscm, num_zones-3, num_zones)
          rot_scr%thermal_diffusivity_interface(num_zones)= &
-              exp(log(mix_scr%thdifm(num_zones-3))* &
-              rot_scr%lagrange_interp_weights(1,num_zones)+log(mix_scr%thdifm(num_zones-2))* &
-              rot_scr%lagrange_interp_weights(2,num_zones)+log(mix_scr%thdifm(num_zones-1))* &
-              rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              log(mix_scr%thdifm(num_zones))*rot_scr%lagrange_interp_weights(4,num_zones))
+              log_lagrange4(mix_scr%thdifm, num_zones-3, num_zones)
          i1=num_zones-1
       else
          i1=zone_max
       end if
 !  GENERAL CASE.
       do i = i0,i1
-         rot_scr%kinematic_viscosity_interface(i)=exp(log(mix_scr%viscm(i-2))* &
-              rot_scr%lagrange_interp_weights(1,i)+log(mix_scr%viscm(i-1)) &
-              *rot_scr%lagrange_interp_weights(2,i)+log(mix_scr%viscm(i))* &
-              rot_scr%lagrange_interp_weights(3,i)+log(mix_scr%viscm(i+1)) &
-              *rot_scr%lagrange_interp_weights(4,i))
-         rot_scr%thermal_diffusivity_interface(i)=exp(log(mix_scr%thdifm(i-2))* &
-              rot_scr%lagrange_interp_weights(1,i)+log(mix_scr%thdifm(i-1)) &
-              *rot_scr%lagrange_interp_weights(2,i)+log(mix_scr%thdifm(i))* &
-              rot_scr%lagrange_interp_weights(3,i)+log(mix_scr%thdifm(i+1)) &
-              *rot_scr%lagrange_interp_weights(4,i))
+         rot_scr%kinematic_viscosity_interface(i)=log_lagrange4(mix_scr%viscm, i-2, i)
+         rot_scr%thermal_diffusivity_interface(i)=log_lagrange4(mix_scr%thdifm, i-2, i)
       end do
 ! USE LINEAR INTERPOLATION FOR OMEGA AND MU.
       do i = 2,num_zones
@@ -455,4 +432,21 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
       end if
 
       return
+
+contains
+
+! 4-point Lagrangian interpolation in log(a) of a(k..k+3) to interface
+! i, using the weights rot_scr%lagrange_interp_weights(1:4,i) set up
+! by am_transport_grid. Token-identical to the former inline forms.
+      function log_lagrange4(a, k, i)
+      double precision, intent(in) :: a(*)
+      integer, intent(in) :: k, i
+      double precision :: log_lagrange4
+      log_lagrange4 = exp(log(a(k))* &
+           rot_scr%lagrange_interp_weights(1,i)+log(a(k+1))* &
+           rot_scr%lagrange_interp_weights(2,i)+ &
+           log(a(k+2))*rot_scr%lagrange_interp_weights(3,i)+log(a(k+3))* &
+           rot_scr%lagrange_interp_weights(4,i))
+      end function log_lagrange4
+
 end subroutine circulation_velocities

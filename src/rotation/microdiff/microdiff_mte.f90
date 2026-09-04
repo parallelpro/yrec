@@ -37,6 +37,17 @@ module microdiff_mte_lib
       end type microdiff_grid
 contains
 
+! 4-point Lagrangian interpolation of a(k0..k0+3) with the weights
+! fac(1..4) from interp/intrp2 (numerics_lib). Token-identical to the
+! former inline sums.
+      pure function lagrange4(fac, a, k0)
+      double precision, intent(in) :: fac(4), a(*)
+      integer, intent(in) :: k0
+      double precision :: lagrange4
+      lagrange4 = fac(1)*a(k0)+fac(2)*a(k0+1)+ &
+                   fac(3)*a(k0+2)+fac(4)*a(k0+3)
+      end function lagrange4
+
 subroutine microdiff_mte(num_light, light_element_id, composition, &
      dlnp_dr, radius_bl, enclosed_mass, zone_begin, zone_end, num_zones, &
      grid_spacing, num_eq_points, density_orig, temperature_orig, &
@@ -148,17 +159,12 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          call interp(tabler,facinterp,facderiv,gridrad)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 !  MASS WITHIN THE RADIUS ER
-         eq_mid%mass(i) = facinterp(1)*enclosed_mass(k0)+facinterp(2)*enclosed_mass(k0+1)+ &
-                   facinterp(3)*enclosed_mass(k0+2)+facinterp(4)*enclosed_mass(k0+3)
+         eq_mid%mass(i) = lagrange4(facinterp, enclosed_mass, k0)
 !  RELAVENT PHYSICAL VARIABLES
-         eq_mid%density(i) = facinterp(1)*density_orig(k0)+facinterp(2)*density_orig(k0+1)+ &
-                   facinterp(3)*density_orig(k0+2)+facinterp(4)*density_orig(k0+3)
-         eq_mid%temperature(i) = facinterp(1)*temperature_orig(k0)+facinterp(2)*temperature_orig(k0+1)+ &
-                   facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
-         eq_mid%dlnp_dr(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
-                   facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq_mid%del_grad(i) = facinterp(1)*star%gradT(k0)+facinterp(2)*star%gradT(k0+1)+ &
-                   facinterp(3)*star%gradT(k0+2)+facinterp(4)*star%gradT(k0+3)
+         eq_mid%density(i) = lagrange4(facinterp, density_orig, k0)
+         eq_mid%temperature(i) = lagrange4(facinterp, temperature_orig, k0)
+         eq_mid%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr, k0)
+         eq_mid%del_grad(i) = lagrange4(facinterp, star%gradT, k0)
 !  MASS FRACTION OF HYDROGEN
          eq_mid%hydrogen(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
@@ -243,16 +249,11 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          call interp(tabler,facinterp,facderiv,gridrad)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 !  MASS WITHIN THE RADIUS ER
-         eq%mass(i) = facinterp(1)*enclosed_mass(k0)+facinterp(2)*enclosed_mass(k0+1)+ &
-                   facinterp(3)*enclosed_mass(k0+2)+facinterp(4)*enclosed_mass(k0+3)
-         eq%density(i) = facinterp(1)*density_orig(k0)+facinterp(2)*density_orig(k0+1)+ &
-                   facinterp(3)*density_orig(k0+2)+facinterp(4)*density_orig(k0+3)
-         eq%temperature(i) = facinterp(1)*temperature_orig(k0)+facinterp(2)*temperature_orig(k0+1)+ &
-                   facinterp(3)*temperature_orig(k0+2)+facinterp(4)*temperature_orig(k0+3)
-         eq%dlnp_dr(i) = facinterp(1)*dlnp_dr(k0)+facinterp(2)*dlnp_dr(k0+1)+ &
-                   facinterp(3)*dlnp_dr(k0+2)+facinterp(4)*dlnp_dr(k0+3)
-         eq%del_grad(i) = facinterp(1)*star%gradT(k0)+facinterp(2)*star%gradT(k0+1)+ &
-                   facinterp(3)*star%gradT(k0+2)+facinterp(4)*star%gradT(k0+3)
+         eq%mass(i) = lagrange4(facinterp, enclosed_mass, k0)
+         eq%density(i) = lagrange4(facinterp, density_orig, k0)
+         eq%temperature(i) = lagrange4(facinterp, temperature_orig, k0)
+         eq%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr, k0)
+         eq%del_grad(i) = lagrange4(facinterp, star%gradT, k0)
          eq%hydrogen(i)=facinterp(1)*composition(1,k0) &
               +facinterp(2)*composition(1,k0+1) &
               +facinterp(3)*composition(1,k0+2) &

@@ -14,11 +14,12 @@
 ! instances). Re-entrancy: yrec_reset snapshots/restores them
 ! alongside star0, so repeated in-process runs start pristine.
 module rotation_scratch_lib
-      use star_info_lib, only: json
+      use star_info_lib, only: json, star
       implicit none
       private
       public :: rotation_diffusion_state, mdphy_state, &
-           circulation_velocity_state, rot_scr, mix_scr, circ_scr
+           circulation_velocity_state, rot_scr, mix_scr, circ_scr, &
+           disk_locking_engaged
 
 ! Row capacity of the 10-column banded system assembled by
 ! am_advection_diffusion_coeffs and eliminated by banded_solver
@@ -223,5 +224,14 @@ module rotation_scratch_lib
       type(rotation_diffusion_state), save :: rot_scr
       type(mdphy_state), save :: mix_scr
       type(circulation_velocity_state), save :: circ_scr
+
+contains
+
+! MHP 9/94 disk locking: true while the disk-locking option is on and
+! the model is still younger than the disk-locking age (Gyr).
+      logical function disk_locking_engaged()
+      disk_locking_engaged = star%job%disk_locking_active .and. &
+           star%disk_gate_age_gyr.le.star%job%disk_locking_age_gyr
+      end function disk_locking_engaged
 
 end module rotation_scratch_lib
