@@ -131,10 +131,10 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
       lcz_first_zone = rot_scr%am_transport_convective_flag_mid(1)
       lcz_last_zone = rot_scr%am_transport_convective_flag_mid(star%nz)
 !  SET UP FACTORS USED TO COMPUTE DIFFUSION VELOCITIES.
-      call rotation_stability_setup(rot_scr%log_density_mid,rot_scr%hg_mid,rot_scr%log_luminosity_mid,rot_scr%log_pressure_mid, &
+      call rotation_stability_setup(rot_scr%log_density_mid,rot_scr%hg_mid,rot_scr%luminosity_lsun_mid,rot_scr%log_pressure_mid, &
            rot_scr%log_radius_mid,star%m,rot_scr%log_temperature_mid,zone_min,zone_max, &
            star%nz,radius_unlogged,dynamical_shear_omega_limit)
-      total_luminosity = star%solar_luminosity_cgs*rot_scr%log_luminosity_mid(star%nz)
+      total_luminosity = star%solar_luminosity_cgs*rot_scr%luminosity_lsun_mid(star%nz)
 !  COMPUTE ANGULAR VELOCITY GRADIENTS
       do i = zone_min,zone_max
 ! CENTER LOGARITHMIC DERIVATIVE.
@@ -314,7 +314,7 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
 ! ANGULAR MOMENTUM EVOLUTION IS CLOSE TO THE GRID STORED FOR
 ! THE STRUCTURAL EVOLUTION.
          call am_transport_grid(am_diffusion_coeff,mixing_diffusion_coeff,rot_scr%log_density_mid, &
-              rot_scr%moment_of_inertia_mid,specific_angular_momentum_saved,rot_scr%log_luminosity_mid, &
+              rot_scr%moment_of_inertia_mid,specific_angular_momentum_saved,rot_scr%luminosity_lsun_mid, &
               rot_scr%log_pressure_mid,rot_scr%log_radius_mid,radius_unlogged,star%log_mass,star%m, &
               star%dm,star%log_total_mass,zone_begin,zone_end, &
               rot_scr%am_transport_convective_flag_mid,star%nz,omega_start,grid_spacing, &
@@ -397,7 +397,7 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
          species_begin = 1
          species_end = 4
          call diffuse_composition_driver(sub_timestep,mixing_diffusion_coeff, &
-              eq_mixing_diffusion_coeff,eq_mass,rot_scr%log_density_mid,rot_scr%log_luminosity_mid, &
+              eq_mixing_diffusion_coeff,eq_mass,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
               rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm, &
               star%log_total_mass,diffusion_velocity,zone_begin,zone_end,zone_max, &
               zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
@@ -443,7 +443,7 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
          species_end = 11
       endif
       call diffuse_composition_driver(sub_timestep,mixing_diffusion_coeff, &
-           eq_mixing_diffusion_coeff,eq_mass,rot_scr%log_density_mid,rot_scr%log_luminosity_mid, &
+           eq_mixing_diffusion_coeff,eq_mass,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
            rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm, &
            star%log_total_mass,diffusion_velocity,zone_begin,zone_end,zone_max, &
            zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &

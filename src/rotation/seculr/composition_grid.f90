@@ -15,7 +15,7 @@
 ! diffusion coefficients (equally_spaced_diffusion_coeff) at the zone
 ! edges, including the Jacobian factor for the transformation from
 ! radius to the rot_scr%chi coordinate.
-subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
+subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
@@ -28,7 +28,7 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
       implicit none
 
       double precision, intent(in) :: diffusion_coeff(json), &
-           log_density(json), log_luminosity(json), log_pressure(json), &
+           log_density(json), luminosity_lsun(json), log_pressure(json), &
            log_radius(json), log_mass(json), enclosed_mass(json), &
            shell_mass(json)
       double precision, intent(in) :: log_total_mass
@@ -51,7 +51,7 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
          single_interface_flag = .false.
       end if
 ! DEFINE A GRID OF EQUALLY SPACED POINTS.
-      call equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin, &
+      call equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin, &
            zone_end, num_zones)
 ! EQUAL_SPACED_GRID HAS DEFINED A SET OF CO-ORDINATES (CHI) AND EQUALLY
 ! SPACED MASS POINTS.  NOW FIND THE OTHER QUANTITIES OF INTEREST AT ZONE
@@ -127,7 +127,7 @@ subroutine composition_grid(diffusion_coeff, log_density, log_luminosity, &
            rot_scr%ntot)
 ! PRODUCT OF RHO R^2 BY D CHI/DR
       mass_scale = star%ctrl%chi_grid_scale(2)
-      luminosity_scale = star%ctrl%chi_grid_scale(9)*log_luminosity(num_zones)* &
+      luminosity_scale = star%ctrl%chi_grid_scale(9)*luminosity_lsun(num_zones)* &
            star%solar_luminosity_cgs
       pressure_scale = star%ctrl%chi_grid_scale(11)
       do idx = 1, ntab

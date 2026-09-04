@@ -18,6 +18,8 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json
+      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_c12_p, &
+           rr_c13_p, rr_n14_p, rr_o16_p, rr_zero9
       use kap_lib
       use luout_lib
       use run_log_lib, only: solver_diagnostics
@@ -44,9 +46,14 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       logical :: am_transport_convective_flag(json)
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
-! reaction_rate_by_zone rows carried across the rezone (H1, He4, He3,
-! C12, C13, N14, O16; see rotation_scratch_lib).
-      integer, parameter :: reaction_rate_species_index(7) = [1,2,4,5,6,7,9]
+! reaction_rate_by_zone rows carried across the rezone. The rows are
+! reaction rates (rr_* in rotation_scratch_lib), not species: the
+! original loop regridded HCOMPM rows 1,2,4,5,6,7,9 as if they were the
+! H1/He4/He3/C12/C13/N14/O16 composition slots, so rows 3 (He3+He4),
+! 8 and 10-15 are NOT regridded (historical behaviour, kept).
+      integer, parameter :: reaction_rate_species_index(7) = &
+           [rr_pp, rr_he3_he3, rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, &
+           rr_zero9]
       double precision :: z_new(json), x_new(json)
 ! MHP 6/00 added dummy vector
 ! MHP 7/02 added chi vector - a running total of the normalized
@@ -604,8 +611,9 @@ subroutine interpolate_onto_new_grid
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
          call regrid_in_place(star%xa_start(i,:))
       end do
-!  HCOMPM IS THE ARRAY OF CHANGES IN COMPOSITION DUE TO NUCLEAR BURNING.
-!  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
+!  reaction_rate_by_zone (originally HCOMPM) HOLDS THE PER-ZONE REACTION
+!  RATES FROM mix.f90; rotmix.f90 READS THEM BACK IN ROTATING MODELS.
+!  ONLY THE ROWS LISTED IN reaction_rate_species_index ARE REGRIDDED.
       do i = 1,size(reaction_rate_species_index)
          call regrid_in_place(rot_scr%reaction_rate_by_zone(reaction_rate_species_index(i),:))
       end do

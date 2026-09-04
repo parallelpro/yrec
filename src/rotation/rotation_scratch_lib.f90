@@ -28,6 +28,18 @@ module rotation_scratch_lib
 ! against this capacity -- historical value, see the R2 report).
       integer, parameter, public :: band_nmax = 8000
 
+! Row indices of rot_scr%reaction_rate_by_zone(15,json). The rows are
+! the per-zone reaction rates / branching fractions returned by
+! net_lib's rates (originally HR1-HR13, HF1, HF2), stored in that
+! dummy-argument order by mixing/mix.f90 and read back by
+! mixing/rotmix.f90 and setup/rezone.f90.
+      integer, parameter, public :: rr_pp = 1, rr_he3_he3 = 2, &
+           rr_he3_he4 = 3, rr_c12_p = 4, rr_c13_p = 5, rr_n14_p = 6, &
+           rr_o16_p = 7, rr_c13_alpha = 8, rr_zero9 = 9, &
+           rr_c12_alpha = 10, rr_n14_alpha = 11, rr_triple_alpha = 12, &
+           rr_zero13 = 13, rr_frac_c12_alpha = 14, &
+           rr_frac_be7_electron = 15
+
 ! ---- from state/rotdiff_lib.f90 ----
       type, public :: rotation_diffusion_state
 ! former common/advec/
@@ -185,9 +197,11 @@ module rotation_scratch_lib
 ! signatures. Reads only ever follow a write in the same driver call
 ! (the .not.first_call seeding reads the previous sub-step's values),
 ! so module lifetime changes nothing; yrec_reset snapshots it anyway.
+! luminosity_lsun_mid is linear L/Lsun (interpolated from
+! star%luminosity_lsun), not a log, unlike its log_* neighbours.
            double precision :: eta_squared_mid(json), &
                 log_density_mid(json), hg_mid(json), &
-                moment_of_inertia_mid(json), log_luminosity_mid(json), &
+                moment_of_inertia_mid(json), luminosity_lsun_mid(json), &
                 log_pressure_mid(json), log_radius_mid(json), &
                 log_temperature_mid(json), omega_mid(json), &
                 mean_radius_mid(json), qiw_mid(json)

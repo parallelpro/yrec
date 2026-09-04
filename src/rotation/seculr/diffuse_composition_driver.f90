@@ -8,7 +8,7 @@
 ! (examples/run_standard_solar_model).
 !
 ! Dummy-argument names for the quantities passed straight through to
-! composition_grid.f90 (log_density/log_luminosity/log_pressure/log_radius/
+! composition_grid.f90 (log_density/luminosity_lsun/log_pressure/log_radius/
 ! log_mass/enclosed_mass/log_total_mass) match that already-converted
 ! callee's own parameter names, and the whole argument list matches the
 ! already-converted caller burn_settle_mix.f90's call to ndifcom.
@@ -63,7 +63,7 @@
 ! CALL diffuse_composition FOR THE PREVIOUSLY IDENTIFIED UNSTABLE REGION IF THIS IS NOT
 ! THE CONVERGED CALL
 subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
-     equally_spaced_mass, log_density, log_luminosity, log_pressure, &
+     equally_spaced_mass, log_density, luminosity_lsun, log_pressure, &
      log_radius, log_mass, enclosed_mass, shell_mass, log_total_mass, &
      velocity, zone_begin, zone_end, zone_max, zone_min, convective_flag, &
      final_iteration_flag, num_zones, composition, species_begin, species_end, ierr)
@@ -74,7 +74,7 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
       double precision, intent(in) :: diffusion_coeff(json)
       double precision, intent(inout) :: equally_spaced_diffusion_coeff(json), &
            equally_spaced_mass(json)
-      double precision, intent(in) :: log_density(json), log_luminosity(json), &
+      double precision, intent(in) :: log_density(json), luminosity_lsun(json), &
            log_pressure(json), log_radius(json), log_mass(json), &
            enclosed_mass(json), shell_mass(json), log_total_mass
       double precision, intent(in) :: velocity(json)
@@ -132,7 +132,7 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
          if (unstable_zone_found) then
 !  TRANSFORM TO EQUAL GRID SPACING IN R FOR THE REGION.
-         call composition_grid(diffusion_coeff, log_density, log_luminosity, &
+         call composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
               log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
               log_total_mass, zone_begin, zone_end, convective_flag, &
               num_zones, equally_spaced_diffusion_coeff, equally_spaced_mass, &

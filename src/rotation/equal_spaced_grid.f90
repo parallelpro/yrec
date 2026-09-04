@@ -13,7 +13,7 @@
 ! respectively. This routine transforms these variables to an equally
 ! spaced grid from the first point to the last point. It returns a
 ! set of equally spaced rot_scr%chi values and their location in mass.
-subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin, &
+subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
@@ -22,12 +22,12 @@ subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin,
       use math_lib
       implicit none
 
-! log_luminosity (originally HL): this file's own comment describes
-! this term as "L/(LTOT*DL)" (not "LOG(L)/DL", unlike the LOG(M) and
-! LOG(P) terms), but both already-converted callers (composition_grid.f90,
-! am_transport_grid.f90) pass their log_luminosity array into this argument
-! position, so it is named accordingly here.
-      double precision, intent(in) :: log_luminosity(json), log_pressure(json), &
+! luminosity_lsun (originally HL) is the LINEAR luminosity in solar
+! units, not a log: both callers (composition_grid.f90,
+! am_transport_grid.f90) pass rot_scr%luminosity_lsun_mid, the
+! mid-sub-step interpolate of star%luminosity_lsun, and the chi term
+! below is L/(LTOT*DL) (unlike the LOG(M) and LOG(P) terms).
+      double precision, intent(in) :: luminosity_lsun(json), log_pressure(json), &
            log_mass(json)
       integer, intent(in) :: zone_begin, zone_end, num_zones
 
@@ -37,13 +37,13 @@ subroutine equal_spaced_grid(log_luminosity, log_pressure, log_mass, zone_begin,
 
 ! USE THE MODEL CRITERIA FOR ASSIGNING THE SPACING BETWEEN GRID POINTS.
       mass_scale = star%ctrl%chi_grid_scale(2)
-      luminosity_scale = star%ctrl%chi_grid_scale(9)*log_luminosity(num_zones)
+      luminosity_scale = star%ctrl%chi_grid_scale(9)*luminosity_lsun(num_zones)
       pressure_scale = star%ctrl%chi_grid_scale(11)
       num_points_in_range = zone_end - zone_begin + 1
       do range_index = 1, num_points_in_range
          zone_index = zone_begin + range_index - 1
          rot_scr%chi(range_index) = log_mass(zone_index)/mass_scale + &
-              log_luminosity(zone_index)/luminosity_scale - &
+              luminosity_lsun(zone_index)/luminosity_scale - &
               log_pressure(zone_index)/pressure_scale
       end do
 ! NUMBER OF EQUALLY SPACED POINTS = NUMBER OF MODEL POINTS IN RANGE

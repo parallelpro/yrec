@@ -65,9 +65,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
 
       num_species_tracked = 11
       if (star%job%use_extended_composition) num_species_tracked = 15
-!  INITIALIZE COMPOSITION ARRAY THE FIRST TIME THROUGH.
-!  HCOMPM IS THE ARRAY OF CHANGES IN COMPOSITION DUE TO NUCLEAR BURNING
-!  DURING THE COURSE OF THE MODEL TIMESTEP.
+!  INITIALIZE COMPOSITION ARRAY THE FIRST TIME THROUGH (RESET star%xa
+!  TO THE START-OF-TIMESTEP COMPOSITION star%xa_start).
 ! MHP 06/02 SAVE THE CONVECTIVE STATE FROM THE PRIOR STEP.
       if (first_call) then
          do j = 1,star%nz
@@ -87,7 +86,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       do j = 1,star%nz
          rot_scr%log_density_mid(j) = star%logRho_start(j) + &
               time_fraction*(star%logRho(j)-star%logRho_start(j))
-         rot_scr%log_luminosity_mid(j) = star%luminosity_lsun_start(j) + &
+         rot_scr%luminosity_lsun_mid(j) = star%luminosity_lsun_start(j) + &
               time_fraction*(star%luminosity_lsun(j)-star%luminosity_lsun_start(j))
          rot_scr%log_pressure_mid(j) = star%logP_start(j) + &
               time_fraction*(star%logP(j)-star%logP_start(j))

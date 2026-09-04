@@ -20,7 +20,7 @@
 ! (Whether this BS-extrapolation path stays is an author decision; see
 ! audit/readability-sweep-2026-09-03/SUMMARY.md.)
 subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, &
-     log_luminosity, log_pressure, log_radius, log_mass, enclosed_mass, &
+     luminosity_lsun, log_pressure, log_radius, log_mass, enclosed_mass, &
      shell_mass, log_total_mass, log_temperature, velocity, zone_max, &
      zone_min, env_cz_zone_old, env_cz_zone, final_iteration_flag, &
      convective_flag, num_zones, radiative_zone_bounds, mixed_zone_bounds, &
@@ -35,7 +35,7 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
       double precision, intent(in) :: timestep
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(inout) :: log_density(json)
-      double precision, intent(inout) :: log_luminosity(json)
+      double precision, intent(inout) :: luminosity_lsun(json)
       double precision, intent(inout) :: log_pressure(json)
       double precision, intent(inout) :: log_radius(json)
       double precision, intent(inout) :: log_mass(json)
@@ -123,7 +123,7 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
 ! PERFORM MIXING
             call diffuse_composition_driver(substep_dt, diffusion_coeff, &
                  equally_spaced_diffusion_coeff, equally_spaced_mass, &
-                 log_density, log_luminosity, log_pressure, log_radius, &
+                 log_density, luminosity_lsun, log_pressure, log_radius, &
                  log_mass, enclosed_mass, shell_mass, log_total_mass, &
                  velocity, zone_begin, zone_end, zone_max, zone_min, &
                  convective_flag, final_iteration_flag, num_zones, &

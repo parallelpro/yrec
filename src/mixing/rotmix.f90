@@ -70,18 +70,18 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 !  DDAGE IS THE TIMESTEP IN YEARS.
       timestep_years = timestep/seconds_per_year
       do zone_idx = 1,num_zones
-         rate_pp(zone_idx) = rot_scr%reaction_rate_by_zone(1,zone_idx)
-         rate_he3_he3(zone_idx) = rot_scr%reaction_rate_by_zone(2,zone_idx)
-         rate_he3_he4(zone_idx) = rot_scr%reaction_rate_by_zone(3,zone_idx)
-         rate_c12_p(zone_idx) = rot_scr%reaction_rate_by_zone(4,zone_idx)
-         rate_c13_p(zone_idx) = rot_scr%reaction_rate_by_zone(5,zone_idx)
-         rate_n14_p(zone_idx) = rot_scr%reaction_rate_by_zone(6,zone_idx)
-         rate_o16_p(zone_idx) = rot_scr%reaction_rate_by_zone(7,zone_idx)
-         rate_c13_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(8,zone_idx)
-         rate_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(10,zone_idx)
-         rate_n14_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(11,zone_idx)
-         rate_triple_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(12,zone_idx)
-         frac_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(14,zone_idx)
+         rate_pp(zone_idx) = rot_scr%reaction_rate_by_zone(rr_pp,zone_idx)
+         rate_he3_he3(zone_idx) = rot_scr%reaction_rate_by_zone(rr_he3_he3,zone_idx)
+         rate_he3_he4(zone_idx) = rot_scr%reaction_rate_by_zone(rr_he3_he4,zone_idx)
+         rate_c12_p(zone_idx) = rot_scr%reaction_rate_by_zone(rr_c12_p,zone_idx)
+         rate_c13_p(zone_idx) = rot_scr%reaction_rate_by_zone(rr_c13_p,zone_idx)
+         rate_n14_p(zone_idx) = rot_scr%reaction_rate_by_zone(rr_n14_p,zone_idx)
+         rate_o16_p(zone_idx) = rot_scr%reaction_rate_by_zone(rr_o16_p,zone_idx)
+         rate_c13_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_c13_alpha,zone_idx)
+         rate_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_c12_alpha,zone_idx)
+         rate_n14_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_n14_alpha,zone_idx)
+         rate_triple_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_triple_alpha,zone_idx)
+         frac_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_frac_c12_alpha,zone_idx)
       end do
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
