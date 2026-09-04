@@ -31,14 +31,11 @@ subroutine read_model2(mixing_length, timestep_yr, trial_sign_flag, &
 
 ! Several of this subroutine's own dummy arguments below (values read
 ! from the model file -- rotation_active, envelope_overshoot_active,
-! instability_transport_active, core_overshoot_active, lovstm, use_semiconvection, etc.) happen
-! to share names with unrelated const_lib runtime-config module
-! variables, so `use, only:` the one member actually needed here
-! rather than a blanket `use const_lib` (which would conflict with the
-! dummy-argument declarations below). Same treatment as
-! io/read_yrec7.f90, this file's sibling reader.
-! (solar_luminosity_cgs now comes from star% -- 2026 phase-A
-! eviction; the former `use const_lib, only:` import is gone.)
+! instability_transport_active, core_overshoot_active,
+! use_semiconvection, etc.) share names with controls_lib buffer
+! members, so this file must never blanket-`use` that module. Same
+! treatment as io/read_yrec7.f90, this file's sibling reader.
+! (solar_luminosity_cgs comes from star%.)
       implicit none
 
       double precision, intent(out) :: mixing_length

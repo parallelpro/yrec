@@ -89,16 +89,6 @@ subroutine read_input(ierr)
       use eos_lib, only: eos_set_mixture
       implicit none
 
-! PARAMETERS for Allard model surface pressures (n_allard_teff/
-! n_allard_logg) and the shared array length used by the variable-FC
-! and acoustic-depth diagnostics (max_diag_pts). n_atm_teff/n_atm_logg/
-! n_katm_teff/n_katm_logg/n_scv_teff/n_scv_press (former parameters for
-! the tabulated Kurucz/Castelli surface pressures and SCV EOS tables,
-! now handled via const_lib's own array dimensions) are no longer used
-! in this file.
-      integer, parameter :: n_allard_teff = 54, n_allard_logg = 5
-      integer, parameter :: max_diag_pts = 5000
-
 ! --- CONTROL/PHYSICS namelist variables (including this routine's
 !     dummy arguments) and their explicit type overrides (CHARACTER
 !     length / array DIMENSION); kept at original spelling -- see
@@ -145,11 +135,6 @@ subroutine read_input(ierr)
       character(len=256) :: shell_cmd
       integer :: i, last_slash_idx
       double precision :: one_third, two_thirds
-! parmin_ln10: this file's own private ln(10) (never read after being
-! set -- see the assignment below), distinct from const_lib's ln10
-! (which this file now also uses via const3's `use const_lib`, hence
-! the rename needed here to avoid a name collision).
-      double precision :: parmin_ln10
       double precision :: sum_frac
       integer :: nkind
       integer :: first_model_binary_lu, last_model_binary_lu, &
@@ -201,7 +186,7 @@ subroutine read_input(ierr)
 
 ! former common/pulsegyre/: new (2026) dedicated block for the
 ! GYRE-format periodic pulsation-structure output feature
-! (io/write_gyre_pulse.f90, triggered from io/write_legacy_output.f90 every
+! (io/write_gyre_pulse.f90, triggered from io/yrec_output.f90 every
 ! pulse_gyre_interval converged models). pulse_gyre_interval is a
 ! NAMELIST /control/ value spelled identically to its const_lib
 ! canonical name -- use-associated directly.
@@ -957,38 +942,14 @@ subroutine read_input(ierr)
 ! through which read_controls used to pass the star%job members.
       call load_table_paths
 !
-! DBG DATA CARDS FOR THE RUN PARAMETERS
-! MHP DATA FOR MONTE CARLO OPTION, ETC
-! lmonte/imbeg/imend defaults moved to const_lib.f90 (former
-! common/monte/).
-! Changed slightly 3He-3He on 9/25/97 to take account of the S'.
-!  Previously (6/16/97) used S at Gamow Peak. Agrees with Workshop paper.
+! The DATA cards that once set every run parameter's default here are
+! gone: defaults now live on the buffer declarations in
+! io/controls_lib.f90 (a use-associated variable cannot be a DATA
+! target), and the working mixing length's default (1.4d0) sits on
+! its star%mixing_length_alpha component. The historical per-author
+! DATA-card commentary is in git history (pre-2026 parmin.f).
 !
-! MHP 7/93 VARIABLE FC OPTION
-! MHP 9/94 COMBINED DIFFUSION/ADVECTION OPTION
-! lvfc's default moved to const_lib.f90 (former common/varfc/): DATA
-! can no longer target it here now that it's use-associated.
-! MHP 9/93
-! alex_mixture_x/alex_mixture_z defaults moved to const_lib.f90 (former
-! common/alexmix/): DATA can no longer target them here now that
-! they're use-associated.
-      ! xenv0/zenv0 defaults moved to const_lib.f90 (former common/label/).
-! lcorr/lmilne/ltrack/lstore/lstpch/lscrib/lstch/nprtmod
-! defaults moved to const_lib.f90 (see its own header note): DATA can
-! no longer target them here now that they're use-associated from
-! const_lib.
-! pulse_gyre_interval default moved to const_lib.f90 (former
-! common/pulsegyre/).
-! MHP 10/24 ADDED NEW DEFAULTS FOR END CONDITIONS ON CENTRAL D,X,Y
-! zsi's default (0.0d0) moved to const_lib.f90 -- DATA can no longer
-! target it here now that it's use-associated.
-! tcut/saha_log10t_cutoff/tenv0/tenv1/tgcut defaults moved to
-! const_lib.f90 (see its own header note): DATA can no longer target
-! them here now that they're use-associated from const_lib.
-! dtdif/itdif1/itdif2/htoler defaults moved to const_lib.f90 (former
-! common/difus/, common/ctol/): DATA can no longer target them here
-! now that they're use-associated.
-! MHP 10/24 ADDED NEW MIXTURE CONTROL ISETISO CONTROLS CNO ISOTOPE RATIOS AND
+! MHP 10/24 MIXTURE CONTROL: ISETISO CONTROLS CNO ISOTOPE RATIOS AND
 ! LIGHT ELEMENT ABUNDANCES D,HE3,LI6,LI7,BE9,B10,B11 (1=USED)
 ! ISETMIX CONTROLS C+N+O MASS FRACTIONS (1=USED)
 ! AMIX AND AISO ARE STRINGS IDENTIFYING EITHER A PRESET MIXTURE OR A CUSTOM ONE ('CUS')
@@ -1001,116 +962,18 @@ subroutine read_input(ierr)
 !     AMIXT IS THE LIST OF IDS,EACH OF WHICH HAS A ZX AND CNO FRACS
 !     ENTRY 1 =GS98(IN PARMIN),2=ASPLUND ET AL. 2021 A&A 653,141
 !     3,4=MAGG ET AL. 2021 (MET,PHOT) A&A 661,140
-! acfpft/itfp1/itfp2 defaults moved to const_lib.f90 (former
-! common/rot/).
-! niter1/niter2/niter3/fcorr0/fcorri defaults moved to const_lib.f90
-! (former common/ctol/).
-! atime's default moved to const_lib.f90 -- see the tcut/etc. note
-! above; ATIME(13) was orginally = 1.5.
-! JVS 04/14
-! the working mixing length's default (1.4d0) lives on its
-! star%mixing_length_alpha component declaration (2026 phase-A
-! eviction; it was CMIXL's DATA default here originally).
-!       DATA DPENV,LNSTDMX,LOVSTC,ALPHAC,LOVSTE,ALPHAE, LOVSTM, ALPHAM
-!      */1.0D0,.FALSE.,.FALSE., 0.0D0, .FALSE.,0.0D0, .FALSE., 0.0/
-! dpenv/lovstc/alphac/alphae/lovstm/alpham defaults moved to
-! const_lib.f90 (former common/dpmix/); lovste stays local (NAMELIST
-! spelling).
-! ladov/lovmax/betac defaults moved to const_lib.f90 (former
-! common/dpmix/).
-! JVS 07/13
-! END JVS
-! lnew0 default moved to const_lib.f90 (former common/cenv/).
-! walpcz/lwnew/wnew defaults moved to const_lib.f90 (former
-! common/rot/); lrot/linstb stay local (NAMELIST spelling).
-! ljdot0's default moved to const_lib.f90 (former common/cwind/): DATA
-! can no longer target it here now that it's use-associated.
-! fo's default moved to const_lib.f90 (former common/vmult/): DATA can
-! no longer target it here now that it's use-associated.
-! MHP 8/17 INITIALIZED WMAX_SUN
-! DBG PULSE DATA CARD FOR PULSATION
-! YC  If LMHD is TRUE use MHD equation of state tables.  LU numbers
-!     are stored in IOMHDi.
-! DBG If LCORE is TRUE then calculate shells interior to start up
-!     model's inner most shell.
-! MHP 5/90 NEW DATA STATEMENTS FOR NEW PARAMETERS
-! niter4/lnews/lsnu defaults moved to const_lib.f90 (former
-! common/neweng/).
-! lthoul/fgrz/fgry/ldifli defaults moved to const_lib.f90 (former
-! common/gravs3/, common/gravs4/): DATA can no longer target them here
-! now that they're use-associated.
-! ies/imu defaults moved to const_lib.f90 (former common/vmult2/):
-! DATA can no longer target them here now that they're use-associated.
-! lsemic's default moved to const_lib.f90 (former common/dpmix/).
-! tollaol/llaol defaults moved to const_lib.f90 (former common/nwlaol/):
-! DATA can no longer target them here now that they're use-associated.
-! DBGLAOL
-! DBG 11/11/91
-! 3/92 DBG
-! DBG PULSE OUT 7/92
-! MHP 06/13 ADDED FLAG TO CALIBRATE TO SOLAR Z/X, SOLAR Z/X, SOLAR AGE
-!      DATA TOLL,TOLR,LCALS/1.0D-5,1.0D-4,.FALSE./
-! DBG 4/94 ZRAMP STUFF
-! rsclzc/rsclzm1/rsclzm2 defaults moved to const_lib.f90 (former
-! common/zramp/): DATA can no longer target them here now that they're
-! use-associated.
-! DBG 12/94 CALIBRATED STELLAR MODEL STUFF
-! YCK >>>  2/95 OPAL eos
-! LLP >>> OPAL 2001 EOS, Potekhin Conductive Opacities,
-!         OPAL 2006 EOS, Use Numerical Derivitives switches
-! MHP 8/25 Removed hard coded defaults
-!     Alex low T opacity
-!      DATA OPECALEX/'OPACALEXANDER.X00',
-!     +              'OPACALEXANDER.X01',
-!     +              'OPACALEXANDER.X02',
-!     +              'OPACALEXANDER.X035',
-!     +              'OPACALEXANDER.X05',
-!     +              'OPACALEXANDER.X07',
-!     +              'OPACALEXANDER.X08'/
-
+!
 ! DBG 1/96 THE ARRAY V, READ IN VIA RDLAOL, CONTAINED THE MASS FRACTIONS
 ! OF THE ENVELOPE ELEMENTS. IT WAS USED IN STARIN TO DEFINE FXENV,
 ! WHICH ARE THE NUMBER FRACTION OF THE ENVELOPE ELEMENTS. FXENV WAS
-! THEN UPDATED IN EQSTAT AND EQSAHA. HERE WE DEFINE VNEW PASSED
-! IN A COMMON BLOCK VNEWCB. IT IS IDENTICAL TO V EXCEPT THAT THE NUMBERS
-! ARE DEFINED HERE EXPLICITY FOR A G&N93 SOLAR MIXTURE. YOU CAN
-! CHANGE THEM VIA THE PHYSICS NAMELIST. V IS SET EQUAL TO VNEW IN
-!  STARIN EXCEPT WHEN LLAOL=T (TO MAINTAIN BACKWARD COMPATIBILITY.
+! THEN UPDATED IN EQSTAT AND EQSAHA. VNEW (now a controls_lib member)
+! IS IDENTICAL TO V EXCEPT THAT THE NUMBERS ARE DEFINED EXPLICITLY
+! FOR A G&N93 SOLAR MIXTURE. YOU CAN CHANGE THEM VIA THE PHYSICS
+! NAMELIST. V IS SET EQUAL TO VNEW IN STARIN EXCEPT WHEN LLAOL=T
+! (TO MAINTAIN BACKWARD COMPATIBILITY).
 !            Na          Al          Mg          Fe
 !            Si          C           H           O
 !            N           Ar          Ne          He
-! vnew default moved to const_lib.f90 (former common/vnewcb/).
-! MHP 5/97 OPTION FOR SAUMON, CHABRIER, AND VAN HORN EOS ADDED
-! MHP 3/99 OPTION FOR SB ROTATION ENFORCED IN THE ENTIRE STAR AT
-! ALL TIMES
-! JNT 09/2025 FOR 05/15 IMPJMOD default set to 0
-! fczdmdt/ftotdmdt/creim/lreimer defaults moved to const_lib.f90
-! (former common/masschg/); dmdt0/compacc/lmdot stay local (NAMELIST
-! spelling).
-! mhp 8/10 added scaled solar wind mass loss option
-!      DATA LSOLWIND,DMSUN,DMWSUN,DMWMAX/.FALSE.,-2.0D-14,2.863E-6,9.054E-5/
-! 3/09 Alexander 2006 opacity table options and opacity ramp options
-!FD 10/09 Mimic mixing options - acting on setling and differential settling
-! cstmixing/cstdiffmix's defaults moved to const_lib.f90 (former
-! common/cmixing/): DATA can no longer target them here now that
-! they're use-associated.
-! JVS 02/11 Initialize acoustic depth common block values appropriately
-! output_ages_gyr/calcad_ageout_output_active/ageout_model_output_flag/
-! ageout_bracket_armed/acoustic_depth_output defaults moved to
-! const_lib.f90 (former common/acdpth/): DATA can no longer target
-! them here now that they're use-associated.
-! JVS end
-! MHP 02/12 NEW PARAMETERIZATION OF ANGULAR MOMENTUM AND MASS LOSS
-! FROM MAGNETIZED SOLAR-LIKE WINDS
-!      DATA LPMM,PMMA,PMMB,PMMC,PMMM,PMMJD,PMMMD,PMMWMAX,
-!     *     PMMSOLP,PMMSOLW,PMMSOLTAU
-!     *   /.FALSE.,2.0D0,1.0D0,0.0D0,0.22D0,1.32E30,1.27E12,
-!     *     2.836E-5,4.9304D0,2.836E-6,1.065E6/
-! G Somers 6/16 NEW PARAMETERIZATION OF ANGULAR MOMENTUM AND MASS LOSS FROM
-! SOLAR WINDS. FOLLOW MATT ET AL (2012) FORMULATION, BUT DEFAULT TO KAWALER
-! TYPE LAW.
-! MHP 8/17 CHANGED DEFAULT FOR PMMA TO 2 FROM 0
-! MHP 02/12 PERMIT CONSTANT DIFFUSION COEFFICIENT
 !
 ! G Somers 06/14 ALLOW NEW LI DESTRUCTION CROSS SECTIONS
 !           NEW VALUES SHOULD BE IN UNITS OF keV b.
@@ -1120,22 +983,14 @@ subroutine read_input(ierr)
 !               THEY DON'T SHOW THIS REACTION, SO THIS IS APPROXIMATE.
 !           DEFAULT BE9(P,D)2HE4 (BE92) = 15,000 keV b FROM FOWLER ET AL. 1967
 !           DEFAULT BE9(P,A)LI6 (BE93) = 15,000 keV b FROM FOWLER ET AL. 1967
-! G Somers END
 ! MHP 8/14 DEFAULT CROSS-SECTIONS ARE TAKEN FROM THE SOLAR FUSION II PAPER
 ! REFERENCE ADELBERGER ET AL. 2011. UNITS ARE KeV b
-! s0_pep/s0_hep's defaults moved to const_lib.f90 (former
-! common/newcross/): DATA can no longer target them here now that
-! they're use-associated.
 ! NOTE: PEP IS THE PROPORTIONALITY CONSTANT RELATIVE TO PP
 ! NOTE: BE7+E- IS THE PROPORTIONALITY CONSTANT IN THE LINEAR TERM
 ! THE CODE USES T9, NOT T6, SO ANY EXPRESSION IN TERMS OF T/10^6 K
 ! NEEDS TO BE DIVIDED BY 1000^0.5 (FOR BOTH PEP AND BE7+E-)
-! REFERENCE FIRST DERRIVATIVES OF CROSS-SECTIONS (ADELBERGER ET AL. 2011)
-! UNITS ARE b
-! REFERENCE SECOND DERIVATIVES OF CROSS SECTIONS (ADELBERGER ET AL. 2011)
-! All 30 former common/newparam/ members' DATA defaults moved to
-! const_lib.f90: DATA can no longer target them here now that they're
-! use-associated.
+! (first/second derivatives of the cross sections likewise from
+! Adelberger et al. 2011, units b)
 !
 ! THIS SUBROUTINE READS ALL USER DEFINED QUANTITIES FROM THE
 ! FILES yrec8.nml1 and yrec8.nml2
@@ -1904,19 +1759,10 @@ subroutine adopt_canonical_names
 ! been changed during the run, and what the original setting was
       star%atm_choice_initial = kttau
       star%use_ttau_relation = .false.
-! DBG WRITE OUT ENTIRE NAMELIST TO ISHORT
-! Historically these echoes run BEFORE the .short open below, so they
-! land in the unit's default file (fort.NN) -- preserved bug-for-bug
-! on the legacy path, skipped entirely in MESA mode.
-! Monte-Carlo mode is legacy-file machinery through and through (the
-! run loop rewinds the legacy units per realization); force legacy
-! output rather than crash on unopened units.
 end subroutine adopt_canonical_names
 
 ! ---------------------------------------------------------------
-! Enforce output-mode constraints (Monte Carlo requires the legacy
-! writers), echo the namelists in legacy mode, and expand
-! environment variables in every configured file path.
+! Expand environment variables in every configured file path.
 subroutine resolve_output_mode_and_paths
 ! 2026 log redesign: the full namelist echo into the run log is
 ! replaced by the verbatim inlist copy written to the output
@@ -1941,22 +1787,22 @@ subroutine resolve_output_mode_and_paths
       call expand_value(fscvz)
       call expand_value(fshort)
       call expand_value(inlist_used_file)
+end subroutine resolve_output_mode_and_paths
 
+! ---------------------------------------------------------------
+! Output directory creation, derived options (track-name parsing,
+! isotope switches, EOS table selection) and the output-unit opens
+! (one open path for every run since the 2026 use_legacy_output
+! retirement). Sets ierr nonzero (config error) if semiconvection
+! and overshoot are both enabled; the caller returns immediately in
+! that case.
+subroutine derive_options_and_open_files
 ! Create the output directory if it doesn't already exist. It is
 ! taken from the directory part of the .short log path (FSHORT) --
 ! every deck keeps its outputs together. (Historically this came
 ! from FTRACK, retired with the .track file.)
       shell_cmd = 'mkdir -p '
-        ! find index of last '/' char. Use that to snip out the directory name.
-end subroutine resolve_output_mode_and_paths
-
-! ---------------------------------------------------------------
-! Derived options (track-name parsing, isotope switches, EOS table
-! selection) and the output-unit opens -- legacy mode opens the
-! full historical file set, MESA mode only what it needs. Sets
-! ierr nonzero (config error) if semiconvection and overshoot are
-! both enabled; the caller returns immediately in that case.
-subroutine derive_options_and_open_files
+! find index of last '/' char. Use that to snip out the directory name.
       do i = len_trim(fshort), 1, -1
           if (fshort(i:i) .eq. '/') then
               last_slash_idx = i
@@ -1969,14 +1815,6 @@ subroutine derive_options_and_open_files
       call system(shell_cmd)
       call copy_inlists_used(trim(inlist_used_file))
 
-
-! JVS 02/11 Acoustic depth/ Asteroseismic glitch output. Puts output
-! in the same directory as all other output, and names it with the
-! same conventions
-
-
-! JVS END
-!
 ! G Somers 6/14, DEFINE SCALING COEFFICIENT FOR LI/BE CROSS SECTIONS
 !          DEFAULT LI6 = 5.5 MeV b FROM FOWLER ET AL. 1967
 !          DEFAULT LI7 = 52 keV b FROM ROLFS & KAVANAGH 1986
@@ -2040,10 +1878,7 @@ subroutine derive_options_and_open_files
 
 ! 2026 use_legacy_output retirement: one open path for every run.
 ! (the LDEBUG/.debug stream open that sat here is retired)
-!     MHP 10/02 LBNIN never set, ignore loop
-!      IF (.NOT.LBNIN) THEN
-         open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD')
-!      END IF
+      open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD')
 ! last_model_unit (the .mod model file) is written every model in BOTH output
 ! modes: it is the restart file AND the solver's divergence/timestep-
 ! cutting recovery source, so it must always be connected (2026: the
@@ -2240,7 +2075,6 @@ subroutine echo_settings
       scale_by_b_field = lbscale
       wind_saturation_omega = wmax
 !
-      parmin_ln10 = log(10.0d0)
       if(lnewcp) then
        value_relative_to_h = .true.
        if(atmp.eq.'ABS') value_relative_to_h = .false.
@@ -2290,7 +2124,6 @@ subroutine echo_settings
             endif
          else
 ! SEARCH THROUGH OTHER VALID MIXTURE ENTRIES;IF FOUND,ASSIGN
-!         DO I = 2,4
          do i = 1,4
             if(amix.eq.mixture_id_table(i))then
                zxmix = zx_mix_table(i)
@@ -2606,11 +2439,6 @@ subroutine expand_value(path_value)
 ! case where the var is not defined in the execution environment.
 ! The number of assignment pairs here must match the value of the
 ! parameter n_env_vars, above.
-! Each placeholder (env var name enclosed in curly braces) to be
-! supported for expansion in namelists, along with default value in the
-! case where the var is not defined in the execution environment.
-! The number of assignment pairs here must match the value of the
-! parameter NUM_ENVVARS, above.
       placeholder_names(1) = "{YREC_INPUT}"
       default_values(1) = "../../input"
 

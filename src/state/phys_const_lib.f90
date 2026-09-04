@@ -24,7 +24,7 @@ module phys_const_lib
 
 ! former common/version/: yrec_version_string/git_hash_string
 ! (originally yrecver/githash) are not namelist values -- genuinely
-! used in core/read_input.f90, renamed in place there.
+! used in io/read_controls.f90, renamed in place there.
       character(len=10) :: yrec_version_string
       character(len=20) :: git_hash_string
 

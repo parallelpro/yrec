@@ -4,7 +4,7 @@
 ! New (2026) as part of the YREC module-modernization project (see
 ! GUIDELINES.md). Replaces common/intpar/: Bulirsch-Stoer integrator
 ! control parameters (tolerance_fraction/max_stage_index/extrap_order),
-! set once from NAMELIST /physics/ (core/read_input.f90, defaulted there
+! set once from NAMELIST /physics/ (io/read_controls.f90, defaulted there
 ! via a DATA statement) and read by numerics/bsstep.f90 and
 ! atm/atm_lib.f90. Global configuration, not per-call data -- each
 ! caller reads a different subset (atm_lib.f90 only tolerance_fraction,

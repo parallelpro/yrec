@@ -41,12 +41,11 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 
 
 
-      double precision :: interp_factors(4), deriv_factors(4), radius_table(4)
+      double precision :: interp_factors(4), radius_table(4)
       double precision :: total_radius_span, min_radius_spacing
       integer :: zone_index
       integer :: interp_search_index
       double precision :: interp_fraction
-      double precision :: dr1, dr2, fac1, fac2, delr
       integer :: search_start_index, j, k0, k
       double precision :: target_radius
 
@@ -74,9 +73,8 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       if (num_equal_points .eq. 2) then
             equal_radius(2)=equal_radius(1)+grid_spacing
       else
-            do zone_index = 2,num_equal_points-1! old piece
-            if(zone_index-1 .eq. 0) print*, 'mte line 47'
-               equal_radius(zone_index)=equal_radius(zone_index-1)+grid_spacing  ! old piece
+            do zone_index = 2,num_equal_points-1
+               equal_radius(zone_index)=equal_radius(zone_index-1)+grid_spacing
             end do
       endif
 
@@ -131,22 +129,6 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
               interp_fraction*(composition(i_metals,interp_search_index)- &
               composition(i_metals,interp_search_index-1))
       endif
-! CENTER DERIVATIVE.
-      dr1=equal_radius(1)-radius(interp_search_index-1)
-      dr2=radius(interp_search_index)-equal_radius(1)
-      if(dr2.gt.dr1)then
-         fac1=1.0D0
-         fac2=dr1/dr2
-         delr=2.0D0*dr1
-      else if(dr1.gt.dr2)then
-         fac1=dr2/dr1
-         fac2=1.0D0
-         delr=2.0D0*dr2
-      else
-         fac1=1.0D0
-         fac2=1.0D0
-         delr=dr1+dr2
-      endif
 ! FOR OTHER POINTS: FIRST FIND 4 NEAREST (IN RADIUS) MODEL POINTS
 ! AND THEN FIND LAGRANGIAN INTERPOLATION FACTORS. APPLY THEM TO FIND
 ! MODEL QUANTITIES AT THE EQUALLY SPACED GRID POINTS.
@@ -173,10 +155,9 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
             radius_table(k)=radius(k0+k-1)
          end do
          target_radius=equal_radius(zone_index)
-! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
-! FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
-! RADII IN TABLER; FACDERIV=SAME FOR DERIVATIVES AT POINT GRIDRAD.
-         call interp(radius_table,interp_factors,deriv_factors,target_radius)
+! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS FOR POINT target_radius
+! GIVEN THE 4 TABLE RADII IN radius_table.
+         call intrp2(radius_table,interp_factors,target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 ! MASS WITHIN THE RADIUS ER
          equal_mass_mid(zone_index) = interp_factors(1)*enclosed_mass(k0)+ &
@@ -288,10 +269,9 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 
          target_radius=equal_radius(zone_index)
 
-! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
-! FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
-! RADII IN TABLER; FACDERIV=SAME FOR DERIVATIVES AT POINT GRIDRAD.
-         call interp(radius_table,interp_factors,deriv_factors,target_radius)
+! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS FOR POINT target_radius
+! GIVEN THE 4 TABLE RADII IN radius_table.
+         call intrp2(radius_table,interp_factors,target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 ! MASS WITHIN THE RADIUS ER
          equal_mass(zone_index) = interp_factors(1)*enclosed_mass(k0)+ &

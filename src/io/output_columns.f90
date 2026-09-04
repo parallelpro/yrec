@@ -67,7 +67,10 @@ subroutine parse_columns(fname, names, ncol, default_names, ndefault, &
          line = adjustl(line)
          if (len_trim(line) == 0) cycle
          call append_column(line, names, ncol, sel, nsel, label, ierr)
-         if (ierr /= 0) return
+         if (ierr /= 0) then
+            close(u)
+            return
+         end if
       end do
       close(u)
       if (nsel == 0) then

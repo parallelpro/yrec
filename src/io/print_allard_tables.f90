@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! alprint
+! print_allard_tables
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -8,14 +8,13 @@
 !
 ! Prints the internal Allard-format atmosphere tables and auxiliary
 ! information provided by alfilein and verified by altabinit, to the
-! .short log file.
+! run log (run_log_unit).
 subroutine print_allard_tables
 
       use atm_table_lib
       use luout_lib
       use math_lib
       implicit none
-      integer, parameter :: nta = 250, nga = 25
       integer :: i, j
 
       atm_table%allard_teffl_min = atm_table%allard_teffl_grid(1) - &

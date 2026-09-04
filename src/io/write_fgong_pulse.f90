@@ -2,8 +2,8 @@
 ! write_fgong_pulse
 !----------------------------------------------------------------------
 ! New (2026, MESA-style output): writes the converged model in FGONG
-! format (ivers 300: ICONST=15 globals, IVAR=40 columns, 5 values per
-! line in 1P5E16.9). Column definitions and layout ported from
+! format (ivers 1300: ICONST=15 globals, IVAR=40 columns, 5 values per
+! line in the wide 1P,5(X,E26.18E3) layout). Column definitions and layout ported from
 ! mesa-26.04.1/star/private/pulse_fgong.f90 rather than reinvented;
 ! quantities YREC does not track per zone (the central d2P/d2rho
 ! terms, dlnGamma1 partials, X_Be7, X_Ne20, r_X) are written as zero,

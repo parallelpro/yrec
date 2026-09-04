@@ -31,13 +31,10 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
 
 ! Several of this subroutine's own dummy arguments below (values read
 ! from the old model-file format -- rotation_active,
-! envelope_overshoot_active, instability_transport_active, core_overshoot_active,
-! lovstm, use_semiconvection) happen to share names with unrelated const_lib
-! runtime-config module variables, so `use, only:` the one member
-! actually needed here rather than a blanket `use const_lib` (which
-! would conflict with the dummy-argument declarations below).
-! (solar_luminosity_cgs now comes from star% -- 2026 phase-A
-! eviction; the former `use const_lib, only:` import is gone.)
+! envelope_overshoot_active, instability_transport_active,
+! core_overshoot_active, use_semiconvection) share names with
+! controls_lib buffer members, so this file must never blanket-`use`
+! that module. (solar_luminosity_cgs comes from star%.)
       use math_lib
       implicit none
 

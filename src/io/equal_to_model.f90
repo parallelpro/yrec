@@ -73,15 +73,15 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
          do j=search_start_index,num_equal_points
 
 ! FIND EQUALLY SPACED GRID POINTS CLOSEST TO THE MODEL POINT.
-            if (j .eq. 0) print*, 'line 47 etm'
             if(equal_radius(j).ge.radius(zone_index))then
 
 ! ENSURE THAT FIRST INTERP. POINT NO LESS THAN FIRST EQUALLY SPACED POINT.
                k0 = max(j-2,1)
 ! ENSURE THAT LAST INTERP. POINT NO GREATER THAN LAST EQUALLY SPACED POINT.
                k0 = min(k0,num_equal_points-3)
-! JVS fix for NPT = 3?
-               if (k0 .eq. 0) k0=1
+! keep the 4-point stencil inside the table when it has fewer than
+! four points (only reachable for num_equal_points <= 3)
+               if (k0 .lt. 1) k0 = 1
                search_start_index=j
                exit
             endif

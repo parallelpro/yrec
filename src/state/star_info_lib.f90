@@ -14,18 +14,15 @@
 ! entanglement, and the source of all three intent bugs phases 2-3
 ! surfaced. Names and shapes are main's own, unchanged.
 !
-! What is deliberately NOT here (yet):
-!  * model-level scalars (num_zones, log_total_mass, total_mass_msun,
-!    log_teff, the CZ bookkeeping indices): still passed as arguments;
-!    several are intent(inout) at rezoning and their locally-copied
-!    uses need per-routine investigation before absorbing them.
+! What is deliberately NOT here:
 !  * run control (timesteps, iteration counters, convergence
 !    tolerances): driver policy, stays in arguments by design.
-!  * the former-COMMON state/ modules (oldmod_lib, scrtch_lib,
-!    run_diag_lib, rotdiff_lib, ...): step 4 folds the model-shaped
-!    ones in; oldmod_lib becomes simply a second instance (prev).
 !  * physics-domain state: eos/kap/atm/nuclear never see star_info
 !    (MESA's own boundary); their facades keep plain arguments.
+! (The model-level scalars and the former-COMMON state/ modules that
+! earlier revisions of this note listed as pending have since been
+! absorbed -- see the "model-level scalars" block below and the
+! "former common/..." markers throughout the type.)
 !
 ! Mid-timestep working copies (the *_mid arrays getw builds for
 ! seculr/rotmix) are working state of the rotation pipeline, not the
@@ -85,7 +82,7 @@ module star_info_lib
 ! ---- from state/star_job_lib.f90 ----
 ! 2026 controls->star% campaign, phase B: the authoritative home of
 ! every namelist control. Component list GENERATED from the read
-! buffer's declarations (const/controls_lib.f90) by
+! buffer's declarations (io/controls_lib.f90) by
 ! tools/gen_controls_state.py -- regenerate on any member change.
 ! Every component is default-initialized, so
 !   star%ctrl = controls_state()
@@ -403,19 +400,17 @@ module star_info_lib
                 radius_entropy_term(json)
 ! former common/theage/
            double precision :: dage
-! former common/stch/
 ! former common/calsun/
            double precision :: dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
                 log_l_prev, log_r_prev, delta_x, delta_alpha
            logical :: solar_calibration_active
 ! former common/sound/
            double precision :: adiabatic_index_gamma1(json)
-! former common/monte2/
 ! former common/cent/
            double precision :: central_log10_temperature, central_log10_pressure, &
                 central_log10_density, envelope_mass, envelope_radius
 ! 2026 (phase four, step 5): observables formerly computed as
-! locals inside io/write_legacy_output.f90, now filled by the star layer
+! locals inside the retired write_legacy_output, now filled by the star layer
 ! (core/observables_lib.f90) and only READ by the writers.
            double precision :: central_beta, central_degeneracy_eta
            double precision :: core_cz_mass
@@ -424,11 +419,10 @@ module star_info_lib
 ! former common/origstart/
            double precision :: orig_specific_angular_momentum(json), &
                 orig_composition(15,json)
-! former common/envcz/
 ! former common/comp2/
            double precision :: envelope_helium_fraction, envelope_he3_fraction
-! former common/envprt/
-! (current_* point scratch moved to core/point_scratch_lib.f90)
+! (former common/envprt/'s current_* point scratch moved to
+! core/point_scratch_lib.f90)
 ! former common/oldrot/
            double precision :: old_omega(json), &
                 old_specific_angular_momentum(json), &

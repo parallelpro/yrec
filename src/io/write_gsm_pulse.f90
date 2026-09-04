@@ -18,8 +18,9 @@
 ! HDF5 is an OPTIONAL dependency: build with `make USE_HDF5=1`
 ! (HDF5_DIR defaults to the MESA SDK, which ships static HDF5 +
 ! Fortran modules). Without it this file compiles to a stub that
-! reports the missing capability and stops -- selecting
-! pulse_format = 'GSM' is then a configuration error.
+! reports the missing capability and returns -- selecting
+! pulse_format = 'GSM' is then a configuration error, rejected at
+! startup via gsm_supported below.
 #ifdef YREC_USE_HDF5
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
@@ -102,9 +103,9 @@ end subroutine write_gsm_pulse
 ! ---------------------------------------------------------------
 ! 2026 io-writer stops -> ierr: capability probe so output_init_mesa
 ! can reject pulse_format='GSM' at configuration time (through the
-! read_controls ierr chain) instead of the stub stopping at the
-! first pulse write. The stub's stop above remains as a last-resort
-! guard only.
+! read_controls ierr chain) instead of the stub's message at the
+! first pulse write. The stub above remains as a last-resort guard
+! only.
 logical function gsm_supported()
 #ifdef YREC_USE_HDF5
       gsm_supported = .true.

@@ -39,84 +39,6 @@ module numerics_lib
 contains
 
 !----------------------------------------------------------------------
-! boole
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original boole.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! Performs 5-point Newton-Cotes (Boole's rule) integration of
-! tabulated data.
-!      x: vector of independent variable values (x)
-!      y: vector of dependent variable values (f(x))
-!      n: number of elements in x
-!      n_grid: number of elements desired in the interpolated grid
-!              (should be 1+4*integer)
-! integral: returned, integrated value of the function (kept as a
-!           length-1 array, exactly as in the original file)
-!
-! Data need to be evenly gridded for the integration formula to
-! work. Data that are not already so are interpolated onto an even
-! grid using spline interpolation (Numerical Recipes SPLINE, renamed
-! splinj here, and SPLINT).
-subroutine boole(x, y, n, n_grid, integral, ierr)
-      implicit none
-      double precision, parameter :: scalex = 1e-11
-      double precision, parameter :: scaley = 1e7
-
-      double precision, intent(in) :: x(n), y(n)
-      integer, intent(out) :: ierr
-      integer, intent(in) :: n, n_grid
-      double precision, intent(out) :: integral(1)
-
-      double precision :: h_step(1), y2_deriv(n)
-      double precision :: x_even(n_grid), y_even(n_grid)
-      double precision :: x_scaled(n), y_scaled(n)
-      integer :: i, num_quads, klo, khi
-
-! rescale radius and cs vectors to have values ~1
-      ierr = 0
-      do i = 1, n
-            x_scaled(i) = x(i)*scalex
-            y_scaled(i) = y(i)*scaley
-      end do
-! deal with unevenly gridded datasets:
-            call splinj(x_scaled, y_scaled, y2_deriv, n) ! get derivs of interp. fn.
-            do i = 1, n_grid
-                  x_even(i) = x_scaled(1)+(i-1)*(x_scaled(n)-x_scaled(1))/(n_grid-1)
-                  call splint(x_scaled, y_scaled, n, y2_deriv, x_even(i), y_even(i), klo, khi, ierr)
-                  if (ierr /= 0) return
-            end do
-
-! how many sets of four points do we have?
-      num_quads = (n_grid-1)/4
-      h_step = (x_scaled(n)-x_scaled(1))/(n_grid-1)
-! for each set of 4 points before the last, apply formula and add up
-      integral = 0.0d0
-      do i = 0, num_quads-1
-            integral = integral+2.0*h_step*(7*y_even(1+4*i)+ 32*y_even(2+4*i) + 12*y_even(3+4*i) + &
-                  32*y_even(4+4*i) + 7*y_even(5+4*i))/45.0
-      end do
-! rescale result back to actual units:
-      integral = integral/(scalex*scaley)
-!      print*, 'Last point in vector:', n_grid
-!      print*, 'Last point integrated:', 5+4*(num_quads-1)
-
-!--------------------------------------------------------------
-!                  open(unit=100,file='diagnostic3.out',status='old')
-!                  do i=1,n
-!                              write(100,1504) x(i), y(i), x_scaled(i), y_scaled(i),
-!     *                         x_even(i), y_even(i), integral(1), h_step(1)
-!                  end do
-!1504                  format(1x,8e16.8)
-!                  close(100)
-!----------------------------------------------------------------
-
-end subroutine boole
-
-!----------------------------------------------------------------------
 ! cspline
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -392,7 +314,7 @@ end subroutine intrp2
 ! (examples/run_standard_solar_model).
 !
 ! Fixed-size (4-point) natural cubic spline coefficient generator,
-! same algorithm as cspline/splinj/splinc but hardwired to n=4 points
+! same algorithm as cspline/splinc but hardwired to n=4 points
 ! and always the natural-spline boundary condition.
 subroutine kspline(x, y, y2)
       implicit none
@@ -463,10 +385,9 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
             print*, 'Ksplint failure'
-            ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
-            ! error returns instead; without it, the historical stop stands
-            ! (numerics has no facade -- each public procedure carries its
-            ! own gate).
+            ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+            ! return (numerics has no facade -- each public procedure carries
+            ! its own gate).
             ierr = 1
             return
       end if
@@ -906,7 +827,7 @@ end subroutine quint
 ! (examples/run_standard_solar_model).
 !
 ! Natural cubic spline coefficient generator, same algorithm as
-! splinj but with x/y/y2/u dimensioned to the json=5000 maximum
+! cspline but with x/y/y2/u dimensioned to the json=5000 maximum
 ! rather than to n, exactly as in the original file.
 subroutine splinc(x, y, y2, n)
       use star_info_lib, only: json
@@ -938,99 +859,6 @@ subroutine splinc(x, y, y2, n)
       end do
       return
 end subroutine splinc
-
-!----------------------------------------------------------------------
-! splinj
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original splinj.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! Natural cubic spline coefficient generator, sized exactly to n
-! (unlike splinc, which is dimensioned to the json=5000 maximum).
-subroutine splinj(x, y, y2, n)
-      implicit none
-
-      integer, intent(in) :: n
-      double precision, intent(in) :: x(n), y(n)
-      double precision, intent(out) :: y2(n)
-
-      double precision :: u(n)
-      integer :: i, k
-      double precision :: sig, p, qn, un
-
-! natural spline
-      y2(1) = 0.0d0
-      u(1) = 0.0d0
-      do i = 2, n-1
-         sig = (x(i)-x(i-1))/(x(i+1)-x(i-1))
-         p = sig*y2(i-1)+2.0d0
-         y2(i) = (sig-1.0d0)/p
-         u(i) = (6.0d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1)) &
-              /(x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
-      end do
-      qn = 0.0d0
-      un = 0.0d0
-      y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0d0)
-      do k = n-1, 1, -1
-         y2(k) = y2(k)*y2(k+1)+u(k)
-      end do
-      return
-end subroutine splinj
-
-!----------------------------------------------------------------------
-! splnr
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original splnr.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! Single-precision (real, not double precision) natural/clamped cubic
-! spline coefficient generator, the classic Numerical Recipes SPLINE
-! routine kept in its original real precision (unlike cspline/splinj/
-! splinc, which are real*8 ports of the same algorithm).
-subroutine splnr(x, y, n, yp1, ypn, y2)
-      implicit none
-      integer, parameter :: nmax = 500
-
-      integer, intent(in) :: n
-      real, intent(in) :: x(n), y(n), yp1, ypn
-      real, intent(out) :: y2(n)
-
-      integer :: i, k
-      real :: p, qn, sig, un, u(nmax)
-
-      if (yp1.gt..99e30) then
-        y2(1)=0.
-        u(1)=0.
-      else
-        y2(1)=-0.5
-        u(1)=(3./(x(2)-x(1)))*((y(2)-y(1))/(x(2)-x(1))-yp1)
-      endif
-      do i=2,n-1
-        sig=(x(i)-x(i-1))/(x(i+1)-x(i-1))
-        p=sig*y2(i-1)+2.
-        y2(i)=(sig-1.)/p
-        u(i)=(6.*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))/(x(i)-x(i-1))) &
-             /(x(i+1)-x(i-1))-sig*u(i-1))/p
-      end do
-      if (ypn.gt..99e30) then
-        qn=0.
-        un=0.
-      else
-        qn=0.5
-        un=(3./(x(n)-x(n-1)))*(ypn-(y(n)-y(n-1))/(x(n)-x(n-1)))
-      endif
-      y2(n)=(un-qn*u(n-1))/(qn*y2(n-1)+1.)
-      do k=n-1,1,-1
-        y2(k)=y2(k)*y2(k+1)+u(k)
-      end do
-      return
-end subroutine splnr
 
 !----------------------------------------------------------------------
 ! tridiag_gs
@@ -1201,12 +1029,13 @@ subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution, ierr)
       integer, intent(out) :: ierr
 
 ! gamma_elim is solver-internal scratch, never read by any caller
-! (unlike tridia.f90's gamma_elim(n), which doubled as a genuine
-! cross-call input -- see tridia.f90's header note). SAVE preserved
-! from the original common-block version though nothing here actually
-! depends on it persisting across calls.
+! (unlike tridia's gamma_elim(n), which doubled as a genuine
+! cross-call input -- see tridia's header note). The blanket SAVE
+! below is kept from the original common-block version; whether any
+! result depends on it has not been tested against the pins, so it
+! stays (see audit/readability-sweep-2026-09-03/io.md).
       double precision :: gamma_elim(json)
-      save   ! INTENTIONAL: tridiagonal solver carry (empirically load-bearing); byte-pinned by Stage-0
+      save   ! INTENTIONAL: tridiagonal solver carry (untested whether load-bearing); byte-pinned by Stage-0
 
       double precision :: bet
       integer :: j
@@ -1284,8 +1113,7 @@ subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
       double precision, intent(in) :: dj_n_seed
       integer, intent(out) :: ierr
 
-! gamma_elim is solver-internal scratch (SAVE preserved from the
-! original common-block version though nothing here actually depends
+! gamma_elim is solver-internal scratch (no SAVE: nothing here depends
 ! on it persisting across calls, now that dj_n_seed carries the one
 ! value that used to be read from it across calls).
       double precision :: gamma_elim(json)
@@ -1377,7 +1205,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
       integer :: substep_sequence(11)
       double precision :: h, x_sav, x_est, err_max
       integer :: i, j
-      save   ! INTENTIONAL: NR step-size memory (epsold/step tables) -- algorithm state; byte-pinned by Stage-0
+      save   ! INTENTIONAL: blanket SAVE kept from the original (x_sav/h etc. persist between calls); byte-pinned by Stage-0
       data substep_sequence /2,4,6,8,12,16,24,32,48,64,96/
 
       integer, intent(out) :: ierr
@@ -1430,10 +1258,9 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
 !      H = 0.25D0*H/2**((IMAX-NUSE)/2)
       if(hydrogen_fraction+h.eq.hydrogen_fraction) then
          write(*,*) 'ERROR IN BSSTEP'
-       ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
-       ! error returns instead; without it, the historical stop stands
-       ! (numerics has no facade -- each public procedure carries its
-       ! own gate).
+       ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+       ! return (numerics has no facade -- each public procedure carries
+       ! its own gate).
        ierr = 1
        return
       end if
@@ -1516,10 +1343,9 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       if((k_hi-k_lo).le.0)then
          write(terminal_unit, *) 'ERROR COX OP: INTERPOLATION'
          write(run_log_unit, *) 'ERROR COX OP: INTERPOLATION'
-         ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
-         ! error returns instead; without it, the historical stop stands
-         ! (numerics has no facade -- each public procedure carries its
-         ! own gate).
+         ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+         ! return (numerics has no facade -- each public procedure carries
+         ! its own gate).
          ierr = 1
          return
       endif
@@ -1583,10 +1409,9 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
-         ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
-         ! error returns instead; without it, the historical stop stands
-         ! (numerics has no facade -- each public procedure carries its
-         ! own gate).
+         ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+         ! return (numerics has no facade -- each public procedure carries
+         ! its own gate).
          ierr = 1
          return
       end if
@@ -1644,10 +1469,9 @@ subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
-         ! 2026 (ROADMAP.md stage 3): with the OPTIONAL ierr present the
-         ! error returns instead; without it, the historical stop stands
-         ! (numerics has no facade -- each public procedure carries its
-         ! own gate).
+         ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+         ! return (numerics has no facade -- each public procedure carries
+         ! its own gate).
          ierr = 1
          return
       end if
@@ -1854,10 +1678,7 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
 
       integer :: r_lo_guess(4), r_indices(4,4), t_indices(4)
       double precision :: x_nodes(4)
-! lir_order is INTEGER*4 in the original (overriding this file's
-! IMPLICIT LOGICAL*4(L) for the single name L), holding a flag passed
-! to the external routine lir; its exact meaning there is not
-! established from this file alone.
+! lir_order is lir's continue_search argument (1 = fresh scan).
       integer :: lir_order
 
       integer :: n, i, m, j, t_col, iv, t_idx, r_idx, t_idx_max, r_idx_max
@@ -1901,6 +1722,12 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
             r_indices(j,i)=r_lo_guess(i)+j-1
          end do
       end do
+! lir call settings, shared by both interpolation passes
+      lir_num_vars=num_vars
+      lir_leading_dim=num_vars
+      lir_num_points=4
+      lir_order=1
+      lir_interp_mode=1
       do t_col=1,4
          t_idx=t_indices(t_col)
          do i=1,4
@@ -1914,11 +1741,6 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
             end do
          end do
 
-         lir_num_vars=num_vars
-         lir_leading_dim=num_vars
-         lir_num_points=4
-         lir_order=1
-         lir_interp_mode=1
          call lir(log10_pressure, x_nodes, y_work, work1, lir_num_vars, &
               lir_leading_dim, lir_num_points, lir_order, lir_interp_mode)
          do iv=1,num_vars
@@ -1930,12 +1752,6 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
          t_idx=t_indices(i)
          x_nodes(i) = table_log10t(t_idx)
       end do
-
-      lir_num_vars=num_vars
-      lir_leading_dim=num_vars
-      lir_num_points=4
-      lir_order=1
-      lir_interp_mode=1
 
       call lir(log10_temperature, x_nodes, interp_vars, work2, lir_num_vars, &
            lir_leading_dim, lir_num_points, lir_order, lir_interp_mode)
@@ -1960,9 +1776,11 @@ end subroutine intpt
 ! history). Naming/module placement follows GUIDELINES.md's rule that
 ! folder/module placement should track function, not caller.
 !
-! Generic table-lookup interpolation/extrapolation routine, entered
-! either as LIR (cubic interpolation/extrapolation, unless num_points
-! < 4) or as LIR1 (always linear interpolation/extrapolation).
+! Generic table-lookup interpolation/extrapolation routine: cubic
+! interpolation/extrapolation, falling back to linear when num_points
+! < 4. (The historical always-linear ENTRY LIR1 had no callers and was
+! deleted in the 2026 readability sweep; lir_impl keeps its
+! linear-mode switch, which lir always passes as 0.)
 !
 ! FOR A SUCH THAT target_z=table_z(A),  SETS result_y(I)=table_y(I,A), I=1,num_y
 ! table_z(N),table_y(I,N) MUST BE SUPPLIED FOR N=1,num_points AND I=1,num_y
@@ -1972,8 +1790,6 @@ end subroutine intpt
 !   BOUND target_z, STARTING AT N=1
 ! IF continue_search.GT.1, SCAN STARTS FROM VALUE OF N FROM PREVIOUS
 !   CALL OF LIR
-! NOTE
-! MOST OF THE COMPUTATION IS PERFORMED IN SINGLE PRECISION
 subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
      num_points,continue_search,interp_flag)
       implicit none
@@ -1987,24 +1803,11 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
            y_stride, num_points, continue_search, interp_flag)
 end subroutine lir
 
-! Always-linear entry; historically `ENTRY LIR1` inside LIR.
-subroutine lir1(target_z,table_z,result_y,table_y,num_y,y_stride, &
-     num_points,continue_search,interp_flag)
-      implicit none
-      double precision, intent(in) :: target_z
-      double precision, intent(in) :: table_z(*)
-      double precision, intent(out) :: result_y(*)
-      double precision, intent(in) :: table_y(*)
-      integer, intent(in) :: num_y, y_stride, num_points, continue_search
-      integer, intent(out) :: interp_flag
-      call lir_impl(1, target_z, table_z, result_y, table_y, num_y, &
-           y_stride, num_points, continue_search, interp_flag)
-end subroutine lir1
-
-! Shared implementation of LIR/LIR1 (restructured 2026: the ENTRY
-! statement became the two wrappers above, and the label 2-9 search
-! web became a structured loop; comparisons and arithmetic are
-! unchanged).
+! Implementation behind lir (restructured 2026: the ENTRY statement
+! became a wrapper plus this routine, and the label 2-9 search web
+! became a structured loop; comparisons and arithmetic are unchanged).
+! search_idx is SAVEd on purpose: it is the last-index interpolation
+! memory that continue_search > 1 resumes from.
 subroutine lir_impl(linear_mode_in, target_z,table_z,result_y,table_y, &
      num_y,y_stride,num_points,continue_search,interp_flag)
 

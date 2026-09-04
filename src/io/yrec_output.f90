@@ -111,7 +111,6 @@ end subroutine output_init_mesa
 
 ! ---------------------------------------------------------------
 subroutine output_run_header(star_mass_msun)
-      use star_info_lib, only: star
       double precision, intent(in) :: star_mass_msun
 
       call write_output_headers(star_mass_msun)
@@ -182,7 +181,7 @@ subroutine output_write_model()
           mod(star%model_number,star%ctrl%pulse_gyre_interval).eq.0) then
          write(gyre_suffix,'(I5.5)') star%model_number
          gyre_path = trim(out_dir)//trim(star%ctrl%profile_data_prefix)//gyre_suffix//'.data.GYRE'
-         call write_gyre_pulse(star%nz,star%model_number,star%m, &
+         call write_gyre_pulse(star%nz,star%m, &
               star%logRho,star%luminosity_lsun,star%logP,star%logR, &
               star%logT,star%omega, gyre_path)
       endif
@@ -240,7 +239,6 @@ end subroutine write_pulse
 ! legacy-path writer io/write_gyre_pulse.f90 keeps its historical
 ! interior-only behavior (byte-pinned); this is the MESA-mode writer.
 subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path)
-      use star_info_lib, only: star
       integer, intent(in) :: n
       double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs

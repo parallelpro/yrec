@@ -4,32 +4,31 @@
 ! New (2026) as part of the YREC readability refactor's pulsation-
 ! output feature: writes the converged model's structure to a GYRE-
 ! format stellar model file (MESA/GYRE schema 101, 18 data columns),
-! independent of YREC's own older path-length-triggered OPAL-format
-! pulsation writer (io/open_pulse_files.f90 + io/write_pulsation_model.f90, gated by LPULSE).
-! This routine is instead triggered by write_legacy_output.f90 every
-! pulse_gyre_interval converged models (common/pulsegyre/,
-! new NAMELIST /control/ member, default 0 = off; see core/read_input.f90).
+! independent of the profile-coupled GSM/FGONG/GYRE writers in
+! yrec_output (write_pulse). This routine is triggered from
+! yrec_output's output_write_model every pulse_gyre_interval converged
+! models (NAMELIST /control/ member, default 0 = off; see
+! io/read_controls.f90).
 !
 ! The physics quantities are the same ones YREC already computes for
-! every shell in misc/henyey_coefficients.f90 (common/scrtch/, common/pulse1/,
-! common/sound/) -- see the "MHP 8/25 unconditional" note there for
-! why those arrays are now always populated instead of only when the
-! older LPULSE mechanism is active. Column formulas and the two format
-! strings are taken from mesa-26.04.1/star/private/pulse_gyre.f90.
+! every shell in core/henyey_coefficients.f90 (the star%pulse_* and
+! star%grada/gradT/adiabatic_index_gamma1 arrays, always populated).
+! Column formulas and the two format strings are taken from
+! mesa-26.04.1/star/private/pulse_gyre.f90.
 !
 ! YREC's own shell numbering already runs center (1) to surface
 ! (num_shells), matching GYRE's expected ordering directly -- no
 ! reversal needed (unlike MESA, which stores its own arrays surface-
 ! to-center internally and must reverse before writing).
-subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
+subroutine write_gyre_pulse(num_shells, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
      log_temperature, omega, pulse_path)
-      use star_info_lib, only: star, i_grad_actual, i_grad_ad, json
+      use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
       implicit none
 
-      integer, intent(in) :: num_shells, model_number
+      integer, intent(in) :: num_shells
       double precision, intent(in) :: mass_coordinate(json), &
            log_density(json), log_luminosity(json), log_pressure(json), &
            log_radius(json), log_temperature(json), omega(json)
@@ -96,7 +95,7 @@ subroutine write_gyre_pulse(num_shells, model_number, mass_coordinate, &
          temperature_k = exp(ln10*log_temperature(i))
          density_cgs = exp(ln10*log_density(i))
 ! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho=1/star%pulse_dlnrho_dlnp
-! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see misc/henyey_coefficients.f90 around line 639).
+! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see core/henyey_coefficients.f90).
          delta = -star%pulse_dlnrho_dlnt(i)
 ! kap_kap_T/eps_eps_T columns follow the GSM/GYRE convention (MESA
 ! pulse_gyre.f90): the ABSOLUTE derivatives kap*dlnkap/dlnT and
