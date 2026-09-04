@@ -43,6 +43,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
      log_teff)
       use star_info_lib, only: star, json
+      use controls_lib, only: itime_max_dt_frac
       use phys_const_lib
       implicit none
 
@@ -147,7 +148,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
 !     limit increase in time step from one model to the next for models
 !     with a non-zero timestep.
       if(previous_timestep.gt.1.0d0) then
-         previous_timestep = star%ctrl%atime(13)*previous_timestep
+         previous_timestep = star%ctrl%atime(itime_max_dt_frac)*previous_timestep
 !  now set the timestep to be the minimum of the entropy based timestep,
 !  the nuclear burning timesteps, and the previous timestep*atime(13).
 !  04/14 jvs added envelope_dt

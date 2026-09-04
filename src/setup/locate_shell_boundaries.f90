@@ -46,6 +46,7 @@ subroutine locate_shell_boundaries(composition, luminosity, is_convective, num_p
      core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
      has_h_shell)
       use star_info_lib, only: star, json
+      use controls_lib, only: itime_core_min
       implicit none
 
       double precision, intent(in) :: composition(15,json), luminosity(json)
@@ -65,14 +66,14 @@ subroutine locate_shell_boundaries(composition, luminosity, is_convective, num_p
       shell_end = 1
       has_h_shell = .false.
 !  if central x below threshold then calculate h shell values
-      if(composition(1,1).le.star%ctrl%atime(1)) then
+      if(composition(1,1).le.star%ctrl%atime(itime_core_min)) then
        has_h_shell = .true.
        half_surface_x = 0.50d0*composition(1,num_points)
        luminosity_end_threshold = luminosity_change_tol*luminosity(num_points)
 !  find beginning(shell_begin), middle(shell_mid) and end(shell_end) of h shell
        do i = 1,num_points
 !          IF(HCOMP(1,I).LE.1.0D-10) THEN  ! Changed after discussion with Marc
-          if(composition(1,i).le.star%ctrl%atime(1)) then ! to force consistency with above LLP 9/24/08
+          if(composition(1,i).le.star%ctrl%atime(itime_core_min)) then ! to force consistency with above LLP 9/24/08
              shell_begin = shell_begin+1
              shell_mid = shell_mid+1
           else if(composition(1,i).le.half_surface_x) then

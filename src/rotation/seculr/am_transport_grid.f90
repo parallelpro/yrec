@@ -28,6 +28,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
      eq_mass, eq_omega, single_interface_flag)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
+      use controls_lib, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use phys_const_lib
       use numerics_lib
       use math_lib
@@ -227,10 +228,10 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
          end do
       end if
 ! PRODUCT OF RHO R^2 BY D CHI/DR
-      mass_scale_factor = star%ctrl%chi_grid_scale(2)
-      luminosity_scale_factor = star%ctrl%chi_grid_scale(9)*luminosity_lsun(num_zones)* &
+      mass_scale_factor = star%ctrl%chi_grid_scale(ichi_dm_max)
+      luminosity_scale_factor = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)* &
            star%solar_luminosity_cgs
-      pressure_scale_factor = star%ctrl%chi_grid_scale(11)
+      pressure_scale_factor = star%ctrl%chi_grid_scale(ichi_dp_core_max)
       do i = 1, ntab
          ii = zone_begin + i - 1
          rot_scr%xtab(i) = rot_scr%chi(i)

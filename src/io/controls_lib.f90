@@ -104,6 +104,26 @@ module controls_lib
       double precision :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
            3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
            1.5d0,0.25d0/)
+! Slot names for atime (the per-phase timestep-control factors). The
+! meaning of each slot is fixed by setup/map_user_inputs.f90, which
+! fills it from the like-named time_* namelist inputs when lnewvars
+! is set; readers subscript with these names (named constants, not
+! buffer state -- see ichi_* above).
+      integer, parameter, public :: &
+           itime_core_min = 1, &      ! time_core_min: min central abundance for the core-burning criterion
+           itime_dx_core_tot = 2, &   ! time_dx_core_tot: max absolute delta-X burned in core per step
+           itime_dx_core_frac = 3, &  ! time_dx_core_frac: max fraction of core X burned per step
+           itime_dy_core_tot = 4, &   ! time_dy_core_tot: max absolute delta-Y burned in core per step
+           itime_dy_core_frac = 5, &  ! time_dy_core_frac: max fraction of core Y burned per step
+           itime_dx_total = 6, &      ! time_dx_total: max Msun of X burned per step
+           itime_dx_shell = 7, &      ! time_dx_shell: max fraction of X burned in the shell per step
+           itime_dt = 8, &            ! time_dt: max change in T at any shell per step
+           itime_dp = 9, &            ! time_dp: max change in P at any shell per step
+           itime_dr = 10, &           ! time_dr: max change in R at any shell per step
+           itime_dl = 11, &           ! time_dl: max change in L at any shell per step
+           itime_dy_shell = 12, &     ! time_dy_shell: max fraction of Y burned in the shell per step
+           itime_max_dt_frac = 13, &  ! time_max_dt_frac: max timestep change factor model to model
+           itime_dy_total = 14        ! time_dy_total: max Msun of Y burned in the shell per step
       double precision :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
       double precision :: saha_log10t_cutoff = 6.0d0
       double precision :: tenv0 = 3.0d0, tenv1 = 9.0d0, tgcut = 6.9d0
@@ -317,6 +337,25 @@ module controls_lib
            9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
       double precision :: fcorr0 = 0.8d0, fcorri = 0.1d0, fcorr
       double precision :: chi_grid_scale(12)
+! Slot names for chi_grid_scale (the former hpttol vector). The
+! meaning of each slot is fixed by setup/map_user_inputs.f90, which
+! fills it from the like-named tol_*/flag_* namelist inputs when
+! lnewvars is set; readers subscript with these names. Named
+! constants, not buffer state -- any file may
+! `use controls_lib, only: ichi_...` (tools/check_boundaries.py).
+      integer, parameter, public :: &
+           ichi_dm_min = 1, &            ! tol_dm_min: min log-m spacing
+           ichi_dm_max = 2, &            ! tol_dm_max: max log-m spacing
+           ichi_flag_dx = 3, &           ! flag_dx: X jump that flags a shell
+           ichi_flag_dz = 4, &           ! flag_dz: Z jump that flags a shell
+           ichi_dx_max = 5, &            ! tol_dx_max: max X spacing
+           ichi_dz_max = 6, &            ! tol_dz_max: max Z spacing
+           ichi_czbase_fine_width = 7, & ! tol_czbase_fine_width: log-P width of fine zoning at CZ base
+           ichi_dp_env_max = 8, &        ! tol_dp_env_max: max log-P spacing, convective envelope
+           ichi_dl_max = 9, &            ! tol_dl_max: max L/Lsurf spacing
+           ichi_dp_czbase_max = 10, &    ! tol_dp_czbase_max: max log-P spacing near CZ base
+           ichi_dp_core_max = 11, &      ! tol_dp_core_max: max log-P spacing, radiative interior
+           ichi_flag_dw = 12             ! flag_dw: max log-omega spacing (rotating models)
       integer :: max_iter_level1 = 2, max_iter_level2 = 20, max_iter_level3 = 2
 
 ! former common/difus/: diffusion_timestep_factor/num_rotation_structure_iters/max_diffusion_iters are NAMELIST /physics/

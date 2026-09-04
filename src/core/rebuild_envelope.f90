@@ -18,6 +18,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       use envint_lib, only: atm_get
       use envint_kernel, only: senv_thin_envelope
       use star_info_lib
+      use controls_lib, only: ichi_dp_env_max
       use envstruct_lib
       use phys_const_lib
       use yale_eos_lib
@@ -96,9 +97,9 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       env_max_saved = star%job%env_step_max
       env_min_saved = star%job%env_step_min
       env_begin_saved = star%job%env_step_begin
-      star%job%env_step_max = star%ctrl%chi_grid_scale(8)
-      star%job%env_step_min = star%ctrl%chi_grid_scale(8)
-      star%job%env_step_begin = star%ctrl%chi_grid_scale(8)
+      star%job%env_step_max = star%ctrl%chi_grid_scale(ichi_dp_env_max)
+      star%job%env_step_min = star%ctrl%chi_grid_scale(ichi_dp_env_max)
+      star%job%env_step_begin = star%ctrl%chi_grid_scale(ichi_dp_env_max)
       surface_bc_flag = .false.
       print_flag = .true.
       katm = 0

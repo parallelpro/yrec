@@ -20,6 +20,9 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json
       use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_c12_p, &
            rr_c13_p, rr_n14_p, rr_o16_p, rr_zero9
+      use controls_lib, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
+           ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
+           ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
       use kap_lib
       use luout_lib
       use run_log_lib, only: solver_diagnostics
@@ -199,17 +202,17 @@ subroutine flag_fixed_points
       endif
       do i = 2,star%nz
 ! TEST FOR FLAGGING DUE TO X GRADIENT
-       if (dabs(star%xa(i_h1,i)-star%xa(i_h1,i-1)).gt.star%ctrl%chi_grid_scale(3)) then
+       if (dabs(star%xa(i_h1,i)-star%xa(i_h1,i-1)).gt.star%ctrl%chi_grid_scale(ichi_flag_dx)) then
           call append_flag_point(i)
 ! TEST FOR FLAGGING DUE TO Z GRADIENT
        else if (dabs(star%xa(i_metals,i)-star%xa(i_metals,i-1)).gt. &
-            star%ctrl%chi_grid_scale(4)) then
+            star%ctrl%chi_grid_scale(ichi_flag_dz)) then
           call append_flag_point(i)
 ! TEST FOR FLAGGING DUE TO GRADIENT IN LOG OMEGA.
        else if (star%job%rotation_active) then
           log_omega_top = log10(star%omega(i))
           log_omega_bot = log10(star%omega(i-1))
-          if (dabs(log_omega_top-log_omega_bot).gt.star%ctrl%chi_grid_scale(12)) then
+          if (dabs(log_omega_top-log_omega_bot).gt.star%ctrl%chi_grid_scale(ichi_flag_dw)) then
              call append_flag_point(i)
           endif
        endif
@@ -243,7 +246,7 @@ subroutine flag_fixed_points
                call append_flag_point(overshoot_base_zone)
             endif
        endif
-       if (star%ctrl%chi_grid_scale(7).eq.0.0D0) then
+       if (star%ctrl%chi_grid_scale(ichi_czbase_fine_width).eq.0.0D0) then
           fine_zone_base = overshoot_base_zone
        else
 ! NOW LOCATE BASE OF FINELY ZONED REGION.
@@ -252,7 +255,7 @@ subroutine flag_fixed_points
           else
           do fine_zone_base = overshoot_base_zone-1,1,-1
              if (star%logP(fine_zone_base) - &
-                  star%logP(star%envelope_cz_bottom_index).gt.star%ctrl%chi_grid_scale(7)) &
+                  star%logP(star%envelope_cz_bottom_index).gt.star%ctrl%chi_grid_scale(ichi_czbase_fine_width)) &
                   exit
           end do
             fine_zone_base = fine_zone_base + 1
@@ -345,26 +348,26 @@ subroutine assign_new_points
             luminosity_max = star%luminosity_lsun(i)
          endif
       end do
-      point_spacing_max(1) = star%ctrl%chi_grid_scale(8)
-      point_spacing_max(2) = star%ctrl%chi_grid_scale(9)*luminosity_max
-      point_spacing_max(3) = star%ctrl%chi_grid_scale(5)
-      point_spacing_max(4) = star%ctrl%chi_grid_scale(6)
+      point_spacing_max(1) = star%ctrl%chi_grid_scale(ichi_dp_env_max)
+      point_spacing_max(2) = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_max
+      point_spacing_max(3) = star%ctrl%chi_grid_scale(ichi_dx_max)
+      point_spacing_max(4) = star%ctrl%chi_grid_scale(ichi_dz_max)
 ! CHI IS THE NORMALIZED VECTOR OF DIFFERENCES IN M,L,P:
 ! CHI = HS/DELTA M + HL/DELTA L - HP/DELTA P
-      mass_scale = star%ctrl%chi_grid_scale(2)
+      mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
       luminosity_scale = point_spacing_max(2)
       chi(1) = 1.0D0
       do j = 2, star%nz
          pressure_test = star%logP(j) - star%logP(star%envelope_cz_bottom_index)
-         if (abs(pressure_test).lt.star%ctrl%chi_grid_scale(7)) then
+         if (abs(pressure_test).lt.star%ctrl%chi_grid_scale(ichi_czbase_fine_width)) then
 ! FINELY ZONED REGION
-            dp_scale = star%ctrl%chi_grid_scale(10)
-         else if (pressure_test.gt.star%ctrl%chi_grid_scale(7)) then
+            dp_scale = star%ctrl%chi_grid_scale(ichi_dp_czbase_max)
+         else if (pressure_test.gt.star%ctrl%chi_grid_scale(ichi_czbase_fine_width)) then
 ! BELOW SURFACE CZ
-            dp_scale = star%ctrl%chi_grid_scale(11)
+            dp_scale = star%ctrl%chi_grid_scale(ichi_dp_core_max)
          else
 ! IN SURFACE CZ
-            dp_scale = star%ctrl%chi_grid_scale(8)
+            dp_scale = star%ctrl%chi_grid_scale(ichi_dp_env_max)
          endif
          if (star%luminosity_lsun(j).gt.star%luminosity_lsun(j-1)) then
             dchi = (star%log_mass(j)-star%log_mass(j-1))/mass_scale + &
@@ -519,7 +522,7 @@ subroutine assign_new_points
       j = 1
       star%logRho_start(j) = star%old_shell_mass(j)
       do k = 2,new_num_zones-1
-       if (star%old_shell_mass(k) - star%logRho_start(j).gt.star%ctrl%chi_grid_scale(1)) then
+       if (star%old_shell_mass(k) - star%logRho_start(j).gt.star%ctrl%chi_grid_scale(ichi_dm_min)) then
           j = j + 1
           star%logRho_start(j) = star%old_shell_mass(k)
        endif

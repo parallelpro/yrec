@@ -8,13 +8,14 @@
 !
 ! This subroutine limits the timestep based on the requirement that the
 ! changes from one model to the next in T, P, R, and L be less than the
-! user parameters atime(8)-atime(11) at any model point. This criterion
+! user parameters atime(itime_dt)-atime(itime_dl) at any model point. This criterion
 ! dominates in the pre-main sequence, and this subroutine must be used
 ! (use_structure_dt via LPTIME=T) to perform pre-main-sequence evolution.
 subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure, log_radius, &
      log_temperature, num_points, struct_dt)
 
       use star_info_lib, only: star, json
+      use controls_lib, only: itime_dl, itime_dp, itime_dr, itime_dt, itime_max_dt_frac
       implicit none
 
 ! previous_timestep: previous model timestep.
@@ -23,7 +24,7 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
 !             via HL(I)=HL(I)+HL(I)*rate*dt, an Euler step only
 !             consistent with a linear quantity.
 ! log_pressure: run of log10(pressure) in the current model. Confirmed
-!               logged: ptime.f's own comments describe atime(8)-(10)
+!               logged: ptime.f's own comments describe atime(itime_dt)-(itime_dr)
 !               as "MAX DELTA LOG T/P/R".
 ! log_radius: run of log10(radius) in the current model.
 ! log_temperature: run of log10(temperature) in the current model.
@@ -78,18 +79,18 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
       end do
 ! now actually limit the timestep by a factor that reduces the
 ! time changes in all quantities to the ps values or less
-      dt_factor = max_change(1)/star%ctrl%atime(9)
-      if (max_change(2)/star%ctrl%atime(8).gt.dt_factor) dt_factor=max_change(2)/star%ctrl%atime(8)
-      if (max_change(3)/star%ctrl%atime(10).gt.dt_factor) dt_factor=max_change(3)/star%ctrl%atime(10)
-      if (max_change(4)/(star%ctrl%atime(11)*2.3026d0).gt.dt_factor) then
-        dt_factor=max_change(4)/(star%ctrl%atime(11)*2.3026d0)
+      dt_factor = max_change(1)/star%ctrl%atime(itime_dp)
+      if (max_change(2)/star%ctrl%atime(itime_dt).gt.dt_factor) dt_factor=max_change(2)/star%ctrl%atime(itime_dt)
+      if (max_change(3)/star%ctrl%atime(itime_dr).gt.dt_factor) dt_factor=max_change(3)/star%ctrl%atime(itime_dr)
+      if (max_change(4)/(star%ctrl%atime(itime_dl)*2.3026d0).gt.dt_factor) then
+        dt_factor=max_change(4)/(star%ctrl%atime(itime_dl)*2.3026d0)
       endif
 ! if no change from previous model,set struct_dt to timestep
 ! stored in the previous model.
       if (dt_factor.eq.0.d0) dt_factor=1.0d0
-! restrict change in timestep to no more than a factor of atime(13)
+! restrict change in timestep to no more than a factor of atime(itime_max_dt_frac)
 ! (the global timestep limiter) up or down.
-      dt_factor_limit = star%ctrl%atime(13)
+      dt_factor_limit = star%ctrl%atime(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit
       struct_dt = previous_timestep/dt_factor

@@ -33,6 +33,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
+      use controls_lib, only: ichi_dm_max, ichi_dp_env_max
       use envint_lib, only: atm_get
       use envstruct_lib
       use luout_lib
@@ -500,9 +501,9 @@ subroutine extend_core_toward_center
 !     MCORE is number of shells to extrapolate to new core.
 !     FCORE is factor to reduce inner mass shell.
           star%job%num_core_shells_added = int(log10(star%job%core_mass_reduction_factor)/ &
-               star%ctrl%chi_grid_scale(2))+1
+               star%ctrl%chi_grid_scale(ichi_dm_max))+1
           star%job%core_mass_reduction_factor = dble(star%job%num_core_shells_added)* &
-               star%ctrl%chi_grid_scale(2)
+               star%ctrl%chi_grid_scale(ichi_dm_max)
           num_shells_extended = star%nz + star%job%num_core_shells_added
           if (num_shells_extended .gt. json) then
              write(run_log_unit,476)"STARIN: Unable to extend core inward ", &
@@ -514,7 +515,7 @@ subroutine extend_core_toward_center
   477        format(a, i8, a, i8)
   478        format(a)
           endif
-          core_shell_spacing = star%ctrl%chi_grid_scale(2)
+          core_shell_spacing = star%ctrl%chi_grid_scale(ichi_dm_max)
 ! shift data for remaining points by the required number
           do i=star%nz,1, -1
              star%log_mass(i+star%job%num_core_shells_added) = star%log_mass(i)
@@ -715,9 +716,9 @@ subroutine rescale_and_refit_envelope
             saved_env_step_max = star%job%env_step_max
             saved_env_step_min = star%job%env_step_min
             saved_env_step_begin = star%job%env_step_begin
-            star%job%env_step_max = star%ctrl%chi_grid_scale(8)
-            star%job%env_step_min = star%ctrl%chi_grid_scale(8)
-            star%job%env_step_begin = star%ctrl%chi_grid_scale(8)
+            star%job%env_step_max = star%ctrl%chi_grid_scale(ichi_dp_env_max)
+            star%job%env_step_min = star%ctrl%chi_grid_scale(ichi_dp_env_max)
+            star%job%env_step_begin = star%ctrl%chi_grid_scale(ichi_dp_env_max)
 !          SENV = SENV0
           save_boundary_flag = .false.
           print_flag = .true.

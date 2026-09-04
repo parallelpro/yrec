@@ -7,18 +7,20 @@
 ! style were updated.
 !
 ! This subroutine finds the timestep based on hydrogen burning.
-! For stars with central X > atime(1) the timestep is the time needed
-! to burn the minimum of atime(2) of X at the center or the fraction
-! atime(3) of the central X.
-! Stars with central X < atime(1) are considered by the program to
+! For stars with central X > atime(itime_core_min) the timestep is the time needed
+! to burn the minimum of atime(itime_dx_core_tot) of X at the center or the fraction
+! atime(itime_dx_core_frac) of the central X.
+! Stars with central X < atime(itime_core_min) are considered by the program to
 ! have a hydrogen shell burning source. The timestep is the minimum of
-! the time required to burn atime(7) of X at the shell midpoint or to
-! burn the mass fraction atime(6) of X in the entire star.
+! the time required to burn atime(itime_dx_shell) of X at the shell midpoint or to
+! burn the mass fraction atime(itime_dx_total) of X in the entire star.
 subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_mass, &
      shell_mass, log_temperature, hydrogen_luminosity, &
      convective_core_edge_zone, h_shell_midpoint_zone, num_points, &
      hydrogen_dt)
       use star_info_lib, only: star, json
+      use controls_lib, only: itime_core_min, itime_dx_core_frac, itime_dx_core_tot, &
+           itime_dx_shell, itime_dx_total
       use phys_const_lib
       use net_lib
       use burn_lib
@@ -63,15 +65,15 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
 ! **note that for a convective core, the timestep is based on the time
 !   needed to burn the given fraction of hydrogen in the core and not
 !   just in the central shell.
-      if(composition(1,1).ge.star%ctrl%atime(1)) then
-       delta_x = min(star%ctrl%atime(2),star%ctrl%atime(3)*composition(1,convective_core_edge_zone))
+      if(composition(1,1).ge.star%ctrl%atime(itime_core_min)) then
+       delta_x = min(star%ctrl%atime(itime_dx_core_tot),star%ctrl%atime(itime_dx_core_frac)*composition(1,convective_core_edge_zone))
        hydrogen_dt =(h_burn_energy_per_gram/star%solar_luminosity_cgs)* &
             (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))*delta_x
        return
       endif
 !  h-shell burning criterion
 !  limit total mass of hydrogen burned.
-      delta_x = star%ctrl%atime(6)*composition(1,num_points)*(star%solar_mass_cgs/star%solar_luminosity_cgs)
+      delta_x = star%ctrl%atime(itime_dx_total)*composition(1,num_points)*(star%solar_mass_cgs/star%solar_luminosity_cgs)
       hydrogen_dt = h_burn_energy_per_gram*delta_x/hydrogen_luminosity
 !  limit x-depletion at shell mid-point.
 !  call nuclear reaction sr's to find dxdt at the shell midpoint.
@@ -99,8 +101,8 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
            rate_n14_p,rate_o16_p,rate_c12_alpha,rate_triple_alpha,shell_mass, &
            log_temperature,zone_begin,zone_end,dc_dt,do_dt,dx_dt,dy_dt, &
            c12_fraction,o16_fraction,hydrogen_fraction,metal_fraction)
-      if(dx_dt.lt.0.0d0 .and. star%ctrl%atime(7).gt.0.0d0) then
-         shell_dt_x_depletion = abs(seconds_per_year*1.0d9*star%ctrl%atime(7)/dx_dt)
+      if(dx_dt.lt.0.0d0 .and. star%ctrl%atime(itime_dx_shell).gt.0.0d0) then
+         shell_dt_x_depletion = abs(seconds_per_year*1.0d9*star%ctrl%atime(itime_dx_shell)/dx_dt)
          hydrogen_dt = min(hydrogen_dt,shell_dt_x_depletion)
       endif
       return

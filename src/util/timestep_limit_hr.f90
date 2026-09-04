@@ -15,6 +15,7 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
       use star_info_lib, only: star, json
+      use controls_lib, only: itime_max_dt_frac
       use math_lib
       implicit none
 
@@ -45,8 +46,8 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
 ! if no change from previous model, set envelope_dt to timestep
 ! stored in the previous model.
       if (dt_factor .eq. 0.0d0) dt_factor = 1.0d0
-! use atime(13) as the global factor for limiting timestep changes
-      dt_factor_limit = star%ctrl%atime(13)
+! use atime(itime_max_dt_frac) as the global factor for limiting timestep changes
+      dt_factor_limit = star%ctrl%atime(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor = dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor = 1.0d0/dt_factor_limit
       envelope_dt = previous_timestep/dt_factor

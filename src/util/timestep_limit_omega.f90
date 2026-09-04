@@ -13,6 +13,7 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
      max_domega_frac)
 
       use star_info_lib, only: star, json
+      use controls_lib, only: itime_max_dt_frac
       implicit none
 
 ! previous_timestep: previous model timestep.
@@ -46,9 +47,9 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
           rotation_dt = dt_unlimited
           return
       endif
-! restrict change in timestep to no more than a factor of atime(13)
+! restrict change in timestep to no more than a factor of atime(itime_max_dt_frac)
 ! (the global timestep limiter) up or down.
-      dt_factor_limit = star%ctrl%atime(13)
+      dt_factor_limit = star%ctrl%atime(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit
       rotation_dt = previous_timestep/dt_factor

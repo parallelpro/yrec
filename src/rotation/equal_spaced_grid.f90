@@ -17,6 +17,7 @@ subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin
      zone_end, num_zones)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
+      use controls_lib, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use phys_const_lib
       use numerics_lib
       use math_lib
@@ -36,9 +37,9 @@ subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin
       double precision :: mass_scale, luminosity_scale, pressure_scale
 
 ! USE THE MODEL CRITERIA FOR ASSIGNING THE SPACING BETWEEN GRID POINTS.
-      mass_scale = star%ctrl%chi_grid_scale(2)
-      luminosity_scale = star%ctrl%chi_grid_scale(9)*luminosity_lsun(num_zones)
-      pressure_scale = star%ctrl%chi_grid_scale(11)
+      mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
+      luminosity_scale = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)
+      pressure_scale = star%ctrl%chi_grid_scale(ichi_dp_core_max)
       num_points_in_range = zone_end - zone_begin + 1
       do range_index = 1, num_points_in_range
          zone_index = zone_begin + range_index - 1

@@ -22,6 +22,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
      single_interface_flag)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
+      use controls_lib, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use phys_const_lib
       use numerics_lib
       use math_lib
@@ -126,10 +127,10 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
       call osplin(rot_scr%xval, equally_spaced_diffusion_coeff, rot_scr%xtab, rot_scr%ytab, ntabb, &
            rot_scr%ntot)
 ! PRODUCT OF RHO R^2 BY D CHI/DR
-      mass_scale = star%ctrl%chi_grid_scale(2)
-      luminosity_scale = star%ctrl%chi_grid_scale(9)*luminosity_lsun(num_zones)* &
+      mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
+      luminosity_scale = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)* &
            star%solar_luminosity_cgs
-      pressure_scale = star%ctrl%chi_grid_scale(11)
+      pressure_scale = star%ctrl%chi_grid_scale(ichi_dp_core_max)
       do idx = 1, ntab
          search_idx = zone_begin + idx - 1
          rot_scr%xtab(idx) = rot_scr%chi(idx)

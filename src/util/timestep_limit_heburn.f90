@@ -7,8 +7,8 @@
 ! style were updated -- except the He-shell branch (2026, see below).
 !
 ! Stars with a helium luminosity have a timestep limit based on the
-! time required to burn atime(4) of Y at the maximum in temperature or
-! the fraction atime(5) of Y at this point.
+! time required to burn atime(itime_dy_core_tot) of Y at the maximum in temperature or
+! the fraction atime(itime_dy_core_frac) of Y at this point.
 ! Test for helium flash burning; high central density is taken as a
 ! sign that the model is a giant undergoing a He flash rather than a
 ! horizontal branch star.
@@ -17,6 +17,8 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
      num_points, helium_dt, h_shell_zone_begin)
       use net_lib
       use star_info_lib, only: star, json
+      use controls_lib, only: itime_core_min, itime_dy_core_frac, itime_dy_core_tot, &
+           itime_dy_shell, itime_dy_total
       use burn_lib
       implicit none
 
@@ -85,8 +87,8 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
 !  core_helium_fraction: computed as 1 - Z(core); in a He-burning core
 !  X is normally negligible there, so this approximates the core Y.
        core_helium_fraction = 1d0 - composition(3,convective_core_edge_zone)
-       if(core_helium_fraction.ge.star%ctrl%atime(1)) then
-            helium_dt = min(star%ctrl%atime(4),star%ctrl%atime(5)*core_helium_fraction)
+       if(core_helium_fraction.ge.star%ctrl%atime(itime_core_min)) then
+            helium_dt = min(star%ctrl%atime(itime_dy_core_tot),star%ctrl%atime(itime_dy_core_frac)*core_helium_fraction)
             helium_dt = (he_burn_energy_per_gram/star%solar_luminosity_cgs)*helium_dt* &
                (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))
          else
@@ -96,21 +98,21 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
 ! caller's blanket SAVE), and multiplied it by M/L again: a
 ! dimensionless-nonsense recurrence that gave ~0 s on the first
 ! model after exhaustion and, once the SAVE was gone, exactly 0 ->
-! dt = 0 -> NaN (the run_from_zahb_to_tahb failure at Y_c < atime(1)).
+! dt = 0 -> NaN (the run_from_zahb_to_tahb failure at Y_c < atime(itime_core_min)).
 ! Compute a fresh limit from the He-shell controls instead, mirroring
-! the H-shell branch of timestep_limit_hburn: atime(14) (time_dy_total,
-! Msun of He burned per step) and atime(12) (time_dy_shell, fraction
+! the H-shell branch of timestep_limit_hburn: atime(itime_dy_total) (time_dy_total,
+! Msun of He burned per step) and atime(itime_dy_shell) (time_dy_shell, fraction
 ! of Y burned at the shell) -- both were mapped by map_user_inputs but
 ! never consumed until now. The reference point is the shell just
 ! below the H-burning shell (the He-rich core), as before.
             shell_zone = max(h_shell_zone_begin-1, 1)
             helium_dt = dt_unlimited
             if (luminosity(shell_zone) .gt. 0.0d0) then
-               if (star%ctrl%atime(14) .gt. 0.0d0) helium_dt = min(helium_dt, &
-                    (he_burn_energy_per_gram/star%solar_luminosity_cgs)*star%ctrl%atime(14)* &
+               if (star%ctrl%atime(itime_dy_total) .gt. 0.0d0) helium_dt = min(helium_dt, &
+                    (he_burn_energy_per_gram/star%solar_luminosity_cgs)*star%ctrl%atime(itime_dy_total)* &
                     (star%solar_mass_cgs/luminosity(shell_zone)))
-               if (star%ctrl%atime(12) .gt. 0.0d0) helium_dt = min(helium_dt, &
-                    (he_burn_energy_per_gram/star%solar_luminosity_cgs)*star%ctrl%atime(12)* &
+               if (star%ctrl%atime(itime_dy_shell) .gt. 0.0d0) helium_dt = min(helium_dt, &
+                    (he_burn_energy_per_gram/star%solar_luminosity_cgs)*star%ctrl%atime(itime_dy_shell)* &
                     composition(2,shell_zone)* &
                     (enclosed_mass(shell_zone)/luminosity(shell_zone)))
             end if
