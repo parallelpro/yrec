@@ -35,6 +35,46 @@
 ! are star-layer code (MESA: struct_burn_mix, not net).
 ! ---------------------------------------------------------------------
 module net_lib
+      implicit none
+
+! ---- named indices for the positional array slots (2026) ----
+! The 13-reaction arrays of rates (below) and engeb (core/burn_lib.f90):
+! rate/reaction_rate, screening_factor, charge_product, z53/z43/z23/z86,
+! eg, reaction_energy_gen, ... and star%cross_section_scale(1:13).
+! Slots 9 (O16 + alpha) and 13 (C12 + C12) are carried but never
+! computed. num_reactions was NRXNS.
+      integer, parameter, public :: &
+           r_pp = 1, r_he3he3 = 2, r_he3he4 = 3, r_pc12 = 4, r_pc13 = 5, &
+           r_pn14 = 6, r_po16 = 7, r_ac13 = 8, r_ao16_unused = 9, &
+           r_ac12 = 10, r_an14 = 11, r_3alpha = 12, r_c12c12_unused = 13, &
+           num_reactions = 13
+! star%cross_section_scale(14:17) (SSTANDARD) carries four more
+! cross-section factors that are not rate-array slots.
+      integer, parameter, public :: &
+           s_pep = 14, s_be7e = 15, s_be7p = 16, s_hep = 17
+! q1..q5(8), star%qs0e_scale(8), star%qqs0ee_scale(8): slot 8 holds the
+! Be7 + p coefficients (only for these arrays; rate slot 8 is He4+C13).
+      integer, parameter, public :: iq_be7p = 8
+! The 13-isotope mass tables (atomic_mass/atomic_charge) and the local
+! mass-fraction arrays of rates and engeb. num_isotopes was NELEM.
+      integer, parameter, public :: &
+           iso_n = 1, iso_h1 = 2, iso_h2 = 3, iso_h3 = 4, iso_he3 = 5, &
+           iso_he4 = 6, iso_c12 = 7, iso_c13 = 8, iso_n14 = 9, &
+           iso_o16 = 10, iso_o18 = 11, iso_ne20 = 12, iso_mg24 = 13, &
+           num_isotopes = 13
+! Species count of the H/He/C/O mixture handed to nulosses/sneut.
+      integer, parameter, public :: nu_ionmax = 4
+! (10^9 sidereal years / 1 s) * (1 amu / 1 g), the C21 of engeb/rates/
+! deutrate: converts a rate per second per gram into the per-Gyr
+! per-amu units stored in star%reaction_rate_* and
+! star%deuterium_burning_rate.
+      double precision, parameter, public :: gyr_amu_per_sec_gram = 5.240358d-8
+! S0 in keV-b of the two N15 + p branches, multiplying the S_eff/S0
+! polynomials o16_gamma_rate / c12_alpha_n15p_rate (and o16gamma /
+! c12alpha in engeb). Kept as integers, the kind of the original
+! literals 64 and 67500 (both exact when promoted to double).
+      integer, parameter, public :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
+
 contains
 
 !----------------------------------------------------------------------
@@ -58,9 +98,8 @@ subroutine neutrino(temp,den,x,y,zc,zo,snu,dsnudt,dsnudd)
       double precision, intent(in) :: temp, den, x, y, zc, zo
       double precision, intent(out) :: snu, dsnudt, dsnudd
 
-      integer, parameter :: ionmax = 4
-      double precision :: xmass(ionmax), ymass(ionmax), aion(ionmax), &
-           zion(ionmax)
+      double precision :: xmass(nu_ionmax), ymass(nu_ionmax), aion(nu_ionmax), &
+           zion(nu_ionmax)
 
 !..set the mass fractions, z's and a's of the composition
 !..hydrogen
@@ -123,15 +162,13 @@ subroutine nulosses(temp,den,snu,xmass,ymass,aion,zion, &
 !..aion    = number of nucleons
 !..zion    = number of protons
 
-      integer          ionmax
-      parameter        (ionmax=4)
-      double precision, intent(in) :: xmass(ionmax), aion(ionmax), &
-                       zion(ionmax), temp, den
-      double precision, intent(out) :: ymass(ionmax), snu, dsnudt, dsnudd
+      double precision, intent(in) :: xmass(nu_ionmax), aion(nu_ionmax), &
+                       zion(nu_ionmax), temp, den
+      double precision, intent(out) :: ymass(nu_ionmax), snu, dsnudt, dsnudd
       double precision abar,zbar,dsnuda,dsnudz
 
 !..get abar and zbar
-      call azbar(xmass,aion,zion,ionmax, &
+      call azbar(xmass,aion,zion,nu_ionmax, &
                  ymass,abar,zbar)
 
 !..get the neutrino losses
@@ -1653,12 +1690,13 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       double precision, intent(out) :: frac_c12_alpha(json), &
            frac_be7_electron(json)
 
-      double precision :: mass_frac(13), rate(13), screening_factor(13), &
-           charge_product(13), z53(13), z43(13), z23(13), z86(13)
-      double precision :: q1(8), q2(8), q3(8), q4(8), q5(8), q6(7), q7(7), &
-           q8(7)
-      double precision :: atomic_mass(13), atomic_charge(13)
-      integer :: num_isotopes, num_reactions
+      double precision :: mass_frac(num_isotopes), rate(num_reactions), &
+           screening_factor(num_reactions), charge_product(num_reactions), &
+           z53(num_reactions), z43(num_reactions), z23(num_reactions), &
+           z86(num_reactions)
+      double precision :: q1(iq_be7p), q2(iq_be7p), q3(iq_be7p), q4(iq_be7p), &
+           q5(iq_be7p), q6(r_po16), q7(r_po16), q8(r_po16)
+      double precision :: atomic_mass(num_isotopes), atomic_charge(num_isotopes)
 
 ! ***************************
 ! ANUC ARE ATOMIC MASS UNITS.
@@ -1675,11 +1713,9 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !
       data atomic_mass/1.008665d0,1.007276d0,2.013553d0,3.015501d0,3.014933d0,4.001506d0, &
            11.996709d0,13.000064d0,13.999233d0,15.990526d0,17.994772d0,19.986954d0, &
-           23.978458d0/,atomic_charge/0.d0,1.d0,1.d0,1.d0,2.d0,2.d0,6.d0,6.d0,7.d0,8.d0,8.d0,10.d0,12.d0/, &
-           num_isotopes/13/
+           23.978458d0/,atomic_charge/0.d0,1.d0,1.d0,1.d0,2.d0,2.d0,6.d0,6.d0,7.d0,8.d0,8.d0,10.d0,12.d0/
 ! THE ISOTOPES ARE NEUTRON, H1, D, H3, HE3, HE4, C12, C13, N14, O16, O18,
 !  NE20, MG24, RESPECTIVELY. ALL OF THESE NUMBERS WERE CHECKED.
-! NELEM IS THE NUMBER OF ISOTOPES INCLUDED.
 ! **************************************************************************
 ! THE QUANTITIES Q1(J), Q2(J), ...,Q5(J) ARE THE TERMS IN EQUATION 3.14 OF
 !  NEUTRINO ASTROPHYSICS AND IN EQUATION 53 OF FOWLER, CAUGHLAN, AND
@@ -1732,7 +1768,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  THAT GENERATED ACCURATE EVALUATIONS. THE NUMBERS GIVEN HERE ARE
 !  IN MANY CASES COMPLETELY DIFFERENT FROM THE VALUES IN THE ORIGINAL
 !  YALE CODE.
-! NRXNS IS THE NUMBER OF REACTIONS BEING TRACKED.
 ! DBG 8/94 APPLIED MHP UPDATE TO NUCLEAR REACTIONS
 ! 10/13/97. Changed Q(I) so that are now calculated for the bare nuclear
 ! masses. The calculates were made cues.f . Last date on the calculations
@@ -1769,8 +1804,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       q5/0.d0,0.d0,0.d0,2.595d0,4.032d0,0.0d0,0.3097d0,0.12114d0/, &
       q6/-3.3804d0,-12.2757d0,-12.826d0,-13.6899d0,-13.7173d0,-15.2281d0,-16.6925d0/, &
       q7/20.8964d0,76.6003d0,67.8036d0,69.130d0,70.3809d0,69.8517d0,70.8012d0/, &
-      q8/0.d0,0.d0,0.d0,0.0d0,0.0d0,0.0d0,0.d0/, &
-      num_reactions/13/
+      q8/0.d0,0.d0,0.d0,0.0d0,0.0d0,0.0d0,0.d0/
 ! For different values of SSTANDARD, check the comments in ENGEB
 ! *********************************************************************
 ! THE VALUES OF SSTANDARD(I) ARE TO BE CHANGED FROM UNITY IF THE CROSS
@@ -1792,22 +1826,20 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  AND Z23 ARE ALSO DEFINED IN TABLE 4 (SEE ABOVE).  SINCE THEY ARE
 !  ONLY USED IN STRONG SCREENING, THE VALUES OF Z53, Z43, AND Z23
 !  WERE NOT CHECKED.
-      double precision :: c21
       data charge_product/1.d0,4.d0,4.d0,6.d0,6.d0,7.d0,8.d0,12.d0,16.d0,12.d0,14.d0,12.d0,36.d0/,z53/ &
          1.175d0,3.73d0,3.73d0,4.804d0,4.804d0,5.385d0,5.941d0,9.014d0,11.24d0,9.014d0, &
          10.15d0,9.104d0,23.28d0/,z43/0.52d0,1.31d0,1.31d0,1.488d0,1.488d0,1.61d0,1.721d0, &
          2.577d0,3.025d0,2.577d0,2.81d0,2.577d0,5.668d0/,z23/-0.413d0,-0.655d0,-0.655d0, &
          -0.643d0,-0.643d0,-0.659d0,-0.673d0,-0.889d0,-0.946d0,-0.889d0,-0.92d0,-0.889d0, &
          -1.36d0/,z86/1.630d0,5.917d0,5.917d0,8.302d0,8.302d0,9.520d0,10.716d0,16.192d0, &
-         20.978d0,16.192d0,18.606d0,16.192d0,45.6635d0/, &
-         c21/5.240358d-8/
+         20.978d0,16.192d0,18.606d0,16.192d0,45.6635d0/
 ! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
 !  ISOTOPES.
 ! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
 !  THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
 !  RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
 
-      integer :: i, nz
+      integer :: i, first_zeroed_rxn
       double precision :: mu_ion_inv, mu_e_inv, xtr, zeta0, trm
       double precision :: rho_over_mu_e, log_rho_local, density, t9, t9p13, &
            t9p23, t9m13, t9m23, t9m1, t9m2, t9m12, t9m32
@@ -1824,19 +1856,19 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       double precision :: be7_electron_frac, c12_alpha_frac
       double precision :: o16_gamma_rate, c12_alpha_n15p_rate
 
-      mass_frac(1) = 0.0d0
-      mass_frac(2) = hydrogen_fraction
-      mass_frac(3) = 0.0d0
-      mass_frac(4) = 0.0d0
-      mass_frac(5) = he3_fraction
-      mass_frac(6) = helium_fraction
-      mass_frac(7) = c12_fraction
-      mass_frac(8) = c13_fraction
-      mass_frac(9) = n14_fraction
-      mass_frac(10) = o16_fraction
-      mass_frac(11) = o18_fraction
-      mass_frac(12) = 0.0d0
-      mass_frac(13) = 0.0d0
+      mass_frac(iso_n) = 0.0d0
+      mass_frac(iso_h1) = hydrogen_fraction
+      mass_frac(iso_h2) = 0.0d0
+      mass_frac(iso_h3) = 0.0d0
+      mass_frac(iso_he3) = he3_fraction
+      mass_frac(iso_he4) = helium_fraction
+      mass_frac(iso_c12) = c12_fraction
+      mass_frac(iso_c13) = c13_fraction
+      mass_frac(iso_n14) = n14_fraction
+      mass_frac(iso_o16) = o16_fraction
+      mass_frac(iso_o18) = o18_fraction
+      mass_frac(iso_ne20) = 0.0d0
+      mass_frac(iso_mg24) = 0.0d0
 ! *******************************************************************
 ! BEGIN CALCULATION OF SCREENING CORRECTION.
 ! *******************************************************************
@@ -2000,12 +2032,14 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  ARE GIVEN CORRECTLY.  STRONG SCREENING WAS NOT CHECKED BECAUSE IT IS
 !  NOT RELEVANT FOR THE SUN.
 ! ****************************************************************
-      nz=1
+! Reactions first_zeroed_rxn..num_reactions are zeroed after this block:
+! only the alpha captures when hydrogen burns, all 13 when it is gone.
+      first_zeroed_rxn = r_pp
       if(hydrogen_fraction.eq.0.0d0) then
          be7_electron_frac=0.d0
          c12_alpha_frac=0.d0
       else
-      nz=8
+      first_zeroed_rxn = r_ac13
 ! **************************************************************
 !  CALCULATE REACTION RATES FOR THE THREE PRINCIPAL REACTIONS OF
 !   THE PP CHAIN: PP, HE3+HE3, HE3 +HE4, AND THE FOUR PROTON
@@ -2021,7 +2055,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  MULTIPLIED BY T9**(-1/7). THIS FACTOR IS INCORRECT AND HAS BEEN
 !  REMOVED; IT APPEARED BEFORE AS AN IF STATEMENT REFERRING ONLY TO
 !  RATE(7).
-      do i=1,7
+      do i=r_pp,r_po16
 !         R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
 ! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
 ! RATE DERIVATIVES
@@ -2060,9 +2094,9 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! in Be7electron expression was (3.126571E+5). 10/14/97.
 !
          be7_electron_rate = (1.752d-10)*t9m12*(1.0d0 + 0.004d0*(1000.d0*t9-16.d0))
-         be7_electron_rate = be7_electron_rate*mu_e_inv*star%cross_section_scale(15)
+         be7_electron_rate = be7_electron_rate*mu_e_inv*star%cross_section_scale(s_be7e)
          be7_temp_factor = (-10.2625d0*t9m13)
-         be7_proton_rate = (3.128813d+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(be7_temp_factor)
+         be7_proton_rate = (3.128813d+5)*hydrogen_fraction*star%cross_section_scale(s_be7p)*exp(be7_temp_factor)
 
 ! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
 !  Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
@@ -2070,8 +2104,8 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !         QRBE7 = T9M23 + Q1(8)*T9M13 + Q2(8)+ Q3(8)*T9P13
 !     $          + Q4(8)*T9P23 + Q5(8)*T9
 ! MHP 9/14 ADDED THE ABILITY TO ALTER DERIVATIVES INDEPENDENTLY
-         be7_q_factor = t9m23 + q1(8)*t9m13 + star%qs0e_scale(8)*(q2(8)+ q3(8)*t9p13) &
-                + star%qqs0ee_scale(8)*(q4(8)*t9p23 + q5(8)*t9)
+         be7_q_factor = t9m23 + q1(iq_be7p)*t9m13 + star%qs0e_scale(iq_be7p)*(q2(iq_be7p)+ q3(iq_be7p)*t9p13) &
+                + star%qqs0ee_scale(iq_be7p)*(q4(iq_be7p)*t9p23 + q5(iq_be7p)*t9)
          be7_proton_rate = be7_proton_rate*be7_q_factor
 ! CALCULATE THE SCREENING CORRECTION FOR BE7 + P REACTION.  USE WEAK AND
 !  INTERMEDIATE SCREENING FORMULAE.
@@ -2123,19 +2157,17 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       o16_gamma_rate = t9m23 + 0.0273016d0*t9m13 + 0.14374d0 + 0.027490d0*t9p13 &
                 + 6.14685d0*t9p23 + 2.98940d0*t9
 ! MULTIPLY BY THE VALUE OF S0 IN KEV-B.
-!      O16GAMMA = O16GAMMA*64.
 ! MHP 9/14 ADDED THE OPTION TO MODIFY THE RELATIVE CROSS SECTIONS
 ! FOR N15+P -> C12+ALPHA AND O16+GAMMA
-      o16_gamma_rate = o16_gamma_rate*64*star%o16_gamma_scale
+      o16_gamma_rate = o16_gamma_rate*s0_n15pg_kevb*star%o16_gamma_scale
 !
       c12_alpha_n15p_rate = t9m23 + 0.0273016d0*t9m13 + 2.01186d0 + 0.384763d0*t9p13 &
                 + 17.0579d0*t9p23 + 8.29580d0*t9
-!      C12ALPHA = C12ALPHA*67500.
-      c12_alpha_n15p_rate = c12_alpha_n15p_rate*67500*star%c12_alpha_scale
+      c12_alpha_n15p_rate = c12_alpha_n15p_rate*s0_n15pa_kevb*star%c12_alpha_scale
       c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
       endif
-      do i=nz,num_reactions
+      do i=first_zeroed_rxn,num_reactions
          rate(i)=0.d0
       end do
 !***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
@@ -2154,7 +2186,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       a3 = 1.41d6*exp(-11.873d0*t9m1)
       a4 = 2.00d9*exp(-20.409d0*t9m1)
       a5 = 2.92d9*exp(-29.283d0*t9m1)
-      rate(8) = 1.157126d22*density*exp(screening_factor(8))*(a1*r1+t9m32* &
+      rate(r_ac13) = 1.157126d22*density*exp(screening_factor(r_ac13))*(a1*r1+t9m32* &
            (a2+a3+a4+a5))
 ! C12(ALPHA,GAMMA)O16
       r1 = 1.0d0/(1.0d0+0.0489d0*t9m23)
@@ -2164,7 +2196,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       a3 = 1.76d8*r2**2
       a4 = 1.25d3*t9m32*exp(-27.499d0*t9m1)
       a5 = 1.43d-2*t9**5*exp(-15.541d0*t9m1)
-      rate(10) = 1.25388d22*density*exp(screening_factor(10))*(a1*(a2+a3)+a4+a5)
+      rate(r_ac12) = 1.25388d22*density*exp(screening_factor(r_ac12))*(a1*(a2+a3)+a4+a5)
 ! N14(ALPHA,GAMMA)F18 + F18=>O18+EPLUS+NU
 ! 2026 (bugsweep Batch 3): the linear coefficient of the CF88
 ! N14(a,g)F18 polynomial is 0.117 (1 + 0.012 T9^1/3 + 1.45 T9^2/3
@@ -2177,13 +2209,13 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       a2 = t9m32*2.36d-10*exp(-2.798d0*t9m1)
       a3 = t9m32*2.03d0*exp(-5.054d0*t9m1)
       a4 = t9m23*1.15d4*exp(-12.310d0*t9m1)
-      rate(11)= 1.07452d22*density*exp(screening_factor(11))*(a1*r1+a2+a3+a4)
+      rate(r_an14)= 1.07452d22*density*exp(screening_factor(r_an14))*(a1*r1+a2+a3+a4)
 ! TRIPLE ALPHA
-      rate(12) = 1.565315d21*density**2*t9m1*t9m2*2.79d-8* &
-                 exp(-4.4027d0*t9m1+screening_factor(12))
+      rate(r_3alpha) = 1.565315d21*density**2*t9m1*t9m2*2.79d-8* &
+                 exp(-4.4027d0*t9m1+screening_factor(r_3alpha))
       end if
-      rate(9) = 0.0d0
-      rate(13) = 0.0d0
+      rate(r_ao16_unused) = 0.0d0
+      rate(r_c12c12_unused) = 0.0d0
 ! END OF XEROING OUT OF REACTIONS 9 AND 13.
       do i=1,num_reactions
          if(rate(i).le.1.d-5) rate(i) = 0.0d0
@@ -2195,22 +2227,23 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  THE INTERPRETATION OF WHICH REACTION GOES WITH WHICH SYMBOL CAN BE
 !  MADE EASILY BY LOOKING AT THE DEFINITIONS OF THE EG(I)'S.
 !  THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
-! C21 IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*(1 ATOMIC MASS UNIT/1
-!  GRAM). I HAVE USED HERE SIDEREAL YEAR IN CONVERTING TO SECONDS.
+! gyr_amu_per_sec_gram (C21) IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*
+!  (1 ATOMIC MASS UNIT/1 GRAM). I HAVE USED HERE SIDEREAL YEAR IN
+!  CONVERTING TO SECONDS.
       endif
-      rate_pp(zone_idx)=rate(1)*c21
-      rate_he3_he3(zone_idx)=rate(2)*c21
-      rate_he3_he4(zone_idx)=rate(3)*c21
-      rate_c12_p(zone_idx)=rate(4)*c21
-      rate_c13_p(zone_idx)=rate(5)*c21
-      rate_n14_p(zone_idx)=rate(6)*c21
-      rate_o16_p(zone_idx)=rate(7)*c21
-      rate_c13_alpha(zone_idx)=rate(8)*c21
-      rate_zero9(zone_idx)=rate(9)*c21
-      rate_c12_alpha(zone_idx)=rate(10)*c21
-      rate_n14_alpha(zone_idx)=rate(11)*c21
-      rate_triple_alpha(zone_idx)=rate(12)*c21
-      rate_zero13(zone_idx)=rate(13)*c21
+      rate_pp(zone_idx)=rate(r_pp)*gyr_amu_per_sec_gram
+      rate_he3_he3(zone_idx)=rate(r_he3he3)*gyr_amu_per_sec_gram
+      rate_he3_he4(zone_idx)=rate(r_he3he4)*gyr_amu_per_sec_gram
+      rate_c12_p(zone_idx)=rate(r_pc12)*gyr_amu_per_sec_gram
+      rate_c13_p(zone_idx)=rate(r_pc13)*gyr_amu_per_sec_gram
+      rate_n14_p(zone_idx)=rate(r_pn14)*gyr_amu_per_sec_gram
+      rate_o16_p(zone_idx)=rate(r_po16)*gyr_amu_per_sec_gram
+      rate_c13_alpha(zone_idx)=rate(r_ac13)*gyr_amu_per_sec_gram
+      rate_zero9(zone_idx)=rate(r_ao16_unused)*gyr_amu_per_sec_gram
+      rate_c12_alpha(zone_idx)=rate(r_ac12)*gyr_amu_per_sec_gram
+      rate_n14_alpha(zone_idx)=rate(r_an14)*gyr_amu_per_sec_gram
+      rate_triple_alpha(zone_idx)=rate(r_3alpha)*gyr_amu_per_sec_gram
+      rate_zero13(zone_idx)=rate(r_c12c12_unused)*gyr_amu_per_sec_gram
       frac_c12_alpha(zone_idx)=c12_alpha_frac
       frac_be7_electron(zone_idx)=be7_electron_frac
 ! ****************************************
