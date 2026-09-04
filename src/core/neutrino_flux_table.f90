@@ -14,7 +14,8 @@
 !   - output goes to run_log_unit (the .short / CASE.log stream)
 !     instead of the historical bare unit 76 (a stray fort.76 file)
 !     and stdout.
-! Called from run_yrec once per kind card, right after starin, so the
+! Called from run_yrec once per kind card, right after
+! read_starting_model, so the
 ! table describes the starting model of each run.
 !
 ! Content: per-shell neutrino production from engeb (erg/g/s scaled to
@@ -25,7 +26,7 @@
 ! O15, F17, Be7, pep, hep).
 subroutine neutrino_flux_table
       use star_info_lib, only: star, json, i_h1, i_h2, i_he3, i_he4, &
-           i_c12, i_c13, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, &
+           i_c12, i_c13, i_n14, i_o16, i_o18, &
            i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
            i_nu_o15, i_nu_f17
       use luout_lib

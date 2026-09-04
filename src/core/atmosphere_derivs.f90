@@ -41,11 +41,6 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
 ! gradient failures propagate through mmid/bsstep to the caller).
       integer, intent(out) :: ierr
 
-! former common/nwlaol/: not used in this file; declared only to
-! preserve layout.
-! MHP 8/25 Removed unused variables
-!      CHARACTER*256 FLAOL, FPUREZ
-! MHP 8/25 Removed character file names from common block
 ! --- locals ---
       double precision :: effective_gravity, optical_depth
       double precision :: log10_temperature, log10_pressure

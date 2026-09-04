@@ -1,19 +1,14 @@
 !----------------------------------------------------------------------
-! hsolve
+! henyey_solve (formerly hsolve)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original hsolve.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! This is YREC's core Henyey relaxation solve: backward-sweep
-! elimination then forward back-substitution of the block-tridiagonal
-! correction system for the two dependent structure variables (P, T)
-! at each of the M mesh shells. elim_coeff/elim_rhs are filled in by
-! the caller (crrect.f) from the linearized structure-equation
-! coefficients at each shell (henyey_coefficients.f90's elim_coeff/elim_rhs are the
-! same arrays); surface_bc holds the outer boundary condition. The
+! YREC's core Henyey relaxation solve: backward-sweep elimination
+! then forward back-substitution of the block-tridiagonal correction
+! system for the two dependent structure variables (P, T) at each of
+! the num_shells mesh shells. elim_coeff/elim_rhs (star%elim_coeff/
+! star%elim_rhs) are filled in by henyey_coefficients from the
+! linearized structure-equation coefficients at each shell;
+! surface_bc (star%surface_bc, built by henyey_iterate) holds the
+! outer boundary condition. The
 ! exact physical role of each of the 4 rows of elim_coeff/elim_rhs is
 ! not confidently rederived here (this is dense, unlabeled linear
 ! algebra in the original with no explanatory comments) -- names

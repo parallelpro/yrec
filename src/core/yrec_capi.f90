@@ -16,14 +16,11 @@
 !
 ! Re-entrancy contract: repeated yrec_run calls in one process are
 ! supported and byte-identical to fresh processes (phase-five step C;
-! enforced by test_reentry and test_pyyrec). Known residual, same as
-! the CLI: legacy `stop` endings behind the numerics gates (e.g. the
-! m0030 case's historical BSSTEP termination) end the *process*, not
-! just the call -- avoid such configurations when embedding until the
-! numerics-gate ierr opt-in lands. 2026: it has landed -- a NEGATIVE
-! status is numerics_termination (numerics_lib): the run ended in the
-! historical "solution diverged" mode (outputs up to that model are
-! valid); positive is a hard error; zero is success.
+! enforced by test_reentry and test_pyyrec). The numerics gates
+! report through ierr rather than stopping the process: a NEGATIVE
+! status is numerics_termination (numerics_lib), i.e. the run ended
+! in the historical "solution diverged" mode (outputs up to that
+! model are valid); positive is a hard error; zero is success.
 module yrec_capi
       use iso_c_binding, only: c_int, c_char, c_null_char
       use star_info_lib, only: control_nml_override, physics_nml_override

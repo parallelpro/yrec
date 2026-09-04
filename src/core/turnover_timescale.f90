@@ -72,8 +72,6 @@ subroutine compute_turnover_timescale(radius_at_bcz, ierr)
          combined_convective_flag(j) = stx_prof(ip_conv,j) .ne. 0.0d0
       end do
 
-!          CALL TAUINTNEW(HCOMPF,HS2,HSF,LCF,HRF,HPF,HDF,HGF,MM,M,HVF,
-!      *                  DELF1,DELF2,HSTOT,RBCZ)  ! KC 2025-05-31
       call turnover_from_interior_new(combined_mass, combined_convective_flag, &
            combined_radius, combined_pressure, combined_density, &
            combined_gravity, num_points, star%nz, combined_velocity, &
@@ -125,7 +123,7 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
 ! --- locals ---
 ! G Somers; Adding vectors for cubic spline int.
       double precision :: spline_x_delta(4), spline_x_radius(4), &
-           spline_y_radius(4), spline_y_velocity(4), spline_y_pscale(4), &
+           spline_y_velocity(4), spline_y_pscale(4), &
            spline_deriv(4)
       logical :: fully_convective_flag, surface_cz_deep_enough
       integer :: i, j, k, kk, search_start_index
@@ -137,8 +135,7 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
       double precision :: pressure_scale_height2, radius_test2, val_test
       double precision :: pressure_scale_height1, radius_test1
       double precision :: pressure_scale_height, convective_velocity_bcz
-      double precision :: log10_radius_interp, radius_top_cz, cz_width, &
-           radius_test
+      double precision :: radius_top_cz, cz_width, radius_test
       logical :: spline_taucz_done
 
 ! DETERMINE EXTENT OF SURFACE CONVECTION ZONE.
@@ -296,13 +293,6 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
                   call kspline(spline_x_delta,spline_y_pscale,spline_deriv)
                   call ksplint(spline_x_delta,spline_y_pscale,spline_deriv,0.0d0,pressure_scale_height, ierr)
                   if (ierr /= 0) return
-                  spline_y_radius(1) = log10_radius(kk-2)
-                  spline_y_radius(2) = log10_radius(kk-1)
-                  spline_y_radius(3) = log10_radius(kk)
-                  spline_y_radius(4) = log10_radius(kk+1)
-                  call kspline(spline_x_delta,spline_y_radius,spline_deriv)
-                  call ksplint(spline_x_delta,spline_y_radius,spline_deriv,0.0d0,log10_radius_interp, ierr)
-                  if (ierr /= 0) return
 ! DEFINE TAUCZ
                   star%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
                   spline_taucz_done = .true.
@@ -352,8 +342,6 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
 ! DEFINE TAUCZ
             star%convective_turnover_timescale = cz_width/convective_velocity_bcz
          end if
-! KC 2025-05-31 MOVED ENDIF ABOVE TO AVOID BLOCK MISMATCH.
-!          ENDIF
 !        CONVERT CORE RADIUS INTO SOLAR UNITS
          radius_at_bcz = radius_at_bcz/star%solar_radius_cgs
       else

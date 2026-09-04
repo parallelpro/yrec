@@ -70,7 +70,7 @@ module stitched_model_lib
       integer :: ext_region(max_ext)   ! 1 interior, 2 envelope, 3 atmosphere
       integer :: ext_index(max_ext)    ! index within that region
 ! Seismic profile columns (54-57), precomputed over the extended grid
-! by compute_seismic_columns (called from build_extended): brunt_N2,
+! by compute_seismic_columns (called from build_stitched_model): brunt_N2,
 ! lamb_S2 (l=1), gradL, gradr_div_grada.
       double precision :: ext_seismic(4,max_ext)
 ! Geometric height of each atmosphere point above the photosphere,
@@ -424,7 +424,7 @@ end function ideal_gas_mu
 ! block and the pulse arrays coefft fills every model.
 double precision function profile_value(icol, k)
       use math_lib
-      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
+      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       integer, intent(in) :: icol, k
 
       select case (icol)
@@ -501,7 +501,7 @@ double precision function profile_value(icol, k)
 end function profile_value
 
 ! Assemble the per-point pulse data for the FULL extended model
-! (interior + envelope + atmosphere; build_extended must have run).
+! (interior + envelope + atmosphere; build_stitched_model must have run).
 ! Columns 1-18 are the GYRE schema-101 set; 19-34 the extras FGONG
 ! needs. Envelope/atmosphere points carry what those integrations
 ! store; opacity/energy derivative columns they do not track are
@@ -510,7 +510,7 @@ end function profile_value
 ! io/write_stitched_profile.f90 also writes.
 subroutine build_pulse_points(pts)
       use math_lib
-      use star_info_lib, only: star, i_eps_grav, i_grad_actual, i_grad_ad, i_h1, i_metals
+      use star_info_lib, only: star, i_eps_grav, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
       double precision, intent(out) :: pts(n_pulse_cols, n_ext)
@@ -660,7 +660,7 @@ end subroutine build_pulse_points
 ! order (column 34 is eps_grav, not a species; be9 has no FGONG
 ! column).
 integer function species_slot(k)
-      use star_info_lib, only: star, i_he3, i_c12, i_c13, i_n14, i_o16, i_h2, i_he4, i_li7, i_n15, i_o17, i_o18
+      use star_info_lib, only: i_he3, i_c12, i_c13, i_n14, i_o16, i_h2, i_he4, i_li7, i_n15, i_o17, i_o18
       integer, intent(in) :: k
       integer, parameter :: slots(11) = [i_he3, i_c12, i_c13, i_n14, &
            i_o16, i_h2, i_he4, i_li7, i_n15, i_o17, i_o18]

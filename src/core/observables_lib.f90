@@ -8,10 +8,9 @@
 ! compute_observables, called from evolve_step immediately before the
 ! output writer, once per output model -- exactly the cadence the
 ! blocks had inside wrtout. Every computed quantity is stored on
-! star% (star%*, star%*, star%*,
-! star%luminosity_breakdown); nothing here feeds back into the
-! physics -- the physics consumers of the turnover timescale call
-! gettau themselves at their own points (getw, starin).
+! star% (the observables members and star%luminosity_breakdown);
+! the only physics feedback is the turnover-timescale refresh (see
+! compute_observables).
 !
 ! Theme order matches the original wrtout order and is load-bearing:
 ! central conditions must precede the surface-CZ base (its
@@ -20,28 +19,15 @@
 ! earlier.
 !
 ! Statement-level content is verbatim from the original; only the
-! decomposition is new. Two locals of the old blanket-`save` version
-! are genuinely cross-call state and live at module level:
-!   * envelope_boundary_fx -- set by locate_surface_cz_base, but ALSO
-!     read by locate_core_cz, which runs EARLIER in the call: it sees
-!     the value from the PREVIOUS call. This is the documented FX/FX2
-!     typo in the original wrtout.f, preserved exactly, not fixed
-!     (its only consumer, core_boundary_radius, is itself dead).
-!   * ksaha_center -- eqstat's saha-table state continuity across
-!     calls.
+! decomposition is new. One local of the old blanket-`save` version
+! is genuinely cross-call state and lives at module level:
+! ksaha_center, eqstat's saha-table state continuity across calls.
 ! All other former SAVEd locals are assigned before use on every path
-! that reads them, so they are plain locals of their theme routine;
-! the observables_reset_pending block (repeated-run C API support)
-! accordingly shrank to the two real carriers.
-!
-! NOT here: the legacy-mode gettau call stays in wrtout at its
-! original spot. gettau's atm-side integration prints progress
-! diagnostics into the .short stream, so hoisting it above wrtout's
-! header writes reorders that stream (values identical, layout not)
-! -- blocked by print interleaving, not by data flow. Documented
-! residual.
+! that reads them, so they are plain locals of their theme routine.
+! (The original wrtout also carried a core-boundary radius computed
+! from the previous call's surface-CZ interpolation fraction -- the
+! FX/FX2 typo; that block was never consumed and is deleted.)
 module observables_lib
-      use star_info_lib, only: star
       use star_info_lib
       use eos_lib
       use phys_const_lib
@@ -49,10 +35,9 @@ module observables_lib
       private
       public :: compute_observables
 
-! cross-call state (see header): the FX/FX2 stale carry and the saha
-! table continuity. Static zero at process start; reset for repeated
-! in-process runs via observables_reset_pending.
-      double precision, save :: envelope_boundary_fx = 0.0d0
+! cross-call state (see header): the saha table continuity. Static
+! zero at process start; reset for repeated in-process runs via
+! observables_reset_pending.
       integer, save :: ksaha_center = 0
 
 ! snu coefficients (as in wrtout) for the MESA-mode snu rates
@@ -66,17 +51,12 @@ contains
 ! ---------------------------------------------------------------
 ! Driver: one call fills every per-model observable on star%.
 subroutine compute_observables(ierr)
-      use star_info_lib, only: star
       integer, intent(out) :: ierr
 
       ierr = 0
 
-! 2026 (phase five, step C): see evolve_step's matching block. This
-! includes envelope_boundary_fx, whose previous-call stale value is
-! the documented FX/FX2 quirk -- a fresh process starts it at zero,
-! so a repeated call must too.
+! 2026 (phase five, step C): see evolve_step's matching block.
       if (observables_reset_pending) then
-         envelope_boundary_fx = 0.0d0
          ksaha_center = 0
          observables_reset_pending = .false.
       end if
@@ -113,7 +93,6 @@ end subroutine compute_observables
 ! RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH
 ! (MUTATES the model -- star%luminosity_breakdown.)
 subroutine renormalize_luminosity_breakdown
-      use star_info_lib, only: star
       double precision :: total_luminosity_sum, temp_value
       integer :: i
 
@@ -129,41 +108,13 @@ subroutine renormalize_luminosity_breakdown
 end subroutine renormalize_luminosity_breakdown
 
 ! ---------------------------------------------------------------
-!  CALCULATE MASS OF CENTRAL CONVECTION ZONE (SOLAR UNITS), plus the
-!  (dead) core-boundary radius with the preserved FX/FX2 stale-carry
-!  bug -- see the module header.
+!  CALCULATE MASS OF CENTRAL CONVECTION ZONE (SOLAR UNITS).
 subroutine locate_core_cz
-      use math_lib
-      use star_info_lib, only: star
-      double precision :: core_boundary_fx2
-! core_boundary_log_radius/core_boundary_radius (CORERL/CORER) are
-! computed but never consumed (original behavior, preserved).
-      double precision :: core_boundary_log_radius, core_boundary_radius
-
       if(star%core_cz_top_index.gt.1) then
        star%core_cz_mass = star%m(star%core_cz_top_index)/star%solar_mass_cgs
       else
        star%core_cz_mass = 0.0D0
       endif
-
-! JVS 10/11 Be more care about the true boundary of the convective core
-      if (star%core_cz_top_index.gt.1) then
-! JVS 10/11 note: this formula reads envelope_boundary_fx (FX), which
-! at this point has not yet been assigned in this call (it is set
-! later, in locate_surface_cz_base) -- as module SAVE state it
-! carries over whatever value it held at the end of the previous
-! call. core_boundary_fx2 (FX2) is computed just above but is NOT
-! what is used here -- this looks like a bug (FX2 vs FX typo) in the
-! original wrtout.f, preserved exactly, not fixed.
-       core_boundary_fx2 = (star%grada(star%core_cz_top_index+1)-star%gradr(star%core_cz_top_index))/ &
-             (star%grada(star%core_cz_top_index+1)-star%gradr(star%core_cz_top_index))
-       core_boundary_log_radius = star%logR(star%core_cz_top_index)+envelope_boundary_fx* &
-            (star%logR(star%core_cz_top_index+1)-star%logR(star%core_cz_top_index))-star%log10_solar_radius
-       core_boundary_radius = exp(ln10*core_boundary_log_radius)
-      else
-       core_boundary_radius = 0.0D0
-      endif
-! JVS end
 end subroutine locate_core_cz
 
 ! ---------------------------------------------------------------
@@ -171,7 +122,6 @@ end subroutine locate_core_cz
 !  CENTRAL ETA AND BETA ARE ALSO CALCULATED. Stores star%central_*.
 subroutine compute_central_conditions(ierr)
       use math_lib
-      use star_info_lib, only: star
       integer, intent(out) :: ierr
 
       double precision :: temp_value
@@ -214,29 +164,21 @@ end subroutine compute_central_conditions
 ! ---------------------------------------------------------------
 !  Surface-CZ base: interpolate the zone edge at the base of the
 !  surface convection zone, filling star%envelope_mass/
-!  envelope_radius/envelope_cz_*. Sets the module-level
-!  envelope_boundary_fx (the FX of the FX/FX2 story).
-! MHP 02/12 FIXED MINOR GLITCH ON BASE OF THE CONVECTION ZONE
-! PROPERTIES FOR FULLY CONVECTIVE STARS; TCENTER PCENTER RHOCENTER
-! WERE BEING DEFINED AFTER THIS CODE SECTION (hence central
-! conditions run first).
+!  envelope_radius/envelope_cz_*.
+! (The fully-convective branch reads the central conditions, hence
+! compute_central_conditions runs first.)
 subroutine locate_surface_cz_base
       use math_lib
-      use star_info_lib, only: star
-      double precision :: dd1, dd2, cz_base_mass
+      double precision :: dd1, dd2, cz_base_mass, envelope_boundary_fx
       double precision :: envelope_cz_log_temperature, &
            envelope_cz_log_density, envelope_cz_log_pressure
 
       if(star%envelope_cz_bottom_index.lt.star%nz) then
        if(star%envelope_cz_bottom_index.gt.1) then
 !  FIND MASS FRACTION OF THE ZONE EDGE AT BASE OF SURFACE C.Z.
-! JVS 10/11/13 SDEL(1,JENV) IN DENOMINATOR WAS A TYPO. CHANGED TO SDEL(3,JENV)
-!            FX = (SDEL(3,JENV)-SDEL(1,JENV-1))/
-!     *           (SDEL(3,JENV)-SDEL(1,JENV-1))
             dd2 = star%gradr(star%envelope_cz_bottom_index-1)-star%grada(star%envelope_cz_bottom_index-1)
             dd1 = star%gradr(star%envelope_cz_bottom_index)-star%grada(star%envelope_cz_bottom_index)
             envelope_boundary_fx = dd2/(dd2-dd1)
-!            HSB = 0.5D0*(HS1(JENV)+HS1(JENV-1))
             cz_base_mass = star%m(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%m(star%envelope_cz_bottom_index)-star%m(star%envelope_cz_bottom_index-1))
             star%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/star%solar_mass_cgs
@@ -279,7 +221,6 @@ end subroutine locate_surface_cz_base
 ! deuterium limiter -- drive their own gettau calls; this one only
 ! freshens the reported value).
 subroutine refresh_turnover_timescale(ierr)
-      use star_info_lib, only: star
       integer, intent(out) :: ierr
       call compute_turnover_timescale(star%envelope_radius, ierr)
       star%convective_turnover_timescale_old = &
@@ -290,7 +231,6 @@ end subroutine refresh_turnover_timescale
 ! ---------------------------------------------------------------
 ! Surface radius and gravity from L and Teff.
 subroutine compute_surface_globals
-      use star_info_lib, only: star
       star%log_R_surface = 0.5d0*(star%log_L + star%log10_solar_luminosity &
            - c4pil - csigl - 4.0d0*star%log_Teff)
       star%log_g_surface = cgl + star%stotal &
@@ -306,7 +246,6 @@ end subroutine compute_surface_globals
 ! Monte-Carlo-scaled solar values stay self-consistent.
 subroutine compute_seismic_observables
       use math_lib
-      use star_info_lib, only: star
       use stitched_model_lib, only: n_ie, stx_prof, ip_logR, &
            ip_brunt_N2, ip_csound
       double precision :: log_g_solar
@@ -377,7 +316,6 @@ end subroutine compute_seismic_observables
 ! sum with).
 subroutine compute_moment_of_inertia
       use math_lib
-      use star_info_lib, only: star
       integer :: i
 
       star%total_moment_of_inertia = 0.0d0
@@ -398,7 +336,6 @@ end subroutine compute_moment_of_inertia
 ! ---------------------------------------------------------------
 ! Chlorine/gallium SNU capture rates from the neutrino flux totals.
 subroutine compute_snu_rates
-      use star_info_lib, only: star
       integer :: i
 
       star%cl37_snu_rate = 0.0d0
@@ -422,7 +359,6 @@ end subroutine compute_snu_rates
 ! (Reads star%log_R_surface -- compute_surface_globals first.)
 subroutine compute_rotation_observables
       use math_lib
-      use star_info_lib, only: star
       integer :: i
 
       star%cz_moment_of_inertia = 0.0d0
@@ -455,7 +391,6 @@ end subroutine compute_rotation_observables
 ! (Reads star%log_R_surface -- compute_surface_globals first.)
 subroutine compute_h_shell_boundaries
       use math_lib
-      use star_info_lib, only: star
       if (star%has_h_shell) then
          star%h_shell_bot_mass = &
               star%m(star%h_shell_zone_begin)/star%solar_mass_cgs

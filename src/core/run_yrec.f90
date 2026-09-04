@@ -1,24 +1,22 @@
 !----------------------------------------------------------------------
 ! run_yrec
 !----------------------------------------------------------------------
-! Added 2026 (phase five, step A -- the embeddable engine; see
-! ROADMAP.md "Next milestone"). This is the entire body of the former
-! `program main`, moved verbatim: namelist/controls read (parmin),
-! table setup (setups), and the Monte-Carlo/run loop containing the
-! full evolution driver. `program main` is now a thin CLI wrapper.
+! Added 2026 (phase five -- the embeddable engine; see ROADMAP.md).
+! The body of the former `program main`: namelist/controls read
+! (read_parameters), table setup (setup_tables), and the Monte-Carlo /
+! kind-card run loop around evolve_step. `program main` is a thin CLI
+! wrapper; yrec_capi is the C entry.
 !
 ! The blanket `save` below is load-bearing: program-unit variables are
-! implicitly static, and this body's locals (including its `data`
-! initializations and rescale bookkeeping) rely on that; as subroutine
-! locals they would otherwise be automatic. With save they are exactly
-! as static as before -- which also means run_yrec is NOT yet
-! re-entrant (one call per process); phase C of this milestone (the
-! SAVE/reset audit) is what will make repeated calls legal.
+! implicitly static, and this body's locals (the rescale and
+! calibration bookkeeping) rely on that; as subroutine locals they
+! would otherwise be automatic. Repeated calls are made legal by
+! yrec_run_prologue (core/yrec_reset.f90), which puts the saved state
+! back to process-start values.
 !
-! ierr: reserved for phase B, when the driver-side stops in this body
-! (and the `if (jerr /= 0) stop` seams from phase-three stage 3)
-! become error returns. In phase A it is set to 0 and the historical
-! stops remain exactly where they were.
+! ierr: 0 on a normal end of job; positive on a configuration, read or
+! numerical error (the CLI wrapper exits 1); negative for
+! numerics_termination (the historical "diverged" stop, exit 0).
 !
 subroutine run_yrec(ierr)
 
@@ -51,8 +49,7 @@ subroutine run_yrec(ierr)
       integer :: saved_atm_choice
       integer :: i
       integer :: kind_card, model_iteration
-      double precision :: log_r_rsun, current_zx, surface_z_over_x
-      double precision :: monte_helium_diffusion_fraction
+      double precision :: log_r_rsun, current_zx
 
       integer, intent(out) :: ierr
 ! load-bearing: see header
@@ -142,11 +139,12 @@ subroutine run_yrec(ierr)
 !  run in PAIRS of star_calib_cards_per_cycle = 2 -- odd cards
 !  rescale, even cards evolve. chkscal watches every model of an
 !  even card for the target-radius crossing (that check lives in
-!  evolve_step; a crossing leaves the run loop via
-!  step_leave_run_loop) and, once the luminosity there matches too,
-!  arms a final run stopped at the interpolated age
-!  (star_found_flag) -- which the verdict below turns into the end
-!  of the run list.
+!  evolve_step; a crossing returns step_leave_run_loop, which
+!  abandons the current card -- no end_kind_card, no verdict -- and
+!  goes straight on to the next (rescale) card) and, once the
+!  luminosity there matches too, arms a final run stopped at the
+!  interpolated age (star_found_flag) -- which the verdict below
+!  turns into the end of the run list.
          call end_of_card_calibration(runs_complete)
          if (runs_complete) exit run_loop
 
@@ -161,12 +159,9 @@ subroutine run_yrec(ierr)
       call log_run_summary(dble(clock_now-clock_start)/dble(clock_rate))
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
-! MODEL PARAMETERS (legacy mode only; core/monte_carlo.f90.
-! surface_z_over_x is inout: the failed-convergence branch reports
-! the value carried from a previous cycle, historical SAVE
-! semantics preserved).
+! MODEL PARAMETERS (legacy mode only; core/monte_carlo.f90).
       call write_run_summaries(monte_carlo_run_number, &
-           convergence_iterations, log_r_rsun, surface_z_over_x)
+           convergence_iterations, log_r_rsun)
       end do
 
 ! 2026 (phase five, step B): the normal end-of-job stop became this
@@ -221,7 +216,6 @@ subroutine end_of_card_calibration(runs_complete)
 ! MHP 06/13 Add solar Z/X to observables
                current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
                call check_solar_calibration(star%log_L,log_r_rsun,star%job%nk,current_zx)
-!               CALL CHKCAL(BL,RLL,NK)
                star%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! Restore LPTIME to original value for next cycle
                star%job%atm_choice  = saved_atm_choice    ! Restore KTTAU to original value for next cycle
                if (star%solar_calibration_active) then
@@ -231,8 +225,7 @@ subroutine end_of_card_calibration(runs_complete)
                else
 !c MHP 8/96 added counter for # of runs needed for calibration
                   convergence_iterations = convergence_iterations + 1
-! MHP 6/97 STOP AFTER 10 ATTEMPTS AT CALIBRATION
-!                  IF(ICONV.GE.11) GOTO 250
+! STOP AFTER 15 ATTEMPTS AT CALIBRATION
                   if (convergence_iterations.ge.15) then
                      star%termination_reason = &
                           'solar calibration NOT converged after 15 cycles'
@@ -263,7 +256,6 @@ end subroutine end_of_card_calibration
 ! estimate (htimer), and zero the entropy and light-element-rate
 ! state. Sets ierr on configuration or model-read errors.
 subroutine begin_kind_card
-!         LPULSE=.FALSE.
          star%job%initial_envelope_x = star%job%initial_x_array(star%job%nk)
          star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
          star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
@@ -275,8 +267,7 @@ subroutine begin_kind_card
          star%total_angular_momentum = 0.0D0
          star%total_rotational_ke = 0.0D0
 ! read in the initial model here
-! STARIN also calls RSCALE to perform rescaling if requested
-!        CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
+! read_starting_model also performs rescaling if requested
        call read_starting_model(star%timestep_yr, star%dt, star%hydrogen_dt, star%trial_sign_flag, &
             star%ikut_flag, star%istore_flag, star%model_diverged_flag, &
             star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
@@ -342,9 +333,6 @@ subroutine begin_kind_card
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin, &
               star%h_shell_end_index,star%h_shell_midpoint_zone,star%has_h_shell)
 ! determine timestep for model
-! JVS 04/14 Added Teffl to passed variables
-!        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
-!      *               JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
        call compute_timestep(star%dt,star%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
             star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk, &
@@ -379,8 +367,6 @@ subroutine end_kind_card
 ! 2026 log redesign: the last converged model of a card always gets
 ! a progress line, whatever the terminal_interval phase.
       call log_final_model_line()
-! 110  CONTINUE
-! G Somers END
 end subroutine end_kind_card
 
 end subroutine run_yrec

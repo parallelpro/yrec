@@ -18,7 +18,8 @@
 ! in_atmosphere/want_derivatives/conductive_opacity_flag/
 ! log10_radius/log10_teff/hydrogen_fraction/metal_fraction match the
 ! sibling routine atmosphere_derivs.f90's naming at the equivalent call-site
-! positions (both are called via EXTERNAL from atm_lib.f90's atm_get/BSSTEP).
+! positions (both are passed as EXTERNAL procedures to numerics_lib's
+! bsstep by core/envint_kernel.f90).
 ! pressure_rotation_factor/temperature_rotation_factor (FPL/FTL) match
 ! temperature_gradients.f90's naming, discovered from that file's own analysis of the
 ! DELR formula.

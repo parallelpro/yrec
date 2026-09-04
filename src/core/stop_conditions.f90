@@ -100,8 +100,9 @@ end function converged_model_is_nan
 ! central-abundance stops (both end the kind card), then -- when a
 ! star calibration is running -- the target-radius check, whose hit
 ! leaves the model loop so run_yrec can rescale and retry (the
-! chkscal protocol: iteration 1 only primes previous-model state, so
-! the calibration comparison starts at iteration 2).
+! check_star_calibration protocol: iteration 1 only primes
+! previous-model state, so the calibration comparison starts at
+! iteration 2).
 subroutine check_stop_conditions(model_iteration, step_status)
       integer, intent(in) :: model_iteration
       integer, intent(out) :: step_status

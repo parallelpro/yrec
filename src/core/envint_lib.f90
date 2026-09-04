@@ -4,14 +4,15 @@
 ! Added 2026 (physics-purity pass, atm split -- ROADMAP.md): the
 ! envelope/atmosphere INTEGRATION, moved out of atm_lib. atm_get is
 ! the star solver's outer-boundary integrator: it integrates the
-! atmosphere and envelope down to the fit point, driving the qatm/
-! qenv integrands (which call the eos/kap facades) through numerics'
-! bsstep, consuming the pure atm surface lookups (surfp/kcsurfp/
-! alsurfp -- still atm-domain physics) and writing model state
-! (star%pulse, star%run, env_comp bookkeeping, the envelope/
-! atmosphere structure arrays). In MESA terms this is star-solver
-! code (create_atm/env integration), not the atm physics module --
-! which is why it now lives in core/ with qatm/qenv/surfbc and the
+! atmosphere and envelope down to the fit point, driving the
+! atmosphere_derivs/envelope_derivs integrands (which call the eos/
+! kap facades) through numerics' bsstep in core/envint_kernel.f90,
+! consuming the pure atm surface lookups (surfp/kcsurfp/alsurfp --
+! still atm-domain physics) and writing model state (star%pphot,
+! the pt_scr pulse scratch, the envelope/atmosphere structure
+! arrays). In MESA terms this is star-solver code (create_atm/env
+! integration), not the atm physics module -- which is why it now
+! lives in core/ with the derivative routines, surfbc and the
 ! turnover diagnostics. atm/ keeps what MESA's atm has: tables,
 ! their init, and pure surface lookups.
 module envint_lib

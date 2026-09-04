@@ -1,29 +1,19 @@
 !----------------------------------------------------------------------
-! coefft
+! henyey_coefficients (formerly coefft)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original coefft.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! 2/91 MHP FLAG TO TOGGLE BETWEEN OLD/NEW ENERGY GENERATION ROUTINES
-! ADDED (COMMON BLOCK NEWENG).
-!
 ! Builds the Henyey structure-equation coefficients (star%elim_coeff/
 ! star%elim_rhs, via henyey_eliminate) for every mesh point: at each
-! shell, calls the
-! equation of state (via eos_lib's eos_get), opacity (via kap_lib's
-! kap_get), and
-! temperature-gradient (tpgrad) routines to get the local physics,
-! optionally the nuclear energy generation (engeb) and gravitational/
-! entropy ("Kelvin-Helmholtz") energy term, assembles the pressure/
-! temperature/radius/luminosity equation residuals and derivatives
-! (a henyey_shell_terms record, cur; prev carries the shell below),
-! and forward-eliminates each shell pair via henyey_eliminate.
-! Also stores the diagnostic per-zone physics used elsewhere for
-! output (common/scrtch/, common/pulse1/, common/sound/, common/
-! rotder/, common/roten/).
+! shell, calls the equation of state (eos_lib's eos_get), opacity
+! (kap_lib's kap_get) and temperature-gradient
+! (temperature_gradients) routines to get the local physics,
+! optionally the nuclear energy generation (burn_lib's engeb) and
+! gravitational/entropy ("Kelvin-Helmholtz") energy term, assembles
+! the pressure/temperature/radius/luminosity equation residuals and
+! derivatives (a henyey_shell_terms record, cur; prev carries the
+! shell below), and forward-eliminates each shell pair via
+! henyey_eliminate. Also stores the diagnostic per-zone physics used
+! elsewhere for output (star%eps_*, star%pulse_*, star%gradr/gradT/
+! grada, star%adiabatic_index_gamma1, rotation scratch, ...).
 !
 ! Three of the shell terms (pt_scr%qt, pt_scr%qp, pt_scr%qtl -- the
 ! historical COMMON/PULSE2/ slots, now point_scratch_lib) are
@@ -33,13 +23,6 @@
 ! writers read them from pt_scr afterwards. They keep the historical
 ! pt_scr names here despite those names no longer being very
 ! descriptive of their role in this file.
-!
-! KC 2025-05-31 removed the unused MODEL argument and reordered the
-! trailing argument list slightly (see the commented-out original
-! signature below).
-!       SUBROUTINE COEFFT(DELTS,M,HD,HHA,HHB,HHC,HL,HMAX,HP,HPP,HR,HS,
-!      *HS1,HS2,HT,HTT,HCOMP,LC,TLUMX,LATMO,LDERIV,LMIX,LOCOND,QDT,QDP,
-!      *KSAHA,MODEL,FP,FT,HKEROT,HKEROTO,JENV,TEFFL)  ! KC 2025-05-31
 subroutine henyey_coefficients(delta_time, in_atmosphere, &
      want_derivatives, mixing_active, conductive_opacity_flag, &
      dlnrho_dlnt, dlnrho_dlnp, saha_state, envelope_zone_index, &
@@ -49,7 +32,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
       use henyey_eliminate_lib
 
       use net_lib
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, json
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu
       use point_scratch_lib
       use phys_const_lib
       use eos_lib
@@ -64,9 +47,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
       double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
       integer, intent(inout) :: saha_state
       integer, intent(in) :: envelope_zone_index
-
-
-! JVS end
 
 ! --- locals ---
       double precision :: energy_gen_component(6)
@@ -123,7 +103,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             star%neutrino_flux_total(j) = 0.0d0
          end do
       end if
-! MHP 10/02 QFPR,QFTR NOT USED - OMIT
       conductive_opacity_flag = .true.
       want_derivatives = .true.
       in_atmosphere = .false.
@@ -156,14 +135,12 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
        o16_fraction = star%xa(9,im)
        o17_fraction = star%xa(10,im)
        o18_fraction = star%xa(11,im)
-! MHP 05/02 DEFINE THESE ALWAYS; THEY
-! ARE PASSED TO THE SR ANYWAY.
-!       IF(LEXCOM) THEN
-          deuterium_fraction = star%xa(12,im)
-          li6_fraction = star%xa(13,im)
-          li7_fraction = star%xa(14,im)
-          be9_fraction = star%xa(15,im)
-!       ENDIF
+! the extended-composition species are always defined; they are
+! passed to engeb anyway.
+       deuterium_fraction = star%xa(12,im)
+       li6_fraction = star%xa(13,im)
+       li7_fraction = star%xa(14,im)
+       be9_fraction = star%xa(15,im)
        shell_index = im
        zone_log10_density = star%logRho(im)
        pressure_rotation_factor = star%fp_rot(im)
@@ -198,21 +175,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          if (ierr /= 0) return
        star%logRho(im) = eos_res(i_log10_density)
 ! COMPUTE DERIVATIVES
-!       IF(LROT) THEN
-!  CALCULATE D(LOG FP)/D(LOG R) AND D(LOG FT)/D(LOG R)
-!     *                 (CLN*(HR(IM+1) - HR(IM-1)))
-!              QFTR = (log(FT(IM+1)) - log(FT(IM-1)))/
-!     *                 (CLN*(HR(IM+1) - HR(IM-1)))
-!             ELSE
-!              QFPR = (log(FP(M)) - log(FP(M-1)))/
-!     *                 (CLN*(HR(M) - HR(M-1)))
-!              QFTR = (log(FT(M)) - log(FT(M-1)))/
-!     *                 (CLN*(HR(M) - HR(M-1)))
-!     *              (CLN*(HR(2) - HR(1)))
-!             QFTR = (log(FT(2)) - log(FT(1)))/
-!     *              (CLN*(HR(2) - HR(1)))
-!          ENDIF
-!       ENDIF
        qtemp = c4pil + zone_log_radius + zone_log_radius + zone_log_radius
        cur%qr =+exp(ln10*(zone_log_mass - zone_log10_density - qtemp))
        cur%qr_dr = - cur%qr - cur%qr - cur%qr
@@ -363,18 +325,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          end if
 ! carry this shell's terms into the next pair's elimination
          prev = cur
-! MHP 02/12 REMOVED RESTRICTIONS ON WHERE INTERMEDIATE VARIABLES
-! SUCH AS OPACITY ARE SAVED; PRIOR RESTRICTIONS WERE BASED ON OBSOLETE
-! MEMORY RESTRICTIONS IN LEGACY CODE
-!         IF(LMDOT.AND.DMDT0.GT.0.0D0)THEN
-         star%conv_vel(im) = convective_velocity
-!         ENDIF
-!  STORE VARIABLES FOR OUTPUT IN SCRIB2 IF MODEL IS TO BE PRINTED OUT
-! DBG PULSE STORE VARIABLES FOR PULSATION OUPUT
-! DBG 3/91 CHANGED TO ALWAYS EXECUTE THIS STUFF
-!         LONG = MOD(MODEL,NPRT2).EQ.0 .OR. LROT
-! MHP 10/02 LSHORT NOT USED, OMIT
-!         LSHORT = .NOT.LONG .AND. MOD(MODEL,NPRT1).EQ.0
+!  STORE THE PER-ZONE PHYSICS FOR OUTPUT (always, for every model).
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
          if (star%logT(im).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
             star%eps_total(im) = 0.0d0
@@ -383,8 +334,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
                star%eps_channels(j,im) = 0.0d0
            end do
          else
-!         ELSE IF(LONG) THEN
-!  LONG OUTPUT NEEDED
             star%eps_total(im) = energy_gen_component(1)+energy_gen_component(2)+ &
                  energy_gen_component(3)+energy_gen_component(4)+ &
                  energy_gen_component(5)
@@ -398,7 +347,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             do j = 1,5
                star%eps_channels(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
-!  SHORT OUTPUT ONLY
          end if
          star%beta(im) = eos_res(i_beta)
          star%eta(im) = eos_res(i_eta)
@@ -412,21 +360,13 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          end do
          star%conv_vel(im) = convective_velocity
          star%scp(im) = eos_res(i_cp)
-! MHP 02/12 COMMENTED CODE OUT, AS REPLICATED BELOW
-!         IF(LSOUND) THEN
-! MHP 7/96 CALCULATION OF GAMMA1 FROM GUENTHER 1995 P.C.
-
-! JVS 01/11 always want gamma:
+! GAMMA1 FROM GUENTHER 1995 P.C. (always computed):
             chi_rho = 1.0d0/dlnrho_dlnp
             chi_t = -chi_rho*dlnrho_dlnt
             specific_heat_cv = eos_res(i_cp) - exp(ln10*(star%logP(im)- &
                  star%logRho(im)-star%logT(im)))*chi_t**2/chi_rho
             star%adiabatic_index_gamma1(im) = chi_rho*eos_res(i_cp)/ &
                  specific_heat_cv
-            star%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-            star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
-! JVS END
-
 
          if (star%job%rotation_active) then
             rot_scr%dlnkappa_dlnrho(im) = kap_res(i_dlnkap_dlnrho)
@@ -471,6 +411,9 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          end if
          star%pulse_electron_mean_weight_inverse(im) = eos_res(i_mu_e_inv)
          star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+! star%alfmlt/phmlt/cmxmlt are only ever set to zero (mixing/
+! temperature_gradients.f90), so these output arrays are always zero;
+! pending an author decision -- see audit SUMMARY.md 1.1 #10.
          star%valfmlt(im) = star%alfmlt
          star%vphmlt(im) = star%phmlt
          star%vcmxmlt(im) = star%cmxmlt

@@ -2,23 +2,23 @@
 ! evolve_step
 !----------------------------------------------------------------------
 ! Added 2026 (phase five -- the embeddable engine; ROADMAP.md). One
-! model advance, moved verbatim from run_yrec's model loop body: the
-! divergence/redo cycle (label 15), the corrector iteration via
-! crrect, mixing, rotation (getw), rezoning (hpoint), the output
-! diagnostics + wrtout, timestep update, and the per-model stop
-! criteria. Exits:
+! model advance, moved from run_yrec's model loop body: the
+! divergence/retry loop (retry_step), the corrector ladder via
+! henyey_iterate (solve_level), mixing, rotation
+! (evolve_angular_momentum), rezoning, light-element burning, the
+! timestep update, the stitched model + observables + output pass,
+! and the per-model stop criteria. Exits:
 !   step_status = step_continue        advance accepted, continue
 !   step_status = step_kind_card_done  age/abundance stop reached
 !   step_status = step_leave_run_loop  target radius crossed
 !   (named constants from core/stop_conditions.f90)
 !   ierr /= 0        error; run_yrec returns it to the CLI wrapper
-! (Internally the historical goto 110/200 jumps now target the 810/
-! 820 exit labels below -- the control flow is otherwise untouched.)
 !
 ! The blanket `save` is load-bearing exactly as in run_yrec: these
 ! locals were statics of program main and several carry state across
-! model advances (nao's data init, the convergence bookkeeping); the
-! phase-C reset audit covers them alongside evolve_state.
+! model advances (the convergence bookkeeping, the envelope-CZ zone
+! of the previous step); the reset block below (evolve_step_reset_pending)
+! covers them alongside evolve_state.
 subroutine evolve_step(model_iteration, step_status, ierr)
 
       use net_lib
@@ -41,13 +41,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
            delta_radius_step, delta_temp_step, &
            target_envelope_mass
       integer :: envelope_cz_zone_end, envelope_cz_zone_prev, &
-           iteration_level, iterations_done, max_iterations, nao, &
+           iteration_level, iterations_done, max_iterations, &
            num_mixed_zones, num_mixed_zones_no_overshoot, &
            num_radiative_zones, num_species, i, j, ii, itrot, jerr
       logical :: conductive_opacity_flag, converged, &
            evolve_model_flag, in_atmosphere, mixing_active, &
            new_atmosphere_fit_needed, recompute_surface_bc, &
-           use_correct_gradients, want_derivatives, wind_loss_active
+           want_derivatives, wind_loss_active
 ! load-bearing: see header
       save
    ! INTENTIONAL: cross-step driver state; reset via evolve_step_reset_pending
@@ -55,8 +55,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       ierr = 0
 
 ! 2026 (phase five, step C): on a repeated run_yrec call, put this
-! routine's SAVEd locals back to process-start state (static zero;
-! nao's data value). Set by yrec_reset_lib's prologue; a fresh
+! routine's SAVEd locals back to process-start state (static zero).
+! Set by yrec_reset_lib's prologue; a fresh
 ! process never sees the flag, so call 1 is untouched.
       if (evolve_step_reset_pending) then
          delta_lum_step = 0.0d0
@@ -80,21 +80,20 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          mixing_active = .false.
          new_atmosphere_fit_needed = .false.
          recompute_surface_bc = .false.
-         use_correct_gradients = .false.
          want_derivatives = .false.
          wind_loss_active = .false.
          evolve_step_reset_pending = .false.
       end if
 
 ! One model advance, as named phases (2026, core/ phase 3). Each
-! phase is an internal subroutine below, moved verbatim; error paths
+! phase is an internal subroutine below; error paths
 ! set ierr (checked after each call), divergence sets
 ! star%model_diverged_flag (host cycles the retry loop).
       call update_output_flags_for_step
 
-! STARIN called here for timestep cutting
-! (Restructured 2026: the backward goto 15 retry became the named
-! retry_step loop; divergence bailouts cycle it.)
+! read_starting_model is re-run inside the loop for timestep cutting
+! (the retry_step loop replaces the historical backward goto 15;
+! divergence bailouts cycle it.)
       retry_step: do
          call reload_model_if_diverged
          if (ierr /= 0) return
@@ -126,7 +125,6 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! INCLUDED
          if (new_atmosphere_fit_needed) then
             call rebuild_envelope(target_envelope_mass,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%m,star%dm, &
-!     *                     HSTOT,HT,LC,ETA2,HG,HI,HJM,QIW,R0,  ! KC 2025-05-31
                             star%log_total_mass,star%logT,star%convective_flag,star%eta_squared,star%i_rot,star%j_rot,star%qiw,star%mean_radius, &
                             star%kinetic_energy_rot,star%log_L,star%total_angular_momentum,star%total_rotational_ke,star%log_Teff,star%nz,star%recompute_envelope_triangle,ierr)
             if (ierr /= 0) return
@@ -136,12 +134,9 @@ subroutine evolve_step(model_iteration, step_status, ierr)
             new_atmosphere_fit_needed = .false.
          endif
 ! DETERMINE TIMESTEP FOR NEXT MODEL
-! HTIMER ALSO LOCATES THE H-BURNING SHELL
-! JVS 04/14 added teffl to passed htimer variables
+! compute_timestep ALSO LOCATES THE H-BURNING SHELL
        star%dt = dabs(star%dt)
        star%dt_saved = star%dt
-!        CALL HTIMER(DELTS,DELTSH,M,HD,HL,HS1,HS2,HT,LC,HCOMP,JCORE,
-!      *        JXMID,TLUMX,DAGE,DDAGE,QDT,QDP,NK,HP,HR,OMEGA,  ! KC 2025-05-31
        call compute_timestep(star%dt,star%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
               star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk,star%logP,star%logR,star%omega, &
               star%max_domega_frac,star%h_shell_zone_begin,star%log_Teff)
@@ -185,31 +180,18 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 contains
 
 ! ---------------------------------------------------------------
-! Per-step output-flag choreography: optional short-file rewind,
-! re-arming pulse output for the last model of the last run and for
-! the JVS ages-of-interest brackets (ageout), pre-arming the final
-! model of an age-stopped run, and the pulse path-length bookkeeping
-! (pdist).
+! Per-step output bookkeeping. All that is left of the historical
+! flag choreography is the optional short-file rewind: the
+! ages-of-interest (AGEOUT/calcad) pulse re-arming and the
+! .pmod/.penv/.patm pulse trio with its HR-path-length reopen
+! trigger were retired (the stitched profileN.data + GYRE/FGONG/GSM
+! pulse files carry everything).
 subroutine update_output_flags_for_step
 
-! rewind ISHORT if LRWSH is true (keeps ISHORT small)
+! rewind the short file if requested (keeps it small)
           if (star%ctrl%rewind_short_file) then
              rewind(run_log_unit)
           endif
-
-! JVS 02/11: Also allow pulse output at particular ages along the way
-!
-!  If the step is bracketing an age of interest, turn on output. This will
-! for the step before and step after the age in AGEOUT. Once the info has
-! been printed out, AGEOUT is set to the next age.
-!
-! 2026 retire-legacy: the calcad/AGEOUT machinery (acoustic depths
-! at ages of interest) is retired.
-!
-! 2026 retire-legacy: the LSOUND sound-speed table, the .pmod/.penv/
-! .patm pulse trio, and their HR-path-length reopen trigger
-! (open_pulse_files, PO* controls) are retired -- the stitched
-! profileN.data + GYRE/FGONG/GSM pulse files carry everything.
 end subroutine update_output_flags_for_step
 
 ! ---------------------------------------------------------------
@@ -219,7 +201,6 @@ end subroutine update_output_flags_for_step
 ! flag on the way out.
 subroutine reload_model_if_diverged
             if (star%model_diverged_flag) then
-!              CALL STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,  ! KC 2025-05-31
              call read_starting_model(star%timestep_yr, star%dt, star%hydrogen_dt, &
                   star%trial_sign_flag, star%ikut_flag, star%istore_flag, &
                   star%model_diverged_flag, star%recompute_envelope_triangle, star%job%nk, &
@@ -272,9 +253,9 @@ subroutine advance_composition_and_age
                end do
                iteration_level=1
 ! mixed_zone_bounds_no_overshoot stays an ARGUMENT of mix (not read as
-! star% inside it) because crrect passes its own local array there --
-! storage deliberately separate from main's. main passes the star copy
-! explicitly.
+! star% inside it) because henyey_iterate passes its own local array
+! there -- storage deliberately separate from this one. The star copy
+! is passed explicitly here.
                call mix(star%dt, iteration_level, star%timestep_yr, &
                     star%core_cz_top_index, star%envelope_cz_bottom_index, &
                     star%mixed_zone_bounds_no_overshoot, jerr)
@@ -295,9 +276,6 @@ end subroutine advance_composition_and_age
 ! start-of-step state (lirate88). Sets ierr on failure.
 subroutine rezone_or_snapshot
       use math_lib
-!***MHP 1/04 OPACITY TEST
-! DBG 12/95 GET OPACITY
-!*** END TEST
 ! rezone new model, except rezoning not performed for He flash calculations
           if (.not.star%ctrl%helium_flash_active) then
              call rezone(star%istore_flag, star%reset_triangle, star%h_shell_zone_begin, &
@@ -315,11 +293,9 @@ subroutine rezone_or_snapshot
                   star%luminosity_lsun_start(i) = star%luminosity_lsun(i)
                   star%logRho_start(i) = star%logRho(i)
                end do
-! JVS 04/14 Save Teff as well
+! Teff and the zone count are saved as well
                star%log_Teff_start = star%log_Teff
-!  JVS 05/25 Added model number to list of saved values
-           star%nz_start = star%nz
-
+               star%nz_start = star%nz
           endif
 ! store starting distribution of rotational kinetic energy.
             if (star%job%rotation_active) then
@@ -351,12 +327,11 @@ end subroutine rezone_or_snapshot
 ! to cycle the retry loop; ierr on error.
 subroutine solve_structure
 ! begin correction routines
-! set flags for CRRECT
-! CRRECT checks surface boundary conditions in every iteration
-! if LNEW0 = T, new envelope triangle calculated the 1st iteration
+! set flags for henyey_iterate:
+! if ctrl%lnew0 = T, new envelope triangle calculated the 1st iteration
 ! (i.e. old triangle ignored)
-! LFINI = T if model has converged
-! LARGE = T if model has diverged
+! converged = T if model has converged
+! star%model_diverged_flag = T if model has diverged
           if (star%ctrl%lnew0) star%recompute_envelope_triangle = .true.
             if (.not.evolve_model_flag) star%dt = -dabs(star%dt)
             star%job%fcorr = dabs(star%ctrl%fcorr0) - star%ctrl%fcorri
@@ -397,9 +372,9 @@ subroutine solve_structure
 ! FIRST LEVEL OF ITERATIONS
 ! USE ENVELOPE TRIANGLE OF THE PREVIOUS MODEL;
 ! FOR THE FIRST MODEL OF A RUN,THE TRIANGLE IS GENERATED HERE.
-! CALL TO CRRECT - ADDED ITERATION LEVEL (2026: the four-level ladder
-! goes through the solve_level wrapper below; per-level differences
-! are only (level, max iterations, recompute surface BC))
+! (2026: the four-level ladder goes through the solve_level wrapper
+! below; per-level differences are only (level, max iterations,
+! recompute surface BC))
             call solve_level(1, star%ctrl%max_iter_level1, .false.)
             if (ierr /= 0) return
 ! SECOND LEVEL OF ITERATIONS
@@ -470,7 +445,6 @@ subroutine converge_with_rotation
 ! unlike levels 1-3 -- deliberate, see the itrot loop)
             call solve_level(4, star%ctrl%max_iter_level4, .false.)
             if (ierr /= 0) return
-!  25         CONTINUE
             if (.not.converged) then
 ! MODEL FAILED TO CONVERGE WITHIN(NITER1+NITER2+NITER3+NITER4)ITERATIONS
                star%model_diverged_flag = .true.
@@ -479,19 +453,9 @@ subroutine converge_with_rotation
 
 ! MODEL HAS CONVERGED
 ! ENSURE CONVECTION ZONES ARE FULLY MIXED.
-! MHP 02/12 INFER CONVECTIVE OVERTURN TIMESCALE (USED IN MDOT)
-! JVS 02/12 CALL MIXCZ(HCOMP,HS2,LC,M)
-! KC 2025-05-30 addressed warning messages from Makefile.legacy
-! C G Somers 6/14, SET IMIX = .TRUE. SO THE CORRECT GRADS ARE USED.
-!       IMIX = .TRUE.
-!       CALL MIXCZ(HCOMP,HS2,HS1,LC,HR,HP,HD,HG,M,IMIX)
-! G Somers 6/14, SET LIMIX = .TRUE. SO THE CORRECT GRADS ARE USED.
-      use_correct_gradients = .true.
-!       CALL MIXCZ(HCOMP,HS2,HS1,LC,HR,HP,HD,HG,M,LIMIX)  ! KC 2025-05-31
       call homogenize_convection_zones(star%xa,star%dm,star%convective_flag,star%nz)
-! G Somers END
 
-! MHP 9/94 STORE TOTAL AGE IN SAGE
+! STORE TOTAL AGE FOR THE DISK-LOCKING GATE
             star%disk_gate_age_gyr = star%dage
             if (star%job%rotation_active) then
 ! RESTORE ORIGINAL START OF TIMESTEP VALUES
@@ -505,7 +469,6 @@ subroutine converge_with_rotation
 ! MHP 9/94's end-of-card QUAD/PHIS terminal line, the flag's only
 ! effect -- is retired along with the flag.)
 ! FIND THE NEW RUN OF OMEGA
-! JENV0 ADDED TO SR CALL.
                wind_loss_active = star%job%use_wind_torque
                call evolve_angular_momentum(star%dt, star%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
@@ -545,16 +508,14 @@ subroutine burn_light_elements
                endif
 ! FIND BURNING RATES AT THE END OF THE TIME STEP.
                call lirate88(star%xa,star%logRho,star%logT,star%nz,2)
-!                CALL LIBURN(DELTS,HCOMP,HD,HR,HS1,HS2,HT,JENV1,JENV0,M)  ! KC 2025-05-31
                call liburn(star%dt,star%xa,star%logR,star%m,star%dm,star%logT,envelope_cz_zone_end,envelope_cz_zone_prev,star%nz)
             endif
          endif
-! MHP 07/02 RESTORE PRIOR FITTING POINT IF MASS ACCRETION IS BEING
 end subroutine burn_light_elements
 
 
 ! ---------------------------------------------------------------
-! One level of the corrector ladder: same crrect call for every
+! One level of the corrector ladder: same henyey_iterate call for every
 ! level; only the level number, its iteration budget, and whether
 ! the surface boundary condition is re-verified differ. All other
 ! arguments are the host's locals / star%evo state, via host

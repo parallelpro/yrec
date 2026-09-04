@@ -8,7 +8,6 @@
 ! via ierr.
 subroutine star_setup(ierr)
 
-      use star_info_lib, only: star
       use monte_carlo_lib, only: setup_monte_carlo_runs
       implicit none
 

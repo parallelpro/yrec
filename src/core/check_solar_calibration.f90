@@ -1,12 +1,6 @@
 !----------------------------------------------------------------------
-! chkcal
+! check_solar_calibration (formerly chkcal)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original chkcal.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Checks whether the current model is a converged solar calibration
 ! (log L and log R, and optionally log Z/X, within tolerance of the
 ! solar values) and, if not, applies a fixed 2x2 Newton correction to
@@ -19,8 +13,6 @@
 ! solar age. On a miss, the corrected (X[, Z], alpha) are written
 ! into the NEXT triple's cards (run_index+1 .. +3), reading the
 ! previous guess from run_index-2 (this triple's rescale card).
-! (An older header here claimed the pre-5/96 even/odd pair protocol;
-! fixed 2026.)
 subroutine check_solar_calibration(log_l_lsun, log_r_rsun, run_index, current_zx)
 
       use star_info_lib, only: star
@@ -32,19 +24,8 @@ subroutine check_solar_calibration(log_l_lsun, log_r_rsun, run_index, current_zx
       integer, intent(in) :: run_index
       double precision, intent(in) :: current_zx
 
-
-!      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
-
-
-
-!      COMMON/CALS2/TOLL,TOLR,LCALS
-!     DATA TOLL,TOLR/1.0D-5,1.0D-4/
-
-! locals -- log_zx_mismatch/delta_z/log_zx_mismatch_prev (originally
-! ZL/DZ/ZLP); ZL is set only in the early-return Z/X check below but
-! (via the blanket SAVE, matching the original) is still read again
-! from its previous-call value at the "New Z" report near label 1234.
-      double precision :: log_zx_mismatch, delta_z, log_zx_mismatch_prev
+! --- locals ---
+      double precision :: log_zx_mismatch, delta_z
 
 ! CHECK TO SEE IF THE MODEL IS A CALIBRATED SOLAR MODEL.
 ! IF NOT, ESTIMATE CORRECTIONS TO X AND ALPHA.
@@ -55,13 +36,11 @@ subroutine check_solar_calibration(log_l_lsun, log_r_rsun, run_index, current_zx
             log_zx_mismatch = log10(current_zx)-log10(star%ctrl%target_solar_zx)
             if(abs(log_zx_mismatch).lt.star%ctrl%zx_tolerance)then
                star%solar_calibration_active = .true.
-               continue
                return
             endif
          else
 ! CALIBRATED SOLAR MODEL.  SET UP OUTPUT FLAGS AND EXIT
             star%solar_calibration_active = .true.
-            continue
             return
          endif
       endif
@@ -113,9 +92,4 @@ subroutine check_solar_calibration(log_l_lsun, log_r_rsun, run_index, current_zx
          endif
          star%log_l_prev = log_l_lsun
          star%log_r_prev = log_r_rsun
-         log_zx_mismatch_prev = log_zx_mismatch
-         continue
-         return
-!      ENDIF
-      return
 end subroutine check_solar_calibration

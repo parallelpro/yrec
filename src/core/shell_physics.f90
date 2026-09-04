@@ -1,30 +1,23 @@
 !----------------------------------------------------------------------
-! physic
+! shell_physics (formerly physic)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original physic.f; only variable names, source form, and comment
-! style were updated.
-!
-! For every shell, calls the equation of state (MEQOS or EQSTAT),
-! GETOPAC, and TPGRAD to find the actual/adiabatic temperature
-! gradients, opacity, and mean molecular weight, then calls VISCOS to
-! find the thermometric diffusivity and kinematic viscosity. Finally,
+! For every shell, calls the equation of state (eos_get), the opacity
+! (kap_get), and temperature_gradients to find the actual/adiabatic
+! temperature gradients, opacity, and mean molecular weight, then
+! calls viscos to find the thermometric diffusivity and kinematic
+! viscosity. Finally,
 ! for every interface, finds the maximum allowable and actual
 ! d(omega)/d(ln r) for the shear instability of Endal & Sofia, ApJ
 ! 220:279 (1978): if the gradient of omega exceeds the critical value,
 ! a short-timescale instability occurs and adjacent unstable zones are
 ! mixed to a marginally stable state (elsewhere, not in this routine).
-! KC 2025-05-31 removed the unused LCZ dummy argument (see the
-! commented-out original signature below).
-!       SUBROUTINE PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
 subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
       use temperature_gradients_lib
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, i_grad_actual, i_grad_ad, i_grad_rad, json
+      use star_info_lib, only: star, json
       use phys_const_lib
       use eos_lib
       use kap_lib
@@ -41,25 +34,13 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       logical, intent(out) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(in) :: log_teff
-
-
-
-
-
-
-
-
-
-
-
-
+      integer, intent(out) :: ierr
 
       double precision :: atomic_weight(4)
       double precision :: log_mass_nodes(4), interp_weights(4)
       data atomic_weight /1.007825d0, 4.002603d0, 12.0d0, 3.01603d0/
 ! --- locals ---
-      logical :: want_derivatives, local_conductive_opacity_flag, &
-           in_atmosphere
+      logical :: want_derivatives, in_atmosphere
       integer :: i, im, k
       double precision :: log10_mass, log10_temperature, log10_pressure, &
            log10_radius, luminosity_lsun, hydrogen_fraction, &
@@ -83,15 +64,15 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       double precision :: log_mass_mid, pressure_mid, density_mid, &
            actual_grad_mid, adiabatic_grad_mid, gravity_mid
 
-!  FIND ACTUAL AND ADIABATIC TEMPERATURE GRADIENTS,OPACITY,AND
-!  MEAN MOLECULAR WEIGHT FOR ALL RADIATIVE SHELLS.
-      integer, intent(out) :: ierr
-
       ierr = 0
 
+!  FIND ACTUAL AND ADIABATIC TEMPERATURE GRADIENTS,OPACITY,AND
+!  MEAN MOLECULAR WEIGHT FOR ALL RADIATIVE SHELLS.
       want_derivatives = .false.
-      local_conductive_opacity_flag = .false.
       in_atmosphere = .false.
+! (was never assigned before the first eos_get; -finit-local-zero
+! supplied the 0 that is now explicit)
+      saha_state = 0
       do im = 1,num_zones
          log10_mass = log_mass(im)
          log10_temperature = log_temperature(im)
@@ -145,11 +126,9 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          star%opacity_zone(im) = kap_res(i_kap)
          star%cp(im) = eos_res(i_cp)
          star%qdt(im) = eos_res(i_dlnrho_dlnt)
-! JVS 10/13 Always want SVEL
          star%conv_vel(im) = convective_velocity
       end do
 !  FIND THE THERMOMETRIC DIFFUSIVITY AND KINEMATIC VISCOSITY.
-!       CALL VISCOS(HCOMP,HD,HT,LC,M)  ! KC 2025-05-31
       call viscos(composition, log_density, log_temperature, num_zones)
 !  FIND THE RUN OF MAXIMUM ALLOWABLE D OMEGA/D LNR AND THE RUN OF ACTUAL
 !  D OMEGA/D LN R FOR ALL RADIATIVE ZONES.
@@ -165,7 +144,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
 !  NOW CHECK FOR SHEAR INSTABILITY -REF.ENDAL&SOFIA APJ 220:279(1978)
 !  THERMODYNAMIC QUANTITIES ARE CALCULATED AT THE SHELL MIDPOINT BY
 !  4-POINT LAGRANGIAN INTERPOLATION.
-         if (im.le.2) then
+         if (im.eq.2) then
             k = 1
          else if (im.eq.num_zones) then
             k = num_zones - 3
@@ -205,6 +184,4 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
             rot_scr%max_domega_dr(im) = 0.0d0
          end if
       end do
-
-      return
 end subroutine shell_physics

@@ -132,14 +132,14 @@ core/henyey_solve.o: star_info_lib.mod
 core/monte_carlo.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 core/neutrino_flux_table.o: burn_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 core/observables_lib.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
-core/read_starting_model.o: atm_lib.mod envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
-core/rebuild_envelope.o: atm_lib.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod yale_eos_lib.mod
+core/read_starting_model.o: envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
+core/rebuild_envelope.o: envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod yale_eos_lib.mod
 core/run_yrec.o: controls_check_lib.mod luout_lib.mod monte_carlo_lib.mod net_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset_lib.mod
 core/shell_physics.o: eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
-core/star_setup.o: monte_carlo_lib.mod star_info_lib.mod
+core/star_setup.o: monte_carlo_lib.mod
 core/stitched_model.o: atmstruct_lib.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 core/stop_conditions.o: luout_lib.mod math_lib.mod star_info_lib.mod
-core/surfbc.o: atm_lib.mod atm_table_lib.mod envint_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
+core/surfbc.o: atm_table_lib.mod envint_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
 core/test/test_reentry.o: star_info_lib.mod
 core/turnover_timescale.o: math_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
 core/yrec_capi.o: star_info_lib.mod

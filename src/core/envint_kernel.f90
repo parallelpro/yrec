@@ -53,12 +53,6 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       use numerics_lib
       use run_log_lib, only: solver_diagnostics
       implicit none
-! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES OF KURUCZ.
-      integer, parameter :: nt=57, ng=11
-! JNT 06/14 ADDED NTC/NGC FOR KTTAU=5
-      integer, parameter :: ntc=76, ngc=11
-! MHP 8/97 ADDED NTA AND NGA FOR ALLARD ATMOSPHERE TABLES
-      integer, parameter :: nta=54, nga=5
 
 ! luminosity_linear/pressure_rotation_factor/temperature_rotation_factor/
 ! log10_gravity/hydrogen_fraction/metal_fraction are
@@ -95,12 +89,8 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       integer, intent(inout) :: stored_vertex_index
       integer, intent(inout) :: atm_call_count, env_call_count, saha_state
       double precision, intent(inout) :: vtx_logp(3), vtx_logr(3), vtx_logt(3)
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, the transitional form of
-! MESA's ierr-not-stop discipline (same contract as kap_lib's and
-! eos_lib's facades). Passed: any error that used to stop inside the
-! atm internals is returned here instead, ierr /= 0, no stop. Omitted:
-! exactly the historical diagnostics, then a stop -- now in the funnel
-! at the end of this subroutine rather than at the point of failure.
+! ierr /= 0 on any error that used to stop inside the atm internals
+! (the diagnostic is still printed at the point of failure).
       integer, intent(out) :: ierr
 
 ! DBG CHANGED MAXSTEP FROM 200 TO 2000 TO GIVE ATMOSPHERE INTEGRATER A CHANCE.
@@ -110,15 +100,6 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       external atmosphere_derivs, envelope_derivs
 
       double precision :: ion_fraction(3)
-
-
-! G Somers END
-
-
-! MHP 1/01 CHANGED END OF FILE INDICATOR IN ATMOSPHERE/ENVELOPE FILES TO
-! VECTOR FROM SCALAR
-      double precision :: xyz(22)
-      data xyz/22*99.99d0/
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere, conductive_opacity_flag
       logical :: allard_lookup_failed
@@ -155,9 +136,8 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       logical :: cz_in_envelope
       double precision :: mass_diff_remaining, interp_weight
       integer :: inversion_index1, inversion_index2
-      double precision :: swap_temp
+      double precision :: swap_temp, mass_next_step
       logical :: swap_temp_logical
-      double precision :: unused_chdelj, unused_chdeld
       double precision :: x_start, taucz_env_accum, delta_radius_cz
 
       ierr = 0
@@ -175,15 +155,9 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 ! HERE P IS THE INDEPENDENT VARIABLE AND M,R,AND T ARE
 ! DEPENDENT VARIABLES.  INTEGRATE FROM TAU = 2/3 TO THE LAST
 ! MASS POINT IN THE MODEL.
-
-
-                 !  integration and come here
-! G Somers 3/17, IF INTERESTED ONLY IN PPHOT, BREAK HERE.
+! IF INTERESTED ONLY IN PPHOT, STOP HERE.
       log10_photo_pressure = atm_table%atm_log10_pressure
-      if (.not.cfg%calc_envelope) then
-         continue
-         return
-      end if
+      if (.not.cfg%calc_envelope) return
 
       call integrate_envelope
       if (ierr /= 0) return
@@ -194,12 +168,6 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 ! envelope integration.
       return
 
-! error funnel: reached only when a callee (or one of the two
-! integration-failure checks above) reported jerr /= 0. With ierr
-! present the caller takes responsibility; without it, preserve the
-! historical stop (the diagnostic already printed at the point of
-! failure).
-
 contains
 
 ! ---------------------------------------------------------------
@@ -208,18 +176,11 @@ contains
 ! Allard, falling back to gray when the Allard lookup fails).
 ! Sets tabulated_bc; ierr on a failed table interpolation.
 subroutine prepare_surface_boundary
-! DBG PULSE TURN ON DERIVATIVE CALCULATOR
-! 2026 retire-legacy: with the .pmod/.penv/.patm pulse trio gone,
-! the pulse derivative mode (want_derivatives + in-envelope eos
-! flags) is never enabled here; the always-taken branch remains.
-! (.store convergence: lpumod itself is deleted -- the derivs
-! routines now save their output scratch unconditionally.)
-      want_derivatives = .false.
+! the eos/kap derivatives are always requested (the derivs routines
+! save their output scratch unconditionally)
+      want_derivatives = .true.
       in_atmosphere = .true.
       conductive_opacity_flag = .false.
-
-! JVS 10/07/13 Always calculate derivatives
-      want_derivatives = .true.
 
 ! 2026 (.store convergence): the "ATMOSPHERE BEGIN" header and the
 ! mid-integration atmosphere/envelope text tables that used to
@@ -379,9 +340,6 @@ subroutine integrate_atmosphere
       indep_var = log10_pressure - log10_gravity + log10(opacity)
       y(1) = log10_pressure
       dydx(1) = exp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))
-! DBG PULSE INITIAL POINT FOR PULSATION
-
-
 
 ! INTEGRATE DP/DTAU FROM THIS STARTING TAU TO TAU = 2/3.
 ! SET NUMERICAL PARAMETERS UP.
@@ -518,7 +476,6 @@ subroutine integrate_atmosphere
       write(run_log_unit,50)
    50 format(5X,'ATMOSPHERE INTEGRATION FAILED AFTER MAXSTP',1X, &
              'INTEGRATIONS.I QUIT.')
-! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
       jerr = 1
       ierr = jerr
       return
@@ -535,10 +492,7 @@ end subroutine integrate_atmosphere
 ! fitting point; ierr after maxstp steps.
 subroutine integrate_envelope
       use math_lib
-! DBG PULSE WRITE END OF DATA INDICATOR
-! DBG
 !  IF ENVELOPE MASS(SENV) SMALL ENOUGH,SKIP ENVELOPE INTEGRATION.
-! DBG 2/92 CHANGED FROM 1.0D-10 to 1.0D-12
       if(cfg%senv.gt.-1.0d-12) then
        if(save_boundary_flag) then
           vtx_logp(vertex_index) = atm_table%atm_log10_pressure
@@ -581,8 +535,6 @@ subroutine integrate_envelope
          ierr = jerr
          return
       end if
-! DBG PULSE WRITE FIRST POINT OF ENVELOPE
-! DBG
 ! STORE STARTING VALUES OF THE INTEGRATION
 ! 07/02 INITIALIZE NUMBER OF STORED ENVELOPE POINTS TO 1
       cz_in_envelope = .false.
@@ -616,9 +568,6 @@ subroutine integrate_envelope
       env_struct%env_opacity(1) = pt_scr%current_opacity
       env_struct%env_luminosity(1) = luminosity_linear
       env_struct%env_dlnrho_dlnt(1) = pt_scr%qqdt
-! JVS 10/10
-      unused_chdelj = pt_scr%current_gradients(2)
-      unused_chdeld = pt_scr%qdela
       if(env_struct%env_convective_flag(1))cz_in_envelope = .true.
       env_struct%num_env_points = 1
       do step_index = 1,maxstp
@@ -627,8 +576,8 @@ subroutine integrate_envelope
           y_start(i) = y(i)
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
        end do
-       swap_temp = y(1) + h_step*dydx(1)
-       if(cfg%senv - y(1).gt.0.0d0 .or. cfg%senv - swap_temp.gt.0.0d0) then
+       mass_next_step = y(1) + h_step*dydx(1)
+       if(cfg%senv - y(1).gt.0.0d0 .or. cfg%senv - mass_next_step.gt.0.0d0) then
 !  IF THE INTEGRATION HAS OVERSHOT THE FITTING POINT, OR THE NEXT
 !  STEP WILL DO SO,LIMIT STEP SIZE OR INTEGRATE BACKWARDS TO THE
 !  CORRECT MASS.
@@ -676,8 +625,6 @@ subroutine integrate_envelope
           ierr = jerr
           return
        end if
-! DBG PULSE
-! DBG END
        if(h_did.eq.h_step) then
           num_ok = num_ok + 1
        else
@@ -758,7 +705,6 @@ subroutine integrate_envelope
       write(run_log_unit,911)
  911  format(5X,'ENVELOPE INTEGRATION FAILED AFTER MAXSTP TRIES.',1X, &
            'I QUIT')
-! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
       jerr = 1
       ierr = jerr
       return
@@ -800,6 +746,7 @@ subroutine integrate_envelope
             env_struct%env_opacity(inversion_index2) = swap_temp
             swap_temp = env_struct%env_luminosity(inversion_index1)
             env_struct%env_luminosity(inversion_index1) = env_struct%env_luminosity(inversion_index2)
+            env_struct%env_luminosity(inversion_index2) = swap_temp
             swap_temp = env_struct%env_dlnrho_dlnt(inversion_index1)
             env_struct%env_dlnrho_dlnt(inversion_index1) = env_struct%env_dlnrho_dlnt(inversion_index2)
             env_struct%env_dlnrho_dlnt(inversion_index2) = swap_temp
@@ -836,13 +783,8 @@ subroutine integrate_envelope
             swap_temp = env_struct%env_ion_fraction(3,inversion_index1)
             env_struct%env_ion_fraction(3,inversion_index1) = env_struct%env_ion_fraction(3,inversion_index2)
             env_struct%env_ion_fraction(3,inversion_index2) = swap_temp
-
          end do
-! JVS 07/12 Save the last envelope point pressure
-!      PPHOT = ENVP(NUMENV) ! G Somers 3/17, MOVED PPHOT DEF HIGHER UP
-! END JVS
       endif
-! DBG PULSE WRITE END OF DATA INDICATOR
 
       if (solver_diagnostics()) write(run_log_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)
  215  format(1X,'ENVELOPE INTEGRATION COMPLETE',1X, &

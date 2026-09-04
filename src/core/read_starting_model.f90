@@ -1,101 +1,29 @@
 !----------------------------------------------------------------------
-! starin
+! read_starting_model (formerly starin)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original starin.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
+! YREC's initial-model setup/read driver, called at the start of every
+! kind card (and again after a diverged step, with the cut timestep).
+! If a fresh starting model is requested (first_call_flag(run_index)
+! true), it reads the model file (.mod, YREC7 or MODEL2 layout,
+! detected from the file's keyword) via read_mod_model / read_yrec7 /
+! read_model2, optionally extends the innermost shell inward
+! (extend_core_inward), rescales it (rescale_model), optionally
+! changes the envelope fitting point mass (calling atm_get / eos_get /
+! kap_get / temperature_gradients to keep the new last interior
+! shell's radiative/convective flag and density consistent), sets up
+! the rotation curve (rotation_shape_factors / zone_moments_of_inertia)
+! if rotation is active, sets up the surface mixture and opacity
+! tables, and finally calls shell_physics / am_convective_regions /
+! compute_turnover_timescale for the initial temperature-gradient /
+! opacity / convective-zone structure. If instead the in-memory model
+! is reused (first_call_flag(run_index) false), only the envelope-mass
+! rescale (rescale_model) and the final physics calls are done.
 !
-!       SUBROUTINE STARIN(BL,CFENV,DAGE,DDAGE,DELTS,DELTSH,DELTS0,ETA2,FP,  ! KC 2025-05-31
-!      * FT,FTRI,HCOMP,HD,HI,HJM,HKEROT,HL,HP,HR,HS,HS1,HS2,HSTOT,HT,IKUT,
-!      * ISTORE,JCORE,JENV,LARGE,LC,LNEW,M,MODEL,NK,OMEGA,PS,QDP,QDT,QIW,  ! KC 2025-05-31
-!      * R0,RS,SJTOT,SKEROT,SMASS,TEFFL,TLUMX,TRIL,TRIT,TS,VEL,HG,V)
-!
-! This is YREC's initial-model setup/read driver, called once at the
-! start of every model. If a fresh starting model is requested
-! (first_call_flag(run_index) true), it reads the model file (YREC7 or
-! MODEL2 format, detected from the file's 4-character keyword) via
-! getyrec7/getmodel2, optionally extends the innermost shell inward
-! (common/core/), rescales it (rscale), optionally changes the
-! envelope fitting point mass (calling atm_get/eos_get/kap_get/
-! tpgrad to keep the new last interior shell's radiative/convective
-! flag and density consistent), sets up the rotation curve (fpft/
-! momi) if rotation is active, sets up the surface mixture and
-! opacity tables (surfopac/setscv), and finally calls physic/ovrot/
-! gettau to get the initial temperature-gradient/opacity/convective-
-! zone structure. If instead the in-memory model is reused
-! (first_call_flag(run_index) false), only the envelope-mass-fitting-
-! point rescale (rscale) and the final physic/ovrot/gettau calls are
-! done.
-!
-! CROSS-CALLEE NAMING NOTE: several dummy arguments here are threaded
-! into more than one already-converted callee, and those callees do
-! not always agree on a name for the same physical data (this file's
-! own dummy names were free to choose, per the project's incremental
-! conversion order, but the callees' names were fixed by earlier
-! batches). Judgment calls made below, all verified against the
-! actual physics/usage in this file:
-!   - HL is the linear luminosity (L/Lsun) -- STOTAL/SENV bookkeeping
-!     and log10(HL(M))-style usage elsewhere in the codebase confirm
-!     this. Named star%luminosity_lsun (matches henyey_iterate.f90's slot name for
-!     the same physical quantity). read_yrec7.f90/read_model2.f90/
-!     shell_physics.f90's slot name for the same array is "log_luminosity",
-!     which is a misnomer inherited from those files' own earlier
-!     conversions; out of scope to fix here. The scalar per-point
-!     value of this same array (originally B) is named
-!     shell_luminosity_lsun to avoid clashing with the array name.
-!   - HS1 is named star%m (matches henyey_iterate.f90's slot name for
-!     the same array, and turnover_timescale.f90's own parameter name for it).
-!   - HS2 is named star%dm (matches henyey_iterate.f90/rescale_model.f90/
-!     zone_moments_of_inertia.f90).
-!   - R0 is named star%mean_radius (matches zone_moments_of_inertia.f90, which computes it,
-!     and henyey_iterate.f90); rotation_shape_factors.f90's own slot name for the same array is
-!     "r0".
-!   - QIW is named star%qiw (matches zone_moments_of_inertia.f90, which computes it);
-!     henyey_iterate.f90 instead keeps this slot named "qiw" verbatim.
-!   - HG is named star%mean_gravity (matches rotation_shape_factors.f90, which computes it);
-!     shell_physics.f90's own slot name for the same array is "hg".
-!   - M (number of mesh points) is named star%nz (matches
-!     read_yrec7.f90/read_model2.f90); shell_physics.f90/am_convective_regions.f90/turnover_timescale.f90/
-!     rescale_model.f90 call the same count "num_zones", zone_moments_of_inertia.f90 calls it
-!     "zone_end", henyey_iterate.f90 calls it "num_points".
-!   - SMASS is named star%star_mass (matches read_yrec7.f90/
-!     read_model2.f90); rescale_model.f90's own slot name for the same value is
-!     "star_mass".
-!   - FP/FT (rotational P/T correction factors) are named
-!     star%fp_rot/star%ft_rot (matches
-!     henyey_iterate.f90); the per-point scalars used in the single-shell
-!     EQSTAT/TPGRAD physics block below (originally FPL/FTL) are named
-!     point_pressure_rotation_factor/point_temperature_rotation_factor
-!     to avoid clashing with the array names (shell_physics.f90 instead
-!     avoids this clash by keeping its own array dummies short, "fp"/
-!     "ft", and giving the fuller names to its per-point locals).
-!   - Per-point scalar physics locals below otherwise follow
-!     shell_physics.f90's own naming exactly (log10_temperature/temperature/
-!     log10_pressure/pressure/log10_density/density/log10_radius/
-!     log10_mass/opacity/beta/.../is_convective etc.), since this
-!     block is explicitly "stolen from PHYSIC" per the original
-!     source's own comment. Note shell_physics.f90 uses a "log10_" prefix for
-!     these per-point scalars specifically so they do not collide with
-!     its "log_"-prefixed array dummy names; the same convention is
-!     used here for the same reason (this file's own array dummies are
-!     named star%logP/star%logT/star%logRho/star%logR/
-!     star%log_mass).
-!   - common/core/ (LCORE/MCORE/FCORE) and common/newmx/ (the CNO-
-!     mixture/isotope-ratio controls) are referenced only in
-!     read_input.f90 among already-converted files; read_input.f90 keeps their
-!     members at cryptic lowercased spelling because many are
-!     NAMELIST-exposed. Per this batch's own conversion instructions,
-!     this file is not bound by that naming and gives them descriptive
-!     names instead (see the common block declarations below for the
-!     mapping back to read_input.f90's spelling).
-!   - common/alexmix/ (XALEX/ZALEX) and common/vnewcb/ (VNEW) are
-!     likewise only otherwise established in read_input.f90.  mixture_weights_seed is kept
-!     as-is (already a plain, adequately descriptive name, and it is
-!     the name used directly in this file's own pre-existing
-!     comments); alexmix's members are given descriptive names since
-!     they are unused placeholders in this file.
+! Naming: the star% arrays follow henyey_iterate's names for the same
+! data (luminosity_lsun is the LINEAR L/Lsun, m/dm the unlogged shell
+! masses, mean_radius/qiw/mean_gravity the rotation geometry); the
+! per-point scalars of the single-shell physics block below follow
+! shell_physics' log10_* naming.
 subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
      trial_sign_flag, ikut_flag, istore_flag, model_failed_flag, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
@@ -103,7 +31,6 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
      species_mix_weights, ierr)
       use temperature_gradients_lib
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
-      use atm_lib
       use envint_lib, only: atm_get
       use envstruct_lib
       use luout_lib
@@ -113,12 +40,9 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use opacity_table_lib
       use yale_eos_lib
       use scv_eos_lib
-
-
       use stitched_model_lib, only: build_stitched_model
       implicit none
       integer :: jerr_atm
-      integer, parameter :: nts = 63, nps = 76
 
       double precision, intent(inout) :: timestep_yr
       double precision, intent(inout) :: delta_time, delta_time_abs
@@ -134,25 +58,17 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       double precision, intent(out) :: convective_velocity
       double precision, intent(inout) :: species_mix_weights(12)
 
-! DBGLAOL
-      integer*4 :: katm, kenv, saha_state
-!      CHARACTER*256 OPECALEX(7)
+      integer :: katm, kenv, saha_state
       character(len=4) :: format_tag
       character(len=6) :: eos_code
       character(len=4) :: atm_code, alok_code, hik_code
-! LLP  3/19/03 Add COMMON block /I2O/ for info directly transferred from
-!      input to output model - starting with a code for th initial model
-!      compostion (COMPMIX)
-! former common/i2o/: compmix_code (passed to getyrec7/getmodel2) is
-! now use-associated from run_diag_lib as
-! star%initial_composition_code (io/write_last_model.f90's/io/write_store_model.f90's
-! established name -- majority spelling wins over this file's own
-! atm_code/eos_code/hik_code/alok_code-matching compmix_code).
+! (the initial-composition code read with the model is
+! star%initial_composition_code)
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
 
-! MHP 10/24 ENSURE THAT ONLY HOMOGENEOUS MODELS HAVE THE MIXTURE ALTERED
+! ENSURE THAT ONLY HOMOGENEOUS MODELS HAVE THE MIXTURE ALTERED
       double precision :: reference_composition(15)
 
 ! --- locals ---
@@ -167,7 +83,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       logical :: lexcp0
       logical :: use_extended_composition0
       double precision :: fraction_diff
-      integer :: i, j, k, kk
+      integer :: i, j, k
       double precision :: total_carbon_cno_fraction, &
            total_nitrogen_cno_fraction, total_oxygen_cno_fraction
       double precision :: carbon_scale_ratio, nitrogen_scale_ratio, &
@@ -181,18 +97,10 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       logical :: want_derivatives, local_conductive_opacity_flag, &
            in_atmosphere
       double precision :: hydrogen_fraction, metal_fraction
-      double precision :: log10_pressure, pressure, log10_temperature, &
-           temperature, log10_density, density
+      double precision :: log10_pressure, log10_temperature, log10_density
       double precision :: log10_radius, log10_mass, shell_luminosity_lsun
       double precision :: point_pressure_rotation_factor, &
            point_temperature_rotation_factor
-      double precision :: beta, beta_inverse, beta14, ion_fraction(3), &
-           specific_gas_constant, ion_mean_weight_inverse, &
-           electron_mean_weight_inverse, electron_degeneracy_parameter, &
-           specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp
-      double precision :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
 ! 2026 named-index results for the convective-flag test of the new
 ! last shell (the envint/atm_get sites below keep their scalars).
       double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
@@ -278,7 +186,6 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       call update_surface_mixture
       call snapshot_step_start
       if (ierr /= 0) return
-!       CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
       call shell_physics(star%fp_rot,star%ft_rot, &
            star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun,star%logP, &
            star%logR,star%log_mass,star%logT,star%convective_flag,star%nz, &
@@ -427,17 +334,9 @@ subroutine acquire_starting_model
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
              ,' DESIRES',f7.3,' MODEL MIX LENGTH',f7.3/1x, &
              'EXTENDED COMP-USER DESIRES ',l1,' MODEL USED ',l1)
-! =>RUN STOPPED DUE TO INCONSISTENCY BETWEEN MODEL AND RUN PARMS
-!            STOP
+! (the run is not stopped: only this warning is issued)
        endif
       endif
-
-! ENVELOPE DATA (Now bypassed)
-! LNEW0 HAS BEEN READ IN, IF TRUE THEN RECOMPUTE ENVELOPE EVERY MODEL
-! STORED ENVELOPE RECORDS ONLY USED FOR HE FLASH CALCS
-!      DO 80 I = 1,3
-!       IF((.NOT.LNEW).AND.IABS(IO).NE.I) LNEW = .TRUE.
-! 80   CONTINUE
 
       istore_flag = 0
       trial_sign_flag = 1.0d0
@@ -664,11 +563,7 @@ subroutine extend_core_toward_center
              do j=1, 15
                 star%xa(j,i) = star%xa(j,first_original_shell)
              end do
-! CALL EQUATION OF STATE TO GET CONSISTENT DENSITY
-!     *                   RMU,AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,
-!     *                   QAT,QAP,QCPT,QCPP,LDERIV,LATMO,KSAHA)
-!             HD(I) = DL
-! MHP 4/12 REPLACED (BROKEN) CALL TO EQSTAT WITH LOCAL ESTIMATE FOR RHO
+! LOCAL ESTIMATE FOR RHO (replaced a broken equation-of-state call)
              star%logRho(i) = star%logP(i) - star%logT(i) - &
                   density_estimate_offset
           end do
@@ -1046,7 +941,6 @@ subroutine rescale_and_refit_envelope
                    star%logR(j),star%log_mass(j)-star%stotal, &
                    star%logT(j),star%convective_flag(j), j = old_last_shell,star%nz)
  911  format(i5,1p6e16.8,l2)
-!          DO 590 J = 1,JEND
        endif
        envelope_recomputed_flag = .true.
        write(run_log_unit,597)old_senv,star%senv
@@ -1092,7 +986,6 @@ subroutine initialize_rotation_state
             star%mean_gravity,star%mean_radius,ierr)
        if (ierr /= 0) return
 ! FIND MOMENT OF INERTIA(HI)
-!        CALL MOMI(ETA2,HD,HR,HS,HS2,1,M,OMEGA,R0,HI,QIW,M)  ! KC 2025-05-31
        call zone_moments_of_inertia(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &
             star%omega,star%mean_radius,star%i_rot,star%qiw)
 ! GIVEN OMEGA AND I, FIND ANGULAR MOMENTUM AND ROTATIONAL K.E.
@@ -1199,36 +1092,15 @@ subroutine snapshot_step_start
          star%logT_start(i) = star%logT(i)
          star%logR_start(i) = star%logR(i)
          star%luminosity_lsun_start(i) = star%luminosity_lsun(i)
-!  JVS 04/14 Added Teff to the list of saved values
-         star%log_Teff_start = star%log_Teff
-!  JVS 05/25 Added model number to list of saved values
-       star%nz_start = star%nz
       end do
+! Teff and the zone count are saved as well
+      star%log_Teff_start = star%log_Teff
+      star%nz_start = star%nz
       if (star%job%rotation_active) then
          do i = 1,star%nz
           star%old_omega(i) = star%omega(i)
          end do
       endif
-
-! 8/17 G Somers
-!  FIND BASIC PHYSICAL QUANTITIES. THIS CODE STOLEN FROM PHYSIC
-!  FIND ACTUAL AND ADIABATIC TEMPERATURE GRADIENTS,OPACITY,AND
-!  MEAN MOLECULAR WEIGHT FOR ALL RADIATIVE SHELLS.
-!      DO 725 I = 1,4
-!         IDD(I) = 5
-! 725  CONTINUE
-!      DO 730 IM = 1,M
-!
-!         IF(LMHD) THEN
-!            CALL MEQOS(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
-!     *           AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,
-!     *           QCPP,LDERIV,LATMO,KSAHA)
-!     *           AMU,EMU,ETA,QDT,QDP,QCP,DELA,QDTT,QDTP,QAT,QAP,QCPT,
-!     *           QCPP,LDERIV,LATMO,KSAHA)
-!     *        DELR,DELA,QDTT,QDTP,QAT,QAP,QACT,QACP,QACR,QCPT,QCPP,
-!     *        VEL,LDERIV,LCONV,FPL,FTL,TEFFL)
-!C JVS 10/13 Always want SVEL
-
 end subroutine snapshot_step_start
 
 end subroutine read_starting_model

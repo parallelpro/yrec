@@ -11,7 +11,7 @@
 ! solution (P, T, R at the fitting point) around the current model's
 ! (TEFFL, BL): checks whether the requested point still lies inside
 ! the existing triangle, re-triangulates and recomputes any envelope
-! vertices as needed via atm_lib.f90's atm_get, and rebuilds the bilinear
+! vertices as needed via envint_lib's atm_get, and rebuilds the bilinear
 ! interpolation coefficients CFENV. Also handles the automatic
 ! gray-atmosphere fallback when Teff moves outside the range of a
 ! tabulated (Kurucz/Allard) T-tau relation.
@@ -25,7 +25,7 @@
 ! in atm_get's header (and eos/eqstat.f90's metal_fraction fix) --
 ! silently tolerated while atm_get (as envint) was a bare external
 ! subroutine with no interface to check against, surfaced once
-! atm_lib.f90 gave it one. core/henyey_iterate.f90 (this routine's only
+! envint_lib gave it one. core/henyey_iterate.f90 (this routine's only
 ! caller) already passes real local variables for these positions, so
 ! widening the intent here changes nothing about how it's called.
 subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
@@ -38,12 +38,10 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
      pressure_rotation_factor, temperature_rotation_factor, &
      envelope_recomputed_flag, log10_pressure_limit, convective_flag, &
      zone_index, ierr)
-      use star_info_lib, only: star
 
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
-      use atm_lib
       use envint_lib, only: atm_get
       use atm_table_lib
       use star_info_lib
@@ -74,10 +72,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 
       integer, intent(out) :: ierr
       integer :: jerr_atm
-      integer :: numenv
-      data numenv/0/
-
-! G Somers END
 ! --- locals ---
       integer :: i1, i2, i3, i, vertex_being_computed, j
       double precision :: temp, temp1, temp2, tri_err
@@ -184,17 +178,10 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           b = exp(ln10*tri_logl(i))
           rl = 0.5d0*(tri_logl(i) + star%log10_solar_luminosity - 4.0d0*log10_teff - c4pil - csigl)
           gl = cgl + log10_star_mass - rl - rl
-          numenv = numenv + 1
-! G Somers 11/14, LPENV FUNCTIONALITY NOW INCLUDED IN LSTENV.
-            print_envelope_flag = .false.
-!     *              '  LOG(L) =',F8.5)
-!          ENDIF
-! G Somers END
+          print_envelope_flag = .false.
           vertex_being_computed=i
           save_boundary_flag = .true.
-! DBG PULSE: DO NOT DO PULSE OUTPUT
-! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
-! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
+! FOR SPOTTED RUNS, FIND THE PRESSURE AT THE AMBIENT TEMPERATURE
           if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
                adjusted_teffl = log10_teff - 0.25*log10(star%ctrl%spot_filling_factor * pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
           else
@@ -234,13 +221,12 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
        envelope_coeffs(9) = tri_teffl(1) - envelope_coeffs(7)*vtx_logp(1) - envelope_coeffs(8)*vtx_logt(1)
        if (solver_diagnostics()) then
         write(run_log_unit,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
-              (envelope_coeffs(i+i+i-3+j),j=1,3), i=1,3)
+              (envelope_coeffs(3*(i-1)+j),j=1,3), i=1,3)
        end if
  50      format(' ENVELOPE TRIANGLE  LOG(TE)  LOG(L)   LOG(P)   LOG(T)', &
               3X,'LOG(R)   COEFFICIENTS'/I14,L1,2X,5F9.5,8X,'LOG(R)', &
               3F10.5/ I14,L1,2X,5F9.5,5X,'LOG(L/L0)',3F10.5/ &
               I14,L1,2X,5F9.5,7X,'LOG(TE)',3F10.5)
-! 60      FORMAT(' COUNTS  KATM',I5,'  KENV',I5,'  KSAHA',I5)
       else
        if (solver_diagnostics()) write(run_log_unit,70)
  70      format(' ENVELOPE TRIANGLE NOT CHANGED')

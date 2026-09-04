@@ -1,12 +1,6 @@
 !----------------------------------------------------------------------
-! chkscal
+! check_star_calibration (formerly chkscal)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original chkscal.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Checks whether the evolving track has passed a target stellar radius
 ! (R*), interpolates the luminosity and age at that radius, and either
 ! signals a converged calibration (log L/Lsun at R* matches the target
@@ -26,35 +20,25 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
       double precision, intent(in) :: log_l_lsun, log_teff, current_age
       integer, intent(in) :: run_index
 
-
-
-
-
-!      COMMON/SETT/ENDAGE(50),SETDT(50),LENDAG(50),LSETDT(50)
 ! locals
       double precision :: teff_current, log_r_rsun_current
       double precision :: dlogl_dlogr, dage_dlogr
       double precision :: new_x, prev_x, dx_dlogl
 
-!     LSTAR     T - have got a star at Teff and L
-!     LPASSR    T - on run have just passed Teff
-!     XLS       Luminosity (L/Lsun) wanted by adjusting Y
-!     XLSTOL    tolerance wanted for luminosity
-!     LTEFF     T - specify Teff for star
-!               F - specify R/Rsun for star
-!     STEFF     Effective temperature of star (K) or...
-!     SR        Radius of star (R/Rsun)
-!     TEFF      Teff of current model
-!     ALR       log(R/Rsun) of current model
-!     ALRI      log(R/Rsun) of previous model
-!     DAGE      age of current model (Gyr)
-!     AGEI      age of previous model (Gyr)
-!     AGER      age of model at R*
-!     BL        luminosity of current model log(L/Lsun)
-!     BLI       luminosity of previous model
-!     BLR       luminosity of model at R
-!     BLRP      luminosity of model at R* of previous run
-!     XP        X of previous run = RESCAL(2, NK-1)
+!     star%star_found_flag                 T - have got a star at R* and L*
+!     star%just_passed_target_radius_flag  T - on this run have just passed R*
+!     ctrl%target_luminosity_lsun          luminosity (L/Lsun) wanted by adjusting X
+!     ctrl%target_star_luminosity_tolerance  tolerance on that luminosity
+!     job%target_radius_rsun               R* (R/Rsun, LINEAR, despite the
+!                                          log_r_* names of the model values)
+!     log_r_rsun_current                   R/Rsun of current model (linear)
+!     star%log_r_prev_model                R/Rsun of previous model (linear)
+!     current_age / star%age_prev_model    age of current / previous model (Gyr)
+!     star%age_at_target_radius            age of model at R*
+!     log_l_lsun / star%log_l_prev_model   log(L/Lsun) of current / previous model
+!     star%log_l_at_target_radius          log(L/Lsun) at R*
+!     star%log_l_at_target_radius_prev_run same, previous run
+!     prev_x                               X of previous run = rescale_params(2, NK-1)
 !
 !     Check if star has passed R*.
 !     If not store L and age and return.
@@ -80,9 +64,6 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
            end if
       endif
 !
-!     Check if track has passed through Teff the right number of
-!     times. If not store L and age and return.
-! ZZZ
       write(*,*) ' Just passed R*'
       write(run_log_unit,*) '#Just passed R*'
       star%just_passed_target_radius_flag = .true.
@@ -154,5 +135,4 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
           star%job%initial_x_array(run_index+2) = new_x
        end if
       endif
-      return
 end subroutine check_star_calibration

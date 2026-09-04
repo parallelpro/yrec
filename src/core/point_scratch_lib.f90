@@ -5,7 +5,7 @@
 ! the per-point side channel through which the integrand callbacks
 ! (atmosphere_derivs / envelope_derivs, via their eos/kap/gradient
 ! calls) and henyey_coefficients publish the physics of the point
-! they just evaluated, and through which envint_lib's recorder reads
+! they just evaluated, and through which envint_kernel's recorder reads
 ! it into atmo_struct / env_struct.
 !
 ! Formerly star%pulse (the pulsation_diagnostics_state q* scratch,

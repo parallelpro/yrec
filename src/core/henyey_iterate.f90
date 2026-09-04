@@ -1,80 +1,21 @@
 !----------------------------------------------------------------------
-! crrect
+! henyey_iterate (formerly crrect)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original crrect.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! JANUARY 28, 1991:
-! REPLACED EGEN SO THAT IT FOLLOWS FULL CNO NOT CN IN EQUILIBRIUM AND
-! FEBRUARY 11, 1991:
-! REPLACED CONVEC SO THAT WOULD CALCULATE OVERSHOOT CORRECTLY.
-! ADDED ROUTINES OVERSH AND HSUBP.
-!
-! This is YREC's Newton-Raphson relaxation driver: it orchestrates the
-! Henyey structure solve for one time step. Each pass through the
-! main DO 100 loop calls coefft to linearize the structure equations
-! at every mesh point, builds the outer (surface) boundary-condition
-! row from the envelope-fit coefficients (star%envelope_fit_coeffs, from
-! surfbc), calls hsolve to back-solve the block-tridiagonal system for
+! YREC's Newton-Raphson relaxation driver: the Henyey structure solve
+! for one time step. Before the correction loop it refreshes the
+! surface boundary condition (surfbc; only when recompute_surface_bc
+! asks for it) and, on the iteration levels that need it, mixes the
+! convection zones (mix). Each correction iteration then calls
+! henyey_coefficients to linearize the structure equations at every
+! mesh point, builds the outer boundary-condition row from the
+! envelope-fit coefficients (star%envelope_fit_coeffs, from surfbc),
+! calls henyey_solve to back-solve the block-tridiagonal system for
 ! the P/T/R/L corrections, checks those corrections against the
-! convergence/divergence tolerances in common/ctol/, applies them, and
-! (if rotation is active) updates the rotation curve and rotational
-! kinetic energy via getrot/fpft. surfbc (envelope/atmosphere fit) and
-! mix (convective mixing/star%xa update) are called once near the
-! top, ahead of the correction loop, on the iteration levels where
-! they are needed.
+! convergence/divergence tolerances (ctrl%*), applies them, and (if
+! rotation is active) updates the rotation curve and the rotational
+! P/T factors via omega_from_j/rotation_shape_factors.
 !
-! CROSS-CALLEE NAMING NOTE: several dummy arguments here are threaded
-! into more than one already-converted callee, and those callees do
-! not always agree on a name for the same physical data (this file's
-! own dummy names were free to choose, per the project's incremental
-! conversion order, but the callees' names were fixed by earlier
-! batches). Judgment calls made below, all verified against the
-! actual physics/usage in this file:
-!   - BL is log10(L/Lsun) here (see BL = log10(HL(M)) below), named
-!     star%log_L. It is passed into surfbc.f90's parameter
-!     named "luminosity_linear" -- that surfbc.f90 name is a misnomer
-!     inherited from that file's own earlier conversion; out of scope
-!     to fix here.
-!   - HL is the linear luminosity (L/Lsun); log10(HL(M)) above proves
-!     it is not itself a log quantity. Named star%luminosity_lsun (matches
-!     henyey_coefficients.f90's slot name for it). mix.f90's slot name for this
-!     same array is "log_luminosity", which is the same kind of
-!     misnomer as the BL case above; also out of scope to fix here.
-!   - HSTOT (total stellar mass, log10(M/Msun)) is named
-!     star%log_total_mass (matches mix.f90's slot name); surfbc.f90's slot
-!     name for the same value is "log10_star_mass".
-!   - TEFFL (log10 Teff) is named star%log_Teff (matches mix.f90/
-!     henyey_coefficients.f90); surfbc.f90's slot name for the same value is
-!     "log10_teff".
-!   - DELTS (time step, seconds) is named delta_time (matches
-!     henyey_coefficients.f90); mix.f90's slot name for the same value is
-!     "timestep".
-!   - M (number of mesh points) is named star%nz (matches
-!     henyey_coefficients.f90/rotation_shape_factors.f90); mix.f90/omega_from_j.f90 call the same count
-!     "num_zones", henyey_solve.f90 calls it "num_shells", surfbc.f90 calls
-!     it "zone_index" (there it is the single index M, not a count).
-!   - HS1 is named star%m; henyey_coefficients.f90's slot name for the same
-!     array is "mass_weight_ln". Not read directly in this file
-!     (only passed through to mix/coefft), so the more physically
-!     transparent of the two established names was kept.
-!   - FP/FT (rotational P/T correction factors) are named
-!     star%fp_rot/star%ft_rot (matches
-!     rotation_shape_factors.f90, which computes them); henyey_coefficients.f90's slot names for the
-!     same arrays are rotation_p_factor/rotation_t_factor.
-!   - R0 is named star%mean_radius (matches omega_from_j.f90, which computes it);
-!     rotation_shape_factors.f90's slot name for the same array is "r0".
-!   - ETA2 is named star%eta_squared (matches omega_from_j.f90); rotation_shape_factors.f90's slot
-!     name for the same array is "eta2".
-!   - The Debye-Huckel hydrogen-fraction common/debhu/ member (XXDH in
-!     the original) is named debye_huckel_x here to match henyey_coefficients.f90 (this
-!     file's closest sibling, called every iteration below); note
-!     compute_scale_height.f90 instead uses the physically-clearer "xxdh" for the
-!     same slot -- see compute_scale_height.f90's own comment on this pre-existing
-!     inconsistency.
+! Non-zero ierr propagates a callee failure to evolve_step.
 !
 ! INPUTS ASSUMES GIVEN LOG(TE) AS star%log_Teff
 !        ASSUMES GIVEN LOG(L/LSUN) AS star%log_L
@@ -88,7 +29,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
      in_atmosphere, want_derivatives, mixing_active, &
      conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, iterations_done, &
      iteration_level, ierr)
-      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
+      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -110,22 +51,6 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
       integer, intent(inout) :: iterations_done
       integer, intent(in) :: iteration_level
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ! --- locals ---
       integer :: kenv, katm, ksaha
@@ -157,7 +82,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       katm = 0
       ksaha = 0
       star%senv = star%log_mass(star%nz) - star%log_total_mass
-      if (start_new_triangle.or.reset_triangle .and.iteration_level.eq.2) &
+      if (start_new_triangle .or. (reset_triangle .and. iteration_level.eq.2)) &
            recompute_surface_bc = .true.
 !  FIND NEW FP AND FT IF MODEL IS ROTATING
       if (star%job%rotation_active.and.recompute_surface_bc) then
@@ -186,8 +111,6 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        call surfbc(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
             star%fit_point_radius,tri_orientation,stored_vertex_index, &
             star%stored_envelope_state, &
-!               LNEW,LRESET,LSBC,KSAHA,KENV,KATM,HSTOT,BL,  ! KC 2025-05-31
-!               (recompute_surface_bc/LSBC removed from this call site)
             start_new_triangle,reset_triangle,ksaha,kenv,katm, &
             star%log_total_mass,star%log_L, &
             star%log_Teff,hydrogen_fraction,metal_fraction, &
@@ -220,10 +143,6 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
             return
          end if
       endif
-!      IF(LROT)THEN
-!         CALL OVROT(HCOMP,HD,HP,HR,HS,HT,LC,M,LCZ,MRZONE,MXZONE,
-!     *        NRZONE,NZONE)
-!      ENDIF
 !  IF MODEL CONVERGED ON THE PREVIOUS LEVEL OF ITERATION AND
 !  THE TRIANGLE WAS CHECKED AND NOT FLIPPED,SKIP CORRECTION ROUTINE.
       if (recompute_surface_bc .and. .not.envelope_recomputed_flag .and. &

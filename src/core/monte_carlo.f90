@@ -40,8 +40,7 @@ contains
 subroutine setup_monte_carlo_runs
       integer :: i
       if (star%ctrl%monte_carlo_active) then
-!c MHP 8/25 moved file open to parmin
-!     OPEN(UNIT=IDYN,FILE=FDYN,FORM='FORMATTED',STATUS='OLD')
+! (the dynamics file is opened at namelist-read time)
          star%job%mc_run_end = min(star%job%mc_run_end,1000)
 ! read in monte carlo data
          do i = 1,star%job%mc_run_end
@@ -81,7 +80,6 @@ subroutine apply_monte_carlo_parameters(monte_carlo_run_number, &
            1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.92088,0.1625]
 ! MHP 3/96 added data for base solar age, L
       double precision, parameter :: reference_solar_luminosity = 3.844D33
-      double precision :: monte_helium_diffusion_fraction
 
 ! for monte carlo run, input values of parameters being changed.
       if (star%ctrl%monte_carlo_active) then
@@ -89,11 +87,11 @@ subroutine apply_monte_carlo_parameters(monte_carlo_run_number, &
          star%cross_section_scale(2) = star%job%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
          star%cross_section_scale(3) = star%job%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
          star%cross_section_scale(16) = star%job%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
-! NOTE (2026): write-only since the original F77 (FGRSET = FHE(NN))
-! -- the sampled helium diffusion factor never reaches the physics;
-! only the metal factor (fgrz) is wired through. Preserved, not
-! fixed; a candidate for an upstream report.
-         monte_helium_diffusion_fraction = star%job%helium_fraction_param(monte_carlo_run_number)
+! NOTE: the sampled helium diffusion factor
+! (helium_fraction_param) never reaches the physics -- it was
+! write-only since the original F77 (FGRSET = FHE(NN)); only the
+! metal factor (fgrz) is wired through. A candidate for an upstream
+! report.
          star%job%fgrz = star%job%diffusion_factor(monte_carlo_run_number)
          star%solar_luminosity_cgs = reference_solar_luminosity*star%job%luminosity_target(monte_carlo_run_number)
          star%log10_solar_luminosity = log10(star%solar_luminosity_cgs)
@@ -122,14 +120,10 @@ end subroutine apply_monte_carlo_parameters
 ! summary is the final model's history row) or in the .log
 ! calibration verdicts.
 !
-! surface_z_over_x is intent(inout) deliberately: the historical
-! SAVE semantics of the driver, preserved exactly (the converged
-! branch refreshes it for the caller).
 subroutine write_run_summaries(monte_carlo_run_number, &
-     convergence_iterations, log_r_rsun, surface_z_over_x)
+     convergence_iterations, log_r_rsun)
       integer, intent(in) :: monte_carlo_run_number, convergence_iterations
       double precision, intent(in) :: log_r_rsun
-      double precision, intent(inout) :: surface_z_over_x
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES BETWEEN CYCLES.
 ! RUN FAILED TO CONVERGE: DUMP THE MODEL WITH THE FAILURE COUNT.
@@ -143,8 +137,6 @@ subroutine write_run_summaries(monte_carlo_run_number, &
          rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
          rewind(run_log_unit)
-
-         surface_z_over_x = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
          if (star%ctrl%monte_carlo_active) then
             call write_monte_carlo_model(log_r_rsun, convergence_iterations, &
                  star%job%nk, monte_carlo_run_number)
@@ -186,8 +178,6 @@ subroutine write_monte_carlo_model(local_log_radius, &
 !  AND ALPHA, FINAL DL/DX,DR/DX,DL/D ALPHA, DR/D ALPHA
       write(star%ctrl%monte_carlo_unit1,20)convergence_iterations,star%dlum_dx,star%drad_dx, &
            star%dlum_dalpha,star%drad_dalpha
-!      WRITE(IMONTE1,20)ICONV,XGUESS,AGUESS,DLDX,DRDX,DLDA,DRDA
-! 20   FORMAT(1X,I2,2F10.6,1P4E11.4)
  20   format(1X,I2,1P4E11.4)
 !  NEUTRINO FLUXES (SEE ENGEB FOR DETAILS)
       write(star%ctrl%monte_carlo_unit1,30) star%cl37_snu_rate,star%ga71_snu_rate,(star%neutrino_flux_total(j),j=1,8)

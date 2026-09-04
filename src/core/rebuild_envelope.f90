@@ -1,16 +1,13 @@
 !----------------------------------------------------------------------
-! getnewenv
+! rebuild_envelope (formerly getnewenv)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original getnewenv.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! MHP 07/02 new subroutine to move the outer fitting point when
-! the total mass is being decreased; add new points by dropping
-! a sinkline from the surface down and including new points up to
-! the desired envelope mass
+! Moves the outer fitting point when the total mass is being
+! decreased: re-integrates the envelope from the surface (atm_get at
+! the current L and Teff) down to the target envelope mass and
+! appends the envelope points below the old fitting point as new
+! interior shells, interpolating the rotation variables onto them.
+! Called from evolve_step; non-zero ierr propagates an envelope/
+! atmosphere integration failure.
 subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      log_luminosity, log_pressure, log_radius, log_mass, enclosed_mass, &
      shell_mass, &
@@ -18,8 +15,6 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
-      use star_info_lib, only: star
-      use atm_lib
       use envint_lib, only: atm_get
       use star_info_lib
       use envstruct_lib
@@ -48,22 +43,8 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       integer, intent(inout) :: num_zones
       logical, intent(out) :: new_points_added_flag
 
-
-
-
-
-
-
-
-
-
-
-
-
       double precision :: atm_get_dummy1(4), atm_get_dummy2(3), &
            atm_get_dummy3(3), atm_get_dummy4(3)
-
-! G Somers END
       integer :: species_end_index
       integer :: old_num_zones
       double precision :: envelope_mass_before
@@ -82,7 +63,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
            radius_offset
       double precision :: mass_test, mass_test2
       integer :: num_new_env_points
-      integer :: zone_index, species_index, k
+      integer :: zone_index, env_point_index, k
       double precision :: mass_interp_x0, mass_interp_x1, mass_interp_x2
       double precision :: interp_fraction
       double precision :: omega_ref
@@ -153,9 +134,8 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
               composition(11,num_zones)
       end if
 ! INTEGRATE DOWN TO THE CURRENT FITTING POINT USING THE SURFACE L AND TEFF.
-! MHP 10/02  define ISTORE - used in ENVINT
       atm_get_unused_flag = 0
-! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
+! FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
       if(convective_flag(num_zones).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
            star%ctrl%spot_temp_contrast.ne.1.0)then
@@ -176,7 +156,6 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
          ierr = jerr_atm
          return
       end if
-! G Somers END
 ! RESET THE NUMERICAL PARAMETERS FOR THE ENVELOPE INTEGRATION
       star%job%env_step_max = env_max_saved
       star%job%env_step_min = env_min_saved
@@ -217,32 +196,32 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       env_struct%num_env_points = num_new_env_points
 ! ASSIGN NEW POINTS
       do zone_index = num_zones+1,num_zones+env_struct%num_env_points
-         species_index = zone_index-num_zones
+         env_point_index = zone_index-num_zones
 ! LUMINOSITY ASSUMED CONSTANT
          log_luminosity(zone_index) = log_luminosity(num_zones)
 ! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
-         if(env_struct%env_log10_mass(species_index).lt.star%senv)then
-            log_density(zone_index) = env_struct%env_log10_density(species_index)
-            log_pressure(zone_index) = env_struct%env_log10_pressure(species_index)
-            log_radius(zone_index) = env_struct%env_log10_radius(species_index)
-            log_mass(zone_index) = env_struct%env_log10_mass(species_index) + star%stotal
-            log_temperature(zone_index) = env_struct%env_log10_temperature(species_index)
-            composition(1,zone_index) = env_struct%env_hydrogen_fraction(species_index)
-            composition(3,zone_index) = env_struct%env_metal_fraction(species_index)
+         if(env_struct%env_log10_mass(env_point_index).lt.star%senv)then
+            log_density(zone_index) = env_struct%env_log10_density(env_point_index)
+            log_pressure(zone_index) = env_struct%env_log10_pressure(env_point_index)
+            log_radius(zone_index) = env_struct%env_log10_radius(env_point_index)
+            log_mass(zone_index) = env_struct%env_log10_mass(env_point_index) + star%stotal
+            log_temperature(zone_index) = env_struct%env_log10_temperature(env_point_index)
+            composition(1,zone_index) = env_struct%env_hydrogen_fraction(env_point_index)
+            composition(3,zone_index) = env_struct%env_metal_fraction(env_point_index)
             do k = 4,species_end_index
                composition(k,zone_index) = composition(k,num_zones)
             end do
             composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
                  composition(3,zone_index)-composition(4,zone_index)
-            convective_flag(zone_index) = env_struct%env_convective_flag(species_index)
+            convective_flag(zone_index) = env_struct%env_convective_flag(env_point_index)
          else
 ! POINTS BEYOND THIS ARE ABOVE THE NEW DESIRED FITTING POINT;
 ! INTERPOLATE LINEARLY, SET NEW NUMBER OF TOTAL POINTS, AND EXIT
-            if(species_index.eq.1)then
+            if(env_point_index.eq.1)then
 ! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
                mass_interp_x0 = log_mass(num_zones)
                mass_interp_x1 = star%stotal + star%senv
-               mass_interp_x2 = env_struct%env_log10_mass(species_index) + star%stotal
+               mass_interp_x2 = env_struct%env_log10_mass(env_point_index) + star%stotal
 ! 2026 io/driver stops -> ierr (was: stop 9998)
                if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) then
                   write(*,*) 'rebuild_envelope: degenerate mass interpolation'
@@ -252,33 +231,33 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
                     (mass_interp_x2-mass_interp_x0)
                log_density(zone_index) = log_density(num_zones)+interp_fraction* &
-                    (env_struct%env_log10_density(species_index)-log_density(num_zones))
+                    (env_struct%env_log10_density(env_point_index)-log_density(num_zones))
                log_pressure(zone_index) = log_pressure(num_zones)+interp_fraction* &
-                    (env_struct%env_log10_pressure(species_index)-log_pressure(num_zones))
+                    (env_struct%env_log10_pressure(env_point_index)-log_pressure(num_zones))
                log_radius(zone_index) = log_radius(num_zones)+interp_fraction* &
-                    (env_struct%env_log10_radius(species_index)-log_radius(num_zones))
+                    (env_struct%env_log10_radius(env_point_index)-log_radius(num_zones))
                log_mass(zone_index) = mass_interp_x1
                log_temperature(zone_index) = log_temperature(num_zones)+interp_fraction* &
-                    (env_struct%env_log10_temperature(species_index)-log_temperature(num_zones))
+                    (env_struct%env_log10_temperature(env_point_index)-log_temperature(num_zones))
                composition(1,zone_index) = composition(1,num_zones)+interp_fraction* &
-                    (composition(1,num_zones)-env_struct%env_hydrogen_fraction(species_index))
+                    (composition(1,num_zones)-env_struct%env_hydrogen_fraction(env_point_index))
                composition(3,zone_index) = composition(3,num_zones)+interp_fraction* &
-                    (composition(3,num_zones)-env_struct%env_metal_fraction(species_index))
+                    (composition(3,num_zones)-env_struct%env_metal_fraction(env_point_index))
                do k = 4,species_end_index
                   composition(k,zone_index) = composition(k,num_zones)
                end do
                composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
                     composition(3,zone_index)-composition(4,zone_index)
-               if(env_struct%env_convective_flag(species_index).or.convective_flag(num_zones))then
+               if(env_struct%env_convective_flag(env_point_index).or.convective_flag(num_zones))then
                   convective_flag(zone_index) = .true.
                else
                   convective_flag(zone_index) = .false.
                endif
             else
 ! INTERPOLATE BETWEEN THE LAST 2 ENVELOPE POINTS
-               mass_interp_x0 = env_struct%env_log10_mass(species_index-1) + star%stotal
+               mass_interp_x0 = env_struct%env_log10_mass(env_point_index-1) + star%stotal
                mass_interp_x1 = star%stotal + star%senv
-               mass_interp_x2 = env_struct%env_log10_mass(species_index) + star%stotal
+               mass_interp_x2 = env_struct%env_log10_mass(env_point_index) + star%stotal
 ! 2026 io/driver stops -> ierr (was: stop 9998)
                if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) then
                   write(*,*) 'rebuild_envelope: degenerate mass interpolation'
@@ -287,25 +266,25 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                end if
                interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
                     (mass_interp_x2-mass_interp_x0)
-               log_density(zone_index) = env_struct%env_log10_density(species_index-1)+interp_fraction* &
-                    (env_struct%env_log10_density(species_index)-env_struct%env_log10_density(species_index-1))
-               log_pressure(zone_index) = env_struct%env_log10_pressure(species_index-1)+interp_fraction* &
-                    (env_struct%env_log10_pressure(species_index)-env_struct%env_log10_pressure(species_index-1))
-               log_radius(zone_index) = env_struct%env_log10_radius(species_index-1)+interp_fraction* &
-                    (env_struct%env_log10_radius(species_index)-env_struct%env_log10_radius(species_index-1))
+               log_density(zone_index) = env_struct%env_log10_density(env_point_index-1)+interp_fraction* &
+                    (env_struct%env_log10_density(env_point_index)-env_struct%env_log10_density(env_point_index-1))
+               log_pressure(zone_index) = env_struct%env_log10_pressure(env_point_index-1)+interp_fraction* &
+                    (env_struct%env_log10_pressure(env_point_index)-env_struct%env_log10_pressure(env_point_index-1))
+               log_radius(zone_index) = env_struct%env_log10_radius(env_point_index-1)+interp_fraction* &
+                    (env_struct%env_log10_radius(env_point_index)-env_struct%env_log10_radius(env_point_index-1))
                log_mass(zone_index) = mass_interp_x1
-               log_temperature(zone_index) = env_struct%env_log10_temperature(species_index-1)+interp_fraction* &
-                    (env_struct%env_log10_temperature(species_index)-env_struct%env_log10_temperature(species_index-1))
-               composition(1,zone_index) = env_struct%env_hydrogen_fraction(species_index-1)+interp_fraction* &
-                    (env_struct%env_hydrogen_fraction(species_index)-env_struct%env_hydrogen_fraction(species_index-1))
-               composition(3,zone_index) = env_struct%env_metal_fraction(species_index-1)+interp_fraction* &
-                    (env_struct%env_metal_fraction(species_index)-env_struct%env_metal_fraction(species_index-1))
+               log_temperature(zone_index) = env_struct%env_log10_temperature(env_point_index-1)+interp_fraction* &
+                    (env_struct%env_log10_temperature(env_point_index)-env_struct%env_log10_temperature(env_point_index-1))
+               composition(1,zone_index) = env_struct%env_hydrogen_fraction(env_point_index-1)+interp_fraction* &
+                    (env_struct%env_hydrogen_fraction(env_point_index)-env_struct%env_hydrogen_fraction(env_point_index-1))
+               composition(3,zone_index) = env_struct%env_metal_fraction(env_point_index-1)+interp_fraction* &
+                    (env_struct%env_metal_fraction(env_point_index)-env_struct%env_metal_fraction(env_point_index-1))
                do k = 4,species_end_index
                   composition(k,zone_index) = composition(k,num_zones)
                end do
                composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
                     composition(3,zone_index)-composition(4,zone_index)
-               if(env_struct%env_convective_flag(species_index).or.env_struct%env_convective_flag(species_index-1))then
+               if(env_struct%env_convective_flag(env_point_index).or.env_struct%env_convective_flag(env_point_index-1))then
                   convective_flag(zone_index) = .true.
                else
                   convective_flag(zone_index) = .false.
@@ -366,8 +345,6 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
        sum_angular_momentum = 0.0D0
        sum_rotational_ke = 0.0D0
        do zone_index = 1,num_zones
-! MHP 10/02 logic reversed!
-!          HJM(I) = HJ/HS2(I)
           angular_momentum_shell = specific_angular_momentum(zone_index)*shell_mass(zone_index)
           rotational_kinetic_energy(zone_index) = 0.5D0*star%omega(zone_index)*angular_momentum_shell
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
