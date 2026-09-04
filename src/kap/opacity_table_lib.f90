@@ -42,10 +42,31 @@ module opacity_table_lib
 ! OPAL95 opacity table dimensions. n_opal95_xz is the SLOT count of
 ! the unpacked (13 Z rows x 10 X columns) layout used by ll95tbl and
 ! opal95_fixed_z_table (slot = start_index(iz) + ix), not the number
-! of tables in the file (126; ll95tbl's num_xz). 2026 (bugsweep
+! of tables in the file (n_opal95_tables = 126). 2026 (bugsweep
 ! Batch 2): was 126 with a packed start_index -- see below.
       integer, parameter :: n_opal95_t = 70, n_opal95_d = 19, &
            n_opal95_x = 10, n_opal95_z = 13, n_opal95_xz = 130
+! Number of tables in an OPAL95 table file (ll95tbl reads exactly this
+! many; 8 X columns at all 13 Z, X=0.95 at 10 Z, X=1-Z at 12 Z).
+      integer, parameter :: n_opal95_tables = 126
+! Empty-cell markers. OPAL95 cells with no data are stored as
+! opal95_missing_opacity and detected with ".ge./.gt. opal95_missing_test".
+! OPAL92 tables use opal92_missing_opacity ("<= -9.999" tests).
+      double precision, parameter :: opal95_missing_opacity = 9.999d0
+      double precision, parameter :: opal95_missing_test = 9.9d0
+      double precision, parameter :: opal92_missing_opacity = -9.999d0
+! LAOL89 table dimensions (array extents; the file-size checks in
+! rdlaol/rdzlaol accept at most 11 X columns).
+      integer, parameter :: n_laol_x = 12, n_laol_rho = 104, n_laol_t = 52
+! LAOL89 opacity cap returned by gtlaol/gtlaol2/gtpurz when the
+! interpolated log10(opacity) overflows.
+      double precision, parameter :: laol_opacity_cap = 1.0d35
+! Composition-cache tolerances: a lookup whose X (and Z) is within this
+! of the cached value reuses the previously built fixed-composition
+! table. Each family keeps the tolerance its original code used.
+      double precision, parameter :: alex_composition_tol = 1.0d-8
+      double precision, parameter :: opal92_x_match_tol = 1.0d-5
+      double precision, parameter :: opal95_composition_tol = 1.0d-4
 
       type, public :: opacity_table_state
 ! former common/gllot/, llot/, lintpl/ (OPAL92, first Z table)
@@ -76,8 +97,8 @@ module opacity_table_lib
 ! kap/opal92/opal92_interp3d.f90) and common/kipmll2/ (its second-Z mirror in
 ! kap/opal92/opal92_interp3d_z2.f90, never DATA-initialized in the original -- no
 ! initializer here either, preserving that asymmetry).
-           integer :: abund_index = 1, temp_index = 1, dens_index = 1
-           integer :: abund_index_z2, temp_index_z2, dens_index_z2
+           integer :: opal92_index_x = 1, opal92_index_t = 1, opal92_index_rho = 1
+           integer :: opal92_index_x_z2, opal92_index_t_z2, opal92_index_rho_z2
 ! former common/galot/, alot/, alotall/ (Alexander 1994/95)
            double precision :: alex95_grid_logt(n_alex95_t) = &
                 [3.00d0,3.05d0,3.10d0,3.15d0,3.20d0,3.25d0,3.30d0, &
@@ -144,22 +165,30 @@ module opacity_table_lib
            integer :: kurucz2_density_start_index(kurucz_num_x_temp_entries), &
                 kurucz2_density_count(kurucz_num_x_temp_entries)
 ! former common/slaol/, slaol2/, nwlaol2/, zlaol/, zslaol/ (LAOL89/
-! SLAOL, dimensions are raw literals in every declaring file, not
-! named PARAMETERs -- preserved as literals here too)
-           double precision :: slaol_opacity(12,104,52), slaol_log_rho(12,104,52), &
-                slaol_d2opacity(12,104,52)
-           integer :: slaol_num_points(12,52)
-           double precision :: slaol2_opacity(12,104,52), slaol2_log_rho(12,104,52), &
-                slaol2_d2opacity(12,104,52)
-           integer :: slaol2_num_points(12,52)
-           double precision :: olaol2(12,104,52), oxa2(12), ot2(52), orho2(104)
-           integer :: nxyz2, nrho2, nt2
-           double precision :: zlaol_opacity(104,52), zlaol_logt_grid(52), &
-                zlaol_logrho_grid(104)
+! SLAOL: the spline-prepared first-Z, second-Z and pure-Z tables)
+           double precision :: slaol_opacity(n_laol_x,n_laol_rho,n_laol_t), &
+                slaol_log_rho(n_laol_x,n_laol_rho,n_laol_t), &
+                slaol_d2opacity(n_laol_x,n_laol_rho,n_laol_t)
+           integer :: slaol_num_points(n_laol_x,n_laol_t)
+           double precision :: slaol2_opacity(n_laol_x,n_laol_rho,n_laol_t), &
+                slaol2_log_rho(n_laol_x,n_laol_rho,n_laol_t), &
+                slaol2_d2opacity(n_laol_x,n_laol_rho,n_laol_t)
+           integer :: slaol2_num_points(n_laol_x,n_laol_t)
+! former common/nwlaol/ and nwlaol2/: the LAOL89 tables as read by
+! rdlaol (opacity, X grid, rho grid, T grid -- sulaol converts the T
+! grid to log10 in place) and their extents.
+           double precision :: laol_opacity(n_laol_x,n_laol_rho,n_laol_t), &
+                laol_grid_x(n_laol_x), laol_grid_t(n_laol_t), laol_grid_rho(n_laol_rho)
+           integer :: laol_num_x, laol_num_rho, laol_num_t
+           double precision :: laol2_opacity(n_laol_x,n_laol_rho,n_laol_t), &
+                laol2_grid_x(n_laol_x), laol2_grid_t(n_laol_t), laol2_grid_rho(n_laol_rho)
+           integer :: laol2_num_x, laol2_num_rho, laol2_num_t
+           double precision :: zlaol_opacity(n_laol_rho,n_laol_t), zlaol_logt_grid(n_laol_t), &
+                zlaol_logrho_grid(n_laol_rho)
            integer :: zlaol_num_rho, zlaol_num_t
-           double precision :: zslaol_opacity(104,52), zslaol_log_rho(104,52), &
-                zslaol_d2opacity(104,52)
-           integer :: zslaol_num_points(52)
+           double precision :: zslaol_opacity(n_laol_rho,n_laol_t), zslaol_log_rho(n_laol_rho,n_laol_t), &
+                zslaol_d2opacity(n_laol_rho,n_laol_t)
+           integer :: zslaol_num_points(n_laol_t)
 ! former common/llot95a/: the OPAL95 opacity table grid and full
 ! (all-Z) opacity array. opal95_grid_x/opal95_grid_z/
 ! opal95_table_start_index/opal95_num_x_at_z DATA-initialized in
@@ -221,17 +250,14 @@ module opacity_table_lib
 ! 2026 (phase six, step 3 -- ROADMAP.md): evicted here from
 ! const_lib, where this table/working data had landed during the
 ! phase-one COMMON conversion; it belongs with this domain's state.
-! former common/nwlaol/: the LAOL pure-Z opacity table (olaol/oxa/ot/
-! orho/tollaol/iolaol/numofxyz/numrho/numt/llaol/iopurez) is spelled
-! identically to its canonical name everywhere -- use-associated
-! directly. tollaol/llaol's DATA defaults moved here from
+! former common/nwlaol/ controls (the table arrays themselves are now
+! opacity_table%laol_*): tollaol/llaol's DATA defaults moved here from
 ! core/read_input.f90 since DATA can no longer target use-associated
 ! entities. use_pure_z_table (originally lpurez) is a NAMELIST value
 ! with a different canonical spelling, kept local in core/read_input.f90
-! and copy-assigned.
-      double precision :: olaol(12,104,52), oxa(12), ot(52), orho(104)
+! and copy-assigned. iolaol/iopurez are the table unit numbers.
       double precision :: tollaol = 10.0d0
-      integer :: iolaol, numofxyz, numrho, numt, iopurez
+      integer :: iolaol, iopurez
       logical :: llaol = .false.
       logical :: use_pure_z_table
 

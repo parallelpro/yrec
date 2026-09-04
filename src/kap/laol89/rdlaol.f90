@@ -35,9 +35,9 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
       open(unit=iolaol,file=laol_table_path, form='FORMATTED', &
            status='OLD')
 !     READ IN ARRAY SIZES
-      read(iolaol,100) numofxyz,numrho,numt
+      read(iolaol,100) opacity_table%laol_num_x,opacity_table%laol_num_rho,opacity_table%laol_num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
-      if (numofxyz.gt.11.or.numrho.gt.104.or.numt.gt.52) then
+      if (opacity_table%laol_num_x.gt.n_laol_x-1.or.opacity_table%laol_num_rho.gt.n_laol_rho.or.opacity_table%laol_num_t.gt.n_laol_t) then
          write(run_log_unit,*)' OPACITY ARRAY TOO LARGE.'
          ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
@@ -60,22 +60,22 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 ! 130 FORMAT(54X,F8.5,///////)
   130 format(54x,f8.5,/////,1p6e12.5,/,1p6e12.5,/1p6e12.5)
 !     READ IN H MASS FRACTIONS OF TABLE
-      read(iolaol,140) (oxa(ii),ii=1,numofxyz)
+      read(iolaol,140) (opacity_table%laol_grid_x(ii),ii=1,opacity_table%laol_num_x)
   140 format(/,(1p6e12.5))
 !     READ IN DENSITY GRID OF TABLE
-      read(iolaol,150) (orho(ii),ii=1,numrho)
+      read(iolaol,150) (opacity_table%laol_grid_rho(ii),ii=1,opacity_table%laol_num_rho)
   150 format(/,(1p6e12.5))
 !     READ IN TEMPERATURE GRID OF TABLE
-      read(iolaol,160) (ot(ii),ii=1,numt)
+      read(iolaol,160) (opacity_table%laol_grid_t(ii),ii=1,opacity_table%laol_num_t)
   160 format(/,(1p6e12.5))
 !     READ IN OPACITIES
       read(iolaol,170)
   170 format(1x)
-      do ix=1,numofxyz
-         do ir=1,numrho
+      do ix=1,opacity_table%laol_num_x
+         do ir=1,opacity_table%laol_num_rho
             read(iolaol,200)
   200       format(1x)
-            read(iolaol,210) (olaol(ix,ir,it),it=1,numt)
+            read(iolaol,210) (opacity_table%laol_opacity(ix,ir,it),it=1,opacity_table%laol_num_t)
   210       format(1p6e12.5)
          end do
       end do
@@ -87,8 +87,8 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
          open(newunit=laol2_unit,file=laol_table2_path, form='FORMATTED', &
               status='OLD')
 !        READ IN ARRAY SIZES
-         read(laol2_unit,100) opacity_table%nxyz2,opacity_table%nrho2,opacity_table%nt2
-         if (opacity_table%nxyz2.gt.11.or.opacity_table%nrho2.gt.104.or.opacity_table%nt2.gt.52) then
+         read(laol2_unit,100) opacity_table%laol2_num_x,opacity_table%laol2_num_rho,opacity_table%laol2_num_t
+         if (opacity_table%laol2_num_x.gt.n_laol_x-1.or.opacity_table%laol2_num_rho.gt.n_laol_rho.or.opacity_table%laol2_num_t.gt.n_laol_t) then
             write(run_log_unit,*)' SECOND OPACITY ARRAY TOO LARGE.'
             ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
             ierr = 1
@@ -108,17 +108,17 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 !        S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni scaled to sum to ZHIT
          read(laol2_unit,130) zhit2, zdh2
 !        READ IN H MASS FRACTIONS OF TABLE
-         read(laol2_unit,140) (opacity_table%oxa2(ii),ii=1,opacity_table%nxyz2)
+         read(laol2_unit,140) (opacity_table%laol2_grid_x(ii),ii=1,opacity_table%laol2_num_x)
 !        READ IN DENSITY GRID OF TABLE
-         read(laol2_unit,150) (opacity_table%orho2(ii),ii=1,opacity_table%nrho2)
+         read(laol2_unit,150) (opacity_table%laol2_grid_rho(ii),ii=1,opacity_table%laol2_num_rho)
 !        READ IN TEMPERATURE GRID OF TABLE
-         read(laol2_unit,160) (opacity_table%ot2(ii),ii=1,opacity_table%nt2)
+         read(laol2_unit,160) (opacity_table%laol2_grid_t(ii),ii=1,opacity_table%laol2_num_t)
 !        READ IN OPACITIES
          read(laol2_unit,170)
-         do ix=1,opacity_table%nxyz2
-            do ir=1,opacity_table%nrho2
+         do ix=1,opacity_table%laol2_num_x
+            do ir=1,opacity_table%laol2_num_rho
                read(laol2_unit,200)
-               read(laol2_unit,210) (opacity_table%olaol2(ix,ir,it),it=1,opacity_table%nt2)
+               read(laol2_unit,210) (opacity_table%laol2_opacity(ix,ir,it),it=1,opacity_table%laol2_num_t)
             end do
          end do
          close(laol2_unit)

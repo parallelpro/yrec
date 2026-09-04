@@ -16,7 +16,6 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       use opacity_table_lib
       use math_lib
       implicit none
-      integer, parameter :: max_num_temps = 60
 
       character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
       integer, intent(out) :: ierr
@@ -44,7 +43,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       if (read_status .lt. 0) exit table_read    ! was end=120
       if (prev_grid_temp.ne.grid_temp) then
          num_read = num_read+1
-         if (num_read.gt.max_num_temps) then
+         if (num_read.gt.kurucz_max_num_temps) then
             write(*,*) 'read_kurucz_tables: too many temperature rows in ', &
                  trim(kurucz_table_path)
             ierr = 1
@@ -86,7 +85,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
          if (read_status .lt. 0) exit table2_read    ! was end=220
          if (prev_grid_temp.ne.grid_temp) then
             num_read = num_read+1
-            if (num_read.gt.max_num_temps) then
+            if (num_read.gt.kurucz_max_num_temps) then
                write(*,*) 'read_kurucz_tables: too many temperature rows in ', &
                     trim(kurucz_table2_path)
                ierr = 1

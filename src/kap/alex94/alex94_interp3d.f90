@@ -17,8 +17,6 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_t = 23
-      integer, parameter :: num_d = 17
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
@@ -35,7 +33,7 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
 
       delta_z = abs(metal_fraction-opacity_table%alex95_cached_z)
 !     ENSURE THAT OPACITY TABLE HAS THE SAME Z VALUE AS THE ENVELOPE.
-      if (delta_z.gt.1.0d-8) then
+      if (delta_z.gt.alex_composition_tol) then
          call alex94_fixed_z_table(metal_fraction)
          call alex94_surface_table(hydrogen_fraction)
       endif
@@ -44,7 +42,7 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
 !     FIND NEAREST GRID POINTS IN T.
 !     Insure that index IT is within the required array bounds  llp  8/19/08
       if (opacity_table%alex95_index_t .lt. 1) opacity_table%alex95_index_t=1
-      if ((opacity_table%alex95_index_t+2) .gt. num_t) opacity_table%alex95_index_t=num_t-2
+      if ((opacity_table%alex95_index_t+2) .gt. n_alex95_t) opacity_table%alex95_index_t=n_alex95_t-2
       if (log10_temperature.lt.opacity_table%alex95_grid_logt(opacity_table%alex95_index_t+2)) then
          do i = opacity_table%alex95_index_t+1,2,-1
             if (log10_temperature.gt.opacity_table%alex95_grid_logt(i)) then
@@ -56,15 +54,15 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
          opacity_table%alex95_index_t = 1
          end if
       else
-         do i = opacity_table%alex95_index_t+3,num_t
+         do i = opacity_table%alex95_index_t+3,n_alex95_t
             if (log10_temperature.lt.opacity_table%alex95_grid_logt(i)) then
                opacity_table%alex95_index_t = i - 2
-               opacity_table%alex95_index_t = min(num_t-3,opacity_table%alex95_index_t)
+               opacity_table%alex95_index_t = min(n_alex95_t-3,opacity_table%alex95_index_t)
                exit
             endif
          end do
-         if (i > num_t) then
-         opacity_table%alex95_index_t = num_t - 3
+         if (i > n_alex95_t) then
+         opacity_table%alex95_index_t = n_alex95_t - 3
          end if
       endif
 !     INTERPOLATION FACTORS IN LOG T
@@ -84,23 +82,23 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
          opacity_table%alex95_index_r = 1
          end if
       else
-         do i = opacity_table%alex95_index_r+3,num_d
+         do i = opacity_table%alex95_index_r+3,n_alex95_d
             if (logr.lt.opacity_table%alex95_grid_logr(i)) then
                opacity_table%alex95_index_r = i - 2
-               opacity_table%alex95_index_r = min(num_d-3,opacity_table%alex95_index_r)
+               opacity_table%alex95_index_r = min(n_alex95_d-3,opacity_table%alex95_index_r)
                exit
             endif
          end do
-         if (i > num_d) then
-         opacity_table%alex95_index_r = num_d - 3
+         if (i > n_alex95_d) then
+         opacity_table%alex95_index_r = n_alex95_d - 3
          end if
       endif
 !     INTERPOLATION FACTORS IN LOG R
-      if (logr.gt.opacity_table%alex95_grid_logr(num_d).and. &
-           abs(hydrogen_fraction-opacity_table%alex95_cached_x).lt.1.0d-8) then
+      if (logr.gt.opacity_table%alex95_grid_logr(n_alex95_d).and. &
+           abs(hydrogen_fraction-opacity_table%alex95_cached_x).lt.alex_composition_tol) then
          extrapolate_linear = .true.
          saved_r = logr
-         logr = opacity_table%alex95_grid_logr(num_d)
+         logr = opacity_table%alex95_grid_logr(n_alex95_d)
       else
          extrapolate_linear = .false.
       endif
@@ -110,7 +108,7 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
       call interp(interp_nodes, weight_r, dweight_r, logr)
 !     NOW EITHER INTERPOLATE IN SURFACE X TABLE OR CALCULATE OPACITY AT
 !     4 DIFFERENT VALUES OF X AND INTERPOLATE IN X.
-      if (abs(hydrogen_fraction-opacity_table%alex95_cached_x).lt.1.0d-8) then
+      if (abs(hydrogen_fraction-opacity_table%alex95_cached_x).lt.alex_composition_tol) then
 !        SURFACE ABUNDANCE TABLE
 !        INTERPOLATE IN LOG R AT FIXED T
          do i = 1,4
@@ -128,8 +126,8 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
             do i = 1,4
                ii = opacity_table%alex95_index_t+i-1
                opacity_row(i) = opacity_row(i)+(saved_r-logr)* &
-                    (opacity_table%alex95_opacity(8,ii,num_d)-opacity_table%alex95_opacity(8,ii,num_d-1))/ &
-                    (opacity_table%alex95_grid_logr(num_d)-opacity_table%alex95_grid_logr(num_d-1))
+                    (opacity_table%alex95_opacity(8,ii,n_alex95_d)-opacity_table%alex95_opacity(8,ii,n_alex95_d-1))/ &
+                    (opacity_table%alex95_grid_logr(n_alex95_d)-opacity_table%alex95_grid_logr(n_alex95_d-1))
             end do
             logr = saved_r
          endif

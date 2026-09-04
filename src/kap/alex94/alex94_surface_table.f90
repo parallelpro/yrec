@@ -15,8 +15,6 @@ subroutine alex94_surface_table(hydrogen_fraction)
       use opacity_table_lib
       use numerics_lib
       implicit none
-      integer, parameter :: num_t = 23
-      integer, parameter :: num_d = 17
 
       double precision, intent(in) :: hydrogen_fraction
 
@@ -42,8 +40,8 @@ subroutine alex94_surface_table(hydrogen_fraction)
          interp_x(i) = opacity_table%alex95_grid_x(opacity_table%alex95_index_x+i-1)
       end do
       call intrp2(interp_x, weight_x, hydrogen_fraction)
-      do i = 1,num_t
-         do j = 1,num_d
+      do i = 1,n_alex95_t
+         do j = 1,n_alex95_d
             opacity_table%alex95_opacity(8,i,j) = weight_x(1)*opacity_table%alex95_opacity(opacity_table%alex95_index_x,i,j)+ &
                  weight_x(2)*opacity_table%alex95_opacity(opacity_table%alex95_index_x+1,i,j) + &
                  weight_x(3)*opacity_table%alex95_opacity(opacity_table%alex95_index_x+2,i,j) + &

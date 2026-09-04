@@ -16,7 +16,6 @@ subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fractio
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_x = 3
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction
@@ -25,7 +24,7 @@ subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fractio
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
 
-! The warm-start cursors abund_index_z2/temp_index_z2/dens_index_z2
+! The warm-start cursors opal92_index_x_z2/opal92_index_t_z2/opal92_index_rho_z2
 ! are members of opacity_table (opacity_table_lib).
       logical :: single_x_table
       double precision :: t6, rhot3
@@ -41,38 +40,38 @@ subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fractio
 ! RHOT3 = LOG10(RHO/(T/10E6)**3)
       rhot3 = log10_density - 3.0d0*t6
 
-      if (dabs(opacity_table%opal92_surface_x_z2-hydrogen_fraction).le.1.0d-5) then
-         opacity_table%abund_index_z2 = 4
+      if (dabs(opacity_table%opal92_surface_x_z2-hydrogen_fraction).le.opal92_x_match_tol) then
+         opacity_table%opal92_index_x_z2 = 4
          single_x_table = .true.
       endif
       if (.not. single_x_table) then
-      do im1 = 1,num_x
-         if (dabs(opacity_table%opal92_grid_x_z2(im1)-hydrogen_fraction).le.1.0d-5) then
-            opacity_table%abund_index_z2 = im1
+      do im1 = 1,n_opal92_x
+         if (dabs(opacity_table%opal92_grid_x_z2(im1)-hydrogen_fraction).le.opal92_x_match_tol) then
+            opacity_table%opal92_index_x_z2 = im1
             single_x_table = .true.
             exit
          endif
       end do
       end if
       if (.not. single_x_table) then
-      call findex(opacity_table%opal92_grid_x_z2, num_x, hydrogen_fraction, opacity_table%abund_index_z2)
-      if (opacity_table%abund_index_z2.lt.0) opacity_table%abund_index_z2 = -opacity_table%abund_index_z2
-      if (opacity_table%abund_index_z2.le.1.and.rhot3.gt.-1.0d0) opacity_table%abund_index_z2 = 2
-      if (opacity_table%abund_index_z2.ge.3) opacity_table%abund_index_z2 = 2
-      if (opacity_table%abund_index_z2.le.0) then
+      call findex(opacity_table%opal92_grid_x_z2, n_opal92_x, hydrogen_fraction, opacity_table%opal92_index_x_z2)
+      if (opacity_table%opal92_index_x_z2.lt.0) opacity_table%opal92_index_x_z2 = -opacity_table%opal92_index_x_z2
+      if (opacity_table%opal92_index_x_z2.le.1.and.rhot3.gt.-1.0d0) opacity_table%opal92_index_x_z2 = 2
+      if (opacity_table%opal92_index_x_z2.ge.3) opacity_table%opal92_index_x_z2 = 2
+      if (opacity_table%opal92_index_x_z2.le.0) then
          write(*,*) 'opal92_interp3d_z2: error in X2 grid'
          ierr = 1
          return
       end if
       end if
-      call findex(opacity_table%opal92_grid_logt_z2, opacity_table%opal92_num_temps_z2, t6, opacity_table%temp_index_z2)
-      if (opacity_table%temp_index_z2.lt.0.and.opacity_table%opal92_grid_logt_z2(opacity_table%opal92_num_temps_z2).eq.t6) opacity_table%temp_index_z2 = -opacity_table%temp_index_z2
-      if (opacity_table%temp_index_z2.lt.0) then
+      call findex(opacity_table%opal92_grid_logt_z2, opacity_table%opal92_num_temps_z2, t6, opacity_table%opal92_index_t_z2)
+      if (opacity_table%opal92_index_t_z2.lt.0.and.opacity_table%opal92_grid_logt_z2(opacity_table%opal92_num_temps_z2).eq.t6) opacity_table%opal92_index_t_z2 = -opacity_table%opal92_index_t_z2
+      if (opacity_table%opal92_index_t_z2.lt.0) then
          write(*,*) 'opal92_interp3d_z2: T out of table'
          ierr = 1
          return
       end if
-      call opal92_interp2d_z2(t6, rhot3, opacity_table%abund_index_z2, opacity_table%temp_index_z2, opacity_table%dens_index_z2, o0, ol0, qod0, qot0, ierr)
+      call opal92_interp2d_z2(t6, rhot3, opacity_table%opal92_index_x_z2, opacity_table%opal92_index_t_z2, opacity_table%opal92_index_rho_z2, o0, ol0, qod0, qot0, ierr)
       if (ierr /= 0) return
       if (single_x_table) then
 !>>> USE ONLY ONE X TABLE
@@ -82,10 +81,10 @@ subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fractio
          qoti = qot0
       else
 !>>> LINEAR EXTRAPOLATION IN X
-         call opal92_interp2d_z2(t6, rhot3, opacity_table%abund_index_z2+1, opacity_table%temp_index_z2, opacity_table%dens_index_z2, o1, ol1, qod1, qot1, ierr)
+         call opal92_interp2d_z2(t6, rhot3, opacity_table%opal92_index_x_z2+1, opacity_table%opal92_index_t_z2, opacity_table%opal92_index_rho_z2, o1, ol1, qod1, qot1, ierr)
       if (ierr /= 0) return
-         grdnt = (hydrogen_fraction-opacity_table%opal92_grid_x_z2(opacity_table%abund_index_z2))/ &
-              (opacity_table%opal92_grid_x_z2(opacity_table%abund_index_z2+1)-opacity_table%opal92_grid_x_z2(opacity_table%abund_index_z2))
+         grdnt = (hydrogen_fraction-opacity_table%opal92_grid_x_z2(opacity_table%opal92_index_x_z2))/ &
+              (opacity_table%opal92_grid_x_z2(opacity_table%opal92_index_x_z2+1)-opacity_table%opal92_grid_x_z2(opacity_table%opal92_index_x_z2))
          log10_opacity = (ol1-ol0)*grdnt + ol0
          qodi = (qod1-qod0)*grdnt + qod0
          qoti = (qot1-qot0)*grdnt + qot0

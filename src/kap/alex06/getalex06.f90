@@ -18,8 +18,6 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_t = 85
-      integer, parameter :: num_d = 19
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
@@ -37,7 +35,7 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       delta_z = abs(metal_fraction-opacity_table%alex06_cached_z)
       delta_x = abs(hydrogen_fraction-opacity_table%alex06_cached_x)
 !     ENSURE THAT OPACITY TABLE HAS THE SAME X,Z VALUE AS THE POINT
-      if (delta_z.gt.1.0d-8 .or. delta_x.gt.1.0d-8) then
+      if (delta_z.gt.alex_composition_tol .or. delta_x.gt.alex_composition_tol) then
          opacity_table%alex06_cached_z = metal_fraction
          opacity_table%alex06_cached_x = hydrogen_fraction
          call alex06tab(ierr)
@@ -47,7 +45,7 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
 !     Insure that index IT is within the required array bounds
       if (opacity_table%alex06_index_t .lt. 1) opacity_table%alex06_index_t=1
-      if ((opacity_table%alex06_index_t+2) .gt. num_t) opacity_table%alex06_index_t=num_t-2
+      if ((opacity_table%alex06_index_t+2) .gt. n_alex06_t) opacity_table%alex06_index_t=n_alex06_t-2
 !     FIND NEAREST GRID POINTS IN T.
       if (log10_temperature.lt.opacity_table%alex06_grid_logt(opacity_table%alex06_index_t+2)) then
          do i = opacity_table%alex06_index_t+1,2,-1
@@ -60,15 +58,15 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
          opacity_table%alex06_index_t = 1
          end if
       else
-         do i = opacity_table%alex06_index_t+3,num_t
+         do i = opacity_table%alex06_index_t+3,n_alex06_t
             if (log10_temperature.lt.opacity_table%alex06_grid_logt(i)) then
                opacity_table%alex06_index_t = i - 2
-               opacity_table%alex06_index_t = min(num_t-3,opacity_table%alex06_index_t)
+               opacity_table%alex06_index_t = min(n_alex06_t-3,opacity_table%alex06_index_t)
                exit
             endif
          end do
-         if (i > num_t) then
-         opacity_table%alex06_index_t = num_t - 3
+         if (i > n_alex06_t) then
+         opacity_table%alex06_index_t = n_alex06_t - 3
          end if
       endif
 !     INTERPOLATION FACTORS IN LOG T
@@ -78,7 +76,7 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       call interp(interp_nodes, weight_t, dweight_t, log10_temperature)
 !     Insure that index ID is within the required array bounds
       if (opacity_table%alex06_index_r .lt. 1) opacity_table%alex06_index_r=1
-      if ((opacity_table%alex06_index_r+2) .gt. num_d) opacity_table%alex06_index_r=num_d-2
+      if ((opacity_table%alex06_index_r+2) .gt. n_alex06_d) opacity_table%alex06_index_r=n_alex06_d-2
 !     FIND NEAREST GRID POINTS IN R = RHO/T6**3
       if (logr.lt.opacity_table%alex06_grid_logr(opacity_table%alex06_index_r+2)) then
          do i = opacity_table%alex06_index_r+1,2,-1
@@ -91,22 +89,22 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
          opacity_table%alex06_index_r = 1
          end if
       else
-         do i = opacity_table%alex06_index_r+3,num_d
+         do i = opacity_table%alex06_index_r+3,n_alex06_d
             if (logr.lt.opacity_table%alex06_grid_logr(i)) then
                opacity_table%alex06_index_r = i - 2
-               opacity_table%alex06_index_r = min(num_d-3,opacity_table%alex06_index_r)
+               opacity_table%alex06_index_r = min(n_alex06_d-3,opacity_table%alex06_index_r)
                exit
             endif
          end do
-         if (i > num_d) then
-         opacity_table%alex06_index_r = num_d - 3
+         if (i > n_alex06_d) then
+         opacity_table%alex06_index_r = n_alex06_d - 3
          end if
       endif
 !     INTERPOLATION FACTORS IN LOG R
-      if (logr.gt.opacity_table%alex06_grid_logr(num_d)) then
+      if (logr.gt.opacity_table%alex06_grid_logr(n_alex06_d)) then
          extrapolate_linear = .true.
          saved_r = logr
-         logr = opacity_table%alex06_grid_logr(num_d)
+         logr = opacity_table%alex06_grid_logr(n_alex06_d)
       else
          extrapolate_linear = .false.
       endif
@@ -130,8 +128,8 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
          do i = 1,4
             ii = opacity_table%alex06_index_t+i-1
             opacity_row(i) = opacity_row(i)+(saved_r-logr)* &
-                 (opacity_table%alex06_opacity(ii,num_d)-opacity_table%alex06_opacity(ii,num_d-1))/ &
-                 (opacity_table%alex06_grid_logr(num_d)-opacity_table%alex06_grid_logr(num_d-1))
+                 (opacity_table%alex06_opacity(ii,n_alex06_d)-opacity_table%alex06_opacity(ii,n_alex06_d-1))/ &
+                 (opacity_table%alex06_grid_logr(n_alex06_d)-opacity_table%alex06_grid_logr(n_alex06_d-1))
          end do
          logr = saved_r
       endif

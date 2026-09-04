@@ -22,33 +22,30 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
 ! runtime-allocated unit for the second (Z-ramp) OPAL92 table
 ! (formerly luout_lib's fixed ioopal2 = 64)
       integer :: opal92b_unit
-      integer, parameter :: num_t = 50
-      integer, parameter :: num_d = 17
-      integer, parameter :: num_x = 3
 
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
       integer, intent(out) :: ierr
 !     local_grid_z IS A READ-LIST TARGET THAT IS NEVER USED AFTERWARDS.
-      double precision :: local_grid_z(num_x)
+      double precision :: local_grid_z(n_opal92_x)
       integer :: i, k, density_index, num_temps_read
       double precision :: grid_temp_k
 
 !     OPEN TABLE
       ierr = 0
       open(unit=star%ctrl%laol_table_unit,file=opal92_table_path)
-      do i=1,num_x
+      do i=1,n_opal92_x
 !        READ GRID POINT FOR ABUNDANCE
 !        READ NUMBER OF GRIDS FOR DENSITY, AND TEMPERATURE
         read(star%ctrl%laol_table_unit,190,end=97) opacity_table%opal92_grid_x(i), local_grid_z(i)
   190   format(33x,f7.4,2x,f7.4)
          read(star%ctrl%laol_table_unit,'()')
 !        READ  LOG(DENSITY/TEMPERATURE**3)
-            read(star%ctrl%laol_table_unit, 200) (opacity_table%opal92_grid_logr(density_index), density_index=1, num_d)
+            read(star%ctrl%laol_table_unit, 200) (opacity_table%opal92_grid_logr(density_index), density_index=1, n_opal92_d)
   200   format (6x, 17f7.1)
 !        READ GRID VALUES FOR TEMPERATURE, AND OPACITY TABLE
-         do k=1, num_t
+         do k=1, n_opal92_t
          read(star%ctrl%laol_table_unit,196,end=93) grid_temp_k, &
-              (opacity_table%opal92_log10_opacity(k+(i-1)*num_t,density_index),density_index=1,num_d)
+              (opacity_table%opal92_log10_opacity(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
          opacity_table%opal92_grid_logt(k)=log10(grid_temp_k)
          end do
    93    num_temps_read=k-1
@@ -63,13 +60,13 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
 ! DBG 5/94 Second Opacity Table read here
       if (star%use_two_z_tables) then
          open(newunit=opal92b_unit,file=opal92_table2_path)
-         do i=1,num_x
+         do i=1,n_opal92_x
             read(opal92b_unit,190,end=597) opacity_table%opal92_grid_x_z2(i), local_grid_z(i)
             read(opal92b_unit,'()')
-            read(opal92b_unit, 200) (opacity_table%opal92_grid_logr_z2(density_index), density_index=1, num_d)
-            do k=1, num_t
+            read(opal92b_unit, 200) (opacity_table%opal92_grid_logr_z2(density_index), density_index=1, n_opal92_d)
+            do k=1, n_opal92_t
                read(opal92b_unit,196,end=593) grid_temp_k, &
-                    (opacity_table%opal92_log10_opacity_z2(k+(i-1)*num_t,density_index),density_index=1,num_d)
+                    (opacity_table%opal92_log10_opacity_z2(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
                opacity_table%opal92_grid_logt_z2(k)=log10(grid_temp_k)
             end do
   593       num_temps_read=k-1

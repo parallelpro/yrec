@@ -20,18 +20,17 @@ subroutine build_kurucz_splines(ierr)
       use math_lib
       implicit none
       integer, intent(out) :: ierr
-      integer, parameter :: num_d = 50
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
 
-      double precision :: spline_work(4,np), density_nodes(num_d)
+      double precision :: spline_work(4,np), density_nodes(kurucz_max_num_densities)
       integer :: it, jd, id, index2, j, i
       double precision :: chkd, chko
 
       ierr = 0
       do it = 1,opacity_table%kurucz_num_temps
          jd = 0
-         do id = 1,num_d
+         do id = 1,kurucz_max_num_densities
             chkd = opacity_table%kurucz_log10_rho(it,id)
             chko = opacity_table%kurucz_log10_opacity(it,id)
             if (chko.le.0.0d0) cycle
@@ -63,7 +62,7 @@ subroutine build_kurucz_splines(ierr)
       if (star%use_two_z_tables) then
          do it = 1,opacity_table%kurucz2_num_temps
             jd = 0
-            do id = 1,num_d
+            do id = 1,kurucz_max_num_densities
                chkd = opacity_table%kurucz2_log10_rho(it,id)
                chko = opacity_table%kurucz2_log10_opacity(it,id)
                if (chko.le.0.0d0) cycle

@@ -11,7 +11,11 @@
 ! for a given block used byte-identical member names/order.
 module atm_table_lib
       implicit none
+! Kurucz (nt) and Kurucz-Castelli (ntc) atmosphere tables: rows in
+! log Teff, atm_table_ng columns in log g.
       integer, parameter :: atm_table_nt = 57, atm_table_ntc = 76
+      integer, parameter :: atm_table_ng = 11
+! Allard table maximum extents (rows in log Teff, columns in log g).
       integer, parameter :: atm_table_nta = 250, atm_table_nga = 25
 
       type, public :: atm_table_state
@@ -70,8 +74,8 @@ module atm_table_lib
 ! kurucz_table_z, originally atmpl/atmtl/atmgl/atmz) and
 ! atm_table_file_unit (originally ioatm) are spelled identically to
 ! their canonical names -- use-associated directly.
-      double precision :: kurucz_log10_pressure_table(57,11), &
-           kurucz_teff_table(57), kurucz_logg_table(11), kurucz_table_z
+      double precision :: kurucz_log10_pressure_table(atm_table_nt,atm_table_ng), &
+           kurucz_teff_table(atm_table_nt), kurucz_logg_table(atm_table_ng), kurucz_table_z
       integer :: atm_table_file_unit
 
 ! former common/atmos2c/: the Kurucz/Castelli surface-pressure table
@@ -79,8 +83,8 @@ module atm_table_lib
 ! kurucz_castelli_logg_table, originally atmplc/atmtlc/atmglc) is
 ! spelled identically to its canonical name everywhere -- use-associated
 ! directly. Unused in core/read_input.f90.
-      double precision :: kurucz_castelli_log10_pressure_table(76,11), &
-           kurucz_castelli_teff_table(76), kurucz_castelli_logg_table(11)
+      double precision :: kurucz_castelli_log10_pressure_table(atm_table_ntc,atm_table_ng), &
+           kurucz_castelli_teff_table(atm_table_ntc), kurucz_castelli_logg_table(atm_table_ng)
 
 
 end module atm_table_lib

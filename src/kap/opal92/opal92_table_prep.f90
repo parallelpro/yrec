@@ -12,19 +12,17 @@
 ! table set when use_two_z_tables is set. Note the two strides for
 ! the same logical row: index1 uses the number of temperature rows
 ! actually read, while opal92_log10_opacity is addressed with the
-! fixed num_t stride that read_opal92_tables stores with.
+! fixed n_opal92_t stride that read_opal92_tables stores with.
 subroutine opal92_table_prep(ierr)
       use star_info_lib, only: star
       use opacity_table_lib
       use numerics_lib
       implicit none
       integer, intent(out) :: ierr
-      integer, parameter :: num_t = 50
-      integer, parameter :: num_d = 17
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
 
-      double precision :: spline_work(4,np), density_nodes(num_d)
+      double precision :: spline_work(4,np), density_nodes(n_opal92_d)
       integer :: ix, it, index1, jd, id, index2, j, i
       double precision :: chkd, chko
 
@@ -34,11 +32,11 @@ subroutine opal92_table_prep(ierr)
       do it = 1,opacity_table%opal92_num_temps
        index1 = it + (ix-1)*opacity_table%opal92_num_temps
        jd = 0
-        do id = 1,num_d
+        do id = 1,n_opal92_d
           chkd = opacity_table%opal92_grid_logr(id)
-          chko = opacity_table%opal92_log10_opacity(it+num_t*(ix-1),id)
+          chko = opacity_table%opal92_log10_opacity(it+n_opal92_t*(ix-1),id)
 !>>>> CHECK THE EMPTY REGION
-          if (chko.le.-9.999d0) cycle
+          if (chko.le.opal92_missing_opacity) cycle
           if (jd.le.0) then
              opacity_table%opal92_density_start_index(index1) = id
              if (id.ne.1) then
@@ -70,10 +68,10 @@ subroutine opal92_table_prep(ierr)
             do it = 1,opacity_table%opal92_num_temps_z2
                index1 = it + (ix-1)*opacity_table%opal92_num_temps_z2
                jd = 0
-               do id = 1,num_d
+               do id = 1,n_opal92_d
                   chkd = opacity_table%opal92_grid_logr_z2(id)
-                  chko = opacity_table%opal92_log10_opacity_z2(it+num_t*(ix-1),id)
-                  if (chko.le.-9.999d0) cycle
+                  chko = opacity_table%opal92_log10_opacity_z2(it+n_opal92_t*(ix-1),id)
+                  if (chko.le.opal92_missing_opacity) cycle
                   if (jd.le.0) then
                      opacity_table%opal92_density_start_index_z2(index1) = id
                      if (id.ne.1) then

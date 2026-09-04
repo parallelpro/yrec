@@ -23,10 +23,10 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
       integer, intent(out) :: ierr
 
-      double precision :: row_log10_opacity(104), row_log_rho(104), &
-           row_d2opacity(104), dlnkap_dlnrho_by_t(52)
-      double precision :: logt_interp_opacity(52), logt_values(52), &
-           logt_d2opacity(52)
+      double precision :: row_log10_opacity(n_laol_rho), row_log_rho(n_laol_rho), &
+           row_d2opacity(n_laol_rho), dlnkap_dlnrho_by_t(n_laol_t)
+      double precision :: logt_interp_opacity(n_laol_t), logt_values(n_laol_t), &
+           logt_d2opacity(n_laol_t)
       double precision :: log_extrap_tolerance
       integer :: t_locate_guess, t_index, t_range_lo, t_range_hi, &
            num_valid_t, num_valid_rho, rho_loop_index, spline_index_lo, &
@@ -125,7 +125,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
          return
       end if
       if (log10_opacity_value .gt. 35) then
-         opacity = 1.0d35
+         opacity = laol_opacity_cap
          log10_opacity = 35.0d0
       else
          opacity = exp10(log10_opacity_value)

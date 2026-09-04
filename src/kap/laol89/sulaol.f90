@@ -19,24 +19,24 @@ subroutine sulaol
       implicit none
 
 ! MHP 8/25 Removed unused variables
-      double precision :: row_log10_opacity(104), row_log_rho(104), &
-           row_d2opacity(104)
+      double precision :: row_log10_opacity(n_laol_rho), row_log_rho(n_laol_rho), &
+           row_d2opacity(n_laol_rho)
       integer :: it, ix, ir, num_valid_rho
 
-      do it=1, numt
-         ot(it) = log10(ot(it))
+      do it=1, opacity_table%laol_num_t
+         opacity_table%laol_grid_t(it) = log10(opacity_table%laol_grid_t(it))
       end do
-      do ix=1, numofxyz
-         do it=1, numt
+      do ix=1, opacity_table%laol_num_x
+         do it=1, opacity_table%laol_num_t
             num_valid_rho=0
-            do ir=1, numrho
+            do ir=1, opacity_table%laol_num_rho
                 opacity_table%slaol_opacity(ix,ir,it) = 0.0d0
                 opacity_table%slaol_log_rho(ix,ir,it) = 0.0d0
                 opacity_table%slaol_d2opacity(ix,ir,it) = 0.0d0
-                if (olaol(ix,ir,it) .ne. 0.0d0) then
+                if (opacity_table%laol_opacity(ix,ir,it) .ne. 0.0d0) then
                    num_valid_rho = num_valid_rho+1
-                   row_log10_opacity(num_valid_rho) = log10(olaol(ix,ir,it))
-                   row_log_rho(num_valid_rho) = log10(orho(ir))
+                   row_log10_opacity(num_valid_rho) = log10(opacity_table%laol_opacity(ix,ir,it))
+                   row_log_rho(num_valid_rho) = log10(opacity_table%laol_grid_rho(ir))
                 end if
             end do
             if (num_valid_rho .ge. 4) then
@@ -55,20 +55,20 @@ subroutine sulaol
       end do
 ! DBG 4/94 Do SPLINE on second opacity table if ZRAMP
       if (star%use_two_z_tables) then
-       do it=1, numt
-          opacity_table%ot2(it) = log10(opacity_table%ot2(it))
+       do it=1, opacity_table%laol_num_t
+          opacity_table%laol2_grid_t(it) = log10(opacity_table%laol2_grid_t(it))
        end do
-         do ix=1, opacity_table%nxyz2
-            do it=1, opacity_table%nt2
+         do ix=1, opacity_table%laol2_num_x
+            do it=1, opacity_table%laol2_num_t
                num_valid_rho=0
-               do ir=1, opacity_table%nrho2
+               do ir=1, opacity_table%laol2_num_rho
                   opacity_table%slaol2_opacity(ix,ir,it) = 0.0d0
                   opacity_table%slaol2_log_rho(ix,ir,it) = 0.0d0
                   opacity_table%slaol2_d2opacity(ix,ir,it) = 0.0d0
-                  if (opacity_table%olaol2(ix,ir,it) .ne. 0.0d0) then
+                  if (opacity_table%laol2_opacity(ix,ir,it) .ne. 0.0d0) then
                      num_valid_rho = num_valid_rho+1
-                     row_log10_opacity(num_valid_rho) = log10(opacity_table%olaol2(ix,ir,it))
-                     row_log_rho(num_valid_rho) = log10(opacity_table%orho2(ir))
+                     row_log10_opacity(num_valid_rho) = log10(opacity_table%laol2_opacity(ix,ir,it))
+                     row_log_rho(num_valid_rho) = log10(opacity_table%laol2_grid_rho(ir))
                   end if
                end do
                if (num_valid_rho .ge. 4) then

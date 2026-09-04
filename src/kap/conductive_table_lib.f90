@@ -13,6 +13,8 @@ module conductive_table_lib
       private
       integer, parameter, public :: cond_n_temp = 19, cond_n_rho = 64, &
            cond_n_z = 15
+! table_loaded_flag holds this value once condopacp has read the table.
+      integer, parameter, public :: cond_table_loaded_marker = 12345
 
       type, public :: conductive_table_state
             double precision :: temp_grid(cond_n_temp)

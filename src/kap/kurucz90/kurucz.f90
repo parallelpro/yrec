@@ -28,16 +28,17 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
       use math_lib
       implicit none
       integer :: jerr_gate
-      integer, parameter :: max_num_temps = 60
 
       double precision, intent(in) :: log10_density, log10_temperature
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
       integer, intent(out) :: ierr
 
-      double precision :: temp_subset_logt(max_num_temps), &
-           temp_subset_log10_opacity(max_num_temps)
-      double precision :: temp_subset_dlnkap_dlnrho(max_num_temps)
+      double precision :: temp_subset_logt(kurucz_max_num_temps), &
+           temp_subset_log10_opacity(kurucz_max_num_temps)
+      double precision :: temp_subset_dlnkap_dlnrho(kurucz_max_num_temps)
+      ! The Kurucz tables are only used below this density and temperature.
+      double precision, parameter :: kurucz_logrho_max = -3.0d0, kurucz_logt_max = 4.1d0
       integer :: num_valid_temps, temp_index, temp_index_start, &
            temp_index_end
       logical :: search_full_range
@@ -54,8 +55,8 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
            opacity_table%kurucz_ix_t)
 
       ierr = 0
-      if (.not.(log10_density.le.-3.0d0 .and. &
-           log10_temperature.le.4.1d0)) return 1
+      if (.not.(log10_density.le.kurucz_logrho_max .and. &
+           log10_temperature.le.kurucz_logt_max)) return 1
       search_full_range = .true.
 !     FOR SIX GRID POINTS OF TEMPERATURE
       temp_index_start = opacity_table%kurucz_ix_t-2

@@ -43,13 +43,11 @@ subroutine alfilein(allard_table_path, ierr)
       use luout_lib
       use math_lib
       implicit none
-      integer, parameter :: nta = 250
-      integer, parameter :: nga = 25
 
       character(len=256), intent(in) :: allard_table_path
       character(len=35) :: first_record
       character(len=256) :: header_line
-      double precision :: local_teffs(nta)
+      double precision :: local_teffs(atm_table_nta)
 
       external sort_shell
       integer :: i, j, nhdr, irecno, i1, j1
@@ -83,9 +81,9 @@ subroutine alfilein(allard_table_path, ierr)
       ierr = 0
 
 !     set output arrays to invalid values
-      do i = 1,nta
+      do i = 1,atm_table_nta
          atm_table%allard_teffl_grid(i) = -999.d0
-         do j = 1,nga
+         do j = 1,atm_table_nga
             atm_table%allard_gl_grid(j) = -999.d0
             atm_table%allard_log10_pressure(i,j) = -999.d0
             atm_table%allard_log10_pressure_tau100(i,j) = -999.d0

@@ -28,19 +28,12 @@ contains
 ! table (atm_choice 5). All of this previously lived as an inline
 ! open/read block in setup/setups.f90 -- moved here verbatim,
 ! including the G Somers 5/15 invalid-pressure-edge catches and the
-! preserved use of `ng` (not `ngc`) in the Castelli branch's final
-! failsafe (harmless, both are 11; not "fixed").
+! table sizes atm_table_nt/ntc x atm_table_ng from atm_table_lib.
 subroutine atm_init(atm_table_path, allard_table_path, ierr)
       use star_info_lib, only: star
 
       use atm_table_lib
       implicit none
-! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES OF KURUCZ,
-! NTC/NGC FOR KURUCZ/CASTELLI (matching setups.f90's historical
-! declarations).
-      integer, parameter :: nt = 57, ng = 11
-      integer, parameter :: ntc = 76, ngc = 11
-
       character(len=256), intent(in) :: atm_table_path
       character(len=256), intent(in) :: allard_table_path
 ! 2026 (ROADMAP.md stage 3): ierr-not-stop; table-load failures print
@@ -64,14 +57,14 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
         read(atm_table_file_unit,200) kurucz_table_z
   200   format(1x,10x,1pe16.8,/)
 ! GET VALUES OF LOG Teff:
-        read(atm_table_file_unit,201) (kurucz_teff_table(teff_idx),teff_idx=1,nt)
+        read(atm_table_file_unit,201) (kurucz_teff_table(teff_idx),teff_idx=1,atm_table_nt)
   201   format(1p4e16.8,13(/1p4e16.8),/1pe16.8,/)
 ! GET VALUES OF LOG G:
-        read(atm_table_file_unit,202) (kurucz_logg_table(logg_idx),logg_idx=1,ng)
+        read(atm_table_file_unit,202) (kurucz_logg_table(logg_idx),logg_idx=1,atm_table_ng)
   202   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
 ! GET GRID OF LOG PRESSURE VALUES:
-        do teff_idx=1,nt
-          read(atm_table_file_unit,203) (kurucz_log10_pressure_table(teff_idx,logg_idx),logg_idx=1,ng)
+        do teff_idx=1,atm_table_nt
+          read(atm_table_file_unit,203) (kurucz_log10_pressure_table(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
   203     format(1p4e16.8,/1p4e16.8,/1p3e16.8)
         end do
         rewind atm_table_file_unit
@@ -81,9 +74,9 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !                      temperature is -999. LCATCH is set to true
 !                      once the first valid P is read, and it can
 !                      set the minimum P thereafter.
-         do teff_idx = 1,nt
+         do teff_idx = 1,atm_table_nt
             found_valid_pressure = .false.
-            do logg_idx = ng,1,-1
+            do logg_idx = atm_table_ng,1,-1
                if(kurucz_log10_pressure_table(teff_idx,logg_idx).le.0.0d0)then
 !                 check if the first non-999 value has been reached.
 !                 if so, set IMIN.
@@ -103,7 +96,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !           if all of the P values at a given T are -999, set IMIN
 !           to the number of gravity terms. in responce, the code
 !           should break when trying to find surface P.
-            if(.not.found_valid_pressure) atm_table%kurucz_gmin_index(teff_idx) = ng
+            if(.not.found_valid_pressure) atm_table%kurucz_gmin_index(teff_idx) = atm_table_ng
          end do
 !        G Somers 5/15 END
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES; USED INSTEAD OF
@@ -125,14 +118,14 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 ! GET ABUNDANCE:
         read(atm_table_file_unit,200) kurucz_table_z
 ! GET VALUES OF LOG Teff:
-        read(atm_table_file_unit,206) (kurucz_castelli_teff_table(teff_idx),teff_idx=1,ntc)
+        read(atm_table_file_unit,206) (kurucz_castelli_teff_table(teff_idx),teff_idx=1,atm_table_ntc)
   206   format(1p4e16.8,18(/1p4e16.8),/)
 ! GET VALUES OF LOG G:
-        read(atm_table_file_unit,208) (kurucz_castelli_logg_table(logg_idx),logg_idx=1,ngc)
+        read(atm_table_file_unit,208) (kurucz_castelli_logg_table(logg_idx),logg_idx=1,atm_table_ng)
   208   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
 ! GET GRID OF LOG PRESSURE VALUES:
-        do teff_idx=1,ntc
-          read(atm_table_file_unit,203) (kurucz_castelli_log10_pressure_table(teff_idx,logg_idx),logg_idx=1,ngc)
+        do teff_idx=1,atm_table_ntc
+          read(atm_table_file_unit,203) (kurucz_castelli_log10_pressure_table(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
         end do
         rewind atm_table_file_unit
         close(atm_table_file_unit)
@@ -141,9 +134,9 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !                      temperature is -999. LCATCH is set to true
 !                      once the first valid P is read, and it can
 !                      set the minimum P thereafter.
-        do teff_idx = 1,ntc
+        do teff_idx = 1,atm_table_ntc
            found_valid_pressure = .false.
-           do logg_idx = ngc,1,-1
+           do logg_idx = atm_table_ng,1,-1
               if(kurucz_castelli_log10_pressure_table(teff_idx,logg_idx).le.0.0d0)then
 !                check if the first non-999 value has been reached.
 !                if so, set IMIN2.
@@ -163,7 +156,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !          if all of the P values at a given T are -999, set IMIN
 !          to the number of gravity terms. in responce, the code
 !          should break when trying to find surface P.
-           if(.not.found_valid_pressure) atm_table%castelli_gmin_index(teff_idx) = ng
+           if(.not.found_valid_pressure) atm_table%castelli_gmin_index(teff_idx) = atm_table_ng
         end do
 ! END JNT 6/14
       endif

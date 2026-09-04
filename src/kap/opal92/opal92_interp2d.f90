@@ -19,7 +19,6 @@ subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_t = 50
 
       double precision, intent(in) :: temperature, density
 ! 2026 ierr campaign: interpolation/extrapolation failures return
@@ -30,8 +29,8 @@ subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
 
-      double precision :: xt(num_t), yto(num_t)
-      double precision :: aqod(num_t)
+      double precision :: xt(n_opal92_t), yto(n_opal92_t)
+      double precision :: aqod(n_opal92_t)
       integer :: jt, it, its, itf
       integer :: mm1, index1, ndss, ndf, knot, index2
       double precision :: dx, c1, c2, c3, c4, ol0, qodi

@@ -31,15 +31,11 @@ subroutine readalex06(alex06_table_path, ierr)
       use opacity_table_lib
       implicit none
       integer, intent(out) :: ierr
-      integer, parameter :: num_x = 9
-      integer, parameter :: num_z = 16
-      integer, parameter :: num_t = 85
-      integer, parameter :: num_d = 19
 
       character(len=256), intent(in) :: alex06_table_path
 
 !     LOCAL ARRAYS
-      double precision :: row_logr_check(num_d), header_x, header_z, row_temp
+      double precision :: row_logr_check(n_alex06_d), header_x, header_z, row_temp
 ! alex06_grid_x/alex06_grid_z/alex06_grid_logt/alex06_grid_logr/
 ! alex06_cached_x/alex06_cached_z/alex06_index_x/alex06_index_t/
 ! alex06_index_r defaults moved to opacity_table_lib.f90: DATA can no
@@ -49,8 +45,8 @@ subroutine readalex06(alex06_table_path, ierr)
       ierr = 0
       open(unit=star%ctrl%alex06_table_unit,file=alex06_table_path)
 !     READ IN INITIAL X AND Z; ENSURE THAT THEY HAVE THE EXPECTED VALUES.
-      do i = 1,num_x-1
-         do ii = 1, num_z
+      do i = 1,n_alex06_x-1
+         do ii = 1, n_alex06_z
 !           INDEX FOR STORING TABLES : 15 SETS OF METAL ABUNDANCE WITH 7 SETS
 !           OF HYDROGEN FOR EACH.  THESE ARE STORED IN THE ORDER (X,Z) OF
 !           (0,0),(0,0.1),...(0.9,0),(0.9,0.1).  The final tables are defined
@@ -64,7 +60,7 @@ subroutine readalex06(alex06_table_path, ierr)
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
 !               STOP
             endif
-            read(star%ctrl%alex06_table_unit,20) (row_logr_check(k),k=1,num_d)
+            read(star%ctrl%alex06_table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
    20       format(6x,19f7.3)
             do kk=1,16
                if (row_logr_check(kk).ne.opacity_table%alex06_grid_logr(kk)) then
@@ -76,11 +72,11 @@ subroutine readalex06(alex06_table_path, ierr)
                   return
                endif
             end do
-            jj = (i-1)*num_z+ii
+            jj = (i-1)*n_alex06_z+ii
 !           OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T.
 !           STORE IN A NUMXZ*NUMT*NUMR ARRAY.
-            do j = num_t,1,-1
-               read(star%ctrl%alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,num_d)
+            do j = n_alex06_t,1,-1
+               read(star%ctrl%alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
    30          format(f5.3,1x,19f7.3)
                if (row_temp.ne.opacity_table%alex06_grid_logt(j)) then
                   write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
@@ -95,7 +91,7 @@ subroutine readalex06(alex06_table_path, ierr)
       end do
 !     FINAL SET OF X TABLES ARE DEFINED AT X = 1 - Z AND THERE IS NOT ONE FOR
 !     Z = 0.1 (ALREADY READ IN AT X=0.9).
-      do ii = 1, num_z-1
+      do ii = 1, n_alex06_z-1
 !        INDEX FOR STORING TABLES : 15 SETS OF METAL ABUNDANCE WITH 7 SETS
 !        OF HYDROGEN FOR EACH.  THESE ARE STORED IN THE ORDER (X,Z) OF
 !        (0,0),(0,0.1),...(0.9,0),(0.9,0.1).  The final tables are defined
@@ -109,7 +105,7 @@ subroutine readalex06(alex06_table_path, ierr)
             ierr = 1
             return
          endif
-         read(star%ctrl%alex06_table_unit,20) (row_logr_check(k),k=1,num_d)
+         read(star%ctrl%alex06_table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
          do kk=1,16
             if (row_logr_check(kk).ne.opacity_table%alex06_grid_logr(kk)) then
                write(*,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
@@ -118,11 +114,11 @@ subroutine readalex06(alex06_table_path, ierr)
                return
             endif
          end do
-         jj = (num_x-1)*num_z+ii
+         jj = (n_alex06_x-1)*n_alex06_z+ii
 !        OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T.
 !        STORE IN A NUMXZ*NUMT*NUMR ARRAY.
-         do j = num_t,1,-1
-            read(star%ctrl%alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,num_d)
+         do j = n_alex06_t,1,-1
+            read(star%ctrl%alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
             if (row_temp.ne.opacity_table%alex06_grid_logt(j)) then
                write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
                ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
@@ -133,8 +129,8 @@ subroutine readalex06(alex06_table_path, ierr)
       end do
       close(unit=star%ctrl%alex06_table_unit)
 !     INITIALIZE FIXED Z,X TABLE
-      do i = 1,num_t
-         do j = 1,num_d
+      do i = 1,n_alex06_t
+         do j = 1,n_alex06_d
             opacity_table%alex06_opacity(i,j)=opacity_table%alex06_full_opacity(1,i,j)
          end do
       end do

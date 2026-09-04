@@ -18,7 +18,6 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_x = 3
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
 
@@ -36,7 +35,7 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
       ierr = 0
       opacity_table%opal92_surface_x=hydrogen_fraction
       opacity_table%opal92_surface_z=star%ctrl%opal_table_z1
-      call findex(opacity_table%opal92_grid_x, num_x, hydrogen_fraction, x_index)
+      call findex(opacity_table%opal92_grid_x, n_opal92_x, hydrogen_fraction, x_index)
       if (x_index.lt.0) x_index=-x_index
       if (x_index.ge.3) x_index=2
       if (x_index.le.0) then
@@ -82,7 +81,7 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
       if (star%use_two_z_tables) then
          opacity_table%opal92_surface_x_z2=hydrogen_fraction
          opacity_table%opal92_surface_z_z2=star%ctrl%opal_table_z2
-         call findex(opacity_table%opal92_grid_x_z2, num_x, hydrogen_fraction, x_index)
+         call findex(opacity_table%opal92_grid_x_z2, n_opal92_x, hydrogen_fraction, x_index)
          if (x_index.lt.0) x_index=-x_index
          if (x_index.ge.3) x_index=2
          if (x_index.le.0) then

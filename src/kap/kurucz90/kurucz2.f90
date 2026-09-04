@@ -31,16 +31,15 @@ subroutine kurucz2(log10_density, log10_temperature, opacity, &
       use math_lib
       implicit none
       integer :: jerr_gate
-      integer, parameter :: max_num_temps = 60
 
       double precision, intent(in) :: log10_density, log10_temperature
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
       integer, intent(out) :: ierr
 
-      double precision :: temp_subset_logt(max_num_temps), &
-           temp_subset_log10_opacity(max_num_temps)
-      double precision :: temp_subset_dlnkap_dlnrho(max_num_temps)
+      double precision :: temp_subset_logt(kurucz_max_num_temps), &
+           temp_subset_log10_opacity(kurucz_max_num_temps)
+      double precision :: temp_subset_dlnkap_dlnrho(kurucz_max_num_temps)
       integer :: num_valid_temps, temp_index, temp_index_start, &
            temp_index_end
       logical :: search_full_range

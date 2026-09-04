@@ -11,7 +11,7 @@
 ! MHP 7/98 MODIFIED TO READ IN ALL METAL ABUNDACES FOR OPACITY TABLES.
 ! Reads the full set of OPAL95 opacity tables (all tabulated Z and X),
 ! skipping the header, then builds the fixed-Z table via
-! opal95_fixed_z_table. Any premature end of file (fewer than num_xz
+! opal95_fixed_z_table. Any premature end of file (fewer than n_opal95_tables
 ! tables, or a truncated table body) is reported and returns ierr = 1.
 subroutine ll95tbl(opal95_table_path, ierr)
       use star_info_lib, only: star
@@ -20,10 +20,6 @@ subroutine ll95tbl(opal95_table_path, ierr)
       use luout_lib
       implicit none
       integer, intent(out) :: ierr
-      integer, parameter :: num_d = 19
-      integer, parameter :: num_x = 10
-      integer, parameter :: num_z = 13
-      integer, parameter :: num_xz = 126
 
       character(len=256), intent(in) :: opal95_table_path
 
@@ -54,7 +50,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
 !     ENTRY POINT FOR GETTING NEW TABLES.
       table_loop: do
       n = opacity_table%opal95_table_start_index(iz)+ix
-      if (ix.lt.num_x) then
+      if (ix.lt.n_opal95_x) then
          xxt = opacity_table%opal95_grid_x(ix)
       else
          xxt = 1.0d0 - opacity_table%opal95_grid_z(iz)
@@ -67,10 +63,10 @@ subroutine ll95tbl(opal95_table_path, ierr)
       endif
 
 !     READ IN HEADER INFO: GRID IN RHO/T6**3
-      read(star%ctrl%opal95_table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,num_d)
+      read(star%ctrl%opal95_table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,n_opal95_d)
       if (read_status .lt. 0) then
          write(*,*) 'll95tbl: OPAL95 opacity table file ended after ', nn-1, &
-              ' of ', num_xz, ' tables'
+              ' of ', n_opal95_tables, ' tables'
          close(star%ctrl%opal95_table_unit)
          ierr = 1
          return
@@ -85,57 +81,57 @@ subroutine ll95tbl(opal95_table_path, ierr)
 !     LOG R = RHO/T6**3
       do i = 1,57
          read(star%ctrl%opal95_table_unit,30,end=9999) opacity_table%opal95_grid_logt(i), &
-              (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d)
+              (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d)
       end do
    30 format(f4.2,19f7.3)
 ! MHP 12/97 NOW TREAT CORNER WITHOUT DATA.
       read(star%ctrl%opal95_table_unit,31,end=9999) opacity_table%opal95_grid_logt(58), &
-           (opacity_table%opal95_full_opacity(n,58,j),j=1,num_d-1)
+           (opacity_table%opal95_full_opacity(n,58,j),j=1,n_opal95_d-1)
    31 format(f4.2,18f7.3)
 
-      opacity_table%opal95_full_opacity(n,58,19) = 9.999d0
+      opacity_table%opal95_full_opacity(n,58,19) = opal95_missing_opacity
       do i = 59,60
          read(star%ctrl%opal95_table_unit,32,end=9999) opacity_table%opal95_grid_logt(i), &
-              (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-2)
+              (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-2)
    32    format(f4.2,17f7.3)
          do j = 18,19
-            opacity_table%opal95_full_opacity(n,i,j) = 9.999d0
+            opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
       do i = 61,64
          read(star%ctrl%opal95_table_unit,33,end=9999) opacity_table%opal95_grid_logt(i), &
-              (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-3)
+              (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-3)
    33    format(f4.2,16f7.3)
          do j = 17,19
-            opacity_table%opal95_full_opacity(n,i,j) = 9.999d0
+            opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
       do i = 65,69
          read(star%ctrl%opal95_table_unit,34,end=9999) opacity_table%opal95_grid_logt(i), &
-              (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-4)
+              (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-4)
    34    format(f4.2,15f7.3)
          do j = 16,19
-            opacity_table%opal95_full_opacity(n,i,j) = 9.999d0
+            opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
       i = 70
       read(star%ctrl%opal95_table_unit,35,end=9999) opacity_table%opal95_grid_logt(i), &
-           (opacity_table%opal95_full_opacity(n,i,j),j=1,num_d-5)
+           (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-5)
    35 format(f4.2,14f7.3)
       do j = 15,19
-         opacity_table%opal95_full_opacity(n,i,j) = 9.999d0
+         opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
       end do
 
 !     EXIT IF CORRECT NUMBER OF TABLES READ IN.
-      if (nn.lt.num_xz) then
+      if (nn.lt.n_opal95_tables) then
       nn = nn + 1
 !     NEED TO ACCOUNT FOR FEWER X VALUES AT HIGHER Z.
       if (ix.le.8) then
-         nmax = num_z
+         nmax = n_opal95_z
       else if (ix.eq.9) then
-         nmax = num_z - 3
+         nmax = n_opal95_z - 3
       else
-         nmax = num_z - 1
+         nmax = n_opal95_z - 1
       endif
 !     READ IN NEXT METAL ABUNDANCE (AT FIXED X) OR READ IN FIRST METAL
 !     ABUNDANCE AT NEXT X.

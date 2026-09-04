@@ -16,9 +16,6 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
       use numerics_lib
       implicit none
       integer, intent(out) :: ierr
-      integer, parameter :: num_t = 70
-      integer, parameter :: num_d = 19
-      integer, parameter :: num_z = 13
 
       double precision, intent(in) :: metal_fraction
 
@@ -29,13 +26,13 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
       ierr = 0
       opacity_table%opal95_fixed_z = metal_fraction
 !  FIND 4 NEAREST TABLES IN Z TO DESIRED VALUE.
-      do i = 3,num_z-1
+      do i = 3,n_opal95_z-1
          if (opacity_table%opal95_grid_z(i).ge.metal_fraction) then
             z_table_index = i - 2
             exit
          endif
       end do
-      if (i > (num_z-1)) then
+      if (i > (n_opal95_z-1)) then
 ! DESIRED Z > 0.1D0; STOP
       write(*,5)metal_fraction
     5 format(1x,'DESIRED Z',f10.6,'OUTSIDE OP95 TABLE RANGE'/ &
@@ -56,8 +53,8 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
          table2_index = opacity_table%opal95_table_start_index(z_table_index+1)+i
          table3_index = opacity_table%opal95_table_start_index(z_table_index+2)+i
          table4_index = opacity_table%opal95_table_start_index(z_table_index+3)+i
-         do j = 1,num_t
-            do k = 1,num_d
+         do j = 1,n_opal95_t
+            do k = 1,n_opal95_d
                opacity_table%opal95_fixed_z_opacity(i,j,k) = z_weight(1)*opacity_table%opal95_full_opacity(table1_index,j,k)+ &
                z_weight(2)*opacity_table%opal95_full_opacity(table2_index,j,k)+z_weight(3)*opacity_table%opal95_full_opacity(table3_index,j,k)+ &
                z_weight(4)*opacity_table%opal95_full_opacity(table4_index,j,k)
@@ -70,7 +67,7 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
 !  OTHERWISE, CHECK TO ENSURE THAT THE 4 Z TABLES USED HAVE Z < 0.04
 !  ADJUST INTERPOLATION FACTORS IF NEEDED
       if (opacity_table%opal95_grid_z(z_table_index+3).gt.0.04d0) then
-         z_table_index2 = num_z - 6
+         z_table_index2 = n_opal95_z - 6
          do i = 1,4
             table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index2+i-1)
          end do
@@ -85,8 +82,8 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
       table2_index = opacity_table%opal95_table_start_index(z_table_index2+1)+9
       table3_index = opacity_table%opal95_table_start_index(z_table_index2+2)+9
       table4_index = opacity_table%opal95_table_start_index(z_table_index2+3)+9
-      do j = 1,num_t
-         do k = 1,num_d
+      do j = 1,n_opal95_t
+         do k = 1,n_opal95_d
             opacity_table%opal95_fixed_z_opacity(9,j,k) = z_weight_hix(1)*opacity_table%opal95_full_opacity(table1_index,j,k)+ &
             z_weight_hix(2)*opacity_table%opal95_full_opacity(table2_index,j,k)+z_weight_hix(3)*opacity_table%opal95_full_opacity(table3_index,j,k)+ &
             z_weight_hix(4)*opacity_table%opal95_full_opacity(table4_index,j,k)
@@ -95,13 +92,13 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
       end if
 !  TABLE 10 (X = 1-Z) IS ALWAYS BUILT; ITS Z STENCIL MUST NOT INCLUDE
 !  THE Z=0.1 TABLE, SO PICK z_table_index2/z_weight_hix AGAIN HERE.
-!  (Z > grid_z(num_z-1) IS REJECTED ABOVE, SO THIS TEST IS ALWAYS
+!  (Z > grid_z(n_opal95_z-1) IS REJECTED ABOVE, SO THIS TEST IS ALWAYS
 !  TRUE TODAY; WITHOUT IT THE TABLE-9 STENCIL WOULD BE REUSED.)
       if (metal_fraction.lt.0.1d0) then
 !  CHECK TO ENSURE THAT Z=0.1 TABLE IS NOT ONE OF THE 4 TABLES; ADJUST
 !  INTERPOLATION FACTORS IF NEEDED.
       if (opacity_table%opal95_grid_z(z_table_index+3).ge.0.1d0) then
-         z_table_index2 = num_z - 4
+         z_table_index2 = n_opal95_z - 4
          do i = 1,4
             table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index2+i-1)
          end do
@@ -117,8 +114,8 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
       table2_index = opacity_table%opal95_table_start_index(z_table_index2+1)+10
       table3_index = opacity_table%opal95_table_start_index(z_table_index2+2)+10
       table4_index = opacity_table%opal95_table_start_index(z_table_index2+3)+10
-      do j = 1,num_t
-         do k = 1,num_d
+      do j = 1,n_opal95_t
+         do k = 1,n_opal95_d
             opacity_table%opal95_fixed_z_opacity(10,j,k) = z_weight_hix(1)*opacity_table%opal95_full_opacity(table1_index,j,k)+ &
             z_weight_hix(2)*opacity_table%opal95_full_opacity(table2_index,j,k)+z_weight_hix(3)*opacity_table%opal95_full_opacity(table3_index,j,k)+ &
             z_weight_hix(4)*opacity_table%opal95_full_opacity(table4_index,j,k)

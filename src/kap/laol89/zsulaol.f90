@@ -16,8 +16,8 @@ subroutine zsulaol
       use numerics_lib
       use math_lib
       implicit none
-      double precision :: row_log10_opacity(104), row_log_rho(104), &
-           row_d2opacity(104)
+      double precision :: row_log10_opacity(n_laol_rho), row_log_rho(n_laol_rho), &
+           row_d2opacity(n_laol_rho)
       integer :: it, ir, num_valid_rho
 
       do it=1, opacity_table%zlaol_num_t
