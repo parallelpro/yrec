@@ -16,6 +16,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
       use envint_lib, only: atm_get
+      use envint_kernel, only: senv_thin_envelope
       use star_info_lib
       use envstruct_lib
       use phys_const_lib
@@ -87,7 +88,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
          species_end_index = 11
       endif
 ! RESTRICT THE ENVELOPE MASS TO A MINIMUM OF 10**-12.
-      target_envelope_mass = min(target_envelope_mass,-1.0D-12)
+      target_envelope_mass = min(target_envelope_mass,senv_thin_envelope)
 ! SAVE CURRENT VALUES OF THE TOTAL NUMBER OF POINTS AND ENVELOPE MASS.
       old_num_zones = num_zones
       envelope_mass_before = star%senv
@@ -112,8 +113,8 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! SURFACE GRAVITY
       log_gravity_surface = cgl + star%stotal - log_radius_surface - log_radius_surface
 ! COMPOSITION
-      hydrogen_fraction = composition(1,num_zones)
-      metal_fraction = composition(3,num_zones)
+      hydrogen_fraction = composition(i_h1,num_zones)
+      metal_fraction = composition(i_metals,num_zones)
 ! NEGLECT ROTATIONAL DISTORTION
       fp_surface = 1.0D0
       ft_surface = 1.0D0
@@ -125,13 +126,13 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! SET UP VALUES FOR THE EQUATION OF STATE CALCULATION
       ixx_flag = 0
       if (use_debye_huckel_correction) then
-         debye_huckel_x = composition(1,num_zones)
-         debye_huckel_y = composition(2,num_zones)+composition(4,num_zones)
-         debye_huckel_z_total = composition(3,num_zones)
-         debye_huckel_z(1) = composition(5,num_zones)+composition(6,num_zones)
-         debye_huckel_z(2) = composition(7,num_zones)+composition(8,num_zones)
-         debye_huckel_z(3) = composition(9,num_zones)+composition(10,num_zones)+ &
-              composition(11,num_zones)
+         debye_huckel_x = composition(i_h1,num_zones)
+         debye_huckel_y = composition(i_he4,num_zones)+composition(i_he3,num_zones)
+         debye_huckel_z_total = composition(i_metals,num_zones)
+         debye_huckel_z(1) = composition(i_c12,num_zones)+composition(i_c13,num_zones)
+         debye_huckel_z(2) = composition(i_n14,num_zones)+composition(i_n15,num_zones)
+         debye_huckel_z(3) = composition(i_o16,num_zones)+composition(i_o17,num_zones)+ &
+              composition(i_o18,num_zones)
       end if
 ! INTEGRATE DOWN TO THE CURRENT FITTING POINT USING THE SURFACE L AND TEFF.
       atm_get_unused_flag = 0
@@ -206,13 +207,13 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
             log_radius(zone_index) = env_struct%env_log10_radius(env_point_index)
             log_mass(zone_index) = env_struct%env_log10_mass(env_point_index) + star%stotal
             log_temperature(zone_index) = env_struct%env_log10_temperature(env_point_index)
-            composition(1,zone_index) = env_struct%env_hydrogen_fraction(env_point_index)
-            composition(3,zone_index) = env_struct%env_metal_fraction(env_point_index)
+            composition(i_h1,zone_index) = env_struct%env_hydrogen_fraction(env_point_index)
+            composition(i_metals,zone_index) = env_struct%env_metal_fraction(env_point_index)
             do k = 4,species_end_index
                composition(k,zone_index) = composition(k,num_zones)
             end do
-            composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                 composition(3,zone_index)-composition(4,zone_index)
+            composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                 composition(i_metals,zone_index)-composition(i_he3,zone_index)
             convective_flag(zone_index) = env_struct%env_convective_flag(env_point_index)
          else
 ! POINTS BEYOND THIS ARE ABOVE THE NEW DESIRED FITTING POINT;
@@ -239,15 +240,15 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                log_mass(zone_index) = mass_interp_x1
                log_temperature(zone_index) = log_temperature(num_zones)+interp_fraction* &
                     (env_struct%env_log10_temperature(env_point_index)-log_temperature(num_zones))
-               composition(1,zone_index) = composition(1,num_zones)+interp_fraction* &
-                    (composition(1,num_zones)-env_struct%env_hydrogen_fraction(env_point_index))
-               composition(3,zone_index) = composition(3,num_zones)+interp_fraction* &
-                    (composition(3,num_zones)-env_struct%env_metal_fraction(env_point_index))
+               composition(i_h1,zone_index) = composition(i_h1,num_zones)+interp_fraction* &
+                    (composition(i_h1,num_zones)-env_struct%env_hydrogen_fraction(env_point_index))
+               composition(i_metals,zone_index) = composition(i_metals,num_zones)+interp_fraction* &
+                    (composition(i_metals,num_zones)-env_struct%env_metal_fraction(env_point_index))
                do k = 4,species_end_index
                   composition(k,zone_index) = composition(k,num_zones)
                end do
-               composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                    composition(3,zone_index)-composition(4,zone_index)
+               composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                    composition(i_metals,zone_index)-composition(i_he3,zone_index)
                if(env_struct%env_convective_flag(env_point_index).or.convective_flag(num_zones))then
                   convective_flag(zone_index) = .true.
                else
@@ -275,15 +276,15 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                log_mass(zone_index) = mass_interp_x1
                log_temperature(zone_index) = env_struct%env_log10_temperature(env_point_index-1)+interp_fraction* &
                     (env_struct%env_log10_temperature(env_point_index)-env_struct%env_log10_temperature(env_point_index-1))
-               composition(1,zone_index) = env_struct%env_hydrogen_fraction(env_point_index-1)+interp_fraction* &
+               composition(i_h1,zone_index) = env_struct%env_hydrogen_fraction(env_point_index-1)+interp_fraction* &
                     (env_struct%env_hydrogen_fraction(env_point_index)-env_struct%env_hydrogen_fraction(env_point_index-1))
-               composition(3,zone_index) = env_struct%env_metal_fraction(env_point_index-1)+interp_fraction* &
+               composition(i_metals,zone_index) = env_struct%env_metal_fraction(env_point_index-1)+interp_fraction* &
                     (env_struct%env_metal_fraction(env_point_index)-env_struct%env_metal_fraction(env_point_index-1))
                do k = 4,species_end_index
                   composition(k,zone_index) = composition(k,num_zones)
                end do
-               composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                    composition(3,zone_index)-composition(4,zone_index)
+               composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                    composition(i_metals,zone_index)-composition(i_he3,zone_index)
                if(env_struct%env_convective_flag(env_point_index).or.env_struct%env_convective_flag(env_point_index-1))then
                   convective_flag(zone_index) = .true.
                else

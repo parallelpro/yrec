@@ -32,7 +32,9 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
       use henyey_eliminate_lib
 
       use net_lib
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, &
+           i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_n15, &
+           i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9
       use point_scratch_lib
       use phys_const_lib
       use eos_lib
@@ -124,23 +126,23 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
        zone_log_pressure = star%logP(im)
        zone_log_radius = star%logR(im)
        zone_luminosity_lsun = star%luminosity_lsun(im)
-       hydrogen_fraction = star%xa(1,im)
-       helium_fraction = star%xa(2,im)
-       metal_fraction = star%xa(3,im)
-       he3_fraction = star%xa(4,im)
-       c12_fraction = star%xa(5,im)
-       c13_fraction = star%xa(6,im)
-       n14_fraction = star%xa(7,im)
-       n15_fraction = star%xa(8,im)
-       o16_fraction = star%xa(9,im)
-       o17_fraction = star%xa(10,im)
-       o18_fraction = star%xa(11,im)
+       hydrogen_fraction = star%xa(i_h1,im)
+       helium_fraction = star%xa(i_he4,im)
+       metal_fraction = star%xa(i_metals,im)
+       he3_fraction = star%xa(i_he3,im)
+       c12_fraction = star%xa(i_c12,im)
+       c13_fraction = star%xa(i_c13,im)
+       n14_fraction = star%xa(i_n14,im)
+       n15_fraction = star%xa(i_n15,im)
+       o16_fraction = star%xa(i_o16,im)
+       o17_fraction = star%xa(i_o17,im)
+       o18_fraction = star%xa(i_o18,im)
 ! the extended-composition species are always defined; they are
 ! passed to engeb anyway.
-       deuterium_fraction = star%xa(12,im)
-       li6_fraction = star%xa(13,im)
-       li7_fraction = star%xa(14,im)
-       be9_fraction = star%xa(15,im)
+       deuterium_fraction = star%xa(i_h2,im)
+       li6_fraction = star%xa(i_li6,im)
+       li7_fraction = star%xa(i_li7,im)
+       be9_fraction = star%xa(i_be9,im)
        shell_index = im
        zone_log10_density = star%logRho(im)
        pressure_rotation_factor = star%fp_rot(im)
@@ -272,7 +274,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
                zone_log_temperature_delta = star%log_temperature_delta(im)
                zone_log_pressure_delta = star%log_pressure_delta(im)
             end if
-            if (star%xa(1,im).gt.0.01d0 .and. delta_time.lt.one_year_sec) &
+            if (star%xa(i_h1,im).gt.0.01d0 .and. delta_time.lt.one_year_sec) &
                  zone_dt = one_year_sec_inv
             entropy_term1 = eos_res(i_pressure)*dlnrho_dlnt/eos_res(i_density)
             entropy_term2 = entropy_term1/eos_res(i_grada)

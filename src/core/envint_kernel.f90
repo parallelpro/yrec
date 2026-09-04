@@ -28,6 +28,12 @@ module envint_kernel
             logical :: calc_envelope
       end type envint_config
 
+! senv = log10(fitting-point mass / total mass) is never allowed above
+! this value (rebuild_envelope clamps to it): it keeps the envelope
+! mass above ~1e-12 of the star, and integrate_envelope skips the
+! envelope integration entirely when senv is above it.
+      double precision, parameter, public :: senv_thin_envelope = -1.0d-12
+
 contains
 
 subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
@@ -493,7 +499,7 @@ end subroutine integrate_atmosphere
 subroutine integrate_envelope
       use math_lib
 !  IF ENVELOPE MASS(SENV) SMALL ENOUGH,SKIP ENVELOPE INTEGRATION.
-      if(cfg%senv.gt.-1.0d-12) then
+      if(cfg%senv.gt.senv_thin_envelope) then
        if(save_boundary_flag) then
           vtx_logp(vertex_index) = atm_table%atm_log10_pressure
           vtx_logr(vertex_index) = log10_radius
@@ -711,7 +717,7 @@ subroutine integrate_envelope
       end if
       end if
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR.
-      if(cfg%senv.lt.-1.0d-12)then
+      if(cfg%senv.lt.senv_thin_envelope)then
          do i = 1,env_struct%num_env_points
             inversion_index1 = i
             inversion_index2 = env_struct%num_env_points - i + 1

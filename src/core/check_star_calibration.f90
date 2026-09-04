@@ -21,9 +21,12 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
       integer, intent(in) :: run_index
 
 ! locals
-      double precision :: teff_current, log_r_rsun_current
+      double precision :: teff_current, r_rsun_current
       double precision :: dlogl_dlogr, dage_dlogr
       double precision :: new_x, prev_x, dx_dlogl
+! the hydrogen-fraction step used to seed the second calibration run
+! (the "Y=Y+0.01" step in the messages below)
+      double precision, parameter :: x_calibration_step = 0.01d0
 
 !     star%star_found_flag                 T - have got a star at R* and L*
 !     star%just_passed_target_radius_flag  T - on this run have just passed R*
@@ -31,7 +34,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 !     ctrl%target_star_luminosity_tolerance  tolerance on that luminosity
 !     job%target_radius_rsun               R* (R/Rsun, LINEAR, despite the
 !                                          log_r_* names of the model values)
-!     log_r_rsun_current                   R/Rsun of current model (linear)
+!     r_rsun_current                   R/Rsun of current model (linear)
 !     star%log_r_prev_model                R/Rsun of previous model (linear)
 !     current_age / star%age_prev_model    age of current / previous model (Gyr)
 !     star%age_at_target_radius            age of model at R*
@@ -44,22 +47,22 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 !     If not store L and age and return.
       star%just_passed_target_radius_flag=.false.
       teff_current = exp10(log_teff)
-      log_r_rsun_current = sqrt((exp10(log_l_lsun))*star%solar_luminosity_cgs/ &
+      r_rsun_current = sqrt((exp10(log_l_lsun))*star%solar_luminosity_cgs/ &
            (c4pi*csig))/(teff_current*teff_current*star%solar_radius_cgs)
-      if(log_r_rsun_current.gt.star%log_r_prev_model) then
-         if(.not.(log_r_rsun_current.gt.star%job%target_radius_rsun.and. &
+      if(r_rsun_current.gt.star%log_r_prev_model) then
+         if(.not.(r_rsun_current.gt.star%job%target_radius_rsun.and. &
               star%log_r_prev_model.le.star%job%target_radius_rsun)) then
               star%log_l_prev_model = log_l_lsun
               star%age_prev_model = current_age
-              star%log_r_prev_model = log_r_rsun_current
+              star%log_r_prev_model = r_rsun_current
               return
           end if
       else
-          if (.not.(log_r_rsun_current.lt.star%job%target_radius_rsun.and. &
+          if (.not.(r_rsun_current.lt.star%job%target_radius_rsun.and. &
                star%log_r_prev_model.ge.star%job%target_radius_rsun)) then
               star%log_l_prev_model = log_l_lsun
               star%age_prev_model = current_age
-              star%log_r_prev_model = log_r_rsun_current
+              star%log_r_prev_model = r_rsun_current
               return
            end if
       endif
@@ -71,13 +74,13 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 !     Have previous L,Age and current L,Age (one before R* and
 !     one after R*).  Interpolate to get L,Age at R*
       dlogl_dlogr = (log_l_lsun-star%log_l_prev_model)/ &
-           (log_r_rsun_current-star%log_r_prev_model)
+           (r_rsun_current-star%log_r_prev_model)
       star%log_l_at_target_radius = log_l_lsun + &
-           dlogl_dlogr*(star%job%target_radius_rsun-log_r_rsun_current)
+           dlogl_dlogr*(star%job%target_radius_rsun-r_rsun_current)
       dage_dlogr = (current_age-star%age_prev_model)/ &
-           (log_r_rsun_current-star%log_r_prev_model)
+           (r_rsun_current-star%log_r_prev_model)
       star%age_at_target_radius = current_age + &
-           dage_dlogr*(star%job%target_radius_rsun-log_r_rsun_current)
+           dage_dlogr*(star%job%target_radius_rsun-r_rsun_current)
       write(*,*) ' X, LogL/Lsun at R* =', star%job%rescale_params(2,run_index-1), &
            star%log_l_at_target_radius
       write(run_log_unit,*) '#X, LogL/Lsun at R* =', &
@@ -108,7 +111,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 !           Add 0.01 to Y. Start next run.
             star%log_l_at_target_radius_prev_run = star%log_l_at_target_radius
           prev_x = star%job%rescale_params(2,run_index-1)
-          new_x = prev_x - 0.01d0
+          new_x = prev_x - x_calibration_step
           star%job%rescale_params(2,run_index+1) = new_x
           star%job%initial_x_array(run_index+1) = new_x
           star%job%initial_x_array(run_index+2) = new_x

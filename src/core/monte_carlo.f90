@@ -21,7 +21,7 @@
 ! monte_carlo_active, so the regression suite verifies the non-MC path is
 ! byte-identical; the MC path is compile-verified only.
 module monte_carlo_lib
-      use star_info_lib, only: star, json, i_h1, i_metals, i_lum_grav
+      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_lum_grav
       use luout_lib
       implicit none
       private
@@ -165,7 +165,7 @@ subroutine write_monte_carlo_model(local_log_radius, &
       call write_mod_model(iwrite)
 !  GLOBAL INFORMATION SENT TO FIRST MONTE CARLO OUTPUT FILE
 !  SURFACE Z/X
-      surface_z_over_x = star%xa(3,star%nz)/star%xa(1,star%nz)
+      surface_z_over_x = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
 !  HEADER FILE:  MONTE CARLO PARAMETERS
       write(star%ctrl%monte_carlo_unit1,10)monte_carlo_run_number,star%job%s11_rate(monte_carlo_run_number), &
               star%job%s33_rate(monte_carlo_run_number),star%job%s34_rate(monte_carlo_run_number), &
@@ -186,7 +186,7 @@ subroutine write_monte_carlo_model(local_log_radius, &
       tcen = exp10((star%central_log10_temperature-6.0d0))
       pcen = exp10((star%central_log10_pressure-17.0d0))
       dcen = exp10(star%central_log10_density)
-      write(star%ctrl%monte_carlo_unit1,40)tcen,dcen,pcen,star%xa(1,1),star%xa(3,1)
+      write(star%ctrl%monte_carlo_unit1,40)tcen,dcen,pcen,star%xa(i_h1,1),star%xa(i_metals,1)
  40   format(1X,F7.3,F7.2,F6.3,2F8.5)
 !  #SHELLS, INITIAL ALPHA, Y, Z; FINAL R, L
       yini = 1.0d0 - star%job%rescale_params(2,run_index-2) - star%job%rescale_params(3,run_index-2)
@@ -195,8 +195,8 @@ subroutine write_monte_carlo_model(local_log_radius, &
            star%log_L,local_log_radius
  50   format(I5,F7.4,2F8.5,1P2E10.3)
 !  CZ DEPTH (R,M), SURFACE Y, Z, Z/X (ADD T CZ BASE, RHO CZ BASE)
-      write(star%ctrl%monte_carlo_unit1,60)star%envelope_radius,star%envelope_mass,star%xa(2,star%nz), &
-           star%xa(3,star%nz),surface_z_over_x
+      write(star%ctrl%monte_carlo_unit1,60)star%envelope_radius,star%envelope_mass,star%xa(i_he4,star%nz), &
+           star%xa(i_metals,star%nz),surface_z_over_x
  60   format(F8.5,F9.6,2F8.5,F9.6)
 !  ENERGY GENERATION FRACTIONS PP I,II,III,CNO,EGRAV
       write(star%ctrl%monte_carlo_unit1,70)(star%luminosity_breakdown(j),j=1,4),star%luminosity_breakdown(i_lum_grav)

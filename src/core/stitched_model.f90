@@ -21,6 +21,7 @@
 module stitched_model_lib
       use phys_const_lib
       use math_lib
+      use star_info_lib, only: json
       implicit none
       private
       public :: build_stitched_model, n_ext, n_ie, stx_prof, &
@@ -58,6 +59,13 @@ module stitched_model_lib
            ip_logRho = 5, ip_logP = 6, ip_conv = 9, ip_gradr = 12, &
            ip_gradT = 13, ip_grada = 14, ip_conv_vel = 15, &
            ip_brunt_N2 = 54, ip_csound = 58
+! further columns read (not exported) by compute_seismic_columns:
+! gamma1, delta = -dlnrho/dlnT, mean molecular weight; and the four
+! seismic columns 54-57 (brunt_N2, lamb_S2, gradL, gradr_div_grada)
+! that it fills.
+      integer, parameter :: ip_gamma1 = 10, ip_delta = 51, ip_mu = 52
+      integer, parameter :: ip_seismic_first = ip_brunt_N2, &
+           ip_seismic_last = ip_brunt_N2 + 3
 ! The extended model: interior (center -> fitting point) + envelope
 ! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
 ! assembled inward-to-outward, exactly the regions io/write_stitched_profile.f90
@@ -65,7 +73,7 @@ module stitched_model_lib
 ! cover the full star: truncating at the fitting point would drop the
 ! superadiabatic layer and photosphere, which dominate p-mode
 ! frequencies.
-      integer, parameter :: max_ext = 3*5000
+      integer, parameter :: max_ext = 3*json
       integer :: n_ext = 0
       integer :: ext_region(max_ext)   ! 1 interior, 2 envelope, 3 atmosphere
       integer :: ext_index(max_ext)    ! index within that region
@@ -243,15 +251,15 @@ subroutine compute_seismic_columns
 
       mu_ok = .true.
       do j = 1, n_ext
-         r(j)      = exp(ln10*ext_profile_value(3, j))
-         lnp(j)    = ln10*ext_profile_value(6, j)
-         lnrho(j)  = ln10*ext_profile_value(5, j)
-         g1(j)     = ext_profile_value(10, j)
-         grada_(j) = ext_profile_value(14, j)
-         gradr_(j) = ext_profile_value(12, j)
-         delta_(j) = ext_profile_value(51, j)
-         mass_g(j) = ext_profile_value(2, j)*star%solar_mass_cgs
-         lnmu(j)   = ext_profile_value(52, j)
+         r(j)      = exp(ln10*ext_profile_value(ip_logR, j))
+         lnp(j)    = ln10*ext_profile_value(ip_logP, j)
+         lnrho(j)  = ln10*ext_profile_value(ip_logRho, j)
+         g1(j)     = ext_profile_value(ip_gamma1, j)
+         grada_(j) = ext_profile_value(ip_grada, j)
+         gradr_(j) = ext_profile_value(ip_gradr, j)
+         delta_(j) = ext_profile_value(ip_delta, j)
+         mass_g(j) = ext_profile_value(ip_mass, j)*star%solar_mass_cgs
+         lnmu(j)   = ext_profile_value(ip_mu, j)
          if (lnmu(j) > 0.0d0) then
             lnmu(j) = log(lnmu(j))
          else
@@ -317,8 +325,8 @@ double precision function ext_profile_value(icol, j)
       integer, intent(in) :: icol, j
       integer :: i
 
-      if (icol >= 54 .and. icol <= 57) then
-         ext_profile_value = ext_seismic(icol-53, j)
+      if (icol >= ip_seismic_first .and. icol <= ip_seismic_last) then
+         ext_profile_value = ext_seismic(icol-ip_seismic_first+1, j)
          return
       end if
       i = ext_index(j)

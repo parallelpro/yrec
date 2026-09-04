@@ -17,7 +17,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       use temperature_gradients_lib
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
       use phys_const_lib
       use eos_lib
       use kap_lib
@@ -38,6 +38,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
 
       double precision :: atomic_weight(4)
       double precision :: log_mass_nodes(4), interp_weights(4)
+! indexed by species slot (i_h1, i_he4, i_metals as C12, i_he3)
       data atomic_weight /1.007825d0, 4.002603d0, 12.0d0, 3.01603d0/
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere
@@ -79,8 +80,8 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          log10_pressure = log_pressure(im)
          log10_radius = log_radius(im)
          luminosity_lsun = log_luminosity(im)
-         hydrogen_fraction = composition(1,im)
-         metal_fraction = composition(3,im)
+         hydrogen_fraction = composition(i_h1,im)
+         metal_fraction = composition(i_metals,im)
          log10_density = log_density(im)
          pressure_rotation_factor = fp(im)
          temperature_rotation_factor = ft(im)
@@ -110,17 +111,17 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          star%grada(im) = eos_res(i_grada)
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
-         dfx1 = composition(1,im) - star%envelope_hydrogen_fraction
-         dfx2 = composition(2,im) - star%envelope_helium_fraction
-         dfx3 = composition(3,im) - star%envelope_metal_fraction
-         dfx4 = composition(4,im) - star%envelope_he3_fraction
-         temp_scratch = star%amuenv + dfx1/atomic_weight(1) + &
-              dfx2/atomic_weight(2) + dfx3/atomic_weight(3) + &
-              dfx4/atomic_weight(4)
+         dfx1 = composition(i_h1,im) - star%envelope_hydrogen_fraction
+         dfx2 = composition(i_he4,im) - star%envelope_helium_fraction
+         dfx3 = composition(i_metals,im) - star%envelope_metal_fraction
+         dfx4 = composition(i_he3,im) - star%envelope_he3_fraction
+         temp_scratch = star%amuenv + dfx1/atomic_weight(i_h1) + &
+              dfx2/atomic_weight(i_he4) + dfx3/atomic_weight(i_metals) + &
+              dfx4/atomic_weight(i_he3)
          amu2 = 1.0d0/temp_scratch
-         temp_scratch = composition(1,im)/atomic_weight(1) + &
-              2.0d0*(composition(4,im)/atomic_weight(4) + &
-              composition(2,im)/atomic_weight(2)) + 0.5d0*composition(3,im)
+         temp_scratch = composition(i_h1,im)/atomic_weight(i_h1) + &
+              2.0d0*(composition(i_he3,im)/atomic_weight(i_he3) + &
+              composition(i_he4,im)/atomic_weight(i_he4)) + 0.5d0*composition(i_metals,im)
          emu2 = 1.0d0/temp_scratch
          star%mu(im) = amu2*emu2/(amu2+emu2)
          star%opacity_zone(im) = kap_res(i_kap)

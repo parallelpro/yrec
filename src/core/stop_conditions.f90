@@ -156,6 +156,9 @@ end subroutine check_stop_conditions
 logical function structure_limit_stop_triggered()
       integer :: nk
       integer, parameter :: nlim = 4
+! a limit at its +-1d99 sentinel is off: the test below is against
+! this slightly smaller magnitude
+      double precision, parameter :: limit_active_below = 0.9d99
       character(len=7), parameter :: qname(nlim) = &
            ['log_L  ', 'Teff   ', 'log_g  ', 'nu_max ']
       double precision :: qval(nlim), qup(nlim), qlo(nlim)
@@ -171,7 +174,7 @@ logical function structure_limit_stop_triggered()
 
       structure_limit_stop_triggered = .false.
       do k = 1, nlim
-         if (qup(k) < 0.9d99 .and. qval(k) > qup(k)) then
+         if (qup(k) < limit_active_below .and. qval(k) > qup(k)) then
             write(*,10) trim(qname(k)), qval(k), 'above', &
                  trim(qname(k))//'_upper_limit', qup(k)
             write(run_log_unit,10) trim(qname(k)), qval(k), 'above', &
@@ -179,7 +182,7 @@ logical function structure_limit_stop_triggered()
             star%termination_reason = &
                  trim(qname(k))//' above '//trim(qname(k))//'_upper_limit'
             structure_limit_stop_triggered = .true.
-         else if (qlo(k) > -0.9d99 .and. qval(k) < qlo(k)) then
+         else if (qlo(k) > -limit_active_below .and. qval(k) < qlo(k)) then
             write(*,10) trim(qname(k)), qval(k), 'below', &
                  trim(qname(k))//'_lower_limit', qlo(k)
             write(run_log_unit,10) trim(qname(k)), qval(k), 'below', &

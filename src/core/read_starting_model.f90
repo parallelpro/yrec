@@ -401,38 +401,38 @@ subroutine acquire_starting_model
       if (star%ctrl%change_cno_mixture_active) then
 !     INFER CURRENT TOTAL CNO FRACTIONS AND SCALE ALL ISOTOPES BY THE RATIO BETWEEN
 !     DESIRED AND CURRENT FRACTIONS. RELATIVE ISOTOPES ARE ADJUSTED IN THE ISOTOPE SECTION BELOW.
-         total_carbon_cno_fraction = (reference_composition(5)+ &
-              reference_composition(6))/reference_composition(3)
-         total_nitrogen_cno_fraction = (reference_composition(7)+ &
-              reference_composition(8))/reference_composition(3)
-         total_oxygen_cno_fraction = (reference_composition(9)+ &
-              reference_composition(10)+reference_composition(11))/ &
-              reference_composition(3)
+         total_carbon_cno_fraction = (reference_composition(i_c12)+ &
+              reference_composition(i_c13))/reference_composition(i_metals)
+         total_nitrogen_cno_fraction = (reference_composition(i_n14)+ &
+              reference_composition(i_n15))/reference_composition(i_metals)
+         total_oxygen_cno_fraction = (reference_composition(i_o16)+ &
+              reference_composition(i_o17)+reference_composition(i_o18))/ &
+              reference_composition(i_metals)
          carbon_scale_ratio = star%ctrl%target_carbon_cno_fraction/ &
               total_carbon_cno_fraction
          nitrogen_scale_ratio = star%ctrl%target_nitrogen_cno_fraction/ &
               total_nitrogen_cno_fraction
          oxygen_scale_ratio = star%ctrl%target_oxygen_cno_fraction/ &
               total_oxygen_cno_fraction
-         do i = 5,6
+         do i = i_c12,i_c13
             do j = 1,star%nz
                star%xa(i,j)=carbon_scale_ratio*star%xa(i,j)
             end do
          end do
-         do i = 7,8
+         do i = i_n14,i_n15
             do j = 1,star%nz
                star%xa(i,j)=nitrogen_scale_ratio*star%xa(i,j)
             end do
          end do
-         do i = 9,11
+         do i = i_o16,i_o18
             do j = 1,star%nz
                star%xa(i,j)=oxygen_scale_ratio*star%xa(i,j)
             end do
          end do
-         write(*,594)(reference_composition(k),k=5,11), &
-              (star%xa(k,1),k=5,11)
-         write(run_log_unit,594)(reference_composition(k),k=5,11), &
-              (star%xa(k,1),k=5,11)
+         write(*,594)(reference_composition(k),k=i_c12,i_o18), &
+              (star%xa(k,1),k=i_c12,i_o18)
+         write(run_log_unit,594)(reference_composition(k),k=i_c12,i_o18), &
+              (star%xa(k,1),k=i_c12,i_o18)
  594     format(1x,'CNO mixture applied to the starting model:',/, &
              4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
              4x,'new (C12 C13 N14 N15 O16 O17 O18):',7es12.4)
@@ -456,10 +456,10 @@ subroutine acquire_starting_model
             star%xa(i_li7,j)=star%ctrl%initial_li7_fraction
             star%xa(i_be9,j)=star%ctrl%initial_be9_fraction
          end do
-         write(*,593)(reference_composition(k),k=4,15), &
-              (star%xa(k,1),k=4,15)
-         write(run_log_unit,593)(reference_composition(k),k=4,15), &
-              (star%xa(k,1),k=4,15)
+         write(*,593)(reference_composition(k),k=i_he3,i_be9), &
+              (star%xa(k,1),k=i_he3,i_be9)
+         write(run_log_unit,593)(reference_composition(k),k=i_he3,i_be9), &
+              (star%xa(k,1),k=i_he3,i_be9)
  593     format(1x,'isotope/light-element mixture applied to the', &
              ' starting model:',/, &
              4x,'old (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
