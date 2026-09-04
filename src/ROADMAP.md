@@ -815,3 +815,21 @@ by design: a negative-ierr numerics_termination (solution diverged)
 exits 0; the envelope/atmosphere pulse rows of stitched_model leave
 the mu_e_inv/kap_T/eps columns unfilled.
 
+
+## 12. Readability / maintainability sweep -- 2026-09-03
+
+Seven read-only per-domain reviews (every file read in full),
+asking two questions: does the logic make sense on reading, and is
+there a clearer way to write the same code. Reports and a
+consolidated summary with cross-domain themes and a six-batch plan
+(R1 comments/dead code, R2 named indices, R3 shared helpers, R4
+explicit data flow, R5 derived-type de-duplication, R6 the
+number-changing items with one reseed) are in
+audit/readability-sweep-2026-09-03/ (SUMMARY.md first). Eleven bugs
+found on the way and verified against the source are in its
+section 1.1 -- among them a modernization regression
+(read_starting_model:829 linear Lsun where log10 is needed, on a
+branch no deck runs), the rhoofp01 twin of the Batch 3 rhoofp06
+priming fix, and a one-way swap in envint_kernel's envelope
+reversal. Nothing has been edited yet; awaiting the choice of
+batch.
