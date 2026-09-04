@@ -74,7 +74,7 @@
             integer :: standard_unit = 0
             integer :: fermi_unit = 0
             integer :: dynamics_unit = 0
-            integer :: laol_table_unit = 0
+            integer :: opal92_table_unit = 0
             integer :: composition_unit = 0
             integer :: kurucz_table_unit = 0
             logical :: monte_carlo_active = .false.
@@ -192,7 +192,7 @@
             logical :: use_opal95_tables = .false.
             logical :: use_kurucz90_tables = .false.
             logical :: use_alex95_tables = .false.
-            integer :: ikur2 = 0
+            integer :: kurucz_table2_unit = 0
             integer :: icondopacp = 0
             logical :: use_conductive_opacity = .false.
             integer :: alex95_table_unit = 0

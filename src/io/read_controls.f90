@@ -149,7 +149,7 @@ subroutine read_input(ierr)
 ! further down), so they're simply renamed in place to their canonical
 ! const_lib names (first_unit/run_unit/standard_unit/fermi_unit/
 ! opal_model_unit/opal_envelope_unit/opal_atm_unit/dynamics_unit/
-! laol_table_unit/neutrino_unit/composition_unit/kurucz_table_unit),
+! opal92_table_unit/neutrino_unit/composition_unit/kurucz_table_unit),
 ! now use-associated rather than locally declared.
 
 ! fmonte1/fmonte2: NAMELIST /physics/ members, each with a different
@@ -500,9 +500,11 @@ subroutine read_input(ierr)
       integer :: mcore
       double precision :: fcore
 
-! nwlaol: olaol/oxa/ot/orho/tollaol/iolaol/numofxyz/numrho/numt/llaol/
-! iopurez are spelled identically to their const_lib canonical names --
-! use-associated directly. lpurez is a NAMELIST /physics/ member with a
+! nwlaol: tollaol (a NAMELIST /physics/ member) and llaol are
+! opacity_table_lib module variables spelled identically to their
+! canonical names -- use-associated directly (the table arrays are
+! opacity_table%laol_* now; the unit numbers are newunit locals of
+! the readers). lpurez is a NAMELIST /physics/ member with a
 ! different canonical spelling (use_pure_z_table), so kept local under
 ! its NAMELIST spelling here and copy-assigned after the namelist read
 ! below.
@@ -598,8 +600,9 @@ subroutine read_input(ierr)
            tmolmax
       logical :: lalex06, llaol89, lopal92, lopal95, lkur90, lalex95
 
-! miscopac: ikur2/icondopacp are spelled identically to their canonical
-! names -- use-associated directly. lcondopacp is a NAMELIST /physics/
+! miscopac: kurucz_table2_unit (originally ikur2, the second Kurucz
+! table's unit) and icondopacp are use-associated directly (neither is
+! a namelist value). lcondopacp is a NAMELIST /physics/
 ! member with a different canonical spelling
 ! (use_conductive_opacity), so kept local under its NAMELIST spelling
 ! here and copy-assigned after the namelist read below.
@@ -1269,7 +1272,7 @@ subroutine read_input(ierr)
 ! OUTPUT: INFO RELAVENT TO DYNAMO
       dynamics_unit = 30
 ! YCK INPUT: OPAL92 OPACITY TABLES
-      laol_table_unit = 32
+      opal92_table_unit = 32
 ! YCK INPUT: OPAL95 OPACITY TABLE
       opal95_table_unit = 48
 ! OUTPUT: EXTENDED COMPOSITION INFO
@@ -1293,16 +1296,15 @@ subroutine read_input(ierr)
       unit_centre5 = 47
 ! INPUT: OPAL EQUATION OF STATE
       iopale = 49
-! INPUT LAOL OPACITIES IN DENSE GRID FORMAT
-      iolaol = 61
-! INPUT: LAOL OPACITIES FOR PURE CN IN DENSE GRID FORMAT
-      iopurez = 62
+! (2026: the LAOL and pure-Z LAOL table units, formerly fixed
+! iolaol = 61 / iopurez = 62, are newunit locals of kap/laol89/
+! rdlaol.f90 and rdzlaol.f90 now.)
 ! DBG 4/94
 !     INPUT:
 ! DBG 8/95 SECOND OPOACITY TABLES FOR ZRAMP AND Z DIFFUSION
 ! (2026: the second LAOL/OPAL92 table units are runtime-allocated
 ! locals of their readers now, not fixed luout_lib units.)
-      ikur2 = 65
+      kurucz_table2_unit = 65
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES
       allard_table_unit = 66
 ! MHP 6/98 MONTE CARLO FOR SNUs

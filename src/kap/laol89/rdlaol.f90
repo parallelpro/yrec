@@ -20,9 +20,10 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
       use yale_eos_lib
       implicit none
       integer, intent(out) :: ierr
-! runtime-allocated unit for the second (Z-ramp) LAOL table
-! (formerly luout_lib's fixed iolaol2 = 63)
-      integer :: laol2_unit
+! runtime-allocated units for the LAOL table (formerly the fixed
+! iolaol = 61) and the second (Z-ramp) LAOL table (formerly
+! luout_lib's fixed iolaol2 = 63)
+      integer :: laol_unit, laol2_unit
       double precision, intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
 
@@ -33,10 +34,10 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
       double precision :: zlot, zhit, zlot2, zhit2
 
       ierr = 0
-      open(unit=iolaol,file=laol_table_path, form='FORMATTED', &
+      open(newunit=laol_unit,file=laol_table_path, form='FORMATTED', &
            status='OLD')
 !     READ IN ARRAY SIZES
-      read(iolaol,100) opacity_table%laol_num_x,opacity_table%laol_num_rho,opacity_table%laol_num_t
+      read(laol_unit,100) opacity_table%laol_num_x,opacity_table%laol_num_rho,opacity_table%laol_num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (opacity_table%laol_num_x.gt.n_laol_x-1.or.opacity_table%laol_num_rho.gt.n_laol_rho.or.opacity_table%laol_num_t.gt.n_laol_t) then
          write(run_log_unit,*)' OPACITY ARRAY TOO LARGE.'
@@ -48,7 +49,7 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 !     MG,SI,AR,FE (THE COX&STEWART MIX).  MIXTURE IS FOR THE ZLOT PART
 !     OF THE OPACITY TABLE WITH LAOL RELATIVE ABUNDANCES SCALED
 !     TO SUM TO ZLOT.
-      read(iolaol,120) zlot, laol_work_array(ix_c), laol_work_array(ix_n), &
+      read(laol_unit,120) zlot, laol_work_array(ix_c), laol_work_array(ix_n), &
            laol_work_array(ix_o), laol_work_array(ix_ne), laol_work_array(ix_na), &
            laol_work_array(ix_mg), laol_work_array(ix_al), laol_work_array(ix_si), &
            laol_work_array(ix_ar), laol_work_array(ix_fe)
@@ -57,30 +58,30 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 ! DBG 7/92 NEED RELATIVE ABUNDANCES OF METALS FOR DEBYE-HUCKEL
 !     CORRECTION. 18 ELEMENTS, C,N,O,Ne,Na,Mg,Al,Si,P,
 !     S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni scaled to sum to ZHIT
-      read(iolaol,130) zhit, debye_huckel_z
+      read(laol_unit,130) zhit, debye_huckel_z
 ! 130 FORMAT(54X,F8.5,///////)
   130 format(54x,f8.5,/////,1p6e12.5,/,1p6e12.5,/1p6e12.5)
 !     READ IN H MASS FRACTIONS OF TABLE
-      read(iolaol,140) (opacity_table%laol_grid_x(ii),ii=1,opacity_table%laol_num_x)
+      read(laol_unit,140) (opacity_table%laol_grid_x(ii),ii=1,opacity_table%laol_num_x)
   140 format(/,(1p6e12.5))
 !     READ IN DENSITY GRID OF TABLE
-      read(iolaol,150) (opacity_table%laol_grid_rho(ii),ii=1,opacity_table%laol_num_rho)
+      read(laol_unit,150) (opacity_table%laol_grid_rho(ii),ii=1,opacity_table%laol_num_rho)
   150 format(/,(1p6e12.5))
 !     READ IN TEMPERATURE GRID OF TABLE
-      read(iolaol,160) (opacity_table%laol_grid_t(ii),ii=1,opacity_table%laol_num_t)
+      read(laol_unit,160) (opacity_table%laol_grid_t(ii),ii=1,opacity_table%laol_num_t)
   160 format(/,(1p6e12.5))
 !     READ IN OPACITIES
-      read(iolaol,170)
+      read(laol_unit,170)
   170 format(1x)
       do ix=1,opacity_table%laol_num_x
          do ir=1,opacity_table%laol_num_rho
-            read(iolaol,200)
+            read(laol_unit,200)
   200       format(1x)
-            read(iolaol,210) (opacity_table%laol_opacity(ix,ir,it),it=1,opacity_table%laol_num_t)
+            read(laol_unit,210) (opacity_table%laol_opacity(ix,ir,it),it=1,opacity_table%laol_num_t)
   210       format(1p6e12.5)
          end do
       end do
-      close(iolaol)
+      close(laol_unit)
 
 
 ! DBG 4/94 New stuff follows

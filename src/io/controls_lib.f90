@@ -280,9 +280,11 @@ module controls_lib
 ! former common/lunum/: logical unit numbers for the various input/
 ! output files, none of them NAMELIST values -- io/read_controls.f90
 ! assigns them all unconditionally at startup (fixed unit numbers),
-! so no declaration-time defaults are needed here.
+! so no declaration-time defaults are needed here. opal92_table_unit
+! (originally laol_table_unit) is the unit kap/opal92/
+! read_opal92_tables.f90 opens the OPAL92 table on.
       integer :: first_unit, run_unit, standard_unit, fermi_unit
-      integer :: dynamics_unit, laol_table_unit
+      integer :: dynamics_unit, opal92_table_unit
       integer :: composition_unit, kurucz_table_unit
 
 ! former common/monte/: monte_carlo_active/mc_run_start/mc_run_end are all NAMELIST /physics/
@@ -638,12 +640,14 @@ module controls_lib
            molecular_opacity_logt_min, molecular_opacity_logt_max
       logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, use_opal95_tables, use_kurucz90_tables, use_alex95_tables
 
-! former common/miscopac/: ikur2/icondopacp are spelled identically to
-! their canonical names -- use-associated directly.
+! former common/miscopac/: kurucz_table2_unit (originally ikur2, the
+! unit of the second Kurucz table read by kap/kurucz90/
+! read_kurucz_tables.f90) and icondopacp are not namelist values --
+! use-associated directly in io/read_controls.f90.
 ! use_conductive_opacity (originally lcondopacp) is a NAMELIST value
 ! with a different canonical spelling, kept local in io/read_controls.f90
 ! and copy-assigned.
-      integer :: ikur2, icondopacp
+      integer :: kurucz_table2_unit, icondopacp
       logical :: use_conductive_opacity
 
 ! former common/alexo/: alex95_table_unit (originally ialxo) is not a

@@ -255,9 +255,9 @@ module opacity_table_lib
 ! core/read_input.f90 since DATA can no longer target use-associated
 ! entities. use_pure_z_table (originally lpurez) is a NAMELIST value
 ! with a different canonical spelling, kept local in core/read_input.f90
-! and copy-assigned. iolaol/iopurez are the table unit numbers.
+! and copy-assigned. (The table unit numbers, formerly iolaol/
+! iopurez, are newunit locals of kap/laol89/rdlaol.f90/rdzlaol.f90.)
       double precision :: tollaol = 10.0d0
-      integer :: iolaol, iopurez
       logical :: llaol = .false.
       logical :: use_pure_z_table
 

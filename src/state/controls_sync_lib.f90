@@ -119,7 +119,7 @@ subroutine seed_controls_buffer
       standard_unit = star%ctrl%standard_unit
       fermi_unit = star%ctrl%fermi_unit
       dynamics_unit = star%ctrl%dynamics_unit
-      laol_table_unit = star%ctrl%laol_table_unit
+      opal92_table_unit = star%ctrl%opal92_table_unit
       composition_unit = star%ctrl%composition_unit
       kurucz_table_unit = star%ctrl%kurucz_table_unit
       monte_carlo_active = star%ctrl%monte_carlo_active
@@ -276,7 +276,7 @@ subroutine seed_controls_buffer
       use_opal95_tables = star%ctrl%use_opal95_tables
       use_kurucz90_tables = star%ctrl%use_kurucz90_tables
       use_alex95_tables = star%ctrl%use_alex95_tables
-      ikur2 = star%ctrl%ikur2
+      kurucz_table2_unit = star%ctrl%kurucz_table2_unit
       icondopacp = star%ctrl%icondopacp
       use_conductive_opacity = star%ctrl%use_conductive_opacity
       alex95_table_unit = star%ctrl%alex95_table_unit
@@ -486,7 +486,7 @@ subroutine store_controls_to_star
       star%ctrl%standard_unit = standard_unit
       star%ctrl%fermi_unit = fermi_unit
       star%ctrl%dynamics_unit = dynamics_unit
-      star%ctrl%laol_table_unit = laol_table_unit
+      star%ctrl%opal92_table_unit = opal92_table_unit
       star%ctrl%composition_unit = composition_unit
       star%ctrl%kurucz_table_unit = kurucz_table_unit
       star%ctrl%monte_carlo_active = monte_carlo_active
@@ -643,7 +643,7 @@ subroutine store_controls_to_star
       star%ctrl%use_opal95_tables = use_opal95_tables
       star%ctrl%use_kurucz90_tables = use_kurucz90_tables
       star%ctrl%use_alex95_tables = use_alex95_tables
-      star%ctrl%ikur2 = ikur2
+      star%ctrl%kurucz_table2_unit = kurucz_table2_unit
       star%ctrl%icondopacp = icondopacp
       star%ctrl%use_conductive_opacity = use_conductive_opacity
       star%ctrl%alex95_table_unit = alex95_table_unit

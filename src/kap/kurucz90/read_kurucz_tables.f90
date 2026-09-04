@@ -71,13 +71,13 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
 ! DBG 12/95 read in second Z table if requested
       if (star%use_two_z_tables) then
 !        OPEN TABLE
-         open(star%ctrl%ikur2, file=kurucz_table2_path, status='OLD')
-         read(star%ctrl%ikur2,'(/)')
+         open(star%ctrl%kurucz_table2_unit, file=kurucz_table2_path, status='OLD')
+         read(star%ctrl%kurucz_table2_unit,'(/)')
 
          num_read = 0
          prev_grid_temp = 0.0d0
          table2_read: do
-         read(star%ctrl%ikur2,1,iostat=read_status) grid_temp, pressure, &
+         read(star%ctrl%kurucz_table2_unit,1,iostat=read_status) grid_temp, pressure, &
               log10_opacity0, log10_opacity1, log10_opacity2, &
               log10_opacity4, log10_opacity8, electron_density, &
               atom_density, density, unused_col
@@ -108,7 +108,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
 
          opacity_table%kurucz2_num_temps = num_read
 !        CLOSE THE TABLE WE HAVE READ
-         close(star%ctrl%ikur2,err=99)
+         close(star%ctrl%kurucz_table2_unit,err=99)
       end if
 
       call build_kurucz_splines(ierr)

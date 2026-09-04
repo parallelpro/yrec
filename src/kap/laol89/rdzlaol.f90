@@ -18,13 +18,16 @@ subroutine rdzlaol(pure_z_table_path, ierr)
       integer, intent(out) :: ierr
       character(len=256), intent(in) :: pure_z_table_path
       integer :: n, i, ii, ir, it
+! runtime-allocated unit for the pure-Z table (formerly the fixed
+! iopurez = 62)
+      integer :: pure_z_unit
       double precision :: dummy(104)
 
       ierr = 0
-      open(unit=iopurez, file=pure_z_table_path,form='FORMATTED', &
+      open(newunit=pure_z_unit, file=pure_z_table_path,form='FORMATTED', &
               status='OLD')
 !     READ IN ARRAY SIZES
-      read(iopurez,100) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
+      read(pure_z_unit,100) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (n.ne.1.or.opacity_table%zlaol_num_rho.gt.104.or.opacity_table%zlaol_num_t.gt.52) then
          write(run_log_unit,*)' Z OPACITY INPUT ERROR.'
@@ -32,29 +35,29 @@ subroutine rdzlaol(pure_z_table_path, ierr)
          ierr = 1
          return
       end if
-      read(iopurez,120) (dummy(i),i=1,11)
+      read(pure_z_unit,120) (dummy(i),i=1,11)
   120 format(47x,f8.5,//,1p6e12.5,/,1p4e12.5)
-      read(iopurez,131) dummy(1)
+      read(pure_z_unit,131) dummy(1)
   131 format(54x,f8.5,///////)
 !     READ IN H MASS FRACTIONS OF TABLE
-      read(iopurez,140) dummy(1)
+      read(pure_z_unit,140) dummy(1)
   140 format(/,(1p6e12.5))
 !     READ IN DENSITY GRID OF TABLE
-      read(iopurez,150) (opacity_table%zlaol_logrho_grid(ii),ii=1,opacity_table%zlaol_num_rho)
+      read(pure_z_unit,150) (opacity_table%zlaol_logrho_grid(ii),ii=1,opacity_table%zlaol_num_rho)
   150 format(/,(1p6e12.5))
 !     READ IN TEMPERATURE GRID OF TABLE
-      read(iopurez,160) (opacity_table%zlaol_logt_grid(ii),ii=1,opacity_table%zlaol_num_t)
+      read(pure_z_unit,160) (opacity_table%zlaol_logt_grid(ii),ii=1,opacity_table%zlaol_num_t)
   160 format(/,(1p6e12.5))
 !     READ IN PURE Z OPACITIES
-      read(iopurez,170)
+      read(pure_z_unit,170)
   170 format(1x)
       do ir=1,opacity_table%zlaol_num_rho
-         read(iopurez,200)
+         read(pure_z_unit,200)
   200    format(1x)
-         read(iopurez,210) (opacity_table%zlaol_opacity(ir,it),it=1,opacity_table%zlaol_num_t)
+         read(pure_z_unit,210) (opacity_table%zlaol_opacity(ir,it),it=1,opacity_table%zlaol_num_t)
   210    format(1p6e12.5)
          end do
-      close(iopurez)
+      close(pure_z_unit)
 
       return
 end subroutine rdzlaol
