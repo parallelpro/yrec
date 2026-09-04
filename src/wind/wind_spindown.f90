@@ -23,8 +23,8 @@
 !  log_teff : stellar effective temperature
 !  omega_old : surface angular velocity at the beginning of the
 !              timestep
-!       IN COMMON BLOCKS
-!  exmd,exw,exr,exm,constfactor : user parameters which vary the
+!  star%ctrl%exmd, wind_law_omega_exponent, exr, exm, constfactor :
+!  user parameters which vary the
 !  strength of angular momentum loss and its dependence on surface
 !  rotation rate and other stellar parameters.
 !
@@ -39,7 +39,7 @@
 subroutine wind_spindown(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end, ierr)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star
       use phys_const_lib
       use math_lib
       implicit none
@@ -51,25 +51,19 @@ subroutine wind_spindown(log_luminosity_lsun, full_timestep, cz_moment_of_inerti
       double precision, intent(in) :: omega_old
       double precision, intent(out) :: domega_start
       double precision, intent(inout) :: domega_end
+      integer, intent(out) :: ierr
 ! --- locals ---
       double precision :: omega_saturation, log10_radius, total_radius_cm, &
            mass_loss_rate_msun_yr, wind_coefficient, omega_old_capped, &
            omega_new_capped, domega_end_this_iter
 
-!  FIND TOTAL RADIUS OF STAR.
-! mhp 10/02 cgrav not used; omit
-!      CGRAV = EXP(CLN*CGL)
 ! MHP 3/09 IF WMAX > 1 THEN ASSUME THAT THE PARAMETER WMAX IS DEFINED BY
 ! WMAX = WMAX(SUN)*TAUCZ(SUN) AND THE SATURATION THRESHOLD WSAT = WMAX/TAUCZ(STAR)
-      integer, intent(out) :: ierr
-
       ierr = 0
 
       if(star%job%wind_saturation_omega.gt.1.0d0)then
          if(star%convective_turnover_timescale.gt.1.0d0)then
             omega_saturation = star%job%wind_saturation_omega/star%convective_turnover_timescale
-!            WRITE(*,912)WSAT,TAUCZ
-! 912        FORMAT('Omega sat, Tau',1p2e12.3)
          else
             write(*,911)star%job%wind_saturation_omega,star%convective_turnover_timescale
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
@@ -82,6 +76,7 @@ subroutine wind_spindown(log_luminosity_lsun, full_timestep, cz_moment_of_inerti
       else
          omega_saturation = star%job%wind_saturation_omega
       endif
+!  FIND TOTAL RADIUS OF STAR.
       log10_radius=0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.d0*log_teff)
       total_radius_cm = exp(ln10*log10_radius)

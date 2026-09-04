@@ -16,7 +16,7 @@
 subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num_zones, &
      species_begin, species_end, substep_counts, converged, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use math_lib
       implicit none
 

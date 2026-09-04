@@ -17,6 +17,8 @@
 ! Then call the nuclear burning routines to burn and the rotational
 ! mixing routine to mix for a series of smaller time steps, storing the
 ! answer as a function of time step.
+! (Whether this BS-extrapolation path stays is an author decision; see
+! audit/readability-sweep-2026-09-03/SUMMARY.md.)
 subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, &
      log_luminosity, log_pressure, log_radius, log_mass, enclosed_mass, &
      shell_mass, log_total_mass, log_temperature, velocity, zone_max, &
@@ -27,11 +29,6 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
       use star_info_lib, only: star, json
       use burn_lib
       implicit none
-
-
-
-
-
 
 ! INPUT VARIABLES
       double precision, intent(in) :: diffusion_coeff(json)

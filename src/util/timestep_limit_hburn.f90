@@ -19,7 +19,6 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
      convective_core_edge_zone, h_shell_midpoint_zone, num_points, &
      hydrogen_dt)
       use star_info_lib, only: star, json
-
       use phys_const_lib
       use net_lib
       use burn_lib
@@ -54,9 +53,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       double precision :: local_log_density, local_log_temperature
       double precision :: hydrogen_fraction, helium_fraction, &
            metal_fraction, he3_fraction, c12_fraction, c13_fraction, &
-           n14_fraction, n15_fraction, o16_fraction, o17_fraction, &
-           o18_fraction, h2_fraction, li6_fraction, li7_fraction, &
-           be9_fraction
+           n14_fraction, o16_fraction, o18_fraction
       integer :: zone_begin, zone_end
       double precision :: dc_dt, do_dt, dx_dt, dy_dt, shell_dt_x_depletion
 
@@ -87,14 +84,8 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
          c12_fraction = composition(5,zone_end)
          c13_fraction = composition(6,zone_end)
          n14_fraction = composition(7,zone_end)
-         n15_fraction = composition(8,zone_end)
          o16_fraction = composition(9,zone_end)
-         o17_fraction = composition(10,zone_end)
          o18_fraction = composition(11,zone_end)
-         h2_fraction = composition(12,zone_end)
-         li6_fraction = composition(13,zone_end)
-         li7_fraction = composition(14,zone_end)
-        be9_fraction = composition(15,zone_end)
 !  setup nuclear energy terms
       call rates(local_log_density,local_log_temperature,hydrogen_fraction, &
            helium_fraction,he3_fraction,c12_fraction,c13_fraction,n14_fraction, &

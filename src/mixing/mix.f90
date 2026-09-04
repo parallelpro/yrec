@@ -31,7 +31,7 @@
 subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
+      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_metals, i_n14, i_o16, i_o18, json
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -46,23 +46,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       double precision, intent(out) :: timestep_years
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
       integer, intent(inout) :: mixed_zone_bounds_no_overshoot(12,2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ! rate_pp..frac_be7_electron: per-zone reaction rates/branching
 ! fractions (originally HR1-HR13,HF1,HF2). Naming and ordering match
@@ -87,8 +70,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       double precision :: log_density_zone, log_temperature_zone, &
            hydrogen_fraction, helium_fraction, metal_fraction, &
            he3_fraction, c12_fraction, c13_fraction, n14_fraction, &
-           n15_fraction, o16_fraction, o17_fraction, o18_fraction, &
-           deuterium_fraction, li6_fraction, li7_fraction, be9_fraction
+           o16_fraction, o18_fraction
       integer :: radiative_region_idx, inner_zone_idx, mixed_zone_idx
       integer :: zone_begin, zone_end
       double precision :: dt_gyr, dc_dt, do_dt, dx_dt, dy_dt
@@ -116,8 +98,9 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 ! DETERMINE THE LOCATION OF CONVECTION ZONES WITH AND WITHOUT OVERSHOOT.
 !
 ! ******* INTRODUCE DPENV PARAMETER FOR DEEP MIXING *******************
-!  DPENV MIXES THE STAR FROM THE SURFACE TO MASS FRACTION DPENV
-!  E.G. DPENV = 0.7 MEANS THE OUTER .3 OF THE STAR IS MIXED
+!  DPENV < 1 FORCES MIXING FROM THE CENTRE OUT TO MASS FRACTION DPENV
+!  (deep_mix_flag = .true. FOR m <= DPENV*M); OUTSIDE THAT THE ORDINARY
+!  CONVECTIVE FLAG IS USED.
       if (star%ctrl%dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
 ! MIX FROM CENTER TO A FIXED MASS FRACTION
          max_mixed_mass = star%ctrl%dpenv*exp(ln10*star%log_total_mass)
@@ -131,8 +114,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                deep_mix_flag(zone_idx) = .true.
             end if
          end do
-! MHP 1/95 CHANGE - DPENV MIXES TO A FIXED FRACTION OF THE MAXIMUM
-! LUMINOSITY.
       else
          do copy_idx = 1, star%nz
             deep_mix_flag(copy_idx) = star%convective_flag(copy_idx)
@@ -170,14 +151,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          c12_fraction = star%xa(i_c12,zone_idx)
          c13_fraction = star%xa(i_c13,zone_idx)
          n14_fraction = star%xa(i_n14,zone_idx)
-         n15_fraction = star%xa(i_n15,zone_idx)
          o16_fraction = star%xa(i_o16,zone_idx)
-         o17_fraction = star%xa(i_o17,zone_idx)
          o18_fraction = star%xa(i_o18,zone_idx)
-         deuterium_fraction = star%xa(i_h2,zone_idx)
-         li6_fraction = star%xa(i_li6,zone_idx)
-         li7_fraction = star%xa(i_li7,zone_idx)
-         be9_fraction = star%xa(i_be9,zone_idx)
 ! SETUP NUCLEAR ENERGY TERMS
          call rates(log_density_zone, log_temperature_zone, &
               hydrogen_fraction, helium_fraction, he3_fraction, &
@@ -195,9 +170,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             star%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
       end do
-      if (zone_idx > (star%nz)) then
-      zone_idx = star%nz + 1
-      end if
+! ZERO THE RATES BELOW THE CUTOFF (zone_idx = nz+1 IF NO SHELL WAS COLD).
       do clear_idx = zone_idx, star%nz
          rate_pp(clear_idx) = 0.0d0
          rate_he3_he3(clear_idx) = 0.0d0
@@ -239,8 +212,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             if (ierr /= 0) return
          end do
       end do
-      if (radiative_region_idx > num_radiative_zones) then
-      end if
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
@@ -319,8 +290,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                end if
             end do
          end do
-         if (radiative_region_idx > num_radiative_zones) then
-         end if
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
@@ -526,8 +495,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                     star%xa, dt_gyr)
             end do
          end do
-         if (radiative_region_idx > num_radiative_zones) then
-         end if
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.

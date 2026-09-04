@@ -19,7 +19,6 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      cz_mass_top, start_zone, end_zone, wind_loss_active, omega_surface, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
      specific_angular_momentum, ierr)
-!      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
       use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
@@ -34,7 +33,7 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       double precision, intent(inout) :: specific_angular_momentum(json)
 ! --- locals ---
       double precision :: omega_saturation
-      double precision :: gravity_cgs, log10_radius, total_radius_cm
+      double precision :: log10_radius, total_radius_cm
       double precision :: mass_loss_rate_msun_yr
       double precision :: domega_test
       integer :: num_substeps
@@ -60,8 +59,6 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       else if(star%job%wind_saturation_omega.gt.1.0d0)then
          if(star%convective_turnover_timescale.gt.1.0d0)then
             omega_saturation = star%job%wind_saturation_omega/star%convective_turnover_timescale
-!            WRITE(*,912)WSAT,TAUCZ
-! 912        FORMAT('Omega sat, Tau',1p2e12.3)
          else
             write(*,911)star%job%wind_saturation_omega,star%convective_turnover_timescale
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
@@ -76,7 +73,6 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       endif
       if (wind_loss_active) then
 ! FIND TOTAL RADIUS OF STAR.
-         gravity_cgs = exp(ln10*cgl)
          log10_radius=0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
               csigl-4.d0*log_teff)
          total_radius_cm = exp(ln10*log10_radius)
@@ -103,8 +99,6 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             num_substeps = 1
             sub_timestep = full_timestep
          endif
-!         WRITE(*,3)NSTEP
-!    3    FORMAT(5X,I5)
          omega_substep_start = omega_surface
          do substep_idx = 1,num_substeps
 ! THE CONSTANT AND EXPONENTS ARE SET IN PARMIN BASED ON THE INPUT
@@ -126,8 +120,6 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
                  *pow(min(omega_iter,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))
             domega_relative_change = 2.0d0*abs((omega_iter_prev-omega_iter_new)/ &
                  (omega_iter_prev+omega_iter_new))
-!         WRITE(*,4)WS,W,WNEW,DW,HICZ
-!    4    FORMAT(1X,1P5E14.6)
             if(domega_relative_change.gt.1.0d-6)then
                omega_iter = 0.5d0*(omega_substep_start+omega_iter_new)
                omega_iter_prev = omega_iter_new
@@ -137,9 +129,6 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             end do omega_fixed_point
             omega_substep_start = omega_iter_new
          end do
-!        CON = DELTS*CONSTFACTOR*(DMDOT/1.0D-14)**EXMD*OMEGAS**(EXW-1.0D0)
-!    *           *(RTOT/CRSUN)**EXR*SMASS**EXM
-!        FJDOT = CON*OMEGAS/(1.0D0+(EXW*CON/HICZ))
 ! DM IS THE TOTAL MASS IN THE CONVECTION ZONE.
          cz_mass = cz_mass_top - cz_mass_bottom
 ! FIND CHANGE IN ANGULAR MOMENTUM PER UNIT MASS AND SUBTRACT THIS

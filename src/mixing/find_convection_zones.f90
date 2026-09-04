@@ -22,7 +22,7 @@
 !   determine the extent of overshoot regions.
 ! convective_flag: flag that is true if a shell is convective and
 !   false if it is radiative.
-! core_overshoot_active,envelope_overshoot_active,lovstm (in common/dpmix/): flags set
+! star%job%core_overshoot_active, envelope_overshoot_active, lovstm: flags set
 !   true if overshoot is to be computed for central, surface, and
 !   intermediate convection zones respectively.
 ! num_zones: number of shells in the model.
@@ -109,8 +109,6 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
          num_radiative_zones = 1
          radiative_zone_bounds(1,1) = 1
          radiative_zone_bounds(1,2) = num_zones
-         continue
-         
          return
       end if
       num_mixed_zones = j_idx - 1
@@ -130,8 +128,6 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
             core_cz_edge = 1
             envelope_cz_edge = 1
             num_radiative_zones = 0
-            continue
-            
             return
          else
             core_cz_edge = mixed_zone_bounds(1,2)

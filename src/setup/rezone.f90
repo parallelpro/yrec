@@ -17,7 +17,7 @@
 subroutine rezone(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_grad_actual, i_grad_ad, i_grad_rad, i_h1, i_h2, i_metals, i_o16, json
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json
       use kap_lib
       use luout_lib
       use run_log_lib, only: solver_diagnostics
@@ -34,8 +34,7 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       double precision, intent(inout) :: total_angular_momentum, &
            total_rotational_ke
 
-! MHP 10/02 added MRZONE,MXZONE to dimension statements
-      double precision :: log10_omega(json), point_spacing_max(4)
+      double precision :: point_spacing_max(4)
 ! 2026 audit fix: every append is bounds-guarded (append_flag_point)
 ! -- the historical code capped only the gradient-scan loop at 100,
 ! so the up-to-five appends outside it could write past the array.
@@ -45,31 +44,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       logical :: am_transport_convective_flag(json)
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
       integer :: reaction_rate_species_index(7)
       double precision :: z_new(json), x_new(json)
 ! MHP 6/00 added dummy vector
@@ -79,7 +53,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       double precision :: spline_x(json), spline_y(json), chi(json), &
            spline_second_deriv(json)
       integer :: gradient_flag_index(json)
-!       DATA IDMAX/JSON/
       data reaction_rate_species_index/1,2,4,5,6,7,9/
       integer :: num_species_tracked, i, j, k
       integer :: flag_count
@@ -99,12 +72,8 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       double precision :: luminosity_max
       double precision :: log_omega_top, log_omega_bot
       integer :: overshoot_base_zone, fine_zone_base
-      double precision :: delta_log_pressure
-      double precision :: pmax1, pmax2, pmax3, pmax4, pmax5
-      integer :: overshoot_point_count
       logical :: sort_done
       integer :: temp_swap
-      integer :: point_insert_flag, chi_start_index
       integer :: old_point_count, new_point_count
       integer :: zone_index
       double precision :: sum_angular_momentum, sum_rotational_ke
@@ -114,10 +83,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       integer :: radiative_zone_begin, radiative_zone_end
       integer :: num_radiative_zones, num_convective_zones
 
-!  THIS SUBROUTINE REZONES THE MODEL, SPACING THE SHELLS SUCH THAT
-!  THE MAXIMUM DISTANCE BETWEEN 2 SUCCESSIVE POINTS IN P,L,X, AND Z
-!  SPECIFIED BY THE USER IS NOT EXCEEDED.  IT ALSO FLAGS REAL
-!  DISCONTINUITIES TO PREVENT ARTIFICIAL SMOOTHING.
       ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
       ! this driver-side call site preserves the historical stop.
       integer :: jerr
@@ -200,8 +165,6 @@ subroutine check_envelope_temperature_range
    60    format(' OUTER POINT ADDED',I5,F15.10,'  PTR',3F10.6)
        point_reset_flag = .true.
       endif
-
-
 end subroutine check_envelope_temperature_range
 
 ! ---------------------------------------------------------------
@@ -246,18 +209,12 @@ subroutine flag_fixed_points
 ! rejected append; one slot stays reserved for the star%nz terminator)
        if (flag_count.ge.max_flag_points) exit
       end do
+! THE OVERSHOOT-BASE AND FINE-ZONE-BASE FLAGS BELOW ARE ONLY ADDED WHEN
+! THE GRADIENT SCAN RAN TO COMPLETION (i = nz+1), I.E. THE LIST IS NOT
+! ALREADY FULL. (THE PER-REGION DEL LOG P LIMITS THAT USED TO BE
+! COMPUTED HERE -- PMAX1..PMAX5 -- WERE NEVER READ; THE LIVE LIMITS ARE
+! chi_grid_scale(7,8,10) USED IN assign_new_points.)
       if (i > (star%nz)) then
-!  PMAX1 = MAX DEL LOG P BELOW SURFACE C.Z. AND BELOW FINELY ZONED
-!  REGION AROUND IT.
-!  PMAX2 = MAX DEL LOG P BETWEEN LOWER EDGE OF FINELY ZONED REGION
-!  AROUND SURFACE C.Z. AND BASE OF OVERSHOOT REGION.
-!  PMAX3 = SAME FOR OVERSHOOT REGION.
-!  PMAX4 = MAX DEL LOG P ABOVE BASE OF SURFACE C.Z. IN FINELY ZONED
-!  REGION AROUND IT.
-!  PMAX5 = SAME FOR THE OUTER POINTS IN THE STAR.
-      pmax1 = star%ctrl%chi_grid_scale(11)
-      pmax4 = star%ctrl%chi_grid_scale(10)
-      pmax5 = star%ctrl%chi_grid_scale(8)
       if (.not.star%convective_flag(star%nz)) then
        overshoot_base_zone = star%nz
        fine_zone_base = star%nz
@@ -267,7 +224,6 @@ subroutine flag_fixed_points
       else
 ! LOCATE BASE OF OVERSHOOT REGION IF APPLICABLE.
        if (.not.star%job%envelope_overshoot_active) then
-          i = star%envelope_cz_bottom_index
           overshoot_base_zone = star%envelope_cz_bottom_index
        else
           do overshoot_base_zone = star%envelope_cz_bottom_index-1,1,-1
@@ -275,16 +231,6 @@ subroutine flag_fixed_points
                   star%logP(star%envelope_cz_bottom_index).gt.star%ctrl%overshoot_alpha_envelope) exit
           end do
             overshoot_base_zone = overshoot_base_zone + 1
-          delta_log_pressure = star%logP(overshoot_base_zone)- &
-               star%logP(star%envelope_cz_bottom_index)
-          if (delta_log_pressure.gt.0.0D0) then
-! 2026 audit fix: mod(dp,dp).ne.0 was a float-equality ceiling test
-             overshoot_point_count = &
-                  ceiling(delta_log_pressure/star%ctrl%chi_grid_scale(10))
-             pmax3 = delta_log_pressure/dfloat(overshoot_point_count)
-          else
-             pmax3 = star%ctrl%chi_grid_scale(10)
-          endif
             if (overshoot_base_zone.gt.1) then
                call append_flag_point(overshoot_base_zone)
             endif
@@ -303,13 +249,6 @@ subroutine flag_fixed_points
           end do
             fine_zone_base = fine_zone_base + 1
           if (fine_zone_base.ne.overshoot_base_zone) then
-          delta_log_pressure = star%logP(fine_zone_base) - &
-               star%logP(overshoot_base_zone)
-! 2026 audit fix: mod(dp,dp).ne.0 was a float-equality ceiling test
-          overshoot_point_count = &
-               ceiling(delta_log_pressure/star%ctrl%chi_grid_scale(10))
-          pmax2 = delta_log_pressure/dfloat(overshoot_point_count)
-          if (pmax2.eq.0.0D0) pmax2 = star%ctrl%chi_grid_scale(10)
             if (fine_zone_base.gt.1) then
                call append_flag_point(fine_zone_base)
             endif
@@ -324,7 +263,6 @@ subroutine flag_fixed_points
 ! ARRANGE THE FLAG POINTS IN ASCENDING ORDER
       if (flag_count.ne.1) then
       do
-         continue
       sort_done = .true.
       do i = 1,flag_count-1
        if (flag_point(i+1).lt.flag_point(i)) then
@@ -339,7 +277,6 @@ subroutine flag_fixed_points
 ! ENSURE THAT POINTS ARENT FLAGGED MORE THAN ONCE.
       i = 2
       do
-         continue
       if (flag_point(i).eq.flag_point(i-1)) then
        if (i.lt.flag_count) then
           do j = i,flag_count-1
@@ -378,22 +315,13 @@ end subroutine append_flag_point
 
 ! ---------------------------------------------------------------
 ! Refloat the point distribution between flagged points: accumulate
-! the normalized chi = dM + dL + dP spacing measure per region
-! (pmax1..5), add points where X or Z gradients demand them, and
+! the normalized chi = dM + dL + dP spacing measure per region,
+! add points where X or Z gradients demand them, and
 ! delete new points that land too close together. ierr if the
 ! requested point count exceeds json.
 subroutine assign_new_points
       use math_lib
 ! BEGIN REFLOATING OF POINTS
-      if (star%job%rotation_active) then
-       do i = 1,star%nz
-          if (star%omega(i).gt.0.0D0) then
-             log10_omega(i) = log10(star%omega(i))
-          else
-             log10_omega(i) = 0.0D0
-          endif
-       end do
-      endif
       star%old_shell_mass(1) = star%log_mass(1)
       star%logP_start(1) = star%logP(1)
       star%luminosity_lsun_start(1) = star%luminosity_lsun(1)
@@ -413,11 +341,6 @@ subroutine assign_new_points
       point_spacing_max(2) = star%ctrl%chi_grid_scale(9)*luminosity_max
       point_spacing_max(3) = star%ctrl%chi_grid_scale(5)
       point_spacing_max(4) = star%ctrl%chi_grid_scale(6)
-!      KFACT = 0
-!  200 CONTINUE
-      point_insert_flag = 1
-      j = 2
-      chi_start_index = 2
 ! CHI IS THE NORMALIZED VECTOR OF DIFFERENCES IN M,L,P:
 ! CHI = HS/DELTA M + HL/DELTA L - HP/DELTA P
       mass_scale = star%ctrl%chi_grid_scale(2)
@@ -482,21 +405,10 @@ subroutine assign_new_points
             end if
             star%old_shell_mass(j) = spline_eval_y
             chi_prev = spline_eval_x
-!
-
          end do
          new_num_zones = new_num_zones + segment_point_count
          point_prev_index = new_num_zones
-!
       end do
-
-
-
-
-
-
-
-
 ! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN X.
       do j = 1,star%nz
          spline_x(j) = star%log_mass(j)
@@ -515,10 +427,6 @@ subroutine assign_new_points
          end if
          x_new(i) = spline_eval_y
       end do
-
-
-
-
 ! SKIP IF HPMAX(3) IS ZEROED OUT
       if (point_spacing_max(3).gt.1.0D-15) then
 ! TEST ON X-CHANGE (ONLY FOR INCREASING X) USING HIO AS DUMMY ARRAY
@@ -541,7 +449,6 @@ subroutine assign_new_points
               dfloat(num_new_points+1)
          do k = working_num_zones+num_new_points,j+num_new_points,-1
             star%old_shell_mass(k) = star%old_shell_mass(k-num_new_points)
-!
          end do
          do k = j + num_new_points -1, j -1, -1
             star%old_shell_mass(k) = star%old_shell_mass(k+1) - point_insert_spacing
@@ -549,7 +456,6 @@ subroutine assign_new_points
          working_num_zones = working_num_zones + num_new_points
       end do
       new_num_zones = working_num_zones
-!
       end if
       end if
 ! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN Z.
@@ -569,24 +475,19 @@ subroutine assign_new_points
             return
          end if
          z_new(i) = spline_eval_y
-!
       end do
 ! TEST ON Z-CHANGE (ONLY FOR DECREASING Z) USING HIO AS DUMMY ARRAY
 ! SKIP IF HPMAX(4) IS ZEROED OUT
-!
-
       if (point_spacing_max(4).gt.1.0D-15) then
       gradient_flag_count = 0
       do j = new_num_zones,2,-1
          if (z_new(j-1)-z_new(j).gt.point_spacing_max(4)) then
             gradient_flag_count = gradient_flag_count + 1
             gradient_flag_index(gradient_flag_count) = j
-        endif
+         endif
       end do
-!
       if (gradient_flag_count.ne.0) then
       working_num_zones = new_num_zones
-!
       do i = 1,gradient_flag_count
          j = gradient_flag_index(i)
          delta_z_over_max = (z_new(j-1) - z_new(j))/point_spacing_max(4)
@@ -603,15 +504,13 @@ subroutine assign_new_points
          working_num_zones = working_num_zones + num_new_points
       end do
       new_num_zones = working_num_zones
-!
       end if
       end if
 ! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER.
-! (NOTE HDO IS BEING USED AS A DUMMY ARRAY HERE).
+! (NOTE logRho_start IS BEING USED AS A DUMMY ARRAY HERE).
       j = 1
       star%logRho_start(j) = star%old_shell_mass(j)
       do k = 2,new_num_zones-1
-!
        if (star%old_shell_mass(k) - star%logRho_start(j).gt.star%ctrl%chi_grid_scale(1)) then
           j = j + 1
           star%logRho_start(j) = star%old_shell_mass(k)
@@ -623,8 +522,6 @@ subroutine assign_new_points
       do j = 2,new_num_zones
        star%old_shell_mass(j) = star%logRho_start(j)
       end do
-!
-
 end subroutine assign_new_points
 
 ! ---------------------------------------------------------------
@@ -671,8 +568,6 @@ subroutine locate_new_cz_edges
        star%convective_flag(j) = .false.
       end do
       end if
-
-
 end subroutine locate_new_cz_edges
 
 ! ---------------------------------------------------------------

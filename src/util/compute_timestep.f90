@@ -42,7 +42,6 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
      luminosity_components, age_gyr, timestep_years, kind_card_index, &
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
      log_teff)
-      use star_info_lib, only: star
       use star_info_lib, only: star, json
       use phys_const_lib
       implicit none
@@ -66,7 +65,6 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       double precision, intent(in) :: log_teff
       double precision :: structure_dt, rotation_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
-      double precision :: energy_gen_terms(6)
 
       if (previous_timestep.ge.0.0d0) then
 ! if user is fixing tstep, set dt to given value and exit
@@ -126,7 +124,7 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
 !  find the timestep based on helium burning.
 !  skip for stars without he burning.
       if(luminosity_components(5).gt.1.0d-34) then
-       call timestep_limit_heburn(energy_gen_terms,composition,log_density,luminosity, &
+       call timestep_limit_heburn(composition,log_density,luminosity, &
             enclosed_mass,log_temperature,convective_core_edge_zone, &
             num_points,helium_dt,h_shell_zone_begin)
       else
@@ -144,11 +142,6 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
 
 !     limit increase in time step from one model to the next for models
 !     with a non-zero timestep.
-!      write(*,299)structure_dt,rotation_dt,hydrogen_dt,helium_dt,previous_timestep
-! 299  format('P ',E10.5,' W ',E10.5,' H ',E10.5,' He ',E10.5,' prev. ',
-!     * E10.5)
-!         WRITE(*,*)'H time ',hydrogen_dt/seconds_per_year,'   He Time ',helium_dt/seconds_per_year
-
       if(previous_timestep.gt.1.0d0) then
          previous_timestep = star%ctrl%atime(13)*previous_timestep
 !  now set the timestep to be the minimum of the entropy based timestep,
@@ -161,34 +154,6 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
 !  04/14 jvs added envelope_dt
          previous_timestep = min(hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
       endif
-
-! c ******** Grant added ********
-! c      IF(TLUMX(5).GT.1.0D-2) THEN
-! c         ATIME(6)=0.000025
-! c         ATIME(5)=0.01
-! c       IF(TLUMX(5).GT.5.0D-1) THEN
-! c         ATIME(6)=0.0000075
-! c         ATIME(5)=0.003
-! c       IF(TLUMX(5).GT.5.0D0) THEN
-! c         ATIME(6)=0.00000075
-! c         ATIME(5)=0.0003
-! c       IF(TLUMX(5).GT.5.0D01) THEN
-! c         ATIME(6)=0.000000025
-! c         ATIME(5)=0.00001
-! c       IF(TLUMX(5).GT.5.0D02) THEN
-! c         ATIME(6)=0.000000005
-! c         ATIME(5)=0.000005
-! c       IF(TLUMX(5).GT.2.0D03) THEN
-! c         ATIME(6)=0.0000000005
-! c         ATIME(5)=0.0000005
-! c         ENDIF
-! c         ENDIF
-! c         ENDIF
-! c         ENDIF
-! c         ENDIF
-! c      ENDIF
-! c *****************************
-
       hydrogen_dt = previous_timestep
       end if
       end if
@@ -206,7 +171,5 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
          previous_timestep = hydrogen_dt
        endif
       endif
-
-
       return
 end subroutine compute_timestep

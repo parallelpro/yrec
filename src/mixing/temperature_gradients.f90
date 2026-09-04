@@ -7,10 +7,9 @@
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-!  DL,OL,X,Z,LOCOND USED BY OPACTY
 ! COMPUTES RADIATIVE GRADIENT AND COMPARES WITH ADIABATIC GRADIENT
 ! COMPUTES CONVECTIVE GRADIENT VIA MIXING LENGTH THEORY IF APPLICABLE
-! ASSUMES EQSTAT AND OPACTY HAVE BEEN CALLED
+! ASSUMES eos_get AND kap_get HAVE BEEN CALLED (eos_res, kap_res)
 ! RETURNS is_convective = .TRUE. IF CONVECTIVE
 !         radiative_gradient = RADIATIVE GRADIENT
 !         actual_gradient = ACTUAL GRADIENT
@@ -56,15 +55,11 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
            i_cp_dt, i_cp_dp
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
            i_dlnkap_dlnt
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star
       use luout_lib
       use phys_const_lib
       use math_lib
       implicit none
-!  DL,OL,X,Z,LOCOND USED BY OPACTY
-! COMPUTES RADIATIVE GRADIENT AND COMPARES WITH ADIABATIC GRADIENT
-! COMPUTES CONVECTIVE GRADIENT VIA MIXING LENGTH THEORY IF APPLICABLE
-! ASSUMES EQSTAT AND OPACTY HAVE BEEN CALLED
 
       double precision, intent(in) :: log_temperature, &
            log_pressure, log_radius, log_mass, luminosity_lsun
@@ -85,20 +80,10 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
       logical, intent(out) :: is_convective
       double precision, intent(in) :: pressure_rotation_factor, &
            temperature_rotation_factor, log_teff
-
-
-
-
-
-
-
-
-
-! G Somers END
       double precision, parameter :: vtol=1.0d-10
       integer :: iter
       double precision :: deldel, g, presht, phi, phi2, phiphi, test, a1, &
-           v, a3, a3p, vp, vd, ddel, delpm, rrr, qdelat, qdelap, tempot, &
+           v, a3, a3p, vp, vd, ddel, qdelat, qdelap, tempot, &
            tempop, qddelt, qddelp, temp1, qa1t, qa1p, qa1r, qa3t, qa3p, &
            qa3r, temp2, temp3, qvt, qvp, qvr, deli, ateffl, deepx
 
@@ -123,6 +108,9 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
       dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
       dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
 
+! star%alfmlt/phmlt/cmxmlt are zeroed here and assigned nowhere else
+! (they reach the valfmlt/vphmlt/vcmxmlt output columns as zeros); see
+! audit/readability-sweep-2026-09-03/SUMMARY.md 1.1 #10 -- author decision.
       star%alfmlt=0.0d0
       star%phmlt=0.0d0
       star%cmxmlt=0.0d0
@@ -140,8 +128,6 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
              .and. star%iovim.ne.-1) then
             actual_gradient = adiabatic_gradient
          end if
-       continue
-       
        return
       endif
 ! ZONE IS CONVECTIVE
@@ -156,8 +142,6 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
           dgrad_dp_component = adiabatic_gradient_dp
           dgrad_dr_component = 0.0d0
        endif
-       continue
-       
        return
       endif
 ! G Somers 9/14, Add the ability to include spots, which alter
@@ -217,9 +201,7 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
           ! preserve the historical stop on a nonzero return.
           ierr = 1
           return
-!         GOTO 15
       endif
-!      A1 = CMIXL3*PHIPHI*T**3*O/(QCP*DSQRT(DELDEL*G*(-QDT)/PRESHT))
       v = 1.0d0/a1
       a3 = 0.75d0*phi2*phiphi/a1
       a3p = 3.0d0*a3
@@ -233,7 +215,6 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
        if(dabs(vd).lt.vtol) exit
       end do
       if (iter > 25) then
-!  15   CONTINUE
       write(run_log_unit,20) log_pressure,log_temperature,opacity, &
            specific_heat_cp,dlnrho_dlnt
    20 format(' -----CUBIC NON-CONVERGENCE(PL,TL,CAPPA,CP,QDT)=' &
@@ -246,23 +227,14 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
          dgrad_dp_component = adiabatic_gradient_dp
          dgrad_dr_component = 0.0d0
       endif
-      continue
-      
       return
       end if
       ddel = deldel*v*(v+a1)
       actual_gradient = adiabatic_gradient + ddel
-! CALCULATE CONVECTIVE VELOCITY
-      test = g*(-dlnrho_dlnt)*presht*deldel
-      if(test.gt.0.0d0)then
-         convective_velocity = v*dsqrt(g*(-dlnrho_dlnt)*(star%mixing_length_alpha**2)*presht*deldel/8.0d0)
-      else
-         convective_velocity = 1.0d0-11
-      endif
-! delpm (originally DELPM) is computed here but never subsequently
-! read; preserved as dead code from the original.
-      delpm = actual_gradient-v*v*deldel
-      rrr = exp10(log_radius)
+! CALCULATE CONVECTIVE VELOCITY. THE RADICAND HAS THE SAME SIGN AS THE
+! ONE ALREADY CHECKED ABOVE (deldel*g*(-dlnrho_dlnt)/presht > 0), SO NO
+! SEPARATE SIGN TEST IS NEEDED HERE.
+      convective_velocity = v*dsqrt(g*(-dlnrho_dlnt)*(star%mixing_length_alpha**2)*presht*deldel/8.0d0)
       if(want_derivatives) then
 ! DERIVATIVES OF CONVECTIVE GRADIENT
        qdelat = adiabatic_gradient_dt*adiabatic_gradient

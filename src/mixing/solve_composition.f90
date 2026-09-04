@@ -17,19 +17,18 @@
 !  species. composition(1,..)=H; 2=He4; 3=Z; 4=He3; 5=C12; 6=C13;
 !  7=N14; 9=O16; 11=O18. Elements 8(N15) and 10(O17) not currently
 !  used; 12-15 are light elements whose burning is treated elsewhere.
-! star%xa_start (common/oldmod/) - the array of abundances at the
-!  start of the timestep.
+! star%xa_start - the array of abundances at the start of the timestep.
 ! shell_mass - run of mass contained in each shell.
 ! log_temperature - run of model temperature.
 ! zone_begin, zone_end - starting and ending shells; different for a
 !  convection zone.
-! rate_pp..rate_zero13, frac_c12_alpha - reaction rates (excluding
+! rate_pp..rate_triple_alpha, frac_c12_alpha - reaction rates (excluding
 !  terms that depend only on the composition) per gigayear per amu.
 !  needs to be multiplied by the mass fractions of the reactants and
 !  the atomic weight (in amu) of the product to get the rate of
 !  change of the mass fraction.
 !
-! Numerical parameters in common block /burtol/:
+! Numerical parameters (star%ctrl):
 ! Abundances below min_abundance are zeroed out.
 ! absolute_tolerance and relative_tolerance are the absolute and
 ! relative tolerances for convergence.
@@ -60,10 +59,6 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
       double precision, intent(out) :: composition(15,json)
       double precision, intent(in) :: timestep_years
 
-
-
-
-
 ! system_matrix(56): flattened 7-row x 8-column augmented matrix
 ! passed to simeqc -- columns 1-7 are the Jacobian of the 7 implicit
 ! burning equations w.r.t. the 7 solved species, column 8 (elements
@@ -80,8 +75,8 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
       double precision :: min_abundance_local
       integer :: iteration_count
       double precision :: gr_pp, gr_he3_he3, gr_he3_he4, gr_c12_p, gr_c13_p, &
-           gr_n14_p, gr_o16_p, gr_c13_alpha, gr_zero9, gr_c12_alpha, &
-           gr_n14_alpha, gr_triple_alpha, gr_zero13
+           gr_n14_p, gr_o16_p, gr_c13_alpha, gr_c12_alpha, &
+           gr_n14_alpha, gr_triple_alpha
       double precision :: branch_frac_c12, branch_frac_o16
       double precision :: x_start, he3_start, y_start, c12_start, &
            c13_start, n14_start, o16_start
@@ -145,11 +140,8 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
 !  counter for the number of iterations.
       iteration_count=0
 !
-!  nuclear reaction rates.
-!
-!  these reactions are no longer included and are zeroed out.
-      gr_zero9 = 0.0d0
-      gr_zero13 = 0.0d0
+!  nuclear reaction rates. (the o16,alpha and c12,c12 slots of the rate
+!  arrays -- rate_zero9/rate_zero13 in mix.f90 -- are not used here.)
       if(zone_begin.eq.zone_end) then
 !  pp
          gr_pp = rate_pp(zone_begin)
@@ -167,16 +159,12 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
          gr_o16_p = rate_o16_p(zone_begin)
 !  c13,alpha
          gr_c13_alpha = rate_c13_alpha(zone_begin)
-!  o16,alpha (not used)
-!        gr_zero9 = rate_zero9(zone_begin)
 !  c12,alpha
          gr_c12_alpha = rate_c12_alpha(zone_begin)
 !  n14,alpha
          gr_n14_alpha = rate_n14_alpha(zone_begin)
 !  triple alpha
          gr_triple_alpha = rate_triple_alpha(zone_begin)
-!  c12,c12 (not used)
-!        gr_zero13 = rate_zero13(zone_begin)
 !  branching ratio for n15,p :
 !  branch_frac_c12 = fraction going to c12+alpha, 1-branch_frac_c12 = fraction going to o16
          branch_frac_c12 = frac_c12_alpha(zone_begin)
@@ -393,8 +381,6 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
 !  system not converged - see if maximum number of iterations exceeded.
          iteration_count = iteration_count+1
          if(iteration_count.ge.star%ctrl%max_burn_iterations) then
-!  mhp 10/02 iu not defined
-!            WRITE (run_log_unit,1000) iu
             write (run_log_unit,1000) zone_begin
  1000       format(1X,39('>'),40('<')/1X,'ERROR IN SUBROUTINE KEMCOM'/ &
             1X,'UNABLE TO SOLVE FOR NEW ABUNDANCES IN SHELL',I4/1X, &

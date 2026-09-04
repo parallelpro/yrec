@@ -10,7 +10,7 @@
 ! G Somers, 6/16
 ! Uses the delivered structural variables to determine the strength of
 ! the magnetic wind torque, according to the Matt et al. (2012)
-! formulation. Sets structfactor (in common/cwind/), the structure-
+! formulation. Sets star%job%structfactor, the structure-
 ! dependent factor combining mass, radius, luminosity, photospheric
 ! pressure, and (optionally) convective-turnover-timescale (Rossby)
 ! scaling, each raised to its own calibrated exponent.

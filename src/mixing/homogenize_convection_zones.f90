@@ -12,15 +12,9 @@
 ! one. Also renormalizes the composition to guard against small
 ! negative/overflowing abundances at the end.
 !
-! G Somers 6/14 originally added an IFSTCL ("first call") argument
-! plus HR/HP/HD/HG/HS1 dummy arguments to support an active taucz
-! (convective overturn timescale) calculation in this routine; G
-! Somers 3/17 moved that calculation elsewhere (it is now passed in
-! via common/ovrtrn/) and the taucz code below was commented out. KC
-! 2025-05-31 correspondingly dropped those now-unused dummy arguments
-! from the subroutine signature. The dead code is preserved as
-! comments below, unmodified, for historical reference; none of it
-! executes.
+! The convective-overturn-timescale (taucz) calculation that once lived
+! here moved to the rotation code; its dummy arguments were dropped from
+! the signature (KC 2025-05-31).
 subroutine homogenize_convection_zones(composition, shell_mass, convective_flag, num_zones)
 
       use star_info_lib, only: star, json
@@ -30,19 +24,6 @@ subroutine homogenize_convection_zones(composition, shell_mass, convective_flag,
       double precision, intent(in) :: shell_mass(json)
       logical, intent(inout) :: convective_flag(json)
       integer, intent(in) :: num_zones
-
-
-
-! JVS 02/12 common blocks added for the calculation of taucz (now
-! unused here -- see header note above; declared only to preserve
-! layout).
-
-
-
-
-
-
-
 
       double precision :: species_sum(15)
       integer :: zone_bounds(24)
@@ -74,6 +55,8 @@ subroutine homogenize_convection_zones(composition, shell_mass, convective_flag,
          if (j_idx.lt.24) cycle
          exit
       end do
+! TERMINATE THE LIST (ONLY WHEN THE LOOP RAN TO COMPLETION; ON THE
+! 12-ZONE OVERFLOW EXIT THE LIST IS LEFT FULL).
       if (zone_idx > num_zones_plus1) then
       zone_bounds(j_idx) = 0
       end if
@@ -114,51 +97,6 @@ subroutine homogenize_convection_zones(composition, shell_mass, convective_flag,
          composition(9,zone_idx) = dmax1(composition(9,zone_idx), &
               0.99d-3*(composition(3,zone_idx)-star%zenvm))
       end do
-
-! G Somers 3/17, commented out this taucz calculation. It is now
-! passed in in the OVRTRN common block.
-!
-! JVS 02/12 calculate the local convective overturn timescale at the
-! base of the CZ. In older versions this was only done for rotating
-! models; this makes it so taucz is calculated for all models.
-! This code snagged from midmod
-!
-!  determine extent of surface convection zone.
-!      lallcz = .false.
-!      if(lcz(m))then
-!  surface c.z. exists.  find lowest shell (imax), which is also the
-!  uppermost zone considered for stability against rotationally induced mixing.
-!         do 71 i = m-1,1,-1
-!   81    imax = i + 1
-!  hstop is the mass at the top of the c.z.
-!  hsbot is the mass at the bottom of the c.z.
-!  lczsur=t if a surface c.z.deep enough for angular momentum loss exists
-!  no surface c.z.
-!
-!  pinpoint rcz
-!  g somers 6/14, check whether this run of mixcz occured before
-!  or after midmod. if before, use sdel. if after, use the updated
-!  variables delrm and delam.
-!  g somers end
-!            fx = dd2/(dd2-dd1)
-!  infer hp
-!  find v
-!            do k = imax+1,m
-!  define taucz
-!            taucz = psca/cvel
-!         else
-!  infer hp
-!  hp < r at the first point.  assume v constant inside and hp = k/r for
-!  slowly varying density and pressure near the center.
-!  find location where hp = r
-!                  if(psca2.le.rtest2)then
-!                     fx = (rtest1-psca1)/((psca2-rtest2)-(psca1-rtest1))
-!  find v
-!                     cvel = star%conv_vel(k-1)+fx*(star%conv_vel(k)-star%conv_vel(k-1))
-!                     psca = psca1+fx*(psca2-psca1)
-!  define taucz
-
-! end jvs
 
       return
 end subroutine homogenize_convection_zones

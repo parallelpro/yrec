@@ -9,18 +9,14 @@
 !
 ! MASS LOSS ROUTINE
 !
-! CALL-SITE BUG FIXED 2026 (config-matrix campaign): mdot.f's
-! only caller, massloss.f90, calls this routine with 24 actual
-! arguments (leading with log_luminosity_lsun/BL) while this
-! subroutine declares only 23 dummy arguments (starting with
-! timestep/DELTS, no luminosity argument at all). This is a pre-
-! existing argument-count mismatch in the original F77 source
-! (mdot.f/massloss.f) -- every actual argument after the first is
-! therefore received one position off from what the caller intended.
-! massloss.f90's call now matches this dummy list 1:1 (the spurious
-! leading luminosity actual was dropped); LMDOT runs are exercised
-! by examples/run_config_matrix/cm_massloss_*.
-! Reproduced exactly; NOT corrected here.
+! CALL-SITE BUG FIXED 2026 (config-matrix campaign): the original F77
+! caller (massloss.f) passed 24 actual arguments (leading with the
+! luminosity BL) to this 23-dummy routine (which starts with
+! timestep/DELTS and has no luminosity argument), so every actual after
+! the first was received one position off. massloss.f90's call now
+! matches this dummy list 1:1 (the spurious leading luminosity actual
+! was dropped); LMDOT runs are exercised by
+! examples/run_config_matrix/cm_massloss_*.
 subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      log_pressure, log_radius, log_mass, zone_mass_grams, shell_mass, &
      log_total_mass, log_temperature, envelope_boundary_zone, &
@@ -68,7 +64,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       double precision :: disk_age_test
       logical :: disk_exhausted_flag
       double precision :: delta_mass_cgs
-      double precision :: new_thermal_energy, log_thermal_energy_ratio
+      double precision :: new_thermal_energy
       double precision :: local_temperature, local_pressure, local_density, &
            local_beta
       double precision :: delta_log_specific_entropy, delta_ln_mass, &
@@ -94,18 +90,12 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
               min(omega_ratio_sq,omega_max_ratio_sq)
          write(*,*)omega(num_zones),mass_loss_rate_msun_yr
       endif
-!      LMDOT = .TRUE.
-!      DMDT = 4.0D-10
-! MAXIMUM FRACTION OF CZ MASS REMOVED PER TIMESTEP
-!      FRAC = 0.1D0
-!      IF(.NOT.LMDOT)GOTO 9999
 ! CONVERT FROM SOLAR MASSES/YEAR TO GM/SEC
       mass_loss_rate_cgs = abs(mass_loss_rate_msun_yr)*star%solar_mass_cgs/ &
            seconds_per_year
 ! THE SUM OF THE MASSES OF ALL SHELLS (E.G. TO JENV - 1)
 ! SHOULD BE USED RATHER THAN THE SUM OF THE MASSES DOWN
 ! TO THE MIDPOINT OF THE BOTTOM SHELL
-!      DMCZT = 10.0D0**HSTOT - HS1(JENV)
       cz_mass_below_fitting = cz_total_mass_below_fitting
 ! COMPUTE MASS OF SURFACE CONVECTION ZONE BELOW FITTING POINT
       if(envelope_boundary_zone.eq.num_zones) then
@@ -158,9 +148,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          new_thermal_energy = (accretion_specific_energy*delta_mass_cgs+ &
               mean_thermal_energy*cz_total_mass_below_fitting)/ &
               (delta_mass_cgs+cz_total_mass_below_fitting)
-         log_thermal_energy_ratio = log10(new_thermal_energy/mean_thermal_energy)
-!         WRITE(*,912) JENV,EACC,ETHAV,ETHNEW,FAC,SUMDM,DELM
-! 912     FORMAT(I5,1P6E12.3)
 ! OVERALL SCALE FACTOR IN R
          local_temperature = exp10(log_temperature(envelope_boundary_zone))
          local_pressure = exp10(log_pressure(envelope_boundary_zone))
@@ -169,16 +156,14 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
               local_pressure)
          mean_molecular_weight_local = local_pressure*local_beta/ &
               (local_density*local_temperature)
-!         DLOGEN = (DELM/DMCZ)*(SACC-SCEN)/RMU
          delta_log_specific_entropy = (delta_mass_cgs/cz_mass_grams)* &
               rot_scr%envelope_specific_entropy/mean_molecular_weight_local
-!         DLNM = LOG(DMCZ+DELM)-LOG(DMCZ)
+! THE MASS TERM ln((M_cz+dM)/M_cz) IS DELIBERATELY NOT APPLIED.
          delta_ln_mass = 0.0d0
          delta_log_radius = (cc23*delta_log_specific_entropy- &
               cc13*delta_ln_mass)/ln10
          rot_scr%delta_log_temperature = delta_ln_mass/ln10 - delta_log_radius
          rot_scr%delta_log_pressure = 2.0d0*delta_ln_mass/ln10 - 4.0d0*delta_log_radius
-!         WRITE(*,*)DLOGR,DLOGP,DLOGT
          if(envelope_boundary_zone.eq.1)then
             do zone_idx = envelope_boundary_zone,num_zones
                log_radius(zone_idx) = log_radius(zone_idx)+delta_log_radius
@@ -243,7 +228,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 ! HS IS THE BASE-10 LOG OF HS1
       if(delta_mass_cgs.lt.0.0d0)then
          mass_scale_factor = (cz_mass_grams+delta_mass_cgs)/cz_mass_grams
-!      WRITE(*,*)JENV,M,DMCZ,DELM,FX,HS1(M),HS(M)
          do zone_idx = envelope_boundary_zone+1,num_zones
             zone_mass_grams(zone_idx) = zone_mass_grams(envelope_boundary_zone)+ &
                  mass_scale_factor*(zone_mass_grams(zone_idx)- &
@@ -251,7 +235,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
             log_mass(zone_idx) = log10(zone_mass_grams(zone_idx))
          end do
       endif
-!      WRITE(*,*)HS1(M),HS(M)
 ! CORRECT TOTAL MASS IN SOLAR UNITS (SMASS) AND
 ! LOG OF TOTAL MASS IN GRAMS (HSTOT,STOTAL)
       total_mass_msun = total_mass_msun + delta_mass_cgs/star%solar_mass_cgs
@@ -275,9 +258,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
 ! RECOMPUTE SURFACE BOUNDRY CONDITION
       new_surface_bc_needed = .true.
 ! REMIX THE SURFACE CONVECTION ZONE IF MDOT IS POSITIVE.
-!      WRITE(*,911)DELM,DMCZT,COMPACC(12),HCOMP(12,M),
-!     *            COMPACC(4),HCOMP(4,M)
-! 911  FORMAT(1P6E12.3)
       if(delta_mass_cgs.gt.0.0d0)then
          do species_idx = 1,11
             mixed_abundance = (composition(species_idx,envelope_boundary_zone)* &
@@ -289,8 +269,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          end do
          star%accreted_mass_fraction = delta_mass_cgs
       endif
-!  9999 CONTINUE
       if(disk_exhausted_flag) star%job%use_mass_accretion = .false.
-!      WRITE(*,*)M,HS(M),HSTOT
       return
 end subroutine mdot

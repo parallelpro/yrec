@@ -10,18 +10,17 @@
 ! DBG 5/94 Added rescaling of Z in core ZRAMP stuff.
 !
 ! Rescales a model's composition and/or mass at the start of a new
-! kind-card run (run_index), per the targets in common/ckind/'s
-! rescale_params(:,run_index): surface X and interior Z are rescaled
+! kind-card run (run_index), per the targets in
+! star%job%rescale_params(:,run_index): surface X and interior Z are rescaled
 ! multiplicatively/additively across the whole model for main-sequence
 ! stars (composition(1,1) > 1e-10), while horizontal-branch models
 ! (helium-core/H-shell stars) instead rescale the core mass and/or
 ! total mass, holding the H-burning shell mass fixed and redistributing
 ! the difference into the envelope. Also optionally rescales one extra
-! species (common/newcmp/) and ramps interior Z toward a target core
-! value (common/zramp/).
+! species (star%ctrl%new_species_index) and ramps interior Z toward a
+! target core value (star%job%rsclzc/rsclzm1/rsclzm2).
 subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag, ierr)
-! DBG 5/94 Added rescaling of Z in core ZRAMP stuff.
       use phys_const_lib
       use star_info_lib, only: star, json
       use luout_lib
@@ -38,22 +37,17 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
       logical, intent(in) :: convective_flag(json)
 ! --- locals ---
       double precision :: x_rescale_factor
-      integer :: zone_idx, species_idx, error_species_index, icomp
+      integer :: zone_idx, species_idx, error_species_index
       double precision :: delta_z, z_rescale_factor
       double precision :: log_mass_shift
       double precision :: core_mass_old, env_mass_old, env_mass_old2, &
            shell_mass_old, delta_env_mass, delta_core_mass, env_mass_new, &
            mass_scale_factor, env_mass_check, shell_mass_prev, &
            mass_shift_grams, unlogged_mass_temp, core_mass_new, &
-           shell_mass_new, env_mass_total_check
+           shell_mass_new
       double precision :: z_ramp_slope, mass_fraction_local, z_ramp_value
       integer :: core_edge, envelope_edge, shell_begin, shell_end, shell_mid
       logical :: has_h_shell
-
-! ************
-!      write(*,*)
-!      write(*,*)'Entering rscale ',HSTOT-HS(M)
-! ************
 
       integer, intent(out) :: ierr
 
@@ -93,12 +87,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 !  DESIRED NEW Z TO THE OLD Z - LIGHT ELEMENT ABUNDANCES ARE LEFT ALONE
          if(star%job%rescale_params(3,run_index).le.1.0d0) then
             delta_z = star%job%rescale_params(3,run_index) - star%znew
-            do species_idx = 1,num_zones
-               z_rescale_factor=dmax1(0.d0,composition(3,species_idx)+delta_z)/ &
-                    (composition(3,species_idx)+1.d-30)
-               composition(3,species_idx) = dmax1(0.0d0,composition(3,species_idx)+delta_z)
-               do zone_idx = 5,11
-                  composition(zone_idx,species_idx) = composition(zone_idx,species_idx)*z_rescale_factor
+            do zone_idx = 1,num_zones
+               z_rescale_factor=dmax1(0.d0,composition(3,zone_idx)+delta_z)/ &
+                    (composition(3,zone_idx)+1.d-30)
+               composition(3,zone_idx) = dmax1(0.0d0,composition(3,zone_idx)+delta_z)
+               do species_idx = 5,11
+                  composition(species_idx,zone_idx) = composition(species_idx,zone_idx)*z_rescale_factor
                end do
             end do
             star%znew = star%job%rescale_params(3,run_index)
@@ -121,10 +115,6 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
          endif
       endif
       if(composition(1,1).gt.1.0d-10) then
-! ************
-!      write(*,*)'Entering MS change ',HSTOT-HS(M)
-! ************
-
 !  MAIN SEQUENCE RESCALING - MASS AND SINGLE ELEMENT.
          if(star%ctrl%rescale_species_active.and.star%job%new_species_value.ge.0.0d0) then
 !  RESCALE THE ABUNDANCE OF ONE ELEMENT OTHER THAN X,Y,Z
@@ -140,8 +130,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
                end do
             else
 !  ERROR - RESCALED ABUNDANCE >100% - ABUNDANCE NOT CHANGED
-!               ACOMP = ANEWCP
-               write(run_log_unit,1004)icomp,run_index,star%job%new_species_value
+               write(run_log_unit,1004)star%ctrl%new_species_index,run_index,star%job%new_species_value
  1004       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF ', &
            'SPECIES ',i3,' IN KIND CARD # ',i3,' FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
@@ -166,23 +155,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 !  FOR CORE MASS CHANGE THE POINTS INSIDE THE H-BURNING
 !  SHELL AND CORRESPONDINGLY REDUCE/INCREASE THE MASS OUTSIDE
 !  THE SHELL.
-! ************
-!      write(*,*)'Entering HB scale ',HSTOT-HS(M)
-! ************
-
-
          if(star%job%rescale_params(1,run_index).gt.0.0d0.or.star%job%rescale_params(4,run_index).gt.0.0d0) then
 !  RESCALE MASS AND/OR CORE MASS
-!  FIND H-BURNING SHELL.
-!
-
-! ************* Added call to FINDSHELL (gn - 10/05)**************
-
+!  FIND H-BURNING SHELL (gn - 10/05).
             call locate_shell_boundaries(composition,luminosity_array,convective_flag,num_zones, &
                  core_edge,envelope_edge,shell_begin,shell_end,shell_mid, &
                  has_h_shell)
-! ****************************************************************
-
 ! FIND CORE, ENVELOPE, AND H-BURNING SHELL MASSES.
             core_mass_old = exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs
             env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
@@ -201,8 +179,6 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 ! THE H-BURNING SHELL (ONLY).
 !
 ! ENSURE THAT THE NEW ENVELOPE MASS IS POSITIVE.
-
-
             delta_env_mass = star%job%rescale_params(1,run_index) - star_mass
             env_mass_new = env_mass_old + delta_env_mass
 
@@ -214,9 +190,6 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
       write(*,*)'SENV ',exp10(total_mass_log) - exp10(shell_mass_log(num_zones))
       write(*,*)'Envelope ',exp10(shell_mass_log(num_zones)) - exp10(shell_mass_log(shell_begin-1))
 ! ************
-
-! **************************************************************************
-!               write(*,*)JXBEG-1,JXMID,JXEND,M
             if(env_mass_new.le.0.0d0)then
                write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
    69          format(1x,'ERROR IN SUBROUTINE RSCALE'/1x, &
@@ -230,14 +203,9 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             endif
 
 ! ***** Calculate scale factor for mass rescaling *****
-
-!            HSTOT1 = log10(RESCAL(1,NK)/SMASS)
         mass_scale_factor =(star%job%rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_end))/star%solar_mass_cgs)/ &
                           (star_mass-exp(ln10*shell_mass_log(shell_end))/star%solar_mass_cgs)
 
-! *****************************************************
-
-!            HSTOT = HSTOT + HSTOT1
         total_mass_log=log10(exp10(shell_mass_log(shell_end))+mass_scale_factor*(exp10(total_mass_log)-exp10(shell_mass_log(shell_end))))
 
             star_mass = star%job%rescale_params(1,run_index)
@@ -247,8 +215,6 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
              mass_scale_factor*(exp10(shell_mass_log(zone_idx))-exp10(shell_mass_log(shell_end))))
             end do
             env_mass_old = env_mass_new
-! *****
-! ************
 
          else
 
@@ -258,7 +224,6 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
       write(*,*)'SENV ',exp10(total_mass_log) - exp10(shell_mass_log(num_zones))
       write(*,*)'Envelope ',exp10(shell_mass_log(num_zones)) - exp10(shell_mass_log(shell_begin-1))
 ! ************
-!           *** print debug info ***
             env_mass_check = ((exp10(total_mass_log))/star%solar_mass_cgs)-core_mass_old
             if(env_mass_check.le.0.0d0)then
                write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
@@ -269,14 +234,8 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             endif
 
 ! **** Calculate scale factor *****
-
-!           HSTOT1 = log10(RESCAL(1,NK)/SMASS)
         mass_scale_factor =(star%job%rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs)/ &
                           (star_mass-exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs)
-!        write(*,*)'hstot1',(10**HSTOT1)
-!        write(*,*)'smass',SMASS
-
-!            HSTOT = HSTOT + HSTOT1
        total_mass_log=log10(exp10(shell_mass_log(shell_begin-1))+ &
             mass_scale_factor*(exp10(total_mass_log)-exp10(shell_mass_log(shell_begin-1))))
 
@@ -287,23 +246,14 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
            mass_scale_factor*(exp10(shell_mass_log(zone_idx))-exp10(shell_mass_log(shell_begin-1))))
             end do
             env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
-            env_mass_total_check=(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
-
-! ************
-!      write(*,*)'leaving new method ',HSTOT-HS(M)
-! ************
-
          endif
          endif
-! ******************************************************************
 
          if(star%job%rescale_params(4,run_index).gt.0.0d0) then
 
 ! RESCALE CORE MASS.
 ! THE MASS OF THE H-BURNING SHELL IS HELD FIXED, AND MASS IS TRANSFERRED
 ! FROM THE CORE TO THE ENVELOPE (OR VICE VERSA).
-!
-
             shell_mass_prev= (exp(ln10*shell_mass_log(shell_end)))
             delta_core_mass = star%job%rescale_params(4,run_index) - core_mass_old
             delta_env_mass = - delta_core_mass
@@ -333,8 +283,6 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
                shell_mass_log(zone_idx) = log10(unlogged_mass_temp + mass_shift_grams)
             end do
 !  NOW SHRINK OR EXPAND THE ENVELOPE MASS TO RETAIN TOTAL CONSTANT MASS.
-!
-
         mass_scale_factor =(exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_end)))/ &
                           (exp(ln10*shell_mass_log(num_zones))-shell_mass_prev)
 
@@ -386,6 +334,5 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
                end if
             enddo
       end if
-! ************
       return
 end subroutine rescale_model

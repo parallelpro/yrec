@@ -11,15 +11,10 @@
 ! Subroutine to remap new, more intuitively named, namelist parameters
 ! onto existing code parameters.
 subroutine map_user_inputs
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star
       use controls_lib
       implicit none
 
-! PARAMETERS NT AND NG FOR TABULATED SURFACE PRESSURES.
-      integer, parameter :: nt = 57, ng = 11
-! PARAMETERS NTA AND NGA FOR TABULATED ALLARD MODEL SURFACE PRESSURES.
-      integer, parameter :: nta = 54, nga = 5
-      integer, parameter :: nts = 63, nps = 76
       integer :: i
 
       double precision :: s0_pp_ref, s0_he3he3_ref, s0_he3he4_ref, &

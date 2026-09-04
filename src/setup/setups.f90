@@ -12,8 +12,7 @@
 !
 ! One-time model-independent setup performed at program start:
 ! defines the physical/mathematical constants used throughout the
-! code (common/const1//const2//const3//const/debhu), loads the
-! opacity tables (setupopac/mhdtbl), the degenerate-electron
+! code (phys_const_lib and star%), loads the opacity tables (setupopac/mhdtbl), the degenerate-electron
 ! (Fermi-Dirac) equation-of-state table used by fully_ionized_eos.f90, the
 ! Kurucz/Castelli surface-pressure table used for the T-tau surface
 ! boundary condition, and (if enabled) the SCVH envelope
@@ -23,41 +22,20 @@ subroutine setups(ierr)
       use kap_lib
       use atm_lib
       use atm_table_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star
       use phys_const_lib
       use yale_eos_lib
       use math_lib
       use ttau_lib, only: hsra_t_tau_offset
       implicit none
       integer, intent(out) :: ierr
-! JNT 06/14 ADD NTC FOR KURUCZ/CASTELLI 2004 ATM
-      integer, parameter :: nt = 57, ng = 11
-      integer, parameter :: ntc = 76, ngc = 11
-      integer, parameter :: nts = 63, nps = 76
-! MHP 8/97 ADDED NTA AND NGA FOR ALLARD ATMOSPHERE
-      integer, parameter :: nta = 54, nga = 5
 
-
-! MHP 8/25 Reduced declared variables to ones actually used here or
-! passed to other routine
 ! 2026 de-tramp: the 24 table paths and the mixture work array come
 ! from star%job directly (they were only ever star%job members passed
 ! positionally through star_setup) -- callers set star%job first.
-
-! former common/lunum/: all 12 members now use-associated from
-! const_lib (see that file's header note) rather than locally
-! declared/common'd here.
-! MHP 8/25 Removed file names from common block
-!      COMMON/LUFNM/ FLAST, FFIRST, FRUN, FSTAND, FFERMI,
-!     1    FDEBUG, FTRACK, FSHORT, FMILNE,  FMODPT,
-!     2    FSTOR, FPMOD, FPENV, FPATM, FDYN,
-!     3    FLLDAT, FSNU, FSCOMP, FKUR,
-!     4    FMHD1, FMHD2, FMHD3, FMHD4, FMHD5, FMHD6, FMHD7, FMHD8
 ! --- locals ---
       double precision :: speed_of_light, electron_mass, boltzmann_constant, &
            planck_constant, hydrogen_atom_mass, electron_charge_esu
-      integer :: teff_idx, logg_idx
-      logical :: found_valid_pressure
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! SETUP CONSTANTS

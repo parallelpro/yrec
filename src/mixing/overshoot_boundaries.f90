@@ -13,7 +13,6 @@
 subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, num_zones, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, num_mixed_zones, ierr)
-      use star_info_lib, only: star
       use star_info_lib, only: star, json
       use luout_lib
       use phys_const_lib
@@ -33,8 +32,8 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
       double precision :: pscale_up, pscale_down
       double precision :: cz_radius, overshoot_radius, radius
 
-! IOV1/IOV2 (from common/dpmix/) store the position of overshoot for
-! adiabatic extension.
+! star%iov1/iov2 store the position of overshoot for adiabatic
+! extension.
       star%iov1 = -1
       star%iov2 = -1
       ierr = 0

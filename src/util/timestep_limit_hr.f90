@@ -30,20 +30,10 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
       double precision, intent(in) :: log_teff
       integer, intent(in) :: num_points
       double precision, intent(out) :: envelope_dt
-! dt_scale: maximum absolute time differences for each quantity
-! (1 = Teff, 2 = L). Only elements 1-2 are ever set, matching the
-! original DIMENSION HMAX(4) (element 3-4, and the commented-out
-! NHMAX(4), were unused there too).
-      double precision :: dt_scale(4)
       double precision :: teffl_change, logl_change, dt_factor, &
            dt_factor_limit
 
-! find maximum absolute time differences for each quantity
-! temperature
-      dt_scale(1) = star%ctrl%tri_delta_teffl
-! luminosity
-      dt_scale(2) = star%ctrl%tri_delta_logl
-
+! find absolute changes in log Teff and log L since the previous model
       teffl_change = abs(star%log_Teff_start - log_teff)
       logl_change = abs(log10(star%luminosity_lsun_start(star%nz_start)) - &
            log10(luminosity(num_points)))

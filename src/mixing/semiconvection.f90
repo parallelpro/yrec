@@ -58,18 +58,11 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
       integer, intent(inout) :: num_zones_mixed
       double precision, intent(in) :: log_teff
 
-! MHP 8/25 Removed unused variables
-!      CHARACTER*256 FLAOL, FPUREZ
-! MHP 8/25 Removed character file names from common block
-! former common/nwlaol/: not used in this file.
-
-
       logical :: only_check_core
       integer :: loop_upper_bound, zone_idx, edge_side
       logical :: up_semiconv_flag, down_semiconv_flag
       integer :: cz_edge_idx, adjacent_radiative_idx
-      logical :: want_derivatives, use_conductive_opacity_flag, &
-           in_atmosphere, is_convective
+      logical :: want_derivatives, in_atmosphere, is_convective
       integer :: saha_state
       double precision :: log_luminosity_zone, log_mass_zone, &
            log_pressure_zone, log_temperature_zone, log_density_zone, &
@@ -77,7 +70,6 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
       double precision :: hydrogen_fraction, metal_fraction
       double precision :: pressure_rotation_factor, &
            temperature_rotation_factor
-      integer :: current_zone_idx
 ! 2026 named-index results: the eos/kap relay soup is two arrays.
 ! eos_res(i_log10_density) mirrors the historical in-place update of
 ! log_density_zone -- call 2 seeds from call 1's result, and the
@@ -96,13 +88,12 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
            new_edge_idx
       integer :: k_idx, pair_idx
 
-! RUN THROUGH ALL THE CONVECTION ZONES.
-!$$$      DO 210 I = 1,NZONE
-
       integer, intent(out) :: ierr
 
       ierr = 0
 
+! RUN THROUGH THE CONVECTION ZONES (ONLY THE FIRST, I.E. THE CORE, WHEN
+! only_check_core IS SET).
       only_check_core = .true.
       if (only_check_core) then
          loop_upper_bound = 1
@@ -142,7 +133,6 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
             if (edge_side.eq.2) adjacent_radiative_idx = cz_edge_idx + 1
 ! SET UP FLAGS FOR CALLS TO THE BASIC PHYSICS ROUTINES.
             want_derivatives = .false.
-            use_conductive_opacity_flag = .true.
             in_atmosphere = .true.
             saha_state = 0
 ! USE THE STRUCTURE VARIABLES FOR THE FIRST POINT OUTSIDE THE CZ
@@ -160,7 +150,6 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 !*** ADD ROTATION VECTORS ***
             pressure_rotation_factor = 1.0d0
             temperature_rotation_factor = 1.0d0
-            current_zone_idx = cz_edge_idx
             eos_res(i_log10_density) = log_density_zone
             call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
@@ -194,7 +183,6 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 ! REPEAT CALL WITH THE LOCAL COMPOSITION.
             hydrogen_fraction = composition(1,adjacent_radiative_idx)
             metal_fraction = composition(3,adjacent_radiative_idx)
-            current_zone_idx = adjacent_radiative_idx
             eos_res(i_log10_density) = log_density_zone
             call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
@@ -266,7 +254,6 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                log_density_zone = log_density(search_zone_idx)
                hydrogen_fraction = composition(1,search_zone_idx)
                metal_fraction = composition(3,search_zone_idx)
-               current_zone_idx = search_zone_idx
                eos_res(i_log10_density) = log_density_zone
                call eos_get(log_temperature_zone, log_pressure_zone, &
                     hydrogen_fraction, metal_fraction, eos_res, &

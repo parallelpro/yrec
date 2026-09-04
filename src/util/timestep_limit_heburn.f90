@@ -12,16 +12,14 @@
 ! Test for helium flash burning; high central density is taken as a
 ! sign that the model is a giant undergoing a He flash rather than a
 ! horizontal branch star.
-subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, luminosity, &
+subroutine timestep_limit_heburn(composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
      num_points, helium_dt, h_shell_zone_begin)
-
       use net_lib
       use star_info_lib, only: star, json
       use burn_lib
       implicit none
 
-      double precision, intent(out) :: energy_gen_terms(6)
       double precision, intent(in) :: composition(15,json)
       double precision, intent(in) :: log_density(json), luminosity(json), &
            enclosed_mass(json), log_temperature(json)
@@ -33,17 +31,15 @@ subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, lum
       double precision :: max_temp, local_log_density, local_log_temperature
       integer :: max_temp_zone, zone_idx, engeb_zone, shell_zone
       double precision :: hydrogen_fraction, helium_fraction, &
-           metal_fraction, he3_fraction, c12_fraction, c13_fraction, &
-           n14_fraction, n15_fraction, o16_fraction, o17_fraction, &
-           o18_fraction, h2_fraction, li6_fraction, li7_fraction, &
-           be9_fraction
+           he3_fraction, c12_fraction, c13_fraction, &
+           n14_fraction, o16_fraction, o18_fraction, h2_fraction
+! only the helium-burning term (energy_gen_5) of the engeb output is
+! used here; the other terms are received and discarded.
       double precision :: energy_gen_1, energy_gen_2, energy_gen_3, &
            energy_gen_4, energy_gen_5, qed_correction, qet_correction, &
-           total_energy_gen, total_nuclear_energy_gen, &
-           dead_alpha_capture_energy
+           total_energy_gen, helium_energy_gen
       double precision :: core_helium_fraction
 
-! DATA Q3A,QCA/5.85D17,1.7276D18/
       if (log_density(1).ge.5.0d0) then
 !     search for temperature maximum
        max_temp = 0.0d0
@@ -59,20 +55,16 @@ subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, lum
        local_log_temperature = log_temperature(max_temp_zone)
        hydrogen_fraction = composition(1,max_temp_zone)
        helium_fraction = composition(2,max_temp_zone)
-       metal_fraction = composition(3,max_temp_zone)
        he3_fraction = composition(4,max_temp_zone)
        c12_fraction = composition(5,max_temp_zone)
        c13_fraction = composition(6,max_temp_zone)
        n14_fraction = composition(7,max_temp_zone)
-       n15_fraction = composition(8,max_temp_zone)
        o16_fraction = composition(9,max_temp_zone)
-       o17_fraction = composition(10,max_temp_zone)
        o18_fraction = composition(11,max_temp_zone)
+! h2_fraction is left at its -finit-local-zero value (0) when the
+! extended composition is off, as in the original.
        if(star%job%use_extended_composition) then
           h2_fraction = composition(12,max_temp_zone)
-          li6_fraction = composition(13,max_temp_zone)
-          li7_fraction = composition(14,max_temp_zone)
-          be9_fraction = composition(15,max_temp_zone)
        endif
        engeb_zone = max_temp_zone
          call engeb(energy_gen_1,energy_gen_2,energy_gen_3,energy_gen_4, &
@@ -81,29 +73,19 @@ subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, lum
               helium_fraction,he3_fraction,c12_fraction,c13_fraction, &
               n14_fraction,o16_fraction,o18_fraction,h2_fraction, &
               engeb_zone)
-         total_nuclear_energy_gen = total_energy_gen
-         energy_gen_terms(1) = energy_gen_1
-         energy_gen_terms(2) = energy_gen_2
-         energy_gen_terms(3) = energy_gen_3
-         energy_gen_terms(4) = energy_gen_4
-         energy_gen_terms(5) = energy_gen_5
-         energy_gen_terms(6) = star%neutrino_loss_rate
-         dead_alpha_capture_energy = star%alpha_capture_energy
-       if(energy_gen_terms(5).lt.1.d-22) energy_gen_terms(5) = 1.d-22
-       helium_dt=1.0d15/energy_gen_terms(5)
+         helium_energy_gen = energy_gen_5
+       if(helium_energy_gen.lt.1.d-22) helium_energy_gen = 1.d-22
+       helium_dt=1.0d15/helium_energy_gen
       else
 !  set limits on he burning for non-helium flash stars
 !  core_helium_fraction: computed as 1 - Z(core); in a He-burning core
 !  X is normally negligible there, so this approximates the core Y.
        core_helium_fraction = 1d0 - composition(3,convective_core_edge_zone)
        if(core_helium_fraction.ge.star%ctrl%atime(1)) then
-
             helium_dt = min(star%ctrl%atime(4),star%ctrl%atime(5)*core_helium_fraction)
-
-          helium_dt = (5.85d17/star%solar_luminosity_cgs)*helium_dt* &
+            helium_dt = (5.85d17/star%solar_luminosity_cgs)*helium_dt* &
                (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))
-
-            else
+         else
 ! 2026 (bugsweep sec-10/11): core helium exhausted -- the He-shell
 ! branch. The original (ytime.f) read DELTSY on the right-hand side
 ! here, i.e. the PREVIOUS call's timestep (kept alive only by the
@@ -128,10 +110,7 @@ subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, lum
                     composition(2,shell_zone)* &
                     (enclosed_mass(shell_zone)/luminosity(shell_zone)))
             end if
-
          endif
-
       endif
-
       return
 end subroutine timestep_limit_heburn

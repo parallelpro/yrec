@@ -35,11 +35,8 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
       integer, intent(in) :: num_points
       double precision, intent(out) :: struct_dt
 ! max_change: maximum absolute time differences for each quantity
-! (1 = P, 2 = T, 3 = R, 4 = L). max_change_index is the model point at
-! which each maximum occurred; it is assigned but (as in the original)
-! never subsequently read.
+! (1 = P, 2 = T, 3 = R, 4 = L).
       double precision :: max_change(4)
-      integer :: max_change_index(4)
       integer :: i
       double precision :: test_p, test_t, test_r, test_l, dt_factor, &
            dt_factor_limit
@@ -61,17 +58,14 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
        test_p = abs(star%logP_start(i)-log_pressure(i))
        if(max_change(1).le.test_p) then
           max_change(1) = test_p
-          max_change_index(1) = i
        endif
        test_t = abs(star%logT_start(i)-log_temperature(i))
        if(max_change(2).le.test_t) then
           max_change(2) = test_t
-          max_change_index(2) = i
        endif
        test_r = abs(star%logR_start(i)-log_radius(i))
        if(max_change(3).le.test_r) then
           max_change(3) = test_r
-          max_change_index(3) = i
        endif
        if(luminosity(i)+luminosity(i-1).gt.0.0d0) then
           test_l = abs((star%luminosity_lsun_start(i)-luminosity(i))*2.0d0/(luminosity(i)+luminosity(i-1)))
@@ -80,7 +74,6 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
        endif
        if(max_change(4).le.test_l) then
           max_change(4) = test_l
-          max_change_index(4) = i
        endif
       end do
 ! now actually limit the timestep by a factor that reduces the
@@ -94,9 +87,8 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
 ! if no change from previous model,set struct_dt to timestep
 ! stored in the previous model.
       if (dt_factor.eq.0.d0) dt_factor=1.0d0
-! restrict change in timestep to no more than a factor of atime(12)%
-! up or down.
-! mhp 10/14 use atime(13) as the global factor for limiting timestep changes
+! restrict change in timestep to no more than a factor of atime(13)
+! (the global timestep limiter) up or down.
       dt_factor_limit = star%ctrl%atime(13)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit

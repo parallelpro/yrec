@@ -22,24 +22,9 @@
 ! temperature solve, ALSURFP+EQSTAT), then calls mdot.f90 to actually
 ! apply the mass change.
 !
-! PRESERVED CALL-SITE BUG (not fixed, per project policy): the call to
-! mdot below passes 24 actual arguments (leading with
-! log_luminosity_lsun) to a subroutine, mdot.f90, that declares only
-! 23 dummy arguments (no luminosity argument) -- see mdot.f90's header
-! for the full description of this pre-existing mismatch, reproduced
-! exactly here.
-!
-! FORMER CROSS-FILE COMMON LAYOUT MISMATCH (now resolved by the
-! rotdiff_lib module conversion): this file's own former common/
-! masschg2/ declared its 4th/5th members as (DLOGT, DLOGP) -- i.e.
-! DLOGT before DLOGP -- while mdot.f90's declaration of the very same
-! block had them in the opposite order (DLOGP, DLOGT). Since COMMON
-! storage is positional, this meant the two files disagreed about
-! which physical quantity occupied which storage slot -- harmless only
-! because neither variable was actually read or set in this file's
-! body (unused layout placeholders here). Name-based module access
-! makes the position irrelevant, so the historical swap is moot now;
-! documented here for the record rather than silently dropped.
+! The call to mdot below matches mdot.f90's 23-dummy list 1:1 (the
+! historical 24-actual argument-count mismatch of massloss.f was fixed
+! in 2026; see mdot.f90's header).
 subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
      log_density, specific_angular_momentum, log_pressure, log_radius, &
      log_mass, zone_mass_grams, shell_mass, log_total_mass, log_temperature, &
@@ -76,27 +61,14 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       double precision, intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: new_atmosphere_fit_needed
       integer, intent(out) :: ierr
-
-
-
-
-
-
-
-
-
-
-
 ! MHP 5/02 EFFICIENCY FACTOR FOR THE THERMAL ENERGY CONTENT
 ! OF ACCRETED MATTER.
       double precision :: accretion_efficiency
       data accretion_efficiency/1.0d0/
 ! --- locals ---
       double precision :: mass_loss_rate_msun_yr
-      logical :: apply_mass_change
       double precision :: log10_radius, total_radius_cm
-      double precision :: total_mass_grams, age_seconds
-      double precision :: surface_gravity_cgs
+      double precision :: total_mass_grams
       double precision :: cz_total_mass_below_fitting
       double precision :: local_temperature, local_pressure, local_density, &
            local_beta, mean_molecular_weight_local
@@ -109,8 +81,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       logical :: print_flag
       double precision :: log10_gravity
       logical :: allard_surface_failed
-      double precision :: temperature_local, pressure_local, log10_temperature_local, &
-           log10_pressure_local, density_local, log10_density_local
+      double precision :: log10_temperature_local, log10_pressure_local, &
+           log10_density_local
       double precision :: hydrogen_fraction_local, metal_fraction_local
       logical :: eos_deriv_flag, eos_atmosphere_flag
       integer :: saha_flag
@@ -122,7 +94,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! (below), which is what the original saw on its first call.
       double precision :: eos_res(num_eos_results)
       double precision :: mass_loss_rate_cgs, pressure_from_wind, &
-           temperature_from_wind, accretion_specific_entropy2
+           temperature_from_wind
       integer :: zone_idx
 
 ! INITIALIZE MASS LOSS AT DEFAULT RATE
@@ -130,25 +102,18 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       log10_density_local = 0.0d0
       beta_local = 0.0d0
       mass_loss_rate_msun_yr = star%ctrl%mass_accretion_rate
-      if(star%job%use_mass_accretion)then
-         apply_mass_change = .true.
-      else
-         apply_mass_change = .false.
+      if(.not.star%job%use_mass_accretion)then
          new_atmosphere_fit_needed = .false.
-         continue
          return
       endif
-!      IF(.NOT.LDOMDOT)RETURN
 ! TEFFL IS THE BASE 10 LOG OF THE EFFECTIVE TEMPERATURE
-! COMPUTE GLOBAL QUANTITIES (RADIUS,MASS,AGE) IN CGS UNITS.
+! COMPUTE GLOBAL QUANTITIES (RADIUS,MASS) IN CGS UNITS.
 ! RADIUS
       log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
            csigl-4.0d0*log_teff)
       total_radius_cm = exp10(log10_radius)
 ! MASS
       total_mass_grams = total_mass_msun*star%solar_mass_cgs
-! AGE
-      age_seconds = age_gyr*1.0d9*seconds_per_year
 ! USE A REIMERS FORMULA TO COMPUTE MDOT IF DESIRED; OVERWRITES
 ! CONSTANT MDOT.  IN THIS EXPRESSION MDOT=K*L/G/R.
 ! 2026 config-matrix fix: the historical expression computed
@@ -158,7 +123,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! fix, so never caught. Now implements the standard Reimers law the
 ! comment above describes: Mdot[Msun/yr] = reimers_scaling_factor*(L/Lsun)(R/Rsun)/(M/Msun),
 ! reimers_scaling_factor default -4e-13 (the classical eta=1 coefficient).
-      if(apply_mass_change .and. star%ctrl%use_reimers_wind)then
+      if(star%ctrl%use_reimers_wind)then
          mass_loss_rate_msun_yr = star%ctrl%reimers_scaling_factor* &
               exp10(log_luminosity_lsun)* &
               (total_radius_cm/star%solar_radius_cgs)/total_mass_msun
@@ -166,8 +131,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! 02/12 MHP TAUCZ NOW COMPUTED PRIOR TO CALL IN MIXCZ
 ! CONVECTIVE OVERTURN TIMESCALE
       if(envelope_boundary_zone.lt.num_zones)then
-!         TAUCZ = 0.0D0
-!         DO I = JENV+1,M
          write(*,*)star%convective_turnover_timescale/seconds_per_year, &
               total_radius_cm/star%solar_radius_cgs
          star%jcz = envelope_boundary_zone
@@ -206,7 +169,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! DETERMINE THE MASS-WEIGHTED THERMAL ENERGY (PER GM)
 ! IN EACH SHELL OF THE CONVECTIVE ENV.
          sum_thermal_energy = 0.0d0
-!         SUMDM = 0.0D0
          thermal_energy_accreted_bar = 0.0d0
          rot_scr%envelope_specific_entropy = 0.0d0
          do zone_idx = envelope_boundary_zone, num_zones
@@ -234,9 +196,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! CONVECTIVE ENVELOPE IS
             sum_thermal_energy = sum_thermal_energy+thermal_energy_per_gram* &
                  shell_mass(zone_idx)
-! THE RUNNING TOTAL OF THE MASS OF THE
-! CONVECTIVE ENVELOPE IS
-!            SUMDM = SUMDM + HS2(J)
          end do
 ! THE AVERAGE THERMAL ENERGY OF THE UNPERTURBED CE (W/O ACCN) IS
          mean_thermal_energy = sum_thermal_energy/cz_total_mass_below_fitting
@@ -251,8 +210,6 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
          call atm_get_surface_pt(log_teff,log10_gravity,print_flag, &
               allard_surface_failed, ierr)
          if (ierr /= 0) return
-         temperature_local = exp10(atm_table%atm_log10_temperature)
-         pressure_local = exp10(atm_table%atm_log10_pressure)
          log10_temperature_local = atm_table%atm_log10_temperature
          log10_pressure_local = atm_table%atm_log10_pressure
          hydrogen_fraction_local = composition(1,num_zones)
@@ -273,9 +230,9 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
               (eos_res(i_density)*eos_res(i_temperature))
          rot_scr%accretion_specific_entropy = mean_molecular_weight_local* &
               (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
-!         WRITE(*,911)TL,PL,SACC,SCEN
-!  911     FORMAT(' TSUR,PSUR ',2F8.5,' SACC ',1PE12.3,' SCORE ',E12.3)
-! ALTERNATE EXPRESSION FOR SURFACE PRESSURE AND LUMINOSITY, FROM STAHLER 1988
+! ALTERNATE EXPRESSION FOR SURFACE PRESSURE AND LUMINOSITY, FROM STAHLER 1988.
+! ONLY mean_molecular_weight_local FROM THIS SECOND EOS CALL IS USED
+! (PASSED ON TO mdot); THE ENTROPY IT WOULD GIVE IS NOT.
          if(accretion_efficiency.gt.0.0d0)then
             mass_loss_rate_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs/ &
                  seconds_per_year
@@ -298,12 +255,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
                  eos_res(i_pressure))
             mean_molecular_weight_local = eos_res(i_pressure)*beta_local/ &
                  (eos_res(i_density)*eos_res(i_temperature))
-            accretion_specific_entropy2 = mean_molecular_weight_local* &
-                 (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
-!            WRITE(*,911)TL,PL,SACC2,SCEN
-!            SACC = MAX(SACC,SACC2)
             rot_scr%envelope_specific_entropy = 0.0d0
-!            SCEN = SACC2 - SACC
          else
             rot_scr%envelope_specific_entropy = 0.0d0
          endif
@@ -315,13 +267,12 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 ! as the composition array and crashed. Pre-existing in the original
 ! F77 (documented in mdot.f90's header); fixed by dropping the
 ! spurious first actual so the list matches mdot's dummies 1:1.
-      if(apply_mass_change)call mdot(timestep,composition, &
+      call mdot(timestep,composition, &
            log_density,specific_angular_momentum,log_pressure,log_radius,log_mass, &
            zone_mass_grams,shell_mass,log_total_mass,log_temperature, &
            envelope_boundary_zone,new_surface_bc_needed,num_zones,omega, &
            mean_molecular_weight_local,total_radius_cm,total_mass_msun, &
            mass_loss_rate_msun_yr,accretion_specific_energy,mean_thermal_energy, &
            cz_total_mass_below_fitting,old_log_envelope_mass_fraction, ierr)
-      if (ierr /= 0) return
       return
 end subroutine massloss

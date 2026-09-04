@@ -18,7 +18,6 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      cz_mass_top, start_zone, end_zone, wind_loss_active, omega_surface, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
      specific_angular_momentum, ierr)
-!      *                SJTOT,SMASS,TEFFL,HICZ,HJM,LFIRST)  ! KC 2025-05-31
       use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
@@ -34,9 +33,8 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! --- locals ---
       double precision :: current_turnover_timescale, omega_now, &
            omega_saturation
-! fcorr_local: a wind centrifugal-correction factor, unrelated to
-! former common/ctol/'s fcorr -- renamed (2026) to avoid colliding
-! with the const_lib fcorr added for that block.
+! fcorr_local: the wind centrifugal-correction factor (unrelated to the
+! convergence-tolerance fcorr elsewhere in the code).
       double precision :: fsun, log10_radius, fcorr_local, fcen
       double precision :: domega_test
       integer :: num_substeps
@@ -57,11 +55,8 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       if(.not.star%ctrl%use_pmm_wind_law)then
          call kawaler_wind(log_luminosity_lsun,full_timestep,cz_mass_bottom, &
               cz_mass_top,start_zone,end_zone,wind_loss_active,omega_surface, &
-!      *                SJTOT,SMASS,TEFFL,HICZ,HJM)  ! KC 2025-05-31
               total_mass_msun,log_teff,cz_moment_of_inertia, &
               specific_angular_momentum, ierr)
-         if (ierr /= 0) return
-         continue
          return
       endif
 !
@@ -86,18 +81,8 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          omega_saturation = star%job%wind_saturation_omega
       endif
 !
-! G Somers 3/17, CHANGING WINDLAW TO NEW MATT+2012 METHOD.
-!
-! FIND TOTAL RADIUS OF STAR.
-! G Somers - CGRAV, RTOT not used, so blacking out.
-! DMDOT IS THE MASS LOSS RATE IN SOLAR MASSES PER YEAR.
-! G Somers - Don't need DMDOT anymore.
-!         DMDOT = 2.0D-14
-! DJ/DT = DT*FACTOR*(DMDOT/1.0D-14)**EXMD*OMEGA**EXW*(M/MSUN)**EXM
-!         *(R/RSUN)**EXR
-!
-! G Somers - New calculation. Call AMCALC to set "STRUCTFACTOR".
-!
+! G Somers 3/17, MATT+2012 WIND LAW: matt_structure_factor SETS
+! star%job%structfactor (THE M, R, L, P_phot, tau_cz DEPENDENCE).
       call matt_structure_factor(total_mass_msun,log_luminosity_lsun,log_teff)
 !
 ! TEST : THE LOSS RATE DEPENDS ON OMEGA, AND FOR TIMESTESP THAT ARE
@@ -107,14 +92,8 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! A POSITIVE SOLUTION FOR OMEGA IN THE FIRST GUESS AT THE LOSS RATE.
 ! IF NOT, USE A SERIES OF SMALL STEPS.
 ! MHP 12/91 CAP LOSS RATE AT WSAT.
-!
-! G Somers, Commenting out the old DWTEST, adding the PMM version.
-!         DWTEST = (DELTS/HICZ)*FACTOR*(DMDOT/1.0D-14)**EXMD
-!     *          *OMEGAS*(RTOT/CRSUN)**EXR*SMASS**EXM
-!     *          *MIN(OMEGAS,WSAT)**(EXW-1.0D0)
 ! MHP 8/17 ADDED CENTRIFUGAL REDUCTION TERM FROM MATT+2012 ApJ 754, L26
-! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
-!      C_2 = 0.0506
+! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN (star%ctrl%c_2).
       fsun = 0.5*star%ctrl%pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*cgl)/star%solar_mass_cgs
 !     RADIUS
       log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
@@ -125,9 +104,6 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       domega_test = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
            star%job%structfactor*omega_surface &
            *pow(min(omega_now,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))*fcen
-!      DWTEST = (DELTS/HICZ)*CONSTFACTOR*STRUCTFACTOR*OMEGAS
-!     *          *MIN(OMEGAS,WSAT)**(EXW-1.0D0)
-! G Somers END
       if(domega_test.gt.omega_surface)then
          num_substeps = int(domega_test/omega_surface)+1
          sub_timestep = full_timestep/dfloat(num_substeps)
@@ -135,8 +111,6 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          num_substeps = 1
          sub_timestep = full_timestep
       endif
-!      WRITE(*,3)NSTEP
-!    3 FORMAT(5X,I5)
       omega_substep_start = omega_surface
       do substep_idx = 1,num_substeps
 ! THE CONSTANT AND EXPONENTS ARE SET IN PARMIN BASED ON THE INPUT
@@ -157,25 +131,15 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             omega_now = omega_iter
          endif
          iter_count = iter_count + 1
-! G Somers, Commenting out the old WNEW, adding the PMM version.
-!         WNEW = WS - (DT/HICZ)*FACTOR*(DMDOT/1.0D-14)**EXMD
-!     *          *W*(RTOT/CRSUN)**EXR*SMASS**EXM
-!     *          *MIN(W,WSAT)**(EXW-1.0D0)
-! MHP 8/17 ADDED CENTRIFUGAL REDUCTION TERM FROM MATT+2012 ApJ 754, L26
-! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN
+! CENTRIFUGAL REDUCTION TERM (MATT+2012) RE-EVALUATED AT THE CURRENT OMEGA.
          fcorr_local = 0.5*omega_iter**2*exp(ln10*(3.0*log10_radius-cgl))/ &
               total_mass_msun/star%solar_mass_cgs
          fcen = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local)), star%ctrl%excen)
          omega_iter_new = omega_substep_start - (sub_timestep/ &
               cz_moment_of_inertia)*star%ctrl%constfactor*star%job%structfactor*omega_iter &
               *pow(min(omega_now,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))*fcen
-!         WNEW = WS - (DT/HICZ)*CONSTFACTOR*STRUCTFACTOR*W
-!     *          *MIN(W,WSAT)**(EXW-1.0D0)
-! G Somers END
          domega_relative_change = 2.0d0*abs((omega_iter_prev-omega_iter_new)/ &
               (omega_iter_prev+omega_iter_new))
-!       WRITE(*,4)WS,W,WNEW,DW,HICZ
-!    4 FORMAT(1X,1P5E14.6)
          if(domega_relative_change.gt.1.0d-6)then
             omega_iter = 0.5d0*(omega_substep_start+omega_iter_new)
             omega_iter_prev = omega_iter_new
@@ -185,9 +149,6 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          end do omega_fixed_point
          omega_substep_start = omega_iter_new
       end do
-!     CON = DELTS*FACTOR*(DMDOT/1.0D-14)**EXMD*OMEGAS**(EXW-1.0D0)
-!    *        *(RTOT/CRSUN)**EXR*SMASS**EXM
-!     FJDOT = CON*OMEGAS/(1.0D0+(EXW*CON/HICZ))
 ! DM IS THE TOTAL MASS IN THE CONVECTION ZONE.
       cz_mass = cz_mass_top - cz_mass_bottom
 ! FIND CHANGE IN ANGULAR MOMENTUM PER UNIT MASS AND SUBTRACT THIS

@@ -12,10 +12,8 @@
 ! Then (if diffuse_helium_active) performs gravitational settling of
 ! helium (Bahcall & Loeb method), and finally renormalizes the
 ! composition to guard against small negative/overflowing abundances.
-!
-!       SUBROUTINE ROTMIX(DELTS,HCOMP,HS2,HT,ITLVL,M,MRZONE,MXZONE,  ! KC 2025-05-31
-!                  NRZONE,NZONE
-!                  ,HSTOT,HD,HS,HR,HP,LC,HS1)
+! The reaction rates are taken from rot_scr%reaction_rate_by_zone, filled
+! by mix.f90 earlier in the timestep.
 subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      num_zones, radiative_zone_bounds, convective_zone_bounds, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
@@ -23,7 +21,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      enclosed_mass, ierr)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, i_grad_actual, json
+      use star_info_lib, only: star, json
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -43,26 +41,13 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       logical, intent(in) :: convective_flag(json)
       double precision, intent(in) :: enclosed_mass(json)
 
-
-
-
-
-
-
-
-
-
-
-
-
       integer :: num_species
       double precision :: timestep_years
       double precision :: rate_pp(json), rate_he3_he3(json), &
            rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
            rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
-           rate_zero9(json), rate_c12_alpha(json), rate_n14_alpha(json), &
-           rate_triple_alpha(json), rate_zero13(json), &
-           frac_c12_alpha(json), frac_be7_electron(json)
+           rate_c12_alpha(json), rate_n14_alpha(json), &
+           rate_triple_alpha(json), frac_c12_alpha(json)
       double precision :: dlnp_dr_settling(json), del_grad2_save(json)
       logical :: am_transport_convective_flag(json)
       double precision :: total_mass
@@ -93,13 +78,10 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          rate_n14_p(zone_idx) = rot_scr%reaction_rate_by_zone(6,zone_idx)
          rate_o16_p(zone_idx) = rot_scr%reaction_rate_by_zone(7,zone_idx)
          rate_c13_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(8,zone_idx)
-         rate_zero9(zone_idx) = rot_scr%reaction_rate_by_zone(9,zone_idx)
          rate_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(10,zone_idx)
          rate_n14_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(11,zone_idx)
          rate_triple_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(12,zone_idx)
-         rate_zero13(zone_idx) = rot_scr%reaction_rate_by_zone(13,zone_idx)
          frac_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(14,zone_idx)
-         frac_be7_electron(zone_idx) = rot_scr%reaction_rate_by_zone(15,zone_idx)
       end do
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
@@ -118,16 +100,12 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &
                  rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
                  rate_n14_p,rate_o16_p, &
-!      *                   HR8,HR9,HR10,HR11,HR12,HR13,HF1,HS2,HCOMP,
-!      *                   DDAGE,ITLVL)  ! KC 2025-05-31
                  rate_c13_alpha,rate_c12_alpha,rate_n14_alpha, &
                  rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
                  timestep_years, ierr)
             if (ierr /= 0) return
          end do
       end do
-      if (region_idx > num_radiative_zones) then
-      end if
 !
 ! CONVECTION ZONES.
 ! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
@@ -138,8 +116,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &
               rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
               rate_n14_p,rate_o16_p, &
-!      *                HR8,HR9,HR10,HR11,HR12,HR13,HF1,HS2,HCOMP,
-!      *                DDAGE,ITLVL)  ! KC 2025-05-31
               rate_c13_alpha,rate_c12_alpha,rate_n14_alpha, &
               rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
               timestep_years, ierr)

@@ -20,14 +20,14 @@
 !   luminosity : run of luminosity as a function of mass (solar units).
 !   is_convective : flag set t if a shell is convective.
 !   num_points : number of points in the model.
-! in common blocks :
+! star%ctrl:
 !   atime(1) : user parameter; if x < atime(1) then the program considers
 !        the star to have a hydrogen-burning shell rather than a hydrogen-
 !        burning core.
 ! local variables :
 !   luminosity_change_tol : the outer edge of the h-burning shell is defined
 !        as the point where the change in luminosity from one shell to the
-!        next is less than endshl.
+!        next is less than luminosity_change_tol.
 !   hydrogen_surface_tol : the outer edge of the h-burning shell is reached
 !        when x differs from the surface value by less than
 !        hydrogen_surface_tol regardless of the luminosity test.
@@ -40,12 +40,11 @@
 !   if has_h_shell=t then the following are computed :
 !   shell_begin : first shell with x > atime(1).
 !   shell_mid : first shell where x exceeds 1/2 the surface value.
-!   shell_end : last shell where l(i)-l(i-1) > endshl or x is within 1.0e-5
-!        of the surface value.
+!   shell_end : last shell where l(i)-l(i-1) > luminosity_change_tol*l(num_points)
+!        or x is within hydrogen_surface_tol of the surface value.
 subroutine locate_shell_boundaries(composition, luminosity, is_convective, num_points, &
      core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
      has_h_shell)
-      use star_info_lib, only: star
       use star_info_lib, only: star, json
       implicit none
 
@@ -55,7 +54,6 @@ subroutine locate_shell_boundaries(composition, luminosity, is_convective, num_p
       integer, intent(out) :: core_edge, envelope_edge, shell_begin, &
            shell_end, shell_mid
       logical, intent(out) :: has_h_shell
-
 
       double precision :: luminosity_change_tol, hydrogen_surface_tol
       double precision :: half_surface_x, luminosity_end_threshold

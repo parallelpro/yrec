@@ -35,48 +35,21 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
            num_zones
       double precision, intent(out) :: radius_unlogged(json)
       double precision, intent(out) :: dynamical_shear_omega_limit(json)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-! JvS 09/25 CHANGED CPM --> CPMI TO AVOID CONFLICT IN MDPHY
-      double precision :: specific_heat_interface(json), opacity_interface(json)
-!   THE PROCEDURE FOR CALCULATING STABILITY AGAINST ROTATIONALLY INDUCED
-!   MIXING IS AS FOLLOWS:
-!      STABILITY IS CALCULATED FOR THE I/I-1 INTERFACE; QUANTITIES RELATED
-!      TO STABILITY AT THIS INTERFACE ARE STORED IN ARRAY ELEMENT(S) I.
-!      EACH STABILITY CRITERION IS EXPRESSED AS FOLLOWS:
-!         A COMBINATION OF VARIABLES(RHO,P,ETC.)STORED AT EACH SHELL
-!         MULTIPLIED BY A GRADIENT BETWEEN THE SHELLS MUST BE LESS THAN
-!         SOME CRITICAL NUMBER.
-!  SETUPV CALCULATES THE FACTORS WHICH ARE BASED ON
-!  QUANTITIES WHICH DO NOT CHANGE DURING A DIFFUSION TIMESTEP.
-!
+      double precision :: specific_heat_interface(json)
 ! --- locals ---
       integer :: zone_idx, interior_begin, interior_end
       double precision :: dr43, dr42, dr41, dr32, dr31, dr21
       double precision :: lag_denom1, lag_denom2, lag_denom3, lag_denom4
       double precision :: lag_x1, lag_x2, lag_x3, lag_x4
-      double precision :: grav_const, grav_const_sq
+      double precision :: grav_const
       double precision :: fac_local
       double precision :: dlnmu_dlnp, ddel_floor, ddel
       double precision :: pressure_scale_factor, temp_scale_factor, &
            eta_factor, ff_factor, specific_luminosity, cpigi_const
       double precision :: local_flux_factor
-      double precision :: ht_temp_scale_prev, ht_temp_scale, ht_temp_scale2
-      double precision :: dhtscale_dr, mean_dlneps_dlnt, mean_neutrino_fraction
-      double precision :: c1_factor, qc1r, qqc1rr, qchit, qqchitr, dr_local, &
-           qdr_local, f1_local, f2_local, f3_local, v0_local
+      double precision :: ht_temp_scale_prev, ht_temp_scale
+      double precision :: mean_dlneps_dlnt, mean_neutrino_fraction
+      double precision :: c1_factor, qchit, f1_local
 
 !  FIND UNLOGGED RADII OF THE MODEL POINTS.
       do zone_idx = 1,num_zones
@@ -144,9 +117,6 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          rot_scr%interface_gravity_factor(2)=local_gravity(1)*rot_scr%lagrange_interp_weights(1,2)+ &
               local_gravity(2)*rot_scr%lagrange_interp_weights(2,2)+ &
               local_gravity(3)*rot_scr%lagrange_interp_weights(3,2)+local_gravity(4)*rot_scr%lagrange_interp_weights(4,2)
-!  opacity.
-         opacity_interface(2)=mix_scr%om(1)*rot_scr%lagrange_interp_weights(1,2)+mix_scr%om(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              mix_scr%om(3)*rot_scr%lagrange_interp_weights(3,2)+mix_scr%om(4)*rot_scr%lagrange_interp_weights(4,2)
 !  specific heat
          specific_heat_interface(2)=mix_scr%cpm(1)*rot_scr%lagrange_interp_weights(1,2)+mix_scr%cpm(2)*rot_scr%lagrange_interp_weights(2,2)+ &
               mix_scr%cpm(3)*rot_scr%lagrange_interp_weights(3,2)+mix_scr%cpm(4)*rot_scr%lagrange_interp_weights(4,2)
@@ -214,11 +184,6 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
               local_gravity(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
               local_gravity(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
               local_gravity(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
-!  opacity.
-         opacity_interface(num_zones)=mix_scr%om(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              mix_scr%om(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              mix_scr%om(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              mix_scr%om(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
 !  specific heat
          specific_heat_interface(num_zones)=mix_scr%cpm(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
               mix_scr%cpm(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
@@ -249,7 +214,6 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          rot_scr%lagrange_interp_weights(4,zone_idx) = (lag_x1*lag_x2*lag_x3)/lag_denom4
       end do
       grav_const = exp(ln10*cgl)
-      grav_const_sq = grav_const**2
       do zone_idx = interior_begin,interior_end
 !  USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND PHYSICAL VARIABLES
 !  AT THE INTERFACES.
@@ -304,11 +268,6 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
               local_gravity(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
               local_gravity(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
               local_gravity(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
-!  opacity.
-         opacity_interface(zone_idx)=mix_scr%om(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              mix_scr%om(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              mix_scr%om(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              mix_scr%om(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
 !  specific heat
          specific_heat_interface(zone_idx)=mix_scr%cpm(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
               mix_scr%cpm(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
@@ -455,44 +414,20 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          temp_scale_factor = pressure_scale_factor/rot_scr%delmi(zone_idx)
          f1_local = rot_scr%pm(zone_idx)/(rot_scr%interface_gravity_factor(zone_idx)*rot_scr%del_grad_diff_interface(zone_idx)* &
               specific_heat_interface(zone_idx)*rot_scr%dm(zone_idx)*rot_scr%tm(zone_idx))
-         f2_local = rot_scr%interface_luminosity(zone_idx)*rot_scr%interface_radius(zone_idx)/rot_scr%hs3(zone_idx)/3.0d0
-         f3_local = 0.75d0*rot_scr%hs3(zone_idx)/(cpi*rot_scr%dm(zone_idx)*rot_scr%interface_radius(zone_idx)**3)
-         v0_local = -f1_local*f2_local*f3_local
-!         V0 = -PM(I)*ALM(I)/(C4PI*CG**2*HS3(I)*DDEL*CPM(I)*
-!     *         DM(I)**2*TM(I))
-         ff_factor = rot_scr%interface_radius(zone_idx)**3/rot_scr%hs3(zone_idx)
          c1_factor = cc23*rot_scr%interface_radius(zone_idx)**4/grav_const/rot_scr%hs3(zone_idx)
          rot_scr%second_deriv_geom_factor(zone_idx) = c1_factor
-         qc1r = 4.0d0*cc23*ff_factor/grav_const* &
-              (1.0d0-cpi*rot_scr%dm(zone_idx)*ff_factor)
-         dr_local = exp10(log_radius(zone_idx))-exp10(log_radius(zone_idx-1))
-         qdr_local = (exp10(log_density(zone_idx))-exp10(log_density(zone_idx-1)))/dr_local
-         qqc1rr = 8.0d0*ff_factor/grav_const/rot_scr%interface_radius(zone_idx)* &
-         (1.0d0-cc13*cpi*ff_factor*(1.0d1*rot_scr%dm(zone_idx)-rot_scr%interface_radius(zone_idx)*qdr_local) &
-          + cc13*8.0d0*(cpi*rot_scr%dm(zone_idx)*ff_factor)**2)
 ! D LN CHI/D LN T = 3 - D LN CAPPA/D LN T
          qchit = 3.0d0 - 0.5d0*(rot_scr%dlnkappa_dlnt(zone_idx)+rot_scr%dlnkappa_dlnt(zone_idx-1))
-         qqchitr = (rot_scr%dlnkappa_dlnt(zone_idx-1)-rot_scr%dlnkappa_dlnt(zone_idx))/dr_local
          ht_temp_scale = exp(ln10*(log_pressure(zone_idx)+2.0d0*log_radius(zone_idx)-log_density(zone_idx)))/ &
               mass_unlogged(zone_idx)/grav_const/mix_scr%delm(zone_idx)
          rot_scr%third_deriv_geom_factor(zone_idx) = ht_temp_scale
-         ht_temp_scale2 = dr_local/ln10/(log_temperature(zone_idx-1)-log_temperature(zone_idx))
-         dhtscale_dr = (abs(ht_temp_scale)-abs(ht_temp_scale_prev))/dr_local
-         ht_temp_scale_prev = ht_temp_scale
          mean_dlneps_dlnt = 0.5d0*(rot_scr%dlnepsilon_dlnt(zone_idx)+rot_scr%dlnepsilon_dlnt(zone_idx-1))
          mean_neutrino_fraction = 0.5d0*(rot_scr%neutrino_loss_fraction(zone_idx)+rot_scr%neutrino_loss_fraction(zone_idx-1))
-!         FACT7(I)= -V0*(QQCHITR*C1+QCHIT*QC1R)
-!         FACT7(I)= -V0*(QQCHITR*C1)
          rot_scr%difad_shear_coeff1(zone_idx)= &
          - f1_local*c1_factor*(mean_neutrino_fraction*mean_dlneps_dlnt + &
               rot_scr%epsilm(zone_idx)*(1.0d0 - mean_neutrino_fraction - qchit))
          rot_scr%velocity_coeff2b(zone_idx) = rot_scr%velocity_coeff2b(zone_idx)+rot_scr%difad_shear_coeff1(zone_idx)/f1_local
-!         FACT7(I)=V0*((QHTR-QCHIT)*QC1R-QQCHITR*C1+HTSC*QQC1RR)
-!     *            - F1*EPSILM(I)*(HTSC*QC1R + C1*(QETM - QCHIT))
          rot_scr%difad_shear_coeff2(zone_idx) = 0.0d0
-!         FACT8(I)=V0*((QHTR-QCHIT)*C1+HTSC*2.0D0*QC1R)
-!     *            - F1*EPSILM(I)*HTSC*C1
-! Q variables not used
          local_flux_factor = rot_scr%interface_luminosity(zone_idx)/c4pi/rot_scr%dm(zone_idx)/rot_scr%interface_radius(zone_idx)**2
          rot_scr%facd2(zone_idx) = f1_local*(local_flux_factor*qchit - rot_scr%epsilm(zone_idx)*temp_scale_factor)
          rot_scr%facd3(zone_idx) = -f1_local*local_flux_factor

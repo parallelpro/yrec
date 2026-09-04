@@ -25,18 +25,16 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
       double precision, intent(in) :: omega(json)
       double precision, intent(out) :: rotation_dt
       double precision, intent(out) :: max_domega_frac
-      integer :: start_index, i, max_index
+      integer :: start_index, i
       double precision :: test_domega, dt_factor, dt_factor_limit
 
       start_index = 1
       max_domega_frac = 2.0d0*abs(omega(start_index)-star%old_omega(start_index))/ &
            (omega(start_index)+star%old_omega(start_index))
-      max_index = start_index
       do i = start_index+1,num_points
          test_domega=2.0d0*abs(omega(i)-star%old_omega(i))/(omega(i)+star%old_omega(i))
          if(test_domega.gt.max_domega_frac) then
             max_domega_frac = test_domega
-            max_index = i
          endif
       end do
       dt_factor = max_domega_frac/star%job%max_domega_global
@@ -44,12 +42,10 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
 ! stored in the previous model.
       if (dt_factor.eq.0.d0)then
           rotation_dt = 1.0d20
-          continue
           return
       endif
-! restrict change in timestep to no more than a factor of atime(14)%
-! up or down.
-! mhp 10/14 use atime(13) as the global timestep limiter for the code
+! restrict change in timestep to no more than a factor of atime(13)
+! (the global timestep limiter) up or down.
       dt_factor_limit = star%ctrl%atime(13)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit

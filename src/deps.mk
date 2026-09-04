@@ -313,7 +313,6 @@ wind/massloss.o: atm_lib.mod atm_table_lib.mod eos_lib.mod math_lib.mod phys_con
 wind/matt_structure_factor.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 wind/matt_wind.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 wind/mdot.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-wind/wcz.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 wind/wind_spindown.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 wind/wind_spindown_matt.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 

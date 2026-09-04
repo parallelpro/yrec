@@ -9,7 +9,7 @@
 !
 ! Sets up the run-list to evolve a model to a target point on the
 ! HR diagram (target luminosity plus either target Teff or target
-! R/Rsun, per common/calstar/'s specify_teff_flag): expands the two
+! R/Rsun, per star%ctrl%specify_teff_flag): expands the two
 ! seed runs into 50 runs by copying their rescaling/mixing-length
 ! parameters forward (odd runs from 3 rerun the seed rescaling; even
 ! runs from 4 reuse run 2's age/timestep stop criteria), mirroring
@@ -21,28 +21,6 @@ subroutine setup_star_calibration
       use phys_const_lib
       use math_lib
       implicit none
-!     LSTAR     T - have got a star at Teff and L
-!     LPASSR    T - on run have just passed Teff
-!     XLS       Luminosity (L/Lsun) wanted by adjusting Y
-!     XLSTOL    tolerance wanted for luminosity
-!     LTEFF     T - specify Teff for star
-!               F - specify R/Rsun for star
-!     STEFF     Effective temperature of star (K) or...
-!     SR        Radius of star (R/Rsun)
-!     TEFF      Teff of current model
-!     ALR       log(R/Rsun) of current model
-!     ALRI      log(R/Rsun) of previous model
-!     DAGE      age of current model (Gyr)
-!     AGEI      age of previous model (Gyr)
-!     AGER      age of model at R*
-!     BL        luminosity of current model
-!     BLI       luminosity of previous model
-!     BLR       luminosity of model at R
-!     BLRP      luminosity of model at R* of previous run
-!     XP        X of previous run = RESCAL(2, NK-1)
-! mhp 10/02 linct not used, commented out
-!      LINCT = .TRUE.
-
 ! --- locals ---
       integer :: i, j
 
@@ -61,7 +39,7 @@ subroutine setup_star_calibration
 !     SET UP RUN TO EVOLVE TO L, Teff IN HR-DIAGRM.
 !     THIS CONSISTS OF SETTING THE NUMBER OF RUNS TO THE MAXIMUM (50),
 !     AND COPYING THE RELEVANT PARAMETERS FROM THE FIRST TWO RUNS TO
-!     THE NEXT SERIES OF 24 CALIBRATING RUNS.
+!     THE 48 CALIBRATING RUNS THAT FOLLOW.
       star%job%num_runs = 50
       do i = 2,50
          star%job%initial_x_array(i) = star%job%initial_x_array(1)
