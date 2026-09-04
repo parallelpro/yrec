@@ -41,6 +41,7 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
            pressure_cgs, temperature_k, density_cgs, delta, grav, &
            global_data(3)
       double precision :: brunt_n2(json), dr
+      double precision :: grav_const_cgs
 
       open(newunit=gyre_unit,file=pulse_path,status='UNKNOWN',form='FORMATTED')
 
@@ -62,12 +63,13 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
 ! homogeneous there, so the thermal form is exact and smooth, while
 ! the centered difference of a near-adiabatic stratification is
 ! cancellation noise of random sign.
+      grav_const_cgs = exp(ln10*cgl)
       do i = 2, num_shells - 1
          radius_cm = exp(ln10*log_radius(i))
          dr = exp(ln10*log_radius(i+1)) - exp(ln10*log_radius(i-1))
          if (radius_cm > 0.0d0 .and. dr > 0.0d0 .and. &
               star%adiabatic_index_gamma1(i) > 0.0d0) then
-            grav = exp(ln10*cgl)*mass_coordinate(i)/(radius_cm*radius_cm)
+            grav = grav_const_cgs*mass_coordinate(i)/(radius_cm*radius_cm)
             brunt_n2(i) = grav*grav* &
                  (exp(ln10*(log_density(i) - log_pressure(i))))* &
                  (-star%pulse_dlnrho_dlnt(i))* &

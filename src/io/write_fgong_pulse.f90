@@ -39,9 +39,11 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       double precision :: glob(iconst), var(ivar)
       integer :: u, j, k, i
       double precision :: radius_cm, mass_g, grav
+      double precision :: grav_const_cgs
 
       open(newunit=u, file=pulse_path, status='REPLACE', form='FORMATTED')
 
+      grav_const_cgs = exp(ln10*cgl)
       glob = 0.0d0
       glob(1) = mstar_g
       glob(2) = rstar_cm
@@ -52,7 +54,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
 ! derivatives) not tracked here -- zero, as tools tolerate.
       glob(13) = star%dage*1.0d9
       glob(14) = exp10(star%log_Teff)
-      glob(15) = exp(ln10*cgl)
+      glob(15) = grav_const_cgs
 
 ! MESA-style 4-line comment header (FGONG spec: lines 1-4 free text),
 ! followed by the standard `nn iconst ivar ivers` record. ivers 1300
@@ -91,7 +93,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
          var(13) = pts(ipul_cp,k)
          var(14) = pts(ipul_mu_e_inv,k)
          if (radius_cm > 0.0d0) then
-            grav = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)
+            grav = grav_const_cgs*mass_g/(radius_cm*radius_cm)
             var(15) = pts(ipul_N2,k)*radius_cm/grav
          end if
 ! var(16) r_X: not tracked -> 0

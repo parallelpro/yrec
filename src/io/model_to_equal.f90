@@ -160,66 +160,38 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
          call intrp2(radius_table,interp_factors,target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 ! MASS WITHIN THE RADIUS ER
-         equal_mass_mid(zone_index) = interp_factors(1)*enclosed_mass(k0)+ &
-              interp_factors(2)*enclosed_mass(k0+1)+ &
-              interp_factors(3)*enclosed_mass(k0+2)+ &
-              interp_factors(4)*enclosed_mass(k0+3)
+         equal_mass_mid(zone_index) = lagrange4(interp_factors, enclosed_mass(k0:k0+3))
 ! D1
-         equal_diffusion_coeff1_mid(zone_index) = interp_factors(1)* &
-              diffusion_coeff1(k0)+interp_factors(2)*diffusion_coeff1(k0+1)+ &
-              interp_factors(3)*diffusion_coeff1(k0+2)+ &
-              interp_factors(4)*diffusion_coeff1(k0+3)
+         equal_diffusion_coeff1_mid(zone_index) = lagrange4(interp_factors, &
+              diffusion_coeff1(k0:k0+3))
 ! D2
-         equal_diffusion_coeff2_mid(zone_index) = interp_factors(1)* &
-              diffusion_coeff2(k0)+interp_factors(2)*diffusion_coeff2(k0+1)+ &
-              interp_factors(3)*diffusion_coeff2(k0+2)+ &
-              interp_factors(4)*diffusion_coeff2(k0+3)
+         equal_diffusion_coeff2_mid(zone_index) = lagrange4(interp_factors, &
+              diffusion_coeff2(k0:k0+3))
 ! DERIVATIVE OF D1 WRT X
-         equal_diffusion_coeff1_dx_mid(zone_index)=interp_factors(1)* &
-              diffusion_coeff1_dx(k0)+interp_factors(2)*diffusion_coeff1_dx(k0+1) &
-              +interp_factors(3)*diffusion_coeff1_dx(k0+2)+ &
-              interp_factors(4)*diffusion_coeff1_dx(k0+3)
+         equal_diffusion_coeff1_dx_mid(zone_index) = lagrange4(interp_factors, &
+              diffusion_coeff1_dx(k0:k0+3))
 ! DERIVATIVE OF D2 WRT X
-         equal_diffusion_coeff2_dx_mid(zone_index)=interp_factors(1)* &
-              diffusion_coeff2_dx(k0)+interp_factors(2)*diffusion_coeff2_dx(k0+1) &
-              +interp_factors(3)*diffusion_coeff2_dx(k0+2)+ &
-              interp_factors(4)*diffusion_coeff2_dx(k0+3)
+         equal_diffusion_coeff2_dx_mid(zone_index) = lagrange4(interp_factors, &
+              diffusion_coeff2_dx(k0:k0+3))
 ! MASS FRACTION OF HYDROGEN
-         equal_hydrogen_fraction_mid(zone_index)=interp_factors(1)* &
-              composition(1,k0)+interp_factors(2)*composition(1,k0+1)+ &
-              interp_factors(3)*composition(1,k0+2)+ &
-              interp_factors(4)*composition(1,k0+3)
+         equal_hydrogen_fraction_mid(zone_index) = lagrange4(interp_factors, composition(1,k0:k0+3))
          if(star%job%use_diffusion_z)then
 ! METAL DIFFUSION-TREATED AS FULLY IONIZED IRON.
 ! D1
-         rot_scr%metal_diffusion_coeff1_mid(zone_index)=interp_factors(1)* &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0)+interp_factors(2)* &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0+1)+interp_factors(3)* &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0+2)+interp_factors(4)* &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0+3)
+         rot_scr%metal_diffusion_coeff1_mid(zone_index) = lagrange4(interp_factors, &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0:k0+3))
 ! D2
-         rot_scr%metal_diffusion_coeff2_mid(zone_index)=interp_factors(1)* &
-              rot_scr%src_grid_metal_diffusion_coeff2(k0)+interp_factors(2)* &
-              rot_scr%src_grid_metal_diffusion_coeff2(k0+1)+interp_factors(3)* &
-              rot_scr%src_grid_metal_diffusion_coeff2(k0+2)+interp_factors(4)* &
-              rot_scr%src_grid_metal_diffusion_coeff2(k0+3)
+         rot_scr%metal_diffusion_coeff2_mid(zone_index) = lagrange4(interp_factors, &
+              rot_scr%src_grid_metal_diffusion_coeff2(k0:k0+3))
 ! DERIVATIVE OF D1 WRT Z
-         rot_scr%eq_metal_diffusion_coeff1_mid(zone_index)=interp_factors(1)* &
-              rot_scr%src_grid_metal_diffusion_coeff1_dz(k0)+interp_factors(2)* &
-              rot_scr%src_grid_metal_diffusion_coeff1_dz(k0+1) &
-              +interp_factors(3)*rot_scr%src_grid_metal_diffusion_coeff1_dz(k0+2)+ &
-              interp_factors(4)*rot_scr%src_grid_metal_diffusion_coeff1_dz(k0+3)
+         rot_scr%eq_metal_diffusion_coeff1_mid(zone_index) = lagrange4(interp_factors, &
+              rot_scr%src_grid_metal_diffusion_coeff1_dz(k0:k0+3))
 ! DERIVATIVE OF D2 WRT Z
-         rot_scr%eq_metal_diffusion_coeff2_mid(zone_index)=interp_factors(1)* &
-              rot_scr%src_grid_metal_diffusion_coeff2_dz(k0)+interp_factors(2)* &
-              rot_scr%src_grid_metal_diffusion_coeff2_dz(k0+1) &
-              +interp_factors(3)*rot_scr%src_grid_metal_diffusion_coeff2_dz(k0+2)+ &
-              interp_factors(4)*rot_scr%src_grid_metal_diffusion_coeff2_dz(k0+3)
+         rot_scr%eq_metal_diffusion_coeff2_mid(zone_index) = lagrange4(interp_factors, &
+              rot_scr%src_grid_metal_diffusion_coeff2_dz(k0:k0+3))
 ! MASS FRACTION OF METALS
-         rot_scr%metal_abundance_change_mid(zone_index)=interp_factors(1)* &
-              composition(i_metals,k0)+interp_factors(2)*composition(i_metals,k0+1)+ &
-              interp_factors(3)*composition(i_metals,k0+2)+ &
-              interp_factors(4)*composition(i_metals,k0+3)
+         rot_scr%metal_abundance_change_mid(zone_index) = lagrange4(interp_factors, &
+              composition(i_metals,k0:k0+3))
          endif
       end do
 ! SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE CENTERS.
@@ -274,34 +246,20 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
          call intrp2(radius_table,interp_factors,target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 ! MASS WITHIN THE RADIUS ER
-         equal_mass(zone_index) = interp_factors(1)*enclosed_mass(k0)+ &
-              interp_factors(2)*enclosed_mass(k0+1)+ &
-              interp_factors(3)*enclosed_mass(k0+2)+ &
-              interp_factors(4)*enclosed_mass(k0+3)
+         equal_mass(zone_index) = lagrange4(interp_factors, enclosed_mass(k0:k0+3))
 ! D1
-         equal_diffusion_coeff1(zone_index) = interp_factors(1)* &
-              diffusion_coeff1(k0)+interp_factors(2)*diffusion_coeff1(k0+1)+ &
-              interp_factors(3)*diffusion_coeff1(k0+2)+ &
-              interp_factors(4)*diffusion_coeff1(k0+3)
+         equal_diffusion_coeff1(zone_index) = lagrange4(interp_factors, diffusion_coeff1(k0:k0+3))
 ! MASS FRACTION OF HYDROGEN
 
-         equal_hydrogen_fraction(zone_index)=interp_factors(1)* &
-              composition(1,k0)+interp_factors(2)*composition(1,k0+1)+ &
-              interp_factors(3)*composition(1,k0+2)+ &
-              interp_factors(4)*composition(1,k0+3)
+         equal_hydrogen_fraction(zone_index) = lagrange4(interp_factors, composition(1,k0:k0+3))
 ! METAL DIFFUSION
          if(star%job%use_diffusion_z)then
 ! D1
-         rot_scr%metal_diffusion_coeff1(zone_index)=interp_factors(1)* &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0)+interp_factors(2)* &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0+1)+interp_factors(3)* &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0+2)+interp_factors(4)* &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0+3)
+         rot_scr%metal_diffusion_coeff1(zone_index) = lagrange4(interp_factors, &
+              rot_scr%src_grid_metal_diffusion_coeff1(k0:k0+3))
 ! MASS FRACTION OF METALS
-         star%metal_abundance_change(zone_index)=interp_factors(1)* &
-              composition(i_metals,k0)+interp_factors(2)*composition(i_metals,k0+1)+ &
-              interp_factors(3)*composition(i_metals,k0+2)+ &
-              interp_factors(4)*composition(i_metals,k0+3)
+         star%metal_abundance_change(zone_index) = lagrange4(interp_factors, &
+              composition(i_metals,k0:k0+3))
          endif
       end do
 ! LAST POINT : BY DEFINITION, AT ENDING POINT.

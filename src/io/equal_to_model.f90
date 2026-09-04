@@ -98,19 +98,13 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
          call intrp2(radius_table,interp_factors,target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR CHANGE IN X.
-         delta_x = interp_factors(1)*equal_hydrogen_fraction(k0)+ &
-              interp_factors(2)*equal_hydrogen_fraction(k0+1)+ &
-              interp_factors(3)*equal_hydrogen_fraction(k0+2)+ &
-              interp_factors(4)*equal_hydrogen_fraction(k0+3)
+         delta_x = lagrange4(interp_factors, equal_hydrogen_fraction(k0:k0+3))
          hydrogen_max = 1.0D0 - composition(3,zone_index) - composition(4,zone_index)
          composition(1,zone_index)=min(composition(1,zone_index) + delta_x,hydrogen_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
          if(star%job%use_diffusion_z)then
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
-            delta_z = interp_factors(1)*star%metal_abundance_change(k0)+ &
-                 interp_factors(2)*star%metal_abundance_change(k0+1)+ &
-                 interp_factors(3)*star%metal_abundance_change(k0+2)+ &
-                 interp_factors(4)*star%metal_abundance_change(k0+3)
+            delta_z = lagrange4(interp_factors, star%metal_abundance_change(k0:k0+3))
             metal_new = min(composition(3,zone_index)+delta_z,metal_max)
             metal_scale_ratio = metal_new/composition(3,zone_index)
             composition(3,zone_index)=metal_new

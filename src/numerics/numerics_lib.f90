@@ -305,6 +305,23 @@ subroutine intrp2(x_nodes, weight, x_eval)
 end subroutine intrp2
 
 !----------------------------------------------------------------------
+! lagrange4
+!----------------------------------------------------------------------
+! Added 2026 (readability sweep, R3). Applies the 4-point Lagrange
+! weights returned by interp/intrp2 to four consecutive table values:
+!     w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4)
+! summed left to right, exactly as the former inline expressions in
+! io/model_to_equal.f90 and io/equal_to_model.f90 did (byte-pinned).
+! Callers pass the stencil as an array section, y(k0:k0+3).
+pure function lagrange4(w, y) result(s)
+      implicit none
+      double precision, intent(in) :: w(4), y(4)
+      double precision :: s
+
+      s = w(1)*y(1)+w(2)*y(2)+w(3)*y(3)+w(4)*y(4)
+end function lagrange4
+
+!----------------------------------------------------------------------
 ! kspline
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -313,36 +330,22 @@ end subroutine intrp2
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! Fixed-size (4-point) natural cubic spline coefficient generator,
-! same algorithm as cspline/splinc but hardwired to n=4 points
-! and always the natural-spline boundary condition.
+! Fixed-size (4-point) natural cubic spline coefficient generator:
+! cspline hardwired to n=4 points and the natural-spline boundary
+! condition.
 subroutine kspline(x, y, y2)
       implicit none
       integer, parameter :: nm = 4
+      double precision, parameter :: natural_bc = 1.0d30
 
       double precision, intent(in) :: x(nm), y(nm)
       double precision, intent(out) :: y2(nm)
 
-      double precision :: u(nm), sig, qn, un, p
-      integer :: n, i, k
-
-      n = nm
-! natural spline
-      y2(1) = 0.0d0
-      u(1) = 0.0d0
-      do i = 2, n-1
-         sig = (x(i)-x(i-1))/(x(i+1)-x(i-1))
-         p = sig*y2(i-1)+2.0d0
-         y2(i) = (sig-1.0d0)/p
-         u(i) = (6.0d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1)) &
-              /(x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
-      end do
-      qn = 0.0d0
-      un = 0.0d0
-      y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0d0)
-      do k = n-1, 1, -1
-         y2(k) = y2(k)*y2(k+1)+u(k)
-      end do
+! 2026 readability sweep (R3): the former private copy of the
+! natural-spline body was token-identical to cspline's natural
+! branch (yp1/ypn > 0.99d30 sets y2(1)=u(1)=0 and qn=un=0), so this
+! is now a thin wrapper; byte-pinned.
+      call cspline(x, y, nm, natural_bc, natural_bc, y2)
       return
 end subroutine kspline
 
@@ -830,9 +833,9 @@ end subroutine quint
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! Natural cubic spline coefficient generator, same algorithm as
-! cspline but with x/y/y2/u dimensioned to the json=5000 maximum
-! rather than to n, exactly as in the original file.
+! Natural cubic spline coefficient generator: cspline with the
+! natural boundary condition and x/y/y2 dimensioned to the json=5000
+! maximum rather than to n, as in the original file.
 subroutine splinc(x, y, y2, n)
       use star_info_lib, only: json
       implicit none
@@ -840,27 +843,13 @@ subroutine splinc(x, y, y2, n)
       integer, intent(in) :: n
       double precision, intent(in) :: x(json), y(json)
       double precision, intent(out) :: y2(json)
+      double precision, parameter :: natural_bc = 1.0d30
 
-      double precision :: u(json)
-      integer :: i, k
-      double precision :: sig, p, qn, un
-
-! natural spline
-      y2(1) = 0.0d0
-      u(1) = 0.0d0
-      do i = 2, n-1
-         sig = (x(i)-x(i-1))/(x(i+1)-x(i-1))
-         p = sig*y2(i-1)+2.0d0
-         y2(i) = (sig-1.0d0)/p
-         u(i) = (6.0d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1)) &
-              /(x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
-      end do
-      qn = 0.0d0
-      un = 0.0d0
-      y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0d0)
-      do k = n-1, 1, -1
-         y2(k) = y2(k)*y2(k+1)+u(k)
-      end do
+! 2026 readability sweep (R3): the former private copy of the
+! natural-spline body was token-identical to cspline's natural
+! branch, so this is now a thin wrapper (the json-shaped dummies are
+! kept for the callers); byte-pinned.
+      call cspline(x, y, n, natural_bc, natural_bc, y2)
       return
 end subroutine splinc
 
@@ -1442,47 +1431,22 @@ end subroutine splint
 ! returns a cubic-spline interpolated value y.
 !
 ! Note: xa/ya/y2a are dimensioned to the json=5000 module-wide
-! maximum rather than to n, exactly as in the original file.
+! maximum rather than to n, as in the original file; the work is
+! done by splint.
 subroutine splintd2(xa, ya, n, y2a, x, y, klo, khi, ierr)
       use star_info_lib, only: json
-      use luout_lib
       implicit none
 
       integer, intent(in) :: n
       double precision, intent(in) :: xa(json), ya(json), y2a(json), x
       double precision, intent(out) :: y
       integer, intent(out) :: klo, khi
-
-
-      integer :: k
-      double precision :: h, a, b
-
       integer, intent(out) :: ierr
 
-      ierr = 0
-      klo = 1
-      khi = n
-    do while (khi-klo .gt. 1)
-         k = (khi+klo)/2
-         if (xa(k) .gt. x) then
-            khi = k
-         else
-            klo = k
-         end if
-    end do
-      h = xa(khi) - xa(klo)
-      if (h .eq. 0d0) then
-           write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
-         ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
-         ! return (numerics has no facade -- each public procedure carries
-         ! its own gate).
-         ierr = 1
-         return
-      end if
-      a = (xa(khi)-x)/h
-      b = (x - xa(klo))/h
-      y = a*ya(klo)+b*ya(khi)+ &
-           ((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6d0
+! 2026 readability sweep (R3): the body was token-identical to
+! splint's (6d0 vs 6.0d0 is the same constant), so this is now a
+! thin wrapper keeping the json-shaped dummies; byte-pinned.
+      call splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
       return
 end subroutine splintd2
 

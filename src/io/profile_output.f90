@@ -23,7 +23,10 @@ module profile_output
       character(len=256) :: prof_out_dir = ' '
       integer :: prof_nsel = 0
       integer :: prof_sel(max_cols)
-! the two integer-valued profile columns (written with an I format)
+! the two integer-valued profile columns (written with an I format).
+! profile_column_names keeps literal names(1)/names(9): the aux test
+! test_mesa_output.py::test_default_columns_lists_in_sync harvests
+! "names(<digits>) = '...'" from that routine.
       integer, parameter :: col_zone = 1, col_mixing_type = 9
 
 contains
@@ -47,7 +50,7 @@ end subroutine profile_output_init
 subroutine profile_column_names(names)
       character(len=24), intent(out) :: names(n_prof_cols)
 
-      names(col_zone) = 'zone'
+      names(1) = 'zone'
       names(2) = 'mass'
       names(3) = 'logR'
       names(4) = 'logT'
@@ -55,7 +58,7 @@ subroutine profile_column_names(names)
       names(6) = 'logP'
       names(7) = 'luminosity'
       names(8) = 'dm'
-      names(col_mixing_type) = 'mixing_type'
+      names(9) = 'mixing_type'
       names(10) = 'gamma1'
       names(11) = 'opacity'
       names(12) = 'gradr'
