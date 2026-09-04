@@ -141,9 +141,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       logical :: store_flag_set, pressure_limit_test_flag
       logical :: cz_in_envelope
       double precision :: mass_diff_remaining, interp_weight
-      integer :: inversion_index1, inversion_index2
-      double precision :: swap_temp, mass_next_step
-      logical :: swap_temp_logical
+      double precision :: mass_next_step
       double precision :: x_start, taucz_env_accum, delta_radius_cz
 
       ierr = 0
@@ -716,80 +714,27 @@ subroutine integrate_envelope
       return
       end if
       end if
-! 07/02 NOW INVERT THE ENVELOPE VECTOR.
+! 07/02 NOW INVERT THE ENVELOPE VECTOR (surface-inward -> centre-outward).
       if(cfg%senv.lt.senv_thin_envelope)then
-         do i = 1,env_struct%num_env_points
-            inversion_index1 = i
-            inversion_index2 = env_struct%num_env_points - i + 1
-            if(inversion_index1.ge.inversion_index2)exit
-            swap_temp = env_struct%env_log10_density(inversion_index1)
-            env_struct%env_log10_density(inversion_index1) = env_struct%env_log10_density(inversion_index2)
-            env_struct%env_log10_density(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_log10_pressure(inversion_index1)
-            env_struct%env_log10_pressure(inversion_index1) = env_struct%env_log10_pressure(inversion_index2)
-            env_struct%env_log10_pressure(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_log10_radius(inversion_index1)
-            env_struct%env_log10_radius(inversion_index1) = env_struct%env_log10_radius(inversion_index2)
-            env_struct%env_log10_radius(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_log10_mass(inversion_index1)
-            env_struct%env_log10_mass(inversion_index1) = env_struct%env_log10_mass(inversion_index2)
-            env_struct%env_log10_mass(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_log10_temperature(inversion_index1)
-            env_struct%env_log10_temperature(inversion_index1) = env_struct%env_log10_temperature(inversion_index2)
-            env_struct%env_log10_temperature(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_hydrogen_fraction(inversion_index1)
-            env_struct%env_hydrogen_fraction(inversion_index1) = env_struct%env_hydrogen_fraction(inversion_index2)
-            env_struct%env_hydrogen_fraction(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_metal_fraction(inversion_index1)
-            env_struct%env_metal_fraction(inversion_index1) = env_struct%env_metal_fraction(inversion_index2)
-            env_struct%env_metal_fraction(inversion_index2) = swap_temp
-            swap_temp_logical = env_struct%env_convective_flag(inversion_index1)
-            env_struct%env_convective_flag(inversion_index1) = env_struct%env_convective_flag(inversion_index2)
-            env_struct%env_convective_flag(inversion_index2) = swap_temp_logical
-!  08/25 JVS
-            swap_temp = env_struct%env_opacity(inversion_index1)
-            env_struct%env_opacity(inversion_index1) = env_struct%env_opacity(inversion_index2)
-            env_struct%env_opacity(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_luminosity(inversion_index1)
-            env_struct%env_luminosity(inversion_index1) = env_struct%env_luminosity(inversion_index2)
-            env_struct%env_luminosity(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_dlnrho_dlnt(inversion_index1)
-            env_struct%env_dlnrho_dlnt(inversion_index1) = env_struct%env_dlnrho_dlnt(inversion_index2)
-            env_struct%env_dlnrho_dlnt(inversion_index2) = swap_temp
-
-! 08/13 JVS ADDED DEL VECTORS
-            swap_temp = env_struct%env_gradients(1,inversion_index1)
-            env_struct%env_gradients(1,inversion_index1) = env_struct%env_gradients(1,inversion_index2)
-            env_struct%env_gradients(1,inversion_index2) = swap_temp
-            swap_temp = env_struct%env_gradients(2,inversion_index1)
-            env_struct%env_gradients(2,inversion_index1) = env_struct%env_gradients(2,inversion_index2)
-            env_struct%env_gradients(2,inversion_index2) = swap_temp
-            swap_temp = env_struct%env_gradients(3,inversion_index1)
-            env_struct%env_gradients(3,inversion_index1) = env_struct%env_gradients(3,inversion_index2)
-            env_struct%env_gradients(3,inversion_index2) = swap_temp
-            swap_temp = env_struct%env_convective_velocity(inversion_index1)
-            env_struct%env_convective_velocity(inversion_index1) = env_struct%env_convective_velocity(inversion_index2)
-            env_struct%env_convective_velocity(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_beta(inversion_index1)
-            env_struct%env_beta(inversion_index1) = env_struct%env_beta(inversion_index2)
-            env_struct%env_beta(inversion_index2) = swap_temp
-!  08/25 JVS
-            swap_temp = env_struct%env_gamma1(inversion_index1)
-            env_struct%env_gamma1(inversion_index1) = env_struct%env_gamma1(inversion_index2)
-            env_struct%env_gamma1(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_specific_heat_cp(inversion_index1)
-            env_struct%env_specific_heat_cp(inversion_index1) = env_struct%env_specific_heat_cp(inversion_index2)
-            env_struct%env_specific_heat_cp(inversion_index2) = swap_temp
-            swap_temp = env_struct%env_ion_fraction(1,inversion_index1)
-            env_struct%env_ion_fraction(1,inversion_index1) = env_struct%env_ion_fraction(1,inversion_index2)
-            env_struct%env_ion_fraction(1,inversion_index2) = swap_temp
-            swap_temp = env_struct%env_ion_fraction(2,inversion_index1)
-            env_struct%env_ion_fraction(2,inversion_index1) = env_struct%env_ion_fraction(2,inversion_index2)
-            env_struct%env_ion_fraction(2,inversion_index2) = swap_temp
-            swap_temp = env_struct%env_ion_fraction(3,inversion_index1)
-            env_struct%env_ion_fraction(3,inversion_index1) = env_struct%env_ion_fraction(3,inversion_index2)
-            env_struct%env_ion_fraction(3,inversion_index2) = swap_temp
-         end do
+         associate (n => env_struct%num_env_points)
+            env_struct%env_log10_density(1:n) = env_struct%env_log10_density(n:1:-1)
+            env_struct%env_log10_pressure(1:n) = env_struct%env_log10_pressure(n:1:-1)
+            env_struct%env_log10_radius(1:n) = env_struct%env_log10_radius(n:1:-1)
+            env_struct%env_log10_mass(1:n) = env_struct%env_log10_mass(n:1:-1)
+            env_struct%env_log10_temperature(1:n) = env_struct%env_log10_temperature(n:1:-1)
+            env_struct%env_hydrogen_fraction(1:n) = env_struct%env_hydrogen_fraction(n:1:-1)
+            env_struct%env_metal_fraction(1:n) = env_struct%env_metal_fraction(n:1:-1)
+            env_struct%env_convective_flag(1:n) = env_struct%env_convective_flag(n:1:-1)
+            env_struct%env_opacity(1:n) = env_struct%env_opacity(n:1:-1)
+            env_struct%env_luminosity(1:n) = env_struct%env_luminosity(n:1:-1)
+            env_struct%env_dlnrho_dlnt(1:n) = env_struct%env_dlnrho_dlnt(n:1:-1)
+            env_struct%env_gradients(:,1:n) = env_struct%env_gradients(:,n:1:-1)
+            env_struct%env_convective_velocity(1:n) = env_struct%env_convective_velocity(n:1:-1)
+            env_struct%env_beta(1:n) = env_struct%env_beta(n:1:-1)
+            env_struct%env_gamma1(1:n) = env_struct%env_gamma1(n:1:-1)
+            env_struct%env_specific_heat_cp(1:n) = env_struct%env_specific_heat_cp(n:1:-1)
+            env_struct%env_ion_fraction(:,1:n) = env_struct%env_ion_fraction(:,n:1:-1)
+         end associate
       endif
 
       if (solver_diagnostics()) write(run_log_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)

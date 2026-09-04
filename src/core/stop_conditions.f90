@@ -40,6 +40,7 @@ module stop_conditions
       public :: reached_end_age
       public :: check_stop_conditions, init_stop_conditions
       public :: converged_model_is_nan
+      public :: check_rotation_initialised
 
 ! evolve_step -> run_yrec model-loop protocol
       integer, parameter :: step_continue = 0        ! advance accepted
@@ -52,6 +53,23 @@ module stop_conditions
       character(len=1), parameter :: stop_letter(nstops) = ['D','X','Y']
 
 contains
+
+! ---------------------------------------------------------------
+! Configuration check shared by run_yrec (after the starting model is
+! read) and evolve_step (after a diverged-model reload): a rotating
+! run whose model carries no rotation rate is an error (ierr = 1).
+subroutine check_rotation_initialised(ierr)
+      integer, intent(inout) :: ierr
+      if ((star%omega(1) .eq. 0) .and. (star%job%rotation_active)) then
+1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
+                 ' Initialize rotation rates or set LROT to', &
+                 ' FALSE.')
+          print 1611
+          ! 2026 (phase five, step B): configuration error returns to the
+          ! CLI wrapper (which stops) instead of stopping here.
+          ierr = 1
+      endif
+end subroutine check_rotation_initialised
 
 ! ---------------------------------------------------------------
 ! 2026 (bugsweep Batch 3): NaN guard. Nothing in the solver tests

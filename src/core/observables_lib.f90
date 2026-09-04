@@ -34,6 +34,7 @@ module observables_lib
       implicit none
       private
       public :: compute_observables
+      public :: shell_masses_from_log_mass
 
 ! cross-call state (see header): the saha table continuity. Static
 ! zero at process start; reset for repeated in-process runs via
@@ -88,6 +89,34 @@ subroutine compute_observables(ierr)
       call compute_h_shell_boundaries
 
 end subroutine compute_observables
+
+! ---------------------------------------------------------------
+! Unlogged shell masses m(1:nz) (grams, the shell centres) and the
+! per-shell mass dm(1:nz) from the log10 mass grid: dm is half the
+! span between the neighbouring shell centres, the last shell reaching
+! to the total mass. Shared by read_starting_model (star%m, star%dm)
+! and neutrino_flux_table (its local copies).
+subroutine shell_masses_from_log_mass(log_mass, log_total_mass, nz, m, dm)
+      use math_lib
+      double precision, intent(in) :: log_mass(:), log_total_mass
+      integer, intent(in) :: nz
+      double precision, intent(inout) :: m(:), dm(:)
+      double precision :: prev_mass, curr_mass, next_mass
+      integer :: i
+
+      next_mass = exp(ln10*log_mass(1))
+      curr_mass = - next_mass
+      do i = 2,nz
+       prev_mass = curr_mass
+       curr_mass = next_mass
+       next_mass = exp(ln10*log_mass(i))
+       m(i-1) = curr_mass
+       dm(i-1) = 0.5d0*(next_mass-prev_mass)
+      end do
+      m(nz) = next_mass
+      dm(nz) = exp(ln10*log_total_mass) - 0.5d0*(curr_mass+ &
+           next_mass)
+end subroutine shell_masses_from_log_mass
 
 ! ---------------------------------------------------------------
 ! RENORMALIZE LUMINOSITY TERMS TLUMX - SKIPPED FOR HE FLASH

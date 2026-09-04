@@ -126,7 +126,6 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       double precision :: old_senv, target_log_mass_at_fit
       double precision :: interior_interp_fraction
       integer :: num_species
-      double precision :: prev_mass, curr_mass, next_mass
       double precision :: angular_momentum_sum, rotational_ke_sum, &
            shell_angular_momentum
       double precision :: mixture_weight_sum, mixture_scale_factor
@@ -956,22 +955,9 @@ end subroutine rescale_and_refit_envelope
 ! Shell masses (unlogged) and per-shell dm from the (possibly
 ! refitted) log-mass grid.
 subroutine build_shell_masses
-      use math_lib
-! SET UP WEIGHTS AND MASSES
-! HS1 IS THE UNLOGGED HS; HS2 IS THE MASS OF THE SHELL(ALSO NOT LOG).
-      next_mass = exp(ln10*star%log_mass(1))
-      curr_mass = - next_mass
-      do i = 2,star%nz
-       prev_mass = curr_mass
-       curr_mass = next_mass
-       next_mass = exp(ln10*star%log_mass(i))
-       star%m(i-1) = curr_mass
-       star%dm(i-1) = 0.5d0*(next_mass-prev_mass)
-      end do
-      star%m(star%nz) = next_mass
-      star%dm(star%nz) = exp(ln10*star%log_total_mass) - 0.5d0*(curr_mass+ &
-           next_mass)
-
+      use observables_lib, only: shell_masses_from_log_mass
+      call shell_masses_from_log_mass(star%log_mass, star%log_total_mass, &
+           star%nz, star%m, star%dm)
 end subroutine build_shell_masses
 
 ! ---------------------------------------------------------------

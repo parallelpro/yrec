@@ -33,10 +33,10 @@ subroutine neutrino_flux_table
       use phys_const_lib
       use burn_lib
       use math_lib
+      use observables_lib, only: shell_masses_from_log_mass
       implicit none
 
       double precision :: shell_center_mass(json), shell_mass(json)
-      double precision :: prev_mass_bound, curr_mass_bound, next_mass_bound
       double precision :: shell_log_density, shell_log_temperature, &
            hydrogen_fraction, helium_fraction, he3_fraction, &
            c12_fraction, c13_fraction, n14_fraction, &
@@ -53,18 +53,8 @@ subroutine neutrino_flux_table
 ! are left untouched).
 ! shell_center_mass = LOCATION IN GM (UNLOGGED) OF SHELL CENTERS.
 ! shell_mass = MASS IN GM OF EACH SHELL.
-      curr_mass_bound = exp(ln10*star%log_mass(1))
-      prev_mass_bound = -curr_mass_bound
-      do i = 2,star%nz
-         next_mass_bound = prev_mass_bound
-         prev_mass_bound = curr_mass_bound
-         curr_mass_bound = exp(ln10*star%log_mass(i))
-         shell_center_mass(i-1) = prev_mass_bound
-         shell_mass(i-1) = 0.5d0*(curr_mass_bound-next_mass_bound)
-      end do
-      shell_center_mass(star%nz) = curr_mass_bound
-      shell_mass(star%nz) = exp(ln10*star%log_total_mass) &
-           - 0.5d0*(prev_mass_bound+curr_mass_bound)
+      call shell_masses_from_log_mass(star%log_mass, star%log_total_mass, &
+           star%nz, shell_center_mass, shell_mass)
 
       do j = 1,10
          star%neutrino_flux_total(j) = 0.0d0

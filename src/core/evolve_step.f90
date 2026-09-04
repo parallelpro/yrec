@@ -208,16 +208,8 @@ subroutine reload_model_if_diverged
                   star%total_rotational_ke, star%convective_velocity, &
                   star%job%mixture_weights, ierr)
              if (ierr /= 0) return
-             if ((star%omega(1) .eq. 0) .and. (star%job%rotation_active)) then
-18               format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
-                        ' Initialize rotation rates or set LROT to', &
-                        ' FALSE.')
-                 print 18
-                 ! 2026 (phase five, step B): configuration error returns to the
-                 ! CLI wrapper (which stops) instead of stopping here.
-                 ierr = 1
-                 return
-             endif
+             call check_rotation_initialised(ierr)
+             if (ierr /= 0) return
           endif
           star%punch_pending_flag = .true.
 end subroutine reload_model_if_diverged
@@ -308,12 +300,7 @@ subroutine rezone_or_snapshot
             if (star%job%use_extended_composition) then
                star%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = star%envelope_cz_bottom_index
-               if (star%job%envelope_overshoot_active) then
-                  star%pressure_scale_height_start = star%ctrl%overshoot_alpha_envelope*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
-                           -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
-               else
-                  star%pressure_scale_height_start = 0.0D0
-               endif
+               star%pressure_scale_height_start = envelope_overshoot_depth()
 ! find burning rates at the beginning of the time step.
                call lirate88(star%xa,star%logRho,star%logT,star%nz,1)
             endif
@@ -500,12 +487,7 @@ subroutine burn_light_elements
                if (ierr /= 0) return
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index
-               if (star%job%envelope_overshoot_active) then
-                  star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
-                           -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
-               else
-                  star%pressure_scale_height_end = 0.0D0
-               endif
+               star%pressure_scale_height_end = envelope_overshoot_depth()
 ! FIND BURNING RATES AT THE END OF THE TIME STEP.
                call lirate88(star%xa,star%logRho,star%logT,star%nz,2)
                call liburn(star%dt,star%xa,star%logR,star%m,star%dm,star%logT,envelope_cz_zone_end,envelope_cz_zone_prev,star%nz)
@@ -535,5 +517,21 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
            mixing_active, conductive_opacity_flag, star%dlnrho_dlnt, &
            star%dlnrho_dlnp, iterations_done, iteration_level, ierr)
 end subroutine solve_level
+
+! ---------------------------------------------------------------
+! Envelope-overshoot penetration depth (cm): overshoot_alpha_envelope
+! times the pressure scale height at the base of the envelope
+! convection zone, or zero when envelope overshoot is off. Same
+! formula at the start and the end of the step (rezone_or_snapshot,
+! burn_light_elements).
+double precision function envelope_overshoot_depth()
+      use math_lib
+      if (star%job%envelope_overshoot_active) then
+         envelope_overshoot_depth = star%ctrl%overshoot_alpha_envelope*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
+              -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
+      else
+         envelope_overshoot_depth = 0.0D0
+      endif
+end function envelope_overshoot_depth
 
 end subroutine evolve_step

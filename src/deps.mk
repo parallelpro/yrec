@@ -130,9 +130,9 @@ core/henyey_eliminate.o: phys_const_lib.mod star_info_lib.mod
 core/henyey_iterate.o: luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod yale_eos_lib.mod
 core/henyey_solve.o: star_info_lib.mod
 core/monte_carlo.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/neutrino_flux_table.o: burn_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
+core/neutrino_flux_table.o: burn_lib.mod luout_lib.mod math_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod
 core/observables_lib.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
-core/read_starting_model.o: envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
+core/read_starting_model.o: envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod observables_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
 core/rebuild_envelope.o: envint_kernel.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod yale_eos_lib.mod
 core/run_yrec.o: controls_check_lib.mod luout_lib.mod monte_carlo_lib.mod net_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset_lib.mod
 core/shell_physics.o: eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod

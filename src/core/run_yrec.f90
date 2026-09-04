@@ -29,7 +29,8 @@ subroutine run_yrec(ierr)
       use monte_carlo_lib, only: apply_monte_carlo_parameters, &
            write_run_summaries
       use stop_conditions, only: step_kind_card_done, &
-           step_leave_run_loop, init_stop_conditions
+           step_leave_run_loop, init_stop_conditions, &
+           check_rotation_initialised
       use run_log_lib, only: log_run_summary
       use controls_check_lib, only: warn_inconsistent_controls
       implicit none
@@ -286,17 +287,8 @@ subroutine begin_kind_card
           star%model_number = star%ctrl%set_initial_model_number - 1
        end if
 
-      if ((star%omega(1) .eq. 0) .and. (star%job%rotation_active)) then
-
-1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
-                 ' Initialize rotation rates or set LROT to', &
-                 ' FALSE.')
-          print 1611
-          ! 2026 (phase five, step B): configuration error returns to the
-          ! CLI wrapper (which stops) instead of stopping here.
-          ierr = 1
-          return
-      endif
+      call check_rotation_initialised(ierr)
+      if (ierr /= 0) return
 !     MHP 10/24 CHECK STOP CONDITIONS AND DISABLE THEM IF THE STARTING VALUES ARE BELOW THE TARGET THRESHOLD
 ! (2026: one table walk in stop_conditions -- the hand-written D/X/Y
 ! triple that used to live here carried the disarm-the-wrong-stop bug
