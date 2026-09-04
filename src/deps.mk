@@ -215,9 +215,9 @@ kap/kurucz90/build_kurucz_splines.o: math_lib.mod numerics_lib.mod opacity_table
 kap/kurucz90/kurucz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
 kap/kurucz90/kurucz2.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
 kap/kurucz90/read_kurucz_tables.o: math_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/laol89/gtlaol.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
-kap/laol89/gtlaol2.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
-kap/laol89/gtpurz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
+kap/laol89/gtlaol.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/laol89/gtlaol2.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/laol89/gtpurz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/rdlaol.o: luout_lib.mod opacity_table_lib.mod star_info_lib.mod yale_eos_lib.mod
 kap/laol89/rdzlaol.o: luout_lib.mod opacity_table_lib.mod
 kap/laol89/sulaol.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
@@ -251,7 +251,7 @@ mixing/semiconvection.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys
 mixing/solve_composition.o: luout_lib.mod numerics_lib.mod star_info_lib.mod
 mixing/temperature_gradients.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 net/net_lib.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-net/test/test_net.o: burn_lib.mod controls_lib.mod luout_lib.mod net_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
+net/test/test_net.o: burn_lib.mod controls_lib.mod luout_lib.mod net_lib.mod scv_eos_lib.mod star_info_lib.mod
 numerics/numerics_lib.o: intpar_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod phys_const_lib.mod star_info_lib.mod

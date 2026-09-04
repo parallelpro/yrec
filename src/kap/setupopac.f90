@@ -60,7 +60,7 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
 
 !     READ IN LAOL89 PURE Z TABLE
 
-      if (use_pure_z_table) then
+      if (star%ctrl%use_pure_z_table) then
          call rdzlaol(pure_z_table_path, ierr)
          if (ierr /= 0) return
          call zsulaol

@@ -500,11 +500,10 @@ subroutine read_input(ierr)
       integer :: mcore
       double precision :: fcore
 
-! nwlaol: tollaol (a NAMELIST /physics/ member) and llaol are
-! opacity_table_lib module variables spelled identically to their
-! canonical names -- use-associated directly (the table arrays are
-! opacity_table%laol_* now; the unit numbers are newunit locals of
-! the readers). lpurez is a NAMELIST /physics/ member with a
+! nwlaol: tollaol is a NAMELIST /physics/ member spelled identically
+! to its canonical controls_lib name -- use-associated directly (the
+! table arrays are opacity_table%laol_* now; the unit numbers are
+! newunit locals of the readers). lpurez is a NAMELIST /physics/ member with a
 ! different canonical spelling (use_pure_z_table), so kept local under
 ! its NAMELIST spelling here and copy-assigned after the namelist read
 ! below.

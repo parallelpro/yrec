@@ -126,7 +126,7 @@ program test_eos
       star%ctrl%use_alex95_tables = .false.
       star%ctrl%use_kurucz90_tables = .false.
       star%use_two_z_tables = .false.
-      use_pure_z_table = .false.
+      star%ctrl%use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
       star%job%atm_choice = 0
 

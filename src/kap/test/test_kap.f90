@@ -61,7 +61,7 @@ program test_kap
       star%ctrl%use_alex95_tables = .false.
       star%ctrl%use_kurucz90_tables = .false.
       star%use_two_z_tables = .false.
-      use_pure_z_table = .false.
+      star%ctrl%use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
       star%ctrl%opal95_single_table_z = 0.016232d0
       star%ctrl%molecular_opacity_logt_min = 4.0d0

@@ -276,6 +276,8 @@ subroutine seed_controls_buffer
       use_opal95_tables = star%ctrl%use_opal95_tables
       use_kurucz90_tables = star%ctrl%use_kurucz90_tables
       use_alex95_tables = star%ctrl%use_alex95_tables
+      tollaol = star%ctrl%tollaol
+      use_pure_z_table = star%ctrl%use_pure_z_table
       kurucz_table2_unit = star%ctrl%kurucz_table2_unit
       icondopacp = star%ctrl%icondopacp
       use_conductive_opacity = star%ctrl%use_conductive_opacity
@@ -643,6 +645,8 @@ subroutine store_controls_to_star
       star%ctrl%use_opal95_tables = use_opal95_tables
       star%ctrl%use_kurucz90_tables = use_kurucz90_tables
       star%ctrl%use_alex95_tables = use_alex95_tables
+      star%ctrl%tollaol = tollaol
+      star%ctrl%use_pure_z_table = use_pure_z_table
       star%ctrl%kurucz_table2_unit = kurucz_table2_unit
       star%ctrl%icondopacp = icondopacp
       star%ctrl%use_conductive_opacity = use_conductive_opacity

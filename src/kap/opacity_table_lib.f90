@@ -250,16 +250,15 @@ module opacity_table_lib
 ! 2026 (phase six, step 3 -- ROADMAP.md): evicted here from
 ! const_lib, where this table/working data had landed during the
 ! phase-one COMMON conversion; it belongs with this domain's state.
-! former common/nwlaol/ controls (the table arrays themselves are now
-! opacity_table%laol_*): tollaol/llaol's DATA defaults moved here from
-! core/read_input.f90 since DATA can no longer target use-associated
-! entities. use_pure_z_table (originally lpurez) is a NAMELIST value
-! with a different canonical spelling, kept local in core/read_input.f90
-! and copy-assigned. (The table unit numbers, formerly iolaol/
-! iopurez, are newunit locals of kap/laol89/rdlaol.f90/rdzlaol.f90.)
-      double precision :: tollaol = 10.0d0
+! former common/nwlaol/'s one remaining member (the table arrays are
+! opacity_table%laol_*; the namelist controls tollaol/use_pure_z_table
+! are star%ctrl members since 2026 wave 2; the table unit numbers are
+! newunit locals of kap/laol89/rdlaol.f90/rdzlaol.f90). llaol is not a
+! namelist value and nothing in src/ assigns it: it stays at its
+! compile-time .false., so core/read_starting_model.f90's
+! `if (.not.llaol)` guard (use the LAOL-table metal mix instead of
+! mixture_weights_seed) is never skipped.
       logical :: llaol = .false.
-      logical :: use_pure_z_table
 
 
 contains

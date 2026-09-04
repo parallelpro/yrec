@@ -640,6 +640,19 @@ module controls_lib
            molecular_opacity_logt_min, molecular_opacity_logt_max
       logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, use_opal95_tables, use_kurucz90_tables, use_alex95_tables
 
+! former common/nwlaol/ (moved here from kap/opacity_table_lib.f90,
+! 2026 wave 2): tollaol is a NAMELIST /physics/ value spelled
+! identically to its canonical name (use-associated directly in
+! io/read_controls.f90; the LAOL89 interpolators allow linear
+! extrapolation within log(tollaol) of a table edge).
+! use_pure_z_table (originally lpurez) is a NAMELIST value with a
+! different canonical spelling, kept local in io/read_controls.f90 and
+! copy-assigned (the model readers' use_pure_z_table dummy is a
+! separate local of core/read_starting_model.f90, so nothing writes
+! this member after the read).
+      double precision :: tollaol = 10.0d0
+      logical :: use_pure_z_table = .false.
+
 ! former common/miscopac/: kurucz_table2_unit (originally ikur2, the
 ! unit of the second Kurucz table read by kap/kurucz90/
 ! read_kurucz_tables.f90) and icondopacp are not namelist values --

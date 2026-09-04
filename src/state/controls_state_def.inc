@@ -192,6 +192,8 @@
             logical :: use_opal95_tables = .false.
             logical :: use_kurucz90_tables = .false.
             logical :: use_alex95_tables = .false.
+            double precision :: tollaol = 10.0d0
+            logical :: use_pure_z_table = .false.
             integer :: kurucz_table2_unit = 0
             integer :: icondopacp = 0
             logical :: use_conductive_opacity = .false.

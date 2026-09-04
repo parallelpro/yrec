@@ -12,6 +12,7 @@
 subroutine gtpurz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
+      use star_info_lib, only: star
       use opacity_table_lib
       use luout_lib
       use numerics_lib
@@ -39,7 +40,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
 !
 !     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
       ierr = 0
-      log_extrap_tolerance = log(tollaol)
+      log_extrap_tolerance = log(star%ctrl%tollaol)
       call locate(opacity_table%zlaol_logt_grid, opacity_table%zlaol_num_t, log10_temperature, t_locate_guess)
       num_valid_t = 0
 !     GET RANGE OF FOUR TT SURROUNDING T

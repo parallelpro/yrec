@@ -166,7 +166,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     semiconvection+overshoot HB models, which can reach lower core
 !     temperatures
       if ((metal_fraction.gt.0.1d0) .and. (log10_temperature.gt.7.0d0)) then
-         if (.not.use_pure_z_table) then
+         if (.not.star%ctrl%use_pure_z_table) then
             write(run_log_unit, *) ' ERROR: Z>0.10 T > 5 X 10^7 K', &
                  ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=', &
                  metal_fraction, log10_temperature

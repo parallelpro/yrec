@@ -83,7 +83,7 @@ program test_atm
       star%ctrl%use_alex95_tables = .false.
       star%ctrl%use_kurucz90_tables = .false.
       star%use_two_z_tables = .false.
-      use_pure_z_table = .false.
+      star%ctrl%use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
 
 ! constants (real setups; its atm_init call is a no-op at

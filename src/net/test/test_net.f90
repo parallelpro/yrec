@@ -22,7 +22,6 @@ program test_net
       use star_info_lib, only: star, i_h2
       use net_lib
       use scv_eos_lib, only: use_scv_eos
-      use opacity_table_lib, only: use_pure_z_table
       use burn_lib
       implicit none
 
@@ -72,7 +71,7 @@ program test_net
       star%ctrl%use_alex95_tables = .false.
       star%ctrl%use_kurucz90_tables = .false.
       star%use_two_z_tables = .false.
-      use_pure_z_table = .false.
+      star%ctrl%use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
       star%job%atm_choice = 0
 

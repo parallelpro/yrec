@@ -11,6 +11,7 @@
 subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
+      use star_info_lib, only: star
       use opacity_table_lib
       use luout_lib
       use numerics_lib
@@ -41,7 +42,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
 !
 !     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
       ierr = 0
-      log_extrap_tolerance = log(tollaol)
+      log_extrap_tolerance = log(star%ctrl%tollaol)
       call locate(opacity_table%laol2_grid_t, opacity_table%laol2_num_t, log10_temperature, t_locate_guess)
       call locate(opacity_table%laol2_grid_x, opacity_table%laol2_num_x, hydrogen_fraction, x_grid_index)
       if (x_grid_index .eq. opacity_table%laol2_num_x) then
