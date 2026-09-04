@@ -19,6 +19,7 @@
 module burn_lib
       use net_lib
       implicit none
+      private :: locate_cz_base, average_cz_abundances
 contains
 
 
@@ -1999,6 +2000,218 @@ end subroutine compute_neutrino_emission
 
 end subroutine engeb
 
+!----------------------------------------------------------------------
+! locate_cz_base: shared by liburn and liburn2 (2026 readability R3;
+! the block was byte-identical in both). Locates the true base of the
+! surface convection zone at the end of the step (cz_base_zone, with
+! cz_base_frac the offset of the true base from the zone midpoint in
+! units of the zone width: negative = higher, positive = lower) and
+! the base at the start of the step (cz_base_zone_old), including
+! envelope overshoot when active, and records cz_base_zone in
+! star%envelope_cz_base_zone_prev.
+! cz_base_frac is intent(inout): it is assigned only when the CZ base
+! is an interior zone (1 < env_cz_zone < num_zones), exactly as in the
+! original inline block, and is never read by the callers otherwise.
+subroutine locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
+     cz_base_zone, cz_base_zone_old, cz_base_frac)
+      use rotation_scratch_lib
+      use star_info_lib, only: star, json
+      use phys_const_lib
+      use math_lib
+      implicit none
+
+      double precision, intent(in) :: radius(json)
+      integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
+      integer, intent(out) :: cz_base_zone, cz_base_zone_old
+      double precision, intent(inout) :: cz_base_frac
+
+      integer :: zone_idx
+      double precision :: del_diff, del_diff_below
+      double precision :: search_radius, shell_radius, delta_radius, &
+           cz_base_radius
+
+      if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
+         if(star%job%rotation_active.and.star%job%instability_transport_active)then
+            del_diff = mix_scr%del_adiabatic_mix(env_cz_zone) - &
+                 mix_scr%del_radiative_mix(env_cz_zone)
+            del_diff_below = mix_scr%del_adiabatic_mix(env_cz_zone-1) - &
+                 mix_scr%del_radiative_mix(env_cz_zone-1)
+         else
+! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
+! BELOW IT.
+            del_diff = star%grada(env_cz_zone)-star%gradr(env_cz_zone)
+            del_diff_below = star%grada(env_cz_zone-1)-star%gradr(env_cz_zone-1)
+         endif
+! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
+! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
+! BASE IS HIGHER; IF IT IS POSITIVE, THE TRUE BASE IS LOWER.
+         cz_base_frac = max(-0.5d0,0.5d0-del_diff_below/ &
+              (del_diff_below-del_diff))
+         cz_base_frac = min(0.5d0,cz_base_frac)
+         if(.not.star%job%envelope_overshoot_active)then
+            cz_base_zone = env_cz_zone
+            cz_base_zone_old = env_cz_zone_old
+         else
+! STARTING CZ DEPTH (cz_base_radius_prev = 0 means no previous step
+! has stored one: locate it from the start-of-step model).
+            if(star%cz_base_radius_prev.eq.0.0d0)then
+               star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
+                        +exp(ln10*star%logR_start(env_cz_zone_old-1)))
+               search_radius = star%cz_base_radius_prev - star%pressure_scale_height_start
+               do zone_idx = env_cz_zone_old-1,1,-1
+                  shell_radius = exp(ln10*star%logR_start(zone_idx))
+                  if(shell_radius.lt.search_radius)then
+                     cz_base_zone_old = zone_idx + 1
+                     exit
+                  endif
+               end do
+               if (zone_idx .lt. 1) cz_base_zone_old = 1
+            else
+               cz_base_zone_old = star%envelope_cz_base_zone_prev
+            endif
+! ENDING CZ DEPTH : DETERMINE OVERSHOOT FROM TRUE CZ BASE.
+            delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
+            cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
+                    -cz_base_frac*delta_radius
+            star%cz_base_radius_prev = cz_base_radius
+            search_radius = cz_base_radius - star%pressure_scale_height_end
+            do zone_idx = env_cz_zone-1,1,-1
+               shell_radius = exp(ln10*radius(zone_idx))
+               if(shell_radius.lt.search_radius)then
+                  cz_base_zone = zone_idx + 1
+                  delta_radius = exp(ln10*star%logR_start(zone_idx+1))-shell_radius
+                  cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
+                  cz_base_frac = max(-0.5d0,cz_base_frac)
+                  cz_base_frac = min(0.5d0,cz_base_frac)
+                  exit
+               endif
+            end do
+            if (zone_idx .lt. 1) cz_base_zone = 1
+         endif
+      else
+         cz_base_zone = env_cz_zone
+         cz_base_zone_old = env_cz_zone_old
+      endif
+      star%envelope_cz_base_zone_prev = cz_base_zone
+      return
+end subroutine locate_cz_base
+
+!----------------------------------------------------------------------
+! average_cz_abundances: shared by liburn and liburn2 (2026 readability
+! R3; the block was byte-identical in both). Mass-averages the Li6,
+! Li7, Be9 abundances and the log of the mass-averaged burning rates
+! over the surface convection zone at the start of the step (from
+! cz_base_zone_old) and at the end (from cz_base_zone, with the base
+! zone's mass and rates adjusted by cz_base_frac so that it covers the
+! whole CZ; shell_mass is restored before return, star%rate_li6/li7/be9
+! at cz_base_zone keep the adjustment). Start-of-step log rates come
+! from star%log_rate_*_prev when a previous step stored them.
+subroutine average_cz_abundances(composition, mass_coordinate, shell_mass, &
+     cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
+     li6_cz_start, li7_cz_start, be9_cz_start, &
+     log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
+     li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end, &
+     log_rate_li6_cz_end, log_rate_li7_cz_end, log_rate_be9_cz_end)
+      use star_info_lib, only: star, json, i_li6, i_li7, i_be9
+      use math_lib
+      implicit none
+
+      double precision, intent(in) :: composition(15,json)
+      double precision, intent(in) :: mass_coordinate(json)
+      double precision, intent(inout) :: shell_mass(json)
+      integer, intent(in) :: cz_base_zone, cz_base_zone_old, num_zones
+      double precision, intent(in) :: cz_base_frac
+      double precision, intent(out) :: li6_cz_start, li7_cz_start, be9_cz_start
+      double precision, intent(out) :: log_rate_li6_cz_start, &
+           log_rate_li7_cz_start, log_rate_be9_cz_start
+      double precision, intent(out) :: li6_cz_end, li7_cz_end, be9_cz_end, &
+           cz_mass_end
+      double precision, intent(out) :: log_rate_li6_cz_end, &
+           log_rate_li7_cz_end, log_rate_be9_cz_end
+
+      integer :: zone_idx
+      double precision :: cz_mass_start, shell_mass_save
+
+! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
+      li6_cz_start = 0.0d0
+      li7_cz_start = 0.0d0
+      be9_cz_start = 0.0d0
+      cz_mass_start = 0.0d0
+      do zone_idx = cz_base_zone_old,num_zones
+         li6_cz_start = li6_cz_start+composition(i_li6,zone_idx)*shell_mass(zone_idx)
+         li7_cz_start = li7_cz_start+composition(i_li7,zone_idx)*shell_mass(zone_idx)
+         be9_cz_start = be9_cz_start+composition(i_be9,zone_idx)*shell_mass(zone_idx)
+         cz_mass_start = cz_mass_start + shell_mass(zone_idx)
+      end do
+      li6_cz_start = li6_cz_start/cz_mass_start
+      li7_cz_start = li7_cz_start/cz_mass_start
+      be9_cz_start = be9_cz_start/cz_mass_start
+! log_rate_li6_prev <= 0 means no previous step has stored CZ rates.
+      if(star%log_rate_li6_prev.le.0.0d0)then
+! COMPUTE MASS-WEIGHTED AVERAGE RATES AT THE START OF THE STEP.
+         log_rate_li6_cz_start = 0.0d0
+         log_rate_li7_cz_start = 0.0d0
+         log_rate_be9_cz_start = 0.0d0
+         do zone_idx = cz_base_zone_old,num_zones
+            log_rate_li6_cz_start = log_rate_li6_cz_start + star%rate_li6_start(zone_idx)*shell_mass(zone_idx)
+            log_rate_li7_cz_start = log_rate_li7_cz_start + star%rate_li7_start(zone_idx)*shell_mass(zone_idx)
+            log_rate_be9_cz_start = log_rate_be9_cz_start + star%rate_be9_start(zone_idx)*shell_mass(zone_idx)
+         end do
+         log_rate_li6_cz_start = log(log_rate_li6_cz_start/cz_mass_start)
+         log_rate_li7_cz_start = log(log_rate_li7_cz_start/cz_mass_start)
+         log_rate_be9_cz_start = log(log_rate_be9_cz_start/cz_mass_start)
+      else
+! USE THE RATE FROM THE END OF THE PREVIOUS TIMESTEP.
+         log_rate_li6_cz_start = star%log_rate_li6_prev
+         log_rate_li7_cz_start = star%log_rate_li7_prev
+         log_rate_be9_cz_start = star%log_rate_be9_prev
+      endif
+! USE THE LOCATION OF THE TRUE EDGE OF THE CONVECTION ZONE (FX, FOUND AT
+! BEGINNING OF SR) TO ADJUST THE BURNING RATE AND MASS OF THE BOTTOM POINT
+! SUCH THAT IT INCLUDES THE ENTIRE C.Z.
+      shell_mass_save = shell_mass(cz_base_zone)
+      if(cz_base_zone.gt.1.and.cz_base_zone.lt.num_zones)then
+         shell_mass(cz_base_zone) = shell_mass(cz_base_zone)+cz_base_frac* &
+              (mass_coordinate(cz_base_zone)-mass_coordinate(cz_base_zone-1))
+         star%rate_li6(cz_base_zone) = star%rate_li6(cz_base_zone)+0.5d0*cz_base_frac* &
+              (star%rate_li6(cz_base_zone-1)-star%rate_li6(cz_base_zone))
+         star%rate_li7(cz_base_zone) = star%rate_li7(cz_base_zone)+0.5d0*cz_base_frac* &
+              (star%rate_li7(cz_base_zone-1)-star%rate_li7(cz_base_zone))
+         star%rate_be9(cz_base_zone) = star%rate_be9(cz_base_zone)+0.5d0*cz_base_frac* &
+              (star%rate_be9(cz_base_zone-1)-star%rate_be9(cz_base_zone))
+      endif
+! FIND RATES AT THE END OF THE TIMESTEP (USING THE DEPTH AT THE END).
+! ALSO STORE INITIAL ABUNDANCES(FLI60,FLI70,FBE90).
+! FM IS THE TOTAL MASS IN THE CZ.
+      li6_cz_end = 0.0d0
+      li7_cz_end = 0.0d0
+      be9_cz_end = 0.0d0
+      cz_mass_end = 0.0d0
+      log_rate_li6_cz_end = 0.0d0
+      log_rate_li7_cz_end = 0.0d0
+      log_rate_be9_cz_end = 0.0d0
+      do zone_idx = cz_base_zone,num_zones
+         log_rate_li6_cz_end = log_rate_li6_cz_end + star%rate_li6(zone_idx)*shell_mass(zone_idx)
+         log_rate_li7_cz_end = log_rate_li7_cz_end + star%rate_li7(zone_idx)*shell_mass(zone_idx)
+         log_rate_be9_cz_end = log_rate_be9_cz_end + star%rate_be9(zone_idx)*shell_mass(zone_idx)
+         li6_cz_end = li6_cz_end+composition(i_li6,zone_idx)*shell_mass(zone_idx)
+         li7_cz_end = li7_cz_end+composition(i_li7,zone_idx)*shell_mass(zone_idx)
+         be9_cz_end = be9_cz_end+composition(i_be9,zone_idx)*shell_mass(zone_idx)
+         cz_mass_end = cz_mass_end + shell_mass(zone_idx)
+      end do
+      li6_cz_end = li6_cz_end/cz_mass_end
+      li7_cz_end = li7_cz_end/cz_mass_end
+      be9_cz_end = be9_cz_end/cz_mass_end
+! MASS-WEIGHTED AVERAGE RATES AT THE END OF THE STEP.
+      log_rate_li6_cz_end = log(log_rate_li6_cz_end/cz_mass_end)
+      log_rate_li7_cz_end = log(log_rate_li7_cz_end/cz_mass_end)
+      log_rate_be9_cz_end = log(log_rate_be9_cz_end/cz_mass_end)
+! RESTORE ORIGINAL MASS TO BASE OF C.Z.
+      shell_mass(cz_base_zone) = shell_mass_save
+      return
+end subroutine average_cz_abundances
+
+
 
 !----------------------------------------------------------------------
 ! liburn
@@ -2063,18 +2276,14 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       data extrap_tol/1.0d-6,1.0d-6,1.0d-6/
       integer :: zone_idx, refine_idx, substep_idx, species_idx
       integer :: cz_base_zone, cz_base_zone_old, min_zone, max_zone
-      double precision :: del_diff, del_diff_below, cz_base_frac
-      double precision :: search_radius, shell_radius, delta_radius, &
-           cz_base_radius
+      double precision :: cz_base_frac
       double precision :: substep_frac, substep_dt
       logical :: converged
       double precision :: log_rate_li6, log_rate_li7, log_rate_be9
       double precision :: extrap_x
-      double precision :: li6_cz_start, li7_cz_start, be9_cz_start, &
-           cz_mass_start
+      double precision :: li6_cz_start, li7_cz_start, be9_cz_start
       double precision :: log_rate_li6_cz_start, log_rate_li7_cz_start, &
            log_rate_be9_cz_start
-      double precision :: shell_mass_save
       double precision :: li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end
       double precision :: log_rate_li6_cz_end, log_rate_li7_cz_end, &
            log_rate_be9_cz_end
@@ -2097,69 +2306,8 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! DETERMINE THE TRUE LOCATION (FX) OF THE BASE OF THE CZ AT THE END
 ! OF THE TIMESTEP, AND THE LOCATION OF THE EDGE OF OVERSHOOT REGIONS
 ! IF APPLICABLE.
-      if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
-         if(star%job%rotation_active.and.star%job%instability_transport_active)then
-            del_diff = mix_scr%del_adiabatic_mix(env_cz_zone) - &
-                 mix_scr%del_radiative_mix(env_cz_zone)
-            del_diff_below = mix_scr%del_adiabatic_mix(env_cz_zone-1) - &
-                 mix_scr%del_radiative_mix(env_cz_zone-1)
-         else
-! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
-! BELOW IT.
-            del_diff = star%grada(env_cz_zone)-star%gradr(env_cz_zone)
-            del_diff_below = star%grada(env_cz_zone-1)-star%gradr(env_cz_zone-1)
-         endif
-! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
-! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
-! BASE IS HIGHER; IF IT IS POSITIVE, THE TRUE BASE IS LOWER.
-         cz_base_frac = max(-0.5d0,0.5d0-del_diff_below/ &
-              (del_diff_below-del_diff))
-         cz_base_frac = min(0.5d0,cz_base_frac)
-         if(.not.star%job%envelope_overshoot_active)then
-            cz_base_zone = env_cz_zone
-            cz_base_zone_old = env_cz_zone_old
-         else
-! STARTING CZ DEPTH (cz_base_radius_prev = 0 means no previous step
-! has stored one: locate it from the start-of-step model).
-            if(star%cz_base_radius_prev.eq.0.0d0)then
-               star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
-                        +exp(ln10*star%logR_start(env_cz_zone_old-1)))
-               search_radius = star%cz_base_radius_prev - star%pressure_scale_height_start
-               do zone_idx = env_cz_zone_old-1,1,-1
-                  shell_radius = exp(ln10*star%logR_start(zone_idx))
-                  if(shell_radius.lt.search_radius)then
-                     cz_base_zone_old = zone_idx + 1
-                     exit
-                  endif
-               end do
-               if (zone_idx .lt. 1) cz_base_zone_old = 1
-            else
-               cz_base_zone_old = star%envelope_cz_base_zone_prev
-            endif
-! ENDING CZ DEPTH : DETERMINE OVERSHOOT FROM TRUE CZ BASE.
-            delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
-            cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
-                    -cz_base_frac*delta_radius
-            star%cz_base_radius_prev = cz_base_radius
-            search_radius = cz_base_radius - star%pressure_scale_height_end
-            do zone_idx = env_cz_zone-1,1,-1
-               shell_radius = exp(ln10*radius(zone_idx))
-               if(shell_radius.lt.search_radius)then
-                  cz_base_zone = zone_idx + 1
-                  delta_radius = exp(ln10*star%logR_start(zone_idx+1))-shell_radius
-                  cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
-                  cz_base_frac = max(-0.5d0,cz_base_frac)
-                  cz_base_frac = min(0.5d0,cz_base_frac)
-                  exit
-               endif
-            end do
-            if (zone_idx .lt. 1) cz_base_zone = 1
-         endif
-      else
-         cz_base_zone = env_cz_zone
-         cz_base_zone_old = env_cz_zone_old
-      endif
-      star%envelope_cz_base_zone_prev = cz_base_zone
+      call locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
+           cz_base_zone, cz_base_zone_old, cz_base_frac)
 ! RADIATIVE INTERIOR.
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
@@ -2268,82 +2416,12 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
       if (star%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%rate_be9(cz_base_zone).le.1.0d-32) then
          return
       end if
-! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
-      li6_cz_start = 0.0d0
-      li7_cz_start = 0.0d0
-      be9_cz_start = 0.0d0
-      cz_mass_start = 0.0d0
-      do zone_idx = cz_base_zone_old,num_zones
-         li6_cz_start = li6_cz_start+composition(i_li6,zone_idx)*shell_mass(zone_idx)
-         li7_cz_start = li7_cz_start+composition(i_li7,zone_idx)*shell_mass(zone_idx)
-         be9_cz_start = be9_cz_start+composition(i_be9,zone_idx)*shell_mass(zone_idx)
-         cz_mass_start = cz_mass_start + shell_mass(zone_idx)
-      end do
-      li6_cz_start = li6_cz_start/cz_mass_start
-      li7_cz_start = li7_cz_start/cz_mass_start
-      be9_cz_start = be9_cz_start/cz_mass_start
-! log_rate_li6_prev <= 0 means no previous step has stored CZ rates.
-      if(star%log_rate_li6_prev.le.0.0d0)then
-! COMPUTE MASS-WEIGHTED AVERAGE RATES AT THE START OF THE STEP.
-         log_rate_li6_cz_start = 0.0d0
-         log_rate_li7_cz_start = 0.0d0
-         log_rate_be9_cz_start = 0.0d0
-         do zone_idx = cz_base_zone_old,num_zones
-            log_rate_li6_cz_start = log_rate_li6_cz_start + star%rate_li6_start(zone_idx)*shell_mass(zone_idx)
-            log_rate_li7_cz_start = log_rate_li7_cz_start + star%rate_li7_start(zone_idx)*shell_mass(zone_idx)
-            log_rate_be9_cz_start = log_rate_be9_cz_start + star%rate_be9_start(zone_idx)*shell_mass(zone_idx)
-         end do
-         log_rate_li6_cz_start = log(log_rate_li6_cz_start/cz_mass_start)
-         log_rate_li7_cz_start = log(log_rate_li7_cz_start/cz_mass_start)
-         log_rate_be9_cz_start = log(log_rate_be9_cz_start/cz_mass_start)
-      else
-! USE THE RATE FROM THE END OF THE PREVIOUS TIMESTEP.
-         log_rate_li6_cz_start = star%log_rate_li6_prev
-         log_rate_li7_cz_start = star%log_rate_li7_prev
-         log_rate_be9_cz_start = star%log_rate_be9_prev
-      endif
-! USE THE LOCATION OF THE TRUE EDGE OF THE CONVECTION ZONE (FX, FOUND AT
-! BEGINNING OF SR) TO ADJUST THE BURNING RATE AND MASS OF THE BOTTOM POINT
-! SUCH THAT IT INCLUDES THE ENTIRE C.Z.
-      shell_mass_save = shell_mass(cz_base_zone)
-      if(cz_base_zone.gt.1.and.cz_base_zone.lt.num_zones)then
-         shell_mass(cz_base_zone) = shell_mass(cz_base_zone)+cz_base_frac* &
-              (mass_coordinate(cz_base_zone)-mass_coordinate(cz_base_zone-1))
-         star%rate_li6(cz_base_zone) = star%rate_li6(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_li6(cz_base_zone-1)-star%rate_li6(cz_base_zone))
-         star%rate_li7(cz_base_zone) = star%rate_li7(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_li7(cz_base_zone-1)-star%rate_li7(cz_base_zone))
-         star%rate_be9(cz_base_zone) = star%rate_be9(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_be9(cz_base_zone-1)-star%rate_be9(cz_base_zone))
-      endif
-! FIND RATES AT THE END OF THE TIMESTEP (USING THE DEPTH AT THE END).
-! ALSO STORE INITIAL ABUNDANCES(FLI60,FLI70,FBE90).
-! FM IS THE TOTAL MASS IN THE CZ.
-      li6_cz_end = 0.0d0
-      li7_cz_end = 0.0d0
-      be9_cz_end = 0.0d0
-      cz_mass_end = 0.0d0
-      log_rate_li6_cz_end = 0.0d0
-      log_rate_li7_cz_end = 0.0d0
-      log_rate_be9_cz_end = 0.0d0
-      do zone_idx = cz_base_zone,num_zones
-         log_rate_li6_cz_end = log_rate_li6_cz_end + star%rate_li6(zone_idx)*shell_mass(zone_idx)
-         log_rate_li7_cz_end = log_rate_li7_cz_end + star%rate_li7(zone_idx)*shell_mass(zone_idx)
-         log_rate_be9_cz_end = log_rate_be9_cz_end + star%rate_be9(zone_idx)*shell_mass(zone_idx)
-         li6_cz_end = li6_cz_end+composition(i_li6,zone_idx)*shell_mass(zone_idx)
-         li7_cz_end = li7_cz_end+composition(i_li7,zone_idx)*shell_mass(zone_idx)
-         be9_cz_end = be9_cz_end+composition(i_be9,zone_idx)*shell_mass(zone_idx)
-         cz_mass_end = cz_mass_end + shell_mass(zone_idx)
-      end do
-      li6_cz_end = li6_cz_end/cz_mass_end
-      li7_cz_end = li7_cz_end/cz_mass_end
-      be9_cz_end = be9_cz_end/cz_mass_end
-! MASS-WEIGHTED AVERAGE RATES AT THE END OF THE STEP.
-      log_rate_li6_cz_end = log(log_rate_li6_cz_end/cz_mass_end)
-      log_rate_li7_cz_end = log(log_rate_li7_cz_end/cz_mass_end)
-      log_rate_be9_cz_end = log(log_rate_be9_cz_end/cz_mass_end)
-! RESTORE ORIGINAL MASS TO BASE OF C.Z.
-      shell_mass(cz_base_zone) = shell_mass_save
+      call average_cz_abundances(composition, mass_coordinate, shell_mass, &
+           cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
+           li6_cz_start, li7_cz_start, be9_cz_start, &
+           log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
+           li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end, &
+           log_rate_li6_cz_end, log_rate_li7_cz_end, log_rate_be9_cz_end)
 ! FOR THE STARTING ABUNDANCE, USE THE MIXED ABUNDANCE FOR THE
 ! DEEPER CZ.
       if(cz_base_zone.lt.cz_base_zone_old)then
@@ -2590,16 +2668,12 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       double precision :: li6_substep_depletion, li7_substep_depletion, &
            be9_substep_depletion
       integer :: zone_idx, min_zone, max_zone
-      double precision :: del_diff, del_diff_below, cz_base_frac
-      double precision :: search_radius, shell_radius, delta_radius, &
-           cz_base_radius
+      double precision :: cz_base_frac
       integer :: cz_base_zone, cz_base_zone_old
       double precision :: log_rate_li6, log_rate_li7, log_rate_be9
-      double precision :: li6_cz_start, li7_cz_start, be9_cz_start, &
-           cz_mass_start
+      double precision :: li6_cz_start, li7_cz_start, be9_cz_start
       double precision :: log_rate_li6_cz_start, log_rate_li7_cz_start, &
            log_rate_be9_cz_start
-      double precision :: shell_mass_save
       double precision :: li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end
       double precision :: log_rate_li6_cz_end, log_rate_li7_cz_end, &
            log_rate_be9_cz_end
@@ -2613,69 +2687,8 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
 ! DETERMINE THE TRUE LOCATION (FX) OF THE BASE OF THE CZ AT THE END
 ! OF THE TIMESTEP, AND THE LOCATION OF THE EDGE OF OVERSHOOT REGIONS
 ! IF APPLICABLE.
-      if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
-         if(star%job%rotation_active.and.star%job%instability_transport_active)then
-            del_diff = mix_scr%del_adiabatic_mix(env_cz_zone) - &
-                 mix_scr%del_radiative_mix(env_cz_zone)
-            del_diff_below = mix_scr%del_adiabatic_mix(env_cz_zone-1) - &
-                 mix_scr%del_radiative_mix(env_cz_zone-1)
-         else
-! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
-! BELOW IT.
-            del_diff = star%grada(env_cz_zone)-star%gradr(env_cz_zone)
-            del_diff_below = star%grada(env_cz_zone-1)-star%gradr(env_cz_zone-1)
-         endif
-! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
-! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
-! BASE IS HIGHER; IF IT IS POSITIVE, THE TRUE BASE IS LOWER.
-         cz_base_frac = max(-0.5d0,0.5d0-del_diff_below/ &
-              (del_diff_below-del_diff))
-         cz_base_frac = min(0.5d0,cz_base_frac)
-         if(.not.star%job%envelope_overshoot_active)then
-            cz_base_zone = env_cz_zone
-            cz_base_zone_old = env_cz_zone_old
-         else
-! STARTING CZ DEPTH (cz_base_radius_prev = 0 means no previous step
-! has stored one: locate it from the start-of-step model).
-            if(star%cz_base_radius_prev.eq.0.0d0)then
-               star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
-                        +exp(ln10*star%logR_start(env_cz_zone_old-1)))
-               search_radius = star%cz_base_radius_prev - star%pressure_scale_height_start
-               do zone_idx = env_cz_zone_old-1,1,-1
-                  shell_radius = exp(ln10*star%logR_start(zone_idx))
-                  if(shell_radius.lt.search_radius)then
-                     cz_base_zone_old = zone_idx + 1
-                     exit
-                  endif
-               end do
-               if (zone_idx .lt. 1) cz_base_zone_old = 1
-            else
-               cz_base_zone_old = star%envelope_cz_base_zone_prev
-            endif
-! ENDING CZ DEPTH : DETERMINE OVERSHOOT FROM TRUE CZ BASE.
-            delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
-            cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
-                    -cz_base_frac*delta_radius
-            star%cz_base_radius_prev = cz_base_radius
-            search_radius = cz_base_radius - star%pressure_scale_height_end
-            do zone_idx = env_cz_zone-1,1,-1
-               shell_radius = exp(ln10*radius(zone_idx))
-               if(shell_radius.lt.search_radius)then
-                  cz_base_zone = zone_idx + 1
-                  delta_radius = exp(ln10*star%logR_start(zone_idx+1))-shell_radius
-                  cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
-                  cz_base_frac = max(-0.5d0,cz_base_frac)
-                  cz_base_frac = min(0.5d0,cz_base_frac)
-                  exit
-               endif
-            end do
-            if (zone_idx .lt. 1) cz_base_zone = 1
-         endif
-      else
-         cz_base_zone = env_cz_zone
-         cz_base_zone_old = env_cz_zone_old
-      endif
-      star%envelope_cz_base_zone_prev = cz_base_zone
+      call locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
+           cz_base_zone, cz_base_zone_old, cz_base_frac)
 ! RADIATIVE INTERIOR.
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
@@ -2727,82 +2740,12 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       if (star%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%rate_be9(cz_base_zone).le.1.0d-32) then
          return
       end if
-! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
-      li6_cz_start = 0.0d0
-      li7_cz_start = 0.0d0
-      be9_cz_start = 0.0d0
-      cz_mass_start = 0.0d0
-      do zone_idx = cz_base_zone_old,num_zones
-         li6_cz_start = li6_cz_start+composition(i_li6,zone_idx)*shell_mass(zone_idx)
-         li7_cz_start = li7_cz_start+composition(i_li7,zone_idx)*shell_mass(zone_idx)
-         be9_cz_start = be9_cz_start+composition(i_be9,zone_idx)*shell_mass(zone_idx)
-         cz_mass_start = cz_mass_start + shell_mass(zone_idx)
-      end do
-      li6_cz_start = li6_cz_start/cz_mass_start
-      li7_cz_start = li7_cz_start/cz_mass_start
-      be9_cz_start = be9_cz_start/cz_mass_start
-! log_rate_li6_prev <= 0 means no previous step has stored CZ rates.
-      if(star%log_rate_li6_prev.le.0.0d0)then
-! COMPUTE MASS-WEIGHTED AVERAGE RATES AT THE START OF THE STEP.
-         log_rate_li6_cz_start = 0.0d0
-         log_rate_li7_cz_start = 0.0d0
-         log_rate_be9_cz_start = 0.0d0
-         do zone_idx = cz_base_zone_old,num_zones
-            log_rate_li6_cz_start = log_rate_li6_cz_start + star%rate_li6_start(zone_idx)*shell_mass(zone_idx)
-            log_rate_li7_cz_start = log_rate_li7_cz_start + star%rate_li7_start(zone_idx)*shell_mass(zone_idx)
-            log_rate_be9_cz_start = log_rate_be9_cz_start + star%rate_be9_start(zone_idx)*shell_mass(zone_idx)
-         end do
-         log_rate_li6_cz_start = log(log_rate_li6_cz_start/cz_mass_start)
-         log_rate_li7_cz_start = log(log_rate_li7_cz_start/cz_mass_start)
-         log_rate_be9_cz_start = log(log_rate_be9_cz_start/cz_mass_start)
-      else
-! USE THE RATE FROM THE END OF THE PREVIOUS TIMESTEP.
-         log_rate_li6_cz_start = star%log_rate_li6_prev
-         log_rate_li7_cz_start = star%log_rate_li7_prev
-         log_rate_be9_cz_start = star%log_rate_be9_prev
-      endif
-! USE THE LOCATION OF THE TRUE EDGE OF THE CONVECTION ZONE (FX, FOUND AT
-! BEGINNING OF SR) TO ADJUST THE BURNING RATE AND MASS OF THE BOTTOM POINT
-! SUCH THAT IT INCLUDES THE ENTIRE C.Z.
-      shell_mass_save = shell_mass(cz_base_zone)
-      if(cz_base_zone.gt.1.and.cz_base_zone.lt.num_zones)then
-         shell_mass(cz_base_zone) = shell_mass(cz_base_zone)+cz_base_frac* &
-              (mass_coordinate(cz_base_zone)-mass_coordinate(cz_base_zone-1))
-         star%rate_li6(cz_base_zone) = star%rate_li6(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_li6(cz_base_zone-1)-star%rate_li6(cz_base_zone))
-         star%rate_li7(cz_base_zone) = star%rate_li7(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_li7(cz_base_zone-1)-star%rate_li7(cz_base_zone))
-         star%rate_be9(cz_base_zone) = star%rate_be9(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_be9(cz_base_zone-1)-star%rate_be9(cz_base_zone))
-      endif
-! FIND RATES AT THE END OF THE TIMESTEP (USING THE DEPTH AT THE END).
-! ALSO STORE INITIAL ABUNDANCES(FLI60,FLI70,FBE90).
-! FM IS THE TOTAL MASS IN THE CZ.
-      li6_cz_end = 0.0d0
-      li7_cz_end = 0.0d0
-      be9_cz_end = 0.0d0
-      cz_mass_end = 0.0d0
-      log_rate_li6_cz_end = 0.0d0
-      log_rate_li7_cz_end = 0.0d0
-      log_rate_be9_cz_end = 0.0d0
-      do zone_idx = cz_base_zone,num_zones
-         log_rate_li6_cz_end = log_rate_li6_cz_end + star%rate_li6(zone_idx)*shell_mass(zone_idx)
-         log_rate_li7_cz_end = log_rate_li7_cz_end + star%rate_li7(zone_idx)*shell_mass(zone_idx)
-         log_rate_be9_cz_end = log_rate_be9_cz_end + star%rate_be9(zone_idx)*shell_mass(zone_idx)
-         li6_cz_end = li6_cz_end+composition(i_li6,zone_idx)*shell_mass(zone_idx)
-         li7_cz_end = li7_cz_end+composition(i_li7,zone_idx)*shell_mass(zone_idx)
-         be9_cz_end = be9_cz_end+composition(i_be9,zone_idx)*shell_mass(zone_idx)
-         cz_mass_end = cz_mass_end + shell_mass(zone_idx)
-      end do
-      li6_cz_end = li6_cz_end/cz_mass_end
-      li7_cz_end = li7_cz_end/cz_mass_end
-      be9_cz_end = be9_cz_end/cz_mass_end
-! MASS-WEIGHTED AVERAGE RATES AT THE END OF THE STEP.
-      log_rate_li6_cz_end = log(log_rate_li6_cz_end/cz_mass_end)
-      log_rate_li7_cz_end = log(log_rate_li7_cz_end/cz_mass_end)
-      log_rate_be9_cz_end = log(log_rate_be9_cz_end/cz_mass_end)
-! RESTORE ORIGINAL MASS TO BASE OF C.Z.
-      shell_mass(cz_base_zone) = shell_mass_save
+      call average_cz_abundances(composition, mass_coordinate, shell_mass, &
+           cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
+           li6_cz_start, li7_cz_start, be9_cz_start, &
+           log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
+           li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end, &
+           log_rate_li6_cz_end, log_rate_li7_cz_end, log_rate_be9_cz_end)
 ! FOR THE STARTING ABUNDANCE, USE THE MIXED ABUNDANCE FOR THE
 ! DEEPER CZ.
       if(cz_base_zone.lt.cz_base_zone_old)then
