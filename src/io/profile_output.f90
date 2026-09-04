@@ -23,6 +23,8 @@ module profile_output
       character(len=256) :: prof_out_dir = ' '
       integer :: prof_nsel = 0
       integer :: prof_sel(max_cols)
+! the two integer-valued profile columns (written with an I format)
+      integer, parameter :: col_zone = 1, col_mixing_type = 9
 
 contains
 
@@ -45,7 +47,7 @@ end subroutine profile_output_init
 subroutine profile_column_names(names)
       character(len=24), intent(out) :: names(n_prof_cols)
 
-      names(1) = 'zone'
+      names(col_zone) = 'zone'
       names(2) = 'mass'
       names(3) = 'logR'
       names(4) = 'logT'
@@ -53,7 +55,7 @@ subroutine profile_column_names(names)
       names(6) = 'logP'
       names(7) = 'luminosity'
       names(8) = 'dm'
-      names(9) = 'mixing_type'
+      names(col_mixing_type) = 'mixing_type'
       names(10) = 'gamma1'
       names(11) = 'opacity'
       names(12) = 'gradr'
@@ -145,12 +147,12 @@ subroutine write_profile(iprof)
       do k = 1, n_ext
          kz = n_ext - k + 1
          do i = 1, prof_nsel
-            if (prof_sel(i) == 1) then
+            if (prof_sel(i) == col_zone) then
                v = dble(k)
             else
                v = stx_prof(prof_sel(i), kz)
             end if
-            if (prof_sel(i) == 1 .or. prof_sel(i) == 9) then
+            if (prof_sel(i) == col_zone .or. prof_sel(i) == col_mixing_type) then
                write(u, '(1x,i40)', advance='no') nint(v)
             else
                write(u, '(1x,es40.16e3)', advance='no') v

@@ -63,6 +63,9 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
       character*4 :: header_keyword
 
       double precision :: omega_log10(json)
+! -log10(omega) at or above this value marks a non-rotating shell
+! (omega stored as 0) in the legacy model file
+      double precision, parameter :: omega_log10_zero_sentinel = 58.9D0
 ! --- locals ---
       integer :: i, j, ix, iz
       integer :: envelope_record_number
@@ -153,7 +156,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
        read(iread,70) envelope_record_number,star%trial_log_temperature(i), &
             star%trial_log_luminosity(i),star%fit_point_pressure(i), &
             star%fit_point_temperature(i),star%fit_point_radius(i), &
-            (star%envelope_fit_coeffs(i+i+i-3+j),j = 1,3)
+            (star%envelope_fit_coeffs(3*i-3+j),j = 1,3)
  70      format(3X,I2,F7.5,4F8.5,3E12.5)
        if(envelope_record_number.lt.0) trial_sign_flag = -1D0
       end do
@@ -264,7 +267,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
       read(iread,500,end=9999)(omega_log10(ii),ii = 1,star%nz)
  500    format(0P8F10.7)
       do i = 1,star%nz
-           if(omega_log10(i) .lt. 58.9D0) then
+           if(omega_log10(i) .lt. omega_log10_zero_sentinel) then
               star%omega(i) = pow(10D0, (-omega_log10(i)))
            else
               star%omega(i) = 0D0

@@ -418,6 +418,10 @@ subroutine locate(xx, n, x, j)
       integer, intent(out) :: j
 
       integer :: jl, ju, jm
+! slack allowed when x falls just outside the table before the
+! bracket is clamped to the end intervals
+      double precision, parameter :: below_table_slack = 0.99d0, &
+           above_table_slack = 1.01d0
 
       jl = 0
       ju = n+1
@@ -430,10 +434,10 @@ subroutine locate(xx, n, x, j)
          end if
    end do
       j = jl
-      if ((j .eq. 0) .and. (x .gt. 0.99d0*xx(1))) then
+      if ((j .eq. 0) .and. (x .gt. below_table_slack*xx(1))) then
          j = 1
       end if
-      if ((j .eq. n) .and. (x .lt. 1.01d0*xx(n))) then
+      if ((j .eq. n) .and. (x .lt. above_table_slack*xx(n))) then
          j = n-1
       end if
       return
@@ -709,14 +713,14 @@ subroutine osplin(xval, yval, xtab, ytab, n, k)
       double precision, intent(in) :: xtab(json), ytab(json)
       integer, intent(in) :: n, k
 
-      double precision :: first_derivs(json), eps
+      double precision :: first_derivs(json)
+! error tolerance used in subroutine 'choose' (via meval)
+      double precision, parameter :: eps = 1.d-04
       integer :: err
 
 ! calculate the slopes at each data point.
       call slopes(xtab, ytab, first_derivs, n)
 
-! set the error tolerance eps, which is used in subroutine 'choose'.
-      eps = 1.d-04
 ! call meval to evaluate the spline at the run of points xval.
       call meval(xval, yval, xtab, ytab, first_derivs, n, k, eps, err)
 
