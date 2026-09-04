@@ -31,7 +31,8 @@
 subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_metals, i_n14, i_o16, i_o18, json
+      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_metals, i_n14, i_o16, i_o18, json, &
+           max_convective_zones, max_radiative_zones
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -45,7 +46,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       integer, intent(in) :: iteration_level
       double precision, intent(out) :: timestep_years
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
-      integer, intent(inout) :: mixed_zone_bounds_no_overshoot(12,2)
+      integer, intent(inout) :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
 
 ! rate_pp..frac_be7_electron: per-zone reaction rates/branching
 ! fractions (originally HR1-HR13,HF1,HF2). Naming and ordering match
@@ -59,7 +60,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
            rate_triple_alpha(json), rate_zero13(json), &
            frac_c12_alpha(json), frac_be7_electron(json)
       double precision :: species_sum(15)
-      integer :: radiative_zone_bounds(13,2)
+      integer :: radiative_zone_bounds(max_radiative_zones,2)
       logical :: deep_mix_flag(json)
       integer :: num_species
       double precision :: max_mixed_mass

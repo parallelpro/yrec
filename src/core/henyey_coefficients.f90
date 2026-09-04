@@ -34,7 +34,8 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
       use net_lib
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, &
            i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_n15, &
-           i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9
+           i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9, &
+           i_lum_he_c, n_lum_channels, n_nu_fluxes
       use point_scratch_lib
       use phys_const_lib
       use eos_lib
@@ -101,7 +102,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
       ierr = 0
 
       if (star%ctrl%calc_neutrinos) then
-         do j = 1,10
+         do j = 1,n_nu_fluxes
             star%neutrino_flux_total(j) = 0.0d0
          end do
       end if
@@ -115,7 +116,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
        one_year_sec = 3.1558d7
        one_year_sec_inv = 3.1688d-8
       end if
-      do j = 1,8
+      do j = 1,n_lum_channels
        star%luminosity_breakdown(j) = 0.0d0
       end do
       do im = 1,star%nz
@@ -228,7 +229,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
             if (star%ctrl%calc_neutrinos) then
-               do j = 1,10
+               do j = 1,n_nu_fluxes
                   star%neutrino_flux_total(j) = star%neutrino_flux_total(j) + &
                        star%neutrino_flux(j)*star%dm(im)
                end do
@@ -247,7 +248,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             star%he3_burning_luminosity_zone(im) = (star%dm(im)/ &
                  star%solar_luminosity_cgs)*star%he3_burning_energy_rate
 ! JVS end
-            star%luminosity_breakdown(8)=star%luminosity_breakdown(8)+(star%dm(im)/ &
+            star%luminosity_breakdown(i_lum_he_c)=star%luminosity_breakdown(i_lum_he_c)+(star%dm(im)/ &
                  star%solar_luminosity_cgs)*alpha_capture_energy_zone
             zone_energy_luminosity = zone_energy_luminosity + &
                  (star%dm(im)/star%solar_luminosity_cgs)* &
@@ -302,7 +303,7 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
          end if
-         cccql = star%ln_solar_luminosity*star%m(im)
+         cccql = star%ln10_over_lsun*star%m(im)
          cur%ql = cccql*cur%ql
          cur%ql_dp = cccql*cur%ql_dp
          cur%ql_dt = cccql*cur%ql_dt

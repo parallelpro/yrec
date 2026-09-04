@@ -26,7 +26,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       integer, intent(out) :: ierr
       integer :: jerr_atm
       double precision, intent(inout) :: target_envelope_mass
-      double precision, intent(inout) :: composition(15,json), &
+      double precision, intent(inout) :: composition(n_species_extended,json), &
            log_density(json), log_luminosity(json), log_pressure(json), &
            log_radius(json), log_mass(json), enclosed_mass(json)
       double precision, intent(inout) :: shell_mass(json)
@@ -83,9 +83,9 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 
       ierr = 0
       if(star%job%use_extended_composition)then
-         species_end_index = 15
+         species_end_index = n_species_extended
       else
-         species_end_index = 11
+         species_end_index = n_species_basic
       endif
 ! RESTRICT THE ENVELOPE MASS TO A MINIMUM OF 10**-12.
       target_envelope_mass = min(target_envelope_mass,senv_thin_envelope)
@@ -209,7 +209,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
             log_temperature(zone_index) = env_struct%env_log10_temperature(env_point_index)
             composition(i_h1,zone_index) = env_struct%env_hydrogen_fraction(env_point_index)
             composition(i_metals,zone_index) = env_struct%env_metal_fraction(env_point_index)
-            do k = 4,species_end_index
+            do k = i_he3,species_end_index
                composition(k,zone_index) = composition(k,num_zones)
             end do
             composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
@@ -244,7 +244,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                     (composition(i_h1,num_zones)-env_struct%env_hydrogen_fraction(env_point_index))
                composition(i_metals,zone_index) = composition(i_metals,num_zones)+interp_fraction* &
                     (composition(i_metals,num_zones)-env_struct%env_metal_fraction(env_point_index))
-               do k = 4,species_end_index
+               do k = i_he3,species_end_index
                   composition(k,zone_index) = composition(k,num_zones)
                end do
                composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
@@ -280,7 +280,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                     (env_struct%env_hydrogen_fraction(env_point_index)-env_struct%env_hydrogen_fraction(env_point_index-1))
                composition(i_metals,zone_index) = env_struct%env_metal_fraction(env_point_index-1)+interp_fraction* &
                     (env_struct%env_metal_fraction(env_point_index)-env_struct%env_metal_fraction(env_point_index-1))
-               do k = 4,species_end_index
+               do k = i_he3,species_end_index
                   composition(k,zone_index) = composition(k,num_zones)
                end do
                composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &

@@ -25,7 +25,7 @@
 ! The call to mdot below matches mdot.f90's 23-dummy list 1:1 (the
 ! historical 24-actual argument-count mismatch of massloss.f was fixed
 ! in 2026; see mdot.f90's header).
-subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
+subroutine massloss(log_luminosity_lsun, timestep, composition, &
      log_density, specific_angular_momentum, log_pressure, log_radius, &
      log_mass, zone_mass_grams, shell_mass, log_total_mass, log_temperature, &
      envelope_boundary_zone, new_surface_bc_needed, num_zones, omega, &
@@ -41,7 +41,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       use wind_lib, only: log10_radius_from_l_teff
       implicit none
 
-      double precision, intent(in) :: log_luminosity_lsun, age_gyr
+      double precision, intent(in) :: log_luminosity_lsun
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: log_density(json)

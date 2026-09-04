@@ -29,7 +29,8 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
      in_atmosphere, want_derivatives, mixing_active, &
      conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, iterations_done, &
      iteration_level, ierr)
-      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
+      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, &
+           n_species_basic, n_species_extended, n_lum_channels, max_convective_zones
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -56,7 +57,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       integer :: kenv, katm, ksaha
       integer :: num_species, i, j, iter, max_correction_pos
       integer :: core_cz_edge, envelope_zone_index
-      integer :: mixed_zone_bounds_no_overshoot(12,2)
+      integer :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
       double precision :: hydrogen_fraction, metal_fraction, &
            log10_pressure_limit
       double precision :: surface_pressure_rotation_factor, &
@@ -127,8 +128,8 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       endif
 ! 7/91 ADD CALL TO MIX
       if (iteration_level.gt.2 .and. delta_time.gt.0.0d0) then
-         num_species = 11
-         if (star%job%use_extended_composition) num_species = 15
+         num_species = n_species_basic
+         if (star%job%use_extended_composition) num_species = n_species_extended
          do i = 1,star%nz
             do j = 1,num_species
                star%xa(j,i) = star%xa_start(j,i)
@@ -172,7 +173,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        if (.not.star%ctrl%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
           temp = star%luminosity_lsun(star%nz)/total_luminosity_terms
-          do j = 1,8
+          do j = 1,n_lum_channels
              star%luminosity_breakdown(j) = star%luminosity_breakdown(j)*temp
           end do
        endif

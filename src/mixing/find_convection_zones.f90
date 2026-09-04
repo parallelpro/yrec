@@ -51,7 +51,7 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
      radiative_zone_bounds, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
      num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot, ierr)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, max_convective_zones, max_radiative_zones
       use luout_lib
       implicit none
 
@@ -60,9 +60,9 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
            log_mass(json), log_temperature(json)
       logical, intent(inout) :: convective_flag(json)
       integer, intent(in) :: num_zones
-      integer, intent(out) :: radiative_zone_bounds(13,2)
-      integer, intent(inout) :: mixed_zone_bounds(12,2)
-      integer, intent(out) :: mixed_zone_bounds_no_overshoot(12,2)
+      integer, intent(out) :: radiative_zone_bounds(max_radiative_zones,2)
+      integer, intent(inout) :: mixed_zone_bounds(max_convective_zones,2)
+      integer, intent(out) :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
       integer, intent(out) :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
@@ -93,7 +93,7 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
             mixed_zone_bounds(j_idx,2) = zone_idx - 1
             j_idx = j_idx + 1
          end if
-         if (j_idx.lt.12) cycle
+         if (j_idx.lt.max_convective_zones) cycle
          write(run_log_unit,661)
   661    format(' -----TOO MANY MIX ZONES')
          exit

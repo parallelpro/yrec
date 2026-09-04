@@ -30,7 +30,9 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
       use temperature_gradients_lib
-      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json
+      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
+           n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
+           max_convective_zones, max_radiative_zones
       use envint_lib, only: atm_get
       use envstruct_lib
       use luout_lib
@@ -56,7 +58,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       double precision, intent(inout) :: total_angular_momentum, &
            total_rotational_ke
       double precision, intent(out) :: convective_velocity
-      double precision, intent(inout) :: species_mix_weights(12)
+      double precision, intent(inout) :: species_mix_weights(n_mix_species)
 
       integer :: katm, kenv, saha_state
       character(len=4) :: format_tag
@@ -64,12 +66,14 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       character(len=4) :: atm_code, alok_code, hik_code
 ! (the initial-composition code read with the model is
 ! star%initial_composition_code)
-      double precision :: atomic_weight(12)
+! atomic weights of the surface mixture in ix_* slot order
+! (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He)
+      double precision :: atomic_weight(n_mix_species)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
 
 ! ENSURE THAT ONLY HOMOGENEOUS MODELS HAVE THE MIXTURE ALTERED
-      double precision :: reference_composition(15)
+      double precision :: reference_composition(n_species_extended)
 
 ! --- locals ---
       integer :: iread
@@ -129,7 +133,8 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       double precision :: angular_momentum_sum, rotational_ke_sum, &
            shell_angular_momentum
       double precision :: mixture_weight_sum, mixture_scale_factor
-      integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
+      integer :: radiative_zone_bounds(max_radiative_zones,2), &
+           convective_zone_bounds(max_convective_zones,2)
       logical :: am_transport_convective_flag(json)
       integer :: num_radiative_zones, num_convective_zones
       integer :: core_cz_top_index0, envelope_cz_bottom_index0
@@ -613,8 +618,8 @@ subroutine rescale_and_refit_envelope
        star%senv = star%log_mass(star%nz) - star%log_total_mass
        old_senv = star%senv
        if (star%senv.eq.star%job%requested_envelope_mass) exit envelope_rescale
-       num_species = 11
-       if (star%job%use_extended_composition) num_species = 15
+       num_species = n_species_basic
+       if (star%job%use_extended_composition) num_species = n_species_extended
        if (star%job%requested_envelope_mass.lt.star%senv) then
 ! NEW ENVELOPE DEEPER THAN THE OLD ONE
           target_log_mass_at_fit = star%log_total_mass+star%job%requested_envelope_mass
@@ -1009,7 +1014,7 @@ subroutine update_surface_mixture
 ! TO MAINTAIN BACKWARD COMPATIBILITY IF LLAOL=T THEN USE V READ IN
 ! VIA RDLAOL OTHERWISE USE VNEW.
       if (.not.llaol) then
-         do i=1, 12
+         do i=1, n_mix_species
             species_mix_weights(i)=star%ctrl%mixture_weights_seed(i)
          end do
       end if
@@ -1023,22 +1028,22 @@ subroutine update_surface_mixture
       star%envelope_helium_fraction = 1.0d0 - star%envelope_hydrogen_fraction - &
            star%envelope_metal_fraction - star%xa(i_he3,star%nz)
       star%envelope_he3_fraction = star%xa(i_he3,star%nz)
-! EVERYTHING BUT V(7)=H, AND V(12)=HE
-      mixture_weight_sum = species_mix_weights(1)+species_mix_weights(2)+ &
-           species_mix_weights(3)+species_mix_weights(4)+ &
-           species_mix_weights(5)+species_mix_weights(6)+ &
-           species_mix_weights(8)+species_mix_weights(9)+ &
-           species_mix_weights(10)+species_mix_weights(11)
+! SUM OF THE TEN METALS (EVERYTHING BUT H AND HE).
+      mixture_weight_sum = species_mix_weights(ix_na)+species_mix_weights(ix_al)+ &
+           species_mix_weights(ix_mg)+species_mix_weights(ix_fe)+ &
+           species_mix_weights(ix_si)+species_mix_weights(ix_c)+ &
+           species_mix_weights(ix_o)+species_mix_weights(ix_n)+ &
+           species_mix_weights(ix_ar)+species_mix_weights(ix_ne)
       star%zenvm = star%envelope_metal_fraction*(mixture_weight_sum - &
-           species_mix_weights(6)-species_mix_weights(8)- &
-           species_mix_weights(9))/mixture_weight_sum
+           species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
+           species_mix_weights(ix_n))/mixture_weight_sum
       mixture_scale_factor = star%envelope_metal_fraction/mixture_weight_sum
-      species_mix_weights(7) = star%envelope_hydrogen_fraction/ &
+      species_mix_weights(ix_h) = star%envelope_hydrogen_fraction/ &
            mixture_scale_factor
-      species_mix_weights(12) = (1.0d0-star%envelope_hydrogen_fraction- &
+      species_mix_weights(ix_he) = (1.0d0-star%envelope_hydrogen_fraction- &
            star%envelope_metal_fraction)/mixture_scale_factor
       mixture_weight_sum = 0.0d0
-      do i = 1,12
+      do i = 1,n_mix_species
        species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
             atomic_weight(i)
        mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
@@ -1047,7 +1052,7 @@ subroutine update_surface_mixture
       mixture_scale_factor = 1.0d0/star%amuenv
 ! DBG 1/96 FXENV ARE NUMBER FRACTIONS OF ELEMENTS REQURIED
 ! BY EOS ROUTINES (SEE EQSTAT AND EQSAHA)
-      do i = 1,12
+      do i = 1,n_mix_species
        star%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
       end do
 ! push the recomputed mixture to the eos domain (physics-purity pass)

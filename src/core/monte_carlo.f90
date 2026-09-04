@@ -21,7 +21,7 @@
 ! monte_carlo_active, so the regression suite verifies the non-MC path is
 ! byte-identical; the MC path is compile-verified only.
 module monte_carlo_lib
-      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_lum_grav
+      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_lum_grav, max_mc_runs
       use luout_lib
       implicit none
       private
@@ -41,7 +41,7 @@ subroutine setup_monte_carlo_runs
       integer :: i
       if (star%ctrl%monte_carlo_active) then
 ! (the dynamics file is opened at namelist-read time)
-         star%job%mc_run_end = min(star%job%mc_run_end,1000)
+         star%job%mc_run_end = min(star%job%mc_run_end,max_mc_runs)
 ! read in monte carlo data
          do i = 1,star%job%mc_run_end
             read(star%ctrl%dynamics_unit,1511)star%job%s11_rate(i),star%job%s33_rate(i),star%job%s34_rate(i), &
@@ -95,7 +95,7 @@ subroutine apply_monte_carlo_parameters(monte_carlo_run_number, &
          star%job%fgrz = star%job%diffusion_factor(monte_carlo_run_number)
          star%solar_luminosity_cgs = reference_solar_luminosity*star%job%luminosity_target(monte_carlo_run_number)
          star%log10_solar_luminosity = log10(star%solar_luminosity_cgs)
-         star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
+         star%ln10_over_lsun = ln10/star%solar_luminosity_cgs
          age_scale_factor = star%job%age_target(monte_carlo_run_number)
 ! timestep and final age are altered in SR SETCAL; input #s should be
 ! scaled for a solar age of 4.57 Gyr

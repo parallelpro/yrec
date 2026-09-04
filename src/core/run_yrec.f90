@@ -269,7 +269,7 @@ subroutine begin_kind_card
          star%total_rotational_ke = 0.0D0
 ! read in the initial model here
 ! read_starting_model also performs rescaling if requested
-       call read_starting_model(star%timestep_yr, star%dt, star%hydrogen_dt, star%trial_sign_flag, &
+       call read_starting_model(star%timestep_yr, star%dt, star%chosen_dt, star%trial_sign_flag, &
             star%ikut_flag, star%istore_flag, star%model_diverged_flag, &
             star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
             star%total_angular_momentum, star%total_rotational_ke, &
@@ -325,7 +325,7 @@ subroutine begin_kind_card
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin, &
               star%h_shell_end_index,star%h_shell_midpoint_zone,star%has_h_shell)
 ! determine timestep for model
-       call compute_timestep(star%dt,star%hydrogen_dt,star%nz,star%logRho,star%luminosity_lsun, &
+       call compute_timestep(star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
             star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk, &
             star%logP,star%logR,star%omega,star%max_domega_frac,star%h_shell_zone_begin, &

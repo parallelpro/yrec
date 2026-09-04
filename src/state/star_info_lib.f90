@@ -256,9 +256,12 @@ module star_info_lib
 ! values (copied by parmin), the rest derived from them -- and the
 ! luminosity trio is overwritten per Monte-Carlo run by
 ! apply_monte_carlo_parameters. Job-configured unit definitions,
-! i.e. computed state, not controls.
+! i.e. computed state, not controls. ln10_over_lsun is
+! ln(10)/solar_luminosity_cgs (it is NOT a logarithm of Lsun): times
+! the enclosed mass it scales the luminosity-equation terms in
+! henyey_coefficients.
             double precision :: solar_luminosity_cgs, &
-                 log10_solar_luminosity, ln_solar_luminosity, &
+                 log10_solar_luminosity, ln10_over_lsun, &
                  solar_mass_cgs, log10_solar_mass, solar_radius_cgs, &
                  log10_solar_radius, solar_bolometric_magnitude
 ! phase C batch 2: the rotation-mixing velocity-factor work array
@@ -474,8 +477,12 @@ module star_info_lib
                  recompute_envelope_triangle, reset_triangle
             integer :: h_shell_end_index, h_shell_midpoint_zone, &
                  h_shell_zone_begin, ikut_flag, istore_flag
+! chosen_dt (former DELTSH): the timestep compute_timestep adopted
+! (the minimum over all its limiters, seconds); read_starting_model
+! reuses the slot transiently as |delta_time|. Nothing reads it as
+! an H-burning governor.
             double precision :: convective_velocity, dt, &
-                 dt_saved, dlnrho_dlnp, dlnrho_dlnt, hydrogen_dt, &
+                 dt_saved, dlnrho_dlnp, dlnrho_dlnt, chosen_dt, &
                  max_domega_frac, timestep_yr, total_angular_momentum, &
                  total_rotational_ke, trial_sign_flag
 ! -- the extended-model pulse physics arrays (former pulse%) --

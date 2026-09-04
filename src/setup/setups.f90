@@ -45,7 +45,7 @@ subroutine setups(ierr)
       clni = 1.0d0/ln10
 ! Luminosity of Sun
       star%log10_solar_luminosity = log10(star%solar_luminosity_cgs)
-      star%ln_solar_luminosity = ln10/star%solar_luminosity_cgs
+      star%ln10_over_lsun = ln10/star%solar_luminosity_cgs
 ! Mass of Sun (namelist control since 2026; default 1.9891d33)
       star%solar_mass_cgs = star%ctrl%solar_mass_cgs
       star%log10_solar_mass = log10(star%solar_mass_cgs)

@@ -28,7 +28,7 @@ subroutine neutrino_flux_table
       use star_info_lib, only: star, json, i_h1, i_h2, i_he3, i_he4, &
            i_c12, i_c13, i_n14, i_o16, i_o18, &
            i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
-           i_nu_o15, i_nu_f17
+           i_nu_o15, i_nu_f17, n_nu_fluxes
       use luout_lib
       use phys_const_lib
       use burn_lib
@@ -56,7 +56,7 @@ subroutine neutrino_flux_table
       call shell_masses_from_log_mass(star%log_mass, star%log_total_mass, &
            star%nz, shell_center_mass, shell_mass)
 
-      do j = 1,10
+      do j = 1,n_nu_fluxes
          star%neutrino_flux_total(j) = 0.0d0
          do i = 1,star%nz
             star%neutrino_flux_zone(j,i) = 0.0d0
@@ -88,23 +88,23 @@ subroutine neutrino_flux_table
          star%be7_mass_fraction_zone(i) = star%be7_mass_fraction
 ! CONVERT FROM ERG/GM/S TO ERG/S FOR EACH SHELL BY MULTIPLYING
 ! BY THE MASS OF EACH SHELL IN GM.
-         do j = 1,10
+         do j = 1,n_nu_fluxes
             star%neutrino_flux_zone(j,i) = star%neutrino_flux(j)*shell_mass(i)
             star%neutrino_flux_total(j) = star%neutrino_flux_total(j) &
                  + star%neutrino_flux_zone(j,i)
          end do
          write(run_log_unit,911)i,shell_mass(i), &
-              (star%neutrino_flux_zone(j,i),j=1,10)
+              (star%neutrino_flux_zone(j,i),j=1,n_nu_fluxes)
  911     format(I5,1P11E10.3)
       end do
 
 ! WRITE OUT TOTAL NEUTRINO FLUXES.
 ! ***NOTE THAT THESE ARE IN UNITS OF 10**10. ***
-      write(run_log_unit,222)(star%neutrino_flux_total(i),i=1,10)
+      write(run_log_unit,222)(star%neutrino_flux_total(i),i=1,n_nu_fluxes)
  222  format(1P10E10.3)
 
 ! NORMALIZE FLUXES.
-      do j = 1,10
+      do j = 1,n_nu_fluxes
          if (star%neutrino_flux_total(j) .ne. 0.0d0) then
             do i = 1,star%nz
                star%neutrino_flux_zone(j,i) = star%neutrino_flux_zone(j,i) &

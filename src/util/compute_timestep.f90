@@ -48,7 +48,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
 
       double precision, intent(inout) :: previous_timestep
 ! chosen_dt: the timestep actually adopted (seconds); the caller stores
-! it in star%hydrogen_dt.
+! it in star%chosen_dt.
       double precision, intent(out) :: chosen_dt
       integer, intent(in) :: num_points
       double precision, intent(in) :: log_density(json), luminosity(json), &

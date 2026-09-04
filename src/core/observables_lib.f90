@@ -130,7 +130,7 @@ subroutine renormalize_luminosity_breakdown
             star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
             star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
        temp_value = star%luminosity_lsun(star%nz)/total_luminosity_sum
-       do i = 1,8
+       do i = 1,n_lum_channels
           star%luminosity_breakdown(i) = star%luminosity_breakdown(i)*temp_value
        end do
       endif

@@ -12,7 +12,8 @@
 ! Reads the LAOL89 opacity table(s) (and, if a second Z table is
 ! requested, a second LAOL89 table).
 subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
+           ix_o, ix_n, ix_ar, ix_ne
 
       use opacity_table_lib
       use luout_lib
@@ -47,10 +48,10 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 !     MG,SI,AR,FE (THE COX&STEWART MIX).  MIXTURE IS FOR THE ZLOT PART
 !     OF THE OPACITY TABLE WITH LAOL RELATIVE ABUNDANCES SCALED
 !     TO SUM TO ZLOT.
-      read(iolaol,120) zlot, laol_work_array(6), laol_work_array(9), &
-           laol_work_array(8), laol_work_array(11), laol_work_array(1), &
-           laol_work_array(3), laol_work_array(2), laol_work_array(5), &
-           laol_work_array(10), laol_work_array(4)
+      read(iolaol,120) zlot, laol_work_array(ix_c), laol_work_array(ix_n), &
+           laol_work_array(ix_o), laol_work_array(ix_ne), laol_work_array(ix_na), &
+           laol_work_array(ix_mg), laol_work_array(ix_al), laol_work_array(ix_si), &
+           laol_work_array(ix_ar), laol_work_array(ix_fe)
   120 format(47x,f8.5,//,1p6e12.5,/,1p4e12.5)
 !     READ ZHIT THE METAL ABUNDANCE FOR THE HIT PART OF TABLE.
 ! DBG 7/92 NEED RELATIVE ABUNDANCES OF METALS FOR DEBYE-HUCKEL
