@@ -435,7 +435,7 @@ end subroutine kap_init
 !----------------------------------------------------------------------
 ! Added 2026 (phase three, ROADMAP.md stage 1): public lifecycle entry
 ! for refreshing the cached surface-composition opacity-table slices
-! (OPAL95/OPAL92/ALEX95 fixed-X tables) when the envelope hydrogen
+! (OPAL95/OPAL92/ALEX94 fixed-X tables) when the envelope hydrogen
 ! fraction changes. Wraps surfopac.f90; core/read_starting_model.f90 and
 ! setup/rezone.f90 previously called surfopac directly -- a
 ! legitimate lifecycle operation that simply had no facade name.

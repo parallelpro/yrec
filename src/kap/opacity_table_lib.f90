@@ -28,9 +28,9 @@ module opacity_table_lib
       integer, parameter :: n_opal92_t = 50, n_opal92_d = 17, &
            n_opal92_x = 3, n_opal92_xt = 150, n_opal92_4d = 68
 ! Alexander 1994/95 table dimensions
-      integer, parameter :: n_alex95_x = 7, n_alex95_z = 15, &
-           n_alex95_t = 23, n_alex95_d = 17, n_alex95_xt = 8, &
-           n_alex95_xz = 105
+      integer, parameter :: n_alex94_x = 7, n_alex94_z = 15, &
+           n_alex94_t = 23, n_alex94_d = 17, n_alex94_xt = 8, &
+           n_alex94_xz = 105
 ! Alexander 2006 table dimensions
       integer, parameter :: n_alex06_x = 9, n_alex06_z = 16, &
            n_alex06_t = 85, n_alex06_d = 19, n_alex06_xz = 143
@@ -100,25 +100,25 @@ module opacity_table_lib
            integer :: opal92_index_x = 1, opal92_index_t = 1, opal92_index_rho = 1
            integer :: opal92_index_x_z2, opal92_index_t_z2, opal92_index_rho_z2
 ! former common/galot/, alot/, alotall/ (Alexander 1994/95)
-           double precision :: alex95_grid_logt(n_alex95_t) = &
+           double precision :: alex94_grid_logt(n_alex94_t) = &
                 [3.00d0,3.05d0,3.10d0,3.15d0,3.20d0,3.25d0,3.30d0, &
                  3.35d0,3.40d0,3.45d0,3.50d0,3.55d0,3.60d0,3.65d0, &
                  3.70d0,3.75d0,3.80d0,3.85d0,3.90d0,3.95d0,4.00d0, &
                  4.05d0,4.10d0]
-           double precision :: alex95_grid_x(n_alex95_x) = &
+           double precision :: alex94_grid_x(n_alex94_x) = &
                 [0.0d0,0.1d0,0.2d0,0.35d0,0.5d0,0.7d0,0.8d0]
-           double precision :: alex95_grid_logr(n_alex95_d) = &
+           double precision :: alex94_grid_logr(n_alex94_d) = &
                 [-7.0d0,-6.5d0,-6.0d0,-5.5d0,-5.0d0,-4.5d0,-4.0d0, &
                  -3.5d0,-3.0d0,-2.5d0,-2.0d0,-1.5d0,-1.0d0,-0.5d0, &
                  0.0d0, 0.5d0, 1.0d0]
-           double precision :: alex95_grid_z(n_alex95_z) = &
+           double precision :: alex94_grid_z(n_alex94_z) = &
                 [0.0d0, 0.00001d0, 0.00003d0, 0.0001d0, 0.0003d0, &
                  0.001d0, 0.002d0, 0.004d0, 0.01d0, 0.02d0, 0.03d0, &
                  0.04d0, 0.06d0, 0.08d0, 0.10d0]
-           double precision :: alex95_opacity(n_alex95_xt,n_alex95_t,n_alex95_d)
-           double precision :: alex95_cached_x = 0.0d0, alex95_cached_z = 0.0d0
-           integer :: alex95_index_x = 4, alex95_index_t = 12, alex95_index_r = 9
-           double precision :: alex95_full_opacity(n_alex95_xz,n_alex95_t,n_alex95_d)
+           double precision :: alex94_opacity(n_alex94_xt,n_alex94_t,n_alex94_d)
+           double precision :: alex94_cached_x = 0.0d0, alex94_cached_z = 0.0d0
+           integer :: alex94_index_x = 4, alex94_index_t = 12, alex94_index_r = 9
+           double precision :: alex94_full_opacity(n_alex94_xz,n_alex94_t,n_alex94_d)
 ! former common/galot06/, alot06/, alot06all/ (Alexander 2006)
            double precision :: alex06_grid_logt(n_alex06_t) = &
                 [2.70d0,2.75d0,2.80d0,2.85d0,2.90d0,2.91d0,2.92d0, &
@@ -345,14 +345,14 @@ integer function alex_x_stencil_start(hydrogen_fraction)
       implicit none
       double precision, intent(in) :: hydrogen_fraction
 
-      if (hydrogen_fraction.lt.opacity_table%alex95_grid_x(4)) then
-         if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(3)) then
+      if (hydrogen_fraction.lt.opacity_table%alex94_grid_x(4)) then
+         if (hydrogen_fraction.gt.opacity_table%alex94_grid_x(3)) then
             alex_x_stencil_start = 2
          else
             alex_x_stencil_start = 1
          endif
       else
-         if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(5)) then
+         if (hydrogen_fraction.gt.opacity_table%alex94_grid_x(5)) then
             alex_x_stencil_start = 4
          else
             alex_x_stencil_start = 3

@@ -31,7 +31,7 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
       logical :: extrapolate_linear
       integer :: i, j, jj, ii
 
-      delta_z = abs(metal_fraction-opacity_table%alex95_cached_z)
+      delta_z = abs(metal_fraction-opacity_table%alex94_cached_z)
 !     ENSURE THAT OPACITY TABLE HAS THE SAME Z VALUE AS THE ENVELOPE.
       if (delta_z.gt.alex_composition_tol) then
          call alex94_fixed_z_table(metal_fraction)
@@ -41,51 +41,51 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
 !     FIND NEAREST GRID POINTS IN T.
 !     Insure that index IT is within the required array bounds  llp  8/19/08
-      if (opacity_table%alex95_index_t .lt. 1) opacity_table%alex95_index_t=1
-      if ((opacity_table%alex95_index_t+2) .gt. n_alex95_t) opacity_table%alex95_index_t=n_alex95_t-2
-      call stencil4_locate(opacity_table%alex95_grid_logt, n_alex95_t, log10_temperature, opacity_table%alex95_index_t)
+      if (opacity_table%alex94_index_t .lt. 1) opacity_table%alex94_index_t=1
+      if ((opacity_table%alex94_index_t+2) .gt. n_alex94_t) opacity_table%alex94_index_t=n_alex94_t-2
+      call stencil4_locate(opacity_table%alex94_grid_logt, n_alex94_t, log10_temperature, opacity_table%alex94_index_t)
 !     INTERPOLATION FACTORS IN LOG T
       do i = 1,4
-         interp_nodes(i) = opacity_table%alex95_grid_logt(opacity_table%alex95_index_t+i-1)
+         interp_nodes(i) = opacity_table%alex94_grid_logt(opacity_table%alex94_index_t+i-1)
       end do
       call interp(interp_nodes, weight_t, dweight_t, log10_temperature)
 !     FIND NEAREST GRID POINTS IN R = RHO/T6**3
-      call stencil4_locate(opacity_table%alex95_grid_logr, n_alex95_d, logr, opacity_table%alex95_index_r)
+      call stencil4_locate(opacity_table%alex94_grid_logr, n_alex94_d, logr, opacity_table%alex94_index_r)
 !     INTERPOLATION FACTORS IN LOG R
-      if (logr.gt.opacity_table%alex95_grid_logr(n_alex95_d).and. &
-           abs(hydrogen_fraction-opacity_table%alex95_cached_x).lt.alex_composition_tol) then
+      if (logr.gt.opacity_table%alex94_grid_logr(n_alex94_d).and. &
+           abs(hydrogen_fraction-opacity_table%alex94_cached_x).lt.alex_composition_tol) then
          extrapolate_linear = .true.
          saved_r = logr
-         logr = opacity_table%alex95_grid_logr(n_alex95_d)
+         logr = opacity_table%alex94_grid_logr(n_alex94_d)
       else
          extrapolate_linear = .false.
       endif
       do i = 1,4
-         interp_nodes(i) = opacity_table%alex95_grid_logr(opacity_table%alex95_index_r+i-1)
+         interp_nodes(i) = opacity_table%alex94_grid_logr(opacity_table%alex94_index_r+i-1)
       end do
       call interp(interp_nodes, weight_r, dweight_r, logr)
 !     NOW EITHER INTERPOLATE IN SURFACE X TABLE OR CALCULATE OPACITY AT
 !     4 DIFFERENT VALUES OF X AND INTERPOLATE IN X.
-      if (abs(hydrogen_fraction-opacity_table%alex95_cached_x).lt.alex_composition_tol) then
+      if (abs(hydrogen_fraction-opacity_table%alex94_cached_x).lt.alex_composition_tol) then
 !        SURFACE ABUNDANCE TABLE
 !        INTERPOLATE IN LOG R AT FIXED T
          do i = 1,4
-            ii = opacity_table%alex95_index_t+i - 1
-            opacity_row(i) = weight_r(1)*opacity_table%alex95_opacity(8,ii,opacity_table%alex95_index_r) + &
-                 weight_r(2)*opacity_table%alex95_opacity(8,ii,opacity_table%alex95_index_r+1) + &
-                 weight_r(3)*opacity_table%alex95_opacity(8,ii,opacity_table%alex95_index_r+2) + &
-                 weight_r(4)*opacity_table%alex95_opacity(8,ii,opacity_table%alex95_index_r+3)
-            dlnkap_dlnr_row(i) = dweight_r(1)*opacity_table%alex95_opacity(8,ii,opacity_table%alex95_index_r) + &
-                 dweight_r(2)*opacity_table%alex95_opacity(8,ii,opacity_table%alex95_index_r+1) + &
-                 dweight_r(3)*opacity_table%alex95_opacity(8,ii,opacity_table%alex95_index_r+2) + &
-                 dweight_r(4)*opacity_table%alex95_opacity(8,ii,opacity_table%alex95_index_r+3)
+            ii = opacity_table%alex94_index_t+i - 1
+            opacity_row(i) = weight_r(1)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r) + &
+                 weight_r(2)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r+1) + &
+                 weight_r(3)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r+2) + &
+                 weight_r(4)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r+3)
+            dlnkap_dlnr_row(i) = dweight_r(1)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r) + &
+                 dweight_r(2)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r+1) + &
+                 dweight_r(3)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r+2) + &
+                 dweight_r(4)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r+3)
          end do
          if (extrapolate_linear) then
             do i = 1,4
-               ii = opacity_table%alex95_index_t+i-1
+               ii = opacity_table%alex94_index_t+i-1
                opacity_row(i) = opacity_row(i)+(saved_r-logr)* &
-                    (opacity_table%alex95_opacity(8,ii,n_alex95_d)-opacity_table%alex95_opacity(8,ii,n_alex95_d-1))/ &
-                    (opacity_table%alex95_grid_logr(n_alex95_d)-opacity_table%alex95_grid_logr(n_alex95_d-1))
+                    (opacity_table%alex94_opacity(8,ii,n_alex94_d)-opacity_table%alex94_opacity(8,ii,n_alex94_d-1))/ &
+                    (opacity_table%alex94_grid_logr(n_alex94_d)-opacity_table%alex94_grid_logr(n_alex94_d-1))
             end do
             logr = saved_r
          endif
@@ -103,24 +103,24 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
          opacity = exp(ln10*log10_opacity)
       else
 !        FIND 4 NEAREST TABLES IN X.
-         opacity_table%alex95_index_x = alex_x_stencil_start(hydrogen_fraction)
+         opacity_table%alex94_index_x = alex_x_stencil_start(hydrogen_fraction)
          do i = 1,4
-            interp_nodes(i) = opacity_table%alex95_grid_x(opacity_table%alex95_index_x+i-1)
+            interp_nodes(i) = opacity_table%alex94_grid_x(opacity_table%alex94_index_x+i-1)
          end do
          call intrp2(interp_nodes, weight_x, hydrogen_fraction)
 !        INTERPOLATE IN LOG R AT FIXED T
          do j = 1,4
-            jj = opacity_table%alex95_index_x+j-1
+            jj = opacity_table%alex94_index_x+j-1
             do i = 1,4
-               ii = opacity_table%alex95_index_t+i - 1
-               opacity_row(i) = weight_r(1)*opacity_table%alex95_opacity(jj,ii,opacity_table%alex95_index_r) + &
-                    weight_r(2)*opacity_table%alex95_opacity(jj,ii,opacity_table%alex95_index_r+1) + &
-                    weight_r(3)*opacity_table%alex95_opacity(jj,ii,opacity_table%alex95_index_r+2) + &
-                    weight_r(4)*opacity_table%alex95_opacity(jj,ii,opacity_table%alex95_index_r+3)
-               dlnkap_dlnr_row(i) = dweight_r(1)*opacity_table%alex95_opacity(jj,ii,opacity_table%alex95_index_r) + &
-                    dweight_r(2)*opacity_table%alex95_opacity(jj,ii,opacity_table%alex95_index_r+1) + &
-                    dweight_r(3)*opacity_table%alex95_opacity(jj,ii,opacity_table%alex95_index_r+2) + &
-                    dweight_r(4)*opacity_table%alex95_opacity(jj,ii,opacity_table%alex95_index_r+3)
+               ii = opacity_table%alex94_index_t+i - 1
+               opacity_row(i) = weight_r(1)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r) + &
+                    weight_r(2)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+1) + &
+                    weight_r(3)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+2) + &
+                    weight_r(4)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+3)
+               dlnkap_dlnr_row(i) = dweight_r(1)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r) + &
+                    dweight_r(2)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+1) + &
+                    dweight_r(3)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+2) + &
+                    dweight_r(4)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+3)
             end do
 !           INTERPOLATE IN T
             opacity_x(j) = weight_t(1)*opacity_row(1)+weight_t(2)*opacity_row(2)+ &

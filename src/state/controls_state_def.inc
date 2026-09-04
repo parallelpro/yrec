@@ -197,7 +197,7 @@
             integer :: kurucz_table2_unit = 0
             integer :: icondopacp = 0
             logical :: use_conductive_opacity = .false.
-            integer :: alex95_table_unit = 0
+            integer :: alex94_table_unit = 0
             integer :: alex06_table_unit = 0
             double precision :: alex_mixture_x = 0.7d0
             double precision :: alex_mixture_z = 0.02d0

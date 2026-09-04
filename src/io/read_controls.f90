@@ -609,7 +609,7 @@ subroutine read_input(ierr)
 
 ! former common/alexo/: ialxo is not a namelist value and genuinely
 ! used in this file -- renamed in place to its canonical const_lib
-! name (alex95_table_unit), now use-associated rather than locally
+! name (alex94_table_unit), now use-associated rather than locally
 ! declared.
 
 ! former common/alex06/: ialex06 is not a namelist value and genuinely
@@ -1283,7 +1283,7 @@ subroutine read_input(ierr)
 ! INPUT: KURUCZ ATMOSPHER TABLE
       atm_table_file_unit = 38
 ! YCK INPUT: Alex LOW T OPACITIES
-      alex95_table_unit = 39
+      alex94_table_unit = 39
 ! INPUT: MHD EQU. OF STATE TABLES
       unit_zams_a = 40
       unit_zams_b = 41

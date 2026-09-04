@@ -9,7 +9,7 @@
 ! Generates the surface-X (envelope-abundance) table for the
 ! Alexander 1994 low-temperature opacity tables by 4-point Lagrangian
 ! interpolation in X, storing it in table slot 8 of
-! opacity_table%alex95_full_opacity.
+! opacity_table%alex94_full_opacity.
 subroutine alex94_surface_table(hydrogen_fraction)
 
       use opacity_table_lib
@@ -21,19 +21,19 @@ subroutine alex94_surface_table(hydrogen_fraction)
       double precision :: interp_x(4), weight_x(4)
       integer :: i, j
 
-      opacity_table%alex95_cached_x = hydrogen_fraction
+      opacity_table%alex94_cached_x = hydrogen_fraction
 !     FIND 4 NEAREST TABLES IN X.
-      opacity_table%alex95_index_x = alex_x_stencil_start(hydrogen_fraction)
+      opacity_table%alex94_index_x = alex_x_stencil_start(hydrogen_fraction)
       do i = 1,4
-         interp_x(i) = opacity_table%alex95_grid_x(opacity_table%alex95_index_x+i-1)
+         interp_x(i) = opacity_table%alex94_grid_x(opacity_table%alex94_index_x+i-1)
       end do
       call intrp2(interp_x, weight_x, hydrogen_fraction)
-      do i = 1,n_alex95_t
-         do j = 1,n_alex95_d
-            opacity_table%alex95_opacity(8,i,j) = weight_x(1)*opacity_table%alex95_opacity(opacity_table%alex95_index_x,i,j)+ &
-                 weight_x(2)*opacity_table%alex95_opacity(opacity_table%alex95_index_x+1,i,j) + &
-                 weight_x(3)*opacity_table%alex95_opacity(opacity_table%alex95_index_x+2,i,j) + &
-                 weight_x(4)*opacity_table%alex95_opacity(opacity_table%alex95_index_x+3,i,j)
+      do i = 1,n_alex94_t
+         do j = 1,n_alex94_d
+            opacity_table%alex94_opacity(8,i,j) = weight_x(1)*opacity_table%alex94_opacity(opacity_table%alex94_index_x,i,j)+ &
+                 weight_x(2)*opacity_table%alex94_opacity(opacity_table%alex94_index_x+1,i,j) + &
+                 weight_x(3)*opacity_table%alex94_opacity(opacity_table%alex94_index_x+2,i,j) + &
+                 weight_x(4)*opacity_table%alex94_opacity(opacity_table%alex94_index_x+3,i,j)
          end do
       end do
       return

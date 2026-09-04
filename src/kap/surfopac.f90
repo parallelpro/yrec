@@ -8,7 +8,7 @@
 ! (examples/run_standard_solar_model).
 !
 ! Sets up the low-temperature/surface opacity tables (OPAL95, OPAL92,
-! ALEX95) for the envelope hydrogen fraction, assuming the underlying
+! ALEX94) for the envelope hydrogen fraction, assuming the underlying
 ! tables have already been read in. Relocated here from atm/ (2026,
 ! atm/ phase-two reorg): zero atm-domain content -- it only refreshes
 ! cached table slices in kap/opal95/, kap/opal92/, kap/alex94/ -- and
@@ -40,7 +40,7 @@ subroutine surfopac(hydrogen_fraction, ierr)
 
 !     LOW TEMP TABLES
 
-!     INTERPOLATE ALEX95 TABLES
+!     INTERPOLATE ALEX94 TABLES
       if (star%ctrl%use_alex95_tables) then
        call alex94_surface_table(hydrogen_fraction)
       end if

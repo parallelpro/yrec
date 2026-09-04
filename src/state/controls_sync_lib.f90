@@ -281,7 +281,7 @@ subroutine seed_controls_buffer
       kurucz_table2_unit = star%ctrl%kurucz_table2_unit
       icondopacp = star%ctrl%icondopacp
       use_conductive_opacity = star%ctrl%use_conductive_opacity
-      alex95_table_unit = star%ctrl%alex95_table_unit
+      alex94_table_unit = star%ctrl%alex94_table_unit
       alex06_table_unit = star%ctrl%alex06_table_unit
       alex_mixture_x = star%ctrl%alex_mixture_x
       alex_mixture_z = star%ctrl%alex_mixture_z
@@ -650,7 +650,7 @@ subroutine store_controls_to_star
       star%ctrl%kurucz_table2_unit = kurucz_table2_unit
       star%ctrl%icondopacp = icondopacp
       star%ctrl%use_conductive_opacity = use_conductive_opacity
-      star%ctrl%alex95_table_unit = alex95_table_unit
+      star%ctrl%alex94_table_unit = alex94_table_unit
       star%ctrl%alex06_table_unit = alex06_table_unit
       star%ctrl%alex_mixture_x = alex_mixture_x
       star%ctrl%alex_mixture_z = alex_mixture_z
