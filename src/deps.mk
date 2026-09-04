@@ -132,8 +132,8 @@ core/henyey_solve.o: star_info_lib.mod
 core/monte_carlo.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 core/neutrino_flux_table.o: burn_lib.mod luout_lib.mod math_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod
 core/observables_lib.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
-core/read_starting_model.o: envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod observables_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
-core/rebuild_envelope.o: envint_kernel.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod yale_eos_lib.mod
+core/read_starting_model.o: controls_lib.mod envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod observables_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
+core/rebuild_envelope.o: controls_lib.mod envint_kernel.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod yale_eos_lib.mod
 core/run_yrec.o: controls_check_lib.mod luout_lib.mod monte_carlo_lib.mod net_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset_lib.mod
 core/shell_physics.o: eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 core/star_setup.o: monte_carlo_lib.mod
@@ -255,7 +255,7 @@ net/test/test_net.o: burn_lib.mod controls_lib.mod luout_lib.mod net_lib.mod scv
 numerics/numerics_lib.o: intpar_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-rotation/equal_spaced_grid.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/equal_spaced_grid.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/evolve_angular_momentum.o: burn_lib.mod math_lib.mod mid_timestep_model_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod secular_transport_lib.mod star_info_lib.mod
 rotation/microdiff/gravitational_settling.o: luout_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 rotation/microdiff/gravitational_settling_setup.o: luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
@@ -274,13 +274,13 @@ rotation/omega_from_j.o: star_info_lib.mod
 rotation/rotation_scratch_lib.o: star_info_lib.mod
 rotation/seculr/am_advection_diffusion_coeffs.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_diffusion_coeffs.o: rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/am_transport_grid.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/am_transport_grid.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/banded_solver.o: rotation_scratch_lib.mod
 rotation/seculr/check_angular_momentum.o: luout_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/check_composition.o: luout_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/circulation_velocities.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/composition_diffusion_coeffs.o: star_info_lib.mod
-rotation/seculr/composition_grid.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/composition_grid.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/compute_quadrupole.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/diffuse_composition.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/diffuse_composition_driver.o: star_info_lib.mod
@@ -295,21 +295,21 @@ rotation/shape/shell_inertia_integral.o: math_lib.mod phys_const_lib.mod
 rotation/shape/zone_moments_of_inertia.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 rotation/solid_body_omega.o: rotation_scratch_lib.mod star_info_lib.mod
 rotation/viscos.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-setup/locate_shell_boundaries.o: star_info_lib.mod
-setup/map_user_inputs.o: controls_lib.mod star_info_lib.mod
+setup/locate_shell_boundaries.o: controls_lib.mod star_info_lib.mod
+setup/map_user_inputs.o: controls_lib.mod net_lib.mod star_info_lib.mod
 setup/rescale_model.o: eos_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-setup/rezone.o: kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
+setup/rezone.o: controls_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 setup/rotation_stability_setup.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 setup/setup_solar_calibration.o: controls_lib.mod star_info_lib.mod
 setup/setup_star_calibration.o: controls_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 setup/setups.o: atm_lib.mod atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod ttau_lib.mod yale_eos_lib.mod
 state/controls_sync_lib.o: controls_lib.mod star_info_lib.mod
-util/compute_timestep.o: phys_const_lib.mod star_info_lib.mod
-util/timestep_limit_hburn.o: burn_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.mod
-util/timestep_limit_heburn.o: burn_lib.mod net_lib.mod star_info_lib.mod
-util/timestep_limit_hr.o: math_lib.mod star_info_lib.mod
-util/timestep_limit_omega.o: star_info_lib.mod
-util/timestep_limit_structure.o: star_info_lib.mod
+util/compute_timestep.o: controls_lib.mod phys_const_lib.mod star_info_lib.mod
+util/timestep_limit_hburn.o: burn_lib.mod controls_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.mod
+util/timestep_limit_heburn.o: burn_lib.mod controls_lib.mod net_lib.mod star_info_lib.mod
+util/timestep_limit_hr.o: controls_lib.mod math_lib.mod star_info_lib.mod
+util/timestep_limit_omega.o: controls_lib.mod star_info_lib.mod
+util/timestep_limit_structure.o: controls_lib.mod star_info_lib.mod
 util/version.o: phys_const_lib.mod
 wind/kawaler_wind.o: math_lib.mod phys_const_lib.mod star_info_lib.mod wind_lib.mod
 wind/massloss.o: atm_lib.mod atm_table_lib.mod eos_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod wind_lib.mod

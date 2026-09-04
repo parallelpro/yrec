@@ -45,8 +45,9 @@ CONTROLS_BUFFER_IMPORTERS = {
 
 # Named constants in controls_lib that are not buffer state: any file
 # may `use controls_lib, only: <these>` (an only-list drawn entirely
-# from this set is not a buffer import).
-CONTROLS_LIB_CONSTANTS = {"max_runs"}
+# from these is not a buffer import). max_runs dimensions the per-run
+# arrays; ichi_*/itime_* name the chi_grid_scale/atime slots.
+CONTROLS_LIB_CONSTANT_RE = re.compile(r"^(max_runs|ichi_\w+|itime_\w+)$")
 
 # domain -> names callable from outside that domain.
 PUBLIC = {
@@ -56,6 +57,8 @@ PUBLIC = {
     # eos_get_r); the long-form engine eos_eval is domain-internal.
     # eos_set_debye_huckel_z: kap/setupopac hands the eos domain the
     # LAOL89 table's 18-element metal mixture (2026 wave 2).
+    # eos_get_gamma1 is test-only: its sole caller is
+    # eos/test/test_eos.f90 (the calcad diagnostic it served is gone).
     "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture",
             "eos_set_debye_huckel_z"},
     # The kap_lib facade entries (kap_get_r is the named-index
@@ -92,9 +95,10 @@ PUBLIC = {
     # user decision during the phase-two sweep). "func" was here
     # because numerics' qgauss hard-coded a call to it; phase four's
     # step 2 made it a procedure argument, but func stays public since
-    # fpft passes it across the module boundary into numerics. solid
-    # joined when step 1 moved it here from misc/ (rotation geometry,
-    # legitimately called from setup/midmod and wind/wcz).
+    # fpft passes it across the module boundary into numerics.
+    # rotation_shape_factors (the former solid) joined when step 1
+    # moved it here from misc/ (rotation geometry, legitimately called
+    # from core and setup/rezone).
     "rotation": {"evolve_angular_momentum", "omega_from_j",
                  "rotation_shape_factors", "zone_moments_of_inertia",
                  "am_convective_regions", "viscos",
@@ -214,12 +218,17 @@ def main():
         rel = path.relative_to(SRC).as_posix()
         if rel in CONTROLS_BUFFER_IMPORTERS or rel == "io/controls_lib.f90":
             continue
-        for line in strip_comments(path.read_text()).splitlines():
+        code_lines = strip_comments(path.read_text()).splitlines()
+        for i, line in enumerate(code_lines):
             if line.strip().lower().startswith("use controls_lib"):
+                stmt = line
+                while stmt.rstrip().endswith("&") and i + 1 < len(code_lines):
+                    i += 1
+                    stmt = stmt.rstrip()[:-1] + code_lines[i].lstrip().lstrip("&")
                 m = re.match(r"^\s*use\s+controls_lib\s*,\s*only\s*:\s*(.*)$",
-                             line, re.IGNORECASE)
-                if m and set(x.strip() for x in m.group(1).split(",")) \
-                        <= CONTROLS_LIB_CONSTANTS:
+                             stmt, re.IGNORECASE)
+                if m and all(CONTROLS_LIB_CONSTANT_RE.match(x.strip())
+                             for x in m.group(1).split(",")):
                     continue
                 buffer_violations.append(rel)
                 break

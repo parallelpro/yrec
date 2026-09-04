@@ -13,6 +13,8 @@
 subroutine map_user_inputs
       use star_info_lib, only: star
       use controls_lib
+      use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
+           s_pep, s_be7e, s_be7p, s_hep, iq_be7p
       implicit none
 
       integer :: i
@@ -94,23 +96,23 @@ subroutine map_user_inputs
 ! of the reactions are permitted to be separately modified, unlike in the
 ! original version of engeb.  In this case the inputs are the ratios
 ! S'/S0 and S''/S0, relative to the Solar Fusion I (Adelberger et al. 1998) ratios.
-         star%cross_section_scale(1) = s0_pp/s0_pp_ref
-         star%cross_section_scale(2) = s0_he3he3/s0_he3he3_ref
-         star%cross_section_scale(3) = s0_he3he4/s0_he3he4_ref
-         star%cross_section_scale(4) = s0_p_c12/s0_p_c12_ref
-         star%cross_section_scale(5) = s0_p_c13/s0_p_c13_ref
-         star%cross_section_scale(6) = s0_p_n14/s0_p_n14_ref
-         star%cross_section_scale(7) = s0_p_o16/s0_p_o16_ref
+         star%cross_section_scale(r_pp) = s0_pp/s0_pp_ref
+         star%cross_section_scale(r_he3he3) = s0_he3he3/s0_he3he3_ref
+         star%cross_section_scale(r_he3he4) = s0_he3he4/s0_he3he4_ref
+         star%cross_section_scale(r_pc12) = s0_p_c12/s0_p_c12_ref
+         star%cross_section_scale(r_pc13) = s0_p_c13/s0_p_c13_ref
+         star%cross_section_scale(r_pn14) = s0_p_n14/s0_p_n14_ref
+         star%cross_section_scale(r_po16) = s0_p_o16/s0_p_o16_ref
 !      SSTANDARD(8) = S0_4_13/S0_4_13_REF resonant; not fit by simple S0
 !      SSTANDARD(9) = S0_4_16/S0_4_16_REF not used
 !      SSTANDARD(10) = S0_4_12/S0_4_12_REF resonant; not fit by simple S0
 !      SSTANDARD(11) = S0_4_14/S0_4_14_REF resonant; not fit by simple S0
 !      SSTANDARD(12) = S0_3A/S0_3A_REF resonant; not fit by simple S0
 !      SSTANDARD(13) = S0_12_12/S0_12_12_REF not used
-         star%cross_section_scale(14) = s0_pep/s0_pep_ref
-         star%cross_section_scale(15) = s0_be7_electron/s0_be7_electron_ref
-         star%cross_section_scale(16) = s0_be7_p/s0_be7_p_ref
-         star%cross_section_scale(17) = s0_hep/s0_hep_ref
+         star%cross_section_scale(s_pep) = s0_pep/s0_pep_ref
+         star%cross_section_scale(s_be7e) = s0_be7_electron/s0_be7_electron_ref
+         star%cross_section_scale(s_be7p) = s0_be7_p/s0_be7_p_ref
+         star%cross_section_scale(s_hep) = s0_hep/s0_hep_ref
 ! ABILITY TO CHANGE THE HARD-CODED BRANCHING RATIOS FOR THE OUTCOME OF N15+P
          star%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
          star%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref
@@ -120,127 +122,127 @@ subroutine map_user_inputs
 ! FIRST DERIVATIVE TERMS - TO BE USED TO MULTIPLY Q2 AND Q3 TERMS IN ENGEB
 ! MHP 4/25 FIXED TYPOS AND TRAPPED OUT POTENTIAL DIVIDE BY ZERO ERRORS
          if (s0_pp.gt.0.0d0) then
-            star%qs0e_scale(1) = (s0p_pp/s0_pp)/(qs0e_pp_a98/s0_pp_a98)
+            star%qs0e_scale(r_pp) = (s0p_pp/s0_pp)/(qs0e_pp_a98/s0_pp_a98)
          else
-            star%qs0e_scale(1) = 0.0d0
+            star%qs0e_scale(r_pp) = 0.0d0
          end if
          if (s0_he3he3.gt.0.0d0) then
-            star%qs0e_scale(2) = (s0p_he3he3/s0_he3he3)/(qs0e_he3he3_a98/s0_pp_a98)
+            star%qs0e_scale(r_he3he3) = (s0p_he3he3/s0_he3he3)/(qs0e_he3he3_a98/s0_pp_a98)
          else
-            star%qs0e_scale(2) = 0.0d0
+            star%qs0e_scale(r_he3he3) = 0.0d0
          end if
          if (s0_he3he4.gt.0.0d0) then
-            star%qs0e_scale(3) = (s0p_he3he4/s0_he3he4)/(qs0e_he3he4_a98/s0_pp_a98)
+            star%qs0e_scale(r_he3he4) = (s0p_he3he4/s0_he3he4)/(qs0e_he3he4_a98/s0_pp_a98)
          else
-            star%qs0e_scale(3) = 0.0d0
+            star%qs0e_scale(r_he3he4) = 0.0d0
          end if
          if (s0_p_c12.gt.0.0d0) then
-            star%qs0e_scale(4) = (s0p_p_c12/s0_p_c12)/(qs0e_p_c12_a98/s0_pp_a98)
+            star%qs0e_scale(r_pc12) = (s0p_p_c12/s0_p_c12)/(qs0e_p_c12_a98/s0_pp_a98)
          else
-            star%qs0e_scale(4) = 0.0d0
+            star%qs0e_scale(r_pc12) = 0.0d0
          end if
          if (s0_p_c13.gt.0.0d0) then
-            star%qs0e_scale(5) = (s0p_p_c13/s0_p_c13)/(qs0e_p_c13_a98/s0_pp_a98)
+            star%qs0e_scale(r_pc13) = (s0p_p_c13/s0_p_c13)/(qs0e_p_c13_a98/s0_pp_a98)
          else
-            star%qs0e_scale(5) = 0.0d0
+            star%qs0e_scale(r_pc13) = 0.0d0
          end if
          if (s0_p_n14.gt.0.0d0) then
-            star%qs0e_scale(6) = (s0p_p_n14/s0_p_n14)/(qs0e_p_n14_a98/s0_pp_a98)
+            star%qs0e_scale(r_pn14) = (s0p_p_n14/s0_p_n14)/(qs0e_p_n14_a98/s0_pp_a98)
          else
-            star%qs0e_scale(6) = 0.0d0
+            star%qs0e_scale(r_pn14) = 0.0d0
          end if
          if (s0_p_o16.gt.0.0d0) then
-            star%qs0e_scale(7) = (s0p_p_o16/s0_p_o16)/(qs0e_p_o16_a98/s0_pp_a98)
+            star%qs0e_scale(r_po16) = (s0p_p_o16/s0_p_o16)/(qs0e_p_o16_a98/s0_pp_a98)
          else
-            star%qs0e_scale(7) = 0.0d0
+            star%qs0e_scale(r_po16) = 0.0d0
          end if
 !         QS0E(8)=(S0P_1_BE7P/S0_1_BE7P)/(QS0E_1_BE7P_A98/S0_1_BE7P__A98)
          if (s0_be7_p.gt.0.0d0) then
-            star%qs0e_scale(8) = (s0p_be7_p/s0_be7_p)/ &
+            star%qs0e_scale(iq_be7p) = (s0p_be7_p/s0_be7_p)/ &
                  (qs0e_be7_p_a98/s0_be7_p_a98)
          else
-            star%qs0e_scale(8) = 0.0d0
+            star%qs0e_scale(iq_be7p) = 0.0d0
          end if
 ! SECOND DERIVATIVE TERMS - TO BE USED TO MULTIPLY Q4 AND Q5 TERMS IN ENGEB
 !         QQS0EE(1) = (S0PP_1_1/S0_1_1)/(QQS0EE_1_1_A98/S0_1_1_A98) ZEROED OUT IN 2003 VERSION
 !         QQS0EE(2) = (S0PP_3_3/S0_3_3)/(QQS0EE_3_3_A98/S0_3_3_A98) ZEROED OUT IN 2003 VERSION
 !         QQS0EE(3) = (S0PP_3_4/S0_3_4)/(QQS0EE_3_4_A98/S0_3_4_A98) ZEROED OUT IN 2003 VERSION
          if (s0_p_c12.gt.0.0d0) then
-            star%qqs0ee_scale(4) = (s0pp_p_c12/s0_p_c12)/ &
+            star%qqs0ee_scale(r_pc12) = (s0pp_p_c12/s0_p_c12)/ &
                  (qqs0ee_p_c12_a98/s0_pp_a98)
          else
-            star%qqs0ee_scale(4) = 0.0d0
+            star%qqs0ee_scale(r_pc12) = 0.0d0
          end if
          if (s0_p_c13.gt.0.0d0) then
-            star%qqs0ee_scale(5) = (s0pp_p_c13/s0_p_c13)/ &
+            star%qqs0ee_scale(r_pc13) = (s0pp_p_c13/s0_p_c13)/ &
                  (qqs0ee_p_c13_a98/s0_pp_a98)
          else
-            star%qqs0ee_scale(5) = 0.0d0
+            star%qqs0ee_scale(r_pc13) = 0.0d0
          end if
 !         QQS0EE(6) = (S0PP_1_14/S0_1_14)/(QQS0EE_1_14_A98/S0_1_14_A98) ZEROED OUT IN 2003 VERSION
          if (s0_p_o16.gt.0.0d0) then
-            star%qqs0ee_scale(7) = (s0pp_p_o16/s0_p_o16)/ &
+            star%qqs0ee_scale(r_po16) = (s0pp_p_o16/s0_p_o16)/ &
                  (qqs0ee_p_o16_a98/s0_pp_a98)
          else
-            star%qqs0ee_scale(7) = 0.0d0
+            star%qqs0ee_scale(r_po16) = 0.0d0
          end if
          if (s0_be7_p.gt.0.0d0) then
-            star%qqs0ee_scale(8) = (s0pp_be7_p/s0_be7_p)/ &
+            star%qqs0ee_scale(iq_be7p) = (s0pp_be7_p/s0_be7_p)/ &
                  (qqs0ee_be7_p_a98/s0_be7_p_a98)
          else
-            star%qqs0ee_scale(8) = 0.0d0
+            star%qqs0ee_scale(iq_be7p) = 0.0d0
          end if
       end if
 ! OPTION TO OVERWRITE SPATIAL AND TEMPORAL TOLERANCES WITH MORE INTUITIVE VARIABLE NAMES.
 ! NOTE: THIS OVERWRITES THE HPTTOL AND ATIME VECTORS.
       if (lnewvars) then
 ! MINIMUM LOG MASS SPACING BETWEEN SHELLS
-         chi_grid_scale(1) = tol_dm_min
+         chi_grid_scale(ichi_dm_min) = tol_dm_min
 ! MAXIMUM LOG MASS SPACING BETWEEN SHELLS
-         chi_grid_scale(2) = tol_dm_max
+         chi_grid_scale(ichi_dm_max) = tol_dm_max
 ! MAXIMUM L/LSURF SPACING BETWEEN SHELLS
-         chi_grid_scale(9) = tol_dl_max
+         chi_grid_scale(ichi_dl_max) = tol_dl_max
 ! MAXIMUM LOG P SPACING BETWEEN SHELLS, RADIATIVE INTERIOR
-         chi_grid_scale(11) = tol_dp_core_max
+         chi_grid_scale(ichi_dp_core_max) = tol_dp_core_max
 ! MAXIMUM LOG P SPACING BETWEEN SHELLS, CONVECTIVE ENVELOPE
-         chi_grid_scale(8) = tol_dp_env_max
+         chi_grid_scale(ichi_dp_env_max) = tol_dp_env_max
 ! MAXIMUM LOG P SPACING BETWEEN SHELLS, NEAR CZ BASE
-         chi_grid_scale(10) = tol_dp_czbase_max
+         chi_grid_scale(ichi_dp_czbase_max) = tol_dp_czbase_max
 ! WIDTH (IN LOG P) OF FINELY ZONED REGION NEAR THE CZ BASE
-         chi_grid_scale(7) = tol_czbase_fine_width
+         chi_grid_scale(ichi_czbase_fine_width) = tol_czbase_fine_width
 ! MAXIMUM X SPACING BETWEEN SHELLS (USUALLY DISABLED)
-         chi_grid_scale(5) = tol_dx_max
+         chi_grid_scale(ichi_dx_max) = tol_dx_max
 ! MAXIMUM Z SPACING BETWEEN SHELLS (USUALLY DISABLED)
-         chi_grid_scale(6) = tol_dz_max
+         chi_grid_scale(ichi_dz_max) = tol_dz_max
 ! X DIFFERENCE BETWEEN SHELLS REQUIRED TO FLAG (AVOID NUMERICAL DIFFUSION)
-         chi_grid_scale(3) = flag_dx
+         chi_grid_scale(ichi_flag_dx) = flag_dx
 ! Z DIFFERENCE BETWEEN SHELLS REQUIRED TO FLAG (AVOID NUMERICAL DIFFUSION)
-         chi_grid_scale(4) = flag_dz
+         chi_grid_scale(ichi_flag_dz) = flag_dz
 ! MAXIMUM LOG OMEGA SPACING BETWEEN SHELLS (ROTATING MODELS ONLY)
-         chi_grid_scale(12) = flag_dw
+         chi_grid_scale(ichi_flag_dw) = flag_dw
 ! MINIMUM CENTRAL ABUNDANCE TO USE CORE BURNING DT CRITERION
-         atime(1) = time_core_min
+         atime(itime_core_min) = time_core_min
 ! MAX PERMITTED ABSOLUTE DELTA X BURNED IN CORE IN TIMESTEP
-         atime(2) = time_dx_core_tot
+         atime(itime_dx_core_tot) = time_dx_core_tot
 ! MAX PERMITTED FRACTION OF X BURNED IN CORE IN TIMESTEP
-         atime(3) = time_dx_core_frac
+         atime(itime_dx_core_frac) = time_dx_core_frac
 ! MAX PERMITTED SOLAR MASSES OF X BURNED IN TIMESTEP
-         atime(6) = time_dx_total
+         atime(itime_dx_total) = time_dx_total
 ! MAX PERMITTED FRACTION OF X BURNED IN SHELL IN TIMESTEP
-         atime(7) = time_dx_shell
+         atime(itime_dx_shell) = time_dx_shell
 ! MAX PERMITTED ABSOLUTE DELTA Y BURNED IN CORE IN TIMESTEP
-         atime(4) = time_dy_core_tot
+         atime(itime_dy_core_tot) = time_dy_core_tot
 ! MAX PERMITTED FRACTION OF Y BURNED IN CORE IN TIMESTEP
-         atime(5) = time_dy_core_frac
+         atime(itime_dy_core_frac) = time_dy_core_frac
 ! MAX PERMITTED FRACTION OF Y BURNED IN SHELL IN TIMESTEP
-         atime(12) = time_dy_shell
+         atime(itime_dy_shell) = time_dy_shell
 ! MAX PERMITTED SOLAR MASSES OF Y BURNED IN SHELL IN TIMESTEP
-         atime(14) = time_dy_total
+         atime(itime_dy_total) = time_dy_total
 ! MAX PERMITTED CHANGES IN T, P, R, L AT ANY GIVEN SHELL IN TIMESTEP
-         atime(8) = time_dt
-         atime(9) = time_dp
-         atime(10) = time_dr
-         atime(11) = time_dl
+         atime(itime_dt) = time_dt
+         atime(itime_dp) = time_dp
+         atime(itime_dr) = time_dr
+         atime(itime_dl) = time_dl
 ! MASTER FLAG THAT USES/DOES NOT USE ATIME(8)-(11)
 ! NOTE: THIS IS USED ONLY IN THE PRE-MS AND DISABLED FOR MS STARS AUTOMATICALLY.
          use_structure_dt_limits = lstruct_time
@@ -252,7 +254,7 @@ subroutine map_user_inputs
 ! THE TIMESTEP IS NOT PERMITTED TO CHANGE FROM ONE MODEL TO THE NEXT BY
 ! MORE THAN THIS SCALE FACTOR
 !          ATIME(13) = TIME_MAX_DT_FAC
-         atime(13) = time_max_dt_frac
+         atime(itime_max_dt_frac) = time_max_dt_frac
       end if
       return
 end subroutine map_user_inputs
