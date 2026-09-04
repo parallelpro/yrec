@@ -171,7 +171,7 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
       end do
 !  STORE INITIAL SURFACE ANGULAR VELOCITY FOR USE IN ANGULAR MOMENTUM
 !  LOSS CALCULATIONS.
-      omega_surface_start = rot_scr%wmst(star%nz)
+      omega_surface_start = rot_scr%omega_substep_start(star%nz)
       diffusion_solve_ok = .false.
 !  ON THE FIRST LEVEL OF ITERATION, THE UNPERTURBED MODEL IS USED TO
 !  CALCULATE THE DIFFUSION VELOCITIES. ON THE SECOND AND SUBSEQUENT

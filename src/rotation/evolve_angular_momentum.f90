@@ -229,23 +229,21 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! FOR USE IN THE ADVECTION/DIFFUSION TREATMENT OF MAEDER&ZAHN 1998
       if(first_call)then
          rot_scr%theta_prev(1) = rot_scr%tho(1)
-         rot_scr%wmst(1) = star%old_omega(1)
+         rot_scr%omega_substep_start(1) = star%old_omega(1)
          do zone_index = 2,star%nz
-            rot_scr%qwrmst(zone_index) = rot_scr%qwrst(zone_index)
             rot_scr%theta_prev(zone_index) = rot_scr%tho(zone_index)
-            rot_scr%wmst(zone_index) = star%old_omega(zone_index)
+            rot_scr%omega_substep_start(zone_index) = star%old_omega(zone_index)
          end do
 ! RECOMPUTE THETA
       else
-         rot_scr%wmst(1) = star%omega(1)
+         rot_scr%omega_substep_start(1) = star%omega(1)
          do zone_index = 2,star%nz
             omega_avg = 0.5D0*(star%omega(zone_index)+star%omega(zone_index-1))
             delta_radius_step = exp10(rot_scr%log_radius_mid(zone_index))- &
                  exp10(rot_scr%log_radius_mid(zone_index-1))
             domega_dr = (star%omega(zone_index)-star%omega(zone_index-1))/delta_radius_step
             rot_scr%theta_prev(zone_index) = rot_scr%theta_mean(zone_index)*omega_avg*domega_dr
-            rot_scr%qwrmst(zone_index) = domega_dr
-            rot_scr%wmst(zone_index) = star%omega(zone_index)
+            rot_scr%omega_substep_start(zone_index) = star%omega(zone_index)
          end do
       endif
       fx = elapsed_substep_time/full_timestep

@@ -60,8 +60,10 @@ module rotation_scratch_lib
                 es_diffusive_velocity(json), &
                 es_diffusive_velocity_prev(json)
 ! former common/difad3/
+! facd2/facd3: filled by setup/rotation_stability_setup.f90 (the
+! former VESD2/VESD3 products of them were write-only and are gone,
+! W2); nothing in src/ reads them today -- see the rotmix W2 report.
            double precision :: facd2(json), facd3(json), &
-                vesd2(json), vesd3(json), &
                 am_2nd_deriv_coeff(json), &
                 am_3rd_deriv_coeff(json), &
                 geometric_factor(json), &
@@ -86,8 +88,12 @@ module rotation_scratch_lib
 ! former common/difaddt/
            double precision :: omega_avg_start(json), domega_dr_start(json)
 ! former common/egrid/
+! eq_enclosed_mass (originally ES1): enclosed mass in g at the
+! equally spaced chi points, set by equal_spaced_grid (spline of log M
+! onto echi, then exp10); am_transport_grid/composition_grid difference
+! it into the equal-grid zone masses.
            double precision :: chi(json), echi(json), &
-                es1(json)
+                eq_enclosed_mass(json)
            double precision :: dchi
            integer :: ntot
 ! former common/egridchi/
@@ -132,11 +138,18 @@ module rotation_scratch_lib
                 old_esum(json), old_del_radiative_mix(json), &
                 old_eps(json)
 ! former common/oldrot2/
+! omega_substep_start (originally WMST): omega at the start of the
+! current diffusion sub-step (star%old_omega on the first sub-step,
+! star%omega afterwards), set by evolve_angular_momentum; read at the
+! surface by secular_transport for the wind torque. tho/qwrst are
+! written by setup/rezone.f90 (theta term and dOmega/dr on the new
+! mesh); qwrst's only reader (the former QWRMST copy) was write-only
+! and is gone (W2), so qwrst is now unread -- see the W2 report.
            double precision :: tho(json), theta_new(json), &
                 theta_mean(json), &
                 del_grad_diff_interface(json), &
                 es_relaxation_factor(json), theta_prev(json), &
-                qwrst(json), wmst(json), qwrmst(json)
+                qwrst(json), omega_substep_start(json)
 ! former common/prevmu/
            double precision :: mu_gradient_velocity_prev(json)
 ! former common/pualpha/ MLT alpha/phi/cmx scalars and per-zone

@@ -108,7 +108,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 ! CONVERT TO TOTAL I AND TOTAL J OF THE ZONES.
 ! INTERMEDIATE POINTS
       do i = 2, rot_scr%ntot-1
-         eq_mass(i) = 0.5d0*(rot_scr%es1(i+1)-rot_scr%es1(i-1))
+         eq_mass(i) = 0.5d0*(rot_scr%eq_enclosed_mass(i+1)-rot_scr%eq_enclosed_mass(i-1))
 ! MHP 05/02 CHANGED TO REFLECT THE FACT THAT
 ! THE INFO PREVIOUSLY STORED IN EI IS NOW IN EI0
          eq_moment_of_inertia(i) = eq_reduced_moment_of_inertia(i)* &
@@ -121,7 +121,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 ! HALFWAY TO EDGE OF UNEQUALLY SPACED ORIGINAL SET OF POINTS.
 !
 ! CENTER
-      emtop = 0.5d0*(rot_scr%es1(2)+rot_scr%es1(1))
+      emtop = 0.5d0*(rot_scr%eq_enclosed_mass(2)+rot_scr%eq_enclosed_mass(1))
       if (zone_begin.gt.1) then
          embot = 0.5d0*(enclosed_mass(zone_begin)+enclosed_mass(zone_begin-1))
       else
@@ -145,7 +145,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
          end do
       end if
 ! SURFACE
-      embot = 0.5d0*(rot_scr%es1(rot_scr%ntot)+rot_scr%es1(rot_scr%ntot-1))
+      embot = 0.5d0*(rot_scr%eq_enclosed_mass(rot_scr%ntot)+rot_scr%eq_enclosed_mass(rot_scr%ntot-1))
       if (zone_end.lt.num_zones) then
          emtop = 0.5d0*(enclosed_mass(zone_end)+enclosed_mass(zone_end+1))
       else

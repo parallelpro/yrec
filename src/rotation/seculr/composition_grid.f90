@@ -59,7 +59,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
 ! TOTAL ZONE MASSES
 ! INTERMEDIATE POINTS
       do idx = 2, rot_scr%ntot-1
-         equally_spaced_mass(idx) = 0.5d0*(rot_scr%es1(idx+1) - rot_scr%es1(idx-1))
+         equally_spaced_mass(idx) = 0.5d0*(rot_scr%eq_enclosed_mass(idx+1) - rot_scr%eq_enclosed_mass(idx-1))
       end do
 ! SPECIAL TREATMENT OF THE BOUNDARIES; CAN BE CONVECTIVE.
 ! IF CONVECTIVE SUM OVER ALL SHELLS.  CARE IS NEEDED TO DO BOOK-KEEPING
@@ -67,7 +67,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
 ! HALFWAY TO EDGE OF UNEQUALLY SPACED ORIGINAL SET OF POINTS.
 !
 ! CENTER
-      em_top = 0.5d0*(rot_scr%es1(2) + rot_scr%es1(1))
+      em_top = 0.5d0*(rot_scr%eq_enclosed_mass(2) + rot_scr%eq_enclosed_mass(1))
       if (zone_begin.gt.1) then
          em_bot = 0.5d0*(enclosed_mass(zone_begin) + &
               enclosed_mass(zone_begin-1))
@@ -84,7 +84,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
          end do
       end if
 ! SURFACE
-      em_bot = 0.5d0*(rot_scr%es1(rot_scr%ntot) + rot_scr%es1(rot_scr%ntot-1))
+      em_bot = 0.5d0*(rot_scr%eq_enclosed_mass(rot_scr%ntot) + rot_scr%eq_enclosed_mass(rot_scr%ntot-1))
       if (zone_end.lt.num_zones) then
          em_top = 0.5d0*(enclosed_mass(zone_end) + &
               enclosed_mass(zone_end+1))

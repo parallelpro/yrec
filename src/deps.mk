@@ -264,7 +264,7 @@ rotation/microdiff/lax_wendroff_step1.o: phys_const_lib.mod rotation_scratch_lib
 rotation/microdiff/lax_wendroff_step2.o: phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff.o: microdiff_mte_lib.mod microdiff_run_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_coefficients.o: math_lib.mod microdiff_mte_lib.mod phys_const_lib.mod star_info_lib.mod
-rotation/microdiff/microdiff_etm.o: microdiff_mte_lib.mod numerics_lib.mod star_info_lib.mod
+rotation/microdiff/microdiff_etm.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_mte.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_run.o: luout_lib.mod microdiff_coefficients_lib.mod microdiff_mte_lib.mod numerics_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_setup.o: luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod

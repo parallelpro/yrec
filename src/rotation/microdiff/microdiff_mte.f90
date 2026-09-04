@@ -37,24 +37,13 @@ module microdiff_mte_lib
       end type microdiff_grid
 contains
 
-! 4-point Lagrangian interpolation of a(k0..k0+3) with the weights
-! fac(1..4) from interp/intrp2 (numerics_lib). Token-identical to the
-! former inline sums.
-      pure function lagrange4(fac, a, k0)
-      double precision, intent(in) :: fac(4), a(*)
-      integer, intent(in) :: k0
-      double precision :: lagrange4
-      lagrange4 = fac(1)*a(k0)+fac(2)*a(k0+1)+ &
-                   fac(3)*a(k0+2)+fac(4)*a(k0+3)
-      end function lagrange4
-
 subroutine microdiff_mte(num_light, light_element_id, composition, &
      dlnp_dr, radius_bl, enclosed_mass, zone_begin, zone_end, num_zones, &
      grid_spacing, num_eq_points, density_orig, temperature_orig, &
      eq, eq_mid)
 
       use star_info_lib, only: star, json
-      use numerics_lib, only: interp, intrp2
+      use numerics_lib, only: interp, intrp2, lagrange4
       implicit none
 
       integer, intent(in) :: num_light
@@ -159,35 +148,23 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          call interp(tabler,facinterp,facderiv,gridrad)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 !  MASS WITHIN THE RADIUS ER
-         eq_mid%mass(i) = lagrange4(facinterp, enclosed_mass, k0)
+         eq_mid%mass(i) = lagrange4(facinterp, enclosed_mass(k0:k0+3))
 !  RELAVENT PHYSICAL VARIABLES
-         eq_mid%density(i) = lagrange4(facinterp, density_orig, k0)
-         eq_mid%temperature(i) = lagrange4(facinterp, temperature_orig, k0)
-         eq_mid%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr, k0)
-         eq_mid%del_grad(i) = lagrange4(facinterp, star%gradT, k0)
+         eq_mid%density(i) = lagrange4(facinterp, density_orig(k0:k0+3))
+         eq_mid%temperature(i) = lagrange4(facinterp, temperature_orig(k0:k0+3))
+         eq_mid%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr(k0:k0+3))
+         eq_mid%del_grad(i) = lagrange4(facinterp, star%gradT(k0:k0+3))
 !  MASS FRACTION OF HYDROGEN
-         eq_mid%hydrogen(i)=facinterp(1)*composition(1,k0) &
-              +facinterp(2)*composition(1,k0+1) &
-              +facinterp(3)*composition(1,k0+2) &
-              +facinterp(4)*composition(1,k0+3)
+         eq_mid%hydrogen(i)=lagrange4(facinterp, composition(1,k0:k0+3))
 !  MASS FRACTION OF HELIUM
-         eq_mid%helium(i)=facinterp(1)*composition(2,k0) &
-              +facinterp(2)*composition(2,k0+1) &
-              +facinterp(3)*composition(2,k0+2) &
-              +facinterp(4)*composition(2,k0+3)
+         eq_mid%helium(i)=lagrange4(facinterp, composition(2,k0:k0+3))
 !  MASS FRACTION OF METALS
-         eq_mid%metal(i)=facinterp(1)*composition(3,k0) &
-              +facinterp(2)*composition(3,k0+1) &
-              +facinterp(3)*composition(3,k0+2) &
-              +facinterp(4)*composition(3,k0+3)
+         eq_mid%metal(i)=lagrange4(facinterp, composition(3,k0:k0+3))
 !  MASS FRACTION OF LIGHT ELEMENTS
          if(star%ctrl%diffuse_lithium)then
             do kk=1,num_light
                ii = light_element_id(kk)
-               eq_mid%light(kk,i)=facinterp(1)*composition(ii,k0) &
-                       +facinterp(2)*composition(ii,k0+1) &
-                       +facinterp(3)*composition(ii,k0+2) &
-                       +facinterp(4)*composition(ii,k0+3)
+               eq_mid%light(kk,i)=lagrange4(facinterp, composition(ii,k0:k0+3))
             end do
          endif
       end do
@@ -249,30 +226,18 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          call interp(tabler,facinterp,facderiv,gridrad)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 !  MASS WITHIN THE RADIUS ER
-         eq%mass(i) = lagrange4(facinterp, enclosed_mass, k0)
-         eq%density(i) = lagrange4(facinterp, density_orig, k0)
-         eq%temperature(i) = lagrange4(facinterp, temperature_orig, k0)
-         eq%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr, k0)
-         eq%del_grad(i) = lagrange4(facinterp, star%gradT, k0)
-         eq%hydrogen(i)=facinterp(1)*composition(1,k0) &
-              +facinterp(2)*composition(1,k0+1) &
-              +facinterp(3)*composition(1,k0+2) &
-              +facinterp(4)*composition(1,k0+3)
-         eq%helium(i)=facinterp(1)*composition(2,k0) &
-              +facinterp(2)*composition(2,k0+1) &
-              +facinterp(3)*composition(2,k0+2) &
-              +facinterp(4)*composition(2,k0+3)
-         eq%metal(i)=facinterp(1)*composition(3,k0) &
-              +facinterp(2)*composition(3,k0+1) &
-              +facinterp(3)*composition(3,k0+2) &
-              +facinterp(4)*composition(3,k0+3)
+         eq%mass(i) = lagrange4(facinterp, enclosed_mass(k0:k0+3))
+         eq%density(i) = lagrange4(facinterp, density_orig(k0:k0+3))
+         eq%temperature(i) = lagrange4(facinterp, temperature_orig(k0:k0+3))
+         eq%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr(k0:k0+3))
+         eq%del_grad(i) = lagrange4(facinterp, star%gradT(k0:k0+3))
+         eq%hydrogen(i)=lagrange4(facinterp, composition(1,k0:k0+3))
+         eq%helium(i)=lagrange4(facinterp, composition(2,k0:k0+3))
+         eq%metal(i)=lagrange4(facinterp, composition(3,k0:k0+3))
          if(star%ctrl%diffuse_lithium)then
             do kk=1,num_light
                ii = light_element_id(kk)
-               eq%light(kk,i)=facinterp(1)*composition(ii,k0) &
-                    +facinterp(2)*composition(ii,k0+1) &
-                    +facinterp(3)*composition(ii,k0+2) &
-                    +facinterp(4)*composition(ii,k0+3)
+               eq%light(kk,i)=lagrange4(facinterp, composition(ii,k0:k0+3))
             end do
          endif
       end do

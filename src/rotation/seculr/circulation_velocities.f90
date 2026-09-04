@@ -156,10 +156,6 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
             q2 = rot_scr%difad_shear_coeff2(i)*qw
             q0 = rot_scr%es_shear_coeff(i)*rot_scr%omega_interface(i)**2
             rot_scr%es_diffusive_velocity(i) = 0.2d0*(q0+q1+q2)
-! SECOND ORDER TERM
-            rot_scr%vesd2(i) = 0.2d0*rot_scr%facd2(i)*rot_scr%omega_interface(i)
-! THIRD ORDER TERM
-            rot_scr%vesd3(i) = 0.2d0*rot_scr%facd3(i)*rot_scr%omega_interface(i)
             star%es_circulation_velocity(i) = &
                  rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)+ &
                  rot_scr%theta_new(i)+ &
@@ -183,8 +179,6 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
           if (star%ctrl%use_diffusion_advection_transport) then
              rot_scr%es_advective_velocity(i) = rot_scr%es_advective_velocity(i)*qqq
              rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)*qqq
-             rot_scr%vesd2(i) = rot_scr%vesd2(i)*qqq
-             rot_scr%vesd3(i) = rot_scr%vesd3(i)*qqq
           end if
 ! ADD MU GRADIENTS TO VELOCITY ESTIMATES
           rot_scr%es_relaxation_factor(i) = rot_scr%es_relaxation_factor(i)*qqq

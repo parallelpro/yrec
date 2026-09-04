@@ -65,10 +65,10 @@ subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin
       do zone_index = 1, num_points_in_range
          log_mass_table(zone_index) = log_mass(zone_begin+zone_index-1)
       end do
-      call osplin(rot_scr%echi,rot_scr%es1,rot_scr%chi,log_mass_table,num_points_in_range,rot_scr%ntot)
+      call osplin(rot_scr%echi,rot_scr%eq_enclosed_mass,rot_scr%chi,log_mass_table,num_points_in_range,rot_scr%ntot)
 ! TRANSFORM TO PHYSICAL MASS (GM)
       do zone_index = 1, rot_scr%ntot
-         rot_scr%es1(zone_index) = exp(ln10*rot_scr%es1(zone_index))
+         rot_scr%eq_enclosed_mass(zone_index) = exp(ln10*rot_scr%eq_enclosed_mass(zone_index))
       end do
       return
 end subroutine equal_spaced_grid
