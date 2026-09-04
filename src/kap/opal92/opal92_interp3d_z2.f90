@@ -1,26 +1,22 @@
 !----------------------------------------------------------------------
-! yllo3d2
+! opal92_interp3d_z2
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
 ! original yllo3d2.f; only variable names, source form, and comment
-! style were updated. common/gllot2/ and common/llot2/ member names
-! match those established in opal92_surface_table.f90/read_opal92_tables.f90.
+! style were updated.
 !
 ! DBG 5/94 opacity at different Z. 3D interpolation (X, T, rho) in
 ! the second (different-Z) set of OPAL92 opacity tables. Mirrors
-! yllo3d but reads the "2" common blocks and calls yllo2d2.
+! opal92_interp3d but reads the *_z2 table members and calls
+! opal92_interp2d_z2.
 subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
       use opacity_table_lib
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_t = 50
-      integer, parameter :: num_d = 17
       integer, parameter :: num_x = 3
-      integer, parameter :: num_xt = num_t*num_x
-      integer, parameter :: num_4d = 4*num_d
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction
@@ -29,9 +25,8 @@ subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fractio
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
 
-! former common/kipmll2/: abund_index/temp_index/dens_index now
-! use-associated from opacity_table_lib as abund_index_z2/
-! temp_index_z2/dens_index_z2.
+! The warm-start cursors abund_index_z2/temp_index_z2/dens_index_z2
+! are members of opacity_table (opacity_table_lib).
       logical :: single_x_table
       double precision :: t6, rhot3
       integer :: im1
@@ -41,9 +36,9 @@ subroutine opal92_interp3d_z2(log10_density, log10_temperature, hydrogen_fractio
       ierr = 0
       single_x_table = .false.
 ! INDEPENDENT PARAMETER IN LIVERMORE OPACITY TABLE;
-! T6 = LN(T/10E6)
+! T6 = LOG10(T/10E6)
       t6 = log10_temperature - 6.0d0
-! RHOT3 = LN(RHO/(T/10E6)**3)
+! RHOT3 = LOG10(RHO/(T/10E6)**3)
       rhot3 = log10_density - 3.0d0*t6
 
       if (dabs(opacity_table%opal92_surface_x_z2-hydrogen_fraction).le.1.0d-5) then

@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! setllo
+! read_opal92_tables
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -9,9 +9,10 @@
 ! verbatim.
 !
 ! DBG 5/94 Modified to read in second opacity table at different Z.
-! Reads the OPAL92 (Lawrence Livermore) opacity table(s) and builds
-! the spline interpolation coefficients used later by opal92_surface_table.f90 and
-! the OPAL92 lookup routines (yllo3d/yllo3d2, not part of this batch).
+! Reads the OPAL92 (Lawrence Livermore) opacity table(s) and, via
+! opal92_table_prep, builds the spline interpolation coefficients used
+! later by opal92_surface_table.f90 and the OPAL92 lookup routines
+! (opal92_interp3d / opal92_interp3d_z2).
 subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
       use star_info_lib, only: star
 
@@ -24,15 +25,11 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17
       integer, parameter :: num_x = 3
-      integer, parameter :: num_xt = num_t*num_x
-! CONST is declared but not referenced anywhere in the original
-! setllo.f body; preserved here as an unused placeholder.
-      double precision, parameter :: const_unused = 11604.5d0
 
-! MHP 8/25 removed variables not used in subroutine
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
       integer, intent(out) :: ierr
-      double precision :: local_grid_y(num_x), local_grid_z(num_x)
+!     local_grid_z IS A READ-LIST TARGET THAT IS NEVER USED AFTERWARDS.
+      double precision :: local_grid_z(num_x)
       integer :: i, k, density_index, num_temps_read
       double precision :: grid_temp_k
 
@@ -43,7 +40,6 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
 !        READ GRID POINT FOR ABUNDANCE
 !        READ NUMBER OF GRIDS FOR DENSITY, AND TEMPERATURE
         read(star%ctrl%laol_table_unit,190,end=97) opacity_table%opal92_grid_x(i), local_grid_z(i)
-        local_grid_y(i)=1.0d0-opacity_table%opal92_grid_x(i)-local_grid_z(i)
   190   format(33x,f7.4,2x,f7.4)
          read(star%ctrl%laol_table_unit,'()')
 !        READ  LOG(DENSITY/TEMPERATURE**3)
@@ -69,7 +65,6 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
          open(newunit=opal92b_unit,file=opal92_table2_path)
          do i=1,num_x
             read(opal92b_unit,190,end=597) opacity_table%opal92_grid_x_z2(i), local_grid_z(i)
-            local_grid_y(i)=1.0d0-opacity_table%opal92_grid_x_z2(i)-local_grid_z(i)
             read(opal92b_unit,'()')
             read(opal92b_unit, 200) (opacity_table%opal92_grid_logr_z2(density_index), density_index=1, num_d)
             do k=1, num_t

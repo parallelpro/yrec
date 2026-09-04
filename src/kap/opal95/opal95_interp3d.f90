@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! op953d
+! opal95_interp3d
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -8,18 +8,13 @@
 !
 ! MHP 7/98 GET OPAL95 OPACITY FROM TABLE AT FIXED Z
 ! 3D interpolation (X, T, rho) in the fixed-Z table produced by
-! op95ztab. Called from getopal95 when Z matches the model metal
+! opal95_fixed_z_table. Called from getopal95 when Z matches the model metal
 ! fraction but X does not match the surface composition.
 subroutine opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
       use opacity_table_lib
       use math_lib
       implicit none
-      integer, parameter :: num_t = 70
-      integer, parameter :: num_d = 19
-      integer, parameter :: num_x = 10
-      integer, parameter :: num_z = 13
-      integer, parameter :: num_xz = 126
 
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt

@@ -26,18 +26,23 @@
 !
 ! ARGUMENTS OF TABLE LOOKUP SUBROUTINE
 !
-! TeffL      - Input argument. Value of TL at which the results are desired.
-! GL            - Input argument. Value of GL at which the results are desired.
-! AP            - Output argument to COMMON /ATMPRT/. Value of Log(Pressure) for the
-!              associated input TeffL and GL If LATMTPTau100 is .FALSE. it is PL
-!              at TEFFL,GL. If .TRUE. it is PL at TAU=100 for the starting TEFFL,GL.
-! AT            - Output argument to COMMON /ATMPRT/. Value of Log(Temperature) for the
-!              associated input TeffL and GL If LATMTPTau100 is .FALSE. it is TEFFL.
-!              If .TRUE. it is TL at TAU=100 for the starting TEFFL,GL.
-! LPRT        Input argument: If .TRUE. print Log(P) at the associated Log(Teff)  to ISHORT and IMODPT.
-! LAlFail   Output argument. If .TRUE. the specified TeffL/GL is outside the Allard tables. The
-!           calling routine should set KTTAU to 0 to change to a gray atmosphere, or KTTAU to 3 for
-!           aKurucz atmosphere.
+! log_teff      - Input. Value of TL at which the results are desired.
+! log_g         - Input. Value of GL at which the results are desired.
+! print_to_files - Input. Selects which of the two run-log banners (formats
+!              70/71 or 73/74) accompanies the interpolated Log(P), Log(T).
+! lookup_failed - Output. If .TRUE. the specified TeffL/GL is above the table in
+!              TeffL or outside it in GL and no result was stored; the caller
+!              (atm_lib's atm_get_surface_pt) then reports the failure.
+! ierr          - Output. 1 when TeffL is below the table minimum (formerly a
+!              STOP) or a polint call fails; 0 otherwise.
+!
+! RESULTS (stored in atm_table, atm_table_lib.f90)
+!
+! atm_log10_pressure    - Log(Pressure) for the input TeffL and GL. If
+!              star%ctrl%allard_use_tau100 is .FALSE. it is PL at TEFFL,GL;
+!              if .TRUE. it is PL at TAU=100 for the starting TEFFL,GL.
+! atm_log10_temperature - Log(Temperature): TEFFL itself, or TL at TAU=100 when
+!              star%ctrl%allard_use_tau100 is .TRUE.
 !
 ! Internal Arrays
 ! TEFFLs      1-D Array of T=TeffL table elements - one for each TeffL. (Columns)
@@ -90,15 +95,10 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
       use luout_lib
       use numerics_lib
       implicit none
-      integer, parameter :: nta = 250
-      integer, parameter :: nga = 25
 
       double precision, intent(in) :: log_teff, log_g
       logical, intent(in) :: print_to_files
       logical, intent(out) :: lookup_failed
-
-
-
 
       integer :: gl_index(4)
 ! sized 20 (only the first 4 elements are ever used) to match polint's
@@ -209,7 +209,6 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
 !        Next, make sue that GL is in range in the current row.  If not, set out of table flag
          if ((log_g .lt. atm_table%allard_gl_row_min(i1)) .or. (log_g .gt. atm_table%allard_gl_row_max(i1))) then      ! and exit
-            bad_point = .true.
             write(run_log_unit,*)
             write(run_log_unit,*)'ALSURFP: GL out of extended range: '
             write(run_log_unit,*)'    GLmin,GL,GLmax; ', &
@@ -292,11 +291,6 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
              ', LOG(T) =',f10.5,', Log(P) =',f10.5)
       endif
 
-
-
-
       return
 
 end subroutine alsurfp
-
-! End if inputs are valid

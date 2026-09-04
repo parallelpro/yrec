@@ -229,7 +229,7 @@ kap/opal92/opal92_interp3d_z2.o: math_lib.mod numerics_lib.mod opacity_table_lib
 kap/opal92/opal92_surface_table.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/opal92/opal92_table_prep.o: numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/opal92/read_opal92_tables.o: math_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/opal95/getopal95.o: numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/opal95/getopal95.o: numerics_lib.mod opacity_table_lib.mod
 kap/opal95/ll95tbl.o: luout_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/opal95/opal95_fixed_z_table.o: numerics_lib.mod opacity_table_lib.mod
 kap/opal95/opal95_interp2d.o: math_lib.mod opacity_table_lib.mod

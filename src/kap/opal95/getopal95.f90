@@ -9,22 +9,18 @@
 ! THIS IS THE INTERPOLATION FACILITY FOR THE LIVERMORE OPACITY TABLES
 ! USING CUBIC SPLINE INTERPLOATION SCHEME.   (FOR OPAL95)
 ! --------------------------------------------------------------
-!      SUBROUTINE GETOPAL95(DL,TL,X,Z,O,OL,QOD,QOT) DRIVER- GET CAPPA
-!      SUBROUTINE OP952D(O,OL,QOD,QOT) 2D INTERPOLATION IN (T,RHO)
-!      SUBROUTINE OP953D(O,OL,QOD,QOT) 3D INTERPOLATION IN (X,T,RHO)
-!      SUBROUTINE OP954D(O,OL,QOD,QOT) 4D INTERPOLATION IN (Z,X,T,RHO)
-!      SUBROUTINE LL95TBL READ IN ALL TABLES
-!      SUBROUTINE OP95ZTAB(Z) GENERATE TABLE AT FIXED Z
-!      SUBROUTINE OP95XTAB(X) GENERATE TABLE AT FIXED X,Z
+! Companion routines in this directory:
+!      ll95tbl               read in all tables
+!      opal95_fixed_z_table  generate table at fixed Z
+!      opal95_surface_table  generate table at fixed X,Z
+!      opal95_interp2d/3d/4d 2D (T,RHO) / 3D (X,T,RHO) / 4D (Z,X,T,RHO)
 !
 ! 7/98 MHP DRIVER ROUTINE FOR OPACITY GIVEN RHO,T, X, AND Z.
 ! Determines whether a 2D (rho,T), 3D (X,rho,T), or 4D (Z,X,rho,T)
-! interpolation is required and dispatches to op952d/op953d/op954d
-! (not part of this batch) accordingly.
+! interpolation is required and dispatches to opal95_interp2d/3d/4d
+! accordingly.
 subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
-      use star_info_lib, only: star
-      use star_info_lib, only: star, json
       use opacity_table_lib
       use numerics_lib
       implicit none
@@ -32,8 +28,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       integer, parameter :: num_d = 19
       integer, parameter :: num_x = 10
       integer, parameter :: num_z = 13
-      integer, parameter :: num_xz = 126
-! JVS Need this one too:
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
@@ -41,7 +35,6 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
            dlnkap_dlnrho, dlnkap_dlnt
       integer, intent(out) :: ierr
 
-! END JVS
       double precision :: interp_nodes(4), weight(4), dweight(4)
       integer :: i, k, j
       logical :: low_regime_flag, density_shifted
@@ -69,11 +62,9 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       else
          opacity_table%opal95_extrap_lo = .false.
       endif
-!     THIS SECTION IS REPLACED BY LINEAR EXTRAPOLATION IN R FROM THE
-!     LAST TWO OPACITY VALUES.
-!     *          ,F11.6)
-!         STOP
-!      ENDIF
+!     (No low-R range check: the region below the first table element
+!     is handled by linear extrapolation in R from the last two opacity
+!     values, opal95_extrap_lo above.)
 !     GET INTERPOLATION FACTORS IN T
       if (log10_temperature.ge.opacity_table%opal95_grid_logt(opacity_table%opal95_index_t+2)) then
          do i = opacity_table%opal95_index_t+3,num_t-1
@@ -219,14 +210,11 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       endif
 !     DETERMINE WHETHER A 2D (RHO,T); 3D (X,RHO,T); OR 4D (Z,X,RHO,T)
 !     INTERPOLATION IS NEEDED TO GET THE OPACITY.
-! 2026 retire-legacy: the acoustic-depth mode that forced 4d
-! interpolation here is gone; the guard collapses to always-true.
-      if (.true.) then
+!     (The retired acoustic-depth mode used to force 4D here.)
       if (abs(metal_fraction-opacity_table%opal95_fixed_z)/max(opacity_table%opal95_fixed_z,1.0d-6).le.1.0d-4) then
          if (abs(hydrogen_fraction-opacity_table%opal95_surface_x).le.1.0d-4) then
 !           2D INTERPOLATION IN SURFACE TABLE
             call opal95_interp2d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-            continue
             return
          else
 !           3D INTERPOLATION IN FIXED Z TABLE (X,T,RHO)
@@ -290,11 +278,9 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
             opacity_table%opal95_weight_x(1,j) = weight(j)
          end do
          call opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-         continue
          return
       endif
       endif
-      end if
 !     4D INTERPOLATION IN Z,X,T,RHO
 !     GET NEAREST TABLES IN Z.
       if (metal_fraction.gt.opacity_table%opal95_grid_z(opacity_table%opal95_index_z+2)) then

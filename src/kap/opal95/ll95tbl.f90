@@ -10,8 +10,9 @@
 !
 ! MHP 7/98 MODIFIED TO READ IN ALL METAL ABUNDACES FOR OPACITY TABLES.
 ! Reads the full set of OPAL95 opacity tables (all tabulated Z and X),
-! skipping the header, then builds the fixed-Z table via op95ztab.f
-! (not part of this batch).
+! skipping the header, then builds the fixed-Z table via
+! opal95_fixed_z_table. Any premature end of file (fewer than num_xz
+! tables, or a truncated table body) is reported and returns ierr = 1.
 subroutine ll95tbl(opal95_table_path, ierr)
       use star_info_lib, only: star
 
@@ -19,7 +20,6 @@ subroutine ll95tbl(opal95_table_path, ierr)
       use luout_lib
       implicit none
       integer, intent(out) :: ierr
-      integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19
       integer, parameter :: num_x = 10
       integer, parameter :: num_z = 13
@@ -27,33 +27,9 @@ subroutine ll95tbl(opal95_table_path, ierr)
 
       character(len=256), intent(in) :: opal95_table_path
 
-
-
-! common/newopac/: ll95tbl.f declares an OUT-OF-SYNC 16-member version
-! of this block (10 doubles + 6 logicals) vs. the canonical 17-member
-! layout (10 doubles + 7 logicals) used by kap_lib.f90's kap_get/setupopac.f90
-! and every other file in this batch -- a pre-existing bug in the
-! original ll95tbl.f (this file is the ONLY one in the opacity family
-! with this mismatched declaration; confirmed by comparing against
-! setkrz.f, yalo3d.f, alxtbl.f, ll4th.f, setllo.f, sulaol.f, rdlaol.f,
-! and rdzlaol.f, which all share the canonical layout). Only the 5th
-! double (opal95_single_table_z / ZOPAL951) is actually referenced in
-! this file's body, and it sits at the same byte offset in both
-! layouts, so the mismatch is harmless in practice here -- but it is
-! preserved exactly (not "fixed") per the conversion's COMMON-block
-! rules (same order/type/dimensions as originally declared in THIS
-! file). All other members below are unused placeholders local to
-! this file's (buggy) view of /newopac/.
-! opal95_single_table_z is now use-associated from const_lib -- its
-! out-of-sync 5th-slot position happens to be identical in both this
-! file's buggy 16-member layout and the canonical 17-member layout, so
-! use-association is correct here despite the historic mismatch.
-
-
 ! opal95_table_start_index/opal95_num_x_at_z/opal95_grid_x/
 ! opal95_grid_z/opal95_index_z/opal95_index_x/opal95_index_t/
-! opal95_index_rho defaults moved to opacity_table_lib.f90: DATA can
-! no longer target them here now that they're use-associated.
+! opal95_index_rho defaults live in opacity_table_lib.f90.
 ! LOCAL VECTOR, USED TO SKIP LONG HEADER.
       character(len=132) :: header_line
 
@@ -92,7 +68,13 @@ subroutine ll95tbl(opal95_table_path, ierr)
 
 !     READ IN HEADER INFO: GRID IN RHO/T6**3
       read(star%ctrl%opal95_table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,num_d)
-      if (read_status .lt. 0) exit table_loop   ! was end=1000
+      if (read_status .lt. 0) then
+         write(*,*) 'll95tbl: OPAL95 opacity table file ended after ', nn-1, &
+              ' of ', num_xz, ' tables'
+         close(star%ctrl%opal95_table_unit)
+         ierr = 1
+         return
+      end if
       if (read_status .gt. 0) then
          write(*,*) 'll95tbl: malformed OPAL95 opacity table (header read failed)'
          ierr = 1
@@ -180,7 +162,10 @@ subroutine ll95tbl(opal95_table_path, ierr)
       target_z = star%ctrl%opal95_single_table_z
 
       call opal95_fixed_z_table(target_z, ierr)
-      if (ierr /= 0) return
- 9999 continue
+      return
+!     PREMATURE END OF FILE INSIDE A TABLE BODY (end=9999 above).
+ 9999 write(*,*) 'll95tbl: OPAL95 opacity table file ended inside table ', nn
+      close(star%ctrl%opal95_table_unit)
+      ierr = 1
       return
 end subroutine ll95tbl

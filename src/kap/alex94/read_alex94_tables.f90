@@ -32,18 +32,10 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
       integer, intent(out) :: ierr
       integer, parameter :: num_x = 7
       integer, parameter :: num_z = 15
-      integer, parameter :: num_xz = 105
       integer, parameter :: num_t = 23
       integer, parameter :: num_d = 17
-      integer, parameter :: num_xt = 8
 
       character(len=256), intent(in) :: alex95_table_paths(7)
-
-
-
-
-
-
 
 ! --- local arrays ---
       double precision :: row_opacity_temp(num_d)

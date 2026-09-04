@@ -18,7 +18,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
       implicit none
       integer :: jerr_gate
 ! PARAMETERS NTC AND NGC FOR TABULATED SURFACE PRESSURES.
-      integer, parameter :: nt = 57, ng = 11
       integer, parameter :: ntc = 76, ngc = 11
 
       double precision, intent(in) :: log10_teff, log10_gravity
@@ -31,9 +30,9 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
       double precision :: fx, interpolated_value
       integer :: row, row_base, node, k, kk, kkk
 
-! SURFPL INTERPOLATES IN TEMPERATURE USING A 4-POINT LAGRANGIAN
-! INTERPOLATOR, AND INTERPOLATES IN GRAVITY THE SAME WAY IF 4 OR
-! MORE POINTS ARE AVAILABLE.  IT WILL QUIT IF THE DESIRED DATA POINT
+! INTERPOLATES IN TEMPERATURE WITH A 4-POINT CUBIC SPLINE (kspline/
+! ksplint), AND IN GRAVITY THE SAME WAY IF 4 OR MORE POINTS ARE
+! AVAILABLE (3-POINT LAGRANGIAN OR LINEAR AT THE TABLE EDGE).  IT WILL QUIT IF THE DESIRED DATA POINT
 ! HAS TEFF OR LOG G MORE THAN ONE TABLE POINT FROM THE DATA.
 !
 ! CHECK TO ENSURE THAT DATA IS WITHIN TABLE.
@@ -64,7 +63,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
       do k = 1,4
          teff_nodes(k) = kurucz_castelli_teff_table(row_base+k-1)
       end do
-      atm_table%teff_interp_start_index = row_base
 ! GRAVITY INTERPOLATION FACTORS.
       do row = row_base,row_base+3
          node = row-row_base+1
@@ -80,7 +78,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                     kurucz_castelli_log10_pressure_table(row,ngc-1) + &
                     fx*(kurucz_castelli_log10_pressure_table(row,ngc) - &
                     kurucz_castelli_log10_pressure_table(row,ngc-1))
-               atm_table%gravity_interp_indices(node) = ngc-1
             else
 ! 3-POINT LAGRANGIAN INTERPOLATION.
                do k = 1,3
@@ -95,7 +92,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                     gravity_weights(2) + &
                     kurucz_castelli_log10_pressure_table(row,ngc)* &
                     gravity_weights(3)
-               atm_table%gravity_interp_indices(node) = ngc-2
             endif
             cycle
          endif
@@ -117,7 +113,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                return
             end if
             pressure_at_nodes(node) = interpolated_value
-            atm_table%gravity_interp_indices(node) = ngc-3
             cycle
          endif
 ! GENERAL CASE - FIND 4 NEAREST POINTS IN GRAVITY THAT ARE IN THE TABLE.
@@ -142,7 +137,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
                   return
                end if
                pressure_at_nodes(node) = interpolated_value
-               atm_table%gravity_interp_indices(node) = kk
                exit
             endif
          end do
@@ -162,7 +156,6 @@ subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
             return
          end if
          pressure_at_nodes(node) = interpolated_value
-         atm_table%gravity_interp_indices(node) = atm_table%castelli_gmin_index(row)
          end if
       end do
 ! INTERPOLATE IN TEMPERATURE TO FIND CORRECT LOG P.

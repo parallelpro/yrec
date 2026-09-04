@@ -51,25 +51,13 @@ subroutine alfilein(allard_table_path, ierr)
       character(len=256) :: header_line
       double precision :: local_teffs(nta)
 
-
-
       external sort_shell
       integer :: i, j, nhdr, irecno, i1, j1
       double precision :: teff_value, gl_value, feh_value, alpha_value
       double precision :: pressure_value, pressure_tau100_value, temp_tau100_value
-! NOTE: the original alfilein.f has a stray blank line followed by a
-! badly-indented "     EXTERNAL sort_shell" whose column-6 character
-! lands in the fixed-form continuation column, silently merging it
-! into the end of the preceding COMMON /ALATM04/ statement (turning
-! "...,DUMMY4" into a single garbled identifier
-! "DUMMY4XTERNALSORT_SHELL" -- still one double-precision scalar, so
-! the /ALATM04/ storage layout is unaffected). The net effect is that
-! the original file never actually declares sort_shell EXTERNAL; that
-! has no behavioral consequence since sort_shell is only CALLed
-! directly, never passed as an actual argument. This free-form
-! version declares it properly above (a no-op semantically) rather
-! than reproducing the column-6 accident, since there is no
-! free-form equivalent of that fixed-form parsing quirk to preserve.
+! (sort_shell, the external subroutine at the end of this file, is
+! only ever CALLed directly, so the EXTERNAL declaration above is a
+! no-op kept for documentation.)
 !
 ! NOTE: line ~105 below tests a variable spelled LATMTPTau100, which
 ! is NOT the same as the common-block flag LALTPTau100 (allard_use_tau100,
@@ -80,7 +68,6 @@ subroutine alfilein(allard_table_path, ierr)
 ! separate, always-default-valued local below.
       logical :: latmtptau100
 
-!     set output arrays to invalid values
       integer, intent(out) :: ierr
       integer :: ios
       logical :: found_first
@@ -95,6 +82,7 @@ subroutine alfilein(allard_table_path, ierr)
 
       ierr = 0
 
+!     set output arrays to invalid values
       do i = 1,nta
          atm_table%allard_teffl_grid(i) = -999.d0
          do j = 1,nga
@@ -396,7 +384,6 @@ subroutine sort_shell(num_elements, values)
       if (inc .gt. n) exit
       end do
       do
-         continue
          inc=inc/3                        ! Loop over the partial sorts
          do i=inc+1,n
             v=values(i)                        ! Outer loop of straight insertion

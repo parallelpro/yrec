@@ -1,17 +1,18 @@
 !----------------------------------------------------------------------
-! ylloc
+! opal92_table_prep
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
 ! original ylloc.f; only variable names, source form, and comment
-! style were updated. common/gllot/, common/llot/, and
-! common/lintpl/ member names match those established in
-! opal92_surface_table.f90/read_opal92_tables.f90.
+! style were updated.
 !
 ! DBG 5/94 Modified to include ZRAMP and ZDIFF stuff (second opacity
 ! table). Builds the cubic-spline coefficients (in density) for the
 ! OPAL92 opacity tables, and for the second (different-Z) OPAL92
-! table set when use_two_z_tables is set.
+! table set when use_two_z_tables is set. Note the two strides for
+! the same logical row: index1 uses the number of temperature rows
+! actually read, while opal92_log10_opacity is addressed with the
+! fixed num_t stride that read_opal92_tables stores with.
 subroutine opal92_table_prep(ierr)
       use star_info_lib, only: star
       use opacity_table_lib
@@ -20,14 +21,11 @@ subroutine opal92_table_prep(ierr)
       integer, intent(out) :: ierr
       integer, parameter :: num_t = 50
       integer, parameter :: num_d = 17
-      integer, parameter :: num_x = 3
-      integer, parameter :: num_xt = num_t*num_x
-      integer, parameter :: num_4d = 4*num_d
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
 
       double precision :: spline_work(4,np), density_nodes(num_d)
-      integer :: ix, it, index1, jd, ids, idf, id, index2, j, i
+      integer :: ix, it, index1, jd, id, index2, j, i
       double precision :: chkd, chko
 
       ierr = 0
@@ -36,9 +34,7 @@ subroutine opal92_table_prep(ierr)
       do it = 1,opacity_table%opal92_num_temps
        index1 = it + (ix-1)*opacity_table%opal92_num_temps
        jd = 0
-        ids = 1
-        idf = num_d
-        do id = ids,idf
+        do id = 1,num_d
           chkd = opacity_table%opal92_grid_logr(id)
           chko = opacity_table%opal92_log10_opacity(it+num_t*(ix-1),id)
 !>>>> CHECK THE EMPTY REGION
@@ -74,9 +70,7 @@ subroutine opal92_table_prep(ierr)
             do it = 1,opacity_table%opal92_num_temps_z2
                index1 = it + (ix-1)*opacity_table%opal92_num_temps_z2
                jd = 0
-               ids = 1
-               idf = num_d
-               do id = ids,idf
+               do id = 1,num_d
                   chkd = opacity_table%opal92_grid_logr_z2(id)
                   chko = opacity_table%opal92_log10_opacity_z2(it+num_t*(ix-1),id)
                   if (chko.le.-9.999d0) cycle

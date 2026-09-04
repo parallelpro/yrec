@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! ll4th
+! opal92_surface_table
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -8,7 +8,9 @@
 !
 ! THIS IS THE 4TH TABLE OF THE LAWRENCE LIVERMORE OPACITY TABLES.
 ! IT CONTAINS THE OPACITIES FOR THE SURFACE ABUNDANCES OF X AND Z, AND
-! IS USED TO AVOID MANY INTERPOLATIONS TO THE SAME X.
+! IS USED TO AVOID MANY INTERPOLATIONS TO THE SAME X. ONLY THE
+! LOG OPACITY IS KEPT; THE DERIVATIVES RETURNED BY opal92_interp2d
+! ARE NOT USED HERE.
 subroutine opal92_surface_table(hydrogen_fraction, ierr)
       use star_info_lib, only: star
 
@@ -16,11 +18,7 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_t = 50
-      integer, parameter :: num_d = 17
       integer, parameter :: num_x = 3
-      integer, parameter :: num_xt = num_t*num_x
-      integer, parameter :: num_4d = 4*num_d
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
 
@@ -32,8 +30,7 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
            row_index, coeff_base_index, density_start, density_end, j, i
       double precision :: temp6, density_rhot3, opacity0, log10_opacity0, &
            dlnkap_dlnrho0, dlnkap_dlnt0, opacity1, log10_opacity1, &
-           dlnkap_dlnrho1, dlnkap_dlnt1, x_fraction_within, log10_opacity_final, &
-           opacity_final
+           dlnkap_dlnrho1, dlnkap_dlnt1, x_fraction_within, log10_opacity_final
 
 !     KEEP THE COMPOSITION OF THE 4TH TABLE.
       ierr = 0
@@ -71,8 +68,6 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
             x_fraction_within=(hydrogen_fraction-opacity_table%opal92_grid_x(x_index))/ &
                  (opacity_table%opal92_grid_x(x_index+1)-opacity_table%opal92_grid_x(x_index))
             log10_opacity_final=(log10_opacity1-log10_opacity0)*x_fraction_within+log10_opacity0
-            opacity_final=exp10(log10_opacity_final)
-!     CONVERSION FROM THE DERIVATIVE WITH CONSTANT RHOT3 TO CONSTANT RHO
             coeff(1,im3)=log10_opacity_final
          end do
          call ysplin(opacity_table%opal92_grid_logr,coeff,density_end)
@@ -83,8 +78,6 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
             end do
          end do
       end do
-
-
 
       if (star%use_two_z_tables) then
          opacity_table%opal92_surface_x_z2=hydrogen_fraction
@@ -121,8 +114,6 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
                x_fraction_within=(hydrogen_fraction-opacity_table%opal92_grid_x_z2(x_index))/ &
                     (opacity_table%opal92_grid_x_z2(x_index+1)-opacity_table%opal92_grid_x_z2(x_index))
                log10_opacity_final=(log10_opacity1-log10_opacity0)*x_fraction_within+log10_opacity0
-               opacity_final=exp10(log10_opacity_final)
-! CONVERSION FROM THE DERIVATIVE WITH CONSTANT RHOT3 TO CONSTANT RHO
                coeff(1,im3)=log10_opacity_final
             end do
             call ysplin(opacity_table%opal92_grid_logr_z2,coeff,density_end)
@@ -134,8 +125,6 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
             end do
          end do
       end if
-
-
 
       return
 end subroutine opal92_surface_table

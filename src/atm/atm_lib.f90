@@ -4,30 +4,13 @@
 ! Added 2026 as part of the YREC readability refactor's phase two
 ! (disentangling the solver from the physics domains -- see
 ! GUIDELINES.md's "Physics domains still entangled with the solver").
-! Like kap_lib's kap_get, this is not a new dispatch consolidation:
-! envint (renamed atm_get) was already the domain's generic "solve one
-! envelope for this (Teff, L)" primitive, called uniformly (no
-! duplicated dispatch) from 7 sites -- 6 external, plus atm/surfbc.f90
-! (the domain's other, more specialized entry point: a single-caller,
-! solver-loop-internal wrapper around atm_get that adds a cached
-! (Teff, L) triangle for cheap derivative interpolation and the
-! hot-edge gray-atmosphere fallback -- surfbc.f90 itself is unchanged
-! by this rename). This rename/module-wrap is purely to give atm/ the
-! same public-facade shape as eos_lib/kap_lib.
-!
-! Computes one envelope solution (P, T, R at the model's fitting
-! point) for a given (Teff, L) vertex: first integrates the gray (or
-! Eddington/Krishna-Swamy) atmosphere in optical depth from a starting
-! guess down to tau=2/3 via QATM (bypassed entirely for tabulated
-! Kurucz/Allard atmospheres, which look up the boundary pressure
-! directly via SURFP/KCSURFP/ALSURFP, in atm/tables/), then integrates
-! the envelope structure equations in pressure from tau=2/3 to the
-! fitting mass point via QENV. Both integrations use the Bulirsch-
-! Stoer stepper BSSTEP. Also saves the full atmosphere/envelope
-! structure (for profile output and pulsation) and, unless the caller
-! has switched to the newer TAUINTNEW-based method, locates the
-! surface convection zone within the envelope via TAUCAL (in
-! atm/turnover/).
+! Public facade of the atm domain (same shape as eos_lib/kap_lib):
+! atm_init loads the tabulated-atmosphere surface-pressure tables at
+! startup, and atm_get_surface_pt is the Allard-table surface lookup
+! used from outside the domain. The envelope/atmosphere integrator
+! itself (formerly envint, "atm_get") lives in core/envint_lib.f90;
+! the table interpolators are in atm/tables/ (surfp, kcsurfp,
+! alsurfp) and the T-tau relations in ttau_lib.f90.
 module atm_lib
       implicit none
 contains
@@ -60,7 +43,8 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 
       character(len=256), intent(in) :: atm_table_path
       character(len=256), intent(in) :: allard_table_path
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as atm_get's.
+! 2026 (ROADMAP.md stage 3): ierr-not-stop; table-load failures print
+! their diagnostic at the point of failure and come back as ierr /= 0.
       integer, intent(out) :: ierr
 
       integer :: jerr
@@ -185,8 +169,6 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
       endif
 
       return
-
-! error funnel: same contract as atm_get's.
 end subroutine atm_init
 
 !----------------------------------------------------------------------
@@ -209,7 +191,10 @@ subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
       double precision, intent(in) :: log_teff, log_g
       logical, intent(in) :: print_to_files
       logical, intent(out) :: lookup_failed
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as atm_get's.
+! 2026 (ROADMAP.md stage 3): ierr-not-stop. alsurfp's own ierr is
+! deliberately not propagated here (it has always been ignored on
+! this path); ierr is returned as 0 and lookup_failed carries the
+! table-range result.
       integer, intent(out) :: ierr
 
       integer :: jerr
@@ -218,12 +203,7 @@ subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
       jerr = 0
 
       call alsurfp(log_teff, log_g, print_to_files, lookup_failed, jerr)
-      if (jerr == 0) then
-
       return
-
-! error funnel: same contract as atm_get's.
-      end if
 end subroutine atm_get_surface_pt
 
 end module atm_lib

@@ -130,7 +130,7 @@ module opacity_table_lib
            double precision :: kurucz_log10_opacity(kurucz_num_x_temp_entries,kurucz_max_num_densities), &
                 kurucz_log10_rho(kurucz_num_x_temp_entries,kurucz_max_num_densities)
            integer :: kurucz_num_temps
-           integer :: kurucz_ix_x = 1, kurucz_ix_t = 1, kurucz_ix_rho = 1
+           integer :: kurucz_ix_t = 1, kurucz_ix_rho = 1
            double precision :: kurucz_spline_coeffs(kurucz_num_x_temp_entries,kurucz_num_spline_coeffs)
            integer :: kurucz_density_start_index(kurucz_num_x_temp_entries), &
                 kurucz_density_count(kurucz_num_x_temp_entries)
@@ -139,7 +139,7 @@ module opacity_table_lib
            double precision :: kurucz2_log10_opacity(kurucz_num_x_temp_entries,kurucz_max_num_densities), &
                 kurucz2_log10_rho(kurucz_num_x_temp_entries,kurucz_max_num_densities)
            integer :: kurucz2_num_temps
-           integer :: kurucz2_ix_x = 1, kurucz2_ix_t = 1, kurucz2_ix_rho = 1
+           integer :: kurucz2_ix_t = 1, kurucz2_ix_rho = 1
            double precision :: kurucz2_spline_coeffs(kurucz_num_x_temp_entries,kurucz_num_spline_coeffs)
            integer :: kurucz2_density_start_index(kurucz_num_x_temp_entries), &
                 kurucz2_density_count(kurucz_num_x_temp_entries)

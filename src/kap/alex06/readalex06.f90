@@ -33,16 +33,10 @@ subroutine readalex06(alex06_table_path, ierr)
       integer, intent(out) :: ierr
       integer, parameter :: num_x = 9
       integer, parameter :: num_z = 16
-      integer, parameter :: num_xz = 143
       integer, parameter :: num_t = 85
       integer, parameter :: num_d = 19
 
       character(len=256), intent(in) :: alex06_table_path
-
-
-
-
-
 
 !     LOCAL ARRAYS
       double precision :: row_logr_check(num_d), header_x, header_z, row_temp

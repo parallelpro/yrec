@@ -28,8 +28,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
       double precision :: logt_interp_opacity(52), logt_values(52), &
            logt_d2opacity(52), dlnkap_dlnt_by_x(4)
       double precision :: opacity_by_x(4), x_values(4)
-      double precision :: log_extrap_tolerance, local_x, local_logt, &
-           local_logrho
+      double precision :: log_extrap_tolerance
       integer :: t_locate_guess, t_index, x_grid_index, x_grid_index_hi, &
            num_valid_x, x_loop_index, num_valid_t, t_range_lo, t_range_hi, &
            num_valid_rho, rho_loop_index, spline_index_lo, spline_index_hi
@@ -43,11 +42,8 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
 !     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
       ierr = 0
       log_extrap_tolerance = log(tollaol)
-      local_x = hydrogen_fraction
-      local_logt = log10_temperature
-      local_logrho = log10_density
-      call locate(opacity_table%ot2, opacity_table%nt2, local_logt, t_locate_guess)
-      call locate(opacity_table%oxa2, opacity_table%nxyz2, local_x, x_grid_index)
+      call locate(opacity_table%ot2, opacity_table%nt2, log10_temperature, t_locate_guess)
+      call locate(opacity_table%oxa2, opacity_table%nxyz2, hydrogen_fraction, x_grid_index)
       if (x_grid_index .eq. opacity_table%nxyz2) then
           x_grid_index = opacity_table%nxyz2-1
       end if
@@ -71,10 +67,10 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
                   row_d2opacity(rho_loop_index) = &
                        opacity_table%slaol2_d2opacity(x_loop_index,rho_loop_index,t_index)
                end do
-               if (local_logrho.gt.row_log_rho(1) .and. &
-                    local_logrho.lt.row_log_rho(num_valid_rho)) then
+               if (log10_density.gt.row_log_rho(1) .and. &
+                    log10_density.lt.row_log_rho(num_valid_rho)) then
                   call splint(row_log_rho, row_log10_opacity, num_valid_rho, &
-                       row_d2opacity, local_logrho, log10_opacity_value, &
+                       row_d2opacity, log10_density, log10_opacity_value, &
                        spline_index_lo, spline_index_hi, jerr_gate)
                   ! 2026 numerics-gate opt-in: interpolation failure returns via
                   ! ierr (diagnostic printed at the gate) instead of stopping.
@@ -88,23 +84,23 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
                   dlnkap_dlnrho_by_t(num_valid_t) = &
                        (row_log10_opacity(spline_index_hi)-row_log10_opacity(spline_index_lo))/ &
                        (row_log_rho(spline_index_hi)-row_log_rho(spline_index_lo))
-               else if (local_logrho.gt.row_log_rho(1)-log_extrap_tolerance .and. &
-                    local_logrho.le.row_log_rho(1)) then
+               else if (log10_density.gt.row_log_rho(1)-log_extrap_tolerance .and. &
+                    log10_density.le.row_log_rho(1)) then
 !                 PUT LINEAR EXTRAPOLATION ROUTINES HERE
                   slope = (row_log10_opacity(2)-row_log10_opacity(1))/ &
                        (row_log_rho(2)-row_log_rho(1))
-                  log10_opacity_value = row_log10_opacity(1)+slope*(local_logrho-row_log_rho(1))
+                  log10_opacity_value = row_log10_opacity(1)+slope*(log10_density-row_log_rho(1))
                   num_valid_t = num_valid_t+1
                   logt_interp_opacity(num_valid_t) = log10_opacity_value
                   logt_values(num_valid_t) = opacity_table%ot2(t_index)
                   dlnkap_dlnrho_by_t(num_valid_t) = slope
-               else if (local_logrho.ge.row_log_rho(num_valid_rho) .and. &
-                    local_logrho.lt.row_log_rho(num_valid_rho)+log_extrap_tolerance) then
+               else if (log10_density.ge.row_log_rho(num_valid_rho) .and. &
+                    log10_density.lt.row_log_rho(num_valid_rho)+log_extrap_tolerance) then
 !                 PUT LINEAR EXTRAPOLATION ROUTINES HERE
                   slope = (row_log10_opacity(num_valid_rho-1)-row_log10_opacity(num_valid_rho))/ &
                        (row_log_rho(num_valid_rho-1)-row_log_rho(num_valid_rho))
                   log10_opacity_value = row_log10_opacity(num_valid_rho)+ &
-                       slope*(local_logrho-row_log_rho(num_valid_rho))
+                       slope*(log10_density-row_log_rho(num_valid_rho))
                   num_valid_t = num_valid_t+1
                   logt_interp_opacity(num_valid_t) = log10_opacity_value
                   logt_values(num_valid_t) = opacity_table%ot2(t_index)
@@ -123,7 +119,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
             call cspline(logt_values, logt_interp_opacity, num_valid_t, &
                  1.0d30, 1.0d30, logt_d2opacity)
             call splint(logt_values, logt_interp_opacity, num_valid_t, &
-                 logt_d2opacity, local_logt, log10_opacity_value, &
+                 logt_d2opacity, log10_temperature, log10_opacity_value, &
                  spline_index_lo, spline_index_hi, jerr_gate)
             if (jerr_gate /= 0) then
                ierr = jerr_gate
@@ -134,7 +130,7 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
             slope=(dlnkap_dlnrho_by_t(spline_index_hi)-dlnkap_dlnrho_by_t(spline_index_lo))/ &
                  (logt_values(spline_index_hi)-logt_values(spline_index_lo))
             dlnkap_dlnrho_by_x(num_valid_x)=dlnkap_dlnrho_by_t(spline_index_lo)+ &
-                 slope*(local_logt-logt_values(spline_index_lo))
+                 slope*(log10_temperature-logt_values(spline_index_lo))
             dlnkap_dlnt_by_x(num_valid_x) = &
                  (logt_interp_opacity(spline_index_hi)-logt_interp_opacity(spline_index_lo))/ &
                  (logt_values(spline_index_hi)-logt_values(spline_index_lo))
@@ -148,27 +144,20 @@ subroutine gtlaol2(log10_density, log10_temperature, hydrogen_fraction, &
             return
          end if
       end do
-      if (num_valid_x .ge. 2) then
-         slope = (opacity_by_x(2)-opacity_by_x(1))/(x_values(2)-x_values(1))
-         log10_opacity_value = opacity_by_x(1)+slope*(hydrogen_fraction-x_values(1))
-         slope = (dlnkap_dlnt_by_x(2)-dlnkap_dlnt_by_x(1))/(x_values(2)-x_values(1))
-         dlnkap_dlnt = dlnkap_dlnt_by_x(1) + slope*(hydrogen_fraction-x_values(1))
-         slope = (dlnkap_dlnrho_by_x(2)-dlnkap_dlnrho_by_x(1))/(x_values(2)-x_values(1))
-         dlnkap_dlnrho = dlnkap_dlnrho_by_x(1)+slope*(hydrogen_fraction-x_values(1))
-         if (log10_opacity_value .gt. 35) then
-            opacity = 1.0d35
-            log10_opacity = 35.0d0
-         else
-            opacity = exp10(log10_opacity_value)
-            log10_opacity = log10_opacity_value
-         end if
+!     BOTH X COLUMNS SUCCEEDED (EACH ITERATION ABOVE EITHER ADDS ONE OR
+!     RETURNS WITH ierr), SO num_valid_x IS 2 HERE.
+      slope = (opacity_by_x(2)-opacity_by_x(1))/(x_values(2)-x_values(1))
+      log10_opacity_value = opacity_by_x(1)+slope*(hydrogen_fraction-x_values(1))
+      slope = (dlnkap_dlnt_by_x(2)-dlnkap_dlnt_by_x(1))/(x_values(2)-x_values(1))
+      dlnkap_dlnt = dlnkap_dlnt_by_x(1) + slope*(hydrogen_fraction-x_values(1))
+      slope = (dlnkap_dlnrho_by_x(2)-dlnkap_dlnrho_by_x(1))/(x_values(2)-x_values(1))
+      dlnkap_dlnrho = dlnkap_dlnrho_by_x(1)+slope*(hydrogen_fraction-x_values(1))
+      if (log10_opacity_value .gt. 35) then
+         opacity = 1.0d35
+         log10_opacity = 35.0d0
       else
-         write(run_log_unit,122) log10_density, log10_temperature
-  122    format(' OUTSIDE OPACITY TABLE #2.  ', &
-              'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
-          ierr = 1
-          return
+         opacity = exp10(log10_opacity_value)
+         log10_opacity = log10_opacity_value
       end if
       return
 end subroutine gtlaol2

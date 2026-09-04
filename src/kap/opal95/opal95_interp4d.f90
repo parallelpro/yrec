@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! op954d
+! opal95_interp4d
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -15,11 +15,6 @@ subroutine opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       use opacity_table_lib
       use math_lib
       implicit none
-      integer, parameter :: num_t = 70
-      integer, parameter :: num_d = 19
-      integer, parameter :: num_x = 10
-      integer, parameter :: num_z = 13
-      integer, parameter :: num_xz = 126
 
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt

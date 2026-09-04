@@ -8,21 +8,17 @@
 !
 ! Generates the surface-X (envelope-abundance) table for the
 ! Alexander 1994 low-temperature opacity tables by 4-point Lagrangian
-! interpolation in X, storing it in table slot 8 of common/alot/.
+! interpolation in X, storing it in table slot 8 of
+! opacity_table%alex95_full_opacity.
 subroutine alex94_surface_table(hydrogen_fraction)
 
       use opacity_table_lib
       use numerics_lib
       implicit none
-      integer, parameter :: num_x = 7
-      integer, parameter :: num_z = 15
       integer, parameter :: num_t = 23
       integer, parameter :: num_d = 17
-      integer, parameter :: num_xt = 8
 
       double precision, intent(in) :: hydrogen_fraction
-
-
 
       double precision :: interp_x(4), weight_x(4)
       integer :: i, j

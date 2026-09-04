@@ -17,20 +17,13 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_x = 7
-      integer, parameter :: num_z = 15
       integer, parameter :: num_t = 23
       integer, parameter :: num_d = 17
-      integer, parameter :: num_xt = 8
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
-
-
-
-
 
       double precision :: interp_nodes(4), weight_t(4), dweight_t(4), &
            weight_r(4), dweight_r(4), weight_x(4), opacity_row(4), &

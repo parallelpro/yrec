@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! op95xtab
+! opal95_surface_table
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -9,8 +9,9 @@
 ! MHP 7/98 COMPUTE OPACITY TABLE AT FIXED X FROM THE OP95 TABLE AT
 ! THE MODEL Z. Builds the surface (T, rho) opacity table for the
 ! given hydrogen abundance by cubic interpolation across the 4
-! nearest X tables in the fixed-Z table set (common/llot95/, filled
-! by op95ztab).
+! nearest X tables in the fixed-Z table set
+! (opacity_table%opal95_fixed_z_opacity, filled by
+! opal95_fixed_z_table).
 subroutine opal95_surface_table(hydrogen_fraction)
 
       use opacity_table_lib
@@ -19,8 +20,6 @@ subroutine opal95_surface_table(hydrogen_fraction)
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19
       integer, parameter :: num_x = 10
-      integer, parameter :: num_z = 13
-      integer, parameter :: num_xz = 126
 
       double precision, intent(in) :: hydrogen_fraction
 
@@ -74,7 +73,7 @@ subroutine opal95_surface_table(hydrogen_fraction)
          table_x_nodes(4) = opacity_table%opal95_grid_x(10)
       endif
 !
-!  FIND INTERPOLATION FACTORS IN Z.
+!  FIND INTERPOLATION FACTORS IN X.
       call intrp2(table_x_nodes, x_weight, hydrogen_fraction)
 ! INDICES FOR 4 DESIRED COMPOSITIONS.
       if (x_table_index.lt.10) then

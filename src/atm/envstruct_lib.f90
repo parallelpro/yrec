@@ -6,8 +6,9 @@
 ! structure profile (pressure/temperature/mass/density/radius/
 ! composition/convective-flag/gradients/velocity/opacity/luminosity in
 ! log space, indexed 1..num_env_points), computed by the envelope
-! integrator (atm/atm_lib.f90) and read by core/read_starting_model.f90 and other
-! callers that need the just-integrated envelope profile.
+! integrator (core/envint_kernel.f90, under core/envint_lib.f90) and
+! read by core/read_starting_model.f90 and other callers that need the
+! just-integrated envelope profile.
 !
 ! Per GUIDELINES.md's module-vs-argument test this is case 1b, same as
 ! scrtch_lib/mdphy_lib/temp_lib: genuinely evolving per-model state,

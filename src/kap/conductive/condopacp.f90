@@ -49,12 +49,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       integer, intent(out) :: ierr
       integer, parameter :: n_temp_grid=19, n_rho_grid=64, n_z_grid=15
 !!! NB: These parameters must be consistent with the table "condall.d"!!!
-! (table storage promoted to state/conductive_table_lib.f90 -- 2026
-! save-migration campaign)
-
-
-! removed unused variables
-!     CHARACTER*256 FKUR2,FcondOpacP
+! (the table itself is cond_table in kap/conductive_table_lib.f90)
       integer :: file_unit, z_index, t_index, r_index
       double precision :: z_grid_value, log10_ion_charge
       integer :: t_index_lo, t_index_hi, r_index_lo, r_index_hi

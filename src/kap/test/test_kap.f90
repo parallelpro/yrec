@@ -127,11 +127,12 @@ program test_kap
          write(*,'(a,i2,4(1pe24.15))') "kap ", ipt, o, ol, qod, qot
       end do
 
-! Error paths (2026, ROADMAP.md stage 3): with the optional ierr
-! passed, out-of-range points and misconfiguration return ierr /= 0
-! instead of stopping -- the first time these paths are testable at
-! all. The diagnostic each failure writes goes to run_log_unit /
-! stdout at the point of failure, as always.
+! Error paths (2026, ROADMAP.md stage 3): out-of-range points and
+! misconfiguration return ierr /= 0 instead of stopping -- the first
+! time these paths are testable at all. The diagnostic each failure
+! writes goes to run_log_unit / stdout at the point of failure, as
+! always. (The "optional ierr" wording in the output line below is
+! historical and kept because the expected output is byte-compared.)
       write(*,'(a)') "# test_kap: error paths via optional ierr"
       logt = 3.5d0
       logd = -8.0d0

@@ -9,8 +9,8 @@
 ! Generates the fixed-(X,Z) table for the Alexander 2006 low-
 ! temperature opacities by 4-point Lagrangian interpolation, first in
 ! Z then in X, from the full set of tables read by readalex06.f90.
-! The target X, Z are taken from opacity_table%alex06_cached_x/opacity_table%alex06_cached_z
-! (common/alot06/), which the caller (getalex06.f90) sets before
+! The target X, Z are taken from opacity_table%alex06_cached_x/
+! alex06_cached_z, which the caller (getalex06.f90) sets before
 ! calling this routine.
 subroutine alex06tab(ierr)
 
@@ -20,14 +20,10 @@ subroutine alex06tab(ierr)
       integer, intent(out) :: ierr
       integer, parameter :: num_x = 9
       integer, parameter :: num_z = 16
-      integer, parameter :: num_xz = 143
       integer, parameter :: num_t = 85
       integer, parameter :: num_d = 19
 
-
-
-
-      double precision :: interp_nodes(4), weight_z(4)
+      double precision :: interp_nodes(4), weight_z(4), weight_x(4)
       double precision :: opacity_by_x(4,num_t,num_d)
       double precision :: x_max, z_max, interp_target
       integer :: i, j, iz, k, kk, kk2, kk3, kk4
@@ -131,12 +127,12 @@ subroutine alex06tab(ierr)
          interp_nodes(4) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+3)
       endif
       interp_target = opacity_table%alex06_cached_x
-      call intrp2(interp_nodes, weight_z, interp_target)
+      call intrp2(interp_nodes, weight_x, interp_target)
       do i = 1,num_t
          do j = 1,num_d
-            opacity_table%alex06_opacity(i,j) = weight_z(1)*opacity_by_x(1,i,j)+ &
-                 weight_z(2)*opacity_by_x(2,i,j) + weight_z(3)*opacity_by_x(3,i,j) + &
-                 weight_z(4)*opacity_by_x(4,i,j)
+            opacity_table%alex06_opacity(i,j) = weight_x(1)*opacity_by_x(1,i,j)+ &
+                 weight_x(2)*opacity_by_x(2,i,j) + weight_x(3)*opacity_by_x(3,i,j) + &
+                 weight_x(4)*opacity_by_x(4,i,j)
          end do
       end do
       return

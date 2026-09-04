@@ -18,9 +18,6 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_x = 9
-      integer, parameter :: num_z = 16
-      integer, parameter :: num_xz = 143
       integer, parameter :: num_t = 85
       integer, parameter :: num_d = 19
 
@@ -29,9 +26,6 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
       integer, intent(out) :: ierr
-
-
-
 
       double precision :: interp_nodes(4), weight_t(4), dweight_t(4), &
            weight_r(4), dweight_r(4), opacity_row(4), dlnkap_dlnr_row(4)

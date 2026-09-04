@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! setkrz
+! read_kurucz_tables
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -7,7 +7,8 @@
 ! style were updated.
 !
 ! Reads the Kurucz opacity table (and, if a second Z table is
-! requested, a second Kurucz table) and builds the spline
+! requested, a second Kurucz table) into opacity_table%kurucz_*/
+! kurucz2_*, then calls build_kurucz_splines for the spline
 ! interpolation coefficients used later by kurucz.f90/kurucz2.f90.
 subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       use star_info_lib, only: star
@@ -16,14 +17,10 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       use math_lib
       implicit none
       integer, parameter :: max_num_temps = 60
-      integer, parameter :: max_num_densities = 50
-      integer, parameter :: num_x_tables = 1
-      integer, parameter :: num_x_temp_entries = max_num_temps*num_x_tables
 
-! MHP 8/25 Remove unused variables
       character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
       integer, intent(out) :: ierr
-      integer :: x_table_count, num_read, density_index
+      integer :: num_read, density_index
       integer :: read_status
       double precision :: prev_grid_temp, grid_temp, pressure, &
            log10_opacity0, log10_opacity1, log10_opacity2, &
@@ -31,7 +28,6 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
            atom_density, density, unused_col
 
       ierr = 0
-      x_table_count = num_x_tables
     1 format(2f5.2,5f7.3,3f9.5,f8.3)
 !     OPEN TABLE
       open(star%ctrl%kurucz_table_unit, file=kurucz_table_path, status='OLD')

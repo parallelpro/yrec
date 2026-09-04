@@ -25,12 +25,8 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
       double precision, intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
 
-
-
-
-
-
-
+!     zlot/zhit AND THE work_array2/zdh2/zlot2/zhit2 TWINS ARE
+!     READ-LIST TARGETS THAT ARE NEVER USED AFTERWARDS.
       double precision :: work_array2(12), zdh2(18)
       integer :: ii, ix, ir, it
       double precision :: zlot, zhit, zlot2, zhit2

@@ -1,38 +1,29 @@
-! THIS IS THE INTERPOLATION FACILITY FOR THE LIVERMORE OPACITY TABLES
-! USING CUBIC SPLINE INTERPLOATION SCHEME.
-!*** YLLO3D AND SETLLO ARE THE ROUTINES TO BE CALLED!
-!      SUBROUTINE YLLO3D(DL,TL,X,OF,OLF,QODF,QOTF)
-!      SUBROUTINE YLLO2D(T,D,M1,M2,M3,O,OL,QODF,QOTF)
-!      SUBROUTINE YLLO3D2(DL,TL,X,OF,OLF,QODF,QOTF)
-!      SUBROUTINE YLLO2D2(T,D,M1,M2,M3,O,OL,QODF,QOTF)
-!      SUBROUTINE SETLLO(IOCTRL)                     READ LLOT
-!      SUBROUTINE YLLOC                              SPLINE COEFF.
-!      SUBROUTINE LL4TH(X) SURFACE TABLES
-!
 !----------------------------------------------------------------------
-! yllo3d
+! opal92_interp3d
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
 ! original yllo3d.f; only variable names, source form, and comment
-! style were updated. common/gllot/ and common/llot/ member names
-! match those established in opal92_surface_table.f90/read_opal92_tables.f90.
+! style were updated.
+!
+! THIS IS THE INTERPOLATION FACILITY FOR THE LIVERMORE (OPAL92)
+! OPACITY TABLES USING CUBIC SPLINE INTERPOLATION. Companion routines
+! in this directory: read_opal92_tables (read), opal92_table_prep
+! (spline coefficients), opal92_surface_table (surface X,Z table),
+! opal92_interp2d (2D in T,rho) and the *_z2 second-Z twins.
 !
 ! 3D interpolation (X, T, rho) in the OPAL92 opacity tables. Finds
 ! the nearest X table(s), converts to the table's internal (T6,
-! rho/T6**3) coordinates, calls yllo2d for the 2D interpolation, and
-! linearly extrapolates/interpolates in X if needed.
+! rho/T6**3) coordinates, calls opal92_interp2d for the 2D
+! interpolation, and linearly extrapolates/interpolates in X if
+! needed.
 subroutine opal92_interp3d(log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
       use opacity_table_lib
       use numerics_lib
       use math_lib
       implicit none
-      integer, parameter :: num_t = 50
-      integer, parameter :: num_d = 17
       integer, parameter :: num_x = 3
-      integer, parameter :: num_xt = num_t*num_x
-      integer, parameter :: num_4d = 4*num_d
 
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction
@@ -53,9 +44,9 @@ subroutine opal92_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
       ierr = 0
       single_x_table = .false.
 ! INDEPENDENT PARAMETER IN LIVERMORE OPACITY TABLE;
-! T6 = LN(T/10E6)
+! T6 = LOG10(T/10E6)
       t6 = log10_temperature - 6.0d0
-! RHOT3 = LN(RHO/(T/10E6)**3)
+! RHOT3 = LOG10(RHO/(T/10E6)**3)
       rhot3 = log10_density - 3.0d0*t6
 
       if (dabs(opacity_table%opal92_surface_x-hydrogen_fraction).le.1.0d-5) then

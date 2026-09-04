@@ -33,22 +33,14 @@ subroutine altabinit(ierr)
       use luout_lib
       use math_lib
       implicit none
-      integer, parameter :: nta = 250
-      integer, parameter :: nga = 25
 
-
-
-
-
-
-
+      integer, intent(out) :: ierr
       integer :: i, j, j1, j2
       logical :: table_is_bad
 
 !     1. Find the minimum (TEFFLmin) and maximum (TEFFLmax) permissable values of TEFFL. These are
 !        one row's width below the bottom and above the top of the table. Because the first level
 !        of interpolation is in GL, only a single minimum and maximum value of TEFFL are needed.
-      integer, intent(out) :: ierr
 
       ierr = 0
 

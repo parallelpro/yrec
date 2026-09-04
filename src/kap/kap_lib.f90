@@ -28,8 +28,8 @@ module kap_lib
       public :: kap_get, kap_init, kap_update_surface_tables
       public :: kap_eval
 ! the envelope metal fraction the surface-table machinery was
-! initialized with (set by kap_init; physics-purity pass 2026 -- the
-! kap domain no longer reads star_info)
+! initialized with (set by kap_init, checked by kap_eval's
+! single-Z-table range test)
       double precision, save :: kap_envelope_metal_fraction
 ! result-array slots for kap_get (2026, MESA kap-results shape)
       integer, parameter, public :: &
@@ -76,14 +76,9 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
       double precision, intent(inout) :: ion_fraction(3)
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, the transitional form of
-! MESA's ierr-not-stop discipline. When the caller passes ierr, any
-! error that historically killed the run deep inside a table lookup
-! (its diagnostic message is still printed at the point of failure)
-! is returned here instead, ierr /= 0, and no stop occurs. When the
-! caller omits ierr, behavior is exactly historical: the same
-! message, then a stop -- now located in this facade rather than the
-! leaf. Existing call sites need no change.
+! 2026 (ROADMAP.md stage 3): ierr-not-stop. Any error inside a table
+! lookup (its diagnostic is still printed at the point of failure)
+! comes back here as ierr /= 0; nothing in the kap domain stops.
       integer, intent(out) :: ierr
 ! --- locals ---
       logical :: got_atmosphere_opacity, got_conductive_opacity
@@ -248,7 +243,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          ierr = jerr
          return
 !     NOT HELIUM BURNING REGION (HB EVOLUTION) OR L2Z=T AND
-!     Z STILL NOT TOO LARGE IN CORE (<.15) SO CAN USE
+!     Z STILL NOT TOO LARGE IN CORE (<=0.12 above) SO CAN USE
 !     SECOND Z TABLE RATHER THAN PURE Z TABLE
 
       else if (star%ctrl%use_opal95_tables) then
@@ -405,11 +400,6 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
            (radiative_opacity + conductive_opacity))
 
       return
-
-! 2026 (ROADMAP.md stage 3): single failure funnel. The diagnostic
-! for whatever failed has already been written at the point of
-! failure; here we either hand the error to a caller that asked for
-! it, or preserve the historical stop.
 end subroutine kap_eval
 
 !----------------------------------------------------------------------
@@ -440,9 +430,9 @@ subroutine kap_init(envelope_hydrogen_fraction, &
            laol_table2_path, opal95_table_path, opal92_table_path, &
            opal92_table2_path, pure_z_table_path
       character(len=256), intent(in) :: alex95_table_paths(7)
-! 2026 (ROADMAP.md stage 3): optional ierr -- same contract as
-! kap_eval's (see there). Table-load failures print their diagnostic
-! at the point of failure, then either surface here or stop here.
+! 2026 (ROADMAP.md stage 3): same ierr contract as kap_eval's.
+! Table-load failures print their diagnostic at the point of failure
+! and surface here as ierr /= 0.
       integer, intent(out) :: ierr
 
       integer :: jerr
@@ -477,11 +467,9 @@ subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction
-! OPTIONAL ierr: same transitional ierr-not-stop form as kap_eval --
-! callers that pass ierr get table errors returned; callers that
-! omit it keep the historical stop.
+! same ierr contract as kap_eval's: table errors come back as
+! ierr /= 0.
       integer, intent(out) :: ierr
-      integer :: jerr
 
       call surfopac(hydrogen_fraction, ierr)
 

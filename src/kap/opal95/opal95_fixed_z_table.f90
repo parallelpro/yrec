@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! op95ztab
+! opal95_fixed_z_table
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -9,7 +9,7 @@
 ! MHP 7/98 COMPUTE OPACITY TABLE AT FIXED Z FROM THE FULL OP95 SET.
 ! Builds the fixed-Z (X, T, rho) opacity table by cubic interpolation
 ! across the 4 nearest Z tables in the full OPAL95 table set
-! (common/llot95a/, filled by ll95tbl).
+! (opacity_table%opal95_full_opacity, filled by ll95tbl).
 subroutine opal95_fixed_z_table(metal_fraction, ierr)
 
       use opacity_table_lib
@@ -18,9 +18,7 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
       integer, intent(out) :: ierr
       integer, parameter :: num_t = 70
       integer, parameter :: num_d = 19
-      integer, parameter :: num_x = 10
       integer, parameter :: num_z = 13
-      integer, parameter :: num_xz = 126
 
       double precision, intent(in) :: metal_fraction
 
@@ -95,7 +93,10 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
          end do
       end do
       end if
-!  OMIT TABLE 10 (X = 1-Z) IF DESIRED Z >= 0.1
+!  TABLE 10 (X = 1-Z) IS ALWAYS BUILT; ITS Z STENCIL MUST NOT INCLUDE
+!  THE Z=0.1 TABLE, SO PICK z_table_index2/z_weight_hix AGAIN HERE.
+!  (Z > grid_z(num_z-1) IS REJECTED ABOVE, SO THIS TEST IS ALWAYS
+!  TRUE TODAY; WITHOUT IT THE TABLE-9 STENCIL WOULD BE REUSED.)
       if (metal_fraction.lt.0.1d0) then
 !  CHECK TO ENSURE THAT Z=0.1 TABLE IS NOT ONE OF THE 4 TABLES; ADJUST
 !  INTERPOLATION FACTORS IF NEEDED.

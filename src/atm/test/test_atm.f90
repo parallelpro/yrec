@@ -14,7 +14,8 @@
 !     public facade entry atm_get_surface_pt.
 ! surfp/kcsurfp are atm-internal, called directly here because this
 ! test lives inside the atm domain -- the same intra-domain access
-! the domain's own code has. The full atm_get envelope integration is
+! the domain's own code has. The full envelope integration
+! (core/envint_lib.f90) is
 ! NOT exercised here: it needs the entire eos+kap+solver state booted
 ! (a full-model concern, covered by Stage-0); noted in ROADMAP.md.
 ! Results print for byte-comparison against expected_test_atm.out.
@@ -165,8 +166,8 @@ program test_atm
 ! (logTeff < 3.5 or logG < -0.5) used to stop the run; with the new
 ! required ierr it returns 1 -- diagnostics go to terminal_unit/run_log_unit
 ! as always (both pointed at the scratch .short file here). The
-! facade check asserts the optional-ierr success path threads
-! ierr = 0 end to end (atm_get_surface_pt -> alsurfp).
+! facade check asserts the ierr success path threads ierr = 0 end
+! to end (atm_get_surface_pt -> alsurfp).
       write(*,'(a)') "# test_atm: error paths via ierr"
       teffl = 3.40d0
       gl = 4.5d0

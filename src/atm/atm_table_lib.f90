@@ -26,8 +26,6 @@ module atm_table_lib
 ! pressure tables.
            integer :: kurucz_gmin_index(atm_table_nt), &
                 kurucz_gmax_index(atm_table_nt)
-           integer :: teff_interp_start_index
-           integer :: gravity_interp_indices(4)
            integer :: castelli_gmin_index(atm_table_ntc), &
                 castelli_gmax_index(atm_table_ntc)
 ! former common/atmprt/: current T-tau atmosphere integration point.
@@ -59,10 +57,6 @@ module atm_table_lib
                 allard_gl_min, allard_gl_max
 ! former common/alatm05/: Allard alpha-enhanced table Teff range.
            double precision :: allard_al_teffl_min, allard_al_teffl_max
-! former common/jtest/: dead-everywhere placeholder in both its
-! declaring files.
-           integer :: imax1_placeholder, imax2_placeholder
-           logical :: ljvs_placeholder
       end type atm_table_state
 
       type(atm_table_state), public :: atm_table

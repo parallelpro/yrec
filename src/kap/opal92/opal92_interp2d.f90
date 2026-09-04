@@ -1,17 +1,15 @@
 !----------------------------------------------------------------------
-! yllo2d
+! opal92_interp2d
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
 ! original yllo2d.f; only variable names, source form, and comment
-! style were updated. common/gllot/, common/llot/, common/llot4/, and
-! common/lintpl/ member names match those established in
-! opal92_surface_table.f90/read_opal92_tables.f90.
+! style were updated.
 !
 ! TWO DIMENSIONAL INTERPOLATION FOR OPACITY AND THE DERIVATIVES
 ! (OPAL92 tables). abund_index, temp_index, and dens_index are the
 ! nearest grid point of abundance, temperature, and density found by
-! yllo3d. opacity is opacity, log10_opacity is log(opacity),
+! opal92_interp3d. opacity is opacity, log10_opacity is log(opacity),
 ! dlnkap_dlnrho is the partial derivative of opacity wrt density,
 ! dlnkap_dlnt is the partial derivative of opacity wrt temperature.
 subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
@@ -22,10 +20,6 @@ subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
       use math_lib
       implicit none
       integer, parameter :: num_t = 50
-      integer, parameter :: num_d = 17
-      integer, parameter :: num_x = 3
-      integer, parameter :: num_xt = num_t*num_x
-      integer, parameter :: num_4d = 4*num_d
 
       double precision, intent(in) :: temperature, density
 ! 2026 ierr campaign: interpolation/extrapolation failures return
@@ -39,13 +33,11 @@ subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
       double precision :: xt(num_t), yto(num_t)
       double precision :: aqod(num_t)
       integer :: jt, it, its, itf
-      logical :: lmore
       integer :: mm1, index1, ndss, ndf, knot, index2
       double precision :: dx, c1, c2, c3, c4, ol0, qodi
       double precision :: ol00, unused_ddensity_dtemp
 
       ierr = 0
-      lmore = .true.
 ! FOR SIX GRID POINTS OF TEMPERATURE
       its = temp_index - 2
       if (its.le.0) its = 1

@@ -16,15 +16,10 @@ subroutine alex94_fixed_z_table(metal_fraction)
       implicit none
       integer, parameter :: num_x = 7
       integer, parameter :: num_z = 15
-      integer, parameter :: num_xz = 105
       integer, parameter :: num_t = 23
       integer, parameter :: num_d = 17
-      integer, parameter :: num_xt = 8
 
       double precision, intent(in) :: metal_fraction
-
-
-
 
       double precision :: interp_z(4), weight_z(4)
       integer :: i, jj, kk, idz, ii1, ii2, ii3, ii4

@@ -7,9 +7,9 @@
 ! ionization/opacity/specific heat in log space, indexed
 ! 1..num_atm_points), the atmosphere-region counterpart of
 ! envstruct_lib's envelope profile. Computed by the atmosphere
-! integrator (atm/atm_lib.f90) and read by output writers
-! (misc/write_stitched_profile.f90, io/write_store_model.f90, io/write_pulsation_model.f90, io/write_legacy_output.f90) and
-! rotation/ files needing the current atmosphere structure.
+! integrator (core/envint_kernel.f90, under core/envint_lib.f90) and
+! read by the stitched-model/profile writers (core/stitched_model.f90
+! and its callers) needing the current atmosphere structure.
 !
 ! Per GUIDELINES.md's module-vs-argument test this is case 1b, same as
 ! envstruct_lib/scrtch_lib/mdphy_lib: genuinely evolving per-model
