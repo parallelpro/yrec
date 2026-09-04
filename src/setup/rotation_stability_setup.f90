@@ -38,9 +38,6 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
       double precision :: specific_heat_interface(json)
 ! --- locals ---
       integer :: zone_idx, interior_begin, interior_end
-      double precision :: dr43, dr42, dr41, dr32, dr31, dr21
-      double precision :: lag_denom1, lag_denom2, lag_denom3, lag_denom4
-      double precision :: lag_x1, lag_x2, lag_x3, lag_x4
       double precision :: grav_const
       double precision :: fac_local
       double precision :: dlnmu_dlnp, ddel_floor, ddel
@@ -66,213 +63,29 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
 !  AND BETWEEN I AND I-1 USES I-2,I-1,I,I+1.
 !  TREATMENT OF FIRST INTERFACE.
       if(transport_zone_begin.lt.3)then
-         dr43 = radius_unlogged(4) - radius_unlogged(3)
-         dr42 = radius_unlogged(4) - radius_unlogged(2)
-         dr41 = radius_unlogged(4) - radius_unlogged(1)
-         dr32 = radius_unlogged(3) - radius_unlogged(2)
-         dr31 = radius_unlogged(3) - radius_unlogged(1)
-         dr21 = radius_unlogged(2) - radius_unlogged(1)
-         lag_denom1 = -dr21*dr31*dr41
-         lag_denom2 = dr21*dr32*dr42
-         lag_denom3 = -dr31*dr32*dr43
-         lag_denom4 = dr41*dr42*dr43
-         lag_x1 = rot_scr%interface_radius(2) - radius_unlogged(1)
-         lag_x2 = rot_scr%interface_radius(2) - radius_unlogged(2)
-         lag_x3 = rot_scr%interface_radius(2) - radius_unlogged(3)
-         lag_x4 = rot_scr%interface_radius(2) - radius_unlogged(4)
-         rot_scr%lagrange_interp_weights(1,2) = (lag_x2*lag_x3*lag_x4)/lag_denom1
-         rot_scr%lagrange_interp_weights(2,2) = (lag_x1*lag_x3*lag_x4)/lag_denom2
-         rot_scr%lagrange_interp_weights(3,2) = (lag_x1*lag_x2*lag_x4)/lag_denom3
-         rot_scr%lagrange_interp_weights(4,2) = (lag_x1*lag_x2*lag_x3)/lag_denom4
+         call lagrange_weights(1, 2)
          interior_begin = 3
-         rot_scr%pm(2)=exp(ln10*(log_pressure(1)*rot_scr%lagrange_interp_weights(1,2)+ &
-              log_pressure(2)*rot_scr%lagrange_interp_weights(2,2) &
-              +log_pressure(3)*rot_scr%lagrange_interp_weights(3,2)+ &
-              log_pressure(4)*rot_scr%lagrange_interp_weights(4,2)))
-         rot_scr%tm(2)=exp(ln10*(log_temperature(1)*rot_scr%lagrange_interp_weights(1,2)+ &
-              log_temperature(2)*rot_scr%lagrange_interp_weights(2,2) &
-              +log_temperature(3)*rot_scr%lagrange_interp_weights(3,2)+ &
-              log_temperature(4)*rot_scr%lagrange_interp_weights(4,2)))
-         rot_scr%dm(2)=exp(ln10*(log_density(1)*rot_scr%lagrange_interp_weights(1,2)+ &
-              log_density(2)*rot_scr%lagrange_interp_weights(2,2) &
-              +log_density(3)*rot_scr%lagrange_interp_weights(3,2)+ &
-              log_density(4)*rot_scr%lagrange_interp_weights(4,2)))
-         rot_scr%delmi(2)=mix_scr%del_radiative_mix(1)*rot_scr%lagrange_interp_weights(1,2)+ &
-              mix_scr%del_radiative_mix(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              mix_scr%del_radiative_mix(3)*rot_scr%lagrange_interp_weights(3,2)+ &
-              mix_scr%del_radiative_mix(4)*rot_scr%lagrange_interp_weights(4,2)
-         rot_scr%delami(2)=mix_scr%del_adiabatic_mix(1)*rot_scr%lagrange_interp_weights(1,2)+ &
-              mix_scr%del_adiabatic_mix(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              mix_scr%del_adiabatic_mix(3)*rot_scr%lagrange_interp_weights(3,2)+ &
-              mix_scr%del_adiabatic_mix(4)*rot_scr%lagrange_interp_weights(4,2)
-         rot_scr%qdtmi(2)=mix_scr%qdtm(1)*rot_scr%lagrange_interp_weights(1,2)+mix_scr%qdtm(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              mix_scr%qdtm(3)*rot_scr%lagrange_interp_weights(3,2)+mix_scr%qdtm(4)*rot_scr%lagrange_interp_weights(4,2)
-         rot_scr%hs3(2)=mass_unlogged(1)*rot_scr%lagrange_interp_weights(1,2)+mass_unlogged(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              mass_unlogged(3)*rot_scr%lagrange_interp_weights(3,2)+mass_unlogged(4)*rot_scr%lagrange_interp_weights(4,2)
-         rot_scr%epsilm(2)=mix_scr%esumm(1)*rot_scr%lagrange_interp_weights(1,2)+mix_scr%esumm(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              mix_scr%esumm(3)*rot_scr%lagrange_interp_weights(3,2)+mix_scr%esumm(4)*rot_scr%lagrange_interp_weights(4,2)
-         rot_scr%interface_luminosity(2)=star%solar_luminosity_cgs*(luminosity(1)*rot_scr%lagrange_interp_weights(1,2)+ &
-              luminosity(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              luminosity(3)*rot_scr%lagrange_interp_weights(3,2)+luminosity(4)*rot_scr%lagrange_interp_weights(4,2))
-         rot_scr%interface_gravity_factor(2)=local_gravity(1)*rot_scr%lagrange_interp_weights(1,2)+ &
-              local_gravity(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              local_gravity(3)*rot_scr%lagrange_interp_weights(3,2)+local_gravity(4)*rot_scr%lagrange_interp_weights(4,2)
-!  specific heat
-         specific_heat_interface(2)=mix_scr%cpm(1)*rot_scr%lagrange_interp_weights(1,2)+mix_scr%cpm(2)*rot_scr%lagrange_interp_weights(2,2)+ &
-              mix_scr%cpm(3)*rot_scr%lagrange_interp_weights(3,2)+mix_scr%cpm(4)*rot_scr%lagrange_interp_weights(4,2)
+         call interpolate_to_interface(1, 2)
       else
          interior_begin = transport_zone_begin
       endif
 !  TREATMENT OF LAST INTERFACE.
       if(transport_zone_end.eq.num_zones)then
-         dr43 = radius_unlogged(num_zones) - radius_unlogged(num_zones-1)
-         dr42 = radius_unlogged(num_zones) - radius_unlogged(num_zones-2)
-         dr41 = radius_unlogged(num_zones) - radius_unlogged(num_zones-3)
-         dr32 = radius_unlogged(num_zones-1) - radius_unlogged(num_zones-2)
-         dr31 = radius_unlogged(num_zones-1) - radius_unlogged(num_zones-3)
-         dr21 = radius_unlogged(num_zones-2) - radius_unlogged(num_zones-3)
-         lag_denom1 = -dr21*dr31*dr41
-         lag_denom2 = dr21*dr32*dr42
-         lag_denom3 = -dr31*dr32*dr43
-         lag_denom4 = dr41*dr42*dr43
-         lag_x1 = rot_scr%interface_radius(num_zones) - radius_unlogged(num_zones-3)
-         lag_x2 = rot_scr%interface_radius(num_zones) - radius_unlogged(num_zones-2)
-         lag_x3 = rot_scr%interface_radius(num_zones) - radius_unlogged(num_zones-1)
-         lag_x4 = rot_scr%interface_radius(num_zones) - radius_unlogged(num_zones)
-         rot_scr%lagrange_interp_weights(1,num_zones) = (lag_x2*lag_x3*lag_x4)/lag_denom1
-         rot_scr%lagrange_interp_weights(2,num_zones) = (lag_x1*lag_x3*lag_x4)/lag_denom2
-         rot_scr%lagrange_interp_weights(3,num_zones) = (lag_x1*lag_x2*lag_x4)/lag_denom3
-         rot_scr%lagrange_interp_weights(4,num_zones) = (lag_x1*lag_x2*lag_x3)/lag_denom4
+         call lagrange_weights(num_zones-3, num_zones)
          interior_end = num_zones-1
-         rot_scr%pm(num_zones)=exp(ln10*(log_pressure(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              log_pressure(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones) &
-              +log_pressure(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              log_pressure(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)))
-         rot_scr%tm(num_zones)=exp(ln10*(log_temperature(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              log_temperature(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones) &
-              +log_temperature(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              log_temperature(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)))
-         rot_scr%dm(num_zones)=exp(ln10*(log_density(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              log_density(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones) &
-              +log_density(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              log_density(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)))
-         rot_scr%delmi(num_zones)=mix_scr%del_radiative_mix(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              mix_scr%del_radiative_mix(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              mix_scr%del_radiative_mix(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              mix_scr%del_radiative_mix(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
-         rot_scr%delami(num_zones)=mix_scr%del_adiabatic_mix(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              mix_scr%del_adiabatic_mix(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              mix_scr%del_adiabatic_mix(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              mix_scr%del_adiabatic_mix(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
-         rot_scr%qdtmi(num_zones)=mix_scr%qdtm(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              mix_scr%qdtm(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              mix_scr%qdtm(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              mix_scr%qdtm(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
-         rot_scr%hs3(num_zones)=mass_unlogged(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              mass_unlogged(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              mass_unlogged(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              mass_unlogged(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
-         rot_scr%epsilm(num_zones)=mix_scr%esumm(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              mix_scr%esumm(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              mix_scr%esumm(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              mix_scr%esumm(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
-         rot_scr%interface_luminosity(num_zones)=star%solar_luminosity_cgs*(luminosity(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              luminosity(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              luminosity(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              luminosity(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones))
-         rot_scr%interface_gravity_factor(num_zones)=local_gravity(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              local_gravity(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              local_gravity(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              local_gravity(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
-!  specific heat
-         specific_heat_interface(num_zones)=mix_scr%cpm(num_zones-3)*rot_scr%lagrange_interp_weights(1,num_zones)+ &
-              mix_scr%cpm(num_zones-2)*rot_scr%lagrange_interp_weights(2,num_zones)+ &
-              mix_scr%cpm(num_zones-1)*rot_scr%lagrange_interp_weights(3,num_zones)+ &
-              mix_scr%cpm(num_zones)*rot_scr%lagrange_interp_weights(4,num_zones)
+         call interpolate_to_interface(num_zones-3, num_zones)
       else
          interior_end = transport_zone_end
       endif
 !  COMPUTE INTERPOLATION FACTORS FOR ALL OTHER POINTS.
       do zone_idx = interior_begin,interior_end
-         dr43 = radius_unlogged(zone_idx+1) - radius_unlogged(zone_idx)
-         dr42 = radius_unlogged(zone_idx+1) - radius_unlogged(zone_idx-1)
-         dr41 = radius_unlogged(zone_idx+1) - radius_unlogged(zone_idx-2)
-         dr32 = radius_unlogged(zone_idx) - radius_unlogged(zone_idx-1)
-         dr31 = radius_unlogged(zone_idx) - radius_unlogged(zone_idx-2)
-         dr21 = radius_unlogged(zone_idx-1) - radius_unlogged(zone_idx-2)
-         lag_denom1 = -dr21*dr31*dr41
-         lag_denom2 = dr21*dr32*dr42
-         lag_denom3 = -dr31*dr32*dr43
-         lag_denom4 = dr41*dr42*dr43
-         lag_x1 = rot_scr%interface_radius(zone_idx) - radius_unlogged(zone_idx-2)
-         lag_x2 = rot_scr%interface_radius(zone_idx) - radius_unlogged(zone_idx-1)
-         lag_x3 = rot_scr%interface_radius(zone_idx) - radius_unlogged(zone_idx)
-         lag_x4 = rot_scr%interface_radius(zone_idx) - radius_unlogged(zone_idx+1)
-         rot_scr%lagrange_interp_weights(1,zone_idx) = (lag_x2*lag_x3*lag_x4)/lag_denom1
-         rot_scr%lagrange_interp_weights(2,zone_idx) = (lag_x1*lag_x3*lag_x4)/lag_denom2
-         rot_scr%lagrange_interp_weights(3,zone_idx) = (lag_x1*lag_x2*lag_x4)/lag_denom3
-         rot_scr%lagrange_interp_weights(4,zone_idx) = (lag_x1*lag_x2*lag_x3)/lag_denom4
+         call lagrange_weights(zone_idx-2, zone_idx)
       end do
       grav_const = exp(ln10*cgl)
       do zone_idx = interior_begin,interior_end
 !  USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND PHYSICAL VARIABLES
 !  AT THE INTERFACES.
-!  PRESSURE.
-         rot_scr%pm(zone_idx)=exp(ln10*(log_pressure(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              log_pressure(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx) &
-              +log_pressure(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              log_pressure(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)))
-!  TEMPERATURE.
-         rot_scr%tm(zone_idx)=exp(ln10*(log_temperature(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              log_temperature(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx) &
-              +log_temperature(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              log_temperature(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)))
-!  DENSITY.
-         rot_scr%dm(zone_idx)=exp(ln10*(log_density(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              log_density(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx) &
-              +log_density(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              log_density(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)))
-!  DEL (ACTUAL).
-!  DEL (RADIATIVE) IS INTERPOLATED, AND DEL IS THE MIN OF DELA,DELR.
-         rot_scr%delmi(zone_idx)=mix_scr%del_radiative_mix(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              mix_scr%del_radiative_mix(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              mix_scr%del_radiative_mix(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              mix_scr%del_radiative_mix(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
-!  DEL(ADIABATIC).
-         rot_scr%delami(zone_idx)=mix_scr%del_adiabatic_mix(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              mix_scr%del_adiabatic_mix(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              mix_scr%del_adiabatic_mix(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              mix_scr%del_adiabatic_mix(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
-!  D LN RHO/D LN T.
-         rot_scr%qdtmi(zone_idx)=mix_scr%qdtm(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              mix_scr%qdtm(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              mix_scr%qdtm(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              mix_scr%qdtm(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
-!  UNLOGGED MASS INTERIOR TO THE INTERFACE.
-         rot_scr%hs3(zone_idx)=mass_unlogged(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              mass_unlogged(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              mass_unlogged(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              mass_unlogged(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
-!  SPECIFIC ENERGY GENERATION RATE.
-         rot_scr%epsilm(zone_idx)=mix_scr%esumm(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              mix_scr%esumm(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              mix_scr%esumm(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              mix_scr%esumm(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
-!  LUMINOSITY.
-         rot_scr%interface_luminosity(zone_idx)=star%solar_luminosity_cgs*(luminosity(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              luminosity(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              luminosity(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              luminosity(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx))
-!  LOCAL AVERAGE FORCE OF GRAVITY.
-         rot_scr%interface_gravity_factor(zone_idx)=local_gravity(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              local_gravity(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              local_gravity(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              local_gravity(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
-!  specific heat
-         specific_heat_interface(zone_idx)=mix_scr%cpm(zone_idx-2)*rot_scr%lagrange_interp_weights(1,zone_idx)+ &
-              mix_scr%cpm(zone_idx-1)*rot_scr%lagrange_interp_weights(2,zone_idx)+ &
-              mix_scr%cpm(zone_idx)*rot_scr%lagrange_interp_weights(3,zone_idx)+ &
-              mix_scr%cpm(zone_idx+1)*rot_scr%lagrange_interp_weights(4,zone_idx)
+         call interpolate_to_interface(zone_idx-2, zone_idx)
       end do
       do zone_idx = transport_zone_begin,transport_zone_end
          rot_scr%delmi(zone_idx) = min(rot_scr%delmi(zone_idx),rot_scr%delami(zone_idx))
@@ -434,4 +247,90 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          end do
       endif
       return
+
+contains
+
+!----------------------------------------------------------------------
+! lagrange_weights
+!----------------------------------------------------------------------
+!  4-point Lagrangian interpolation weights at the interface
+!  interface_idx (radius rot_scr%interface_radius(interface_idx)) from
+!  the model points first_point..first_point+3, stored in
+!  rot_scr%lagrange_interp_weights(1:4,interface_idx).
+subroutine lagrange_weights(first_point, interface_idx)
+      integer, intent(in) :: first_point, interface_idx
+      double precision :: dr43, dr42, dr41, dr32, dr31, dr21
+      double precision :: lag_denom1, lag_denom2, lag_denom3, lag_denom4
+      double precision :: lag_x1, lag_x2, lag_x3, lag_x4
+
+      dr43 = radius_unlogged(first_point+3) - radius_unlogged(first_point+2)
+      dr42 = radius_unlogged(first_point+3) - radius_unlogged(first_point+1)
+      dr41 = radius_unlogged(first_point+3) - radius_unlogged(first_point)
+      dr32 = radius_unlogged(first_point+2) - radius_unlogged(first_point+1)
+      dr31 = radius_unlogged(first_point+2) - radius_unlogged(first_point)
+      dr21 = radius_unlogged(first_point+1) - radius_unlogged(first_point)
+      lag_denom1 = -dr21*dr31*dr41
+      lag_denom2 = dr21*dr32*dr42
+      lag_denom3 = -dr31*dr32*dr43
+      lag_denom4 = dr41*dr42*dr43
+      lag_x1 = rot_scr%interface_radius(interface_idx) - radius_unlogged(first_point)
+      lag_x2 = rot_scr%interface_radius(interface_idx) - radius_unlogged(first_point+1)
+      lag_x3 = rot_scr%interface_radius(interface_idx) - radius_unlogged(first_point+2)
+      lag_x4 = rot_scr%interface_radius(interface_idx) - radius_unlogged(first_point+3)
+      rot_scr%lagrange_interp_weights(1,interface_idx) = (lag_x2*lag_x3*lag_x4)/lag_denom1
+      rot_scr%lagrange_interp_weights(2,interface_idx) = (lag_x1*lag_x3*lag_x4)/lag_denom2
+      rot_scr%lagrange_interp_weights(3,interface_idx) = (lag_x1*lag_x2*lag_x4)/lag_denom3
+      rot_scr%lagrange_interp_weights(4,interface_idx) = (lag_x1*lag_x2*lag_x3)/lag_denom4
+end subroutine lagrange_weights
+
+!----------------------------------------------------------------------
+! interp4
+!----------------------------------------------------------------------
+!  field interpolated to interface interface_idx with the weights
+!  computed by lagrange_weights from points first_point..first_point+3.
+double precision function interp4(field, first_point, interface_idx)
+      double precision, intent(in) :: field(json)
+      integer, intent(in) :: first_point, interface_idx
+      interp4 = field(first_point)*rot_scr%lagrange_interp_weights(1,interface_idx)+ &
+           field(first_point+1)*rot_scr%lagrange_interp_weights(2,interface_idx)+ &
+           field(first_point+2)*rot_scr%lagrange_interp_weights(3,interface_idx)+ &
+           field(first_point+3)*rot_scr%lagrange_interp_weights(4,interface_idx)
+end function interp4
+
+!----------------------------------------------------------------------
+! interpolate_to_interface
+!----------------------------------------------------------------------
+!  Interpolate the structure variables to interface interface_idx from
+!  model points first_point..first_point+3 (weights from
+!  lagrange_weights). P, T and rho are interpolated in log10 and
+!  unlogged; the luminosity is converted to cgs.
+subroutine interpolate_to_interface(first_point, interface_idx)
+      integer, intent(in) :: first_point, interface_idx
+
+!  PRESSURE.
+      rot_scr%pm(interface_idx)=exp(ln10*interp4(log_pressure, first_point, interface_idx))
+!  TEMPERATURE.
+      rot_scr%tm(interface_idx)=exp(ln10*interp4(log_temperature, first_point, interface_idx))
+!  DENSITY.
+      rot_scr%dm(interface_idx)=exp(ln10*interp4(log_density, first_point, interface_idx))
+!  DEL (ACTUAL).
+!  DEL (RADIATIVE) IS INTERPOLATED, AND DEL IS THE MIN OF DELA,DELR
+!  (taken by the caller).
+      rot_scr%delmi(interface_idx)=interp4(mix_scr%del_radiative_mix, first_point, interface_idx)
+!  DEL(ADIABATIC).
+      rot_scr%delami(interface_idx)=interp4(mix_scr%del_adiabatic_mix, first_point, interface_idx)
+!  D LN RHO/D LN T.
+      rot_scr%qdtmi(interface_idx)=interp4(mix_scr%qdtm, first_point, interface_idx)
+!  UNLOGGED MASS INTERIOR TO THE INTERFACE.
+      rot_scr%hs3(interface_idx)=interp4(mass_unlogged, first_point, interface_idx)
+!  SPECIFIC ENERGY GENERATION RATE.
+      rot_scr%epsilm(interface_idx)=interp4(mix_scr%esumm, first_point, interface_idx)
+!  LUMINOSITY.
+      rot_scr%interface_luminosity(interface_idx)=star%solar_luminosity_cgs*(interp4(luminosity, first_point, interface_idx))
+!  LOCAL AVERAGE FORCE OF GRAVITY.
+      rot_scr%interface_gravity_factor(interface_idx)=interp4(local_gravity, first_point, interface_idx)
+!  specific heat
+      specific_heat_interface(interface_idx)=interp4(mix_scr%cpm, first_point, interface_idx)
+end subroutine interpolate_to_interface
+
 end subroutine rotation_stability_setup

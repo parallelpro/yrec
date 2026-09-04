@@ -10,7 +10,7 @@
 ! PRESERVED BUG (not fixed; see audit/readability-sweep-2026-09-03/
 ! SUMMARY.md): the FSUN centrifugal-normalization line below uses the
 ! bare local variable "gl" where matt_wind.f90's equivalent line (and
-! this file's own FCORR1/FCORR2 lines immediately after) use the
+! wind_lib's matt_centrifugal_factor, called immediately after) use the
 ! phys_const_lib gravitational constant "cgl". "gl" is never assigned,
 ! so under -finit-local-zero it reads 0 and exp(ln10*gl) = 1 -- a
 ! pre-existing defect in mcowind.f, reproduced exactly rather than
@@ -49,6 +49,7 @@ subroutine wind_spindown_matt(log_luminosity_lsun, full_timestep, cz_moment_of_i
       use star_info_lib, only: star
       use phys_const_lib
       use math_lib
+      use wind_lib, only: log10_radius_from_l_teff, matt_centrifugal_factor
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
@@ -62,7 +63,7 @@ subroutine wind_spindown_matt(log_luminosity_lsun, full_timestep, cz_moment_of_i
 ! --- locals ---
       double precision :: omega_first, omega_now, current_turnover_timescale, &
            omega_saturation, wind_coefficient, gl, fsun, log10_radius, &
-           fcorr1, fcorr2, fcen1, fcen2, omega_old_capped, omega_new_capped, &
+           fcen1, fcen2, omega_old_capped, omega_new_capped, &
            domega_end_this_iter
 
       ierr = 0
@@ -110,14 +111,9 @@ subroutine wind_spindown_matt(log_luminosity_lsun, full_timestep, cz_moment_of_i
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN (star%ctrl%c_2).
       fsun = 0.5*star%ctrl%pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*gl)/star%solar_mass_cgs
 !     RADIUS
-      log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
-           csigl-4.d0*log_teff)
-      fcorr1 = 0.5*omega_old**2*exp(ln10*(3.0*log10_radius-cgl))/ &
-           total_mass_msun/star%solar_mass_cgs
-      fcorr2 = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
-           total_mass_msun/star%solar_mass_cgs
-      fcen1 = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr1)), star%ctrl%excen)
-      fcen2 = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr2)), star%ctrl%excen)
+      log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff)
+      fcen1 = matt_centrifugal_factor(omega_old, fsun, log10_radius, total_mass_msun)
+      fcen2 = matt_centrifugal_factor(omega_surface, fsun, log10_radius, total_mass_msun)
 !
 ! G Somers, END
       omega_old_capped = min(omega_first,omega_saturation)

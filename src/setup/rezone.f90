@@ -591,94 +591,30 @@ subroutine interpolate_onto_new_grid
 !  NTOT=NUMBER OF POINTS AT WHICH SPLINE IS TO BE EVALUTED(MNEW)
 !  YVAL = OUTPUT RUN OF VARIABLE VALUES AT THE NEW RUN OF MASS POINTS.
 !  FORM OF CALL IS CALL OSPLIN(XVAL,YVAL,XTAB,YTAB,NTAB,NTOT)
-!  DO EACH COMPOSITION IN ORDER USING HPO AND HTO AS DUMMY ARRAYS.
+!  DO EACH COMPOSITION IN ORDER USING HPO AND HTO AS DUMMY ARRAYS
+!  (regrid_in_place, below).
 ! 7/91 ADD ENTROPY TERM INTERPOLATION.
-      do j = 1,star%nz
-         star%logP_start(j) = star%temperature_entropy_term(j)
-      end do
-      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
-           old_point_count,new_point_count)
-      do j = 1,new_num_zones
-         star%temperature_entropy_term(j) = star%logT_start(j)
-      end do
-
-!
-
-
-      do j = 1,star%nz
-         star%logP_start(j) = star%pressure_entropy_term(j)
-      end do
-      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
-           old_point_count,new_point_count)
-      do j = 1,new_num_zones
-         star%pressure_entropy_term(j) = star%logT_start(j)
-      end do
-      do j = 1,star%nz
-         star%logP_start(j) = star%luminosity_entropy_term(j)
-      end do
-      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
-           old_point_count,new_point_count)
-      do j = 1,new_num_zones
-         star%luminosity_entropy_term(j) = star%logT_start(j)
-      end do
-      do j = 1,star%nz
-         star%logP_start(j) = star%radius_entropy_term(j)
-      end do
-      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
-           old_point_count,new_point_count)
-      do j = 1,new_num_zones
-         star%radius_entropy_term(j) = star%logT_start(j)
-      end do
-
-
+      call regrid_in_place(star%temperature_entropy_term)
+      call regrid_in_place(star%pressure_entropy_term)
+      call regrid_in_place(star%luminosity_entropy_term)
+      call regrid_in_place(star%radius_entropy_term)
       do i = 1,num_species_tracked
-       do j = 1,star%nz
-          star%logP_start(j) = star%xa(i,j)
-       end do
-         call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
-              old_point_count,new_point_count)
-       do j = 1,new_num_zones
-          star%xa(i,j) = star%logT_start(j)
-       end do
+         call regrid_in_place(star%xa(i,:))
 !  HCOMPP IS THE ARRAY OF COMPOSITION AT THE BEGINNING OF THE TIMESTEP.
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
-       do j = 1,star%nz
-          star%logP_start(j) = star%xa_start(i,j)
-       end do
-         call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
-              old_point_count,new_point_count)
-       do j = 1,new_num_zones
-          star%xa_start(i,j) = star%logT_start(j)
-       end do
+         call regrid_in_place(star%xa_start(i,:))
       end do
-
-
 !  HCOMPM IS THE ARRAY OF CHANGES IN COMPOSITION DUE TO NUCLEAR BURNING.
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
       do i = 1,size(reaction_rate_species_index)
-       do j = 1,star%nz
-          star%logP_start(j) = rot_scr%reaction_rate_by_zone(reaction_rate_species_index(i),j)
-       end do
-         call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
-              old_point_count,new_point_count)
-       do j = 1,new_num_zones
-          rot_scr%reaction_rate_by_zone(reaction_rate_species_index(i),j) = &
-               star%logT_start(j)
-       end do
+         call regrid_in_place(rot_scr%reaction_rate_by_zone(reaction_rate_species_index(i),:))
       end do
 ! MHP 05/02 IF THE SURFACE DEUTERIUM IS ABOVE
 ! THRESHOLD (1.0D-14) FIND THE NEW RUN OF
 ! DEUTERIUM BURNING RATES
       if (star%job%use_extended_composition .and. &
            star%xa(i_h2,star%nz).ge.1.0D-14) then
-         do j = 1,star%nz
-            star%logP_start(j) = star%deuterium_burning_rate_start(j)
-         end do
-         call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
-              old_point_count,new_point_count)
-         do j = 1,new_num_zones
-            star%deuterium_burning_rate_start(j) = star%logT_start(j)
-         end do
+         call regrid_in_place(star%deuterium_burning_rate_start)
       endif
 ! NOW FIND RUN OF P,R,L,T,AND RHO IN THAT ORDER FOR THE NEW POINTS.
 
@@ -897,5 +833,28 @@ subroutine interpolate_onto_new_grid
 
       end if
 end subroutine interpolate_onto_new_grid
+
+!----------------------------------------------------------------------
+! regrid_in_place
+!----------------------------------------------------------------------
+! Spline-interpolate one field from the old mass grid (star%old_shell_mass,
+! old_point_count points) onto the new one (star%log_mass,
+! new_point_count points), overwriting field(1:new_num_zones).
+! star%logP_start and star%logT_start are used as scratch (the
+! HPO/HTO "dummy arrays" of the original), exactly as the former
+! copy / osplin / copy-back triplets did.
+subroutine regrid_in_place(field)
+      double precision, intent(inout) :: field(:)
+      integer :: j
+
+      do j = 1,star%nz
+         star%logP_start(j) = field(j)
+      end do
+      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
+           old_point_count,new_point_count)
+      do j = 1,new_num_zones
+         field(j) = star%logT_start(j)
+      end do
+end subroutine regrid_in_place
 
 end subroutine rezone

@@ -22,6 +22,7 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
+      use wind_lib, only: log10_radius_from_l_teff
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
@@ -73,8 +74,7 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       endif
       if (wind_loss_active) then
 ! FIND TOTAL RADIUS OF STAR.
-         log10_radius=0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
-              csigl-4.d0*log_teff)
+         log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff)
          total_radius_cm = exp(ln10*log10_radius)
 ! DMDOT IS THE MASS LOSS RATE IN SOLAR MASSES PER YEAR.
          mass_loss_rate_msun_yr = 2.0d-14
@@ -87,11 +87,7 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! A POSITIVE SOLUTION FOR OMEGA IN THE FIRST GUESS AT THE LOSS RATE.
 ! IF NOT, USE A SERIES OF SMALL STEPS.
 ! MHP 12/91 CAP LOSS RATE AT WSAT.
-         domega_test = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
-              pow((mass_loss_rate_msun_yr/1.0d-14), star%ctrl%exmd) &
-              *omega_surface*pow((total_radius_cm/star%solar_radius_cgs), star%ctrl%exr)* &
-              pow(total_mass_msun, star%ctrl%exm) &
-              *pow(min(omega_surface,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))
+         domega_test = wind_domega(full_timestep, omega_surface)
          if(domega_test.gt.omega_surface)then
             num_substeps = int(domega_test/omega_surface)+1
             sub_timestep = full_timestep/dfloat(num_substeps)
@@ -112,12 +108,7 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
             omega_iter_prev = omega_substep_start
    omega_fixed_point: do   ! (was label 5)
             iter_count = iter_count + 1
-            omega_iter_new = omega_substep_start - (sub_timestep/ &
-                 cz_moment_of_inertia)*star%ctrl%constfactor* &
-                 pow((mass_loss_rate_msun_yr/1.0d-14), star%ctrl%exmd) &
-                 *omega_iter*pow((total_radius_cm/star%solar_radius_cgs), star%ctrl%exr)* &
-                 pow(total_mass_msun, star%ctrl%exm) &
-                 *pow(min(omega_iter,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))
+            omega_iter_new = omega_substep_start - wind_domega(sub_timestep, omega_iter)
             domega_relative_change = 2.0d0*abs((omega_iter_prev-omega_iter_new)/ &
                  (omega_iter_prev+omega_iter_new))
             if(domega_relative_change.gt.1.0d-6)then
@@ -141,4 +132,20 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          end do
       endif
       return
+
+contains
+
+!  Decrease in the surface angular velocity over a timestep dt from the
+!  Kawaler-type wind torque evaluated at angular velocity omega:
+!  dt/I_cz * CONSTFACTOR * (Mdot/1e-14)**EXMD * omega * (R/Rsun)**EXR
+!  * (M/Msun)**EXM * min(omega,omega_sat)**(EXW-1).
+      double precision function wind_domega(dt, omega)
+      double precision, intent(in) :: dt, omega
+      wind_domega = (dt/cz_moment_of_inertia)*star%ctrl%constfactor* &
+           pow((mass_loss_rate_msun_yr/1.0d-14), star%ctrl%exmd) &
+           *omega*pow((total_radius_cm/star%solar_radius_cgs), star%ctrl%exr)* &
+           pow(total_mass_msun, star%ctrl%exm) &
+           *pow(min(omega,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))
+      end function wind_domega
+
 end subroutine kawaler_wind

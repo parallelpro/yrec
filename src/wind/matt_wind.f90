@@ -21,6 +21,7 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
       use star_info_lib, only: star, json
       use phys_const_lib
       use math_lib
+      use wind_lib, only: log10_radius_from_l_teff, matt_centrifugal_factor
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
@@ -33,9 +34,7 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! --- locals ---
       double precision :: current_turnover_timescale, omega_now, &
            omega_saturation
-! fcorr_local: the wind centrifugal-correction factor (unrelated to the
-! convergence-tolerance fcorr elsewhere in the code).
-      double precision :: fsun, log10_radius, fcorr_local, fcen
+      double precision :: fsun, log10_radius, fcen
       double precision :: domega_test
       integer :: num_substeps
       double precision :: sub_timestep
@@ -96,14 +95,9 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
 ! NOTE THAT THIS IS IMPLEMENTED HERE RELATIVE TO THE SUN (star%ctrl%c_2).
       fsun = 0.5*star%ctrl%pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*cgl)/star%solar_mass_cgs
 !     RADIUS
-      log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
-           csigl-4.d0*log_teff)
-      fcorr_local = 0.5*omega_surface**2*exp(ln10*(3.0*log10_radius-cgl))/ &
-           total_mass_msun/star%solar_mass_cgs
-      fcen = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local)), star%ctrl%excen)
-      domega_test = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
-           star%job%structfactor*omega_surface &
-           *pow(min(omega_now,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))*fcen
+      log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff)
+      fcen = matt_centrifugal_factor(omega_surface, fsun, log10_radius, total_mass_msun)
+      domega_test = wind_domega(full_timestep, omega_surface, omega_now, fcen)
       if(domega_test.gt.omega_surface)then
          num_substeps = int(domega_test/omega_surface)+1
          sub_timestep = full_timestep/dfloat(num_substeps)
@@ -132,12 +126,8 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          endif
          iter_count = iter_count + 1
 ! CENTRIFUGAL REDUCTION TERM (MATT+2012) RE-EVALUATED AT THE CURRENT OMEGA.
-         fcorr_local = 0.5*omega_iter**2*exp(ln10*(3.0*log10_radius-cgl))/ &
-              total_mass_msun/star%solar_mass_cgs
-         fcen = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+fcorr_local)), star%ctrl%excen)
-         omega_iter_new = omega_substep_start - (sub_timestep/ &
-              cz_moment_of_inertia)*star%ctrl%constfactor*star%job%structfactor*omega_iter &
-              *pow(min(omega_now,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))*fcen
+         fcen = matt_centrifugal_factor(omega_iter, fsun, log10_radius, total_mass_msun)
+         omega_iter_new = omega_substep_start - wind_domega(sub_timestep, omega_iter, omega_now, fcen)
          domega_relative_change = 2.0d0*abs((omega_iter_prev-omega_iter_new)/ &
               (omega_iter_prev+omega_iter_new))
          if(domega_relative_change.gt.1.0d-6)then
@@ -160,4 +150,19 @@ subroutine matt_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
               specific_angular_momentum(zone_idx) - delta_j_per_mass
       end do
       return
+
+contains
+
+!  Decrease in the surface angular velocity over a timestep dt from the
+!  Matt-type wind torque at angular velocity omega: dt/I_cz *
+!  CONSTFACTOR * STRUCTFACTOR * omega * min(omega_scaled,omega_sat)**
+!  (EXW-1) * fcen, where omega_scaled is omega with the optional
+!  Rossby/B-field scaling applied and fcen the centrifugal factor.
+      double precision function wind_domega(dt, omega, omega_scaled, fcen)
+      double precision, intent(in) :: dt, omega, omega_scaled, fcen
+      wind_domega = (dt/cz_moment_of_inertia)*star%ctrl%constfactor* &
+           star%job%structfactor*omega &
+           *pow(min(omega_scaled,omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))*fcen
+      end function wind_domega
+
 end subroutine matt_wind

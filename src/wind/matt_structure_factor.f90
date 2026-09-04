@@ -18,6 +18,7 @@ subroutine matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
       use star_info_lib, only: star
       use phys_const_lib
       use math_lib
+      use wind_lib, only: log10_radius_from_l_teff
       implicit none
 
       double precision, intent(in) :: total_mass_msun, log_luminosity_lsun, &
@@ -31,8 +32,7 @@ subroutine matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
 !     MASS
       mass_factor = total_mass_msun
 !     RADIUS
-      log10_radius = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
-           csigl-4.d0*log_teff)
+      log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff)
       total_radius_cm = exp(ln10*log10_radius)
       radius_rsun = total_radius_cm/star%solar_radius_cgs
 !     LUMINOSITY

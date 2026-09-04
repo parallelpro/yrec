@@ -42,6 +42,7 @@ subroutine wind_spindown(log_luminosity_lsun, full_timestep, cz_moment_of_inerti
       use star_info_lib, only: star
       use phys_const_lib
       use math_lib
+      use wind_lib, only: log10_radius_from_l_teff
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun, full_timestep, &
@@ -77,8 +78,7 @@ subroutine wind_spindown(log_luminosity_lsun, full_timestep, cz_moment_of_inerti
          omega_saturation = star%job%wind_saturation_omega
       endif
 !  FIND TOTAL RADIUS OF STAR.
-      log10_radius=0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
-           csigl-4.d0*log_teff)
+      log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff)
       total_radius_cm = exp(ln10*log10_radius)
 ! DMDOT IS THE MASS LOSS RATE IN SOLAR MASSES PER YEAR.
       mass_loss_rate_msun_yr = 2.0d-14
