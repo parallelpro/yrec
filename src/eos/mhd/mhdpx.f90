@@ -40,6 +40,6 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
 
       call mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       if (ierr /= 0) return
-      log10_density = mhd_eos%mhd_output(1)
+      log10_density = mhd_eos%mhd_output(i_mhd_log10_rho)
       return
 end subroutine mhdpx

@@ -31,7 +31,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       integer, intent(out) :: ierr
       integer :: jerr_gate
 
-      integer, parameter :: nts = 63
+      integer, parameter :: nts = scv_nt
 
       double precision, intent(in) :: log10_temperature, temperature, &
            pressure

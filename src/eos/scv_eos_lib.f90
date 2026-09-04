@@ -20,9 +20,18 @@ module scv_eos_lib
 ! envelope_table/num_pressure_points/scv_temp_index/scv_pressure_index
 ! -- renamed to the majority spelling here). idtt is itself a rename
 ! (from idt) to avoid colliding with the unrelated const_lib idt
-      double precision :: tlogx(63), tablex(63,76,12), tabley(63,76,12), &
-           smix(63,76), tablez(63,76,13), tablenv(63,76,12)
-      integer :: nptsx(63), idtt, idp
+!
+! Table dimensions: scv_nt temperature rows, up to scv_np pressure
+! points per row (nptsx holds the actual count), scv_nvar variables per
+! point in the H, He and envelope tables and scv_nvar_z in the Z table.
+      integer, parameter :: scv_nt = 63
+      integer, parameter :: scv_np = 76
+      integer, parameter :: scv_nvar = 12
+      integer, parameter :: scv_nvar_z = 13
+      double precision :: tlogx(scv_nt), tablex(scv_nt,scv_np,scv_nvar), &
+           tabley(scv_nt,scv_np,scv_nvar), smix(scv_nt,scv_np), &
+           tablez(scv_nt,scv_np,scv_nvar_z), tablenv(scv_nt,scv_np,scv_nvar)
+      integer :: nptsx(scv_nt), idtt, idp
       logical :: use_scv_eos
 
 end module scv_eos_lib

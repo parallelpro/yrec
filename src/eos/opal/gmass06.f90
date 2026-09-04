@@ -12,14 +12,16 @@
 ! is not included in the result; preserved verbatim.
 double precision function gmass06(hydrogen_fraction, metal_fraction, &
      total_moles, ground_state_energy, metal_mole_fraction, &
-     species_mass_fraction)
+     species_number_fraction)
 
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       double precision, intent(out) :: total_moles, ground_state_energy, &
            metal_mole_fraction
-      double precision, intent(out) :: species_mass_fraction(7)
+! species_number_fraction(1:6): number (mole) fractions of Ne, O, N, C,
+! He, H (same order as atomic_number); slot 7 is never assigned.
+      double precision, intent(out) :: species_number_fraction(7)
 
 ! atomic_number(i): atomic number (= electrons per fully-ionized atom)
 ! of species i, for i=1,6 = Ne, O, N, C, He, H.
@@ -68,24 +70,24 @@ double precision function gmass06(hydrogen_fraction, metal_fraction, &
            atomic_weight(6)
       total_moles_raw = hydrogen_moles + helium_moles + carbon_moles + &
            nitrogen_moles + oxygen_moles + neon_moles
-      species_mass_fraction(6) = hydrogen_moles/total_moles_raw
-      species_mass_fraction(5) = helium_moles/total_moles_raw
-      species_mass_fraction(4) = carbon_moles/total_moles_raw
-      species_mass_fraction(3) = nitrogen_moles/total_moles_raw
-      species_mass_fraction(2) = oxygen_moles/total_moles_raw
-      species_mass_fraction(1) = neon_moles/total_moles_raw
+      species_number_fraction(6) = hydrogen_moles/total_moles_raw
+      species_number_fraction(5) = helium_moles/total_moles_raw
+      species_number_fraction(4) = carbon_moles/total_moles_raw
+      species_number_fraction(3) = nitrogen_moles/total_moles_raw
+      species_number_fraction(2) = oxygen_moles/total_moles_raw
+      species_number_fraction(1) = neon_moles/total_moles_raw
       ground_state_energy = 0.0d0
       total_moles = 0.0d0
       do species_idx = 1, 6
          ground_state_energy = ground_state_energy + &
-              ionization_energy(species_idx)*species_mass_fraction(species_idx)
+              ionization_energy(species_idx)*species_number_fraction(species_idx)
          total_moles = total_moles + (1.0d0 + atomic_number(species_idx))* &
-              species_mass_fraction(species_idx)
+              species_number_fraction(species_idx)
       end do
       gmass06 = 0.0d0
       do species_idx = 2, 7
          gmass06 = gmass06 + atomic_weight(species_idx)* &
-              species_mass_fraction(species_idx - 1)
+              species_number_fraction(species_idx - 1)
       end do
 
       return

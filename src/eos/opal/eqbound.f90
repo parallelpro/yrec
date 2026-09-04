@@ -18,7 +18,7 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
       use math_lib
       implicit none
 
-      integer, parameter :: nt = 56
+      integer, parameter :: nt = n_eos95_nt
 
       double precision, intent(in) :: temperature, log10_density
       double precision, intent(out) :: ramp_factor

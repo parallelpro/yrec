@@ -25,6 +25,24 @@ module mhd_eos_lib
       integer, parameter :: mhd_nr1m = 87
       integer, parameter :: mhd_nr2m = 21
       integer, parameter :: mhd_nrxm = 21
+! Slots of mhd_output (the interpolated MHD table row) that meqos.f90
+! reads. The MHD table documentation is not part of this repository;
+! these meanings follow from how meqos consumes each slot. Slots 21-24
+! are the numerical X-derivatives of slots 2, 3, 8 and 9 built by
+! mhdst1.f90; slot 25 is a placeholder.
+      integer, parameter :: i_mhd_log10_rho = 1     ! log10 density
+      integer, parameter :: i_mhd_log10_p = 2       ! log10 total pressure
+      integer, parameter :: i_mhd_chi_rho = 4       ! dlnP/dlnRho at constant T
+      integer, parameter :: i_mhd_chi_t = 5         ! dlnP/dlnT at constant Rho
+      integer, parameter :: i_mhd_grad_ad = 8       ! adiabatic gradient
+      integer, parameter :: i_mhd_log10_cp = 9      ! log10 specific heat cp
+      integer, parameter :: i_mhd_dgrad_ad_dlog10_rho = 10 ! d(grad_ad)/dlog10(Rho)
+      integer, parameter :: i_mhd_dgrad_ad_dlog10_t = 11   ! d(grad_ad)/dlog10(T)
+      integer, parameter :: i_mhd_dlogcp_dlogrho = 12      ! dlog(cp)/dlog(Rho)
+      integer, parameter :: i_mhd_dlogcp_dlogt = 13        ! dlog(cp)/dlog(T)
+      integer, parameter :: i_mhd_ion_frac_1 = 14   ! first of three ionization fractions (14-16)
+      integer, parameter :: i_mhd_eta = 18          ! electron degeneracy parameter
+      integer, parameter :: i_mhd_log10_pgas = 20   ! log10 gas pressure
 
       type, public :: mhd_eos_state
 ! former common/mhdout/

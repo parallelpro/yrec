@@ -50,14 +50,14 @@ subroutine radsub(t6_temperature, density, total_moles, &
       radiation_pressure = 4.0d0/3.0d0*rad_const_over_c*t6_temperature**4   ! Mb
       radiation_energy = 3.0d0*radiation_pressure/density   ! Mb-cc/gm
       radiation_entropy = 4.0d0/3.0d0*radiation_energy/t6_temperature   ! Mb-cc/(gm-unit T6)
-      total_pressure = opal_eos%eos_output(opal_eos%eos_index_inverse(1)) + radiation_pressure
-      total_energy = opal_eos%eos_output(opal_eos%eos_index_inverse(2)) + radiation_energy
-      total_entropy = opal_eos%eos_output(opal_eos%eos_index_inverse(3)) + radiation_entropy
-      chi_rho = opal_eos%eos_output(opal_eos%eos_index_inverse(6))*opal_eos%eos_output(opal_eos%eos_index_inverse(1))/ &
+      total_pressure = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_p)) + radiation_pressure
+      total_energy = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_e)) + radiation_energy
+      total_entropy = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_s)) + radiation_entropy
+      chi_rho = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_chi_rho))*opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_p))/ &
            total_pressure
-      chi_t6 = (opal_eos%eos_output(opal_eos%eos_index_inverse(1))*opal_eos%eos_output(opal_eos%eos_index_inverse(7)) &
+      chi_t6 = (opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_p))*opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_chi_t)) &
            + 4.0d0*radiation_pressure)/total_pressure
-      molar_specific_heat = (opal_eos%eos_output(opal_eos%eos_index_inverse(5))*moles_per_ev/ &
+      molar_specific_heat = (opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_cv))*moles_per_ev/ &
            mean_molecular_weight + 4.0d0*radiation_energy/t6_temperature)
       gamma3_minus1 = total_pressure*chi_t6/(molar_specific_heat*density* &
            t6_temperature)
@@ -68,7 +68,7 @@ subroutine radsub(t6_temperature, density, total_moles, &
 !     fully-ionized, and has no radiation correction
 !     cvt=(eos(5)*molenak/tmass+4.*er/t6)
 !    x  /molenak
-      de_drho_at_t = opal_eos%eos_output(opal_eos%eos_index_inverse(4)) - radiation_energy/density
+      de_drho_at_t = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_dedrho)) - radiation_energy/density
       unit_ratio = unit_factor/unit_factor_legacy
       total_pressure = total_pressure*unit_ratio
 ! MHP 10/02 EN is never used; should this be ET=ET*REVISE???
@@ -76,15 +76,15 @@ subroutine radsub(t6_temperature, density, total_moles, &
       total_entropy = total_entropy*unit_ratio
 ! DEDRHOA is never used; should this be DEDRHOAT=DEDRHOAT*REVISE????
 !      DEDRHOA=DEDRHOA*REVISE
-      opal_eos%eos_output(opal_eos%eos_index_inverse(1)) = total_pressure
-      opal_eos%eos_output(opal_eos%eos_index_inverse(2)) = total_energy
-      opal_eos%eos_output(opal_eos%eos_index_inverse(3)) = total_entropy
-      opal_eos%eos_output(opal_eos%eos_index_inverse(4)) = de_drho_at_t
-      opal_eos%eos_output(opal_eos%eos_index_inverse(5)) = molar_specific_heat
-      opal_eos%eos_output(opal_eos%eos_index_inverse(6)) = chi_rho
-      opal_eos%eos_output(opal_eos%eos_index_inverse(7)) = chi_t6
-      opal_eos%eos_output(opal_eos%eos_index_inverse(8)) = gamma1
-      opal_eos%eos_output(opal_eos%eos_index_inverse(9)) = gamma2_over_gamma2_minus1
-      opal_eos%eos_output(opal_eos%eos_index_inverse(10)) = gamma3_minus1
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_p)) = total_pressure
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_e)) = total_energy
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_s)) = total_entropy
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_dedrho)) = de_drho_at_t
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_cv)) = molar_specific_heat
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_chi_rho)) = chi_rho
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_chi_t)) = chi_t6
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_gamma1)) = gamma1
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_gamma2_ratio)) = gamma2_over_gamma2_minus1
+      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_gamma3m1)) = gamma3_minus1
       return
 end subroutine radsub

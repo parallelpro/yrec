@@ -17,7 +17,7 @@ subroutine readcoeos01(ierr)
       use luout_lib
       implicit none
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 191
+      integer, parameter :: mx = n_eos_mx, mv = n_eos_mv, nr = n_eos01_nr, nt = n_eos01_nt
 
       character(len=1) :: blank_line
 
@@ -33,7 +33,7 @@ subroutine readcoeos01(ierr)
 
       blank_line = ' '
 
-      if (opal_eos%readcoeos01_init_flag.ne.12345678) then
+      if (opal_eos%readcoeos01_init_flag.ne.opal_flag_set) then
          do x_idx = 1, mx
             do var_idx = 1, mv
                do t6_idx = 1, nt
@@ -43,7 +43,7 @@ subroutine readcoeos01(ierr)
                end do
             end do
          end do
-         opal_eos%readcoeos01_init_flag = 12345678
+         opal_eos%readcoeos01_init_flag = opal_flag_set
       end if
 
       close (2)

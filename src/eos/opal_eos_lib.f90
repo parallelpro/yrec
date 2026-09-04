@@ -38,6 +38,38 @@ module opal_eos_lib
       integer, parameter :: n_eos95_nr = 77, n_eos95_nt = 56
       integer, parameter :: n_eos01_nr = 169, n_eos01_nt = 191
       integer, parameter :: n_eos06_nr = 169, n_eos06_nt = 197
+! Variable numbers of the OPAL EOS results (the slots of
+! opal_eos%eos_output / eos_output_06 and the arguments of
+! eos_index_inverse / eos_index_inverse_06): the 1995 and 2006 tables
+! carry the same ten variables in the same order. Units as documented
+! in esac.f90 (pressure in 1e12 dyn/cm**2, energy in 1e12 erg/g, ...).
+      integer, parameter :: i_opal_p = 1            ! pressure
+      integer, parameter :: i_opal_e = 2            ! internal energy
+      integer, parameter :: i_opal_s = 3            ! entropy
+      integer, parameter :: i_opal_dedrho = 4       ! dE/dRho at constant T6
+      integer, parameter :: i_opal_cv = 5           ! dE/dT6 at constant volume
+      integer, parameter :: i_opal_chi_rho = 6      ! dlogP/dlogRho at constant T6
+      integer, parameter :: i_opal_chi_t = 7        ! dlogP/dlogT6 at constant Rho
+      integer, parameter :: i_opal_gamma1 = 8       ! gamma1
+      integer, parameter :: i_opal_gamma2_ratio = 9 ! gamma2/(gamma2-1)
+      integer, parameter :: i_opal_gamma3m1 = 10    ! gamma3-1
+! The 2001 tables (eos_output_01 / eos_index_inverse_01) carry no
+! dE/dRho variable, so every slot after entropy is one lower.
+      integer, parameter :: i_opal01_p = 1
+      integer, parameter :: i_opal01_e = 2
+      integer, parameter :: i_opal01_s = 3
+      integer, parameter :: i_opal01_cv = 4
+      integer, parameter :: i_opal01_chi_rho = 5
+      integer, parameter :: i_opal01_chi_t = 6
+      integer, parameter :: i_opal01_gamma1 = 7
+      integer, parameter :: i_opal01_gamma2_ratio = 8
+      integer, parameter :: i_opal01_gamma3m1 = 9
+! Density returned by rhoofp/rhoofp01/rhoofp06 when the (P,T6) point
+! is not in the table (the oeqos* callers test for .le. -998).
+      double precision, parameter :: opal_rho_not_found = -999.0d0
+! Value of the table_loaded_flag / readco*_init_flag members once the
+! corresponding tables have been read.
+      integer, parameter :: opal_flag_set = 12345678
 ! Loop variable for the repeat-count array constructors used below to
 ! transcribe the original DATA statements' "N*value" runs -- must be a
 ! separately-declared integer in scope for the implied-do to resolve

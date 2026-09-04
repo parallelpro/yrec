@@ -31,9 +31,9 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
            density
       integer, intent(in) :: deriv_order, rad_flag
 
-      integer, parameter :: mx = 5, nr = 169, nt = 197
+      integer, parameter :: mx = n_eos_mx, nr = n_eos06_nr, nt = n_eos06_nt
 
-      double precision :: species_mass_fraction(7)
+      double precision :: species_number_fraction(7)
       double precision :: molar_gas_constant_mbcc
       character(len=15) :: routine_id
 
@@ -78,8 +78,8 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       t6_value = t6_temperature
       density_value = density
 !
-      if (opal_eos%table_loaded_flag.ne.12345678) then
-         opal_eos%table_loaded_flag = 12345678
+      if (opal_eos%table_loaded_flag.ne.opal_flag_set) then
+         opal_eos%table_loaded_flag = opal_flag_set
          do index_idx = 1, 10
             do species_idx = 1, 10
                if (opal_eos%eos_var_order_06(index_idx).eq.species_idx) &
@@ -368,24 +368,24 @@ subroutine esac06(hydrogen_fraction, t6_temperature, density, &
       end do
       if (eos_var_idx > deriv_order) then
       pressure_scale = t6_temperature*density
-      opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1))* &
+      opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(i_opal_p)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(i_opal_p))* &
            pressure_scale   ! interpolated in p/po
 ! Only slots that this call actually re-interpolated (index <= deriv_order)
 ! are rescaled; the original scaled E and cv unconditionally, so the
 ! deriv_order=1 trial calls from the rho(P,T) inversion compounded the
 ! stale E and cv slots by T6 and moles*R/mu on every call.
-      if (opal_eos%eos_index_inverse_06(2) <= deriv_order) &
-           opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2))* &
+      if (opal_eos%eos_index_inverse_06(i_opal_e) <= deriv_order) &
+           opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(i_opal_e)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(i_opal_e))* &
            t6_temperature   ! interpolated in E/T6
       mean_molecular_weight = gmass06(hydrogen_fraction, opal_eos%table_metal_fraction_06, &
            total_moles, ground_state_energy, metal_mole_fraction, &
-           species_mass_fraction)
+           species_number_fraction)
       if (rad_flag.eq.1) then
          call radsub06(rad_flag, t6_temperature, density, total_moles, &
               mean_molecular_weight)
       else
-         if (opal_eos%eos_index_inverse_06(5) <= deriv_order) &
-              opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(5))* &
+         if (opal_eos%eos_index_inverse_06(i_opal_cv) <= deriv_order) &
+              opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(i_opal_cv)) = opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(i_opal_cv))* &
               total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return

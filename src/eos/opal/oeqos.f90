@@ -67,18 +67,18 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
            deriv_order, rad_flag, ierr, *999)
       if (ierr /= 0) return
 
-      if (abs((p_e12-opal_eos%eos_output(1))/p_e12).gt.0.5d-6) then
-         write(run_log_unit,*) p_e12, opal_eos%eos_output(1)
+      if (abs((p_e12-opal_eos%eos_output(i_opal_p))/p_e12).gt.0.5d-6) then
+         write(run_log_unit,*) p_e12, opal_eos%eos_output(i_opal_p)
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
-      dlnrho_dlnp = 1.0d0/opal_eos%eos_output(6)
-      dlnrho_dlnt = -opal_eos%eos_output(7)/opal_eos%eos_output(6)
+      dlnrho_dlnp = 1.0d0/opal_eos%eos_output(i_opal_chi_rho)
+      dlnrho_dlnt = -opal_eos%eos_output(i_opal_chi_t)/opal_eos%eos_output(i_opal_chi_rho)
 
-      specific_heat_cp = 1.0d6*opal_eos%eos_output(5)*opal_eos%eos_output(8)/opal_eos%eos_output(6)
-      adiabatic_gradient = 1.0d0/opal_eos%eos_output(9)
+      specific_heat_cp = 1.0d6*opal_eos%eos_output(i_opal_cv)*opal_eos%eos_output(i_opal_gamma1)/opal_eos%eos_output(i_opal_chi_rho)
+      adiabatic_gradient = 1.0d0/opal_eos%eos_output(i_opal_gamma2_ratio)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)

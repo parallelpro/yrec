@@ -21,7 +21,7 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
            pressure_e12
       integer, intent(in) :: rad_flag
 
-      integer, parameter :: mx = 5, nt = 191
+      integer, parameter :: mx = n_eos_mx, nt = n_eos01_nt
 
 ! density_index_edge(t6_idx): highest valid density-grid index for
 ! temperature-grid row t6_idx (a local copy, DATA-initialized here;
@@ -64,7 +64,7 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
       radiation_pressure = 0.0d0
       pressure_no_rad = pressure_e12 - radiation_pressure
 
-      if (opal_eos%table_loaded_flag.ne.12345678) then
+      if (opal_eos%table_loaded_flag.ne.opal_flag_set) then
          hydrogen_fraction_dbg = 0.5d0
          t6_dbg = 1.0d0
          density_dbg = 0.001d0
@@ -72,7 +72,7 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          call esac01(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
               rad_flag, ierr, *999)
          if (ierr /= 0) then
-            rhoofp01 = -999.0d0
+            rhoofp01 = opal_rho_not_found
             return
          end if
       end if
@@ -114,7 +114,7 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
       if ((pressure_no_rad.gt.1.25d0*pressure_max) .or. &
            (pressure_no_rad.lt.pressure_min)) then
 !        requested pressure-temperature not in table
-         rhoofp01 = -999.0d0
+         rhoofp01 = opal_rho_not_found
          return
       end if
 
@@ -123,10 +123,10 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
       call esac01(hydrogen_fraction, t6_temperature, density_trial1, 1, &
            rad_flag, ierr, *999)
       if (ierr /= 0) then
-         rhoofp01 = -999.0d0
+         rhoofp01 = opal_rho_not_found
          return
       end if
-      pressure_trial1 = opal_eos%eos_output_01(1)
+      pressure_trial1 = opal_eos%eos_output_01(i_opal01_p)
       if (pressure_trial1.gt.pressure_no_rad) then
          pressure_trial2 = pressure_trial1
          density_trial2 = density_trial1
@@ -135,10 +135,10 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          call esac01(hydrogen_fraction, t6_temperature, density_trial1, 1, &
               rad_flag, ierr, *999)
          if (ierr /= 0) then
-            rhoofp01 = -999.0d0
+            rhoofp01 = opal_rho_not_found
             return
          end if
-         pressure_trial1 = opal_eos%eos_output_01(1)
+         pressure_trial1 = opal_eos%eos_output_01(i_opal01_p)
       else
          density_trial2 = 5.0d0*density_trial1
          if (density_trial2.gt.opal_eos%density_grid_01(density_index_edge(t6_bisect_idx))) &
@@ -146,10 +146,10 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          call esac01(hydrogen_fraction, t6_temperature, density_trial2, 1, &
               rad_flag, ierr, *999)
          if (ierr /= 0) then
-            rhoofp01 = -999.0d0
+            rhoofp01 = opal_rho_not_found
             return
          end if
-         pressure_trial2 = opal_eos%eos_output_01(1)
+         pressure_trial2 = opal_eos%eos_output_01(i_opal01_p)
       end if
 
       refine_count = 0
@@ -160,10 +160,10 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
       call esac01(hydrogen_fraction, t6_temperature, density_trial3, 1, &
            rad_flag, ierr, *999)
       if (ierr /= 0) then
-         rhoofp01 = -999.0d0
+         rhoofp01 = opal_rho_not_found
          return
       end if
-      pressure_trial3 = opal_eos%eos_output_01(1)
+      pressure_trial3 = opal_eos%eos_output_01(i_opal01_p)
       if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.0.5d-7) then
          rhoofp01 = density_trial3
          return
@@ -173,19 +173,19 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          pressure_trial2 = pressure_trial3
          if (refine_count.lt.11) cycle refine
 !        no convergence after 10 tries
-         rhoofp01 = -999.0d0
+         rhoofp01 = opal_rho_not_found
          return
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
          if (refine_count.lt.11) cycle refine
 !        no convergence after 10 tries
-         rhoofp01 = -999.0d0
+         rhoofp01 = opal_rho_not_found
          return
       end if
       end do refine
   999 continue
 !     esac01 took its alternate return: failed to find rho
-      rhoofp01 = -999.0d0
+      rhoofp01 = opal_rho_not_found
       return
 end function rhoofp01

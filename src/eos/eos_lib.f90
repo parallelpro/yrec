@@ -248,7 +248,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       use phys_const_lib
       use scv_eos_lib
       implicit none
-      integer, parameter :: nts = 63
+      integer, parameter :: nts = scv_nt
 
       character(len=256), intent(in) :: fermi_table_path
       character(len=256), intent(in) :: scv_h_table_path, &
@@ -416,8 +416,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
             return
          end if
   100    continue
-         gamma1 = opal_eos%eos_output_06(8)
-         adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(9)
+         gamma1 = opal_eos%eos_output_06(i_opal_gamma1)
+         adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(i_opal_gamma2_ratio)
       else
          x_local = hydrogen_fraction
          temperature_local = temperature_1e6k*1.0d6

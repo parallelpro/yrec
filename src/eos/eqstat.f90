@@ -331,10 +331,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       integer, intent(inout) :: saha_state
 ! --- locals ---
       integer :: num_species, species_idx
-      double precision :: atomic_weights(4), atomic_weights_full(12)
+      double precision :: inverse_atomic_weights(4), atomic_weights_full(12)
       double precision :: saha_ramp_width, saha_ramp_scale
       data num_species/12/
-      data atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
+      data inverse_atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
       data saha_ramp_width, saha_ramp_scale/0.500d0, 2.000d0/
       data atomic_weights_full/23.0d0, 26.99d0, 24.32d0, 55.86d0, 28.1d0, &
            12.015d0, 1.008d0, 16.0d0, 14.01d0, 39.96d0, 20.19d0, 4.004d0/
@@ -431,10 +431,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                end do
             end if
          else
-            dfx1 = dfx1*atomic_weights(1)
-            dfx12 = dfx12*atomic_weights(3)
+            dfx1 = dfx1*inverse_atomic_weights(1)
+            dfx12 = dfx12*inverse_atomic_weights(3)
             dfx4 = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
-                 hydrogen_fraction - metal_fraction)*atomic_weights(2)
+                 hydrogen_fraction - metal_fraction)*inverse_atomic_weights(2)
 !           ASSUME EXCESS Z(METALS) IS IN THE FORM OF CARBON(12)
             ion_mean_weight_inverse = eos_mix%amuenv + dfx1 + dfx4 + dfx12
             amu_inverse = 1.0d0/ion_mean_weight_inverse
@@ -470,8 +470,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       electron_degeneracy_parameter = 0.0d0
       if (.not.need_saha_solution) then
 !        COMPUTE VALUES FOR FULLY IONIZED GAS AND RETURN
-         electron_mean_weight_inverse = hydrogen_fraction*atomic_weights(1) &
-              + (1.0d0 - hydrogen_fraction)*atomic_weights(4)
+         electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) &
+              + (1.0d0 - hydrogen_fraction)*inverse_atomic_weights(4)
          specific_gas_constant = gas_constant*(ion_mean_weight_inverse + &
               electron_mean_weight_inverse)
          ion_fraction(1) = 1.0d0
@@ -538,8 +538,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !     Bypass relativistic EOS (fully_ionized_eos) if in low temperature region
       if (.not. skip_relativistic_eos) then
 !     COMPUTE VALUES FOR FULLY IONIZED GAS
-      electron_mean_weight_inverse = hydrogen_fraction*atomic_weights(1) + &
-           (1.0d0 - hydrogen_fraction)*atomic_weights(4)
+      electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) + &
+           (1.0d0 - hydrogen_fraction)*inverse_atomic_weights(4)
       specific_gas_constant = gas_constant*(ion_mean_weight_inverse + &
            electron_mean_weight_inverse)
       ion_fraction(1) = 1.0d0

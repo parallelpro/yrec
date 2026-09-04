@@ -25,7 +25,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       use luout_lib
       use numerics_lib
       implicit none
-      integer, parameter :: ivarx = 25
+      integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: ndimt = 8
 
       double precision, intent(in) :: log10_pressure, log10_temperature, &

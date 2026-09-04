@@ -24,9 +24,11 @@ subroutine build_scv_envelope_table
       use scv_eos_lib
       use math_lib
       implicit none
-      integer, parameter :: nts = 63
+      integer, parameter :: nts = scv_nt
 
-      double precision :: interp_x(3), t_interp_weight(3), &
+! interp_x: the three abscissae handed to inter3; interp_f: the three
+! tabulated values combined with the weights inter3 returns.
+      double precision :: interp_x(3), interp_f(3), t_interp_weight(3), &
            t_interp_dweight(3), p_interp_weight(3), p_interp_dweight(3)
       double precision :: hydrogen_atom_mass, helium_atom_mass, &
            boltzmann_constant
@@ -38,7 +40,11 @@ subroutine build_scv_envelope_table
 ! scale in the first two loops below, natural-log scale (CLN*...) in
 ! the final derivative loop -- this mirrors the original TL/PL reuse.
       double precision :: log_t_work, log_p_work, ln_t_work, temp_value
-      double precision :: helium_fraction_local, one_minus_y_local, &
+! helium_fraction_hhe: Y = 1 - X of the pure H/He mixture used for the
+! entropy of mixing; helium_fraction_local: Y = 1 - X - Z of the
+! envelope mixture.
+      double precision :: helium_fraction_hhe, one_minus_y_local
+      double precision :: helium_fraction_local, &
            hydrogen_fraction_local, metal_fraction_local
       double precision :: density_h, density_he, density_z, density_mix
       double precision :: hydrogen_number_density, helium_number_density, &
@@ -72,16 +78,16 @@ subroutine build_scv_envelope_table
                  tlogx(t_idx)))*tabley(t_idx,p_idx,7)**2/tabley(t_idx,p_idx,8)
 ! COMPUTE THE ENTROPY OF MIXING.
 ! NUMBER DENSITY OF HYDROGEN AND HELIUM
-            helium_fraction_local = 1.0d0-star%envelope_hydrogen_fraction
-            one_minus_y_local = 1.0d0 - helium_fraction_local
+            helium_fraction_hhe = 1.0d0-star%envelope_hydrogen_fraction
+            one_minus_y_local = 1.0d0 - helium_fraction_hhe
             density_h = exp(ln10*tablex(t_idx,p_idx,4))
             density_he = exp(ln10*tabley(t_idx,p_idx,4))
             density_mix = 1.0d0/(one_minus_y_local/density_h + &
-                 helium_fraction_local/density_he)
+                 helium_fraction_hhe/density_he)
             hydrogen_number_density = 2.0d0*one_minus_y_local*density_mix/ &
                  hydrogen_atom_mass/(1.0d0+3.0d0*tablex(t_idx,p_idx,2)+ &
                  tablex(t_idx,p_idx,3))
-            helium_number_density = 3.0d0*helium_fraction_local*density_mix/ &
+            helium_number_density = 3.0d0*helium_fraction_hhe*density_mix/ &
                  helium_atom_mass/(1.0d0 + 2.0d0*tabley(t_idx,p_idx,2) + &
                  tabley(t_idx,p_idx,3))
 ! HYDROGEN AND HELIUM ELECTRON NUMBER DENSITIES
@@ -99,7 +105,7 @@ subroutine build_scv_envelope_table
                smix(t_idx,p_idx) = 0.0d0
             else
                mixing_beta = (hydrogen_atom_mass/helium_atom_mass)* &
-                    (helium_fraction_local/one_minus_y_local)
+                    (helium_fraction_hhe/one_minus_y_local)
                mixing_gamma = 1.5d0*(1.0d0 + tablex(t_idx,p_idx,3)+ 3.0d0* &
                     tablex(t_idx,p_idx,2))/(1.0d0+2.0d0*tabley(t_idx,p_idx,2)+ &
                     tabley(t_idx,p_idx,3))
@@ -266,24 +272,24 @@ subroutine build_scv_envelope_table
            do k_idx = 1,3
               ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
-            interp_x(k_idx) = log(tablenv(ii,jj,5))
+            interp_f(k_idx) = log(tablenv(ii,jj,5))
            end do
-           dlncp_dlnt = interp_x(1)*t_interp_dweight(1)+ &
-                interp_x(2)*t_interp_dweight(2)+interp_x(3)*t_interp_dweight(3)
+           dlncp_dlnt = interp_f(1)*t_interp_dweight(1)+ &
+                interp_f(2)*t_interp_dweight(2)+interp_f(3)*t_interp_dweight(3)
 ! DERIVATIVES OF DU/DT
            do k_idx = 1,3
               ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
-            interp_x(k_idx) = tablenv(ii,jj,6)
-              interp_x(k_idx) = tablenv(idtt+k_idx-1,p_idx,6)
+            interp_f(k_idx) = tablenv(ii,jj,6)
+              interp_f(k_idx) = tablenv(idtt+k_idx-1,p_idx,6)
            end do
-           dqut_dlnt = interp_x(1)*t_interp_dweight(1)+ &
-                interp_x(2)*t_interp_dweight(2)+interp_x(3)*t_interp_dweight(3)
+           dqut_dlnt = interp_f(1)*t_interp_dweight(1)+ &
+                interp_f(2)*t_interp_dweight(2)+interp_f(3)*t_interp_dweight(3)
            do k_idx = 1,3
-              interp_x(k_idx) = tablenv(t_idx,idp+k_idx-1,6)
+              interp_f(k_idx) = tablenv(t_idx,idp+k_idx-1,6)
            end do
-           dqut_dlnp = interp_x(1)*p_interp_dweight(1)+ &
-                interp_x(2)*p_interp_dweight(2)+interp_x(3)*p_interp_dweight(3)
+           dqut_dlnp = interp_f(1)*p_interp_dweight(1)+ &
+                interp_f(2)*p_interp_dweight(2)+interp_f(3)*p_interp_dweight(3)
 ! D/D LN RHO (D LN P/D LN RHO)
            do k_idx = 1,3
               interp_x(k_idx) = ln10*tablenv(t_idx,idp+k_idx-1,2)

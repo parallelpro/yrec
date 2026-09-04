@@ -22,14 +22,14 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
       use mhd_eos_lib
       use numerics_lib
       implicit none
-      integer, parameter :: ivarc = 20
-      integer, parameter :: ivarx = 25
-      integer, parameter :: nt1m = 16
-      integer, parameter :: nt2m = 79
-      integer, parameter :: ntxm = 10
-      integer, parameter :: nr1m = 87
-      integer, parameter :: nr2m = 21
-      integer, parameter :: nrxm = 21
+      integer, parameter :: ivarc = mhd_ivarc
+      integer, parameter :: ivarx = mhd_ivarx
+      integer, parameter :: nt1m = mhd_nt1m
+      integer, parameter :: nt2m = mhd_nt2m
+      integer, parameter :: ntxm = mhd_ntxm
+      integer, parameter :: nr1m = mhd_nr1m
+      integer, parameter :: nr2m = mhd_nr2m
+      integer, parameter :: nrxm = mhd_nrxm
 !     ZAMS TABLES (LABELLED BY A,B,C)
       integer, intent(in) :: table_selector, ndimt
       double precision, intent(in) :: log10_pressure, log10_temperature

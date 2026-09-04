@@ -54,32 +54,32 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
       call mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
            mhdpx_r10, ierr)
       if (ierr /= 0) return
-      log10_density = mhd_eos%mhd_output(1)
+      log10_density = mhd_eos%mhd_output(i_mhd_log10_rho)
       density = exp10(log10_density)
-      dlnrho_dlnp = 1.0d0/mhd_eos%mhd_output(4)
-      chi_rho = mhd_eos%mhd_output(4)
-      chi_t = mhd_eos%mhd_output(5)
+      dlnrho_dlnp = 1.0d0/mhd_eos%mhd_output(i_mhd_chi_rho)
+      chi_rho = mhd_eos%mhd_output(i_mhd_chi_rho)
+      chi_t = mhd_eos%mhd_output(i_mhd_chi_t)
       dlnrho_dlnt = -chi_t/chi_rho
-      log10_specific_heat_cp = mhd_eos%mhd_output(9)
+      log10_specific_heat_cp = mhd_eos%mhd_output(i_mhd_log10_cp)
       specific_heat_cp = exp10(log10_specific_heat_cp)
-      specific_heat_cp_dp = dlnrho_dlnp*mhd_eos%mhd_output(12)
-      specific_heat_cp_dt = mhd_eos%mhd_output(13) + mhd_eos%mhd_output(12)*dlnrho_dlnt
-      adiabatic_gradient = mhd_eos%mhd_output(8)
-      adiabatic_gradient_dp = dlnrho_dlnp*mhd_eos%mhd_output(10)*cnvs/adiabatic_gradient
-      adiabatic_gradient_dt = (mhd_eos%mhd_output(11) + mhd_eos%mhd_output(10)*dlnrho_dlnt)* &
+      specific_heat_cp_dp = dlnrho_dlnp*mhd_eos%mhd_output(i_mhd_dlogcp_dlogrho)
+      specific_heat_cp_dt = mhd_eos%mhd_output(i_mhd_dlogcp_dlogt) + mhd_eos%mhd_output(i_mhd_dlogcp_dlogrho)*dlnrho_dlnt
+      adiabatic_gradient = mhd_eos%mhd_output(i_mhd_grad_ad)
+      adiabatic_gradient_dp = dlnrho_dlnp*mhd_eos%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*cnvs/adiabatic_gradient
+      adiabatic_gradient_dt = (mhd_eos%mhd_output(i_mhd_dgrad_ad_dlog10_t) + mhd_eos%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*dlnrho_dlnt)* &
            cnvs/adiabatic_gradient
       dlnrho_dlnp_dt = dlnrho_dlnt*(adiabatic_gradient_dp - 1.0d0 + &
            dlnrho_dlnp + specific_heat_cp_dp)
       dlnrho_dlnt_dt = dlnrho_dlnt*(adiabatic_gradient_dt + 1.0d0 + &
            dlnrho_dlnt + specific_heat_cp_dt)
-      beta = exp10((mhd_eos%mhd_output(20) - mhd_eos%mhd_output(2)))
+      beta = exp10((mhd_eos%mhd_output(i_mhd_log10_pgas) - mhd_eos%mhd_output(i_mhd_log10_p)))
       beta_inverse = 1.0d0/beta
       beta14 = 1.0d0 - beta
       do ion_idx = 1, 3
-      ion_fraction(ion_idx) = mhd_eos%mhd_output(ion_idx+13)
+      ion_fraction(ion_idx) = mhd_eos%mhd_output(ion_idx+i_mhd_ion_frac_1-1)
       end do
-      electron_degeneracy_parameter = mhd_eos%mhd_output(18)
-      specific_gas_constant = exp10(mhd_eos%mhd_output(20))/(density*temperature)
+      electron_degeneracy_parameter = mhd_eos%mhd_output(i_mhd_eta)
+      specific_gas_constant = exp10(mhd_eos%mhd_output(i_mhd_log10_pgas))/(density*temperature)
       call mu(temperature, pressure, density, hydrogen_fraction, &
            metal_fraction, specific_gas_constant_check, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, beta)

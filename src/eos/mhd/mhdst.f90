@@ -21,15 +21,15 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       use mhd_eos_lib
       implicit none
 
-      integer, parameter :: ivarc = 20
-      integer, parameter :: ivarx = 25
-      integer, parameter :: nchem0 = 6
-      integer, parameter :: nt1m = 16
-      integer, parameter :: nt2m = 79
-      integer, parameter :: ntxm = 10
-      integer, parameter :: nr1m = 87
-      integer, parameter :: nr2m = 21
-      integer, parameter :: nrxm = 21
+      integer, parameter :: ivarc = mhd_ivarc
+      integer, parameter :: ivarx = mhd_ivarx
+      integer, parameter :: nchem0 = mhd_nchem0
+      integer, parameter :: nt1m = mhd_nt1m
+      integer, parameter :: nt2m = mhd_nt2m
+      integer, parameter :: ntxm = mhd_ntxm
+      integer, parameter :: nr1m = mhd_nr1m
+      integer, parameter :: nr2m = mhd_nr2m
+      integer, parameter :: nrxm = mhd_nrxm
 
       integer, intent(in) :: unit_zams_a, unit_zams_b, unit_zams_c, &
            unit_centre1, unit_centre2, unit_centre3, unit_centre4, &

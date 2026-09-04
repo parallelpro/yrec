@@ -71,13 +71,13 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       if (ierr /= 0) return
 
 
-      dlnrho_dlnp = 1.0d0/opal_eos%eos_output_06(6)               ! O2006 EOS(6) is dlogP/dlogRho at const T6
-      dlnrho_dlnt = -opal_eos%eos_output_06(7)/opal_eos%eos_output_06(6)       ! O2006 EOS(7) is dlogp/dlogT6 at const Rho
-      specific_heat_cp = 1.0d6*opal_eos%eos_output_06(5)*opal_eos%eos_output_06(8)/opal_eos%eos_output_06(6)
+      dlnrho_dlnp = 1.0d0/opal_eos%eos_output_06(i_opal_chi_rho)               ! O2006 EOS(6) is dlogP/dlogRho at const T6
+      dlnrho_dlnt = -opal_eos%eos_output_06(i_opal_chi_t)/opal_eos%eos_output_06(i_opal_chi_rho)       ! O2006 EOS(7) is dlogp/dlogT6 at const Rho
+      specific_heat_cp = 1.0d6*opal_eos%eos_output_06(i_opal_cv)*opal_eos%eos_output_06(i_opal_gamma1)/opal_eos%eos_output_06(i_opal_chi_rho)
                                       ! O2006 EOS(5) is the specific heat. dE/dT6
                                       !              at const Vol
                                       ! O2006 EOS(8) is gamma1
-      adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(9)         ! O2006 EOS(9) is gamma2/(gamma2-1)
+      adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(i_opal_gamma2_ratio)         ! O2006 EOS(9) is gamma2/(gamma2-1)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)

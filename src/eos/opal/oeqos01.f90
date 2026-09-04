@@ -72,11 +72,11 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
 
 ! The 2001 tables carry no dE/dRho slot, so the slot numbers are one
 ! lower than in oeqos.f90/oeqos06.f90 (see esac01.f90's header).
-      dlnrho_dlnp = 1.0d0/opal_eos%eos_output_01(5)
-      dlnrho_dlnt = -opal_eos%eos_output_01(6)/opal_eos%eos_output_01(5)
+      dlnrho_dlnp = 1.0d0/opal_eos%eos_output_01(i_opal01_chi_rho)
+      dlnrho_dlnt = -opal_eos%eos_output_01(i_opal01_chi_t)/opal_eos%eos_output_01(i_opal01_chi_rho)
 
-      specific_heat_cp = 1.0d6*opal_eos%eos_output_01(4)*opal_eos%eos_output_01(7)/opal_eos%eos_output_01(5)
-      adiabatic_gradient = 1.0d0/opal_eos%eos_output_01(8)
+      specific_heat_cp = 1.0d6*opal_eos%eos_output_01(i_opal01_cv)*opal_eos%eos_output_01(i_opal01_gamma1)/opal_eos%eos_output_01(i_opal01_chi_rho)
+      adiabatic_gradient = 1.0d0/opal_eos%eos_output_01(i_opal01_gamma2_ratio)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)

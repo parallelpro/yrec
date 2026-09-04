@@ -18,7 +18,7 @@ subroutine readco(ierr)
       use luout_lib
       implicit none
 
-      integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
+      integer, parameter :: mx = n_eos_mx, mv = n_eos_mv, nr = n_eos95_nr, nt = n_eos95_nt
 
       character(len=1) :: blank_line
 
@@ -34,7 +34,7 @@ subroutine readco(ierr)
 
       blank_line = ' '
 
-      if (opal_eos%readco_init_flag.ne.12345678) then
+      if (opal_eos%readco_init_flag.ne.opal_flag_set) then
          do x_idx = 1, mx
             do var_idx = 1, mv
                do t6_idx = 1, nt
@@ -44,7 +44,7 @@ subroutine readco(ierr)
                end do
             end do
          end do
-         opal_eos%readco_init_flag = 12345678
+         opal_eos%readco_init_flag = opal_flag_set
       end if
 
 ! ..... read  tables (the file is opened on star%ctrl%iopale by read_controls)

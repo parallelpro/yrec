@@ -24,7 +24,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
       use math_lib
       implicit none
 
-      integer, parameter :: nts = 63
+      integer, parameter :: nts = scv_nt
 
       double precision, intent(in) :: log10_temperature, temperature
       double precision, intent(in) :: pressure
