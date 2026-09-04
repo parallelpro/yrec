@@ -43,6 +43,11 @@ CONTROLS_BUFFER_IMPORTERS = {
     "net/test/test_net.f90",
 }
 
+# Named constants in controls_lib that are not buffer state: any file
+# may `use controls_lib, only: <these>` (an only-list drawn entirely
+# from this set is not a buffer import).
+CONTROLS_LIB_CONSTANTS = {"max_runs"}
+
 # domain -> names callable from outside that domain.
 PUBLIC = {
     # The three eos_lib facade entries. Everything else in eos/
@@ -211,6 +216,11 @@ def main():
             continue
         for line in strip_comments(path.read_text()).splitlines():
             if line.strip().lower().startswith("use controls_lib"):
+                m = re.match(r"^\s*use\s+controls_lib\s*,\s*only\s*:\s*(.*)$",
+                             line, re.IGNORECASE)
+                if m and set(x.strip() for x in m.group(1).split(",")) \
+                        <= CONTROLS_LIB_CONSTANTS:
+                    continue
                 buffer_violations.append(rel)
                 break
     if buffer_violations:

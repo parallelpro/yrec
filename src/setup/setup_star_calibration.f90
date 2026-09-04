@@ -17,6 +17,7 @@
 subroutine setup_star_calibration
 
       use star_info_lib, only: star
+      use controls_lib, only: max_runs
       use luout_lib
       use phys_const_lib
       use math_lib
@@ -37,18 +38,18 @@ subroutine setup_star_calibration
       end if
       star%log_r_prev_model = 0
 !     SET UP RUN TO EVOLVE TO L, Teff IN HR-DIAGRM.
-!     THIS CONSISTS OF SETTING THE NUMBER OF RUNS TO THE MAXIMUM (50),
-!     AND COPYING THE RELEVANT PARAMETERS FROM THE FIRST TWO RUNS TO
-!     THE 48 CALIBRATING RUNS THAT FOLLOW.
-      star%job%num_runs = 50
-      do i = 2,50
+!     THIS CONSISTS OF SETTING THE NUMBER OF RUNS TO THE MAXIMUM
+!     (max_runs = 50), AND COPYING THE RELEVANT PARAMETERS FROM THE
+!     FIRST TWO RUNS TO THE 48 CALIBRATING RUNS THAT FOLLOW.
+      star%job%num_runs = max_runs
+      do i = 2,max_runs
          star%job%initial_x_array(i) = star%job%initial_x_array(1)
          star%job%initial_z_array(i) = star%job%initial_z_array(1)
          star%job%mixing_length_array(i) = star%job%mixing_length_array(1)
          star%job%has_senv0_array(i) = star%job%has_senv0_array(1)
          star%job%senv0_array(i) = star%job%senv0_array(1)
       end do
-      do i = 3,49,2
+      do i = 3,max_runs-1,2
          star%job%rescale_kind(i) = star%job%rescale_kind(1)
          star%job%first_call_flag(i) = .true.
          star%job%num_models(i) = star%job%num_models(1)
@@ -59,7 +60,7 @@ subroutine setup_star_calibration
             star%job%rescale_params(j,i) = star%job%rescale_params(j,1)
          end do
       end do
-      do i = 4,50,2
+      do i = 4,max_runs,2
          star%job%rescale_kind(i) = 1
          star%job%first_call_flag(i) = .false.
          star%job%num_models(i) = star%job%num_models(2)

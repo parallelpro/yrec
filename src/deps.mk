@@ -300,8 +300,8 @@ setup/map_user_inputs.o: controls_lib.mod star_info_lib.mod
 setup/rescale_model.o: eos_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 setup/rezone.o: kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 setup/rotation_stability_setup.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-setup/setup_solar_calibration.o: star_info_lib.mod
-setup/setup_star_calibration.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
+setup/setup_solar_calibration.o: controls_lib.mod star_info_lib.mod
+setup/setup_star_calibration.o: controls_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 setup/setups.o: atm_lib.mod atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod ttau_lib.mod yale_eos_lib.mod
 state/controls_sync_lib.o: controls_lib.mod star_info_lib.mod
 util/compute_timestep.o: phys_const_lib.mod star_info_lib.mod

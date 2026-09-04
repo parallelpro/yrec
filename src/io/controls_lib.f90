@@ -31,6 +31,16 @@
 module controls_lib
       implicit none
 
+! Maximum number of runs (kind cards) in one job: the dimension of
+! every per-run array below (the calibration protocols in
+! setup/setup_star_calibration.f90 / setup_solar_calibration.f90 fill
+! them up to this limit). tools/gen_controls_state.py substitutes the
+! literal value into the generated star%ctrl / star%job type bodies,
+! which star_info_lib includes without seeing this module. A named
+! constant, not buffer state -- tools/check_boundaries.py lets any
+! file `use controls_lib, only: max_runs`.
+      integer, parameter, public :: max_runs = 50
+
 ! 2026 MESA-style output: .true. -> the historical per-model streams
 ! (.track/.store); .false. -> MESA-format output (history.data-layout
 ! .history file; profiles to follow). Compile default .true. keeps
@@ -45,14 +55,14 @@ module controls_lib
 ! 2026 structure-limit stop conditions (MESA-style; a limit at its
 ! +-1d99 sentinel is disabled). Per kind card, like the other
 ! stopping criteria (target_end_age, central_*_stop):
-      double precision, public :: log_L_upper_limit(50) = 1.0d99
-      double precision, public :: log_L_lower_limit(50) = -1.0d99
-      double precision, public :: Teff_upper_limit(50) = 1.0d99
-      double precision, public :: Teff_lower_limit(50) = -1.0d99
-      double precision, public :: log_g_upper_limit(50) = 1.0d99
-      double precision, public :: log_g_lower_limit(50) = -1.0d99
-      double precision, public :: nu_max_upper_limit(50) = 1.0d99
-      double precision, public :: nu_max_lower_limit(50) = -1.0d99
+      double precision, public :: log_L_upper_limit(max_runs) = 1.0d99
+      double precision, public :: log_L_lower_limit(max_runs) = -1.0d99
+      double precision, public :: Teff_upper_limit(max_runs) = 1.0d99
+      double precision, public :: Teff_lower_limit(max_runs) = -1.0d99
+      double precision, public :: log_g_upper_limit(max_runs) = 1.0d99
+      double precision, public :: log_g_lower_limit(max_runs) = -1.0d99
+      double precision, public :: nu_max_upper_limit(max_runs) = 1.0d99
+      double precision, public :: nu_max_lower_limit(max_runs) = -1.0d99
 ! physical constants (2026): the solar mass and Newton's G, formerly
 ! hard-coded in setup/setups.f90. G_cgs < 0 (the default) keeps the
 ! historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set a
@@ -230,12 +240,12 @@ module controls_lib
 ! remaining two members, originally lendag/lsetdt) are not namelist
 ! values -- io/read_controls.f90 computes them from the above -- so they
 ! have no declaration-time default here.
-      double precision :: target_end_age(50) = 0.0d0
-      double precision :: timestep_override(50) = 0.0d0
-      double precision :: central_deuterium_stop(50) = 0.0d0
-      double precision :: central_hydrogen_stop(50) = 0.0d0
-      double precision :: central_helium_stop(50) = 0.0d0
-      logical :: end_age_stop_active(50), timestep_override_active(50)
+      double precision :: target_end_age(max_runs) = 0.0d0
+      double precision :: timestep_override(max_runs) = 0.0d0
+      double precision :: central_deuterium_stop(max_runs) = 0.0d0
+      double precision :: central_hydrogen_stop(max_runs) = 0.0d0
+      double precision :: central_helium_stop(max_runs) = 0.0d0
+      logical :: end_age_stop_active(max_runs), timestep_override_active(max_runs)
 
 ! former common/mhd/: use_mhd_eos is a NAMELIST /physics/ value
 ! (io/read_controls.f90's lmhd, kept local there and copy-assigned).
@@ -431,10 +441,10 @@ module controls_lib
 ! NAMELIST values with different canonical spellings, kept local in
 ! io/read_controls.f90 (with their own DATA defaults there) and
 ! copy-assigned, so likewise no default needed here.
-      double precision :: rescale_params(4,50)
-      integer :: rescale_kind(50)
-      integer :: num_models(50), num_runs
-      logical :: first_call_flag(50)
+      double precision :: rescale_params(4,max_runs)
+      integer :: rescale_kind(max_runs)
+      integer :: num_models(max_runs), num_runs
+      logical :: first_call_flag(max_runs)
 
 ! former common/ct2/: max_domega_global (originally dtwind) is a
 ! NAMELIST value with a different canonical spelling, kept local in
@@ -565,9 +575,9 @@ module controls_lib
 ! mixing_length_array/has_senv0_array/senv0_array (originally xenv0a/
 ! zenv0a/cmixla/lsenv0a/senv0a) are NAMELIST values with different
 ! canonical spellings, kept local in io/read_controls.f90 and copy-assigned.
-      double precision :: initial_x_array(50), initial_z_array(50), &
-           mixing_length_array(50), senv0_array(50)
-      logical :: has_senv0_array(50)
+      double precision :: initial_x_array(max_runs), initial_z_array(max_runs), &
+           mixing_length_array(max_runs), senv0_array(max_runs)
+      logical :: has_senv0_array(max_runs)
 
 ! former common/cals2/: luminosity_tolerance/radius_tolerance/
 ! zx_tolerance/calibrate_solar_model/calibrate_solar_zx/
@@ -590,8 +600,8 @@ module controls_lib
 ! copy-assigned. Evicted 2026 phase A: iolaol2/ioopal2 (now
 ! newunit locals of their table readers), nk to star%job%nk (the
 ! run-list cursor).
-      double precision :: rsclzc(50) = -1.0d0, rsclzm1(50) = -1.0d0, &
-           rsclzm2(50) = -1.0d0
+      double precision :: rsclzc(max_runs) = -1.0d0, rsclzm1(max_runs) = -1.0d0, &
+           rsclzm2(max_runs) = -1.0d0
       logical :: use_z_ramp
 
 ! former common/calstar/: target_luminosity_lsun/

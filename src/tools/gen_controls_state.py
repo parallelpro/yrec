@@ -75,6 +75,15 @@ TYPE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Named integer constants declared in controls_lib (e.g. max_runs)
+# that its array dims use. star_info_lib includes the generated type
+# bodies without `use controls_lib`, so the emitted dims carry the
+# literal value instead of the name.
+PARAM_RE = re.compile(
+    r"^\s*integer\s*,\s*parameter\s*(,\s*public)?\s*::\s*(\w+)\s*=\s*(\d+)\s*$",
+    re.IGNORECASE,
+)
+
 ZERO = {
     "double precision": "0.0d0",
     "integer": "0",
@@ -120,7 +129,12 @@ def split_entities(s):
 
 def parse():
     members = []  # (typespec, name, dims, init)
+    params = {}   # name -> literal value
     for line in joined_decl_lines(LIB.read_text()):
+        pm = PARAM_RE.match(line)
+        if pm:
+            params[pm.group(2)] = pm.group(3)
+            continue
         m = TYPE_RE.match(line)
         if not m:
             continue
@@ -130,6 +144,8 @@ def parse():
             if not em:
                 raise SystemExit(f"cannot parse entity: {ent!r}")
             name, dims, init = em.group(1), em.group(2) or "", em.group(4)
+            for pname, pval in params.items():
+                dims = re.sub(r"\b" + pname + r"\b", pval, dims)
             if init is None:
                 base = "character" if typespec.startswith("character") else typespec
                 init = ZERO[base]
