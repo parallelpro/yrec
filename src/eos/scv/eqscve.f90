@@ -198,93 +198,12 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       end if
 ! include radiation pressure in the equation of state.
       radiation_pressure = beta_complement*pressure
-! interpolate in pressure at 4 different temperature points.
-      do i = 1,4
-         ii = idtt+i-1
-         do k = 1,4
-            interp_nodes(k) = tablenv(idtt, &
-                 idp+k-1,1)
-         end do
-         do j = 1,5
-            do k = 1,4
-               ytab_work(k) = tablenv(ii,idp+k-1,j+1)
-            end do
-            call kspline(interp_nodes, ytab_work, spline_second_deriv)
-            call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-                 log10_gas_pressure, spline_value, jerr_gate)
-            ! 2026 numerics-gate opt-in (see numerics_lib): interpolation
-            ! failure returns via ierr instead of stopping.
-            if (jerr_gate /= 0) then
-               ierr = jerr_gate
-               return
-            end if
-            temp_grid(i,j) = spline_value
-!            TEMP(I,J)=FP(1)*TABLENV(II,IDP,J+1) +
-!     *      FP(2)*TABLENV(II,IDP+1,J+1) + FP(3)*TABLENV(II,IDP+2,J+1)
-!     *      + FP(4)*TABLENV(II,IDP+3,J+1)
-         end do
-      end do
-! interpolate in temperature
-      do k = 1,4
-         interp_nodes(k) = tlogx(k+idtt-1)
-      end do
-      do j = 1,5
-         do k = 1,4
-            ytab_work(k) = temp_grid(k,j)
-         end do
-         call kspline(interp_nodes, ytab_work, spline_second_deriv)
-         call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-              log10_temperature, spline_value, jerr_gate)
-         if (jerr_gate /= 0) then
-            ierr = jerr_gate
-            return
-         end if
-         interp_result(j) = spline_value
-      end do
+      call spline_cell(0, 0, interp_result)
+      if (ierr /= 0) return
 ! perform interpolation at adjacent temperature table points
       if (temp_needs_smoothing) then
-! interpolate in pressure at 4 different temperature points.
-      do i = 1,4
-         ii = idtt+i-1+temp_smooth_direction
-         do k = 1,4
-            interp_nodes(k) = tablenv(idtt, &
-                 idp+k-1,1)
-         end do
-         do j = 1,5
-            do k = 1,4
-               ytab_work(k) = tablenv(ii,idp+k-1,j+1)
-            end do
-            call kspline(interp_nodes, ytab_work, spline_second_deriv)
-            call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-                 log10_gas_pressure, spline_value, jerr_gate)
-            if (jerr_gate /= 0) then
-               ierr = jerr_gate
-               return
-            end if
-            temp_grid(i,j) = spline_value
-!            TEMP(I,J)=FP(1)*TABLENV(II,IDP,J+1) +
-!     *      FP(2)*TABLENV(II,IDP+1,J+1) + FP(3)*TABLENV(II,IDP+2,J+1)
-!     *      + FP(4)*TABLENV(II,IDP+3,J+1)
-         end do
-      end do
-! interpolate in temperature
-      do k = 1,4
-         interp_nodes(k) = tlogx(k+idtt+ &
-              temp_smooth_direction-1)
-      end do
-      do j = 1,5
-         do k = 1,4
-            ytab_work(k) = temp_grid(k,j)
-         end do
-         call kspline(interp_nodes, ytab_work, spline_second_deriv)
-         call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-              log10_temperature, spline_value, jerr_gate)
-         if (jerr_gate /= 0) then
-            ierr = jerr_gate
-            return
-         end if
-         interp_result_temp_shift(j) = spline_value
-      end do
+      call spline_cell(temp_smooth_direction, 0, interp_result_temp_shift)
+      if (ierr /= 0) return
       if (temp_smooth_direction.eq.-1) then
          do j = 1,5
             interp_result_temp_smoothed(j) = interp_result_temp_shift(j) + &
@@ -301,48 +220,8 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       end if
 ! perform interpolation at adjacent pressure table points
       if (press_needs_smoothing) then
-! interpolate in pressure at 4 different temperature points.
-      do i = 1,4
-         ii = idtt+i-1
-         do k = 1,4
-            interp_nodes(k) = tablenv(idtt, &
-                 idp+k-1+press_smooth_direction,1)
-         end do
-         do j = 1,5
-            do k = 1,4
-               ytab_work(k) = tablenv(ii,idp+k-1+ &
-                    press_smooth_direction,j+1)
-            end do
-            call kspline(interp_nodes, ytab_work, spline_second_deriv)
-            call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-                 log10_gas_pressure, spline_value, jerr_gate)
-            if (jerr_gate /= 0) then
-               ierr = jerr_gate
-               return
-            end if
-            temp_grid(i,j) = spline_value
-!            TEMP(I,J)=FP(1)*TABLENV(II,IDP,J+1) +
-!     *      FP(2)*TABLENV(II,IDP+1,J+1) + FP(3)*TABLENV(II,IDP+2,J+1)
-!     *      + FP(4)*TABLENV(II,IDP+3,J+1)
-         end do
-      end do
-! interpolate in temperature
-      do k = 1,4
-         interp_nodes(k) = tlogx(k+idtt-1)
-      end do
-      do j = 1,5
-         do k = 1,4
-            ytab_work(k) = temp_grid(k,j)
-         end do
-         call kspline(interp_nodes, ytab_work, spline_second_deriv)
-         call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-              log10_temperature, spline_value, jerr_gate)
-         if (jerr_gate /= 0) then
-            ierr = jerr_gate
-            return
-         end if
-         interp_result_press_shift(j) = spline_value
-      end do
+      call spline_cell(0, press_smooth_direction, interp_result_press_shift)
+      if (ierr /= 0) return
       if (press_smooth_direction.eq.-1) then
          do j = 1,5
             interp_result_press_smoothed(j) = interp_result_press_shift(j) + &
@@ -359,49 +238,9 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       end if
 ! perform interpolation at adjacent t+p table points
       if (press_needs_smoothing .and. temp_needs_smoothing) then
-! interpolate in pressure at 4 different temperature points.
-      do i = 1,4
-         ii = idtt+i-1 + temp_smooth_direction
-         do k = 1,4
-            interp_nodes(k) = tablenv(idtt, &
-                 idp+k-1+press_smooth_direction,1)
-         end do
-         do j = 1,5
-            do k = 1,4
-               ytab_work(k) = tablenv(ii,idp+k-1+ &
-                    press_smooth_direction,j+1)
-            end do
-            call kspline(interp_nodes, ytab_work, spline_second_deriv)
-            call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-                 log10_gas_pressure, spline_value, jerr_gate)
-            if (jerr_gate /= 0) then
-               ierr = jerr_gate
-               return
-            end if
-            temp_grid(i,j) = spline_value
-!            TEMP(I,J)=FP(1)*TABLENV(II,IDP,J+1) +
-!     *      FP(2)*TABLENV(II,IDP+1,J+1) + FP(3)*TABLENV(II,IDP+2,J+1)
-!     *      + FP(4)*TABLENV(II,IDP+3,J+1)
-         end do
-      end do
-! interpolate in temperature
-      do k = 1,4
-         interp_nodes(k) = tlogx(k+idtt-1 + &
-              temp_smooth_direction)
-      end do
-      do j = 1,5
-         do k = 1,4
-            ytab_work(k) = temp_grid(k,j)
-         end do
-         call kspline(interp_nodes, ytab_work, spline_second_deriv)
-         call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
-              log10_temperature, spline_value, jerr_gate)
-         if (jerr_gate /= 0) then
-            ierr = jerr_gate
-            return
-         end if
-         interp_result_both_shift(j) = spline_value
-      end do
+      call spline_cell(temp_smooth_direction, press_smooth_direction, &
+           interp_result_both_shift)
+      if (ierr /= 0) return
       end if
       if (temp_needs_smoothing) then
 ! add changes for both t and p interpolation
@@ -499,24 +338,12 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
 
       do i = 1,4
          ii = idtt+i-1
-         temp_grid(i,1) = press_interp_weights(1)*tablex(ii,idp,2) + &
-         press_interp_weights(2)*tablex(ii,idp+1,2) + &
-         press_interp_weights(3)*tablex(ii,idp+2,2) &
-         + press_interp_weights(4)*tablex(ii,idp+3,2)
-         temp_grid(i,2) = press_interp_weights(1)*tabley(ii,idp,2) + &
-         press_interp_weights(2)*tabley(ii,idp+1,2) + &
-         press_interp_weights(3)*tabley(ii,idp+2,2) &
-         + press_interp_weights(4)*tabley(ii,idp+3,2)
+         temp_grid(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,2))
+         temp_grid(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,2))
       end do
 ! interpolate in temperature
-      xtf_h2 = temp_interp_weights(1)*temp_grid(1,1) + &
-           temp_interp_weights(2)*temp_grid(2,1) + &
-           temp_interp_weights(3)*temp_grid(3,1) &
-           + temp_interp_weights(4)*temp_grid(4,1)
-      xtf_he = temp_interp_weights(1)*temp_grid(1,2) + &
-           temp_interp_weights(2)*temp_grid(2,2) + &
-           temp_interp_weights(3)*temp_grid(3,2) &
-           + temp_interp_weights(4)*temp_grid(4,2)
+      xtf_h2 = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,1))
+      xtf_he = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,2))
 
 ! Get more fractions of total particles (including electrons), as follows:
 !   XTF_H1  the fraction that is neutral hydrogen atoms, and
@@ -526,24 +353,12 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_grid(i,1) = press_interp_weights(1)*tablex(ii,idp,3) + &
-         press_interp_weights(2)*tablex(ii,idp+1,3) + &
-         press_interp_weights(3)*tablex(ii,idp+2,3) &
-         + press_interp_weights(4)*tablex(ii,idp+3,3)
-         temp_grid(i,2) = press_interp_weights(1)*tabley(ii,idp,3) + &
-         press_interp_weights(2)*tabley(ii,idp+1,3) + &
-         press_interp_weights(3)*tabley(ii,idp+2,3) &
-         + press_interp_weights(4)*tabley(ii,idp+3,3)
+         temp_grid(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,3))
+         temp_grid(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,3))
       end do
 ! interpolate in temperature
-      xtf_h1 = temp_interp_weights(1)*temp_grid(1,1) + &
-           temp_interp_weights(2)*temp_grid(2,1) + &
-           temp_interp_weights(3)*temp_grid(3,1) &
-           + temp_interp_weights(4)*temp_grid(4,1)
-      xtf_hep = temp_interp_weights(1)*temp_grid(1,2) + &
-           temp_interp_weights(2)*temp_grid(2,2) + &
-           temp_interp_weights(3)*temp_grid(3,2) &
-           + temp_interp_weights(4)*temp_grid(4,2)
+      xtf_h1 = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,1))
+      xtf_hep = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,2))
 
 ! At tis time we can calculate the ramaining particles fractions using
 ! conservation of particles and coservation of charge.  The variable
@@ -571,5 +386,60 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       ion_fraction(3) = xhepp
 
       return  ! Normal exit. Valid table entry. valid_table_point is true.
+
+contains
+
+! Bicubic-spline interpolation of the five envelope-table variables
+! (columns 2-6 of tablenv) at (log10_gas_pressure, log10_temperature)
+! on the 4x4 cell whose corner is (idtt + t_shift, idp + p_shift):
+! first a pressure spline along each of the four temperature rows,
+! then a temperature spline through the four results. t_shift/p_shift
+! are 0 for the home cell and +-1 for the smoothing cells. Table,
+! indices, work arrays and ierr are host-associated from eqscve; on a
+! spline failure ierr is set and the caller must return.
+subroutine spline_cell(t_shift, p_shift, result)
+      integer, intent(in) :: t_shift, p_shift
+      double precision, intent(out) :: result(5)
+
+! interpolate in pressure at 4 different temperature points.
+      do i = 1,4
+         ii = idtt+i-1+t_shift
+         do k = 1,4
+            interp_nodes(k) = tablenv(idtt,idp+k-1+p_shift,1)
+         end do
+         do j = 1,5
+            do k = 1,4
+               ytab_work(k) = tablenv(ii,idp+k-1+p_shift,j+1)
+            end do
+            call kspline(interp_nodes, ytab_work, spline_second_deriv)
+            call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
+                 log10_gas_pressure, spline_value, jerr_gate)
+            ! 2026 numerics-gate opt-in (see numerics_lib): interpolation
+            ! failure returns via ierr instead of stopping.
+            if (jerr_gate /= 0) then
+               ierr = jerr_gate
+               return
+            end if
+            temp_grid(i,j) = spline_value
+         end do
+      end do
+! interpolate in temperature
+      do k = 1,4
+         interp_nodes(k) = tlogx(k+idtt-1+t_shift)
+      end do
+      do j = 1,5
+         do k = 1,4
+            ytab_work(k) = temp_grid(k,j)
+         end do
+         call kspline(interp_nodes, ytab_work, spline_second_deriv)
+         call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
+              log10_temperature, spline_value, jerr_gate)
+         if (jerr_gate /= 0) then
+            ierr = jerr_gate
+            return
+         end if
+         result(j) = spline_value
+      end do
+end subroutine spline_cell
 
 end subroutine eqscve

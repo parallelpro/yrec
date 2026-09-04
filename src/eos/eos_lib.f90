@@ -69,7 +69,7 @@ module eos_lib
       integer, parameter, public :: &
            i_temperature = 1, i_pressure = 2, i_log10_density = 3, &
            i_density = 4, i_beta = 5, i_beta_inverse = 6, i_beta14 = 7, &
-           i_fxion = 8, &
+           i_fxion = 8, &          ! three slots, 8-10: ion_fraction(1:3)
            i_gas_constant = 11, i_mu_ion_inv = 12, i_mu_e_inv = 13, &
            i_eta = 14, i_dlnrho_dlnt = 15, i_dlnrho_dlnp = 16, &
            i_cp = 17, i_grada = 18, i_dlnrho_dlnt_dt = 19, &
@@ -93,32 +93,22 @@ subroutine eos_get(log10_temperature, log10_pressure, &
       integer, intent(out) :: ierr
       double precision :: fxion_local(3)
 
+! The three ionization fractions occupy res(i_fxion:i_fxion+2); they
+! go through a contiguous local because eos_eval takes them as one
+! 3-element inout array. An absent composition_at_zone is passed on as
+! absent (an optional actual may be an absent optional dummy).
       fxion_local = res(i_fxion:i_fxion+2)
-      if (present(composition_at_zone)) then
-         call eos_eval(log10_temperature, res(i_temperature), &
-              log10_pressure, res(i_pressure), res(i_log10_density), &
-              res(i_density), hydrogen_fraction, metal_fraction, &
-              res(i_beta), res(i_beta_inverse), res(i_beta14), &
-              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
-              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
-              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
-              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
-              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
-              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
-              composition_at_zone=composition_at_zone, ierr=ierr)
-      else
-         call eos_eval(log10_temperature, res(i_temperature), &
-              log10_pressure, res(i_pressure), res(i_log10_density), &
-              res(i_density), hydrogen_fraction, metal_fraction, &
-              res(i_beta), res(i_beta_inverse), res(i_beta14), &
-              fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
-              res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
-              res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
-              res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
-              res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
-              res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
-              ierr=ierr)
-      end if
+      call eos_eval(log10_temperature, res(i_temperature), &
+           log10_pressure, res(i_pressure), res(i_log10_density), &
+           res(i_density), hydrogen_fraction, metal_fraction, &
+           res(i_beta), res(i_beta_inverse), res(i_beta14), &
+           fxion_local, res(i_gas_constant), res(i_mu_ion_inv), &
+           res(i_mu_e_inv), res(i_eta), res(i_dlnrho_dlnt), &
+           res(i_dlnrho_dlnp), res(i_cp), res(i_grada), &
+           res(i_dlnrho_dlnt_dt), res(i_dlnrho_dlnp_dt), &
+           res(i_grada_dt), res(i_grada_dp), res(i_cp_dt), &
+           res(i_cp_dp), want_derivatives, in_atmosphere, saha_state, &
+           composition_at_zone=composition_at_zone, ierr=ierr)
       res(i_fxion:i_fxion+2) = fxion_local
 end subroutine eos_get
 

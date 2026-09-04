@@ -34,4 +34,14 @@ module scv_eos_lib
       integer :: nptsx(scv_nt), idtt, idp
       logical :: use_scv_eos
 
+contains
+
+! Four-point Lagrange sum used by eqscve/eqscvg to interpolate a table
+! column along one axis: w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4),
+! evaluated left to right exactly as the former inline expressions.
+double precision function scv_weighted_sum4(w, y)
+      double precision, intent(in) :: w(4), y(4)
+      scv_weighted_sum4 = w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4)
+end function scv_weighted_sum4
+
 end module scv_eos_lib

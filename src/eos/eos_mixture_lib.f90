@@ -24,6 +24,11 @@ module eos_mixture_lib
             double precision :: envelope_hydrogen_fraction, &
                  envelope_metal_fraction
             double precision :: amuenv
+! fxenv(i): number fraction of species i in the envelope mixture,
+! in the order of eqstat2's atomic_weights_full table:
+! 1 Na, 2 Al, 3 Mg, 4 Fe, 5 Si, 6 C, 7 H, 8 O, 9 N, 10 Ar, 11 Ne, 12 He
+! (slots 7 and 12 are set from X and Y directly, the metals from the
+! mixture_weights_seed control scaled to Z).
             double precision :: fxenv(12)
       end type eos_mixture_state
 

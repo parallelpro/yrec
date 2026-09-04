@@ -149,34 +149,16 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,4) + &
-         press_interp_weights(2)*tablex(ii,idp+1,4) + &
-         press_interp_weights(3)*tablex(ii,idp+2,4) &
-         + press_interp_weights(4)*tablex(ii,idp+3,4)
-         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,4) + &
-         press_interp_weights(2)*tabley(ii,idp+1,4) + &
-         press_interp_weights(3)*tabley(ii,idp+2,4) &
-         + press_interp_weights(4)*tabley(ii,idp+3,4)
-         temp_work(i,3) = press_interp_weights(1)*tablez(ii,idp,4) + &
-         press_interp_weights(2)*tablez(ii,idp+1,4) + &
-         press_interp_weights(3)*tablez(ii,idp+2,4) &
-         + press_interp_weights(4)*tablez(ii,idp+3,4)
+         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,4))
+         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,4))
+         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, tablez(ii,idp:idp+3,4))
       end do
 ! interpolate in temperature
-      log10_density_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
-           temp_interp_weights(2)*temp_work(2,1) + &
-           temp_interp_weights(3)*temp_work(3,1) &
-           + temp_interp_weights(4)*temp_work(4,1)
+      log10_density_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
       density_pure_h = exp(ln10*log10_density_pure_h)
-      log10_density_pure_he = temp_interp_weights(1)*temp_work(1,2) + &
-           temp_interp_weights(2)*temp_work(2,2) + &
-           temp_interp_weights(3)*temp_work(3,2) &
-           + temp_interp_weights(4)*temp_work(4,2)
+      log10_density_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
       density_pure_he = exp(ln10*log10_density_pure_he)
-      log10_density_pure_z = temp_interp_weights(1)*temp_work(1,3) + &
-           temp_interp_weights(2)*temp_work(2,3) + &
-           temp_interp_weights(3)*temp_work(3,3) &
-           + temp_interp_weights(4)*temp_work(4,3)
+      log10_density_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
       density_pure_z = exp(ln10*log10_density_pure_z)
 ! density
       density = 1.0d0/(hydrogen_fraction/density_pure_h + &
@@ -191,32 +173,14 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,8) + &
-         press_interp_weights(2)*tablex(ii,idp+1,8) + &
-         press_interp_weights(3)*tablex(ii,idp+2,8) &
-         + press_interp_weights(4)*tablex(ii,idp+3,8)
-         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,8) + &
-         press_interp_weights(2)*tabley(ii,idp+1,8) + &
-         press_interp_weights(3)*tabley(ii,idp+2,8) &
-         + press_interp_weights(4)*tabley(ii,idp+3,8)
-         temp_work(i,3) = press_interp_weights(1)*tablez(ii,idp,13) + &
-         press_interp_weights(2)*tablez(ii,idp+1,13) + &
-         press_interp_weights(3)*tablez(ii,idp+2,13) &
-         + press_interp_weights(4)*tablez(ii,idp+3,13)
+         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,8))
+         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,8))
+         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, tablez(ii,idp:idp+3,13))
       end do
 ! interpolate in temperature
-      dlnrho_dlnp_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
-           temp_interp_weights(2)*temp_work(2,1) + &
-           temp_interp_weights(3)*temp_work(3,1) &
-           + temp_interp_weights(4)*temp_work(4,1)
-      dlnrho_dlnp_pure_he = temp_interp_weights(1)*temp_work(1,2) + &
-           temp_interp_weights(2)*temp_work(2,2) + &
-           temp_interp_weights(3)*temp_work(3,2) &
-           + temp_interp_weights(4)*temp_work(4,2)
-      dlnrho_dlnp_pure_z = temp_interp_weights(1)*temp_work(1,3) + &
-           temp_interp_weights(2)*temp_work(2,3) + &
-           temp_interp_weights(3)*temp_work(3,3) &
-           + temp_interp_weights(4)*temp_work(4,3)
+      dlnrho_dlnp_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
+      dlnrho_dlnp_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
+      dlnrho_dlnp_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
       dlnrho_dlnp_gas = dlnrho_dlnp_pure_h*volume_frac_h + &
            dlnrho_dlnp_pure_he*volume_frac_he + dlnrho_dlnp_pure_z*volume_frac_z
       dlnrho_dlnp = dlnrho_dlnp_gas/beta
@@ -227,32 +191,14 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,7) + &
-         press_interp_weights(2)*tablex(ii,idp+1,7) + &
-         press_interp_weights(3)*tablex(ii,idp+2,7) &
-         + press_interp_weights(4)*tablex(ii,idp+3,7)
-         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,7) + &
-         press_interp_weights(2)*tabley(ii,idp+1,7) + &
-         press_interp_weights(3)*tabley(ii,idp+2,7) &
-         + press_interp_weights(4)*tabley(ii,idp+3,7)
-         temp_work(i,3) = press_interp_weights(1)*tablez(ii,idp,10) + &
-         press_interp_weights(2)*tablez(ii,idp+1,10) + &
-         press_interp_weights(3)*tablez(ii,idp+2,10) &
-         + press_interp_weights(4)*tablez(ii,idp+3,10)
+         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,7))
+         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,7))
+         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, tablez(ii,idp:idp+3,10))
       end do
 ! interpolate in temperature
-      dlnrho_dlnt_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
-           temp_interp_weights(2)*temp_work(2,1) + &
-           temp_interp_weights(3)*temp_work(3,1) &
-           + temp_interp_weights(4)*temp_work(4,1)
-      dlnrho_dlnt_pure_he = temp_interp_weights(1)*temp_work(1,2) + &
-           temp_interp_weights(2)*temp_work(2,2) + &
-           temp_interp_weights(3)*temp_work(3,2) &
-           + temp_interp_weights(4)*temp_work(4,2)
-      dlnrho_dlnt_pure_z = temp_interp_weights(1)*temp_work(1,3) + &
-           temp_interp_weights(2)*temp_work(2,3) + &
-           temp_interp_weights(3)*temp_work(3,3) &
-           + temp_interp_weights(4)*temp_work(4,3)
+      dlnrho_dlnt_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
+      dlnrho_dlnt_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
+      dlnrho_dlnt_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
       dlnrho_dlnt_gas = dlnrho_dlnt_pure_h*volume_frac_h + &
            dlnrho_dlnt_pure_he*volume_frac_he + dlnrho_dlnt_pure_z*volume_frac_z
       dlnp_dlnt_gas = -dlnrho_dlnt_gas/dlnrho_dlnp_gas
@@ -270,34 +216,16 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,5) + &
-         press_interp_weights(2)*tablex(ii,idp+1,5) + &
-         press_interp_weights(3)*tablex(ii,idp+2,5) &
-         + press_interp_weights(4)*tablex(ii,idp+3,5)
-         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,5) + &
-         press_interp_weights(2)*tabley(ii,idp+1,5) + &
-         press_interp_weights(3)*tabley(ii,idp+2,5) &
-         + press_interp_weights(4)*tabley(ii,idp+3,5)
-         temp_work(i,3) = press_interp_weights(1)*smix(ii,idp) + &
-         press_interp_weights(2)*smix(ii,idp+1) + &
-         press_interp_weights(3)*smix(ii,idp+2) &
-         + press_interp_weights(4)*smix(ii,idp+3)
+         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,5))
+         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,5))
+         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, smix(ii,idp:idp+3))
       end do
 ! interpolate in temperature
-      log10_entropy_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
-           temp_interp_weights(2)*temp_work(2,1) + &
-           temp_interp_weights(3)*temp_work(3,1) &
-           + temp_interp_weights(4)*temp_work(4,1)
+      log10_entropy_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
       entropy_pure_h = exp(ln10*log10_entropy_pure_h)
-      log10_entropy_pure_he = temp_interp_weights(1)*temp_work(1,2) + &
-           temp_interp_weights(2)*temp_work(2,2) + &
-           temp_interp_weights(3)*temp_work(3,2) &
-           + temp_interp_weights(4)*temp_work(4,2)
+      log10_entropy_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
       entropy_pure_he = exp(ln10*log10_entropy_pure_he)
-      entropy_of_mixing = temp_interp_weights(1)*temp_work(1,3) + &
-           temp_interp_weights(2)*temp_work(2,3) + &
-           temp_interp_weights(3)*temp_work(3,3) &
-           + temp_interp_weights(4)*temp_work(4,3)
+      entropy_of_mixing = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
       dlnsmix_dlnt = temp_interp_weight_derivs(1)*log10(temp_work(1,3)) + &
            temp_interp_weight_derivs(2)*log10(temp_work(2,3)) &
            + temp_interp_weight_derivs(3)*log10(temp_work(3,3)) &
@@ -306,32 +234,14 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,9) + &
-         press_interp_weights(2)*tablex(ii,idp+1,9) + &
-         press_interp_weights(3)*tablex(ii,idp+2,9) &
-         + press_interp_weights(4)*tablex(ii,idp+3,9)
-         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,9) + &
-         press_interp_weights(2)*tabley(ii,idp+1,9) + &
-         press_interp_weights(3)*tabley(ii,idp+2,9) &
-         + press_interp_weights(4)*tabley(ii,idp+3,9)
-         temp_work(i,3) = press_interp_weights(1)*tablez(ii,idp,7) + &
-         press_interp_weights(2)*tablez(ii,idp+1,7) + &
-         press_interp_weights(3)*tablez(ii,idp+2,7) &
-         + press_interp_weights(4)*tablez(ii,idp+3,7)
+         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,9))
+         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,9))
+         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, tablez(ii,idp:idp+3,7))
       end do
 ! interpolate in temperature
-      dlns_dlnt_pure_h = temp_interp_weights(1)*temp_work(1,1) + &
-           temp_interp_weights(2)*temp_work(2,1) + &
-           temp_interp_weights(3)*temp_work(3,1) &
-           + temp_interp_weights(4)*temp_work(4,1)
-      dlns_dlnt_pure_he = temp_interp_weights(1)*temp_work(1,2) + &
-           temp_interp_weights(2)*temp_work(2,2) + &
-           temp_interp_weights(3)*temp_work(3,2) &
-           + temp_interp_weights(4)*temp_work(4,2)
-      log10_du_dt_pure_z = temp_interp_weights(1)*temp_work(1,3) + &
-           temp_interp_weights(2)*temp_work(2,3) + &
-           temp_interp_weights(3)*temp_work(3,3) &
-           + temp_interp_weights(4)*temp_work(4,3)
+      dlns_dlnt_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
+      dlns_dlnt_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
+      log10_du_dt_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
       du_dt_pure_z = exp(ln10*log10_du_dt_pure_z)
       dlns_dlnt_p = hydrogen_fraction*entropy_pure_h*dlns_dlnt_pure_h + &
            helium_fraction*entropy_pure_he*dlns_dlnt_pure_he + &
@@ -360,24 +270,12 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,2) + &
-         press_interp_weights(2)*tablex(ii,idp+1,2) + &
-         press_interp_weights(3)*tablex(ii,idp+2,2) &
-         + press_interp_weights(4)*tablex(ii,idp+3,2)
-         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,2) + &
-         press_interp_weights(2)*tabley(ii,idp+1,2) + &
-         press_interp_weights(3)*tabley(ii,idp+2,2) &
-         + press_interp_weights(4)*tabley(ii,idp+3,2)
+         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,2))
+         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,2))
       end do
 ! interpolate in temperature
-      xtf_h2 = temp_interp_weights(1)*temp_work(1,1) + &
-           temp_interp_weights(2)*temp_work(2,1) + &
-           temp_interp_weights(3)*temp_work(3,1) &
-           + temp_interp_weights(4)*temp_work(4,1)
-      xtf_he = temp_interp_weights(1)*temp_work(1,2) + &
-           temp_interp_weights(2)*temp_work(2,2) + &
-           temp_interp_weights(3)*temp_work(3,2) &
-           + temp_interp_weights(4)*temp_work(4,2)
+      xtf_h2 = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
+      xtf_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
 
 ! Get more fractions of total particles (including electrons), as follows:
 !   XTF_H1  the fraction that is neutral hydrogen atoms, and
@@ -387,24 +285,12 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = press_interp_weights(1)*tablex(ii,idp,3) + &
-         press_interp_weights(2)*tablex(ii,idp+1,3) + &
-         press_interp_weights(3)*tablex(ii,idp+2,3) &
-         + press_interp_weights(4)*tablex(ii,idp+3,3)
-         temp_work(i,2) = press_interp_weights(1)*tabley(ii,idp,3) + &
-         press_interp_weights(2)*tabley(ii,idp+1,3) + &
-         press_interp_weights(3)*tabley(ii,idp+2,3) &
-         + press_interp_weights(4)*tabley(ii,idp+3,3)
+         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,3))
+         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,3))
       end do
 ! interpolate in temperature
-      xtf_h1 = temp_interp_weights(1)*temp_work(1,1) + &
-           temp_interp_weights(2)*temp_work(2,1) + &
-           temp_interp_weights(3)*temp_work(3,1) &
-           + temp_interp_weights(4)*temp_work(4,1)
-      xtf_hep = temp_interp_weights(1)*temp_work(1,2) + &
-           temp_interp_weights(2)*temp_work(2,2) + &
-           temp_interp_weights(3)*temp_work(3,2) &
-           + temp_interp_weights(4)*temp_work(4,2)
+      xtf_h1 = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
+      xtf_hep = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
 
 ! At tis time we can calculate the ramaining particles fractions using
 ! conservation of particles and coservation of charge.  The variable

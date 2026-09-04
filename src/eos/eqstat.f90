@@ -615,45 +615,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
          if (.not.in_opal_table) return
 
-         if (.not.needs_ramp) then
-!           No ramping needed between OPAL 1995 EOS and Yale/SCV. Result
-!           is fully in the OPAL 1995 table
-            log10_density = opal_log10_density
-            density = exp10(log10_density)
-            beta = opal_beta
-            beta_inverse = 1.0d0/beta
-            beta14 = 1.0d0 - beta
-            specific_gas_constant = opal_specific_gas_constant
-            ion_mean_weight_inverse = opal_ion_mean_weight_inverse
-            electron_mean_weight_inverse = opal_electron_mean_weight_inverse
-            dlnrho_dlnt = opal_dlnrho_dlnt
-            dlnrho_dlnp = opal_dlnrho_dlnp
-            specific_heat_cp = opal_specific_heat_cp
-            adiabatic_gradient = opal_adiabatic_gradient
-         else
-!           Ramping required. Result is on border between OPAL 1995 EOS
-!           and Yale/SCV.
-            log10_density = log10_density + &
-                 ramp_factor*(opal_log10_density - log10_density)
-            density = exp10(log10_density)
-            beta = beta + ramp_factor*(opal_beta - beta)
-            beta_inverse = 1.0d0/beta
-            beta14 = 1.0d0 - beta
-            specific_gas_constant = specific_gas_constant + &
-                 ramp_factor*(opal_specific_gas_constant - specific_gas_constant)
-            ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 ramp_factor*(opal_ion_mean_weight_inverse - ion_mean_weight_inverse)
-            electron_mean_weight_inverse = electron_mean_weight_inverse + &
-                 ramp_factor*(opal_electron_mean_weight_inverse - electron_mean_weight_inverse)
-            dlnrho_dlnt = dlnrho_dlnt + &
-                 ramp_factor*(opal_dlnrho_dlnt - dlnrho_dlnt)
-            dlnrho_dlnp = dlnrho_dlnp + &
-                 ramp_factor*(opal_dlnrho_dlnp - dlnrho_dlnp)
-            specific_heat_cp = specific_heat_cp + &
-                 ramp_factor*(opal_specific_heat_cp - specific_heat_cp)
-            adiabatic_gradient = adiabatic_gradient + &
-                 ramp_factor*(opal_adiabatic_gradient - adiabatic_gradient)
-         end if
+         call adopt_or_blend_opal_result()
       end if
       end if
 
@@ -679,45 +641,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
          if (.not.in_opal_table) return
 !        USE OPAL RESULTS IF NOT IN (RHO,T) REGIME WHERE RAMP NEEDED
-         if (.not.needs_ramp) then
-!           No ramping needed between OPAL 2001 EOS and Yale/SCV. Result
-!           is fully in the OPAL 2001 table
-            log10_density = opal_log10_density
-            density = exp10(log10_density)
-            beta = opal_beta
-            beta_inverse = 1.0d0/beta
-            beta14 = 1.0d0 - beta
-            specific_gas_constant = opal_specific_gas_constant
-            ion_mean_weight_inverse = opal_ion_mean_weight_inverse
-            electron_mean_weight_inverse = opal_electron_mean_weight_inverse
-            dlnrho_dlnt = opal_dlnrho_dlnt
-            dlnrho_dlnp = opal_dlnrho_dlnp
-            specific_heat_cp = opal_specific_heat_cp
-            adiabatic_gradient = opal_adiabatic_gradient
-         else
-!           Ramping required. Result is on border between OPAL 2001 EOS
-!           and Yale/SCV.
-            log10_density = log10_density + &
-                 ramp_factor*(opal_log10_density - log10_density)
-            density = exp10(log10_density)
-            beta = beta + ramp_factor*(opal_beta - beta)
-            beta_inverse = 1.0d0/beta
-            beta14 = 1.0d0 - beta
-            specific_gas_constant = specific_gas_constant + &
-                 ramp_factor*(opal_specific_gas_constant - specific_gas_constant)
-            ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 ramp_factor*(opal_ion_mean_weight_inverse - ion_mean_weight_inverse)
-            electron_mean_weight_inverse = electron_mean_weight_inverse + &
-                 ramp_factor*(opal_electron_mean_weight_inverse - electron_mean_weight_inverse)
-            dlnrho_dlnt = dlnrho_dlnt + &
-                 ramp_factor*(opal_dlnrho_dlnt - dlnrho_dlnt)
-            dlnrho_dlnp = dlnrho_dlnp + &
-                 ramp_factor*(opal_dlnrho_dlnp - dlnrho_dlnp)
-            specific_heat_cp = specific_heat_cp + &
-                 ramp_factor*(opal_specific_heat_cp - specific_heat_cp)
-            adiabatic_gradient = adiabatic_gradient + &
-                 ramp_factor*(opal_adiabatic_gradient - adiabatic_gradient)
-         end if
+         call adopt_or_blend_opal_result()
       end if
       end if
 
@@ -750,9 +674,22 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
 !        USE OPAL 2006 RESULTS ONLY IF NOT IN (RHO,T) REGIME WHERE
 !        RAMPING is NEEDED
+         call adopt_or_blend_opal_result()
+      end if
+      end if
+
+  998 continue
+      return
+
+contains
+
+! Take over the OPAL result when the point is fully inside the OPAL
+! table (needs_ramp false), or blend it into the Yale/SCV result with
+! weight ramp_factor when the point lies in the ramp zone at the table
+! edge. Shared by the 1995, 2001 and 2006 branches above; every
+! variable is host-associated from eqstat2.
+subroutine adopt_or_blend_opal_result()
          if (.not.needs_ramp) then
-!           No ramping needed between OPAL 2006 EOS and Yale/SCV. Result
-!           is fully in the OPAL 2006 table
             log10_density = opal_log10_density
             density = exp10(log10_density)
             beta = opal_beta
@@ -766,8 +703,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
             specific_heat_cp = opal_specific_heat_cp
             adiabatic_gradient = opal_adiabatic_gradient
          else
-!           Ramping required. Result is on border between OPAL 2006 EOS
-!           and Yale/SCV.
             log10_density = log10_density + &
                  ramp_factor*(opal_log10_density - log10_density)
             density = exp10(log10_density)
@@ -789,9 +724,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
             adiabatic_gradient = adiabatic_gradient + &
                  ramp_factor*(opal_adiabatic_gradient - adiabatic_gradient)
          end if
-      end if
-      end if
+end subroutine adopt_or_blend_opal_result
 
-  998 continue
-      return
 end subroutine eqstat2
