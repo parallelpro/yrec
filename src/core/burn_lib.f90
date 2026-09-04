@@ -813,11 +813,11 @@ end subroutine deutrate
 !   XHE3 -> he3_fraction               XC12/XC13 -> c12_fraction/c13_fraction
 !   XN14 -> n14_fraction               XO16/XO18 -> o16_fraction/o18_fraction
 !   XH2 -> deuterium_fraction          IU -> shell_index
-!   HR1..HR13 -> reaction_rate_1..13 (per 10^9 yr per amu, for kemcom)
+!   HR1..HR13 -> reaction_rate(1..13,:) (per 10^9 yr per amu, for kemcom)
 !   HF1 -> n15_alpha_branch_fraction   HF2 -> be7_electron_capture_fraction
 ! 2026 de-tramp (ROADMAP item 3): 35 arguments -> 20. The 15 trailing
 ! per-zone reaction-rate arrays (HR1..HR13/HF1/HF2, a vestigial
-! COMMON relay) are gone: engeb writes star%reaction_rate_1..13 /
+! COMMON relay) are gone: engeb writes star%reaction_rate(:,shell_index) /
 ! star%n15_alpha_branch_fraction / star%be7_electron_capture_fraction
 ! at shell_index directly. Of the old callers, one already passed
 ! exactly those star% arrays (neutrino_flux_table) and the other two
@@ -830,7 +830,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
      c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
      o18_fraction, deuterium_fraction, shell_index)
 
-      use star_info_lib, only: star, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, json
+      use star_info_lib, only: star, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, &
+           i_nu_he3he3, i_nu_he3he4, json
       use phys_const_lib
       use math_lib
       implicit none
@@ -1769,19 +1770,19 @@ subroutine compute_neutrino_emission
 ! gyr_amu_per_sec_gram (C21) IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*
 !  (1 ATOMIC MASS UNIT/1 GRAM). I HAVE USED HERE SIDEREAL YEAR IN
 !  CONVERTING TO SECONDS.
-      star%reaction_rate_1(shell_index)=reaction_rate(r_pp)*gyr_amu_per_sec_gram
-      star%reaction_rate_2(shell_index)=reaction_rate(r_he3he3)*gyr_amu_per_sec_gram
-      star%reaction_rate_3(shell_index)=reaction_rate(r_he3he4)*gyr_amu_per_sec_gram
-      star%reaction_rate_4(shell_index)=reaction_rate(r_pc12)*gyr_amu_per_sec_gram
-      star%reaction_rate_5(shell_index)=reaction_rate(r_pc13)*gyr_amu_per_sec_gram
-      star%reaction_rate_6(shell_index)=reaction_rate(r_pn14)*gyr_amu_per_sec_gram
-      star%reaction_rate_7(shell_index)=reaction_rate(r_po16)*gyr_amu_per_sec_gram
-      star%reaction_rate_8(shell_index)=reaction_rate(r_ac13)*gyr_amu_per_sec_gram
-      star%reaction_rate_9(shell_index)=reaction_rate(r_ao16_unused)*gyr_amu_per_sec_gram
-      star%reaction_rate_10(shell_index)=reaction_rate(r_ac12)*gyr_amu_per_sec_gram
-      star%reaction_rate_11(shell_index)=reaction_rate(r_an14)*gyr_amu_per_sec_gram
-      star%reaction_rate_12(shell_index)=reaction_rate(r_3alpha)*gyr_amu_per_sec_gram
-      star%reaction_rate_13(shell_index)=reaction_rate(r_c12c12_unused)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_pp,shell_index)=reaction_rate(r_pp)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_he3he3,shell_index)=reaction_rate(r_he3he3)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_he3he4,shell_index)=reaction_rate(r_he3he4)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_pc12,shell_index)=reaction_rate(r_pc12)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_pc13,shell_index)=reaction_rate(r_pc13)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_pn14,shell_index)=reaction_rate(r_pn14)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_po16,shell_index)=reaction_rate(r_po16)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_ac13,shell_index)=reaction_rate(r_ac13)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_ao16_unused,shell_index)=reaction_rate(r_ao16_unused)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_ac12,shell_index)=reaction_rate(r_ac12)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_an14,shell_index)=reaction_rate(r_an14)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_3alpha,shell_index)=reaction_rate(r_3alpha)*gyr_amu_per_sec_gram
+      star%reaction_rate(r_c12c12_unused,shell_index)=reaction_rate(r_c12c12_unused)*gyr_amu_per_sec_gram
       star%n15_alpha_branch_fraction(shell_index)=frac_n15_pa
       star%be7_electron_capture_fraction(shell_index)=frac_be7_ecap
 ! ****************************************
@@ -1889,9 +1890,9 @@ subroutine compute_neutrino_emission
 ! FLUX OF F17 NEUTRINOS.
          star%neutrino_flux(i_nu_f17) = eg(r_po16)/fourpiau2
 ! FLUX OF FICTIONAL HE3 + HE3 NEUTRINOS.
-         star%neutrino_flux(9) = eg(r_he3he3)/fourpiau2
+         star%neutrino_flux(i_nu_he3he3) = eg(r_he3he3)/fourpiau2
 ! FLUX OF FICTIONAL HE3 + HE4 NEUTRINOS.
-         star%neutrino_flux(10) = eg(r_he3he4)/fourpiau2
+         star%neutrino_flux(i_nu_he3he4) = eg(r_he3he4)/fourpiau2
 ! SET UNITS OF NEUTRINO FLUXES TO BE 10**10 PER CM^2 PER SEC PER GM AT THE
 !  EARTH. MULTIPLY BY 10**-10.
 !  IF THE VALUE FOR THIS SHELL IS NEGLIGIBLY SMALL, SET EQUAL TO ZERO.

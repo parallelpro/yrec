@@ -64,11 +64,8 @@ module net_lib
            num_isotopes = 13
 ! Species count of the H/He/C/O mixture handed to nulosses/sneut.
       integer, parameter, public :: nu_ionmax = 4
-! (10^9 sidereal years / 1 s) * (1 amu / 1 g), the C21 of engeb/rates/
-! deutrate: converts a rate per second per gram into the per-Gyr
-! per-amu units stored in star%reaction_rate_* and
-! star%deuterium_burning_rate.
-      double precision, parameter, public :: gyr_amu_per_sec_gram = 5.240358d-8
+! gyr_amu_per_sec_gram (the C21 of engeb/rates/deutrate) lives in
+! phys_const_lib.
 ! S0 in keV-b of the two N15 + p branches, multiplying the S_eff/S0
 ! polynomials o16_gamma_rate / c12_alpha_n15p_rate (and o16gamma /
 ! c12alpha in engeb). Kept as integers, the kind of the original

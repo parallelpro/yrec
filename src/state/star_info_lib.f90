@@ -42,6 +42,38 @@ module star_info_lib
            i_c12 = 5,  i_c13 = 6,  i_n14 = 7,     i_n15 = 8, &
            i_o16 = 9,  i_o17 = 10, i_o18 = 11,    i_h2  = 12, &
            i_li6 = 13, i_li7 = 14, i_be9 = 15
+! Species counts of the two composition layouts: the basic set is
+! slots i_h1..i_o18, the extended set (job%use_extended_composition)
+! adds i_h2..i_be9. The composition arrays are always dimensioned
+! for the extended set.
+      integer, parameter, public :: &
+           n_species_basic = 11, n_species_extended = 15
+
+! The 12-species surface mixture (job%mixture_weights,
+! ctrl%mixture_weights_seed, fxenv, read_starting_model's atomic
+! weights, rdlaol's table read): element per slot. H and He are
+! computed from the envelope X/Z, the ten metals are the mixture.
+      integer, parameter, public :: &
+           ix_na = 1, ix_al = 2, ix_mg = 3, ix_fe = 4, ix_si = 5, &
+           ix_c = 6, ix_h = 7, ix_o = 8, ix_n = 9, ix_ar = 10, &
+           ix_ne = 11, ix_he = 12, n_mix_species = 12
+
+! reaction_rate(n_reactions,json): per-zone rates of the 13-reaction
+! network, in net_lib's r_* slot order (r_pp = 1 .. r_c12c12_unused
+! = 13). Same value as net_lib's num_reactions; a copy because
+! net_lib itself uses star_info_lib (no reverse dependency).
+      integer, parameter, public :: n_reactions = 13
+
+! Monte-Carlo sample capacity of the job%s11_rate .. job%age_target
+! arrays.
+      integer, parameter, public :: max_mc_runs = 1000
+
+! Capacity of the convective (mixed) and radiative zone-bound lists
+! mixed_zone_bounds(max_convective_zones,2) and
+! radiative_zone_bounds(max_radiative_zones,2) (a model of n
+! convective zones has at most n+1 radiative ones).
+      integer, parameter, public :: &
+           max_convective_zones = 12, max_radiative_zones = 13
 
 ! historical gradient-row indices: DEL_GRAD(3,json) is now the three
 ! flat arrays gradr/gradT/grada; these constants remain for the
@@ -55,18 +87,24 @@ module star_info_lib
            i_eps_cno = 4, i_eps_he3 = 5, i_eps_neu = 6, &
            i_eps_grav = 7
 
-! luminosity_breakdown(8): integrated luminosity per channel [Lsun].
+! luminosity_breakdown(n_lum_channels): integrated luminosity per
+! channel [Lsun].
       integer, parameter, public :: &
            i_lum_pp1 = 1, i_lum_pp2 = 2, i_lum_pp3 = 3, &
            i_lum_cno = 4, i_lum_3alpha = 5, i_lum_neu = 6, &
-           i_lum_grav = 7, i_lum_he_c = 8
+           i_lum_grav = 7, i_lum_he_c = 8, n_lum_channels = 8
 
-! flux%neutrino_flux / neutrino_flux_total(10) and
-! neutrino_flux_zone(10,json): solar-neutrino source per slot
-! (wrtout's SNU tables); slots 9-10 are spares.
+! neutrino_flux / neutrino_flux_total(n_nu_fluxes) and
+! neutrino_flux_zone(n_nu_fluxes,json): solar-neutrino source per
+! slot (the SNU tables). Slots 1-8 are the real neutrino sources;
+! slots 9-10 hold the He3+He3 and He3+He4 reaction rates in the same
+! flux units, as if each reaction emitted one neutrino ("fictional"
+! fluxes stored by engeb's compute_neutrino_emission; tabulated with
+! the others by neutrino_flux_table).
       integer, parameter, public :: &
            i_nu_pp = 1, i_nu_pep = 2, i_nu_hep = 3, i_nu_be7 = 4, &
-           i_nu_b8 = 5, i_nu_n13 = 6, i_nu_o15 = 7, i_nu_f17 = 8
+           i_nu_b8 = 5, i_nu_n13 = 6, i_nu_o15 = 7, i_nu_f17 = 8, &
+           i_nu_he3he3 = 9, i_nu_he3he4 = 10, n_nu_fluxes = 10
 
 ! 2026 state consolidation: the sub-struct TYPE definitions moved
 ! here from their former one-type-per-file modules in state/ --
@@ -106,14 +144,16 @@ module star_info_lib
             character(len=256) :: opal92_table2_path, pure_z_table_path, &
                  scv_h_table_path, scv_he_table_path, scv_z_table_path
             character(len=256) :: alex95_table_paths(7)
-            double precision :: mixture_weights(12)
+            double precision :: mixture_weights(n_mix_species)
 ! phase C flattening: the Monte-Carlo sample arrays (former
 ! common/monte2/), read from the MC input file by star_setup -- job
 ! configuration, moved here from the old run_diagnostics grab-bag.
-            double precision :: s11_rate(1000), s33_rate(1000), &
-                 s34_rate(1000), s17_rate(1000), metal_to_h_ratio(1000), &
-                 helium_fraction_param(1000), diffusion_factor(1000), &
-                 luminosity_target(1000), age_target(1000)
+            double precision :: s11_rate(max_mc_runs), s33_rate(max_mc_runs), &
+                 s34_rate(max_mc_runs), s17_rate(max_mc_runs), &
+                 metal_to_h_ratio(max_mc_runs), &
+                 helium_fraction_param(max_mc_runs), &
+                 diffusion_factor(max_mc_runs), &
+                 luminosity_target(max_mc_runs), age_target(max_mc_runs)
 ! 2026 phase A batch 6: the current kind-card index (former
 ! common/zramp/ NK), the run list's cursor -- set by run_yrec's card
 ! loop, read broadly (evolve_step, the io writers, the calibration
@@ -137,7 +177,7 @@ module star_info_lib
                  logR(json), logP(json), &
                  logT(json), logRho(json)
             logical :: convective_flag(json)
-            double precision :: xa(15,json), m(json), &
+            double precision :: xa(n_species_extended,json), m(json), &
                  dm(json), gravitational_luminosity(json)
 ! rotation corrections to the structure equations
             double precision :: fp_rot(json), &
@@ -150,7 +190,7 @@ module star_info_lib
             integer :: max_correction_index(4)
 ! surface / envelope fit
             double precision :: surface_bc(6), stored_envelope_state(4), &
-                 envelope_fit_coeffs(9), luminosity_breakdown(8)
+                 envelope_fit_coeffs(9), luminosity_breakdown(n_lum_channels)
             double precision :: trial_log_luminosity(3), &
                  trial_log_temperature(3), fit_point_pressure(3), &
                  fit_point_temperature(3), fit_point_radius(3)
@@ -162,14 +202,12 @@ module star_info_lib
             logical :: am_transport_convective_flag(json)
 ! nuclear / neutrino diagnostics, per zone
             double precision :: be7_mass_fraction_zone(json), &
-                 neutrino_flux_zone(10,json)
-            double precision :: reaction_rate_1(json), reaction_rate_2(json), &
-                 reaction_rate_3(json), reaction_rate_4(json), &
-                 reaction_rate_5(json), reaction_rate_6(json), &
-                 reaction_rate_7(json), reaction_rate_8(json), &
-                 reaction_rate_9(json), reaction_rate_10(json), &
-                 reaction_rate_11(json), reaction_rate_12(json), &
-                 reaction_rate_13(json), n15_alpha_branch_fraction(json), &
+                 neutrino_flux_zone(n_nu_fluxes,json)
+! reaction_rate(r,i): rate of reaction r (net_lib r_* slot) in zone i,
+! per 10^9 yr per amu (former HR1..HR13 / reaction_rate_1..13),
+! stored by engeb's compute_neutrino_emission.
+            double precision :: reaction_rate(n_reactions,json), &
+                 n15_alpha_branch_fraction(json), &
                  be7_electron_capture_fraction(json)
 ! model-level scalars (2026, phase four follow-on): absorbed after the
 ! per-call-site audit the star_info header called for -- every
@@ -266,9 +304,9 @@ module star_info_lib
             double precision :: disk_gate_age_gyr, pulsation_mass_msun
             integer :: iov1, iov2, iovim
 ! mixed/radiative zone bookkeeping
-            integer :: mixed_zone_bounds(12,2), &
-                 mixed_zone_bounds_no_overshoot(12,2), &
-                 radiative_zone_bounds(13,2)
+            integer :: mixed_zone_bounds(max_convective_zones,2), &
+                 mixed_zone_bounds_no_overshoot(max_convective_zones,2), &
+                 radiative_zone_bounds(max_radiative_zones,2)
 ! 2026 (phase four, step 4): the former-COMMON model-state modules,
 ! folded in as components -- their types stay defined in their own
 ! state/ files, the single instances now live here. prev is the
@@ -289,7 +327,7 @@ module star_info_lib
 ! suffix, mirroring the live star_info member they snapshot.
             double precision :: logP_start(json), logT_start(json), &
                  logR_start(json), luminosity_lsun_start(json), logRho_start(json)
-            double precision :: xa_start(15,json)
+            double precision :: xa_start(n_species_extended,json)
 ! NOT renamed dm_start: despite the name this slot holds LOG-MASS
 ! coordinates of the pre-rezoning grid (see hpoint's spline blocks) --
 ! a rezoning scratch, misnamed since the COMMON era.
@@ -361,12 +399,13 @@ module star_info_lib
             double precision :: he3_he3_luminosity_zone(json), &
                  he3_burning_luminosity_zone(json)
 ! -- former neutrino_flux_state (flux) --
-            double precision :: neutrino_flux(10), neutrino_flux_total(10)
+            double precision :: neutrino_flux(n_nu_fluxes), &
+                 neutrino_flux_total(n_nu_fluxes)
             double precision :: cl37_snu_rate, ga71_snu_rate
 ! -- former envelope_composition_state (env_comp) --
             double precision :: envelope_hydrogen_fraction, &
                  envelope_metal_fraction
-            double precision :: zenvm, amuenv, fxenv(12)
+            double precision :: zenvm, amuenv, fxenv(n_mix_species)
             double precision :: xnew, znew, stotal, senv
 ! -- former shell_temp_state (thermo) --
 ! mu = MESA name (was mean_molecular_weight)
@@ -418,7 +457,7 @@ module star_info_lib
                 envelope_cz_pressure, envelope_cz_opacity, envelope_cz_log_radius
 ! former common/origstart/
            double precision :: orig_specific_angular_momentum(json), &
-                orig_composition(15,json)
+                orig_composition(n_species_extended,json)
 ! former common/comp2/
            double precision :: envelope_helium_fraction, envelope_he3_fraction
 ! (former common/envprt/'s current_* point scratch moved to

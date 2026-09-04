@@ -22,7 +22,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 
       double precision :: amu
       double precision :: weight(11), z(11)
-      data amu/1.6605655d-24/
+      data amu/amu_cgs_legacy/
       data weight/1.007825d0,4.0026d0,1.0d0,3.01603d0,12.0d0, &
            13.00335d0,14.00307d0,15.0011d0,15.99491d0,16.99491d0, &
            17.99491d0/
@@ -63,7 +63,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 !  METHOD USED IS FROM LEDOUX,1958,HANDBUCH DER PHYSIK VOL.LI,P.445
 !  (THE ORIGINAL ALSO EVALUATED THE ENDAL-SOFIA / THOMAS 1930 FORMULAE
 !  FOR COMPARISON; THOSE VALUES WERE NEVER USED AND ARE NOT COMPUTED.)
-         viscosity_radiative = 6.7282653d-26*temperature_sq*temperature_sq/ &
+         viscosity_radiative = rad_viscosity_coeff_cgs*temperature_sq*temperature_sq/ &
               (opacity_local*density_cgs**2)
 !  MOLECULAR DYNAMIC VISCOSITY
 !  REF. SPITZER,1962,PHYSICS OF FULLY IONIZED GASES
@@ -98,7 +98,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 !  THERMAL DIFFUSIVITY(THDIF) DUE TO RADIATION IS CALCULATED
 !  COMPONENT DUE TO THERMAL CONDUCTION OF MATTER IS NEGLECTED
 !  RADIATIVE DIFFUSIVITY = K*T**3/(O*RHO**2*CP)
-         star%thdif(shell_idx) = 1.6d1*cc13*5.669d-5*temperature_cgs* &
+         star%thdif(shell_idx) = 1.6d1*cc13*sigma_sb_cgs_legacy*temperature_cgs* &
               temperature_sq/(opacity_local*density_cgs**2*star%cp(shell_idx))
       end do
 

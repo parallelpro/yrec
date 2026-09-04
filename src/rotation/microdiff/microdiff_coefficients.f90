@@ -71,7 +71,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
       atomic_weight(1) = 1.008d0
       atomic_weight(2) = 4.004d0
       atomic_weight(3) = atomic_weight_diffused
-      atomic_weight(4) = 5.486d-4
+      atomic_weight(4) = m_electron_amu
       atomic_charge(1) = 1.0d0
       atomic_charge(2) = 2.0d0
       atomic_charge(3) = atomic_charge_diffused
@@ -123,7 +123,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
          do ii=1,num_species
           ac=ac+atomic_weight(ii)*concen(ii)
          enddo
-         ne=rho/(1.6726d-24*ac)
+         ne=rho/(m_proton_cgs*ac)
 !        calculate interionic distance (AO):
          ni=0.d0
          do ii=1,num_species-1

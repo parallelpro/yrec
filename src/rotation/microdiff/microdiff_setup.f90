@@ -62,7 +62,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       double precision, intent(out) :: density_orig(json), &
            temperature_orig(json)
       integer :: i
-      double precision, parameter :: crsun_bah = 6.9598d10
+      double precision, parameter :: crsun_bah = rsun_cgs_legacy
       double precision, parameter :: csecyr_bah = 3.1558d7
 
 !     settling_skipped_flag=T IF SETTLING IS SKIPPED THIS MODEL (FULLY

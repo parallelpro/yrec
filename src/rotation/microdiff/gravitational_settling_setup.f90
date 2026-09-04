@@ -63,12 +63,12 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
            electron_number_density, interion_distance, debye_length, &
            coulomb_lambda, concentration(4)
       double precision :: ln_lambda
-      data atomic_weight/1.008d0,4.004d0,55.86d0,5.486d-4/
+      data atomic_weight/1.008d0,4.004d0,55.86d0,m_electron_amu/
       data atomic_charge/1.0d0,2.0d0,26.0d0,-1.0d0/
       integer :: num_species
       data num_species/4/
 ! --- locals ---
-      double precision, parameter :: solar_radius_bl = 6.9598d10
+      double precision, parameter :: solar_radius_bl = rsun_cgs_legacy
       double precision, parameter :: seconds_per_year_bl = 3.1558d7
       integer :: zone_idx
       double precision :: hydrogen_fraction, z_plus_he3_fraction, &
@@ -267,7 +267,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                   do species_a_idx=1,num_species
                    mass_weighted_conc=mass_weighted_conc+atomic_weight(species_a_idx)*concentration(species_a_idx)
                   enddo
-                  electron_number_density=rho_local/(1.6726d-24*mass_weighted_conc)
+                  electron_number_density=rho_local/(m_proton_cgs*mass_weighted_conc)
 !                 calculate interionic distance (AO):
                   ion_number_density=0.d0
                   do species_a_idx=1,num_species-1
