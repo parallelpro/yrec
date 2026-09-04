@@ -60,10 +60,13 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star
+      use star_info_lib, only: star, json
       use math_lib
       implicit none
-      integer, parameter :: json = 5000, nmax = 8000
+! length of the per-coefficient-iteration convergence history printed
+! on failure (bounded by star%ctrl%max_diffusion_iters)
+      integer, parameter :: iter_history_max = 50
+      double precision, parameter :: tiny = 1.0d-30
 
       double precision, intent(in) :: grid_spacing
       double precision, intent(inout) :: timestep
@@ -79,9 +82,9 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       logical, intent(out) :: diffusion_converged
       integer, intent(out) :: ierr
 
-      double precision :: coeff_matrix(nmax,10), rhs(nmax), &
-           omega_working(json), max_omega_change_history(50)
-      integer :: max_omega_change_zone_history(50)
+      double precision :: coeff_matrix(band_nmax,10), rhs(band_nmax), &
+           omega_working(json), max_omega_change_history(iter_history_max)
+      integer :: max_omega_change_zone_history(iter_history_max)
       double precision :: third_order_ratio_factor(json), domega_dr(json), &
            omega_mid(json)
       double precision :: omega_mid_start(json), omega_prev_medium_iter(json), &
@@ -91,7 +94,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
 ! locals
       integer :: timestep_cut_count, num_substeps, substep_idx, &
            theta_iter_idx, coeff_iter_idx, num_equations, i, j, ii, k
-      double precision :: full_timestep, wind_loss_implicit_initial, tiny, &
+      double precision :: full_timestep, wind_loss_implicit_initial, &
            substep_time_sum, total_angular_momentum_start, substep_frac, &
            wind_saturation_threshold
       double precision :: omega_capped, omega_prev_capped, &
@@ -116,7 +119,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       num_substeps = 1
       full_timestep = timestep
       wind_loss_implicit_initial = wind_loss_implicit
-      tiny = 1.0d-30
 ! STORE START OF TIMESTEP GRADIENTS AND
 ! AVERAGED OMEGAS.
       do i = 2,num_eq_points

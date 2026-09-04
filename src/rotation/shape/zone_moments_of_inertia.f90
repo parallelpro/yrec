@@ -13,9 +13,11 @@
 ! calculated by the method used in Wai-Yuen Law's thesis (Yale, 1980),
 ! p.61: a power-series correction (evaluated by shell_inertia_integral.f90) to the
 ! spherical moment of inertia, in the rotation parameter
-! omega**2*r**3/(GM), unless we are inside a convective zone forced to
-! solid-body rotation (walpcz.ne.0), in which case the exact spherical
-! formula is used directly.
+! omega**2*r**3/(GM). When walpcz.ne.0 (imposed convection-zone
+! rotation law) the thin spherical shell formula (2/3)*m*r**2 is used
+! for every zone instead, with di_domega = 0, and the innermost zone
+! (if zone_start = 1) gets the solid-sphere factor 2/5 at the mean of
+! log_radius(1) and log_radius(2).
 subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
       use star_info_lib, only: star, json

@@ -23,11 +23,11 @@
 ! re-derived here. (The original's commented-out older version of the
 ! elimination was removed in the 2026 readability sweep.)
 subroutine banded_solver(coeff_matrix, nm, rhs, ierr)
+      use rotation_scratch_lib, only: band_nmax
       implicit none
-      integer, parameter :: nmax = 8000
 
       integer, intent(in) :: nm
-      double precision, intent(inout) :: coeff_matrix(nmax,10), rhs(nmax)
+      double precision, intent(inout) :: coeff_matrix(band_nmax,10), rhs(band_nmax)
       integer, intent(out) :: ierr
 
       double precision, parameter :: tiny = 1.d-20

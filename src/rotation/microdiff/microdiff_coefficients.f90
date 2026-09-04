@@ -62,8 +62,8 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
       integer :: num_species
       data num_species/4/
       integer :: i, ii, jj
-      double precision :: bl_temp_scale_local, &
-           hru_i, htu_i, fac, ap, at, ah, ad, dlncdr, coni, conip1, conim1, &
+      double precision, parameter :: bl_temp_scale_local = 1.0d-7
+      double precision :: hru_i, htu_i, fac, ap, at, ah, ad, dlncdr, coni, conip1, conim1, &
            dradi, t1, t2, rho, t
 
       ierr = 0
@@ -76,9 +76,8 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
       atomic_charge(2) = 2.0d0
       atomic_charge(3) = atomic_charge_diffused
       atomic_charge(4) = -1.0d0
-! SET LN_LAMBDA AND CON_TEMP.
+! SET LN_LAMBDA.
       ln_lambda = 2.2
-      bl_temp_scale_local=1.0d-7
 ! CALCULATE DIFFUSION COEFFICIENTS FOR EACH LAYER.
       do i = 1,num_eq_points
          mass_frac(1) = species_fraction(1,i)

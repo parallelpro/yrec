@@ -97,7 +97,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       data light_element_weight/6.015d0,7.016d0,9.012d0/
       data light_element_charge/3.0d0,3.0d0,4.0d0/
       integer :: i, ii, zone_begin, zone_end, num_eq_points, species_col
-      logical :: fully_convective_flag
+      logical :: settling_skipped_flag
       double precision :: grid_spacing, atomic_weight_diffused, &
            atomic_charge_diffused
 
@@ -109,10 +109,10 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       call microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
            enclosed_mass, log_temperature, convective_flag, num_zones, &
            total_mass, composition, radius_bl, temperature_bl, zone_begin, &
-           zone_end, fully_convective_flag, density_orig, temperature_orig)
+           zone_end, settling_skipped_flag, density_orig, temperature_orig)
 !
-! SKIP SETTLING FOR FULLY CONVECTIVE MODELS.
-      if(fully_convective_flag) return
+! SKIP SETTLING FOR FULLY CONVECTIVE (OR H/HE-EXHAUSTED) MODELS.
+      if(settling_skipped_flag) return
 !  TRANSFORM TO AN EQUALLY SPACED GRID IN RADIUS.
 !  NOTE : PREFIX E ALONE=VARIABLE AT EQUALLY SPACED GRID POINTS.
 !         PREFIX E + SUFFIX _H= VARIABLE AT MIDPOINT BETWEEN EQUALLY

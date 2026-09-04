@@ -41,7 +41,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       implicit none
 
       double precision, intent(in) :: full_timestep, sub_timestep
-      double precision, intent(inout) :: time_fraction
+      double precision, intent(in) :: time_fraction
       logical, intent(in) :: first_call
       double precision, intent(out) :: moment_of_inertia_cz
       double precision, intent(out) :: cz_mass_bottom, cz_mass_top

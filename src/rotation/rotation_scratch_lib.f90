@@ -20,6 +20,13 @@ module rotation_scratch_lib
       public :: rotation_diffusion_state, mdphy_state, &
            circulation_velocity_state, rot_scr, mix_scr, circ_scr
 
+! Row capacity of the 10-column banded system assembled by
+! am_advection_diffusion_coeffs and eliminated by banded_solver
+! (4*ntot - 2 rows for ntot equal-grid points, i.e. room for 2000
+! points; ntot itself is only bounded by json and is not checked
+! against this capacity -- historical value, see the R2 report).
+      integer, parameter, public :: band_nmax = 8000
+
 ! ---- from state/rotdiff_lib.f90 ----
       type, public :: rotation_diffusion_state
 ! former common/advec/

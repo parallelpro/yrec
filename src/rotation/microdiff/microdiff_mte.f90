@@ -56,7 +56,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       double precision, intent(in) :: density_orig(json), temperature_orig(json)
       type(microdiff_grid), intent(out) :: eq, eq_mid
 ! --- locals ---
-      integer :: half_json
       integer :: i, ii, iu, j, jmin, k, k0, kk
       double precision :: drtot, drmin, fx, tabler(4), gridrad, &
            facinterp(4), facderiv(4)
@@ -76,8 +75,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
 ! JVS add additional trap to deal with models with NPT=1
       if (num_eq_points .eq. 1) num_eq_points=num_eq_points+1
 !  ENSURE THAT NUMBER OF POINTS DOES NOT EXCEED JSON.
-      half_json = 5000
-      num_eq_points=min(num_eq_points,half_json)
+      num_eq_points=min(num_eq_points,json)
       grid_spacing = drtot/dfloat(num_eq_points-1)
 !  SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE MIDPOINTS.
       eq_mid%radius(1)=radius_bl(zone_begin)+0.5d0*grid_spacing

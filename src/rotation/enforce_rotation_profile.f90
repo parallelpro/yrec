@@ -8,8 +8,9 @@
 ! (examples/run_standard_solar_model).
 !
 ! JNT 2025/09/03 copy of 2025/05/14 to make the code enforce specific
-! rotation profiles. Extends wcz.f90 (see there for the base solid-
-! body/constant-J-per-mass/power-law behavior) with three additional,
+! rotation profiles. Extends the original wcz.f (base solid-body/
+! constant-J-per-mass/power-law behaviour, now the mode-0 branches
+! below) with three additional,
 ! explicitly-selected imposed-rotation-profile modes (solid_body_mode_flag,
 ! originally IMPJMOD = 1, 2, or 3) used by evolve_angular_momentum.f90/omega_from_j.f90 in place
 ! of wcz.

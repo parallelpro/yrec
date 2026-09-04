@@ -28,6 +28,8 @@ subroutine implicit_diffusion_coeffs(alpha, diffusion_coeff_mid, delta_abundance
       integer :: i
 
 ! CORRECT DIFFUSION COEFFICEINTS FOR CHANGE IN X IN THE PREVIOUS ITERATION.
+! (microdiff_run PASSES diffusion_coeff_deriv_mid = 0, SO THE CORRECTION
+!  IS A NO-OP THERE; gravitational_settling PASSES REAL DERIVATIVES.)
       do i=1,npt-1
          diffusion_coeff_mid(i)=diffusion_coeff_mid(i)+ &
               diffusion_coeff_deriv_mid(i)*delta_abundance_mid(i)

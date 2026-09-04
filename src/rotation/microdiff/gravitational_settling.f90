@@ -8,8 +8,9 @@
 ! (examples/run_standard_solar_model).
 !
 ! GRSETT SOLVES FOR THE GRAVITATIONAL SETTLING OF HELIUM USING THE
-! FORMULISM OF BAHCALL AND LOEB 1989.  SETTLING OF METALS WILL BE ADDED
-! LATER.
+! FORMULISM OF BAHCALL AND LOEB 1989.  METAL SETTLING (MHP 3/94) IS
+! CARRIED ALONGSIDE IN star%metal_abundance_change WHEN
+! star%job%use_diffusion_z IS SET.
 ! GRSETT PERFORMS THE FOLLOWING SERIES OF OPERATIONS :
 ! 1)  TRANSFORMS TO AN EQUALLY SPACED GRID IN RADIUS (AND MANIPULATES
 ! THE MODEL VARIABLES INTO BAHCALL AND LOEB UNITS).
@@ -94,7 +95,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
            equal_diffusion_coeff2_dx_mid(json)
       double precision :: metal_x_orig(json), metal_x_prev_iter(json)
       integer :: zone_begin, zone_end
-      logical :: fully_convective_flag
+      logical :: settling_skipped_flag
       integer :: eq_idx
       logical :: use_generic_diffusion_vectors
       double precision :: grid_spacing
@@ -110,12 +111,12 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       call gravitational_settling_setup(timestep,dlnp_dr,log_radius,log_density,mass_grams, &
            log_temperature,convective_flag,num_zones,total_mass, &
            diffusion_coeff1,diffusion_coeff2,composition,radius_bl, &
-           temperature_bl,zone_begin,zone_end,fully_convective_flag, &
+           temperature_bl,zone_begin,zone_end,settling_skipped_flag, &
            diffusion_coeff1_dx,diffusion_coeff2_dx, ierr)
       if (ierr /= 0) return
 !
-! SKIP SETTLING FOR FULLY CONVECTIVE MODELS.
-      if(fully_convective_flag) return
+! SKIP SETTLING FOR FULLY CONVECTIVE (OR H/HE-EXHAUSTED) MODELS.
+      if(settling_skipped_flag) return
 !  TRANSFORM TO AN EQUALLY SPACED GRID IN RADIUS.
 !  NOTE : PREFIX E ALONE=VARIABLE AT EQUALLY SPACED GRID POINTS.
 !         PREFIX E + SUFFIX _H= VARIABLE AT MIDPOINT BETWEEN EQUALLY

@@ -275,6 +275,7 @@ rotation/rotation_scratch_lib.o: star_info_lib.mod
 rotation/seculr/am_advection_diffusion_coeffs.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_diffusion_coeffs.o: rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_transport_grid.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/banded_solver.o: rotation_scratch_lib.mod
 rotation/seculr/check_angular_momentum.o: luout_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/check_composition.o: luout_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/circulation_velocities.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod

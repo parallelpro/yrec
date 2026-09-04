@@ -38,7 +38,7 @@
 subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      enclosed_mass, log_temperature, convective_flag, num_zones, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
-     zone_end, fully_convective_flag, density_orig, temperature_orig)
+     zone_end, settling_skipped_flag, density_orig, temperature_orig)
 
       use star_info_lib, only: star, json
       use luout_lib
@@ -58,16 +58,16 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       double precision, intent(in) :: composition(15,json)
       double precision, intent(out) :: radius_bl(json), temperature_bl(json)
       integer, intent(out) :: zone_begin, zone_end
-      logical, intent(out) :: fully_convective_flag
+      logical, intent(out) :: settling_skipped_flag
       double precision, intent(out) :: density_orig(json), &
            temperature_orig(json)
       integer :: i
-      double precision :: crsun_bah, csecyr_bah
+      double precision, parameter :: crsun_bah = 6.9598d10
+      double precision, parameter :: csecyr_bah = 3.1558d7
 
-      crsun_bah=6.9598d10
-      csecyr_bah=3.1558d7
-!     fully_convective_flag=T FOR FULLY CONVECTIVE MODEL(AND IF TRUE, DIFFUSION IS SKIPPED).
-      fully_convective_flag=.false.
+!     settling_skipped_flag=T IF SETTLING IS SKIPPED THIS MODEL (FULLY
+!     CONVECTIVE, HYDROGEN-EXHAUSTED OR HELIUM-EXHAUSTED).
+      settling_skipped_flag=.false.
 !     CHECK FOR CONVECTIVE CORE.
       if(convective_flag(1))then
          do i=2,num_zones
@@ -75,7 +75,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          end do
          if (i > num_zones) then
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
-         fully_convective_flag=.true.
+         settling_skipped_flag=.true.
 ! print once per suspension; every model only under
 ! report_solver_diagnostics (2026 run-log verbosity sweep)
          if (solver_diagnostics() .or. &
@@ -105,7 +105,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
    16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
          star%settling_suspended_reported = .true.
       end if
-      fully_convective_flag = .true.
+      settling_skipped_flag = .true.
       return
       end if
       zone_begin = i
@@ -134,7 +134,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
    17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
          star%settling_suspended_reported = .true.
       end if
-      fully_convective_flag = .true.
+      settling_skipped_flag = .true.
       return
       end if
       zone_end = i
