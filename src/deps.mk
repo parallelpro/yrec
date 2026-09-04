@@ -138,6 +138,7 @@ core/star_setup.o: monte_carlo_lib.mod star_info_lib.mod
 core/stitched_model.o: atmstruct_lib.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 core/stop_conditions.o: luout_lib.mod math_lib.mod star_info_lib.mod
 core/surfbc.o: atm_lib.mod atm_table_lib.mod envint_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
+core/test/test_reentry.o: star_info_lib.mod
 core/turnover_timescale.o: math_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
 core/yrec_capi.o: star_info_lib.mod
 core/yrec_reset.o: point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
@@ -170,7 +171,7 @@ eos/opal/readcoeos01.o: luout_lib.mod opal_eos_lib.mod star_info_lib.mod
 eos/opal/readcoeos06.o: luout_lib.mod opal_eos_lib.mod star_info_lib.mod
 eos/opal/rhoofp.o: opal_eos_lib.mod
 eos/opal/rhoofp01.o: opal_eos_lib.mod
-eos/opal/rhoofp06.o: opal_eos_lib.mod
+eos/opal/rhoofp06.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/t6rinteos01.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/t6rinteos06.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/t6rinterp.o: luout_lib.mod opal_eos_lib.mod
