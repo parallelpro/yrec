@@ -29,22 +29,11 @@ subroutine opal95_surface_table(hydrogen_fraction)
 
       opacity_table%opal95_surface_x = hydrogen_fraction
 !  FIND 4 NEAREST TABLES IN X TO DESIRED VALUE.
-      if (hydrogen_fraction.le.0.8d0) then
-! DON'T NEED TO WORRY ABOUT MISSING X TABLES AT HIGH Z.
-         do i = 3,n_opal95_x-1
-            if (opacity_table%opal95_grid_x(i).ge.hydrogen_fraction) then
-               x_table_index = i - 2
-               exit
-            endif
-         end do
-         if (i > (n_opal95_x-1)) then
-         x_table_index = n_opal95_x - 3
-         end if
-         do i = 1,4
-            table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
-         end do
-      else if (opacity_table%opal95_fixed_z.le.0.04d0) then
-! HIGH X TABLES PRESENT AT LOW Z.
+      if (hydrogen_fraction.le.0.8d0 .or. &
+           opacity_table%opal95_fixed_z.le.0.04d0) then
+! ALL FOUR X TABLES PRESENT: EITHER X IS BELOW THE HIGH-X GAP, OR
+! THE HIGH X TABLES ARE PRESENT AT THIS LOW Z.
+! (2026 readability: the two branches were identical and were merged.)
          do i = 3,n_opal95_x-1
             if (opacity_table%opal95_grid_x(i).ge.hydrogen_fraction) then
                x_table_index = i - 2

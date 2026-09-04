@@ -23,19 +23,7 @@ subroutine alex94_surface_table(hydrogen_fraction)
 
       opacity_table%alex95_cached_x = hydrogen_fraction
 !     FIND 4 NEAREST TABLES IN X.
-      if (hydrogen_fraction.lt.opacity_table%alex95_grid_x(4)) then
-         if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(3)) then
-            opacity_table%alex95_index_x = 2
-         else
-            opacity_table%alex95_index_x = 1
-         endif
-      else
-         if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(5)) then
-            opacity_table%alex95_index_x = 4
-         else
-            opacity_table%alex95_index_x = 3
-         endif
-      endif
+      opacity_table%alex95_index_x = alex_x_stencil_start(hydrogen_fraction)
       do i = 1,4
          interp_x(i) = opacity_table%alex95_grid_x(opacity_table%alex95_index_x+i-1)
       end do

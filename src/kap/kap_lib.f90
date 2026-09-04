@@ -86,7 +86,6 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
            atm_dlnkap_dlnrho, atm_dlnkap_dlnt
       double precision :: atm_opacity_2, atm_log10_opacity_2, &
            atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2
-      double precision :: slope
       double precision :: purez_opacity, purez_log10_opacity, &
            purez_dlnkap_dlnrho, purez_dlnkap_dlnt
       double precision :: table_metal_fraction
@@ -142,19 +141,13 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                   ierr = jerr
                   return
                end if
-               slope = (atm_log10_opacity - atm_log10_opacity_2) / &
-                    (star%ctrl%kurucz_table_z1 - star%ctrl%kurucz_table_z2)
-               atm_log10_opacity = atm_log10_opacity_2 + &
-                    (metal_fraction - star%ctrl%kurucz_table_z2)*slope
+               call blend_in_z(atm_log10_opacity, atm_log10_opacity_2, &
+                    metal_fraction, star%ctrl%kurucz_table_z1, star%ctrl%kurucz_table_z2)
                atm_opacity = exp10(atm_log10_opacity)
-               slope = (atm_dlnkap_dlnrho - atm_dlnkap_dlnrho_2) / &
-                    (star%ctrl%kurucz_table_z1 - star%ctrl%kurucz_table_z2)
-               atm_dlnkap_dlnrho = atm_dlnkap_dlnrho_2 + &
-                    (metal_fraction - star%ctrl%kurucz_table_z2)*slope
-               slope = (atm_dlnkap_dlnt - atm_dlnkap_dlnt_2) / &
-                    (star%ctrl%kurucz_table_z1 - star%ctrl%kurucz_table_z2)
-               atm_dlnkap_dlnt = atm_dlnkap_dlnt_2 + &
-                    (metal_fraction - star%ctrl%kurucz_table_z2)*slope
+               call blend_in_z(atm_dlnkap_dlnrho, atm_dlnkap_dlnrho_2, &
+                    metal_fraction, star%ctrl%kurucz_table_z1, star%ctrl%kurucz_table_z2)
+               call blend_in_z(atm_dlnkap_dlnt, atm_dlnkap_dlnt_2, &
+                    metal_fraction, star%ctrl%kurucz_table_z1, star%ctrl%kurucz_table_z2)
             end if
             got_atmosphere_opacity = .true.
          end if
@@ -217,17 +210,14 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             end if
             table_metal_fraction = star%ctrl%laol_table_z1
          end if
-         slope = (log10_opacity - purez_log10_opacity) / &
-              (table_metal_fraction - 1.0d0)
-         log10_opacity = purez_log10_opacity + (metal_fraction - 1.0d0)*slope
+!        The pure-Z table plays the role of the second table at Z = 1.
+         call blend_in_z(log10_opacity, purez_log10_opacity, &
+              metal_fraction, table_metal_fraction, 1.0d0)
          opacity = exp10(log10_opacity)
-         slope = (dlnkap_dlnrho - purez_dlnkap_dlnrho) / &
-              (table_metal_fraction - 1.0d0)
-         dlnkap_dlnrho = purez_dlnkap_dlnrho + &
-              (metal_fraction - 1.0d0)*slope
-         slope = (dlnkap_dlnt - purez_dlnkap_dlnt) / &
-              (table_metal_fraction - 1.0d0)
-         dlnkap_dlnt = purez_dlnkap_dlnt + (metal_fraction - 1.0d0)*slope
+         call blend_in_z(dlnkap_dlnrho, purez_dlnkap_dlnrho, &
+              metal_fraction, table_metal_fraction, 1.0d0)
+         call blend_in_z(dlnkap_dlnt, purez_dlnkap_dlnt, &
+              metal_fraction, table_metal_fraction, 1.0d0)
 
       else if ((metal_fraction.gt.0.12d0) .or. &
            ((abs(metal_fraction - kap_envelope_metal_fraction).gt. &
@@ -269,19 +259,13 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                ierr = jerr
                return
             end if
-            slope = (log10_opacity - log10_opacity_2) / &
-                 (star%ctrl%opal_table_z1 - star%ctrl%opal_table_z2)
-            log10_opacity = log10_opacity_2 + &
-                 (metal_fraction - star%ctrl%opal_table_z2)*slope
+            call blend_in_z(log10_opacity, log10_opacity_2, &
+                 metal_fraction, star%ctrl%opal_table_z1, star%ctrl%opal_table_z2)
             opacity = exp10(log10_opacity)
-            slope = (dlnkap_dlnrho - dlnkap_dlnrho_2) / &
-                 (star%ctrl%opal_table_z1 - star%ctrl%opal_table_z2)
-            dlnkap_dlnrho = dlnkap_dlnrho_2 + &
-                 (metal_fraction - star%ctrl%opal_table_z2)*slope
-            slope = (dlnkap_dlnt - dlnkap_dlnt_2) / &
-                 (star%ctrl%opal_table_z1 - star%ctrl%opal_table_z2)
-            dlnkap_dlnt = dlnkap_dlnt_2 + &
-                 (metal_fraction - star%ctrl%opal_table_z2)*slope
+            call blend_in_z(dlnkap_dlnrho, dlnkap_dlnrho_2, &
+                 metal_fraction, star%ctrl%opal_table_z1, star%ctrl%opal_table_z2)
+            call blend_in_z(dlnkap_dlnt, dlnkap_dlnt_2, &
+                 metal_fraction, star%ctrl%opal_table_z1, star%ctrl%opal_table_z2)
          end if
       else if (star%ctrl%use_laol89_tables) then
          call gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
@@ -298,19 +282,13 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                ierr = jerr
                return
             end if
-            slope = (log10_opacity - log10_opacity_2) / &
-                 (star%ctrl%laol_table_z1 - star%ctrl%laol_table_z2)
-            log10_opacity = log10_opacity_2 + &
-                 (metal_fraction - star%ctrl%laol_table_z2)*slope
+            call blend_in_z(log10_opacity, log10_opacity_2, &
+                 metal_fraction, star%ctrl%laol_table_z1, star%ctrl%laol_table_z2)
             opacity = exp10(log10_opacity)
-            slope = (dlnkap_dlnrho - dlnkap_dlnrho_2) / &
-                 (star%ctrl%laol_table_z1 - star%ctrl%laol_table_z2)
-            dlnkap_dlnrho = dlnkap_dlnrho_2 + &
-                 (metal_fraction - star%ctrl%laol_table_z2)*slope
-            slope = (dlnkap_dlnt - dlnkap_dlnt_2) / &
-                 (star%ctrl%laol_table_z1 - star%ctrl%laol_table_z2)
-            dlnkap_dlnt = dlnkap_dlnt_2 + &
-                 (metal_fraction - star%ctrl%laol_table_z2)*slope
+            call blend_in_z(dlnkap_dlnrho, dlnkap_dlnrho_2, &
+                 metal_fraction, star%ctrl%laol_table_z1, star%ctrl%laol_table_z2)
+            call blend_in_z(dlnkap_dlnt, dlnkap_dlnt_2, &
+                 metal_fraction, star%ctrl%laol_table_z1, star%ctrl%laol_table_z2)
          end if
 !     mhp 7/12 insert final trap - no opacity computed
 !     should not be able to get here.
@@ -475,5 +453,26 @@ subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
 
       return
 end subroutine kap_update_surface_tables
+
+
+! blend_in_z
+! Linear interpolation in Z between a quantity evaluated on the first-Z
+! table (value_z1, at table_z1) and on the second (value_z2, at
+! table_z2); value_z1 is replaced by the blend at metal_fraction. Used
+! for log10(opacity) and the two logarithmic derivatives after every
+! two-table lookup in kap_eval. 2026 readability: extracted from four
+! copies; the arithmetic is token-for-token the original
+! (slope, then base + (Z - Z2)*slope).
+subroutine blend_in_z(value_z1, value_z2, metal_fraction, table_z1, table_z2)
+      implicit none
+      double precision, intent(inout) :: value_z1
+      double precision, intent(in) :: value_z2, metal_fraction, table_z1, table_z2
+      double precision :: slope
+
+      slope = (value_z1 - value_z2) / &
+           (table_z1 - table_z2)
+      value_z1 = value_z2 + &
+           (metal_fraction - table_z2)*slope
+end subroutine blend_in_z
 
 end module kap_lib

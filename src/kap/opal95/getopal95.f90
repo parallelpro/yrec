@@ -34,7 +34,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       double precision :: interp_nodes(4), weight(4), dweight(4)
       integer :: i, k, j
       logical :: low_regime_flag, density_shifted
-      integer :: x_table_index, density_base_index, temp_row_index, x_shift_base
+      integer :: x_table_index, density_base_index, temp_row_index
       double precision :: extrap_logr, z_at_table
 
 !     ENSURE THAT WE ARE WITHIN THE OPAL 95 TABLES.
@@ -62,27 +62,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 !     is handled by linear extrapolation in R from the last two opacity
 !     values, opal95_extrap_lo above.)
 !     GET INTERPOLATION FACTORS IN T
-      if (log10_temperature.ge.opacity_table%opal95_grid_logt(opacity_table%opal95_index_t+2)) then
-         do i = opacity_table%opal95_index_t+3,n_opal95_t-1
-            if (log10_temperature.lt.opacity_table%opal95_grid_logt(i)) then
-               opacity_table%opal95_index_t = i - 2
-               exit
-            endif
-         end do
-         if (i > (n_opal95_t-1)) then
-         opacity_table%opal95_index_t = n_opal95_t - 3
-         end if
-      else
-         do i = opacity_table%opal95_index_t+1,2,-1
-            if (log10_temperature.gt.opacity_table%opal95_grid_logt(i)) then
-               opacity_table%opal95_index_t = i - 1
-               exit
-            endif
-         end do
-         if (i < (2)) then
-         opacity_table%opal95_index_t = 1
-         end if
-      endif
+      call stencil4_locate_opal95(opacity_table%opal95_grid_logt, n_opal95_t, log10_temperature, opacity_table%opal95_index_t)
 !     T INTERPOLATION FACTORS
       do i = 1,4
          interp_nodes(i) = opacity_table%opal95_grid_logt(opacity_table%opal95_index_t+i-1)
@@ -94,27 +74,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          opacity_table%opal95_dweight_t(i) = dweight(i)
       end do
 !     GET INDICES IN RHO FOR EACH OF THE 4 T VALUES.
-      if (opacity_table%opal95_logr.ge.opacity_table%opal95_grid_logr(opacity_table%opal95_index_rho(1)+2)) then
-         do i = opacity_table%opal95_index_rho(1)+3,n_opal95_d-1
-            if (opacity_table%opal95_logr.lt.opacity_table%opal95_grid_logr(i)) then
-               opacity_table%opal95_index_rho(1) = i - 2
-               exit
-            endif
-         end do
-         if (i > (n_opal95_d-1)) then
-         opacity_table%opal95_index_rho(1) = n_opal95_d - 3
-         end if
-      else
-         do i = opacity_table%opal95_index_rho(1)+1,2,-1
-            if (opacity_table%opal95_logr.gt.opacity_table%opal95_grid_logr(i)) then
-               opacity_table%opal95_index_rho(1) = i - 1
-               exit
-            endif
-         end do
-         if (i < (2)) then
-         opacity_table%opal95_index_rho(1) = 1
-         end if
-      endif
+      call stencil4_locate_opal95(opacity_table%opal95_grid_logr, n_opal95_d, opacity_table%opal95_logr, opacity_table%opal95_index_rho(1))
 !     NOW CHECK IF WITHIN PORTION OF TABLE WITH DATA.
 !     NOTE THAT A POINT CAN BE WITHIN THE TABLE AND STILL HAVE THE
 !     4X4 MATRIX OF T,RHO AROUND IT OUTSIDE THE TABLE.
@@ -215,64 +175,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          else
 !           3D INTERPOLATION IN FIXED Z TABLE (X,T,RHO)
 !           GET INTERPOLATION FACTORS IN X.
-         if (hydrogen_fraction.gt.opacity_table%opal95_grid_x(opacity_table%opal95_index_x(1,1)+2)) then
-            do i = opacity_table%opal95_index_x(1,1)+3,n_opal95_x-1
-               if (hydrogen_fraction.lt.opacity_table%opal95_grid_x(i)) then
-                  opacity_table%opal95_index_x(1,1) = i - 2
-                  exit
-               endif
-            end do
-            if (i .gt. n_opal95_x-1) opacity_table%opal95_index_x(1,1) = n_opal95_x - 3
-         else
-            do i = opacity_table%opal95_index_x(1,1)+1,2,-1
-               if (hydrogen_fraction.ge.opacity_table%opal95_grid_x(i)) then
-                  opacity_table%opal95_index_x(1,1) = i - 1
-                  exit
-               endif
-            end do
-            if (i .lt. 2) opacity_table%opal95_index_x(1,1) = 1
-         endif
-!        CHECK FOR ABSENT TABLES AT HIGH X.
-         if (opacity_table%opal95_fixed_z.ge.0.04d0) then
-            if (hydrogen_fraction.ge.0.8d0) then
-               if (opacity_table%opal95_fixed_z.lt.0.1d0) then
-!                 NO TABLE 9 (X=0.95)
-                  opacity_table%opal95_index_x(1,4) = n_opal95_x
-                  opacity_table%opal95_index_x(1,3) = n_opal95_x - 2
-                  opacity_table%opal95_index_x(1,2) = n_opal95_x - 3
-                  opacity_table%opal95_index_x(1,1) = n_opal95_x - 4
-               else
-!                 NO TABLE 9 OR TABLE 10
-                  opacity_table%opal95_index_x(1,4) = n_opal95_x - 2
-                  opacity_table%opal95_index_x(1,3) = n_opal95_x - 3
-                  opacity_table%opal95_index_x(1,2) = n_opal95_x - 4
-                  opacity_table%opal95_index_x(1,1) = n_opal95_x - 5
-               endif
-            else
-               x_shift_base = opacity_table%opal95_index_x(1,1) - 1
-               do i = 1,4
-                  opacity_table%opal95_index_x(1,i) = x_shift_base + i
-               end do
-            endif
-         else
-            x_shift_base = opacity_table%opal95_index_x(1,1) - 1
-            do i = 1,4
-               opacity_table%opal95_index_x(1,i) = x_shift_base + i
-            end do
-         endif
-!        X INTERPOLATION FACTORS
-         do i = 1,4
-            x_table_index = opacity_table%opal95_index_x(1,i)
-            interp_nodes(i) = opacity_table%opal95_grid_x(x_table_index)
-         end do
-         if (opacity_table%opal95_index_x(1,4).eq.n_opal95_x) then
-            interp_nodes(4) = 1.0d0 - opacity_table%opal95_fixed_z
-         endif
-!        GET INTERPOLATION FACTORS IN X
-         call intrp2(interp_nodes, weight, hydrogen_fraction)
-         do j = 1,4
-            opacity_table%opal95_weight_x(1,j) = weight(j)
-         end do
+         call opal95_x_stencil(1, opacity_table%opal95_fixed_z, hydrogen_fraction)
          call opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
          return
       endif
@@ -316,45 +219,61 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
 !     GET NEAREST TABLES IN X AT EACH VALUE OF Z
       do k = 1,4
          z_at_table = opacity_table%opal95_grid_z(opacity_table%opal95_index_z+k-1)
-         x_table_index = opacity_table%opal95_index_x(k,1)
-         if (hydrogen_fraction.gt.opacity_table%opal95_grid_x(x_table_index+2)) then
-            do i = opacity_table%opal95_index_x(k,1)+3,n_opal95_x-1
-               if (hydrogen_fraction.lt.opacity_table%opal95_grid_x(i)) then
-                  opacity_table%opal95_index_x(k,1) = i - 2
-                  exit
-               endif
-            end do
-            if (i .gt. n_opal95_x-1) opacity_table%opal95_index_x(k,1) = n_opal95_x - 3
-         else
-            do i = opacity_table%opal95_index_x(k,1)+1,2,-1
-               if (hydrogen_fraction.ge.opacity_table%opal95_grid_x(i)) then
-                  opacity_table%opal95_index_x(k,1) = i - 1
-                  exit
-               endif
-            end do
-            if (i .lt. 2) opacity_table%opal95_index_x(k,1) = 1
-         endif
-!        CHECK FOR ABSENT TABLES AT HIGH X.
-         if (z_at_table.ge.0.04d0) then
-            if (hydrogen_fraction.ge.0.8d0) then
-               if (z_at_table.lt.0.1d0) then
-!                 NO TABLE 9 (X=0.95)
-                  opacity_table%opal95_index_x(k,4) = n_opal95_x
-                  opacity_table%opal95_index_x(k,3) = n_opal95_x - 2
-                  opacity_table%opal95_index_x(k,2) = n_opal95_x - 3
-                  opacity_table%opal95_index_x(k,1) = n_opal95_x - 4
-               else
-!                 NO TABLE 9 OR TABLE 10
-                  opacity_table%opal95_index_x(k,4) = n_opal95_x - 2
-                  opacity_table%opal95_index_x(k,3) = n_opal95_x - 3
-                  opacity_table%opal95_index_x(k,2) = n_opal95_x - 4
-                  opacity_table%opal95_index_x(k,1) = n_opal95_x - 5
-               endif
+         call opal95_x_stencil(k, z_at_table, hydrogen_fraction)
+      end do
+      call opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+      return
+
+contains
+
+! opal95_x_stencil
+! For Z row k of the stencil (Z value z_here), pick the four X tables
+! opacity_table%opal95_index_x(k,1:4) bracketing hydrogen_fraction and
+! store their weights in opacity_table%opal95_weight_x(k,1:4). The
+! warm-start search moves opal95_index_x(k,1) from its previous value;
+! at Z >= 0.04 and X >= 0.8 the missing high-X tables (no X=0.95 for
+! Z >= 0.04, no X=1-Z for Z >= 0.1) force the stencil to the top
+! available tables. 2026 readability: extracted token-for-token from
+! the 3D (k = 1, Z = opal95_fixed_z) and 4D (k = 1..4, Z of each row)
+! branches above.
+subroutine opal95_x_stencil(k, z_here, hydrogen_fraction)
+      integer, intent(in) :: k
+      double precision, intent(in) :: z_here, hydrogen_fraction
+      integer :: i, j, x_table_index, x_shift_base
+      double precision :: interp_nodes(4), weight(4)
+
+      if (hydrogen_fraction.gt.opacity_table%opal95_grid_x(opacity_table%opal95_index_x(k,1)+2)) then
+         do i = opacity_table%opal95_index_x(k,1)+3,n_opal95_x-1
+            if (hydrogen_fraction.lt.opacity_table%opal95_grid_x(i)) then
+               opacity_table%opal95_index_x(k,1) = i - 2
+               exit
+            endif
+         end do
+         if (i .gt. n_opal95_x-1) opacity_table%opal95_index_x(k,1) = n_opal95_x - 3
+      else
+         do i = opacity_table%opal95_index_x(k,1)+1,2,-1
+            if (hydrogen_fraction.ge.opacity_table%opal95_grid_x(i)) then
+               opacity_table%opal95_index_x(k,1) = i - 1
+               exit
+            endif
+         end do
+         if (i .lt. 2) opacity_table%opal95_index_x(k,1) = 1
+      endif
+!     CHECK FOR ABSENT TABLES AT HIGH X.
+      if (z_here.ge.0.04d0) then
+         if (hydrogen_fraction.ge.0.8d0) then
+            if (z_here.lt.0.1d0) then
+!              NO TABLE 9 (X=0.95)
+               opacity_table%opal95_index_x(k,4) = n_opal95_x
+               opacity_table%opal95_index_x(k,3) = n_opal95_x - 2
+               opacity_table%opal95_index_x(k,2) = n_opal95_x - 3
+               opacity_table%opal95_index_x(k,1) = n_opal95_x - 4
             else
-               x_shift_base = opacity_table%opal95_index_x(k,1) - 1
-               do i = 1,4
-                  opacity_table%opal95_index_x(k,i) = x_shift_base + i
-               end do
+!              NO TABLE 9 OR TABLE 10
+               opacity_table%opal95_index_x(k,4) = n_opal95_x - 2
+               opacity_table%opal95_index_x(k,3) = n_opal95_x - 3
+               opacity_table%opal95_index_x(k,2) = n_opal95_x - 4
+               opacity_table%opal95_index_x(k,1) = n_opal95_x - 5
             endif
          else
             x_shift_base = opacity_table%opal95_index_x(k,1) - 1
@@ -362,20 +281,25 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
                opacity_table%opal95_index_x(k,i) = x_shift_base + i
             end do
          endif
-!        X INTERPOLATION FACTORS
+      else
+         x_shift_base = opacity_table%opal95_index_x(k,1) - 1
          do i = 1,4
-            x_table_index = opacity_table%opal95_index_x(k,i)
-            interp_nodes(i) = opacity_table%opal95_grid_x(x_table_index)
+            opacity_table%opal95_index_x(k,i) = x_shift_base + i
          end do
-         if (opacity_table%opal95_index_x(k,4).eq.n_opal95_x) then
-            interp_nodes(4) = 1.0d0 - z_at_table
-         endif
-!        GET INTERPOLATION FACTORS IN X
-         call intrp2(interp_nodes, weight, hydrogen_fraction)
-         do j = 1,4
-            opacity_table%opal95_weight_x(k,j) = weight(j)
-         end do
+      endif
+!     X INTERPOLATION FACTORS
+      do i = 1,4
+         x_table_index = opacity_table%opal95_index_x(k,i)
+         interp_nodes(i) = opacity_table%opal95_grid_x(x_table_index)
       end do
-      call opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-      return
+      if (opacity_table%opal95_index_x(k,4).eq.n_opal95_x) then
+         interp_nodes(4) = 1.0d0 - z_here
+      endif
+!     GET INTERPOLATION FACTORS IN X
+      call intrp2(interp_nodes, weight, hydrogen_fraction)
+      do j = 1,4
+         opacity_table%opal95_weight_x(k,j) = weight(j)
+      end do
+end subroutine opal95_x_stencil
+
 end subroutine getopal95

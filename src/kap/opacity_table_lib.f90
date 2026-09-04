@@ -262,4 +262,103 @@ module opacity_table_lib
       logical :: use_pure_z_table
 
 
+contains
+
+! stencil4_locate
+! Warm-start search for the first index idx of the 4-point stencil
+! grid(idx:idx+3) around x, starting from the previous idx: walk down
+! while x is below grid(idx+2), otherwise walk up, clamping to
+! 1..n-3. 2026 readability: extracted token-for-token from the four
+! identical copies in alex94_interp3d (T, R) and getalex06 (T, R);
+! callers must pre-clamp idx to 1..n-2 as they did before.
+subroutine stencil4_locate(grid, n, x, idx)
+      implicit none
+      integer, intent(in) :: n
+      double precision, intent(in) :: grid(n), x
+      integer, intent(inout) :: idx
+      integer :: i
+
+      if (x.lt.grid(idx+2)) then
+         do i = idx+1,2,-1
+            if (x.gt.grid(i)) then
+               idx = i - 1
+               exit
+            endif
+         end do
+         if (i < (2)) then
+         idx = 1
+         end if
+      else
+         do i = idx+3,n
+            if (x.lt.grid(i)) then
+               idx = i - 2
+               idx = min(n-3,idx)
+               exit
+            endif
+         end do
+         if (i > n) then
+         idx = n - 3
+         end if
+      endif
+end subroutine stencil4_locate
+
+! stencil4_locate_opal95
+! The OPAL95 flavour of stencil4_locate (getopal95's T and rho
+! searches): the up/down decision is ".ge. grid(idx+2)", the upward
+! scan stops at n-1 and there is no min() clamp on the way up.
+! Extracted token-for-token; the two flavours are deliberately not
+! merged so that each family keeps its own tie-breaking.
+subroutine stencil4_locate_opal95(grid, n, x, idx)
+      implicit none
+      integer, intent(in) :: n
+      double precision, intent(in) :: grid(n), x
+      integer, intent(inout) :: idx
+      integer :: i
+
+      if (x.ge.grid(idx+2)) then
+         do i = idx+3,n-1
+            if (x.lt.grid(i)) then
+               idx = i - 2
+               exit
+            endif
+         end do
+         if (i > (n-1)) then
+         idx = n - 3
+         end if
+      else
+         do i = idx+1,2,-1
+            if (x.gt.grid(i)) then
+               idx = i - 1
+               exit
+            endif
+         end do
+         if (i < (2)) then
+         idx = 1
+         end if
+      endif
+end subroutine stencil4_locate_opal95
+
+! alex_x_stencil_start
+! First of the four Alexander-1994 X tables bracketing hydrogen_fraction
+! (the 7-column X grid is walked as a fixed ladder: 1, 2, 3 or 4).
+! Extracted token-for-token from alex94_interp3d and alex94_surface_table.
+integer function alex_x_stencil_start(hydrogen_fraction)
+      implicit none
+      double precision, intent(in) :: hydrogen_fraction
+
+      if (hydrogen_fraction.lt.opacity_table%alex95_grid_x(4)) then
+         if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(3)) then
+            alex_x_stencil_start = 2
+         else
+            alex_x_stencil_start = 1
+         endif
+      else
+         if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(5)) then
+            alex_x_stencil_start = 4
+         else
+            alex_x_stencil_start = 3
+         endif
+      endif
+end function alex_x_stencil_start
+
 end module opacity_table_lib

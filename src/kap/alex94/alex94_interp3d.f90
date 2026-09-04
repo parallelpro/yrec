@@ -43,56 +43,14 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
 !     Insure that index IT is within the required array bounds  llp  8/19/08
       if (opacity_table%alex95_index_t .lt. 1) opacity_table%alex95_index_t=1
       if ((opacity_table%alex95_index_t+2) .gt. n_alex95_t) opacity_table%alex95_index_t=n_alex95_t-2
-      if (log10_temperature.lt.opacity_table%alex95_grid_logt(opacity_table%alex95_index_t+2)) then
-         do i = opacity_table%alex95_index_t+1,2,-1
-            if (log10_temperature.gt.opacity_table%alex95_grid_logt(i)) then
-               opacity_table%alex95_index_t = i - 1
-               exit
-            endif
-         end do
-         if (i < (2)) then
-         opacity_table%alex95_index_t = 1
-         end if
-      else
-         do i = opacity_table%alex95_index_t+3,n_alex95_t
-            if (log10_temperature.lt.opacity_table%alex95_grid_logt(i)) then
-               opacity_table%alex95_index_t = i - 2
-               opacity_table%alex95_index_t = min(n_alex95_t-3,opacity_table%alex95_index_t)
-               exit
-            endif
-         end do
-         if (i > n_alex95_t) then
-         opacity_table%alex95_index_t = n_alex95_t - 3
-         end if
-      endif
+      call stencil4_locate(opacity_table%alex95_grid_logt, n_alex95_t, log10_temperature, opacity_table%alex95_index_t)
 !     INTERPOLATION FACTORS IN LOG T
       do i = 1,4
          interp_nodes(i) = opacity_table%alex95_grid_logt(opacity_table%alex95_index_t+i-1)
       end do
       call interp(interp_nodes, weight_t, dweight_t, log10_temperature)
 !     FIND NEAREST GRID POINTS IN R = RHO/T6**3
-      if (logr.lt.opacity_table%alex95_grid_logr(opacity_table%alex95_index_r+2)) then
-         do i = opacity_table%alex95_index_r+1,2,-1
-            if (logr.gt.opacity_table%alex95_grid_logr(i)) then
-               opacity_table%alex95_index_r = i - 1
-               exit
-            endif
-         end do
-         if (i < (2)) then
-         opacity_table%alex95_index_r = 1
-         end if
-      else
-         do i = opacity_table%alex95_index_r+3,n_alex95_d
-            if (logr.lt.opacity_table%alex95_grid_logr(i)) then
-               opacity_table%alex95_index_r = i - 2
-               opacity_table%alex95_index_r = min(n_alex95_d-3,opacity_table%alex95_index_r)
-               exit
-            endif
-         end do
-         if (i > n_alex95_d) then
-         opacity_table%alex95_index_r = n_alex95_d - 3
-         end if
-      endif
+      call stencil4_locate(opacity_table%alex95_grid_logr, n_alex95_d, logr, opacity_table%alex95_index_r)
 !     INTERPOLATION FACTORS IN LOG R
       if (logr.gt.opacity_table%alex95_grid_logr(n_alex95_d).and. &
            abs(hydrogen_fraction-opacity_table%alex95_cached_x).lt.alex_composition_tol) then
@@ -145,19 +103,7 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
          opacity = exp(ln10*log10_opacity)
       else
 !        FIND 4 NEAREST TABLES IN X.
-         if (hydrogen_fraction.lt.opacity_table%alex95_grid_x(4)) then
-            if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(3)) then
-               opacity_table%alex95_index_x = 2
-            else
-               opacity_table%alex95_index_x = 1
-            endif
-         else
-            if (hydrogen_fraction.gt.opacity_table%alex95_grid_x(5)) then
-               opacity_table%alex95_index_x = 4
-            else
-               opacity_table%alex95_index_x = 3
-            endif
-         endif
+         opacity_table%alex95_index_x = alex_x_stencil_start(hydrogen_fraction)
          do i = 1,4
             interp_nodes(i) = opacity_table%alex95_grid_x(opacity_table%alex95_index_x+i-1)
          end do
