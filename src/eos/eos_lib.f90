@@ -63,7 +63,7 @@ module eos_lib
 ! check_boundaries.py cross-domain allowlist). The i_*/num_eos_results
 ! index parameters carry their own public attributes.
       private
-      public :: eos_get, eos_get_gamma1, eos_init, eos_set_mixture
+      public :: eos_get, eos_get_gamma1, eos_init, eos_set_mixture, eos_set_debye_huckel_z
       public :: eos_eval
 ! result-array slots for eos_get
       integer, parameter, public :: &
@@ -468,5 +468,25 @@ subroutine eos_set_mixture(envelope_hydrogen_fraction, &
 
       return
 end subroutine eos_set_mixture
+
+!----------------------------------------------------------------------
+! eos_set_debye_huckel_z
+!----------------------------------------------------------------------
+! Added 2026 (wave 2): the LAOL89 opacity table header carries the
+! 18-element metal mixture (C,N,O,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,Ca,Ti,Cr,
+! Mn,Fe,Ni, scaled to sum to ZHIT) that the Debye-Huckel correction
+! weights with debye_huckel_nu; kap/setupopac.f90 pushes it here
+! right after rdlaol reads it (formerly rdlaol wrote yale_eos_lib's
+! debye_huckel_z directly). Elements 1-3 are recomputed per shell by
+! the star layer (core/henyey_iterate.f90 etc.); 4-18 come only from
+! here.
+subroutine eos_set_debye_huckel_z(metal_mixture)
+      implicit none
+      double precision, intent(in) :: metal_mixture(18)
+
+      debye_huckel_z = metal_mixture
+
+      return
+end subroutine eos_set_debye_huckel_z
 
 end module eos_lib

@@ -49,7 +49,10 @@ PUBLIC = {
     # (eqstat/eqstat2, the OPAL/MHD/SCV/Yale internals, mu) is private.
     # eos_get is the named-index result-array query (the former
     # eos_get_r); the long-form engine eos_eval is domain-internal.
-    "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture"},
+    # eos_set_debye_huckel_z: kap/setupopac hands the eos domain the
+    # LAOL89 table's 18-element metal mixture (2026 wave 2).
+    "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture",
+            "eos_set_debye_huckel_z"},
     # The kap_lib facade entries (kap_get_r is the named-index
     # result-array variant of kap_get).
     # kap_get is the named-index result-array query (the former

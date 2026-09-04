@@ -73,6 +73,10 @@ subroutine run_yrec(ierr)
 ! routines operating on the star_job structure (state/star_job_lib).
       call read_controls(ierr)
       if (ierr /= 0) return
+! a second opacity-table set at a different Z is needed under the
+! Z ramp or Z diffusion (read by the kap table loaders from
+! star_setup's kap_init on; formerly decided inside kap/setupopac)
+      star%use_two_z_tables = star%ctrl%use_z_ramp .or. star%job%use_diffusion_z
       call star_setup(ierr)
       if (ierr /= 0) return
 ! sanity pass over the adopted controls: warn (terminal only) about

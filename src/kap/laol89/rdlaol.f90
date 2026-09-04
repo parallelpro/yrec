@@ -11,15 +11,18 @@
 ! DBG 4/94 Modified to read in second table for ZRAMP core stuff.
 ! Reads the LAOL89 opacity table(s) (and, if a second Z table is
 ! requested, a second LAOL89 table).
-subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
+subroutine rdlaol(laol_work_array, laol_debye_huckel_z, laol_table_path, &
+     laol_table2_path, ierr)
       use star_info_lib, only: star, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
            ix_o, ix_n, ix_ar, ix_ne
 
       use opacity_table_lib
       use luout_lib
-      use yale_eos_lib
       implicit none
       integer, intent(out) :: ierr
+! the 18-element metal mixture from the table header (see the read
+! below); the caller hands it to the eos domain (eos_set_debye_huckel_z)
+      double precision, intent(out) :: laol_debye_huckel_z(18)
 ! runtime-allocated units for the LAOL table (formerly the fixed
 ! iolaol = 61) and the second (Z-ramp) LAOL table (formerly
 ! luout_lib's fixed iolaol2 = 63)
@@ -58,7 +61,7 @@ subroutine rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
 ! DBG 7/92 NEED RELATIVE ABUNDANCES OF METALS FOR DEBYE-HUCKEL
 !     CORRECTION. 18 ELEMENTS, C,N,O,Ne,Na,Mg,Al,Si,P,
 !     S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni scaled to sum to ZHIT
-      read(laol_unit,130) zhit, debye_huckel_z
+      read(laol_unit,130) zhit, laol_debye_huckel_z
 ! 130 FORMAT(54X,F8.5,///////)
   130 format(54x,f8.5,/////,1p6e12.5,/,1p6e12.5,/1p6e12.5)
 !     READ IN H MASS FRACTIONS OF TABLE

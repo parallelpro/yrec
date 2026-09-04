@@ -18,10 +18,14 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
       use star_info_lib, only: star
 
       use opacity_table_lib
+      use eos_lib, only: eos_set_debye_huckel_z
       implicit none
 
       double precision, intent(in) :: envelope_hydrogen_fraction
       double precision, intent(inout) :: laol_work_array(12)
+! Debye-Huckel metal mixture read from the LAOL89 table header,
+! handed to the eos domain right after the read
+      double precision :: laol_debye_huckel_z(18)
       character(len=256), intent(in) :: alex06_table_path, &
            kurucz_table_path, kurucz_table2_path, laol_table_path, &
            laol_table2_path, opal95_table_path, opal92_table_path, &
@@ -31,8 +35,9 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
 !     THIS SUBROUTINE READS IN SPECIFIED OPACITY TABLES AND
 !     SET UP SPLINES FOR THE TABLES.
 !     WHEN LZRAMP=T OR LDIFZ=T THEN READ IN SECOND SET OF
-!     OPACITY TABLES AT DIFFERENT Z (E.G. ZOPAL952).
-      star%use_two_z_tables = star%ctrl%use_z_ramp .or. star%job%use_diffusion_z
+!     OPACITY TABLES AT DIFFERENT Z (E.G. ZOPAL952) -- the
+!     star%use_two_z_tables flag the readers test is decided by
+!     core/run_yrec.f90 right after the controls read.
 
 !     INTERIOR TABLES
 
@@ -53,8 +58,10 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
       end if
 !     READ IN LAOL89 TABLES AT ZLAOL1 AND ZLAOL2
       if (star%ctrl%use_laol89_tables) then
-         call rdlaol(laol_work_array, laol_table_path, laol_table2_path, ierr)
+         call rdlaol(laol_work_array, laol_debye_huckel_z, laol_table_path, &
+              laol_table2_path, ierr)
          if (ierr /= 0) return
+         call eos_set_debye_huckel_z(laol_debye_huckel_z)
          call sulaol
       end if
 

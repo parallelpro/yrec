@@ -218,7 +218,7 @@ kap/kurucz90/read_kurucz_tables.o: math_lib.mod opacity_table_lib.mod star_info_
 kap/laol89/gtlaol.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/gtlaol2.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/gtpurz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/laol89/rdlaol.o: luout_lib.mod opacity_table_lib.mod star_info_lib.mod yale_eos_lib.mod
+kap/laol89/rdlaol.o: luout_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/rdzlaol.o: luout_lib.mod opacity_table_lib.mod
 kap/laol89/sulaol.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/zsulaol.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod
@@ -236,7 +236,7 @@ kap/opal95/opal95_interp2d.o: math_lib.mod opacity_table_lib.mod
 kap/opal95/opal95_interp3d.o: math_lib.mod opacity_table_lib.mod
 kap/opal95/opal95_interp4d.o: math_lib.mod opacity_table_lib.mod
 kap/opal95/opal95_surface_table.o: numerics_lib.mod opacity_table_lib.mod
-kap/setupopac.o: opacity_table_lib.mod star_info_lib.mod
+kap/setupopac.o: eos_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/surfopac.o: star_info_lib.mod
 kap/test/test_kap.o: kap_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
 mixing/burn_mix_extrapolated.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
