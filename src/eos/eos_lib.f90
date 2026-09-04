@@ -62,6 +62,8 @@ module eos_lib
 ! the domain's own standalone test and stays outside the
 ! check_boundaries.py cross-domain allowlist). The i_*/num_eos_results
 ! index parameters carry their own public attributes.
+! eos_get_gamma1 is exported for eos/test/test_eos.f90 only (no
+! production caller; see the header note above).
       private
       public :: eos_get, eos_get_gamma1, eos_init, eos_set_mixture, eos_set_debye_huckel_z
       public :: eos_eval

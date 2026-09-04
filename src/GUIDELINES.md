@@ -771,6 +771,12 @@ plan, and the sequencing rationale.
   double), and can cascade into thousands of differing lines through
   an iterative solver. Never "improve" a literal's precision suffix
   while doing an unrelated mechanical conversion.
+- The aux battery's `test_mesa_output.py::test_default_columns_lists_in_sync`
+  regex-harvests literal `names(<digits>) = '...'` lines from
+  io/profile_output.f90, so the profile-column name table there must
+  keep that exact one-slot-per-line literal form (no loops, array
+  constructors, or computed subscripts) or the test silently sees
+  fewer columns.
 
 ## Re-triage after every conversion, not just at the start
 

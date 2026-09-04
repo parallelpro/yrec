@@ -1284,7 +1284,10 @@ subroutine read_input(ierr)
       atm_table_file_unit = 38
 ! YCK INPUT: Alex LOW T OPACITIES
       alex94_table_unit = 39
-! INPUT: MHD EQU. OF STATE TABLES
+! INPUT: MHD EQU. OF STATE TABLES (2026 wave 2: these eight stay
+! assigned here -- the star%ctrl members have no declaration-time
+! default, so they would seed as 0, and eos/mhd/mhdst.f90 treats a
+! unit .le. 0 as "table absent")
       unit_zams_a = 40
       unit_zams_b = 41
       unit_zams_c = 42
