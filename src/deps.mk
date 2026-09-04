@@ -146,8 +146,8 @@ core/yrec_capi.o: star_info_lib.mod
 core/yrec_reset.o: point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 eos/eos_lib.o: eos_mixture_lib.mod luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
 eos/eqstat.o: eos_mixture_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod
-eos/mhd/meqos.o: luout_lib.mod math_lib.mod mhd_eos_lib.mod star_info_lib.mod
-eos/mhd/mhdpx.o: luout_lib.mod mhd_eos_lib.mod
+eos/mhd/meqos.o: luout_lib.mod math_lib.mod mhd_eos_lib.mod
+eos/mhd/mhdpx.o: mhd_eos_lib.mod
 eos/mhd/mhdpx1.o: luout_lib.mod mhd_eos_lib.mod numerics_lib.mod
 eos/mhd/mhdpx2.o: mhd_eos_lib.mod numerics_lib.mod
 eos/mhd/mhdst.o: mhd_eos_lib.mod
@@ -159,9 +159,9 @@ eos/opal/eqbound06.o: math_lib.mod opal_eos_lib.mod
 eos/opal/esac.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/esac01.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/esac06.o: luout_lib.mod opal_eos_lib.mod
-eos/opal/oeqos.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod star_info_lib.mod
-eos/opal/oeqos01.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod star_info_lib.mod
-eos/opal/oeqos06.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod star_info_lib.mod
+eos/opal/oeqos.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
+eos/opal/oeqos01.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
+eos/opal/oeqos06.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
 eos/opal/quad.o: opal_eos_lib.mod
 eos/opal/quadeos01.o: opal_eos_lib.mod
 eos/opal/quadeos06.o: opal_eos_lib.mod
@@ -178,7 +178,7 @@ eos/opal/t6rinteos01.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/t6rinteos06.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/t6rinterp.o: luout_lib.mod opal_eos_lib.mod
 eos/scv/eqscve.o: eos_mixture_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod
-eos/scv/eqscvg.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod
+eos/scv/eqscvg.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod
 eos/scv/scv_envelope_table.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod
 eos/test/test_eos.o: eos_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
 eos/yale/fully_ionized_eos.o: luout_lib.mod math_lib.mod phys_const_lib.mod yale_eos_lib.mod

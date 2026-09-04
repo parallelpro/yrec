@@ -40,8 +40,9 @@ double precision function gmass(hydrogen_fraction, metal_fraction, &
       double precision :: carbon_moles, nitrogen_moles, oxygen_moles, &
            neon_moles
       double precision :: hydrogen_moles, helium_moles, total_moles_raw
-! electron_mole_excess: (total_moles - 1); its physical role is not
-! fully clear from this transliteration alone -- see usage below.
+! electron_mole_excess: electrons per mole of ions. total_moles sums
+! (1 + Z_i) over the species mole fractions (which sum to 1), i.e.
+! ions plus their electrons, so total_moles - 1 is the electron count.
       double precision :: electron_mole_excess
       integer :: species_idx
 

@@ -18,14 +18,14 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
       use math_lib
       implicit none
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 191
+      integer, parameter :: nt = 191
 
       double precision, intent(in) :: temperature, log10_density
       double precision, intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
 ! --- locals ---
       double precision :: t6, table_edge_density, ramp_start_density
-      double precision :: t6_top_of_table, t_fraction
+      double precision :: t6_top_of_table
       integer :: t6_scan_idx
 
       integer, intent(out) :: ierr
@@ -35,11 +35,9 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
       t6 = temperature*1.0d-6
 !     exit if outside table in rho
       if (log10_density.lt.-14d0 .or. log10_density.gt.7.0d0) then
-         continue
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
-         
          return
       end if
 !     find nearest table element in t.
@@ -52,7 +50,7 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
          end do
          if (t6_scan_idx > nt) then
          t6_top_of_table = opal_eos%t6_grid_01(nt)
-!        sr call should have been stopped outside table bounds; stop code
+!        caller should have stopped outside table bounds; error exit
          write(*,5) t6, t6_top_of_table, opal_eos%t_row_index_01
     5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
@@ -69,7 +67,7 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
          end do
          if (t6_scan_idx < (1)) then
          t6_top_of_table = opal_eos%t6_grid_01(1)
-!        sr call should have been stopped outside table bounds; stop code
+!        caller should have stopped outside table bounds; error exit
          write(*,5) t6, t6_top_of_table, opal_eos%t_row_index_01
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
@@ -77,8 +75,6 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
          return
          end if
       end if
-      t_fraction = (t6 - opal_eos%t6_grid_01(opal_eos%t_row_index_01+1))/ &
-           (opal_eos%t6_grid_01(opal_eos%t_row_index_01)-opal_eos%t6_grid_01(opal_eos%t_row_index_01+1))
 !     define table edge in rho by linear interpolation.
       table_edge_density = opal_eos%density_edge_at_t_01(opal_eos%t_row_index_01+1)
       table_edge_density = log10(table_edge_density)
@@ -88,11 +84,9 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
       ramp_start_density = log10(ramp_start_density)
 !     check if within table bounds in rho
       if (log10_density.gt.table_edge_density) then
-         continue
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
-         
          return
       end if
 
@@ -116,13 +110,5 @@ subroutine eqbound01(temperature, log10_density, ramp_factor, &
          needs_ramp = .false.
       end if
 
-      return      ! Normal exit
-
-!     Error Exit.
-      in_opal_table = .false.       ! Not in table
-      needs_ramp = .true.           ! Turn on ramping
-      ramp_factor = 0d0             ! Set ramping factor to zero
-!                            This way, out of table results are ramped to zero.
-      return      ! Error exit
-
+      return
 end subroutine eqbound01

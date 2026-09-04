@@ -29,14 +29,10 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
       use opal_eos_lib
       implicit none
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
-
       integer, intent(in) :: rad_flag
       double precision, intent(in) :: t6_temperature, density
       double precision, intent(in) :: total_moles
       double precision, intent(in) :: mean_molecular_weight
-
-
 
       double precision :: rad_const_over_c, molar_gas_constant_mbcc
       data rad_const_over_c/1.8914785d-3/, molar_gas_constant_mbcc/83.14510d0/
@@ -105,10 +101,6 @@ subroutine radsub06(rad_flag, t6_temperature, density, total_moles, &
 !     eos(iri(10))=eos(iri(10))+gam3pt-gam3pt_norad
       end if
 !-----End EOS calculations with radiation
-!     normalize cvt to 3/2 when gas is ideal,non-degenerate,
-!     fully-ionized, and has no radiation correction
-!     cvt=(eos(5)*molenak/tmass+4.*er/t6)
-!    x  /molenak
       opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(1)) = total_pressure
       opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(2)) = total_energy
       opal_eos%eos_output_06(opal_eos%eos_index_inverse_06(3)) = total_entropy

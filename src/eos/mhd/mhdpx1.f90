@@ -7,8 +7,7 @@
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
 ! original mhdpx1.f; only variable names, source form, and comment
-! style were updated. common/luout/, common/mhdout/, and
-! common/ccout2/ member names match those established in meqos.f90.
+! style were updated.
 !
 !     MHDST MUST BE CALLED IN MAIN.
 !     INTERPOLATION IN TABLES WITH DIFFERENT X AND FIXED Z
@@ -17,10 +16,11 @@
 !     TL > TLIM2:         CENTRE TABLES
 !     TMINI,TMAXI:        TEMPERATURE INTERVAL COVERED
 !                         BY THE TABLES
+!     (TLIM1/TLIM2/TMINI/TMAXI are mhd_eos%zams_lower_upper_boundary_log10t,
+!     zams_centre_boundary_log10t, table_log10t_min, table_log10t_max.)
+!     An out-of-range TL returns silently with ierr = 0 and
+!     mhd_eos%mhd_output untouched (historical behaviour, preserved).
 subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
-!
-!     MHDST MUST BE CALLED IN MAIN.
-!     INTERPOLATION IN TABLES WITH DIFFERENT X AND FIXED Z
       use mhd_eos_lib
       use luout_lib
       use numerics_lib
@@ -36,8 +36,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 !     QUANTITIES FOR INTERPOLATION IN X
       double precision :: cubic_vars(ivarx,4), cubic_x_nodes(4)
       integer :: cubic_table_index(4)
-! LIR's "type" flag; the file's own IMPLICIT LOGICAL*4(L) rule is
-! overridden below by an explicit INTEGER*4 declaration for L.
+! LIR's "type" flag (an integer, despite the original's L-prefixed name).
       integer :: lir_type_flag
 !     READ FROM APPROPRIATE TABLES
 !     AND FILL ARRAYS VAROUT AND XC
@@ -48,14 +47,12 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       double precision :: x_grid_origin, x_grid_spacing, &
            var_at_x0, var_at_x1, var_at_x2
 
-!     IRANGE = 1
       integer, intent(out) :: ierr
 
       ierr = 0
 
       if (log10_temperature.lt.mhd_eos%table_log10t_min .or. &
            log10_temperature.gt.mhd_eos%table_log10t_max) then
-!         IRANGE = 0
           return
       end if
 !     LOWER ZAMS TABLES
@@ -93,11 +90,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
             ierr = 1
             return
          end if
-!         IF( ( XC(3).GT.XC(1) .AND. (X.GT.XC(3) .OR. X.LT.XC(1)))
-!    1                               .OR.
-!    2       ( XC(3).LT.XC(1) .AND. (X.GT.XC(1) .OR. X.LT.XC(3))) )
-!    3   THEN
-!        END IF
          do iv=1,ivarx
          var_at_x0 = table_vars(1,iv)
          var_at_x1 = table_vars(2,iv)
@@ -118,15 +110,9 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
             if (hydrogen_fraction.lt.table_hfrac(7)) ixmin=5
          end if
          do i=1,4
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!  200     IX(I)=IXMIN+I-1
             cubic_table_index(i)=ixmin+i-1
          end do
          do i =1,4
-! KC 2025-05-30 fixed "Shared DO termination label"
-!         XX(I) = XC(IX(I))
-!         DO 250 IV=1,IVARX
-!         VARI1(IV,I) = VAROUT(IX(I),IV)
             cubic_x_nodes(i) = table_hfrac(cubic_table_index(i))
             do iv=1,ivarx
                cubic_vars(iv,i) = table_vars(cubic_table_index(i),iv)
@@ -141,9 +127,4 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
               num_vars, var_leading_dim, num_points, lir_type_flag, interp_mode)
       end if
       return
-!      1          'PL,TL,X = ',3F12.6)
-! 5011  FORMAT(1X,'******* WARNING: EXTRAPOLATION IN X (LIR) ',
-!      1          'PL,TL,X = ',3F12.6)
-! 9001  FORMAT(' ERROR IN MHDPX1. TL OUT OF RANGE. TL,TMINI,TMAXI=',
-!      1 /1X,1P3E13.6)
 end subroutine mhdpx1

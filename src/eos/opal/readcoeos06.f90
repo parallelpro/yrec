@@ -6,24 +6,23 @@
 ! original readcoeos06.f; only variable names, source form, and
 ! comment style were updated.
 !
-! Reads the OPAL 2006 EOS data tables into common/aeos06/ and the
-! other 2006-EOS common blocks (block names preserved verbatim -- see
-! readco.f90's header for why). Called once (guarded by
-! common/lreadco/) from esac06.f90.
+! Reads the OPAL 2006 EOS data tables into opal_eos_lib's opal_eos state
+! and derives the auxiliary grid-spacing arrays used by esac06.f90/
+! t6rinteos06.f90 for interpolation. Called once from esac06.f90
+! (guarded by opal_eos%table_loaded_flag).
 !
-! NOTE: preserved verbatim from the original -- var_idx (the "j" loop
-! variable used to zero opal_eos%eos_table_06's variable dimension and to reset
-! opal_eos%eos_output_06 to 1.0 during the one-time init block below) is reused,
-! stale, as the column index into log10_ne_grid in the per-row READ
-! statement further down. Since var_idx is SAVE'd and the init block
-! only runs once, var_idx is left sitting at mv+1 (its value just
-! after the "do var_idx=1,mv" loops complete normally) for every
-! subsequent call to this routine, so every row's read of
-! log10_ne_grid(density_row, var_idx) always overwrites the SAME
-! column (var_idx == mv+1) instead of tracking t6_row as the analogous
-! opal_eos%t6_list_06/amu_grid reads do. This looks like an original bug (using
-! "j" instead of "i" in that READ's variable list) but is
-! transliterated exactly rather than "fixed".
+! NOTE: preserved verbatim from the original -- var_idx, the "j" loop
+! variable of the one-time init block below (which zeroes
+! opal_eos%eos_table_06 and resets opal_eos%eos_output_06 to 1.0), is
+! reused, stale, as the column index into log10_ne_grid_06 in the
+! per-row READ statement further down. Because the init loops leave
+! var_idx at mv+1, every row's read of
+! log10_ne_grid_06(density_row, var_idx) overwrites the SAME column
+! (var_idx == mv+1) instead of tracking t6_row as the analogous
+! opal_eos%t6_list_06/amu_grid_06 reads do. This looks like an original
+! bug (using "j" instead of "i" in that READ's variable list) but is
+! transliterated exactly rather than "fixed"; log10_ne_grid_06 is never
+! read anywhere.
 subroutine readcoeos06(ierr)
       use star_info_lib, only: star
 
@@ -34,14 +33,6 @@ subroutine readcoeos06(ierr)
       integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
 
       character(len=1) :: blank_line
-
-! former common/eeeeos06/: this batch's own block, only used by
-! readcoeos06.f90, now use-associated from opal_eos_lib.
-! amu_grid_06/log10_ne_grid_06 are read per (density_row, t6_row) but
-! not used elsewhere in this batch (log10_ne_grid_06 is also subject
-! to the stale-index bug noted above).
-
-
 
 ! --- locals ---
       integer :: x_loop_index_06
@@ -72,8 +63,7 @@ subroutine readcoeos06(ierr)
       end if
 
       close (2)
-! .....read  tables
-! MHP 8/25 Moved opening of file to parmin
+! .....read  tables (the file is opened on star%ctrl%iopale by read_controls)
       do x_loop_index_06 = 1, mx
          read (star%ctrl%iopale,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
               opal_eos%hydrogen_fraction_header_06(x_loop_index_06), &
@@ -139,16 +129,11 @@ subroutine readcoeos06(ierr)
          opal_eos%t6_grid_06(t6_scan_idx) = opal_eos%t6_list_06(1,t6_scan_idx)
       end do
       do t6_idx = 2, nt
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!    12 dfs(i)=1D0/(t6a(i)-t6a(i-1))
          opal_eos%t6_grid_spacing_inv_06(t6_idx) = 1.0d0/(opal_eos%t6_grid_06(t6_idx) - &
               opal_eos%t6_grid_06(t6_idx-1))
       end do
       opal_eos%density_grid_06(1) = opal_eos%density_grid_table_06(1,1)
       do r_idx = 2, nr
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       rho(i)=rhogr(1,i)
-!    13 dfsr(i)=1D0/(rho(i)-rho(i-1))
          opal_eos%density_grid_06(r_idx) = opal_eos%density_grid_table_06(1,r_idx)
          opal_eos%density_grid_spacing_inv_06(r_idx) = 1.0d0/(opal_eos%density_grid_06(r_idx) - &
               opal_eos%density_grid_06(r_idx-1))

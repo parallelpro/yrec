@@ -7,13 +7,10 @@
 ! style were updated.
 !
 ! Reads the OPAL 1995 EOS data tables (one block per tabulated X
-! value) into common/a/ and the other 1995-EOS common blocks (block
-! names are preserved verbatim from the original -- Fortran COMMON is
-! linked by name, and other translation units outside this batch,
-! e.g. eqbound.f, still reference these blocks under their original
-! names), and derives the auxiliary grid-spacing arrays used by
-! esac.f90/t6rinterp.f90 for interpolation. Called once (guarded by
-! common/lreadco/) from esac.f90.
+! value) into opal_eos_lib's opal_eos state and derives the auxiliary
+! grid-spacing arrays used by esac.f90/t6rinterp.f90 for
+! interpolation. Called once from esac.f90 (guarded by
+! opal_eos%table_loaded_flag).
 subroutine readco(ierr)
       use star_info_lib, only: star
 
@@ -23,22 +20,14 @@ subroutine readco(ierr)
 
       integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
 
-
-
       character(len=1) :: blank_line
-
-! former common/eee/: this batch's own block, only used by readco.f90,
-! now use-associated from opal_eos_lib.
-
 
 ! --- locals ---
       integer :: x_loop_index
       integer :: x_idx, var_idx, t6_idx, r_idx, t6_scan_idx
-      integer :: density_row, t6_row, record_number, t6_count_used
+      integer :: density_row, t6_row, record_number
       double precision :: unused_field
 
-! density_index_edge_at_t's default moved to opal_eos_lib.f90: DATA can
-! no longer target it here now that it's use-associated.
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -58,8 +47,7 @@ subroutine readco(ierr)
          opal_eos%readco_init_flag = 12345678
       end if
 
-! ..... read  tables
-! MHP 8/25 Moved opening of file to parmin
+! ..... read  tables (the file is opened on star%ctrl%iopale by read_controls)
       do x_loop_index = 1, mx
 
          read (star%ctrl%iopale,'(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)') &
@@ -115,25 +103,15 @@ subroutine readco(ierr)
       end do
 
       do t6_scan_idx = 1, nt
-         if (opal_eos%t6_list(1,t6_scan_idx).eq.0.0d0) then
-            t6_count_used = t6_scan_idx
-            exit
-         end if
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!    11 T6A(I)=T6LIST(1,I)
+         if (opal_eos%t6_list(1,t6_scan_idx).eq.0.0d0) exit
          opal_eos%t6_grid(t6_scan_idx) = opal_eos%t6_list(1,t6_scan_idx)
       end do
       do t6_idx = 2, nt
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!    12 DFS(I)=1.D0/(T6A(I)-T6A(I-1))
          opal_eos%t6_grid_spacing_inv(t6_idx) = 1.0d0/(opal_eos%t6_grid(t6_idx) - &
               opal_eos%t6_grid(t6_idx-1))
-   end do
+      end do
       opal_eos%density_grid(1) = opal_eos%density_grid_table(1,1)
       do r_idx = 2, nr
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       RHO(I)=RHOGR(1,I)
-!    13 DFSR(I)=1.D0/(RHO(I)-RHO(I-1))
          opal_eos%density_grid(r_idx) = opal_eos%density_grid_table(1,r_idx)
          opal_eos%density_grid_spacing_inv(r_idx) = 1.0d0/(opal_eos%density_grid(r_idx) - &
               opal_eos%density_grid(r_idx-1))

@@ -25,9 +25,6 @@ subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
 
       ierr = 0
 
-!     NCHEM,ATWT,ABUN,ABFRCS ARE OUTPUT
-!     READ(IR,99) NCHEM,(ATWT(IC),ABUN(IC),ABFRCS(IC),
-!    1       IC=1,NCHEM),GASMU
       read(table_unit   ) num_chem,(atomic_weight(ic),number_abundance(ic), &
            mass_fraction(ic), ic=1,num_chem),mean_molecular_weight
       if (nchem0.lt.num_chem) then
@@ -37,8 +34,4 @@ subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
          return
       end if
       return
-!  99   FORMAT(1X,I5,(/1X,3E15.7))
-! 9009  FORMAT(' ERROR IN RABU. NCHEM READ FROM TABLE IS',
-!      1 ' BIGGER THAN THE VALUE USED IN THE COMMONS.',
-!      2 ' NCHEM0,NCHEM= ',/1X,2I8)
 end subroutine rabu

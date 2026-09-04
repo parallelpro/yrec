@@ -21,16 +21,13 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
            pressure_e12
       integer, intent(in) :: rad_flag
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 191
-
-
-
-
-
+      integer, parameter :: mx = 5, nt = 191
 
 ! density_index_edge(t6_idx): highest valid density-grid index for
-! temperature-grid row t6_idx (local copy; see rhoofp.f90's note on
-! why this isn't shared storage with readcoeos01.f90).
+! temperature-grid row t6_idx (a local copy, DATA-initialized here;
+! NOTE its values differ from opal_eos_lib's
+! opal_eos%density_index_edge_at_t_01 in the 115/113 runs -- preserved
+! verbatim).
       integer :: density_index_edge(nt)
       double precision :: rad_const_over_c
 ! NOTE: no D-suffix in the original (rhoofp01.f) -- preserved
@@ -61,8 +58,10 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
       ierr = 0
 
       rat = rad_const_over_c
+! The radiation pressure is deliberately not subtracted from the target
+! here (the original's IF(IRAD.EQ.1) PR=4/3*RAT*T6**4 is commented out);
+! rad_flag instead adds it to pressure_max/pressure_min below.
       radiation_pressure = 0.0d0
-!      IF(IRAD .EQ. 1) PR=4.D0/3.D0*RAT*T6**4   ! MB
       pressure_no_rad = pressure_e12 - radiation_pressure
 
       if (opal_eos%table_loaded_flag.ne.12345678) then
@@ -73,9 +72,7 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          call esac01(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
               rad_flag, ierr, *999)
          if (ierr /= 0) then
-            continue
             rhoofp01 = -999.0d0
-            
             return
          end if
       end if
@@ -116,13 +113,8 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
            opal_eos%density_grid_01(1) + rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
       if ((pressure_no_rad.gt.1.25d0*pressure_max) .or. &
            (pressure_no_rad.lt.pressure_min)) then
-!      write (ISHORT,'(" The requested pressure-temperature not in ",
-!     X       "table")')
-!     stop
-!      write (ISHORT,'("pnr, pmax,pmin=",3e14.4)') pnr,pmax,pmin
-         continue
+!        requested pressure-temperature not in table
          rhoofp01 = -999.0d0
-         
          return
       end if
 
@@ -131,9 +123,7 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
       call esac01(hydrogen_fraction, t6_temperature, density_trial1, 1, &
            rad_flag, ierr, *999)
       if (ierr /= 0) then
-         continue
          rhoofp01 = -999.0d0
-         
          return
       end if
       pressure_trial1 = opal_eos%eos_output_01(1)
@@ -145,23 +135,18 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
          call esac01(hydrogen_fraction, t6_temperature, density_trial1, 1, &
               rad_flag, ierr, *999)
          if (ierr /= 0) then
-            continue
             rhoofp01 = -999.0d0
-            
             return
          end if
          pressure_trial1 = opal_eos%eos_output_01(1)
       else
          density_trial2 = 5.0d0*density_trial1
-!          if(rhog2 .gt. rho(klo)) rhog2=rho(klo)  ! Corrected below llp 8/19/08
          if (density_trial2.gt.opal_eos%density_grid_01(density_index_edge(t6_bisect_idx))) &
-              density_trial2 = opal_eos%density_grid_01(density_index_edge(t6_bisect_idx)) ! Had wrong pointer, see rhog1= ten lines up
+              density_trial2 = opal_eos%density_grid_01(density_index_edge(t6_bisect_idx))
          call esac01(hydrogen_fraction, t6_temperature, density_trial2, 1, &
               rad_flag, ierr, *999)
          if (ierr /= 0) then
-            continue
             rhoofp01 = -999.0d0
-            
             return
          end if
          pressure_trial2 = opal_eos%eos_output_01(1)
@@ -175,44 +160,32 @@ double precision function rhoofp01(hydrogen_fraction, t6_temperature, &
       call esac01(hydrogen_fraction, t6_temperature, density_trial3, 1, &
            rad_flag, ierr, *999)
       if (ierr /= 0) then
-         continue
          rhoofp01 = -999.0d0
-         
          return
       end if
       pressure_trial3 = opal_eos%eos_output_01(1)
-!      if (abs((p3-pnr)/pnr) .lt. 1.D-5) then
       if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.0.5d-7) then
          rhoofp01 = density_trial3
-
          return
       end if
       if (pressure_trial3.gt.pressure_no_rad) then
          density_trial2 = density_trial3
          pressure_trial2 = pressure_trial3
          if (refine_count.lt.11) cycle refine
-!        write (ISHORT,'("No convergence after 10 tries")')
-         continue
+!        no convergence after 10 tries
          rhoofp01 = -999.0d0
-         
          return
-!        stop
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
          if (refine_count.lt.11) cycle refine
-!        write (*,'("No convergence after 10 tries")')
-         continue
+!        no convergence after 10 tries
          rhoofp01 = -999.0d0
-         
          return
-!        stop
       end if
       end do refine
-
   999 continue
+!     esac01 took its alternate return: failed to find rho
       rhoofp01 = -999.0d0
-!      WRITE(ISHORT,'("FAIL TO FIND RHO")')
       return
-
 end function rhoofp01

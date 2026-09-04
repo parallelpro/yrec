@@ -9,9 +9,9 @@
 !
 ! Mihalas, Hummer, Dappen equation of state. Implemented by YC,
 ! March 7, 1990. Given log10(T), log10(P), X, and Z, calls the MHD
-! table interpolator (mhdpx, converted separately; out of scope for
-! this pass) and converts its output into the same thermodynamic
-! derivative set used by the rest of the EOS machinery.
+! table interpolator (mhd/mhdpx.f90) and converts its output
+! (mhd_eos%mhd_output) into the same thermodynamic derivative set
+! used by the rest of the EOS machinery.
 subroutine meqos(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, ion_fraction, specific_gas_constant, &
@@ -21,9 +21,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, ierr)
 
-! LATMO,KSAHA NEEDED FOR EQSAHA
       use mhd_eos_lib
-      use star_info_lib
       use luout_lib
       use math_lib
       implicit none
@@ -41,11 +39,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
            dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
 
-
-      integer, parameter :: ivarx = 25
       double precision, parameter :: cnvs = 0.434294481d0
-      double precision, parameter :: zero = 0.0d0
-      integer :: ier_flag
       double precision :: mhdpx_r10
       double precision :: chi_rho, chi_t, log10_specific_heat_cp
       double precision :: specific_gas_constant_check
@@ -55,7 +49,6 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
 
       ierr = 0
 
-      ier_flag = 0
       temperature = exp10(log10_temperature)
       pressure = exp10(log10_pressure)
       call mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
@@ -105,11 +98,5 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
           ierr = 1
           return
       end if
-      return
-!   999 CONTINUE
-      write(run_log_unit,*) 'ERROR(MHD):... MHD TABLE FAIL'
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-      ! facades stop when their caller passes no ierr.
-      ierr = 1
       return
 end subroutine meqos

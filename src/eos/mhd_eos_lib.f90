@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Bundles the MHD equation-of-state ZAMS-type
-! (A/B/C composition) and centre-type (1-5) opacity/EOS lookup tables
+! (A/B/C composition) and centre-type (1-5) lookup tables
 ! -- former common/mhdout/, tttt/, tab1a/, tab2a/, tab1b/, tab2b/,
 ! tab1c/, tab2c/, chea/, cheb/, chec/, tabx1/, tabx2/, tabx3/, tabx4/,
 ! tabx5/, che1/, che2/, che3/, che4/, che5/ -- into one derived type.

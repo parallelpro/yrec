@@ -43,24 +43,14 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
            density
       integer, intent(in) :: deriv_order, rad_flag
 
-      integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
-
-
-
-
-
-
-
-
+      integer, parameter :: mx = 5, nr = 77, nt = 56
 
       double precision :: species_mass_fraction(7)
       double precision :: molar_gas_constant_mbcc
       data molar_gas_constant_mbcc/83.1446304d0/
 ! --- locals ---
       integer :: x_loop_index
-      character(len=1) :: blank_line   ! assigned but never read again
       double precision :: t6_value, density_value   ! working copies (SLT/SLR)
-      double precision :: hydrogen_fraction_copy, density_copy   ! XXI/RI: assigned but not used further
       integer :: species_idx, index_idx
       integer :: lo_idx, hi_idx, mid_idx, result_idx
       integer :: x_index_2, x_index_3, x_index_4, x_index_hi
@@ -79,7 +69,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
 
       ierr = 0
 
-      blank_line = ' '
       if (deriv_order.gt.10) then
          write(run_log_unit,'(" IORDER CANNOT EXCEED 10")')
       end if
@@ -90,9 +79,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
          ierr = 1
          return
       end if
-
-      hydrogen_fraction_copy = hydrogen_fraction
-      density_copy = density
 
       t6_value = t6_temperature
       density_value = density
@@ -114,9 +100,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
          if (ierr /= 0) return
          opal_eos%table_metal_fraction = opal_eos%z_table(1)
 
-! The original's GO TO 61 guarded the whole abort; the conversion
-! left only the first WRITE under the IF, so ierr=1/return fired on
-! every first call.
          if (opal_eos%table_metal_fraction + hydrogen_fraction - 1.0d-6.gt.1.0d0) then
             write(run_log_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
             write(run_log_unit,*) opal_eos%table_metal_fraction, hydrogen_fraction
@@ -160,7 +143,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
       x_index_4 = result_idx + 1
       x_index_hi = x_index_4
       if (hydrogen_fraction.lt.1.0d-6) then
-         x_index_3 = 1
          x_index_3 = 1
          x_index_2 = 1
          x_index_4 = 2
@@ -378,7 +360,8 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
       if (opal_eos%eos_index_inverse(2) <= deriv_order) &
            opal_eos%eos_output(opal_eos%eos_index_inverse(2)) = opal_eos%eos_output(opal_eos%eos_index_inverse(2))* &
            t6_temperature   ! interpolated in E/T6
-! YCK >    EOS(IRI(4))=EOS(IRI(4))/SQRT(R*T6) ! INTERP DE/DR/SQRT(R/T6)
+! dE/dRho (slot 4) is deliberately not rescaled here (YCK commented out
+! EOS(IRI(4))=EOS(IRI(4))/SQRT(R*T6) in the original).
       mean_molecular_weight = gmass(hydrogen_fraction, opal_eos%table_metal_fraction, &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_mass_fraction)
@@ -391,23 +374,6 @@ subroutine esac(hydrogen_fraction, t6_temperature, density, &
               total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return
-
-      write(run_log_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
-      write(run_log_unit,*) opal_eos%table_metal_fraction, hydrogen_fraction
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-      ! facades stop when their caller passes no ierr.
-      ierr = 1
-      return
-      write(run_log_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
-      write(run_log_unit,*) opal_eos%t6_grid(1), t6_value, opal_eos%t6_grid(nt)
-      write(run_log_unit,*) opal_eos%density_grid(1), density_value, opal_eos%density_grid(nr)
-      return 1
-
-      write(run_log_unit,'("T6/LOG RHO IN EMPTY REGION OF TABLE (65)")')
-      write(run_log_unit,'("XH,T6,R=", 3E12.4)') hydrogen_fraction, &
-           t6_temperature, density
-      return 1
-
       end if
       write(run_log_unit,'(" Z DOES NOT MATCH Z IN EOSDATA* FILES YOU ARE", &
            &" USING (66)")')

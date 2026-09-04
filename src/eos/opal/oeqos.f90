@@ -10,12 +10,9 @@
 ! OPAL (1995) equation of state. Implemented by YC (Feb. 21, 1995).
 ! Given log10(T), log10(P), X, and Z, looks up density and the
 ! thermodynamic derivatives needed by the rest of the EOS machinery
-! from the OPAL 1995 tables (via rhoofp/esac, converted separately;
-! out of scope for this pass).
-!
-! Other routines in the original file (not converted here, still in
-! their own .f files): MU, ESAC, T6RINTERP, READCO, QUAD, GMASS,
-! RADSUB, RHOOFP.
+! from the OPAL 1995 tables (via rhoofp.f90/esac.f90). Called from
+! eqstat2 (eqstat.f90); the alternate return is taken when the point
+! is outside the OPAL tables.
 subroutine oeqos(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, specific_gas_constant, &
@@ -24,7 +21,6 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
 
       use opal_eos_lib
       use phys_const_lib
-      use star_info_lib
       use luout_lib
       use math_lib
       implicit none
@@ -38,23 +34,12 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
            electron_mean_weight_inverse, dlnrho_dlnt, dlnrho_dlnp, &
            specific_heat_cp, adiabatic_gradient
 
-
-
-
-
-
-
-      integer, parameter :: ivarx = 25
-      double precision, parameter :: cnvs = 0.434294481d0
-      double precision, parameter :: zero = 0.0d0
       double precision :: t_million_k, p_e12
-      double precision :: hydrogen_fraction_work, metal_fraction_table
+      double precision :: hydrogen_fraction_work
       double precision :: density_cgs
       double precision :: specific_gas_constant_check
       integer :: rad_flag, deriv_order
       double precision, external :: rhoofp
-
-! CA3=2.5214D-15
 
       integer, intent(out) :: ierr
 
@@ -66,7 +51,6 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       p_e12 = pressure/1.0d12
       if (t_million_k.lt.0.0050d0 .or. t_million_k.gt.100.0d0) return 1
       hydrogen_fraction_work = hydrogen_fraction
-      metal_fraction_table = metal_fraction
 
       rad_flag = 1
       deriv_order = 10

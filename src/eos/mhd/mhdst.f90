@@ -1,23 +1,17 @@
 !---------------------------  GROUP: SR_X  -------------------------------
 !
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-! MHDST
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !----------------------------------------------------------------------
 ! mhdst
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
 ! original mhdst.f; only variable names, source form, and comment
-! style were updated. The ZAMS-table and centre-table common blocks
-! (TAB1A/TAB2A/.../CHE1.../TABX1...) match the names established in
-! mhdpx2.f90.
+! style were updated.
 !
 ! Reads the 8 MHD equation-of-state table files (3 ZAMS-type unit
 ! numbers covering compositions A, B, C, plus up to 5 optional
-! centre-type unit numbers) and sets the shared temperature-range
-! commons used by mhdpx1.
+! centre-type unit numbers) into mhd_eos_lib's mhd_eos state and sets
+! the table temperature limits used by mhdpx1.
 subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
      unit_centre2, unit_centre3, unit_centre4, unit_centre5, ierr)
 ! `use const_lib` removed (2026): unused (nothing in this file's body
@@ -52,12 +46,8 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
            mass_fraction_down(nchem0)
       double precision :: atomic_weight_up(nchem0), number_abundance_up(nchem0), &
            mass_fraction_up(nchem0)
-!
-!     DEFINE, WITH UNUSED STATEMENTS, STORAGE FOR VARIABLES
-!     THAT WOULD OTHERWISE ONLY APPEAR AS FORMAL PARAMETERS
-!     IN THIS SUBROUTINE. VICIOUS BUGS CAN BE THE RESULT IF
-!     THIS STORAGE WERE NOT PROVIDED (REMEMBER: FORTRAN IS NOT
-!     A RECURSIVE LANGUAGE.)
+!     Placeholder actuals for the mhdst1 arguments that the centre-table
+!     calls do not need (the ZAMS lower-table slots).
       integer :: num_chem_species, unused_num_t, unused_num_r, table_index
       double precision :: unused_drho
 
@@ -176,8 +166,6 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       else
          mhd_eos%zams_centre_boundary_log10t = mhd_eos%centre_log10t(  1)
          mhd_eos%table_log10t_max = mhd_eos%centre_log10t(mhd_eos%centre_num_t)
-      end if
-      if (unit_centre1.gt.0) then
       end if
       return
 end subroutine mhdst

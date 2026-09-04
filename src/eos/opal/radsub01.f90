@@ -23,13 +23,9 @@ subroutine radsub01(t6_temperature, density, total_moles, &
       use opal_eos_lib
       implicit none
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 191
-
       double precision, intent(in) :: t6_temperature, density
       double precision, intent(in) :: total_moles
       double precision, intent(in) :: mean_molecular_weight
-
-
 
       double precision :: rad_const_over_c, molar_gas_constant_mbcc
 ! NOTE: neither literal has a D-suffix in the original (radsub01.f) --

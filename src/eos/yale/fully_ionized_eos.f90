@@ -7,14 +7,14 @@
 ! style were updated.
 !
 ! Fully-ionized-gas equation of state ("relativistic" electron gas via
-! the tabulated Fermi-Dirac integrals in common/ccr/, following
-! Prather's thesis). Given log10(T), log10(P), and the mean molecular
+! the tabulated Fermi-Dirac integrals in yale_eos_lib's
+! yale_eos%fermi_table_data, following Prather's thesis). Given log10(T), log10(P), and the mean molecular
 ! weights, iterates on density until the electron+ion+radiation
 ! pressure sum matches the given P, then returns density and (if
 ! in_atmosphere is false, via eqstat2.f90's call) thermodynamic
 ! derivatives. Called from eqstat2.f90 both for the T >= saha cutoff
 ! branch (fully ionized gas assumed) and to interpolate against the
-! eqsaha/eqscve result near the ionization cutoff.
+! saha_eos/eqscve result near the ionization cutoff.
 !
 !          QDTT,QDTP = NAT-LOG DERIVATIVES OF QDT=D(LOG D )/D(LOG T )
 !          QAT,QAP = NAT-LOG DERIVATIVES OF THE ADIABATIC DERIVATIVE
@@ -37,9 +37,9 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       use math_lib
       implicit none
 
-      double precision, intent(inout) :: log10_temperature
+      double precision, intent(in) :: log10_temperature
       double precision, intent(in) :: temperature
-      double precision, intent(inout) :: log10_pressure
+      double precision, intent(in) :: log10_pressure
       double precision, intent(in) :: pressure
       double precision, intent(inout) :: log10_density
       double precision, intent(out) :: density
@@ -111,9 +111,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
 !  FIND INDEX (ID1,ID2,ID3) FOR 3-PT INTERPOLATION IN X
       xx = dml - 1.50d0*tl8
       pr6= 20.0d0*(xx - yale_eos%fermi_table_x_grid(1)) + 1.0d0
-! MHP 10/02 CORRECTED MIXED TYPE
       kk = int(pr6)
-!      KK = PR6
       kk = min0(261,max0(1,kk))
       id1 = yale_eos%fermi_table_x_lookup(kk)
 !  IF INDEX UNCHANGED FROM PREVIOUS LOOP,SKIP THIS SECTION
@@ -205,9 +203,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
        write(run_log_unit,40) log10_temperature,log10_pressure,ptl,dml,corr
    40    format('EQRELV: Did not Converge: T,P,Pcalc,Dcalc,CORR', &
                 4F10.6,F20.12)
-!       PAUSE
        return
-!         STOP 'ERRELV failed'
       end if
       exit density_iter
       end do density_iter

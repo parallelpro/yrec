@@ -29,9 +29,9 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       implicit none
 
       double precision, intent(in) :: saha_mass_fractions(12)
-      double precision, intent(inout) :: log10_temperature
+      double precision, intent(in) :: log10_temperature
       double precision, intent(in) :: temperature
-      double precision, intent(inout) :: log10_pressure
+      double precision, intent(in) :: log10_pressure
       double precision, intent(in) :: pressure
       double precision, intent(out) :: log10_density, density
       double precision, intent(in) :: beta, beta_inverse, beta14
@@ -45,9 +45,6 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
            dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
       integer, intent(inout) :: saha_state
-
-
-
 
 ! --- locals ---
 ! ionization_temp/helium_ionization_temp_1/helium_ionization_temp_2:
@@ -99,7 +96,7 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       double precision :: c13l, deltel, fact2
       double precision :: deltx2
       double precision :: helium_ion_fraction_1, helium_ion_fraction_2
-      double precision :: rmub, r3t, r3p
+      double precision :: r3t, r3p
       double precision :: helium_neutral_fraction, sk0qt, temp, r2t, r2p
       double precision :: sk1qt, r1t, r1p
       double precision :: sqet, sqep
@@ -119,6 +116,9 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       double precision :: btemp
       double precision :: qqutt, qqutp
 
+! NOTE: no D-suffix on the DATA literals below, as in the original
+! eqsaha.f -- preserved verbatim: parsed as single-precision constants
+! and widened to double precision.
       data ionization_temp, helium_ionization_temp_1, &
            helium_ionization_temp_2/59630.,69450.,88710.,91330.,94570., &
            130630.,157800.,158000.,168630.,183080.,250200.,285270.,631370./
@@ -130,7 +130,6 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       data mean_electrons_per_ion, helium_ion_fraction_1, &
            helium_ion_fraction_2/0.1D0,0.0D0,0.0D0/
       data saha_convergence_tol/1.0D-09/
-!  1    FXHE = FX(12)
       helium_mass_fraction = saha_mass_fractions(12)
       max_electrons_per_ion = 1.0d0 + helium_mass_fraction
       temperature_inverse = 1.0d0/temperature
@@ -309,18 +308,14 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       ion_fraction(2) = helium_ion_fraction_1
       ion_fraction(3) = helium_ion_fraction_2
       if (in_atmosphere) then
-         continue
-         
          return
       end if
 ! COMPUTE FIRST DERIVATIVES
-      rmub = specific_gas_constant*beta_inverse
       r3t = 0.0d0
       r3p = 0.0d0
       if (nz0.gt.0) then
       do i=nz1,nz0
          r3p = r3p - species_weighted_term(i)
-!  30   R3T = R3T -FXS(I)*(2.5D0 + BETA14 + SAHATT(I))
          r3t = r3t -species_weighted_term(i)*(2.5d0 + beta14 + &
               ionization_temp_over_t(i))
       end do
@@ -370,7 +365,6 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       do i=nz1,nz0
          species_temp_deriv_term(i) = species_weighted_term(i)*(stemp + &
               ionization_temp_over_t(i))
-!  36   USUM = USUM + FXT(I)*SAHAT(I)
          usum = usum + species_temp_deriv_term(i)*ionization_temp(i)
       end do
       end if
@@ -385,8 +379,6 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       qcpi = 1.0d0/specific_heat_cp
       adiabatic_gradient = -pdtq*qcpi
       if (.not.want_derivatives) then
-         continue
-         
          return
       end if
 ! COMPUTE DERIVATIVES OF QDT,QCP,DELA
@@ -411,7 +403,6 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
          utsum = utsum + ionization_temp(i)*(stemp6 - species_temp_deriv_term(i))
          stemp7 = species_weighted_term(i)*(stemp3 + stemp2*stemp5)
          r3p = r3p - stemp7
-!  41   UPSUM = UPSUM + SAHAT(I)*STEMP7
          upsum = upsum + ionization_temp(i)*stemp7
       end do
       end if
@@ -448,7 +439,6 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       stemp1 = ep1e*sqetp
       do i=nz1,nz0
          utsum = utsum - species_weighted_term(i)*ionization_temp(i)*stemp
-!  45   UPSUM = UPSUM - FXS(I)*SAHAT(I)*STEMP1
          upsum = upsum - species_weighted_term(i)*ionization_temp(i)*stemp1
       end do
       end if

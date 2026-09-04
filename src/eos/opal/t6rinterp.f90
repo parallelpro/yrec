@@ -20,7 +20,6 @@ subroutine t6rinterp(slr, slt, ierr)
 
       double precision, intent(in) :: slr, slt
 
-      integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
 ! --- locals ---
       integer :: hi_loop_count, recompute_flag, cache_slot, t6_grid_idx
       double precision :: esactq, esact2, esactq2, dix, dix2
@@ -78,10 +77,9 @@ subroutine t6rinterp(slr, slt, ierr)
 ! NOTE: preserved verbatim from the original -- this block is a
 ! sibling of (not nested inside) the "opal_eos%t6_interp_order.eq.3" block
 ! above, so if opal_eos%density_interp_order.eq.3 but opal_eos%t6_interp_order.ne.3,
-! dix here is whatever it was left as by a previous call (t6rinterp
-! is SAVE'd), not freshly computed in this call.
+! dix is not computed in this call: it is an ordinary (non-SAVE'd)
+! local, so it then holds the -finit-local-zero value 0.0d0.
       if (opal_eos%density_interp_order.eq.3) then
-
 ! .....     eos(i) in upper-right 3x3.
          esactq2 = quad(recompute_flag, cache_slot, slt, &
               opal_eos%rho_interp_hi(2), opal_eos%rho_interp_hi(3), opal_eos%rho_interp_hi(4), &
@@ -89,7 +87,6 @@ subroutine t6rinterp(slr, slt, ierr)
               opal_eos%t6_grid(opal_eos%t6_index_4))
          esactq = esactq*dix + esactq2*(1.0d0 - dix)
       end if
-!
       if (opal_eos%density_interp_order.eq.3) then
          dix2 = (opal_eos%density_grid(opal_eos%density_index_3) - slr)* &
               opal_eos%density_grid_spacing_inv(opal_eos%density_index_3)

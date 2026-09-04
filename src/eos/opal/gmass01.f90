@@ -8,11 +8,9 @@
 !
 ! OPAL 2001 EOS analogue of gmass.f90 (see there for the general
 ! description); called from esac01.f90. Note the difference from
-! gmass.f90: here the function accumulator starts at 0 and the
-! electron_mole_excess*atomic_weight(1) term is never added in --
-! that term (and the electron_mole_excess computation feeding it) is
-! dead in this version. Preserved verbatim rather than "fixed" to
-! keep this a pure transliteration.
+! gmass.f90: here the function accumulator starts at 0, so the
+! electron-mass term (electron_mole_excess*atomic_weight(1) in gmass)
+! is not included. Preserved verbatim rather than "fixed".
 double precision function gmass01(hydrogen_fraction, metal_fraction, &
      total_moles, ground_state_energy, metal_mole_fraction, &
      species_mass_fraction)
@@ -40,9 +38,6 @@ double precision function gmass01(hydrogen_fraction, metal_fraction, &
       double precision :: carbon_moles, nitrogen_moles, oxygen_moles, &
            neon_moles
       double precision :: hydrogen_moles, helium_moles, total_moles_raw
-! electron_mole_excess: (total_moles - 1); computed but unused here --
-! see the header note above.
-      double precision :: electron_mole_excess
       integer :: species_idx
 
       data (ionization_energy(species_idx), species_idx=1,6) &
@@ -88,7 +83,6 @@ double precision function gmass01(hydrogen_fraction, metal_fraction, &
          total_moles = total_moles + (1.0d0 + atomic_number(species_idx))* &
               species_mass_fraction(species_idx)
       end do
-      electron_mole_excess = total_moles - 1.0d0
       gmass01 = 0.0d0
       do species_idx = 2, 7
          gmass01 = gmass01 + atomic_weight(species_idx)* &

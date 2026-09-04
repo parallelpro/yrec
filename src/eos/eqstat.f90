@@ -38,9 +38,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 !
 
       use phys_const_lib
-      use eos_mixture_lib, only: eos_mix
-      use luout_lib
-      use scv_eos_lib
       use math_lib
       implicit none
 
@@ -66,7 +63,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
 
-      integer, parameter :: nts = 63, nps = 76
 !  want_derivatives: if true, provide derivatives needed for
 !  relaxation, else don't
 !
@@ -261,8 +257,9 @@ end subroutine eqstat
 ! pure numerical-differentiation wrapper around this routine and the
 ! two have always been a matched pair; both remain plain external
 ! subroutines (not module procedures), so this is a purely
-! organizational move -- callers (eos_lib.f90's eos_get for eqstat;
-! atm/turnover/acoustic_depths.f90, which calls eqstat2 directly) are unaffected.
+! organizational move -- callers (eos_lib.f90's eos_eval for eqstat;
+! eos_lib.f90's eos_get_gamma1, which calls eqstat2 directly) are
+! unaffected.
 !
 ! Co-locating the two surfaced a genuine (harmless) interface bug:
 ! gfortran checks call-site argument intents against a callee's actual
@@ -309,8 +306,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       use scv_eos_lib
       use math_lib
       implicit none
-
-      integer, parameter :: nts = 63, nps = 76
 
       double precision, intent(inout) :: log10_temperature
       double precision, intent(out) :: temperature
@@ -359,8 +354,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       logical :: in_opal_table, needs_ramp
 
 
-! values saved across the eqsaha/eqrelv interpolation near the
-! ionization cutoff
+! values saved across the saha_eos/fully_ionized_eos interpolation
+! near the ionization cutoff
       double precision :: saha_log10_density, saha_dlnrho_dlnt, &
            saha_dlnrho_dlnp, saha_specific_heat_cp, saha_adiabatic_gradient
       double precision :: saha_dlnrho_dlnt_dt, saha_dlnrho_dlnp_dt, &
@@ -368,10 +363,11 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            saha_adiabatic_gradient_dt, saha_adiabatic_gradient_dp
       double precision :: ramp_weight, ramp_weight_sq
 
-!     LSAHA = T IF T LOW ENOUGH TO REQUIRE CALL TO EQSAHA TO SOLVE
-!     SAHA IONIZATION EQUATION. IF LSAHA = F, FULLY IONIZED GAS ASSUMED.
-!     LONLYS = T IF SAHA EQUATION MUST BE SOLVED BUT RELATIVISTIC
-!     EQUATION OF STATE NOT NEEDED.
+!     need_saha_solution = T if T low enough to require a call to
+!     saha_eos to solve the Saha ionization equation; if F, a fully
+!     ionized gas is assumed. skip_relativistic_eos = T if the Saha
+!     equation must be solved but the fully-ionized (relativistic)
+!     equation of state is not needed.
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -490,7 +486,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               specific_heat_cp_dt, specific_heat_cp_dp)
       else
 !     CHECK IF SAUMON, CHABRIER, AND VAN HORN EQUATION OF STATE NEEDED.
-!     THIS EOS REPLACES THE CALL TO EQSAHA, EXCEPT FOR DERIVATIVE PURPOSES.
+!     THIS EOS REPLACES THE CALL TO saha_eos, EXCEPT FOR DERIVATIVE PURPOSES.
       if (use_scv_eos) then
          call saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               log10_pressure, pressure, log10_density, density, beta, &
@@ -525,7 +521,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
       end if
-!     STORE EQSAHA VALUES FOR INTERPOLATION WITH EQRELV VALUES
+!     STORE saha_eos VALUES FOR INTERPOLATION WITH fully_ionized_eos VALUES
       saha_log10_density = log10_density
       saha_dlnrho_dlnt = dlnrho_dlnt
       saha_dlnrho_dlnp = dlnrho_dlnp
@@ -539,7 +535,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          saha_adiabatic_gradient_dt = adiabatic_gradient_dt
          saha_adiabatic_gradient_dp = adiabatic_gradient_dp
       end if
-!     Bypass relativistic EOS (eqrelv) if in low temperature region
+!     Bypass relativistic EOS (fully_ionized_eos) if in low temperature region
       if (.not. skip_relativistic_eos) then
 !     COMPUTE VALUES FOR FULLY IONIZED GAS
       electron_mean_weight_inverse = hydrogen_fraction*atomic_weights(1) + &
@@ -617,10 +613,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               in_opal_table, needs_ramp, ierr)
          if (ierr /= 0) return
 
-         if (.not.in_opal_table) then
-            continue
-            return
-         end if
+         if (.not.in_opal_table) return
 
          if (.not.needs_ramp) then
 !           No ramping needed between OPAL 1995 EOS and Yale/SCV. Result
@@ -684,10 +677,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !        eqbound01 determines whether or not the point is in the OPAL
 !        2001 EOS table
 
-         if (.not.in_opal_table) then
-            continue
-            return
-         end if
+         if (.not.in_opal_table) return
 !        USE OPAL RESULTS IF NOT IN (RHO,T) REGIME WHERE RAMP NEEDED
          if (.not.needs_ramp) then
 !           No ramping needed between OPAL 2001 EOS and Yale/SCV. Result
@@ -756,10 +746,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 !        Also, to eliminate a point, one can set needs_ramp to true and
 !        ramp_factor to zero.
 
-         if (.not.in_opal_table) then
-            continue
-            return
-         end if
+         if (.not.in_opal_table) return
 
 !        USE OPAL 2006 RESULTS ONLY IF NOT IN (RHO,T) REGIME WHERE
 !        RAMPING is NEEDED

@@ -27,12 +27,6 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
       double precision, intent(out) :: specific_gas_constant, &
            ion_mean_weight_inverse, electron_mean_weight_inverse
 
-
-
-
-
-
-! DATA NZP1/12/
       double precision :: atomic_weights(4)
       data atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
       double precision :: dfx1, dfx12, dfx4, ee

@@ -10,13 +10,9 @@
 ! 2006 OPAL equation of state. LLP, October 17, 2006. Given log10(T),
 ! log10(P), X, and Z, looks up density and the thermodynamic
 ! derivatives needed by the rest of the EOS machinery from the OPAL
-! 2006 tables (via rhoofp06/esac06, converted separately; out of
-! scope for this pass).
-!
-! Other routines associated with the 2006 OPAL EOS (not converted
-! here, still in their own .f files): ESAC06, T6RINTEOS06,
-! READCOEOS06, QUADEOS06, GMASS06, RADSUB06, RHOOFP06, EQBOUND06.
-! Subroutine MU is also used (shared with the 1995/2001 OPAL EOS).
+! 2006 tables (via rhoofp06.f90/esac06.f90). Called from eqstat2
+! (eqstat.f90); the alternate return is taken when the point is
+! outside the OPAL tables.
 subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, specific_gas_constant, &
@@ -25,7 +21,6 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
 
       use opal_eos_lib
       use phys_const_lib
-      use star_info_lib
       use luout_lib
       use math_lib
       implicit none
@@ -39,12 +34,8 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
            electron_mean_weight_inverse, dlnrho_dlnt, dlnrho_dlnp, &
            specific_heat_cp, adiabatic_gradient
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
-      integer, parameter :: ivarx = 25
-      double precision, parameter :: cnvs = 0.434294481d0
-      double precision, parameter :: zero = 0.0d0
       double precision :: t_million_k, p_e12
-      double precision :: hydrogen_fraction_work, metal_fraction_table
+      double precision :: hydrogen_fraction_work
       double precision :: density_cgs
       double precision :: specific_gas_constant_check
       integer :: rad_flag, deriv_order
@@ -55,7 +46,7 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       ierr = 0
 
       deriv_order = 9  ! gives all 1st and 2nd order data. See instructions
-!                  in esac01.
+!                  in esac06.
 !     NOTE: rad_flag=0 does not add radiation; rad_flag=1 adds radiation
       rad_flag = 1     ! does add radiation  corrections
 
@@ -65,7 +56,6 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       p_e12 = pressure/1.0d12
       if (t_million_k.lt.0.001870d0 .or. t_million_k.gt.200.0d0) return 1
       hydrogen_fraction_work = hydrogen_fraction
-      metal_fraction_table = metal_fraction
 
       density_cgs = rhoofp06(hydrogen_fraction_work, t_million_k, p_e12, &
            rad_flag, ierr)
@@ -80,9 +70,6 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
            deriv_order, rad_flag, ierr, *999)
       if (ierr /= 0) return
 
-!     *         P12,EOS(1),T6,R,X,ZTAB
-!         STOP ' ERROR IN OEQOS06 PTOT'
-!      ENDIF
 
       dlnrho_dlnp = 1.0d0/opal_eos%eos_output_06(6)               ! O2006 EOS(6) is dlogP/dlogRho at const T6
       dlnrho_dlnt = -opal_eos%eos_output_06(7)/opal_eos%eos_output_06(6)       ! O2006 EOS(7) is dlogp/dlogT6 at const Rho

@@ -21,7 +21,7 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
       use math_lib
       implicit none
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
+      integer, parameter :: nr = 169, nt = 197
 
       double precision, intent(in) :: temperature, log10_density
       double precision, intent(out) :: ramp_factor
@@ -37,21 +37,17 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 
 !     Exit if outside table in rho
       if ((density.lt.opal_eos%density_grid_06(1)) .or. (density.ge.opal_eos%density_grid_06(nr))) then
-         continue
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
-         
          return
       end if
 
 !     Exit if outside table in T6
       if ((t6.gt.opal_eos%t6_grid_06(1)) .or. (t6.le.opal_eos%t6_grid_06(nt))) then
-         continue
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
-         
          return
       end if
 
@@ -105,11 +101,9 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 !     to opal_eos%density_index_edge_06(t6_row)
 
       if (density_row.gt.opal_eos%density_index_edge_06(t6_row)) then
-        continue
         in_opal_table = .false.
         needs_ramp = .true.
         ramp_factor = 0d0
-        
         return
       end if
       if (density_row.eq.opal_eos%density_index_edge_06(t6_row)) then
@@ -128,11 +122,9 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 !     equal to opal_eos%t6_index_lo_06(density_row).
 
       if (t6_row.gt.opal_eos%t6_index_lo_06(density_row)) then
-        continue
         in_opal_table = .false.
         needs_ramp = .true.
         ramp_factor = 0d0
-        
         return
       end if
       if (t6_row.eq.opal_eos%t6_index_lo_06(density_row)) then
@@ -142,12 +134,4 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
 
       ramp_factor = density_ramp_factor * t6_ramp_factor
       return
-
-!     OUT OF TABLE EXIT
-      in_opal_table = .false.       ! Not in table
-      needs_ramp = .true.           ! Turn on ramping
-      ramp_factor = 0d0             ! Set ramping factor to zero
-!                            This way, out of table results are ramped to zero.
-      return
-
 end subroutine eqbound06

@@ -10,7 +10,7 @@
 ! reader (esac.f90/t6rinterp.f90). Given three (x,y) pairs, returns
 ! the value of the interpolating quadratic at x. When recompute_flag
 ! is 0 the quadratic's coefficients are (re)computed and cached in
-! slot cache_slot of the module-level (SAVE'd) coefficient arrays;
+! slot cache_slot of opal_eos_lib's opal_eos%quad_* coefficient arrays;
 ! otherwise the cached coefficients for that slot are reused as-is
 ! (the caller is responsible for knowing the cache is still valid for
 ! the grid points in question -- this is a straight transliteration

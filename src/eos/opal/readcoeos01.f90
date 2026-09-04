@@ -6,10 +6,10 @@
 ! original readcoeos01.f; only variable names, source form, and
 ! comment style were updated.
 !
-! Reads the OPAL 2001 EOS data tables into common/aeos/ and the other
-! 2001-EOS common blocks (block names preserved verbatim -- see
-! readco.f90's header for why). Called once (guarded by
-! common/lreadco/) from esac01.f90.
+! Reads the OPAL 2001 EOS data tables into opal_eos_lib's opal_eos state
+! and derives the auxiliary grid-spacing arrays used by esac01.f90/
+! t6rinteos01.f90 for interpolation. Called once from esac01.f90
+! (guarded by opal_eos%table_loaded_flag_01).
 subroutine readcoeos01(ierr)
       use star_info_lib, only: star
 
@@ -21,20 +21,12 @@ subroutine readcoeos01(ierr)
 
       character(len=1) :: blank_line
 
-! former common/eeeeos/: this batch's own block, only used by
-! readcoeos01.f90, now use-associated from opal_eos_lib.
-
-
-
-
 ! --- locals ---
       integer :: x_loop_index_01
-      integer :: x_idx, var_idx, t6_idx, r_idx, t6_scan_idx, fill_idx
+      integer :: x_idx, var_idx, t6_idx, r_idx, t6_scan_idx
       integer :: density_row, t6_row, record_number
       double precision :: unused_field
 
-! density_index_edge_at_t_01's default moved to opal_eos_lib.f90: DATA
-! can no longer target it here now that it's use-associated.
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -55,8 +47,7 @@ subroutine readcoeos01(ierr)
       end if
 
       close (2)
-! ..... read  tables
-! MHP 8/25 Moved opening of file to parmin
+! ..... read  tables (the file is opened on star%ctrl%iopale by read_controls)
       do x_loop_index_01 = 1, mx
 
          read (star%ctrl%iopale,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
@@ -123,16 +114,11 @@ subroutine readcoeos01(ierr)
          opal_eos%t6_grid_01(t6_scan_idx) = opal_eos%t6_list_01(1,t6_scan_idx)
       end do
       do t6_idx = 2, nt
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!    12 dfs(i)=1D0/(t6a(i)-t6a(i-1))
          opal_eos%t6_grid_spacing_inv_01(t6_idx) = 1.0d0/(opal_eos%t6_grid_01(t6_idx) - &
               opal_eos%t6_grid_01(t6_idx-1))
       end do
       opal_eos%density_grid_01(1) = opal_eos%density_grid_table_01(1,1)
       do r_idx = 2, nr
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-!       rho(i)=rhogr(1,i)
-!    13 dfsr(i)=1D0/(rho(i)-rho(i-1))
          opal_eos%density_grid_01(r_idx) = opal_eos%density_grid_table_01(1,r_idx)
          opal_eos%density_grid_spacing_inv_01(r_idx) = 1.0d0/(opal_eos%density_grid_01(r_idx) - &
               opal_eos%density_grid_01(r_idx-1))

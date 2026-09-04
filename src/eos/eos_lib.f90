@@ -39,13 +39,9 @@
 ! an acknowledged numerics change for use_mhd_eos=.true. runs, which
 ! the Stage-0 regression suite cannot verify (no test case sets LMHD).
 !
-! atm/turnover/acoustic_depths.f90 (the acoustic-depth diagnostic) was NOT
-! migrated to eos_eval during phase two: it deliberately bypasses
-! eqstat2's boundary-ramping, calling esac06 directly under its own
-! use_opal2006_eos check, confirmed to match the original F77 -- not
-! part of this dispatch pattern. As of phase three (ROADMAP.md stage
-! 1) it goes through eos_get_gamma1 below instead, which preserves
-! that same deliberate dispatch inside the facade boundary.
+! eos_get_gamma1 below was created for the acoustic-depth diagnostic
+! (calcad), which has since been retired (commit 55c372b); its only
+! remaining caller is eos/test/test_eos.f90.
 module eos_lib
 ! 2026 named-index result array (ROADMAP "Named-index result arrays"):
 ! eos_get packs eos_eval's 24 thermodynamic outputs into one
@@ -137,9 +133,6 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
       use star_info_lib, only: star
-
-      use phys_const_lib
-      use scv_eos_lib
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -164,13 +157,11 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
       double precision, intent(in), optional :: composition_at_zone(15)
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, the transitional form of
-! MESA's ierr-not-stop discipline (same shape as kap_lib's kap_get).
-! When the caller passes ierr, any error condition that used to stop
-! deep inside the eos internals is returned here instead, ierr /= 0,
-! and no stop occurs. When the caller omits ierr, behavior is exactly
-! historical: the same diagnostic messages, then a stop -- now located
-! in this facade's funnel rather than at the point of failure.
+! 2026 (ROADMAP.md stage 3): ierr follows MESA's ierr-not-stop
+! discipline (same shape as kap_lib's kap_get): any error condition
+! that used to stop deep inside the eos internals is returned here
+! instead, ierr /= 0, with the diagnostic already printed at the point
+! of failure.
       integer, intent(out) :: ierr
 
       integer :: jerr
@@ -219,11 +210,6 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
       end if
 
       return
-
-! error funnel: reached only when a callee reported jerr /= 0. With
-! ierr present the caller takes responsibility; without it, preserve
-! the historical stop (the diagnostic already printed at the point of
-! failure).
 end subroutine eos_eval
 
 !----------------------------------------------------------------------
@@ -243,9 +229,9 @@ end subroutine eos_eval
 ! and that check's `stop`, which ROADMAP.md stage 3 will convert to
 ! ierr). The OPAL 1995/2001/2006 EOS tables are not loaded here:
 ! they are lazily read on first use inside esac/esac01/esac06 via
-! their lreadco guards. The SCV (Saumon-Chabrier-Van Horn) EOS tables
-! are also read here (gated on use_scv_eos, into const_lib's former
-! common/scveos/ state consumed by eos/scv/eqscve+eqscvg and the io
+! their table_loaded_flag guards. The SCV (Saumon-Chabrier-Van Horn)
+! EOS tables are also read here (gated on use_scv_eos, into
+! scv_eos_lib's state consumed by eos/scv/eqscve+eqscvg and the io
 ! writers) -- another inline setups.f90 block moved in verbatim; its
 ! read is provably independent of the atm tables read later in
 ! startup (separate file units, disjoint state), so absorbing it here
@@ -271,7 +257,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
            zams_b_table_path, zams_c_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
            centre5_table_path
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_eval's.
+! 2026 (ROADMAP.md stage 3): ierr, same contract as eos_eval's.
       integer, intent(out) :: ierr
 
       integer :: jerr
@@ -341,8 +327,8 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
             read(star%ctrl%scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
             read(star%ctrl%scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
     1       format(f5.2,i4)
-! TABLE GRID POINTS IN T, P(T) ARE THE SAME - NPTSY AND TLOGX
-! READ IN TO RETAIN PARALLEL COMMON BLOCK STRUCTURE.
+! The He and Z tables share the H table's T grid and P(T) point
+! counts; their copies are read into dummies.
             do p_idx = 1, nptsx(t_idx)
                read(star%ctrl%scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
                read(star%ctrl%scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
@@ -358,28 +344,25 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       endif
 
       return
-
-! error funnel: same contract as eos_eval's.
 end subroutine eos_init
 
 !----------------------------------------------------------------------
 ! eos_get_gamma1
 !----------------------------------------------------------------------
 ! Added 2026 (phase three, ROADMAP.md stage 1): a component-accessor
-! entry in the spirit of MESA's eosDT_get_component, created so
-! atm/turnover/acoustic_depths.f90 (the acoustic-depth diagnostic, previously
-! the last file calling eos internals -- esac06/eqstat2 -- directly)
-! can go through the facade. Given composition and an (unlogged)
-! T/rho/P point, returns gamma1 and the adiabatic gradient,
-! dispatching on use_opal2006_eos exactly as calcad historically did:
-! the OPAL 2006 table (via esac06, density-basis, radiation
-! correction on, 9 variables; a failed table lookup falls through
-! with whatever the previous point left behind, preserved verbatim
-! from calcad's original alternate-return handling) when enabled,
-! otherwise the Yale/SCV path (via eqstat2, pressure-basis) with
-! gamma1 built from chi_rho/chi_T/cv per Cox & Giuli ch. 9 --
-! statement-for-statement the arithmetic calcad performed at its own
-! call sites, so the migration is byte-identical.
+! entry in the spirit of MESA's eosDT_get_component, created for the
+! acoustic-depth diagnostic (calcad). That diagnostic was retired in
+! commit 55c372b, so this entry now has NO production caller: it is
+! exercised only by eos/test/test_eos.f90 and is kept as a pinned
+! test surface. Given composition and an (unlogged) T/rho/P point,
+! returns gamma1 and the adiabatic gradient, dispatching on
+! use_opal2006_eos exactly as calcad historically did: the OPAL 2006
+! table (via esac06, density-basis, radiation correction on, 9
+! variables; a failed table lookup falls through with whatever the
+! previous point left behind, preserved verbatim from calcad's
+! original alternate-return handling) when enabled, otherwise the
+! Yale/SCV path (via eqstat2, pressure-basis) with gamma1 built from
+! chi_rho/chi_T/cv per Cox & Giuli ch. 9.
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
      saha_state, ierr)
@@ -387,7 +370,6 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
 
       use opal_eos_lib
       use phys_const_lib
-      use scv_eos_lib
       use math_lib
       implicit none
 
@@ -395,7 +377,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
            temperature_1e6k, density, pressure
       double precision, intent(out) :: gamma1, adiabatic_gradient
       integer, intent(inout) :: saha_state
-! 2026 (ROADMAP.md stage 3): OPTIONAL ierr, same contract as eos_eval's.
+! 2026 (ROADMAP.md stage 3): ierr, same contract as eos_eval's.
 ! Note the out-of-table alternate return of esac06 is NOT an error
 ! here: it falls through with the previous point's results, preserved
 ! verbatim from calcad's original handling.
@@ -468,8 +450,6 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       end if
 
       return
-
-! error funnel: same contract as eos_eval's.
 end subroutine eos_get_gamma1
 
 

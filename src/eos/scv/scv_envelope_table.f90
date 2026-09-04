@@ -7,9 +7,6 @@
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! This is to evaluate the EOS with the new tables and call eqstat to
-! compute the new equation of state and compare to the old one...
-!
 ! Builds the envelope-mixture (X/Y/Z) SCVH-style equation-of-state
 ! table tablenv from the separately tabulated pure-hydrogen (tablex),
 ! pure-helium (tabley), and pure-metal (tablez) tables: first
@@ -27,11 +24,7 @@ subroutine build_scv_envelope_table
       use scv_eos_lib
       use math_lib
       implicit none
-      integer, parameter :: nts = 63, nps = 76
-
-
-
-
+      integer, parameter :: nts = 63
 
       double precision :: interp_x(3), t_interp_weight(3), &
            t_interp_dweight(3), p_interp_weight(3), p_interp_dweight(3)
@@ -55,10 +48,10 @@ subroutine build_scv_envelope_table
            helium_yd, mix_de, mix_dei, total_number_density
       double precision :: pressure_value, radiation_pressure, gas_pressure, &
            rho_mix, log_rho_mix
-      double precision :: dlnrho_dlnp_gas, dlnrho_dlnt_gas, dlnp_dlnt_gas
+      double precision :: dlnrho_dlnp_gas, dlnrho_dlnt_gas
       double precision :: entropy_h, entropy_he, entropy_total, &
            dsmix_dlnt, dlns_dlnt, cp_gas, du_dt
-      double precision :: dqdt_dlnp, dqdt_dlnt, dlncp_dlnp, dlncp_dlnt, &
+      double precision :: dqdt_dlnp, dqdt_dlnt, dlncp_dlnt, &
            dqut_dlnt, dqut_dlnp, dlnp_dlnrho, ln_rho_value
 
 !  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
@@ -156,7 +149,6 @@ subroutine build_scv_envelope_table
         call inter3(interp_x,t_interp_weight,t_interp_dweight,ln_t_work)
          do p_idx=1,nptsx(t_idx)
             log_p_work = tablex(t_idx,p_idx,1)
-            log_rho_mix = tablex(t_idx,p_idx,4)
             hydrogen_fraction_local = star%envelope_hydrogen_fraction
             metal_fraction_local = star%envelope_metal_fraction
             helium_fraction_local = 1.0d0 - hydrogen_fraction_local - &
@@ -192,7 +184,6 @@ subroutine build_scv_envelope_table
                  (rho_mix/density_he)*tabley(t_idx,p_idx,7) &
                  +metal_fraction_local*(rho_mix/density_z)* &
                  tablez(t_idx,p_idx,10)
-            dlnp_dlnt_gas = -dlnrho_dlnt_gas/dlnrho_dlnp_gas
             entropy_h = exp(ln10*tablex(t_idx,p_idx,5))
             entropy_he = exp(ln10*tabley(t_idx,p_idx,5))
 ! ENTROPY.  OBEYS ADDITIVE VOLUME RULE, BUT ALSO NEED TO INCLUDE THE
@@ -270,12 +261,8 @@ subroutine build_scv_envelope_table
            dqdt_dlnt = tablenv(idtt,p_idx,3)*t_interp_dweight(1)+ &
                 tablenv(idtt+1,p_idx,3)*t_interp_dweight(2) &
                 +tablenv(idtt+2,p_idx,3)*t_interp_dweight(3)
-! DERIVATIVES OF LN CP
-           do k_idx = 1,3
-              interp_x(k_idx) = log(tablenv(t_idx,idp+k_idx-1,5))
-           end do
-           dlncp_dlnp = interp_x(1)*p_interp_dweight(1)+ &
-                interp_x(2)*p_interp_dweight(2)+interp_x(3)*p_interp_dweight(3)
+! DERIVATIVES OF LN CP (only the T derivative is stored; the P
+! derivative was never used)
            do k_idx = 1,3
               ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)

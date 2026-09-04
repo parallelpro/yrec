@@ -19,17 +19,12 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
      adiabatic_gradient, valid_table_point)
 
       use phys_const_lib
-      use star_info_lib
       use numerics_lib
       use scv_eos_lib
       use math_lib
       implicit none
 
-      integer, parameter :: nts = 63, nps = 76
-
-
-
-
+      integer, parameter :: nts = 63
 
       double precision, intent(in) :: log10_temperature, temperature
       double precision, intent(in) :: pressure
@@ -59,7 +54,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
            radiation_energy_density_term
       double precision :: log10_entropy_pure_h, entropy_pure_h, &
            log10_entropy_pure_he, entropy_pure_he, entropy_of_mixing, &
-           dlnsmix_dlnt, total_entropy
+           dlnsmix_dlnt
       double precision :: dlns_dlnt_pure_h, dlns_dlnt_pure_he, &
            log10_du_dt_pure_z, du_dt_pure_z
       double precision :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, &
@@ -129,7 +124,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
          end do
          if (j > (nptsx(idtt))) then
 ! point is outside table; return.
-!         WRITE(*,5)TL,PL
          valid_table_point = .false.
          return
          end if
@@ -308,10 +302,6 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
            temp_interp_weight_derivs(2)*log10(temp_work(2,3)) &
            + temp_interp_weight_derivs(3)*log10(temp_work(3,3)) &
            + temp_interp_weight_derivs(4)*log10(temp_work(4,3))
-! total_entropy is computed but not used further below, matching the
-! original (dead) computation of S0 in eqscvg.f.
-      total_entropy = hydrogen_fraction*entropy_pure_h + &
-           helium_fraction*entropy_pure_he + entropy_of_mixing
 ! d ln s/ d ln t (x and y) and du/dt (z)
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4

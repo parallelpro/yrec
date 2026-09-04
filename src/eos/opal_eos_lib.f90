@@ -80,7 +80,7 @@ module opal_eos_lib
 ! x_loop_index is a plain local (not a module field): it is used as a
 ! DO-loop control variable in esac.f90/readco.f90, which the Fortran
 ! standard requires to be a named scalar variable, not a derived-type
-! component -- see this file's header comment for the general note.
+! component.
            integer :: x_index_lo
 ! former common/aa/
            double precision :: rho_interp_hi(4), rho_interp_lo(4), xxh
@@ -128,6 +128,11 @@ module opal_eos_lib
 ! x_loop_index_01 is a plain local, not a module field -- see the
 ! x_loop_index note in the 1995 section above.
            integer :: x_index_lo_01
+! NOTE: no D-suffix, as in the original (esac01.f) -- preserved verbatim:
+! parsed as single-precision constants and widened to double precision
+! (0.2/0.4/0.6/0.8 are not exactly representable in binary floating
+! point, so these are NOT bit-identical to the correctly-rounded double
+! values).
            double precision :: x_grid_01(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
 ! former common/aaeos/
            double precision :: rho_interp_hi_01(4), rho_interp_lo_01(4), xxh_01
@@ -147,11 +152,10 @@ module opal_eos_lib
 ! former common/eeos/
            double precision :: esact_01, eos_output_01(n_eos_mv)
 ! former common/eeos06/ (the 2006 analogue of common/eeos/ above):
-! relocated here from atm_table_lib in 2026 (ROADMAP.md stage 1) --
-! it had landed there through phase one purely as an accident of the
-! original COMMON grouping, and its only non-eos reader
-! (atm/turnover/acoustic_depths.f90's direct eos_output(8)/(9) reads) was
-! absorbed into eos_lib's eos_get_gamma1 first.
+! relocated here from atm_table_lib in 2026 (ROADMAP.md stage 1); its
+! former non-eos reader (a direct eos_output(8)/(9) read in the
+! turnover-timescale code, since removed) was replaced by eos_lib's
+! eos_get_gamma1.
            double precision :: esact_06, eos_output_06(n_eos_mv)
 ! former common/eeeos/
            double precision :: x_interp_workspace_01(n_eos_mx,n_eos01_nt,n_eos01_nr), &
@@ -185,6 +189,11 @@ module opal_eos_lib
 ! x_loop_index_06 is a plain local, not a module field -- see the
 ! x_loop_index note in the 1995 section above.
            integer :: x_index_lo_06
+! NOTE: no D-suffix, as in the original (esac06.f) -- preserved verbatim:
+! parsed as single-precision constants and widened to double precision
+! (0.2/0.4/0.6/0.8 are not exactly representable in binary floating
+! point, so these are NOT bit-identical to the correctly-rounded double
+! values).
            double precision :: x_grid_06(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
 ! former common/aaeos06/
            double precision :: rho_interp_hi_06(4), rho_interp_lo_06(4), xxh_06

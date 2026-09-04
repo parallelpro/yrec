@@ -8,8 +8,8 @@
 !
 ! OPAL 2006 EOS analogue of gmass.f90 (see there for the general
 ! description); called from esac06.f90. As in gmass01.f90, the
-! electron_mole_excess*atomic_weight(1) term is computed but never
-! added into the result here; preserved verbatim.
+! electron-mass term (electron_mole_excess*atomic_weight(1) in gmass)
+! is not included in the result; preserved verbatim.
 double precision function gmass06(hydrogen_fraction, metal_fraction, &
      total_moles, ground_state_energy, metal_mole_fraction, &
      species_mass_fraction)
@@ -37,9 +37,6 @@ double precision function gmass06(hydrogen_fraction, metal_fraction, &
       double precision :: carbon_moles, nitrogen_moles, oxygen_moles, &
            neon_moles
       double precision :: hydrogen_moles, helium_moles, total_moles_raw
-! electron_mole_excess: (total_moles - 1); computed but unused here --
-! see the header note above.
-      double precision :: electron_mole_excess
       integer :: species_idx
 
       data (ionization_energy(species_idx), species_idx=1,6) &
@@ -85,7 +82,6 @@ double precision function gmass06(hydrogen_fraction, metal_fraction, &
          total_moles = total_moles + (1.0d0 + atomic_number(species_idx))* &
               species_mass_fraction(species_idx)
       end do
-      electron_mole_excess = total_moles - 1.0d0
       gmass06 = 0.0d0
       do species_idx = 2, 7
          gmass06 = gmass06 + atomic_weight(species_idx)* &

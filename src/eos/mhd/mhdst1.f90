@@ -1,5 +1,3 @@
-!
-!
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 ! MHDST1
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -60,7 +58,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
           num_composition_reads = 3
       end if
       do composition_pass=1,num_composition_reads
-!     READ(IR,98,END=1000) IVARR,IDXR,IRESCR,DDX
       read(table_unit,   end=1000) num_vars_read,table_kind_read,composition_flag_read,delta_x
       if (ivar1.lt.num_vars_read) then
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
@@ -91,7 +88,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       if (composition_pass.eq.2) call rabu(table_unit,nchem0,num_chem,atomic_weight_down,number_abundance_down,mass_fraction_down,unused_mean_molecular_weight_down,ierr)
       if (composition_pass.eq.3) call rabu(table_unit,nchem0,num_chem,atomic_weight_up,number_abundance_up,mass_fraction_up,unused_mean_molecular_weight_up,ierr)
       if (ierr /= 0) return
-!     READ(IR,1001) NT1,NT2,DRH1,DRH2
       read(table_unit     ) num_t1,num_t2,drho1,drho2
       if (table_kind.eq.1 .and. num_t1.ne.0) then
           ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
@@ -120,52 +116,33 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !     AND PERFORM NUMERICAL DERIVATIVES W.R.T. X
       composition_tolerance = 0.05d0*abs(delta_x)
       if ( abs(mass_fraction(1)-mass_fraction_down(1)-delta_x).gt.composition_tolerance  .or. abs(mass_fraction(1)-mass_fraction_up(1)+delta_x).gt.composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_down(2)+delta_x).gt.composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_up(2)-delta_x).gt.composition_tolerance ) then
-         continue
-         
-         
          ierr = 1
          return
       end if
       do species_index=3,num_chem
       if ( abs(mass_fraction(species_index)-mass_fraction_up(species_index)).gt.composition_tolerance ) then
-         continue
-         
-         
          ierr = 1
          return
       end if
       if ( abs(mass_fraction(species_index)-mass_fraction_down(species_index)).gt.composition_tolerance ) then
-         continue
-         
-         
          ierr = 1
          return
       end if
       end do
       do temp_check_index=1,num_t2
       if (log10t2(temp_check_index).ne.log10t_down(temp_check_index)) then
-         continue
-         
-         
          ierr = 1
          return
       end if
       if (log10t2(temp_check_index).ne.log10t_up(temp_check_index)) then
-         continue
-         
-         
          ierr = 1
          return
       end if
       end do
 !     NUMERICAL DERIVATIVES W.R.T. X
       do temp_deriv_index =1,num_t2
-! KC 2025-05-30 fixed "Shared DO termination label"
-!       DO 440 M =1,NR2
       do density_deriv_index =1,num_r2
       do var_index=1,ivar1
-! KC 2025-05-30 fixed "DO termination statement which is not END DO or CONTINUE"
-! 435   TDVAR2(N,M,IV)=TDDIF0(N,M,IV)
         table_vars2(temp_deriv_index,density_deriv_index,var_index)=table_vars_centroid(temp_deriv_index,density_deriv_index,var_index)
       end do
 !
@@ -181,39 +158,10 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       table_vars2(temp_deriv_index,density_deriv_index,25)=8888844444.d0
       end do
       end do
-!     NORMAL EXIT
       end if
       return
-!     ERROR EXIT AND ERROR MESSAGES
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-      ! facades stop when their caller passes no ierr.
-      ierr = 1
-      return
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-      ! facades stop when their caller passes no ierr.
-      ierr = 1
-      return
+!     EOF while reading a table header
  1000 continue
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-      ! facades stop when their caller passes no ierr.
       ierr = 1
       return
-!      1       ' CENTROID COMPOSITION IS:'//)
-! 8002  FORMAT('      AT. WEIGHT     NUMBER ',
-!      1 'ABUNDANCE  MASS FRACTION',(/1X,1P3G16.7))
-! 8003  FORMAT(/' MEAN MOLECULAR WEIGHT = ',F12.7//)
-! 9006  FORMAT(' ERROR IN MHDST1. IVARR READ FROM TABLE IS',
-!      1 ' BIGGER THAN THE VALUE USED IN THE COMMONS.',
-!      2 ' IVAR,IVARR= ',/1X,2I8)
-! 9007  FORMAT(' ERROR IN MHDST1. IDXR READ FROM TABLE IS INCORRECT',
-!      1 ' IDX,IDXR= ',/1X,2I8)
-! 9008  FORMAT(' ERROR IN MHDST1. IRESCR READ FROM TABLE IS INCORRECT',
-!      1 ' IRESCO,IRESCR= ',/1X,2I8)
-! 9010  FORMAT(' ERROR IN MHDST1. NT1 AND IDX ARE INCONSISTENT',
-!      1 ' IDX,NT1,NT2 ',/1X,3I8)
-! 9800  FORMAT(' ERROR IN TABLE CONSTRUCTION FOR X-DERIVATIVES',
-!      1       ' CENTRAL, LOWER, UPPER TABLE: N(ELEMENT),ABFRCS(N)'//)
-!      1       ' TEMPERATURES WRONG: J,TLOW(J),TCENT(J),TUPP(J)'//)
-! 9860  FORMAT(1X,I5,3F15.9)
-! 9900  FORMAT(' EOF REACHED IN INPUT FILE. ERROR STOP. IR,IDX = ',2I5)
 end subroutine mhdst1

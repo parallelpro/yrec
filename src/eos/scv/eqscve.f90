@@ -16,8 +16,7 @@
 ! logarithmic derivatives, the specific heat, adiabatic gradient, and
 ! ionization fractions, with an additional smoothing pass across
 ! adjacent table cells (the 4-pt Lagrange interpolation of the
-! original version was replaced with a 4-pt natural spline; see the
-! historical comments retained below).
+! original version was replaced with a 4-pt natural spline).
 subroutine eqscve(log10_temperature, temperature, pressure, &
      log10_density, density, hydrogen_fraction, metal_fraction, beta, &
      ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
@@ -32,11 +31,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       integer, intent(out) :: ierr
       integer :: jerr_gate
 
-      integer, parameter :: nts = 63, nps = 76
-
-
-
-
+      integer, parameter :: nts = 63
 
       double precision, intent(in) :: log10_temperature, temperature, &
            pressure
@@ -48,19 +43,14 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       logical, intent(out) :: valid_table_point
 
 ! REPLACE 4-PT LAGRANGE INTERPOLATE WITH 4-PT NATURAL SPLINE
-!      DIMENSION ATOMWT(4),QR(4),FT(4),FTD(4),
-!     *     FP(4),FPD(4),TEMPT(5),TEMP(4,5),FXION(3)
       double precision :: press_interp_weights(4), &
            press_interp_weight_derivs(4), temp_interp_weights(4), &
            temp_interp_weight_derivs(4)
-!       DIMENSION ATOMWT(4),QR(4),YTAB(4),Y2(4),  ! KC 2025-05-31
       double precision :: interp_nodes(4), ytab_work(4), &
            spline_second_deriv(4), interp_result(5), temp_grid(4,5), &
            interp_result_temp_shift(5), interp_result_press_shift(5), &
            interp_result_both_shift(5), interp_result_temp_smoothed(5), &
            interp_result_press_smoothed(5)
-!       DATA ATOMWT/0.9921D0,0.24975D0,0.08322D0,0.4995D0/
-!       DATA CMH,CMHE,CBOLTZ/1.67357D-24,6.646442D-24,1.380658D-16/
       double precision, parameter :: tol_pressure_smooth = 0.08d0, &
            tol_temp_smooth = 0.032d0
 
@@ -71,7 +61,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       double precision :: press_dist_above, press_dist_below, &
            press_smooth_weight
       double precision :: spline_value
-      double precision :: helium_fraction, radiation_pressure, gas_pressure
+      double precision :: radiation_pressure
       double precision :: change_t1, change_t2
       double precision :: dlnrho_dlnp_gas, dlnrho_dlnt_gas, dlnp_dlnt_gas, &
            dlnp_dlnt, specific_heat_cp_gas, du_dt, &
@@ -84,8 +74,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       ierr = 0
       if (abs(hydrogen_fraction-eos_mix%envelope_hydrogen_fraction).gt.1.0d-5 &
            .or. abs(metal_fraction-eos_mix%envelope_metal_fraction).gt.1.0d-5) then
-!          CALL EQSCVG(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,RMU,
-!      *               AMU,EMU,ETA,QDT,QDP,QCP,DELA,LCALC)  ! KC 2025-05-31
          call eqscvg(log10_temperature, temperature, pressure, &
               log10_density, density, hydrogen_fraction, metal_fraction, &
               beta, ion_fraction, dlnrho_dlnt, dlnrho_dlnp, &
@@ -208,10 +196,8 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             end if
          end if
       end if
-      helium_fraction = 1.0d0 - hydrogen_fraction - metal_fraction
 ! include radiation pressure in the equation of state.
       radiation_pressure = beta_complement*pressure
-      gas_pressure = beta*pressure
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
@@ -441,39 +427,23 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
                if (press_smooth_direction.eq.-1) then
                   interp_result(j) = change_t2+press_smooth_weight* &
                        (change_t1-change_t2)
-! change in p at fixed t
-!                  CHGP1 = TEMPT2+FSP*(TEMPT(J)-TEMPT2(J))
-! change in p at different t
-!                  CHGP2 = TEMPT3(J)+FSP*(TEMPT1(J)-TEMPT3(J))
                else
                   interp_result(j) = change_t1+press_smooth_weight* &
                        (change_t2-change_t1)
-!                  CHGP1 = TEMPT(J)+FSP*(TEMPT2(J)-TEMPT(J))
-!                  CHGP2 = TEMPT1(J)+FSP*(TEMPT3(J)-TEMPT1(J))
                end if
-!               WRITE(*,915)ISMP,ISMT,TEMPT(J),CHGT1,CHGT2,FSP,FST
-!  915           FORMAT(2I2,1P5E16.7)
             end do
           else
 ! add t interpolation changes only
-!            WRITE(*,911)(TEMPT(J),J=1,5)
-!            WRITE(*,912)(TEMPT1(J)-TEMPT(J),J=1,5)
              do j = 1,5
                 interp_result(j) = interp_result_temp_smoothed(j)
              end do
           end if
        else if (press_needs_smoothing) then
 ! add p interpolation changes only
-!            WRITE(*,911)(TEMPT(J),J=1,5)
-!            WRITE(*,912)(TEMPT2(J)-TEMPT(J),J=1,5)
           do j = 1,5
              interp_result(j) = interp_result_press_smoothed(j)
           end do
        end if
-!      DO J = 1,5
-!         TEMPT(J)=FT(1)*TEMP(1,J) + FT(2)*TEMP(2,J) + FT(3)*TEMP(3,J)
-!     *   + FT(4)*TEMP(4,J)
-!      END DO
 !  density
       log10_density = interp_result(1)
       density = exp(ln10*log10_density)
@@ -498,7 +468,6 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       specific_heat_cp_gas = interp_result(4)
 ! now find du/dt from the original table.
       du_dt = interp_result(5)
-!      QUT = QCP0 - PGAS*QDT0**2/QDP0/D/T
 ! correct du/dt for radiation
       radiation_energy_density_term = 3.0d0*radiation_pressure/density
       du_dt = du_dt + 4.0d0*radiation_energy_density_term/temperature

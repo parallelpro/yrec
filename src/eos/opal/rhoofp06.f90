@@ -40,11 +40,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
            pressure_e12
       integer, intent(in) :: rad_flag
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
-
-
-
-
+      integer, parameter :: mx = 5, nt = 197
 
       double precision :: rad_const_over_c
 ! NOTE: no D-suffix in the original (rhoofp06.f) -- preserved
@@ -52,7 +48,6 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
 ! double precision, which is NOT bit-identical to the correctly-
 ! rounded double value.
       data rad_const_over_c/1.8914785e-3/
-!--------------------------------------------------------------------
 ! --- locals ---
       double precision :: rat, radiation_pressure, pressure_no_rad
       double precision :: hydrogen_fraction_dbg, t6_dbg, density_dbg
@@ -87,9 +82,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          call esac06(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
               0, ierr, *999)
          if (ierr /= 0) then
-            continue
             rhoofp06 = -999.0d0
-            
             return
          end if
       end if
@@ -129,13 +122,8 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
            opal_eos%density_grid_06(1)
       if ((pressure_no_rad.gt.1.25d0*pressure_max) .or. &
            (pressure_no_rad.lt.pressure_min)) then
-!      write (ISHORT,'(" The requested pressure-temperature not in",
-!     x   " the OPAL 2006 EOS table")')
-!     stop
-!      write (ISHORT,'("pnr, pmax,pmin=",3e14.4)') pnr,pmax,pmin
-         continue
+!        requested pressure-temperature not in the OPAL 2006 EOS table
          rhoofp06 = -999.0d0
-         
          return
       end if
 
@@ -143,9 +131,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
            pressure_no_rad/pressure_max
       call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, *999)
       if (ierr /= 0) then
-         continue
          rhoofp06 = -999.0d0
-         
          return
       end if
       pressure_trial1 = opal_eos%eos_output_06(1)
@@ -159,9 +145,7 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
             if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
             call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, *999)
             if (ierr /= 0) then
-               continue
                rhoofp06 = -999.0d0
-
                return
             end if
             pressure_trial1 = opal_eos%eos_output_06(1)
@@ -173,14 +157,11 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          end do shrink
       else
          density_trial2 = 5.0d0*density_trial1
-!          if(rhog2 .gt. rho(klo)) rhog2=rho(klo)  ! Corrected below   llp  8/19/08
          if (density_trial2.gt.opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx))) &
-              density_trial2 = opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx)) ! Had wrong pointer, see rhog1= ten lines up
+              density_trial2 = opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_bisect_idx))
          call esac06(hydrogen_fraction, t6_temperature, density_trial2, 1, 0, ierr, *999)
          if (ierr /= 0) then
-            continue
             rhoofp06 = -999.0d0
-            
             return
          end if
          pressure_trial2 = opal_eos%eos_output_06(1)
@@ -190,12 +171,10 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       refine: do
       refine_count = refine_count + 1
       density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
-           (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)  ! KC 2025-05-31
+           (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
       call esac06(hydrogen_fraction, t6_temperature, density_trial3, 1, 0, ierr, *999)
       if (ierr /= 0) then
-         continue
          rhoofp06 = -999.0d0
-         
          return
       end if
       pressure_trial3 = opal_eos%eos_output_06(1)
@@ -220,11 +199,8 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       rhoofp06 = -999.0d0
       return
       end do refine
-
   999 continue
+!     esac06 took its alternate return: failed to find rho
       rhoofp06 = -999.0d0
-!      WRITE(ISHORT,'("RHOOFP06: FAILED TO FIND RHO")')
       return
-
-
 end function rhoofp06

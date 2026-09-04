@@ -35,40 +35,20 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
            density
       integer, intent(in) :: deriv_order, rad_flag
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 191
-
-
-
-
-
-
-
-
+      integer, parameter :: mx = 5, nr = 169, nt = 191
 
       double precision :: species_mass_fraction(7)
       double precision :: molar_gas_constant_mbcc
-      character(len=1) :: blank_line
       character(len=15) :: routine_id
-
-      integer :: fill_idx
 
 ! NOTE: this literal has no D0 suffix in the original (esac01.f), unlike
 ! esac.f90's analogous 83.1446304d0 -- preserved verbatim: it is parsed
 ! as a single-precision constant and then widened to double precision,
 ! which is NOT bit-identical to the correctly-rounded double value.
       data molar_gas_constant_mbcc/83.14511/
-! NOTE: no D-suffix in the original (esac01.f) -- preserved verbatim:
-! these are parsed as single-precision constants and then widened to
-! double precision (0.2/0.4/0.6/0.8 are not exactly representable in
-! binary floating point, so this is NOT bit-identical to the
-! correctly-rounded double values).
-! x_grid_01/eos_var_order_01/t6_index_lo_01 defaults moved to
-! opal_eos_lib.f90: DATA can no longer target them here now that
-! they're use-associated.
       data routine_id/"OPALEOS/ESAC01:"/
 ! --- locals ---
       integer :: x_loop_index_01
-      double precision :: hydrogen_fraction_copy, density_copy   ! xxi/ri: assigned but not used further
       double precision :: t6_value, density_value   ! working copies (slt/slr)
       integer :: species_idx, index_idx
       integer :: lo_idx, hi_idx, mid_idx, result_idx
@@ -89,7 +69,6 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
 
       ierr = 0
 
-      blank_line = ' '
       if (deriv_order.gt.9) then
          write (run_log_unit,'(A, " iorder cannot exceed 9")') routine_id
       end if
@@ -101,9 +80,6 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
          return
       end if
 
-      hydrogen_fraction_copy = hydrogen_fraction
-      density_copy = density
-!
       t6_value = t6_temperature
       density_value = density
 !
@@ -127,8 +103,6 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
          if (opal_eos%table_metal_fraction_01+hydrogen_fraction-1.0d-6.gt.1) then
             write(run_log_unit,*) routine_id, "Mass fractions exceed unity (61)"
             write(run_log_unit,*) 'Z, XH', opal_eos%table_metal_fraction_01, hydrogen_fraction
-            
-            
             ierr = 1
             return
          end if
@@ -422,24 +396,6 @@ subroutine esac01(hydrogen_fraction, t6_temperature, density, &
               total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return
-
-      write(run_log_unit,*) routine_id, "Mass fractions exceed unity (61)"
-      write(run_log_unit,*) 'Z, XH', opal_eos%table_metal_fraction_01, hydrogen_fraction
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-      ! facades stop when their caller passes no ierr.
-      ierr = 1
-      return
-      write(run_log_unit,*) routine_id, " T6 or rho outside of table range (62)"
-      write(run_log_unit,*) "t6, t6a(1),t6a(nt):", t6_value, opal_eos%t6_grid_01(1), &
-           opal_eos%t6_grid_01(nt)
-      write(run_log_unit,*) "slr,r,rho(1),rho(nr):", density_value, &
-           density, opal_eos%density_grid_01(1), opal_eos%density_grid_01(nr)
-      return 1
-      write(run_log_unit,*) routine_id, "T6/rho in empty region of OPAL 2001 EOS", &
-           " table (65)"
-      write(run_log_unit,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, &
-           t6_temperature, density
-      return 1
       end if
       write(run_log_unit,*) routine_id, " Z does not match Z in OPAL 2001 EOS files", &
            " you are using (66)"

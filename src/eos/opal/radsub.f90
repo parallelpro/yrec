@@ -7,7 +7,7 @@
 ! style were updated.
 !
 ! Adds the radiation-pressure/energy/entropy correction to the OPAL
-! 1995 EOS values already in opal_eos%eos_output (common/e/), and recomputes
+! 1995 EOS values already in opal_eos%eos_output, and recomputes
 ! the derived thermodynamic derivatives (chi_rho, chi_t6, gamma1,
 ! gamma2/(gamma2-1), gamma3-1) including that correction. Called from
 ! esac.f90 when rad_flag=1.
@@ -27,13 +27,9 @@ subroutine radsub(t6_temperature, density, total_moles, &
       use opal_eos_lib
       implicit none
 
-      integer, parameter :: mx = 5, mv = 10, nr = 77, nt = 56
-
       double precision, intent(in) :: t6_temperature, density
       double precision, intent(in) :: total_moles
       double precision, intent(in) :: mean_molecular_weight
-
-
 
       double precision :: rad_const_over_c, unit_factor, unit_factor_legacy, &
            molar_gas_constant_mbcc

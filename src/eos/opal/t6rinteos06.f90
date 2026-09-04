@@ -18,14 +18,6 @@ recursive subroutine t6rinteos06(slr, slt, ierr)
 
       double precision, intent(in) :: slr, slt
 
-      integer, parameter :: mx = 5, mv = 10, nr = 169, nt = 197
-
-
-
-
-
-
-
 ! --- locals ---
       integer :: hi_loop_count, recompute_flag, cache_slot, t6_grid_idx
       double precision :: esactq, esact2, esactq2, dix, dix2
