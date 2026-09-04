@@ -36,7 +36,12 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
 
 ! MHP 10/02 added MRZONE,MXZONE to dimension statements
       double precision :: log10_omega(json), point_spacing_max(4)
-      integer :: flag_point(100)
+! 2026 audit fix: every append is bounds-guarded (append_flag_point)
+! -- the historical code capped only the gradient-scan loop at 100,
+! so the up-to-five appends outside it could write past the array.
+      integer, parameter :: max_flag_points = 100
+      integer :: flag_point(max_flag_points)
+      logical :: flag_overflow_warned
       logical :: am_transport_convective_flag(json)
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
@@ -208,45 +213,38 @@ subroutine flag_fixed_points
       use math_lib
 ! SET UP FLAGGED POINTS - PROGRAM WILL NOT REZONE ACROSS FLAGGED POINTS
       flag_count = 1
+      flag_overflow_warned = .false.
 ! FLAG EDGES OF CENTRAL AND SURFACE CONVECTION ZONES
       if (star%core_cz_top_index.gt.1) then
-       flag_point(flag_count) = star%core_cz_top_index
-       flag_count = flag_count + 1
+       call append_flag_point(star%core_cz_top_index)
       endif
       if (star%envelope_cz_bottom_index.lt.star%nz .and. &
            star%envelope_cz_bottom_index.gt.1) then
-       flag_point(flag_count) = star%envelope_cz_bottom_index
-       flag_count = flag_count + 1
+       call append_flag_point(star%envelope_cz_bottom_index)
       endif
 ! FLAG EDGE OF H SHELL
       if (h_shell_active.and.h_shell_zone_begin.gt.1) then
-       flag_point(flag_count) = h_shell_zone_begin - 1
-       flag_count = flag_count + 1
+       call append_flag_point(h_shell_zone_begin - 1)
       endif
       do i = 2,star%nz
 ! TEST FOR FLAGGING DUE TO X GRADIENT
        if (dabs(star%xa(i_h1,i)-star%xa(i_h1,i-1)).gt.star%ctrl%chi_grid_scale(3)) then
-          flag_point(flag_count) = i
-          flag_count = flag_count + 1
+          call append_flag_point(i)
 ! TEST FOR FLAGGING DUE TO Z GRADIENT
        else if (dabs(star%xa(i_metals,i)-star%xa(i_metals,i-1)).gt. &
             star%ctrl%chi_grid_scale(4)) then
-          flag_point(flag_count) = i
-          flag_count = flag_count + 1
+          call append_flag_point(i)
 ! TEST FOR FLAGGING DUE TO GRADIENT IN LOG OMEGA.
        else if (star%job%rotation_active) then
           log_omega_top = log10(star%omega(i))
           log_omega_bot = log10(star%omega(i-1))
           if (dabs(log_omega_top-log_omega_bot).gt.star%ctrl%chi_grid_scale(12)) then
-             flag_point(flag_count) = i
-             flag_count = flag_count + 1
+             call append_flag_point(i)
           endif
        endif
-       if (flag_count.ge.100) then
-          write(run_log_unit,110)
-  110       format(1X,'MORE THAN 100 FLAG POINTS-FIRST 100 RETAINED')
-          exit
-       endif
+! stop scanning once full (append_flag_point warns on the first
+! rejected append; one slot stays reserved for the star%nz terminator)
+       if (flag_count.ge.max_flag_points) exit
       end do
       if (i > (star%nz)) then
 !  PMAX1 = MAX DEL LOG P BELOW SURFACE C.Z. AND BELOW FINELY ZONED
@@ -280,16 +278,15 @@ subroutine flag_fixed_points
           delta_log_pressure = star%logP(overshoot_base_zone)- &
                star%logP(star%envelope_cz_bottom_index)
           if (delta_log_pressure.gt.0.0D0) then
-             overshoot_point_count = int(delta_log_pressure/star%ctrl%chi_grid_scale(10))
-             if (mod(delta_log_pressure,star%ctrl%chi_grid_scale(10)).ne.0D0) &
-                  overshoot_point_count = overshoot_point_count+1
+! 2026 audit fix: mod(dp,dp).ne.0 was a float-equality ceiling test
+             overshoot_point_count = &
+                  ceiling(delta_log_pressure/star%ctrl%chi_grid_scale(10))
              pmax3 = delta_log_pressure/dfloat(overshoot_point_count)
           else
              pmax3 = star%ctrl%chi_grid_scale(10)
           endif
             if (overshoot_base_zone.gt.1) then
-               flag_point(flag_count) = overshoot_base_zone
-               flag_count = flag_count + 1
+               call append_flag_point(overshoot_base_zone)
             endif
        endif
        if (star%ctrl%chi_grid_scale(7).eq.0.0D0) then
@@ -308,20 +305,21 @@ subroutine flag_fixed_points
           if (fine_zone_base.ne.overshoot_base_zone) then
           delta_log_pressure = star%logP(fine_zone_base) - &
                star%logP(overshoot_base_zone)
-          overshoot_point_count = int(delta_log_pressure/star%ctrl%chi_grid_scale(10))
-          if (mod(delta_log_pressure,star%ctrl%chi_grid_scale(10)).ne.0D0) &
-               overshoot_point_count = overshoot_point_count+1
+! 2026 audit fix: mod(dp,dp).ne.0 was a float-equality ceiling test
+          overshoot_point_count = &
+               ceiling(delta_log_pressure/star%ctrl%chi_grid_scale(10))
           pmax2 = delta_log_pressure/dfloat(overshoot_point_count)
           if (pmax2.eq.0.0D0) pmax2 = star%ctrl%chi_grid_scale(10)
             if (fine_zone_base.gt.1) then
-               flag_point(flag_count) = fine_zone_base
-               flag_count = flag_count + 1
+               call append_flag_point(fine_zone_base)
             endif
           end if
           end if
        endif
       endif
       end if
+! flag_count <= max_flag_points is guaranteed by append_flag_point,
+! so the terminator write is always in bounds
       flag_point(flag_count) = star%nz
 ! ARRANGE THE FLAG POINTS IN ASCENDING ORDER
       if (flag_count.ne.1) then
@@ -359,6 +357,24 @@ subroutine flag_fixed_points
       end if
   185 format(1X,'FLAG-POINTS',20I4)
 end subroutine flag_fixed_points
+
+! ---------------------------------------------------------------
+! Bounds-guarded append to the fixed-point list (2026 audit fix).
+! Rejects appends that would leave no room for the star%nz
+! terminator, warning once per rezone.
+subroutine append_flag_point(zone)
+      integer, intent(in) :: zone
+      if (flag_count .gt. max_flag_points - 1) then
+         if (.not. flag_overflow_warned) then
+            write(run_log_unit,110) max_flag_points
+  110       format(1X,'MORE THAN ',i4,' FLAG POINTS - REST DROPPED')
+            flag_overflow_warned = .true.
+         end if
+         return
+      end if
+      flag_point(flag_count) = zone
+      flag_count = flag_count + 1
+end subroutine append_flag_point
 
 ! ---------------------------------------------------------------
 ! Refloat the point distribution between flagged points: accumulate
@@ -804,6 +820,24 @@ subroutine interpolate_onto_new_grid
 ! bookkeeping is in the run log under report_solver_diagnostics.)
 
 
+! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
+! 2026 (bugsweep sec-11): this block sat AFTER the transfer loop
+! below, so its x-table star%log_mass had already been overwritten
+! with the NEW grid for j <= new_num_zones while eps_total was still
+! on the old grid -- the mid-step eps/esum for the ES velocities were
+! mis-registered on every rotating rezone (inherited from hpoint.f).
+! It now runs with the other old->new interpolations.
+      if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
+           star%job%envelope_overshoot_active)) then
+         call osplin(star%old_shell_mass,rot_scr%old_esum,star%log_mass,star%eps_total, &
+              old_point_count,new_point_count)
+         do zone_index = 1,star%nz
+            spline_y(zone_index) = star%eps_total(zone_index)+star%eps_channels(i_eps_neu,zone_index)+ &
+                 star%eps_channels(i_eps_grav,zone_index)
+         end do
+         call osplin(star%old_shell_mass,rot_scr%old_eps,star%log_mass,spline_y, &
+              old_point_count,new_point_count)
+      endif
 ! TRANSFER NEW POINTS.
       do j = 1,new_num_zones
        star%log_mass(j) = star%old_shell_mass(j)
@@ -822,18 +856,6 @@ subroutine interpolate_onto_new_grid
           star%eta_squared(j) = star%old_eta_squared(j)
           star%mean_radius(j) = star%old_mean_radius(j)
        end do
-      endif
-! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
-      if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
-           star%job%envelope_overshoot_active)) then
-         call osplin(star%old_shell_mass,rot_scr%old_esum,star%log_mass,star%eps_total, &
-              old_point_count,new_point_count)
-         do zone_index = 1,star%nz
-            spline_y(zone_index) = star%eps_total(zone_index)+star%eps_channels(i_eps_neu,zone_index)+ &
-                 star%eps_channels(i_eps_grav,zone_index)
-         end do
-         call osplin(star%old_shell_mass,rot_scr%old_eps,star%log_mass,spline_y, &
-              old_point_count,new_point_count)
       endif
       if (solver_diagnostics()) then
          write(run_log_unit,1020) star%nz,new_num_zones
@@ -880,7 +902,8 @@ subroutine interpolate_onto_new_grid
             star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
 !  CALCULATE FP,FT,R0 AND ETA2 GIVEN OMEGA
        call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
-            star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
+            star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
+       if (ierr /= 0) return
 !  FIND CORRECT MOMENT OF INERTIA(HI)
 !        CALL MOMI(ETA2,HD,HR,HS,HS2,1,M,OMEGA,R0,HI,QIW,M)  ! KC 2025-05-31
        call zone_moments_of_inertia(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &
@@ -894,7 +917,10 @@ subroutine interpolate_onto_new_grid
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + star%kinetic_energy_rot(i)
        end do
-       write(run_log_unit,1120)total_angular_momentum, &
+! per-rezone conservation bookkeeping: solver forensics (2026
+! run-log verbosity sweep)
+       if (solver_diagnostics()) &
+            write(run_log_unit,1120)total_angular_momentum, &
             sum_angular_momentum,total_rotational_ke,sum_rotational_ke
  1120    format(1X,'TOTAL J OF STAR - PREVIOUS ',1PE21.13,' NEW ', &
      1PE21.13/' TOTAL ROTATIONAL K.E. OF STAR-PREVIOUS ',1PE21.13, &

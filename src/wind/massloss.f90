@@ -116,8 +116,10 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       integer :: saha_flag
       double precision :: beta_local
 ! 2026 named-index results: the former 18-variable eos output soup is
-! one result array (blanket-SAVEd like the locals it replaces, so the
-! inout slots keep their historical cross-call carry).
+! one result array.  Nothing here is SAVEd: the original's blanket
+! SAVE carried the previous call's converged log10 rho / beta into the
+! inout seed slots; the modern locals are seeded to zero at entry
+! (below), which is what the original saw on its first call.
       double precision :: eos_res(num_eos_results)
       double precision :: mass_loss_rate_cgs, pressure_from_wind, &
            temperature_from_wind, accretion_specific_entropy2
@@ -125,6 +127,8 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
 
 ! INITIALIZE MASS LOSS AT DEFAULT RATE
       ierr = 0
+      log10_density_local = 0.0d0
+      beta_local = 0.0d0
       mass_loss_rate_msun_yr = star%ctrl%mass_accretion_rate
       if(star%job%use_mass_accretion)then
          apply_mass_change = .true.

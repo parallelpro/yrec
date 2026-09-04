@@ -617,7 +617,7 @@ subroutine deutrate(dl,tl,x,i,itlvl)
 
 
       double precision :: c21
-      data c21/5.240358E-8/
+      data c21/5.240358d-8/
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
 !  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
 !  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
@@ -642,7 +642,9 @@ subroutine deutrate(dl,tl,x,i,itlvl)
       tfacdeut = 1.0d0+0.112d0*t9p13+3.38d0*t9p23+2.65d0*t9
 ! FACTOR OF 3.0115D23 REFLECTS AVAGADROS NUMBER DIVIDED BY THE
 ! MASS OF THE DEUTERON IN AMU
-      rdeut = rho*2.240d3*t9p23*exp(z)*tfacdeut*3.0115d23
+! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit and
+! in engeb's own derivative of this rate; was T9**(+2/3) (deutrate.f).
+      rdeut = rho*2.240d3*t9m23*exp(z)*tfacdeut*3.0115d23
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
       if(i.ge.star%jcz .and. star%convective_turnover_timescale.gt.1.0d0)then
@@ -870,13 +872,13 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !       COMMON/NULOSS/LNULOS1,DSNUDT,DSNUDD
 ! former common/nuloss/: use_itoh_neutrino_loss (switch selecting the
 ! Itoh 1996 neutrino-loss routines below) is real shared configuration
-! -- now use-associated from const_lib. neutrino_dlnq_dlnt/
-! neutrino_dlnq_dlnd (the log-derivatives of the resulting loss rate
-! w.r.t. T/rho) are set and consumed entirely within this file --
+! -- now use-associated from const_lib. neutrino_dsnu_dt/
+! neutrino_dsnu_drho (the absolute derivatives d snu/dT, d snu/d rho
+! returned by neutrino()) are set and consumed entirely within this file --
 ! core/read_input.f90, which declared the same common block, never
 ! actually touches them -- so they're genuinely local, not shared
 ! state, and become plain locals here rather than moving to a module.
-      double precision :: neutrino_dlnq_dlnt, neutrino_dlnq_dlnd
+      double precision :: neutrino_dsnu_dt, neutrino_dsnu_drho
 
 
 
@@ -898,9 +900,9 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! NEUTRINO COEFFICIENTS
 
       data v1,v2,v3/ &
-           6.002d19,2.084d20,1.872d21,9.383d-1,-4.141d-1,5.829d-2,5.5924, &
-           4.886d10,7.580d10,6.023d10,6.290d-3,7.483d-3,3.061d-4,1.5654, &
-           2.320d-7,8.449d-8,1.787d-8,2.581d-2,1.734d-2,6.990d-4,0.56457/
+           6.002d19,2.084d20,1.872d21,9.383d-1,-4.141d-1,5.829d-2,5.5924d0, &
+           4.886d10,7.580d10,6.023d10,6.290d-3,7.483d-3,3.061d-4,1.5654d0, &
+           2.320d-7,8.449d-8,1.787d-8,2.581d-2,1.734d-2,6.990d-4,0.56457d0/
 ! ***************************
 ! ANUC ARE ATOMIC MASS UNITS.
 ! ***************************
@@ -914,10 +916,10 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  is used implicitly in this subroutine was, 7.016930, until 13/13/97.
 !  We now use the bare nuclear mass of 7.014735 .
 !
-      data atomic_mass_amu/1.008665,1.007276,2.013553,3.015501,3.014933, &
-           4.001506,11.996709,13.000064,13.999233,15.990526,17.994772, &
-           19.986954,23.978458/, &
-           atomic_number/0.,1.,1.,1.,2.,2.,6.,6.,7.,8.,8.,10.,12./, &
+      data atomic_mass_amu/1.008665d0,1.007276d0,2.013553d0,3.015501d0,3.014933d0, &
+           4.001506d0,11.996709d0,13.000064d0,13.999233d0,15.990526d0,17.994772d0, &
+           19.986954d0,23.978458d0/, &
+           atomic_number/0.d0,1.d0,1.d0,1.d0,2.d0,2.d0,6.d0,6.d0,7.d0,8.d0,8.d0,10.d0,12.d0/, &
            num_isotopes/13/
 
 ! THE ISOTOPES ARE NEUTRON, H1, D, H3, HE3, HE4, C12, C13, N14, O16, O18,
@@ -1008,14 +1010,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !     7Q8/0.,0.,0.,0.0,0.0,0.0,0./,
 !     8NRXNS/13/
 ! MHP 9/14 RESTORED BE7+P DERIVATIVES THAT WERE ZEROED OUT
-      data q1/0.12317,.03392,.0325,.0304,.03035,.0273,.02494,.040572/, &
-           q2/1.08749,-.273,-.2085,.7630,-0.4044,-1.60,-1.224,-0.2095/, &
-           q3/.93833,-.0648,-.0474,.1626,-.08598,-.3064,-.2139,-0.0595/, &
-           q4/0.,0.,0.,4.79,7.456,0.0,.69703,0.16762/, &
-           q5/0.,0.,0.,2.595,4.032,0.0,0.3097,0.12114/, &
-           q6/-3.3804,-12.2757,-12.826,-13.6899,-13.7173,-15.2281,-16.6925/, &
-           q7/20.8964,76.6003,67.8036,69.130,70.3809,69.8517,70.8012/, &
-           q8/0.,0.,0.,0.0,0.0,0.0,0./, &
+      data q1/0.12317d0,.03392d0,.0325d0,.0304d0,.03035d0,.0273d0,.02494d0,.040572d0/, &
+           q2/1.08749d0,-.273d0,-.2085d0,.7630d0,-0.4044d0,-1.60d0,-1.224d0,-0.2095d0/, &
+           q3/.93833d0,-.0648d0,-.0474d0,.1626d0,-.08598d0,-.3064d0,-.2139d0,-0.0595d0/, &
+           q4/0.d0,0.d0,0.d0,4.79d0,7.456d0,0.0d0,.69703d0,0.16762d0/, &
+           q5/0.d0,0.d0,0.d0,2.595d0,4.032d0,0.0d0,0.3097d0,0.12114d0/, &
+           q6/-3.3804d0,-12.2757d0,-12.826d0,-13.6899d0,-13.7173d0,-15.2281d0,-16.6925d0/, &
+           q7/20.8964d0,76.6003d0,67.8036d0,69.130d0,70.3809d0,69.8517d0,70.8012d0/, &
+           q8/0.d0,0.d0,0.d0,0.0d0,0.0d0,0.0d0,0.d0/, &
            nrxns/13/
 ! ***NOTE THAT SSTANDARD IS AN INPUT PARAMETER SET IN THE NAMELIST;
 ! PREVIOUS PUBLISHED SETS OF SSTANDARD ARE INDICATED BELOW.
@@ -1104,14 +1106,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  AND Z23 ARE ALSO DEFINED IN TABLE 4 (SEE ABOVE).  SINCE THEY ARE
 !  ONLY USED IN STRONG SCREENING, THE VALUES OF Z53, Z43, AND Z23
 !  WERE NOT CHECKED.
-      data charge_product/1.,4.,4.,6.,6.,7.,8.,12.,16.,12.,14.,12.,36./, &
-           z53/1.175, &
-           3.73,3.73,4.804,4.804,5.385,5.941,9.014,11.24,9.014,10.15, &
-           9.104,23.28/,z43/0.52,1.31,1.31,1.488,1.488,1.61,1.721,2.577, &
-           3.025,2.577,2.81,2.577,5.668/,z23/-0.413,-0.655,-0.655,-0.643, &
-           -0.643,-0.659,-0.673,-0.889,-0.946,-0.889,-0.92,-0.889,-1.36/, &
-           z86/1.630,5.917,5.917,8.302,8.302,9.520,10.716,16.192,20.978, &
-           16.192,18.606,16.192,45.6635/, &
+      data charge_product/1.d0,4.d0,4.d0,6.d0,6.d0,7.d0,8.d0,12.d0,16.d0,12.d0,14.d0,12.d0,36.d0/, &
+           z53/1.175d0, &
+           3.73d0,3.73d0,4.804d0,4.804d0,5.385d0,5.941d0,9.014d0,11.24d0,9.014d0,10.15d0, &
+           9.104d0,23.28d0/,z43/0.52d0,1.31d0,1.31d0,1.488d0,1.488d0,1.61d0,1.721d0,2.577d0, &
+           3.025d0,2.577d0,2.81d0,2.577d0,5.668d0/,z23/-0.413d0,-0.655d0,-0.655d0,-0.643d0, &
+           -0.643d0,-0.659d0,-0.673d0,-0.889d0,-0.946d0,-0.889d0,-0.92d0,-0.889d0,-1.36d0/, &
+           z86/1.630d0,5.917d0,5.917d0,8.302d0,8.302d0,9.520d0,10.716d0,16.192d0,20.978d0, &
+           16.192d0,18.606d0,16.192d0,45.6635d0/, &
            years_per_sec_over_amu/5.240358d-8/
       double precision :: term, ion_mean_weight_inverse, &
            electron_mean_weight_inverse, xtr, zeta_sum, &
@@ -1122,7 +1124,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       double precision :: pfmc2, efmkt, fprf, degd
       double precision :: xxl, xxl6, xxl8, zcurl, zbar, z58, z28, z33, tm1
       double precision :: uwk, uint, ustr
-      double precision :: r1, r2, a1, a2, a3, a4, a5, dr1, da1
+      double precision :: r1, r2, a1, a2, a3, a4, a5, dr1, da1, s_sum
       double precision :: be7electron, be7proton, temp3, qrbe7, &
            zprdbe7p, z86be7p, utotbe7p, camube7
       double precision :: f1, f2, f3, f4, o16gamma, c12alpha
@@ -1152,13 +1154,13 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! MHP 5/02 DEUTERIUM BURNING
          dgdeut = 0.0d0
          qrtdeut = 0.0d0
-         en = -20.
-         dlnepsilon_dlnrho = 0.
-         dlnepsilon_dlnt = 0.
+         en = -20.d0
+         dlnepsilon_dlnrho = 0.d0
+         dlnepsilon_dlnt = 0.d0
          do i = 1,nrxns
-            eg(i) = 0.
-            reaction_rate(i) = 0.
-            reaction_energy_gen(i) = 0.
+            eg(i) = 0.d0
+            reaction_rate(i) = 0.d0
+            reaction_energy_gen(i) = 0.d0
          end do
          continue
          return
@@ -1171,11 +1173,11 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       t9 = exp(ln10*(log_temperature - 9.0d0))
       t9_p13 = pow(t9, cc13)
       t9_p23 = t9_p13**2
-      t9_m13=1./t9_p13
+      t9_m13=1.d0/t9_p13
       t9_m23=t9_m13**2
-      t9_m1=1./t9
+      t9_m1=1.d0/t9
       t9_m2=t9_m1**2
-      t9_m12=1./dsqrt(t9)
+      t9_m12=1.d0/dsqrt(t9)
       t9_m32=t9_m1*t9_m12
 ! MHP 5/02 ADD DEUTERIUM BURNING TERM TO THE CODE
 ! IF DEUTERIUM IS ABOVE A MINIMUM THRESHOLD VALUE.
@@ -1193,7 +1195,10 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
         tfacdeut = 1.0d0+0.112d0*t9_p13+3.38d0*t9_p23+2.65d0*t9
 ! FACTOR OF 6.023D23/ REFLECTS AVAGADROS NUMBER DIVIDED BY THE
 ! MASS OF THE DEUTERON IN AMU
-        rdeut = density*2.240d3*t9_p23*exp(zz)*tfacdeut*6.023d23/ &
+! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit and
+! in qrtdeut below (which already differentiates the -2/3 form); was
+! T9**(+2/3) (engeb.f).
+        rdeut = density*2.240d3*t9_m23*exp(zz)*tfacdeut*6.023d23/ &
              atomic_mass_amu(3)
         tfacdeut2 = 0.112d0*t9_p13+6.76d0*t9_p23+7.95d0*t9
         qrtdeut = cc13*((tfacdeut2/tfacdeut) -2.0d0 - zz)
@@ -1225,17 +1230,17 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  IN THIS PART OF THE SUBROUTINE WERE THE CORRECTION OF THE ERROR IN
 !  THE DEFINITION OF RWE (SEE ABOVE) AND REFINEMENTS OF THE COEFFICIENTS
 !  IN THE EXPRESSIONS FOR PFMC2 AND EFMKT.
-      pfmc2=1.017677e-4*pow(electron_number_density_na, 0.6666667)
-      efmkt=5.92986*t9_m1*(dsqrt(1.+pfmc2)-1.)
-      if (efmkt.le.1.e-2) then
-         fprf=1.0
+      pfmc2=1.017677d-4*pow(electron_number_density_na, (2.0d0/3.0d0))
+      efmkt=5.92986d0*t9_m1*(dsqrt(1.d0+pfmc2)-1.d0)
+      if (efmkt.le.1.d-2) then
+         fprf=1.0d0
       else
          degd=log10(efmkt)
-         if (degd.ge.1.5) then
-            fprf=0.0
+         if (degd.ge.1.5d0) then
+            fprf=0.0d0
          else
-            fprf=0.75793-0.54621*degd-0.30964*degd**2+0.12535*degd**3+ &
-            0.1203*degd**4-0.012857*degd**5-0.014768*degd**6
+            fprf=0.75793d0-0.54621d0*degd-0.30964d0*degd**2+0.12535d0*degd**3+ &
+            0.1203d0*degd**4-0.012857d0*degd**5-0.014768d0*degd**6
          end if
       end if
 ! END OF CALCULATION OF FERMI ENERGY DIVIDED BY KT AND THE INTERPOLATION
@@ -1265,14 +1270,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! THE FINAL EXPRESSION FOR WEAK SCREENING IS EXACTLY EQUAL TO SALPETER'S
 !  FORMULA, WHICH INCLUDES A DEGENERACY CORRECTION. THE MORE GENERAL
 !  EXPRESSIONS ARE GIVEN IN TABLE 4 AND EQUATION (19) OF GRABOSKE ET AL.
-      xxl=5.9426e-6*t9_m32*dsqrt(density*ion_mean_weight_inverse)
-      xxl6=pow(xxl, 0.666667)
-      xxl8=pow(xxl, 0.86)
+      xxl=5.9426d-6*t9_m32*dsqrt(density*ion_mean_weight_inverse)
+      xxl6=pow(xxl, (2.0d0/3.0d0))
+      xxl8=pow(xxl, 0.86d0)
       zcurl=dsqrt((zeta_sum+fprf*electron_mean_weight_inverse)/ &
            ion_mean_weight_inverse)
       zbar=electron_mean_weight_inverse/ion_mean_weight_inverse
-      z58=pow(zcurl, 0.58)
-      z28=pow(zbar, 0.28)
+      z58=pow(zcurl, 0.58d0)
+      z28=pow(zbar, 0.28d0)
       z33=pow(zbar, cc13)
       tm1=xxl*zcurl
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
@@ -1296,25 +1301,25 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! OPTION ARE OBVIOUS SINCE IN THE WEAK LIMIT SALPETER'S FORMULA SHOWS
 ! THAT U IS PROPORTIONAL TO THE SQUARE ROOT OF RHO TIMES T^(-3/2).
             screening_factor(i)=uwk
-            dscreen_dlnrho(i)=0.5*uwk
-            dscreen_dlnt(i)=-1.5*uwk
+            dscreen_dlnrho(i)=0.5d0*uwk
+            dscreen_dlnt(i)=-1.5d0*uwk
          else
-            uint=0.38*xxl8*xtr*z86(i)/(ion_mean_weight_inverse*z58*z28)
-            if (uwk.le.2.) then
+            uint=0.38d0*xxl8*xtr*z86(i)/(ion_mean_weight_inverse*z58*z28)
+            if (uwk.le.2.d0) then
                screening_factor(i)=uint
-               dscreen_dlnrho(i)=0.43*uint
-               dscreen_dlnt(i)=-1.29*uint
+               dscreen_dlnrho(i)=0.43d0*uint
+               dscreen_dlnt(i)=-1.29d0*uint
             else
-               ustr=0.624*z33*xxl6*(z53(i)+0.316*z33*z43(i)+0.737* &
+               ustr=0.624d0*z33*xxl6*(z53(i)+0.316d0*z33*z43(i)+0.737d0* &
                z23(i)/(zbar*xxl6))
-               if (ustr.lt.uint.or.uwk.ge.5.) then
+               if (ustr.lt.uint.or.uwk.ge.5.d0) then
                   screening_factor(i)=ustr
-                  dscreen_dlnrho(i)=0.208*z33*(z53(i)+0.316*z33*z43(i))*xxl6
-                  dscreen_dlnt(i)=-3.*dscreen_dlnrho(i)
+                  dscreen_dlnrho(i)=0.208d0*z33*(z53(i)+0.316d0*z33*z43(i))*xxl6
+                  dscreen_dlnt(i)=-3.d0*dscreen_dlnrho(i)
                else
                   screening_factor(i)=uint
-                  dscreen_dlnrho(i)=0.43*uint
-                  dscreen_dlnt(i)=-1.29*uint
+                  dscreen_dlnrho(i)=0.43d0*uint
+                  dscreen_dlnt(i)=-1.29d0*uint
                end if
             end if
          end if
@@ -1325,11 +1330,11 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 !  NOT RELEVANT FOR THE SUN.
 ! ****************************************************************
       nz=1
-      if (hydrogen_fraction.eq.0.0) then
-         f1=0.
-         f2=0.
-         f3=0.
-         f4=0.
+      if (hydrogen_fraction.eq.0.0d0) then
+         f1=0.d0
+         f2=0.d0
+         f3=0.d0
+         f4=0.d0
       else
       nz=8
 ! **************************************************************
@@ -1361,14 +1366,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          reaction_rate(i)=density*r1*exp(q6(i)*t9_m13+q7(i)+(q8(i)*t9)**2+ &
               screening_factor(i))
          reaction_rate(i) = reaction_rate(i)*star%cross_section_scale(i)
-         if (reaction_rate(i).lt.1.e-30) then
-            reaction_rate(i)=0.
-            dlnrate_dlnt(i)=0.
+         if (reaction_rate(i).lt.1.d-30) then
+            reaction_rate(i)=0.d0
+            dlnrate_dlnt(i)=0.d0
          else
-            dlnrate_dlnrho(i)=1.+dscreen_dlnrho(i)
-            dlnrate_dlnt(i)=dscreen_dlnt(i)-(q6(i)*t9_m13+(2.*t9_m23+ &
-            q1(i)*t9_m13-q3(i)*t9_p13-2.*q4(i)*t9_p23-3.*q5(i)*t9)/r1)/3.+ &
-            2.*(q8(i)*t9)**2
+            dlnrate_dlnrho(i)=1.d0+dscreen_dlnrho(i)
+            dlnrate_dlnt(i)=dscreen_dlnt(i)-(q6(i)*t9_m13+(2.d0*t9_m23+ &
+            q1(i)*t9_m13-q3(i)*t9_p13-2.d0*q4(i)*t9_p23-3.d0*q5(i)*t9)/r1)/3.d0+ &
+            2.d0*(q8(i)*t9)**2
          end if
       end do
 ! ***************************************************************
@@ -1398,10 +1403,10 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! electron capture, since that is done in SStandard. Previous coefficient
 ! in Be7electron expression was (3.126571E+5). 10/14/97.
 !
-         be7electron = (1.752e-10)*t9_m12*(1.0 + 0.004*(1000.*t9 - 16.))
+         be7electron = (1.752d-10)*t9_m12*(1.0d0 + 0.004d0*(1000.d0*t9 - 16.d0))
          be7electron = be7electron*electron_mean_weight_inverse*star%cross_section_scale(15)
-         temp3 = (-10.2625*t9_m13)
-         be7proton = (3.128813e+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(temp3)
+         temp3 = (-10.2625d0*t9_m13)
+         be7proton = (3.128813d+5)*hydrogen_fraction*star%cross_section_scale(16)*exp(temp3)
 ! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
 !  Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
 !  CORRECTIONS ARE DEFINED EARLIER IN THIS SUBROUTINE.
@@ -1413,13 +1418,13 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
          be7proton = be7proton*qrbe7
 ! CALCULATE THE SCREENING CORRECTION FOR BE7 + P REACTION.  USE WEAK AND
 !  INTERMEDIATE SCREENING FORMULAE.
-         zprdbe7p = 4.0
-         z86be7p = 5.7790
+         zprdbe7p = 4.0d0
+         z86be7p = 5.7790d0
          uwk = tm1*zprdbe7p
          if (uwk.le.star%ctrl%weak_screening_threshold) then
             utotbe7p = uwk
          else
-            uint = 0.38*xxl8*xtr*z86be7p/(ion_mean_weight_inverse*z58*z28)
+            uint = 0.38d0*xxl8*xtr*z86be7p/(ion_mean_weight_inverse*z58*z28)
             utotbe7p = uint
           end if
          be7proton = be7proton*exp(utotbe7p)
@@ -1429,7 +1434,7 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! mass number. Previously used 8.582295E+22 in the expression below.
 ! These corrections were made on 10/14/97.
 !
-         camube7 = density*8.584981e+22
+         camube7 = density*8.584981d+22
          be7proton = camube7*be7proton
          be7electron = camube7*be7electron
 ! END OF MULTIPLICATION INSERTED NOVEMBER 6, 1990.
@@ -1459,16 +1464,16 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! reactions.  Also, checked that the coefficients are the same as the
 ! ones given earlier in energy.f when we use the older CNO data.
 !
-      o16gamma = t9_m23 + 0.0273016*t9_m13 + 0.14374 + 0.027490*t9_p13 &
-                + 6.14685*t9_p23 + 2.98940*t9
+      o16gamma = t9_m23 + 0.0273016d0*t9_m13 + 0.14374d0 + 0.027490d0*t9_p13 &
+                + 6.14685d0*t9_p23 + 2.98940d0*t9
 ! MULTIPLY BY THE VALUE OF S0 IN KEV-B.
 !      O16GAMMA = O16GAMMA*64.
 ! MHP 9/14 ADDED THE OPTION TO MODIFY THE RELATIVE CROSS SECTIONS
 ! FOR N15+P -> C12+ALPHA AND O16+GAMMA
       o16gamma = o16gamma*64*star%o16_gamma_scale
 !
-      c12alpha = t9_m23 + 0.0273016*t9_m13 + 2.01186 + 0.384763*t9_p13 &
-                + 17.0579*t9_p23 + 8.29580*t9
+      c12alpha = t9_m23 + 0.0273016d0*t9_m13 + 2.01186d0 + 0.384763d0*t9_p13 &
+                + 17.0579d0*t9_p23 + 8.29580d0*t9
 !      C12ALPHA = C12ALPHA*67500
       c12alpha = c12alpha*67500*star%c12_alpha_scale
       f3 = c12alpha/(c12alpha + o16gamma)
@@ -1476,9 +1481,9 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
       end if
       do i=nz,nrxns
-         reaction_rate(i)=0.
-         dlnrate_dlnrho(i)=0.
-         dlnrate_dlnt(i)=0.
+         reaction_rate(i)=0.d0
+         dlnrate_dlnrho(i)=0.d0
+         dlnrate_dlnt(i)=0.d0
    end do
 ! ***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
 !    RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
@@ -1492,55 +1497,65 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! C13(ALPHA,N) O16
       r1=t9_m23+0.0129d0*t9_m13+2.04d0+0.184d0*t9_p13
       a1 = 6.77d15*exp(-32.329d0*t9_m13-(t9/1.284d0)**2)
-      a2 = 3.82d5*exp(-9.373*t9_m1)
-      a3 = 1.41d6*exp(-11.873*t9_m1)
-      a4 = 2.00d9*exp(-20.409*t9_m1)
-      a5 = 2.92d9*exp(-29.283*t9_m1)
-      reaction_rate(8) = 1.157126d22*density*exp(screening_factor(8))* &
-           (a1*r1+t9_m32*(a2+a3+a4+a5))
+      a2 = 3.82d5*exp(-9.373d0*t9_m1)
+      a3 = 1.41d6*exp(-11.873d0*t9_m1)
+      a4 = 2.00d9*exp(-20.409d0*t9_m1)
+      a5 = 2.92d9*exp(-29.283d0*t9_m1)
+! 2026 (bugsweep Batch 2): the three alpha-capture temperature
+! derivatives below were divided by the full rate (density/rate, i.e.
+! 1/(K rho e^U S) with K ~ 1e22) where only 1/S -- the CF88 polynomial
+! sum -- belongs, so dlnrate_dlnt was ~1e-22 x too small and the He-
+! burning Jacobian saw the screening term alone. Inherited from
+! engeb.f. Reaction 8's resonant terms also lacked their t9_m32 and
+! reaction 10's r1/r2 terms their t9_m23 (both present in the rates).
+      s_sum = a1*r1+t9_m32*(a2+a3+a4+a5)
+      reaction_rate(8) = 1.157126d22*density*exp(screening_factor(8))*s_sum
       dlnrate_dlnrho(8)=1.0d0+dscreen_dlnrho(8)
       dr1 = cc13*(-2.0d0*t9_m23-0.0129d0*t9_m13+0.184d0*t9_p13)
       da1 = a1*(cc13*32.329d0*t9_m13 - 2.0d0*(t9/1.284d0)**2)
-      dlnrate_dlnt(8) = dscreen_dlnt(8)+density/reaction_rate(8)*(dr1*a1 + &
-           r1*da1 + &
-           a2*(9.373*t9_m1-1.5d0)+a3*(11.873*t9_m1-1.5d0)+ &
-           a4*(20.409*t9_m1-1.5d0)+a5*(29.283*t9_m1-1.5d0))
+      dlnrate_dlnt(8) = dscreen_dlnt(8)+(dr1*a1 + r1*da1 + &
+           t9_m32*(a2*(9.373d0*t9_m1-1.5d0)+a3*(11.873d0*t9_m1-1.5d0)+ &
+           a4*(20.409d0*t9_m1-1.5d0)+a5*(29.283d0*t9_m1-1.5d0)))/s_sum
 ! C12(ALPHA,GAMMA)O16
       r1 = 1.0d0/(1.0d0+0.0489d0*t9_m23)
       r2 = 1.0d0/(1.0d0+0.2654d0*t9_m23)
-      a1 = t9_m2*exp(-32.120*t9_m13)
-      a2 = 1.04d8*r1**2*exp(-(t9/3.496)**2)
+      a1 = t9_m2*exp(-32.120d0*t9_m13)
+      a2 = 1.04d8*r1**2*exp(-(t9/3.496d0)**2)
       a3 = 1.76d8*r2**2
-      a4 = 1.25d3*t9_m32*exp(-27.499*t9_m1)
-      a5 = 1.43d-2*t9**5*exp(-15.541*t9_m1)
-      reaction_rate(10) = 1.25388d22*density*exp(screening_factor(10))* &
-           (a1*(a2+a3)+a4+a5)
+      a4 = 1.25d3*t9_m32*exp(-27.499d0*t9_m1)
+      a5 = 1.43d-2*t9**5*exp(-15.541d0*t9_m1)
+      s_sum = a1*(a2+a3)+a4+a5
+      reaction_rate(10) = 1.25388d22*density*exp(screening_factor(10))*s_sum
       dlnrate_dlnrho(10) = 1.0d0+dscreen_dlnrho(10)
-      dlnrate_dlnt(10) = dscreen_dlnt(10)+density/reaction_rate(10)* &
-           (a1*((cc13*32.120*t9_m13-2.0d0)* &
-           (a2+a3)+a2*(r1*cc13*0.1956-2.0d0*(t9/3.496)**2)+a3* &
-           (cc13*1.0616d0*r2))+a4*(27.499*t9_m1-1.5d0)+a5* &
-           (5.0d0+15.541*t9_m1))
+      dlnrate_dlnt(10) = dscreen_dlnt(10)+ &
+           (a1*((cc13*32.120d0*t9_m13-2.0d0)*(a2+a3)+ &
+           a2*(cc13*0.1956d0*t9_m23*r1-2.0d0*(t9/3.496d0)**2)+ &
+           a3*(cc13*1.0616d0*t9_m23*r2))+ &
+           a4*(27.499d0*t9_m1-1.5d0)+a5*(5.0d0+15.541d0*t9_m1))/s_sum
 ! N14(ALPHA,GAMMA)F18 + F18=>O18+EPLUS+NU
-      r1 = t9_m23+0.012d0*t9_m13+1.45d0+0.177d0*t9_p13+1.97d0*t9_p23 &
+! 2026 (bugsweep Batch 3): the linear coefficient of the CF88
+! N14(a,g)F18 polynomial is 0.117 (1 + 0.012 T9^1/3 + 1.45 T9^2/3
+! + 0.117 T9 + 1.97 T9^4/3 + 0.406 T9^5/3); both copies of the rate
+! carried 0.177 -- a digit transposition inherited from the F77
+! source (~0.5% of the rate at T9 = 0.15).
+      r1 = t9_m23+0.012d0*t9_m13+1.45d0+0.117d0*t9_p13+1.97d0*t9_p23 &
            +0.406d0*t9
       a1 = 7.78d9*exp(-36.031d0*t9_m13-(t9/0.881d0)**2)
       a2 = t9_m32*2.36d-10*exp(-2.798d0*t9_m1)
       a3 = t9_m32*2.03d0*exp(-5.054d0*t9_m1)
-      a4 = t9_m23*1.15d4*exp(-12.310*t9_m1)
-      reaction_rate(11)= 1.07452d22*density*exp(screening_factor(11))* &
-           (a1*r1+a2+a3+a4)
-      dlnrate_dlnrho(11)=1.+dscreen_dlnrho(11)
-      dr1 = cc13*(-2.0d0*t9_m23-0.012d0*t9_m13+0.177d0*t9_p13+ &
+      a4 = t9_m23*1.15d4*exp(-12.310d0*t9_m1)
+      s_sum = a1*r1+a2+a3+a4
+      reaction_rate(11)= 1.07452d22*density*exp(screening_factor(11))*s_sum
+      dlnrate_dlnrho(11)=1.d0+dscreen_dlnrho(11)
+      dr1 = cc13*(-2.0d0*t9_m23-0.012d0*t9_m13+0.117d0*t9_p13+ &
             3.94d0*t9_p23)+0.406d0*t9
       da1 = a1*(cc13*36.031d0*t9_m13-2.0d0*(t9/0.881d0)**2)
-      dlnrate_dlnt(11) = dscreen_dlnt(11)+density/reaction_rate(11)*(dr1*a1+ &
-              r1*da1+a2* &
-              (2.798d0*t9_m1-1.5d0)+a3*(5.054d0*t9_m1-1.5d0)+ &
-              a4*(12.310d0*t9_m1-cc23))
+      dlnrate_dlnt(11) = dscreen_dlnt(11)+(dr1*a1+r1*da1+ &
+              a2*(2.798d0*t9_m1-1.5d0)+a3*(5.054d0*t9_m1-1.5d0)+ &
+              a4*(12.310d0*t9_m1-cc23))/s_sum
 ! TRIPLE ALPHA
-      reaction_rate(12) = 1.565315d21*density**2*t9_m1*t9_m2*2.79e-8* &
-                 exp(-4.4027*t9_m1+screening_factor(12))
+      reaction_rate(12) = 1.565315d21*density**2*t9_m1*t9_m2*2.79d-8* &
+                 exp(-4.4027d0*t9_m1+screening_factor(12))
       dlnrate_dlnrho(12) = 2.0d0+dscreen_dlnrho(12)
       dlnrate_dlnt(12) = -3.0d0+dscreen_dlnt(12)+4.4027d0*t9_m1
 ! *******************
@@ -1592,12 +1607,12 @@ subroutine setup_abundances_and_composition
 ! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
 !  THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
 !  RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
-      mass_fraction(1) = 0.0
+      mass_fraction(1) = 0.0d0
       mass_fraction(2) = hydrogen_fraction
 ! MHP 5/02 ADDED DEUTERIUM
 !      XFRAC(3) = 0.0
       mass_fraction(3) = deuterium_fraction
-      mass_fraction(4) = 0.0
+      mass_fraction(4) = 0.0d0
       mass_fraction(5) = he3_fraction
       mass_fraction(6) = helium_fraction
       mass_fraction(7) = c12_fraction
@@ -1605,8 +1620,8 @@ subroutine setup_abundances_and_composition
       mass_fraction(9) = n14_fraction
       mass_fraction(10) = o16_fraction
       mass_fraction(11) = o18_fraction
-      mass_fraction(12) = 0.0
-      mass_fraction(13) = 0.0
+      mass_fraction(12) = 0.0d0
+      mass_fraction(13) = 0.0d0
 ! *******************************************************************
 ! BEGIN CALCULATION OF SCREENING CORRECTION.
 ! *******************************************************************
@@ -1627,16 +1642,16 @@ subroutine setup_abundances_and_composition
 ! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
 ! MU = SUM OVER I OF [X(I)/A(I)].
 ! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
-      ion_mean_weight_inverse = 0.
-      electron_mean_weight_inverse = 0.
-      xtr = 0.
-      zeta_sum = 0.
+      ion_mean_weight_inverse = 0.d0
+      electron_mean_weight_inverse = 0.d0
+      xtr = 0.d0
+      zeta_sum = 0.d0
       do i = 1,num_isotopes
          term = mass_fraction(i)/atomic_mass_amu(i)
          ion_mean_weight_inverse = ion_mean_weight_inverse+term
          electron_mean_weight_inverse = electron_mean_weight_inverse+ &
               term*atomic_number(i)
-         xtr = xtr+term*pow(atomic_number(i), 1.58)
+         xtr = xtr+term*pow(atomic_number(i), 1.58d0)
          zeta_sum = zeta_sum+term*atomic_number(i)**2
       end do
 ! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
@@ -1676,7 +1691,7 @@ subroutine compute_energy_generation
 ! THE FINAL NUMBERS ARE IN ERG PER GM PER SECOND.
 ! DEFINE THE CONSTANT TO CONVERT MEV'S TO ERGS. THE NUMBERS THAT APPEAR
 !  ARE IN MEV SO THEY CAN BE EASILY IDENTIFIED.
-      convert = 1.602177e-6
+      convert = 1.602177d-6
 ! THE MULTIPLYING CONSTANTS BELOW ARE IN MEV.
 ! JNB changed the pp energy release by 0.002 MeV because of a better
 ! estimate of the neutrino energy loss on 9/25/97. See pg. 139 of
@@ -1684,23 +1699,23 @@ subroutine compute_energy_generation
 ! to this energy generation. No large changes; all of order keV changes
 ! except for the rare 8B reaction.  9/28/97.
 !
-      reaction_energy_gen(1)=eg(1)*6.664*convert
+      reaction_energy_gen(1)=eg(1)*6.664d0*convert
 ! MHP 5/02 ADD DEUTERIUM BURNING
       if (deuterium_fraction.gt.1.0d-11) then
          dgdeut = egdeut*qdeut*convert
       else
          dgdeut = 0.0d0
       end if
-      reaction_energy_gen(2)=eg(2)*12.860*convert
-      reaction_energy_gen(3)=eg(3)*(1.586+f1*17.394+f2*11.499)*convert
-      reaction_energy_gen(4)=eg(4)*3.457372*convert
-      reaction_energy_gen(5)=eg(5)*7.550628*convert
-      reaction_energy_gen(6)=eg(6)*(9.054+f3*4.966+f4*12.128)*convert
-      reaction_energy_gen(7)=eg(7)*3.553*convert
-      reaction_energy_gen(8)=eg(8)*2.216*convert
-      reaction_energy_gen(10)=eg(10)*7.162*convert
-      reaction_energy_gen(11)=eg(11)*5.815*convert
-      reaction_energy_gen(12)=eg(12)*7.275*convert
+      reaction_energy_gen(2)=eg(2)*12.860d0*convert
+      reaction_energy_gen(3)=eg(3)*(1.586d0+f1*17.394d0+f2*11.499d0)*convert
+      reaction_energy_gen(4)=eg(4)*3.457372d0*convert
+      reaction_energy_gen(5)=eg(5)*7.550628d0*convert
+      reaction_energy_gen(6)=eg(6)*(9.054d0+f3*4.966d0+f4*12.128d0)*convert
+      reaction_energy_gen(7)=eg(7)*3.553d0*convert
+      reaction_energy_gen(8)=eg(8)*2.216d0*convert
+      reaction_energy_gen(10)=eg(10)*7.162d0*convert
+      reaction_energy_gen(11)=eg(11)*5.815d0*convert
+      reaction_energy_gen(12)=eg(12)*7.275d0*convert
 ! JVS 10/11 Need to grab He3 energy generation
       star%he3_he3_energy_rate = reaction_energy_gen(2)
       star%he3_burning_energy_rate = reaction_energy_gen(2)+reaction_energy_gen(3)
@@ -1710,16 +1725,16 @@ subroutine compute_energy_generation
 ! END OF CALCULATION OF ENERGY RELEASE.
 ! *******************************************************************
 ! SET TO ZERO O16+ALPHA AND C12+C12 RATES.
-      dlnrate_dlnrho(9) = 0.0
-      dlnrate_dlnt(9) = 0.0
-      reaction_energy_gen(9) = 0.0
-      dlnrate_dlnrho(13) = 0.0
-      dlnrate_dlnt(13) = 0.0
-      reaction_energy_gen(13) = 0.0
+      dlnrate_dlnrho(9) = 0.0d0
+      dlnrate_dlnt(9) = 0.0d0
+      reaction_energy_gen(9) = 0.0d0
+      dlnrate_dlnrho(13) = 0.0d0
+      dlnrate_dlnt(13) = 0.0d0
+      reaction_energy_gen(13) = 0.0d0
 ! END OF XEROING OUT OF REACTIONS 9 AND 13.
-      total_energy_gen_rate=0.0
-      sum2=0.0
-      sum3=0.0
+      total_energy_gen_rate=0.0d0
+      sum2=0.0d0
+      sum3=0.0d0
       do i=1,nrxns
 ! *******************************************************************
 ! SUM OF THE TOTAL ENERGY GENERATION IN ERGS PER GRM PER SECOND WITH
@@ -1737,12 +1752,12 @@ subroutine compute_energy_generation
       total_energy_gen_rate = total_energy_gen_rate + dgdeut
       sum2 = sum2 + dgdeut
       sum3 = sum3 + dgdeut*qrtdeut
-      if (total_energy_gen_rate.le.1.e-12) then
-         en=-20.
-         dlnepsilon_dlnrho=0.
-         dlnepsilon_dlnt=0.
+      if (total_energy_gen_rate.le.1.d-12) then
+         en=-20.d0
+         dlnepsilon_dlnrho=0.d0
+         dlnepsilon_dlnt=0.d0
          do i=1,nrxns
-            eg(i)=0.
+            eg(i)=0.d0
          end do
       else
 ! ******************************************************
@@ -1760,7 +1775,7 @@ subroutine compute_energy_generation
 ! END OF COMPUTATION OF THE GLOBAL QUANTITIES.
 ! *****************************************************
       do i=1,nrxns
-         if (reaction_rate(i).le.1.e-5) reaction_rate(i) = 0.0
+         if (reaction_rate(i).le.1.d-5) reaction_rate(i) = 0.0d0
       end do
 ! ******************************************************
 end subroutine compute_energy_generation
@@ -1818,7 +1833,7 @@ subroutine compute_neutrino_emission
 ! EPP3 INCLUDES THE ENERGY GENERATED BY THE HE3 + HE4 REACTION AND BY
 !  THE BURNING OF BE7 THROUGH PROTON CAPTURE.
 !      EPP3 = EG(3)*(1.586 + F2*11.499)*CONVERT
-      he3he4_be7_proton_energy_gen = eg(3)*f2*(1.586 + 11.499)*convert
+      he3he4_be7_proton_energy_gen = eg(3)*f2*(1.586d0 + 11.499d0)*convert
 ! EPP2 INCLUDES THE ENERGY GENERATED BY THE HE3 + HE4 REACTION AND BY
 !  THE BURNING OF BE7 THROUGH ELECTRON CAPTURE.
 !      EPP2 = EG(3)*(1.586 + F1*17.394)*CONVERT
@@ -1852,33 +1867,33 @@ subroutine compute_neutrino_emission
 !  FOR THE REACTIONS. THE ORDER OF THE REACTIONS IS THE SAME AS IN
 !  EQUATIONS 6.1-6.8 .
 ! DEFINE 4*PI*(AU)**2 .
-         fourpiau2 = 2.812295e+27
+         fourpiau2 = 2.812295d+27
 ! FLUX OF PP NEUTRINOS.
          star%neutrino_flux(i_nu_pp) = eg(1)/fourpiau2
 ! FLUX OF PEP NEUTRINOS. USE EQUATION 3.17 OF NEUTRINO ASTROPHYSICS.
 ! Note that should not change SStandard(14) unless the ratio of pep to pp
 !  is changed.  Pep rate is explicitly scaled here with respect to the pp
 !  rate.
-         star%neutrino_flux(i_nu_pep) = (3.4848e-6)*electron_number_density_na*t9_m12* &
-              (1.0 + 20.*t9)*eg(1)
+         star%neutrino_flux(i_nu_pep) = (3.4848d-6)*electron_number_density_na*t9_m12* &
+              (1.0d0 + 20.d0*t9)*eg(1)
          star%neutrino_flux(i_nu_pep) = star%neutrino_flux(i_nu_pep)*star%cross_section_scale(14)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
-         q6hep = -6.1399
+         q6hep = -6.1399d0
 ! Q6 IS THE NEGATIVE OF THE COEFFICIENT OF T9M13 IN TAU, EQUATION 3.10.
-         star%neutrino_flux(i_nu_hep) = (1.71724e+11)*density*t9_m23*exp(q6hep*t9_m13)
+         star%neutrino_flux(i_nu_hep) = (1.71724d+11)*density*t9_m23*exp(q6hep*t9_m13)
 ! THE DERIVATIVES OF THE CROSS SECTION FACTOR ARE NOT KNOWN AND ARE
 !  TAKEN TO BE ZERO.  THE ONLY TERM FROM EQUATION 3.14 THAT SURVIVES
 !  IS 5/(12*TAU).
-         star%neutrino_flux(i_nu_hep) = (1.0 + 0.067862*t9_p13)*star%cross_section_scale(17)* &
+         star%neutrino_flux(i_nu_hep) = (1.0d0 + 0.067862d0*t9_p13)*star%cross_section_scale(17)* &
               star%neutrino_flux(i_nu_hep)
 ! CALCULATE WEAK OR INTERMEDIATE SCREENING FOR HEP NEUTRINOS.
-         zprdhe3p = 2.0
-         z86he3p = 3.08687
+         zprdhe3p = 2.0d0
+         z86he3p = 3.08687d0
          uwk = tm1*zprdhe3p
          if (uwk.le.star%ctrl%weak_screening_threshold) then
             utothe3p = uwk
          else
-            uint = 0.38*xxl8*xtr*z86he3p/(ion_mean_weight_inverse*z58*z28)
+            uint = 0.38d0*xxl8*xtr*z86he3p/(ion_mean_weight_inverse*z58*z28)
             utothe3p = uint
          end if
 ! END OF CALCULATION OF SCREENING CORRECTION FOR HE3 + P REACTION.
@@ -1910,11 +1925,11 @@ subroutine compute_neutrino_emission
 !  EARTH. MULTIPLY BY 10**-10.
 !  IF THE VALUE FOR THIS SHELL IS NEGLIGIBLY SMALL, SET EQUAL TO ZERO.
          do k = 1,10
-            star%neutrino_flux(k) = (1.0e-10)*star%neutrino_flux(k)
+            star%neutrino_flux(k) = (1.0d-10)*star%neutrino_flux(k)
             flux_value = star%neutrino_flux(k)
 ! KC 2025-05-30 CHANGED 1.E-50 TO 0.0 TO AVOID UNDERFLOW
-            if (flux_value.le.0.0) then
-              star%neutrino_flux(k) = 0.0
+            if (flux_value.le.0.0d0) then
+              star%neutrino_flux(k) = 0.0d0
             end if
          end do
 ! MHP 9/91 ENDIF INSERTED HERE.
@@ -1946,19 +1961,23 @@ subroutine compute_neutrino_emission
 
           call neutrino(neutrino_temp,neutrino_density,hydrogen_fraction, &
                helium_fraction,carbon_fraction_total,oxygen_fraction_total, &
-               neutrino_loss_snu,neutrino_dlnq_dlnt,neutrino_dlnq_dlnd)
+               neutrino_loss_snu,neutrino_dsnu_dt,neutrino_dsnu_drho)
 
 
           star%neutrino_loss_rate = -neutrino_loss_snu
-          neutrino_dlnq_dlnt = -neutrino_dlnq_dlnt*neutrino_temp/star%neutrino_loss_rate
-          neutrino_dlnq_dlnd = -neutrino_dlnq_dlnd*neutrino_density/star%neutrino_loss_rate
-
-
           total_energy_gen_rate = total_energy_gen_rate + star%neutrino_loss_rate
 
-
-          dlnepsilon_dlnrho = dlnepsilon_dlnrho + neutrino_dlnq_dlnd
-          dlnepsilon_dlnt = dlnepsilon_dlnrho + neutrino_dlnq_dlnt
+! 2026 (bugsweep Batch 2): neutrino() returns snu >= 0 and the
+! ABSOLUTE derivatives d snu/dT, d snu/d rho. dlnepsilon_dlnt/dlnrho
+! are the absolute d eps/d ln T, d eps/d ln rho accumulated in
+! sum2/sum3 (see the qetnx/qednx terms of the Beaudet branch below),
+! so the loss contributes d(-snu)/d ln T = -T d snu/dT. The original
+! (engeb.f) first converted to dimensionless log-derivatives -- the
+! wrong units for these sums -- and then built the T line from the
+! already-updated rho line (PET = PEP + DSNUDT), discarding the
+! nuclear sum3 altogether.
+          dlnepsilon_dlnrho = dlnepsilon_dlnrho - neutrino_density*neutrino_dsnu_drho
+          dlnepsilon_dlnt = dlnepsilon_dlnt - neutrino_temp*neutrino_dsnu_dt
 
 
 !****************************************************************
@@ -1971,16 +1990,16 @@ subroutine compute_neutrino_emission
 !     THESE ARE OLD NEUTRINO LOSS ROUTINES
 
 
-         el = t9/5.9302
-         eli = 1.0/el
-         ez = exp(cc13*ln10*(dd-9.0))*eli*(0.7937+0.2063*hydrogen_fraction)
+         el = t9/5.9302d0
+         eli = 1.0d0/el
+         ez = exp(cc13*ln10*(dd-9.0d0))*eli*(0.7937d0+0.2063d0*hydrogen_fraction)
          ez3 = ez**3
-         emue = 0.5*(1.0+hydrogen_fraction)
-         ex1 = 0.0
-         if (t9.ge.0.2) then
+         emue = 0.5d0*(1.0d0+hydrogen_fraction)
+         ex1 = 0.0d0
+         if (t9.ge.0.2d0) then
 !C PAIR NEUTRINOS
             el2 = el*el
-            polx10=(1.+el2*(-13.04+el2*(133.5+el2*(1534.+el2*918.6))))
+            polx10=(1.d0+el2*(-13.04d0+el2*(133.5d0+el2*(1534.d0+el2*918.6d0))))
             polx11 = v1(1) + ez*(v1(2) + ez*v1(3))
             polx12 = ez3 + eli*(v1(4) + eli*(v1(5) + eli*v1(6)))
             ex1 = exp(-ez*v1(7)-eli-eli-ln10*dd)*polx10*polx11/polx12
@@ -1995,25 +2014,25 @@ subroutine compute_neutrino_emission
          ex3 = emue**3*exp(-ez*v3(7)+ln10*(dd+dd))*polx31/polx32
          star%neutrino_loss_rate = -(ex1 + ex2 + ex3)
          total_energy_gen_rate = total_energy_gen_rate + star%neutrino_loss_rate
-         qetnx = 0.0
-         qednx = 0.0
-         if (t9.ge.0.2) then
+         qetnx = 0.0d0
+         qednx = 0.0d0
+         if (t9.ge.0.2d0) then
 ! MHP 10/02 fixed column 72 problem
-            qedn= ez*(v1(2)+2.*ez*v1(3))/polx11 - ez*v1(7) &
+            qedn= ez*(v1(2)+2.d0*ez*v1(3))/polx11 - ez*v1(7) &
                   - 3.0d0*ez3/polx12
-            qetn= -qedn+ eli*(v1(4)+eli*(2.*v1(5)+3.*eli*v1(6)))/polx12
-            qetnx= el2*(-26.08+el2*(534.+el2*(9204.+el2*7348.8)))/polx10
+            qetn= -qedn+ eli*(v1(4)+eli*(2.d0*v1(5)+3.d0*eli*v1(6)))/polx12
+            qetnx= el2*(-26.08d0+el2*(534.d0+el2*(9204.d0+el2*7348.8d0)))/polx10
             qetnx = (qetnx + qetn + eli+eli)*ex1
-            qednx = (-1.0 +cc13*qedn)*ex1
+            qednx = (-1.0d0 +cc13*qedn)*ex1
          end if
-         qedn= ez*(v2(2)+2.*ez*v2(3))/polx21 - ez*v2(7) - 3.*ez3/polx22
-         qetn= -qedn+ eli*(v2(4)+eli*(2.*v2(5)+3.*eli*v2(6)))/polx22
-         qetnx = qetnx + (5.0 + qetn)*ex2
+         qedn= ez*(v2(2)+2.d0*ez*v2(3))/polx21 - ez*v2(7) - 3.d0*ez3/polx22
+         qetn= -qedn+ eli*(v2(4)+eli*(2.d0*v2(5)+3.d0*eli*v2(6)))/polx22
+         qetnx = qetnx + (5.0d0 + qetn)*ex2
          qednx = qednx +cc13*qedn*ex2
-         qedn= ez*(v3(2)+2.*ez*v3(3))/polx31 - ez*v3(7) - 3.*ez3/polx32
-         qetn=-qedn + eli*(v3(4)+eli*(2.*v3(5)+3.*eli*v3(6)))/polx32
+         qedn= ez*(v3(2)+2.d0*ez*v3(3))/polx31 - ez*v3(7) - 3.d0*ez3/polx32
+         qetn=-qedn + eli*(v3(4)+eli*(2.d0*v3(5)+3.d0*eli*v3(6)))/polx32
          qetnx = qetnx + qetn*ex3
-         qednx = qednx + (2.0 +cc13*qedn)*ex3
+         qednx = qednx + (2.0d0 +cc13*qedn)*ex3
 
 
 
@@ -2550,12 +2569,18 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          mass_coord_beg = 0.0d0
       endif
       mass_coord_end = 0.5d0*(mass_coordinate(cz_base_zone)+mass_coordinate(cz_base_zone-1))
-      delta_mass = mass_coord_beg - mass_coord_end
+! 2026 (bugsweep Batch 2): this block runs only for a retreating CZ
+! (cz_base_zone > cz_base_zone_old), so the original
+! delta_mass = beg - end was negative and FRAD = (m - beg)/delta_mass
+! ran from 0 at the old base to -1 at the new one. Per the comment
+! above FRAD must be 1 at the old base and 0 at the new base:
+! FRAD = (end - m)/(end - beg).
+      delta_mass = mass_coord_end - mass_coord_beg
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
          if(star%rate_be9(zone_idx).le.1.0d-32)exit
-         radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
+         radiative_frac = (mass_coord_end - mass_coordinate(zone_idx))/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
          li6_depletion = timestep*exp(radiative_frac*log(star%rate_li6(zone_idx))+ &
               (1.0d0-radiative_frac)*log_rate_li6_cz_start)
@@ -2919,12 +2944,18 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          mass_coord_beg = 0.0d0
       endif
       mass_coord_end = 0.5d0*(mass_coordinate(cz_base_zone)+mass_coordinate(cz_base_zone-1))
-      delta_mass = mass_coord_beg - mass_coord_end
+! 2026 (bugsweep Batch 2): this block runs only for a retreating CZ
+! (cz_base_zone > cz_base_zone_old), so the original
+! delta_mass = beg - end was negative and FRAD = (m - beg)/delta_mass
+! ran from 0 at the old base to -1 at the new one. Per the comment
+! above FRAD must be 1 at the old base and 0 at the new base:
+! FRAD = (end - m)/(end - beg).
+      delta_mass = mass_coord_end - mass_coord_beg
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
          if(star%rate_be9(zone_idx).le.1.0d-32)exit
-         radiative_frac = (mass_coordinate(zone_idx)-mass_coord_beg)/delta_mass
+         radiative_frac = (mass_coord_end - mass_coordinate(zone_idx))/delta_mass
 ! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
          li6_depletion = timestep*exp(radiative_frac*log(star%rate_li6(zone_idx))+ &
               (1.0d0-radiative_frac)*log_rate_li6_cz_start)

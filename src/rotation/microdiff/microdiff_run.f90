@@ -28,13 +28,14 @@ contains
 subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
      eq, species_fraction, hydrogen_dlnc_dr, &
      eq_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
-     atomic_weight_diffused, atomic_charge_diffused, species_col)
+     atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
       use microdiff_mte_lib, only: microdiff_grid
       use microdiff_coefficients_lib
       use star_info_lib, only: star
 
       use star_info_lib
       use luout_lib
+      use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use numerics_lib
       implicit none
@@ -50,6 +51,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       double precision, intent(in) :: atomic_weight_diffused, &
            atomic_charge_diffused
       integer, intent(in) :: species_col
+      integer, intent(out) :: ierr
 
 
 
@@ -95,6 +97,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 !
 !  SET THE FLAG LDOLI = TRUE, SO THAT THE LAX-WENDROF ROUTINES KNOW TO NOT
 !  USE THE OLD METAL DIFFUSION VECTORS.
+      ierr = 0
       use_generic_diffusion_vectors = .true.
 !
 ! NOW USE THE EQUALLY SPACED GRID TO CALUCLATE DIFFUSION COEFFICIENTS IN THE
@@ -103,7 +106,8 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 !
       call microdiff_coefficients(num_eq_points, species_fraction, eq, &
            diffusion_coeff1, diffusion_coeff2, hydrogen_dlnc_dr, &
-           atomic_weight_diffused, atomic_charge_diffused, species_col)
+           atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
+      if (ierr /= 0) return
 !
 ! FIRST STEP OF TWO STEP LAX-WENDROFF METHOD. COMPUTE NEW ABUNDANCES AT ZONE
 ! MIDPOINTS USING THE LAX SCHEME :
@@ -130,7 +134,8 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       call microdiff_coefficients(num_mid_points, species_fraction_mid, eq_mid, &
            diffusion_coeff1_mid, diffusion_coeff2_mid, &
            hydrogen_dlnc_dr_mid, atomic_weight_diffused, &
-           atomic_charge_diffused, species_col)
+           atomic_charge_diffused, species_col, ierr)
+      if (ierr /= 0) return
 !
 ! USING THE NEW COEFFICIENTS, SOLVE FOR THE NEW RUN OF ABUNDANCES.
 ! NOTE : THE SR ACTUALLY RETURNS THE *CHANGE* IN THE ABUNDANCE AS A FUNCTION
@@ -186,7 +191,8 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 !  SOLVE THE TRIDIAGONAL MATRIX SYSTEM FOR THE NEW RUN OF LI.
 !
          call tridiag_gs(sub_diag, diag, super_diag, diffused_abundance_prime, &
-              num_eq_points, diffused_abundance)
+              num_eq_points, diffused_abundance, ierr)
+         if (ierr /= 0) return
 !
 !  CHECK TO SEE IF THE CORRECTIONS TO THE HYDROGEN ABUNDANCE ARE SMALL
 !  ENOUGH TO EXIT.
@@ -199,7 +205,9 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
                max_change_zone = i
             endif
          enddo
-         write(run_log_unit,90)iter,max_abundance_change,max_change_zone
+! solver forensics (2026 run-log verbosity sweep)
+         if (solver_diagnostics()) &
+              write(run_log_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
          if(max_abundance_change.lt.star%ctrl%settling_tolerance)exit

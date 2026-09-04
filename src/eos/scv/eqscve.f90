@@ -145,7 +145,11 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             if (idtt.lt.nts-3) then
                temp_needs_smoothing = .true.
                temp_smooth_direction = 1
-               temp_smooth_weight = 0.5d0*temp_dist_below/tol_temp_smooth
+! 2026 (bugsweep Batch 2): weight must be 0.5 AT the node and fall
+! to 0 at dist = tol (mirror of the downward branch above); the
+! inherited 0.5*dist/tol was reversed, giving a 0.5|S_n+1 - S_n|
+! jump at 60% of every cell instead of a continuous blend.
+               temp_smooth_weight = 0.5d0*(1.0d0 - temp_dist_below/tol_temp_smooth)
             end if
          end if
       end if
@@ -199,7 +203,8 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
             if (idp.lt.nptsx(idtt)-3) then
                press_needs_smoothing = .true.
                press_smooth_direction = 1
-               press_smooth_weight = 0.5d0*press_dist_below/tol_pressure_smooth
+! 2026 (bugsweep Batch 2): same reversal as the T branch above.
+               press_smooth_weight = 0.5d0*(1.0d0 - press_dist_below/tol_pressure_smooth)
             end if
          end if
       end if

@@ -110,6 +110,12 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          if (star%model_diverged_flag) cycle retry_step
          exit retry_step
       end do retry_step
+! 2026 (bugsweep Batch 3): a non-finite converged structure is an
+! error, not a model (see converged_model_is_nan in stop_conditions).
+      if (converged_model_is_nan()) then
+         ierr = 1
+         return
+      end if
 ! LOCATE THE HYDROGEN-BURNING SHELL AND THE BOUNDARIES OF THE CENTRAL
 ! AND SURFACE CONVECTION ZONES (IF APPLICABLE).
        call locate_shell_boundaries(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
@@ -125,7 +131,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
                             star%kinetic_energy_rot,star%log_L,star%total_angular_momentum,star%total_rotational_ke,star%log_Teff,star%nz,star%recompute_envelope_triangle,ierr)
             if (ierr /= 0) return
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
-            call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
+            call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
+            if (ierr /= 0) return
             new_atmosphere_fit_needed = .false.
          endif
 ! DETERMINE TIMESTEP FOR NEXT MODEL
@@ -508,7 +515,8 @@ subroutine converge_with_rotation
                   return
                end if
 ! CALCULATE FP AND FT GIVEN OMEGA FOR THE NEW POINT DISTRIBUTION
-               call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius)
+               call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
+               if (ierr /= 0) return
             endif
             end do
 end subroutine converge_with_rotation

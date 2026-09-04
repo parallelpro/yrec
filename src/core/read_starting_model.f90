@@ -274,6 +274,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       if (ierr /= 0) return
       call build_shell_masses
       call initialize_rotation_state
+      if (ierr /= 0) return
       call update_surface_mixture
       call snapshot_step_start
       if (ierr /= 0) return
@@ -1088,7 +1089,8 @@ subroutine initialize_rotation_state
 ! CALCULATE FP,FT,R0 AND ETA2 GIVEN OMEGA
        call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
             star%eta_squared,star%fp_rot,star%ft_rot, &
-            star%mean_gravity,star%mean_radius)
+            star%mean_gravity,star%mean_radius,ierr)
+       if (ierr /= 0) return
 ! FIND MOMENT OF INERTIA(HI)
 !        CALL MOMI(ETA2,HD,HR,HS,HS2,1,M,OMEGA,R0,HI,QIW,M)  ! KC 2025-05-31
        call zone_moments_of_inertia(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &

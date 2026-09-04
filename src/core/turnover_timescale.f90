@@ -362,7 +362,7 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
       endif
 !     ENSURE THAT TAUCZ WAS NOT ACCIDENTALLY CALCULATED
 !     DEEP IN THE STELLAR INTERIOR. IF YES, REDO CALCULATION.
-      if (star%convective_turnover_timescale.gt.1.0e20) then
+      if (star%convective_turnover_timescale.gt.1.0d20) then
          search_start_index = cz_base_index + 1
          cycle search
       endif

@@ -33,7 +33,7 @@ contains
 subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
      diffusion_coeff1, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
-     atomic_charge_diffused, species_col)
+     atomic_charge_diffused, species_col, ierr)
       use microdiff_mte_lib, only: microdiff_grid
       use star_info_lib, only: star
 
@@ -50,6 +50,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
       double precision, intent(in) :: atomic_weight_diffused, &
            atomic_charge_diffused
       integer, intent(in) :: species_col
+      integer, intent(out) :: ierr
 
 
 
@@ -72,6 +73,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
            hru_i, htu_i, fac, ap, at, ah, ad, dlncdr, coni, conip1, conim1, &
            dradi, t1, t2, rho, t
 
+      ierr = 0
 ! SET UP THE ATOMIC WEIGHT AND CHARGE MATRICIES
       atomic_weight(1) = 1.008d0
       atomic_weight(2) = 4.004d0
@@ -110,6 +112,14 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
 !        zone, permit the calculations so that AD is correct.
          if(species_fraction(species_col,i).eq.0.0.and.i.ne.num_eq_points)then
             if(species_fraction(species_col,i+1).eq.0.0)then
+!              zero every per-zone term, not just AD: the original's
+!              SAVEd arrays left stale values in the other four at a
+!              skipped zone, and the modern locals were only zero here
+!              by virtue of -finit-local-zero.
+               coeff_scale(i) = 0.0d0
+               pressure_term(i) = 0.0d0
+               temp_term(i) = 0.0d0
+               hydrogen_term(i) = 0.0d0
                diffusion_term(i) = 0.0
                cycle
             endif
@@ -149,7 +159,8 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
 !        calculate the diffusion coefficients
 !
          call thoul_diffusion(num_species,atomic_weight,atomic_charge,mass_frac, &
-              coulomb_log,pressure_coeff,temp_coeff,conc_coeff)
+              coulomb_log,pressure_coeff,temp_coeff,conc_coeff,ierr)
+         if (ierr /= 0) return
 !
          hru_i = grid%radius(i)
          htu_i = t*bl_temp_scale_local

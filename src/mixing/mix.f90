@@ -473,11 +473,13 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                call microdiff(settling_dt, star%xa, dlnp_dr, &
                     star%logR, star%logRho, star%m, &
                     star%logT, deep_mix_flag, star%nz, &
-                    total_mass_unlogged)
+                    total_mass_unlogged, ierr)
+               if (ierr /= 0) return
             else
                call gravitational_settling(settling_dt, star%xa, dlnp_dr, star%logR, &
                     star%logRho, star%m, star%logT, &
-                    deep_mix_flag, star%nz, total_mass_unlogged)
+                    deep_mix_flag, star%nz, total_mass_unlogged, ierr)
+               if (ierr /= 0) return
             end if
          end do
       exit settling

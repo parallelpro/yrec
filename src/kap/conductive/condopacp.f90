@@ -98,7 +98,13 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       ierr = 0
       log10_ion_charge=log10(ion_charge)
       call hunt(cond_table%z_grid,n_z_grid,log10_ion_charge,z_index)
-      if (z_index.eq.0.or.z_index.eq.n_z_grid) stop 'CONINTER: Z out of range'
+      if (z_index.eq.0.or.z_index.eq.n_z_grid) then
+! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
+! see kap_lib's kap_get).
+         write(*,*) 'CONINTER: Z out of range'
+         ierr = 1
+         return
+      end if
       call hunt(cond_table%temp_grid,n_temp_grid,log10_temperature,t_index)
 
 !      if (IT.eq.0.or.IT.eq.MAXT) stop 'CONINTER: T out of range'
@@ -113,7 +119,13 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       endif
 
       call hunt(cond_table%rho_grid,n_rho_grid,log10_density,r_index)
-      if (r_index.eq.0.or.r_index.eq.n_rho_grid) stop 'CONINTER: rho out of range'
+      if (r_index.eq.0.or.r_index.eq.n_rho_grid) then
+! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
+! see kap_lib's kap_get).
+         write(*,*) 'CONINTER: rho out of range'
+         ierr = 1
+         return
+      end if
       t_index_lo=max0(1,t_index-1)
       t_index_hi=min0(n_temp_grid,t_index+2)
       r_index_lo=max0(1,r_index-1)
@@ -126,28 +138,32 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
            cond_table%log10_kappa_table(t_index_lo,r_index,z_index), &
            cond_table%log10_kappa_table(t_index_lo,r_index+1,z_index), &
            cond_table%log10_kappa_table(t_index_lo,r_index_hi,z_index), &
-           cktmz0,drktmz0,dr2ktmz0,xr)
+           cktmz0,drktmz0,dr2ktmz0,xr,ierr)
+      if (ierr /= 0) return
       call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
            cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
            cond_table%log10_kappa_table(t_index,r_index_lo,z_index), &
            cond_table%log10_kappa_table(t_index,r_index,z_index), &
            cond_table%log10_kappa_table(t_index,r_index+1,z_index), &
            cond_table%log10_kappa_table(t_index,r_index_hi,z_index), &
-           ckt0z0,drkt0z0,dr2kt0z0,xr)
+           ckt0z0,drkt0z0,dr2kt0z0,xr,ierr)
+      if (ierr /= 0) return
       call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
            cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
            cond_table%log10_kappa_table(t_index+1,r_index_lo,z_index), &
            cond_table%log10_kappa_table(t_index+1,r_index,z_index), &
            cond_table%log10_kappa_table(t_index+1,r_index+1,z_index), &
            cond_table%log10_kappa_table(t_index+1,r_index_hi,z_index), &
-           ckt1z0,drkt1z0,dr2kt1z0,xr)
+           ckt1z0,drkt1z0,dr2kt1z0,xr,ierr)
+      if (ierr /= 0) return
       call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
            cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
            cond_table%log10_kappa_table(t_index_hi,r_index_lo,z_index), &
            cond_table%log10_kappa_table(t_index_hi,r_index,z_index), &
            cond_table%log10_kappa_table(t_index_hi,r_index+1,z_index), &
            cond_table%log10_kappa_table(t_index_hi,r_index_hi,z_index), &
-           cktpz0,drktpz0,dr2ktpz0,xr)
+           cktpz0,drktpz0,dr2ktpz0,xr,ierr)
+      if (ierr /= 0) return
 ! Z1:
       call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
            cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
@@ -155,28 +171,32 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
            cond_table%log10_kappa_table(t_index_lo,r_index,z_index+1), &
            cond_table%log10_kappa_table(t_index_lo,r_index+1,z_index+1), &
            cond_table%log10_kappa_table(t_index_lo,r_index_hi,z_index+1), &
-           cktmz1,drktmz1,dr2ktmz1,xr)
+           cktmz1,drktmz1,dr2ktmz1,xr,ierr)
+      if (ierr /= 0) return
       call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
            cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
            cond_table%log10_kappa_table(t_index,r_index_lo,z_index+1), &
            cond_table%log10_kappa_table(t_index,r_index,z_index+1), &
            cond_table%log10_kappa_table(t_index,r_index+1,z_index+1), &
            cond_table%log10_kappa_table(t_index,r_index_hi,z_index+1), &
-           ckt0z1,drkt0z1,dr2kt0z1,xr)
+           ckt0z1,drkt0z1,dr2kt0z1,xr,ierr)
+      if (ierr /= 0) return
       call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
            cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
            cond_table%log10_kappa_table(t_index+1,r_index_lo,z_index+1), &
            cond_table%log10_kappa_table(t_index+1,r_index,z_index+1), &
            cond_table%log10_kappa_table(t_index+1,r_index+1,z_index+1), &
            cond_table%log10_kappa_table(t_index+1,r_index_hi,z_index+1), &
-           ckt1z1,drkt1z1,dr2kt1z1,xr)
+           ckt1z1,drkt1z1,dr2kt1z1,xr,ierr)
+      if (ierr /= 0) return
       call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
            cond_table%rho_grid(r_index_hi),log10_density,r_index,n_rho_grid, &
            cond_table%log10_kappa_table(t_index_hi,r_index_lo,z_index+1), &
            cond_table%log10_kappa_table(t_index_hi,r_index,z_index+1), &
            cond_table%log10_kappa_table(t_index_hi,r_index+1,z_index+1), &
            cond_table%log10_kappa_table(t_index_hi,r_index_hi,z_index+1), &
-           cktpz1,drktpz1,dr2ktpz1,xr)
+           cktpz1,drktpz1,dr2ktpz1,xr,ierr)
+      if (ierr /= 0) return
 ! Linear interpolation in ZLG:
       xz1=(log10_ion_charge-cond_table%z_grid(z_index))/(cond_table%z_grid(z_index+1)-cond_table%z_grid(z_index))
       xz0=1d0-xz1
@@ -196,11 +216,13 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       call cinterp3(cond_table%temp_grid(t_index_lo),cond_table%temp_grid(t_index),cond_table%temp_grid(t_index+1), &
            cond_table%temp_grid(t_index_hi),log10_temperature,t_index,n_temp_grid, &
            cktm,ckt0,ckt1,cktp, & ! input: values of lg kappa
-           log10_conductivity,dlnkappa_dlnt,dt2k,xt) ! lg kappa, d lg k / d lg T, d2 lg k / d2 lg T
+           log10_conductivity,dlnkappa_dlnt,dt2k,xt,ierr) ! lg kappa, d lg k / d lg T, d2 lg k / d2 lg T
+      if (ierr /= 0) return
       call cinterp3(cond_table%temp_grid(t_index_lo),cond_table%temp_grid(t_index),cond_table%temp_grid(t_index+1), &
            cond_table%temp_grid(t_index_hi),log10_temperature,t_index,n_temp_grid, &
            drktm,drkt0,drkt1,drktp, & ! input: values of d lg k / d lg rho
-           dlnkappa_dlnrho,drtk,drt2k,xt) ! d lg k / d lg rho, d2 lgk/(d lgT d lg rho)
+           dlnkappa_dlnrho,drtk,drt2k,xt,ierr) ! d lg k / d lg rho, d2 lgk/(d lgT d lg rho)
+      if (ierr /= 0) return
       return
 end subroutine condopacp
 
@@ -213,7 +235,7 @@ end subroutine condopacp
 !                         grid_index+1
 subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
      grid_index,grid_size,val_lo2,val_lo1,val_hi1,val_hi2, &
-     interp_value,interp_deriv,interp_deriv2,interp_frac)
+     interp_value,interp_deriv,interp_deriv2,interp_frac, ierr)
 
       implicit none
 
@@ -223,10 +245,18 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
       double precision, intent(in) :: val_lo2, val_lo1, val_hi1, val_hi2
       double precision, intent(out) :: interp_value, interp_deriv, &
            interp_deriv2, interp_frac
+      integer, intent(out) :: ierr
 
       double precision :: x, h, hm, v01, hp, v11, c2, c3
 
-      if (grid_index.le.0.or.grid_index.ge.grid_size) stop 'CINTERP: N0 out of range'
+      ierr = 0
+      if (grid_index.le.0.or.grid_index.ge.grid_size) then
+! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
+! see kap_lib's kap_get).
+         write(*,*) 'CINTERP: N0 out of range'
+         ierr = 1
+         return
+      end if
       x=grid_target-grid_lo1
       h=grid_hi1-grid_lo1   ! basic interval
       interp_frac=x/h

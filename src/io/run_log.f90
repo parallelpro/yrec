@@ -15,6 +15,7 @@ module run_log_lib
       implicit none
       private
       public :: solver_diagnostics, log_model_line, log_final_model_line, log_reset
+      public :: log_run_summary
 
 ! Reprint the column header every so many printed lines (MESA's
 ! write_header_frequency), and never print the same model twice
@@ -74,5 +75,26 @@ subroutine write_model_line()
       lines_since_header = lines_since_header + 1
       last_printed_model = star%model_number
 end subroutine write_model_line
+
+! End-of-run summary (2026, run-log verbosity item): why the run
+! ended (star%termination_reason, set by stop_conditions and the
+! calibration verdict) plus the final model. The wall-clock line is
+! nondeterministic and goes to the TERMINAL ONLY, keeping the run
+! log byte-pinnable.
+subroutine log_run_summary(wall_seconds)
+      use star_info_lib, only: star
+      use luout_lib
+      double precision, intent(in) :: wall_seconds
+      write(terminal_unit,'(a)') ''
+      write(run_log_unit,'(a)') ''
+      write(terminal_unit,10) trim(star%termination_reason)
+      write(run_log_unit,10) trim(star%termination_reason)
+      write(terminal_unit,20) star%model_number, star%dage
+      write(run_log_unit,20) star%model_number, star%dage
+      write(terminal_unit,30) wall_seconds
+   10 format(1x,'run finished: ',a)
+   20 format(3x,'final model',i7,'   age ',es15.8,' Gyr')
+   30 format(3x,'wall-clock ',f9.1,' s')
+end subroutine log_run_summary
 
 end module run_log_lib

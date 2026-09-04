@@ -89,18 +89,15 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       double precision :: sum_angular_momentum, sum_rotational_ke
       double precision :: angular_momentum_shell
       double precision :: mass_at_base
-! omega (originally OMEGA) is declared only via the original file's
-! DIMENSION statement, never appearing in the SUBROUTINE argument
-! list -- so, unlike every other file in this project, it is genuine
-! local scratch here, not a dummy argument aliasing the caller's
-! angular-velocity array. Because of the blanket SAVE below, its
-! value nonetheless persists across calls to this subroutine within
-! one run (matching the original's behavior, however accidental).
-! Preserved exactly as such: omega(old_num_zones) is read in the
-! WALPCZ.GE.0 and general-case branches below before this call ever
-! writes it, using whatever this array held from a previous call (or
-! its initial zero-fill) -- not the caller's actual rotation state.
-      double precision :: omega(json)
+! omega: 2026 (bugsweep sec-11) this is now the star's angular-velocity
+! array itself. The original (getnewenv.f/getrot.f) used a local OMEGA
+! that was read at old_num_zones (WALPCZ.GE.0 and general branches)
+! BEFORE anything wrote it -- stale from a previous call, zero on the
+! first -- so newly added envelope shells got omega = j_rot = 0; and
+! the rebuilt omega never reached the caller, which goes straight on
+! to rotation_shape_factors with star%omega. Using star%omega fixes
+! both: the seed is the current base-zone rate and omega_from_j's
+! result is what the caller sees.
 
       ierr = 0
       if(star%job%use_extended_composition)then
@@ -344,27 +341,27 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
             do zone_index = old_num_zones+1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum(old_num_zones)
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
-               omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
+               star%omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
             end do
          else if(star%ctrl%walpcz.ge.0.0D0)then
 ! SOLID BODY ROTATION
             do zone_index = old_num_zones+1,num_zones
-               omega(zone_index) = omega(old_num_zones)
+               star%omega(zone_index) = star%omega(old_num_zones)
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
-               specific_angular_momentum(zone_index) = omega(old_num_zones)*moment_of_inertia(zone_index)
+               specific_angular_momentum(zone_index) = star%omega(old_num_zones)*moment_of_inertia(zone_index)
             end do
          else
 ! GENERAL CASE
-            omega_ref = omega(old_num_zones)*exp10((log_radius(old_num_zones)*star%ctrl%walpcz))
+            omega_ref = star%omega(old_num_zones)*exp10((log_radius(old_num_zones)*star%ctrl%walpcz))
             do zone_index = old_num_zones+1,num_zones
-               omega(zone_index) = omega_ref/exp10((log_radius(zone_index)*star%ctrl%walpcz))
+               star%omega(zone_index) = omega_ref/exp10((log_radius(zone_index)*star%ctrl%walpcz))
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
-               specific_angular_momentum(zone_index) = omega(zone_index)*moment_of_inertia(zone_index)
+               specific_angular_momentum(zone_index) = star%omega(zone_index)*moment_of_inertia(zone_index)
             end do
          endif
          call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
               shell_mass,convective_flag,num_zones,eta_squared, &
-              moment_of_inertia,omega,qiw,mean_radius)
+              moment_of_inertia,star%omega,qiw,mean_radius)
 ! GIVEN OMEGA AND I, FIND ANGULAR MOMENTUM AND ROTATIONAL K.E.
        sum_angular_momentum = 0.0D0
        sum_rotational_ke = 0.0D0
@@ -372,7 +369,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! MHP 10/02 logic reversed!
 !          HJM(I) = HJ/HS2(I)
           angular_momentum_shell = specific_angular_momentum(zone_index)*shell_mass(zone_index)
-          rotational_kinetic_energy(zone_index) = 0.5D0*omega(zone_index)*angular_momentum_shell
+          rotational_kinetic_energy(zone_index) = 0.5D0*star%omega(zone_index)*angular_momentum_shell
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + rotational_kinetic_energy(zone_index)
        end do

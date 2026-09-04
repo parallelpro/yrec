@@ -23,10 +23,15 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       use star_info_lib, only: star
       use phys_const_lib
       use math_lib
+      use stitched_model_lib, only: n_pulse_cols, ipul_r, ipul_m, &
+           ipul_L, ipul_P, ipul_T, ipul_rho, ipul_grad, ipul_N2, &
+           ipul_gamma1, ipul_grada, ipul_delta, ipul_kap, ipul_eps, &
+           ipul_cp, ipul_mu_e_inv, ipul_h1, ipul_z, &
+           ipul_species_base, ipul_eps_grav
       implicit none
 
       integer, intent(in) :: n
-      double precision, intent(in) :: pts(35, n)
+      double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
 
@@ -41,8 +46,8 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       glob(1) = mstar_g
       glob(2) = rstar_cm
       glob(3) = lstar_cgs
-      glob(4) = pts(22, n)
-      glob(5) = pts(21, n)
+      glob(4) = pts(ipul_z, n)
+      glob(5) = pts(ipul_h1, n)
 ! glob(6) (mixing length alpha), glob(11)/glob(12) (central second
 ! derivatives) not tracked here -- zero, as tools tolerate.
       glob(13) = star%dage*1.0d9
@@ -63,8 +68,8 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
 
       do j = 1, n
          k = n - j + 1
-         radius_cm = pts(1,k)
-         mass_g = pts(2,k)
+         radius_cm = pts(ipul_r,k)
+         mass_g = pts(ipul_m,k)
 
          var = 0.0d0
          var(1) = radius_cm
@@ -73,40 +78,40 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
          else
             var(2) = -1.0d99
          end if
-         var(3) = pts(5,k)
-         var(4) = pts(4,k)
-         var(5) = pts(6,k)
-         var(6) = pts(21,k)
-         var(7) = pts(3,k)
-         var(8) = pts(12,k)
-         var(9) = pts(15,k)
-         var(10) = pts(9,k)
-         var(11) = pts(10,k)
-         var(12) = pts(11,k)
-         var(13) = pts(19,k)
-         var(14) = pts(20,k)
+         var(3) = pts(ipul_T,k)
+         var(4) = pts(ipul_P,k)
+         var(5) = pts(ipul_rho,k)
+         var(6) = pts(ipul_h1,k)
+         var(7) = pts(ipul_L,k)
+         var(8) = pts(ipul_kap,k)
+         var(9) = pts(ipul_eps,k)
+         var(10) = pts(ipul_gamma1,k)
+         var(11) = pts(ipul_grada,k)
+         var(12) = pts(ipul_delta,k)
+         var(13) = pts(ipul_cp,k)
+         var(14) = pts(ipul_mu_e_inv,k)
          if (radius_cm > 0.0d0) then
             grav = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)
-            var(15) = pts(8,k)*radius_cm/grav
+            var(15) = pts(ipul_N2,k)*radius_cm/grav
          end if
 ! var(16) r_X: not tracked -> 0
-         var(17) = pts(22,k)
+         var(17) = pts(ipul_z,k)
          var(18) = rstar_cm - radius_cm
-         var(19) = pts(34,k)
+         var(19) = pts(ipul_eps_grav,k)
 ! var(20) unused
-         var(21) = pts(23,k)
-         var(22) = pts(24,k)
-         var(23) = pts(25,k)
-         var(24) = pts(26,k)
-         var(25) = pts(27,k)
+         var(21) = pts(ipul_species_base+1,k)
+         var(22) = pts(ipul_species_base+2,k)
+         var(23) = pts(ipul_species_base+3,k)
+         var(24) = pts(ipul_species_base+4,k)
+         var(25) = pts(ipul_species_base+5,k)
 ! var(26)-var(28) dlnGamma1 partials: not tracked -> 0
-         var(29) = pts(28,k)
-         var(30) = pts(29,k)
-         var(31) = pts(30,k)
+         var(29) = pts(ipul_species_base+6,k)
+         var(30) = pts(ipul_species_base+7,k)
+         var(31) = pts(ipul_species_base+8,k)
 ! var(32) X_Be7: YREC tracks Be9, not Be7 -> 0
-         var(33) = pts(31,k)
-         var(34) = pts(32,k)
-         var(35) = pts(33,k)
+         var(33) = pts(ipul_species_base+9,k)
+         var(34) = pts(ipul_species_base+10,k)
+         var(35) = pts(ipul_species_base+11,k)
 ! var(36) X_Ne20 and var(37)-var(40): not tracked -> 0
 
          write(u,'(1P,5(X,E26.18E3))') (var(i), i = 1, ivar)

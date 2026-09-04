@@ -665,25 +665,24 @@ subroutine read_input(ierr)
 ! 2026 phase-C rename campaign: these NAMELIST-spelled locals carry
 ! the legacy /control//physics spellings for controls whose
 ! controls_lib buffers now bear their canonical names (copied into
-! them in adopt_canonical_names below). Initializers duplicate the
-! buffer defaults exactly so both read paths agree; the initializer
-! implies SAVE, preserving the historical value-retention across
-! in-process re-reads.
-      double precision :: alphac = 0.0d0, alphae = 0.0d0
-      double precision :: dtdif = 1.0d-2
-      double precision :: wnew = 0.0d0, creim = -4.0d-13
-      double precision :: cstmixing = 1.0d0, cstdiffmix = 1.0d0
-      double precision :: tcut(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
-      double precision :: vnew(12) = (/0.001999d0, 0.003238d0, &
-           0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, &
-           0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
-      integer :: itdif1 = 1, itdif2 = 1
-      integer :: niter1 = 2, niter2 = 20, niter3 = 2, niter4 = 0
-      logical :: ldifli = .false., lsnu = .false., lovstc = .false.
-      logical :: lwnew = .false., ljdot0 = .true., lthoul = .false.
-      logical :: lsemic = .false., lnews = .false., lmonte = .false.
-      logical :: lreimer = .false.
-      integer :: imbeg = 1, imend = 1
+! them in adopt_canonical_names below). Their defaults duplicate the
+! buffer defaults exactly so both read paths agree, and are assigned
+! at entry (see the reset block at the top of the executable part)
+! rather than by initializer, so nothing is SAVEd across in-process
+! re-reads.
+      double precision :: alphac, alphae
+      double precision :: dtdif
+      double precision :: wnew, creim
+      double precision :: cstmixing, cstdiffmix
+      double precision :: tcut(5)
+      double precision :: vnew(12)
+      integer :: itdif1, itdif2
+      integer :: niter1, niter2, niter3, niter4
+      logical :: ldifli, lsnu, lovstc
+      logical :: lwnew, ljdot0, lthoul
+      logical :: lsemic, lnews, lmonte
+      logical :: lreimer
+      integer :: imbeg, imend
 
 ! newcross: s0_1_1/s0_3_3/s0_3_4/s0_1_12/s0_1_13/s0_1_14/s0_1_16/
 ! s0_1_be7e/s0_1_be7p/s0_1_15_c12alp/s0_1_15_o16/s0p_1_1/s0p_3_3/
@@ -965,55 +964,30 @@ subroutine read_input(ierr)
 ! Changed slightly 3He-3He on 9/25/97 to take account of the S'.
 !  Previously (6/16/97) used S at Gamow Peak. Agrees with Workshop paper.
 !
-      data weakscreening/0.03d0/
-      data sstandard/0.9828,1.0485,0.9815,0.9241,1.3818,1.0542,1.0, &
-           &  1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0108,0.7819,0.2875/
 ! MHP 7/93 VARIABLE FC OPTION
 ! MHP 9/94 COMBINED DIFFUSION/ADVECTION OPTION
 ! lvfc's default moved to const_lib.f90 (former common/varfc/): DATA
 ! can no longer target it here now that it's use-associated.
-      data ldifad/.false./
 ! MHP 9/93
-      data lnoj/.false./
-      data tdisk,pdisk,ldisk/0.0d0,7.2722d-6,.false./
 ! alex_mixture_x/alex_mixture_z defaults moved to const_lib.f90 (former
 ! common/alexmix/): DATA can no longer target them here now that
 ! they're use-associated.
-      data lsenv0a, senv0a /50*.false.,50*1.26d-4/
       ! xenv0/zenv0 defaults moved to const_lib.f90 (former common/label/).
 ! lcorr/lmilne/ltrack/lstore/lstpch/lscrib/lstch/nprtmod
 ! defaults moved to const_lib.f90 (see its own header note): DATA can
 ! no longer target them here now that they're use-associated from
 ! const_lib.
-      data lenvg, atmstp, envstp/.false.,0.5,0.5/
 ! pulse_gyre_interval default moved to const_lib.f90 (former
 ! common/pulsegyre/).
-      data numrun, kindrn, lfirst, nmodls &
-           &      /1,50*1,50*.true.,50*0/
 ! MHP 10/24 ADDED NEW DEFAULTS FOR END CONDITIONS ON CENTRAL D,X,Y
-      data endage, setdt, rsclm, rsclx, rsclz, rsclcm &
-           &      /50*0.0,50*0.0,50*0.0,50*0.0,50*0.0,50*0.0/
-      data end_dcen,end_xcen, end_ycen &
-           &      /50*0.0,50*0.0,50*0.0/
-      data element_id/'HE3','C12','C13','N14','N15','O16','O17','O18','H2 ', &
-           & 'LI6','LI7','BE9'/
-      data optol/1.0d-8/
 ! zsi's default (0.0d0) moved to const_lib.f90 -- DATA can no longer
 ! target it here now that it's use-associated.
 ! tcut/saha_log10t_cutoff/tenv0/tenv1/tgcut defaults moved to
 ! const_lib.f90 (see its own header note): DATA can no longer target
 ! them here now that they're use-associated from const_lib.
-      data atmerr,atmd0,atmbeg,atmmin,atmmax/3.0d-4,1.0d-10,1.0d-1, &
-           &      1.0d-1,5.0d-1/
-      data enverr,envbeg,envmin,envmax/3.0d-4,1.0d-1,1.0d-1,5.0d-1/
-      data stolr0,imax,nuse/1.0d-3,11,7/
 ! dtdif/itdif1/itdif2/htoler defaults moved to const_lib.f90 (former
 ! common/difus/, common/ctol/): DATA can no longer target them here
 ! now that they're use-associated.
-      data djok/1.0d-4/
-      data hpttol/1.0d-8,8.0d-2,5.0d-2,5.0d-2,1.0d0,1.0d0,0.0d0,5.0d-2, &
-           &             2.0d-2,5.0d-2,5.0d-2,1.0d-1/
-      data lnewcp,anewcp,xnewcp/.false.,'   ',1.3d1/
 ! MHP 10/24 ADDED NEW MIXTURE CONTROL ISETISO CONTROLS CNO ISOTOPE RATIOS AND
 ! LIGHT ELEMENT ABUNDANCES D,HE3,LI6,LI7,BE9,B10,B11 (1=USED)
 ! ISETMIX CONTROLS C+N+O MASS FRACTIONS (1=USED)
@@ -1021,115 +995,69 @@ subroutine read_input(ierr)
 ! SUPPORTED AMIX AT PRESENT ARE 'GS98','AAG21',M22M','M22P'. SUPPORTED AISO IS 'L21'.
 ! FOR A CUSTOM MIXTURE YOU CAN ENTER INDIVIDUAL VALUES.
 ! TO BE ADDED - AMIX FROM ATOMIC OPACITY TABLES (INEWMIX=2) AND OTHER MIXTURES/ISOTOPES
-      data isetiso,isetmix,amix,aiso/0,0,'GS98','L21'/
 !     L21 DEFAULT ISOTOPE DATA LODDERS ET AL. 2021 SSRV 217,44
-      data r12_13,r14_15,r16_17,r16_18,xh2_ini,xhe3_ini,xli6_ini, &
-           &      xli7_ini,xbe9_ini,xb10_ini,xb11_ini/88.27d0,411.9d0,471.4d0, &
-           &      2693.0d0,2.781d-5,3.461d-5,7.187d-10,1.025d-8,1.595d-10, &
-           &      1.002d-9,4.405d-9/
 !     GS98 DEFAULT CNO FRACTIONS OF METALS GREVESSE&sAUVAL 1998 SSRV 85,161
-      data zxmix,frac_c,frac_n,frac_o/0.02292d0,0.172148d0,0.050426d0, &
-           &      0.468195/
 ! MHP 10/24 DATA FOR CNO FRACTIONS AND Z/X OF DIFFERNT SOLAR MIXTURES.
 !     AMIXT IS THE LIST OF IDS,EACH OF WHICH HAS A ZX AND CNO FRACS
 !     ENTRY 1 =GS98(IN PARMIN),2=ASPLUND ET AL. 2021 A&A 653,141
 !     3,4=MAGG ET AL. 2021 (MET,PHOT) A&A 661,140
-      data mixture_id_table,zx_mix_table,frac_c_table,frac_n_table,frac_o_table/'GS98','AAG21', &
-           &      'M22P','M22M',0.02292d0,0.0187d0,0.0225d0,0.0226d0, &
-           &  0.172148d0,0.184156d0,0.19239d0,0.191425d0, &
-           &  0.050426d0,0.050344d0,0.059012d0,0.058716d0, &
-           &  0.468195d0,0.416592d0,0.415631d0,0.413545d0/
 ! acfpft/itfp1/itfp2 defaults moved to const_lib.f90 (former
 ! common/rot/).
-      data tridt,tridl/1.0d-2,8.0d-2/
 ! niter1/niter2/niter3/fcorr0/fcorri defaults moved to const_lib.f90
 ! (former common/ctol/).
 ! atime's default moved to const_lib.f90 -- see the tcut/etc. note
 ! above; ATIME(13) was orginally = 1.5.
-      data dtwind /1.0d1/
-      data lptime/.true./
 ! JVS 04/14
-      data ltrist/.false./
 ! the working mixing length's default (1.4d0) lives on its
 ! star%mixing_length_alpha component declaration (2026 phase-A
 ! eviction; it was CMIXL's DATA default here originally).
-      data lkuthe/.false./
 !       DATA DPENV,LNSTDMX,LOVSTC,ALPHAC,LOVSTE,ALPHAE, LOVSTM, ALPHAM
 !      */1.0D0,.FALSE.,.FALSE., 0.0D0, .FALSE.,0.0D0, .FALSE., 0.0/
 ! dpenv/lovstc/alphac/alphae/lovstm/alpham defaults moved to
 ! const_lib.f90 (former common/dpmix/); lovste stays local (NAMELIST
 ! spelling).
-      data lovste/.false./
 ! ladov/lovmax/betac defaults moved to const_lib.f90 (former
 ! common/dpmix/).
 ! JVS 07/13
 ! END JVS
 ! lnew0 default moved to const_lib.f90 (former common/cenv/).
-      data lexcom/.false./
 ! walpcz/lwnew/wnew defaults moved to const_lib.f90 (former
 ! common/rot/); lrot/linstb stay local (NAMELIST spelling).
-      data lrot,linstb/.false.,.false./
 ! ljdot0's default moved to const_lib.f90 (former common/cwind/): DATA
 ! can no longer target it here now that it's use-associated.
-      data alfa,fk/1.5d0,1.0d0/
 ! fo's default moved to const_lib.f90 (former common/vmult/): DATA can
 ! no longer target it here now that it's use-associated.
-      data fw,fc,fes,fgsf,fmu,fss,rcrit/1.0d0, &
-           &      1.0d0,1.0d0,1.0d0,1.0d0,1.0d0,1.0d3/
 ! MHP 8/17 INITIALIZED WMAX_SUN
-      data wmax,wmax_sun/3.0d-4,1000.0/
 ! DBG PULSE DATA CARD FOR PULSATION
-      data kttau/0/
-      data clsun,crsun/3.8515d33,6.9598d10/
 ! YC  If LMHD is TRUE use MHD equation of state tables.  LU numbers
 !     are stored in IOMHDi.
 ! DBG If LCORE is TRUE then calculate shells interior to start up
 !     model's inner most shell.
-      data lcore,mcore,fcore/.false.,0,1.0/
-      data lmhd/.false./
 ! MHP 5/90 NEW DATA STATEMENTS FOR NEW PARAMETERS
-      data grtol,ilambda,niter_gs,ldify/1.0d-8,1,10, &
-           &      .false./
 ! niter4/lnews/lsnu defaults moved to const_lib.f90 (former
 ! common/neweng/).
-      data dt_gs,xmin,ymin,lthoulfit/0.1d0,1.0d-3,1.0d-3,.false./
 ! lthoul/fgrz/fgry/ldifli defaults moved to const_lib.f90 (former
 ! common/gravs3/, common/gravs4/): DATA can no longer target them here
 ! now that they're use-associated.
-      data ldifz/.false./
-      data lnewdif/.false./
-      data cmin,abstol,reltol,kemmax/1.0d-20,1.0d-5,1.0d-4,50/
-      data etadh0, etadh1, ldh/-1.0d0, 1.0d0, .false./
-      data fesc,fssc,fgsfc/1.0d0,1.0d0,1.0d0/
 ! ies/imu defaults moved to const_lib.f90 (former common/vmult2/):
 ! DATA can no longer target them here now that they're use-associated.
-      data igsf/1/
 ! lsemic's default moved to const_lib.f90 (former common/dpmix/).
 ! tollaol/llaol defaults moved to const_lib.f90 (former common/nwlaol/):
 ! DATA can no longer target them here now that they're use-associated.
 ! DBGLAOL
-      data lpurez/.false./
 ! DBG 11/11/91
-      data lrwsh,liso/.false.,.false./
 ! 3/92 DBG
-      data lnulos1/.false./
 ! DBG PULSE OUT 7/92
 ! MHP 06/13 ADDED FLAG TO CALIBRATE TO SOLAR Z/X, SOLAR Z/X, SOLAR AGE
-      data toll,tolr,tolz,lcals,lcalsolzx,calsolage,calsolzx/1.0d-5, &
-           &      1.0d-4,1.0d-3,.false.,.false.,4.57d9,0.02292d0/
 !      DATA TOLL,TOLR,LCALS/1.0D-5,1.0D-4,.FALSE./
 ! DBG 4/94 ZRAMP STUFF
 ! rsclzc/rsclzm1/rsclzm2 defaults moved to const_lib.f90 (former
 ! common/zramp/): DATA can no longer target them here now that they're
 ! use-associated.
-      data lzramp/.false./
 ! DBG 12/94 CALIBRATED STELLAR MODEL STUFF
-      data lcalst, lteff/.false., .false./
 ! YCK >>>  2/95 OPAL eos
 ! LLP >>> OPAL 2001 EOS, Potekhin Conductive Opacities,
 !         OPAL 2006 EOS, Use Numerical Derivitives switches
-      data lopale, lopale01,lcondopacp,lopale06,lnumderiv &
-           &      /.false.,.false.,.false.,.false.,.false./
 ! MHP 8/25 Removed hard coded defaults
 !     Alex low T opacity
 !      DATA OPECALEX/'OPACALEXANDER.X00',
@@ -1153,25 +1081,15 @@ subroutine read_input(ierr)
 !            N           Ar          Ne          He
 ! vnew default moved to const_lib.f90 (former common/vnewcb/).
 ! MHP 5/97 OPTION FOR SAUMON, CHABRIER, AND VAN HORN EOS ADDED
-      data lscv/.false./
 ! MHP 3/99 OPTION FOR SB ROTATION ENFORCED IN THE ENTIRE STAR AT
 ! ALL TIMES
 ! JNT 09/2025 FOR 05/15 IMPJMOD default set to 0
-      data lsolid, impjmod/.false.,0/   !JNT 09/2025
 ! fczdmdt/ftotdmdt/creim/lreimer defaults moved to const_lib.f90
 ! (former common/masschg/); dmdt0/compacc/lmdot stay local (NAMELIST
 ! spelling).
-      data dmdt0,compacc,lmdot &
-           &      /-1.0d-14, &
-           &      0.71668d0,0.265721d0,0.01757d0,2.9d-5, &
-           &      3.013d-3,3.385d-5,9.346d-4,0.0d0,8.462d-3,0.0d0, &
-           &      1.696d-5,0.0d0,2.0d-9,2.0d-9,3.0d-11, &
-           &      .false./
 ! mhp 8/10 added scaled solar wind mass loss option
 !      DATA LSOLWIND,DMSUN,DMWSUN,DMWMAX/.FALSE.,-2.0D-14,2.863E-6,9.054E-5/
-      data lsolwind/.false./
 ! 3/09 Alexander 2006 opacity table options and opacity ramp options
-      data tmolmin,tmolmax,lalex06/4.0d0,4.1d0,.false./
 !FD 10/09 Mimic mixing options - acting on setling and differential settling
 ! cstmixing/cstdiffmix's defaults moved to const_lib.f90 (former
 ! common/cmixing/): DATA can no longer target them here now that
@@ -1191,13 +1109,8 @@ subroutine read_input(ierr)
 ! G Somers 6/16 NEW PARAMETERIZATION OF ANGULAR MOMENTUM AND MASS LOSS FROM
 ! SOLAR WINDS. FOLLOW MATT ET AL (2012) FORMULATION, BUT DEFAULT TO KAWALER
 ! TYPE LAW.
-      data lmwind,lrossby,lbscale/.false.,.true.,.false./
 ! MHP 8/17 CHANGED DEFAULT FOR PMMA TO 2 FROM 0
-      data awind,pmma,pmmb,pmmc,pmmd,pmmm/'K97',2.0,1.0,2.0,0.0,0.5/
-      data pmmjd,pmmmd,pmmsolp,pmmsolw,pmmsoltau/1.32e30,1.27e12, &
-           &      4.9304d0,2.836e-6,9.4805d5/
 ! MHP 02/12 PERMIT CONSTANT DIFFUSION COEFFICIENT
-      data lcodm,codm/.false.,2.5d4/
 !
 ! G Somers 06/14 ALLOW NEW LI DESTRUCTION CROSS SECTIONS
 !           NEW VALUES SHOULD BE IN UNITS OF keV b.
@@ -1207,43 +1120,22 @@ subroutine read_input(ierr)
 !               THEY DON'T SHOW THIS REACTION, SO THIS IS APPROXIMATE.
 !           DEFAULT BE9(P,D)2HE4 (BE92) = 15,000 keV b FROM FOWLER ET AL. 1967
 !           DEFAULT BE9(P,A)LI6 (BE93) = 15,000 keV b FROM FOWLER ET AL. 1967
-      data xsli6, xsli7, xsbe91, xsbe92, xsbe93 &
-           &      /5.5d3, 5.2d1, 1.1d0, 1.5d4, 1.5d4/
-      data lxli6, lxli7, lxbe91, lxbe92, lxbe93, &
-           &      sli6, sli7, sbe91, sbe92, sbe93 &
-           &      /.false.,.false.,.false.,.false.,.false., &
-           &      1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0/
-      data spotf, spotx, lsdepth/0.00, 1.00, .false./
 ! G Somers END
 ! MHP 8/14 DEFAULT CROSS-SECTIONS ARE TAKEN FROM THE SOLAR FUSION II PAPER
 ! REFERENCE ADELBERGER ET AL. 2011. UNITS ARE KeV b
-      data s0_1_1,s0_3_3,s0_3_4,s0_1_12,s0_1_13/ &
-           &      4.01d-22,5.21d3,5.6d-1,1.34d0,7.6d0/
 ! s0_pep/s0_hep's defaults moved to const_lib.f90 (former
 ! common/newcross/): DATA can no longer target them here now that
 ! they're use-associated.
-      data s0_1_14,s0_1_16,s0_1_be7e/ &
-           &      1.66d0,1.06d1,1.7709d-10/
 ! NOTE: PEP IS THE PROPORTIONALITY CONSTANT RELATIVE TO PP
 ! NOTE: BE7+E- IS THE PROPORTIONALITY CONSTANT IN THE LINEAR TERM
 ! THE CODE USES T9, NOT T6, SO ANY EXPRESSION IN TERMS OF T/10^6 K
 ! NEEDS TO BE DIVIDED BY 1000^0.5 (FOR BOTH PEP AND BE7+E-)
-      data s0_1_be7p,s0_1_15_c12alp,s0_1_15_o16/ &
-           &      0.0208d0,7.3d4,3.6d1/
 ! REFERENCE FIRST DERRIVATIVES OF CROSS-SECTIONS (ADELBERGER ET AL. 2011)
 ! UNITS ARE b
-      data s0p_1_1,s0p_3_3,s0p_3_4,s0p_1_12/ &
-           &      4.49d-24,-4.9d0,-3.6d-4,2.6d-3/
-      data s0p_1_13,s0p_1_14,s0p_1_16,s0p_1_be7p/ &
-           &      -7.83d-3,-3.3d-3,-5.4d-2,-3.12d-5/
 ! REFERENCE SECOND DERIVATIVES OF CROSS SECTIONS (ADELBERGER ET AL. 2011)
-      data s0pp_1_12,s0pp_1_13,s0pp_1_16,s0pp_1_be7p/ &
-           &      8.3d-5,7.29d-4,0.0d0,-2.288d-7/
-      data lnewnuc /.false./
 ! All 30 former common/newparam/ members' DATA defaults moved to
 ! const_lib.f90: DATA can no longer target them here now that they're
 ! use-associated.
-      data lcalcenv /.true./
 !
 ! THIS SUBROUTINE READS ALL USER DEFINED QUANTITIES FROM THE
 ! FILES yrec8.nml1 and yrec8.nml2
@@ -1253,6 +1145,250 @@ subroutine read_input(ierr)
 ! LOGICAL UNIT 6 = WRITE TO SCREEN: FOR BATCH USE STATUS FILE INSTEAD
 ! SPECIFY ALL LOGICAL UNIT NUMBERS HERE:
 ! OUTPUT: TERMINAL (STDOUT)
+! 2026 re-entrancy fix: these legacy-spelled NAMELIST locals used to be
+! initialised by DATA statements and initialised declarations, which
+! implicitly SAVE them -- so a second in-process yrec_run inherited
+! whatever the previous inlist set for any control the new inlist
+! omitted (the canonical star%ctrl buffer is reset by read_controls,
+! these were not).  They are now assigned their defaults on every
+! entry.  Values are unchanged.
+      alphac = 0.0d0
+      alphae = 0.0d0
+      dtdif = 1.0d-2
+      wnew = 0.0d0
+      creim = -4.0d-13
+      cstmixing = 1.0d0
+      cstdiffmix = 1.0d0
+      tcut = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
+      vnew = (/ 0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, &
+           0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0 /)
+      itdif1 = 1
+      itdif2 = 1
+      niter1 = 2
+      niter2 = 20
+      niter3 = 2
+      niter4 = 0
+      ldifli = .false.
+      lsnu = .false.
+      lovstc = .false.
+      lwnew = .false.
+      ljdot0 = .true.
+      lthoul = .false.
+      lsemic = .false.
+      lnews = .false.
+      lmonte = .false.
+      lreimer = .false.
+      imbeg = 1
+      imend = 1
+      weakscreening = 0.03d0
+      sstandard = (/ 0.9828, 1.0485, 0.9815, 0.9241, 1.3818, 1.0542, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, &
+           1.0, 1.0, 1.0108, 0.7819, 0.2875 /)
+      ldifad = .false.
+      lnoj = .false.
+      tdisk = 0.0d0
+      pdisk = 7.2722d-6
+      ldisk = .false.
+      lsenv0a = .false.
+      senv0a = 1.26d-4
+      lenvg = .false.
+      atmstp = 0.5
+      envstp = 0.5
+      numrun = 1
+      kindrn = 1
+      lfirst = .true.
+      nmodls = 0
+      endage = 0.0
+      setdt = 0.0
+      rsclm = 0.0
+      rsclx = 0.0
+      rsclz = 0.0
+      rsclcm = 0.0
+      end_dcen = 0.0
+      end_xcen = 0.0
+      end_ycen = 0.0
+      element_id = (/ 'HE3', 'C12', 'C13', 'N14', 'N15', 'O16', 'O17', 'O18', 'H2 ', 'LI6', 'LI7', 'BE9' /)
+      optol = 1.0d-8
+      atmerr = 3.0d-4
+      atmd0 = 1.0d-10
+      atmbeg = 1.0d-1
+      atmmin = 1.0d-1
+      atmmax = 5.0d-1
+      enverr = 3.0d-4
+      envbeg = 1.0d-1
+      envmin = 1.0d-1
+      envmax = 5.0d-1
+      stolr0 = 1.0d-3
+      imax = 11
+      nuse = 7
+      djok = 1.0d-4
+      hpttol = (/ 1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, &
+           5.0d-2, 1.0d-1 /)
+      lnewcp = .false.
+      anewcp = '   '
+      xnewcp = 1.3d1
+      isetiso = 0
+      isetmix = 0
+      amix = 'GS98'
+      aiso = 'L21'
+      r12_13 = 88.27d0
+      r14_15 = 411.9d0
+      r16_17 = 471.4d0
+      r16_18 = 2693.0d0
+      xh2_ini = 2.781d-5
+      xhe3_ini = 3.461d-5
+      xli6_ini = 7.187d-10
+      xli7_ini = 1.025d-8
+      xbe9_ini = 1.595d-10
+      xb10_ini = 1.002d-9
+      xb11_ini = 4.405d-9
+      zxmix = 0.02292d0
+      frac_c = 0.172148d0
+      frac_n = 0.050426d0
+      frac_o = 0.468195
+      mixture_id_table = (/ character(len=8) :: 'GS98', 'AAG21', 'M22P', 'M22M' /)
+      zx_mix_table = (/ 0.02292d0, 0.0187d0, 0.0225d0, 0.0226d0 /)
+      frac_c_table = (/ 0.172148d0, 0.184156d0, 0.19239d0, 0.191425d0 /)
+      frac_n_table = (/ 0.050426d0, 0.050344d0, 0.059012d0, 0.058716d0 /)
+      frac_o_table = (/ 0.468195d0, 0.416592d0, 0.415631d0, 0.413545d0 /)
+      tridt = 1.0d-2
+      tridl = 8.0d-2
+      dtwind = 1.0d1
+      lptime = .true.
+      ltrist = .false.
+      lkuthe = .false.
+      lovste = .false.
+      lexcom = .false.
+      lrot = .false.
+      linstb = .false.
+      alfa = 1.5d0
+      fk = 1.0d0
+      fw = 1.0d0
+      fc = 1.0d0
+      fes = 1.0d0
+      fgsf = 1.0d0
+      fmu = 1.0d0
+      fss = 1.0d0
+      rcrit = 1.0d3
+      wmax = 3.0d-4
+      wmax_sun = 1000.0
+      kttau = 0
+      clsun = 3.8515d33
+      crsun = 6.9598d10
+      lcore = .false.
+      mcore = 0
+      fcore = 1.0
+      lmhd = .false.
+      grtol = 1.0d-8
+      ilambda = 1
+      niter_gs = 10
+      ldify = .false.
+      dt_gs = 0.1d0
+      xmin = 1.0d-3
+      ymin = 1.0d-3
+      lthoulfit = .false.
+      ldifz = .false.
+      lnewdif = .false.
+      cmin = 1.0d-20
+      abstol = 1.0d-5
+      reltol = 1.0d-4
+      kemmax = 50
+      etadh0 = -1.0d0
+      etadh1 = 1.0d0
+      ldh = .false.
+      fesc = 1.0d0
+      fssc = 1.0d0
+      fgsfc = 1.0d0
+      igsf = 1
+      lpurez = .false.
+      lrwsh = .false.
+      liso = .false.
+      lnulos1 = .false.
+      toll = 1.0d-5
+      tolr = 1.0d-4
+      tolz = 1.0d-3
+      lcals = .false.
+      lcalsolzx = .false.
+      calsolage = 4.57d9
+      calsolzx = 0.02292d0
+      lzramp = .false.
+      lcalst = .false.
+      lteff = .false.
+      lopale = .false.
+      lopale01 = .false.
+      lcondopacp = .false.
+      lopale06 = .false.
+      lnumderiv = .false.
+      lscv = .false.
+      lsolid = .false.
+      impjmod = 0
+      dmdt0 = -1.0d-14
+      compacc = (/ 0.71668d0, 0.265721d0, 0.01757d0, 2.9d-5, 3.013d-3, 3.385d-5, 9.346d-4, 0.0d0, &
+           8.462d-3, 0.0d0, 1.696d-5, 0.0d0, 2.0d-9, 2.0d-9, 3.0d-11 /)
+      lmdot = .false.
+      lsolwind = .false.
+      tmolmin = 4.0d0
+      tmolmax = 4.1d0
+      lalex06 = .false.
+      lmwind = .false.
+      lrossby = .true.
+      lbscale = .false.
+      awind = 'K97'
+      pmma = 2.0
+      pmmb = 1.0
+      pmmc = 2.0
+      pmmd = 0.0
+      pmmm = 0.5
+      pmmjd = 1.32e30
+      pmmmd = 1.27e12
+      pmmsolp = 4.9304d0
+      pmmsolw = 2.836e-6
+      pmmsoltau = 9.4805d5
+      lcodm = .false.
+      codm = 2.5d4
+      xsli6 = 5.5d3
+      xsli7 = 5.2d1
+      xsbe91 = 1.1d0
+      xsbe92 = 1.5d4
+      xsbe93 = 1.5d4
+      lxli6 = .false.
+      lxli7 = .false.
+      lxbe91 = .false.
+      lxbe92 = .false.
+      lxbe93 = .false.
+      sli6 = 1.0d0
+      sli7 = 1.0d0
+      sbe91 = 1.0d0
+      sbe92 = 1.0d0
+      sbe93 = 1.0d0
+      spotf = 0.00
+      spotx = 1.00
+      lsdepth = .false.
+      s0_1_1 = 4.01d-22
+      s0_3_3 = 5.21d3
+      s0_3_4 = 5.6d-1
+      s0_1_12 = 1.34d0
+      s0_1_13 = 7.6d0
+      s0_1_14 = 1.66d0
+      s0_1_16 = 1.06d1
+      s0_1_be7e = 1.7709d-10
+      s0_1_be7p = 0.0208d0
+      s0_1_15_c12alp = 7.3d4
+      s0_1_15_o16 = 3.6d1
+      s0p_1_1 = 4.49d-24
+      s0p_3_3 = -4.9d0
+      s0p_3_4 = -3.6d-4
+      s0p_1_12 = 2.6d-3
+      s0p_1_13 = -7.83d-3
+      s0p_1_14 = -3.3d-3
+      s0p_1_16 = -5.4d-2
+      s0p_1_be7p = -3.12d-5
+      s0pp_1_12 = 8.3d-5
+      s0pp_1_13 = 7.29d-4
+      s0pp_1_16 = 0.0d0
+      s0pp_1_be7p = -2.288d-7
+      lnewnuc = .false.
+      lcalcenv = .true.
+
       terminal_unit = 6
 ! OUTPUT: LAST MODEL (TEXT)
       last_model_unit = 11
@@ -1439,7 +1575,16 @@ end subroutine store_table_paths
 ! the control file carries a star_job group, else the legacy
 ! NAMELIST /control/ + /physics/ pair.
 subroutine read_namelist_files
-      write(*,*) 'CONTROL namelist :  ',control_nml_file(1:len_trim(control_nml_file))
+! 2026: detect the inlist style BEFORE printing the banner, so a
+! single-inlist run announces its one file instead of a phantom
+! legacy PHYSICS namelist (the getarg(2) default used to print
+! 'yrec8.nml2' even though the new-style dispatch never reads it).
+      logical :: new_style, single_inlist
+
+      new_style = nml_file_has_group(control_nml_file, 'star_job')
+      single_inlist = .false.
+      if (new_style) &
+           single_inlist = nml_file_has_group(control_nml_file, 'controls')
 
       if (physics_nml_override .ne. ' ') then
          physics_nml_file = physics_nml_override
@@ -1447,7 +1592,16 @@ subroutine read_namelist_files
       call getarg(2, physics_nml_file)
       if (physics_nml_file(1:2) .eq. ' ') physics_nml_file = 'yrec8.nml2'
       end if
+! single-inlist style: both groups live in the one file; point the
+! physics slot at it too (copy_inlists_used then dedupes it).
+      if (single_inlist) physics_nml_file = control_nml_file
+
+      if (single_inlist) then
+         write(*,*) 'inlist           :  ',control_nml_file(1:len_trim(control_nml_file))
+      else
+      write(*,*) 'CONTROL namelist :  ',control_nml_file(1:len_trim(control_nml_file))
       write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
+      end if
 
 ! Defaults for the two output paths every run needs: the final
 ! model file (.mod) and the run log -- whose directory part also
@@ -1461,7 +1615,7 @@ subroutine read_namelist_files
 ! 2026 inlist revamp: dispatch on inlist style. New-style files carry
 ! &star_job (+ &controls, same file or the second); everything else
 ! takes the legacy reader path.
-      if (nml_file_has_group(control_nml_file, 'star_job')) then
+      if (new_style) then
       include 'inlist_new_read.inc'
       else
       open(unit=standard_unit, file=control_nml_file, status='OLD')

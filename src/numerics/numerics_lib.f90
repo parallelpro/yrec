@@ -585,7 +585,7 @@ end subroutine lubksb
 ! itself; indx records the row permutation, d returns +/-1 depending
 ! on whether the number of row interchanges was even or odd (used by
 ! the caller to get the sign of the determinant).
-subroutine ludcmp(a, n, np, indx, d)
+subroutine ludcmp(a, n, np, indx, d, ierr)
       implicit none
       integer, parameter :: nmax = 100
       double precision, parameter :: tiny = 1.0d-20
@@ -594,10 +594,13 @@ subroutine ludcmp(a, n, np, indx, d)
       double precision, intent(inout) :: a(np,np)
       integer, intent(out) :: indx(n)
       double precision, intent(out) :: d
+      integer, intent(out) :: ierr
 
       integer :: i, imax, j, k
       double precision :: vv(nmax)
       double precision :: aamax, dum, sum
+
+      ierr = 0
 
       d = 1.d0
       do i = 1, n
@@ -605,7 +608,13 @@ subroutine ludcmp(a, n, np, indx, d)
           do j = 1, n
               if (abs(a(i,j)).gt.aamax) aamax = abs(a(i,j))
           end do
-          if (aamax.eq.0d0) stop 'Singular matrix.'
+          if (aamax.eq.0d0) then
+! 2026 audit (section 7): library stop -> ierr (numerics must not
+! kill the process; the drivers decide).
+             write(*,*) 'ludcmp: singular matrix'
+             ierr = 1
+             return
+          end if
           vv(i) = 1.d0/aamax
       end do
       do j = 1, n
@@ -807,18 +816,20 @@ end subroutine osplin
 ! and an error estimate dy.
 ! MHP 10/02: dimensions changed for consistency with fpft (fixed at
 ! 20 rather than sized to n).
-subroutine polint(xa, ya, n, x, y, dy)
+subroutine polint(xa, ya, n, x, y, dy, ierr)
       implicit none
 
       double precision, intent(in) :: xa(20), ya(20)
       integer, intent(in) :: n
       double precision, intent(in) :: x
       double precision, intent(out) :: y, dy
+      integer, intent(out) :: ierr
 
       double precision :: c(20), d(20)
       integer :: ns, i, j
       double precision :: dif, dift, ho, hp, w, den
 
+      ierr = 0
       ns = 1
       dif = dabs(x-xa(1))
       do i = 1, n
@@ -838,7 +849,13 @@ subroutine polint(xa, ya, n, x, y, dy)
           hp = xa(i+j)-x
           w = c(i+1) - d(i)
           den = ho - hp
-          if (dabs(den).lt.1.0d-20) stop
+          if (dabs(den).lt.1.0d-20) then
+! 2026 audit (section 7): library stop -> ierr (numerics must not
+! kill the process; the drivers decide).
+             write(*,*) 'polint: repeated abscissa (den ~ 0)'
+             ierr = 1
+             return
+          end if
           den = w/den
           d(i) = hp*den
           c(i) = ho*den
@@ -1029,7 +1046,7 @@ end subroutine splnr
 ! explicit dummy arguments): solves the tridiagonal system with
 ! sub-diagonal a, diagonal b, super-diagonal c, and right-hand side
 ! ex_prime, returning the solution in ex.
-subroutine tridiag_gs(a, b, c, ex_prime, npt, ex)
+subroutine tridiag_gs(a, b, c, ex_prime, npt, ex, ierr)
       use star_info_lib, only: json
       implicit none
 
@@ -1037,17 +1054,25 @@ subroutine tridiag_gs(a, b, c, ex_prime, npt, ex)
            ex_prime(json)
       integer, intent(in) :: npt
       double precision, intent(out) :: ex(json)
+      integer, intent(out) :: ierr
 
       double precision :: gama(json)
       integer :: j
       double precision :: bet
 
+      ierr = 0
       bet = b(1)
       ex(1) = ex_prime(1)/bet
       do j = 2, npt
          gama(j) = c(j-1)/bet
          bet = b(j) - a(j)*gama(j)
-         if (bet.eq.0) stop '#TRIDIA:SINGULAR MATRIX'
+         if (bet.eq.0) then
+! 2026 audit (section 7): library stop -> ierr (numerics must not
+! kill the process; the drivers decide).
+            write(*,*) 'tridia: singular matrix'
+            ierr = 1
+            return
+         end if
          ex(j) = (ex_prime(j) - a(j)*ex(j-1))/bet
       end do
       do j = npt-1, 1, -1
@@ -1160,7 +1185,7 @@ end subroutine ysplin
 ! (2026, GUIDELINES.md) to explicit arguments since this is real
 ! per-call data flow (matrix in, solution out), not global
 ! configuration -- see GUIDELINES.md's module-vs-argument distinction.
-subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
+subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution, ierr)
       use star_info_lib, only: json
 
       implicit none
@@ -1173,6 +1198,7 @@ subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
       double precision, intent(in) :: sub_diag(json), diag(json), &
            super_diag(json), rhs(json)
       double precision, intent(out) :: solution(json)
+      integer, intent(out) :: ierr
 
 ! gamma_elim is solver-internal scratch, never read by any caller
 ! (unlike tridia.f90's gamma_elim(n), which doubled as a genuine
@@ -1185,12 +1211,19 @@ subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution)
       double precision :: bet
       integer :: j
 
+      ierr = 0
       bet = diag(1)
       solution(1) = rhs(1)/bet
       do j = 2,n
          gamma_elim(j) = super_diag(j-1)/bet
          bet = diag(j) - sub_diag(j)*gamma_elim(j)
-         if (bet.eq.0) stop '#TRIDIA:SINGULAR MATRIX'
+         if (bet.eq.0) then
+! 2026 audit (section 7): library stop -> ierr (numerics must not
+! kill the process; the drivers decide).
+            write(*,*) 'tridia: singular matrix'
+            ierr = 1
+            return
+         end if
          solution(j) = (rhs(j) - sub_diag(j)*solution(j-1))/bet
       end do
       do j = n-1,1,-1
@@ -1233,7 +1266,7 @@ end subroutine ctridi
 ! commented-out original signature below).
 !       SUBROUTINE TRIDIA(N,EI,EJ,DJ,SUMDJ)  ! KC 2025-05-31
 subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
-     solution, dj_n_seed)
+     solution, dj_n_seed, ierr)
       use star_info_lib, only: json
       implicit none
 
@@ -1249,6 +1282,7 @@ subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
            super_diag(json), rhs(json)
       double precision, intent(out) :: solution(json)
       double precision, intent(in) :: dj_n_seed
+      integer, intent(out) :: ierr
 
 ! gamma_elim is solver-internal scratch (SAVE preserved from the
 ! original common-block version though nothing here actually depends
@@ -1260,6 +1294,7 @@ subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
       integer :: i, j
       double precision :: bet, fj
 
+      ierr = 0
       dj(n) = dj_n_seed
       do i = 1, n
          rhs_orig(i) = rhs(i)
@@ -1269,7 +1304,13 @@ subroutine tridia(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
       do j = 2, n
          gamma_elim(j) = super_diag(j-1)/bet
          bet = diag(j) - sub_diag(j)*gamma_elim(j)
-         if (bet.eq.0) stop '#TRIDIA:SINGULAR MATRIX'
+         if (bet.eq.0) then
+! 2026 audit (section 7): library stop -> ierr (numerics must not
+! kill the process; the drivers decide).
+            write(*,*) 'tridia: singular matrix'
+            ierr = 1
+            return
+         end if
          solution(j) = (rhs(j) - sub_diag(j)*solution(j-1))/bet
       end do
       dj(n) = dj(n)+(solution(n)-rhs_orig(n))*ei(n)
@@ -1685,10 +1726,13 @@ subroutine trapzd(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
        do j = 1, it
           r03t = y**3
 ! interpolate rho,m,omega,eta2+2 between shell i and shell i-1
-          rhot = rhop+drho*del
+! 2026 (bugsweep Batch 2): the linear interpolants must be evaluated
+! at the offset (y - b1) of the current abscissa, as smt already is;
+! the inherited `*del` used the constant sub-interval width instead.
+          rhot = rhop+drho*(y - b1)
           smt = smp+dm*(y**2 - b1**2)
-          w2t = w2p + dw2*del
-          eta22t = eta22p + deta2*del
+          w2t = w2p + dw2*(y - b1)
+          eta22t = eta22p + deta2*(y - b1)
 ! calculate q between shells
           q0 = (rhot*w2t*r03t*(3.0d0+eta22t)/(smt*eta22t))*r03t*y
 ! q0 = rho*w2*r07t*(3.0d0+eta22)/(sm*eta22)
@@ -1820,11 +1864,14 @@ subroutine intpt(log10_pressure, log10_temperature, table_data, &
       double precision :: p_min, p_max
       integer :: lir_num_vars, lir_leading_dim, lir_num_points, lir_interp_mode
 
+! Bracket the temperature: the original's GOTO 101 out of this scan
+! is an EXIT, not a RETURN (a RETURN left every output unset for any
+! in-range temperature).  t_indices(1) starts at 1 so a temperature
+! below the first table row clamps to the bottom stencil instead of
+! reading a stale/zero index.
+      t_indices(1)=1
       do n=1,num_t
-         if (table_log10t(n).ge.log10_temperature) then
-            continue
-            return
-         end if
+         if (table_log10t(n).ge.log10_temperature) exit
          t_indices(1)=n
       end do
       if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1

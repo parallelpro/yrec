@@ -461,9 +461,15 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          star%pulse_dlnkap_dlnrho(im) = kap_res(i_dlnkap_dlnrho)
          star%pulse_dlnkap_dlnt(im) = kap_res(i_dlnkap_dlnt)
          star%pulse_specific_heat(im) = eos_res(i_cp)
-         star%pulse_mean_molecular_weight(im) = eos_res(i_gas_constant)
-         star%pulse_electron_mean_molecular_weight(im) = &
-              eos_res(i_mu_e_inv)
+! 2026 (bugsweep sec-11): eos_res(i_gas_constant) is R/mu (the
+! specific gas constant), not mu -- store the real mean molecular
+! weight; the electron slot is 1/mu_e straight from the eos.
+         if (eos_res(i_gas_constant) > 0.0d0) then
+            star%pulse_mean_molecular_weight(im) = gas_constant/eos_res(i_gas_constant)
+         else
+            star%pulse_mean_molecular_weight(im) = 0.0d0
+         end if
+         star%pulse_electron_mean_weight_inverse(im) = eos_res(i_mu_e_inv)
          star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
          star%valfmlt(im) = star%alfmlt
          star%vphmlt(im) = star%phmlt

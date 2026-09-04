@@ -209,7 +209,12 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
          num_radiative_zones = num_radiative_zones + 1
          radiative_zone_bounds(num_radiative_zones,1) = &
               mixed_zone_bounds(num_mixed_zones,2) + 1
-         radiative_zone_bounds(1,2) = num_zones
+! 2026 audit fix: the original F77 (convec.f: MRZONE(1,2) = M) wrote
+! the FIRST region's top here, clobbering it whenever earlier
+! radiative regions exist and the outermost CZ is detached from the
+! surface. Latent for decades because the top CZ almost always
+! reaches the surface (then NRZONE = 1 and the two spellings agree).
+         radiative_zone_bounds(num_radiative_zones,2) = num_zones
       end if
 
       return

@@ -21,7 +21,9 @@
 ! the standard way for the run of QUAD(I) with appropriate boundary
 ! conditions. The central B.C. is that QUAD(0)=0; the surface B.C.
 ! is that there is no contribution to the quadrupole from outside the
-! final shell, such that QUAD(I) varies as 1/R**4.
+! final shell, such that QUAD(I) varies as 1/R**3 (the exterior l=2
+! solution; the surface row below and its own comment use R**3 --
+! the "1/R**4" this header used to claim was a stale comment).
 subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, num_zones, ierr)
       use rotation_scratch_lib
 
@@ -92,7 +94,7 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
          drho_dr = 0.5D0*(weight_plus*exp(ln10*log_density(zone_index+1))+ &
               (weight_minus-weight_plus)* &
               exp(ln10*log_density(zone_index))-weight_minus* &
-              exp(ln10*log_density(zone_index)))/dr
+              exp(ln10*log_density(zone_index-1)))/dr
          sub_diag(zone_index) = weight_minus*(inv_dr2-dr_inv_r)
          diag(zone_index) = -inv_dr2*(weight_plus+weight_minus)+dr_inv_r* &
               (weight_minus-weight_plus)-6.0D0/radius(zone_index)**2 &

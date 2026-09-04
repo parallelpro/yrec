@@ -66,7 +66,7 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
      equally_spaced_mass, log_density, log_luminosity, log_pressure, &
      log_radius, log_mass, enclosed_mass, shell_mass, log_total_mass, &
      velocity, zone_begin, zone_end, zone_max, zone_min, convective_flag, &
-     final_iteration_flag, num_zones, composition, species_begin, species_end)
+     final_iteration_flag, num_zones, composition, species_begin, species_end, ierr)
       use star_info_lib, only: json
       implicit none
 
@@ -84,15 +84,18 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: species_begin, species_end
+      integer, intent(out) :: ierr
       logical :: unstable_region_active, unstable_zone_found, &
            two_zone_region
       integer :: search_start, zone_idx
 
+      ierr = 0
       if (.not.final_iteration_flag) then
          call diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
               equally_spaced_mass, shell_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
-              species_begin, species_end)
+              species_begin, species_end, ierr)
+         if (ierr /= 0) return
       else
 ! FIND UNSTABLE REGIONS IN ORDER, AND CALL MIXGRID TO SET UP THE
 ! EQUALLY SPACED GRID AND MIXCOM TO MIX THEM IN ORDER
@@ -150,7 +153,8 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
          call diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
               equally_spaced_mass, shell_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
-              species_begin, species_end)
+              species_begin, species_end, ierr)
+         if (ierr /= 0) return
 !  RETURN FOR NEXT REGION IF APPLICABLE
          if (search_start.gt.zone_max) exit region_loop
          else

@@ -28,9 +28,30 @@ module stitched_model_lib
            ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, ip_conv, &
            ip_gradr, ip_gradT, ip_grada, ip_conv_vel, ip_brunt_N2, &
            ip_csound
+      public :: ipul_r, ipul_m, ipul_L, ipul_P, ipul_T, ipul_rho, &
+           ipul_grad, ipul_N2, ipul_gamma1, ipul_grada, ipul_delta, &
+           ipul_kap, ipul_kap_kap_T, ipul_kap_kap_rho, ipul_eps, &
+           ipul_eps_eps_T, ipul_eps_eps_rho, ipul_omega, ipul_cp, &
+           ipul_mu_e_inv, ipul_h1, ipul_z, ipul_species_base, &
+           ipul_eps_grav, ipul_gyre_last
 
       integer, parameter :: n_prof_cols = 60
       integer, parameter :: n_pulse_cols = 35
+! Named pulse-column indices (2026 audit, section 8: the pts(35,*)
+! map was bare numbers in every writer -- reverse-engineered once
+! per bug fix). Columns 1..18 are the GYRE schema-101 set, in file
+! order (ipul_gyre_last marks the end of that block); 19..34 the
+! FGONG extras. 23..33 are the 11 FGONG-ordered species at
+! ipul_species_base + k, k = 1..11 (see species_slot).
+      integer, parameter :: ipul_r = 1, ipul_m = 2, ipul_L = 3, &
+           ipul_P = 4, ipul_T = 5, ipul_rho = 6, ipul_grad = 7, &
+           ipul_N2 = 8, ipul_gamma1 = 9, ipul_grada = 10, &
+           ipul_delta = 11, ipul_kap = 12, ipul_kap_kap_T = 13, &
+           ipul_kap_kap_rho = 14, ipul_eps = 15, ipul_eps_eps_T = 16, &
+           ipul_eps_eps_rho = 17, ipul_omega = 18, ipul_cp = 19, &
+           ipul_mu_e_inv = 20, ipul_h1 = 21, ipul_z = 22, &
+           ipul_species_base = 22, ipul_eps_grav = 34
+      integer, parameter :: ipul_gyre_last = ipul_omega
 ! Named indices for the stx_prof columns physics consumers read
 ! (column meanings = the profile column registry in io/yrec_output).
       integer, parameter :: ip_mass = 2, ip_logR = 3, ip_logT = 4, &
@@ -218,7 +239,9 @@ subroutine compute_seismic_columns
            lnmu(max_ext), g1(max_ext), grada_(max_ext), delta_(max_ext), &
            gradr_(max_ext), mass_g(max_ext)
       double precision :: dr, dlnp_dr, dlnrho_dr, grav, dlnmu_dlnp, p, rho
+      logical :: mu_ok(max_ext)
 
+      mu_ok = .true.
       do j = 1, n_ext
          r(j)      = exp(ln10*ext_profile_value(3, j))
          lnp(j)    = ln10*ext_profile_value(6, j)
@@ -228,7 +251,13 @@ subroutine compute_seismic_columns
          gradr_(j) = ext_profile_value(12, j)
          delta_(j) = ext_profile_value(51, j)
          mass_g(j) = ext_profile_value(2, j)*star%solar_mass_cgs
-         lnmu(j)   = log(max(ext_profile_value(52, j), 1.0d-30))
+         lnmu(j)   = ext_profile_value(52, j)
+         if (lnmu(j) > 0.0d0) then
+            lnmu(j) = log(lnmu(j))
+         else
+            lnmu(j) = 0.0d0
+            mu_ok(j) = .false.
+         end if
       end do
       do j = 1, n_ext
          p   = exp(lnp(j))
@@ -256,7 +285,12 @@ subroutine compute_seismic_columns
          else
             ext_seismic(1,j) = 0.0d0
          end if
-         if (lnp(j+1) /= lnp(j-1) .and. delta_(j) /= 0.0d0) then
+! 2026 (bugsweep sec-11): column 52 is now the real mu everywhere
+! (it was R/mu in the interior -- wrong-signed composition term --
+! and 0 in the envelope, a log(1e-30) spike at the junction); where
+! mu is still unavailable the term is dropped rather than faked.
+         if (lnp(j+1) /= lnp(j-1) .and. delta_(j) /= 0.0d0 .and. &
+              mu_ok(j-1) .and. mu_ok(j+1)) then
             dlnmu_dlnp = (lnmu(j+1) - lnmu(j-1))/(lnp(j+1) - lnp(j-1))
             ext_seismic(3,j) = grada_(j) + dlnmu_dlnp/delta_(j)
          else
@@ -317,11 +351,20 @@ double precision function ext_profile_value(icol, j)
          case (13); ext_profile_value = env_struct%env_gradients(3,i)
          case (14); ext_profile_value = env_struct%env_gradients(2,i)
          case (15); ext_profile_value = env_struct%env_convective_velocity(i)
+         case (16); ext_profile_value = env_struct%env_beta(i)
          case (27); ext_profile_value = env_struct%env_hydrogen_fraction(i)
          case (41); ext_profile_value = env_struct%env_metal_fraction(i)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = env_struct%env_specific_heat_cp(i)
          case (51); ext_profile_value = -env_struct%env_dlnrho_dlnt(i)
+! 2026 (bugsweep sec-11): mu from the gas-pressure ideal-gas relation
+! R/mu = beta*P/(rho*T) -- the same identity eqstat uses for its
+! specific gas constant -- so the Ledoux column below sees a
+! continuous mu across the interior/envelope junction instead of 0.
+         case (52); ext_profile_value = ideal_gas_mu( &
+              env_struct%env_log10_pressure(i), &
+              env_struct%env_log10_temperature(i), &
+              env_struct%env_log10_density(i), env_struct%env_beta(i))
          case (58); ext_profile_value = sqrt(env_struct%env_gamma1(i)* &
               exp(ln10*(env_struct%env_log10_pressure(i) - &
               env_struct%env_log10_density(i))))
@@ -348,6 +391,10 @@ double precision function ext_profile_value(icol, j)
          case (42); ext_profile_value = star%omega(star%nz)
          case (50); ext_profile_value = atmo_struct%atmo_specific_heat_cp(i)
          case (51); ext_profile_value = -atmo_struct%atmo_dlnrho_dlnt(i)
+         case (52); ext_profile_value = ideal_gas_mu( &
+              atmo_struct%atmo_log10_pressure(i), &
+              atmo_struct%atmo_log10_temperature(i), &
+              atmo_struct%atmo_log10_density(i), atmo_struct%atmo_beta(i))
          case (58); ext_profile_value = sqrt(atmo_struct%atmo_gamma1(i)* &
               exp(ln10*(atmo_struct%atmo_log10_pressure(i) - &
               atmo_struct%atmo_log10_density(i))))
@@ -357,6 +404,20 @@ double precision function ext_profile_value(icol, j)
          ext_profile_value = 0.0d0
       end select
 end function ext_profile_value
+
+! mu = R*rho*T/(beta*P): the ideal-gas mean molecular weight from the
+! gas pressure (eqstat's own specific-gas-constant identity). Zero
+! when the inputs cannot support it.
+double precision function ideal_gas_mu(log10_p, log10_t, log10_rho, beta)
+      use math_lib
+      use phys_const_lib, only: gas_constant
+      double precision, intent(in) :: log10_p, log10_t, log10_rho, beta
+      if (beta > 0.0d0) then
+         ideal_gas_mu = gas_constant*exp(ln10*(log10_rho + log10_t - log10_p))/beta
+      else
+         ideal_gas_mu = 0.0d0
+      end if
+end function ideal_gas_mu
 
 ! Per-zone value for profile column icol at YREC zone index k
 ! (1 = center .. nz = surface). Sources match putstore's per-shell
@@ -425,13 +486,9 @@ double precision function profile_value(icol, k)
       case (50); profile_value = star%pulse_specific_heat(k)
       case (51); profile_value = -star%pulse_dlnrho_dlnt(k)
       case (52); profile_value = star%pulse_mean_molecular_weight(k)
-      case (53)
-         if (star%pulse_electron_mean_molecular_weight(k) > 0.0d0) then
-            profile_value = &
-                 1.0d0/star%pulse_electron_mean_molecular_weight(k)
-         else
-            profile_value = 0.0d0
-         end if
+! 2026 (bugsweep sec-11): the array already holds 1/mu_e (eos
+! electron_mean_weight_inverse); it used to be inverted again here.
+      case (53); profile_value = star%pulse_electron_mean_weight_inverse(k)
       case (58)
 ! sound speed sqrt(Gamma1*P/rho) [cm/s]
          profile_value = sqrt(star%adiabatic_index_gamma1(k)* &
@@ -456,7 +513,7 @@ subroutine build_pulse_points(pts)
       use star_info_lib, only: star, i_eps_grav, i_grad_actual, i_grad_ad, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
-      double precision, intent(out) :: pts(35, n_ext)
+      double precision, intent(out) :: pts(n_pulse_cols, n_ext)
       integer :: j, i, k
       double precision :: r, m, P, T, rho, delta, nab, nab_ad, grav
 
@@ -473,30 +530,30 @@ subroutine build_pulse_points(pts)
             delta = -star%pulse_dlnrho_dlnt(i)
             nab = star%gradT(i)
             nab_ad = star%grada(i)
-            pts(3,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
-            pts(9,j) = star%adiabatic_index_gamma1(i)
-            pts(12,j) = star%opacity_zone(i)
+            pts(ipul_L,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
+            pts(ipul_gamma1,j) = star%adiabatic_index_gamma1(i)
+            pts(ipul_kap,j) = star%opacity_zone(i)
 ! GSM/GYRE convention (MESA pulse_gyre.f90): kap_kap_T = kap*dlnkap/dlnT
 ! (the absolute derivative dkap/dlnT), NOT the bare log-derivative;
 ! likewise eps_eps_T = eps*dlneps/dlnT. Bare log-derivatives were
 ! written here originally -- wrong by factors kap and eps (only
 ! nonadiabatic GYRE runs read these columns).
-            pts(13,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i)
-            pts(14,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i)
-            pts(15,j) = star%eps_total(i)
-            pts(16,j) = star%eps_total(i)*star%pulse_dlneps_dlnt(i)
-            pts(17,j) = star%eps_total(i)*star%pulse_dlneps_dlnrho(i)
-            pts(18,j) = star%omega(i)
-            pts(19,j) = star%pulse_specific_heat(i)
-            if (star%pulse_electron_mean_molecular_weight(i) &
-                 > 0.0d0) pts(20,j) = &
-                 1.0d0/star%pulse_electron_mean_molecular_weight(i)
-            pts(21,j) = star%xa(i_h1,i)
-            pts(22,j) = star%xa(i_metals,i)
+            pts(ipul_kap_kap_T,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i)
+            pts(ipul_kap_kap_rho,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i)
+            pts(ipul_eps,j) = star%eps_total(i)
+            pts(ipul_eps_eps_T,j) = star%eps_total(i)*star%pulse_dlneps_dlnt(i)
+            pts(ipul_eps_eps_rho,j) = star%eps_total(i)*star%pulse_dlneps_dlnrho(i)
+            pts(ipul_omega,j) = star%omega(i)
+            pts(ipul_cp,j) = star%pulse_specific_heat(i)
+! 2026 (bugsweep sec-11): 1/mu_e is what the array holds -- FGONG
+! var(14) wants exactly that (it used to be inverted a second time).
+            pts(ipul_mu_e_inv,j) = star%pulse_electron_mean_weight_inverse(i)
+            pts(ipul_h1,j) = star%xa(i_h1,i)
+            pts(ipul_z,j) = star%xa(i_metals,i)
             do k = 1, 11
-               pts(22+k,j) = star%xa(species_slot(k),i)
+               pts(ipul_species_base+k,j) = star%xa(species_slot(k),i)
             end do
-            pts(34,j) = star%eps_channels(i_eps_grav,i)
+            pts(ipul_eps_grav,j) = star%eps_channels(i_eps_grav,i)
          case (2)
             r = exp(ln10*env_struct%env_log10_radius(i))
             m = exp(ln10*(env_struct%env_log10_mass(i) + &
@@ -505,17 +562,24 @@ subroutine build_pulse_points(pts)
             T = exp(ln10*env_struct%env_log10_temperature(i))
             rho = exp(ln10*env_struct%env_log10_density(i))
             delta = -env_struct%env_dlnrho_dlnt(i)
-            nab = env_struct%env_gradients(2,i)
-            nab_ad = env_struct%env_gradients(3,i)
-            pts(3,j) = env_struct%env_luminosity(i)*star%solar_luminosity_cgs
-            pts(9,j) = env_struct%env_gamma1(i)
-            pts(12,j) = env_struct%env_opacity(i)
-            pts(18,j) = star%omega(star%nz)
-            pts(19,j) = env_struct%env_specific_heat_cp(i)
-            pts(21,j) = env_struct%env_hydrogen_fraction(i)
-            pts(22,j) = env_struct%env_metal_fraction(i)
+! 2026 sweep fix: env_gradients order is (1) radiative, (2) ADIABATIC,
+! (3) ACTUAL (see the profile-column mapping above and
+! envelope_derivs' current_gradients stores) -- unlike atmo_gradients,
+! whose order is (rad, actual, adiabatic). This block had the two
+! slots swapped (the pulse-side twin of the pre-2026 profile-column
+! swap), flipping the thermal N^2 sign across the envelope region of
+! every pulse file and swapping the grad/grad_ad pulse columns there.
+            nab = env_struct%env_gradients(3,i)
+            nab_ad = env_struct%env_gradients(2,i)
+            pts(ipul_L,j) = env_struct%env_luminosity(i)*star%solar_luminosity_cgs
+            pts(ipul_gamma1,j) = env_struct%env_gamma1(i)
+            pts(ipul_kap,j) = env_struct%env_opacity(i)
+            pts(ipul_omega,j) = star%omega(star%nz)
+            pts(ipul_cp,j) = env_struct%env_specific_heat_cp(i)
+            pts(ipul_h1,j) = env_struct%env_hydrogen_fraction(i)
+            pts(ipul_z,j) = env_struct%env_metal_fraction(i)
             do k = 1, 11
-               pts(22+k,j) = star%xa(species_slot(k),star%nz)
+               pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
             end do
          case default   ! atmosphere
             r = exp(ln10* &
@@ -528,28 +592,28 @@ subroutine build_pulse_points(pts)
             delta = -atmo_struct%atmo_dlnrho_dlnt(i)
             nab = atmo_struct%atmo_gradients(2,i)
             nab_ad = atmo_struct%atmo_gradients(3,i)
-            pts(3,j) = exp(ln10*star%log_L)*star%solar_luminosity_cgs
-            pts(9,j) = atmo_struct%atmo_gamma1(i)
-            pts(12,j) = atmo_struct%atmo_opacity(i)
-            pts(18,j) = star%omega(star%nz)
-            pts(19,j) = atmo_struct%atmo_specific_heat_cp(i)
-            pts(21,j) = star%xa(i_h1,star%nz)
-            pts(22,j) = star%xa(i_metals,star%nz)
+            pts(ipul_L,j) = exp(ln10*star%log_L)*star%solar_luminosity_cgs
+            pts(ipul_gamma1,j) = atmo_struct%atmo_gamma1(i)
+            pts(ipul_kap,j) = atmo_struct%atmo_opacity(i)
+            pts(ipul_omega,j) = star%omega(star%nz)
+            pts(ipul_cp,j) = atmo_struct%atmo_specific_heat_cp(i)
+            pts(ipul_h1,j) = star%xa(i_h1,star%nz)
+            pts(ipul_z,j) = star%xa(i_metals,star%nz)
             do k = 1, 11
-               pts(22+k,j) = star%xa(species_slot(k),star%nz)
+               pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
             end do
          end select
-         pts(1,j) = r
-         pts(2,j) = m
-         pts(4,j) = P
-         pts(5,j) = T
-         pts(6,j) = rho
-         pts(7,j) = nab
-         pts(10,j) = nab_ad
-         pts(11,j) = delta
+         pts(ipul_r,j) = r
+         pts(ipul_m,j) = m
+         pts(ipul_P,j) = P
+         pts(ipul_T,j) = T
+         pts(ipul_rho,j) = rho
+         pts(ipul_grad,j) = nab
+         pts(ipul_grada,j) = nab_ad
+         pts(ipul_delta,j) = delta
          if (r > 0.0d0) then
             grav = exp(ln10*cgl)*m/(r*r)
-            pts(8,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
+            pts(ipul_N2,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
          end if
       end do
 
@@ -576,19 +640,19 @@ subroutine build_pulse_points(pts)
 ! radiative side and is kept -- it is physics, not noise.
 ! Endpoints copy their neighbor, matching compute_seismic_columns.
       do j = 2, n_ext - 1
-         if (pts(8,j) >= 0.0d0 .and. &
-              pts(1,j) > 0.0d0 .and. pts(1,j+1) > pts(1,j-1) .and. &
-              pts(9,j) > 0.0d0) then
-            grav = exp(ln10*cgl)*pts(2,j)/(pts(1,j)*pts(1,j))
-            pts(8,j) = grav*( &
-                 (log(pts(4,j+1)) - log(pts(4,j-1)))/pts(9,j) - &
-                 (log(pts(6,j+1)) - log(pts(6,j-1))) ) / &
-                 (pts(1,j+1) - pts(1,j-1))
+         if (pts(ipul_N2,j) >= 0.0d0 .and. &
+              pts(ipul_r,j) > 0.0d0 .and. pts(ipul_r,j+1) > pts(ipul_r,j-1) .and. &
+              pts(ipul_gamma1,j) > 0.0d0) then
+            grav = exp(ln10*cgl)*pts(ipul_m,j)/(pts(ipul_r,j)*pts(ipul_r,j))
+            pts(ipul_N2,j) = grav*( &
+                 (log(pts(ipul_P,j+1)) - log(pts(ipul_P,j-1)))/pts(ipul_gamma1,j) - &
+                 (log(pts(ipul_rho,j+1)) - log(pts(ipul_rho,j-1))) ) / &
+                 (pts(ipul_r,j+1) - pts(ipul_r,j-1))
          end if
       end do
       if (n_ext >= 2) then
-         pts(8,1) = pts(8,2)
-         pts(8,n_ext) = pts(8,n_ext-1)
+         pts(ipul_N2,1) = pts(ipul_N2,2)
+         pts(ipul_N2,n_ext) = pts(ipul_N2,n_ext-1)
       end if
 end subroutine build_pulse_points
 

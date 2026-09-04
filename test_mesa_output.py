@@ -270,7 +270,7 @@ def test_gsm_pulse_output(tmp_path):
         n = int(f.attrs["n"][0]) if hasattr(f.attrs["n"], "__len__") \
             else int(f.attrs["n"])
         assert int(f.attrs["version"][0] if hasattr(f.attrs["version"],
-                   "__len__") else f.attrs["version"]) == 101
+                   "__len__") else f.attrs["version"]) == 110
         assert len(f["r"]) == n
         assert sorted(f.keys()) == sorted(
             ["r", "M_r", "L_r", "P", "T", "rho", "nabla", "N2", "Gamma_1",

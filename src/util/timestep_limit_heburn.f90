@@ -4,7 +4,7 @@
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
 ! original ytime.f; only variable names, source form, and comment
-! style were updated.
+! style were updated -- except the He-shell branch (2026, see below).
 !
 ! Stars with a helium luminosity have a timestep limit based on the
 ! time required to burn atime(4) of Y at the maximum in temperature or
@@ -26,15 +26,12 @@ subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, lum
       double precision, intent(in) :: log_density(json), luminosity(json), &
            enclosed_mass(json), log_temperature(json)
       integer, intent(in) :: convective_core_edge_zone, num_points
-! helium_dt: intent(inout), not intent(out) -- in the "not a helium
-! flash, core Y below atime(1)" branch below, the original reads
-! DELTSY on the right-hand side before this call has assigned it
-! (relying on whatever value the caller's actual argument already
-! held). This is preserved exactly, not fixed.
-      double precision, intent(inout) :: helium_dt
+! helium_dt: assigned on every path (2026 -- the He-shell branch no
+! longer reads the incoming value; see the note there).
+      double precision, intent(out) :: helium_dt
       integer, intent(in) :: h_shell_zone_begin
       double precision :: max_temp, local_log_density, local_log_temperature
-      integer :: max_temp_zone, zone_idx, engeb_zone
+      integer :: max_temp_zone, zone_idx, engeb_zone, shell_zone
       double precision :: hydrogen_fraction, helium_fraction, &
            metal_fraction, he3_fraction, c12_fraction, c13_fraction, &
            n14_fraction, n15_fraction, o16_fraction, o17_fraction, &
@@ -107,9 +104,30 @@ subroutine timestep_limit_heburn(energy_gen_terms, composition, log_density, lum
                (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))
 
             else
-
-            helium_dt = (5.85d17/star%solar_luminosity_cgs)*helium_dt* &
-                 (enclosed_mass(h_shell_zone_begin-1)/luminosity(h_shell_zone_begin-1))
+! 2026 (bugsweep sec-10/11): core helium exhausted -- the He-shell
+! branch. The original (ytime.f) read DELTSY on the right-hand side
+! here, i.e. the PREVIOUS call's timestep (kept alive only by the
+! caller's blanket SAVE), and multiplied it by M/L again: a
+! dimensionless-nonsense recurrence that gave ~0 s on the first
+! model after exhaustion and, once the SAVE was gone, exactly 0 ->
+! dt = 0 -> NaN (the run_from_zahb_to_tahb failure at Y_c < atime(1)).
+! Compute a fresh limit from the He-shell controls instead, mirroring
+! the H-shell branch of timestep_limit_hburn: atime(14) (time_dy_total,
+! Msun of He burned per step) and atime(12) (time_dy_shell, fraction
+! of Y burned at the shell) -- both were mapped by map_user_inputs but
+! never consumed until now. The reference point is the shell just
+! below the H-burning shell (the He-rich core), as before.
+            shell_zone = max(h_shell_zone_begin-1, 1)
+            helium_dt = 1.0d20
+            if (luminosity(shell_zone) .gt. 0.0d0) then
+               if (star%ctrl%atime(14) .gt. 0.0d0) helium_dt = min(helium_dt, &
+                    (5.85d17/star%solar_luminosity_cgs)*star%ctrl%atime(14)* &
+                    (star%solar_mass_cgs/luminosity(shell_zone)))
+               if (star%ctrl%atime(12) .gt. 0.0d0) helium_dt = min(helium_dt, &
+                    (5.85d17/star%solar_luminosity_cgs)*star%ctrl%atime(12)* &
+                    composition(2,shell_zone)* &
+                    (enclosed_mass(shell_zone)/luminosity(shell_zone)))
+            end if
 
          endif
 

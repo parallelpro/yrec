@@ -25,10 +25,11 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
       use hdf5
       use h5lt
+      use stitched_model_lib, only: n_pulse_cols, ipul_gyre_last
       implicit none
 
       integer, intent(in) :: n
-      double precision, intent(in) :: pts(35, n)
+      double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
 
@@ -67,7 +68,7 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
            [gyre_schema], 1_size_t, herr)
 
       dims1(1) = int(n, hsize_t)
-      do i = 1, 18
+      do i = 1, ipul_gyre_last
          call h5ltmake_dataset_double_f(file_id, trim(dset_names(i)), &
               1, dims1, pts(i,1:n), herr)
       end do
@@ -80,9 +81,10 @@ end subroutine write_gsm_pulse
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
       use luout_lib
+      use stitched_model_lib, only: n_pulse_cols, ipul_gyre_last
       implicit none
       integer, intent(in) :: n
-      double precision, intent(in) :: pts(35, n)
+      double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
 

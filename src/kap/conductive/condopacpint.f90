@@ -111,13 +111,23 @@ subroutine condopacpint(log10_density, log10_temperature, &
 !           CONDL = LOG10( (X + 1D0) / 2D0 ) -
 !     *             LOG10( X*CONDX + .5D0*Y*CONDY + .5D0*z*CONDZ)
 
-           conductive_dlnkap_dlnrho = mix_log10_cond * (weight_h1*dlnkap_dlnrho_h1 &
-                + weight_he4*dlnkap_dlnrho_he4 + weight_ox*dlnkap_dlnrho_ox)
+! 2026 (bugsweep Batch 2): with mix = -log10(sum_i w_i 10^-K_i) the
+! derivative is the conductivity-weighted mean of the per-species
+! dK_i/dx: d mix/dx = sum_i w_i cond_i dK_i/dx / sum_i w_i cond_i.
+! The inherited code (a) multiplied by mix_log10_cond (~12-17)
+! instead of dividing by the summed conductivity and (b) fed the
+! rho-derivatives into the T-derivative as well (dlnkap_dlnt_* were
+! computed but never read). Only the derivatives change; the
+! conductive opacity itself is untouched.
+           conductive_dlnkap_dlnrho = (weight_h1*cond_h1*dlnkap_dlnrho_h1 &
+                + weight_he4*cond_he4*dlnkap_dlnrho_he4 + weight_ox*cond_ox*dlnkap_dlnrho_ox) &
+                / (weight_h1*cond_h1 + weight_he4*cond_he4 + weight_ox*cond_ox)
 !           QODC = 2D0 * CONDL / ( 1D0 + X ) *
 !     *          (X*CONDX*QODCX +.5D0*Y*CONDY*QODCY +.5D0*Z*COBDZ*QODCZ)
 
-            conductive_dlnkap_dlnt = mix_log10_cond * (weight_h1*dlnkap_dlnrho_h1 &
-                 + weight_he4*dlnkap_dlnrho_he4 + weight_ox*dlnkap_dlnrho_ox)
+           conductive_dlnkap_dlnt = (weight_h1*cond_h1*dlnkap_dlnt_h1 &
+                + weight_he4*cond_he4*dlnkap_dlnt_he4 + weight_ox*cond_ox*dlnkap_dlnt_ox) &
+                / (weight_h1*cond_h1 + weight_he4*cond_he4 + weight_ox*cond_ox)
 !           QOTC = 2D0 * CONDL / ( 1D0 + X ) *
 !     *          (X*CONDX*QOTCX +.5D0*Y*CONDY*QOTCY +.5D0*Z*CONDZ*QOTCZ)
 

@@ -7,19 +7,33 @@
 ! style were updated.
 !
 ! OPAL 2006 EOS analogue of rhoofp01.f90 (see there and rhoofp.f90
-! for the general description), with three preserved differences:
+! for the general description), with two preserved differences:
 ! (1) pressure_max/pressure_min here do NOT add a radiation term
 ! (rhoofp.f90/rhoofp01.f90 both add rad_flag*4/3*rat*t6**4); (2) the
 ! trial esac06.f90 calls below pass a hardcoded 0 for the radiation
-! flag (not rad_flag) -- only the very first, table-priming call
-! passes rad_flag through; (3) the convergence tolerance was loosened
-! from 0.5d-7 to 1.0d-5 (see the dated comment below) to stop
-! opal_eos%eos_output_06(5) from growing without bound and crashing some model
-! runs.
+! flag (not rad_flag); since Batch 3 so does the table-priming call
+! (see the note at that call).
+!
+! 2026 (bugsweep Batch 2): the convergence tolerance is back at the
+! original 0.5d-7 (same as rhoofp/rhoofp01). It had been loosened to
+! 1.0d-5 in 2025 to stop opal_eos%eos_output_06(5) from "growing
+! without bound"; the real cause was esac06's derivative tail
+! rescaling the cv slot from stale data on every deriv_order=1 trial
+! call, fixed in bug-sweep batch 0 (the tail is now gated on
+! deriv_order). The loose tolerance only hid the symptom by making
+! the inversion converge in fewer trials. Also in this change: the
+! lower bracket is verified (repeat the x0.2 shrink until
+! P(rho1) <= P_target or the floor is reached -- plain regula falsi
+! only converges from a valid bracket), the refinement cap is raised
+! from 11 to 30 (regula falsi is linear once an endpoint sticks), and
+! the non-convergence message is written to the run log instead of
+! silently returning -999 (which eqstat turns into a Yale/SCV
+! fallback with ierr = 0).
 double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
       use opal_eos_lib
+      use luout_lib, only: run_log_unit
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -48,7 +62,8 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       double precision :: pressure_max, pressure_min
       double precision :: density_trial1, density_trial2, density_trial3
       double precision :: pressure_trial1, pressure_trial2, pressure_trial3
-      integer :: refine_count
+      integer :: refine_count, shrink_count
+      integer, parameter :: max_refine = 30, max_shrink = 20
 
       integer, intent(out) :: ierr
 
@@ -64,8 +79,13 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          t6_dbg = 1.0d0
          density_dbg = 0.001d0
          ideriv_dbg = 1
+! 2026 (bugsweep Batch 3): radiation flag 0 here, not rad_flag. This
+! call only loads the tables and its output is discarded; with
+! ideriv=1 only the pressure slot is interpolated, so radsub06 would
+! divide by a zero cv (0/0 -> NaN in the gamma slots, a trap under
+! -ffpe-trap=invalid). The next full esac06 call rewrites every slot.
          call esac06(hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
-              rad_flag, ierr, *999)
+              0, ierr, *999)
          if (ierr /= 0) then
             continue
             rhoofp06 = -999.0d0
@@ -132,16 +152,25 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
       if (pressure_trial1.gt.pressure_no_rad) then
          pressure_trial2 = pressure_trial1
          density_trial2 = density_trial1
-         density_trial1 = 0.2d0*density_trial1
-         if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
-         call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, *999)
-         if (ierr /= 0) then
-            continue
-            rhoofp06 = -999.0d0
-            
-            return
-         end if
-         pressure_trial1 = opal_eos%eos_output_06(1)
+         shrink_count = 0
+         shrink: do
+            shrink_count = shrink_count + 1
+            density_trial1 = 0.2d0*density_trial1
+            if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
+            call esac06(hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, *999)
+            if (ierr /= 0) then
+               continue
+               rhoofp06 = -999.0d0
+
+               return
+            end if
+            pressure_trial1 = opal_eos%eos_output_06(1)
+! 2026 (bugsweep Batch 2): keep shrinking until the root is bracketed
+! (the original did a single x0.2 step and let regula falsi
+! extrapolate from an unbracketed pair).
+            if (pressure_trial1.le.pressure_no_rad) exit shrink
+            if (density_trial1.le.1.0d-14 .or. shrink_count.ge.max_shrink) exit shrink
+         end do shrink
       else
          density_trial2 = 5.0d0*density_trial1
 !          if(rhog2 .gt. rho(klo)) rhog2=rho(klo)  ! Corrected below   llp  8/19/08
@@ -170,35 +199,26 @@ double precision function rhoofp06(hydrogen_fraction, t6_temperature, &
          return
       end if
       pressure_trial3 = opal_eos%eos_output_06(1)
-! Changed the comparison below to use the commented-out value 1.D-5
-! found here to prevent array value eos(5) from growing without bound
-! and crashing the program during certain model runs. - MR 2025-10-10
-      if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.1.0d-5) then
-!      IF (DABS((P3-PNR)/PNR) .LT. 0.5D-7) THEN
+! 2026 (bugsweep Batch 2): tolerance restored to the original 0.5d-7
+! (was 1.0d-5 from 2025-10-10 to 2026-09; see the header note).
+      if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.0.5d-7) then
          rhoofp06 = density_trial3
          return
       end if
       if (pressure_trial3.gt.pressure_no_rad) then
          density_trial2 = density_trial3
          pressure_trial2 = pressure_trial3
-         if (refine_count.lt.11) cycle refine
-!        write (ISHORT,'("Rhoofp06: No convergence after 10 tries")')
-         continue
-         rhoofp06 = -999.0d0
-         
-         return
-!        stop
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
-         if (refine_count.lt.11) cycle refine
-!        write (ISHORT,'("RHOOFP06: No convergence after 10 tries")')
-         continue
-         rhoofp06 = -999.0d0
-         
-         return
-!        stop
       end if
+      if (refine_count.lt.max_refine) cycle refine
+      write (run_log_unit,'("RHOOFP06: no convergence after ",I0," tries;", &
+           & " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
+           max_refine, hydrogen_fraction, t6_temperature, pressure_e12, &
+           abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+      rhoofp06 = -999.0d0
+      return
       end do refine
 
   999 continue

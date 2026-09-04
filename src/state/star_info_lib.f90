@@ -255,6 +255,14 @@ module star_info_lib
             double precision :: age_at_target_radius, age_prev_model, &
                  log_l_at_target_radius, log_l_at_target_radius_prev_run, &
                  log_l_prev_model, log_r_prev_model
+! run-log bookkeeping: why the (last) kind card ended -- the default
+! set per card by init_stop_conditions, overridden by whichever stop
+! fires; read by run_log_lib's end-of-run summary.
+            character(len=96) :: termination_reason = 'model budget exhausted'
+! run-log bookkeeping: the "fully convective - no settling" message
+! prints once per suspension (per-model repeats only under
+! report_solver_diagnostics); this latch remembers it was reported.
+            logical :: settling_suspended_reported = .false.
             logical :: star_found_flag = .false., &
                  just_passed_target_radius_flag = .false., &
                  use_two_z_tables = .false.
@@ -446,7 +454,7 @@ module star_info_lib
                  pulse_specific_heat(json)
             double precision :: pulse_mean_molecular_weight(json), &
                  pulse_dlnrho_dlnt(json)
-            double precision :: pulse_electron_mean_molecular_weight(json)
+            double precision :: pulse_electron_mean_weight_inverse(json)
 ! 2026 (phase six, step 1): the nine remaining model-state modules,
 ! folded in the same way as prev/diag/run/rot -- types stay in their
 ! own files, the single instances live here. See ROADMAP.md phase six

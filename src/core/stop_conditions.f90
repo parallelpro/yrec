@@ -39,6 +39,7 @@ module stop_conditions
       public :: step_continue, step_kind_card_done, step_leave_run_loop
       public :: reached_end_age
       public :: check_stop_conditions, init_stop_conditions
+      public :: converged_model_is_nan
 
 ! evolve_step -> run_yrec model-loop protocol
       integer, parameter :: step_continue = 0        ! advance accepted
@@ -51,6 +52,47 @@ module stop_conditions
       character(len=1), parameter :: stop_letter(nstops) = ['D','X','Y']
 
 contains
+
+! ---------------------------------------------------------------
+! 2026 (bugsweep Batch 3): NaN guard. Nothing in the solver tests
+! for NaN, and a NaN structure passes every convergence test (all
+! comparisons are false), so a run that went non-finite (the
+! zahb->tahb dt = 0 case before the heburn fix) kept "converging",
+! wrote NaN models to the end of its budget and exited 0. Called by
+! evolve_step on the converged structure, before it is written;
+! a hit is a real error (positive ierr -> exit 1), not a stop.
+logical function converged_model_is_nan()
+      use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+      integer :: nz, k
+      character(len=24) :: what
+
+      converged_model_is_nan = .true.
+      nz = star%nz
+      what = ' '
+      if (ieee_is_nan(star%log_L)) then
+         what = 'log_L'
+      else if (ieee_is_nan(star%log_Teff)) then
+         what = 'log_Teff'
+      else if (ieee_is_nan(star%dage) .or. ieee_is_nan(star%dt)) then
+         what = 'age/timestep'
+      else
+         do k = 1, nz
+            if (ieee_is_nan(star%logT(k)) .or. ieee_is_nan(star%logRho(k)) &
+                 .or. ieee_is_nan(star%logP(k)) .or. ieee_is_nan(star%logR(k)) &
+                 .or. ieee_is_nan(star%luminosity_lsun(k))) then
+               write(what,'(a,i0)') 'structure at zone ', k
+               exit
+            end if
+         end do
+         if (what == ' ') converged_model_is_nan = .false.
+      end if
+      if (converged_model_is_nan) then
+         write(*,10) trim(what), star%model_number + 1
+         write(run_log_unit,10) trim(what), star%model_number + 1
+         star%termination_reason = 'NaN in '//trim(what)
+      end if
+   10 format(1x,'ERROR: NaN in ',a,' after model ',i0,' converged; stopping')
+end function converged_model_is_nan
 
 ! ---------------------------------------------------------------
 ! Per-model stop check, called by evolve_step after the converged
@@ -67,6 +109,9 @@ subroutine check_stop_conditions(model_iteration, step_status)
       step_status = step_continue
 
       if (reached_end_age(star%job%nk)) then
+         write(star%termination_reason,'(a,es10.3,a)') &
+              'target age reached (', &
+              star%job%target_end_age(star%job%nk), ' yr)'
          step_status = step_kind_card_done
          return
       end if
@@ -130,12 +175,16 @@ logical function structure_limit_stop_triggered()
                  trim(qname(k))//'_upper_limit', qup(k)
             write(run_log_unit,10) trim(qname(k)), qval(k), 'above', &
                  trim(qname(k))//'_upper_limit', qup(k)
+            star%termination_reason = &
+                 trim(qname(k))//' above '//trim(qname(k))//'_upper_limit'
             structure_limit_stop_triggered = .true.
          else if (qlo(k) > -0.9d99 .and. qval(k) < qlo(k)) then
             write(*,10) trim(qname(k)), qval(k), 'below', &
                  trim(qname(k))//'_lower_limit', qlo(k)
             write(run_log_unit,10) trim(qname(k)), qval(k), 'below', &
                  trim(qname(k))//'_lower_limit', qlo(k)
+            star%termination_reason = &
+                 trim(qname(k))//' below '//trim(qname(k))//'_lower_limit'
             structure_limit_stop_triggered = .true.
          end if
       end do
@@ -167,6 +216,8 @@ logical function abundance_stop_triggered(nk)
             write(*,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
                  star%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(k,nk)
+            star%termination_reason = &
+                 'central '//stop_letter(k)//' below stop value'
             abundance_stop_triggered = .true.
          end if
       end do
@@ -182,6 +233,9 @@ end function abundance_stop_triggered
 subroutine init_stop_conditions(nk)
       integer, intent(in) :: nk
       integer :: k
+! default end-of-card reason; overridden by whichever stop fires
+! (read by run_log_lib's end-of-run summary)
+      star%termination_reason = 'model budget exhausted'
       if (.not. star%job%end_age_stop_active(nk)) return
       do k = 1, nstops
          if (stop_value(k,nk).gt.0.0d0 .and. &
