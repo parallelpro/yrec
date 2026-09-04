@@ -13,27 +13,9 @@
 ! lir and ratext, originally also housed in nuclear/ (and formerly
 ! part of this module), moved out to numerics_lib (2026): both are
 ! generic numerical utilities with no nuclear-physics content -- they
-! were only filed here because this module's own liburn (below) happens
-! to be one of their callers. See numerics_lib.f90 and GUIDELINES.md's rule that
-! folder/module placement should track function, not caller.
-!
-! Completed the merge (2026, phase-two reorg -- see GUIDELINES.md's
-! "Physics domains still entangled with the solver"): dburn.f90,
-! dburnm.f90 (a genuine near-duplicate of dburn, not collapsed into
-! it -- different rate-data source, timestep units, convergence
-! threshold, and accretion-weighting formula; investigated and kept
-! separate), deutrate.f90, engeb.f90, liburn.f90 (which itself
-! bundled a second small subroutine, safedivexp), liburn2.f90,
-! lirate88.f90, and the two private Fermi-Dirac integral functions
-! ifermi12.f90/zfermim12.f90 (previously relocated here from kap/
-! during that domain's sweep; called only from this module's own
-! `rates`, so private to it) all moved in unchanged. engeb.f90's own
-! `use net_lib` (it called `neutrino`) was removed -- a module
-! cannot use itself; host association already gives every contained
-! procedure access to every sibling procedure. Callers that didn't
-! already `use net_lib` (setup/mid_timestep_model.f90, misc/henyey_coefficients.f90,
-! core/main.f90, util/timestep_limit_heburn.f90, rotation/evolve_angular_momentum.f90,
-! mixing/burn_settle_mix.f90) had it added.
+! were only filed here because liburn (now in burn_lib) happens to be
+! one of their callers. See numerics_lib.f90 and GUIDELINES.md's rule
+! that folder/module placement should track function, not caller.
 ! ---------------------------------------------------------------------
 ! MAP OF THE MODULE (2026; updated at the physics-purity split).
 ! net_lib now holds ONLY the pure kernels -- functions of
@@ -134,33 +116,27 @@ subroutine nulosses(temp,den,snu,xmass,ymass,aion,zion, &
                      dsnudt,dsnudd)
 
       implicit none
-!..tests the neutrino loss rate routine
 
 !..ionmax  = number of isotopes in the network
 !..xmass   = mass fractions
-!..ymass   = molar fractions
+!..ymass   = molar fractions (output, from azbar)
 !..aion    = number of nucleons
 !..zion    = number of protons
 
       integer          ionmax
       parameter        (ionmax=4)
-      double precision xmass(ionmax),ymass(ionmax), &
-                       aion(ionmax),zion(ionmax),temp,den,abar,zbar, &
-                       snu,dsnudt,dsnudd,dsnuda,dsnudz
-
-
+      double precision, intent(in) :: xmass(ionmax), aion(ionmax), &
+                       zion(ionmax), temp, den
+      double precision, intent(out) :: ymass(ionmax), snu, dsnudt, dsnudd
+      double precision abar,zbar,dsnuda,dsnudz
 
 !..get abar and zbar
       call azbar(xmass,aion,zion,ionmax, &
                  ymass,abar,zbar)
 
-
-
 !..get the neutrino losses
       call sneut(temp,den,abar,zbar, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
-
-
 
       return
 end subroutine nulosses
@@ -180,13 +156,12 @@ subroutine azbar(xmass,aion,zion,ionmax, &
 !..mean number of nucleons = abar
 !..mean nucleon charge     = zbar
 
-
-
 !..declare
-      integer          i,ionmax
-      double precision xmass(ionmax),aion(ionmax),zion(ionmax), &
-                       ymass(ionmax),abar,zbar,zbarxx,ytot1
-
+      integer, intent(in) :: ionmax
+      double precision, intent(in) :: xmass(ionmax),aion(ionmax),zion(ionmax)
+      double precision, intent(out) :: ymass(ionmax),abar,zbar
+      integer          i
+      double precision zbarxx,ytot1
 
       zbarxx  = 0.0d0
       ytot1   = 0.0d0
@@ -218,7 +193,7 @@ end subroutine azbar
 subroutine sneut(temp,den,abar,zbar, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
       use math_lib
-implicit none
+      implicit none
 !..this routine computes neutrino losses from the analytic fits of
 !..itoh et al. apjs 102, 411, 1996, and also returns their derivatives.
 
@@ -240,12 +215,11 @@ implicit none
 
 
 !..declare the pass
-double precision temp,den,abar,zbar, &
-                 snu,dsnudt,dsnudd,dsnuda,dsnudz
+double precision, intent(in) :: temp,den,abar,zbar
+double precision, intent(out) :: snu,dsnudt,dsnudd,dsnuda,dsnudz
 
 
 !..local variables
-!       integer          i
 double precision spair,spairdt,spairdd,spairda,spairdz, &
                  splas,splasdt,splasdd,splasda,splasdz, &
                  sphot,sphotdt,sphotdd,sphotda,sphotdz, &
@@ -255,12 +229,12 @@ double precision spair,spairdt,spairdd,spairda,spairdz, &
 
 double precision t9,xl,xldt,xlp5,xl2,xl3,xl4,xl5,xl6,xl7,xl8,xl9, &
                  xlmp5,xlm1,xlm2,xlm3,xlm4,xlnt,cc,den6,tfermi, &
-                 a0,a1,a2,a3,b1,b2,c00,c01,c02,c03,c04,c05,c06, &  ! b3
+                 a0,a1,a2,a3,b1,b2,c00,c01,c02,c03,c04,c05,c06, &
                  c10,c11,c12,c13,c14,c15,c16,c20,c21,c22,c23,c24, &
                  c25,c26,dd00,dd01,dd02,dd03,dd04,dd05,dd11,dd12, &
                  dd13,dd14,dd15,dd21,dd22,dd23,dd24,dd25,b,c,d,f0, &
                  f1,deni,tempi,abari,zbari,f2,f3,z,xmue,ye, &
-                 dum,dumdt,dumdd,dumda,dumdz, &  ! rp1,rn1
+                 dum,dumdt,dumdd,dumda,dumdz, &
                  gum,gumdt,gumdd,gumda,gumdz
 
 
@@ -327,7 +301,9 @@ parameter        (pi     = 3.1415926535897932384d0, &
 !..xnufam is the number of neutrino flavors = 3.02 plus/minus 0.005 (1998)
 !..change theta and xnufam if need be, and the changes will automatically
 !..propagate through the routine. cv and ca are the vector and axial currents.
-
+!..2026 (bugsweep Batch 2): tfac2 was `cvp*cvp - cap-cap` (typo inherited
+!..from sneut.f); Itoh et al. 1996 eq. 2.2-2.5 / Timmes sneut5 / MESA
+!..mod_neu use cvp**2 - cap**2.
 
 double precision theta,xnufam,cv,ca,cvp,cap,tfac1,tfac2,tfac3, &
                  tfac4,tfac5,tfac6
@@ -340,9 +316,6 @@ parameter        (theta  = 0.2319d0, &
                   tfac1  = cv*cv + ca*ca + &
                            (xnufam-1.0d0) * (cvp*cvp+cap*cap), &
                   tfac2  = cv*cv - ca*ca + &
-! 2026 (bugsweep Batch 2): was `cvp*cvp - cap-cap` (typo inherited
-! from sneut.f); Itoh et al. 1996 eq. 2.2-2.5 / Timmes sneut5 / MESA
-! mod_neu use cvp**2 - cap**2.
                            (xnufam-1.0d0) * (cvp*cvp - cap*cap), &
                   tfac3  = tfac2/tfac1, &
                   tfac4  = 0.5d0 * tfac1, &
@@ -1582,10 +1555,7 @@ end subroutine sneut
 ! readability refactor. Logic and numerics are unchanged from the
 ! original rates.f; only variable names, source form, and comment
 ! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model). Numeric literals (including
-! ones missing the customary D0/D-3/etc suffix, e.g. many of the
-! DATA-statement values below) are copied character-for-character from
-! the original -- do not "correct" them, see project notes.
+! (examples/run_standard_solar_model).
 !
 ! JULY 3, 1991 (MHP)
 ! THIS SUBROUTINE COMPUTES THE NUCLEAR BURNING RATES FOR USE IN KEMCOM.
@@ -1682,10 +1652,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
            rate_triple_alpha(json), rate_zero13(json)
       double precision, intent(out) :: frac_c12_alpha(json), &
            frac_be7_electron(json)
-
-
-
-
 
       double precision :: mass_frac(13), rate(13), screening_factor(13), &
            charge_product(13), z53(13), z43(13), z23(13), z86(13)
@@ -1855,7 +1821,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       double precision :: be7_electron_rate, be7_proton_rate, be7_temp_factor, &
            be7_q_factor, be7p_charge_product, be7p_z86, be7p_screening_u, &
            be7_mass_factor
-      double precision :: be7_electron_frac, c12_alpha_frac, o16_gamma_frac
+      double precision :: be7_electron_frac, c12_alpha_frac
       double precision :: o16_gamma_rate, c12_alpha_n15p_rate
 
       mass_frac(1) = 0.0d0
@@ -2003,8 +1969,8 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       do i=1,num_reactions
          weak_screening_u=lambda0_zcurl*charge_product(i)
          if(weak_screening_u.le.star%ctrl%weak_screening_threshold) then
-! WEAKSCREENING IS A NUMERICAL PARAMETER PASSED IN THE FLUX COMMON
-!  BLOCK. TO OBTAIN THE GRABOSKE ET AL. AND SALPETER STANDARD RESULTS,
+! star%ctrl%weak_screening_threshold (WEAKSCREENING) IS A NUMERICAL
+!  PARAMETER READ FROM THE INPUT. TO OBTAIN THE GRABOSKE ET AL. AND SALPETER STANDARD RESULTS,
 !  USE: WEAKSCREENING = 0.03.  FOR THE STANDARD SOLAR MODEL, THIS IS THE
 !  VALUE THAT SHOULD BE ADOPTED. TO INVESTIGATE THE EFFECT OF ALWAYS USING
 !  WEAK SCREENING, USE A LARGE VALUE FOR WEAKSCREENING, E. G., 30.  AS
@@ -2063,7 +2029,6 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
             star%qqs0ee_scale(i)*(q4(i)*t9p23+q5(i)*t9)
          rate(i)=density*r1*exp(q6(i)*t9m13+q7(i)+(q8(i)*t9)**2+screening_factor(i))
          rate(i) = rate(i)*star%cross_section_scale(i)
-         if(rate(i).lt.1.d-30) rate(i)=0.0d0
       end do
 ! ***************************************************************
 ! END OF CALCULATION OF REACTION RATES FOR FIRST 7 REACTIONS.
@@ -2168,12 +2133,11 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !      C12ALPHA = C12ALPHA*67500.
       c12_alpha_n15p_rate = c12_alpha_n15p_rate*67500*star%c12_alpha_scale
       c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
-      o16_gamma_frac = 1.0d0 - c12_alpha_frac
 ! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
       endif
       do i=nz,num_reactions
          rate(i)=0.d0
-   end do
+      end do
 !***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
 !   RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
 !   THE CONVERSION FACTOR IN THE FRONT OBTAINED FROM VANDENBERG'S
@@ -2258,9 +2222,13 @@ end subroutine rates
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 ! KC 2025-05-31 SAFEDIVEXP
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+! Overflow-safe numerator/exp(exponent): returns 0 when exp(exponent)
+! would overflow (709.78 is ln(huge(1.0d0))).
 subroutine safedivexp(numerator, exponent)
       use math_lib
-      double precision :: numerator, exponent
+      implicit none
+      double precision, intent(inout) :: numerator
+      double precision, intent(in) :: exponent
 
       if (exponent .lt. 709.7827d0) then
          numerator = numerator/exp(exponent)
@@ -2300,7 +2268,6 @@ double precision function ifermi12(fermi_half_integral)
       double precision :: fd_order, coef_num_small(12), coef_den_small(12), &
            coef_num_large(12), coef_den_large(12), numerator, denominator, &
            scaled_arg
-!     unused in the original: z,drn
 !..load the coefficients of the expansion
       data  fd_order,deg_num_small,deg_den_small,deg_num_large,deg_den_large &
            /0.5d0, 4, 3, 6, 5/
@@ -2366,12 +2333,10 @@ double precision function zfermim12(degeneracy_parameter)
 !..declare
       integer :: term_idx, deg_num_small, deg_den_small, deg_num_large, &
            deg_den_large
-!       double precision fd_order,coef_num_small(12),coef_den_small(12),coef_num_large(12),coef_den_large(12),numerator,denominator,xx  ! KC 2025-05-31
       double precision :: coef_num_small(12), coef_den_small(12), &
            coef_num_large(12), coef_den_large(12), numerator, denominator, &
            scaled_arg
 !..load the coefficients of the expansion
-!       data  fd_order,deg_num_small,deg_den_small,deg_num_large,deg_den_large /-0.5d0, 7, 7, 11, 11/  ! KC 2025-05-31
       data  deg_num_small,deg_den_small,deg_num_large,deg_den_large /7, 7, 11, 11/
       data  (coef_num_small(term_idx),term_idx=1,8)/ 1.71446374704454d7,    3.88148302324068d7, &
            3.16743385304962d7,    1.14587609192151d7, &
