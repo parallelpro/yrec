@@ -54,7 +54,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
      eq, eq_mid)
 
       use star_info_lib, only: star, json
-      use numerics_lib
+      use numerics_lib, only: interp, intrp2
       implicit none
 
       integer, intent(in) :: num_light
