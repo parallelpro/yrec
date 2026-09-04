@@ -27,6 +27,8 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
       double precision, intent(out) :: max_domega_frac
       integer :: start_index, i
       double precision :: test_domega, dt_factor, dt_factor_limit
+! dt_unlimited: "no limit from this criterion" sentinel (seconds).
+      double precision, parameter :: dt_unlimited = 1.0d20
 
       start_index = 1
       max_domega_frac = 2.0d0*abs(omega(start_index)-star%old_omega(start_index))/ &
@@ -41,7 +43,7 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
 ! if no change from previous model,set rotation_dt to timestep
 ! stored in the previous model.
       if (dt_factor.eq.0.d0)then
-          rotation_dt = 1.0d20
+          rotation_dt = dt_unlimited
           return
       endif
 ! restrict change in timestep to no more than a factor of atime(13)

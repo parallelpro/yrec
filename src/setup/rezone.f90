@@ -44,7 +44,9 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       logical :: am_transport_convective_flag(json)
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
-      integer :: reaction_rate_species_index(7)
+! reaction_rate_by_zone rows carried across the rezone (H1, He4, He3,
+! C12, C13, N14, O16; see rotation_scratch_lib).
+      integer, parameter :: reaction_rate_species_index(7) = [1,2,4,5,6,7,9]
       double precision :: z_new(json), x_new(json)
 ! MHP 6/00 added dummy vector
 ! MHP 7/02 added chi vector - a running total of the normalized
@@ -53,7 +55,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       double precision :: spline_x(json), spline_y(json), chi(json), &
            spline_second_deriv(json)
       integer :: gradient_flag_index(json)
-      data reaction_rate_species_index/1,2,4,5,6,7,9/
       integer :: num_species_tracked, i, j, k
       integer :: flag_count
       double precision :: pressure_test, dp_scale
@@ -654,7 +655,7 @@ subroutine interpolate_onto_new_grid
 
 !  HCOMPM IS THE ARRAY OF CHANGES IN COMPOSITION DUE TO NUCLEAR BURNING.
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
-      do i = 1,7
+      do i = 1,size(reaction_rate_species_index)
        do j = 1,star%nz
           star%logP_start(j) = rot_scr%reaction_rate_by_zone(reaction_rate_species_index(i),j)
        end do

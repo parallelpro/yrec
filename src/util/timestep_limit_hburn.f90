@@ -55,6 +55,8 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
            metal_fraction, he3_fraction, c12_fraction, c13_fraction, &
            n14_fraction, o16_fraction, o18_fraction
       integer :: zone_begin, zone_end
+! energy released per gram of hydrogen burned (erg/g)
+      double precision, parameter :: h_burn_energy_per_gram = 6.00d18
       double precision :: dc_dt, do_dt, dx_dt, dy_dt, shell_dt_x_depletion
 
 !  h-core burning time criterion
@@ -63,14 +65,14 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
 !   just in the central shell.
       if(composition(1,1).ge.star%ctrl%atime(1)) then
        delta_x = min(star%ctrl%atime(2),star%ctrl%atime(3)*composition(1,convective_core_edge_zone))
-       hydrogen_dt =(6.00d18/star%solar_luminosity_cgs)* &
+       hydrogen_dt =(h_burn_energy_per_gram/star%solar_luminosity_cgs)* &
             (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))*delta_x
        return
       endif
 !  h-shell burning criterion
 !  limit total mass of hydrogen burned.
       delta_x = star%ctrl%atime(6)*composition(1,num_points)*(star%solar_mass_cgs/star%solar_luminosity_cgs)
-      hydrogen_dt = 6.00d18*delta_x/hydrogen_luminosity
+      hydrogen_dt = h_burn_energy_per_gram*delta_x/hydrogen_luminosity
 !  limit x-depletion at shell mid-point.
 !  call nuclear reaction sr's to find dxdt at the shell midpoint.
       zone_begin=h_shell_midpoint_zone

@@ -39,6 +39,10 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
            energy_gen_4, energy_gen_5, qed_correction, qet_correction, &
            total_energy_gen, helium_energy_gen
       double precision :: core_helium_fraction
+! energy released per gram of helium burned (erg/g)
+      double precision, parameter :: he_burn_energy_per_gram = 5.85d17
+! dt_unlimited: "no limit from this criterion" sentinel (seconds).
+      double precision, parameter :: dt_unlimited = 1.0d20
 
       if (log_density(1).ge.5.0d0) then
 !     search for temperature maximum
@@ -83,7 +87,7 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
        core_helium_fraction = 1d0 - composition(3,convective_core_edge_zone)
        if(core_helium_fraction.ge.star%ctrl%atime(1)) then
             helium_dt = min(star%ctrl%atime(4),star%ctrl%atime(5)*core_helium_fraction)
-            helium_dt = (5.85d17/star%solar_luminosity_cgs)*helium_dt* &
+            helium_dt = (he_burn_energy_per_gram/star%solar_luminosity_cgs)*helium_dt* &
                (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))
          else
 ! 2026 (bugsweep sec-10/11): core helium exhausted -- the He-shell
@@ -100,13 +104,13 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
 ! never consumed until now. The reference point is the shell just
 ! below the H-burning shell (the He-rich core), as before.
             shell_zone = max(h_shell_zone_begin-1, 1)
-            helium_dt = 1.0d20
+            helium_dt = dt_unlimited
             if (luminosity(shell_zone) .gt. 0.0d0) then
                if (star%ctrl%atime(14) .gt. 0.0d0) helium_dt = min(helium_dt, &
-                    (5.85d17/star%solar_luminosity_cgs)*star%ctrl%atime(14)* &
+                    (he_burn_energy_per_gram/star%solar_luminosity_cgs)*star%ctrl%atime(14)* &
                     (star%solar_mass_cgs/luminosity(shell_zone)))
                if (star%ctrl%atime(12) .gt. 0.0d0) helium_dt = min(helium_dt, &
-                    (5.85d17/star%solar_luminosity_cgs)*star%ctrl%atime(12)* &
+                    (he_burn_energy_per_gram/star%solar_luminosity_cgs)*star%ctrl%atime(12)* &
                     composition(2,shell_zone)* &
                     (enclosed_mass(shell_zone)/luminosity(shell_zone)))
             end if

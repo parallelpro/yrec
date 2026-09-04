@@ -55,10 +55,10 @@ subroutine locate_shell_boundaries(composition, luminosity, is_convective, num_p
            shell_end, shell_mid
       logical, intent(out) :: has_h_shell
 
-      double precision :: luminosity_change_tol, hydrogen_surface_tol
+      double precision, parameter :: luminosity_change_tol = 1.0d-5, &
+           hydrogen_surface_tol = 1.0d-5
       double precision :: half_surface_x, luminosity_end_threshold
       integer :: i
-      data luminosity_change_tol,hydrogen_surface_tol/1.0d-5,1.0d-5/
 !ccc h-shell values
       shell_begin = 1
       shell_mid = 1

@@ -22,11 +22,11 @@
 !      (helium_dt).
 ! Details of the computation of these timesteps can be found in the
 !      appropriate subroutines.
-! The final timestep (previous_timestep) is the minimum of the above
-!      timesteps.
+! The final timestep (previous_timestep, also returned as chosen_dt)
+!      is the minimum of the above timesteps.
 ! **note: if a criterion is inapplicable or turned off by user
 !      parameters then the 'timestep' for that criterion is
-!      arbitrarily set to a large number.
+!      arbitrarily set to a large number (dt_unlimited).
 ! If a fixed timestep is being enforced (timestep_override_active=T),
 ! the above criteria are short-circuited and a timestep
 ! (timestep_override) is enforced. Caveat user.
@@ -36,7 +36,7 @@
 !
 ! A negative timestep indicates that a model is being relaxed
 ! and not evolved. Check for negative dt and exit if found.
-subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_density, &
+subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_density, &
      luminosity, enclosed_mass, shell_mass, log_temperature, composition, &
      convective_core_edge_zone, h_shell_midpoint_zone, &
      luminosity_components, age_gyr, timestep_years, kind_card_index, &
@@ -47,7 +47,9 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       implicit none
 
       double precision, intent(inout) :: previous_timestep
-      double precision, intent(out) :: hydrogen_dt
+! chosen_dt: the timestep actually adopted (seconds); the caller stores
+! it in star%hydrogen_dt.
+      double precision, intent(out) :: chosen_dt
       integer, intent(in) :: num_points
       double precision, intent(in) :: log_density(json), luminosity(json), &
            enclosed_mass(json), shell_mass(json), log_temperature(json)
@@ -63,14 +65,16 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       double precision, intent(out) :: max_domega_frac
       integer, intent(in) :: h_shell_zone_begin
       double precision, intent(in) :: log_teff
-      double precision :: structure_dt, rotation_dt, helium_dt, &
+      double precision :: structure_dt, rotation_dt, hydrogen_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
+! dt_unlimited: "no limit from this criterion" sentinel (seconds).
+      double precision, parameter :: dt_unlimited = 1.0d20
 
       if (previous_timestep.ge.0.0d0) then
 ! if user is fixing tstep, set dt to given value and exit
       if(star%job%timestep_override_active(kind_card_index)) then
-       hydrogen_dt = star%job%timestep_override(kind_card_index)*seconds_per_year
-       previous_timestep = hydrogen_dt
+       chosen_dt = star%job%timestep_override(kind_card_index)*seconds_per_year
+       previous_timestep = chosen_dt
       else
 ! mhp 9/01  turn off structure-based timestep setting above a critical
 !           temperature; this is done when
@@ -89,11 +93,11 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       if(star%job%use_structure_dt_limits) then
        call timestep_limit_structure(previous_timestep,luminosity,log_pressure,log_radius,log_temperature,num_points,structure_dt)
       else
-       structure_dt = 1.0d20
+       structure_dt = dt_unlimited
       endif
 !  mhp 6/90 a zero timestep in the model will fritz out the code, so
 !  avoid this by setting the structure timestep arbitrarily large.
-      if(structure_dt.lt.1.0d0) structure_dt=1.0d20
+      if(structure_dt.lt.1.0d0) structure_dt=dt_unlimited
 !  find timestep for rotating models based on changes in angular velocity
 !       from one model to the next.
 !  this sr also returns the maximum change in omega from the previous
@@ -104,11 +108,11 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       if(star%job%rotation_active) then
        call timestep_limit_omega(previous_timestep,num_points,omega,rotation_dt,max_domega_frac)
       else
-       rotation_dt = 1.0d20
+       rotation_dt = dt_unlimited
       endif
 !  mhp 6/90 a zero timestep in the model will fritz out the code, so
 !  avoid this by setting the rotation timestep arbitrarily large.
-      if(rotation_dt.lt.1.0d0) rotation_dt=1.0d20
+      if(rotation_dt.lt.1.0d0) rotation_dt=dt_unlimited
 !  find the timestep based on hydrogen burning.
 !  determine the total luminosity due to hydrogen burning (in solar units).
       hydrogen_luminosity = luminosity_components(1) + luminosity_components(2) + &
@@ -119,7 +123,7 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
             log_temperature,hydrogen_luminosity,convective_core_edge_zone, &
             h_shell_midpoint_zone,num_points,hydrogen_dt)
       else
-       hydrogen_dt = 1.0d20
+       hydrogen_dt = dt_unlimited
       endif
 !  find the timestep based on helium burning.
 !  skip for stars without he burning.
@@ -128,7 +132,7 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
             enclosed_mass,log_temperature,convective_core_edge_zone, &
             num_points,helium_dt,h_shell_zone_begin)
       else
-       helium_dt = 1.0d20
+       helium_dt = dt_unlimited
       endif
 
 !  04/14 jvs added timestep governor based on the size of the envelope
@@ -137,7 +141,7 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
       if(star%ctrl%use_envelope_triangle_dt .and. .not. star%job%use_structure_dt_limits) then
        call timestep_limit_hr(previous_timestep,luminosity,log_teff,num_points,envelope_dt)
       else
-       envelope_dt = 1.0d20
+       envelope_dt = dt_unlimited
       endif
 
 !     limit increase in time step from one model to the next for models
@@ -154,7 +158,7 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
 !  04/14 jvs added envelope_dt
          previous_timestep = min(hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
       endif
-      hydrogen_dt = previous_timestep
+      chosen_dt = previous_timestep
       end if
       end if
       previous_timestep = abs(previous_timestep)
@@ -167,8 +171,8 @@ subroutine compute_timestep(previous_timestep, hydrogen_dt, num_points, log_dens
        time_left_years = star%job%target_end_age(kind_card_index) - age_gyr*1.0d9
        if(time_left_years.lt. timestep_years) then
          timestep_years = time_left_years
-         hydrogen_dt = timestep_years*seconds_per_year
-         previous_timestep = hydrogen_dt
+         chosen_dt = timestep_years*seconds_per_year
+         previous_timestep = chosen_dt
        endif
       endif
       return

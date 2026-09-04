@@ -63,8 +63,7 @@ subroutine massloss(log_luminosity_lsun, age_gyr, timestep, composition, &
       integer, intent(out) :: ierr
 ! MHP 5/02 EFFICIENCY FACTOR FOR THE THERMAL ENERGY CONTENT
 ! OF ACCRETED MATTER.
-      double precision :: accretion_efficiency
-      data accretion_efficiency/1.0d0/
+      double precision, parameter :: accretion_efficiency = 1.0d0
 ! --- locals ---
       double precision :: mass_loss_rate_msun_yr
       double precision :: log10_radius, total_radius_cm

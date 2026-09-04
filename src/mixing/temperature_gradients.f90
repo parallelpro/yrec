@@ -16,19 +16,11 @@
 !          dgrad_dt_component,dgrad_dp_component = NAT-LOG DERIVATIVES OF
 !          THE CONVECTIVE GRADIENT
 !
-! Dummy-argument names for the state variables (log_temperature,
-! temperature, log_pressure, pressure, density, log_radius, log_mass,
-! opacity, the dlnrho/dlnkappa/specific-heat derivatives, and most of
-! the "Q" derivative-of-gradient outputs) match the already-converted
-! caller semiconvection.f90's own names at this call site. The one deliberate
-! deviation is luminosity_lsun (originally B): semiconvection.f90 names this
-! position "log_luminosity_zone", but the DELR formula below --
-! O*B*exp(ln10*(PL-SL-4*TL+CLSUNL-CGL+CDELRL))*FTL/FPL, i.e. kappa *
-! (L/Lsun) * Lsun_cgs * P / (G*M*T**4), the standard radiative-gradient
-! formula -- only balances dimensionally if B multiplies in linearly,
-! i.e. is the UNLOGGED luminosity as a fraction of solar (not its
-! log10). Named accordingly here; not otherwise touched (semiconvection.f90 is
-! outside this batch).
+! luminosity_lsun (originally B) is the UNLOGGED luminosity in solar
+! units: the DELR formula below -- O*B*exp(ln10*(PL-SL-4*TL+CLSUNL-CGL+
+! CDELRL))*FTL/FPL, i.e. kappa * (L/Lsun) * Lsun_cgs * P / (G*M*T**4),
+! the standard radiative-gradient formula -- only balances dimensionally
+! if B multiplies in linearly. The callers pass star%luminosity_lsun.
 ! 2026 de-tramp (ROADMAP item 3): 33 arguments -> 19. The former
 ! positional form (14 unpacked eos/kap scalars) merged with its
 ! result-array wrapper temperature_gradients_r: this single entry now
@@ -81,6 +73,11 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
       double precision, intent(in) :: pressure_rotation_factor, &
            temperature_rotation_factor, log_teff
       double precision, parameter :: vtol=1.0d-10
+! max_cubic_iterations: Newton iteration cap for the MLT cubic.
+      integer, parameter :: max_cubic_iterations = 25
+! superadiabatic_tol: the zone is radiative unless del_rad exceeds del_ad
+! by more than this.
+      double precision, parameter :: superadiabatic_tol = 1.0d-6
       integer :: iter
       double precision :: deldel, g, presht, phi, phi2, phiphi, test, a1, &
            v, a3, a3p, vp, vd, ddel, qdelat, qdelap, tempot, &
@@ -119,7 +116,7 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
            cdelrl))* &
            temperature_rotation_factor/pressure_rotation_factor
       deldel = radiative_gradient - adiabatic_gradient
-      if(deldel.le.1.0d-6) then
+      if(deldel.le.superadiabatic_tol) then
 ! ZONE IS RADIATIVE
        is_convective = .false.
        actual_gradient = radiative_gradient
@@ -206,7 +203,7 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
       a3 = 0.75d0*phi2*phiphi/a1
       a3p = 3.0d0*a3
       if(a3.gt.1.0d+3) v = pow(a3, (-0.333333333d0))
-      do iter = 1,25
+      do iter = 1,max_cubic_iterations
        v = dmin1(v,1.0d0)
        vp = a1 + v*(2.0d0 + v*a3p)
        vd = (-1.0d0 + v*(a1 + v*(1.0d0 + v*a3)))/vp
@@ -214,7 +211,7 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
        v = v - vd
        if(dabs(vd).lt.vtol) exit
       end do
-      if (iter > 25) then
+      if (iter > max_cubic_iterations) then
       write(run_log_unit,20) log_pressure,log_temperature,opacity, &
            specific_heat_cp,dlnrho_dlnt
    20 format(' -----CUBIC NON-CONVERGENCE(PL,TL,CAPPA,CP,QDT)=' &

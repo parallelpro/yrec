@@ -80,7 +80,7 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
       double precision :: branch_frac_c12, branch_frac_o16
       double precision :: x_start, he3_start, y_start, c12_start, &
            c13_start, n14_start, o16_start
-      integer :: any_nonzero_flag, rhs_column_idx, mat_idx
+      integer :: any_nonzero_flag, diagonal_idx, mat_idx
       double precision :: max_abs_change, max_relative_change, &
            relative_change
       double precision :: o18_new, new_metal_fraction
@@ -352,10 +352,12 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
 !  reduce the 7x8 system to find the corrections to the relative
 !  abundances.
       any_nonzero_flag = 0
-      rhs_column_idx = 1
+! diagonal_idx walks the diagonal of the column-major 7x7 block (stride
+! 7+1 = 8: elements 1,9,...,49); diagonal entries are never zeroed below.
+      diagonal_idx = 1
       do mat_idx = 1,49
-         if(mat_idx.eq.rhs_column_idx) then
-            rhs_column_idx = rhs_column_idx+8
+         if(mat_idx.eq.diagonal_idx) then
+            diagonal_idx = diagonal_idx+8
          else if(dabs(system_matrix(mat_idx)).lt.1.d-8) then
             system_matrix(mat_idx) = 0.d0
          else

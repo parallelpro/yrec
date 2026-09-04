@@ -25,14 +25,17 @@ subroutine setup_solar_calibration(age_scale_factor)
       double precision, intent(in) :: age_scale_factor
 ! --- locals ---
       integer :: i, j
+! 16 three-run calibration cycles (the run arrays in controls_lib are
+! dimensioned 50).
+      integer, parameter :: num_calibration_runs = 48
 
 ! SET UP RUN TO CALIBRATE A SOLAR MODEL.
 ! THIS CONSISTS OF SETTING THE NUMBER OF RUNS TO 48 (16 THREE-RUN
 ! CALIBRATION CYCLES), AND COPYING THE RELEVANT PARAMETERS FROM THE
 ! FIRST RUN TO THE CALIBRATING RUNS.
 ! mhp 5/96 changed to do solar models in 3 runs rather than 2.
-      star%job%num_runs = 48
-      do i = 2,48
+      star%job%num_runs = num_calibration_runs
+      do i = 2,num_calibration_runs
          star%job%initial_x_array(i) = star%job%initial_x_array(1)
          star%job%initial_z_array(i) = star%job%initial_z_array(1)
          star%job%mixing_length_array(i) = star%job%mixing_length_array(1)
@@ -64,7 +67,7 @@ subroutine setup_solar_calibration(age_scale_factor)
          star%job%timestep_override(i) = star%job%timestep_override(2)
          star%job%timestep_override_active(i) = star%job%timestep_override_active(2)
       end do
-      do i = 6,48,3
+      do i = 6,num_calibration_runs,3
          star%job%rescale_kind(i) = 1
          star%job%first_call_flag(i) = .false.
          star%job%num_models(i) = star%job%num_models(3)

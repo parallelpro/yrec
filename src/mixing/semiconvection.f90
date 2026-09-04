@@ -20,9 +20,9 @@
 ! INPUT VARIABLES :
 !
 ! timestep : model timestep (seconds)
-! log_density,log_luminosity,log_pressure,log_radius,log_mass,
-!   log_temperature : model run of density, luminosity, pressure, radius,
-!   mass, and temperature.
+! log_density,log_pressure,log_radius,log_mass,log_temperature : model
+!   run of log10 density, pressure, radius, mass, and temperature.
+! luminosity_lsun : model run of luminosity in solar units (NOT a log).
 ! composition : model run of mass fractions of different chemical species;
 !   composition(1,...) is hydrogen and composition(3,...) is the metals.
 ! mixed_zone_bounds, num_zones_mixed : the locations of the edges of
@@ -34,7 +34,7 @@
 ! OUTPUT VARIABLES :
 !
 ! mixed_zone_bounds, num_zones_mixed can be altered by the subroutine.
-subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
+subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
      mixed_zone_bounds, num_zones_mixed, log_teff, ierr)
       use temperature_gradients_lib
@@ -50,7 +50,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
       double precision, intent(in) :: timestep
       double precision, intent(in) :: composition(15,json)
       double precision, intent(inout) :: log_density(json)
-      double precision, intent(in) :: log_luminosity(json), &
+      double precision, intent(in) :: luminosity_lsun(json), &
            log_pressure(json), log_radius(json), log_mass(json), &
            log_temperature(json)
       integer, intent(in) :: num_zones
@@ -58,13 +58,15 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
       integer, intent(inout) :: num_zones_mixed
       double precision, intent(in) :: log_teff
 
-      logical :: only_check_core
+! only_check_core: hardwired switch -- semiconvection is only ever
+! evaluated at the convective core (the first mixed zone).
+      logical, parameter :: only_check_core = .true.
       integer :: loop_upper_bound, zone_idx, edge_side
       logical :: up_semiconv_flag, down_semiconv_flag
       integer :: cz_edge_idx, adjacent_radiative_idx
       logical :: want_derivatives, in_atmosphere, is_convective
       integer :: saha_state
-      double precision :: log_luminosity_zone, log_mass_zone, &
+      double precision :: luminosity_lsun_zone, log_mass_zone, &
            log_pressure_zone, log_temperature_zone, log_density_zone, &
            log_radius_zone
       double precision :: hydrogen_fraction, metal_fraction
@@ -94,7 +96,6 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 
 ! RUN THROUGH THE CONVECTION ZONES (ONLY THE FIRST, I.E. THE CORE, WHEN
 ! only_check_core IS SET).
-      only_check_core = .true.
       if (only_check_core) then
          loop_upper_bound = 1
       else
@@ -138,7 +139,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 ! USE THE STRUCTURE VARIABLES FOR THE FIRST POINT OUTSIDE THE CZ
 ! AND THE ABUNDANCES OF THE CZ TO DETERMINE THE MODIFIED MU AND
 ! RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS.
-            log_luminosity_zone = log_luminosity(adjacent_radiative_idx)
+            luminosity_lsun_zone = luminosity_lsun(adjacent_radiative_idx)
             log_mass_zone = log_mass(adjacent_radiative_idx)
             log_pressure_zone = log_pressure(adjacent_radiative_idx)
             log_temperature_zone = log_temperature(adjacent_radiative_idx)
@@ -165,7 +166,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
             if (ierr /= 0) return
             call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
-                 log_luminosity_zone, actual_gradient, radiative_gradient, &
+                 luminosity_lsun_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                  convective_velocity, want_derivatives, is_convective, &
                  pressure_rotation_factor, temperature_rotation_factor, &
@@ -197,7 +198,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
             if (ierr /= 0) return
             call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
-                 log_luminosity_zone, actual_gradient, radiative_gradient, &
+                 luminosity_lsun_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                  convective_velocity, want_derivatives, is_convective, &
                  pressure_rotation_factor, temperature_rotation_factor, &
@@ -210,7 +211,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
 ! RMAX IS THE MAXIMUM RADIAL DISTANCE THAT OVERSHOOT MAY PENETRATE, AND
 ! IS THE TIMESTEP(DELTS) MULTIPLIED BY THE VELOCITY OF PROPAGATION OF
 ! THE INSTABILITY (VP IN EQUATION 5PRIME, P. 347).
-            max_overshoot_radius = max_overshoot_radius*(log_luminosity( &
+            max_overshoot_radius = max_overshoot_radius*(luminosity_lsun( &
                  cz_edge_idx)*star%solar_luminosity_cgs/(10.0d0*c4pi* &
                  exp(ln10*log_pressure(cz_edge_idx))))* &
                  (timestep/exp(ln10*(log_radius(cz_edge_idx)+ &
@@ -247,7 +248,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                   exit
                end if
 ! TEST ON RESCALED RAD. GRADIENT FOR CONVECTION
-               log_luminosity_zone = log_luminosity(search_zone_idx)
+               luminosity_lsun_zone = luminosity_lsun(search_zone_idx)
                log_mass_zone = log_mass(search_zone_idx)
                log_pressure_zone = log_pressure(search_zone_idx)
                log_temperature_zone = log_temperature(search_zone_idx)
@@ -268,7 +269,7 @@ subroutine semiconvection(timestep, composition, log_density, log_luminosity, &
                if (ierr /= 0) return
                call temperature_gradients(log_temperature_zone, log_pressure_zone, &
                     eos_res, kap_res, log_radius_zone, log_mass_zone, &
-                    log_luminosity_zone, actual_gradient, radiative_gradient, &
+                    luminosity_lsun_zone, actual_gradient, radiative_gradient, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                     convective_velocity, want_derivatives, is_convective, &
                     pressure_rotation_factor, temperature_rotation_factor, &
