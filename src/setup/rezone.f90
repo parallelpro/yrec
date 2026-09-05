@@ -64,6 +64,16 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
 ! point spacing.
       double precision :: spline_x(json), spline_y(json), chi(json), &
            spline_second_deriv(json)
+! new_log_mass: the new run of log mass points (HSS of the original),
+! built in assign_new_points and adopted as star%log_mass in
+! interpolate_onto_new_grid. compact_log_mass: buffer for the
+! too-close-point deletion pass. regrid_in/regrid_out: the y-table
+! copy and osplin output of regrid_in_place. Before 2026 these four
+! lived in star%old_shell_mass / star%logRho_start / star%logP_start /
+! star%logT_start ("dummy arrays"); every element read is written
+! first within this call, so fresh locals see the same values.
+      double precision :: new_log_mass(json), compact_log_mass(json), &
+           regrid_in(json), regrid_out(json)
       integer :: gradient_flag_index(json)
       integer :: num_species_tracked, i, j, k
       integer :: flag_count
@@ -333,7 +343,7 @@ end subroutine append_flag_point
 subroutine assign_new_points
       use math_lib
 ! BEGIN REFLOATING OF POINTS
-      star%old_shell_mass(1) = star%log_mass(1)
+      new_log_mass(1) = star%log_mass(1)
       star%logP_start(1) = star%logP(1)
       star%luminosity_lsun_start(1) = star%luminosity_lsun(1)
       x_new(1) = star%xa(i_h1,1)
@@ -414,7 +424,7 @@ subroutine assign_new_points
                ierr = jerr_gate
                return
             end if
-            star%old_shell_mass(j) = spline_eval_y
+            new_log_mass(j) = spline_eval_y
             chi_prev = spline_eval_x
          end do
          new_num_zones = new_num_zones + segment_point_count
@@ -427,9 +437,9 @@ subroutine assign_new_points
       end do
 ! GET SPLINE COEFFICIENTS
       call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
-! ASSIGN INTERPOLATED VECTOR OF X VALUES TO HIO
+! ASSIGN INTERPOLATED VECTOR OF X VALUES TO x_new
       do i = 2,new_num_zones
-         spline_eval_x = star%old_shell_mass(i)
+         spline_eval_x = new_log_mass(i)
          call splintd2(spline_x, spline_y, star%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, spline_klo, spline_khi, jerr_gate)
          if (jerr_gate /= 0) then
@@ -440,7 +450,7 @@ subroutine assign_new_points
       end do
 ! SKIP IF HPMAX(3) IS ZEROED OUT
       if (point_spacing_max(3).gt.1.0D-15) then
-! TEST ON X-CHANGE (ONLY FOR INCREASING X) USING HIO AS DUMMY ARRAY
+! TEST ON X-CHANGE (ONLY FOR INCREASING X)
       gradient_flag_count = 0
       do j = new_num_zones,2,-1
          if (x_new(j)-x_new(j-1).gt.point_spacing_max(3)) then
@@ -456,13 +466,13 @@ subroutine assign_new_points
 ! NUMBER OF NEW POINTS NEEDED
          num_new_points = int(delta_x_over_max)
 !
-         point_insert_spacing = (star%old_shell_mass(j)-star%old_shell_mass(j-1))/ &
+         point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
          do k = working_num_zones+num_new_points,j+num_new_points,-1
-            star%old_shell_mass(k) = star%old_shell_mass(k-num_new_points)
+            new_log_mass(k) = new_log_mass(k-num_new_points)
          end do
          do k = j + num_new_points -1, j -1, -1
-            star%old_shell_mass(k) = star%old_shell_mass(k+1) - point_insert_spacing
+            new_log_mass(k) = new_log_mass(k+1) - point_insert_spacing
          end do
          working_num_zones = working_num_zones + num_new_points
       end do
@@ -476,9 +486,9 @@ subroutine assign_new_points
       end do
 ! GET SPLINE COEFFICIENTS
       call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
-! ASSIGN INTERPOLATED VECTOR OF Z VALUES TO HGO
+! ASSIGN INTERPOLATED VECTOR OF Z VALUES TO z_new
       do i = 2,new_num_zones
-         spline_eval_x = star%old_shell_mass(i)
+         spline_eval_x = new_log_mass(i)
          call splintd2(spline_x, spline_y, star%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, spline_klo, spline_khi, jerr_gate)
          if (jerr_gate /= 0) then
@@ -487,7 +497,7 @@ subroutine assign_new_points
          end if
          z_new(i) = spline_eval_y
       end do
-! TEST ON Z-CHANGE (ONLY FOR DECREASING Z) USING HIO AS DUMMY ARRAY
+! TEST ON Z-CHANGE (ONLY FOR DECREASING Z)
 ! SKIP IF HPMAX(4) IS ZEROED OUT
       if (point_spacing_max(4).gt.1.0D-15) then
       gradient_flag_count = 0
@@ -504,34 +514,34 @@ subroutine assign_new_points
          delta_z_over_max = (z_new(j-1) - z_new(j))/point_spacing_max(4)
 ! NUMBER OF NEW POINTS NEEDED
          num_new_points = int(delta_z_over_max)
-         point_insert_spacing = (star%old_shell_mass(j)-star%old_shell_mass(j-1))/ &
+         point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
          do k = working_num_zones+num_new_points,j+num_new_points,-1
-            star%old_shell_mass(k) = star%old_shell_mass(k-num_new_points)
+            new_log_mass(k) = new_log_mass(k-num_new_points)
          end do
          do k = j + num_new_points -1, j -1, -1
-            star%old_shell_mass(k) = star%old_shell_mass(k+1) - point_insert_spacing
+            new_log_mass(k) = new_log_mass(k+1) - point_insert_spacing
          end do
          working_num_zones = working_num_zones + num_new_points
       end do
       new_num_zones = working_num_zones
       end if
       end if
-! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER.
-! (NOTE logRho_start IS BEING USED AS A DUMMY ARRAY HERE).
+! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER (compacted through
+! compact_log_mass, then copied back).
       j = 1
-      star%logRho_start(j) = star%old_shell_mass(j)
+      compact_log_mass(j) = new_log_mass(j)
       do k = 2,new_num_zones-1
-       if (star%old_shell_mass(k) - star%logRho_start(j).gt.star%ctrl%chi_grid_scale(ichi_dm_min)) then
+       if (new_log_mass(k) - compact_log_mass(j).gt.star%ctrl%chi_grid_scale(ichi_dm_min)) then
           j = j + 1
-          star%logRho_start(j) = star%old_shell_mass(k)
+          compact_log_mass(j) = new_log_mass(k)
        endif
       end do
       j = j + 1
-      star%logRho_start(j) = star%old_shell_mass(new_num_zones)
+      compact_log_mass(j) = new_log_mass(new_num_zones)
       new_num_zones = j
       do j = 2,new_num_zones
-       star%old_shell_mass(j) = star%logRho_start(j)
+       new_log_mass(j) = compact_log_mass(j)
       end do
 end subroutine assign_new_points
 
@@ -543,7 +553,7 @@ subroutine locate_new_cz_edges
 !  ENVELOPE IN THE NEW POINT DISTRIBUTION.
       if (star%core_cz_top_index.gt.1) then
        do j = 2,new_num_zones
-          if (star%old_shell_mass(j).gt.star%log_mass(star%core_cz_top_index)) exit
+          if (new_log_mass(j).gt.star%log_mass(star%core_cz_top_index)) exit
        end do
          star%core_cz_top_index = j - 1
       else
@@ -551,7 +561,7 @@ subroutine locate_new_cz_edges
       endif
       if (star%envelope_cz_bottom_index.lt.star%nz) then
        do j = new_num_zones-1,1,-1
-          if (star%old_shell_mass(j).lt.star%log_mass(star%envelope_cz_bottom_index)) &
+          if (new_log_mass(j).lt.star%log_mass(star%envelope_cz_bottom_index)) &
                exit
        end do
          star%envelope_cz_bottom_index = j + 1
@@ -601,8 +611,8 @@ subroutine interpolate_onto_new_grid
 !  NTOT=NUMBER OF POINTS AT WHICH SPLINE IS TO BE EVALUTED(MNEW)
 !  YVAL = OUTPUT RUN OF VARIABLE VALUES AT THE NEW RUN OF MASS POINTS.
 !  FORM OF CALL IS CALL OSPLIN(XVAL,YVAL,XTAB,YTAB,NTAB,NTOT)
-!  DO EACH COMPOSITION IN ORDER USING HPO AND HTO AS DUMMY ARRAYS
-!  (regrid_in_place, below).
+!  DO EACH COMPOSITION IN ORDER THROUGH THE regrid_in/regrid_out
+!  BUFFERS (regrid_in_place, below).
 ! 7/91 ADD ENTROPY TERM INTERPOLATION.
       call regrid_in_place(star%temperature_entropy_term)
       call regrid_in_place(star%pressure_entropy_term)
@@ -628,31 +638,36 @@ subroutine interpolate_onto_new_grid
          call regrid_in_place(star%deuterium_burning_rate_start)
       endif
 ! NOW FIND RUN OF P,R,L,T,AND RHO IN THAT ORDER FOR THE NEW POINTS.
+! The results land in star%*_start: after the transfer loop below
+! copies them into star%logP etc., the *_start arrays hold the
+! start-of-step model on the new grid (the same thing
+! evolve_step's no-rezone branch stores explicitly), which
+! timestep_limit_structure, mid_timestep_model and burn_lib read.
 
-      call osplin(star%old_shell_mass,star%logP_start,star%log_mass,star%logP, &
+      call osplin(new_log_mass,star%logP_start,star%log_mass,star%logP, &
            old_point_count,new_point_count)
-      call osplin(star%old_shell_mass,star%logR_start,star%log_mass,star%logR, &
+      call osplin(new_log_mass,star%logR_start,star%log_mass,star%logR, &
            old_point_count,new_point_count)
-      call osplin(star%old_shell_mass,star%luminosity_lsun_start,star%log_mass,star%luminosity_lsun, &
+      call osplin(new_log_mass,star%luminosity_lsun_start,star%log_mass,star%luminosity_lsun, &
            old_point_count,new_point_count)
-      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logT, &
+      call osplin(new_log_mass,star%logT_start,star%log_mass,star%logT, &
            old_point_count,new_point_count)
-      call osplin(star%old_shell_mass,star%logRho_start,star%log_mass,star%logRho, &
+      call osplin(new_log_mass,star%logRho_start,star%log_mass,star%logRho, &
            old_point_count,new_point_count)
 
 ! FOR ROTATING MODELS FIND THE NEW RUN OF OMEGA,J/M,FP,FT,R0,AND ETA2.
       if (star%job%rotation_active) then
-         call osplin(star%old_shell_mass,star%old_omega,star%log_mass,star%omega, &
+         call osplin(new_log_mass,star%old_omega,star%log_mass,star%omega, &
               old_point_count,new_point_count)
-         call osplin(star%old_shell_mass,star%old_specific_angular_momentum,star%log_mass, &
+         call osplin(new_log_mass,star%old_specific_angular_momentum,star%log_mass, &
               star%j_rot,old_point_count,new_point_count)
-         call osplin(star%old_shell_mass,fp_old,star%log_mass,star%fp_rot, &
+         call osplin(new_log_mass,fp_old,star%log_mass,star%fp_rot, &
               old_point_count,new_point_count)
-         call osplin(star%old_shell_mass,ft_old,star%log_mass,star%ft_rot, &
+         call osplin(new_log_mass,ft_old,star%log_mass,star%ft_rot, &
               old_point_count,new_point_count)
-         call osplin(star%old_shell_mass,star%old_mean_radius,star%log_mass,star%mean_radius, &
+         call osplin(new_log_mass,star%old_mean_radius,star%log_mass,star%mean_radius, &
               old_point_count,new_point_count)
-         call osplin(star%old_shell_mass,star%old_eta_squared,star%log_mass,star%eta_squared, &
+         call osplin(new_log_mass,star%old_eta_squared,star%log_mass,star%eta_squared, &
               old_point_count,new_point_count)
       endif
 !
@@ -672,18 +687,18 @@ subroutine interpolate_onto_new_grid
 ! It now runs with the other old->new interpolations.
       if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
            star%job%envelope_overshoot_active)) then
-         call osplin(star%old_shell_mass,rot_scr%old_esum,star%log_mass,star%eps_total, &
+         call osplin(new_log_mass,rot_scr%old_esum,star%log_mass,star%eps_total, &
               old_point_count,new_point_count)
          do zone_index = 1,star%nz
             spline_y(zone_index) = star%eps_total(zone_index)+star%eps_channels(i_eps_neu,zone_index)+ &
                  star%eps_channels(i_eps_grav,zone_index)
          end do
-         call osplin(star%old_shell_mass,rot_scr%old_eps,star%log_mass,spline_y, &
+         call osplin(new_log_mass,rot_scr%old_eps,star%log_mass,spline_y, &
               old_point_count,new_point_count)
       endif
 ! TRANSFER NEW POINTS.
       do j = 1,new_num_zones
-       star%log_mass(j) = star%old_shell_mass(j)
+       star%log_mass(j) = new_log_mass(j)
        star%logP(j) = star%logP_start(j)
        star%logT(j) = star%logT_start(j)
        star%logR(j) = star%logR_start(j)
@@ -848,23 +863,23 @@ end subroutine interpolate_onto_new_grid
 !----------------------------------------------------------------------
 ! regrid_in_place
 !----------------------------------------------------------------------
-! Spline-interpolate one field from the old mass grid (star%old_shell_mass,
-! old_point_count points) onto the new one (star%log_mass,
+! Spline-interpolate one field from the old mass grid (star%log_mass,
+! old_point_count points) onto the new one (new_log_mass,
 ! new_point_count points), overwriting field(1:new_num_zones).
-! star%logP_start and star%logT_start are used as scratch (the
-! HPO/HTO "dummy arrays" of the original), exactly as the former
-! copy / osplin / copy-back triplets did.
+! regrid_in holds the y-table copy and regrid_out the osplin result
+! (the HPO/HTO "dummy arrays" of the original, formerly
+! star%logP_start / star%logT_start).
 subroutine regrid_in_place(field)
       double precision, intent(inout) :: field(:)
       integer :: j
 
       do j = 1,star%nz
-         star%logP_start(j) = field(j)
+         regrid_in(j) = field(j)
       end do
-      call osplin(star%old_shell_mass,star%logT_start,star%log_mass,star%logP_start, &
+      call osplin(new_log_mass,regrid_out,star%log_mass,regrid_in, &
            old_point_count,new_point_count)
       do j = 1,new_num_zones
-         field(j) = star%logT_start(j)
+         field(j) = regrid_out(j)
       end do
 end subroutine regrid_in_place
 
