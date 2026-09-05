@@ -42,7 +42,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
-      use envint_lib, only: atm_get
+      use envint_lib, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
       use atm_table_lib
       use star_info_lib
       use luout_lib
@@ -176,14 +176,14 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           envelope_recomputed_flag = .true.
           log10_teff = tri_teffl(i)
           b = exp(ln10*tri_logl(i))
-          rl = 0.5d0*(tri_logl(i) + star%log10_solar_luminosity - 4.0d0*log10_teff - c4pil - csigl)
+          rl = surface_log10_radius_cm(tri_logl(i), log10_teff)
           gl = cgl + log10_star_mass - rl - rl
           print_envelope_flag = .false.
           vertex_being_computed=i
           save_boundary_flag = .true.
 ! FOR SPOTTED RUNS, FIND THE PRESSURE AT THE AMBIENT TEMPERATURE
           if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
-               adjusted_teffl = log10_teff - 0.25*log10(star%ctrl%spot_filling_factor * pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
+               adjusted_teffl = ambient_log10_teff(log10_teff)
           else
              adjusted_teffl = log10_teff
           endif

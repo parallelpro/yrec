@@ -105,7 +105,8 @@ subroutine build_stitched_model
       use star_info_lib, only: star, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
-      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step
+      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
+           surface_log10_radius_cm
       integer :: j, i, jerr
       type(envint_step_config) :: atm_steps, env_steps
       double precision :: b, gl, rl, ateffl, plim
@@ -138,8 +139,7 @@ subroutine build_stitched_model
       lprt = .false.
       lsbc0 = .false.
       b = exp(ln10*star%log_L)
-      rl = 0.5d0*(star%log_L + star%log10_solar_luminosity - 4.0d0*star%log_Teff &
-           - c4pil - csigl)
+      rl = surface_log10_radius_cm(star%log_L, star%log_Teff)
       gl = cgl + star%log_total_mass - rl - rl
       plim = star%logP(star%nz)
       if (star%convective_flag(star%nz) .and. star%ctrl%spot_filling_factor /= 0.0d0 &

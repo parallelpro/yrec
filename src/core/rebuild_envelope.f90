@@ -15,7 +15,8 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
-      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step
+      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
+           surface_log10_radius_cm, ambient_log10_teff
       use envint_kernel, only: senv_thin_envelope
       use envelope_refit_lib, only: append_envelope_points
       use star_info_lib
@@ -99,8 +100,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! LUMINOSITY
       luminosity_linear = exp(ln10*log_luminosity_lsun)
 ! RADIUS
-      log_radius_surface = 0.5D0*(log_luminosity_lsun + star%log10_solar_luminosity &
-           - 4.0D0*log_teff - c4pil - csigl)
+      log_radius_surface = surface_log10_radius_cm(log_luminosity_lsun, log_teff)
 ! SURFACE GRAVITY
       log_gravity_surface = cgl + star%stotal - log_radius_surface - log_radius_surface
 ! COMPOSITION
@@ -128,8 +128,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
       if(convective_flag(num_zones).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
            star%ctrl%spot_temp_contrast.ne.1.0)then
-         spot_adjusted_log_teff = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
-              pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
+         spot_adjusted_log_teff = ambient_log10_teff(log_teff)
       else
          spot_adjusted_log_teff = log_teff
       endif

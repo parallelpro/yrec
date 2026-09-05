@@ -35,6 +35,7 @@ module observables_lib
       private
       public :: compute_observables
       public :: shell_masses_from_log_mass
+      public :: log_r_surface_cm
 
 ! cross-call state (see header): the saha table continuity. Static
 ! zero at process start; reset for repeated in-process runs via
@@ -261,10 +262,24 @@ subroutine refresh_turnover_timescale(ierr)
 end subroutine refresh_turnover_timescale
 
 ! ---------------------------------------------------------------
+! log10 of the surface radius (cm) from log10 L/Lsun and log10 Teff,
+! L = 4 pi R**2 sigma Teff**4 -- the star%log_R_surface expression
+! (before the solar-radius offset), also used by run_yrec's solar
+! calibration check. 2026 W3: NOTE the operand order (- 4 log Teff
+! last); envint_lib's surface_log10_radius_cm, used by the envelope
+! integrator's callers, has it before the constants and can differ
+! in the last bit. wind_lib's log10_radius_from_l_teff is this
+! order. Folding them together is an R6 decision.
+double precision function log_r_surface_cm(log_luminosity_lsun, log_teff)
+      double precision, intent(in) :: log_luminosity_lsun, log_teff
+      log_r_surface_cm = 0.5d0*(log_luminosity_lsun + star%log10_solar_luminosity &
+           - c4pil - csigl - 4.0d0*log_teff)
+end function log_r_surface_cm
+
+! ---------------------------------------------------------------
 ! Surface radius and gravity from L and Teff.
 subroutine compute_surface_globals
-      star%log_R_surface = 0.5d0*(star%log_L + star%log10_solar_luminosity &
-           - c4pil - csigl - 4.0d0*star%log_Teff)
+      star%log_R_surface = log_r_surface_cm(star%log_L, star%log_Teff)
       star%log_g_surface = cgl + star%stotal &
            - 2.0d0*star%log_R_surface
       star%log_R_surface = star%log_R_surface - star%log10_solar_radius

@@ -128,7 +128,7 @@ core/check_star_calibration.o: luout_lib.mod math_lib.mod phys_const_lib.mod sta
 core/envelope_derivs.o: eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 core/envelope_refit_lib.o: envstruct_lib.mod star_info_lib.mod
 core/envint_kernel.o: atm_table_lib.mod atmstruct_lib.mod envstruct_lib.mod eos_lib.mod intpar_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod point_scratch_lib.mod run_log_lib.mod ttau_lib.mod
-core/envint_lib.o: envint_kernel.mod star_info_lib.mod
+core/envint_lib.o: envint_kernel.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 core/evolve_step.o: burn_lib.mod luout_lib.mod math_lib.mod net_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod stop_conditions.mod yrec_output.mod
 core/henyey_coefficients.o: burn_lib.mod eos_lib.mod henyey_eliminate_lib.mod kap_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 core/henyey_eliminate.o: phys_const_lib.mod star_info_lib.mod
@@ -139,7 +139,7 @@ core/neutrino_flux_table.o: burn_lib.mod luout_lib.mod math_lib.mod observables_
 core/observables_lib.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
 core/read_starting_model.o: controls_lib.mod envelope_refit_lib.mod envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod observables_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
 core/rebuild_envelope.o: controls_lib.mod envelope_refit_lib.mod envint_kernel.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod yale_eos_lib.mod
-core/run_yrec.o: controls_check_lib.mod luout_lib.mod monte_carlo_lib.mod net_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset_lib.mod
+core/run_yrec.o: controls_check_lib.mod luout_lib.mod monte_carlo_lib.mod net_lib.mod observables_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset_lib.mod
 core/shell_physics.o: eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 core/star_setup.o: monte_carlo_lib.mod
 core/stitched_model.o: atmstruct_lib.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod

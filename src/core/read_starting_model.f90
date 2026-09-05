@@ -34,7 +34,8 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
       use controls_lib, only: ichi_dm_max, ichi_dp_env_max
-      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step
+      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
+           ambient_log10_teff
       use envelope_refit_lib, only: append_envelope_points
       use envstruct_lib
       use luout_lib
@@ -733,9 +734,7 @@ subroutine rescale_and_refit_envelope
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
           if (star%envelope_cz_bottom_index.eq.star%nz.and.star%ctrl%spot_filling_factor.ne. &
                0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
-               spot_adjusted_log_teff = star%log_Teff - 0.25*log10(&
-                    star%ctrl%spot_filling_factor * pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - &
-                    star%ctrl%spot_filling_factor)
+               spot_adjusted_log_teff = ambient_log10_teff(star%log_Teff)
           else
              spot_adjusted_log_teff = star%log_Teff
           endif

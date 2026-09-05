@@ -38,6 +38,39 @@ pure function fixed_envint_step(h) result(steps)
       steps%step_max = h
 end function fixed_envint_step
 
+! 2026 W3: the surface geometry atm_get's callers derive from (L, Teff)
+! before integrating -- shared by rebuild_envelope, surfbc and
+! build_stitched_model.
+!
+! log10 of the surface radius (cm) from log10 L/Lsun and log10 Teff,
+! L = 4 pi R**2 sigma Teff**4. NOTE the operand order inside the
+! parenthesis: this is the order the three callers above have always
+! used; observables_lib's log_r_surface_cm (and wind_lib's
+! log10_radius_from_l_teff) evaluate the same identity with the
+! - 4 log Teff term last, which can differ in the last bit. Unifying
+! them is a numbers-changing decision (R6), so both forms are kept.
+double precision function surface_log10_radius_cm(log_luminosity_lsun, log_teff)
+      use star_info_lib, only: star
+      use phys_const_lib
+      double precision, intent(in) :: log_luminosity_lsun, log_teff
+      surface_log10_radius_cm = 0.5d0*(log_luminosity_lsun + star%log10_solar_luminosity &
+           - 4.0d0*log_teff - c4pil - csigl)
+end function surface_log10_radius_cm
+
+! log10 Teff of the unspotted ("ambient") surface for a spotted run
+! (G Somers 10/14): the caller has checked that spots are on
+! (spot_filling_factor /= 0, spot_temp_contrast /= 1) and that the
+! surface shell is convective. The single-precision literals
+! (0.25, 4.0, 1.0) are the original ones; build_stitched_model keeps
+! its own copy with d0 literals, which is not token-identical.
+double precision function ambient_log10_teff(log_teff)
+      use star_info_lib, only: star
+      use math_lib
+      double precision, intent(in) :: log_teff
+      ambient_log10_teff = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
+           pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
+end function ambient_log10_teff
+
 subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
      print_flag, save_boundary_flag, log10_pressure_limit, &
