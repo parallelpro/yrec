@@ -33,7 +33,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logr, tri_orientation, stored_vertex_index, &
      stored_envelope_state, &
      start_new_triangle, reset_triangle, saha_state, &
-     log10_star_mass, luminosity_linear, &
+     log10_star_mass, log_luminosity, &
      log10_teff, hydrogen_fraction, metal_fraction, &
      pressure_rotation_factor, temperature_rotation_factor, &
      envelope_recomputed_flag, log10_pressure_limit, convective_flag, &
@@ -59,7 +59,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       double precision, intent(inout) :: stored_envelope_state(4)
       logical, intent(inout) :: start_new_triangle, reset_triangle
       integer, intent(inout) :: saha_state
-      double precision, intent(in) :: log10_star_mass, luminosity_linear
+      double precision, intent(in) :: log10_star_mass, log_luminosity
       double precision, intent(inout) :: log10_teff
       double precision, intent(inout) :: hydrogen_fraction, metal_fraction, &
            pressure_rotation_factor, temperature_rotation_factor
@@ -144,7 +144,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
        tri_teffl(3) = log10_teff
        tri_teffl(1) = tri_teffl(3) - 0.5d0*star%ctrl%tri_delta_teffl
        tri_teffl(2) = tri_teffl(1) + star%ctrl%tri_delta_teffl
-       tri_logl(3) = luminosity_linear + 0.5d0*star%ctrl%tri_delta_logl
+       tri_logl(3) = log_luminosity + 0.5d0*star%ctrl%tri_delta_logl
        tri_logl(1) = tri_logl(3) - star%ctrl%tri_delta_logl
        tri_logl(2) = tri_logl(1)
        start_new_triangle = .false.
@@ -155,7 +155,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
           i2 = mod(i1,3) + 1
           i3 = mod(i2,3) + 1
           temp = tri_orientation*((tri_logl(i2)-tri_logl(i3))*(log10_teff-tri_teffl(i2)) + &
-                 (tri_teffl(i3)-tri_teffl(i2))*(luminosity_linear-tri_logl(i2)) )
+                 (tri_teffl(i3)-tri_teffl(i2))*(log_luminosity-tri_logl(i2)) )
           if (temp.lt.-tri_err) then
              tri_orientation = -tri_orientation
              tri_teffl(i1) = tri_teffl(i2) + tri_teffl(i3) - tri_teffl(i1)
