@@ -85,7 +85,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 ! reaches the integrand callbacks (they save unconditionally) and
 ! envint writes no output files anymore. What remains is init-echo
 ! verbosity: the fitted envelope-vertex line to the .short log.
-      logical, intent(inout) :: print_flag
+      logical, intent(in) :: print_flag
       logical, intent(in) :: save_boundary_flag
       double precision, intent(in) :: log10_pressure_limit
       double precision, intent(inout) :: log10_radius

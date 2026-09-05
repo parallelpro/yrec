@@ -104,7 +104,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity
       double precision, intent(in) :: log10_star_mass
-      logical, intent(inout) :: print_flag
+      logical, intent(in) :: print_flag
       logical, intent(in) :: save_boundary_flag
       double precision, intent(in) :: log10_pressure_limit
       double precision, intent(inout) :: log10_radius
