@@ -41,7 +41,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
      convective_core_edge_zone, h_shell_midpoint_zone, &
      luminosity_components, age_gyr, timestep_years, kind_card_index, &
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
-     log_teff)
+     log_teff, disable_structure_dt_limits)
       use star_info_lib, only: star, json
       use controls_lib, only: itime_max_dt_frac
       use phys_const_lib
@@ -66,17 +66,22 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
       double precision, intent(out) :: max_domega_frac
       integer, intent(in) :: h_shell_zone_begin
       double precision, intent(in) :: log_teff
+! disable_structure_dt_limits: set when this call decided to switch the
+! structure-based limits off; the driver clears
+! star%job%use_structure_dt_limits on seeing it (W3).
+      logical, intent(out) :: disable_structure_dt_limits
       double precision :: structure_dt, rotation_dt, hydrogen_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
 ! structure_limits_active: whether the structure-based limits apply to
-! this step -- star%job%use_structure_dt_limits, cleared here once the
+! this step -- star%job%use_structure_dt_limits, switched off once the
 ! centre passes log Tc = 7.1 with L_grav < 0.  The routine reads only
-! this local after that decision; the star%job% flag is still written
-! here (2026 W2) until the driver takes over the flip.
+! this local after that decision and reports it through
+! disable_structure_dt_limits; the driver flips the star%job% flag.
       logical :: structure_limits_active
 ! dt_unlimited: "no limit from this criterion" sentinel (seconds).
       double precision, parameter :: dt_unlimited = 1.0d20
 
+      disable_structure_dt_limits = .false.
       if (previous_timestep.ge.0.0d0) then
 ! if user is fixing tstep, set dt to given value and exit
       if(star%job%timestep_override_active(kind_card_index)) then
@@ -92,7 +97,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
  100        format(1x,'timestep control: structure-based limits', &
                  ' disabled (log Tc =',f7.4,', L_grav =',es10.2,' Lsun)')
             structure_limits_active = .false.
-            star%job%use_structure_dt_limits = .false.
+            disable_structure_dt_limits = .true.
          endif
       endif
 !  find timestep based on changes in structure variables from
