@@ -11,11 +11,18 @@
 ! density). Uses the classic F77 "alternate return" (the trailing `*`
 ! dummy argument / `return 1`) to signal "point outside the table" to
 ! the caller (see kap_lib.f90's kap_get, label 100).
-subroutine kurucz(log10_density, log10_temperature, opacity, &
+!
+! 2026 wave 3 (R5): tbl is the table set to interpolate in --
+! opacity_table%kurucz(1) (the former kurucz.f90) or
+! opacity_table%kurucz(2) (the former kurucz2.f90, deleted; it was a
+! member-for-member rename of this file except for the early-out
+! range check below, which it lacked and which tbl%check_range now
+! gates).
+subroutine kurucz(tbl, log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr, *)
 
 !     TWO DIMENSIONAL INTERPOLATION FOR OPACITY.
-!     opacity_table%kurucz_ix_t / kurucz_ix_rho ARE THE WARM-START
+!     tbl%ix_t / tbl%ix_rho ARE THE WARM-START
 !     CURSORS (NEAREST TEMPERATURE ROW AND DENSITY KNOT) LEFT BY THE
 !     PREVIOUS CALL.  FOR UP TO SIX TEMPERATURE ROWS AROUND THE POINT
 !     THE ROW'S CUBIC SPLINE IN LOG RHO GIVES LOG OPACITY AND ITS RHO
@@ -29,6 +36,7 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
       implicit none
       integer :: jerr_gate
 
+      type(kurucz_table_set), intent(inout) :: tbl
       double precision, intent(in) :: log10_density, log10_temperature
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
@@ -51,32 +59,34 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
       double precision :: log10_opacity_at_rho, dlnkap_dlnrho_at_rho
       double precision :: log10_opacity_interp, dlnkap_dlnrho_unused
 
-      call findex(opacity_table%kurucz_grid_logt, opacity_table%kurucz_num_temps, log10_temperature, &
-           opacity_table%kurucz_ix_t)
+      call findex(tbl%grid_logt, tbl%num_temps, log10_temperature, &
+           tbl%ix_t)
 
       ierr = 0
+      if (tbl%check_range) then
       if (.not.(log10_density.le.kurucz_logrho_max .and. &
            log10_temperature.le.kurucz_logt_max)) return 1
+      end if
       search_full_range = .true.
 !     FOR SIX GRID POINTS OF TEMPERATURE
-      temp_index_start = opacity_table%kurucz_ix_t-2
+      temp_index_start = tbl%ix_t-2
       if (temp_index_start.le.0) temp_index_start = 1
-      temp_index_end = opacity_table%kurucz_ix_t+3
-      if (temp_index_end.gt.opacity_table%kurucz_num_temps) temp_index_end = opacity_table%kurucz_num_temps
+      temp_index_end = tbl%ix_t+3
+      if (temp_index_end.gt.tbl%num_temps) temp_index_end = tbl%num_temps
       full_search: do
       num_valid_temps = 0
       do temp_index = temp_index_start, temp_index_end
          density_found = .false.
-         row_density_start = opacity_table%kurucz_density_start_index(temp_index)
+         row_density_start = tbl%density_start_index(temp_index)
          row_density_end = row_density_start + &
-              opacity_table%kurucz_density_count(temp_index) - 1
+              tbl%density_count(temp_index) - 1
 !        FIND THE 'M3'
-         if (opacity_table%kurucz_ix_rho.lt.row_density_start .or. &
-              opacity_table%kurucz_ix_rho.gt.row_density_end) opacity_table%kurucz_ix_rho = row_density_end
-         density_pointer = opacity_table%kurucz_ix_rho
-         if (log10_density.lt.opacity_table%kurucz_log10_rho(temp_index, density_pointer)) then
+         if (tbl%ix_rho.lt.row_density_start .or. &
+              tbl%ix_rho.gt.row_density_end) tbl%ix_rho = row_density_end
+         density_pointer = tbl%ix_rho
+         if (log10_density.lt.tbl%log10_rho(temp_index, density_pointer)) then
             do density_scan_index = density_pointer-1, row_density_start, -1
-               if (opacity_table%kurucz_log10_rho(temp_index, density_scan_index).le. &
+               if (tbl%log10_rho(temp_index, density_scan_index).le. &
                     log10_density) then
                   density_pointer = density_scan_index
                   density_found = .true.
@@ -85,7 +95,7 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
             end do
          else
             do density_scan_index = density_pointer, row_density_end-1
-               if (opacity_table%kurucz_log10_rho(temp_index, density_scan_index+1).gt. &
+               if (tbl%log10_rho(temp_index, density_scan_index+1).gt. &
                     log10_density) then
                   density_pointer = density_scan_index
                   density_found = .true.
@@ -93,7 +103,7 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
                endif
             end do
             if (.not. density_found) then
-            if (opacity_table%kurucz_log10_rho(temp_index, row_density_end).ge. &
+            if (tbl%log10_rho(temp_index, row_density_end).ge. &
                  log10_density) then
                density_pointer = row_density_end
                density_found = .true.
@@ -101,15 +111,15 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
             endif
          endif
          if (.not. density_found) cycle
-         opacity_table%kurucz_ix_rho = density_pointer
-         knot_index = opacity_table%kurucz_ix_rho - row_density_start + 1
+         tbl%ix_rho = density_pointer
+         knot_index = tbl%ix_rho - row_density_start + 1
          coeff_base_index = 4*(knot_index-1)
 !        NOW, (KNOT,KNOT+1) IS SUB-RANGE OF RHO WHICH CONTAINS D.
-         delta_logrho = log10_density - opacity_table%kurucz_log10_rho(temp_index, opacity_table%kurucz_ix_rho)
-         c1 = opacity_table%kurucz_spline_coeffs(temp_index, coeff_base_index+1)
-         c2 = opacity_table%kurucz_spline_coeffs(temp_index, coeff_base_index+2)
-         c3 = opacity_table%kurucz_spline_coeffs(temp_index, coeff_base_index+3)
-         c4 = opacity_table%kurucz_spline_coeffs(temp_index, coeff_base_index+4)
+         delta_logrho = log10_density - tbl%log10_rho(temp_index, tbl%ix_rho)
+         c1 = tbl%spline_coeffs(temp_index, coeff_base_index+1)
+         c2 = tbl%spline_coeffs(temp_index, coeff_base_index+2)
+         c3 = tbl%spline_coeffs(temp_index, coeff_base_index+3)
+         c4 = tbl%spline_coeffs(temp_index, coeff_base_index+4)
 !        INTERPOLATION FOR OPACITY(OL) IN THE ENTRY D AND THE EACH T-GRID
 !        ESTIMATES THE PARTIAL DERIVATIVE OF OL WRT D
 !        EVALUATES THE INTERPOLATION VALUE IN THE SUB-RANGE WE DETERMINED.
@@ -117,14 +127,14 @@ subroutine kurucz(log10_density, log10_temperature, opacity, &
               delta_logrho+c1
          dlnkap_dlnrho_at_rho = (3.0d0*c4*delta_logrho+2.0d0*c3)*delta_logrho+c2
          num_valid_temps = num_valid_temps+1
-         temp_subset_logt(num_valid_temps) = opacity_table%kurucz_grid_logt(temp_index)
+         temp_subset_logt(num_valid_temps) = tbl%grid_logt(temp_index)
          temp_subset_log10_opacity(num_valid_temps) = log10_opacity_at_rho
          temp_subset_dlnkap_dlnrho(num_valid_temps) = dlnkap_dlnrho_at_rho
       end do
       if (num_valid_temps.le.3) then
          if (search_full_range) then
             temp_index_start = 1
-            temp_index_end = opacity_table%kurucz_num_temps
+            temp_index_end = tbl%num_temps
             search_full_range = .false.
             cycle full_search
          endif

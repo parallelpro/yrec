@@ -126,7 +126,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt)
             got_atmosphere_opacity = .true.
          else if (star%ctrl%use_kurucz90_tables) then
-            call kurucz(log10_density, log10_temperature, atm_opacity, &
+            call kurucz(opacity_table%kurucz(1), log10_density, log10_temperature, atm_opacity, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt, &
                  jerr, *100)
             if (jerr /= 0) then
@@ -134,7 +134,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                return
             end if
             if (star%use_two_z_tables) then
-               call kurucz2(log10_density, log10_temperature, &
+               call kurucz(opacity_table%kurucz(2), log10_density, log10_temperature, &
                     atm_opacity_2, atm_log10_opacity_2, &
                     atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2, jerr, *100)
                if (jerr /= 0) then

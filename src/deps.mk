@@ -220,9 +220,8 @@ kap/alex94/read_alex94_tables.o: luout_lib.mod opacity_table_lib.mod star_info_l
 kap/conductive/condopacp.o: conductive_table_lib.mod math_lib.mod star_info_lib.mod
 kap/conductive/condopacpint.o: math_lib.mod
 kap/kap_lib.o: luout_lib.mod math_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/kurucz90/build_kurucz_splines.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/kurucz90/build_kurucz_splines.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod
 kap/kurucz90/kurucz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
-kap/kurucz90/kurucz2.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
 kap/kurucz90/read_kurucz_tables.o: math_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/gtlaol.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/gtlaol2.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod

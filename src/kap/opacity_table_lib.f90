@@ -17,8 +17,8 @@
 ! and the Alexander 94/06 table-grid arrays) are preserved here as
 ! declaration-time initializers, transcribed verbatim from the
 ! original DATA statements in kap/alex94/read_alex94_tables.f90,
-! kap/alex06/readalex06.f90, kap/kurucz90/kurucz.f90,
-! kap/kurucz90/kurucz2.f90. kap/opal92/opal92_interp3d_z2.f90's mirror of
+! kap/alex06/readalex06.f90, kap/kurucz90/kurucz.f90 (and its former
+! kurucz2.f90 clone). kap/opal92/opal92_interp3d_z2.f90's mirror of
 ! kap/opal92/opal92_interp3d.f90's common/kipmll/ (its own common/kipmll2/) never had a
 ! DATA statement in the original, so its members are left without an
 ! initializer here too, preserving that asymmetry.
@@ -67,6 +67,28 @@ module opacity_table_lib
       double precision, parameter :: alex_composition_tol = 1.0d-8
       double precision, parameter :: opal92_x_match_tol = 1.0d-5
       double precision, parameter :: opal95_composition_tol = 1.0d-4
+
+! kurucz_table_set: one Kurucz90 molecular-opacity table (former
+! common/gkrz/, krz/, kipm/, intpl2/ and their gkrz2/, krz2/, kipm2/,
+! intpl22/ second-Z mirrors). 2026 wave 3 (R5): the two member sets
+! kurucz_*/kurucz2_* became opacity_table%kurucz(1)/(2) so that one
+! reader/spliner/interpolator serves both. Component names are the
+! former kurucz_* names with the prefix dropped; shapes unchanged.
+! check_range: kurucz.f90's original early-out (skip the table above
+! log rho = -3 or log T = 4.1) was never in kurucz2.f; the merged
+! kurucz() applies it only when this is .true. (read_kurucz_tables
+! clears it for set 2).
+      type, public :: kurucz_table_set
+           double precision :: grid_logt(kurucz_max_num_temps)
+           double precision :: log10_opacity(kurucz_num_x_temp_entries,kurucz_max_num_densities), &
+                log10_rho(kurucz_num_x_temp_entries,kurucz_max_num_densities)
+           integer :: num_temps
+           integer :: ix_t = 1, ix_rho = 1
+           double precision :: spline_coeffs(kurucz_num_x_temp_entries,kurucz_num_spline_coeffs)
+           integer :: density_start_index(kurucz_num_x_temp_entries), &
+                density_count(kurucz_num_x_temp_entries)
+           logical :: check_range = .true.
+      end type kurucz_table_set
 
       type, public :: opacity_table_state
 ! former common/gllot/, llot/, lintpl/ (OPAL92, first Z table)
@@ -146,24 +168,9 @@ module opacity_table_lib
            double precision :: alex06_cached_x = 0.0d0, alex06_cached_z = 0.0d0
            integer :: alex06_index_x = 4, alex06_index_t = 43, alex06_index_r = 10
            double precision :: alex06_full_opacity(n_alex06_xz,n_alex06_t,n_alex06_d)
-! former common/gkrz/, krz/, kipm/, intpl2/ (Kurucz, first table)
-           double precision :: kurucz_grid_logt(kurucz_max_num_temps)
-           double precision :: kurucz_log10_opacity(kurucz_num_x_temp_entries,kurucz_max_num_densities), &
-                kurucz_log10_rho(kurucz_num_x_temp_entries,kurucz_max_num_densities)
-           integer :: kurucz_num_temps
-           integer :: kurucz_ix_t = 1, kurucz_ix_rho = 1
-           double precision :: kurucz_spline_coeffs(kurucz_num_x_temp_entries,kurucz_num_spline_coeffs)
-           integer :: kurucz_density_start_index(kurucz_num_x_temp_entries), &
-                kurucz_density_count(kurucz_num_x_temp_entries)
-! former common/gkrz2/, krz2/, kipm2/, intpl22/ (Kurucz, second table)
-           double precision :: kurucz2_grid_logt(kurucz_max_num_temps)
-           double precision :: kurucz2_log10_opacity(kurucz_num_x_temp_entries,kurucz_max_num_densities), &
-                kurucz2_log10_rho(kurucz_num_x_temp_entries,kurucz_max_num_densities)
-           integer :: kurucz2_num_temps
-           integer :: kurucz2_ix_t = 1, kurucz2_ix_rho = 1
-           double precision :: kurucz2_spline_coeffs(kurucz_num_x_temp_entries,kurucz_num_spline_coeffs)
-           integer :: kurucz2_density_start_index(kurucz_num_x_temp_entries), &
-                kurucz2_density_count(kurucz_num_x_temp_entries)
+! Kurucz90 tables: (1) at kurucz_table_z1, (2) at kurucz_table_z2
+! (read only when star%use_two_z_tables). See kurucz_table_set.
+           type(kurucz_table_set) :: kurucz(2)
 ! former common/slaol/, slaol2/, nwlaol2/, zlaol/, zslaol/ (LAOL89/
 ! SLAOL: the spline-prepared first-Z, second-Z and pure-Z tables)
            double precision :: slaol_opacity(n_laol_x,n_laol_rho,n_laol_t), &
