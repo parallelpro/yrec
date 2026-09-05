@@ -12,7 +12,10 @@
 ! element abundance computed by microdiff_run.f90 (on the equally
 ! spaced grid) back onto the original model grid, applies the standard
 ! floor/ceiling failsafes, renormalizes helium via X+Y+Z=1, and
-! converts DT/STOT/HRU/HTU/HS1/HQPR back out of Bahcall & Loeb units.
+! converts DT/STOT/HS1/HQPR back out of Bahcall & Loeb units (the
+! caller's radius_bl copy is not converted back: nothing reads it after
+! this call, and its temperature_bl partner was dropped for the same
+! reason in 2026 W2).
 ! Last stage of the microdiff.f90 pipeline (see also
 ! microdiff_setup.f90, microdiff_mte.f90, microdiff_coefficients.f90,
 ! microdiff_run.f90).
@@ -20,7 +23,7 @@
 !  SPACED GRID.
 subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
-     composition, dlnp_dr, radius_bl, enclosed_mass, temperature_bl, &
+     composition, dlnp_dr, radius_bl, enclosed_mass, &
      num_zones, total_mass, num_light, light_element_id)
       use star_info_lib, only: star, json
       use numerics_lib, only: intrp2, lagrange4
@@ -33,8 +36,8 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       double precision, intent(in) :: eq_delta_light(num_light,json)
       integer, intent(in) :: zone_begin, zone_end, num_eq_points
       double precision, intent(inout) :: composition(15,json)
-      double precision, intent(inout) :: dlnp_dr(json), radius_bl(json), &
-           enclosed_mass(json), temperature_bl(json)
+      double precision, intent(in) :: radius_bl(json)
+      double precision, intent(inout) :: dlnp_dr(json), enclosed_mass(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
       integer, intent(in) :: light_element_id(num_light)
@@ -165,8 +168,6 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       endif
 !
       do i=1,num_zones
-         radius_bl(i)=radius_bl(i)/star%bl_radius_scale
-         temperature_bl(i)=temperature_bl(i)/star%bl_temp_scale
          enclosed_mass(i)=enclosed_mass(i)/star%bl_mass_scale
          dlnp_dr(i)=dlnp_dr(i)*star%bl_radius_scale
       end do

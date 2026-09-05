@@ -8,8 +8,7 @@
 ! suite (examples/run_standard_solar_model).
 subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
-     aux_radial_quantity, radius, enclosed_mass, temperature, num_zones, &
-     total_mass)
+     aux_radial_quantity, radius, enclosed_mass, num_zones, total_mass)
       use star_info_lib, only: star, json
       use numerics_lib
       implicit none
@@ -23,8 +22,11 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! here (parallel to radius), its physical meaning is not otherwise
 ! exercised in this file.
       double precision, intent(inout) :: aux_radial_quantity(json)
-      double precision, intent(inout) :: radius(json)
-      double precision, intent(inout) :: enclosed_mass(json), temperature(json)
+! radius: the caller's Bahcall-Loeb radius copy; read only (until 2026
+! W2 it and a temperature copy were divided back out of BL units here,
+! which nothing read afterwards).
+      double precision, intent(in) :: radius(json)
+      double precision, intent(inout) :: enclosed_mass(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
 
@@ -145,8 +147,6 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
       endif
       do zone_index=1,num_zones
 
-         radius(zone_index)=radius(zone_index)/star%bl_radius_scale
-         temperature(zone_index)=temperature(zone_index)/star%bl_temp_scale
          enclosed_mass(zone_index)=enclosed_mass(zone_index)/star%bl_mass_scale
          aux_radial_quantity(zone_index)=aux_radial_quantity(zone_index)*star%bl_radius_scale
       end do

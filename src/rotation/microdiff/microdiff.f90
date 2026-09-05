@@ -241,6 +241,6 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       call microdiff_etm(timestep, eq%radius, eq_delta_hydrogen, &
            eq_delta_metal, eq_delta_light, zone_begin, zone_end, &
            num_eq_points, composition, dlnp_dr, radius_bl, enclosed_mass, &
-           temperature_bl, num_zones, total_mass, num_light, light_element_id)
+           num_zones, total_mass, num_light, light_element_id)
       return
 end subroutine microdiff

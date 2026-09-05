@@ -41,6 +41,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      zone_end, settling_skipped_flag, density_orig, temperature_orig)
 
       use star_info_lib, only: star, json
+      use bahcall_loeb_units_lib, only: set_bahcall_loeb_scales
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -62,8 +63,6 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       double precision, intent(out) :: density_orig(json), &
            temperature_orig(json)
       integer :: i
-      double precision, parameter :: crsun_bah = rsun_cgs_legacy
-      double precision, parameter :: csecyr_bah = 3.1558d7
 
 !     settling_skipped_flag=T IF SETTLING IS SKIPPED THIS MODEL (FULLY
 !     CONVECTIVE, HYDROGEN-EXHAUSTED OR HELIUM-EXHAUSTED).
@@ -144,15 +143,8 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
   916    format(1x,' SETTLING RESUMED')
          star%settling_suspended_reported = .false.
       end if
-!     star%bl_mass_scale=CONVERSION FACTOR FOR MASS.
-!     star%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
-!     star%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
-!     star%bl_time_scale=CONVERSION FACTOR FOR TIME.
-      star%bl_radius_scale=1.0d0/crsun_bah
-      star%bl_mass_scale=1.0d-2*star%bl_radius_scale**3
-      star%bl_temp_scale=1.0d-7
-!     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
-      star%bl_time_scale=2.7d13*csecyr_bah
+!     SET THE star%bl_*_scale CONVERSION FACTORS.
+      call set_bahcall_loeb_scales()
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do i=1,num_zones

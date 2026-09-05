@@ -26,6 +26,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
+      use bahcall_loeb_units_lib, only: set_bahcall_loeb_scales
       use luout_lib
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
@@ -70,8 +71,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       integer :: num_species
       data num_species/4/
 ! --- locals ---
-      double precision, parameter :: solar_radius_bl = rsun_cgs_legacy
-      double precision, parameter :: seconds_per_year_bl = 3.1558d7
       integer :: zone_idx
       double precision :: hydrogen_fraction, z_plus_he3_fraction, &
            metal_fraction, hydrogen_fraction_sq, hydrogen_fraction_cubed, &
@@ -99,8 +98,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !     AND LOEB UNITS.
 !     CONSTANTS DEFINED :
 !     ln10 = CONVERSION FACTOR FROM LN TO LOG10
-!     solar_radius_bl = SOLAR RADIUS (CM)
-!     seconds_per_year_bl = NUMBER OF SECONDS IN A YEAR.
 !     settling_skipped_flag=T IF SETTLING IS SKIPPED THIS MODEL (FULLY
 !     CONVECTIVE, HYDROGEN-EXHAUSTED OR HELIUM-EXHAUSTED).
       ierr = 0
@@ -181,15 +178,8 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
   916    format(1x,' SETTLING RESUMED')
          star%settling_suspended_reported = .false.
       end if
-!     star%bl_mass_scale=CONVERSION FACTOR FOR MASS.
-!     star%bl_radius_scale=CONVERSION FACTOR FOR RADIUS.
-!     star%bl_temp_scale=CONVERSION FACOTR FOR TEMPERATURE.
-!     star%bl_time_scale=CONVERSION FACTOR FOR TIME.
-      star%bl_radius_scale=1.0d0/solar_radius_bl
-      star%bl_mass_scale=1.0d-2*star%bl_radius_scale**3
-      star%bl_temp_scale=1.0d-7
-!     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
-      star%bl_time_scale=2.7d13*seconds_per_year_bl
+!     SET THE star%bl_*_scale CONVERSION FACTORS.
+      call set_bahcall_loeb_scales()
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do zone_idx=1,num_zones

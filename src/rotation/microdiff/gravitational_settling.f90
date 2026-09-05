@@ -283,7 +283,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 
       call equal_to_model(timestep,equal_radius,equal_hydrogen_fraction, &
            zone_begin,zone_end,num_equal_points,composition,dlnp_dr, &
-           radius_bl,mass_grams,temperature_bl,num_zones,total_mass)
+           radius_bl,mass_grams,num_zones,total_mass)
 
       return
 end subroutine gravitational_settling
