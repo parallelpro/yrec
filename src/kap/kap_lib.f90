@@ -192,7 +192,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                return
             end if
          else if (star%ctrl%use_opal92_tables) then
-            call opal92_interp3d(log10_density, log10_temperature, &
+            call opal92_interp3d(opacity_table%opal92(1), log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt, jerr)
             if (jerr /= 0) then
@@ -245,14 +245,14 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             return
          end if
       else if (star%ctrl%use_opal92_tables) then
-         call opal92_interp3d(log10_density, log10_temperature, hydrogen_fraction, &
+         call opal92_interp3d(opacity_table%opal92(1), log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
          end if
          if (star%use_two_z_tables) then
-            call opal92_interp3d_z2(log10_density, log10_temperature, &
+            call opal92_interp3d(opacity_table%opal92(2), log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)
             if (jerr /= 0) then

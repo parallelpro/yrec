@@ -18,10 +18,8 @@
 ! declaration-time initializers, transcribed verbatim from the
 ! original DATA statements in kap/alex94/read_alex94_tables.f90,
 ! kap/alex06/readalex06.f90, kap/kurucz90/kurucz.f90 (and its former
-! kurucz2.f90 clone). kap/opal92/opal92_interp3d_z2.f90's mirror of
-! kap/opal92/opal92_interp3d.f90's common/kipmll/ (its own common/kipmll2/) never had a
-! DATA statement in the original, so its members are left without an
-! initializer here too, preserving that asymmetry.
+! kurucz2.f90 clone) and kap/opal92/opal92_interp3d.f90 (see
+! opal92_table_set for the former kipmll2 asymmetry).
 module opacity_table_lib
       implicit none
 ! OPAL92 (Livermore) table dimensions
@@ -111,37 +109,41 @@ module opacity_table_lib
            integer :: table_number = 1
       end type laol_table_set
 
+! opal92_table_set: one OPAL92 (Livermore) opacity table set (former
+! common/gllot/, llot/, lintpl/, llot4/, kipmll/ and their gllot2/,
+! llot2/, lintpl2/, llot42/, kipmll2/ second-Z mirrors). 2026 wave 3
+! (R5): the two member sets opal92_*/opal92_*_z2 became
+! opacity_table%opal92(1)/(2) so that one reader/prep/surface-table/
+! interpolator serves both. Component names are the former opal92_*
+! names with the prefix dropped; shapes unchanged. index_x/index_t/
+! index_rho are the warm-start cursors: the first set's were
+! DATA-initialized to 1 (kipmll), the second set's never were
+! (kipmll2, so 0 as static storage); both now start at 1 -- findex
+! resets any cursor outside 1..n to 1 before using it, and every
+! read of these cursors goes through findex first, so 0 and 1 are
+! indistinguishable.
+      type, public :: opal92_table_set
+           double precision :: grid_logt(n_opal92_t), &
+                grid_x(n_opal92_x), grid_logr(n_opal92_d)
+           double precision :: log10_opacity(n_opal92_xt,n_opal92_d)
+           integer :: num_x, num_temps
+           double precision :: spline_coeffs(n_opal92_xt,n_opal92_4d)
+           integer :: density_start_index(n_opal92_xt), &
+                density_count(n_opal92_xt)
+! former common/llot4/ (the surface-X table built by
+! opal92_surface_table)
+           double precision :: surface_x, surface_z
+           double precision :: surface_spline_coeffs(n_opal92_t,n_opal92_4d)
+           integer :: surface_x_index
+! former common/kipmll/ (cached grid indices)
+           integer :: index_x = 1, index_t = 1, index_rho = 1
+      end type opal92_table_set
+
       type, public :: opacity_table_state
-! former common/gllot/, llot/, lintpl/ (OPAL92, first Z table)
-           double precision :: opal92_grid_logt(n_opal92_t), &
-                opal92_grid_x(n_opal92_x), opal92_grid_logr(n_opal92_d)
-           double precision :: opal92_log10_opacity(n_opal92_xt,n_opal92_d)
-           integer :: opal92_num_x, opal92_num_temps
-           double precision :: opal92_spline_coeffs(n_opal92_xt,n_opal92_4d)
-           integer :: opal92_density_start_index(n_opal92_xt), &
-                opal92_density_count(n_opal92_xt)
-! former common/gllot2/, llot2/, lintpl2/ (OPAL92, second Z table)
-           double precision :: opal92_grid_logt_z2(n_opal92_t), &
-                opal92_grid_x_z2(n_opal92_x), opal92_grid_logr_z2(n_opal92_d)
-           double precision :: opal92_log10_opacity_z2(n_opal92_xt,n_opal92_d)
-           integer :: opal92_num_x_z2, opal92_num_temps_z2
-           double precision :: opal92_spline_coeffs_z2(n_opal92_xt,n_opal92_4d)
-           integer :: opal92_density_start_index_z2(n_opal92_xt), &
-                opal92_density_count_z2(n_opal92_xt)
-! former common/llot4/ (OPAL92 surface table)
-           double precision :: opal92_surface_x, opal92_surface_z
-           double precision :: opal92_surface_spline_coeffs(n_opal92_t,n_opal92_4d)
-           integer :: opal92_surface_x_index
-! former common/llot42/ (OPAL92 surface table, second Z)
-           double precision :: opal92_surface_x_z2, opal92_surface_z_z2
-           double precision :: opal92_surface_spline_coeffs_z2(n_opal92_t,n_opal92_4d)
-           integer :: opal92_surface_x_index_z2
-! former common/kipmll/ (cached grid indices, DATA-initialized in
-! kap/opal92/opal92_interp3d.f90) and common/kipmll2/ (its second-Z mirror in
-! kap/opal92/opal92_interp3d_z2.f90, never DATA-initialized in the original -- no
-! initializer here either, preserving that asymmetry).
-           integer :: opal92_index_x = 1, opal92_index_t = 1, opal92_index_rho = 1
-           integer :: opal92_index_x_z2, opal92_index_t_z2, opal92_index_rho_z2
+! OPAL92 (Livermore) tables: (1) at opal_table_z1, (2) at
+! opal_table_z2 (read only when star%use_two_z_tables). See
+! opal92_table_set.
+           type(opal92_table_set) :: opal92(2)
 ! former common/galot/, alot/, alotall/ (Alexander 1994/95)
            double precision :: alex94_grid_logt(n_alex94_t) = &
                 [3.00d0,3.05d0,3.10d0,3.15d0,3.20d0,3.25d0,3.30d0, &

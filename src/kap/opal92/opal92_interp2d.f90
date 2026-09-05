@@ -12,7 +12,12 @@
 ! opal92_interp3d. opacity is opacity, log10_opacity is log(opacity),
 ! dlnkap_dlnrho is the partial derivative of opacity wrt density,
 ! dlnkap_dlnt is the partial derivative of opacity wrt temperature.
-subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
+!
+! 2026 wave 3 (R5): tbl is the table set (opacity_table%opal92(1) or
+! (2)); the former opal92_interp2d_z2.f90 was a member-for-member
+! rename of this file (its two stdout messages named it) and is
+! deleted.
+subroutine opal92_interp2d(tbl, temperature, density, abund_index, temp_index, &
      dens_index, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use opacity_table_lib
@@ -20,6 +25,7 @@ subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
       use math_lib
       implicit none
 
+      type(opal92_table_set), intent(inout) :: tbl
       double precision, intent(in) :: temperature, density
 ! 2026 ierr campaign: interpolation/extrapolation failures return
 ! via ierr (kap_eval gates); the historical stops are gone.
@@ -41,35 +47,35 @@ subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
       its = temp_index - 2
       if (its.le.0) its = 1
       itf = temp_index + 3
-      if (itf.gt.opacity_table%opal92_num_temps) itf = opacity_table%opal92_num_temps
+      if (itf.gt.tbl%num_temps) itf = tbl%num_temps
       if (abund_index.lt.4) then
          mm1 = abund_index
       else
-         mm1 = opacity_table%opal92_surface_x_index
+         mm1 = tbl%surface_x_index
       endif
       jt = 0
       do it = its,itf
-         index1 = it + (mm1-1)*opacity_table%opal92_num_temps
-         ndss = opacity_table%opal92_density_start_index(index1)
+         index1 = it + (mm1-1)*tbl%num_temps
+         ndss = tbl%density_start_index(index1)
          if (ndss.ne.1) then
             write(*,*) 'opal92_interp2d: CHECK NDSS'
             ierr = 1
             return
          end if
-         ndf = ndss + opacity_table%opal92_density_count(index1) - 1
-         call findex(opacity_table%opal92_grid_logr, ndf, density, dens_index)
+         ndf = ndss + tbl%density_count(index1) - 1
+         call findex(tbl%grid_logr, ndf, density, dens_index)
          if (dens_index.lt.0) then
 ! OUT SIDE THEN  LINEAR EXTRAPOLATION
             dens_index = -dens_index
             knot = dens_index - ndss + 1
             index2 = 4*(knot-1)
-            dx = density - opacity_table%opal92_grid_logr(dens_index)
+            dx = density - tbl%grid_logr(dens_index)
             if (abund_index.lt.4) then
-               c1 = opacity_table%opal92_spline_coeffs(index1,index2+1)
-               c2 = opacity_table%opal92_spline_coeffs(index1,index2+2)
+               c1 = tbl%spline_coeffs(index1,index2+1)
+               c2 = tbl%spline_coeffs(index1,index2+2)
             else
-               c1 = opacity_table%opal92_surface_spline_coeffs(it,index2+1)
-               c2 = opacity_table%opal92_surface_spline_coeffs(it,index2+2)
+               c1 = tbl%surface_spline_coeffs(it,index2+1)
+               c2 = tbl%surface_spline_coeffs(it,index2+2)
             endif
             ol0 = c2*dx + c1
             qodi = c2
@@ -77,17 +83,17 @@ subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
 ! IN SIDE THEN  SPLINE INTERPOLATION
             knot = dens_index - ndss + 1
             index2 = 4*(knot-1)
-            dx = density - opacity_table%opal92_grid_logr(dens_index)
+            dx = density - tbl%grid_logr(dens_index)
             if (abund_index.lt.4) then
-               c1 = opacity_table%opal92_spline_coeffs(index1,index2+1)
-               c2 = opacity_table%opal92_spline_coeffs(index1,index2+2)
-               c3 = opacity_table%opal92_spline_coeffs(index1,index2+3)
-               c4 = opacity_table%opal92_spline_coeffs(index1,index2+4)
+               c1 = tbl%spline_coeffs(index1,index2+1)
+               c2 = tbl%spline_coeffs(index1,index2+2)
+               c3 = tbl%spline_coeffs(index1,index2+3)
+               c4 = tbl%spline_coeffs(index1,index2+4)
             else
-               c1 = opacity_table%opal92_surface_spline_coeffs(it,index2+1)
-               c2 = opacity_table%opal92_surface_spline_coeffs(it,index2+2)
-               c3 = opacity_table%opal92_surface_spline_coeffs(it,index2+3)
-               c4 = opacity_table%opal92_surface_spline_coeffs(it,index2+4)
+               c1 = tbl%surface_spline_coeffs(it,index2+1)
+               c2 = tbl%surface_spline_coeffs(it,index2+2)
+               c3 = tbl%surface_spline_coeffs(it,index2+3)
+               c4 = tbl%surface_spline_coeffs(it,index2+4)
             endif
 ! INTERPOLATION FOR OPACITY(OL) IN THE ENTRY D AND THE EACH T-GRID
 ! ESTIMATES THE PARTIAL DERIVATIVE OF OL WRT D
@@ -97,7 +103,7 @@ subroutine opal92_interp2d(temperature, density, abund_index, temp_index, &
          endif
 !
          jt = jt + 1
-         xt(jt) = opacity_table%opal92_grid_logt(it)
+         xt(jt) = tbl%grid_logt(it)
          yto(jt) = ol0
          aqod(jt) = qodi
       end do
