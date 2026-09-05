@@ -161,9 +161,10 @@ eos/mhd/mhdpx2.o: mhd_eos_lib.mod numerics_lib.mod
 eos/mhd/mhdst.o: mhd_eos_lib.mod
 eos/mhd/mhdtbl.o: star_info_lib.mod
 eos/mu.o: eos_mixture_lib.mod phys_const_lib.mod
-eos/opal/eqbound.o: math_lib.mod opal_eos_lib.mod
-eos/opal/eqbound01.o: math_lib.mod opal_eos_lib.mod
+eos/opal/eqbound.o: opal_eos_lib.mod
+eos/opal/eqbound01.o: opal_eos_lib.mod
 eos/opal/eqbound06.o: math_lib.mod opal_eos_lib.mod
+eos/opal/eqbound_core.o: math_lib.mod
 eos/opal/esac.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/esac01.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/esac06.o: luout_lib.mod opal_eos_lib.mod

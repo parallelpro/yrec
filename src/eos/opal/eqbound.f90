@@ -11,22 +11,23 @@
 ! the ramp factor used to blend the OPAL result with the Yale/SCV
 ! result (see eqstat2.f90's use_opal95_eos branch, which calls this
 ! immediately after oeqos).
+!
+! Readability W3 (2026): the row search and ramp calculation are
+! eqbound_core.f90, shared with eqbound01; this wrapper keeps the
+! 1995 density pre-check (log10 rho > 5.0d0 is outside the table).
 subroutine eqbound(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
 
       use opal_eos_lib
-      use math_lib
       implicit none
 
-      integer, parameter :: nt = n_eos95_nt
+      integer, parameter :: nt = n_eos95_nt, nr = n_eos95_nr
 
       double precision, intent(in) :: temperature, log10_density
       double precision, intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
 ! --- locals ---
-      double precision :: t6, table_edge_density, ramp_start_density
-      double precision :: t6_top_of_table
-      integer :: t6_scan_idx
+      double precision :: t6
 
       integer, intent(out) :: ierr
 
@@ -40,77 +41,9 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          ramp_factor = 0d0
          return
       end if
-!     find nearest table element in t.
-      if (t6.lt.opal95%t6_grid(opal95%t_row_index)) then
-         do t6_scan_idx = opal95%t_row_index+1, nt
-            if (t6.ge.opal95%t6_grid(t6_scan_idx)) then
-               opal95%t_row_index = t6_scan_idx - 1
-               exit
-            end if
-         end do
-         if (t6_scan_idx > nt) then
-         t6_top_of_table = opal95%t6_grid(nt)
-!        caller should have stopped outside table bounds; error exit
-         write(*,5) t6, t6_top_of_table, opal95%t_row_index
-    5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
-         ierr = 1
-         return
-         end if
-      else
-         do t6_scan_idx = opal95%t_row_index, 1, -1
-            if (t6.le.opal95%t6_grid(t6_scan_idx)) then
-               opal95%t_row_index = t6_scan_idx
-               exit
-            end if
-         end do
-         if (t6_scan_idx < (1)) then
-         t6_top_of_table = opal95%t6_grid(1)
-!        caller should have stopped outside table bounds; error exit
-         write(*,5) t6, t6_top_of_table, opal95%t_row_index
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
-         ierr = 1
-         return
-         end if
-      end if
-!     define table edge in rho by linear interpolation.
-      table_edge_density = opal95%density_edge_at_t(opal95%t_row_index+1)
-      table_edge_density = log10(table_edge_density)
-!     define beginning of ramp in the same fashion -
-!     ramp is defined as one table element wide.
-      ramp_start_density = opal95%density_grid(opal95_density_index_edge(opal95%t_row_index+1)-1)
-      ramp_start_density = log10(ramp_start_density)
-!     check if within table bounds in rho
-      if (log10_density.gt.table_edge_density) then
-         in_opal_table = .false.
-         needs_ramp = .true.
-         ramp_factor = 0d0
-         return
-      end if
-
-!     If we get here, the point is in the table.
-      in_opal_table = .true.
-
-!     Now we check if ramping is needed.
-!     First we check if ramping in temperature is needed.
-      if (t6.le.opal95%t6_grid(nt-1)) then
-         needs_ramp = .true.
-         ramp_factor = (t6-opal95%t6_grid(nt))/(opal95%t6_grid(nt-1)-opal95%t6_grid(nt))
-      else if (t6.ge.opal95%t6_grid(2)) then
-         needs_ramp = .true.
-         ramp_factor = (opal95%t6_grid(1)-t6)/(opal95%t6_grid(1)-opal95%t6_grid(2))
-      else if (log10_density.ge.ramp_start_density) then
-!        If we get here, ramping in density is needed.
-         needs_ramp = .true.
-         ramp_factor = (table_edge_density-log10_density)/ &
-              (table_edge_density-ramp_start_density)
-      else
-!        If we get here, we are in the middle of the table and
-!        no ramping is needed.
-         needs_ramp = .false.
-      end if
+      call eqbound_core(nt, nr, opal95%t6_grid, opal95%t_row_index, opal95%density_edge_at_t, &
+           opal95_density_index_edge, opal95%density_grid, t6, log10_density, ramp_factor, &
+           in_opal_table, needs_ramp, ierr)
 
       return
 end subroutine eqbound
