@@ -22,7 +22,8 @@
 ! log_temperature - run of model temperature.
 ! zone_begin, zone_end - starting and ending shells; different for a
 !  convection zone.
-! rate_pp..rate_triple_alpha, frac_c12_alpha - reaction rates (excluding
+! rate_by_zone - reaction rates by zone, rows rr_pp..rr_triple_alpha
+!  and rr_frac_c12_alpha (excluding
 !  terms that depend only on the composition) per gigayear per amu.
 !  needs to be multiplied by the mass fractions of the reactants and
 !  the atomic weight (in amu) of the product to get the rate of
@@ -36,25 +37,24 @@
 ! program will halt.
 !
 ! Output variables: the new run of abundance composition.
-subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
-     rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, rate_n14_p, &
-     rate_o16_p, rate_c13_alpha, rate_c12_alpha, rate_n14_alpha, &
-     rate_triple_alpha, frac_c12_alpha, shell_mass, composition, &
-     timestep_years, ierr)
+subroutine solve_composition(log_temperature, zone_begin, zone_end, &
+     rate_by_zone, shell_mass, composition, timestep_years, ierr)
 
       use star_info_lib, only: star, json
+      use net_lib, only: num_rate_rows
+      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
+           rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, &
+           rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_frac_c12_alpha
       use luout_lib
       use numerics_lib, only: simeqc
       implicit none
 
       double precision, intent(in) :: log_temperature(json)
       integer, intent(in) :: zone_begin, zone_end
-      double precision, intent(in) :: rate_pp(json), rate_he3_he3(json), &
-           rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
-           rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
-           rate_c12_alpha(json), rate_n14_alpha(json), &
-           rate_triple_alpha(json)
-      double precision, intent(in) :: frac_c12_alpha(json)
+! rate_by_zone(rr_*, zone): the per-zone rate vectors written by
+! net_lib's rates (2026 W3 -- formerly 12 separate rate_*(json)
+! arguments); rows are the rr_* indices of rotation_scratch_lib.
+      double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
       double precision, intent(in) :: shell_mass(json)
       double precision, intent(out) :: composition(15,json)
       double precision, intent(in) :: timestep_years
@@ -140,34 +140,34 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
 !  counter for the number of iterations.
       iteration_count=0
 !
-!  nuclear reaction rates. (the o16,alpha and c12,c12 slots of the rate
-!  arrays -- rate_zero9/rate_zero13 in mix.f90 -- are not used here.)
+!  nuclear reaction rates. (the o16,alpha and c12,c12 rows of
+!  rate_by_zone -- rr_zero9/rr_zero13 -- are not used here.)
       if(zone_begin.eq.zone_end) then
 !  pp
-         gr_pp = rate_pp(zone_begin)
+         gr_pp = rate_by_zone(rr_pp, zone_begin)
 !  he3,he3
-         gr_he3_he3 = rate_he3_he3(zone_begin)
+         gr_he3_he3 = rate_by_zone(rr_he3_he3, zone_begin)
 !  he3,he4
-         gr_he3_he4 = rate_he3_he4(zone_begin)
+         gr_he3_he4 = rate_by_zone(rr_he3_he4, zone_begin)
 !  c12,p
-         gr_c12_p = rate_c12_p(zone_begin)
+         gr_c12_p = rate_by_zone(rr_c12_p, zone_begin)
 !  c13,p
-         gr_c13_p = rate_c13_p(zone_begin)
+         gr_c13_p = rate_by_zone(rr_c13_p, zone_begin)
 !  n14,p + n15,p
-         gr_n14_p = rate_n14_p(zone_begin)
+         gr_n14_p = rate_by_zone(rr_n14_p, zone_begin)
 !  o16,p + o17,p.
-         gr_o16_p = rate_o16_p(zone_begin)
+         gr_o16_p = rate_by_zone(rr_o16_p, zone_begin)
 !  c13,alpha
-         gr_c13_alpha = rate_c13_alpha(zone_begin)
+         gr_c13_alpha = rate_by_zone(rr_c13_alpha, zone_begin)
 !  c12,alpha
-         gr_c12_alpha = rate_c12_alpha(zone_begin)
+         gr_c12_alpha = rate_by_zone(rr_c12_alpha, zone_begin)
 !  n14,alpha
-         gr_n14_alpha = rate_n14_alpha(zone_begin)
+         gr_n14_alpha = rate_by_zone(rr_n14_alpha, zone_begin)
 !  triple alpha
-         gr_triple_alpha = rate_triple_alpha(zone_begin)
+         gr_triple_alpha = rate_by_zone(rr_triple_alpha, zone_begin)
 !  branching ratio for n15,p :
 !  branch_frac_c12 = fraction going to c12+alpha, 1-branch_frac_c12 = fraction going to o16
-         branch_frac_c12 = frac_c12_alpha(zone_begin)
+         branch_frac_c12 = rate_by_zone(rr_frac_c12_alpha, zone_begin)
          branch_frac_o16 = 1.0d0 - branch_frac_c12
       else
 !  use the mass-weighted average rates for the cz
@@ -184,18 +184,18 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, rate_pp, &
          gr_triple_alpha = 0.0d0
          branch_frac_c12 = 0.0d0
          do zone_idx = zone_begin,zone_end
-            gr_pp = gr_pp + shell_mass(zone_idx)*rate_pp(zone_idx)
-            gr_he3_he3 = gr_he3_he3 + shell_mass(zone_idx)*rate_he3_he3(zone_idx)
-            gr_he3_he4 = gr_he3_he4 + shell_mass(zone_idx)*rate_he3_he4(zone_idx)
-            gr_c12_p = gr_c12_p + shell_mass(zone_idx)*rate_c12_p(zone_idx)
-            gr_c13_p = gr_c13_p + shell_mass(zone_idx)*rate_c13_p(zone_idx)
-            gr_n14_p = gr_n14_p + shell_mass(zone_idx)*rate_n14_p(zone_idx)
-            gr_o16_p = gr_o16_p + shell_mass(zone_idx)*rate_o16_p(zone_idx)
-            gr_c13_alpha = gr_c13_alpha + shell_mass(zone_idx)*rate_c13_alpha(zone_idx)
-            gr_c12_alpha = gr_c12_alpha + shell_mass(zone_idx)*rate_c12_alpha(zone_idx)
-            gr_n14_alpha = gr_n14_alpha + shell_mass(zone_idx)*rate_n14_alpha(zone_idx)
-            gr_triple_alpha = gr_triple_alpha + shell_mass(zone_idx)*rate_triple_alpha(zone_idx)
-            branch_frac_c12 = branch_frac_c12 + shell_mass(zone_idx)*frac_c12_alpha(zone_idx)
+            gr_pp = gr_pp + shell_mass(zone_idx)*rate_by_zone(rr_pp, zone_idx)
+            gr_he3_he3 = gr_he3_he3 + shell_mass(zone_idx)*rate_by_zone(rr_he3_he3, zone_idx)
+            gr_he3_he4 = gr_he3_he4 + shell_mass(zone_idx)*rate_by_zone(rr_he3_he4, zone_idx)
+            gr_c12_p = gr_c12_p + shell_mass(zone_idx)*rate_by_zone(rr_c12_p, zone_idx)
+            gr_c13_p = gr_c13_p + shell_mass(zone_idx)*rate_by_zone(rr_c13_p, zone_idx)
+            gr_n14_p = gr_n14_p + shell_mass(zone_idx)*rate_by_zone(rr_n14_p, zone_idx)
+            gr_o16_p = gr_o16_p + shell_mass(zone_idx)*rate_by_zone(rr_o16_p, zone_idx)
+            gr_c13_alpha = gr_c13_alpha + shell_mass(zone_idx)*rate_by_zone(rr_c13_alpha, zone_idx)
+            gr_c12_alpha = gr_c12_alpha + shell_mass(zone_idx)*rate_by_zone(rr_c12_alpha, zone_idx)
+            gr_n14_alpha = gr_n14_alpha + shell_mass(zone_idx)*rate_by_zone(rr_n14_alpha, zone_idx)
+            gr_triple_alpha = gr_triple_alpha + shell_mass(zone_idx)*rate_by_zone(rr_triple_alpha, zone_idx)
+            branch_frac_c12 = branch_frac_c12 + shell_mass(zone_idx)*rate_by_zone(rr_frac_c12_alpha, zone_idx)
          end do
          gr_pp = gr_pp/total_shell_mass
          gr_he3_he3 = gr_he3_he3/total_shell_mass

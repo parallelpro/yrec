@@ -13,7 +13,9 @@
 ! helium (Bahcall & Loeb method), and finally renormalizes the
 ! composition to guard against small negative/overflowing abundances.
 ! The reaction rates are taken from rot_scr%reaction_rate_by_zone, filled
-! by mix.f90 earlier in the timestep.
+! by mix.f90 earlier in the timestep (columns 1..num_zones) and passed
+! to solve_composition as is (2026 W3 -- it used to be unpacked into
+! twelve per-row local arrays first).
 subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      num_zones, radiative_zone_bounds, convective_zone_bounds, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
@@ -43,11 +45,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
 
       integer :: num_species
       double precision :: timestep_years
-      double precision :: rate_pp(json), rate_he3_he3(json), &
-           rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
-           rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
-           rate_c12_alpha(json), rate_n14_alpha(json), &
-           rate_triple_alpha(json), frac_c12_alpha(json)
       double precision :: dlnp_dr_settling(json)
       logical :: am_transport_convective_flag(json)
       double precision :: total_mass
@@ -69,20 +66,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       end if
 !  DDAGE IS THE TIMESTEP IN YEARS.
       timestep_years = timestep/seconds_per_year
-      do zone_idx = 1,num_zones
-         rate_pp(zone_idx) = rot_scr%reaction_rate_by_zone(rr_pp,zone_idx)
-         rate_he3_he3(zone_idx) = rot_scr%reaction_rate_by_zone(rr_he3_he3,zone_idx)
-         rate_he3_he4(zone_idx) = rot_scr%reaction_rate_by_zone(rr_he3_he4,zone_idx)
-         rate_c12_p(zone_idx) = rot_scr%reaction_rate_by_zone(rr_c12_p,zone_idx)
-         rate_c13_p(zone_idx) = rot_scr%reaction_rate_by_zone(rr_c13_p,zone_idx)
-         rate_n14_p(zone_idx) = rot_scr%reaction_rate_by_zone(rr_n14_p,zone_idx)
-         rate_o16_p(zone_idx) = rot_scr%reaction_rate_by_zone(rr_o16_p,zone_idx)
-         rate_c13_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_c13_alpha,zone_idx)
-         rate_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_c12_alpha,zone_idx)
-         rate_n14_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_n14_alpha,zone_idx)
-         rate_triple_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_triple_alpha,zone_idx)
-         frac_c12_alpha(zone_idx) = rot_scr%reaction_rate_by_zone(rr_frac_c12_alpha,zone_idx)
-      end do
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
 !  TIMESTEP.  THIS IS DONE SHELL BY SHELL FOR RADIATIVE REGIONS,
@@ -98,10 +81,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             burn_zone_start = zone_idx
             burn_zone_end = zone_idx
             call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &
-                 rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
-                 rate_n14_p,rate_o16_p, &
-                 rate_c13_alpha,rate_c12_alpha,rate_n14_alpha, &
-                 rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
+                 rot_scr%reaction_rate_by_zone,shell_mass,composition, &
                  timestep_years, ierr)
             if (ierr /= 0) return
          end do
@@ -114,10 +94,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          burn_zone_start = convective_zone_bounds(region_idx,1)
          burn_zone_end = convective_zone_bounds(region_idx,2)
          call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &
-              rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
-              rate_n14_p,rate_o16_p, &
-              rate_c13_alpha,rate_c12_alpha,rate_n14_alpha, &
-              rate_triple_alpha,frac_c12_alpha,shell_mass,composition, &
+              rot_scr%reaction_rate_by_zone,shell_mass,composition, &
               timestep_years, ierr)
          if (ierr /= 0) return
       end do

@@ -36,15 +36,11 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       integer, intent(in) :: convective_core_edge_zone, &
            h_shell_midpoint_zone, num_points
       double precision, intent(out) :: hydrogen_dt
-! the per-zone reaction-rate arrays are rates()->eqburn() relay
-! scratch at the single shell-midpoint zone -- locals since the 2026
-! de-tramp (they used to be trampled up through compute_timestep).
-      double precision :: rate_pp(json), rate_he3_he3(json), &
-           rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
-           rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
-           rate_zero9(json), rate_c12_alpha(json), rate_n14_alpha(json), &
-           rate_triple_alpha(json), rate_zero13(json)
-      double precision :: frac_c12_alpha(json), frac_be7_electron(json)
+! rate_by_zone(rr_*, zone) is the rates()->eqburn() relay scratch --
+! only the column at the single shell-midpoint zone is written; a local
+! since the 2026 de-tramp (it used to be trampled up through
+! compute_timestep), one array since W3 (formerly 15 rate_*(json)).
+      double precision :: rate_by_zone(num_rate_rows, json)
 ! delta_x: hydrogen mass-fraction change budget for the current
 ! branch (core-burning limit in the first branch, whole-star shell-
 ! burning limit in the second -- a single reused scratch variable in
@@ -93,12 +89,8 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
 !  setup nuclear energy terms
       call rates(local_log_density,local_log_temperature,hydrogen_fraction, &
            helium_fraction,he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
-           o16_fraction,o18_fraction,zone_end,rate_pp,rate_he3_he3,rate_he3_he4, &
-           rate_c12_p,rate_c13_p,rate_n14_p,rate_o16_p,rate_c13_alpha,rate_zero9, &
-           rate_c12_alpha,rate_n14_alpha,rate_triple_alpha,rate_zero13, &
-           frac_c12_alpha,frac_be7_electron)
-      call eqburn(rate_pp,rate_he3_he3,rate_he3_he4,rate_c12_p,rate_c13_p, &
-           rate_n14_p,rate_o16_p,rate_c12_alpha,rate_triple_alpha,shell_mass, &
+           o16_fraction,o18_fraction,rate_by_zone(:,zone_end))
+      call eqburn(rate_by_zone,shell_mass, &
            log_temperature,zone_begin,zone_end,dc_dt,do_dt,dx_dt,dy_dt, &
            c12_fraction,o16_fraction,hydrogen_fraction,metal_fraction)
       if(dx_dt.lt.0.0d0 .and. star%ctrl%atime(itime_dx_shell).gt.0.0d0) then

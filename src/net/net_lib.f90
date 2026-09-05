@@ -48,6 +48,13 @@ module net_lib
            r_pn14 = 6, r_po16 = 7, r_ac13 = 8, r_ao16_unused = 9, &
            r_ac12 = 10, r_an14 = 11, r_3alpha = 12, r_c12c12_unused = 13, &
            num_reactions = 13
+! num_rate_rows: length of the one-zone rate vector written by rates
+! (rows 1..13 are the reactions above in r_* order, times
+! gyr_amu_per_sec_gram; rows 14 and 15 are the C12+alpha and Be7
+! electron-capture branching fractions). The row indices are the rr_*
+! parameters of rotation_scratch_lib, and num_rate_rows must equal the
+! leading extent of rot_scr%reaction_rate_by_zone(15,json).
+      integer, parameter, public :: num_rate_rows = 15
 ! star%cross_section_scale(14:17) (SSTANDARD) carries four more
 ! cross-section factors that are not rate-array slots.
       integer, parameter, public :: &
@@ -1662,15 +1669,20 @@ end subroutine sneut
 ! FOR Q1(I), ...,Q(5(I), I = 8 CORRESPONDS TO THE BE7 +  P REACTION.
 !  THIS ASSIGNMENT FOR I = 8 IS ONLY VALID FOR THE LISTED Q'S AND NOT
 !  FOR OTHER ARRAYS IN THE PROGRAM.
-! IU IS THE SHELL NUMBER.
+! rate_vec (2026 W3): the one-zone output vector, rows rr_* of
+! rotation_scratch_lib -- formerly the 15 separate per-zone arrays
+! HR1..HR13, HF1, HF2 written at element IU (the shell number). Callers
+! pass the column rate_by_zone(:, k) of their (num_rate_rows, json)
+! array. Rows rr_zero9 and rr_zero13 are zero-filled placeholders
+! (reactions 9 and 13 are never computed).
 subroutine rates(log_density,log_temperature,hydrogen_fraction, &
      helium_fraction,he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
-     o16_fraction,o18_fraction,zone_idx,rate_pp,rate_he3_he3,rate_he3_he4, &
-     rate_c12_p,rate_c13_p,rate_n14_p,rate_o16_p,rate_c13_alpha,rate_zero9, &
-     rate_c12_alpha,rate_n14_alpha,rate_triple_alpha,rate_zero13, &
-     frac_c12_alpha,frac_be7_electron)
-      use star_info_lib, only: star, json
-
+     o16_fraction,o18_fraction,rate_vec)
+      use star_info_lib, only: star
+      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
+           rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, rr_zero9, &
+           rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_zero13, &
+           rr_frac_c12_alpha, rr_frac_be7_electron
       use phys_const_lib
       use math_lib
       implicit none
@@ -1678,14 +1690,7 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       double precision, intent(in) :: log_density, log_temperature, &
            hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
            c13_fraction, n14_fraction, o16_fraction, o18_fraction
-      integer, intent(in) :: zone_idx
-      double precision, intent(out) :: rate_pp(json), rate_he3_he3(json), &
-           rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
-           rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
-           rate_zero9(json), rate_c12_alpha(json), rate_n14_alpha(json), &
-           rate_triple_alpha(json), rate_zero13(json)
-      double precision, intent(out) :: frac_c12_alpha(json), &
-           frac_be7_electron(json)
+      double precision, intent(out) :: rate_vec(num_rate_rows)
 
       double precision :: mass_frac(num_isotopes), rate(num_reactions), &
            screening_factor(num_reactions), charge_product(num_reactions), &
@@ -2228,21 +2233,23 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 !  (1 ATOMIC MASS UNIT/1 GRAM). I HAVE USED HERE SIDEREAL YEAR IN
 !  CONVERTING TO SECONDS.
       endif
-      rate_pp(zone_idx)=rate(r_pp)*gyr_amu_per_sec_gram
-      rate_he3_he3(zone_idx)=rate(r_he3he3)*gyr_amu_per_sec_gram
-      rate_he3_he4(zone_idx)=rate(r_he3he4)*gyr_amu_per_sec_gram
-      rate_c12_p(zone_idx)=rate(r_pc12)*gyr_amu_per_sec_gram
-      rate_c13_p(zone_idx)=rate(r_pc13)*gyr_amu_per_sec_gram
-      rate_n14_p(zone_idx)=rate(r_pn14)*gyr_amu_per_sec_gram
-      rate_o16_p(zone_idx)=rate(r_po16)*gyr_amu_per_sec_gram
-      rate_c13_alpha(zone_idx)=rate(r_ac13)*gyr_amu_per_sec_gram
-      rate_zero9(zone_idx)=rate(r_ao16_unused)*gyr_amu_per_sec_gram
-      rate_c12_alpha(zone_idx)=rate(r_ac12)*gyr_amu_per_sec_gram
-      rate_n14_alpha(zone_idx)=rate(r_an14)*gyr_amu_per_sec_gram
-      rate_triple_alpha(zone_idx)=rate(r_3alpha)*gyr_amu_per_sec_gram
-      rate_zero13(zone_idx)=rate(r_c12c12_unused)*gyr_amu_per_sec_gram
-      frac_c12_alpha(zone_idx)=c12_alpha_frac
-      frac_be7_electron(zone_idx)=be7_electron_frac
+      rate_vec(rr_pp)=rate(r_pp)*gyr_amu_per_sec_gram
+      rate_vec(rr_he3_he3)=rate(r_he3he3)*gyr_amu_per_sec_gram
+      rate_vec(rr_he3_he4)=rate(r_he3he4)*gyr_amu_per_sec_gram
+      rate_vec(rr_c12_p)=rate(r_pc12)*gyr_amu_per_sec_gram
+      rate_vec(rr_c13_p)=rate(r_pc13)*gyr_amu_per_sec_gram
+      rate_vec(rr_n14_p)=rate(r_pn14)*gyr_amu_per_sec_gram
+      rate_vec(rr_o16_p)=rate(r_po16)*gyr_amu_per_sec_gram
+      rate_vec(rr_c13_alpha)=rate(r_ac13)*gyr_amu_per_sec_gram
+! rows rr_zero9/rr_zero13: zero-filled placeholders (rate(9), rate(13)
+! are always 0 -- see the XEROING block above).
+      rate_vec(rr_zero9)=rate(r_ao16_unused)*gyr_amu_per_sec_gram
+      rate_vec(rr_c12_alpha)=rate(r_ac12)*gyr_amu_per_sec_gram
+      rate_vec(rr_n14_alpha)=rate(r_an14)*gyr_amu_per_sec_gram
+      rate_vec(rr_triple_alpha)=rate(r_3alpha)*gyr_amu_per_sec_gram
+      rate_vec(rr_zero13)=rate(r_c12c12_unused)*gyr_amu_per_sec_gram
+      rate_vec(rr_frac_c12_alpha)=c12_alpha_frac
+      rate_vec(rr_frac_be7_electron)=be7_electron_frac
 ! ****************************************
 ! END OF COMPUTATION OF HRK(IU).
 ! ****************************************

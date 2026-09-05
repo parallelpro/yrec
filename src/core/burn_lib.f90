@@ -41,19 +41,21 @@ contains
 ! the initial guess for the burning rates at the start of a timestep;
 ! may be supplemented elsewhere by a fully implicit non-equilibrium
 ! calculation.
-subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
-     rate_c13_p, rate_n14_p, rate_o16_p, rate_c12_alpha, &
-     rate_triple_alpha, shell_mass, shell_temperature, zone_begin, &
+subroutine eqburn(rate_by_zone, shell_mass, shell_temperature, zone_begin, &
      zone_end, dc_dt, do_dt, dx_dt, dy_dt, equilibrium_xc12, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_o16
+      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
+           rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c12_alpha, &
+           rr_triple_alpha
       implicit none
 
-      double precision, intent(in) :: rate_pp(json), rate_he3_he3(json), &
-           rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
-           rate_n14_p(json), rate_o16_p(json), rate_c12_alpha(json), &
-           rate_triple_alpha(json)
+! rate_by_zone(rr_*, zone): the per-zone rate vectors written by
+! net_lib's rates (2026 W3 -- formerly 9 separate rate_*(json)
+! arguments); rows are the rr_* indices of rotation_scratch_lib. Only
+! the nine rows named in the use statement are read here.
+      double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
       double precision, intent(in) :: shell_mass(json), &
            shell_temperature(json)
       integer, intent(in) :: zone_begin, zone_end
@@ -116,30 +118,30 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
       end if
       if (zone_begin.eq.zone_end) then
 !        PP
-         pp_rate = rate_pp(zone_begin)
+         pp_rate = rate_by_zone(rr_pp, zone_begin)
 !        HE3,HE3
-         he3_he3_rate = rate_he3_he3(zone_begin)
+         he3_he3_rate = rate_by_zone(rr_he3_he3, zone_begin)
 !        HE3,HE4
-         he3_he4_rate = rate_he3_he4(zone_begin)
+         he3_he4_rate = rate_by_zone(rr_he3_he4, zone_begin)
 !        C12,P
-         c12_p_rate = rate_c12_p(zone_begin)
+         c12_p_rate = rate_by_zone(rr_c12_p, zone_begin)
 !        C13,P
-         c13_p_rate = rate_c13_p(zone_begin)
+         c13_p_rate = rate_by_zone(rr_c13_p, zone_begin)
 !        N14,P + N15,P
-         n14_p_rate = rate_n14_p(zone_begin)
+         n14_p_rate = rate_by_zone(rr_n14_p, zone_begin)
 !        O16,P + O17,P.
-         o16_p_rate = rate_o16_p(zone_begin)
-!        C13,ALPHA -- not used (rate_c13_alpha not passed in)
+         o16_p_rate = rate_by_zone(rr_o16_p, zone_begin)
+!        C13,ALPHA -- not used (row rr_c13_alpha not read here)
 !        O16,ALPHA (NOT USED)
 !        C12,ALPHA
-         c12_alpha_rate = rate_c12_alpha(zone_begin)
-!        N14,ALPHA -- not used (rate_n14_alpha not passed in)
+         c12_alpha_rate = rate_by_zone(rr_c12_alpha, zone_begin)
+!        N14,ALPHA -- not used (row rr_n14_alpha not read here)
 !        TRIPLE ALPHA
-         triple_alpha_rate = rate_triple_alpha(zone_begin)
+         triple_alpha_rate = rate_by_zone(rr_triple_alpha, zone_begin)
 !        C12,C12 (NOT USED)
 !        BRANCHING RATIO FOR N15,P :
 !        f = FRACTION GOING TO C12+ALPHA, 1-f = FRACTION GOING TO O16
-!        -- not used (not passed in)
+!        -- not used (row rr_frac_c12_alpha not read here)
       else
 !        USE THE MASS-WEIGHTED AVERAGE RATES FOR THE CZ
          pp_rate = 0.0d0
@@ -152,19 +154,19 @@ subroutine eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
          c12_alpha_rate = 0.0d0
          triple_alpha_rate = 0.0d0
          do zone_idx = zone_begin, zone_end
-            pp_rate = pp_rate + shell_mass(zone_idx)*rate_pp(zone_idx)
+            pp_rate = pp_rate + shell_mass(zone_idx)*rate_by_zone(rr_pp, zone_idx)
             he3_he3_rate = he3_he3_rate + &
-                 shell_mass(zone_idx)*rate_he3_he3(zone_idx)
+                 shell_mass(zone_idx)*rate_by_zone(rr_he3_he3, zone_idx)
             he3_he4_rate = he3_he4_rate + &
-                 shell_mass(zone_idx)*rate_he3_he4(zone_idx)
-            c12_p_rate = c12_p_rate + shell_mass(zone_idx)*rate_c12_p(zone_idx)
-            c13_p_rate = c13_p_rate + shell_mass(zone_idx)*rate_c13_p(zone_idx)
-            n14_p_rate = n14_p_rate + shell_mass(zone_idx)*rate_n14_p(zone_idx)
-            o16_p_rate = o16_p_rate + shell_mass(zone_idx)*rate_o16_p(zone_idx)
+                 shell_mass(zone_idx)*rate_by_zone(rr_he3_he4, zone_idx)
+            c12_p_rate = c12_p_rate + shell_mass(zone_idx)*rate_by_zone(rr_c12_p, zone_idx)
+            c13_p_rate = c13_p_rate + shell_mass(zone_idx)*rate_by_zone(rr_c13_p, zone_idx)
+            n14_p_rate = n14_p_rate + shell_mass(zone_idx)*rate_by_zone(rr_n14_p, zone_idx)
+            o16_p_rate = o16_p_rate + shell_mass(zone_idx)*rate_by_zone(rr_o16_p, zone_idx)
             c12_alpha_rate = c12_alpha_rate + &
-                 shell_mass(zone_idx)*rate_c12_alpha(zone_idx)
+                 shell_mass(zone_idx)*rate_by_zone(rr_c12_alpha, zone_idx)
             triple_alpha_rate = triple_alpha_rate + &
-                 shell_mass(zone_idx)*rate_triple_alpha(zone_idx)
+                 shell_mass(zone_idx)*rate_by_zone(rr_triple_alpha, zone_idx)
          end do
          pp_rate = pp_rate/total_shell_mass
          he3_he3_rate = he3_he3_rate/total_shell_mass

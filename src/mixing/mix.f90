@@ -48,17 +48,12 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
       integer, intent(inout) :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
 
-! rate_pp..frac_be7_electron: per-zone reaction rates/branching
-! fractions (originally HR1-HR13,HF1,HF2). Naming and ordering match
-! the rates.f90 dummy-argument list (rate_pp,...,rate_zero13,
-! frac_c12_alpha,frac_be7_electron) that these arrays are filled from
-! below.
-      double precision :: rate_pp(json), rate_he3_he3(json), &
-           rate_he3_he4(json), rate_c12_p(json), rate_c13_p(json), &
-           rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
-           rate_zero9(json), rate_c12_alpha(json), rate_n14_alpha(json), &
-           rate_triple_alpha(json), rate_zero13(json), &
-           frac_c12_alpha(json), frac_be7_electron(json)
+! rate_by_zone(rr_*, zone): per-zone reaction rates/branching
+! fractions (originally HR1-HR13,HF1,HF2), one column per zone as
+! written by net_lib's rates (2026 W3 -- formerly 15 separate
+! rate_*(json)/frac_*(json) arrays). Rows are the rr_* indices of
+! rotation_scratch_lib; copied to rot_scr%reaction_rate_by_zone below.
+      double precision :: rate_by_zone(num_rate_rows, json)
       double precision :: species_sum(15)
       integer :: radiative_zone_bounds(max_radiative_zones,2)
       logical :: deep_mix_flag(json)
@@ -158,11 +153,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          call rates(log_density_zone, log_temperature_zone, &
               hydrogen_fraction, helium_fraction, he3_fraction, &
               c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
-              o18_fraction, zone_idx, rate_pp, rate_he3_he3, rate_he3_he4, &
-              rate_c12_p, rate_c13_p, rate_n14_p, rate_o16_p, &
-              rate_c13_alpha, rate_zero9, rate_c12_alpha, rate_n14_alpha, &
-              rate_triple_alpha, rate_zero13, frac_c12_alpha, &
-              frac_be7_electron)
+              o18_fraction, rate_by_zone(:, zone_idx))
 ! MHP 5/02 COMPUTE RATE FOR DEUTERIUM BURNING
          if (deuterium_test.gt.1.0d-11) then
             call deutrate(log_density_zone, log_temperature_zone, &
@@ -173,21 +164,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       end do
 ! ZERO THE RATES BELOW THE CUTOFF (zone_idx = nz+1 IF NO SHELL WAS COLD).
       do clear_idx = zone_idx, star%nz
-         rate_pp(clear_idx) = 0.0d0
-         rate_he3_he3(clear_idx) = 0.0d0
-         rate_he3_he4(clear_idx) = 0.0d0
-         rate_c12_p(clear_idx) = 0.0d0
-         rate_c13_p(clear_idx) = 0.0d0
-         rate_n14_p(clear_idx) = 0.0d0
-         rate_o16_p(clear_idx) = 0.0d0
-         rate_c13_alpha(clear_idx) = 0.0d0
-         rate_zero9(clear_idx) = 0.0d0
-         rate_c12_alpha(clear_idx) = 0.0d0
-         rate_n14_alpha(clear_idx) = 0.0d0
-         rate_triple_alpha(clear_idx) = 0.0d0
-         rate_zero13(clear_idx) = 0.0d0
-         frac_c12_alpha(clear_idx) = 0.0d0
-         frac_be7_electron(clear_idx) = 0.0d0
+         rate_by_zone(:, clear_idx) = 0.0d0
 ! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
          star%deuterium_burning_rate(clear_idx) = 0.0d0
       end do
@@ -205,11 +182,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
-            call solve_composition(star%logT, zone_begin, zone_end, rate_pp, &
-                 rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
-                 rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
-                 rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
-                 star%dm, star%xa, timestep_years, ierr)
+            call solve_composition(star%logT, zone_begin, zone_end, &
+                 rate_by_zone, star%dm, star%xa, timestep_years, ierr)
             if (ierr /= 0) return
          end do
       end do
@@ -220,29 +194,14 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       do mixed_zone_idx = 1, num_mixed_zones
          zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
          zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-         call solve_composition(star%logT, zone_begin, zone_end, rate_pp, &
-              rate_he3_he3, rate_he3_he4, rate_c12_p, rate_c13_p, &
-              rate_n14_p, rate_o16_p, rate_c13_alpha, rate_c12_alpha, &
-              rate_n14_alpha, rate_triple_alpha, frac_c12_alpha, &
-              star%dm, star%xa, timestep_years, ierr)
+         call solve_composition(star%logT, zone_begin, zone_end, &
+              rate_by_zone, star%dm, star%xa, timestep_years, ierr)
          if (ierr /= 0) return
       end do
+! keep the rates for rotmix/rezone (columns 1..nz; the rows are the
+! same rr_* layout, so each column is copied whole).
       do zone_idx = 1, star%nz
-         rot_scr%reaction_rate_by_zone(1,zone_idx) = rate_pp(zone_idx)
-         rot_scr%reaction_rate_by_zone(2,zone_idx) = rate_he3_he3(zone_idx)
-         rot_scr%reaction_rate_by_zone(3,zone_idx) = rate_he3_he4(zone_idx)
-         rot_scr%reaction_rate_by_zone(4,zone_idx) = rate_c12_p(zone_idx)
-         rot_scr%reaction_rate_by_zone(5,zone_idx) = rate_c13_p(zone_idx)
-         rot_scr%reaction_rate_by_zone(6,zone_idx) = rate_n14_p(zone_idx)
-         rot_scr%reaction_rate_by_zone(7,zone_idx) = rate_o16_p(zone_idx)
-         rot_scr%reaction_rate_by_zone(8,zone_idx) = rate_c13_alpha(zone_idx)
-         rot_scr%reaction_rate_by_zone(9,zone_idx) = rate_zero9(zone_idx)
-         rot_scr%reaction_rate_by_zone(10,zone_idx) = rate_c12_alpha(zone_idx)
-         rot_scr%reaction_rate_by_zone(11,zone_idx) = rate_n14_alpha(zone_idx)
-         rot_scr%reaction_rate_by_zone(12,zone_idx) = rate_triple_alpha(zone_idx)
-         rot_scr%reaction_rate_by_zone(13,zone_idx) = rate_zero13(zone_idx)
-         rot_scr%reaction_rate_by_zone(14,zone_idx) = frac_c12_alpha(zone_idx)
-         rot_scr%reaction_rate_by_zone(15,zone_idx) = frac_be7_electron(zone_idx)
+         rot_scr%reaction_rate_by_zone(:,zone_idx) = rate_by_zone(:,zone_idx)
       end do
 !
 ! IF ITLVL=1 THEN THE RATES OF HYDROGEN AND HELIUM BURNING ARE
@@ -268,9 +227,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
-               call eqburn(rate_pp, rate_he3_he3, rate_he3_he4, &
-                    rate_c12_p, rate_c13_p, rate_n14_p, rate_o16_p, &
-                    rate_c12_alpha, rate_triple_alpha, star%dm, &
+               call eqburn(rate_by_zone, star%dm, &
                     star%logT, zone_begin, zone_end, dc_dt, do_dt, &
                     dx_dt, dy_dt, c12_fraction, o16_fraction, &
                     hydrogen_fraction, metal_fraction)
@@ -298,9 +255,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          do mixed_zone_idx = 1, num_mixed_zones
             zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            call eqburn(rate_pp, rate_he3_he3, rate_he3_he4, rate_c12_p, &
-                 rate_c13_p, rate_n14_p, rate_o16_p, rate_c12_alpha, &
-                 rate_triple_alpha, star%dm, star%logT, &
+            call eqburn(rate_by_zone, star%dm, star%logT, &
                  zone_begin, zone_end, dc_dt, do_dt, dx_dt, dy_dt, &
                  c12_fraction, o16_fraction, hydrogen_fraction, &
                  metal_fraction)

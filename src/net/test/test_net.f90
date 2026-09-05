@@ -21,6 +21,9 @@ program test_net
       use luout_lib
       use star_info_lib, only: star, i_h2
       use net_lib
+      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
+           rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, &
+           rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_frac_be7_electron
       use scv_eos_lib, only: use_scv_eos
       use burn_lib
       implicit none
@@ -36,9 +39,8 @@ program test_net
       data grid_logt /6.90d0, 7.10d0, 7.30d0, 7.60d0/
       data grid_logd /1.0d0,  1.8d0,  2.2d0,  3.0d0/
 
-      integer, parameter :: json = 5000
-      double precision, dimension(json) :: rpp, r33, r34, rc12, rc13, &
-           rn14, ro16, rc13a, rz9, rc12a, rn14a, r3a, rz13, fc12a, fbe7e
+! rate_vec: the one-zone rate vector of rates (rows rr_*)
+      double precision :: rate_vec(num_rate_rows)
       double precision :: snu, dsnudt, dsnudd, dsnuda, dsnudz
       double precision :: xmass(3), aion(3), zion(3), ymass(3), &
            abar, zbar
@@ -147,13 +149,14 @@ program test_net
            "C13=4e-5 N14=1e-3 O16=8e-3 O18=2e-5"
       do ipt = 1, npts
          call rates(grid_logd(ipt), grid_logt(ipt), 0.70d0, 0.28d0, &
-              3.0d-5, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5, ipt, &
-              rpp, r33, r34, rc12, rc13, rn14, ro16, rc13a, rz9, &
-              rc12a, rn14a, r3a, rz13, fc12a, fbe7e)
+              3.0d-5, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5, rate_vec)
          write(*,'(a,i2)') "rates ", ipt
-         write(*,'(4(1pe20.12))') rpp(ipt), r33(ipt), r34(ipt), rc12(ipt)
-         write(*,'(4(1pe20.12))') rc13(ipt), rn14(ipt), ro16(ipt), rc13a(ipt)
-         write(*,'(4(1pe20.12))') rc12a(ipt), rn14a(ipt), r3a(ipt), fbe7e(ipt)
+         write(*,'(4(1pe20.12))') rate_vec(rr_pp), rate_vec(rr_he3_he3), &
+              rate_vec(rr_he3_he4), rate_vec(rr_c12_p)
+         write(*,'(4(1pe20.12))') rate_vec(rr_c13_p), rate_vec(rr_n14_p), &
+              rate_vec(rr_o16_p), rate_vec(rr_c13_alpha)
+         write(*,'(4(1pe20.12))') rate_vec(rr_c12_alpha), rate_vec(rr_n14_alpha), &
+              rate_vec(rr_triple_alpha), rate_vec(rr_frac_be7_electron)
       end do
 
 ! Itoh neutrino losses (pure; first call initializes its own tables)
