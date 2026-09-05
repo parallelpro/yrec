@@ -21,10 +21,9 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
-      use controls_lib, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
-      use phys_const_lib
-      use numerics_lib
+      use equal_grid_lib
+      use star_info_lib, only: json
+      use phys_const_lib, only: ln10
       use math_lib
       implicit none
 
@@ -41,8 +40,6 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
       logical, intent(out) :: single_interface_flag
       integer :: idx, search_idx, ntab, ntabb
       double precision :: em_top, em_bot
-      double precision :: mass_scale, luminosity_scale, pressure_scale
-      double precision :: four_pi_rho_r2, dchidr
 
 ! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
       if (zone_end - zone_begin.le.1) then
@@ -106,53 +103,19 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
 ! GRID IN R, WE NEED TO INCLUDE A JACOBIAN TERM FOR THE TRANSFORMATION
 ! OF VARIABLES.
       ntab = zone_end - zone_begin + 1
-      rot_scr%xtab(1) = rot_scr%chi(1)
-      do idx = 2, ntab
-         rot_scr%xtab(idx) = 0.5d0*(rot_scr%chi(idx) + rot_scr%chi(idx-1))
-      end do
-      ntabb = ntab + 1
-      rot_scr%xtab(ntabb) = rot_scr%chi(ntab)
+      call edge_grid_abscissae(rot_scr%chi, rot_scr%echi, rot_scr%dchi, ntab, &
+           rot_scr%ntot, rot_scr%xtab, rot_scr%xval, ntabb)
 ! DIFFUSION COEFFICIENT FOR MIXING - ASSUME CONSTANT BELOW
 ! BOTTOM INTERFACE OR ABOVE TOP INTERFACE
-      rot_scr%ytab(1) = diffusion_coeff(zone_begin+1)
-      do idx = 2, ntab
-         search_idx = zone_begin + idx - 1
-         rot_scr%ytab(idx) = diffusion_coeff(search_idx)
-      end do
-      rot_scr%ytab(ntabb) = diffusion_coeff(zone_end)
-      rot_scr%xval(1) = rot_scr%chi(1)
-      do idx = 2, rot_scr%ntot
-         rot_scr%xval(idx) = rot_scr%echi(idx) - 0.5d0*rot_scr%dchi
-      end do
-      call osplin(rot_scr%xval, equally_spaced_diffusion_coeff, rot_scr%xtab, rot_scr%ytab, ntabb, &
-           rot_scr%ntot)
-! PRODUCT OF RHO R^2 BY D CHI/DR
-      mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
-      luminosity_scale = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)* &
-           star%solar_luminosity_cgs
-      pressure_scale = star%ctrl%chi_grid_scale(ichi_dp_core_max)
-      do idx = 1, ntab
-         search_idx = zone_begin + idx - 1
-         rot_scr%xtab(idx) = rot_scr%chi(idx)
-! D CHI/DR = 1/DM*( D LOG M/DR) + 1/DL*(DL/DR) - 1/DP*(D LOG P/DR)
-! OR, USING FAC = 4*PI*RHO*R**2
-! D CHI/DR = FAC/(LN 10 * DM * M) + FAC*EPSILON/DL + RHO*GM/(LN10*DP*R**2)
-! STORED IN YVAL
-         four_pi_rho_r2 = c4pi*exp(ln10*(log_density(search_idx) + &
-              2.0d0*log_radius(search_idx)))
-         dchidr = four_pi_rho_r2/(ln10*mass_scale*enclosed_mass(search_idx)) &
-              + four_pi_rho_r2*mix_scr%epsm(search_idx)/luminosity_scale + &
-              exp(ln10*(cgl + log_density(search_idx) + log_mass(search_idx) &
-              - log_pressure(search_idx) - &
-              2.0d0*log_radius(search_idx)))/(ln10*pressure_scale)
-         rot_scr%ytab(idx) = log_density(search_idx) + log10(dchidr) + &
-              2.0d0*log_radius(search_idx)
-      end do
-      call osplin(rot_scr%xval, rot_scr%yval, rot_scr%xtab, rot_scr%ytab, ntab, rot_scr%ntot)
+      call interp_edge_coeff(diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
+           rot_scr%ntot, rot_scr%xval, rot_scr%xtab, rot_scr%ytab, &
+           equally_spaced_diffusion_coeff)
+! PRODUCT OF RHO R^2 BY D CHI/DR (LOG10, ON THE EQUAL GRID IN YVAL)
+      call dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
+           enclosed_mass, mix_scr%epsm, luminosity_lsun(num_zones), zone_begin, &
+           ntab, rot_scr%ntot, rot_scr%chi, rot_scr%xval, rot_scr%xtab, &
+           rot_scr%ytab, rot_scr%yval)
 ! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
-      do idx = 1, rot_scr%ntot
-         equally_spaced_diffusion_coeff(idx) = &
-              equally_spaced_diffusion_coeff(idx)*exp(ln10*rot_scr%yval(idx))
-      end do
+      call multiply_by_exp10(equally_spaced_diffusion_coeff, rot_scr%yval, rot_scr%ntot)
       return
 end subroutine composition_grid

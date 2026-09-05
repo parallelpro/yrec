@@ -27,8 +27,8 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
      eq_mixing_diffusion_coeff, eq_moment_of_inertia, eq_angular_momentum, &
      eq_mass, eq_omega, single_interface_flag)
       use rotation_scratch_lib
+      use equal_grid_lib
       use star_info_lib, only: star, json
-      use controls_lib, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use phys_const_lib
       use numerics_lib
       use math_lib
@@ -54,9 +54,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 
       double precision :: eq_reduced_moment_of_inertia(json)
       integer :: ntab, i, ii, ntabb
-      double precision :: emtop, embot, mass_scale_factor, &
-           luminosity_scale_factor, pressure_scale_factor, scale_factor, &
-           dchi_dr
+      double precision :: emtop, embot, scale_factor
 
 ! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
       if (zone_end-zone_begin.le.1) then
@@ -173,32 +171,16 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 ! RELATED TO THE DIFFUSION COEFFICIENTS.  UNLIKE THE EQUALLY SPACED
 ! GRID IN R, WE NEED TO INCLUDE A JACOBIAN TERM FOR THE TRANSFORMATION
 ! OF VARIABLES.
+      call edge_grid_abscissae(rot_scr%chi, rot_scr%echi, rot_scr%dchi, ntab, &
+           rot_scr%ntot, rot_scr%xtab, rot_scr%xval, ntabb)
 ! DIFFUSION COEFFICIENT FOR ANGULAR MOMENTUM - ASSUME CONSTANT BELOW
 ! BOTTOM INTERFACE OR ABOVE TOP INTERFACE
-      rot_scr%xtab(1) = rot_scr%chi(1)
-      rot_scr%ytab(1) = am_diffusion_coeff(zone_begin+1)
-      do i = 2,ntab
-         ii = zone_begin + i - 1
-         rot_scr%xtab(i) = 0.5d0*(rot_scr%chi(i)+rot_scr%chi(i-1))
-         rot_scr%ytab(i) = am_diffusion_coeff(ii)
-      end do
-      ntabb = ntab + 1
-      rot_scr%xtab(ntabb) = rot_scr%chi(ntab)
-      rot_scr%ytab(ntabb) = am_diffusion_coeff(zone_end)
-      rot_scr%xval(1) = rot_scr%chi(1)
-      do i = 2, rot_scr%ntot
-         rot_scr%xval(i) = rot_scr%echi(i)-0.5d0*rot_scr%dchi
-      end do
-      call osplin(rot_scr%xval,eq_am_diffusion_coeff,rot_scr%xtab,rot_scr%ytab,ntabb,rot_scr%ntot)
+      call interp_edge_coeff(am_diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
+           rot_scr%ntot, rot_scr%xval, rot_scr%xtab, rot_scr%ytab, eq_am_diffusion_coeff)
 ! DIFFUSION COEFFICIENT FOR MIXING - ASSUME CONSTANT BELOW
 ! BOTTOM INTERFACE OR ABOVE TOP INTERFACE
-      rot_scr%ytab(1) = mixing_diffusion_coeff(zone_begin+1)
-      do i = 2,ntab
-         ii = zone_begin + i - 1
-         rot_scr%ytab(i) = mixing_diffusion_coeff(ii)
-      end do
-      rot_scr%ytab(ntabb) = mixing_diffusion_coeff(zone_end)
-      call osplin(rot_scr%xval,eq_mixing_diffusion_coeff,rot_scr%xtab,rot_scr%ytab,ntabb,rot_scr%ntot)
+      call interp_edge_coeff(mixing_diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
+           rot_scr%ntot, rot_scr%xval, rot_scr%xtab, rot_scr%ytab, eq_mixing_diffusion_coeff)
 ! ADD DIFFUSION PLUS ADVECTION TREATMENT IF DESIRED
       if (star%ctrl%use_diffusion_advection_transport) then
          scale_factor = 0.2d0*c4pi*star%ctrl%difad_velocity_scale
@@ -227,33 +209,16 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
                  eq_mixing_diffusion_coeff(i)
          end do
       end if
-! PRODUCT OF RHO R^2 BY D CHI/DR
-      mass_scale_factor = star%ctrl%chi_grid_scale(ichi_dm_max)
-      luminosity_scale_factor = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)* &
-           star%solar_luminosity_cgs
-      pressure_scale_factor = star%ctrl%chi_grid_scale(ichi_dp_core_max)
-      do i = 1, ntab
-         ii = zone_begin + i - 1
-         rot_scr%xtab(i) = rot_scr%chi(i)
-! D CHI/DR = 1/DM*( D LOG M/DR) + 1/DL*(DL/DR) - 1/DP*(D LOG P/DR)
-! OR, USING FAC = 4*PI*RHO*R**2
-! D CHI/DR = FAC/(LN 10 * DM * M) + FAC*EPSILON/DL + RHO*GM/(LN10*DP*R**2)
-! STORED IN YVAL
-         scale_factor = c4pi*exp(ln10*(log_density(ii)+2.0d0*log_radius(ii)))
-         dchi_dr = scale_factor/(ln10*mass_scale_factor*enclosed_mass(ii))+ &
-              scale_factor*mix_scr%epsm(ii)/luminosity_scale_factor+ &
-              exp(ln10*(cgl+log_density(ii)+log_mass(ii)-log_pressure(ii)- &
-              2.0d0*log_radius(ii)))/(ln10*pressure_scale_factor)
-         rot_scr%ytab(i) = log_density(ii) + log10(dchi_dr) + 2.0d0*log_radius(ii)
-      end do
-      call osplin(rot_scr%xval,rot_scr%yval,rot_scr%xtab,rot_scr%ytab,ntab,rot_scr%ntot)
+! PRODUCT OF RHO R^2 BY D CHI/DR (LOG10, ON THE EQUAL GRID IN YVAL;
+! THE MODEL-POINT TABLE STAYS IN YTAB FOR THE RHO R^4 STEP BELOW)
+      call dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
+           enclosed_mass, mix_scr%epsm, luminosity_lsun(num_zones), zone_begin, &
+           ntab, rot_scr%ntot, rot_scr%chi, rot_scr%xval, rot_scr%xtab, &
+           rot_scr%ytab, rot_scr%yval)
 ! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
 ! NOTE THAT A FACTOR OF 4PI HAS ALREADY BEEN INCLUDED IN
 ! diffusion_velocity_scales.
-      do i = 1, rot_scr%ntot
-         eq_mixing_diffusion_coeff(i) = eq_mixing_diffusion_coeff(i)* &
-              exp(ln10*rot_scr%yval(i))
-      end do
+      call multiply_by_exp10(eq_mixing_diffusion_coeff, rot_scr%yval, rot_scr%ntot)
 ! PRODUCT OF RHO R^4 BY D CHI/DR - STORED IN YVAL
 ! MHP 05/02 ADDED FACTOR OF I/MR^2 - 2/3 FOR A SPHERICAL SHELL
       do i = 1, ntab
@@ -262,15 +227,11 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
       end do
       call osplin(rot_scr%xval,rot_scr%yval,rot_scr%xtab,rot_scr%ytab,ntab,rot_scr%ntot)
 ! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
-      do i = 1, rot_scr%ntot
-         eq_am_diffusion_coeff(i) = eq_am_diffusion_coeff(i)*exp(ln10*rot_scr%yval(i))
-      end do
+      call multiply_by_exp10(eq_am_diffusion_coeff, rot_scr%yval, rot_scr%ntot)
 ! MHP 05/02
       if (star%ctrl%use_diffusion_advection_transport) then
-         do i = 1,rot_scr%ntot
-            rot_scr%am_advective_coeff(i) = rot_scr%am_advective_coeff(i)*exp(ln10*rot_scr%yval(i))
-            rot_scr%am_diffusive_coeff(i) = rot_scr%am_diffusive_coeff(i)*exp(ln10*rot_scr%yval(i))
-         end do
+         call multiply_by_exp10(rot_scr%am_advective_coeff, rot_scr%yval, rot_scr%ntot)
+         call multiply_by_exp10(rot_scr%am_diffusive_coeff, rot_scr%yval, rot_scr%ntot)
       end if
 ! REDEFINE DR AS DCHI
       grid_spacing = rot_scr%dchi

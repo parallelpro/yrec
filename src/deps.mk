@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 atm/ttau_lib.f90 core/burn_lib.f90 core/envelope_refit_lib.f90 core/envint_kernel.f90 core/envint_lib.f90 core/henyey_eliminate.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/check_controls.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/secular_transport.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90 wind/wind_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 atm/ttau_lib.f90 core/burn_lib.f90 core/envelope_refit_lib.f90 core/envint_kernel.f90 core/envint_lib.f90 core/henyey_eliminate.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/check_controls.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/net_lib.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid_lib.f90 rotation/seculr/secular_transport.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90 wind/wind_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -37,6 +37,8 @@ envstruct_lib.mod: atm/envstruct_lib.o
 eos_lib.mod: eos/eos_lib.o
 	@true
 eos_mixture_lib.mod: eos/eos_mixture_lib.o
+	@true
+equal_grid_lib.mod: rotation/seculr/equal_grid_lib.o
 	@true
 henyey_eliminate_lib.mod: core/henyey_eliminate.o
 	@true
@@ -280,17 +282,18 @@ rotation/omega_from_j.o: star_info_lib.mod
 rotation/rotation_scratch_lib.o: star_info_lib.mod
 rotation/seculr/am_advection_diffusion_coeffs.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_diffusion_coeffs.o: rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/am_transport_grid.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/am_transport_grid.o: equal_grid_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/banded_solver.o: rotation_scratch_lib.mod
 rotation/seculr/check_angular_momentum.o: luout_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/check_composition.o: luout_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/circulation_velocities.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/composition_diffusion_coeffs.o: star_info_lib.mod
-rotation/seculr/composition_grid.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/composition_grid.o: equal_grid_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/compute_quadrupole.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/diffuse_composition.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/diffuse_composition_driver.o: star_info_lib.mod
 rotation/seculr/diffusion_velocity_scales.o: phys_const_lib.mod star_info_lib.mod
+rotation/seculr/equal_grid_lib.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod
 rotation/seculr/equal_grid_to_model.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/secular_transport.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/zahn_coupling_factor.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
