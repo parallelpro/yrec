@@ -35,6 +35,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
            max_convective_zones, max_radiative_zones
       use controls_lib, only: ichi_dm_max, ichi_dp_env_max
       use envint_lib, only: atm_get, envint_step_config, fixed_envint_step
+      use envelope_refit_lib, only: append_envelope_points
       use envstruct_lib
       use luout_lib
       use phys_const_lib
@@ -119,9 +120,6 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       double precision :: spot_adjusted_log_teff
       double precision :: pressure_offset, density_offset, &
            temperature_offset, radius_offset
-      integer :: env_point_index
-      double precision :: lower_mass_coord, target_mass_coord, &
-           upper_mass_coord, envelope_interp_fraction
       double precision :: old_senv, target_log_mass_at_fit
       double precision :: interior_interp_fraction
       integer :: num_species
@@ -781,136 +779,19 @@ subroutine rescale_and_refit_envelope
                env_struct%env_metal_fraction(j) = env_struct%env_metal_fraction(j+1)
             end do
             env_struct%num_env_points = env_struct%num_env_points - 1
-            do j = star%nz+1,star%nz+env_struct%num_env_points
-               env_point_index = j-star%nz
-! LUMINOSITY ASSUMED CONSTANT
-               star%luminosity_lsun(j) = star%luminosity_lsun(star%nz)
-! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
-               if (env_struct%env_log10_mass(env_point_index).le.star%senv) then
-                  star%logRho(j) = env_struct%env_log10_density(env_point_index)
-                  star%logP(j) = env_struct%env_log10_pressure(env_point_index)
-                  star%logR(j) = env_struct%env_log10_radius(env_point_index)
-                  star%log_mass(j) = env_struct%env_log10_mass(env_point_index) + star%stotal
-                  star%logT(j) = env_struct%env_log10_temperature(env_point_index)
-                  star%xa(i_h1,j) = env_struct%env_hydrogen_fraction(env_point_index)
-                  star%xa(i_metals,j) = env_struct%env_metal_fraction(env_point_index)
-                  do k = 4,num_species
-                     star%xa(k,j) = star%xa(k,star%nz)
-                  end do
-                  star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)-star%xa(i_metals,j)- &
-                       star%xa(i_he3,j)
-                  star%convective_flag(j) = env_struct%env_convective_flag(env_point_index)
-               else
-! POINTS BEYOND THIS ARE ABOVE THE NEW DESIRED FITTING POINT;
-! INTERPOLATE LINEARLY, SET NEW NUMBER OF TOTAL POINTS, AND EXIT
-                  if (env_point_index.eq.1) then
-! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
-                     lower_mass_coord = star%log_mass(star%nz)
-                     target_mass_coord = star%stotal + star%senv
-                     upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
-                          star%stotal
-                     if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
+! Append the envelope points below the new fitting mass as shells,
+! interpolating the last one onto it (2026 W3: the loop shared with
+! rebuild_envelope lives in envelope_refit_lib; a point exactly at the
+! fitting mass is taken as a shell here, .le.).
+            call append_envelope_points(.true., num_species, star%xa, &
+                 star%logRho, star%luminosity_lsun, star%logP, star%logR, &
+                 star%log_mass, star%logT, star%convective_flag, star%nz, ierr)
+            if (ierr /= 0) then
 ! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
 ! returns the error (run_yrec propagates, the CLI wrapper stops).
-                        write(run_log_unit,*) 'STARIN: degenerate', &
-                             ' envelope interpolation interval (was STOP 9998)'
-                        ierr = 1
-                        return
-                     end if
-                     envelope_interp_fraction = (target_mass_coord- &
-                          lower_mass_coord)/(upper_mass_coord- &
-                          lower_mass_coord)
-                     star%logRho(j) = star%logRho(star%nz)+ &
-                          envelope_interp_fraction*(env_struct%env_log10_density( &
-                          env_point_index)-star%logRho(star%nz))
-                     star%logP(j) = star%logP(star%nz)+ &
-                          envelope_interp_fraction*(env_struct%env_log10_pressure( &
-                          env_point_index)-star%logP(star%nz))
-                     star%logR(j) = star%logR(star%nz)+ &
-                          envelope_interp_fraction*(env_struct%env_log10_radius( &
-                          env_point_index)-star%logR(star%nz))
-                     star%log_mass(j) = target_mass_coord
-                     star%logT(j) = star%logT(star%nz)+ &
-                          envelope_interp_fraction*(env_struct%env_log10_temperature( &
-                          env_point_index)-star%logT(star%nz))
-                     star%xa(i_h1,j) = star%xa(i_h1,star%nz)+ &
-                          envelope_interp_fraction*(star%xa(i_h1,star%nz) &
-                          -env_struct%env_hydrogen_fraction(env_point_index))
-                     star%xa(i_metals,j) = star%xa(i_metals,star%nz)+ &
-                          envelope_interp_fraction*(star%xa(i_metals,star%nz) &
-                          -env_struct%env_metal_fraction(env_point_index))
-                     do k = 4,num_species
-                        star%xa(k,j) = star%xa(k,star%nz)
-                     end do
-                     star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)- &
-                          star%xa(i_metals,j)-star%xa(i_he3,j)
-                     if (env_struct%env_convective_flag(env_point_index).or. &
-                          star%convective_flag(star%nz)) then
-                        star%convective_flag(j) = .true.
-                     else
-                        star%convective_flag(j) = .false.
-                     endif
-                  else
-! INTERPOLATE BETWEEN THE LAST 2 ENVELOPE POINTS
-                     lower_mass_coord = env_struct%env_log10_mass(env_point_index-1) + &
-                          star%stotal
-                     target_mass_coord = star%stotal + star%senv
-                     upper_mass_coord = env_struct%env_log10_mass(env_point_index) + &
-                          star%stotal
-                     if (upper_mass_coord-lower_mass_coord.lt.1.0d-14) then
-! 2026 (phase five, step B): was a bare `stop 9998`; now prints and
-! returns the error (run_yrec propagates, the CLI wrapper stops).
-                        write(run_log_unit,*) 'STARIN: degenerate', &
-                             ' envelope interpolation interval (was STOP 9998)'
-                        ierr = 1
-                        return
-                     end if
-                     envelope_interp_fraction = (target_mass_coord- &
-                          lower_mass_coord)/(upper_mass_coord- &
-                          lower_mass_coord)
-                     star%logRho(j) = env_struct%env_log10_density(env_point_index-1)+ &
-                          envelope_interp_fraction*(env_struct%env_log10_density( &
-                          env_point_index)-env_struct%env_log10_density(env_point_index-1))
-                     star%logP(j) = env_struct%env_log10_pressure(env_point_index-1)+ &
-                          envelope_interp_fraction*(env_struct%env_log10_pressure( &
-                          env_point_index)-env_struct%env_log10_pressure(env_point_index-1))
-                     star%logR(j) = env_struct%env_log10_radius(env_point_index-1)+ &
-                          envelope_interp_fraction*(env_struct%env_log10_radius( &
-                          env_point_index)-env_struct%env_log10_radius(env_point_index-1))
-                     star%log_mass(j) = target_mass_coord
-                     star%logT(j) = env_struct%env_log10_temperature( &
-                          env_point_index-1)+envelope_interp_fraction*( &
-                          env_struct%env_log10_temperature(env_point_index)- &
-                          env_struct%env_log10_temperature(env_point_index-1))
-                     star%xa(i_h1,j) = env_struct%env_hydrogen_fraction( &
-                          env_point_index-1)+envelope_interp_fraction*( &
-                          env_struct%env_hydrogen_fraction(env_point_index)- &
-                          env_struct%env_hydrogen_fraction(env_point_index-1))
-                     star%xa(i_metals,j) = env_struct%env_metal_fraction( &
-                          env_point_index-1)+envelope_interp_fraction*( &
-                          env_struct%env_metal_fraction(env_point_index)- &
-                          env_struct%env_metal_fraction(env_point_index-1))
-                     do k = 4,num_species
-                        star%xa(k,j) = star%xa(k,star%nz)
-                     end do
-                     star%xa(i_he4,j)=1.0d0-star%xa(i_h1,j)- &
-                          star%xa(i_metals,j)-star%xa(i_he3,j)
-                     if (env_struct%env_convective_flag(env_point_index).or. &
-                          env_struct%env_convective_flag(env_point_index-1)) then
-                        star%convective_flag(j) = .true.
-                     else
-                        star%convective_flag(j) = .false.
-                     endif
-                  endif
-                  star%nz = j
-                  exit
-               endif
-            end do
-! ASSIGN THE BOUNDARY AT THE PHOTOSPHERE FOR ENVELOPE MASS BELOW 1.0D-12.
-! (On the exit path above num_zones was just set to j, so this guard is
-! false there; on fall-through num_zones is unchanged and it is true.)
-            if (j .gt. star%nz + env_struct%num_env_points) then
-            star%nz = star%nz + env_struct%num_env_points
+               write(run_log_unit,*) 'STARIN: degenerate', &
+                    ' envelope interpolation interval (was STOP 9998)'
+               return
             end if
             if (star%job%rotation_active) then
                do j = old_last_shell+1,star%nz
