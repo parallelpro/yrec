@@ -75,7 +75,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
                   opacity_table%alex94_full_opacity(ii,j,k) = row_opacity_temp(k)
                end do
    30          format(i2,i3,f6.3,f5.1,8f8.3/9f8.3)
-               if (row_density_count.ne.17 .or. row_temp.ne.opacity_table%alex94_grid_logt(j) &
+               if (row_density_count.ne.n_alex94_d .or. row_temp.ne.opacity_table%alex94_grid_logt(j) &
                     .or. row_logr0.ne.opacity_table%alex94_grid_logr(1)) then
                   write(run_log_unit,40) row_density_count, row_temp, &
                        opacity_table%alex94_grid_logt(j), row_logr0, opacity_table%alex94_grid_logr(1)

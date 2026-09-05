@@ -89,12 +89,12 @@ subroutine ll95tbl(opal95_table_path, ierr)
            (opacity_table%opal95_full_opacity(n,58,j),j=1,n_opal95_d-1)
    31 format(f4.2,18f7.3)
 
-      opacity_table%opal95_full_opacity(n,58,19) = opal95_missing_opacity
+      opacity_table%opal95_full_opacity(n,58,n_opal95_d) = opal95_missing_opacity
       do i = 59,60
          read(star%ctrl%opal95_table_unit,32,end=9999) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-2)
    32    format(f4.2,17f7.3)
-         do j = 18,19
+         do j = n_opal95_d-1,n_opal95_d
             opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
@@ -102,7 +102,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
          read(star%ctrl%opal95_table_unit,33,end=9999) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-3)
    33    format(f4.2,16f7.3)
-         do j = 17,19
+         do j = n_opal95_d-2,n_opal95_d
             opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
@@ -110,15 +110,15 @@ subroutine ll95tbl(opal95_table_path, ierr)
          read(star%ctrl%opal95_table_unit,34,end=9999) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-4)
    34    format(f4.2,15f7.3)
-         do j = 16,19
+         do j = n_opal95_d-3,n_opal95_d
             opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
-      i = 70
+      i = n_opal95_t
       read(star%ctrl%opal95_table_unit,35,end=9999) opacity_table%opal95_grid_logt(i), &
            (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-5)
    35 format(f4.2,14f7.3)
-      do j = 15,19
+      do j = n_opal95_d-4,n_opal95_d
          opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
       end do
 
