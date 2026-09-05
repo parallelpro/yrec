@@ -353,7 +353,18 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            opal_adiabatic_gradient
       double precision :: ramp_factor
       logical :: in_opal_table, needs_ramp
-
+! (T, rho) window inside which each OPAL vintage is consulted at all
+! (the table edge itself is then handled by eqbound/eqbound01/
+! eqbound06). The three gates are not the same test: 1995 bounds
+! log10 T by 8.0 where 2001/2006 bound T by 100e6 / 200e6 K, and 1995
+! caps log10 rho at 5.0 against 7.0 for the other two -- the values
+! are the original literals, kept as written.
+      double precision, parameter :: opal95_t_min = 5.0d3, &
+           opal95_log10_t_max = 8.0d0, opal95_log10_rho_max = 5.0d0
+      double precision, parameter :: opal01_t_min = 2.0d3, &
+           opal01_t_max = 100d6, opal01_log10_rho_max = 7.0d0
+      double precision, parameter :: opal06_t_min = 1.870d3, &
+           opal06_t_max = 200d6, opal06_log10_rho_max = 7.0d0
 
 ! values saved across the saha_eos/fully_ionized_eos interpolation
 ! near the ionization cutoff
@@ -591,8 +602,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
 !     1995 OPAL eqos
       if (star%ctrl%use_opal95_eos) then
-      if (temperature.ge.5.0d3 .and. log10_temperature.le.8.0d0 .and. &
-           log10_density.le.5.0d0) then
+      if (temperature.ge.opal95_t_min .and. log10_temperature.le.opal95_log10_t_max .and. &
+           log10_density.le.opal95_log10_rho_max) then
 
          call oeqos(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
@@ -616,8 +627,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
 !     2001 OPAL eqos  LLP 6/17/03
       if (star%ctrl%use_opal2001_eos) then
-      if (temperature.ge.2.0d3 .and. temperature.le.100d6 .and. &
-           log10_density.le.7.0d0) then
+      if (temperature.ge.opal01_t_min .and. temperature.le.opal01_t_max .and. &
+           log10_density.le.opal01_log10_rho_max) then
          call oeqos01(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
               hydrogen_fraction, metal_fraction, opal_beta, &
@@ -642,8 +653,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
 !     2006 OPAL eqos  LLP 10/13/2996
       if (star%ctrl%use_opal2006_eos) then
-      if (temperature.ge.1.870d3 .and. temperature.le.200d6 .and. &
-           log10_density.le.7.0d0) then
+      if (temperature.ge.opal06_t_min .and. temperature.le.opal06_t_max .and. &
+           log10_density.le.opal06_log10_rho_max) then
          call oeqos06(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
               hydrogen_fraction, metal_fraction, opal_beta, &
