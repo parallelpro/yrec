@@ -38,9 +38,9 @@ module microdiff_mte_lib
 contains
 
 subroutine microdiff_mte(num_light, light_element_id, composition, &
-     dlnp_dr, radius_bl, enclosed_mass, zone_begin, zone_end, num_zones, &
-     grid_spacing, num_eq_points, density_orig, temperature_orig, &
-     eq, eq_mid)
+     dlnp_dr, radius_bl, enclosed_mass, del_grad, zone_begin, zone_end, &
+     num_zones, grid_spacing, num_eq_points, density_orig, &
+     temperature_orig, eq, eq_mid)
 
       use star_info_lib, only: star, json
       use numerics_lib, only: interp, intrp2, lagrange4
@@ -49,7 +49,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       integer, intent(in) :: num_light
       integer, intent(in) :: light_element_id(num_light)
       double precision, intent(in) :: composition(15,json), dlnp_dr(json), &
-           radius_bl(json), enclosed_mass(json)
+           radius_bl(json), enclosed_mass(json), del_grad(json)
       integer, intent(in) :: zone_begin, zone_end, num_zones
       double precision, intent(out) :: grid_spacing
       integer, intent(out) :: num_eq_points
@@ -104,7 +104,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq_mid%temperature(1) = temperature_orig(iu-1)+ &
            fx*(temperature_orig(iu)-temperature_orig(iu-1))
       eq_mid%dlnp_dr(1) = dlnp_dr(iu-1)+fx*(dlnp_dr(iu)-dlnp_dr(iu-1))
-      eq_mid%del_grad(1) = star%gradT(iu-1)+fx*(star%gradT(iu)-star%gradT(iu-1))
+      eq_mid%del_grad(1) = del_grad(iu-1)+fx*(del_grad(iu)-del_grad(iu-1))
       eq_mid%hydrogen(1) = composition(1,iu-1)+fx*(composition(1,iu)-composition(1,iu-1))
       eq_mid%helium(1) = composition(2,iu-1)+fx*(composition(2,iu)-composition(2,iu-1))
       eq_mid%metal(1) = composition(3,iu-1)+fx*(composition(3,iu)-composition(3,iu-1))
@@ -153,7 +153,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          eq_mid%density(i) = lagrange4(facinterp, density_orig(k0:k0+3))
          eq_mid%temperature(i) = lagrange4(facinterp, temperature_orig(k0:k0+3))
          eq_mid%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr(k0:k0+3))
-         eq_mid%del_grad(i) = lagrange4(facinterp, star%gradT(k0:k0+3))
+         eq_mid%del_grad(i) = lagrange4(facinterp, del_grad(k0:k0+3))
 !  MASS FRACTION OF HYDROGEN
          eq_mid%hydrogen(i)=lagrange4(facinterp, composition(1,k0:k0+3))
 !  MASS FRACTION OF HELIUM
@@ -184,7 +184,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq%density(1) = density_orig(zone_begin)
       eq%temperature(1) = temperature_orig(zone_begin)
       eq%dlnp_dr(1) = dlnp_dr(zone_begin)
-      eq%del_grad(1) = star%gradT(zone_begin)
+      eq%del_grad(1) = del_grad(zone_begin)
       eq%hydrogen(1) = composition(1,zone_begin)
       eq%helium(1) = composition(2,zone_begin)
       eq%metal(1) = composition(3,zone_begin)
@@ -230,7 +230,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          eq%density(i) = lagrange4(facinterp, density_orig(k0:k0+3))
          eq%temperature(i) = lagrange4(facinterp, temperature_orig(k0:k0+3))
          eq%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr(k0:k0+3))
-         eq%del_grad(i) = lagrange4(facinterp, star%gradT(k0:k0+3))
+         eq%del_grad(i) = lagrange4(facinterp, del_grad(k0:k0+3))
          eq%hydrogen(i)=lagrange4(facinterp, composition(1,k0:k0+3))
          eq%helium(i)=lagrange4(facinterp, composition(2,k0:k0+3))
          eq%metal(i)=lagrange4(facinterp, composition(3,k0:k0+3))
@@ -246,7 +246,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq%density(num_eq_points) = density_orig(zone_end)
       eq%temperature(num_eq_points) = temperature_orig(zone_end)
       eq%dlnp_dr(num_eq_points) = dlnp_dr(zone_end)
-      eq%del_grad(num_eq_points) = star%gradT(zone_end)
+      eq%del_grad(num_eq_points) = del_grad(zone_end)
       eq%hydrogen(num_eq_points) = composition(1,zone_end)
       eq%helium(num_eq_points) = composition(2,zone_end)
       eq%metal(num_eq_points) = composition(3,zone_end)

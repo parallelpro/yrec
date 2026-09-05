@@ -39,9 +39,11 @@
 ! log_radius - LOG RADIUS (CM)
 ! mass_grams - MASS (GM), UNLOGGED
 ! log_temperature - LOG TEMPERATURE (K)
+! del_grad - DEL (=DLNT/DLNP) per zone (2026 W2: an explicit argument;
+!     mix passes star%gradT, rotmix passes mix_scr%delm, which it used
+!     to copy into star%gradT around this call)
 ! convective_flag - FLAG T/F FOR CONVECTION
 ! num_zones - NUMBER OF MODEL POINTS
-! star%gradT - DEL (=DLNT/DLNP)
 !
 ! OUTPUT VARIABLES :
 !
@@ -54,7 +56,7 @@
 ! (diffusion_coeff1_dx AND diffusion_coeff2_dx).
 !
 subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, log_density, &
-     mass_grams, log_temperature, convective_flag, num_zones, total_mass, ierr)
+     mass_grams, log_temperature, del_grad, convective_flag, num_zones, total_mass, ierr)
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
@@ -68,7 +70,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(inout) :: dlnp_dr(json)
       double precision, intent(in) :: log_radius(json), log_density(json), &
-           log_temperature(json)
+           log_temperature(json), del_grad(json)
       double precision, intent(inout) :: mass_grams(json)
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
@@ -109,7 +111,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       ierr = 0
 
       call gravitational_settling_setup(timestep,dlnp_dr,log_radius,log_density,mass_grams, &
-           log_temperature,convective_flag,num_zones,total_mass, &
+           log_temperature,del_grad,convective_flag,num_zones,total_mass, &
            diffusion_coeff1,diffusion_coeff2,composition,radius_bl, &
            temperature_bl,zone_begin,zone_end,settling_skipped_flag, &
            diffusion_coeff1_dx,diffusion_coeff2_dx, ierr)

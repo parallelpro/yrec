@@ -48,7 +48,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
            rate_n14_p(json), rate_o16_p(json), rate_c13_alpha(json), &
            rate_c12_alpha(json), rate_n14_alpha(json), &
            rate_triple_alpha(json), frac_c12_alpha(json)
-      double precision :: dlnp_dr_settling(json), del_grad2_save(json)
+      double precision :: dlnp_dr_settling(json)
       logical :: am_transport_convective_flag(json)
       double precision :: total_mass
       integer :: zone_idx, region_idx, species_idx, burn_zone_start, &
@@ -166,8 +166,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          end if
          total_mass=exp(ln10*log_total_mass)
          do zone_idx = 1,num_zones
-            del_grad2_save(zone_idx) = star%gradT(zone_idx)
-            star%gradT(zone_idx) = mix_scr%delm(zone_idx)
             dlnp_dr_settling(zone_idx)=-exp(ln10*(log_density(zone_idx)+ &
                  cgl+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
                  log_pressure(zone_idx)))
@@ -218,21 +216,22 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          end do
          do substep_idx = 1,num_settling_substeps
 ! PERFORM GRAVITATIONAL SETTLING. IF LNEWDIF = TRUE, USE THE NEW ROUTINES
-! IN MICRODIFF. ELSE, USE THE OLD ROUTINES IN GRSETT.
+! IN MICRODIFF. ELSE, USE THE OLD ROUTINES IN GRSETT. The mid-step
+! gradient mix_scr%delm is passed explicitly (before 2026 W2 it was
+! copied into star%gradT around these calls and restored afterwards).
             if (star%ctrl%use_new_diffusion_routines) then
                call microdiff(settling_dt,composition,dlnp_dr_settling, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
-                    am_transport_convective_flag,num_zones,total_mass, ierr)
+                    mix_scr%delm,am_transport_convective_flag,num_zones, &
+                    total_mass, ierr)
                if (ierr /= 0) return
             else
                call gravitational_settling(settling_dt,composition,dlnp_dr_settling, &
                     log_radius,log_density,enclosed_mass,log_temperature, &
-                    am_transport_convective_flag,num_zones,total_mass, ierr)
+                    mix_scr%delm,am_transport_convective_flag,num_zones, &
+                    total_mass, ierr)
                if (ierr /= 0) return
             end if
-         end do
-         do zone_idx = 1,num_zones
-            star%gradT(zone_idx) = del_grad2_save(zone_idx)
          end do
          end if
       exit settling

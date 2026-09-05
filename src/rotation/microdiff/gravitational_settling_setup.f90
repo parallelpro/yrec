@@ -19,7 +19,7 @@
 ! thoul_diffusion, LTHOUL true) with a choice of Coulomb-logarithm prescription
 ! selected by coulomb_log_choice.
 subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
-     log_density, mass_grams, log_temperature, convective_flag, &
+     log_density, mass_grams, log_temperature, del_grad, convective_flag, &
      num_zones, total_mass, diffusion_coeff1, diffusion_coeff2, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
      settling_skipped_flag, diffusion_coeff1_dx, diffusion_coeff2_dx, ierr)
@@ -36,6 +36,8 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       double precision, intent(inout) :: dlnp_dr(json)
       double precision, intent(in) :: log_radius(json), log_density(json), &
            log_temperature(json)
+! del_grad: DEL (=DLNT/DLNP) per zone, from the caller (was star%gradT)
+      double precision, intent(in) :: del_grad(json)
       double precision, intent(inout) :: mass_grams(json)
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
@@ -231,14 +233,14 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
             thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
             diffusion_coeff1(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  (hydrogen_fraction - hydrogen_fraction_sq - hydrogen_metal_product)*(1.25d0+ &
-                 star%gradT(zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
+                 del_grad(zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
             diffusion_coeff2(zone_idx)=settling_prefactor*(hydrogen_fraction+3.0d0)/ &
                  (5.0d0*hydrogen_fraction_sq + 8.0d0*hydrogen_fraction + 3.0d0)
             diffusion_coeff1_dx(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  ( (1.0d0-2.0d0*hydrogen_fraction-z_plus_he3_fraction)*(1.25d0+ &
-                 (6.0d0*star%gradT(zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
+                 (6.0d0*del_grad(zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
                  (hydrogen_fraction-hydrogen_fraction_sq-hydrogen_metal_product)*6.0d0* &
-                 star%gradT(zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
+                 del_grad(zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
                  thoul_denominator**2 )
             diffusion_coeff2_dx(zone_idx)=-settling_prefactor*(5.0d0*hydrogen_fraction_sq + &
                  3.0d1*hydrogen_fraction + 2.1d1)/ &
@@ -303,14 +305,14 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                     ierr)
                if (ierr /= 0) return
                settling_coeff_p = -settling_ap(1)
-               settling_coeff_t = -star%gradT(zone_idx)*settling_at(1)
+               settling_coeff_t = -del_grad(zone_idx)*settling_at(1)
             else
                settling_coeff_p = 1.58d0 - 2.42d0*hydrogen_fraction + 0.844d0*hydrogen_fraction_sq
-               settling_coeff_t = star%gradT(zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
+               settling_coeff_t = del_grad(zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
             endif
             helium_ah_coeff = 1.15d0 - 1.42d0*hydrogen_fraction + 0.647d0*hydrogen_fraction_sq
             dap_dx = -2.42d0 + 1.688d0*hydrogen_fraction
-            dat_dx = star%gradT(zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
+            dat_dx = del_grad(zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
             dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
 !CFD 10/09 Mimic Mixing to reduce settling.
             diffusion_coeff1(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor*dlnp_dr(zone_idx)* &
@@ -327,11 +329,11 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
             if(star%ctrl%use_thoul_diffusion)then
                if(star%ctrl%use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq
-                  settling_coeff_t = star%gradT(zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
+                  settling_coeff_t = del_grad(zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
                        0.549d0*hydrogen_fraction_sq)
                else
                   settling_coeff_p = -settling_ap(3)
-                  settling_coeff_t = -star%gradT(zone_idx)*settling_at(3)
+                  settling_coeff_t = -del_grad(zone_idx)*settling_at(3)
                endif
                iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
 !CFD 10/09 Mimic Mixing to reduce settling (constant_mixing_coeff)

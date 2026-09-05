@@ -38,9 +38,11 @@
 !  log_radius (HR) - LOG RADIUS (CM)
 !  enclosed_mass (HS1) - MASS (GM), UNLOGGED
 !  log_temperature (HT) - LOG TEMPERATURE (K)
+!  del_grad - DEL (=DLNT/DLNP) per zone (2026 W2: an explicit argument;
+!     mix passes star%gradT, rotmix passes mix_scr%delm, which it used
+!     to copy into star%gradT around this call)
 !  convective_flag (LC) - FLAG T/F FOR CONVECTION
 !  num_zones (M) - NUMBER OF MODEL POINTS
-!  star%gradT - DEL (=DLNT/DLNP)
 !
 !  OUTPUT VARIABLES :
 !
@@ -57,8 +59,8 @@
 ! heavy metals, and each light element in turn, and finally
 ! microdiff_etm.f90 (transform back to the model grid).
 subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
-     log_density, enclosed_mass, log_temperature, convective_flag, &
-     num_zones, total_mass, ierr)
+     log_density, enclosed_mass, log_temperature, del_grad, &
+     convective_flag, num_zones, total_mass, ierr)
       use microdiff_mte_lib
       use microdiff_run_lib
       use star_info_lib, only: star, json
@@ -71,7 +73,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       double precision, intent(inout) :: dlnp_dr(json)
       double precision, intent(in) :: log_radius(json), log_density(json)
       double precision, intent(inout) :: enclosed_mass(json)
-      double precision, intent(in) :: log_temperature(json)
+      double precision, intent(in) :: log_temperature(json), del_grad(json)
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
@@ -119,7 +121,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !         SPACED GRID POINTS.(BOTH ARE NEEDED FOR THE DIFFUSION TECHNIQUE).
 !
       call microdiff_mte(num_light, light_element_id, composition, &
-           dlnp_dr, radius_bl, enclosed_mass, zone_begin, zone_end, &
+           dlnp_dr, radius_bl, enclosed_mass, del_grad, zone_begin, zone_end, &
            num_zones, grid_spacing, num_eq_points, density_orig, &
            temperature_orig, eq, eq_mid)
 !
