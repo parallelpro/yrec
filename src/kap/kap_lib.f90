@@ -201,7 +201,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             end if
             table_metal_fraction = star%ctrl%opal_table_z1
          else if (star%ctrl%use_laol89_tables) then
-            call gtlaol(log10_density, log10_temperature, &
+            call gtlaol(opacity_table%laol(1), log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt, jerr)
             if (jerr /= 0) then
@@ -268,14 +268,14 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  metal_fraction, star%ctrl%opal_table_z1, star%ctrl%opal_table_z2)
          end if
       else if (star%ctrl%use_laol89_tables) then
-         call gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
+         call gtlaol(opacity_table%laol(1), log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
          end if
          if (star%use_two_z_tables) then
-            call gtlaol2(log10_density, log10_temperature, &
+            call gtlaol(opacity_table%laol(2), log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)
             if (jerr /= 0) then

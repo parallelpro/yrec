@@ -224,7 +224,6 @@ kap/kurucz90/build_kurucz_splines.o: math_lib.mod numerics_lib.mod opacity_table
 kap/kurucz90/kurucz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
 kap/kurucz90/read_kurucz_tables.o: math_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/gtlaol.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/laol89/gtlaol2.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/gtpurz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/rdlaol.o: luout_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/rdzlaol.o: luout_lib.mod opacity_table_lib.mod

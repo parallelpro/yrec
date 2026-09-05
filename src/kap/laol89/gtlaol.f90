@@ -9,7 +9,13 @@
 ! Get LAOL89 opacity: cubic-spline interpolate in density, then in
 ! temperature, then linearly interpolate (or, within tollaol of the
 ! table edge, linearly extrapolate) in hydrogen abundance.
-subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
+!
+! 2026 wave 3 (R5): tbl is the table to interpolate in --
+! opacity_table%laol(1) (the former gtlaol.f90) or laol(2) (the
+! former gtlaol2.f90, deleted: a member-for-member rename of this
+! file whose two run-log diagnostics said "OPACITY TABLE #2"; those
+! are kept verbatim under `if (tbl%table_number == 2)`).
+subroutine gtlaol(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use star_info_lib, only: star
@@ -19,6 +25,7 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
       use math_lib
       implicit none
       integer :: jerr_gate
+      type(laol_table_set), intent(inout) :: tbl
       double precision, intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction
       double precision, intent(out) :: opacity, log10_opacity, &
@@ -44,10 +51,10 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
 !     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
       ierr = 0
       log_extrap_tolerance = log(star%ctrl%tollaol)
-      call locate(opacity_table%laol_grid_t, opacity_table%laol_num_t, log10_temperature, t_locate_guess)
-      call locate(opacity_table%laol_grid_x, opacity_table%laol_num_x, hydrogen_fraction, x_grid_index)
-      if (x_grid_index .eq. opacity_table%laol_num_x) then
-          x_grid_index = opacity_table%laol_num_x-1
+      call locate(tbl%grid_t, tbl%num_t, log10_temperature, t_locate_guess)
+      call locate(tbl%grid_x, tbl%num_x, hydrogen_fraction, x_grid_index)
+      if (x_grid_index .eq. tbl%num_x) then
+          x_grid_index = tbl%num_x-1
       end if
       if (x_grid_index .eq. 0) then
           x_grid_index = 1
@@ -57,17 +64,17 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
       do x_loop_index=x_grid_index, x_grid_index_hi
          num_valid_t = 0
 !        GET RANGE OF FOUR TT SURROUNDING T
-         call xrng4(t_locate_guess, opacity_table%laol_num_t, t_range_lo, t_range_hi)
+         call xrng4(t_locate_guess, tbl%num_t, t_range_lo, t_range_hi)
          do t_index=t_range_lo, t_range_hi
-            num_valid_rho = opacity_table%slaol_num_points(x_loop_index,t_index)
+            num_valid_rho = tbl%slaol_num_points(x_loop_index,t_index)
             if (num_valid_rho .ge. 4) then
                do rho_loop_index=1, num_valid_rho
                   row_log10_opacity(rho_loop_index) = &
-                       opacity_table%slaol_opacity(x_loop_index,rho_loop_index,t_index)
+                       tbl%slaol_opacity(x_loop_index,rho_loop_index,t_index)
                   row_log_rho(rho_loop_index) = &
-                       opacity_table%slaol_log_rho(x_loop_index,rho_loop_index,t_index)
+                       tbl%slaol_log_rho(x_loop_index,rho_loop_index,t_index)
                   row_d2opacity(rho_loop_index) = &
-                       opacity_table%slaol_d2opacity(x_loop_index,rho_loop_index,t_index)
+                       tbl%slaol_d2opacity(x_loop_index,rho_loop_index,t_index)
                end do
                if (log10_density.gt.row_log_rho(1) .and. &
                     log10_density.lt.row_log_rho(num_valid_rho)) then
@@ -82,7 +89,7 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
                   end if
                   num_valid_t = num_valid_t+1
                   logt_interp_opacity(num_valid_t) = log10_opacity_value
-                  logt_values(num_valid_t) = opacity_table%laol_grid_t(t_index)
+                  logt_values(num_valid_t) = tbl%grid_t(t_index)
                   dlnkap_dlnrho_by_t(num_valid_t) = &
                        (row_log10_opacity(spline_index_hi)-row_log10_opacity(spline_index_lo))/ &
                        (row_log_rho(spline_index_hi)-row_log_rho(spline_index_lo))
@@ -94,7 +101,7 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
                   log10_opacity_value = row_log10_opacity(1)+slope*(log10_density-row_log_rho(1))
                   num_valid_t = num_valid_t+1
                   logt_interp_opacity(num_valid_t) = log10_opacity_value
-                  logt_values(num_valid_t) = opacity_table%laol_grid_t(t_index)
+                  logt_values(num_valid_t) = tbl%grid_t(t_index)
                   dlnkap_dlnrho_by_t(num_valid_t) = slope
                else if (log10_density.ge.row_log_rho(num_valid_rho) .and. &
                     log10_density.lt.row_log_rho(num_valid_rho)+log_extrap_tolerance) then
@@ -105,13 +112,19 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
                        slope*(log10_density-row_log_rho(num_valid_rho))
                   num_valid_t = num_valid_t+1
                   logt_interp_opacity(num_valid_t) = log10_opacity_value
-                  logt_values(num_valid_t) = opacity_table%laol_grid_t(t_index)
+                  logt_values(num_valid_t) = tbl%grid_t(t_index)
                   dlnkap_dlnrho_by_t(num_valid_t) = slope
                end if
             else
+               if (tbl%table_number == 2) then
+               write(run_log_unit,220) log10_density, log10_temperature
+  220          format(' OUTSIDE OPACITY TABLE #2, IN DENSITY.  ', &
+                    'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
+               else
                write(run_log_unit,120) log10_density, log10_temperature
   120          format(' OUTSIDE OPACITY TABLE, IN DENSITY.  ', &
                     'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
+               end if
 ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
                ierr = 1
                return
@@ -136,11 +149,17 @@ subroutine gtlaol(log10_density, log10_temperature, hydrogen_fraction, &
             dlnkap_dlnt_by_x(num_valid_x) = &
                  (logt_interp_opacity(spline_index_hi)-logt_interp_opacity(spline_index_lo))/ &
                  (logt_values(spline_index_hi)-logt_values(spline_index_lo))
-            x_values(num_valid_x) = opacity_table%laol_grid_x(x_loop_index)
+            x_values(num_valid_x) = tbl%grid_x(x_loop_index)
          else
+            if (tbl%table_number == 2) then
+            write(run_log_unit,221) log10_density, log10_temperature
+  221       format(' OUTSIDE OPACITY TABLE #2, IN TEMPERATURE.  ', &
+                 'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
+            else
             write(run_log_unit,121) log10_density, log10_temperature
   121       format(' OUTSIDE OPACITY TABLE, IN TEMPERATURE.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
+            end if
 ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
             ierr = 1
             return

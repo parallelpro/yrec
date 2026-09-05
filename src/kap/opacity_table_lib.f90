@@ -58,7 +58,7 @@ module opacity_table_lib
 ! LAOL89 table dimensions (array extents; the file-size checks in
 ! rdlaol/rdzlaol accept at most 11 X columns).
       integer, parameter :: n_laol_x = 12, n_laol_rho = 104, n_laol_t = 52
-! LAOL89 opacity cap returned by gtlaol/gtlaol2/gtpurz when the
+! LAOL89 opacity cap returned by gtlaol/gtpurz when the
 ! interpolated log10(opacity) overflows.
       double precision, parameter :: laol_opacity_cap = 1.0d35
 ! Composition-cache tolerances: a lookup whose X (and Z) is within this
@@ -89,6 +89,27 @@ module opacity_table_lib
                 density_count(kurucz_num_x_temp_entries)
            logical :: check_range = .true.
       end type kurucz_table_set
+
+! laol_table_set: one LAOL89 opacity table (former common/nwlaol/,
+! slaol/ and their nwlaol2/, slaol2/ second-Z mirrors). 2026 wave 3
+! (R5): the two member sets laol_*/slaol_* and laol2_*/slaol2_*
+! became opacity_table%laol(1)/(2) so that one reader/spliner/
+! interpolator serves both. opacity, grid_x, grid_rho, grid_t (sulaol
+! converts grid_t to log10 in place) and the extents num_x/num_rho/
+! num_t are the table as read by rdlaol; slaol_* are the
+! spline-prepared rows. Shapes unchanged. table_number (1 or 2,
+! rdlaol sets it) selects the "#2"/"SECOND" wording of the
+! run-log diagnostics that named the table in the former clones.
+      type, public :: laol_table_set
+           double precision :: opacity(n_laol_x,n_laol_rho,n_laol_t), &
+                grid_x(n_laol_x), grid_t(n_laol_t), grid_rho(n_laol_rho)
+           integer :: num_x, num_rho, num_t
+           double precision :: slaol_opacity(n_laol_x,n_laol_rho,n_laol_t), &
+                slaol_log_rho(n_laol_x,n_laol_rho,n_laol_t), &
+                slaol_d2opacity(n_laol_x,n_laol_rho,n_laol_t)
+           integer :: slaol_num_points(n_laol_x,n_laol_t)
+           integer :: table_number = 1
+      end type laol_table_set
 
       type, public :: opacity_table_state
 ! former common/gllot/, llot/, lintpl/ (OPAL92, first Z table)
@@ -171,25 +192,11 @@ module opacity_table_lib
 ! Kurucz90 tables: (1) at kurucz_table_z1, (2) at kurucz_table_z2
 ! (read only when star%use_two_z_tables). See kurucz_table_set.
            type(kurucz_table_set) :: kurucz(2)
-! former common/slaol/, slaol2/, nwlaol2/, zlaol/, zslaol/ (LAOL89/
-! SLAOL: the spline-prepared first-Z, second-Z and pure-Z tables)
-           double precision :: slaol_opacity(n_laol_x,n_laol_rho,n_laol_t), &
-                slaol_log_rho(n_laol_x,n_laol_rho,n_laol_t), &
-                slaol_d2opacity(n_laol_x,n_laol_rho,n_laol_t)
-           integer :: slaol_num_points(n_laol_x,n_laol_t)
-           double precision :: slaol2_opacity(n_laol_x,n_laol_rho,n_laol_t), &
-                slaol2_log_rho(n_laol_x,n_laol_rho,n_laol_t), &
-                slaol2_d2opacity(n_laol_x,n_laol_rho,n_laol_t)
-           integer :: slaol2_num_points(n_laol_x,n_laol_t)
-! former common/nwlaol/ and nwlaol2/: the LAOL89 tables as read by
-! rdlaol (opacity, X grid, rho grid, T grid -- sulaol converts the T
-! grid to log10 in place) and their extents.
-           double precision :: laol_opacity(n_laol_x,n_laol_rho,n_laol_t), &
-                laol_grid_x(n_laol_x), laol_grid_t(n_laol_t), laol_grid_rho(n_laol_rho)
-           integer :: laol_num_x, laol_num_rho, laol_num_t
-           double precision :: laol2_opacity(n_laol_x,n_laol_rho,n_laol_t), &
-                laol2_grid_x(n_laol_x), laol2_grid_t(n_laol_t), laol2_grid_rho(n_laol_rho)
-           integer :: laol2_num_x, laol2_num_rho, laol2_num_t
+! LAOL89 tables: (1) at laol_table_z1, (2) at laol_table_z2 (read
+! only when star%use_two_z_tables). See laol_table_set.
+           type(laol_table_set) :: laol(2)
+! former common/zlaol/, zslaol/ (LAOL89 pure-Z table and its
+! spline-prepared form)
            double precision :: zlaol_opacity(n_laol_rho,n_laol_t), zlaol_logt_grid(n_laol_t), &
                 zlaol_logrho_grid(n_laol_rho)
            integer :: zlaol_num_rho, zlaol_num_t
