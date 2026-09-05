@@ -51,6 +51,8 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          density = exp(ln10*log_density(1))
          eta2(1) = 6.d0*(1.0d0 - density/rho_bar)
 ! ITERATE FOR R0 GIVEN RPHI AND ETA2
+! (Same Newton step as the per-zone loop below, but this one exits on
+! .le. acfpft and that one on .lt. acfpft -- kept as in the original.)
          gm = cg*exp(ln10*log_mass(1))
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
@@ -100,6 +102,8 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 ! NOW ITERATE FOR R0 GIVEN RPHI AND ETA2, USING THE RELATION
 ! RPHI**3 = R0**3(1.0 + 3/5A**2 - 2/35A**3)
 ! WHERE A = OMEGA**2*R0**3*5/3GM(2+ETA2))
+! (Same Newton step as the center loop above, but exits on .lt. acfpft
+! where that one uses .le. -- kept as in the original.)
             do j = 1,star%ctrl%itfp2
                a_param = fact*r0_cubed
                delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
