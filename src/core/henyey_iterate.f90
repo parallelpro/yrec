@@ -59,6 +59,10 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       double precision :: surface_pressure_rotation_factor, &
            surface_temperature_rotation_factor
       logical :: envelope_recomputed_flag
+! sign of the fcorr0 control: > 0 means the under-relaxation factor
+! star%job%fcorr (started at |fcorr0| - fcorri by evolve_step) is
+! ramped up by fcorri each iteration; <= 0 holds it fixed
+      logical :: underrelax_ramp_active
       double precision :: timestep_years
       double precision :: temp, test, total_luminosity_terms, &
            luminosity_correction_max, correction_factor
@@ -73,6 +77,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       ierr = 0
 
       if (max_iterations.le.0) return
+      underrelax_ramp_active = star%ctrl%fcorr0.gt.0.0d0
       star%log_L = log10(star%luminosity_lsun(star%nz))
 ! RESET THE SAHA-STATE COUNTER (2026 W2: the envelope/atmosphere
 ! integrand call counters kenv/katm that used to be zeroed here were
@@ -162,6 +167,9 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        end if
 ! RENORMALIZE TLUMX-S
 !CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
+! (per-iteration twin of observables_lib's renormalize_luminosity_breakdown;
+! this one also guards total > 0 -- kept separate on purpose, see
+! reports/henyey-wave2.md item 6)
        total_luminosity_terms = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
             star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
             star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
@@ -248,7 +256,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
           max_correction_pos = star%max_correction_index(j)
           star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
        end do
-       if (star%ctrl%fcorr0.gt.0.0d0) star%job%fcorr = dmin1(1.d0,star%job%fcorr+star%ctrl%fcorri)
+       if (underrelax_ramp_active) star%job%fcorr = dmin1(1.d0,star%job%fcorr+star%ctrl%fcorri)
 ! HE FLASH CHANGE
        correction_factor = star%job%fcorr
        if (star%ctrl%helium_flash_active) then

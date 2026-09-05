@@ -176,15 +176,12 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 contains
 
 ! ---------------------------------------------------------------
-! Per-step output bookkeeping. All that is left of the historical
-! flag choreography is the optional short-file rewind: the
-! ages-of-interest (AGEOUT/calcad) pulse re-arming and the
-! .pmod/.penv/.patm pulse trio with its HR-path-length reopen
-! trigger were retired (the stitched profileN.data + GYRE/FGONG/GSM
-! pulse files carry everything).
+! Per-step run-log bookkeeping: when the lrwsh control
+! (rewind_short_file) is set, rewind the run log (run_log_unit,
+! log_output_file / run.log) so it holds only the current model's
+! solver diagnostics.
 subroutine update_output_flags_for_step
 
-! rewind the short file if requested (keeps it small)
           if (star%ctrl%rewind_short_file) then
              rewind(run_log_unit)
           endif
@@ -316,7 +313,16 @@ subroutine solve_structure
 ! converged = T if model has converged
 ! star%model_diverged_flag = T if model has diverged
           if (star%ctrl%lnew0) star%recompute_envelope_triangle = .true.
+! "do not age this model" is encoded as a NEGATIVE star%dt: the
+! henyey pass (delta_time.gt.0 gates the entropy terms), the
+! improved-first-guess test just below, and the rotation step
+! (evolve_angular_momentum, which also does arithmetic on it) all
+! read the sign; it is made positive again after convergence
+! (star%dt = dabs(star%dt) before compute_timestep).
             if (.not.evolve_model_flag) star%dt = -dabs(star%dt)
+! under-relaxation start: |fcorr0| - fcorri; the SIGN of the
+! fcorr0 control selects whether henyey_iterate ramps fcorr back up
+! by fcorri per iteration (fcorr0 > 0) or holds it fixed.
             star%job%fcorr = dabs(star%ctrl%fcorr0) - star%ctrl%fcorri
             iterations_done = 0
             star%model_diverged_flag = .false.
@@ -401,7 +407,7 @@ subroutine converge_with_rotation
             if (star%job%num_rotation_structure_iters.gt.1) then
                do i = 1,star%nz
                   star%orig_specific_angular_momentum(i) = star%j_rot(i)
-                  do j = 1,15
+                  do j = 1,n_species_extended
                      star%orig_composition(j,i) = star%xa_start(j,i)
                   end do
                end do
@@ -411,7 +417,7 @@ subroutine converge_with_rotation
 ! VALUES FOR THE COMPOSITION MATRIX
                if (itrot.gt.1) then
                   do i = 1,star%nz
-                     do j = 1,15
+                     do j = 1,n_species_extended
                         star%xa_start(j,i) = star%orig_composition(j,i)
                      end do
                   end do

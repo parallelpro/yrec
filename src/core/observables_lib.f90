@@ -125,6 +125,9 @@ subroutine renormalize_luminosity_breakdown
       double precision :: total_luminosity_sum, temp_value
       integer :: i
 
+! (post-convergence twin of henyey_iterate's per-iteration
+! renormalization, which additionally guards total > 0 -- kept
+! separate on purpose, see reports/henyey-wave2.md item 6)
       if(.not.star%ctrl%helium_flash_active) then
        total_luminosity_sum = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
             star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
