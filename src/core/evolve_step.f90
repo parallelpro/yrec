@@ -48,6 +48,10 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       logical :: converged, evolve_model_flag, &
            new_atmosphere_fit_needed, recompute_surface_bc, &
            wind_loss_active
+! compute_timestep's report that it switched the structure-based
+! timestep limits off (log Tc > 7.1, L_grav < 0); the driver applies
+! it to star%job (2026 W3, sidechan Deferred 4).
+      logical :: disable_structure_dt_limits
 ! load-bearing: see header
       save
    ! INTENTIONAL: cross-step driver state; reset via evolve_step_reset_pending
@@ -133,9 +137,11 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! compute_timestep ALSO LOCATES THE H-BURNING SHELL
        star%dt = dabs(star%dt)
        star%dt_saved = star%dt
+       disable_structure_dt_limits = .false.
        call compute_timestep(star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
               star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk,star%logP,star%logR,star%omega, &
-              star%max_domega_frac,star%h_shell_zone_begin,star%log_Teff)
+              star%max_domega_frac,star%h_shell_zone_begin,star%log_Teff, disable_structure_dt_limits)
+       if (disable_structure_dt_limits) star%job%use_structure_dt_limits = .false.
 ! IF EVOLVING TO A GIVEN AGE AND KIND CARD IS DONE, AVOID ZEROING OUT
 ! TIMESTEP WRITTEN TO MODEL (AS THIS MAKES CONTINUING A SEQUENCE AWKWARD.)
 !     INSTEAD WRITE THE PREVIOUS MODEL TIMESTEP TO MODEL.

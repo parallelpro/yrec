@@ -47,6 +47,9 @@ subroutine run_yrec(ierr)
 ! end-of-run wall-clock (terminal-only summary line)
       integer(kind=8) :: clock_start, clock_now, clock_rate
       logical :: saved_use_structure_dt_limits
+! compute_timestep's report that it switched the structure-based
+! timestep limits off; the driver applies it to star%job (2026 W3).
+      logical :: disable_structure_dt_limits
       integer :: saved_atm_choice
       integer :: i
       integer :: kind_card, model_iteration
@@ -329,11 +332,13 @@ subroutine begin_kind_card
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin, &
               star%h_shell_end_index,star%h_shell_midpoint_zone,star%has_h_shell)
 ! determine timestep for model
+       disable_structure_dt_limits = .false.
        call compute_timestep(star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
             star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk, &
             star%logP,star%logR,star%omega,star%max_domega_frac,star%h_shell_zone_begin, &
-            star%log_Teff)
+            star%log_Teff, disable_structure_dt_limits)
+       if (disable_structure_dt_limits) star%job%use_structure_dt_limits = .false.
 
        star%dt_saved = star%dt
 ! zero out entropy terms.
