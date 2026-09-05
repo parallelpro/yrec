@@ -685,14 +685,16 @@ subroutine rescale_and_refit_envelope
                     hydrogen_fraction, metal_fraction, kap_res, &
                     eos_res(i_fxion:i_fxion+2), ierr=ierr)
                if (ierr /= 0) return
-               star%iovim = -1
+! 2026 W3: zone_index=-1 (no overshoot zone) is passed directly; this
+! was the last writer of the star%iovim side channel.
                call temperature_gradients(log10_temperature, log10_pressure, &
                     eos_res, kap_res, log10_radius, log10_mass, &
                     shell_luminosity_lsun, actual_gradient, radiative_gradient, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                     convective_velocity, want_derivatives, is_convective, &
                     point_pressure_rotation_factor, &
-                    point_temperature_rotation_factor, star%log_Teff, jerr)
+                    point_temperature_rotation_factor, star%log_Teff, jerr, &
+                    zone_index=-1)
                if (jerr /= 0) then
                ! 2026 (phase five, step B): propagate instead of stopping
                   ierr = jerr
