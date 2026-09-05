@@ -180,6 +180,7 @@ eos/opal/readcoeos06.o: luout_lib.mod opal_eos_lib.mod star_info_lib.mod
 eos/opal/rhoofp.o: opal_eos_lib.mod
 eos/opal/rhoofp01.o: opal_eos_lib.mod
 eos/opal/rhoofp06.o: luout_lib.mod opal_eos_lib.mod
+eos/opal/t6rint_core.o: opal_eos_lib.mod
 eos/opal/t6rinteos01.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/t6rinteos06.o: luout_lib.mod opal_eos_lib.mod
 eos/opal/t6rinterp.o: luout_lib.mod opal_eos_lib.mod
