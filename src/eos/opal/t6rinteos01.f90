@@ -22,7 +22,7 @@ subroutine t6rinteos01(v, slr, slt, ierr)
 ! --- locals ---
       integer :: hi_loop_count, recompute_flag, cache_slot, t6_grid_idx
       double precision :: esactq, esact2, esactq2, dix, dix2
-      double precision, external :: quadeos01
+      double precision, external :: quad
 
       integer, intent(out) :: ierr
 
@@ -34,7 +34,7 @@ subroutine t6rinteos01(v, slr, slt, ierr)
       do t6_grid_idx = v%t6_index_1, v%t6_index_1 + v%t6_interp_order
          cache_slot = 1
          hi_loop_count = hi_loop_count + 1
-         v%rho_interp_lo(hi_loop_count) = quadeos01(v%quad, recompute_flag, cache_slot, &
+         v%rho_interp_lo(hi_loop_count) = quad(v%quad, recompute_flag, cache_slot, &
               slr, v%x_interp_result(t6_grid_idx,v%density_index_1), &
               v%x_interp_result(t6_grid_idx,v%density_index_2), &
               v%x_interp_result(t6_grid_idx,v%density_index_3), &
@@ -42,7 +42,7 @@ subroutine t6rinteos01(v, slr, slt, ierr)
               v%density_grid(v%density_index_3))
          if (v%density_interp_order.eq.3) then
             cache_slot = 2
-            v%rho_interp_hi(hi_loop_count) = quadeos01(v%quad, recompute_flag, cache_slot, &
+            v%rho_interp_hi(hi_loop_count) = quad(v%quad, recompute_flag, cache_slot, &
                  slr, v%x_interp_result(t6_grid_idx,v%density_index_2), &
                  v%x_interp_result(t6_grid_idx,v%density_index_3), &
                  v%x_interp_result(t6_grid_idx,v%density_index_4), &
@@ -55,18 +55,18 @@ subroutine t6rinteos01(v, slr, slt, ierr)
       recompute_flag = 0
       cache_slot = 1
 ! ..... eos(i) in lower-right 3x3(i=i1,i1+2 j=j1,j1+2)
-      v%esact = quadeos01(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_lo(1), &
+      v%esact = quad(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_lo(1), &
            v%rho_interp_lo(2), v%rho_interp_lo(3), v%t6_grid(v%t6_index_1), &
            v%t6_grid(v%t6_index_2), v%t6_grid(v%t6_index_3))
       if (v%density_interp_order.eq.3) then
 ! .....    eos(i) upper-right 3x3(i=i1+1,i1+3 j=j1,j1+2)
-         esactq = quadeos01(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_hi(1), &
+         esactq = quad(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_hi(1), &
               v%rho_interp_hi(2), v%rho_interp_hi(3), v%t6_grid(v%t6_index_1), &
               v%t6_grid(v%t6_index_2), v%t6_grid(v%t6_index_3))
       end if
       if (v%t6_interp_order.eq.3) then
 ! .....    eos(i) in lower-left 3x3.
-         esact2 = quadeos01(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_lo(2), &
+         esact2 = quad(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_lo(2), &
               v%rho_interp_lo(3), v%rho_interp_lo(4), v%t6_grid(v%t6_index_2), &
               v%t6_grid(v%t6_index_3), v%t6_grid(v%t6_index_4))
 ! .....    eos(i) smoothed in left 3x4
@@ -76,7 +76,7 @@ subroutine t6rinteos01(v, slr, slt, ierr)
          if (v%density_interp_order.eq.3) then
 
 ! .....     eos(i) in upper-right 3x3.
-            esactq2 = quadeos01(v%quad, recompute_flag, cache_slot, slt, &
+            esactq2 = quad(v%quad, recompute_flag, cache_slot, slt, &
                  v%rho_interp_hi(2), v%rho_interp_hi(3), v%rho_interp_hi(4), &
                  v%t6_grid(v%t6_index_2), v%t6_grid(v%t6_index_3), &
                  v%t6_grid(v%t6_index_4))

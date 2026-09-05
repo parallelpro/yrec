@@ -171,8 +171,6 @@ eos/opal/oeqos.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
 eos/opal/oeqos01.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
 eos/opal/oeqos06.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
 eos/opal/quad.o: opal_eos_lib.mod
-eos/opal/quadeos01.o: opal_eos_lib.mod
-eos/opal/quadeos06.o: opal_eos_lib.mod
 eos/opal/radsub.o: opal_eos_lib.mod
 eos/opal/radsub01.o: opal_eos_lib.mod
 eos/opal/radsub06.o: opal_eos_lib.mod

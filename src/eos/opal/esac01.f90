@@ -65,7 +65,7 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
       double precision :: pressure_scale
       double precision :: total_moles, ground_state_energy, &
            metal_mole_fraction, mean_molecular_weight
-      double precision, external :: quadeos01, gmass01
+      double precision, external :: quad, gmass01
 
       integer, intent(out) :: ierr
 
@@ -312,7 +312,7 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
                cycle
             end if
             v%x_interp_result(t6_scan_idx,density_scan_idx) = &
-                 quadeos01(v%quad, recompute_flag, cache_slot, hydrogen_fraction, &
+                 quad(v%quad, recompute_flag, cache_slot, hydrogen_fraction, &
                  v%x_interp_workspace(v%x_index_lo,t6_scan_idx,density_scan_idx), &
                  v%x_interp_workspace(x_index_2,t6_scan_idx,density_scan_idx), &
                  v%x_interp_workspace(x_index_3,t6_scan_idx,density_scan_idx), &
@@ -338,7 +338,7 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
       do density_scan_idx = v%density_index_1, v%density_index_1+v%density_interp_order
          do t6_scan_idx = v%t6_index_1, v%t6_index_1+v%t6_interp_order
             v%x_interp_result_alt(t6_scan_idx,density_scan_idx) = &
-                 quadeos01(v%quad, recompute_flag, cache_slot, hydrogen_fraction, &
+                 quad(v%quad, recompute_flag, cache_slot, hydrogen_fraction, &
                  v%x_interp_workspace(x_index_2,t6_scan_idx,density_scan_idx), &
                  v%x_interp_workspace(x_index_3,t6_scan_idx,density_scan_idx), &
                  v%x_interp_workspace(x_index_4,t6_scan_idx,density_scan_idx), &

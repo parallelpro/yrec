@@ -16,6 +16,13 @@
 ! responsible for knowing the cache is still valid for the grid points
 ! in question -- this is a straight transliteration of the original
 ! caching scheme, not a redesign of it).
+!
+! Readability W3 (2026): the former quadeos01.f90 and quadeos06.f90
+! clones were identical to this routine apart from the cache they
+! addressed (opal_eos%quad01_* / quad06_*; now the cache argument) and
+! a redundant pair of parentheses around the single variable
+! x1_plus_x2(cache_slot) in the 2006 copy; all three vintages now call
+! this one function with their own opalXX%quad cache.
 double precision function quad(cache, recompute_flag, cache_slot, eval_point, &
      y1, y2, y3, x1, x2, x3)
 
