@@ -78,13 +78,12 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
            hydrogen_fraction, metal_fraction, kap_res, &
            eos_res(i_fxion:i_fxion+2), ierr=ierr)
       if (ierr /= 0) return
-      star%iovim = -1
       call temperature_gradients(log10_temperature, log10_pressure, &
            eos_res, kap_res, log10_radius, log10_mass, luminosity_linear, &
            actual_gradient, radiative_gradient, dgrad_dt_component, &
            dgrad_dp_component, dgrad_dr_component, convective_velocity, &
            want_derivatives, is_convective, pressure_rotation_factor, &
-           temperature_rotation_factor, log10_teff, jerr)
+           temperature_rotation_factor, log10_teff, jerr, zone_index=-1)
       if (jerr /= 0) then
          ierr = jerr
          return

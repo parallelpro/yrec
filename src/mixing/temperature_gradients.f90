@@ -30,6 +30,13 @@
 ! (NEVER absorb star% per-zone reads here: this routine is on the
 ! star-blind envint kernel's integrand path, where the state comes
 ! from the integration point, not from star%'s zone arrays).
+! zone_index (2026 readability W2): the Henyey zone number im of the
+! point being evaluated, or -1 for an envelope/atmosphere point; it
+! gates the adiabatic-overshoot branch (ladov, iov1 <= im <= iov2).
+! Before W2 the callers wrote it to star%iovim just before the call.
+! It is optional only because core/read_starting_model.f90 still
+! passes it through star%iovim = -1 (see the W2 sidechan report,
+! Deferred); when absent, star%iovim is read exactly as before.
 module temperature_gradients_lib
       implicit none
 contains
@@ -39,7 +46,7 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
      actual_gradient, radiative_gradient, dgrad_dt_component, &
      dgrad_dp_component, dgrad_dr_component, convective_velocity, &
      want_derivatives, is_convective, pressure_rotation_factor, &
-     temperature_rotation_factor, log_teff, ierr)
+     temperature_rotation_factor, log_teff, ierr, zone_index)
 
       use eos_lib, only: num_eos_results, i_temperature, i_pressure, &
            i_density, i_dlnrho_dlnt, i_dlnrho_dlnp, i_cp, i_grada, &
@@ -85,8 +92,17 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
            qa3r, temp2, temp3, qvt, qvp, qvr, deli, ateffl, deepx
 
       integer, intent(out) :: ierr
+      integer, intent(in), optional :: zone_index
+! overshoot_zone_index: zone_index when given, else star%iovim (the
+! pre-W2 side channel, still used by core/read_starting_model).
+      integer :: overshoot_zone_index
 
       ierr = 0
+      if (present(zone_index)) then
+         overshoot_zone_index = zone_index
+      else
+         overshoot_zone_index = star%iovim
+      end if
 
       temperature = eos_res(i_temperature)
       pressure = eos_res(i_pressure)
@@ -121,8 +137,8 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
        is_convective = .false.
        actual_gradient = radiative_gradient
        convective_velocity=0.0d0
-         if (star%ctrl%ladov .and. star%iovim.ge.star%iov1 .and. star%iovim.le.star%iov2 &
-             .and. star%iovim.ne.-1) then
+         if (star%ctrl%ladov .and. overshoot_zone_index.ge.star%iov1 .and. &
+             overshoot_zone_index.le.star%iov2 .and. overshoot_zone_index.ne.-1) then
             actual_gradient = adiabatic_gradient
          end if
        return

@@ -163,14 +163,13 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
               hydrogen_fraction, metal_fraction, kap_res, &
               eos_res(i_fxion:i_fxion+2), ierr=ierr)
          if (ierr /= 0) return
-         star%iovim = im
          call temperature_gradients(zone_log_temperature, zone_log_pressure, &
               eos_res, kap_res, zone_log_radius, zone_log_mass, &
               zone_luminosity_lsun, actual_gradient, radiative_gradient, &
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
               convective_velocity, want_derivatives, is_convective, &
               pressure_rotation_factor, temperature_rotation_factor, &
-              star%log_Teff, ierr)
+              star%log_Teff, ierr, zone_index=im)
          if (ierr /= 0) return
        star%logRho(im) = eos_res(i_log10_density)
 ! COMPUTE DERIVATIVES
