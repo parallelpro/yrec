@@ -50,6 +50,11 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
 !     calls do not need (the ZAMS lower-table slots).
       integer :: num_chem_species, unused_num_t, unused_num_r, table_index
       double precision :: unused_drho
+!     Readability W3 (2026): the eight unit numbers gathered per table
+!     family so the eight mhdst1 calls (formerly written out one per
+!     composition, in this same order) are two loops over the
+!     composition index of mhd_eos's arrays.
+      integer :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre), ic
 
       integer, intent(out) :: ierr
 
@@ -59,104 +64,47 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       unused_drho = 0.d0
       unused_num_t = 0
       unused_num_r = 0
+      unit_zams(imhd_zams_a) = unit_zams_a
+      unit_zams(imhd_zams_b) = unit_zams_b
+      unit_zams(imhd_zams_c) = unit_zams_c
+      unit_centre(imhd_centre_1) = unit_centre1
+      unit_centre(imhd_centre_2) = unit_centre2
+      unit_centre(imhd_centre_3) = unit_centre3
+      unit_centre(imhd_centre_4) = unit_centre4
+      unit_centre(imhd_centre_5) = unit_centre5
 !     READ ZAMS TABLES
-      if (unit_zams_a.gt.0) then
-         table_index = 0
-         call mhdst1(unit_zams_a,table_index,nt1m,nr1m,ivarc,nt2m,nr2m,ivarc,nchem0, &
-                     mhd_eos%zams_lower_num_t,mhd_eos%zams_lower_num_r,mhd_eos%zams_upper_num_t,mhd_eos%zams_upper_num_r, &
-                     mhd_eos%zams_lower_log10t,mhd_eos%zams_upper_log10t,mhd_eos%zams_lower_a_table,mhd_eos%zams_upper_a_table, &
-                     mhd_eos%zams_lower_drho,mhd_eos%zams_upper_drho,num_chem_species,mhd_eos%zams_a_atomic_weight, &
-                     mhd_eos%zams_a_number_abundance,mhd_eos%zams_a_mass_fraction,mhd_eos%zams_a_mean_molecular_weight, &
-                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                     atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-         if (ierr /= 0) return
-      end if
-      if (unit_zams_b.gt.0) then
-         table_index = 0
-         call mhdst1(unit_zams_b,table_index,nt1m,nr1m,ivarc,nt2m,nr2m,ivarc,nchem0, &
-                     mhd_eos%zams_lower_num_t,mhd_eos%zams_lower_num_r,mhd_eos%zams_upper_num_t,mhd_eos%zams_upper_num_r, &
-                     mhd_eos%zams_lower_log10t,mhd_eos%zams_upper_log10t,mhd_eos%zams_lower_b_table,mhd_eos%zams_upper_b_table, &
-                     mhd_eos%zams_lower_drho,mhd_eos%zams_upper_drho,num_chem_species,mhd_eos%zams_b_atomic_weight, &
-                     mhd_eos%zams_b_number_abundance,mhd_eos%zams_b_mass_fraction,mhd_eos%zams_b_mean_molecular_weight, &
-                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                     atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-         if (ierr /= 0) return
-      end if
-      if (unit_zams_c.gt.0) then
-         table_index = 0
-         call mhdst1(unit_zams_c,table_index,nt1m,nr1m,ivarc,nt2m,nr2m,ivarc,nchem0, &
-                     mhd_eos%zams_lower_num_t,mhd_eos%zams_lower_num_r,mhd_eos%zams_upper_num_t,mhd_eos%zams_upper_num_r, &
-                     mhd_eos%zams_lower_log10t,mhd_eos%zams_upper_log10t,mhd_eos%zams_lower_c_table,mhd_eos%zams_upper_c_table, &
-                     mhd_eos%zams_lower_drho,mhd_eos%zams_upper_drho,num_chem_species,mhd_eos%zams_c_atomic_weight, &
-                     mhd_eos%zams_c_number_abundance,mhd_eos%zams_c_mass_fraction,mhd_eos%zams_c_mean_molecular_weight, &
-                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                     atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-         if (ierr /= 0) return
-      end if
+      do ic = 1, mhd_n_zams
+         if (unit_zams(ic).gt.0) then
+            table_index = 0
+            call mhdst1(unit_zams(ic),table_index,nt1m,nr1m,ivarc,nt2m,nr2m,ivarc,nchem0, &
+                        mhd_eos%zams_lower_num_t,mhd_eos%zams_lower_num_r,mhd_eos%zams_upper_num_t,mhd_eos%zams_upper_num_r, &
+                        mhd_eos%zams_lower_log10t,mhd_eos%zams_upper_log10t, &
+                        mhd_eos%zams_lower_table(:,:,:,ic),mhd_eos%zams_upper_table(:,:,:,ic), &
+                        mhd_eos%zams_lower_drho,mhd_eos%zams_upper_drho,num_chem_species, &
+                        mhd_eos%zams_atomic_weight(:,ic),mhd_eos%zams_number_abundance(:,ic), &
+                        mhd_eos%zams_mass_fraction(:,ic),mhd_eos%zams_mean_molecular_weight(ic), &
+                        log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
+                        atomic_weight_down,atomic_weight_up, &
+                        number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+            if (ierr /= 0) return
+         end if
+      end do
 !     READ CENTRE TABLES
-      if (unit_centre1.gt.0) then
-         table_index = 1
-         call mhdst1(unit_centre1,table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
-                     unused_num_t,unused_num_r,mhd_eos%centre_num_t,mhd_eos%centre_num_r,unused_zams_log10t, &
-                     mhd_eos%centre_log10t,unused_zams_table,mhd_eos%centre1_table, &
-                     unused_drho,mhd_eos%centre_drho,num_chem_species,mhd_eos%centre1_atomic_weight, &
-                     mhd_eos%centre1_number_abundance,mhd_eos%centre1_mass_fraction,mhd_eos%centre1_mean_molecular_weight, &
-                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                     atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-         if (ierr /= 0) return
-      end if
-      if (unit_centre2.gt.0) then
-         table_index = 1
-         call mhdst1(unit_centre2,table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
-                     unused_num_t,unused_num_r,mhd_eos%centre_num_t,mhd_eos%centre_num_r,unused_zams_log10t, &
-                     mhd_eos%centre_log10t,unused_zams_table,mhd_eos%centre2_table, &
-                     unused_drho,mhd_eos%centre_drho,num_chem_species,mhd_eos%centre2_atomic_weight, &
-                     mhd_eos%centre2_number_abundance,mhd_eos%centre2_mass_fraction,mhd_eos%centre2_mean_molecular_weight, &
-                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                     atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-         if (ierr /= 0) return
-      end if
-      if (unit_centre3.gt.0) then
-         table_index = 1
-         call mhdst1(unit_centre3,table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
-                     unused_num_t,unused_num_r,mhd_eos%centre_num_t,mhd_eos%centre_num_r,unused_zams_log10t, &
-                     mhd_eos%centre_log10t,unused_zams_table,mhd_eos%centre3_table, &
-                     unused_drho,mhd_eos%centre_drho,num_chem_species,mhd_eos%centre3_atomic_weight, &
-                     mhd_eos%centre3_number_abundance,mhd_eos%centre3_mass_fraction,mhd_eos%centre3_mean_molecular_weight, &
-                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                     atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-         if (ierr /= 0) return
-      end if
-      if (unit_centre4.gt.0) then
-         table_index = 1
-         call mhdst1(unit_centre4,table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
-                     unused_num_t,unused_num_r,mhd_eos%centre_num_t,mhd_eos%centre_num_r,unused_zams_log10t, &
-                     mhd_eos%centre_log10t,unused_zams_table,mhd_eos%centre4_table, &
-                     unused_drho,mhd_eos%centre_drho,num_chem_species,mhd_eos%centre4_atomic_weight, &
-                     mhd_eos%centre4_number_abundance,mhd_eos%centre4_mass_fraction,mhd_eos%centre4_mean_molecular_weight, &
-                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                     atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-         if (ierr /= 0) return
-      end if
-      if (unit_centre5.gt.0) then
-         table_index = 1
-         call mhdst1(unit_centre5,table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
-                     unused_num_t,unused_num_r,mhd_eos%centre_num_t,mhd_eos%centre_num_r,unused_zams_log10t, &
-                     mhd_eos%centre_log10t,unused_zams_table,mhd_eos%centre5_table, &
-                     unused_drho,mhd_eos%centre_drho,num_chem_species,mhd_eos%centre5_atomic_weight, &
-                     mhd_eos%centre5_number_abundance,mhd_eos%centre5_mass_fraction,mhd_eos%centre5_mean_molecular_weight, &
-                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                     atomic_weight_down,atomic_weight_up, &
-                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-         if (ierr /= 0) return
-      end if
+      do ic = 1, mhd_n_centre
+         if (unit_centre(ic).gt.0) then
+            table_index = 1
+            call mhdst1(unit_centre(ic),table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
+                        unused_num_t,unused_num_r,mhd_eos%centre_num_t,mhd_eos%centre_num_r,unused_zams_log10t, &
+                        mhd_eos%centre_log10t,unused_zams_table,mhd_eos%centre_table(:,:,:,ic), &
+                        unused_drho,mhd_eos%centre_drho,num_chem_species, &
+                        mhd_eos%centre_atomic_weight(:,ic),mhd_eos%centre_number_abundance(:,ic), &
+                        mhd_eos%centre_mass_fraction(:,ic),mhd_eos%centre_mean_molecular_weight(ic), &
+                        log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
+                        atomic_weight_down,atomic_weight_up, &
+                        number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+            if (ierr /= 0) return
+         end if
+      end do
 !     TEMPERATURE LIMITS
       mhd_eos%table_log10t_min = mhd_eos%zams_lower_log10t(  1)
       mhd_eos%zams_lower_upper_boundary_log10t = mhd_eos%zams_lower_log10t(mhd_eos%zams_lower_num_t)

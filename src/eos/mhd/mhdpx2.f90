@@ -16,7 +16,9 @@
 ! ZAMS A/B/C, 1/2/3 upper ZAMS A/B/C, 4..8 centre 1..5) at
 ! (log10 P, log10 T) and stores the result as row |table_selector|
 ! (ZAMS) or table_selector (centre) of table_vars, with that table's
-! hydrogen mass fraction in table_hfrac.
+! hydrogen mass fraction in table_hfrac. The tables are the
+! composition-indexed arrays of mhd_eos (imhd_zams_a..c,
+! imhd_centre_1..5 in mhd_eos_lib).
 subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
      table_vars, table_hfrac, ndimt)
       use mhd_eos_lib
@@ -43,56 +45,34 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
       double precision :: intpt_work1(ivarx,4), intpt_work2(ivarx,4), &
            intpt_y(ivarx), interpolated_vars(ivarx)
 
-      integer :: i
+      integer :: i, ic
 
       call zero(interpolated_vars, ivarx)
 !     MAIN SELECTION OF TABLES
+!     Readability W3 (2026): the former 11-way ladder over the named
+!     per-composition members is now index arithmetic into mhd_eos's
+!     composition-indexed arrays: selector -ic is lower ZAMS composition
+!     ic (row ic), +ic is upper ZAMS composition ic (row ic), and
+!     mhd_n_zams+ic is centre composition ic (row mhd_n_zams+ic). Any
+!     other selector still does nothing, as before.
 !     ZAMS TABLES
-      if  (table_selector.eq.-1) then
-         call interpolate_and_store(mhd_eos%zams_lower_a_table, &
+      if (table_selector.le.-1 .and. table_selector.ge.-mhd_n_zams) then
+         ic = -table_selector
+         call interpolate_and_store(mhd_eos%zams_lower_table(:,:,:,ic), &
               nt1m, nr1m, ivarc, mhd_eos%zams_lower_log10t, mhd_eos%zams_lower_num_t, &
-              mhd_eos%zams_lower_num_r, 1, mhd_eos%zams_a_mass_fraction(1))
-      else if (table_selector.eq. 1) then
-         call interpolate_and_store(mhd_eos%zams_upper_a_table, &
+              mhd_eos%zams_lower_num_r, ic, mhd_eos%zams_mass_fraction(1,ic))
+      else if (table_selector.ge.1 .and. table_selector.le.mhd_n_zams) then
+         ic = table_selector
+         call interpolate_and_store(mhd_eos%zams_upper_table(:,:,:,ic), &
               nt2m, nr2m, ivarc, mhd_eos%zams_upper_log10t, mhd_eos%zams_upper_num_t, &
-              mhd_eos%zams_upper_num_r, 1, mhd_eos%zams_a_mass_fraction(1))
-      else if (table_selector.eq.-2) then
-         call interpolate_and_store(mhd_eos%zams_lower_b_table, &
-              nt1m, nr1m, ivarc, mhd_eos%zams_lower_log10t, mhd_eos%zams_lower_num_t, &
-              mhd_eos%zams_lower_num_r, 2, mhd_eos%zams_b_mass_fraction(1))
-      else if (table_selector.eq. 2) then
-         call interpolate_and_store(mhd_eos%zams_upper_b_table, &
-              nt2m, nr2m, ivarc, mhd_eos%zams_upper_log10t, mhd_eos%zams_upper_num_t, &
-              mhd_eos%zams_upper_num_r, 2, mhd_eos%zams_b_mass_fraction(1))
-      else if (table_selector.eq.-3) then
-         call interpolate_and_store(mhd_eos%zams_lower_c_table, &
-              nt1m, nr1m, ivarc, mhd_eos%zams_lower_log10t, mhd_eos%zams_lower_num_t, &
-              mhd_eos%zams_lower_num_r, 3, mhd_eos%zams_c_mass_fraction(1))
-      else if (table_selector.eq. 3) then
-         call interpolate_and_store(mhd_eos%zams_upper_c_table, &
-              nt2m, nr2m, ivarc, mhd_eos%zams_upper_log10t, mhd_eos%zams_upper_num_t, &
-              mhd_eos%zams_upper_num_r, 3, mhd_eos%zams_c_mass_fraction(1))
+              mhd_eos%zams_upper_num_r, ic, mhd_eos%zams_mass_fraction(1,ic))
 !     CENTER TABLES
-      else if (table_selector.eq. 4) then
-         call interpolate_and_store(mhd_eos%centre1_table, &
+      else if (table_selector.ge.mhd_n_zams+1 .and. &
+           table_selector.le.mhd_n_zams+mhd_n_centre) then
+         ic = table_selector - mhd_n_zams
+         call interpolate_and_store(mhd_eos%centre_table(:,:,:,ic), &
               ntxm, nrxm, ivarx, mhd_eos%centre_log10t, mhd_eos%centre_num_t, &
-              mhd_eos%centre_num_r, 4, mhd_eos%centre1_mass_fraction(1))
-      else if (table_selector.eq. 5) then
-         call interpolate_and_store(mhd_eos%centre2_table, &
-              ntxm, nrxm, ivarx, mhd_eos%centre_log10t, mhd_eos%centre_num_t, &
-              mhd_eos%centre_num_r, 5, mhd_eos%centre2_mass_fraction(1))
-      else if (table_selector.eq. 6) then
-         call interpolate_and_store(mhd_eos%centre3_table, &
-              ntxm, nrxm, ivarx, mhd_eos%centre_log10t, mhd_eos%centre_num_t, &
-              mhd_eos%centre_num_r, 6, mhd_eos%centre3_mass_fraction(1))
-      else if (table_selector.eq. 7) then
-         call interpolate_and_store(mhd_eos%centre4_table, &
-              ntxm, nrxm, ivarx, mhd_eos%centre_log10t, mhd_eos%centre_num_t, &
-              mhd_eos%centre_num_r, 7, mhd_eos%centre4_mass_fraction(1))
-      else if (table_selector.eq. 8) then
-         call interpolate_and_store(mhd_eos%centre5_table, &
-              ntxm, nrxm, ivarx, mhd_eos%centre_log10t, mhd_eos%centre_num_t, &
-              mhd_eos%centre_num_r, 8, mhd_eos%centre5_mass_fraction(1))
+              mhd_eos%centre_num_r, table_selector, mhd_eos%centre_mass_fraction(1,ic))
       end if
 !     END SELECTION OF TABLES
       return
