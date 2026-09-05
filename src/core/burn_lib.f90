@@ -20,6 +20,30 @@ module burn_lib
       use net_lib
       implicit none
       private :: locate_cz_base, average_cz_abundances
+
+! burn_result (2026 W3): the per-zone energy-generation record filled
+! by engeb -- formerly its first eight positional dummies. The
+! neutrino outputs stay on star% (star%neutrino_loss_rate,
+! star%neutrino_flux(:), star%alpha_capture_energy, ...), where the
+! output writers read them. Components default to zero so that a
+! caller's fresh local starts as the old -finit-local-zero scalars
+! did; engeb takes the record intent(inout) and, exactly as before,
+! leaves the energy components and the total untouched on its
+! low-temperature early return (only deps_dlnrho/deps_dlnt are
+! zeroed there).
+      type, public :: burn_result
+! energy generation by chain, erg/g/s (EPP1, EPP2, EPP3, ECN, E3AL)
+           double precision :: pp_chain_energy_gen = 0.0d0
+           double precision :: he3he4_be7_electron_energy_gen = 0.0d0
+           double precision :: he3he4_be7_proton_energy_gen = 0.0d0
+           double precision :: cno_cycle_energy_gen = 0.0d0
+           double precision :: triple_alpha_energy_gen = 0.0d0
+! absolute d eps/d ln rho and d eps/d ln T, erg/g/s (PEP, PET)
+           double precision :: deps_dlnrho = 0.0d0
+           double precision :: deps_dlnt = 0.0d0
+! total energy generation incl. neutrino losses, erg/g/s (SUM1)
+           double precision :: total_energy_gen_rate = 0.0d0
+      end type burn_result
 contains
 
 
@@ -824,10 +848,9 @@ end subroutine deutrate
 ! at shell_index directly. Of the old callers, one already passed
 ! exactly those star% arrays (neutrino_flux_table) and the other two
 ! passed write-only scratch nothing ever read.
-subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
-     he3he4_be7_proton_energy_gen, cno_cycle_energy_gen, &
-     triple_alpha_energy_gen, deps_dlnrho, deps_dlnt, &
-     total_energy_gen_rate, log_density, &
+! 2026 W3: the eight energy outputs are the components of res
+! (type burn_result above): 20 arguments -> 13.
+subroutine engeb(res, log_density, &
      log_temperature, hydrogen_fraction, helium_fraction, he3_fraction, &
      c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
      o18_fraction, deuterium_fraction, shell_index)
@@ -838,16 +861,14 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
       use math_lib
       implicit none
 
-      double precision, intent(out) :: pp_chain_energy_gen, &
-           he3he4_be7_electron_energy_gen, he3he4_be7_proton_energy_gen, &
-           cno_cycle_energy_gen, triple_alpha_energy_gen, &
-           deps_dlnrho, deps_dlnt
-! total_energy_gen_rate (originally SUM1) is intent(inout), not
-! intent(out): in the log_temperature.le.nuclear_logT_cutoffs(1) early-return branch
-! below (preserved verbatim from the original), it is never assigned,
-! so the caller's incoming value is left untouched on that path -- a
-! real property of the original F77 code, not a bug introduced here.
-      double precision, intent(inout) :: total_energy_gen_rate
+! res is intent(inout), not intent(out): in the
+! log_temperature.le.nuclear_logT_cutoffs(1) early-return branch below
+! (preserved verbatim from the original), res%total_energy_gen_rate
+! (originally SUM1) and the five chain energies are never assigned, so
+! the caller's incoming values are left untouched on that path -- a
+! real property of the original F77 code, not a bug introduced here
+! (intent(out) would re-apply the type's default initialization).
+      type(burn_result), intent(inout) :: res
       double precision, intent(in) :: log_density, log_temperature, &
            hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
            c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
@@ -1126,8 +1147,8 @@ subroutine engeb(pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
 ! MHP 5/02 DEUTERIUM BURNING
          dgdeut = 0.0d0
          qrtdeut = 0.0d0
-         deps_dlnrho = 0.d0
-         deps_dlnt = 0.d0
+         res%deps_dlnrho = 0.d0
+         res%deps_dlnt = 0.d0
          do i = 1,num_reactions
             eg(i) = 0.d0
             reaction_rate(i) = 0.d0
@@ -1705,7 +1726,7 @@ subroutine compute_energy_generation
       dlnrate_dlnt(r_c12c12_unused) = 0.0d0
       reaction_energy_gen(r_c12c12_unused) = 0.0d0
 ! END OF XEROING OUT OF REACTIONS 9 AND 13.
-      total_energy_gen_rate=0.0d0
+      res%total_energy_gen_rate=0.0d0
       sum2=0.0d0
       sum3=0.0d0
       do i=1,num_reactions
@@ -1717,17 +1738,17 @@ subroutine compute_energy_generation
 !  BE7 IS INCLUDED IN DG(3) ABOVE.
 ! SUM2 = SUM OVER I OF DG(I)* [D LOG RATE(I) / D LOG RHO ].
 ! SUM3 = SUM OVER I OF DG(I)* [D LOG RATE(I) / D LOG T ].
-         total_energy_gen_rate=total_energy_gen_rate+reaction_energy_gen(i)
+         res%total_energy_gen_rate=res%total_energy_gen_rate+reaction_energy_gen(i)
          sum2=sum2+reaction_energy_gen(i)*dlnrate_dlnrho(i)
          sum3=sum3+reaction_energy_gen(i)*dlnrate_dlnt(i)
       end do
 ! MHP 5/02 ADD DEUTERIUM BURNING
-      total_energy_gen_rate = total_energy_gen_rate + dgdeut
+      res%total_energy_gen_rate = res%total_energy_gen_rate + dgdeut
       sum2 = sum2 + dgdeut
       sum3 = sum3 + dgdeut*qrtdeut
-      if (total_energy_gen_rate.le.1.d-12) then
-         deps_dlnrho=0.d0
-         deps_dlnt=0.d0
+      if (res%total_energy_gen_rate.le.1.d-12) then
+         res%deps_dlnrho=0.d0
+         res%deps_dlnt=0.d0
          do i=1,num_reactions
             eg(i)=0.d0
          end do
@@ -1740,8 +1761,8 @@ subroutine compute_energy_generation
 !  D EPS / D LN RHO AND D EPS / D LN T (ERG/G/S, NATURAL LOG), I.E.
 !  SUM OVER I OF EPS(I) * D LN RATE(I) / D LN (RHO OR T) -- NOT THE
 !  LOGARITHMIC D LN EPS. THE CALLERS DIVIDE BY EPS THEMSELVES.
-         deps_dlnrho = sum2
-         deps_dlnt = sum3
+         res%deps_dlnrho = sum2
+         res%deps_dlnt = sum3
       end if
 ! *****************************************************
 ! END OF COMPUTATION OF THE GLOBAL QUANTITIES.
@@ -1804,21 +1825,21 @@ subroutine compute_neutrino_emission
 ! EPP1 INCLUDES THE ENERGY GENERATED BY THE PP REACTION, BY THE H2 + P
 !  REACTION, AND BY THE HE3 + HE3 REACTION.  SEE TABLE 21 OF NEUTRINO
 !  ASTROPHYSICS.
-      pp_chain_energy_gen = reaction_energy_gen(r_pp)+reaction_energy_gen(r_he3he3)+dgdeut
+      res%pp_chain_energy_gen = reaction_energy_gen(r_pp)+reaction_energy_gen(r_he3he3)+dgdeut
 ! EPP3 INCLUDES THE ENERGY GENERATED BY THE HE3 + HE4 REACTION AND BY
 !  THE BURNING OF BE7 THROUGH PROTON CAPTURE (THE frac_be7_pcap BRANCH
 !  OF EG(3), INCLUDING ITS SHARE OF THE 1.586 MEV HE3 + HE4 RELEASE).
-      he3he4_be7_proton_energy_gen = eg(r_he3he4)*frac_be7_pcap*(1.586d0 + 11.499d0)*convert
+      res%he3he4_be7_proton_energy_gen = eg(r_he3he4)*frac_be7_pcap*(1.586d0 + 11.499d0)*convert
 ! EPP2 INCLUDES THE ENERGY GENERATED BY THE HE3 + HE4 REACTION AND BY
 !  THE BURNING OF BE7 THROUGH ELECTRON CAPTURE: THE REST OF DG(3).
-      he3he4_be7_electron_energy_gen = reaction_energy_gen(r_he3he4) - &
-           he3he4_be7_proton_energy_gen
+      res%he3he4_be7_electron_energy_gen = reaction_energy_gen(r_he3he4) - &
+           res%he3he4_be7_proton_energy_gen
 ! ECN IS THE ENERGY GENERATED THROUGH THE CNO CYCLE.
-      cno_cycle_energy_gen=reaction_energy_gen(r_pc12)+reaction_energy_gen(r_pc13)+ &
+      res%cno_cycle_energy_gen=reaction_energy_gen(r_pc12)+reaction_energy_gen(r_pc13)+ &
            reaction_energy_gen(r_pn14)+reaction_energy_gen(r_po16)
 ! E3AL IS THE ENERGY GENERATED THROUGH THE TRIPLE-ALPHA REACTION AND
 !  IS NEGLIGIBLE FOR THE SUN.
-      triple_alpha_energy_gen = reaction_energy_gen(r_3alpha)
+      res%triple_alpha_energy_gen = reaction_energy_gen(r_3alpha)
 
 
 ! ENERGY FROM ALPHA CAPTURE REACTIONS.
@@ -1935,7 +1956,7 @@ subroutine compute_neutrino_emission
                helium_fraction,carbon_fraction_total,oxygen_fraction_total, &
                neutrino_loss_snu,neutrino_dsnu_dt,neutrino_dsnu_drho)
           star%neutrino_loss_rate = -neutrino_loss_snu
-          total_energy_gen_rate = total_energy_gen_rate + star%neutrino_loss_rate
+          res%total_energy_gen_rate = res%total_energy_gen_rate + star%neutrino_loss_rate
 
 ! 2026 (bugsweep Batch 2): neutrino() returns snu >= 0 and the
 ! ABSOLUTE derivatives d snu/dT, d snu/d rho. deps_dlnt/dlnrho
@@ -1946,8 +1967,8 @@ subroutine compute_neutrino_emission
 ! wrong units for these sums -- and then built the T line from the
 ! already-updated rho line (PET = PEP + DSNUDT), discarding the
 ! nuclear sum3 altogether.
-          deps_dlnrho = deps_dlnrho - neutrino_density*neutrino_dsnu_drho
-          deps_dlnt = deps_dlnt - neutrino_temp*neutrino_dsnu_dt
+          res%deps_dlnrho = res%deps_dlnrho - neutrino_density*neutrino_dsnu_drho
+          res%deps_dlnt = res%deps_dlnt - neutrino_temp*neutrino_dsnu_dt
       else
 ! LEGACY BEAUDET, PETROSIAN & SALPETER (1967) FITS FOR THE PAIR, PHOTO
 !  AND PLASMA NEUTRINO LOSSES (COEFFICIENTS v1, v2, v3 ABOVE), WITH
@@ -1975,7 +1996,7 @@ subroutine compute_neutrino_emission
          polx32 = ez3 + eli*(v3(4) + eli*(v3(5) + eli*v3(6)))
          ex3 = emue**3*exp(-ez*v3(7)+ln10*(dd+dd))*polx31/polx32
          star%neutrino_loss_rate = -(ex1 + ex2 + ex3)
-         total_energy_gen_rate = total_energy_gen_rate + star%neutrino_loss_rate
+         res%total_energy_gen_rate = res%total_energy_gen_rate + star%neutrino_loss_rate
          qetnx = 0.0d0
          qednx = 0.0d0
          if (t9.ge.0.2d0) then
@@ -1995,8 +2016,8 @@ subroutine compute_neutrino_emission
          qetn=-qedn + eli*(v3(4)+eli*(2.d0*v3(5)+3.d0*eli*v3(6)))/polx32
          qetnx = qetnx + qetn*ex3
          qednx = qednx + (2.0d0 +cc13*qedn)*ex3
-         deps_dlnt = deps_dlnt - qetnx
-         deps_dlnrho = deps_dlnrho - qednx
+         res%deps_dlnt = res%deps_dlnt - qetnx
+         res%deps_dlnrho = res%deps_dlnrho - qednx
       end if
 
 end subroutine compute_neutrino_emission

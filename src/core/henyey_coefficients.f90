@@ -80,9 +80,11 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 ! the qp/qt/qt_dl slots live in pt_scr (pulse scratch) and are
 ! mirrored into cur just before the elimination.
       type(henyey_shell_terms) :: prev, cur
-      double precision :: pp_chain_gen, he3he4_be7_electron_gen, &
-           he3he4_be7_proton_gen, cno_gen, triple_alpha_gen, &
-           zone_dlnepsilon_dlnrho, zone_dlnepsilon_dlnt, total_energy_gen
+! burn: engeb's energy record (2026 W3); its components are unpacked
+! right after the call into energy_gen_rate/energy_gen_component and
+! zone_dlnepsilon_dlnrho/dlnt, which the rest of the routine reads.
+      type(burn_result) :: burn
+      double precision :: zone_dlnepsilon_dlnrho, zone_dlnepsilon_dlnt
       double precision :: energy_gen_rate, alpha_capture_energy_zone
       double precision :: zone_dt, entropy_term1, entropy_term2, &
            entropy_term, entropy_term3, egrav
@@ -204,20 +206,19 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
        cur%ql_dp = 0.0d0
        if (zone_log_temperature.gt.star%ctrl%nuclear_logT_cutoffs(1)) then
 ! SET UP NUCLEAR ENERGY TERMS
-            call engeb(pp_chain_gen, he3he4_be7_electron_gen, &
-                 he3he4_be7_proton_gen, cno_gen, triple_alpha_gen, &
-                 zone_dlnepsilon_dlnrho, zone_dlnepsilon_dlnt, &
-                 total_energy_gen, zone_log10_density, &
+            call engeb(burn, zone_log10_density, &
                  zone_log_temperature, hydrogen_fraction, helium_fraction, &
                  he3_fraction, c12_fraction, c13_fraction, n14_fraction, &
                  o16_fraction, o18_fraction, deuterium_fraction, &
                  shell_index)
-            energy_gen_rate = total_energy_gen
-            energy_gen_component(1) = pp_chain_gen
-            energy_gen_component(2) = he3he4_be7_electron_gen
-            energy_gen_component(3) = he3he4_be7_proton_gen
-            energy_gen_component(4) = cno_gen
-            energy_gen_component(5) = triple_alpha_gen
+            zone_dlnepsilon_dlnrho = burn%deps_dlnrho
+            zone_dlnepsilon_dlnt = burn%deps_dlnt
+            energy_gen_rate = burn%total_energy_gen_rate
+            energy_gen_component(1) = burn%pp_chain_energy_gen
+            energy_gen_component(2) = burn%he3he4_be7_electron_energy_gen
+            energy_gen_component(3) = burn%he3he4_be7_proton_energy_gen
+            energy_gen_component(4) = burn%cno_cycle_energy_gen
+            energy_gen_component(5) = burn%triple_alpha_energy_gen
             energy_gen_component(6) = star%neutrino_loss_rate
             alpha_capture_energy_zone = star%alpha_capture_energy
 ! 7/91 MHP

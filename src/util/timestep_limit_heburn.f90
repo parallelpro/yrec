@@ -35,11 +35,10 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
       double precision :: hydrogen_fraction, helium_fraction, &
            he3_fraction, c12_fraction, c13_fraction, &
            n14_fraction, o16_fraction, o18_fraction, h2_fraction
-! only the helium-burning term (energy_gen_5) of the engeb output is
-! used here; the other terms are received and discarded.
-      double precision :: energy_gen_1, energy_gen_2, energy_gen_3, &
-           energy_gen_4, energy_gen_5, qed_correction, qet_correction, &
-           total_energy_gen, helium_energy_gen
+! only the helium-burning term (burn%triple_alpha_energy_gen) of the
+! engeb record is used here; the other components are discarded.
+      type(burn_result) :: burn
+      double precision :: helium_energy_gen
       double precision :: core_helium_fraction
 ! energy released per gram of helium burned (erg/g)
       double precision, parameter :: he_burn_energy_per_gram = 5.85d17
@@ -73,13 +72,12 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
           h2_fraction = composition(12,max_temp_zone)
        endif
        engeb_zone = max_temp_zone
-         call engeb(energy_gen_1,energy_gen_2,energy_gen_3,energy_gen_4, &
-              energy_gen_5,qed_correction,qet_correction,total_energy_gen, &
+         call engeb(burn, &
               local_log_density,local_log_temperature,hydrogen_fraction, &
               helium_fraction,he3_fraction,c12_fraction,c13_fraction, &
               n14_fraction,o16_fraction,o18_fraction,h2_fraction, &
               engeb_zone)
-         helium_energy_gen = energy_gen_5
+         helium_energy_gen = burn%triple_alpha_energy_gen
        if(helium_energy_gen.lt.1.d-22) helium_energy_gen = 1.d-22
        helium_dt=1.0d15/helium_energy_gen
       else

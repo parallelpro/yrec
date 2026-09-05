@@ -41,10 +41,9 @@ subroutine neutrino_flux_table
            hydrogen_fraction, helium_fraction, he3_fraction, &
            c12_fraction, c13_fraction, n14_fraction, &
            o16_fraction, o18_fraction
-      double precision :: pp_chain_energy_gen, he3he4_be7_electron_energy_gen, &
-           he3he4_be7_proton_energy_gen, cno_cycle_energy_gen, &
-           triple_alpha_energy_gen, dlnepsilon_dlnrho, dlnepsilon_dlnt, &
-           total_energy_gen_rate
+! burn: engeb's energy record; only the star% neutrino outputs of
+! engeb are used here, the record itself is discarded.
+      type(burn_result) :: burn
       double precision :: t6_million_k, log_electron_density, &
            zone_mass_fraction, zone_radius_fraction
       integer :: i, j
@@ -77,10 +76,7 @@ subroutine neutrino_flux_table
          n14_fraction = star%xa(i_n14,i)
          o16_fraction = star%xa(i_o16,i)
          o18_fraction = star%xa(i_o18,i)
-         call engeb(pp_chain_energy_gen,he3he4_be7_electron_energy_gen, &
-              he3he4_be7_proton_energy_gen,cno_cycle_energy_gen, &
-              triple_alpha_energy_gen,dlnepsilon_dlnrho,dlnepsilon_dlnt, &
-              total_energy_gen_rate,shell_log_density, &
+         call engeb(burn,shell_log_density, &
               shell_log_temperature,hydrogen_fraction,helium_fraction, &
               he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
               o16_fraction,o18_fraction,star%xa(i_h2,i),i)
