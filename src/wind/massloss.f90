@@ -62,6 +62,8 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
       double precision, intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: new_atmosphere_fit_needed
       integer, intent(out) :: ierr
+! disk_exhausted: mdot's report that the disk-locking age was reached
+      logical :: disk_exhausted
 ! MHP 5/02 EFFICIENCY FACTOR FOR THE THERMAL ENERGY CONTENT
 ! OF ACCRETED MATTER.
       double precision, parameter :: accretion_efficiency = 1.0d0
@@ -272,6 +274,12 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
            envelope_boundary_zone,new_surface_bc_needed,num_zones,omega, &
            mean_molecular_weight_local,total_radius_cm,total_mass_msun, &
            mass_loss_rate_msun_yr,accretion_specific_energy,mean_thermal_energy, &
-           cz_total_mass_below_fitting,old_log_envelope_mass_fraction, ierr)
+           cz_total_mass_below_fitting,old_log_envelope_mass_fraction, &
+           disk_exhausted, ierr)
+! mdot reports that the disk-locking age was reached this step; turn
+! accretion off for the rest of the run.  (Moved here from mdot in
+! 2026 W2; the flip belongs one level further up, in the evolve_step
+! driver, once massloss can return disk_exhausted to it.)
+      if(disk_exhausted) star%job%use_mass_accretion = .false.
       return
 end subroutine massloss

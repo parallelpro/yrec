@@ -23,7 +23,8 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      new_surface_bc_needed, num_zones, omega, mean_molecular_weight_local, &
      total_radius_cm, total_mass_msun, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
-     cz_total_mass_below_fitting, old_log_envelope_mass_fraction, ierr)
+     cz_total_mass_below_fitting, old_log_envelope_mass_fraction, &
+     disk_exhausted, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
       use phys_const_lib
@@ -53,6 +54,11 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
            mean_thermal_energy
       double precision, intent(in) :: cz_total_mass_below_fitting
       double precision, intent(out) :: old_log_envelope_mass_fraction
+! disk_exhausted: .true. when the disk-locking age is reached during
+! this step (timestep has been clipped to land on it).  The caller
+! turns star%job%use_mass_accretion off; before 2026 W2 mdot wrote
+! that flag itself.
+      logical, intent(out) :: disk_exhausted
       integer, intent(out) :: ierr
 ! --- locals ---
       double precision :: omega_ratio_sq, omega_max_ratio_sq
@@ -62,7 +68,6 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
            timestep_limit
       double precision :: timestep_limit_envelope
       double precision :: disk_age_test
-      logical :: disk_exhausted_flag
       double precision :: delta_mass_cgs
       double precision :: new_thermal_energy
       double precision :: local_temperature, local_pressure, local_density, &
@@ -81,6 +86,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
       double precision :: mixed_abundance
 
       ierr = 0
+      disk_exhausted = .false.
       old_log_envelope_mass_fraction = log_mass(num_zones) - log_total_mass
 ! MHP 8/10- CHECK FOR SCALED SOLAR WIND MASS LOSS
       if(rot_scr%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
@@ -132,12 +138,8 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          disk_age_test = star%disk_gate_age_gyr + 1.0d-9*timestep/seconds_per_year
          if(disk_age_test.gt.star%job%disk_locking_age_gyr)then
             timestep = (star%job%disk_locking_age_gyr-star%disk_gate_age_gyr)*1.0d9*seconds_per_year
-            disk_exhausted_flag = .true.
-         else
-            disk_exhausted_flag = .false.
+            disk_exhausted = .true.
          endif
-      else
-         disk_exhausted_flag = .false.
       endif
 ! FINAL AMOUNT OF MASS LOSS INFERRED IN CGS UNITS.
       delta_mass_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs*timestep/ &
@@ -269,6 +271,5 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
          end do
          star%accreted_mass_fraction = delta_mass_cgs
       endif
-      if(disk_exhausted_flag) star%job%use_mass_accretion = .false.
       return
 end subroutine mdot

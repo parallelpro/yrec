@@ -68,6 +68,12 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
       double precision, intent(in) :: log_teff
       double precision :: structure_dt, rotation_dt, hydrogen_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
+! structure_limits_active: whether the structure-based limits apply to
+! this step -- star%job%use_structure_dt_limits, cleared here once the
+! centre passes log Tc = 7.1 with L_grav < 0.  The routine reads only
+! this local after that decision; the star%job% flag is still written
+! here (2026 W2) until the driver takes over the flip.
+      logical :: structure_limits_active
 ! dt_unlimited: "no limit from this criterion" sentinel (seconds).
       double precision, parameter :: dt_unlimited = 1.0d20
 
@@ -79,11 +85,13 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
       else
 ! mhp 9/01  turn off structure-based timestep setting above a critical
 !           temperature; this is done when
-      if(star%job%use_structure_dt_limits) then
+      structure_limits_active = star%job%use_structure_dt_limits
+      if(structure_limits_active) then
          if(log_temperature(1).gt.7.1d0 .and. luminosity_components(7).lt. 0.0d0) then
             write(*, 100) log_temperature(1), luminosity_components(7)
  100        format(1x,'timestep control: structure-based limits', &
                  ' disabled (log Tc =',f7.4,', L_grav =',es10.2,' Lsun)')
+            structure_limits_active = .false.
             star%job%use_structure_dt_limits = .false.
          endif
       endif
@@ -91,7 +99,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
 !       one model to the next.
 !  note that this returns the timestep stored in the model on the
 !       first call to htimer for each kind card.
-      if(star%job%use_structure_dt_limits) then
+      if(structure_limits_active) then
        call timestep_limit_structure(previous_timestep,luminosity,log_pressure,log_radius,log_temperature,num_points,structure_dt)
       else
        structure_dt = dt_unlimited
@@ -139,7 +147,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
 !  04/14 jvs added timestep governor based on the size of the envelope
 !  triangle. timesteps are restricted such that the model does not move
 !  more than tri_delta_logl or tri_delta_teffl
-      if(star%ctrl%use_envelope_triangle_dt .and. .not. star%job%use_structure_dt_limits) then
+      if(star%ctrl%use_envelope_triangle_dt .and. .not. structure_limits_active) then
        call timestep_limit_hr(previous_timestep,luminosity,log_teff,num_points,envelope_dt)
       else
        envelope_dt = dt_unlimited
