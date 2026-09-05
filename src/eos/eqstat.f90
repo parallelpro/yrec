@@ -300,7 +300,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      in_atmosphere, saha_state, ierr)
       use star_info_lib, only: star
 
-      use eos_mixture_lib, only: eos_mix
+      use eos_mixture_lib, only: eos_mix, ion_mean_weight_excess
       use luout_lib
       use phys_const_lib
       use scv_eos_lib
@@ -344,6 +344,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       double precision :: metal_ratio, amu_correction, h_excess, y_excess
       double precision :: envelope_amu_over_amu
       double precision :: dfx1, dfx12, dfx4, amu_inverse, envelope_amu_frac
+      logical :: use_envelope_mixture
       logical :: valid_table_point
       double precision :: opal_log10_density, opal_density, opal_beta, &
            opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
@@ -418,12 +419,12 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                  eos_mix%amuenv + y_excess)/ion_mean_weight_inverse
          end if
       else
-!        SET UP FRACTIONAL ABUNDANCES
-         dfx1 = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)
-         dfx12 = (metal_fraction - eos_mix%envelope_metal_fraction)
-         if (dabs(dfx1) + dabs(dfx12).lt.1.0d-5) then
+!        ION MEAN WEIGHT FROM THE ENVELOPE MIXTURE PLUS THE H/He/METAL
+!        EXCESS (SHARED WITH eos/mu.f90), THEN THE SAHA NUMBER FRACTIONS
+         call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
+              ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope_mixture)
+         if (use_envelope_mixture) then
 !           USE ENVELOPE ABUNDANCES
-            ion_mean_weight_inverse = eos_mix%amuenv
             if (need_saha_solution) then
                do species_idx = 1, num_species
                   saha_mass_fractions(species_idx) = &
@@ -431,12 +432,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                end do
             end if
          else
-            dfx1 = dfx1*inverse_atomic_weights(1)
-            dfx12 = dfx12*inverse_atomic_weights(3)
-            dfx4 = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
-                 hydrogen_fraction - metal_fraction)*inverse_atomic_weights(2)
-!           ASSUME EXCESS Z(METALS) IS IN THE FORM OF CARBON(12)
-            ion_mean_weight_inverse = eos_mix%amuenv + dfx1 + dfx4 + dfx12
             amu_inverse = 1.0d0/ion_mean_weight_inverse
             if (need_saha_solution) then
                envelope_amu_frac = eos_mix%amuenv*amu_inverse

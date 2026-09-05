@@ -19,7 +19,7 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
      electron_mean_weight_inverse, beta)
 
       use phys_const_lib
-      use eos_mixture_lib, only: eos_mix
+      use eos_mixture_lib, only: ion_mean_weight_excess
       implicit none
 
       double precision, intent(in) :: temperature, pressure, density, &
@@ -27,24 +27,14 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
       double precision, intent(out) :: specific_gas_constant, &
            ion_mean_weight_inverse, electron_mean_weight_inverse
 
-      double precision :: inverse_atomic_weights(4)
-      data inverse_atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
+! dfx1/dfx12/dfx4: per-species excesses returned by
+! ion_mean_weight_excess; only ion_mean_weight_inverse is needed here.
       double precision :: dfx1, dfx12, dfx4, ee
+      logical :: use_envelope
 
-! SET UP FRACTIONAL ABUNDANCES
-      dfx1 = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)
-      dfx12 = (metal_fraction - eos_mix%envelope_metal_fraction)
-      if (dabs(dfx1) + dabs(dfx12) .lt. 1.0d-5) then
-! USE ENVELOPE ABUNDANCES
-         ion_mean_weight_inverse = eos_mix%amuenv
-      else
-         dfx1 = dfx1*inverse_atomic_weights(1)
-         dfx12 = dfx12*inverse_atomic_weights(3)
-         dfx4 = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
-              hydrogen_fraction - metal_fraction)*inverse_atomic_weights(2)
-! ASSUME EXCESS Z(METALS) IS IN THE FORM OF CARBON(12)
-         ion_mean_weight_inverse = eos_mix%amuenv + dfx1 + dfx4 + dfx12
-      end if
+! ION MEAN WEIGHT FROM THE ENVELOPE MIXTURE PLUS THE H/He/METAL EXCESS
+      call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
+           ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope)
       ee = ((beta*pressure)/(density*temperature*gas_constant* &
            ion_mean_weight_inverse)) - 1.0d0
       electron_mean_weight_inverse = ee*ion_mean_weight_inverse
