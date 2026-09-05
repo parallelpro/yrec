@@ -76,17 +76,13 @@ subroutine alex06tab(ierr)
       call intrp2(interp_nodes, weight_z, interp_target)
 !     THE DIFFERENCE IN THE NUMBER OF TABLES FOR THE Z=0.1 CASE REQUIRES SOME
 !     CARE IN X INTERPOLATION.  FIRST 3 X CASES CAN BE TREATED NORMALLY.
+!     (2026 R3: the four Z tables kk, kk+1, kk+2, kk+3 are consecutive
+!     here, so the sum is lagrange4 over the contiguous slice.)
       do k = 1,3
          kk = n_alex06_z*(opacity_table%alex06_index_x+k-2)+iz
-         kk2 = kk + 1
-         kk3 = kk2 + 1
-         kk4 = kk3 + 1
          do i = 1,n_alex06_t
             do j = 1,n_alex06_d
-               opacity_by_x(k,i,j) = weight_z(1)*opacity_table%alex06_full_opacity(kk,i,j)+ &
-                    weight_z(2)*opacity_table%alex06_full_opacity(kk2,i,j) + &
-                    weight_z(3)*opacity_table%alex06_full_opacity(kk3,i,j) + &
-                    weight_z(4)*opacity_table%alex06_full_opacity(kk4,i,j)
+               opacity_by_x(k,i,j) = lagrange4(weight_z, opacity_table%alex06_full_opacity(kk:kk+3,i,j))
             end do
          end do
       end do
@@ -104,6 +100,7 @@ subroutine alex06tab(ierr)
          kk3 = kk2 + 1
          kk4 = kk3 + 1
       endif
+!     (Inline rather than lagrange4: kk4 is not kk+3 in the Z=0.10 case.)
       do i = 1,n_alex06_t
          do j = 1,n_alex06_d
             opacity_by_x(4,i,j) = weight_z(1)*opacity_table%alex06_full_opacity(kk,i,j)+ &
@@ -126,9 +123,7 @@ subroutine alex06tab(ierr)
       call intrp2(interp_nodes, weight_x, interp_target)
       do i = 1,n_alex06_t
          do j = 1,n_alex06_d
-            opacity_table%alex06_opacity(i,j) = weight_x(1)*opacity_by_x(1,i,j)+ &
-                 weight_x(2)*opacity_by_x(2,i,j) + weight_x(3)*opacity_by_x(3,i,j) + &
-                 weight_x(4)*opacity_by_x(4,i,j)
+            opacity_table%alex06_opacity(i,j) = lagrange4(weight_x, opacity_by_x(1:4,i,j))
          end do
       end do
       return

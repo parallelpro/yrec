@@ -13,6 +13,7 @@
 subroutine opal95_interp2d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
       use opacity_table_lib
+      use numerics_lib, only: lagrange4
       use math_lib
       implicit none
 
@@ -56,14 +57,11 @@ subroutine opal95_interp2d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
          end do
       endif
 ! INTERPOLATE FOR LOG CAPPA IN T.
-      log10_opacity = opacity_table%opal95_weight_t(1)*logcappa_at_t(1) + opacity_table%opal95_weight_t(2)*logcappa_at_t(2) &
-           + opacity_table%opal95_weight_t(3)*logcappa_at_t(3) + opacity_table%opal95_weight_t(4)*logcappa_at_t(4)
+      log10_opacity = lagrange4(opacity_table%opal95_weight_t, logcappa_at_t)
 ! D LOG CAPPA/D LOG T
-      dlnkap_dlnt = opacity_table%opal95_dweight_t(1)*logcappa_at_t(1) + opacity_table%opal95_dweight_t(2)*logcappa_at_t(2) &
-           + opacity_table%opal95_dweight_t(3)*logcappa_at_t(3) + opacity_table%opal95_dweight_t(4)*logcappa_at_t(4)
+      dlnkap_dlnt = lagrange4(opacity_table%opal95_dweight_t, logcappa_at_t)
 ! D LOG CAPPA/D LOG R
-      dlnkap_dlnrho = opacity_table%opal95_weight_t(1)*dlogcappa_dlogr_at_t(1) + opacity_table%opal95_weight_t(2)*dlogcappa_dlogr_at_t(2) &
-           + opacity_table%opal95_weight_t(3)*dlogcappa_dlogr_at_t(3) + opacity_table%opal95_weight_t(4)*dlogcappa_dlogr_at_t(4)
+      dlnkap_dlnrho = lagrange4(opacity_table%opal95_weight_t, dlogcappa_dlogr_at_t)
 ! CORRECT FROM DERIVATE AT FIXED R TO DERIVATIVE AT FIXED RHO.
       dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
       opacity = pow(1.0d1, log10_opacity)

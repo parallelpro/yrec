@@ -13,6 +13,7 @@
 subroutine opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
       use opacity_table_lib
+      use numerics_lib, only: lagrange4
       use math_lib
       implicit none
 
@@ -66,7 +67,8 @@ subroutine opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
                   endif
                end do
             endif
-! INTERPOLATE FOR LOG CAPPA IN T.
+! INTERPOLATE FOR LOG CAPPA IN T. (Inline rather than lagrange4: the
+! original accumulates three terms, stores, then adds the fourth.)
             logcappa_at_x(j) = opacity_table%opal95_weight_t(1)*logcappa_at_t(1) + opacity_table%opal95_weight_t(2)*logcappa_at_t(2) &
                  + opacity_table%opal95_weight_t(3)*logcappa_at_t(3)
             logcappa_at_x(j) = logcappa_at_x(j) + opacity_table%opal95_weight_t(4)*logcappa_at_t(4)
@@ -79,7 +81,8 @@ subroutine opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
                  + opacity_table%opal95_weight_t(3)*dlogcappa_dlogr_at_t(3)
             dlogcappa_dlogr_at_x(j) = dlogcappa_dlogr_at_x(j) + opacity_table%opal95_weight_t(4)*dlogcappa_dlogr_at_t(4)
          end do
-! INTERPOLATE FOR LOG CAPPA IN X.
+! INTERPOLATE FOR LOG CAPPA IN X. (Inline rather than lagrange4: the
+! weights are the strided row opal95_weight_x(k,1:4).)
          logcappa_at_z(k) = opacity_table%opal95_weight_x(k,1)*logcappa_at_x(1) + opacity_table%opal95_weight_x(k,2)*logcappa_at_x(2) + &
               opacity_table%opal95_weight_x(k,3)*logcappa_at_x(3) + &
               opacity_table%opal95_weight_x(k,4)*logcappa_at_x(4)
@@ -93,17 +96,11 @@ subroutine opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
               opacity_table%opal95_weight_x(k,4)*dlogcappa_dlogr_at_x(4)
       end do
 ! INTERPOLATE FOR LOG CAPPA IN Z.
-      log10_opacity = opacity_table%opal95_weight_z(1)*logcappa_at_z(1) + opacity_table%opal95_weight_z(2)*logcappa_at_z(2) + &
-           opacity_table%opal95_weight_z(3)*logcappa_at_z(3) + &
-           opacity_table%opal95_weight_z(4)*logcappa_at_z(4)
+      log10_opacity = lagrange4(opacity_table%opal95_weight_z, logcappa_at_z)
 ! INTERPOLATE FOR QOT IN Z.
-      dlnkap_dlnt = opacity_table%opal95_weight_z(1)*dlogcappa_dlogt_at_z(1) + opacity_table%opal95_weight_z(2)*dlogcappa_dlogt_at_z(2) + &
-           opacity_table%opal95_weight_z(3)*dlogcappa_dlogt_at_z(3) + &
-           opacity_table%opal95_weight_z(4)*dlogcappa_dlogt_at_z(4)
+      dlnkap_dlnt = lagrange4(opacity_table%opal95_weight_z, dlogcappa_dlogt_at_z)
 ! INTERPOLATE FOR QOD IN Z.
-      dlnkap_dlnrho = opacity_table%opal95_weight_z(1)*dlogcappa_dlogr_at_z(1) + opacity_table%opal95_weight_z(2)*dlogcappa_dlogr_at_z(2) + &
-           opacity_table%opal95_weight_z(3)*dlogcappa_dlogr_at_z(3) + &
-           opacity_table%opal95_weight_z(4)*dlogcappa_dlogr_at_z(4)
+      dlnkap_dlnrho = lagrange4(opacity_table%opal95_weight_z, dlogcappa_dlogr_at_z)
 ! CORRECT FROM DERIVATE AT FIXED R TO DERIVATIVE AT FIXED RHO.
       dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
       opacity = pow(1.0d1, log10_opacity)

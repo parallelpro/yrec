@@ -13,6 +13,7 @@
 subroutine opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
       use opacity_table_lib
+      use numerics_lib, only: lagrange4
       use math_lib
       implicit none
 
@@ -61,16 +62,14 @@ subroutine opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
             end do
          endif
 ! INTERPOLATE FOR LOG CAPPA IN T.
-         logcappa_at_x(j) = opacity_table%opal95_weight_t(1)*logcappa_at_t(1) + opacity_table%opal95_weight_t(2)*logcappa_at_t(2) &
-              + opacity_table%opal95_weight_t(3)*logcappa_at_t(3) + opacity_table%opal95_weight_t(4)*logcappa_at_t(4)
+         logcappa_at_x(j) = lagrange4(opacity_table%opal95_weight_t, logcappa_at_t)
 ! D LOG CAPPA/D LOG T
-         dlogcappa_dlogt_at_x(j) = opacity_table%opal95_dweight_t(1)*logcappa_at_t(1) + opacity_table%opal95_dweight_t(2)*logcappa_at_t(2) &
-              + opacity_table%opal95_dweight_t(3)*logcappa_at_t(3) + opacity_table%opal95_dweight_t(4)*logcappa_at_t(4)
+         dlogcappa_dlogt_at_x(j) = lagrange4(opacity_table%opal95_dweight_t, logcappa_at_t)
 ! D LOG CAPPA/D LOG R
-         dlogcappa_dlogr_at_x(j) = opacity_table%opal95_weight_t(1)*dlogcappa_dlogr_at_t(1) + opacity_table%opal95_weight_t(2)*dlogcappa_dlogr_at_t(2) &
-              + opacity_table%opal95_weight_t(3)*dlogcappa_dlogr_at_t(3) + opacity_table%opal95_weight_t(4)*dlogcappa_dlogr_at_t(4)
+         dlogcappa_dlogr_at_x(j) = lagrange4(opacity_table%opal95_weight_t, dlogcappa_dlogr_at_t)
       end do
-! INTERPOLATE FOR LOG CAPPA IN X.
+! INTERPOLATE FOR LOG CAPPA IN X. (Inline rather than lagrange4: the
+! weights are the strided row opal95_weight_x(1,1:4).)
       log10_opacity = opacity_table%opal95_weight_x(1,1)*logcappa_at_x(1) + opacity_table%opal95_weight_x(1,2)*logcappa_at_x(2) + &
            opacity_table%opal95_weight_x(1,3)*logcappa_at_x(3) + opacity_table%opal95_weight_x(1,4)*logcappa_at_x(4)
 ! INTERPOLATE FOR QOT IN X.

@@ -92,14 +92,11 @@ subroutine getalex06(log10_density, log10_temperature, hydrogen_fraction, &
          logr = saved_r
       endif
 !     INTERPOLATE IN T
-      log10_opacity = weight_t(1)*opacity_row(1)+weight_t(2)*opacity_row(2)+ &
-           weight_t(3)*opacity_row(3)+weight_t(4)*opacity_row(4)
+      log10_opacity = lagrange4(weight_t, opacity_row)
 !     D LN CAPPA/D LN T AT FIXED R
-      dlnkap_dlnt = dweight_t(1)*opacity_row(1)+dweight_t(2)*opacity_row(2)+ &
-           dweight_t(3)*opacity_row(3)+dweight_t(4)*opacity_row(4)
+      dlnkap_dlnt = lagrange4(dweight_t, opacity_row)
 !     INTERPOLATE IN D LN CAPPA/ D LN R AT FIXED T
-      dlnkap_dlnrho = weight_t(1)*dlnkap_dlnr_row(1) + weight_t(2)*dlnkap_dlnr_row(2) + &
-           weight_t(3)*dlnkap_dlnr_row(3) + weight_t(4)*dlnkap_dlnr_row(4)
+      dlnkap_dlnrho = lagrange4(weight_t, dlnkap_dlnr_row)
 !     CORRECT FROM DERIVATIVE AT FIXED R TO DERIVATIVE AT FIXED RHO
       dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
       opacity = exp(ln10*log10_opacity)

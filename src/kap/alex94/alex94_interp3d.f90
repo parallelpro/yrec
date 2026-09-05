@@ -90,14 +90,11 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
             logr = saved_r
          endif
 !        INTERPOLATE IN T
-         log10_opacity = weight_t(1)*opacity_row(1)+weight_t(2)*opacity_row(2)+ &
-              weight_t(3)*opacity_row(3)+weight_t(4)*opacity_row(4)
+         log10_opacity = lagrange4(weight_t, opacity_row)
 !        D LN CAPPA/D LN T AT FIXED R
-         dlnkap_dlnt = dweight_t(1)*opacity_row(1)+dweight_t(2)*opacity_row(2)+ &
-              dweight_t(3)*opacity_row(3)+dweight_t(4)*opacity_row(4)
+         dlnkap_dlnt = lagrange4(dweight_t, opacity_row)
 !        INTERPOLATE IN D LN CAPPA/ D LN R AT FIXED T
-         dlnkap_dlnrho = weight_t(1)*dlnkap_dlnr_row(1) + weight_t(2)*dlnkap_dlnr_row(2) + &
-              weight_t(3)*dlnkap_dlnr_row(3) + weight_t(4)*dlnkap_dlnr_row(4)
+         dlnkap_dlnrho = lagrange4(weight_t, dlnkap_dlnr_row)
 !        CORRECT FROM DERIVATIVE AT FIXED R TO DERIVATIVE AT FIXED RHO
          dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
          opacity = exp(ln10*log10_opacity)
@@ -123,22 +120,16 @@ subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, 
                     dweight_r(4)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+3)
             end do
 !           INTERPOLATE IN T
-            opacity_x(j) = weight_t(1)*opacity_row(1)+weight_t(2)*opacity_row(2)+ &
-                 weight_t(3)*opacity_row(3)+weight_t(4)*opacity_row(4)
+            opacity_x(j) = lagrange4(weight_t, opacity_row)
 !           D LN CAPPA/D LN T AT FIXED R
-            dlnkap_dlnt_x(j) = dweight_t(1)*opacity_row(1) + dweight_t(2)*opacity_row(2) + &
-                 dweight_t(3)*opacity_row(3) + dweight_t(4)*opacity_row(4)
+            dlnkap_dlnt_x(j) = lagrange4(dweight_t, opacity_row)
 !           INTERPOLATE IN D LN CAPPA/ D LN R AT FIXED T
-            dlnkap_dlnr_x(j) = weight_t(1)*dlnkap_dlnr_row(1) + weight_t(2)*dlnkap_dlnr_row(2) + &
-                 weight_t(3)*dlnkap_dlnr_row(3) + weight_t(4)*dlnkap_dlnr_row(4)
+            dlnkap_dlnr_x(j) = lagrange4(weight_t, dlnkap_dlnr_row)
          end do
 !        INTERPOLATE IN X
-         log10_opacity = weight_x(1)*opacity_x(1) + weight_x(2)*opacity_x(2) + &
-              weight_x(3)*opacity_x(3) + weight_x(4)*opacity_x(4)
-         dlnkap_dlnt = weight_x(1)*dlnkap_dlnt_x(1) + weight_x(2)*dlnkap_dlnt_x(2) + &
-              weight_x(3)*dlnkap_dlnt_x(3) + weight_x(4)*dlnkap_dlnt_x(4)
-         dlnkap_dlnrho = weight_x(1)*dlnkap_dlnr_x(1) + weight_x(2)*dlnkap_dlnr_x(2) + &
-              weight_x(3)*dlnkap_dlnr_x(3) + weight_x(4)*dlnkap_dlnr_x(4)
+         log10_opacity = lagrange4(weight_x, opacity_x)
+         dlnkap_dlnt = lagrange4(weight_x, dlnkap_dlnt_x)
+         dlnkap_dlnrho = lagrange4(weight_x, dlnkap_dlnr_x)
 !        CORRECT FROM DERIVATIVE AT FIXED R TO DERIVATIVE AT FIXED RHO
          dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
          opacity = exp(ln10*log10_opacity)
