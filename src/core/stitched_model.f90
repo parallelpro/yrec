@@ -268,7 +268,7 @@ subroutine compute_seismic_columns
          if (dr /= 0.0d0 .and. r(j) > 0.0d0 .and. g1(j) > 0.0d0) then
             dlnp_dr   = (lnp(j+1) - lnp(j-1))/dr
             dlnrho_dr = (lnrho(j+1) - lnrho(j-1))/dr
-            grav = exp(ln10*cgl)*mass_g(j)/(r(j)*r(j))
+            grav = local_gravity_cgs(mass_g(j), r(j))
             ext_seismic(1,j) = grav*(dlnp_dr/g1(j) - dlnrho_dr)
          else
             ext_seismic(1,j) = 0.0d0
@@ -315,19 +315,13 @@ double precision function ext_profile_value(icol, j)
          ext_profile_value = profile_value(icol, i)
       case (2)
          select case (icol)
-         case (2);  ext_profile_value = exp(ln10*(env_struct%env_log10_mass(i) &
-                       + star%log_total_mass))/star%solar_mass_cgs
+         case (2);  ext_profile_value = envelope_mass_g(i)/star%solar_mass_cgs
          case (3);  ext_profile_value = env_struct%env_log10_radius(i)
          case (4);  ext_profile_value = env_struct%env_log10_temperature(i)
          case (5);  ext_profile_value = env_struct%env_log10_density(i)
          case (6);  ext_profile_value = env_struct%env_log10_pressure(i)
          case (7);  ext_profile_value = env_struct%env_luminosity(i)
-         case (9)
-            if (env_struct%env_convective_flag(i)) then
-               ext_profile_value = 1.0d0
-            else
-               ext_profile_value = 0.0d0
-            end if
+         case (9);  ext_profile_value = convective_indicator(env_struct%env_convective_flag(i))
          case (10); ext_profile_value = env_struct%env_gamma1(i)
          case (11); ext_profile_value = env_struct%env_opacity(i)
          case (12); ext_profile_value = env_struct%env_gradients(1,i)
@@ -353,17 +347,14 @@ double precision function ext_profile_value(icol, j)
               env_struct%env_log10_pressure(i), &
               env_struct%env_log10_temperature(i), &
               env_struct%env_log10_density(i), env_struct%env_beta(i))
-         case (58); ext_profile_value = sqrt(env_struct%env_gamma1(i)* &
-              exp(ln10*(env_struct%env_log10_pressure(i) - &
-              env_struct%env_log10_density(i))))
+         case (58); ext_profile_value = sound_speed_cgs(env_struct%env_gamma1(i), &
+              env_struct%env_log10_pressure(i), env_struct%env_log10_density(i))
          case default; ext_profile_value = 0.0d0
          end select
       case (3)
          select case (icol)
          case (2);  ext_profile_value = star%star_mass
-         case (3);  ext_profile_value = log10(exp(ln10* &
-                       env_struct%env_log10_radius(env_struct%num_env_points)) &
-                       + atm_height(i))
+         case (3);  ext_profile_value = log10(atmosphere_radius_cm(i))
          case (4);  ext_profile_value = atmo_struct%atmo_log10_temperature(i)
          case (5);  ext_profile_value = atmo_struct%atmo_log10_density(i)
          case (6);  ext_profile_value = atmo_struct%atmo_log10_pressure(i)
@@ -383,15 +374,69 @@ double precision function ext_profile_value(icol, j)
               atmo_struct%atmo_log10_pressure(i), &
               atmo_struct%atmo_log10_temperature(i), &
               atmo_struct%atmo_log10_density(i), atmo_struct%atmo_beta(i))
-         case (58); ext_profile_value = sqrt(atmo_struct%atmo_gamma1(i)* &
-              exp(ln10*(atmo_struct%atmo_log10_pressure(i) - &
-              atmo_struct%atmo_log10_density(i))))
+         case (58); ext_profile_value = sound_speed_cgs(atmo_struct%atmo_gamma1(i), &
+              atmo_struct%atmo_log10_pressure(i), atmo_struct%atmo_log10_density(i))
          case default; ext_profile_value = 0.0d0
          end select
       case default
          ext_profile_value = 0.0d0
       end select
 end function ext_profile_value
+
+! ---------------------------------------------------------------
+! Column kernels (2026 W3): the expressions the profile-column mapping
+! (profile_value / ext_profile_value), compute_seismic_columns and
+! build_pulse_points evaluate at more than one site, each written
+! once. Every body is token-for-token what each site had; the sites
+! only differ in which array they read (interior star%, envelope
+! env_struct, atmosphere atmo_struct). Not shared, because the sites
+! differ in operand order: the interior gravity of profile column 18,
+! exp(ln10*(cgl - 2*logR))*m, versus local_gravity_cgs below; and the
+! Brunt-Vaisala N^2 of compute_seismic_columns, grav*(dlnp_dr/g1 -
+! dlnrho_dr) with the two derivatives divided by dr first, versus
+! build_pulse_points' second pass, which divides the bracket by dr
+! last.
+
+! Local gravity G*m/r^2 [cgs] from mass [g] and radius [cm].
+double precision function local_gravity_cgs(mass_g, radius_cm)
+      double precision, intent(in) :: mass_g, radius_cm
+      local_gravity_cgs = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)
+end function local_gravity_cgs
+
+! Sound speed sqrt(Gamma1*P/rho) [cm/s] from Gamma1, log10 P, log10 rho
+! (profile column 58).
+double precision function sound_speed_cgs(gamma1, log10_p, log10_rho)
+      double precision, intent(in) :: gamma1, log10_p, log10_rho
+      sound_speed_cgs = sqrt(gamma1*exp(ln10*(log10_p - log10_rho)))
+end function sound_speed_cgs
+
+! Profile column 9: 1 in a convective shell, 0 otherwise.
+double precision function convective_indicator(is_convective)
+      logical, intent(in) :: is_convective
+      if (is_convective) then
+         convective_indicator = 1.0d0
+      else
+         convective_indicator = 0.0d0
+      end if
+end function convective_indicator
+
+! Mass [g] enclosed at envelope point i (env_log10_mass is relative to
+! the total mass).
+double precision function envelope_mass_g(i)
+      use star_info_lib, only: star
+      use envstruct_lib
+      integer, intent(in) :: i
+      envelope_mass_g = exp(ln10*(env_struct%env_log10_mass(i) + star%log_total_mass))
+end function envelope_mass_g
+
+! Radius [cm] of atmosphere point i: the photosphere (the envelope's
+! outermost point) plus its accumulated height (see build_stitched_model).
+double precision function atmosphere_radius_cm(i)
+      use envstruct_lib
+      integer, intent(in) :: i
+      atmosphere_radius_cm = exp(ln10* &
+           env_struct%env_log10_radius(env_struct%num_env_points)) + atm_height(i)
+end function atmosphere_radius_cm
 
 ! mu = R*rho*T/(beta*P): the ideal-gas mean molecular weight from the
 ! gas pressure (eqstat's own specific-gas-constant identity). Zero
@@ -424,12 +469,7 @@ double precision function profile_value(icol, k)
       case (6);  profile_value = star%logP(k)
       case (7);  profile_value = star%luminosity_lsun(k)
       case (8);  profile_value = star%dm(k)/star%solar_mass_cgs
-      case (9)
-         if (star%convective_flag(k)) then
-            profile_value = 1.0d0
-         else
-            profile_value = 0.0d0
-         end if
+      case (9);  profile_value = convective_indicator(star%convective_flag(k))
       case (10); profile_value = star%adiabatic_index_gamma1(k)
       case (11); profile_value = star%opacity_zone(k)
       case (12); profile_value = star%gradr(k)
@@ -477,10 +517,8 @@ double precision function profile_value(icol, k)
 ! 2026 (bugsweep sec-11): the array already holds 1/mu_e (eos
 ! electron_mean_weight_inverse); it used to be inverted again here.
       case (53); profile_value = star%pulse_electron_mean_weight_inverse(k)
-      case (58)
-! sound speed sqrt(Gamma1*P/rho) [cm/s]
-         profile_value = sqrt(star%adiabatic_index_gamma1(k)* &
-              exp(ln10*(star%logP(k) - star%logRho(k))))
+      case (58); profile_value = sound_speed_cgs(star%adiabatic_index_gamma1(k), &
+              star%logP(k), star%logRho(k))
       case (59); profile_value = star%am_diffusion_coeff(k)
       case (60); profile_value = star%mixing_diffusion_coeff(k)
       case default
@@ -544,8 +582,7 @@ subroutine build_pulse_points(pts)
             pts(ipul_eps_grav,j) = star%eps_channels(i_eps_grav,i)
          case (2)
             r = exp(ln10*env_struct%env_log10_radius(i))
-            m = exp(ln10*(env_struct%env_log10_mass(i) + &
-                 star%log_total_mass))
+            m = envelope_mass_g(i)
             P = exp(ln10*env_struct%env_log10_pressure(i))
             T = exp(ln10*env_struct%env_log10_temperature(i))
             rho = exp(ln10*env_struct%env_log10_density(i))
@@ -570,9 +607,7 @@ subroutine build_pulse_points(pts)
                pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
             end do
          case default   ! atmosphere
-            r = exp(ln10* &
-                 env_struct%env_log10_radius(env_struct%num_env_points)) &
-                 + atm_height(i)
+            r = atmosphere_radius_cm(i)
             m = exp(ln10*star%log_total_mass)
             P = exp(ln10*atmo_struct%atmo_log10_pressure(i))
             T = exp(ln10*atmo_struct%atmo_log10_temperature(i))
@@ -600,7 +635,7 @@ subroutine build_pulse_points(pts)
          pts(ipul_grada,j) = nab_ad
          pts(ipul_delta,j) = delta
          if (r > 0.0d0) then
-            grav = exp(ln10*cgl)*m/(r*r)
+            grav = local_gravity_cgs(m, r)
             pts(ipul_N2,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
          end if
       end do
@@ -631,7 +666,7 @@ subroutine build_pulse_points(pts)
          if (pts(ipul_N2,j) >= 0.0d0 .and. &
               pts(ipul_r,j) > 0.0d0 .and. pts(ipul_r,j+1) > pts(ipul_r,j-1) .and. &
               pts(ipul_gamma1,j) > 0.0d0) then
-            grav = exp(ln10*cgl)*pts(ipul_m,j)/(pts(ipul_r,j)*pts(ipul_r,j))
+            grav = local_gravity_cgs(pts(ipul_m,j), pts(ipul_r,j))
             pts(ipul_N2,j) = grav*( &
                  (log(pts(ipul_P,j+1)) - log(pts(ipul_P,j-1)))/pts(ipul_gamma1,j) - &
                  (log(pts(ipul_rho,j+1)) - log(pts(ipul_rho,j-1))) ) / &
