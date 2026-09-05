@@ -45,7 +45,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       double precision :: b_coefficient, newton_g, eps
       integer :: jmax, k, km
       double precision :: prev_eta22, prev_omega_sq, prev_density, prev_r0, &
-           prev_aint, aintt, prev_q
+           prev_aint, prev_q
       integer :: i, j, n1, j1
       double precision :: density, g_times_mass, centrifugal_factor, &
            r0_cubed, distortion_a, shell_mass, eta22, omega_sq
@@ -71,7 +71,6 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       prev_density = exp(ln10*log_density(1))
       prev_r0 = 0.0d0
       prev_aint = 0.0d0
-      aintt = 0.0d0
       prev_q = 0.0d0
 ! NOW CALCULATE FP AND FT USING THE ETA2 AND R0 VALUES
       do i = 1,num_points

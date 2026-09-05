@@ -92,7 +92,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       integer :: max_omega_change_zone_history(iter_history_max)
       double precision :: third_order_ratio_factor(json), domega_dr(json), &
            omega_mid(json)
-      double precision :: omega_mid_start(json), omega_prev_medium_iter(json), &
+      double precision :: omega_prev_medium_iter(json), &
            omega_substep_start(json)
       double precision :: omega_curvature(json)
 ! locals
@@ -128,7 +128,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       do i = 2,num_eq_points
          domega_dr(i) = rot_scr%dchi_dr_edge(i)*(eq_omega(i)-eq_omega(i-1))/ &
               grid_spacing
-         omega_mid_start(i) = 0.5d0*(eq_omega(i)+eq_omega(i-1))
       end do
       num_equations = 4*num_eq_points-2
 ! LOOP FOR TIMESTEP CUTTING

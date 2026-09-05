@@ -95,7 +95,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
            equal_diffusion_coeff2_mid(json), &
            equal_diffusion_coeff1_dx_mid(json), &
            equal_diffusion_coeff2_dx_mid(json)
-      double precision :: metal_x_orig(json), metal_x_prev_iter(json)
+      double precision :: metal_x_orig(json)
       integer :: zone_begin, zone_end
       logical :: settling_skipped_flag
       integer :: eq_idx
@@ -181,9 +181,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
          do eq_idx=1,num_equal_points-1
             rot_scr%metal_diffusion_coeff1_mid(eq_idx)=rot_scr%metal_diffusion_coeff1_mid(eq_idx)+ &
                  rot_scr%metal_abundance_change_mid(eq_idx)*rot_scr%eq_metal_diffusion_coeff1_mid(eq_idx)
-            metal_x_prev_iter(eq_idx) = metal_x_orig(eq_idx)
          end do
-         metal_x_prev_iter(num_equal_points) = metal_x_orig(num_equal_points)
       endif
 !
 ! USING THE NEW COEFFICIENTS, SOLVE FOR THE NEW RUN OF HYDROGEN ABUNDANCES.

@@ -73,7 +73,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 ! --- locals ---
       integer :: zone_idx
       double precision :: hydrogen_fraction, z_plus_he3_fraction, &
-           metal_fraction, hydrogen_fraction_sq, hydrogen_fraction_cubed, &
+           metal_fraction, hydrogen_fraction_sq, &
            hydrogen_metal_product, thoul_denominator
 ! helium_ah_coeff (also originally AC): empirical Thoul-fit helium-
 ! settling amplitude coefficient feeding diffusion_coeff2.
@@ -219,7 +219,6 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          hydrogen_fraction_sq = hydrogen_fraction*hydrogen_fraction
          if(.not.star%ctrl%use_thoul_diffusion)then
             hydrogen_metal_product = hydrogen_fraction*z_plus_he3_fraction
-            hydrogen_fraction_cubed = hydrogen_fraction_sq*hydrogen_fraction
             thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
             diffusion_coeff1(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
                  (hydrogen_fraction - hydrogen_fraction_sq - hydrogen_metal_product)*(1.25d0+ &
