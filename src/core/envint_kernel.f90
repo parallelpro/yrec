@@ -42,8 +42,8 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
      vertex_index, print_flag, save_boundary_flag, log10_pressure_limit, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     stored_envelope_state, stored_vertex_index, atm_call_count, &
-     env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
+     stored_envelope_state, stored_vertex_index, &
+     saha_state, vtx_logp, vtx_logr, vtx_logt, &
      ierr)
 
       use eos_lib
@@ -93,7 +93,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       double precision, intent(inout) :: hydrogen_fraction, metal_fraction
       double precision, intent(inout) :: stored_envelope_state(4)
       integer, intent(inout) :: stored_vertex_index
-      integer, intent(inout) :: atm_call_count, env_call_count, saha_state
+      integer, intent(inout) :: saha_state
       double precision, intent(inout) :: vtx_logp(3), vtx_logr(3), vtx_logt(3)
 ! ierr /= 0 on any error that used to stop inside the atm internals
 ! (the diagnostic is still printed at the point of failure).
@@ -383,7 +383,7 @@ subroutine integrate_atmosphere
             h_next,atmosphere_derivs, luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
-            log10_teff,hydrogen_fraction,metal_fraction,atm_call_count, &
+            log10_teff,hydrogen_fraction,metal_fraction, &
             saha_state,step_err,ierr=jerr)
 ! 2026 numerics-gate opt-in: a bsstep failure (the historical
 ! "solution diverged" stop, its diagnostic already printed by the
@@ -398,7 +398,7 @@ subroutine integrate_atmosphere
        call atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
-            log10_teff,hydrogen_fraction,metal_fraction,atm_call_count,saha_state, jerr)
+            log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -534,7 +534,7 @@ subroutine integrate_envelope
       call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,log10_radius, &
-           log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state, jerr)
+           log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
@@ -610,7 +610,7 @@ subroutine integrate_envelope
               luminosity_linear,pressure_rotation_factor,temperature_rotation_factor, &
               log10_gravity,in_atmosphere,want_derivatives,conductive_opacity_flag, &
               log10_radius,log10_teff,hydrogen_fraction,metal_fraction, &
-              env_call_count,saha_state,step_err,ierr=jerr)
+              saha_state,step_err,ierr=jerr)
 ! 2026 numerics-gate opt-in: same contract as the atmosphere-side
 ! bsstep call above.
        if (jerr /= 0) then
@@ -624,7 +624,7 @@ subroutine integrate_envelope
        call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,log10_radius, &
-              log10_teff,hydrogen_fraction,metal_fraction,env_call_count,saha_state, jerr)
+              log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return

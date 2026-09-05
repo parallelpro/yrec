@@ -619,12 +619,12 @@ end subroutine ludcmp
 ! b/pressure_rotation_factor/.../saha_state are opaque pass-through
 ! arguments forwarded unchanged to deriv (the caller-supplied
 ! derivative routine, e.g. qatm/qenv) -- named to match the actual
-! arguments used at the bsstep call sites in atm/atm_lib.f90.
+! arguments used at the bsstep call sites in core/envint_kernel.f90.
 subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
      luminosity_linear, pressure_rotation_factor, temperature_rotation_factor, &
      log10_gravity, in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     call_count, saha_state, ierr)
+     saha_state, ierr)
       implicit none
 
       double precision, intent(in) :: y(3), dydx(3)
@@ -640,7 +640,7 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
            conductive_opacity_flag
       double precision, intent(inout) :: log10_radius, log10_teff, &
            hydrogen_fraction, metal_fraction
-      integer, intent(inout) :: call_count, saha_state
+      integer, intent(inout) :: saha_state
 
 ! h_sub is the size of each small step.
       double precision :: y_mid(3), y_new(3)
@@ -660,7 +660,7 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity, in_atmosphere, want_derivatives, &
            conductive_opacity_flag, log10_radius, log10_teff, &
-           hydrogen_fraction, metal_fraction, call_count, saha_state, ierr)
+           hydrogen_fraction, metal_fraction, saha_state, ierr)
       if (ierr /= 0) return
       h_sub2 = 2.0d0*h_sub
 ! general step.
@@ -675,7 +675,7 @@ subroutine mmid(y, dydx, n_var, x_start, h_total, n_step, y_out, deriv, &
             pressure_rotation_factor, temperature_rotation_factor, &
             log10_gravity, in_atmosphere, want_derivatives, &
             conductive_opacity_flag, log10_radius, log10_teff, &
-            hydrogen_fraction, metal_fraction, call_count, saha_state, ierr)
+            hydrogen_fraction, metal_fraction, saha_state, ierr)
        if (ierr /= 0) return
       end do
 ! last step.
@@ -1164,12 +1164,12 @@ end subroutine tridia
 ! luminosity_linear/pressure_rotation_factor/.../saha_state are opaque
 ! pass-through arguments forwarded unchanged to mmid/deriv -- named to
 ! match the actual arguments used at the bsstep call sites in
-! atm/atm_lib.f90.
+! core/envint_kernel.f90.
 subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      h_did, h_next, deriv, luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, in_atmosphere, &
      want_derivatives, conductive_opacity_flag, log10_radius, &
-     log10_teff, hydrogen_fraction, metal_fraction, call_count, saha_state, &
+     log10_teff, hydrogen_fraction, metal_fraction, saha_state, &
      step_err, ierr)
       use intpar_lib
       use math_lib
@@ -1191,7 +1191,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
            conductive_opacity_flag
       double precision, intent(inout) :: log10_radius, log10_teff, &
            hydrogen_fraction, metal_fraction
-      integer, intent(inout) :: call_count, saha_state
+      integer, intent(inout) :: saha_state
       double precision, intent(out) :: step_err(3)
 
       double precision :: y_err(3), y_sav(3), dy_sav(3), y_seq(3)
@@ -1218,7 +1218,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
             temperature_rotation_factor, log10_gravity, in_atmosphere, &
             want_derivatives, conductive_opacity_flag, &
             log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-            call_count, saha_state, jerr_integrand)
+            saha_state, jerr_integrand)
        ! integrand (eos/kap/gradient) failure inside the midpoint
        ! substeps: same treatment as a diverged step
        if (jerr_integrand /= 0) then

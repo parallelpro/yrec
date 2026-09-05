@@ -105,13 +105,11 @@ subroutine build_stitched_model
       use star_info_lib, only: star, i_h1, i_metals
       use envstruct_lib
       use atmstruct_lib
-      use envint_lib, only: atm_get
+      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step
       integer :: j, i, jerr
-      double precision :: atm_beg0, atm_min0, atm_max0
-      double precision :: env_beg0, env_min0, env_max0
-      double precision :: b, gl, rl, ateffl, plim, dum1(4), dum2(3), &
-           dum3(3), dum4(3)
-      integer :: ixx, idum, katm, kenv, ksaha
+      type(envint_step_config) :: atm_steps, env_steps
+      double precision :: b, gl, rl, ateffl, plim
+      integer :: ksaha
       logical :: lprt, lsbc0
 
 ! interior always present
@@ -131,23 +129,11 @@ subroutine build_stitched_model
       end if
 
 ! ---- re-integrate at the converged model (stitch's recipe) ----
-      atm_beg0 = star%job%atm_step_begin
-      atm_min0 = star%job%atm_step_min
-      atm_max0 = star%job%atm_step_max
-      env_beg0 = star%job%env_step_begin
-      env_min0 = star%job%env_step_min
-      env_max0 = star%job%env_step_max
-      star%job%atm_step_begin = star%ctrl%atm_step_size
-      star%job%atm_step_min = star%ctrl%atm_step_size
-      star%job%atm_step_max = star%ctrl%atm_step_size
-      star%job%env_step_begin = star%ctrl%envelope_step_size
-      star%job%env_step_min = star%ctrl%envelope_step_size
-      star%job%env_step_max = star%ctrl%envelope_step_size
+! fixed output step sizes for this atm_get call only (2026 W2: passed
+! in instead of overwriting and restoring star%job%{atm,env}_step_*)
+      atm_steps = fixed_envint_step(star%ctrl%atm_step_size)
+      env_steps = fixed_envint_step(star%ctrl%envelope_step_size)
 
-      idum = 0
-      ixx = 0
-      katm = 0
-      kenv = 0
       ksaha = 0
       lprt = .false.
       lsbc0 = .false.
@@ -169,16 +155,10 @@ subroutine build_stitched_model
 ! recomputes it (the former gettau/wrtout own atm_get calls are
 ! gone). The stitch runs every step, so pphot is always current.
       call atm_get(b, star%fp_rot(star%nz), star%ft_rot(star%nz), gl, &
-           star%log_total_mass, ixx, lprt, lsbc0, plim, rl, ateffl, &
-           star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), dum1, idum, katm, &
-           kenv, ksaha, dum2, dum3, dum4, jerr)
+           star%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
+           star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), ksaha, jerr, &
+           atm_steps=atm_steps, env_steps=env_steps)
 
-      star%job%atm_step_begin = atm_beg0
-      star%job%atm_step_min = atm_min0
-      star%job%atm_step_max = atm_max0
-      star%job%env_step_begin = env_beg0
-      star%job%env_step_min = env_min0
-      star%job%env_step_max = env_max0
       if (jerr /= 0) then
          n_ie = n_ext
          call fill_stitched_arrays

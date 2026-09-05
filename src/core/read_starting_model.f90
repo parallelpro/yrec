@@ -34,7 +34,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
       use controls_lib, only: ichi_dm_max, ichi_dp_env_max
-      use envint_lib, only: atm_get
+      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step
       use envstruct_lib
       use luout_lib
       use phys_const_lib
@@ -61,7 +61,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       double precision, intent(out) :: convective_velocity
       double precision, intent(inout) :: species_mix_weights(n_mix_species)
 
-      integer :: katm, kenv, saha_state
+      integer :: saha_state
       character(len=4) :: format_tag
       character(len=6) :: eos_code
       character(len=4) :: atm_code, alok_code, hik_code
@@ -112,16 +112,11 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
            dgrad_dp_component, dgrad_dr_component
       logical :: is_convective
       integer :: old_last_shell
-      double precision :: saved_env_step_max, saved_env_step_min, &
-           saved_env_step_begin
+      type(envint_step_config) :: env_steps
       logical :: save_boundary_flag, print_flag
       double precision :: log10_gravity
-      integer :: vertex_index
       double precision :: log10_pressure_limit
-      integer :: atm_get_unused_flag
       double precision :: spot_adjusted_log_teff
-      double precision :: atm_get_dummy1(4), atm_get_dummy2(3), &
-           atm_get_dummy3(3), atm_get_dummy4(3)
       double precision :: pressure_offset, density_offset, &
            temperature_offset, radius_offset
       integer :: env_point_index
@@ -711,17 +706,12 @@ subroutine rescale_and_refit_envelope
        else
 ! DESIRED ENVELOPE MASS LESS THAN CURRENT VALUE.
             old_last_shell = star%nz
-            saved_env_step_max = star%job%env_step_max
-            saved_env_step_min = star%job%env_step_min
-            saved_env_step_begin = star%job%env_step_begin
-            star%job%env_step_max = star%ctrl%chi_grid_scale(ichi_dp_env_max)
-            star%job%env_step_min = star%ctrl%chi_grid_scale(ichi_dp_env_max)
-            star%job%env_step_begin = star%ctrl%chi_grid_scale(ichi_dp_env_max)
+! fixed envelope integration step for this atm_get call (2026 W2:
+! passed in instead of overwriting and restoring star%job%env_step_*)
+            env_steps = fixed_envint_step(star%ctrl%chi_grid_scale(ichi_dp_env_max))
 !          SENV = SENV0
           save_boundary_flag = .false.
           print_flag = .true.
-          katm = 0
-          kenv = 0
           saha_state = 0
           shell_luminosity_lsun = exp(ln10*star%log_L)
           log10_radius = 0.5d0*(star%log_L + star%solar_luminosity_cgs - &
@@ -731,9 +721,7 @@ subroutine rescale_and_refit_envelope
           metal_fraction = star%xa(i_metals,star%nz)
           point_pressure_rotation_factor = 1.0d0
           point_temperature_rotation_factor = 1.0d0
-          vertex_index=0
           log10_pressure_limit = star%logP(star%nz)
-! DBG PULSE: DO NOT DO PULSE OUTPUT
             if (use_debye_huckel_correction) then
                debye_huckel_x = star%xa(i_h1,star%nz)
                debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
@@ -743,8 +731,6 @@ subroutine rescale_and_refit_envelope
                debye_huckel_z(3) = star%xa(i_o16,star%nz)+star%xa(i_o17,star%nz)+ &
                     star%xa(i_o18,star%nz)
             end if
-! MHP 10/02  define ISTORE - used in ENVINT
-            atm_get_unused_flag = 0
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
           if (star%envelope_cz_bottom_index.eq.star%nz.and.star%ctrl%spot_filling_factor.ne. &
@@ -757,11 +743,10 @@ subroutine rescale_and_refit_envelope
           endif
           call atm_get(shell_luminosity_lsun,point_pressure_rotation_factor, &
                  point_temperature_rotation_factor,log10_gravity,star%stotal, &
-                 vertex_index,print_flag,save_boundary_flag, &
+                 print_flag,save_boundary_flag, &
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
-                 hydrogen_fraction,metal_fraction,atm_get_dummy1, &
-                 atm_get_unused_flag,katm,kenv,saha_state,atm_get_dummy2, &
-                 atm_get_dummy3,atm_get_dummy4,ierr=jerr_atm)
+                 hydrogen_fraction,metal_fraction,saha_state, &
+                 ierr=jerr_atm,env_steps=env_steps)
 ! 2026 numerics-gate opt-in: envelope/atmosphere integration failures
 ! surface here (incl. numerics_termination) instead of stopping in
 ! atm_get; the host's ierr is already threaded to run_yrec.
@@ -770,9 +755,6 @@ subroutine rescale_and_refit_envelope
              return
           end if
 ! G Somers END
-            star%job%env_step_max = saved_env_step_max
-            star%job%env_step_min = saved_env_step_min
-            star%job%env_step_begin = saved_env_step_begin
           star%senv = star%job%requested_envelope_mass
 ! 2026 io/driver stops -> ierr (was: stop 9999)
             if (star%nz+env_struct%num_env_points.ge.json) then

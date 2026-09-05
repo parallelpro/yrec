@@ -32,8 +32,8 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
      stored_envelope_state, &
-     start_new_triangle, reset_triangle, saha_state, env_call_count, &
-     atm_call_count, log10_star_mass, luminosity_linear, &
+     start_new_triangle, reset_triangle, saha_state, &
+     log10_star_mass, luminosity_linear, &
      log10_teff, hydrogen_fraction, metal_fraction, &
      pressure_rotation_factor, temperature_rotation_factor, &
      envelope_recomputed_flag, log10_pressure_limit, convective_flag, &
@@ -58,7 +58,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       integer, intent(inout) :: stored_vertex_index
       double precision, intent(inout) :: stored_envelope_state(4)
       logical, intent(inout) :: start_new_triangle, reset_triangle
-      integer, intent(inout) :: saha_state, env_call_count, atm_call_count
+      integer, intent(inout) :: saha_state
       double precision, intent(in) :: log10_star_mass, luminosity_linear
       double precision, intent(inout) :: log10_teff
       double precision, intent(inout) :: hydrogen_fraction, metal_fraction, &
@@ -188,12 +188,14 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
              adjusted_teffl = log10_teff
           endif
           call atm_get(b,pressure_rotation_factor,temperature_rotation_factor,gl, &
-                 log10_star_mass,vertex_being_computed,print_envelope_flag, &
+                 log10_star_mass,print_envelope_flag, &
                  save_boundary_flag,log10_pressure_limit,rl, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &
-                 stored_envelope_state,stored_vertex_index,atm_call_count, &
-                 env_call_count,saha_state,vtx_logp, &
-                 vtx_logr,vtx_logt,ierr=jerr_atm)
+                 saha_state,ierr=jerr_atm, &
+                 vertex_index=vertex_being_computed, &
+                 stored_envelope_state=stored_envelope_state, &
+                 stored_vertex_index=stored_vertex_index, &
+                 vtx_logp=vtx_logp,vtx_logr=vtx_logr,vtx_logt=vtx_logt)
 ! 2026 numerics-gate opt-in: envelope-integration failures
 ! (numerics_termination) and table errors surface here instead of
 ! stopping inside atm_get; the caller (henyey_iterate) propagates.

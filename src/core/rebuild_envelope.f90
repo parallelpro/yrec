@@ -15,7 +15,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
-      use envint_lib, only: atm_get
+      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step
       use envint_kernel, only: senv_thin_envelope
       use star_info_lib
       use controls_lib, only: ichi_dp_env_max
@@ -45,21 +45,17 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       integer, intent(inout) :: num_zones
       logical, intent(out) :: new_points_added_flag
 
-      double precision :: atm_get_dummy1(4), atm_get_dummy2(3), &
-           atm_get_dummy3(3), atm_get_dummy4(3)
       integer :: species_end_index
       integer :: old_num_zones
       double precision :: envelope_mass_before
-      double precision :: env_max_saved, env_min_saved, env_begin_saved
+      type(envint_step_config) :: env_steps
       logical :: surface_bc_flag, print_flag
-      integer :: katm, kenv, ksaha
+      integer :: ksaha
       double precision :: luminosity_linear
       double precision :: log_radius_surface, log_gravity_surface
       double precision :: hydrogen_fraction, metal_fraction
       double precision :: fp_surface, ft_surface
       double precision :: pressure_limit
-      integer :: ixx_flag
-      integer :: atm_get_unused_flag
       double precision :: spot_adjusted_log_teff
       double precision :: pressure_offset, density_offset, temperature_offset, &
            radius_offset
@@ -93,17 +89,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! SAVE CURRENT VALUES OF THE TOTAL NUMBER OF POINTS AND ENVELOPE MASS.
       old_num_zones = num_zones
       envelope_mass_before = star%senv
-! SET NUMERICAL PARAMETERS OF THE ENVELOPE INTEGRATION
-      env_max_saved = star%job%env_step_max
-      env_min_saved = star%job%env_step_min
-      env_begin_saved = star%job%env_step_begin
-      star%job%env_step_max = star%ctrl%chi_grid_scale(ichi_dp_env_max)
-      star%job%env_step_min = star%ctrl%chi_grid_scale(ichi_dp_env_max)
-      star%job%env_step_begin = star%ctrl%chi_grid_scale(ichi_dp_env_max)
+! NUMERICAL PARAMETERS OF THE ENVELOPE INTEGRATION: a fixed step
+! (2026 W2: handed to atm_get for this call instead of overwriting
+! and restoring star%job%env_step_*)
+      env_steps = fixed_envint_step(star%ctrl%chi_grid_scale(ichi_dp_env_max))
       surface_bc_flag = .false.
       print_flag = .true.
-      katm = 0
-      kenv = 0
       ksaha = 0
 ! SET THE PHYSICAL PROPERTIES OF THE ENVELOPE SOLUTION
 ! LUMINOSITY
@@ -123,9 +114,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! PRESSURE OF THE OUTER MODEL POINT, AT LEAST THE
 ! FIRST TIME IT TRIES TO DO SO.
       pressure_limit = log_pressure(num_zones)
-! DO NOT DO SOLAR PULSATION OUTPUT
 ! SET UP VALUES FOR THE EQUATION OF STATE CALCULATION
-      ixx_flag = 0
       if (use_debye_huckel_correction) then
          debye_huckel_x = composition(i_h1,num_zones)
          debye_huckel_y = composition(i_he4,num_zones)+composition(i_he3,num_zones)
@@ -136,7 +125,6 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
               composition(i_o18,num_zones)
       end if
 ! INTEGRATE DOWN TO THE CURRENT FITTING POINT USING THE SURFACE L AND TEFF.
-      atm_get_unused_flag = 0
 ! FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
       if(convective_flag(num_zones).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
@@ -147,21 +135,16 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
          spot_adjusted_log_teff = log_teff
       endif
       call atm_get(luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
-           log_total_mass,ixx_flag,print_flag,surface_bc_flag,pressure_limit, &
+           log_total_mass,print_flag,surface_bc_flag,pressure_limit, &
            log_radius_surface, &
            spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
-           atm_get_dummy1,atm_get_unused_flag,katm,kenv,ksaha,atm_get_dummy2, &
-           atm_get_dummy3,atm_get_dummy4,ierr=jerr_atm)
+           ksaha,ierr=jerr_atm,env_steps=env_steps)
 ! 2026 numerics-gate opt-in: same contract as read_starting_model's
 ! atm_get call; caller (evolve_step) checks ierr.
       if (jerr_atm /= 0) then
          ierr = jerr_atm
          return
       end if
-! RESET THE NUMERICAL PARAMETERS FOR THE ENVELOPE INTEGRATION
-      star%job%env_step_max = env_max_saved
-      star%job%env_step_min = env_min_saved
-      star%job%env_step_begin = env_begin_saved
       star%senv = target_envelope_mass
 ! STOP IF THE DESIRED NUMBER OF POINTS EXCEEDS THE ARRAY DIMENSIONS
 ! 2026 io/driver stops -> ierr (was: stop 9999)

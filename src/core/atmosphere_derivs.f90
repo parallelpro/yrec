@@ -15,7 +15,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     atm_call_count, saha_state, ierr)
+     saha_state, ierr)
 
       use eos_lib
       use kap_lib
@@ -36,7 +36,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       double precision, intent(in) :: log10_radius
       double precision, intent(inout) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
-      integer, intent(inout) :: atm_call_count, saha_state
+      integer, intent(inout) :: saha_state
 ! 2026: integrand-callback protocol extended with ierr (eos/kap/
 ! gradient failures propagate through mmid/bsstep to the caller).
       integer, intent(out) :: ierr
@@ -67,7 +67,6 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       if (ierr /= 0) return
       dydx(1) = effective_gravity*optical_depth/ &
            (eos_res(i_pressure)*kap_res(i_kap))
-      atm_call_count = atm_call_count + 1
       atm_table%atm_log10_pressure = log10_pressure
       atm_table%atm_log10_temperature = log10_temperature
 ! 2026 (.store convergence): these saves were gated on the print

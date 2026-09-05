@@ -50,7 +50,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       integer, intent(in) :: iteration_level
 
 ! --- locals ---
-      integer :: kenv, katm, ksaha
+      integer :: ksaha
       integer :: num_species, i, j, iter, max_correction_pos
       integer :: core_cz_edge, envelope_zone_index
       integer :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
@@ -74,9 +74,9 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
 
       if (max_iterations.le.0) return
       star%log_L = log10(star%luminosity_lsun(star%nz))
-! ZERO COUNTERS
-      kenv = 0
-      katm = 0
+! RESET THE SAHA-STATE COUNTER (2026 W2: the envelope/atmosphere
+! integrand call counters kenv/katm that used to be zeroed here were
+! never read; removed)
       ksaha = 0
       star%senv = star%log_mass(star%nz) - star%log_total_mass
       if (start_new_triangle .or. (reset_triangle .and. iteration_level.eq.2)) &
@@ -108,7 +108,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        call surfbc(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
             star%fit_point_radius,tri_orientation,stored_vertex_index, &
             star%stored_envelope_state, &
-            start_new_triangle,reset_triangle,ksaha,kenv,katm, &
+            start_new_triangle,reset_triangle,ksaha, &
             star%log_total_mass,star%log_L, &
             star%log_Teff,hydrogen_fraction,metal_fraction, &
             surface_pressure_rotation_factor, &

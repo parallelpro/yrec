@@ -17,15 +17,34 @@
 ! their init, and pure surface lookups.
 module envint_lib
       implicit none
+
+! 2026 W2: fixed Bulirsch-Stoer step-size triple (begin/min/max) a
+! driver can hand atm_get in place of the star%job%{atm,env}_step_*
+! values -- replaces the former save/override/restore of star%job
+! around the call in rebuild_envelope, read_starting_model and
+! build_stitched_model.
+      type, public :: envint_step_config
+            double precision :: step_begin, step_min, step_max
+      end type envint_step_config
+
 contains
+
+! all three step sizes equal to h (the only pattern the drivers use)
+pure function fixed_envint_step(h) result(steps)
+      double precision, intent(in) :: h
+      type(envint_step_config) :: steps
+      steps%step_begin = h
+      steps%step_min = h
+      steps%step_max = h
+end function fixed_envint_step
 
 subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
-     vertex_index, print_flag, save_boundary_flag, log10_pressure_limit, &
+     print_flag, save_boundary_flag, log10_pressure_limit, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     stored_envelope_state, stored_vertex_index, atm_call_count, &
-     env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
-     ierr)
+     saha_state, ierr, &
+     vertex_index, stored_envelope_state, stored_vertex_index, &
+     vtx_logp, vtx_logr, vtx_logt, atm_steps, env_steps)
 
 ! 2026 envint purity split phase B: atm_get is now the thin star-layer
 ! DRIVER. It snapshots the configuration out of star%job / star%ctrl
@@ -33,7 +52,17 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! (core/envint_kernel.f90), and applies the star-state consequences:
 ! star%pphot from the integrated photosphere, and the Allard
 ! gray-fallback switch (atm_choice -> 0, use_ttau_relation) when the
-! kernel reports it. The public signature is unchanged.
+! kernel reports it.
+!
+! 2026 W2 (readability, core 5): the fit-vertex bookkeeping
+! (vertex_index, stored_envelope_state, stored_vertex_index,
+! vtx_logp/logr/logt) is OPTIONAL and only surfbc passes it -- all
+! six together; the other drivers call with save_boundary_flag
+! .false., under which the kernel never writes them (it only
+! compares stored_vertex_index against vertex_index), so they get
+! zero-valued scratch here. atm_steps/env_steps, when present,
+! replace the star%job%{atm,env}_step_* triples for this call only
+! (the drivers that used to overwrite and restore star%job).
       use envint_kernel
       use star_info_lib, only: star
       implicit none
@@ -42,30 +71,48 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity
       double precision, intent(in) :: log10_star_mass
-      integer, intent(in) :: vertex_index
       logical, intent(inout) :: print_flag
       logical, intent(in) :: save_boundary_flag
       double precision, intent(in) :: log10_pressure_limit
       double precision, intent(inout) :: log10_radius
       double precision, intent(inout) :: log10_teff
       double precision, intent(inout) :: hydrogen_fraction, metal_fraction
-      double precision, intent(inout) :: stored_envelope_state(4)
-      integer, intent(inout) :: stored_vertex_index
-      integer, intent(inout) :: atm_call_count, env_call_count, saha_state
-      double precision, intent(inout) :: vtx_logp(3), vtx_logr(3), vtx_logt(3)
+      integer, intent(inout) :: saha_state
       integer, intent(out) :: ierr
+      integer, intent(in), optional :: vertex_index
+      double precision, intent(inout), optional :: stored_envelope_state(4)
+      integer, intent(inout), optional :: stored_vertex_index
+      double precision, intent(inout), optional :: vtx_logp(3), vtx_logr(3), &
+           vtx_logt(3)
+      type(envint_step_config), intent(in), optional :: atm_steps, env_steps
 
       type(envint_config) :: cfg
       logical :: switched_to_gray
       double precision :: log10_photo_pressure
+! scratch stand-ins for the absent vertex group (never read back)
+      double precision :: scratch_state(4), scratch_logp(3), scratch_logr(3), &
+           scratch_logt(3)
+      integer :: scratch_vertex_index, scratch_stored_vertex_index
 
       cfg%atm_choice = star%job%atm_choice
-      cfg%atm_step_begin = star%job%atm_step_begin
-      cfg%atm_step_min = star%job%atm_step_min
-      cfg%atm_step_max = star%job%atm_step_max
-      cfg%env_step_begin = star%job%env_step_begin
-      cfg%env_step_min = star%job%env_step_min
-      cfg%env_step_max = star%job%env_step_max
+      if (present(atm_steps)) then
+         cfg%atm_step_begin = atm_steps%step_begin
+         cfg%atm_step_min = atm_steps%step_min
+         cfg%atm_step_max = atm_steps%step_max
+      else
+         cfg%atm_step_begin = star%job%atm_step_begin
+         cfg%atm_step_min = star%job%atm_step_min
+         cfg%atm_step_max = star%job%atm_step_max
+      end if
+      if (present(env_steps)) then
+         cfg%env_step_begin = env_steps%step_begin
+         cfg%env_step_min = env_steps%step_min
+         cfg%env_step_max = env_steps%step_max
+      else
+         cfg%env_step_begin = star%job%env_step_begin
+         cfg%env_step_min = star%job%env_step_min
+         cfg%env_step_max = star%job%env_step_max
+      end if
       cfg%atm_error_tol = star%ctrl%atm_error_tol
       cfg%env_error_tol = star%ctrl%env_error_tol
       cfg%atm_step_initial = star%ctrl%atm_step_initial
@@ -75,15 +122,20 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       cfg%log10_solar_luminosity = star%log10_solar_luminosity
       cfg%calc_envelope = star%job%calc_envelope_flag
 
-      call integrate_envelope_atmosphere(cfg, switched_to_gray, &
-           log10_photo_pressure, &
-           luminosity_linear, pressure_rotation_factor, &
-           temperature_rotation_factor, log10_gravity, log10_star_mass, &
-           vertex_index, print_flag, save_boundary_flag, log10_pressure_limit, &
-           log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-           stored_envelope_state, stored_vertex_index, atm_call_count, &
-           env_call_count, saha_state, vtx_logp, vtx_logr, vtx_logt, &
-           ierr)
+      if (present(vertex_index)) then
+         call run_kernel(vertex_index, stored_envelope_state, &
+              stored_vertex_index, vtx_logp, vtx_logr, vtx_logt)
+      else
+         scratch_vertex_index = 0
+         scratch_stored_vertex_index = 0
+         scratch_state = 0.0d0
+         scratch_logp = 0.0d0
+         scratch_logr = 0.0d0
+         scratch_logt = 0.0d0
+         call run_kernel(scratch_vertex_index, scratch_state, &
+              scratch_stored_vertex_index, scratch_logp, scratch_logr, &
+              scratch_logt)
+      end if
 
 ! star-state consequences of the integration, applied HERE and only
 ! here (the kernel never sees star_info):
@@ -94,6 +146,23 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
          star%job%atm_choice = 0
          star%use_ttau_relation = .true.
       end if
+
+contains
+
+      subroutine run_kernel(vidx, state, sidx, logp, logr, logt)
+            integer, intent(in) :: vidx
+            double precision, intent(inout) :: state(4)
+            integer, intent(inout) :: sidx
+            double precision, intent(inout) :: logp(3), logr(3), logt(3)
+            call integrate_envelope_atmosphere(cfg, switched_to_gray, &
+                 log10_photo_pressure, &
+                 luminosity_linear, pressure_rotation_factor, &
+                 temperature_rotation_factor, log10_gravity, log10_star_mass, &
+                 vidx, print_flag, save_boundary_flag, log10_pressure_limit, &
+                 log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
+                 state, sidx, saha_state, logp, logr, logt, ierr)
+      end subroutine run_kernel
+
 end subroutine atm_get
 
 end module envint_lib

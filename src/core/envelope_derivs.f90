@@ -27,7 +27,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     env_call_count, saha_state, ierr)
+     saha_state, ierr)
 
       use temperature_gradients_lib
       use eos_lib
@@ -47,7 +47,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       double precision, intent(inout) :: log10_radius
       double precision, intent(in) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
-      integer, intent(inout) :: env_call_count, saha_state
+      integer, intent(inout) :: saha_state
       integer, intent(out) :: ierr
 
 ! --- locals ---
@@ -98,7 +98,6 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
 ! rotating envelopes. f_P = 1 exactly for non-rotating runs.
       dydx(3) = -exp(ln10*(log10_pressure+log10_radius-cgl-log10_mass- &
            eos_res(i_log10_density)))/pressure_rotation_factor
-      env_call_count = env_call_count + 1
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
       pt_scr%current_log10_pressure = log10_pressure
       pt_scr%current_log10_temperature = log10_temperature
