@@ -18,6 +18,26 @@ module atm_table_lib
 ! Allard table maximum extents (rows in log Teff, columns in log g).
       integer, parameter :: atm_table_nta = 250, atm_table_nga = 25
 
+! surface_p_table: one tabulated surface-pressure table -- log P at
+! (log Teff row, log g column) -- with the log Teff rows, the
+! atm_table_ng log g columns and the per-row lower/upper log-g edge
+! indices (former common/fac/ gmin/gmax). 2026 wave 3 (R5): the former
+! kurucz_teff_table/kurucz_logg_table/kurucz_log10_pressure_table +
+! atm_table%kurucz_gmin_index/kurucz_gmax_index (atm_table_nt rows)
+! and their kurucz_castelli_*/castelli_* twins (atm_table_ntc rows)
+! became atm_table%kurucz_surface_p / castelli_surface_p so that one
+! interpolator (tables/surfp.f90) serves both. The two tables have
+! different row counts, so the components are allocatable: atm_init
+! allocates each instance once, with exactly the extents the fixed
+! arrays had (num_teff = atm_table_nt or atm_table_ntc, atm_table_ng
+! columns), and zero-fills it as the static arrays were.
+      type, public :: surface_p_table
+           integer :: num_teff = 0
+           double precision, allocatable :: teff(:), logg(:)
+           double precision, allocatable :: log10_pressure(:,:)
+           integer, allocatable :: gmin_index(:), gmax_index(:)
+      end type surface_p_table
+
       type, public :: atm_table_state
 ! (former common/ccr/ -- the degenerate-electron Fermi-Dirac EOS
 ! table, fermi_table_* -- lived here through phases one and two
@@ -25,13 +45,10 @@ module atm_table_lib
 ! to yale_eos_lib in 2026, ROADMAP.md stage 1, alongside moving its
 ! load from an inline setup/setups.f90 block into eos_lib's
 ! eos_init. Consumed only by eos/yale/fully_ionized_eos.f90.)
-! former common/fac/: lower-edge-of-table-in-log-g indices for the
-! Kurucz (atm_table_nt) and Kurucz/Castelli (atm_table_ntc) surface-
-! pressure tables.
-           integer :: kurucz_gmin_index(atm_table_nt), &
-                kurucz_gmax_index(atm_table_nt)
-           integer :: castelli_gmin_index(atm_table_ntc), &
-                castelli_gmax_index(atm_table_ntc)
+! The Kurucz (atm_table_nt rows) and Kurucz/Castelli (atm_table_ntc
+! rows) surface-pressure tables, each with its former common/fac/
+! log-g edge indices. See surface_p_table.
+           type(surface_p_table) :: kurucz_surface_p, castelli_surface_p
 ! former common/atmprt/: current T-tau atmosphere integration point.
            double precision :: atm_tau, atm_log10_pressure, &
                 atm_log10_temperature, atm_log10_density, atm_opacity
@@ -69,22 +86,15 @@ module atm_table_lib
 ! 2026 (phase six, step 3 -- ROADMAP.md): evicted here from
 ! const_lib, where this table/working data had landed during the
 ! phase-one COMMON conversion; it belongs with this domain's state.
-! former common/atmos2/: the Kurucz surface-pressure table
-! (kurucz_log10_pressure_table/kurucz_teff_table/kurucz_logg_table/
-! kurucz_table_z, originally atmpl/atmtl/atmgl/atmz) and
-! atm_table_file_unit (originally ioatm) are spelled identically to
-! their canonical names -- use-associated directly.
-      double precision :: kurucz_log10_pressure_table(atm_table_nt,atm_table_ng), &
-           kurucz_teff_table(atm_table_nt), kurucz_logg_table(atm_table_ng), kurucz_table_z
+! former common/atmos2/: the table abundance kurucz_table_z
+! (originally atmz; written by atm_init for the Kurucz and the
+! Kurucz/Castelli table alike) and atm_table_file_unit (originally
+! ioatm) are spelled identically to their canonical names --
+! use-associated directly. The tables themselves (former
+! common/atmos2/ atmpl/atmtl/atmgl and common/atmos2c/ atmplc/atmtlc/
+! atmglc) are atm_table%kurucz_surface_p / castelli_surface_p above.
+      double precision :: kurucz_table_z
       integer :: atm_table_file_unit
-
-! former common/atmos2c/: the Kurucz/Castelli surface-pressure table
-! (kurucz_castelli_log10_pressure_table/kurucz_castelli_teff_table/
-! kurucz_castelli_logg_table, originally atmplc/atmtlc/atmglc) is
-! spelled identically to its canonical name everywhere -- use-associated
-! directly. Unused in core/read_input.f90.
-      double precision :: kurucz_castelli_log10_pressure_table(atm_table_ntc,atm_table_ng), &
-           kurucz_castelli_teff_table(atm_table_ntc), kurucz_castelli_logg_table(atm_table_ng)
 
 
 end module atm_table_lib

@@ -121,7 +121,6 @@ atm/envstruct_lib.o: star_info_lib.mod
 atm/tables/alfilein.o: atm_table_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
 atm/tables/alsurfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod star_info_lib.mod
 atm/tables/altabinit.o: atm_table_lib.mod luout_lib.mod math_lib.mod
-atm/tables/kcsurfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod
 atm/tables/surfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod
 atm/test/test_atm.o: atm_lib.mod atm_table_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
 atm/ttau_lib.o: math_lib.mod phys_const_lib.mod
