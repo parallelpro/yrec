@@ -13,7 +13,9 @@
 ! INPUT VARIABLES:
 ! ECOD : DIFFUSION COEFFICIENTS AT THE EQUALLY SPACED GRID POINTS.
 ! grid_spacing (DR) : GRID SPACING.
-! timestep (DT) : TIMESTEP.
+! timestep (DT) : TIMESTEP (the full step; the routine works with
+!    substep_timestep = timestep/num_substeps internally and, before
+!    2026 W2, wrote that into DT and put DT back at the end).
 ! eq_moment_of_inertia (EI) : RUN OF MOMENTS OF INERTIA OF EQUALLY
 !    SPACED GRID POINTS.
 ! eq_omega (EW) : RUN OF ANGULAR VELOCITY OF EQUALLY SPACED GRID POINTS.
@@ -21,6 +23,9 @@
 ! wind_loss_explicit (WIND1) : THE ANGULAR MOMENTUM LOSS FROM A
 !    SURFACE C.Z. COMPUTED EXPLICITILY.
 ! wind_loss_implicit (WIND2) : AS WIND1, BUT COMPUTED IMPLICITLY.
+!    Rescaled per theta iteration into the local wind_loss_implicit_iter
+!    (before 2026 W2 the rescaled value was written back into WIND2,
+!    which no caller read afterwards).
 ! *NOTE: IF NOT APPLICABLE, WIND1 AND WIND2 ARE ZEROED OUT.
 !
 ! OUTPUT VARIABLES :
@@ -69,12 +74,12 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       double precision, parameter :: tiny = 1.0d-30
 
       double precision, intent(in) :: grid_spacing
-      double precision, intent(inout) :: timestep
+      double precision, intent(in) :: timestep
       double precision, intent(in) :: eq_moment_of_inertia(json), &
            eq_omega(json)
       integer, intent(in) :: num_eq_points
       double precision, intent(in) :: wind_loss_explicit
-      double precision, intent(inout) :: wind_loss_implicit
+      double precision, intent(in) :: wind_loss_implicit
       double precision, intent(out) :: eq_delta_angular_momentum(json)
       double precision, intent(inout) :: eq_mixing_diffusion_coeff(json)
       double precision, intent(out) :: sum_delta_angular_momentum
@@ -88,13 +93,15 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       double precision :: third_order_ratio_factor(json), domega_dr(json), &
            omega_mid(json)
       double precision :: omega_mid_start(json), omega_prev_medium_iter(json), &
-           omega_prev_medium_iter_avg(json), omega_mid_prev(json), &
-           domega_dr_prev(json), omega_substep_start(json)
+           omega_substep_start(json)
       double precision :: omega_curvature(json)
 ! locals
       integer :: timestep_cut_count, num_substeps, substep_idx, &
            theta_iter_idx, coeff_iter_idx, num_equations, i, j, ii, k
-      double precision :: full_timestep, wind_loss_implicit_initial, &
+! substep_timestep: timestep/num_substeps, the step actually differenced.
+! wind_loss_implicit_iter: wind_loss_implicit rescaled to the current
+! theta iteration's surface omega.
+      double precision :: substep_timestep, wind_loss_implicit_iter, &
            substep_time_sum, total_angular_momentum_start, substep_frac, &
            wind_saturation_threshold
       double precision :: omega_capped, omega_prev_capped, &
@@ -110,15 +117,12 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
            domega_dr_velocity_term_alt, curvature_velocity_term, &
            third_deriv_velocity_term, total_velocity, total_velocity_alt, &
            mixing_diffusion_raw, wind_loss_delta_full_step
-      integer :: max_omega_change_zone, max_omega_change_total_zone, &
-           max_omega_change_medium_iter_zone
+      integer :: max_omega_change_zone, max_omega_change_total_zone
 
       ierr = 0
 
       timestep_cut_count = 0
       num_substeps = 1
-      full_timestep = timestep
-      wind_loss_implicit_initial = wind_loss_implicit
 ! STORE START OF TIMESTEP GRADIENTS AND
 ! AVERAGED OMEGAS.
       do i = 2,num_eq_points
@@ -131,24 +135,19 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       timestep_cut: do   ! (was label 5)
       substep_time_sum = 0.0d0
 ! STORE START OF TIMESTEP OMEGA VALUES
-      wind_loss_implicit = wind_loss_implicit_initial
+      wind_loss_implicit_iter = wind_loss_implicit
       total_angular_momentum_start = 0.0d0
       do i = 1,num_eq_points
          omega_working(i) = eq_omega(i)
          omega_prev_medium_iter(i) = eq_omega(i)
-         omega_prev_medium_iter_avg(i) = eq_omega(i)
          omega_substep_start(i) = eq_omega(i)
          total_angular_momentum_start = total_angular_momentum_start + &
               eq_omega(i)*eq_moment_of_inertia(i)
       end do
-      do i = 2,num_eq_points
-         omega_mid_prev(i) = omega_mid_start(i)
-         domega_dr_prev(i) = domega_dr(i)
-      end do
       do substep_idx = 1,num_substeps
-         timestep = full_timestep/dfloat(num_substeps)
-         substep_time_sum = substep_time_sum + timestep
-         substep_frac = timestep/full_timestep
+         substep_timestep = timestep/dfloat(num_substeps)
+         substep_time_sum = substep_time_sum + substep_timestep
+         substep_frac = substep_timestep/timestep
 ! LOOP FOR ITERATION ON THE D THETA/DT TERM;
 ! COEFFICIENTS UPDATED ONCE PER NNN
       do theta_iter_idx = 1,star%ctrl%max_diffusion_iters
@@ -157,7 +156,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
 ! NN.
          diffusion_converged = .false.
 ! UPDATE JDOT TERM
-         if (theta_iter_idx.gt.1 .and. wind_loss_implicit.gt.0.0d0) then
+         if (theta_iter_idx.gt.1 .and. wind_loss_implicit_iter.gt.0.0d0) then
 ! The original dadcoeft.f had an "if (LROSSBY)" Rossby-scaled
 ! saturation threshold here, but LROSSBY/PMMSOLTAU were plain
 ! never-assigned locals (not wired to COMMON/PMMWIND/), so the branch
@@ -167,7 +166,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
                  wind_saturation_threshold)
             omega_prev_capped = min(omega_working(num_eq_points), &
                  wind_saturation_threshold)
-            wind_loss_implicit = wind_loss_implicit_initial* &
+            wind_loss_implicit_iter = wind_loss_implicit* &
                  pow(omega_prev_capped/omega_capped, &
                  star%ctrl%wind_law_omega_exponent-1.0d0)* &
                  (omega_working(num_eq_points)/eq_omega(num_eq_points))
@@ -226,13 +225,13 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          rhs(ii+3) = 0.d0
       end do
 ! INCLUDE ANGULAR MOMENTUM LOSS
-      wind_loss_delta = -0.5d0*(wind_loss_explicit+wind_loss_implicit)* &
+      wind_loss_delta = -0.5d0*(wind_loss_explicit+wind_loss_implicit_iter)* &
            eq_moment_of_inertia(num_eq_points)*substep_frac
       rhs(4*num_eq_points-3) = rhs(4*num_eq_points-3)* &
            (1.0d0+wind_loss_delta/eq_moment_of_inertia(num_eq_points)/ &
            omega_substep_start(num_eq_points))
 ! GLOBAL FACTOR FOR THE DIFFUSION COEFFICIENTS
-      dt_over_dr = timestep/grid_spacing
+      dt_over_dr = substep_timestep/grid_spacing
 ! IF LDIFAD=T, WE ARE SOLVING A COMBINED DIFFUSION/ADVECTION EQUATION.
 ! THIS ADDS A TERM D/DR(RHO*R**4*V*W) TO THE ORIGINAL D/DR(RHO*R**4*
 ! V*R*DW/DR) EQUATION.  SINCE V DEPENDS ON OMEGA AND ITS FIRST THROUGH
@@ -242,7 +241,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
 !  I.E. THE ANGULAR MOMENTUM TRANSPORT AT THE FIRST SHELL DOES NOT
 !  DEPEND ON THE SHELLS BELOW IT.
       fact_over_ei = dt_over_dr/eq_moment_of_inertia(1)
-      facta_half_dt_over_ei_dr = 0.5d0*timestep/eq_moment_of_inertia(1)/ &
+      facta_half_dt_over_ei_dr = 0.5d0*substep_timestep/eq_moment_of_inertia(1)/ &
            grid_spacing
 ! ZERO OUT INITIAL COEFFICIENT MATRIX
       do i = 1,num_equations
@@ -273,7 +272,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       coeff_matrix(4,9) = -1.0d0/3.0d0
       do ii = 2,num_eq_points-1
          fact_over_ei = dt_over_dr/eq_moment_of_inertia(ii)
-         facta_half_dt_over_ei_dr = 0.5d0*timestep/ &
+         facta_half_dt_over_ei_dr = 0.5d0*substep_timestep/ &
               eq_moment_of_inertia(ii)/grid_spacing
          i = 1+(ii-1)*4
 ! OMEGA TERMS - ADVECTIVE
@@ -321,7 +320,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       end do
 !  LAST SHELL B.C. : SAME AS FIRST SHELL B.C.
       fact_over_ei = dt_over_dr/eq_moment_of_inertia(num_eq_points)
-      facta_half_dt_over_ei_dr = 0.5d0*timestep/ &
+      facta_half_dt_over_ei_dr = 0.5d0*substep_timestep/ &
            eq_moment_of_inertia(num_eq_points)/grid_spacing
       i = 4*num_eq_points - 3
 ! ZERO OUT TERMS RELATED TO D2W/DR2 AT THE EDGES
@@ -368,7 +367,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
 ! LEVEL ITERATION (NNN).
       max_omega_change_medium_iter = (rhs(1)-omega_prev_medium_iter(1))/ &
            omega_prev_medium_iter(1)
-      max_omega_change_medium_iter_zone = 1
       do i = 1,num_eq_points
          ii = 1+4*(i-1)
          eq_delta_angular_momentum(i) = (rhs(ii)-eq_omega(i))* &
@@ -389,7 +387,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          end if
          if (abs(omega_change_medium_iter).gt.abs(max_omega_change_medium_iter)) &
               then
-            max_omega_change_medium_iter_zone = i
             max_omega_change_medium_iter = omega_change_medium_iter
          end if
       end do
@@ -438,18 +435,9 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
            j=1,coeff_iter_idx)
  100  format(' MAX D(OMEGA)/OMEGA',1pe12.3,' AT PT.',i5, &
          ' BY ITERATION'/5(1x,e11.3,i4))
-      if (theta_iter_idx.le.2) then
-         do k = 1,num_eq_points
-            omega_prev_medium_iter(k) = omega_working(k)
-            omega_prev_medium_iter_avg(k) = omega_working(k)
-         end do
-      else
-         do k = 1,num_eq_points
-            omega_prev_medium_iter(k) = omega_working(k)
-            omega_prev_medium_iter_avg(k) = 0.5d0*omega_prev_medium_iter(k)+ &
-                 0.5d0*omega_working(k)
-         end do
-      end if
+      do k = 1,num_eq_points
+         omega_prev_medium_iter(k) = omega_working(k)
+      end do
       if (abs(max_omega_change_medium_iter).le.star%ctrl%convergence_tolerance .and. &
            theta_iter_idx.ge.2) then
          exit
@@ -462,11 +450,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       end do
       total_angular_momentum_start = total_angular_momentum_start+ &
            wind_loss_delta
-      do k = 2,num_eq_points
-         omega_mid_prev(k) = 0.5d0*(omega_working(k)+omega_working(k-1))
-         domega_dr_prev(k) = rot_scr%dchi_dr_edge(k)*(omega_working(k)- &
-              omega_working(k-1))/grid_spacing
-      end do
       end do
       if (.not.diffusion_converged) then
          timestep_cut_count = timestep_cut_count + 1
@@ -523,7 +506,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
               rot_scr%mixing_geometric_factor(i)
  911  format(1p10e12.3)
       end do
-      timestep = full_timestep
       wind_loss_delta_full_step = wind_loss_delta/substep_frac
       write(*,*) sum_delta_angular_momentum,wind_loss_delta_full_step
       return
