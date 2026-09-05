@@ -99,8 +99,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
            actual_gradient, central_shell_luminosity, density_estimate_offset
       integer :: first_original_shell
       double precision :: trial_log_pressure, temp_scratch
-      logical :: want_derivatives, local_conductive_opacity_flag, &
-           in_atmosphere
+      logical :: want_derivatives, in_atmosphere
       double precision :: hydrogen_fraction, metal_fraction
       double precision :: log10_pressure, log10_temperature, log10_density
       double precision :: log10_radius, log10_mass, shell_luminosity_lsun
@@ -669,7 +668,6 @@ subroutine rescale_and_refit_envelope
 ! CALL BASIC PHYSICS ROUTINES TO DETERMINE IF THE NEW LAST SHELL IS
 ! CONVECTIVE OR RADIATIVE.
              want_derivatives = .false.
-             local_conductive_opacity_flag = .false.
              in_atmosphere = .true.
              saha_state = 0
              hydrogen_fraction = star%xa(i_h1,star%nz)

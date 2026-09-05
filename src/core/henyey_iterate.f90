@@ -26,9 +26,7 @@
 subroutine henyey_iterate(delta_time, max_iterations, converged, &
      corrections_too_large, start_new_triangle, reset_triangle, &
      recompute_surface_bc, tri_orientation, stored_vertex_index, &
-     in_atmosphere, want_derivatives, mixing_active, &
-     conductive_opacity_flag, dlnrho_dlnt, dlnrho_dlnp, iterations_done, &
-     iteration_level, ierr)
+     dlnrho_dlnt, dlnrho_dlnp, iterations_done, iteration_level, ierr)
       use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, &
            n_species_basic, n_species_extended, n_lum_channels, max_convective_zones
       use luout_lib
@@ -47,8 +45,6 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       logical, intent(inout) :: recompute_surface_bc
       double precision, intent(inout) :: tri_orientation
       integer, intent(inout) :: stored_vertex_index
-      logical, intent(out) :: in_atmosphere, want_derivatives, &
-           mixing_active, conductive_opacity_flag
       double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
       integer, intent(inout) :: iterations_done
       integer, intent(in) :: iteration_level
@@ -157,9 +153,8 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        star%max_residual(4) = 0.0d0
 ! (2026 de-tramp: the star%-shaped slots are read/written by
 ! henyey_coefficients directly; only the per-call locals remain.)
-       call henyey_coefficients(delta_time,in_atmosphere, &
-            want_derivatives,mixing_active,conductive_opacity_flag, &
-            dlnrho_dlnt,dlnrho_dlnp,ksaha,envelope_zone_index, jerr)
+       call henyey_coefficients(delta_time,dlnrho_dlnt,dlnrho_dlnp,ksaha, &
+            envelope_zone_index, jerr)
        if (jerr /= 0) then
        ! 2026 (phase five, step B): propagate instead of stopping
           ierr = jerr

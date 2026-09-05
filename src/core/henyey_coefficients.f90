@@ -23,10 +23,8 @@
 ! writers read them from pt_scr afterwards. They keep the historical
 ! pt_scr names here despite those names no longer being very
 ! descriptive of their role in this file.
-subroutine henyey_coefficients(delta_time, in_atmosphere, &
-     want_derivatives, mixing_active, conductive_opacity_flag, &
-     dlnrho_dlnt, dlnrho_dlnp, saha_state, envelope_zone_index, &
-     ierr)
+subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
+     saha_state, envelope_zone_index, ierr)
       use temperature_gradients_lib
       use rotation_scratch_lib
       use henyey_eliminate_lib
@@ -45,8 +43,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
       implicit none
 
       double precision, intent(in) :: delta_time
-      logical, intent(out) :: in_atmosphere, want_derivatives, &
-           mixing_active, conductive_opacity_flag
       double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
       integer, intent(inout) :: saha_state
       integer, intent(in) :: envelope_zone_index
@@ -70,6 +66,10 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
 ! unpacked around the eos call to keep the historical inout guess
 ! chain through the caller's storage.
       double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
+! every mesh point is interior (not atmosphere) and the eos/gradient
+! derivatives are always wanted (2026 W2: formerly intent(out) flags
+! relayed up to henyey_iterate/evolve_step locals that nothing read)
+      logical, parameter :: want_derivatives = .true., in_atmosphere = .false.
       double precision :: actual_gradient, radiative_gradient, &
            dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
            convective_velocity
@@ -106,10 +106,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
             star%neutrino_flux_total(j) = 0.0d0
          end do
       end if
-      conductive_opacity_flag = .true.
-      want_derivatives = .true.
-      in_atmosphere = .false.
-      mixing_active = .false.
       compute_entropy_term = delta_time.gt.0.0d0
       if (compute_entropy_term) then
        delta_time_inv = 1.0d0/delta_time
@@ -353,7 +349,6 @@ subroutine henyey_coefficients(delta_time, in_atmosphere, &
          end if
          star%beta(im) = eos_res(i_beta)
          star%eta(im) = eos_res(i_eta)
-         star%converged_zone(im) = conductive_opacity_flag
          star%opacity_zone(im) = kap_res(i_kap)
          star%gradr(im) = radiative_gradient
          star%gradT(im) = actual_gradient

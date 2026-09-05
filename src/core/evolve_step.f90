@@ -45,10 +45,9 @@ subroutine evolve_step(model_iteration, step_status, ierr)
            iteration_level, iterations_done, max_iterations, &
            num_mixed_zones, num_mixed_zones_no_overshoot, &
            num_radiative_zones, num_species, i, j, ii, itrot, jerr
-      logical :: conductive_opacity_flag, converged, &
-           evolve_model_flag, in_atmosphere, mixing_active, &
+      logical :: converged, evolve_model_flag, &
            new_atmosphere_fit_needed, recompute_surface_bc, &
-           want_derivatives, wind_loss_active
+           wind_loss_active
 ! load-bearing: see header
       save
    ! INTENTIONAL: cross-step driver state; reset via evolve_step_reset_pending
@@ -74,14 +73,10 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          num_mixed_zones_no_overshoot = 0
          num_radiative_zones = 0
          num_species = 0
-         conductive_opacity_flag = .false.
          converged = .false.
          evolve_model_flag = .false.
-         in_atmosphere = .false.
-         mixing_active = .false.
          new_atmosphere_fit_needed = .false.
          recompute_surface_bc = .false.
-         want_derivatives = .false.
          wind_loss_active = .false.
          evolve_step_reset_pending = .false.
       end if
@@ -514,9 +509,8 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       call henyey_iterate(star%dt, max_iterations, converged, &
            star%model_diverged_flag, star%recompute_envelope_triangle, &
            star%reset_triangle, recompute_surface_bc, star%trial_sign_flag, &
-           star%istore_flag, in_atmosphere, want_derivatives, &
-           mixing_active, conductive_opacity_flag, star%dlnrho_dlnt, &
-           star%dlnrho_dlnp, iterations_done, iteration_level, ierr)
+           star%istore_flag, star%dlnrho_dlnt, star%dlnrho_dlnp, &
+           iterations_done, iteration_level, ierr)
 end subroutine solve_level
 
 ! ---------------------------------------------------------------
