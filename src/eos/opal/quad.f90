@@ -6,21 +6,23 @@
 ! original quad.f; only variable names, source form, and comment
 ! style were updated.
 !
-! Quadratic interpolation helper shared by the OPAL 1995 EOS table
-! reader (esac.f90/t6rinterp.f90). Given three (x,y) pairs, returns
-! the value of the interpolating quadratic at x. When recompute_flag
-! is 0 the quadratic's coefficients are (re)computed and cached in
-! slot cache_slot of opal_eos_lib's opal_eos%quad_* coefficient arrays;
-! otherwise the cached coefficients for that slot are reused as-is
-! (the caller is responsible for knowing the cache is still valid for
-! the grid points in question -- this is a straight transliteration
-! of the original caching scheme, not a redesign of it).
-double precision function quad(recompute_flag, cache_slot, eval_point, &
+! Quadratic interpolation helper shared by the OPAL 1995/2001/2006 EOS
+! table interpolators (esac*.f90/t6rint*.f90). Given three (x,y) pairs,
+! returns the value of the interpolating quadratic at x. When
+! recompute_flag is 0 the quadratic's coefficients are (re)computed and
+! cached in slot cache_slot of the caller's opal_quad_cache (each
+! vintage instance carries its own, opal95%quad etc.); otherwise the
+! cached coefficients for that slot are reused as-is (the caller is
+! responsible for knowing the cache is still valid for the grid points
+! in question -- this is a straight transliteration of the original
+! caching scheme, not a redesign of it).
+double precision function quad(cache, recompute_flag, cache_slot, eval_point, &
      y1, y2, y3, x1, x2, x3)
 
       use opal_eos_lib
       implicit none
 
+      type(opal_quad_cache), intent(inout) :: cache
       integer, intent(in) :: recompute_flag, cache_slot
       double precision, intent(in) :: eval_point, y1, y2, y3, x1, x2, x3
 
@@ -33,18 +35,18 @@ double precision function quad(recompute_flag, cache_slot, eval_point, &
       grid_y(2) = y2
       grid_y(3) = y3
       if (recompute_flag.eq.0) then
-         opal_eos%quad_x12_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(2))
-         opal_eos%quad_x13_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(3))
-         opal_eos%quad_x23_inv(cache_slot) = 1.0d0/(grid_x(2) - grid_x(3))
-         opal_eos%quad_x1_squared(cache_slot) = grid_x(1)*grid_x(1)
-         opal_eos%quad_x1_plus_x2(cache_slot) = grid_x(1) + grid_x(2)
+         cache%x12_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(2))
+         cache%x13_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(3))
+         cache%x23_inv(cache_slot) = 1.0d0/(grid_x(2) - grid_x(3))
+         cache%x1_squared(cache_slot) = grid_x(1)*grid_x(1)
+         cache%x1_plus_x2(cache_slot) = grid_x(1) + grid_x(2)
       end if
-      coef2 = (grid_y(1) - grid_y(2))*opal_eos%quad_x12_inv(cache_slot)
-      coef2 = coef2 - (grid_y(2) - grid_y(3))*opal_eos%quad_x23_inv(cache_slot)
-      coef2 = coef2*opal_eos%quad_x13_inv(cache_slot)
-      coef1 = (grid_y(1) - grid_y(2))*opal_eos%quad_x12_inv(cache_slot) - &
-           opal_eos%quad_x1_plus_x2(cache_slot)*coef2
-      coef0 = grid_y(1) - grid_x(1)*coef1 - opal_eos%quad_x1_squared(cache_slot)*coef2
+      coef2 = (grid_y(1) - grid_y(2))*cache%x12_inv(cache_slot)
+      coef2 = coef2 - (grid_y(2) - grid_y(3))*cache%x23_inv(cache_slot)
+      coef2 = coef2*cache%x13_inv(cache_slot)
+      coef1 = (grid_y(1) - grid_y(2))*cache%x12_inv(cache_slot) - &
+           cache%x1_plus_x2(cache_slot)*coef2
+      coef0 = grid_y(1) - grid_x(1)*coef1 - cache%x1_squared(cache_slot)*coef2
       quad = coef0 + eval_point*(coef1 + eval_point*coef2)
       return
 end function quad

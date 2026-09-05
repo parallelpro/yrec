@@ -41,17 +41,17 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          return
       end if
 !     find nearest table element in t.
-      if (t6.lt.opal_eos%t6_grid(opal_eos%t_row_index)) then
-         do t6_scan_idx = opal_eos%t_row_index+1, nt
-            if (t6.ge.opal_eos%t6_grid(t6_scan_idx)) then
-               opal_eos%t_row_index = t6_scan_idx - 1
+      if (t6.lt.opal95%t6_grid(opal95%t_row_index)) then
+         do t6_scan_idx = opal95%t_row_index+1, nt
+            if (t6.ge.opal95%t6_grid(t6_scan_idx)) then
+               opal95%t_row_index = t6_scan_idx - 1
                exit
             end if
          end do
          if (t6_scan_idx > nt) then
-         t6_top_of_table = opal_eos%t6_grid(nt)
+         t6_top_of_table = opal95%t6_grid(nt)
 !        caller should have stopped outside table bounds; error exit
-         write(*,5) t6, t6_top_of_table, opal_eos%t_row_index
+         write(*,5) t6, t6_top_of_table, opal95%t_row_index
     5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
@@ -59,16 +59,16 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          return
          end if
       else
-         do t6_scan_idx = opal_eos%t_row_index, 1, -1
-            if (t6.le.opal_eos%t6_grid(t6_scan_idx)) then
-               opal_eos%t_row_index = t6_scan_idx
+         do t6_scan_idx = opal95%t_row_index, 1, -1
+            if (t6.le.opal95%t6_grid(t6_scan_idx)) then
+               opal95%t_row_index = t6_scan_idx
                exit
             end if
          end do
          if (t6_scan_idx < (1)) then
-         t6_top_of_table = opal_eos%t6_grid(1)
+         t6_top_of_table = opal95%t6_grid(1)
 !        caller should have stopped outside table bounds; error exit
-         write(*,5) t6, t6_top_of_table, opal_eos%t_row_index
+         write(*,5) t6, t6_top_of_table, opal95%t_row_index
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
@@ -76,11 +76,11 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
          end if
       end if
 !     define table edge in rho by linear interpolation.
-      table_edge_density = opal_eos%density_edge_at_t(opal_eos%t_row_index+1)
+      table_edge_density = opal95%density_edge_at_t(opal95%t_row_index+1)
       table_edge_density = log10(table_edge_density)
 !     define beginning of ramp in the same fashion -
 !     ramp is defined as one table element wide.
-      ramp_start_density = opal_eos%density_grid(opal_eos%density_index_edge_at_t(opal_eos%t_row_index+1)-1)
+      ramp_start_density = opal95%density_grid(opal95_density_index_edge(opal95%t_row_index+1)-1)
       ramp_start_density = log10(ramp_start_density)
 !     check if within table bounds in rho
       if (log10_density.gt.table_edge_density) then
@@ -95,12 +95,12 @@ subroutine eqbound(temperature, log10_density, ramp_factor, &
 
 !     Now we check if ramping is needed.
 !     First we check if ramping in temperature is needed.
-      if (t6.le.opal_eos%t6_grid(nt-1)) then
+      if (t6.le.opal95%t6_grid(nt-1)) then
          needs_ramp = .true.
-         ramp_factor = (t6-opal_eos%t6_grid(nt))/(opal_eos%t6_grid(nt-1)-opal_eos%t6_grid(nt))
-      else if (t6.ge.opal_eos%t6_grid(2)) then
+         ramp_factor = (t6-opal95%t6_grid(nt))/(opal95%t6_grid(nt-1)-opal95%t6_grid(nt))
+      else if (t6.ge.opal95%t6_grid(2)) then
          needs_ramp = .true.
-         ramp_factor = (opal_eos%t6_grid(1)-t6)/(opal_eos%t6_grid(1)-opal_eos%t6_grid(2))
+         ramp_factor = (opal95%t6_grid(1)-t6)/(opal95%t6_grid(1)-opal95%t6_grid(2))
       else if (log10_density.ge.ramp_start_density) then
 !        If we get here, ramping in density is needed.
          needs_ramp = .true.

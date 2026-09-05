@@ -57,7 +57,7 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       if (t_million_k.lt.0.001870d0 .or. t_million_k.gt.200.0d0) return 1
       hydrogen_fraction_work = hydrogen_fraction
 
-      density_cgs = rhoofp06(hydrogen_fraction_work, t_million_k, p_e12, &
+      density_cgs = rhoofp06(opal06, hydrogen_fraction_work, t_million_k, p_e12, &
            rad_flag, ierr)
       if (ierr /= 0) return
       if (density_cgs.le.-998.0d0) then
@@ -66,18 +66,18 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       density = density_cgs
       log10_density = log10(density)
 
-      call esac06(hydrogen_fraction_work, t_million_k, density_cgs, &
+      call esac06(opal06, hydrogen_fraction_work, t_million_k, density_cgs, &
            deriv_order, rad_flag, ierr, *999)
       if (ierr /= 0) return
 
 
-      dlnrho_dlnp = 1.0d0/opal_eos%eos_output_06(i_opal_chi_rho)               ! O2006 EOS(6) is dlogP/dlogRho at const T6
-      dlnrho_dlnt = -opal_eos%eos_output_06(i_opal_chi_t)/opal_eos%eos_output_06(i_opal_chi_rho)       ! O2006 EOS(7) is dlogp/dlogT6 at const Rho
-      specific_heat_cp = 1.0d6*opal_eos%eos_output_06(i_opal_cv)*opal_eos%eos_output_06(i_opal_gamma1)/opal_eos%eos_output_06(i_opal_chi_rho)
+      dlnrho_dlnp = 1.0d0/opal06%eos_output(i_opal_chi_rho)               ! O2006 EOS(6) is dlogP/dlogRho at const T6
+      dlnrho_dlnt = -opal06%eos_output(i_opal_chi_t)/opal06%eos_output(i_opal_chi_rho)       ! O2006 EOS(7) is dlogp/dlogT6 at const Rho
+      specific_heat_cp = 1.0d6*opal06%eos_output(i_opal_cv)*opal06%eos_output(i_opal_gamma1)/opal06%eos_output(i_opal_chi_rho)
                                       ! O2006 EOS(5) is the specific heat. dE/dT6
                                       !              at const Vol
                                       ! O2006 EOS(8) is gamma1
-      adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(i_opal_gamma2_ratio)         ! O2006 EOS(9) is gamma2/(gamma2-1)
+      adiabatic_gradient = 1.0d0/opal06%eos_output(i_opal_gamma2_ratio)         ! O2006 EOS(9) is gamma2/(gamma2-1)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)

@@ -42,6 +42,7 @@ program test_eos
       use opacity_table_lib
       use yale_eos_lib
       use scv_eos_lib
+      use opal_eos_lib, only: opal06
       implicit none
       integer :: gerr
 
@@ -318,7 +319,7 @@ program test_eos
            qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
            lderiv, latmo, ksaha, ierr=eos_ierr)
       write(*,'(a,i4)') "err facade-success ierr = ", eos_ierr
-      call esac06(0.70d0, 2.0d0, 0.1d0, 9, 2, eos_ierr, *300)
+      call esac06(opal06, 0.70d0, 2.0d0, 0.1d0, 9, 2, eos_ierr, *300)
   300 continue
       write(*,'(a,i4)') "err bad-rad-flag   ierr = ", eos_ierr
 

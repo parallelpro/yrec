@@ -188,7 +188,7 @@ eos/opal/t6rinterp.o: luout_lib.mod opal_eos_lib.mod
 eos/scv/eqscve.o: eos_mixture_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod
 eos/scv/eqscvg.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod
 eos/scv/scv_envelope_table.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod
-eos/test/test_eos.o: eos_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
+eos/test/test_eos.o: eos_lib.mod luout_lib.mod opacity_table_lib.mod opal_eos_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
 eos/yale/fully_ionized_eos.o: luout_lib.mod math_lib.mod phys_const_lib.mod yale_eos_lib.mod
 eos/yale/saha_eos.o: luout_lib.mod math_lib.mod phys_const_lib.mod
 io/check_controls.o: luout_lib.mod star_info_lib.mod

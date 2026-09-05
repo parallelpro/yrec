@@ -12,7 +12,7 @@
 ! result (see eqstat2.f90's use_opal2006_eos branch, which calls this
 ! immediately after oeqos06). Unlike eqbound/eqbound01 (1995/2001),
 ! this version tracks the table's ragged edge via per-row/per-column
-! index arrays (opal_eos%t6_index_lo_06/opal_eos%density_index_edge_06) rather than a single
+! index arrays (opal06_t6_index_lo/opal06_density_index_edge) rather than a single
 ! linear-interpolated edge value.
 subroutine eqbound06(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
@@ -36,7 +36,7 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
       density = pow(10d0, log10_density)
 
 !     Exit if outside table in rho
-      if ((density.lt.opal_eos%density_grid_06(1)) .or. (density.ge.opal_eos%density_grid_06(nr))) then
+      if ((density.lt.opal06%density_grid(1)) .or. (density.ge.opal06%density_grid(nr))) then
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
@@ -44,7 +44,7 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
       end if
 
 !     Exit if outside table in T6
-      if ((t6.gt.opal_eos%t6_grid_06(1)) .or. (t6.le.opal_eos%t6_grid_06(nt))) then
+      if ((t6.gt.opal06%t6_grid(1)) .or. (t6.le.opal06%t6_grid(nt))) then
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
@@ -59,77 +59,77 @@ subroutine eqbound06(temperature, log10_density, ramp_factor, &
                                    ! i.e. we are not in the border of the table.
 
 !     Check for easy borders
-      if (t6.gt.opal_eos%t6_grid_06(2)) then
-          t6_ramp_factor = (t6-opal_eos%t6_grid_06(1))/(opal_eos%t6_grid_06(2)-opal_eos%t6_grid_06(1)) ! Ramp in temperature
+      if (t6.gt.opal06%t6_grid(2)) then
+          t6_ramp_factor = (t6-opal06%t6_grid(1))/(opal06%t6_grid(2)-opal06%t6_grid(1)) ! Ramp in temperature
           needs_ramp = .true.
       end if
-      if (density.lt.opal_eos%density_grid_06(2)) then
-          density_ramp_factor = (density - opal_eos%density_grid_06(1))/ &
-               (opal_eos%density_grid_06(2)-opal_eos%density_grid_06(1)) ! Ramp in density
+      if (density.lt.opal06%density_grid(2)) then
+          density_ramp_factor = (density - opal06%density_grid(1))/ &
+               (opal06%density_grid(2)-opal06%density_grid(1)) ! Ramp in density
           needs_ramp = .true.
       end if
 
-!     Find a t6_row such that opal_eos%t6_grid_06(t6_row-1) >= T6 > opal_eos%t6_grid_06(t6_row)
-!     and a density_row such that opal_eos%density_grid_06(density_row-1) < D <=
-!     opal_eos%density_grid_06(density_row)
-!     The ESAC06 variables (k=)opal_eos%t6_index_3_06 and (l-)opal_eos%density_index_2_06 are
+!     Find a t6_row such that opal06%t6_grid(t6_row-1) >= T6 > opal06%t6_grid(t6_row)
+!     and a density_row such that opal06%density_grid(density_row-1) < D <=
+!     opal06%density_grid(density_row)
+!     The ESAC06 variables (k=)opal06%t6_index_3 and (l-)opal06%density_index_2 are
 !     close to what we need. A linear search will work fine.
-      t6_row = opal_eos%t6_index_3_06
-   do while (t6.le.opal_eos%t6_grid_06(t6_row))
+      t6_row = opal06%t6_index_3
+   do while (t6.le.opal06%t6_grid(t6_row))
         t6_row = t6_row+1
    end do
-   do while (t6.gt.opal_eos%t6_grid_06(t6_row-1))
+   do while (t6.gt.opal06%t6_grid(t6_row-1))
         t6_row = t6_row-1
    end do
-!     We now have: opal_eos%t6_grid_06(t6_row-1) >= T6 > opal_eos%t6_grid_06(t6_row)
+!     We now have: opal06%t6_grid(t6_row-1) >= T6 > opal06%t6_grid(t6_row)
 
-      density_row = opal_eos%density_index_2_06
-   do while (density.gt.opal_eos%density_grid_06(density_row))
+      density_row = opal06%density_index_2
+   do while (density.gt.opal06%density_grid(density_row))
         density_row = density_row+1
    end do
-   do while (density.le.opal_eos%density_grid_06(density_row-1))
+   do while (density.le.opal06%density_grid(density_row-1))
         density_row = density_row-1
    end do
-!     We now have: opal_eos%density_grid_06(density_row-1) < D <= opal_eos%density_grid_06(density_row)
+!     We now have: opal06%density_grid(density_row-1) < D <= opal06%density_grid(density_row)
 
-!     For a given temperature in array opal_eos%t6_grid_06 with index t6_row, e.g.,
-!     opal_eos%t6_grid_06(t6_row), element opal_eos%density_index_edge_06(t6_row) of array
-!     opal_eos%density_index_edge_06 contains the index to the max allowed density
-!     in array opal_eos%density_grid_06. So, for a given opal_eos%t6_grid_06(t6_row), the
-!     associated D must be less than opal_eos%density_grid_06(opal_eos%density_index_edge_06(t6_row)).
-!     A valid index in array opal_eos%density_grid_06 must be less than or equal
-!     to opal_eos%density_index_edge_06(t6_row)
+!     For a given temperature in array opal06%t6_grid with index t6_row, e.g.,
+!     opal06%t6_grid(t6_row), element opal06_density_index_edge(t6_row) of array
+!     opal06_density_index_edge contains the index to the max allowed density
+!     in array opal06%density_grid. So, for a given opal06%t6_grid(t6_row), the
+!     associated D must be less than opal06%density_grid(opal06_density_index_edge(t6_row)).
+!     A valid index in array opal06%density_grid must be less than or equal
+!     to opal06_density_index_edge(t6_row)
 
-      if (density_row.gt.opal_eos%density_index_edge_06(t6_row)) then
+      if (density_row.gt.opal06_density_index_edge(t6_row)) then
         in_opal_table = .false.
         needs_ramp = .true.
         ramp_factor = 0d0
         return
       end if
-      if (density_row.eq.opal_eos%density_index_edge_06(t6_row)) then
+      if (density_row.eq.opal06_density_index_edge(t6_row)) then
         needs_ramp = .true.
-        density_ramp_factor = (opal_eos%density_grid_06(density_row)-density)/ &
-             (opal_eos%density_grid_06(density_row)-opal_eos%density_grid_06(density_row-1))
+        density_ramp_factor = (opal06%density_grid(density_row)-density)/ &
+             (opal06%density_grid(density_row)-opal06%density_grid(density_row-1))
       end if
 
-!     For a given density in array opal_eos%density_grid_06 with index density_row,
-!     i.e., opal_eos%density_grid_06(density_row), element opal_eos%t6_index_lo_06(density_row)
-!     of array opal_eos%t6_index_lo_06 contains the index to the min allowed
-!     temperature in array opal_eos%t6_grid_06. So for a given
-!     opal_eos%density_grid_06(density_row), the associated T6 must be greater
-!     than opal_eos%t6_grid_06(opal_eos%t6_index_lo_06(density_row)). (Note that opal_eos%t6_grid_06 is a
-!     decreasing array.) A valid index in opal_eos%t6_grid_06 must be less than or
-!     equal to opal_eos%t6_index_lo_06(density_row).
+!     For a given density in array opal06%density_grid with index density_row,
+!     i.e., opal06%density_grid(density_row), element opal06_t6_index_lo(density_row)
+!     of array opal06_t6_index_lo contains the index to the min allowed
+!     temperature in array opal06%t6_grid. So for a given
+!     opal06%density_grid(density_row), the associated T6 must be greater
+!     than opal06%t6_grid(opal06_t6_index_lo(density_row)). (Note that opal06%t6_grid is a
+!     decreasing array.) A valid index in opal06%t6_grid must be less than or
+!     equal to opal06_t6_index_lo(density_row).
 
-      if (t6_row.gt.opal_eos%t6_index_lo_06(density_row)) then
+      if (t6_row.gt.opal06_t6_index_lo(density_row)) then
         in_opal_table = .false.
         needs_ramp = .true.
         ramp_factor = 0d0
         return
       end if
-      if (t6_row.eq.opal_eos%t6_index_lo_06(density_row)) then
+      if (t6_row.eq.opal06_t6_index_lo(density_row)) then
         needs_ramp = .true.
-        t6_ramp_factor = (t6-opal_eos%t6_grid_06(t6_row))/(opal_eos%t6_grid_06(t6_row-1)-opal_eos%t6_grid_06(t6_row))
+        t6_ramp_factor = (t6-opal06%t6_grid(t6_row))/(opal06%t6_grid(t6_row-1)-opal06%t6_grid(t6_row))
       end if
 
       ramp_factor = density_ramp_factor * t6_ramp_factor

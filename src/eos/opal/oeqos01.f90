@@ -57,7 +57,7 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
       if (t_million_k.lt.0.0020d0 .or. t_million_k.gt.100.0d0) return 1
       hydrogen_fraction_work = hydrogen_fraction
 
-      density_cgs = rhoofp01(hydrogen_fraction_work, t_million_k, p_e12, &
+      density_cgs = rhoofp01(opal01, hydrogen_fraction_work, t_million_k, p_e12, &
            rad_flag, ierr)
       if (ierr /= 0) return
       if (density_cgs.le.-998.0d0) then
@@ -66,17 +66,17 @@ subroutine oeqos01(log10_temperature, temperature, log10_pressure, &
       density = density_cgs
       log10_density = log10(density)
 
-      call esac01(hydrogen_fraction_work, t_million_k, density_cgs, &
+      call esac01(opal01, hydrogen_fraction_work, t_million_k, density_cgs, &
            deriv_order, rad_flag, ierr, *999)
       if (ierr /= 0) return
 
 ! The 2001 tables carry no dE/dRho slot, so the slot numbers are one
 ! lower than in oeqos.f90/oeqos06.f90 (see esac01.f90's header).
-      dlnrho_dlnp = 1.0d0/opal_eos%eos_output_01(i_opal01_chi_rho)
-      dlnrho_dlnt = -opal_eos%eos_output_01(i_opal01_chi_t)/opal_eos%eos_output_01(i_opal01_chi_rho)
+      dlnrho_dlnp = 1.0d0/opal01%eos_output(i_opal01_chi_rho)
+      dlnrho_dlnt = -opal01%eos_output(i_opal01_chi_t)/opal01%eos_output(i_opal01_chi_rho)
 
-      specific_heat_cp = 1.0d6*opal_eos%eos_output_01(i_opal01_cv)*opal_eos%eos_output_01(i_opal01_gamma1)/opal_eos%eos_output_01(i_opal01_chi_rho)
-      adiabatic_gradient = 1.0d0/opal_eos%eos_output_01(i_opal01_gamma2_ratio)
+      specific_heat_cp = 1.0d6*opal01%eos_output(i_opal01_cv)*opal01%eos_output(i_opal01_gamma1)/opal01%eos_output(i_opal01_chi_rho)
+      adiabatic_gradient = 1.0d0/opal01%eos_output(i_opal01_gamma2_ratio)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)

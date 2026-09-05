@@ -55,7 +55,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       rad_flag = 1
       deriv_order = 10
 
-      density_cgs = rhoofp(hydrogen_fraction_work, t_million_k, p_e12, rad_flag, ierr)
+      density_cgs = rhoofp(opal95, hydrogen_fraction_work, t_million_k, p_e12, rad_flag, ierr)
       if (ierr /= 0) return
       if (density_cgs.le.-998.0d0) then
          return 1
@@ -63,22 +63,22 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
       density = density_cgs
       log10_density = log10(density)
 
-      call esac(hydrogen_fraction_work, t_million_k, density_cgs, &
+      call esac(opal95, hydrogen_fraction_work, t_million_k, density_cgs, &
            deriv_order, rad_flag, ierr, *999)
       if (ierr /= 0) return
 
-      if (abs((p_e12-opal_eos%eos_output(i_opal_p))/p_e12).gt.0.5d-6) then
-         write(run_log_unit,*) p_e12, opal_eos%eos_output(i_opal_p)
+      if (abs((p_e12-opal95%eos_output(i_opal_p))/p_e12).gt.0.5d-6) then
+         write(run_log_unit,*) p_e12, opal95%eos_output(i_opal_p)
          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
-      dlnrho_dlnp = 1.0d0/opal_eos%eos_output(i_opal_chi_rho)
-      dlnrho_dlnt = -opal_eos%eos_output(i_opal_chi_t)/opal_eos%eos_output(i_opal_chi_rho)
+      dlnrho_dlnp = 1.0d0/opal95%eos_output(i_opal_chi_rho)
+      dlnrho_dlnt = -opal95%eos_output(i_opal_chi_t)/opal95%eos_output(i_opal_chi_rho)
 
-      specific_heat_cp = 1.0d6*opal_eos%eos_output(i_opal_cv)*opal_eos%eos_output(i_opal_gamma1)/opal_eos%eos_output(i_opal_chi_rho)
-      adiabatic_gradient = 1.0d0/opal_eos%eos_output(i_opal_gamma2_ratio)
+      specific_heat_cp = 1.0d6*opal95%eos_output(i_opal_cv)*opal95%eos_output(i_opal_gamma1)/opal95%eos_output(i_opal_chi_rho)
+      adiabatic_gradient = 1.0d0/opal95%eos_output(i_opal_gamma2_ratio)
 
       beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)

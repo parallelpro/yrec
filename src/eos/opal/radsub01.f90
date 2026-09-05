@@ -17,11 +17,13 @@
 ! molar_specific_heat calculation isn't accurate enough to give
 ! accurate gammas directly via the eq. 16.16 Landau & Lifshitz route
 ! (marked "DIRECT" below) when radiation dominates.
-subroutine radsub01(t6_temperature, density, total_moles, &
+subroutine radsub01(v, t6_temperature, density, total_moles, &
      mean_molecular_weight)
 
       use opal_eos_lib
       implicit none
+
+      type(opal_eos_vintage), intent(inout) :: v
 
       double precision, intent(in) :: t6_temperature, density
       double precision, intent(in) :: total_moles
@@ -51,14 +53,14 @@ subroutine radsub01(t6_temperature, density, total_moles, &
       radiation_entropy = 4.0d0/3.0d0*radiation_energy/t6_temperature   ! Mb-cc/(gm-unit T6)
 
 !-----Calculate EOS without radiation correction
-      total_pressure = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_p))
-      total_energy = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_e))
-      total_entropy = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_s))
-      chi_rho = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_chi_rho))*opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_p))/ &
+      total_pressure = v%eos_output(v%eos_index_inverse(i_opal01_p))
+      total_energy = v%eos_output(v%eos_index_inverse(i_opal01_e))
+      total_entropy = v%eos_output(v%eos_index_inverse(i_opal01_s))
+      chi_rho = v%eos_output(v%eos_index_inverse(i_opal01_chi_rho))*v%eos_output(v%eos_index_inverse(i_opal01_p))/ &
            total_pressure
-      chi_t6 = (opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_p))*opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_chi_t)))/ &
+      chi_t6 = (v%eos_output(v%eos_index_inverse(i_opal01_p))*v%eos_output(v%eos_index_inverse(i_opal01_chi_t)))/ &
            total_pressure
-      molar_specific_heat = (opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_cv))*moles_per_ev/ &
+      molar_specific_heat = (v%eos_output(v%eos_index_inverse(i_opal01_cv))*moles_per_ev/ &
            mean_molecular_weight)
       gamma3_minus1_norad = total_pressure*chi_t6/(molar_specific_heat*density* &
            t6_temperature)
@@ -67,14 +69,14 @@ subroutine radsub01(t6_temperature, density, total_moles, &
 !---- End  no radiation calculation
 
 !---- Calculate EOS with radiation calculation
-      total_pressure = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_p)) + radiation_pressure
-      total_energy = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_e)) + radiation_energy
-      total_entropy = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_s)) + radiation_entropy
-      chi_rho = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_chi_rho))*opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_p))/ &
+      total_pressure = v%eos_output(v%eos_index_inverse(i_opal01_p)) + radiation_pressure
+      total_energy = v%eos_output(v%eos_index_inverse(i_opal01_e)) + radiation_energy
+      total_entropy = v%eos_output(v%eos_index_inverse(i_opal01_s)) + radiation_entropy
+      chi_rho = v%eos_output(v%eos_index_inverse(i_opal01_chi_rho))*v%eos_output(v%eos_index_inverse(i_opal01_p))/ &
            total_pressure
-      chi_t6 = (opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_p))*opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_chi_t)) &
+      chi_t6 = (v%eos_output(v%eos_index_inverse(i_opal01_p))*v%eos_output(v%eos_index_inverse(i_opal01_chi_t)) &
            + 4.0d0*radiation_pressure)/total_pressure
-      molar_specific_heat = (opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_cv))*moles_per_ev/ &
+      molar_specific_heat = (v%eos_output(v%eos_index_inverse(i_opal01_cv))*moles_per_ev/ &
            mean_molecular_weight + 4.0d0*radiation_energy/t6_temperature)
       gamma3_minus1 = total_pressure*chi_t6/(molar_specific_heat*density* &
            t6_temperature)                                        ! DIRECT
@@ -86,20 +88,20 @@ subroutine radsub01(t6_temperature, density, total_moles, &
 !     fully-ionized, and has no radiation correction
 !     cvt=(eos(5)*molenak/tmass+4.*er/t6)
 !    x  /molenak
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_p)) = total_pressure
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_e)) = total_energy
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_s)) = total_entropy
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_cv)) = molar_specific_heat
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_chi_rho)) = chi_rho
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_chi_t)) = chi_t6
+      v%eos_output(v%eos_index_inverse(i_opal01_p)) = total_pressure
+      v%eos_output(v%eos_index_inverse(i_opal01_e)) = total_energy
+      v%eos_output(v%eos_index_inverse(i_opal01_s)) = total_entropy
+      v%eos_output(v%eos_index_inverse(i_opal01_cv)) = molar_specific_heat
+      v%eos_output(v%eos_index_inverse(i_opal01_chi_rho)) = chi_rho
+      v%eos_output(v%eos_index_inverse(i_opal01_chi_t)) = chi_t6
 !-----Add difference between EOS with and without radiation.  cvtt
 !       calculation is not accurate enough to give accurate results using
 !       eq. 16.16 Landau&Lifshitz (SEE line labeled DIRECT)
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_gamma1)) = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_gamma1)) + &
+      v%eos_output(v%eos_index_inverse(i_opal01_gamma1)) = v%eos_output(v%eos_index_inverse(i_opal01_gamma1)) + &
            gamma1 - gamma1_norad
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_gamma2_ratio)) = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_gamma2_ratio)) + &
+      v%eos_output(v%eos_index_inverse(i_opal01_gamma2_ratio)) = v%eos_output(v%eos_index_inverse(i_opal01_gamma2_ratio)) + &
            gamma2_over_gamma2_minus1 - gamma2_over_gamma2_minus1_norad
-      opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_gamma3m1)) = opal_eos%eos_output_01(opal_eos%eos_index_inverse_01(i_opal01_gamma3m1)) + &
+      v%eos_output(v%eos_index_inverse(i_opal01_gamma3m1)) = v%eos_output(v%eos_index_inverse(i_opal01_gamma3m1)) + &
            gamma3_minus1 - gamma3_minus1_norad
       return
 end subroutine radsub01

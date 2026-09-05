@@ -7,7 +7,7 @@
 ! style were updated.
 !
 ! Adds the radiation-pressure/energy/entropy correction to the OPAL
-! 1995 EOS values already in opal_eos%eos_output, and recomputes
+! 1995 EOS values already in v%eos_output, and recomputes
 ! the derived thermodynamic derivatives (chi_rho, chi_t6, gamma1,
 ! gamma2/(gamma2-1), gamma3-1) including that correction. Called from
 ! esac.f90 when rad_flag=1.
@@ -21,11 +21,13 @@
 ! bars = Mb. sigma (Stefan-Boltzmann) = 5.67051e-5 erg/(s cm**2 K**4),
 ! c = 2.99792458e10 cm/sec; rad_const_over_c = sigma/c, converted to
 ! units of 1e6 K (T6) via *1e24.
-subroutine radsub(t6_temperature, density, total_moles, &
+subroutine radsub(v, t6_temperature, density, total_moles, &
      mean_molecular_weight)
 
       use opal_eos_lib
       implicit none
+
+      type(opal_eos_vintage95), intent(inout) :: v
 
       double precision, intent(in) :: t6_temperature, density
       double precision, intent(in) :: total_moles
@@ -50,14 +52,14 @@ subroutine radsub(t6_temperature, density, total_moles, &
       radiation_pressure = 4.0d0/3.0d0*rad_const_over_c*t6_temperature**4   ! Mb
       radiation_energy = 3.0d0*radiation_pressure/density   ! Mb-cc/gm
       radiation_entropy = 4.0d0/3.0d0*radiation_energy/t6_temperature   ! Mb-cc/(gm-unit T6)
-      total_pressure = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_p)) + radiation_pressure
-      total_energy = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_e)) + radiation_energy
-      total_entropy = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_s)) + radiation_entropy
-      chi_rho = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_chi_rho))*opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_p))/ &
+      total_pressure = v%eos_output(v%eos_index_inverse(i_opal_p)) + radiation_pressure
+      total_energy = v%eos_output(v%eos_index_inverse(i_opal_e)) + radiation_energy
+      total_entropy = v%eos_output(v%eos_index_inverse(i_opal_s)) + radiation_entropy
+      chi_rho = v%eos_output(v%eos_index_inverse(i_opal_chi_rho))*v%eos_output(v%eos_index_inverse(i_opal_p))/ &
            total_pressure
-      chi_t6 = (opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_p))*opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_chi_t)) &
+      chi_t6 = (v%eos_output(v%eos_index_inverse(i_opal_p))*v%eos_output(v%eos_index_inverse(i_opal_chi_t)) &
            + 4.0d0*radiation_pressure)/total_pressure
-      molar_specific_heat = (opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_cv))*moles_per_ev/ &
+      molar_specific_heat = (v%eos_output(v%eos_index_inverse(i_opal_cv))*moles_per_ev/ &
            mean_molecular_weight + 4.0d0*radiation_energy/t6_temperature)
       gamma3_minus1 = total_pressure*chi_t6/(molar_specific_heat*density* &
            t6_temperature)
@@ -68,7 +70,7 @@ subroutine radsub(t6_temperature, density, total_moles, &
 !     fully-ionized, and has no radiation correction
 !     cvt=(eos(5)*molenak/tmass+4.*er/t6)
 !    x  /molenak
-      de_drho_at_t = opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_dedrho)) - radiation_energy/density
+      de_drho_at_t = v%eos_output(v%eos_index_inverse(i_opal_dedrho)) - radiation_energy/density
       unit_ratio = unit_factor/unit_factor_legacy
       total_pressure = total_pressure*unit_ratio
 ! MHP 10/02 EN is never used; should this be ET=ET*REVISE???
@@ -76,15 +78,15 @@ subroutine radsub(t6_temperature, density, total_moles, &
       total_entropy = total_entropy*unit_ratio
 ! DEDRHOA is never used; should this be DEDRHOAT=DEDRHOAT*REVISE????
 !      DEDRHOA=DEDRHOA*REVISE
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_p)) = total_pressure
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_e)) = total_energy
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_s)) = total_entropy
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_dedrho)) = de_drho_at_t
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_cv)) = molar_specific_heat
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_chi_rho)) = chi_rho
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_chi_t)) = chi_t6
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_gamma1)) = gamma1
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_gamma2_ratio)) = gamma2_over_gamma2_minus1
-      opal_eos%eos_output(opal_eos%eos_index_inverse(i_opal_gamma3m1)) = gamma3_minus1
+      v%eos_output(v%eos_index_inverse(i_opal_p)) = total_pressure
+      v%eos_output(v%eos_index_inverse(i_opal_e)) = total_energy
+      v%eos_output(v%eos_index_inverse(i_opal_s)) = total_entropy
+      v%eos_output(v%eos_index_inverse(i_opal_dedrho)) = de_drho_at_t
+      v%eos_output(v%eos_index_inverse(i_opal_cv)) = molar_specific_heat
+      v%eos_output(v%eos_index_inverse(i_opal_chi_rho)) = chi_rho
+      v%eos_output(v%eos_index_inverse(i_opal_chi_t)) = chi_t6
+      v%eos_output(v%eos_index_inverse(i_opal_gamma1)) = gamma1
+      v%eos_output(v%eos_index_inverse(i_opal_gamma2_ratio)) = gamma2_over_gamma2_minus1
+      v%eos_output(v%eos_index_inverse(i_opal_gamma3m1)) = gamma3_minus1
       return
 end subroutine radsub

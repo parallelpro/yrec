@@ -401,15 +401,15 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          x_local = hydrogen_fraction
          t6_local = temperature_1e6k
          d_local = density
-         call esac06(x_local, t6_local, d_local, eos_interp_order, &
+         call esac06(opal06, x_local, t6_local, d_local, eos_interp_order, &
               eos_rad_flag, jerr, *100)
          if (jerr /= 0) then
             ierr = jerr
             return
          end if
   100    continue
-         gamma1 = opal_eos%eos_output_06(i_opal_gamma1)
-         adiabatic_gradient = 1.0d0/opal_eos%eos_output_06(i_opal_gamma2_ratio)
+         gamma1 = opal06%eos_output(i_opal_gamma1)
+         adiabatic_gradient = 1.0d0/opal06%eos_output(i_opal_gamma2_ratio)
       else
          x_local = hydrogen_fraction
          temperature_local = temperature_1e6k*1.0d6
