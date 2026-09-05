@@ -7,7 +7,9 @@
 ! style were updated.
 !
 ! OPAL 2001 EOS analogue of gmass.f90 (see there for the general
-! description); called from esac01.f90. Note the difference from
+! description); called from esac01.f90 and, since the 2026 W3
+! readability pass removed the identical gmass06.f90 copy, from
+! esac06.f90 as well. Note the difference from
 ! gmass.f90: here the function accumulator starts at 0, so the
 ! electron-mass term (electron_mole_excess*atomic_weight(1) in gmass)
 ! is not included. Preserved verbatim rather than "fixed".

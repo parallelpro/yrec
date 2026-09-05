@@ -61,7 +61,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       double precision :: pressure_scale
       double precision :: total_moles, ground_state_energy, &
            metal_mole_fraction, mean_molecular_weight
-      double precision, external :: quad, gmass06
+      double precision, external :: quad, gmass01
 
       integer, intent(out) :: ierr
 
@@ -379,7 +379,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       if (v%eos_index_inverse(i_opal_e) <= deriv_order) &
            v%eos_output(v%eos_index_inverse(i_opal_e)) = v%eos_output(v%eos_index_inverse(i_opal_e))* &
            t6_temperature   ! interpolated in E/T6
-      mean_molecular_weight = gmass06(hydrogen_fraction, opal_eos%table_metal_fraction(iv_opal06), &
+      mean_molecular_weight = gmass01(hydrogen_fraction, opal_eos%table_metal_fraction(iv_opal06), &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_number_fraction)
       if (rad_flag.eq.1) then
