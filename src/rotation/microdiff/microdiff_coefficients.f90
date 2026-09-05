@@ -36,6 +36,8 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
      atomic_charge_diffused, species_col, ierr)
       use microdiff_mte_lib, only: microdiff_grid
       use star_info_lib, only: star, json
+      use species_table_lib, only: thoul_h1, thoul_he4, thoul_electron, &
+           thoul_col_h, thoul_col_he, thoul_col_metal, thoul_col_electron
       use phys_const_lib
       use math_lib
       implicit none
@@ -68,25 +70,25 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
 
       ierr = 0
 ! SET UP THE ATOMIC WEIGHT AND CHARGE MATRICIES
-      atomic_weight(1) = 1.008d0
-      atomic_weight(2) = 4.004d0
-      atomic_weight(3) = atomic_weight_diffused
-      atomic_weight(4) = m_electron_amu
-      atomic_charge(1) = 1.0d0
-      atomic_charge(2) = 2.0d0
-      atomic_charge(3) = atomic_charge_diffused
-      atomic_charge(4) = -1.0d0
+      atomic_weight(thoul_col_h) = thoul_h1%weight
+      atomic_weight(thoul_col_he) = thoul_he4%weight
+      atomic_weight(thoul_col_metal) = atomic_weight_diffused
+      atomic_weight(thoul_col_electron) = thoul_electron%weight
+      atomic_charge(thoul_col_h) = thoul_h1%charge
+      atomic_charge(thoul_col_he) = thoul_he4%charge
+      atomic_charge(thoul_col_metal) = atomic_charge_diffused
+      atomic_charge(thoul_col_electron) = thoul_electron%charge
 ! SET LN_LAMBDA.
       ln_lambda = 2.2
 ! CALCULATE DIFFUSION COEFFICIENTS FOR EACH LAYER.
       do i = 1,num_eq_points
-         mass_frac(1) = species_fraction(1,i)
-         mass_frac(2) = species_fraction(2,i)
-         mass_frac(3) = species_fraction(3,i)
+         mass_frac(thoul_col_h) = species_fraction(thoul_col_h,i)
+         mass_frac(thoul_col_he) = species_fraction(thoul_col_he,i)
+         mass_frac(thoul_col_metal) = species_fraction(thoul_col_metal,i)
 ! make sure XFRAC = 0.0 isn't used for diff coefficients
-         if (mass_frac(1).lt.1.0d-24) mass_frac(1) = 1.0d-24
-         if (mass_frac(2).lt.1.0d-24) mass_frac(2) = 1.0d-24
-         if (mass_frac(3).lt.1.0d-24) mass_frac(3) = 1.0d-24
+         if (mass_frac(thoul_col_h).lt.1.0d-24) mass_frac(thoul_col_h) = 1.0d-24
+         if (mass_frac(thoul_col_he).lt.1.0d-24) mass_frac(thoul_col_he) = 1.0d-24
+         if (mass_frac(thoul_col_metal).lt.1.0d-24) mass_frac(thoul_col_metal) = 1.0d-24
 !        calculate concentrations from mass fractions:
          zxa=0.d0
          do ii=1,num_species-1
@@ -97,7 +99,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
          enddo
          concen(num_species)=1.d0
 !        save the hydrogen concentration when X is diffused.
-         if(species_col.eq.1) hydrogen_concen(i) = concen(1)
+         if(species_col.eq.thoul_col_h) hydrogen_concen(i) = concen(thoul_col_h)
 !        now check whether the Thoul routine must be run. if not,
 !        write COD1 = COD2 = 0. If its the first shell in the depleted
 !        zone, permit the calculations so that AD is correct.
@@ -158,17 +160,17 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
 !        JvS 01/26 Added support for FGRY and FGRZ modifications
 !        to diffusion coefficients.
          fac=hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
-         if(species_col.eq.1)then
+         if(species_col.eq.thoul_col_h)then
             fac=star%ctrl%fgry*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          endif
-         if(species_col.eq.3)then
+         if(species_col.eq.thoul_col_metal)then
             fac=star%job%fgrz*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          endif
 !        collect the first diffusion terms for hydroden.
 !        collect the third diffusion terms for everything else.
          ap = -pressure_coeff(species_col)
          at = -temp_coeff(species_col)*grid%del_grad(i)
-         ah = -conc_coeff(species_col,1)
+         ah = -conc_coeff(species_col,thoul_col_h)
          ad = -conc_coeff(species_col,species_col)
 !        store the numbers so the hydrogen gradient can finish
 !        being calculated; then use them later.
@@ -200,7 +202,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
 !        only calculate the gradient on the hydrogen call.
 !        set the gradient at first and last points to 0.
 !
-         if(species_col.eq.1)then
+         if(species_col.eq.thoul_col_h)then
             dlncdr = 1.0
             if (i.eq.1) then
                dlncdr = 0.0

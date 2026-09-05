@@ -34,7 +34,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
       use luout_lib
       implicit none
 
@@ -71,8 +71,8 @@ subroutine check_composition(composition, iteration_number, num_zones, &
       endif
       redo_flag = .false.
       do species_index = 1,num_diffused_species
-!  composition(3,...) IS Z, WHICH IS NOT DIFFUSED AS A UNIT.
-         if(species_index.eq.3)cycle
+!  composition(i_metals,...) IS Z, WHICH IS NOT DIFFUSED AS A UNIT.
+         if(species_index.eq.i_metals)cycle
          do zone_index = 2,num_zones-1
             if(composition(species_index,zone_index).lt.0.0d0.or. &
                  composition(species_index,zone_index).gt.1.0d0)then
@@ -128,23 +128,23 @@ subroutine check_composition(composition, iteration_number, num_zones, &
 !  CORRECTION FOR PARTIAL IONIZATION NEEDED IN MASSIVE STARS.
       if(iteration_number.gt.1)then
          do zone_index = 1,num_zones
-            delta_hydrogen = composition(1,zone_index)- &
+            delta_hydrogen = composition(i_h1,zone_index)- &
                  star%envelope_hydrogen_fraction
-            delta_helium = composition(2,zone_index)- &
+            delta_helium = composition(i_he4,zone_index)- &
                  star%envelope_helium_fraction
-            delta_metal = composition(3,zone_index)- &
+            delta_metal = composition(i_metals,zone_index)- &
                  star%envelope_metal_fraction
-            delta_helium3 = composition(4,zone_index)- &
+            delta_helium3 = composition(i_he3,zone_index)- &
                  star%envelope_he3_fraction
             amu_calc_temp = star%amuenv + delta_hydrogen/atomic_weight(1) + &
                  delta_helium/atomic_weight(2) + &
                  delta_metal/atomic_weight(3) + &
                  delta_helium3/atomic_weight(4)
             ion_mean_weight_inverse = 1.0d0/amu_calc_temp
-            amu_calc_temp = composition(1,zone_index)/atomic_weight(1)+ &
-                 2.0d0*(composition(4,zone_index)/atomic_weight(4) &
-                 + composition(2,zone_index)/atomic_weight(2)) + &
-                 0.5d0*composition(3,zone_index)
+            amu_calc_temp = composition(i_h1,zone_index)/atomic_weight(1)+ &
+                 2.0d0*(composition(i_he3,zone_index)/atomic_weight(4) &
+                 + composition(i_he4,zone_index)/atomic_weight(2)) + &
+                 0.5d0*composition(i_metals,zone_index)
             electron_mean_weight_inverse = 1.0d0/amu_calc_temp
             mix_scr%amum(zone_index) = ion_mean_weight_inverse* &
                  electron_mean_weight_inverse/ &

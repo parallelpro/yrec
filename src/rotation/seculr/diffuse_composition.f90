@@ -43,7 +43,7 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
      convective_flag, final_iteration_flag, num_zones, composition, &
      species_begin, species_end, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: json
+      use star_info_lib, only: json, i_h1, i_he4, i_metals, i_he3
       use numerics_lib
       implicit none
 
@@ -186,8 +186,8 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
 ! ADJUST HE4 FOR CHANGES IN X, Z, AND HE3.
       if (.not.final_iteration_flag) then
          do zone_idx = i0, i1
-            composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
-                 composition(3,zone_idx) - composition(4,zone_idx)
+            composition(i_he4,zone_idx) = 1.0d0 - composition(i_h1,zone_idx) - &
+                 composition(i_metals,zone_idx) - composition(i_he3,zone_idx)
          end do
       end if
       end if

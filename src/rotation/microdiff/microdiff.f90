@@ -64,9 +64,11 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       use microdiff_mte_lib
       use microdiff_run_lib
       use star_info_lib, only: star, json
+      use species_table_lib, only: thoul_fe, thoul_col_h, thoul_col_he, &
+           thoul_col_metal, num_light_diffused, light_diffused, light_diffused_row
       implicit none
 ! SET NLIGHT TO THE NUMBER OF LIGHT ELEMENTS TO BE DIFFUSED.
-      integer, parameter :: num_light = 3
+      integer, parameter :: num_light = num_light_diffused
 
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: composition(15,json)
@@ -81,9 +83,6 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 ! --- locals ---
       double precision :: radius_bl(json), temperature_bl(json)
       double precision :: density_orig(json), temperature_orig(json)
-      double precision :: light_element_weight(num_light), &
-           light_element_charge(num_light)
-      integer :: light_element_id(num_light)
 ! the equally spaced grids at zone centers (eq) and zone midpoints
 ! (eq_mid), built by microdiff_mte -- see microdiff_mte_lib
       type(microdiff_grid) :: eq, eq_mid
@@ -93,11 +92,8 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
            hydrogen_dlnc_dr_mid(json), eq_delta_hydrogen(json), &
            eq_delta_metal(json), eq_delta_light(num_light,json)
 !
-!     SET UP VECTORS FOR LIGHT ELEMENT DIFFUSION. THE LENGTH
-!     OF EACH SHOULD EQUAL NLIGHT.
-      data light_element_id/13,14,15/
-      data light_element_weight/6.015d0,7.016d0,9.012d0/
-      data light_element_charge/3.0d0,3.0d0,4.0d0/
+!     THE LIGHT ELEMENTS DIFFUSED (ROW, WEIGHT, CHARGE) ARE
+!     light_diffused_row / light_diffused OF species_table_lib.
       integer :: i, ii, zone_begin, zone_end, num_eq_points, species_col
       logical :: settling_skipped_flag
       double precision :: grid_spacing, atomic_weight_diffused, &
@@ -120,7 +116,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !         PREFIX E + SUFFIX _H= VARIABLE AT MIDPOINT BETWEEN EQUALLY
 !         SPACED GRID POINTS.(BOTH ARE NEEDED FOR THE DIFFUSION TECHNIQUE).
 !
-      call microdiff_mte(num_light, light_element_id, composition, &
+      call microdiff_mte(num_light, light_diffused_row, composition, &
            dlnp_dr, radius_bl, enclosed_mass, del_grad, zone_begin, zone_end, &
            num_zones, grid_spacing, num_eq_points, density_orig, &
            temperature_orig, eq, eq_mid)
@@ -128,13 +124,13 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !  PARTIALLY CONSTRUCT THE VECTORS ESPEC AND ESPEC_H, WHICH ARE THE
 !  THREE SPECIES USED IN THE THOUL CALCULATION. 1=X, 2=Y, 3=METAL.
       do i=1,num_eq_points-1
-         species_fraction(1,i) = eq%hydrogen(i)
-         species_fraction(2,i) = eq%helium(i)
-         species_fraction_mid(1,i) = eq_mid%hydrogen(i)
-         species_fraction_mid(2,i) = eq_mid%helium(i)
+         species_fraction(thoul_col_h,i) = eq%hydrogen(i)
+         species_fraction(thoul_col_he,i) = eq%helium(i)
+         species_fraction_mid(thoul_col_h,i) = eq_mid%hydrogen(i)
+         species_fraction_mid(thoul_col_he,i) = eq_mid%helium(i)
       enddo
-      species_fraction(1,num_eq_points) = eq%hydrogen(num_eq_points)
-      species_fraction(2,num_eq_points) = eq%helium(num_eq_points)
+      species_fraction(thoul_col_h,num_eq_points) = eq%hydrogen(num_eq_points)
+      species_fraction(thoul_col_he,num_eq_points) = eq%helium(num_eq_points)
 !
 !----------------------------------------------------------------------
 !
@@ -148,15 +144,15 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !
 !     DIFFUSE HYDROGEN.
       if(star%job%diffuse_helium_active)then
-         species_col = 1
-         atomic_weight_diffused = 55.86d0
-         atomic_charge_diffused = 26.0d0
+         species_col = thoul_col_h
+         atomic_weight_diffused = thoul_fe%weight
+         atomic_charge_diffused = thoul_fe%charge
 !        SET ESPEC(3,*) TO THE HEAVY METAL ABUNDANCE.
          do i=1,num_eq_points-1
-            species_fraction(3,i) = eq%metal(i)
-            species_fraction_mid(3,i) = eq_mid%metal(i)
+            species_fraction(thoul_col_metal,i) = eq%metal(i)
+            species_fraction_mid(thoul_col_metal,i) = eq_mid%metal(i)
          enddo
-         species_fraction(3,num_eq_points) = eq%metal(num_eq_points)
+         species_fraction(thoul_col_metal,num_eq_points) = eq%metal(num_eq_points)
 !        PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
          call microdiff_run(grid_spacing, timestep, total_mass, &
               num_eq_points, eq, species_fraction, &
@@ -166,29 +162,29 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
          if (ierr /= 0) return
 !        STORE THE RUN OF CHANGES TO HYDROGEN
          do i = 1,num_eq_points
-            eq_delta_hydrogen(i) = species_fraction(1,i)
+            eq_delta_hydrogen(i) = species_fraction(thoul_col_h,i)
          enddo
 !        RESTORE THE ORIGINAL ESPEC HYDROGEN VECTORS.
          do i = 1,num_eq_points-1
-            species_fraction(1,i) = eq%hydrogen(i)
-            species_fraction_mid(1,i) = eq_mid%hydrogen(i)
+            species_fraction(thoul_col_h,i) = eq%hydrogen(i)
+            species_fraction_mid(thoul_col_h,i) = eq_mid%hydrogen(i)
          enddo
-         species_fraction(1,num_eq_points) = eq%hydrogen(num_eq_points)
+         species_fraction(thoul_col_h,num_eq_points) = eq%hydrogen(num_eq_points)
       endif
 !
 !----------------------------------------------------------------------
 !
 !     DIFFUSE HEAVY METALS.
       if(star%job%use_diffusion_z)then
-         species_col = 3
-         atomic_weight_diffused = 55.86d0
-         atomic_charge_diffused = 26.0d0
+         species_col = thoul_col_metal
+         atomic_weight_diffused = thoul_fe%weight
+         atomic_charge_diffused = thoul_fe%charge
 !        SET ESPEC(3,*) TO THE HEAVY METAL ABUNDANCE.
          do i=1,num_eq_points-1
-            species_fraction(3,i) = eq%metal(i)
-            species_fraction_mid(3,i) = eq_mid%metal(i)
+            species_fraction(thoul_col_metal,i) = eq%metal(i)
+            species_fraction_mid(thoul_col_metal,i) = eq_mid%metal(i)
          enddo
-         species_fraction(3,num_eq_points) = eq%metal(num_eq_points)
+         species_fraction(thoul_col_metal,num_eq_points) = eq%metal(num_eq_points)
 !        PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
          call microdiff_run(grid_spacing, timestep, total_mass, &
               num_eq_points, eq, species_fraction, &
@@ -198,7 +194,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
          if (ierr /= 0) return
 !        STORE THE RUN OF CHANGES TO HEAVY METALS
          do i=1,num_eq_points
-            eq_delta_metal(i) = species_fraction(3,i)
+            eq_delta_metal(i) = species_fraction(thoul_col_metal,i)
          enddo
 !        THE ORIGINAL HEAVY VECTOR DOESN'T NEED RESTORATION, SINCE IT WILL
 !        BE OVERWRITTEN BELOW.
@@ -209,16 +205,16 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !     DIFFUSE LIGHT ELEMENTS.
       if(star%ctrl%diffuse_lithium)then
 !        ITERATE OVER THE DIFFUSION ROUTINES FOR EACH LIGHT ELEMENT.
-         species_col = 3
+         species_col = thoul_col_metal
          do ii = 1,num_light
-            atomic_weight_diffused = light_element_weight(ii)
-            atomic_charge_diffused = light_element_charge(ii)
+            atomic_weight_diffused = light_diffused(ii)%weight
+            atomic_charge_diffused = light_diffused(ii)%charge
 !           SET ESPEC(3,*) TO THE LIGHT ELEMENT ABUNDANCE.
             do i=1,num_eq_points-1
-               species_fraction(3,i) = eq%light(ii,i)
-               species_fraction_mid(3,i) = eq_mid%light(ii,i)
+               species_fraction(thoul_col_metal,i) = eq%light(ii,i)
+               species_fraction_mid(thoul_col_metal,i) = eq_mid%light(ii,i)
             enddo
-            species_fraction(3,num_eq_points) = eq%light(ii,num_eq_points)
+            species_fraction(thoul_col_metal,num_eq_points) = eq%light(ii,num_eq_points)
 !           PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
             call microdiff_run(grid_spacing, timestep, total_mass, &
                  num_eq_points, eq, species_fraction, &
@@ -228,7 +224,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
             if (ierr /= 0) return
 !           STORE THE NEW RUN OF LIGHT METALS
             do i=1,num_eq_points
-              eq_delta_light(ii,i) = species_fraction(3,i)
+              eq_delta_light(ii,i) = species_fraction(thoul_col_metal,i)
             enddo
          enddo
       endif
@@ -241,6 +237,6 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       call microdiff_etm(timestep, eq%radius, eq_delta_hydrogen, &
            eq_delta_metal, eq_delta_light, zone_begin, zone_end, &
            num_eq_points, composition, dlnp_dr, radius_bl, enclosed_mass, &
-           num_zones, total_mass, num_light, light_element_id)
+           num_zones, total_mass, num_light, light_diffused_row)
       return
 end subroutine microdiff

@@ -25,7 +25,9 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
      settling_skipped_flag, diffusion_coeff1_dx, diffusion_coeff2_dx, ierr)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
+      use species_table_lib, only: thoul_h1, thoul_he4, thoul_fe, thoul_electron, &
+           thoul_col_h, thoul_col_he, thoul_col_metal
       use bahcall_loeb_units_lib, only: set_bahcall_loeb_scales
       use luout_lib
       use run_log_lib, only: solver_diagnostics
@@ -53,7 +55,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       double precision, intent(out) :: diffusion_coeff1_dx(json), &
            diffusion_coeff2_dx(json)
 ! MHP 8/94 ADDED ATOMIC WEIGHTS AND CHARGES FOR H,HE,FE,ELECTRONS -
-! NEEDED FOR FULL THOUL COEFFICIENTS
+! NEEDED FOR FULL THOUL COEFFICIENTS (VALUES FROM species_table_lib)
       double precision :: atomic_weight(4), atomic_charge(4), &
            settling_ap(4), settling_at(4), settling_ac(4,4), &
            coulomb_log(4,4), species_mass_fraction(4)
@@ -66,8 +68,10 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
            electron_number_density, interion_distance, debye_length, &
            coulomb_lambda, concentration(4)
       double precision :: ln_lambda
-      data atomic_weight/1.008d0,4.004d0,55.86d0,m_electron_amu/
-      data atomic_charge/1.0d0,2.0d0,26.0d0,-1.0d0/
+      data atomic_weight/thoul_h1%weight,thoul_he4%weight,thoul_fe%weight, &
+           thoul_electron%weight/
+      data atomic_charge/thoul_h1%charge,thoul_he4%charge,thoul_fe%charge, &
+           thoul_electron%charge/
       integer :: num_species
       data num_species/4/
 ! --- locals ---
@@ -127,7 +131,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do zone_idx = zone_begin,num_zones
-         if(composition(1,zone_idx).gt.star%ctrl%hydrogen_diffusion_floor)exit
+         if(composition(i_h1,zone_idx).gt.star%ctrl%hydrogen_diffusion_floor)exit
       end do
       if (zone_idx > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
@@ -156,7 +160,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do zone_idx=zone_end,1,-1
-         if(composition(2,zone_idx).gt.star%ctrl%helium_diffusion_min) exit
+         if(composition(i_he4,zone_idx).gt.star%ctrl%helium_diffusion_min) exit
       end do
       if (zone_idx < 1) then
 !     HELIUM-EXHAUSTED MODEL - EXIT.
@@ -198,7 +202,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !          [5/4 + DEL*6*(X-0.32)/(5.4+6.3X-4.5X**2)]
 !     D2 = R**2/LN LAMBDA * T**5/2 * (X+3)/(X+1)/(3+5X)
       do zone_idx = 1,num_zones
-         hydrogen_fraction = composition(1,zone_idx)
+         hydrogen_fraction = composition(i_h1,zone_idx)
 ! MHP 10/02 INITIALIZED X - WAS NOT DONE PRIOR TO USAGE IN SHELL 1
          if(star%ctrl%coulomb_log_choice.eq.2)then
 !           Noerdlinger's formula (1977 A&A 57,407) for LN LAMBDA:
@@ -214,8 +218,8 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          end if
 !
          settling_prefactor=star%ctrl%fgry*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
-         z_plus_he3_fraction = composition(3,zone_idx) + composition(4,zone_idx)
-         metal_fraction = composition(3,zone_idx)
+         z_plus_he3_fraction = composition(i_metals,zone_idx) + composition(i_he3,zone_idx)
+         metal_fraction = composition(i_metals,zone_idx)
          hydrogen_fraction_sq = hydrogen_fraction*hydrogen_fraction
          if(.not.star%ctrl%use_thoul_diffusion)then
             hydrogen_metal_product = hydrogen_fraction*z_plus_he3_fraction
@@ -235,9 +239,9 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                  3.0d1*hydrogen_fraction + 2.1d1)/ &
                  (5.0d0*hydrogen_fraction_sq + 8.0d0*hydrogen_fraction + 3.0d0)**2
          else
-            species_mass_fraction(1) = composition(1,zone_idx)
-            species_mass_fraction(2) = composition(2,zone_idx)
-            species_mass_fraction(3) = composition(3,zone_idx)
+            species_mass_fraction(thoul_col_h) = composition(i_h1,zone_idx)
+            species_mass_fraction(thoul_col_he) = composition(i_he4,zone_idx)
+            species_mass_fraction(thoul_col_metal) = composition(i_metals,zone_idx)
             if(.not.star%ctrl%use_thoul_fit)then
                if(star%ctrl%coulomb_log_choice.eq.4)then
                   rho_local = exp(ln10*log_density(zone_idx))
@@ -293,8 +297,8 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                     species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac, &
                     ierr)
                if (ierr /= 0) return
-               settling_coeff_p = -settling_ap(1)
-               settling_coeff_t = -del_grad(zone_idx)*settling_at(1)
+               settling_coeff_p = -settling_ap(thoul_col_h)
+               settling_coeff_t = -del_grad(zone_idx)*settling_at(thoul_col_h)
             else
                settling_coeff_p = 1.58d0 - 2.42d0*hydrogen_fraction + 0.844d0*hydrogen_fraction_sq
                settling_coeff_t = del_grad(zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
@@ -321,8 +325,8 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                   settling_coeff_t = del_grad(zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
                        0.549d0*hydrogen_fraction_sq)
                else
-                  settling_coeff_p = -settling_ap(3)
-                  settling_coeff_t = -del_grad(zone_idx)*settling_at(3)
+                  settling_coeff_p = -settling_ap(thoul_col_metal)
+                  settling_coeff_t = -del_grad(zone_idx)*settling_at(thoul_col_metal)
                endif
                iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
 !CFD 10/09 Mimic Mixing to reduce settling (constant_mixing_coeff)

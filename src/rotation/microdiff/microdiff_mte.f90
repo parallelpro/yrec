@@ -42,7 +42,7 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
      num_zones, grid_spacing, num_eq_points, density_orig, &
      temperature_orig, eq, eq_mid)
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_h1, i_he4, i_metals
       use numerics_lib, only: interp, intrp2, lagrange4
       implicit none
 
@@ -105,9 +105,9 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
            fx*(temperature_orig(iu)-temperature_orig(iu-1))
       eq_mid%dlnp_dr(1) = dlnp_dr(iu-1)+fx*(dlnp_dr(iu)-dlnp_dr(iu-1))
       eq_mid%del_grad(1) = del_grad(iu-1)+fx*(del_grad(iu)-del_grad(iu-1))
-      eq_mid%hydrogen(1) = composition(1,iu-1)+fx*(composition(1,iu)-composition(1,iu-1))
-      eq_mid%helium(1) = composition(2,iu-1)+fx*(composition(2,iu)-composition(2,iu-1))
-      eq_mid%metal(1) = composition(3,iu-1)+fx*(composition(3,iu)-composition(3,iu-1))
+      eq_mid%hydrogen(1) = composition(i_h1,iu-1)+fx*(composition(i_h1,iu)-composition(i_h1,iu-1))
+      eq_mid%helium(1) = composition(i_he4,iu-1)+fx*(composition(i_he4,iu)-composition(i_he4,iu-1))
+      eq_mid%metal(1) = composition(i_metals,iu-1)+fx*(composition(i_metals,iu)-composition(i_metals,iu-1))
       if(star%ctrl%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)
@@ -155,11 +155,11 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          eq_mid%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr(k0:k0+3))
          eq_mid%del_grad(i) = lagrange4(facinterp, del_grad(k0:k0+3))
 !  MASS FRACTION OF HYDROGEN
-         eq_mid%hydrogen(i)=lagrange4(facinterp, composition(1,k0:k0+3))
+         eq_mid%hydrogen(i)=lagrange4(facinterp, composition(i_h1,k0:k0+3))
 !  MASS FRACTION OF HELIUM
-         eq_mid%helium(i)=lagrange4(facinterp, composition(2,k0:k0+3))
+         eq_mid%helium(i)=lagrange4(facinterp, composition(i_he4,k0:k0+3))
 !  MASS FRACTION OF METALS
-         eq_mid%metal(i)=lagrange4(facinterp, composition(3,k0:k0+3))
+         eq_mid%metal(i)=lagrange4(facinterp, composition(i_metals,k0:k0+3))
 !  MASS FRACTION OF LIGHT ELEMENTS
          if(star%ctrl%diffuse_lithium)then
             do kk=1,num_light
@@ -185,9 +185,9 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq%temperature(1) = temperature_orig(zone_begin)
       eq%dlnp_dr(1) = dlnp_dr(zone_begin)
       eq%del_grad(1) = del_grad(zone_begin)
-      eq%hydrogen(1) = composition(1,zone_begin)
-      eq%helium(1) = composition(2,zone_begin)
-      eq%metal(1) = composition(3,zone_begin)
+      eq%hydrogen(1) = composition(i_h1,zone_begin)
+      eq%helium(1) = composition(i_he4,zone_begin)
+      eq%metal(1) = composition(i_metals,zone_begin)
       if(star%ctrl%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)
@@ -231,9 +231,9 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          eq%temperature(i) = lagrange4(facinterp, temperature_orig(k0:k0+3))
          eq%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr(k0:k0+3))
          eq%del_grad(i) = lagrange4(facinterp, del_grad(k0:k0+3))
-         eq%hydrogen(i)=lagrange4(facinterp, composition(1,k0:k0+3))
-         eq%helium(i)=lagrange4(facinterp, composition(2,k0:k0+3))
-         eq%metal(i)=lagrange4(facinterp, composition(3,k0:k0+3))
+         eq%hydrogen(i)=lagrange4(facinterp, composition(i_h1,k0:k0+3))
+         eq%helium(i)=lagrange4(facinterp, composition(i_he4,k0:k0+3))
+         eq%metal(i)=lagrange4(facinterp, composition(i_metals,k0:k0+3))
          if(star%ctrl%diffuse_lithium)then
             do kk=1,num_light
                ii = light_element_id(kk)
@@ -247,9 +247,9 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
       eq%temperature(num_eq_points) = temperature_orig(zone_end)
       eq%dlnp_dr(num_eq_points) = dlnp_dr(zone_end)
       eq%del_grad(num_eq_points) = del_grad(zone_end)
-      eq%hydrogen(num_eq_points) = composition(1,zone_end)
-      eq%helium(num_eq_points) = composition(2,zone_end)
-      eq%metal(num_eq_points) = composition(3,zone_end)
+      eq%hydrogen(num_eq_points) = composition(i_h1,zone_end)
+      eq%helium(num_eq_points) = composition(i_he4,zone_end)
+      eq%metal(num_eq_points) = composition(i_metals,zone_end)
       if(star%ctrl%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)

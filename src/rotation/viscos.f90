@@ -11,7 +11,7 @@
 ! and the radiative thermal diffusivity at every zone, for use by the
 ! rotational-mixing/instability diffusion routines.
 subroutine viscos(composition, log_density, log_temperature, num_zones)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_metals
       use phys_const_lib
       use math_lib
       implicit none
@@ -21,6 +21,10 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       integer, intent(in) :: num_zones
 
       double precision :: amu
+! Kinetic-theory weights and charges for composition rows 1..11
+! (i_h1..i_o18 of star_info_lib); row i_metals is the lumped Z, skipped
+! in the molecular-viscosity sums below.  These values differ from the
+! Thoul-solver descriptors in species_table_lib and stay local.
       double precision :: weight(11), z(11)
       data amu/amu_cgs_legacy/
       data weight/1.007825d0,4.0026d0,1.0d0,3.01603d0,12.0d0, &
@@ -75,13 +79,13 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          viscosity_molecular = 0.0d0
 !  VISCX(I) IS THE MOLECULAR VISCOSITY OF SPECIES I.
          do species_idx = 1,11
-            if(species_idx.eq.3) cycle
+            if(species_idx.eq.i_metals) cycle
             species_coeff = molecular_coeff*number_density(species_idx)* &
                  dsqrt(weight(species_idx))/ &
                  ((coulomb_log_factor-log(z(species_idx)))*z(species_idx)**2)
             species_sum = 0.0d0
             do species_idx2 = 1,11
-               if(species_idx2.eq.3) cycle
+               if(species_idx2.eq.i_metals) cycle
                species_sum = species_sum+number_density(species_idx2)* &
                     z(species_idx2)**2* &
                     dsqrt((weight(species_idx)+weight(species_idx2))/ &

@@ -25,7 +25,8 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
      composition, dlnp_dr, radius_bl, enclosed_mass, &
      num_zones, total_mass, num_light, light_element_id)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3, &
+           i_c12, i_o18
       use numerics_lib, only: intrp2, lagrange4
       implicit none
 
@@ -51,25 +52,25 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
 !  SPACED GRID.
       x_min_floor = 0.0d0
       do i = zone_begin,1,-1
-         composition(1,i)=max(composition(1,i) + eq_delta_hydrogen(1),x_min_floor)
+         composition(i_h1,i)=max(composition(i_h1,i) + eq_delta_hydrogen(1),x_min_floor)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
 ! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
       if(star%job%use_diffusion_z)then
          do i = zone_begin,1,-1
-            z_max = 1.0d0 - composition(1,i) - composition(4,i)
-            zz=min(composition(3,i)+eq_delta_metal(1),z_max)
-            zz2 = zz/composition(3,i)
-            composition(3,i) = zz
-            do j = 5,11
+            z_max = 1.0d0 - composition(i_h1,i) - composition(i_he3,i)
+            zz=min(composition(i_metals,i)+eq_delta_metal(1),z_max)
+            zz2 = zz/composition(i_metals,i)
+            composition(i_metals,i) = zz
+            do j = i_c12,i_o18
                composition(j,i) = zz2*composition(j,i)
             end do
-            composition(2,i)=1.0d0-composition(1,i)-composition(3,i)-composition(4,i)
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
          end do
       else
          do i = zone_begin,1,-1
-            composition(2,i)=1.0d0-composition(1,i)-composition(3,i)-composition(4,i)
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
          end do
       endif
 ! G SOMERS 5/15; ADD LIGHT ELEMENT DIFFUSION
@@ -111,21 +112,21 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          call intrp2(tabler,facinterp,radmod)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR CHANGE IN X.
          dxmod = lagrange4(facinterp, eq_delta_hydrogen(k0:k0+3))
-         x_max = 1.0d0 - composition(3,i) - composition(4,i)
-         composition(1,i)=min(composition(1,i) + dxmod,x_max)
+         x_max = 1.0d0 - composition(i_metals,i) - composition(i_he3,i)
+         composition(i_h1,i)=min(composition(i_h1,i) + dxmod,x_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
          if(star%job%use_diffusion_z)then
-            z_max = 1.0d0 - composition(1,i) - composition(4,i)
+            z_max = 1.0d0 - composition(i_h1,i) - composition(i_he3,i)
             dzmod = lagrange4(facinterp, eq_delta_metal(k0:k0+3))
-            zz = min(composition(3,i)+dzmod,z_max)
-            zz2 = zz/composition(3,i)
-            composition(3,i)=zz
-            do j = 5,11
+            zz = min(composition(i_metals,i)+dzmod,z_max)
+            zz2 = zz/composition(i_metals,i)
+            composition(i_metals,i)=zz
+            do j = i_c12,i_o18
                composition(j,i) = zz2*composition(j,i)
             enddo
-            composition(2,i)=1.0d0-composition(1,i)-composition(3,i)-composition(4,i)
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
          else
-            composition(2,i)=1.0d0-composition(1,i)-composition(3,i)-composition(4,i)
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
          endif
 ! GES 5/15 ADDED LIGHT ELEMENT DIFFUSION
          if(star%ctrl%diffuse_lithium)then
@@ -138,23 +139,23 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       end do
 !
       do i = zone_end,num_zones
-         x_max = 1.0d0 - composition(3,i) - composition(4,i)
-         composition(1,i)=min(composition(1,i) + eq_delta_hydrogen(num_eq_points),x_max)
+         x_max = 1.0d0 - composition(i_metals,i) - composition(i_he3,i)
+         composition(i_h1,i)=min(composition(i_h1,i) + eq_delta_hydrogen(num_eq_points),x_max)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
       if(star%job%use_diffusion_z)then
          do i = zone_end,num_zones
-            zz = max(composition(3,i)+eq_delta_metal(num_eq_points),0.0d0)
-            zz2 = zz/composition(3,i)
-            composition(3,i) = zz
-            do j = 5,11
+            zz = max(composition(i_metals,i)+eq_delta_metal(num_eq_points),0.0d0)
+            zz2 = zz/composition(i_metals,i)
+            composition(i_metals,i) = zz
+            do j = i_c12,i_o18
                composition(j,i) = zz2*composition(j,i)
             end do
-            composition(2,i)=1.0d0-composition(1,i)-composition(3,i)-composition(4,i)
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
          end do
       else
          do i = zone_end,num_zones
-            composition(2,i)=1.0d0-composition(1,i)-composition(3,i)-composition(4,i)
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
          end do
       endif
 ! GES 5/15 LIGHT ELEMENT DIFFUSION

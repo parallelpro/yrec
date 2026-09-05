@@ -40,7 +40,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
      zone_end, settling_skipped_flag, density_orig, temperature_orig)
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_h1, i_he4
       use bahcall_loeb_units_lib, only: set_bahcall_loeb_scales
       use luout_lib
       use run_log_lib, only: solver_diagnostics
@@ -92,7 +92,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do i = zone_begin,num_zones
-         if(composition(1,i).gt.star%ctrl%hydrogen_diffusion_floor)exit
+         if(composition(i_h1,i).gt.star%ctrl%hydrogen_diffusion_floor)exit
       end do
       if (i > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
@@ -121,7 +121,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do i=zone_end,1,-1
-         if(composition(2,i).gt.star%ctrl%helium_diffusion_min) exit
+         if(composition(i_he4,i).gt.star%ctrl%helium_diffusion_min) exit
       end do
       if (i < 1) then
 !     HELIUM-EXHAUSTED MODEL - EXIT.
