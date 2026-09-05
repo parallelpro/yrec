@@ -34,6 +34,43 @@ module scv_eos_lib
       integer :: nptsx(scv_nt), idtt, idp
       logical :: use_scv_eos
 
+! Readability W3 (2026): named table columns. Only the columns some
+! reader or writer in eos/ addresses are named; their meanings follow
+! from those uses (eos/scv/eqscvg.f90, eqscve.f90,
+! scv_envelope_table.f90). eos_init reads columns 1..11 of the H and
+! He tables and 1..13 of the Z table from the files verbatim.
+!
+! H and He tables (tablex, tabley), same layout:
+      integer, parameter :: iscv_log10_p = 1        ! log10 gas pressure (row key)
+      integer, parameter :: iscv_frac_neutral = 2   ! particle fraction: H2 (H table), neutral He (He table)
+      integer, parameter :: iscv_frac_atom_ion1 = 3 ! particle fraction: neutral H (H table), He+ (He table)
+      integer, parameter :: iscv_log10_rho = 4      ! log10 density
+      integer, parameter :: iscv_log10_s = 5        ! log10 entropy
+      integer, parameter :: iscv_dlnrho_dlnt = 7    ! dln(rho)/dln(T) at constant P
+      integer, parameter :: iscv_dlnrho_dlnp = 8    ! dln(rho)/dln(P) at constant T
+      integer, parameter :: iscv_dlns_dlnt = 9      ! dln(S)/dln(T) at constant P
+      integer, parameter :: iscv_du_dt = 12         ! du/dT, built by scv_envelope_table (not read)
+! Z (metal) table (tablez):
+      integer, parameter :: iscvz_log10_rho = 4     ! log10 density
+      integer, parameter :: iscvz_log10_du_dt = 7   ! log10 du/dT
+      integer, parameter :: iscvz_dlnrho_dlnt = 10  ! dln(rho)/dln(T) at constant P
+      integer, parameter :: iscvz_dlnrho_dlnp = 13  ! dln(rho)/dln(P) at constant T
+! Envelope-mixture table (tablenv), built by scv_envelope_table and
+! read by eqscve (columns 2..6 as its five interpolated quantities, in
+! this order):
+      integer, parameter :: iscvenv_log10_p = 1       ! log10 gas pressure (copied from tablex)
+      integer, parameter :: iscvenv_log10_rho = 2     ! log10 mixture density
+      integer, parameter :: iscvenv_dlnrho_dlnt = 3   ! dln(rho)/dln(T), gas
+      integer, parameter :: iscvenv_dlnrho_dlnp = 4   ! dln(rho)/dln(P), gas
+      integer, parameter :: iscvenv_cp = 5            ! cp, gas
+      integer, parameter :: iscvenv_du_dt = 6         ! du/dT
+      integer, parameter :: iscvenv_dqdt_dlnp = 7     ! d(dlnrho/dlnT)/dln(P)
+      integer, parameter :: iscvenv_dqdt_dlnt = 8     ! d(dlnrho/dlnT)/dln(T)
+      integer, parameter :: iscvenv_dlnp_dlnrho = 9   ! d(lnP)/d(ln rho) along the row
+      integer, parameter :: iscvenv_dlncp_dlnt = 10   ! dln(cp)/dln(T)
+      integer, parameter :: iscvenv_dqut_dlnp = 11    ! d(du/dT)/dln(P)
+      integer, parameter :: iscvenv_dqut_dlnt = 12    ! d(du/dT)/dln(T)
+
 contains
 
 ! Four-point Lagrange sum used by eqscve/eqscvg to interpolate a table

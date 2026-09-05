@@ -46,9 +46,12 @@ module mhd_eos_lib
 ! reads. The MHD table documentation is not part of this repository;
 ! these meanings follow from how meqos consumes each slot. Slots 21-24
 ! are the numerical X-derivatives of slots 2, 3, 8 and 9 built by
-! mhdst1.f90; slot 25 is a placeholder.
+! mhdst1.f90 (named i_mhd_*_dx below, from that writer); slot 25 is a
+! placeholder. Slot 3 is named only through mhdst1's derivative
+! comment (log10 U); nothing reads it directly.
       integer, parameter :: i_mhd_log10_rho = 1     ! log10 density
       integer, parameter :: i_mhd_log10_p = 2       ! log10 total pressure
+      integer, parameter :: i_mhd_log10_u = 3       ! log10 internal energy (mhdst1 derivative source)
       integer, parameter :: i_mhd_chi_rho = 4       ! dlnP/dlnRho at constant T
       integer, parameter :: i_mhd_chi_t = 5         ! dlnP/dlnT at constant Rho
       integer, parameter :: i_mhd_grad_ad = 8       ! adiabatic gradient
@@ -60,6 +63,13 @@ module mhd_eos_lib
       integer, parameter :: i_mhd_ion_frac_1 = 14   ! first of three ionization fractions (14-16)
       integer, parameter :: i_mhd_eta = 18          ! electron degeneracy parameter
       integer, parameter :: i_mhd_log10_pgas = 20   ! log10 gas pressure
+! Centre-table extension slots (mhd_ivarc+1..mhd_ivarx), built by
+! mhdst1 from the X+dX and X-dX companion tables:
+      integer, parameter :: i_mhd_dlog10p_dx = 21   ! d(log10 P)/dX
+      integer, parameter :: i_mhd_dlog10u_dx = 22   ! d(log10 U)/dX
+      integer, parameter :: i_mhd_dgrad_ad_dx = 23  ! d(grad_ad)/dX
+      integer, parameter :: i_mhd_dlog10cp_dx = 24  ! d(log10 cp)/dX
+      integer, parameter :: i_mhd_placeholder = 25  ! space-holder (8888844444.d0)
 
       type, public :: mhd_eos_state
 ! former common/mhdout/

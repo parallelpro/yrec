@@ -20,16 +20,27 @@ module eos_mixture_lib
       implicit none
       private
 
+! The 12-species surface mixture layout: element per slot of fxenv,
+! eqstat2's atomic_weights_full table and the saha_mass_fractions
+! vector handed to eos/yale/saha_eos. Same values as star_info_lib's
+! ix_* / n_mix_species (the star layer fills fxenv in that order in
+! core/read_starting_model.f90's update_surface_mixture); a copy
+! because this module must not depend on star_info_lib (physics-purity
+! pass), like net_lib's n_reactions.
+      integer, parameter, public :: &
+           ix_na = 1, ix_al = 2, ix_mg = 3, ix_fe = 4, ix_si = 5, &
+           ix_c = 6, ix_h = 7, ix_o = 8, ix_n = 9, ix_ar = 10, &
+           ix_ne = 11, ix_he = 12, n_mix_species = 12
+
       type, public :: eos_mixture_state
             double precision :: envelope_hydrogen_fraction, &
                  envelope_metal_fraction
             double precision :: amuenv
 ! fxenv(i): number fraction of species i in the envelope mixture,
-! in the order of eqstat2's atomic_weights_full table:
-! 1 Na, 2 Al, 3 Mg, 4 Fe, 5 Si, 6 C, 7 H, 8 O, 9 N, 10 Ar, 11 Ne, 12 He
-! (slots 7 and 12 are set from X and Y directly, the metals from the
-! mixture_weights_seed control scaled to Z).
-            double precision :: fxenv(12)
+! in the ix_* order above (the metals Na..Si, C, then H, O..Ne, He;
+! slots ix_h and ix_he are set from X and Y directly, the metals from
+! the mixture_weights_seed control scaled to Z).
+            double precision :: fxenv(n_mix_species)
       end type eos_mixture_state
 
       type(eos_mixture_state), public, save :: eos_mix

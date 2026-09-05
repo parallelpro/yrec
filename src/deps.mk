@@ -159,6 +159,7 @@ eos/mhd/mhdpx.o: mhd_eos_lib.mod
 eos/mhd/mhdpx1.o: luout_lib.mod mhd_eos_lib.mod numerics_lib.mod
 eos/mhd/mhdpx2.o: mhd_eos_lib.mod numerics_lib.mod
 eos/mhd/mhdst.o: mhd_eos_lib.mod
+eos/mhd/mhdst1.o: mhd_eos_lib.mod
 eos/mhd/mhdtbl.o: star_info_lib.mod
 eos/mu.o: eos_mixture_lib.mod phys_const_lib.mod
 eos/opal/eqbound.o: opal_eos_lib.mod
@@ -190,7 +191,7 @@ eos/scv/eqscvg.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.m
 eos/scv/scv_envelope_table.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod
 eos/test/test_eos.o: eos_lib.mod luout_lib.mod opacity_table_lib.mod opal_eos_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
 eos/yale/fully_ionized_eos.o: luout_lib.mod math_lib.mod phys_const_lib.mod yale_eos_lib.mod
-eos/yale/saha_eos.o: luout_lib.mod math_lib.mod phys_const_lib.mod
+eos/yale/saha_eos.o: eos_mixture_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod
 io/check_controls.o: luout_lib.mod star_info_lib.mod
 io/equal_to_model.o: numerics_lib.mod star_info_lib.mod
 io/history_output.o: output_columns_lib.mod phys_const_lib.mod star_info_lib.mod

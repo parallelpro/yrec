@@ -300,7 +300,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      in_atmosphere, saha_state, ierr)
       use star_info_lib, only: star
 
-      use eos_mixture_lib, only: eos_mix, ion_mean_weight_excess
+      use eos_mixture_lib, only: eos_mix, ion_mean_weight_excess, &
+           n_mix_species, ix_na, ix_c, ix_h, ix_o, ix_ne, ix_he
       use luout_lib
       use phys_const_lib
       use scv_eos_lib
@@ -331,16 +332,18 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       integer, intent(inout) :: saha_state
 ! --- locals ---
       integer :: num_species, species_idx
-      double precision :: inverse_atomic_weights(4), atomic_weights_full(12)
+      double precision :: inverse_atomic_weights(4), atomic_weights_full(n_mix_species)
       double precision :: saha_ramp_width, saha_ramp_scale
       data num_species/12/
       data inverse_atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
       data saha_ramp_width, saha_ramp_scale/0.500d0, 2.000d0/
+! atomic weights in the ix_* species order (Na, Al, Mg, Fe, Si, C, H,
+! O, N, Ar, Ne, He)
       data atomic_weights_full/23.0d0, 26.99d0, 24.32d0, 55.86d0, 28.1d0, &
            12.015d0, 1.008d0, 16.0d0, 14.01d0, 39.96d0, 20.19d0, 4.004d0/
 
       logical :: need_saha_solution, skip_relativistic_eos
-      double precision :: saha_mass_fractions(12)
+      double precision :: saha_mass_fractions(n_mix_species)
       double precision :: metal_ratio, amu_correction, h_excess, y_excess
       double precision :: envelope_amu_over_amu
       double precision :: dfx1, dfx12, dfx4, amu_inverse, envelope_amu_frac
@@ -399,34 +402,34 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          metal_ratio = metal_fraction/eos_mix%envelope_metal_fraction
          amu_correction = (metal_ratio - 1.0d0)*eos_mix%amuenv
          ion_mean_weight_inverse = eos_mix%amuenv
-         do species_idx = 1, 6
+         do species_idx = ix_na, ix_c
             ion_mean_weight_inverse = ion_mean_weight_inverse + &
                  amu_correction*eos_mix%fxenv(species_idx)
          end do
          h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)/ &
-              atomic_weights_full(7)
+              atomic_weights_full(ix_h)
          ion_mean_weight_inverse = ion_mean_weight_inverse + h_excess
-         do species_idx = 8, 11
+         do species_idx = ix_o, ix_ne
             ion_mean_weight_inverse = ion_mean_weight_inverse + &
                  amu_correction*eos_mix%fxenv(species_idx)
          end do
          y_excess = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
-              hydrogen_fraction - metal_fraction)/atomic_weights_full(12)
+              hydrogen_fraction - metal_fraction)/atomic_weights_full(ix_he)
          ion_mean_weight_inverse = ion_mean_weight_inverse + y_excess
          envelope_amu_over_amu = metal_ratio*eos_mix%amuenv/ &
               ion_mean_weight_inverse
          if (need_saha_solution) then
-            do species_idx = 1, 6
+            do species_idx = ix_na, ix_c
                saha_mass_fractions(species_idx) = envelope_amu_over_amu* &
                     eos_mix%fxenv(species_idx)
             end do
-            saha_mass_fractions(7) = (eos_mix%fxenv(7)* &
+            saha_mass_fractions(ix_h) = (eos_mix%fxenv(ix_h)* &
                  eos_mix%amuenv + h_excess)/ion_mean_weight_inverse
-            do species_idx = 8, 11
+            do species_idx = ix_o, ix_ne
                saha_mass_fractions(species_idx) = envelope_amu_over_amu* &
                     eos_mix%fxenv(species_idx)
             end do
-            saha_mass_fractions(12) = (eos_mix%fxenv(12)* &
+            saha_mass_fractions(ix_he) = (eos_mix%fxenv(ix_he)* &
                  eos_mix%amuenv + y_excess)/ion_mean_weight_inverse
          end if
       else
@@ -450,11 +453,11 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
                   saha_mass_fractions(species_idx) = envelope_amu_frac* &
                        eos_mix%fxenv(species_idx)
                end do
-               saha_mass_fractions(6) = saha_mass_fractions(6) + &
+               saha_mass_fractions(ix_c) = saha_mass_fractions(ix_c) + &
                     dfx12*amu_inverse
-               saha_mass_fractions(7) = saha_mass_fractions(7) + &
+               saha_mass_fractions(ix_h) = saha_mass_fractions(ix_h) + &
                     dfx1*amu_inverse
-               saha_mass_fractions(12) = saha_mass_fractions(12) + &
+               saha_mass_fractions(ix_he) = saha_mass_fractions(ix_he) + &
                     dfx4*amu_inverse
             end if
          end if

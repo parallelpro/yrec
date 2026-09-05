@@ -143,10 +143,10 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       end if
 !  find nearest points in pressure.
       jjj = min(nptsx(idtt)-3, idp)
-      if (log10_gas_pressure.lt.tablenv(idtt,jjj+1,1)) then
+      if (log10_gas_pressure.lt.tablenv(idtt,jjj+1,iscvenv_log10_p)) then
 ! search down to find nearest 4 table elements
          do j = jjj, 1, -1
-            if (log10_gas_pressure.gt.tablenv(idtt,j,1)) then
+            if (log10_gas_pressure.gt.tablenv(idtt,j,iscvenv_log10_p)) then
                jj = j - 1
                exit
             end if
@@ -161,7 +161,7 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
 ! search up for nearest 4 table elements.  note search is done at lowest
 ! temperature point (with the minimum range in p).
          do j = jjj+2, nptsx(idtt)
-            if (log10_gas_pressure.lt.tablenv(idtt,j,1)) then
+            if (log10_gas_pressure.lt.tablenv(idtt,j,iscvenv_log10_p)) then
                jj = j - 2
                exit
             end if
@@ -177,9 +177,9 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
       press_needs_smoothing = .false.
       if (idp.eq.jj) then
          press_dist_above = log10_gas_pressure - &
-              tablenv(idtt,idp+1,1)
+              tablenv(idtt,idp+1,iscvenv_log10_p)
          press_dist_below = tablenv(idtt, &
-              idp+2,1) - log10_gas_pressure
+              idp+2,iscvenv_log10_p) - log10_gas_pressure
          if (press_dist_above.lt.tol_pressure_smooth) then
             if (idp.gt.1) then
                press_needs_smoothing = .true.
@@ -331,15 +331,15 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
            temp_interp_weight_derivs, log10_temperature)
       do k = 1,4
          interp_nodes(k) = tablenv(idtt, &
-              idp+k-1,1)
+              idp+k-1,iscvenv_log10_p)
       end do
       call interp(interp_nodes, press_interp_weights, &
            press_interp_weight_derivs, log10_gas_pressure)
 
       do i = 1,4
          ii = idtt+i-1
-         temp_grid(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,2))
-         temp_grid(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,2))
+         temp_grid(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_neutral))
+         temp_grid(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_neutral))
       end do
 ! interpolate in temperature
       xtf_h2 = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,1))
@@ -353,8 +353,8 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_grid(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,3))
-         temp_grid(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,3))
+         temp_grid(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_atom_ion1))
+         temp_grid(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_atom_ion1))
       end do
 ! interpolate in temperature
       xtf_h1 = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,1))
@@ -405,7 +405,7 @@ subroutine spline_cell(t_shift, p_shift, result)
       do i = 1,4
          ii = idtt+i-1+t_shift
          do k = 1,4
-            interp_nodes(k) = tablenv(idtt,idp+k-1+p_shift,1)
+            interp_nodes(k) = tablenv(idtt,idp+k-1+p_shift,iscvenv_log10_p)
          end do
          do j = 1,5
             do k = 1,4

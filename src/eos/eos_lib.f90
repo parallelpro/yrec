@@ -456,12 +456,12 @@ end subroutine eos_get_gamma1
 subroutine eos_set_mixture(envelope_hydrogen_fraction, &
      envelope_metal_fraction, mean_atomic_mass, species_fractions)
 
-      use eos_mixture_lib, only: eos_mix
+      use eos_mixture_lib, only: eos_mix, n_mix_species
       implicit none
 
       double precision, intent(in) :: envelope_hydrogen_fraction, &
            envelope_metal_fraction, mean_atomic_mass
-      double precision, intent(in) :: species_fractions(12)
+      double precision, intent(in) :: species_fractions(n_mix_species)
 
       eos_mix%envelope_hydrogen_fraction = envelope_hydrogen_fraction
       eos_mix%envelope_metal_fraction = envelope_metal_fraction

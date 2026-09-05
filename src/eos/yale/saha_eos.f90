@@ -26,9 +26,10 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       use luout_lib
       use phys_const_lib
       use math_lib
+      use eos_mixture_lib, only: n_mix_species, ix_he
       implicit none
 
-      double precision, intent(in) :: saha_mass_fractions(12)
+      double precision, intent(in) :: saha_mass_fractions(n_mix_species)
       double precision, intent(in) :: log10_temperature
       double precision, intent(in) :: temperature
       double precision, intent(in) :: log10_pressure
@@ -130,7 +131,7 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
       data mean_electrons_per_ion, helium_ion_fraction_1, &
            helium_ion_fraction_2/0.1D0,0.0D0,0.0D0/
       data saha_convergence_tol/1.0D-09/
-      helium_mass_fraction = saha_mass_fractions(12)
+      helium_mass_fraction = saha_mass_fractions(ix_he)
       max_electrons_per_ion = 1.0d0 + helium_mass_fraction
       temperature_inverse = 1.0d0/temperature
 ! BEGIN SAHA ROUTINE

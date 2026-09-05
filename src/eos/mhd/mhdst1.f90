@@ -21,6 +21,9 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
                   log10t_down,log10t_up,table_vars_centroid,table_vars_down,table_vars_up, &
                   atomic_weight_down,atomic_weight_up, &
                   number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+      use mhd_eos_lib, only: i_mhd_log10_p, i_mhd_log10_u, i_mhd_grad_ad, &
+           i_mhd_log10_cp, i_mhd_dlog10p_dx, i_mhd_dlog10u_dx, &
+           i_mhd_dgrad_ad_dx, i_mhd_dlog10cp_dx, i_mhd_placeholder
       implicit none
       integer, intent(in) :: table_unit, table_kind, nt1m, nr1m, ivar1, &
            nt2m, nr2m, ivar2, nchem0
@@ -150,12 +153,12 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !     FOR T-RHO REGIONS WITH INHOMOGENEOUS COMPOSITION.
 !     IN THE COMMENTS,R AND T DENOTE LOG10(RHO) AND LOG10(T).
 !     log10(P)/DX,log10(U)/DX,DDELAD/DX,log10(CP)/DX
-      table_vars2(temp_deriv_index,density_deriv_index,21)=(table_vars_up(temp_deriv_index,density_deriv_index, 2)-table_vars_down(temp_deriv_index,density_deriv_index, 2))/(2.d0*delta_x)
-      table_vars2(temp_deriv_index,density_deriv_index,22)=(table_vars_up(temp_deriv_index,density_deriv_index, 3)-table_vars_down(temp_deriv_index,density_deriv_index, 3))/(2.d0*delta_x)
-      table_vars2(temp_deriv_index,density_deriv_index,23)=(table_vars_up(temp_deriv_index,density_deriv_index, 8)-table_vars_down(temp_deriv_index,density_deriv_index, 8))/(2.d0*delta_x)
-      table_vars2(temp_deriv_index,density_deriv_index,24)=(table_vars_up(temp_deriv_index,density_deriv_index, 9)-table_vars_down(temp_deriv_index,density_deriv_index, 9))/(2.d0*delta_x)
+      table_vars2(temp_deriv_index,density_deriv_index,i_mhd_dlog10p_dx)=(table_vars_up(temp_deriv_index,density_deriv_index,i_mhd_log10_p)-table_vars_down(temp_deriv_index,density_deriv_index,i_mhd_log10_p))/(2.d0*delta_x)
+      table_vars2(temp_deriv_index,density_deriv_index,i_mhd_dlog10u_dx)=(table_vars_up(temp_deriv_index,density_deriv_index,i_mhd_log10_u)-table_vars_down(temp_deriv_index,density_deriv_index,i_mhd_log10_u))/(2.d0*delta_x)
+      table_vars2(temp_deriv_index,density_deriv_index,i_mhd_dgrad_ad_dx)=(table_vars_up(temp_deriv_index,density_deriv_index,i_mhd_grad_ad)-table_vars_down(temp_deriv_index,density_deriv_index,i_mhd_grad_ad))/(2.d0*delta_x)
+      table_vars2(temp_deriv_index,density_deriv_index,i_mhd_dlog10cp_dx)=(table_vars_up(temp_deriv_index,density_deriv_index,i_mhd_log10_cp)-table_vars_down(temp_deriv_index,density_deriv_index,i_mhd_log10_cp))/(2.d0*delta_x)
 !     SPACE-HOLDER VARIABLE (LIKE VAR(20))
-      table_vars2(temp_deriv_index,density_deriv_index,25)=8888844444.d0
+      table_vars2(temp_deriv_index,density_deriv_index,i_mhd_placeholder)=8888844444.d0
       end do
       end do
       end if

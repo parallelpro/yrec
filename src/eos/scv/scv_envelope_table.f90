@@ -68,33 +68,33 @@ subroutine build_scv_envelope_table
 ! AND CP = DU/DT + P*(D LN RHO/D LN T)**2/(RHO*T*D LN RHO/D LN P) (EQ 2)
 ! DU/DT CAN BE INFERRED FROM EQ 1 AND THE SECOND TERM IN EQ 2, ALL OF
 ! WHICH ARE CONTAINED IN THE TABLES.
-            tablex(t_idx,p_idx,12) = &
-                 exp(ln10*tablex(t_idx,p_idx,5))*tablex(t_idx,p_idx,9) - &
-                 exp(ln10*(tablex(t_idx,p_idx,1)-tablex(t_idx,p_idx,4)- &
-                 tlogx(t_idx)))*tablex(t_idx,p_idx,7)**2/tablex(t_idx,p_idx,8)
-            tabley(t_idx,p_idx,12) = &
-                 exp(ln10*tabley(t_idx,p_idx,5))*tabley(t_idx,p_idx,9) - &
-                 exp(ln10*(tabley(t_idx,p_idx,1)-tabley(t_idx,p_idx,4)- &
-                 tlogx(t_idx)))*tabley(t_idx,p_idx,7)**2/tabley(t_idx,p_idx,8)
+            tablex(t_idx,p_idx,iscv_du_dt) = &
+                 exp(ln10*tablex(t_idx,p_idx,iscv_log10_s))*tablex(t_idx,p_idx,iscv_dlns_dlnt) - &
+                 exp(ln10*(tablex(t_idx,p_idx,iscv_log10_p)-tablex(t_idx,p_idx,iscv_log10_rho)- &
+                 tlogx(t_idx)))*tablex(t_idx,p_idx,iscv_dlnrho_dlnt)**2/tablex(t_idx,p_idx,iscv_dlnrho_dlnp)
+            tabley(t_idx,p_idx,iscv_du_dt) = &
+                 exp(ln10*tabley(t_idx,p_idx,iscv_log10_s))*tabley(t_idx,p_idx,iscv_dlns_dlnt) - &
+                 exp(ln10*(tabley(t_idx,p_idx,iscv_log10_p)-tabley(t_idx,p_idx,iscv_log10_rho)- &
+                 tlogx(t_idx)))*tabley(t_idx,p_idx,iscv_dlnrho_dlnt)**2/tabley(t_idx,p_idx,iscv_dlnrho_dlnp)
 ! COMPUTE THE ENTROPY OF MIXING.
 ! NUMBER DENSITY OF HYDROGEN AND HELIUM
             helium_fraction_hhe = 1.0d0-star%envelope_hydrogen_fraction
             one_minus_y_local = 1.0d0 - helium_fraction_hhe
-            density_h = exp(ln10*tablex(t_idx,p_idx,4))
-            density_he = exp(ln10*tabley(t_idx,p_idx,4))
+            density_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_rho))
+            density_he = exp(ln10*tabley(t_idx,p_idx,iscv_log10_rho))
             density_mix = 1.0d0/(one_minus_y_local/density_h + &
                  helium_fraction_hhe/density_he)
             hydrogen_number_density = 2.0d0*one_minus_y_local*density_mix/ &
-                 hydrogen_atom_mass/(1.0d0+3.0d0*tablex(t_idx,p_idx,2)+ &
-                 tablex(t_idx,p_idx,3))
+                 hydrogen_atom_mass/(1.0d0+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral)+ &
+                 tablex(t_idx,p_idx,iscv_frac_atom_ion1))
             helium_number_density = 3.0d0*helium_fraction_hhe*density_mix/ &
-                 helium_atom_mass/(1.0d0 + 2.0d0*tabley(t_idx,p_idx,2) + &
-                 tabley(t_idx,p_idx,3))
+                 helium_atom_mass/(1.0d0 + 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) + &
+                 tabley(t_idx,p_idx,iscv_frac_atom_ion1))
 ! HYDROGEN AND HELIUM ELECTRON NUMBER DENSITIES
             hydrogen_electron_density = 0.5d0*hydrogen_number_density* &
-                 (1.0d0 - tablex(t_idx,p_idx,2) - tablex(t_idx,p_idx,3))
+                 (1.0d0 - tablex(t_idx,p_idx,iscv_frac_neutral) - tablex(t_idx,p_idx,iscv_frac_atom_ion1))
             helium_electron_density = cc13*helium_number_density* &
-                 (2.0d0 - 2.0d0*tabley(t_idx,p_idx,2) - tabley(t_idx,p_idx,3))
+                 (2.0d0 - 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) - tabley(t_idx,p_idx,iscv_frac_atom_ion1))
             total_electron_density = hydrogen_electron_density + &
                  helium_electron_density
             hydrogen_electron_density = max(hydrogen_electron_density,1.0d0)
@@ -106,12 +106,12 @@ subroutine build_scv_envelope_table
             else
                mixing_beta = (hydrogen_atom_mass/helium_atom_mass)* &
                     (helium_fraction_hhe/one_minus_y_local)
-               mixing_gamma = 1.5d0*(1.0d0 + tablex(t_idx,p_idx,3)+ 3.0d0* &
-                    tablex(t_idx,p_idx,2))/(1.0d0+2.0d0*tabley(t_idx,p_idx,2)+ &
-                    tabley(t_idx,p_idx,3))
-               hydrogen_xd = 1.0d0 - tablex(t_idx,p_idx,2) - tablex(t_idx,p_idx,3)
-               helium_yd = 2.0d0 - 2.0d0*tabley(t_idx,p_idx,2) - &
-                    tabley(t_idx,p_idx,3)
+               mixing_gamma = 1.5d0*(1.0d0 + tablex(t_idx,p_idx,iscv_frac_atom_ion1)+ 3.0d0* &
+                    tablex(t_idx,p_idx,iscv_frac_neutral))/(1.0d0+2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral)+ &
+                    tabley(t_idx,p_idx,iscv_frac_atom_ion1))
+               hydrogen_xd = 1.0d0 - tablex(t_idx,p_idx,iscv_frac_neutral) - tablex(t_idx,p_idx,iscv_frac_atom_ion1)
+               helium_yd = 2.0d0 - 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) - &
+                    tabley(t_idx,p_idx,iscv_frac_atom_ion1)
                if (hydrogen_xd.gt.0.0d0) then
                  mix_de = 1.5d0*helium_yd*mixing_beta*mixing_gamma/hydrogen_xd
                else
@@ -125,7 +125,7 @@ subroutine build_scv_envelope_table
                total_number_density = hydrogen_number_density + &
                     helium_number_density
                smix(t_idx,p_idx) = one_minus_y_local/hydrogen_atom_mass*2.0d0/ &
-                    (1.0d0+tablex(t_idx,p_idx,3)+3.0d0*tablex(t_idx,p_idx,2))* &
+                    (1.0d0+tablex(t_idx,p_idx,iscv_frac_atom_ion1)+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral))* &
                     (log(1.0d0+mixing_beta*mixing_gamma)- &
                     hydrogen_electron_density/total_number_density* &
                     log(1.0d0 + mix_de)+mixing_beta*mixing_gamma* &
@@ -154,7 +154,7 @@ subroutine build_scv_envelope_table
         ln_t_work = ln10*log_t_work
         call inter3(interp_x,t_interp_weight,t_interp_dweight,ln_t_work)
          do p_idx=1,nptsx(t_idx)
-            log_p_work = tablex(t_idx,p_idx,1)
+            log_p_work = tablex(t_idx,p_idx,iscv_log10_p)
             hydrogen_fraction_local = star%envelope_hydrogen_fraction
             metal_fraction_local = star%envelope_metal_fraction
             helium_fraction_local = 1.0d0 - hydrogen_fraction_local - &
@@ -166,9 +166,9 @@ subroutine build_scv_envelope_table
             pressure_value = (pressure_value + radiation_pressure)
             log_p_work = log10(pressure_value)
 !  DENSITY : ADD INVERSELY : 1/RHO = X/RHO(X) + Y/RHO(Y) + Z/RHO(Z)
-            density_h = exp(ln10*tablex(t_idx,p_idx,4))
-            density_he = exp(ln10*tabley(t_idx,p_idx,4))
-            density_z = exp(ln10*tablez(t_idx,p_idx,4))
+            density_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_rho))
+            density_he = exp(ln10*tabley(t_idx,p_idx,iscv_log10_rho))
+            density_z = exp(ln10*tablez(t_idx,p_idx,iscvz_log10_rho))
             rho_mix = 1.0d0/(hydrogen_fraction_local/density_h + &
                  helium_fraction_local/density_he + &
                  metal_fraction_local/density_z)
@@ -176,22 +176,22 @@ subroutine build_scv_envelope_table
 ! D LN RHO/ D LN P = QDP
 ! FOR GAS PRESSURE QDP(TOT) = QDP(X)*X*RHO/RHO(X)+QDP(Y)*Y*RHO/RHO(Y)
 ! FOR RADIATION PRESSURE QDP = 0, SO QDP(TOT) = QDP(GAS)*P/PGAS
-            dlnrho_dlnp_gas = tablex(t_idx,p_idx,8)*hydrogen_fraction_local* &
-                 (rho_mix/density_h)+tabley(t_idx,p_idx,8)* &
+            dlnrho_dlnp_gas = tablex(t_idx,p_idx,iscv_dlnrho_dlnp)*hydrogen_fraction_local* &
+                 (rho_mix/density_h)+tabley(t_idx,p_idx,iscv_dlnrho_dlnp)* &
                  helium_fraction_local*(rho_mix/density_he) &
-                 + tablez(t_idx,p_idx,13)*metal_fraction_local* &
+                 + tablez(t_idx,p_idx,iscvz_dlnrho_dlnp)*metal_fraction_local* &
                  (rho_mix/density_z)
 ! D LN RHO/ D LN T = QDT (NOTE : D LN P/ D LN T = QPT)
 ! FOR GAS PRESSURE, CORRECT AS PER QDP
 ! FOR RADIATION PRESSURE, USE QDT = QDP*QPT.  CORRECT QPT FOR
 ! RADIATION PRESSURE AND USE THE CORRECTED QDP, QPT TO GET QDT.
             dlnrho_dlnt_gas = hydrogen_fraction_local*(rho_mix/density_h)* &
-                 tablex(t_idx,p_idx,7)+helium_fraction_local* &
-                 (rho_mix/density_he)*tabley(t_idx,p_idx,7) &
+                 tablex(t_idx,p_idx,iscv_dlnrho_dlnt)+helium_fraction_local* &
+                 (rho_mix/density_he)*tabley(t_idx,p_idx,iscv_dlnrho_dlnt) &
                  +metal_fraction_local*(rho_mix/density_z)* &
-                 tablez(t_idx,p_idx,10)
-            entropy_h = exp(ln10*tablex(t_idx,p_idx,5))
-            entropy_he = exp(ln10*tabley(t_idx,p_idx,5))
+                 tablez(t_idx,p_idx,iscvz_dlnrho_dlnt)
+            entropy_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_s))
+            entropy_he = exp(ln10*tabley(t_idx,p_idx,iscv_log10_s))
 ! ENTROPY.  OBEYS ADDITIVE VOLUME RULE, BUT ALSO NEED TO INCLUDE THE
 ! ENTROPY OF MIXING.
             entropy_total = hydrogen_fraction_local*entropy_h + &
@@ -201,27 +201,27 @@ subroutine build_scv_envelope_table
                  t_interp_dweight(3)*smix(idtt+2,p_idx)
 ! D LN S/ D LN T
             dlns_dlnt = (hydrogen_fraction_local*entropy_h* &
-                 tablex(t_idx,p_idx,9) + helium_fraction_local*entropy_he* &
-                 tabley(t_idx,p_idx,9) + dsmix_dlnt)/entropy_total
+                 tablex(t_idx,p_idx,iscv_dlns_dlnt) + helium_fraction_local*entropy_he* &
+                 tabley(t_idx,p_idx,iscv_dlns_dlnt) + dsmix_dlnt)/entropy_total
 !  CP = S*(D LN S/ D LN T)|P IS TABULATED. USE
 !  CP = DU/DT + P*(D LN RHO/D LN T)**2/RHO/T/(D LN RHO/ D LN P)
 !  TO INCLUDE THE EFFECTS OF RADIATION PRESSURE.
 ! CP (GAS PRESSURE ONLY).
             cp_gas = entropy_total*dlns_dlnt + metal_fraction_local* &
-                 (exp(ln10*tablez(t_idx,p_idx,7)) + &
-                 gas_pressure*tablez(t_idx,p_idx,10)**2/ &
-                 tablez(t_idx,p_idx,13)/density_z/temp_value)
+                 (exp(ln10*tablez(t_idx,p_idx,iscvz_log10_du_dt)) + &
+                 gas_pressure*tablez(t_idx,p_idx,iscvz_dlnrho_dlnt)**2/ &
+                 tablez(t_idx,p_idx,iscvz_dlnrho_dlnp)/density_z/temp_value)
 ! NOW FIND DU/DT FROM THE ORIGINAL TABLE.
             du_dt = cp_gas - gas_pressure*dlnrho_dlnt_gas**2/ &
                  dlnrho_dlnp_gas/rho_mix/temp_value
 ! NOW STORE THE RELEVANT VARIABLES IN A TABLE FOR THE ENVELOPE
 ! MIXTURE.
-            tablenv(t_idx,p_idx,1) = tablex(t_idx,p_idx,1)
-            tablenv(t_idx,p_idx,2) = log_rho_mix
-            tablenv(t_idx,p_idx,3) = dlnrho_dlnt_gas
-            tablenv(t_idx,p_idx,4) = dlnrho_dlnp_gas
-            tablenv(t_idx,p_idx,5) = cp_gas
-            tablenv(t_idx,p_idx,6) = du_dt
+            tablenv(t_idx,p_idx,iscvenv_log10_p) = tablex(t_idx,p_idx,iscv_log10_p)
+            tablenv(t_idx,p_idx,iscvenv_log10_rho) = log_rho_mix
+            tablenv(t_idx,p_idx,iscvenv_dlnrho_dlnt) = dlnrho_dlnt_gas
+            tablenv(t_idx,p_idx,iscvenv_dlnrho_dlnp) = dlnrho_dlnp_gas
+            tablenv(t_idx,p_idx,iscvenv_cp) = cp_gas
+            tablenv(t_idx,p_idx,iscvenv_du_dt) = du_dt
          end do
       end do
 ! NOW FIND THE FOLLOWING DERIVATIVES NUMERICALLY :
@@ -256,23 +256,23 @@ subroutine build_scv_envelope_table
               idp = p_idx - 1
            end if
            do k_idx = 1,3
-              interp_x(k_idx) = ln10*tablenv(t_idx,idp+k_idx-1,1)
+              interp_x(k_idx) = ln10*tablenv(t_idx,idp+k_idx-1,iscvenv_log10_p)
            end do
-           log_p_work = ln10*tablenv(t_idx,p_idx,1)
+           log_p_work = ln10*tablenv(t_idx,p_idx,iscvenv_log10_p)
            call inter3(interp_x,p_interp_weight,p_interp_dweight,log_p_work)
 ! DERIVATIVES OF D LN RHO/ D LN T
-           dqdt_dlnp = tablenv(t_idx,idp,3)*p_interp_dweight(1)+ &
-                tablenv(t_idx,idp+1,3)*p_interp_dweight(2) &
-                +tablenv(t_idx,idp+2,3)*p_interp_dweight(3)
-           dqdt_dlnt = tablenv(idtt,p_idx,3)*t_interp_dweight(1)+ &
-                tablenv(idtt+1,p_idx,3)*t_interp_dweight(2) &
-                +tablenv(idtt+2,p_idx,3)*t_interp_dweight(3)
+           dqdt_dlnp = tablenv(t_idx,idp,iscvenv_dlnrho_dlnt)*p_interp_dweight(1)+ &
+                tablenv(t_idx,idp+1,iscvenv_dlnrho_dlnt)*p_interp_dweight(2) &
+                +tablenv(t_idx,idp+2,iscvenv_dlnrho_dlnt)*p_interp_dweight(3)
+           dqdt_dlnt = tablenv(idtt,p_idx,iscvenv_dlnrho_dlnt)*t_interp_dweight(1)+ &
+                tablenv(idtt+1,p_idx,iscvenv_dlnrho_dlnt)*t_interp_dweight(2) &
+                +tablenv(idtt+2,p_idx,iscvenv_dlnrho_dlnt)*t_interp_dweight(3)
 ! DERIVATIVES OF LN CP (only the T derivative is stored; the P
 ! derivative was never used)
            do k_idx = 1,3
               ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
-            interp_f(k_idx) = log(tablenv(ii,jj,5))
+            interp_f(k_idx) = log(tablenv(ii,jj,iscvenv_cp))
            end do
            dlncp_dlnt = interp_f(1)*t_interp_dweight(1)+ &
                 interp_f(2)*t_interp_dweight(2)+interp_f(3)*t_interp_dweight(3)
@@ -280,31 +280,31 @@ subroutine build_scv_envelope_table
            do k_idx = 1,3
               ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
-            interp_f(k_idx) = tablenv(ii,jj,6)
-              interp_f(k_idx) = tablenv(idtt+k_idx-1,p_idx,6)
+            interp_f(k_idx) = tablenv(ii,jj,iscvenv_du_dt)
+              interp_f(k_idx) = tablenv(idtt+k_idx-1,p_idx,iscvenv_du_dt)
            end do
            dqut_dlnt = interp_f(1)*t_interp_dweight(1)+ &
                 interp_f(2)*t_interp_dweight(2)+interp_f(3)*t_interp_dweight(3)
            do k_idx = 1,3
-              interp_f(k_idx) = tablenv(t_idx,idp+k_idx-1,6)
+              interp_f(k_idx) = tablenv(t_idx,idp+k_idx-1,iscvenv_du_dt)
            end do
            dqut_dlnp = interp_f(1)*p_interp_dweight(1)+ &
                 interp_f(2)*p_interp_dweight(2)+interp_f(3)*p_interp_dweight(3)
 ! D/D LN RHO (D LN P/D LN RHO)
            do k_idx = 1,3
-              interp_x(k_idx) = ln10*tablenv(t_idx,idp+k_idx-1,2)
+              interp_x(k_idx) = ln10*tablenv(t_idx,idp+k_idx-1,iscvenv_log10_rho)
            end do
-           ln_rho_value = ln10*tablenv(t_idx,p_idx,2)
+           ln_rho_value = ln10*tablenv(t_idx,p_idx,iscvenv_log10_rho)
            call inter3(interp_x,p_interp_weight,p_interp_dweight,ln_rho_value)
-           dlnp_dlnrho = p_interp_dweight(1)/tablenv(t_idx,idp,4)+ &
-                p_interp_dweight(2)/tablenv(t_idx,idp+1,4) &
-                +p_interp_dweight(3)/tablenv(t_idx,idp+2,4)
-           tablenv(t_idx,p_idx,7) = dqdt_dlnp
-           tablenv(t_idx,p_idx,8) = dqdt_dlnt
-           tablenv(t_idx,p_idx,9) = dlnp_dlnrho
-           tablenv(t_idx,p_idx,10) = dlncp_dlnt
-           tablenv(t_idx,p_idx,11) = dqut_dlnp
-           tablenv(t_idx,p_idx,12) = dqut_dlnt
+           dlnp_dlnrho = p_interp_dweight(1)/tablenv(t_idx,idp,iscvenv_dlnrho_dlnp)+ &
+                p_interp_dweight(2)/tablenv(t_idx,idp+1,iscvenv_dlnrho_dlnp) &
+                +p_interp_dweight(3)/tablenv(t_idx,idp+2,iscvenv_dlnrho_dlnp)
+           tablenv(t_idx,p_idx,iscvenv_dqdt_dlnp) = dqdt_dlnp
+           tablenv(t_idx,p_idx,iscvenv_dqdt_dlnt) = dqdt_dlnt
+           tablenv(t_idx,p_idx,iscvenv_dlnp_dlnrho) = dlnp_dlnrho
+           tablenv(t_idx,p_idx,iscvenv_dlncp_dlnt) = dlncp_dlnt
+           tablenv(t_idx,p_idx,iscvenv_dqut_dlnp) = dqut_dlnp
+           tablenv(t_idx,p_idx,iscvenv_dqut_dlnt) = dqut_dlnt
         end do
       end do
 
