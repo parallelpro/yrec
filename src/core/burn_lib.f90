@@ -44,6 +44,20 @@ module burn_lib
 ! total energy generation incl. neutrino losses, erg/g/s (SUM1)
            double precision :: total_energy_gen_rate = 0.0d0
       end type burn_result
+
+! dburn/dburnm interface constants (2026 W3). The two deuterium
+! drivers are deliberately kept as separate bodies (see the dburn
+! header table); the literals that distinguish their interfaces are
+! named here so the split is visible in one place.
+! dburn_min_deuterium: dburn's "nothing to burn" threshold on the
+! accretion-mixed deuterium mass fraction.
+      double precision, parameter, private :: dburn_min_deuterium = 1.0d-11
+! dburnm_min_deuterium: dburnm's threshold on the plain CZ-averaged
+! deuterium mass fraction.
+      double precision, parameter, private :: dburnm_min_deuterium = 1.0d-14
+! gyr_per_year: dburnm's seconds -> Gyr timestep conversion factor,
+! applied as timestep*gyr_per_year/seconds_per_year.
+      double precision, parameter, private :: gyr_per_year = 1.0d-9
 contains
 
 
@@ -287,18 +301,32 @@ end subroutine eqburn
 ! only exposed for ~half the timestep on average) and mass-weighted
 ! back together.
 !
-! dburn and dburnm are near-twins. The four differences (dburn / dburnm):
-!   1. start/end rates: star%deuterium_burning_rate_start and
-!      star%deuterium_burning_rate / the dummy arguments
-!      deuterium_rate_start, deuterium_rate_end;
-!   2. timestep: used as passed / converted from seconds to Gyr
-!      (timestep_gyr);
-!   3. "nothing to burn" test: the accretion-mixed
-!      deuterium_fraction_test .lt. 1.0d-11 / the plain CZ average
-!      .lt. 1.0d-14;
-!   4. accretion weighting: absolute masses (total_shell_mass and
-!      star%accreted_mass_fraction) / normalised to the CZ mass with
-!      only step_fraction of star%accreted_mass_fraction.
+! dburn and dburnm are near-twins with the same sub-stepping body.
+! They are kept as two routines on purpose: unifying them would change
+! the numbers (units, thresholds and weighting differ). The four
+! interface differences, side by side:
+!
+!   difference        dburn                      dburnm
+!   ----------------  -------------------------  ---------------------------
+!   timestep units    used as passed (Gyr)       seconds, converted to Gyr
+!                                                (timestep_gyr =
+!                                                timestep*gyr_per_year/
+!                                                seconds_per_year)
+!   "nothing to       accretion-mixed            plain CZ average
+!   burn" threshold   deuterium_fraction_test    deuterium_fraction
+!                     .lt. dburn_min_deuterium   .lt. dburnm_min_deuterium
+!                     (1.0d-11)                  (1.0d-14)
+!   accretion         absolute masses:           normalised to the CZ mass:
+!   weighting         (D*M_cz + D_acc*f)/        (D + D_acc*f_sub)/
+!                     (M_cz + f) with            (1 + f_sub) with f_sub =
+!                     M_cz = total_shell_mass,   step_fraction*
+!                     f = star%accreted_         star%accreted_mass_fraction
+!                     mass_fraction
+!   rate source       star%deuterium_burning_    dummy arguments
+!                     rate_start / star%         deuterium_rate_start /
+!                     deuterium_burning_rate     deuterium_rate_end
+!
+! The named constants live at the top of burn_lib.
 subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep)
 
@@ -364,7 +392,7 @@ subroutine dburn(zone_begin, zone_end, num_zones, shell_mass, &
       else
          deuterium_fraction_test = deuterium_fraction
       end if
-      if (deuterium_fraction_test.lt.1.0d-11) then
+      if (deuterium_fraction_test.lt.dburn_min_deuterium) then
          do zone_idx = zone_begin, zone_end
             composition(i_h2,zone_idx) = 0.0d0
          end do
@@ -496,8 +524,9 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
            hydrogen_fraction_new, helium3_fraction_new, deuterium_change
 
 ! timestep_gyr converts timestep (assumed in seconds) to Gyr, matching
-! the units used elsewhere for the burning rates.
-      timestep_gyr = timestep*1.0d-9/seconds_per_year
+! the units used elsewhere for the burning rates (dburn receives Gyr
+! directly; see the table in the dburn header).
+      timestep_gyr = timestep*gyr_per_year/seconds_per_year
       if(zone_begin.eq.zone_end)then
          hydrogen_fraction = star%xa_start(1,zone_begin)
          deuterium_fraction = star%xa_start(12,zone_begin)
@@ -530,7 +559,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
          deuterium_fraction = deuterium_fraction/total_shell_mass
          helium3_fraction = helium3_fraction/total_shell_mass
       endif
-      if(deuterium_fraction.lt.1.0d-14)then
+      if(deuterium_fraction.lt.dburnm_min_deuterium)then
          do zone_idx = zone_begin,zone_end
             composition(i_h2,zone_idx) = 0.0d0
          end do
