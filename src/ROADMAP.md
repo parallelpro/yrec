@@ -831,5 +831,21 @@ section 1.1 -- among them a modernization regression
 (read_starting_model:829 linear Lsun where log10 is needed, on a
 branch no deck runs), the rhoofp01 twin of the Batch 3 rhoofp06
 priming fix, and a one-way swap in envint_kernel's envelope
-reversal. Nothing has been edited yet; awaiting the choice of
-batch.
+reversal.
+
+R1-R5 were executed 2026-09-03..04 (7ef705c -> eece94b1, 75
+commits, 225 files, +8309/-13186) in three waves of parallel
+worktree agents; every commit class A, the 37-pin selection
+byte-identical after every wave, aux battery 22/22, ZAHB->TAHB spot
+check unchanged. Highlights: named species/rate/table indices
+throughout, the henyey flag relays and kenv/katm gone, atm_get
+takes an explicit step config, callees report decisions and the
+drivers flip star%job%, one kap table-set type per family with two
+instances (five clone files deleted), one OPAL-EOS vintage type
+(quadeos01/06, t6rinteos*, eqbound*, gmass06 deleted), one envelope
+refit helper, one rates vector, engeb returns a record. The
+execution record with per-batch detail, the eleven-item list of
+author decisions for R6, and the agents' corrections to the audit
+is audit/readability-sweep-2026-09-03/EXECUTION.md; the seventeen
+agent reports and their briefs are under its reports/. R6 is not
+started.
