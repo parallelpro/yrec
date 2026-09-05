@@ -170,13 +170,26 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
       if (abs(metal_fraction-opacity_table%opal95_fixed_z)/max(opacity_table%opal95_fixed_z,1.0d-6).le.opal95_composition_tol) then
          if (abs(hydrogen_fraction-opacity_table%opal95_surface_x).le.opal95_composition_tol) then
 !           2D INTERPOLATION IN SURFACE TABLE
-            call opal95_interp2d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+            call opal95_interp2d(opacity_table%opal95_index_t, opacity_table%opal95_index_rho, &
+     opacity_table%opal95_weight_t, opacity_table%opal95_dweight_t, &
+     opacity_table%opal95_weight_rho, opacity_table%opal95_dweight_rho, &
+     opacity_table%opal95_logr, opacity_table%opal95_logr_lo_edge, &
+     opacity_table%opal95_logr_hi_edge, opacity_table%opal95_extrap_lo, &
+     opacity_table%opal95_extrap_hi, opacity_table%opal95_extrap_hi_row, &
+     opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
             return
          else
 !           3D INTERPOLATION IN FIXED Z TABLE (X,T,RHO)
 !           GET INTERPOLATION FACTORS IN X.
          call opal95_x_stencil(1, opacity_table%opal95_fixed_z, hydrogen_fraction)
-         call opal95_interp3d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+         call opal95_interp3d(opacity_table%opal95_index_x(1,:), &
+     opacity_table%opal95_weight_x(1,:), opacity_table%opal95_index_t, opacity_table%opal95_index_rho, &
+     opacity_table%opal95_weight_t, opacity_table%opal95_dweight_t, &
+     opacity_table%opal95_weight_rho, opacity_table%opal95_dweight_rho, &
+     opacity_table%opal95_logr, opacity_table%opal95_logr_lo_edge, &
+     opacity_table%opal95_logr_hi_edge, opacity_table%opal95_extrap_lo, &
+     opacity_table%opal95_extrap_hi, opacity_table%opal95_extrap_hi_row, &
+     opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
          return
       endif
       endif
@@ -221,7 +234,15 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
          z_at_table = opacity_table%opal95_grid_z(opacity_table%opal95_index_z+k-1)
          call opal95_x_stencil(k, z_at_table, hydrogen_fraction)
       end do
-      call opal95_interp4d(opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+      call opal95_interp4d(opacity_table%opal95_index_z, opacity_table%opal95_weight_z, &
+     opacity_table%opal95_index_x, opacity_table%opal95_weight_x, &
+     opacity_table%opal95_index_t, opacity_table%opal95_index_rho, &
+     opacity_table%opal95_weight_t, opacity_table%opal95_dweight_t, &
+     opacity_table%opal95_weight_rho, opacity_table%opal95_dweight_rho, &
+     opacity_table%opal95_logr, opacity_table%opal95_logr_lo_edge, &
+     opacity_table%opal95_logr_hi_edge, opacity_table%opal95_extrap_lo, &
+     opacity_table%opal95_extrap_hi, opacity_table%opal95_extrap_hi_row, &
+     opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       return
 
 contains
