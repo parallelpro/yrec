@@ -34,6 +34,13 @@ module envstruct_lib
                  env_ion_fraction(3,json)
             double precision :: env_opacity(json), env_luminosity(json), &
                  env_dlnrho_dlnt(json)
+! 2026 (pulse derivatives): the opacity derivatives the envelope
+! integration computes at every point (envelope_derivs: pt_scr%qqod,
+! pt_scr%qqot), kept so that the pulse writers can fill the GYRE/GSM
+! kap_kap_T and kap_kap_rho columns of the envelope points (they were
+! written as zero, which switches off the kappa mechanism of the
+! hydrogen ionisation zone in any nonadiabatic calculation on the file).
+            double precision :: env_dlnkap_dlnrho(json), env_dlnkap_dlnt(json)
             integer :: num_env_points
       end type envelope_structure_state
 

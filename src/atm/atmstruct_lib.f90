@@ -30,6 +30,10 @@ module atmstruct_lib
             double precision :: atmo_gamma1(json), atmo_dlnrho_dlnt(json), &
                  atmo_ion_fraction(3,json)
             double precision :: atmo_opacity(json), atmo_specific_heat_cp(json)
+! 2026 (pulse derivatives): opacity derivatives at every atmosphere
+! point (atmosphere_derivs: pt_scr%qqod, pt_scr%qqot), for the pulse
+! writers' kap_kap_T and kap_kap_rho columns (see envstruct_lib).
+            double precision :: atmo_dlnkap_dlnrho(json), atmo_dlnkap_dlnt(json)
             integer :: num_atm_points
       end type atmosphere_structure_state
 

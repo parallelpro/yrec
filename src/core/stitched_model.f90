@@ -530,10 +530,19 @@ end function profile_value
 ! (interior + envelope + atmosphere; build_stitched_model must have run).
 ! Columns 1-18 are the GYRE schema-101 set; 19-34 the extras FGONG
 ! needs. Envelope/atmosphere points carry what those integrations
-! store; opacity/energy derivative columns they do not track are
-! zero there (they matter only for nonadiabatic work), and the
-! composition above the fitting point is the surface composition, as
-! io/write_stitched_profile.f90 also writes.
+! store. The opacity derivatives (kap_kap_T, kap_kap_rho) are among
+! them since 2026: the envelope and atmosphere integrations always
+! computed dlnkap/dlnT and dlnkap/dlnrho (pt_scr%qqot, qqod) but did
+! not keep them, so these two columns were written as zero above the
+! fitting point -- which, for a nonadiabatic pulsation code reading
+! the file, removes the kappa mechanism of the hydrogen ionisation
+! zone and the radiative damping of the atmosphere (found with GYRE
+! and nap on the standard solar model: the frozen-convection solar p
+! modes came out marginal instead of driven/damped). The energy
+! generation derivative columns stay zero there (no burning above
+! the fitting point), and the composition above the fitting point is
+! the surface composition, as io/write_stitched_profile.f90 also
+! writes.
 subroutine build_pulse_points(pts)
       use math_lib
       use star_info_lib, only: star, i_eps_grav, i_h1, i_metals
@@ -599,6 +608,10 @@ subroutine build_pulse_points(pts)
             pts(ipul_L,j) = env_struct%env_luminosity(i)*star%solar_luminosity_cgs
             pts(ipul_gamma1,j) = env_struct%env_gamma1(i)
             pts(ipul_kap,j) = env_struct%env_opacity(i)
+! absolute derivatives kap*dlnkap/dln{T,rho}, the GSM/GYRE convention
+! used for the interior above
+            pts(ipul_kap_kap_T,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnt(i)
+            pts(ipul_kap_kap_rho,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnrho(i)
             pts(ipul_omega,j) = star%omega(star%nz)
             pts(ipul_cp,j) = env_struct%env_specific_heat_cp(i)
             pts(ipul_h1,j) = env_struct%env_hydrogen_fraction(i)
@@ -618,6 +631,8 @@ subroutine build_pulse_points(pts)
             pts(ipul_L,j) = exp(ln10*star%log_L)*star%solar_luminosity_cgs
             pts(ipul_gamma1,j) = atmo_struct%atmo_gamma1(i)
             pts(ipul_kap,j) = atmo_struct%atmo_opacity(i)
+            pts(ipul_kap_kap_T,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnt(i)
+            pts(ipul_kap_kap_rho,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnrho(i)
             pts(ipul_omega,j) = star%omega(star%nz)
             pts(ipul_cp,j) = atmo_struct%atmo_specific_heat_cp(i)
             pts(ipul_h1,j) = star%xa(i_h1,star%nz)

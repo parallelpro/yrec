@@ -427,6 +427,8 @@ subroutine integrate_atmosphere
        atmo_struct%atmo_ion_fraction(2,step_index) = atm_table%atm_ion_fraction(2)
        atmo_struct%atmo_ion_fraction(3,step_index) = atm_table%atm_ion_fraction(3)
        atmo_struct%atmo_opacity(step_index) = atm_table%atm_opacity
+       atmo_struct%atmo_dlnkap_dlnrho(step_index) = pt_scr%qqod
+       atmo_struct%atmo_dlnkap_dlnt(step_index) = pt_scr%qqot
        atmo_struct%atmo_specific_heat_cp(step_index) = pt_scr%qqcp
        if(h_did.eq.h_step) then
           num_ok = num_ok + 1
@@ -570,6 +572,8 @@ subroutine integrate_envelope
       env_struct%env_ion_fraction(2,1) = pt_scr%current_ion_fraction(2)
       env_struct%env_ion_fraction(3,1) = pt_scr%current_ion_fraction(3)
       env_struct%env_opacity(1) = pt_scr%current_opacity
+      env_struct%env_dlnkap_dlnrho(1) = pt_scr%qqod
+      env_struct%env_dlnkap_dlnt(1) = pt_scr%qqot
       env_struct%env_luminosity(1) = luminosity_linear
       env_struct%env_dlnrho_dlnt(1) = pt_scr%qqdt
       if(env_struct%env_convective_flag(1))cz_in_envelope = .true.
@@ -666,6 +670,8 @@ subroutine integrate_envelope
             env_struct%env_ion_fraction(2,env_struct%num_env_points) = pt_scr%current_ion_fraction(2)
             env_struct%env_ion_fraction(3,env_struct%num_env_points) = pt_scr%current_ion_fraction(3)
             env_struct%env_opacity(env_struct%num_env_points) = pt_scr%current_opacity
+            env_struct%env_dlnkap_dlnrho(env_struct%num_env_points) = pt_scr%qqod
+            env_struct%env_dlnkap_dlnt(env_struct%num_env_points) = pt_scr%qqot
             env_struct%env_luminosity(env_struct%num_env_points) = luminosity_linear
             env_struct%env_dlnrho_dlnt(env_struct%num_env_points) = pt_scr%qqdt
 
@@ -726,6 +732,8 @@ subroutine integrate_envelope
             env_struct%env_metal_fraction(1:n) = env_struct%env_metal_fraction(n:1:-1)
             env_struct%env_convective_flag(1:n) = env_struct%env_convective_flag(n:1:-1)
             env_struct%env_opacity(1:n) = env_struct%env_opacity(n:1:-1)
+            env_struct%env_dlnkap_dlnrho(1:n) = env_struct%env_dlnkap_dlnrho(n:1:-1)
+            env_struct%env_dlnkap_dlnt(1:n) = env_struct%env_dlnkap_dlnt(n:1:-1)
             env_struct%env_luminosity(1:n) = env_struct%env_luminosity(n:1:-1)
             env_struct%env_dlnrho_dlnt(1:n) = env_struct%env_dlnrho_dlnt(n:1:-1)
             env_struct%env_gradients(:,1:n) = env_struct%env_gradients(:,n:1:-1)
