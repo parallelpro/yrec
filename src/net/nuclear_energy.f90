@@ -200,7 +200,9 @@ subroutine nuclear_energy(log_density, &
 ! ******************************************************************
 ! ****************************************
       call sum_energy_generation
-      call compute_neutrino_emission
+      call reaction_rates_and_chain_shares
+      call solar_neutrino_fluxes
+      call thermal_neutrino_loss
       return
 
 contains
@@ -372,8 +374,10 @@ end subroutine sum_energy_generation
 ! Be7, B8, N13, O15, F17) with hep screening. The nuclear_logT_cutoffs(5) early
 ! RETURN is equivalent in or out of the section: nothing follows
 ! this call in compute_zone_energy.
-subroutine compute_neutrino_emission
+subroutine reaction_rates_and_chain_shares
       use math_lib
+! the reaction rates per Gyr per amu, the branchings, the chain shares
+! of eps and the alpha-capture energy
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
 ! ******************************************************
 ! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
@@ -435,6 +439,11 @@ subroutine compute_neutrino_emission
 ! ENERGY FROM ALPHA CAPTURE REACTIONS.
       e%eps_alpha_capture=reaction_energy_gen(r_ac13)+reaction_energy_gen(r_ac12)+ &
            reaction_energy_gen(r_an14)
+end subroutine reaction_rates_and_chain_shares
+
+subroutine solar_neutrino_fluxes
+      use math_lib
+! the solar neutrino fluxes and the Be7 abundance (ctrl%calc_neutrinos)
       if (star%ctrl%calc_neutrinos) then
          e%fluxes_set = .true.
 ! MHP 9/91 CHANGE TO TURN OFF NEUTRINO CALC FOR HYDROGEN-EXHAUSTED CORE.
@@ -504,6 +513,12 @@ subroutine compute_neutrino_emission
 ! MHP 9/91 ENDIF INSERTED HERE.
          end if
       end if
+end subroutine solar_neutrino_fluxes
+
+subroutine thermal_neutrino_loss
+      use math_lib
+! the thermal neutrino losses above nuclear_logT_cutoffs(5), with their
+! absolute derivatives, added to eps
 ! END OF NEUTRINO FLUX ROUTINE.
 !
 ! ***MHP 5/91
@@ -594,7 +609,7 @@ subroutine compute_neutrino_emission
          e%deps_dlnrho = e%deps_dlnrho - qednx
       end if
 
-end subroutine compute_neutrino_emission
+end subroutine thermal_neutrino_loss
 
 end subroutine nuclear_energy
 
