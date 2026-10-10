@@ -2082,8 +2082,12 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
                  screening_factor(i))
             nr%rate(i) = nr%rate(i)*star%cross_section_scale(i)
             nr%dlnrate_dlnrho(i)=1.d0+dscreen_dlnrho(i)
+! the exact derivative of the rate above, scales included (2026-10:
+! the q3 term lacked qs0e_scale and the q4, q5 terms qqs0ee_scale, so
+! once those scales were ~1 instead of ~1e-22 it no longer matched)
             nr%dlnrate_dlnt(i)=dscreen_dlnt(i)-(fit_q6(i)*t9_m13+(2.d0*t9_m23+ &
-            fit_q1(i)*t9_m13-fit_q3(i)*t9_p13-2.d0*fit_q4(i)*t9_p23-3.d0*fit_q5(i)*t9)/r1)/3.d0+ &
+            fit_q1(i)*t9_m13-star%qs0e_scale(i)*fit_q3(i)*t9_p13- &
+            star%qqs0ee_scale(i)*(2.d0*fit_q4(i)*t9_p23+3.d0*fit_q5(i)*t9))/r1)/3.d0+ &
             2.d0*(fit_q8(i)*t9)**2
          end do
 ! Be7: electron capture vs proton capture

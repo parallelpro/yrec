@@ -42,6 +42,16 @@ program test_net
 
 ! rate_vec: the one-zone rate vector of rates (rows rr_*)
       double precision :: rate_vec(num_rate_rows)
+! derivative check: analytic vs centred differences of the rates
+      type(nuclear_rates) :: nr0, nr_tp, nr_tm, nr_dp, nr_dm
+      double precision :: fd_mass(num_isotopes), fd_err_t(num_reactions), &
+           fd_err_d(num_reactions), fd_num
+      integer, parameter :: nfd = 3
+      double precision :: fd_logt(nfd), fd_logd(nfd)
+      data fd_logt /7.10d0, 7.30d0, 8.00d0/
+      data fd_logd /1.80d0, 2.20d0, 3.00d0/
+      double precision, parameter :: fd_h = 1.0d-4
+      integer :: k
       double precision :: snu, dsnudt, dsnudd, dsnuda, dsnudz
       double precision :: xmass(3), aion(3), zion(3), ymass(3), &
            abar, zbar
@@ -181,6 +191,40 @@ program test_net
       star%xa(i_h2,1) = 2.0d-5
       call deutrate(1.5d0, 6.2d0, 0.70d0, 1, 1)
       write(*,'(1pe20.12)') star%deuterium_burning_rate(1)
+
+! analytic dln(rate)/dlnT and dln(rate)/dln(rho) of nuclear_reaction_rates
+! against centred differences (step 1e-4 dex), worst relative error per
+! reaction slot over three (log T, log rho) points; slots that are zero
+! everywhere print 0. Guards the hand-derived Jacobian terms.
+      write(*,'(a)') "# test_net: rate derivatives, max |analytic/numerical - 1| (dlnT, dlnrho)"
+      fd_mass = 0.0d0
+      fd_mass(iso_h1) = 0.70d0
+      fd_mass(iso_he3) = 3.0d-5
+      fd_mass(iso_he4) = 0.28d0
+      fd_mass(iso_c12) = 3.5d-3
+      fd_mass(iso_c13) = 4.0d-5
+      fd_mass(iso_n14) = 1.0d-3
+      fd_mass(iso_o16) = 8.0d-3
+      fd_mass(iso_o18) = 2.0d-5
+      fd_err_t = 0.0d0
+      fd_err_d = 0.0d0
+      do ipt = 1, nfd
+         call nuclear_reaction_rates(fd_logd(ipt), fd_logt(ipt), fd_mass, nr0)
+         call nuclear_reaction_rates(fd_logd(ipt), fd_logt(ipt)+fd_h, fd_mass, nr_tp)
+         call nuclear_reaction_rates(fd_logd(ipt), fd_logt(ipt)-fd_h, fd_mass, nr_tm)
+         call nuclear_reaction_rates(fd_logd(ipt)+fd_h, fd_logt(ipt), fd_mass, nr_dp)
+         call nuclear_reaction_rates(fd_logd(ipt)-fd_h, fd_logt(ipt), fd_mass, nr_dm)
+         do k = 1, num_reactions
+            if (nr0%rate(k) <= 0.0d0 .or. nr_tp%rate(k) <= 0.0d0 .or. nr_tm%rate(k) <= 0.0d0) cycle
+            fd_num = (log(nr_tp%rate(k)) - log(nr_tm%rate(k)))/(2.0d0*fd_h*log(10.0d0))
+            fd_err_t(k) = max(fd_err_t(k), abs(nr0%dlnrate_dlnt(k)/fd_num - 1.0d0))
+            fd_num = (log(nr_dp%rate(k)) - log(nr_dm%rate(k)))/(2.0d0*fd_h*log(10.0d0))
+            fd_err_d(k) = max(fd_err_d(k), abs(nr0%dlnrate_dlnrho(k)/fd_num - 1.0d0))
+         end do
+      end do
+      do k = 1, num_reactions
+         write(*,'(i3, 2es10.2)') k, fd_err_t(k), fd_err_d(k)
+      end do
 
 ! the burning network's reaction table and its baryon-balance check
       write(*,'(a)') "# test_net: network table"
