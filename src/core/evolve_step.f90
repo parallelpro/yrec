@@ -303,8 +303,12 @@ subroutine rezone_or_snapshot
                star%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = star%envelope_cz_bottom_index
                star%pressure_scale_height_start = envelope_overshoot_depth()
-! find burning rates at the beginning of the time step.
-               call lirate88(star%xa,star%logRho,star%logT,star%nz,1)
+! find burning rates at the beginning of the time step: from the
+! start-of-step model (flag 2) into star%rate_*_start. 2026-10: this
+! call passed flag 1 (the current model into the END slots) and the
+! end-of-step calls flag 2, so both sets came from the start-of-step
+! model and liburn never saw the end of the step (inherited from F77).
+               call lirate88(star%xa,star%logRho,star%logT,star%nz,2)
             endif
 end subroutine rezone_or_snapshot
 
@@ -499,8 +503,9 @@ subroutine burn_light_elements
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index
                star%pressure_scale_height_end = envelope_overshoot_depth()
-! FIND BURNING RATES AT THE END OF THE TIME STEP.
-               call lirate88(star%xa,star%logRho,star%logT,star%nz,2)
+! FIND BURNING RATES AT THE END OF THE TIME STEP: from the converged
+! model (flag 1) into star%rate_* (2026-10: was flag 2, see above).
+               call lirate88(star%xa,star%logRho,star%logT,star%nz,1)
                call liburn(star%dt,star%xa,star%logR,star%m,star%dm,star%logT,envelope_cz_zone_end,envelope_cz_zone_prev,star%nz)
             endif
          endif

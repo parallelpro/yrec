@@ -1111,11 +1111,10 @@ end subroutine liburn2
 !
 ! Burning rates from Caughlin and Fowler (1988): net's li_be_rates
 ! (2026-10: the formulas moved there; this loop stores them).
-! Note (2026-10 audit, inherited): as called, both rate sets come from
-! the start-of-step model -- flag 1 at the start of the step stores the
-! current (= start-of-step) model's rates in star%rate_*, flag 2 at the
-! end recomputes from star%*_start into star%rate_*_start -- so
-! liburn's start/end interpolation never sees the end-of-step model.
+! Callers: flag 2 at the start of the step (start-of-step model ->
+! star%rate_*_start), flag 1 at the end (the model passed in ->
+! star%rate_*). 2026-10: the calls had the flags the other way round
+! (inherited from F77), so both sets came from the start-of-step model.
 subroutine lirate88(composition, log_density, log_temperature, num_zones, &
      use_current_model)
       use star_info_lib, only: star, json, i_be9

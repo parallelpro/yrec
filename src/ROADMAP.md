@@ -984,10 +984,15 @@ left for a decision (physics changes):
 - dburn and dburnm are otherwise one algorithm (units, rate source and
   the 1e-11 / 1e-14 thresholds differ): merge once the two points above
   are settled.
-- **Li/Be burning never sees the end-of-step model.** lirate88 is
+- **Li/Be burning never sees the end-of-step model -- FIXED (flags
+  swapped at the three lirate88 calls).** lirate88 was
   called with flag 1 at the start of the step (current model = the
   start-of-step model, stored in star%rate_*) and flag 2 at the end
   (recomputed from star%*_start into star%rate_*_start), so liburn's
   start/end rate interpolation uses start-of-step rates throughout.
-  Inherited from F77 (the flags look swapped). The rate formulas are
-  net's li_be_rates now (2026-10); the wiring is unchanged.
+  Inherited from F77 (the flags were swapped). Now flag 2 at the start
+  (start-of-step model -> star%rate_*_start) and flag 1 at the end (the
+  converged model, or the mid-sub-step model in the rotation loop ->
+  star%rate_*). Structure unchanged; surface Li7 at 4.568 Gyr -0.088 dex
+  (noGS_norot) and -0.113 dex (GS_rot rotating), Be9 < 0.001 dex. A
+  calibration that tunes mixing to the solar Li abundance shifts.

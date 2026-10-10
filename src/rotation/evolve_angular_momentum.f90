@@ -347,8 +347,10 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          else
             star%pressure_scale_height_end = 0.0D0
          endif
-! FIND LIGHT ELEMENT BURNING RATES AT THE END OF THE TIME STEP.
-         call lirate88(star%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,star%nz,2)
+! FIND LIGHT ELEMENT BURNING RATES AT THE END OF THE TIME STEP: from the
+! mid-sub-step model passed in (flag 1) into star%rate_* (2026-10: was
+! flag 2, which ignored these arguments and used the start-of-step model).
+         call lirate88(star%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,star%nz,1)
 ! STORE CURRENT "END OF STEP" QUANTITIES AS "BEGINNING" ONES FOR
 ! THE NEXT STEP.
 ! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
