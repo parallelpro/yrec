@@ -2000,13 +2000,14 @@ end subroutine ratext
 ! Gauss-Jordan elimination with partial pivoting, operating on a
 ! system matrix stored as a flat array: num_unknowns equations (rows),
 ! num_cols columns (num_cols > num_unknowns for one or more augmented
-! right-hand-side columns), stored column-major in system_matrix(56).
+! right-hand-side columns), stored column-major (2026-10: sized from
+! the arguments; it was a fixed system_matrix(56), the 7x8 kemcom case).
 subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
 
       implicit none
 
-      double precision, intent(inout) :: system_matrix(56)
       integer, intent(in) :: num_cols, num_unknowns
+      double precision, intent(inout) :: system_matrix(num_unknowns*num_cols)
       integer :: jj, j, jy, it, i, ij, imax, ia, ib, ic, id, ix, jx, ny, &
            n1, ig, ih
       double precision :: biga, swap_val

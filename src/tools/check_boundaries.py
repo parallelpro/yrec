@@ -77,7 +77,10 @@ PUBLIC = {
             # atm split -- clean physics services
             "surfp", "kcsurfp", "alsurfp"},
     # Every net_lib module procedure is public by construction.
+    # implicit_burn_step is network_lib's one entry: the table-driven
+    # implicit burning step (2026-10, replaced kemcom's equations).
     "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
+                "implicit_burn_step",
                 "eqburn", "dburn", "dburnm", "deutrate", "engeb",
                 "liburn", "liburn2", "lirate88", "safedivexp",
                 "ifermi12", "zfermim12"},
