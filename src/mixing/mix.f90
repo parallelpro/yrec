@@ -38,6 +38,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       use phys_const_lib
       use net_lib
       use burn_lib
+      use network_lib, only: eqburn
 
       use math_lib
       implicit none
@@ -209,7 +210,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
-               call eqburn(rate_by_zone, star%dm, &
+               call eqburn(rate_by_zone, star%xa_start, star%dm, &
                     star%logT, zone_begin, zone_end, dc_dt, do_dt, &
                     dx_dt, dy_dt, c12_fraction, o16_fraction, &
                     hydrogen_fraction, metal_fraction)
@@ -237,7 +238,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
          do mixed_zone_idx = 1, num_mixed_zones
             zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            call eqburn(rate_by_zone, star%dm, star%logT, &
+            call eqburn(rate_by_zone, star%xa_start, star%dm, star%logT, &
                  zone_begin, zone_end, dc_dt, do_dt, dx_dt, dy_dt, &
                  c12_fraction, o16_fraction, hydrogen_fraction, &
                  metal_fraction)

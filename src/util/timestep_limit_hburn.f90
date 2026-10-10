@@ -24,6 +24,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       use phys_const_lib
       use net_lib
       use burn_lib
+      use network_lib, only: eqburn
       implicit none
 
       double precision, intent(in) :: log_density(json)
@@ -80,7 +81,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
 !  setup nuclear energy terms
       call rates(local_log_density,local_log_temperature,composition(:,zone_end), &
            rate_by_zone(:,zone_end))
-      call eqburn(rate_by_zone,shell_mass, &
+      call eqburn(rate_by_zone,star%xa_start,shell_mass, &
            log_temperature,zone_begin,zone_end,dc_dt,do_dt,dx_dt,dy_dt, &
            c12_fraction,o16_fraction,hydrogen_fraction,metal_fraction)
       if(dx_dt.lt.0.0d0 .and. star%ctrl%atime(itime_dx_shell).gt.0.0d0) then
