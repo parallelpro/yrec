@@ -2286,8 +2286,8 @@ end subroutine nuclear_reaction_rates
 ! array. Rows rr_zero9 and rr_zero13 are zero-filled placeholders
 ! (reactions 9 and 13 are never computed).
 subroutine rates(log_density, log_temperature, xa, rate_vec)
-      use star_info_lib, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, &
-           i_o16, i_o18
+      use star_info_lib, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
+           i_n14, i_o16, i_o18
       use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
            rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, rr_zero9, &
            rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_zero13, &
@@ -2303,10 +2303,12 @@ subroutine rates(log_density, log_temperature, xa, rate_vec)
       type(nuclear_rates) :: nr
       integer :: i
 
-! The composition path leaves deuterium out of the screening
-! composition (engeb includes it): a ~1e-5 effect, pre-main sequence.
+! the same screening composition as engeb's, deuterium included
+! (2026-10; this path used to leave it out, a ~1e-5 effect while
+! deuterium survives)
       mass_frac = 0.0d0
       mass_frac(iso_h1) = xa(i_h1)
+      mass_frac(iso_h2) = xa(i_h2)
       mass_frac(iso_he3) = xa(i_he3)
       mass_frac(iso_he4) = xa(i_he4)
       mass_frac(iso_c12) = xa(i_c12)
