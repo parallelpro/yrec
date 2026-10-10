@@ -104,7 +104,7 @@ module star_info_lib
 ! slot (the SNU tables). Slots 1-8 are the real neutrino sources;
 ! slots 9-10 hold the He3+He3 and He3+He4 reaction rates in the same
 ! flux units, as if each reaction emitted one neutrino ("fictional"
-! fluxes stored by engeb's compute_neutrino_emission; tabulated with
+! fluxes stored by compute_zone_energy's compute_neutrino_emission; tabulated with
 ! the others by neutrino_flux_table).
       integer, parameter, public :: &
            i_nu_pp = 1, i_nu_pep = 2, i_nu_hep = 3, i_nu_be7 = 4, &
@@ -219,7 +219,7 @@ module star_info_lib
                  neutrino_flux_zone(n_nu_fluxes,json)
 ! reaction_rate(r,i): rate of reaction r (net_lib r_* slot) in zone i,
 ! per 10^9 yr per amu (former HR1..HR13 / reaction_rate_1..13),
-! stored by engeb's compute_neutrino_emission.
+! stored by compute_zone_energy's compute_neutrino_emission.
             double precision :: reaction_rate(n_reactions,json), &
                  n15_alpha_branch_fraction(json), &
                  be7_electron_capture_fraction(json)
@@ -253,7 +253,7 @@ module star_info_lib
 ! every controls read (never namelist values themselves), and
 ! cross_section_scale(1:3,16) is overwritten per Monte-Carlo run by
 ! apply_monte_carlo_parameters. Consumed by net_lib's rates and
-! burn_lib's engeb.
+! burn_lib's compute_zone_energy.
             double precision :: cross_section_scale(17), qs0e_scale(8), &
                  qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
 ! phase A batch 4: the working mixing length (former CMIXL, the one
@@ -335,7 +335,7 @@ module star_info_lib
 ! now visibly reference star%... -- the remaining star-coupling inside
 ! physics domains is grep-able as star% under those directories.
 ! ---- 2026 phase-C flattening: the former prev/diag/run/turnover/
-! flux/engeb/env_comp/thermo/light_burn/evo sub-structs dissolved to
+! flux/compute_zone_energy/env_comp/thermo/light_burn/evo sub-structs dissolved to
 ! flat members (MESA shape: state is flat, only job/ctrl input
 ! bundles and the rotation-solver scratch structs stay nested).
 ! Member declarations moved verbatim, per-group comments retained.
@@ -406,7 +406,7 @@ module star_info_lib
 ! named accreted_mass_fraction until 2026-10 despite being a mass)
             double precision :: accreted_mass
             integer :: jcz
-! -- former engeb_diagnostics_state (engeb) --
+! -- former engeb_diagnostics_state (compute_zone_energy) --
 ! former common/neweps/
             double precision :: alpha_capture_energy, neutrino_loss_rate
 ! former common/be7/
@@ -504,7 +504,7 @@ module star_info_lib
 ! -- the extended-model pulse physics arrays (former pulse%) --
 ! pulse_dlnrho_*/pulse_dlnkap_* are logarithmic derivatives;
 ! pulse_deps_dlnrho/dlnt are ABSOLUTE d eps/dln rho, d eps/dlnT in
-! erg/g/s (engeb's burn%deps_*; named pulse_dlneps_* until 2026-10).
+! erg/g/s (compute_zone_energy's burn%deps_*; named pulse_dlneps_* until 2026-10).
             double precision :: pulse_dlnrho_dlnp(json), &
                  pulse_deps_dlnrho(json)
             double precision :: pulse_deps_dlnt(json), &

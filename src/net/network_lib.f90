@@ -93,7 +93,7 @@ module network_lib
                       [s_he4, -3, s_c12, 1, 0, 0, 0, 0, 0, 0]) ]
 
       public :: implicit_burn_step, network_table_errors, write_network_table, &
-           eqburn
+           equilibrium_burn_rates
 
 contains
 
@@ -300,7 +300,7 @@ subroutine implicit_burn_step(x_start, rate_vec, dt_gyr, min_abundance, &
 end subroutine implicit_burn_step
 
 !----------------------------------------------------------------------
-! eqburn
+! equilibrium_burn_rates
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -317,7 +317,8 @@ end subroutine implicit_burn_step
 ! the initial guess for the burning rates at the start of a timestep;
 ! may be supplemented elsewhere by a fully implicit non-equilibrium
 ! calculation.
-subroutine eqburn(rate_by_zone, xa_start, shell_mass, shell_temperature, zone_begin, &
+! equilibrium_burn_rates (formerly eqburn)
+subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temperature, zone_begin, &
      zone_end, dc_dt, do_dt, dx_dt, dy_dt, equilibrium_xc12, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
@@ -520,6 +521,6 @@ subroutine eqburn(rate_by_zone, xa_start, shell_mass, shell_temperature, zone_be
          do_dt = 1.6d1*c12_alpha_term
       end if
 
-end subroutine eqburn
+end subroutine equilibrium_burn_rates
 
 end module network_lib

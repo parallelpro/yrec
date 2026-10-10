@@ -24,7 +24,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       use phys_const_lib
       use net_lib
       use burn_step
-      use network_lib, only: eqburn
+      use network_lib, only: equilibrium_burn_rates
       implicit none
 
       double precision, intent(in) :: log_density(json)
@@ -37,7 +37,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       integer, intent(in) :: convective_core_edge_zone, &
            h_shell_midpoint_zone, num_points
       double precision, intent(out) :: hydrogen_dt
-! rate_by_zone(rr_*, zone) is the rates()->eqburn() relay scratch --
+! rate_by_zone(rr_*, zone) is the rates()->equilibrium_burn_rates() relay scratch --
 ! only the column at the single shell-midpoint zone is written; a local
 ! since the 2026 de-tramp (it used to be trampled up through
 ! compute_timestep), one array since W3 (formerly 15 rate_*(json)).
@@ -50,7 +50,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
 ! local_log_density/local_log_temperature: log10(rho)/log10(T) at the
 ! shell midpoint, fed to rates().
       double precision :: local_log_density, local_log_temperature
-! region abundances returned by eqburn (not read)
+! region abundances returned by equilibrium_burn_rates (not read)
       double precision :: hydrogen_fraction, metal_fraction, c12_fraction, &
            o16_fraction
       integer :: zone_begin, zone_end
@@ -81,7 +81,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
 !  setup nuclear energy terms
       call rates(local_log_density,local_log_temperature,composition(:,zone_end), &
            rate_by_zone(:,zone_end))
-      call eqburn(rate_by_zone,star%xa_start,shell_mass, &
+      call equilibrium_burn_rates(rate_by_zone,star%xa_start,shell_mass, &
            log_temperature,zone_begin,zone_end,dc_dt,do_dt,dx_dt,dy_dt, &
            c12_fraction,o16_fraction,hydrogen_fraction,metal_fraction)
       if(dx_dt.lt.0.0d0 .and. star%ctrl%atime(itime_dx_shell).gt.0.0d0) then

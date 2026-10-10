@@ -36,8 +36,8 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
            he3_fraction, c12_fraction, c13_fraction, &
            n14_fraction, o16_fraction, o18_fraction, h2_fraction
 ! only the helium-burning term (burn%triple_alpha_energy_gen) of the
-! engeb record is used here; the other components are discarded.
-      type(burn_result) :: burn
+! compute_zone_energy record is used here; the other components are discarded.
+      type(zone_energy_result) :: burn
       double precision :: helium_energy_gen
       double precision :: core_helium_fraction
 ! energy released per gram of helium burned (erg/g)
@@ -72,7 +72,7 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
           h2_fraction = composition(12,max_temp_zone)
        endif
        engeb_zone = max_temp_zone
-         call engeb(burn, &
+         call compute_zone_energy(burn, &
               local_log_density,local_log_temperature,hydrogen_fraction, &
               helium_fraction,he3_fraction,c12_fraction,c13_fraction, &
               n14_fraction,o16_fraction,o18_fraction,h2_fraction, &

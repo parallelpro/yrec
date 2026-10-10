@@ -21,7 +21,7 @@
 ! audit/readability-sweep-2026-09-03/SUMMARY.md.)
 ! ---------------------------------------------------------------
 ! Compiled out (2026-10): the Bulirsch-Stoer mixing-plus-burning path
-! (burn_settle_mix -> burn_mix_extrapolated, liburn2) is switched off
+! (burn_settle_mix -> burn_mix_extrapolated, burn_li_be_midpoint) is switched off
 ! by a hard-coded burs_extrapolation_active = .false. in
 ! evolve_angular_momentum, with no control to enable it, so it never
 ! ran. Kept, not deleted: build with -DYREC_BULIRSCH_STOER_BURN to
@@ -139,7 +139,7 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
                  composition, species_begin, species_end, ierr)
             if (ierr /= 0) return
             if (star%job%use_extended_composition) then
-               call liburn2(substep_dt, composition, log_radius, &
+               call burn_li_be_midpoint(substep_dt, composition, log_radius, &
                     enclosed_mass, shell_mass, log_temperature, &
                     env_cz_zone, env_cz_zone_old, num_zones)
             end if

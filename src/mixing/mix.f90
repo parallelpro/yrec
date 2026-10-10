@@ -7,7 +7,7 @@
 ! were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! The energy generation routine (engeb) is used for calculations of
+! The energy generation routine (compute_zone_energy) is used for calculations of
 ! epsilon and its derivatives in the Henyey portion of the code
 ! (coefft) prior to calling mix the first time, store original
 ! variables in vector hcompp. rezone hcompp along with hcomp in
@@ -25,7 +25,7 @@
 ! 5) compute semi-convection if desired.
 ! 6) compute microscopic diffusion if desired.
 !
-! The rate subroutine called by mix is a stripped-down version of engeb
+! The rate subroutine called by mix is a stripped-down version of compute_zone_energy
 ! (called nrate) which has no derivatives or energy yields. it does
 ! contain neutrino fluxes for solar neutrino calculations.
 subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &

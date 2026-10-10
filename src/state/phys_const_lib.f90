@@ -28,7 +28,7 @@ module phys_const_lib
 ! computes into the variables above (csig) or from the namelist
 ! defaults (solar_radius_cgs), so the two deliberately coexist.
 !
-! (10^9 sidereal years / 1 s) * (1 amu / 1 g), the C21 of engeb/rates/
+! (10^9 sidereal years / 1 s) * (1 amu / 1 g), the C21 of compute_zone_energy/rates/
 ! deutrate: converts a rate per second per gram into the per-Gyr
 ! per-amu units stored in star%reaction_rate and
 ! star%deuterium_burning_rate.
@@ -37,7 +37,7 @@ module phys_const_lib
       double precision, parameter :: m_proton_cgs = 1.6726d-24
 ! atomic mass unit [g], the value viscos uses for the ion number
 ! densities (CODATA 1973; differs from the 1.6605402d-24 of the
-! rates/engeb mass tables' documentation)
+! rates/compute_zone_energy mass tables' documentation)
       double precision, parameter :: amu_cgs_legacy = 1.6605655d-24
 ! electron mass [amu] (the fourth species of the microdiff
 ! atomic-weight tables)

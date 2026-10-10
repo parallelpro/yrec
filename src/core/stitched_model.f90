@@ -573,7 +573,7 @@ subroutine build_pulse_points(pts)
 ! likewise eps_eps_T = eps*dlneps/dlnT = deps/dlnT. Only nonadiabatic
 ! GYRE runs read these columns. pulse_dlnkap_* are true log-derivatives,
 ! so they are multiplied by kap here. pulse_deps_* already hold the
-! absolute deps/dln (engeb's burn%deps_*), so they are written as they
+! absolute deps/dln (compute_zone_energy's burn%deps_*), so they are written as they
 ! are: multiplying them by eps as well (2ed398ca, misled by their former
 ! pulse_dlneps_* names) made these columns wrong by a factor eps until
 ! the 2026-10 audit.

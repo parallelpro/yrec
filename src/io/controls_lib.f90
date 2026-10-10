@@ -92,7 +92,7 @@ module controls_lib
 ! continuation, the pre-2026 behavior).
       integer, public :: set_initial_model_number = 1
       logical, public :: report_solver_diagnostics = .false.
-! diagnostic: per-zone solar neutrino production table (engeb per
+! diagnostic: per-zone solar neutrino production table (compute_zone_energy per
 ! shell) written to the short/log stream at the start of each run
       logical, public :: compute_neutrino_fluxes = .false.
 
@@ -199,13 +199,13 @@ module controls_lib
            be9_pg_rate_scale, be9_pd_rate_scale, be9_palpha_rate_scale
 
 ! former common/nuloss/'s one config member: switch selecting the Itoh
-! 1996 neutrino-loss routines (net_lib.f90's engeb), a NAMELIST
+! 1996 neutrino-loss routines (net_lib.f90's compute_zone_energy), a NAMELIST
 ! /physics/ value. io/read_controls.f90's local name for it (lnulos1) is
 ! itself namelist-visible and can't be renamed, so it stays local there
 ! and is copied into this canonical name after the namelist read --
 ! same treatment as li6_rate_scale etc above. common/nuloss/'s other
 ! two members (dsnudt/dsnudd in io/read_controls.f90, neutrino_dlnq_dlnt/
-! neutrino_dlnq_dlnd in net_lib.f90's engeb) were dead/purely-local
+! neutrino_dlnq_dlnd in net_lib.f90's compute_zone_energy) were dead/purely-local
 ! and dropped/delocalized rather than moved here -- see those files.
       logical :: use_itoh_neutrino_loss = .false.
 

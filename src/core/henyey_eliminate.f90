@@ -51,7 +51,7 @@
 !    radiative gradient, henyey_coefficients).
 !  - Hence ql_dp and ql_dt carry ABSOLUTE derivatives of eps, d eps/dlnP
 !    and d eps/dlnT (times cccql), not logarithmic ones -- which is what
-!    burn_lib's engeb returns in burn%deps_dlnrho/deps_dlnt.
+!    burn_lib's compute_zone_energy returns in burn%deps_dlnrho/deps_dlnt.
 !  - Only the partials listed in henyey_shell_terms exist; there is no
 !    ql_dr or ql_dl, so an energy term that depends on R or L cannot be
 !    linearized without extending the type and the pivots below.

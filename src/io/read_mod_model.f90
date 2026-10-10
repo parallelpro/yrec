@@ -125,7 +125,7 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
          end if
       end do
 
-! TLUMX was only a cosmetic seed; engeb recomputes it on the first step.
+! TLUMX was only a cosmetic seed; compute_zone_energy recomputes it on the first step.
       star%luminosity_breakdown = 0.0d0
 
       return

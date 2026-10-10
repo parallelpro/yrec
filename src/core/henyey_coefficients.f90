@@ -6,7 +6,7 @@
 ! shell, calls the equation of state (eos_lib's eos_get), opacity
 ! (kap_lib's kap_get) and temperature-gradient
 ! (temperature_gradients) routines to get the local physics,
-! optionally the nuclear energy generation (burn_lib's engeb) and
+! optionally the nuclear energy generation (burn_lib's compute_zone_energy) and
 ! gravitational/entropy ("Kelvin-Helmholtz") energy term, assembles
 ! the pressure/temperature/radius/luminosity equation residuals and
 ! derivatives (a henyey_shell_terms record, cur; prev carries the
@@ -86,10 +86,10 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 ! the qp/qt/qt_dl slots live in pt_scr (pulse scratch) and are
 ! mirrored into cur just before the elimination.
       type(henyey_shell_terms) :: prev, cur
-! burn: engeb's energy record (2026 W3); its components are unpacked
+! burn: compute_zone_energy's energy record (2026 W3); its components are unpacked
 ! right after the call into energy_gen_rate/energy_gen_component and
 ! zone_deps_dlnrho/dlnt, which the rest of the routine reads.
-      type(burn_result) :: burn
+      type(zone_energy_result) :: burn
       double precision :: zone_deps_dlnrho, zone_deps_dlnt
       double precision :: energy_gen_rate, alpha_capture_energy_zone
       double precision :: zone_dt, entropy_term1, entropy_term2, &
@@ -143,7 +143,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
        o17_fraction = star%xa(i_o17,im)
        o18_fraction = star%xa(i_o18,im)
 ! the extended-composition species are always defined; they are
-! passed to engeb anyway.
+! passed to compute_zone_energy anyway.
        deuterium_fraction = star%xa(i_h2,im)
        li6_fraction = star%xa(i_li6,im)
        li7_fraction = star%xa(i_li7,im)
@@ -212,7 +212,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
        cur%ql_dp = 0.0d0
        if (zone_log_temperature.gt.star%ctrl%nuclear_logT_cutoffs(1)) then
 ! SET UP NUCLEAR ENERGY TERMS
-            call engeb(burn, zone_log10_density, &
+            call compute_zone_energy(burn, zone_log10_density, &
                  zone_log_temperature, hydrogen_fraction, helium_fraction, &
                  he3_fraction, c12_fraction, c13_fraction, n14_fraction, &
                  o16_fraction, o18_fraction, deuterium_fraction, &

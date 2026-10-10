@@ -359,7 +359,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! BURNING - ONLY UPDATED IF NOT USED
          if(.not.star%job%instability_transport_active .or. .not.burs_extrapolation_active .or. fully_convective_flag)then
 ! COMPUTE BURNING.
-            call liburn(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
+            call burn_li_be(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
                  star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)
             envelope_boundary_zone_prev = envelope_boundary_zone_cur
@@ -373,7 +373,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          else
 ! COMPUTE BURNING (Bulirsch-Stoer path, compiled out by default; see
 ! mixing/burn_settle_mix.f90).
-            call liburn2(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
+            call burn_li_be_midpoint(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
                  star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)
 #endif

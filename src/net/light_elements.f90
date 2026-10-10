@@ -7,7 +7,7 @@
 ! convective-overturn cap; dburn, the exponential sub-stepped burn over
 ! a step (burn_deuterium_region, for the main step and the rotation
 ! sub-steps). Li6/Li7/Be9: li_be_rates, the
-! proton-capture rates (the star-layer lirate88/liburn store and
+! proton-capture rates (the star-layer store_li_be_rates/burn_li_be store and
 ! integrate them). They read configuration from star%job/star%ctrl and
 ! nothing else from star.
 module light_element_lib
@@ -74,8 +74,8 @@ double precision function deuterium_rate(log_density, log_temperature, &
 ! THE LOW TEMPERATURES INVOLVED.
 ! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit;
 ! was T9**(+2/3) (deutrate.f). 2026-10: the rate is dpg_rate, shared
-! with engeb; this copy used to divide N_A by A = 2 (3.0115D23) where
-! engeb divides by the deuteron mass, 0.68% apart.
+! with compute_zone_energy; this copy used to divide N_A by A = 2 (3.0115D23) where
+! compute_zone_energy divides by the deuteron mass, 0.68% apart.
       rdeut = dpg_rate(rho, t9, t9p13, t9p23, t9m13, t9m23)
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
@@ -276,7 +276,7 @@ end subroutine burn_deuterium_region
 ! (Caughlan & Fowler 1988; no screening, no energy release), scaled by
 ! the deck's ctrl%li6/li7/be9_*_rate_scale: Li6(p,He3)He4, Li7(p,a)He4,
 ! and the sum of Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. Moved from
-! burn_lib's lirate88 (2026-10), formulas unchanged.
+! burn_lib's store_li_be_rates (2026-10), formulas unchanged.
 subroutine li_be_rates(t9, fli6, fli7, fsbe9)
       use star_info_lib, only: star
       use phys_const_lib

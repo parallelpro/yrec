@@ -13,7 +13,7 @@
 ! lir and ratext, originally also housed in nuclear/ (and formerly
 ! part of this module), moved out to numerics_lib (2026): both are
 ! generic numerical utilities with no nuclear-physics content -- they
-! were only filed here because liburn (now in burn_lib) happens to be
+! were only filed here because burn_li_be (now in burn_lib) happens to be
 ! one of their callers. See numerics_lib.f90 and GUIDELINES.md's rule
 ! that folder/module placement should track function, not caller.
 ! ---------------------------------------------------------------------
@@ -29,8 +29,8 @@
 !     azbar      abar/zbar/molar-abundance bookkeeping.
 !     safedivexp division-with-exponent guard.
 !     ifermi12, zfermim12   Fermi-Dirac integral inverses (rates).
-! The BURN DRIVERS (engeb/eqburn, dburn/dburnm/deutrate,
-! liburn/liburn2/lirate88) -- everything that reads or writes
+! The BURN DRIVERS (compute_zone_energy/equilibrium_burn_rates, dburn/dburnm/deutrate,
+! burn_li_be/burn_li_be_midpoint/store_li_be_rates) -- everything that reads or writes
 ! star_info -- moved to core/burn_lib.f90: they advance the model and
 ! are star-layer code (MESA: struct_burn_mix, not net).
 ! ---------------------------------------------------------------------
@@ -38,7 +38,7 @@ module net_lib
       implicit none
 
 ! ---- named indices for the positional array slots (2026) ----
-! The 13-reaction arrays of rates (below) and engeb (core/burn_lib.f90):
+! The 13-reaction arrays of rates (below) and compute_zone_energy (core/burn_lib.f90):
 ! rate/reaction_rate, screening_factor, charge_product, z53/z43/z23/z86,
 ! eg, reaction_energy_gen, ... and star%cross_section_scale(1:13).
 ! Slots 9 (O16 + alpha) and 13 (C12 + C12) are carried but never
@@ -75,7 +75,7 @@ module net_lib
 ! Be7 + p coefficients (only for these arrays; rate slot 8 is He4+C13).
       integer, parameter, public :: iq_be7p = 8
 ! The 13-isotope mass tables (atomic_mass/atomic_charge) and the local
-! mass-fraction arrays of rates and engeb. num_isotopes was NELEM.
+! mass-fraction arrays of rates and compute_zone_energy. num_isotopes was NELEM.
       integer, parameter, public :: &
            iso_n = 1, iso_h1 = 2, iso_h2 = 3, iso_h3 = 4, iso_he3 = 5, &
            iso_he4 = 6, iso_c12 = 7, iso_c13 = 8, iso_n14 = 9, &
@@ -83,24 +83,24 @@ module net_lib
            num_isotopes = 13
 ! Species count of the H/He/C/O mixture handed to nulosses/sneut.
       integer, parameter, public :: nu_ionmax = 4
-! gyr_amu_per_sec_gram (the C21 of engeb/rates/deutrate) lives in
+! gyr_amu_per_sec_gram (the C21 of compute_zone_energy/rates/deutrate) lives in
 ! phys_const_lib.
 ! S0 in keV-b of the two N15 + p branches, multiplying the S_eff/S0
 ! polynomials o16_gamma_rate / c12_alpha_n15p_rate (and o16gamma /
-! c12alpha in engeb). Kept as integers, the kind of the original
+! c12alpha in compute_zone_energy). Kept as integers, the kind of the original
 ! literals 64 and 67500 (both exact when promoted to double).
       integer, parameter, public :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
 
 ! d(p,g)3He (2026-10): Avogadro's number over the deuteron mass in amu
 ! turns CF88's N_A<sigma v> into the per-gram rate that deutrate (the
-! deuterium depletion rate) and engeb (its energy release) both use,
+! deuterium depletion rate) and compute_zone_energy (its energy release) both use,
 ! and sets both convective-overturn caps. The two copies used to
-! differ by 0.68%: deutrate had 3.0115d23 = 6.023d23/2 (A = 2), engeb
-! 6.023d23/2.013553 (the deuteron mass, as in engeb's isotope table).
+! differ by 0.68%: deutrate had 3.0115d23 = 6.023d23/2 (A = 2), compute_zone_energy
+! 6.023d23/2.013553 (the deuteron mass, as in compute_zone_energy's isotope table).
       double precision, parameter, public :: avogadro_dpg = 6.023d23
       double precision, parameter, public :: deuteron_mass_amu = 2.013553d0
 ! ---- the rate data shared by every consumer (2026-10: rates and
-! burn_lib's engeb each carried an identical copy; see
+! burn_lib's compute_zone_energy each carried an identical copy; see
 ! nuclear_reaction_rates). Coefficient names and comments: rates' header.
 ! S-factor fits of reactions 1-7 and of Be7(p,g) (q1..q5 slot iq_be7p),
 ! FCZ67 eq. 53 / Neutrino Astrophysics eq. 3.14 times T9^(-2/3); q6 the
@@ -1667,7 +1667,7 @@ end subroutine sneut
 ! The d(p,g)3He rate excluding the abundance factors, rho * N_A<sigma v>
 ! / m_d (Caughlan & Fowler 1988, the T9**(-2/3) form), for burn_lib's
 ! deutrate and nuclear_energy alike -- previously coded once in each. The arithmetic is
-! engeb's, token for token, so engeb's value is unchanged. Screening is
+! compute_zone_energy's, token for token, so compute_zone_energy's value is unchanged. Screening is
 ! excluded, as before: the burning temperatures are low.
 double precision function dpg_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
       use math_lib
@@ -1688,13 +1688,13 @@ end function dpg_rate
 ! The H/He reaction rates of one zone and their logarithmic derivatives
 ! with respect to T and rho (2026-10): the one evaluation behind both
 ! the composition rate vector (rates, below) and the energy generation
-! (burn_lib's engeb), which used to carry identical copies of this
+! (burn_lib's compute_zone_energy), which used to carry identical copies of this
 ! block. mass_frac(iso_*) is the composition the screening sees. The
-! arithmetic is engeb's, token for token; the formulas, references and
+! arithmetic is compute_zone_energy's, token for token; the formulas, references and
 ! coefficient history are documented in rates' header below.
 !
 ! Each consumer applies its own floor afterwards (rates zeroes rates
-! <= 1e-5, engeb zeroes reactions 1-7 below 1e-30 before summing eps).
+! <= 1e-5, compute_zone_energy zeroes reactions 1-7 below 1e-30 before summing eps).
 ! No hydrogen: reactions 1-7 and the branchings are zero. Below
 ! nuclear_logT_cutoffs(1) everything is zero; the alpha captures need
 ! nuclear_logT_cutoffs(4).
@@ -2340,7 +2340,7 @@ subroutine rates(log_density, log_temperature, xa, rate_vec)
       type(nuclear_rates) :: nr
       integer :: i
 
-! the same screening composition as engeb's, deuterium included
+! the same screening composition as compute_zone_energy's, deuterium included
 ! (2026-10; this path used to leave it out, a ~1e-5 effect while
 ! deuterium survives)
       mass_frac = 0.0d0

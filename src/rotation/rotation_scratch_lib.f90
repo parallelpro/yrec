@@ -177,7 +177,7 @@ module rotation_scratch_lib
            logical :: convective_flag_prev(json)
 ! former common/rotder/
 ! dlnkappa_* are logarithmic; deps_dlnrho/deps_dlnt are the ABSOLUTE
-! d eps/dln rho, d eps/dlnT (erg/g/s) from engeb, filled by
+! d eps/dln rho, d eps/dlnT (erg/g/s) from compute_zone_energy, filled by
 ! henyey_coefficients (named dlnepsilon_* until 2026-10).
            double precision :: dlnkappa_dlnrho(json), &
                 dlnkappa_dlnt(json), deps_dlnrho(json), &

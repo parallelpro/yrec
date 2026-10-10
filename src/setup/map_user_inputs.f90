@@ -97,13 +97,13 @@ subroutine map_user_inputs
          do i = 1,17
             star%cross_section_scale(i) = 1.0d0
          end do
-! The energy generation subroutine engeb has a vector, SSTANDARD,
+! The energy generation subroutine compute_zone_energy has a vector, SSTANDARD,
 ! which is the ratio of the desired S0 to that of Bahcall & Ulrich (1988).
 ! If this option is true, the namelist SSTANDARD vector is replaced
 ! by explicit cross-sections for individual reactions, and the implied
 ! Sstandard vector is derived here.  The first and second derivatives
 ! of the reactions are permitted to be separately modified, unlike in the
-! original version of engeb.  In this case the inputs are the ratios
+! original version of compute_zone_energy.  In this case the inputs are the ratios
 ! S'/S0 and S''/S0, relative to the Solar Fusion I (Adelberger et al. 1998) ratios.
          star%cross_section_scale(r_pp) = s0_pp/s0_pp_ref
          star%cross_section_scale(r_he3he3) = s0_he3he3/s0_he3he3_ref

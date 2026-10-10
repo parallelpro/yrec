@@ -2,8 +2,9 @@
 ! nuclear_energy_lib
 !----------------------------------------------------------------------
 ! The nuclear energy generation of one zone (2026-10: the physics of
-! burn_lib's engeb, moved here and made free of model-state side
-! effects; engeb is now the star-layer adapter that stores the results).
+! the former engeb, moved here and made free of model-state side
+! effects; core/burn_step's compute_zone_energy is now the star-layer
+! adapter that stores the results).
 ! nuclear_energy returns, in a nuclear_energy_result: eps and its
 ! absolute derivatives d eps/dln rho, d eps/dln T for the Henyey
 ! Jacobian; the chain shares (pp, Be7 electron/proton branches, CNO,
@@ -73,7 +74,7 @@ subroutine nuclear_energy(log_density, &
 
 ! nr: this zone's reaction rates, derivatives and branchings, from
 ! net_lib's nuclear_reaction_rates (2026-10: the one copy of the rate
-! block that engeb and rates each used to carry)
+! block that compute_zone_energy and rates each used to carry)
       type(nuclear_rates) :: nr
       double precision :: mass_fraction(num_isotopes), &
            reaction_rate(num_reactions), dlnrate_dlnrho(num_reactions), &
@@ -370,7 +371,7 @@ end subroutine compute_energy_generation
 ! above nuclear_logT_cutoffs(5) -- the eight solar neutrino fluxes (pp, pep, hep,
 ! Be7, B8, N13, O15, F17) with hep screening. The nuclear_logT_cutoffs(5) early
 ! RETURN is equivalent in or out of the section: nothing follows
-! this call in engeb.
+! this call in compute_zone_energy.
 subroutine compute_neutrino_emission
       use math_lib
 ! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)

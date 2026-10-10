@@ -7,26 +7,27 @@
 ! (net_lib's nuclear_reaction_rates), the energy generation
 ! (nuclear_energy_lib), the network and its implicit and equilibrium
 ! burns (network_lib), and the light elements (light_element_lib).
-! Here: engeb, the adapter that stores nuclear_energy's results;
-! lirate88, which stores the Li/Be rates per shell; liburn/liburn2,
+! Here: compute_zone_energy, the adapter that stores nuclear_energy's results;
+! store_li_be_rates, which stores the Li/Be rates per shell; burn_li_be/burn_li_be_midpoint,
 ! the Li/Be depletion over a step, with the convection-zone base
 ! location (overshoot included) and the CZ averaging they need.
 module burn_step
       use net_lib
       implicit none
-      private :: locate_cz_base, average_cz_abundances, lirate88
+      private :: locate_cz_base, average_cz_abundances, store_li_be_rates
 
-! burn_result (2026 W3): the per-zone energy-generation record filled
-! by engeb -- formerly its first eight positional dummies. The
+! zone_energy_result (2026 W3): the per-zone energy-generation record filled
+! by compute_zone_energy -- formerly its first eight positional dummies. The
 ! neutrino outputs stay on star% (star%neutrino_loss_rate,
 ! star%neutrino_flux(:), star%alpha_capture_energy, ...), where the
 ! output writers read them. Components default to zero so that a
 ! caller's fresh local starts as the old -finit-local-zero scalars
-! did; engeb takes the record intent(inout) and, exactly as before,
+! did; compute_zone_energy takes the record intent(inout) and, exactly as before,
 ! leaves the energy components and the total untouched on its
 ! low-temperature early return (only deps_dlnrho/deps_dlnt are
 ! zeroed there).
-      type, public :: burn_result
+! zone_energy_result (formerly burn_result)
+      type, public :: zone_energy_result
 ! energy generation by chain, erg/g/s (EPP1, EPP2, EPP3, ECN, E3AL)
            double precision :: pp_chain_energy_gen = 0.0d0
            double precision :: he3he4_be7_electron_energy_gen = 0.0d0
@@ -38,7 +39,7 @@ module burn_step
            double precision :: deps_dlnt = 0.0d0
 ! total energy generation incl. neutrino losses, erg/g/s (SUM1)
            double precision :: total_energy_gen_rate = 0.0d0
-      end type burn_result
+      end type zone_energy_result
 
 contains
 
@@ -54,7 +55,7 @@ contains
 
 
 !----------------------------------------------------------------------
-! engeb
+! compute_zone_energy
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -205,14 +206,15 @@ contains
 !   HF1 -> n15_alpha_branch_fraction   HF2 -> be7_electron_capture_fraction
 ! 2026 de-tramp (ROADMAP item 3): 35 arguments -> 20. The 15 trailing
 ! per-zone reaction-rate arrays (HR1..HR13/HF1/HF2, a vestigial
-! COMMON relay) are gone: engeb writes star%reaction_rate(:,shell_index) /
+! COMMON relay) are gone: compute_zone_energy writes star%reaction_rate(:,shell_index) /
 ! star%n15_alpha_branch_fraction / star%be7_electron_capture_fraction
 ! at shell_index directly. Of the old callers, one already passed
 ! exactly those star% arrays (neutrino_flux_table) and the other two
 ! passed write-only scratch nothing ever read.
 ! 2026 W3: the eight energy outputs are the components of res
-! (type burn_result above): 20 arguments -> 13.
-subroutine engeb(res, log_density, &
+! (type zone_energy_result above): 20 arguments -> 13.
+! compute_zone_energy (formerly engeb)
+subroutine compute_zone_energy(res, log_density, &
      log_temperature, hydrogen_fraction, helium_fraction, he3_fraction, &
      c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
      o18_fraction, deuterium_fraction, shell_index)
@@ -222,7 +224,7 @@ subroutine engeb(res, log_density, &
 ! res is intent(inout), not intent(out): at or below
 ! nuclear_logT_cutoffs(1) only its two derivatives are zeroed and the
 ! energies keep the caller's values -- the F77 behaviour, preserved.
-      type(burn_result), intent(inout) :: res
+      type(zone_energy_result), intent(inout) :: res
       double precision, intent(in) :: log_density, log_temperature, &
            hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
            c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
@@ -256,10 +258,10 @@ subroutine engeb(res, log_density, &
       star%be7_electron_capture_fraction(shell_index) = e%frac_be7_ecap
       if (e%fluxes_set) star%neutrino_flux(1:10) = e%neutrino_flux
       if (e%be7_set) star%be7_mass_fraction = e%be7_mass_fraction
-end subroutine engeb
+end subroutine compute_zone_energy
 
 !----------------------------------------------------------------------
-! locate_cz_base: shared by liburn and liburn2 (2026 readability R3;
+! locate_cz_base: shared by burn_li_be and burn_li_be_midpoint (2026 readability R3;
 ! the block was byte-identical in both). Locates the true base of the
 ! surface convection zone at the end of the step (cz_base_zone, with
 ! cz_base_frac the offset of the true base from the zone midpoint in
@@ -355,7 +357,7 @@ subroutine locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
 end subroutine locate_cz_base
 
 !----------------------------------------------------------------------
-! average_cz_abundances: shared by liburn and liburn2 (2026 readability
+! average_cz_abundances: shared by burn_li_be and burn_li_be_midpoint (2026 readability
 ! R3; the block was byte-identical in both). Mass-averages the Li6,
 ! Li7, Be9 abundances and the log of the mass-averaged burning rates
 ! over the surface convection zone at the start of the step (from
@@ -472,7 +474,7 @@ end subroutine average_cz_abundances
 
 
 !----------------------------------------------------------------------
-! liburn
+! burn_li_be
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -481,7 +483,7 @@ end subroutine average_cz_abundances
 ! (examples/run_standard_solar_model).
 !
 ! Determine lithium-6, lithium-7, and beryllium-9 burning in a
-! non-rotating model (see liburn2 below for the simpler single-pass
+! non-rotating model (see burn_li_be_midpoint below for the simpler single-pass
 ! rotating-model variant). The burning rates depend on the local T and
 ! rho, the abundance, and (in convection zones) the mixing.
 !
@@ -506,7 +508,8 @@ end subroutine average_cz_abundances
 ! before return), which is why rotation/evolve_angular_momentum.f90 --
 ! one of this routine's two callers -- declares its own shell_mass
 ! intent(inout) to match this explicit interface.
-subroutine liburn(timestep, composition, radius, mass_coordinate, &
+! burn_li_be (formerly liburn)
+subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use rotation_scratch_lib
       use star_info_lib, only: star, json, i_li6, i_li7, i_be9
@@ -859,7 +862,7 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
               (1.0d0-radiative_frac)*log_rate_be9_cz_start)
 ! KC 2025-05-31 PREVENT FLOATING POINT EXCEPTION: Li6 and Li7 go
 ! through safedivexp (overflow-safe divide by exp); Be9 here, and all
-! three species in liburn2's twin of this loop, still use the plain
+! three species in burn_li_be_midpoint's twin of this loop, still use the plain
 ! division. Kept as is (changing it could change numbers).
          call safedivexp(composition(i_li6,zone_idx),li6_depletion)
          if(composition(i_li6,zone_idx).lt.1.0d-24)composition(i_li6,zone_idx)=0.0d0
@@ -869,12 +872,12 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
          if(composition(i_be9,zone_idx).lt.1.0d-24)composition(i_be9,zone_idx)=0.0d0
       end do
       return
-end subroutine liburn
+end subroutine burn_li_be
 
 
 ! ---------------------------------------------------------------
 ! Compiled out (2026-10): the Bulirsch-Stoer mixing-plus-burning path
-! (burn_settle_mix -> burn_mix_extrapolated, liburn2) is switched off
+! (burn_settle_mix -> burn_mix_extrapolated, burn_li_be_midpoint) is switched off
 ! by a hard-coded burs_extrapolation_active = .false. in
 ! evolve_angular_momentum, with no control to enable it, so it never
 ! ran. Kept, not deleted: build with -DYREC_BULIRSCH_STOER_BURN to
@@ -882,7 +885,7 @@ end subroutine liburn
 ! ---------------------------------------------------------------
 #ifdef YREC_BULIRSCH_STOER_BURN
 !----------------------------------------------------------------------
-! liburn2
+! burn_li_be_midpoint
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -896,12 +899,12 @@ end subroutine liburn
 !
 ! In radiative regions burning is done implicitly, using a single
 ! trapezoidal (midpoint-in-the-log) estimate of the burning rate over
-! the timestep -- unlike liburn, this variant does not iterate
+! the timestep -- unlike burn_li_be, this variant does not iterate
 ! sub-step refinement with a rational-function extrapolation.
 !
 ! In the convective region the program likewise uses a single
 ! time-averaged (midpoint-in-the-log) rate over the timestep, again
-! without the iterative sub-step refinement used by liburn.
+! without the iterative sub-step refinement used by burn_li_be.
 !
 ! The degree of lithium burning in a surface CZ depends sensitively
 ! on the temperature at its base -- so accurately locating it is
@@ -912,11 +915,12 @@ end subroutine liburn
 ! 11/91 HR added to call.
 !
 ! shell_mass genuinely needs intent(inout) -- same reasoning as
-! liburn's identical fix above: the write (a save-then-restore pair
+! burn_li_be's identical fix above: the write (a save-then-restore pair
 ! around the CZ-base mass adjustment) is read by the following
 ! rate/abundance sums before being restored, so it's real, not dead
 ! code, even though the net effect on the caller's array is zero.
-subroutine liburn2(timestep, composition, radius, mass_coordinate, &
+! burn_li_be_midpoint (formerly liburn2)
+subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use rotation_scratch_lib
       use star_info_lib, only: star, json, i_li6, i_li7, i_be9
@@ -1101,12 +1105,12 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
          if(composition(i_be9,zone_idx).lt.1.0d-24)composition(i_be9,zone_idx)=0.0d0
       end do
       return
-end subroutine liburn2
+end subroutine burn_li_be_midpoint
 #endif
 
 
 !----------------------------------------------------------------------
-! lirate88
+! store_li_be_rates
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -1117,7 +1121,7 @@ end subroutine liburn2
 ! This routine computes the burning rates for Li6, Li7, Be9 at the
 ! beginning (use_current_model = 2: star%rate_*_start, from the
 ! start-of-step model) or end (use_current_model = 1: star%rate_*,
-! from the arguments) of a timestep, for liburn/liburn2.
+! from the arguments) of a timestep, for burn_li_be/burn_li_be_midpoint.
 !
 ! Burning rates from Caughlin and Fowler (1988): net's li_be_rates
 ! (2026-10: the formulas moved there; this loop stores them).
@@ -1125,7 +1129,8 @@ end subroutine liburn2
 ! star%rate_*_start), flag 1 at the end (the model passed in ->
 ! star%rate_*). 2026-10: the calls had the flags the other way round
 ! (inherited from F77), so both sets came from the start-of-step model.
-subroutine lirate88(composition, log_density, log_temperature, num_zones, &
+! store_li_be_rates (formerly lirate88)
+subroutine store_li_be_rates(composition, log_density, log_temperature, num_zones, &
      use_current_model)
       use star_info_lib, only: star, json, i_be9
       use phys_const_lib
@@ -1172,12 +1177,12 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
          star%rate_be9_start(tail_idx)=0.0d0
       end do
       return
-end subroutine lirate88
+end subroutine store_li_be_rates
 
 !----------------------------------------------------------------------
 ! store_start_li_be_rates / store_end_li_be_rates
 !----------------------------------------------------------------------
-! The two uses of lirate88, named (2026-10: callers passed its 1/2 flag
+! The two uses of store_li_be_rates, named (2026-10: callers passed its 1/2 flag
 ! directly, and had them swapped). Start of step: the rates of the
 ! saved start-of-step model (star%logRho_start, logT_start, xa_start)
 ! into star%rate_*_start. End of step: the rates of the model passed in
@@ -1185,7 +1190,7 @@ end subroutine lirate88
 ! star%rate_*.
 subroutine store_start_li_be_rates()
       use star_info_lib, only: star
-      call lirate88(star%xa, star%logRho, star%logT, star%nz, 2)
+      call store_li_be_rates(star%xa, star%logRho, star%logT, star%nz, 2)
 end subroutine store_start_li_be_rates
 
 subroutine store_end_li_be_rates(composition, log_density, log_temperature, num_zones)
@@ -1193,7 +1198,7 @@ subroutine store_end_li_be_rates(composition, log_density, log_temperature, num_
       double precision, intent(in) :: composition(15,json), log_density(json), &
            log_temperature(json)
       integer, intent(in) :: num_zones
-      call lirate88(composition, log_density, log_temperature, num_zones, 1)
+      call store_li_be_rates(composition, log_density, log_temperature, num_zones, 1)
 end subroutine store_end_li_be_rates
 
 
@@ -1414,7 +1419,7 @@ end subroutine burn_network
 !----------------------------------------------------------------------
 ! burn_equilibrium
 !----------------------------------------------------------------------
-! The explicit burn of iteration level 1 (network_lib's eqburn, He3 and
+! The explicit burn of iteration level 1 (network_lib's equilibrium_burn_rates, He3 and
 ! the CN cycle in equilibrium): overwrites X, and under helium burning
 ! Z, C12 and O16, shell by shell in radiative regions and per mixed
 ! region.
@@ -1422,7 +1427,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, rate_by_zone, timestep_years)
       use star_info_lib, only: star, json, max_radiative_zones, i_h1, &
            i_metals, i_c12, i_o16
-      use network_lib, only: eqburn
+      use network_lib, only: equilibrium_burn_rates
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
@@ -1430,7 +1435,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
       integer :: radiative_region_idx, inner_zone_idx, mixed_zone_idx, &
            zone_begin, zone_end, zone_idx
       double precision :: dt_gyr, dc_dt, do_dt, dx_dt, dy_dt
-! region abundances returned by eqburn
+! region abundances returned by equilibrium_burn_rates
       double precision :: hydrogen_fraction, metal_fraction, c12_fraction, &
            o16_fraction
 
@@ -1457,7 +1462,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
                if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
-               call eqburn(rate_by_zone, star%xa_start, star%dm, &
+               call equilibrium_burn_rates(rate_by_zone, star%xa_start, star%dm, &
                     star%logT, zone_begin, zone_end, dc_dt, do_dt, &
                     dx_dt, dy_dt, c12_fraction, o16_fraction, &
                     hydrogen_fraction, metal_fraction)
@@ -1485,7 +1490,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
          do mixed_zone_idx = 1, num_mixed_zones
             zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            call eqburn(rate_by_zone, star%xa_start, star%dm, star%logT, &
+            call equilibrium_burn_rates(rate_by_zone, star%xa_start, star%dm, star%logT, &
                  zone_begin, zone_end, dc_dt, do_dt, dx_dt, dy_dt, &
                  c12_fraction, o16_fraction, hydrogen_fraction, &
                  metal_fraction)

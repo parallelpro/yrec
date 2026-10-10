@@ -5,10 +5,10 @@
 ! compute_neutrino_fluxes, default .false.). This is the former
 ! LNUTAB neutrino-table block of program main (MHP 2/04), which had
 ! been hardcoded off since 2004 and had bit-rotted while dead: the
-! engeb call passed uninitialized locals in the deuterium-fraction
+! compute_zone_energy call passed uninitialized locals in the deuterium-fraction
 ! and shell-index slots, and the block overwrote star%m/star%dm with
 ! its own shell-center weights. Fixed on resurrection:
-!   - engeb receives star%xa(i_h2,k) and the loop index;
+!   - compute_zone_energy receives star%xa(i_h2,k) and the loop index;
 !   - the integration weights are LOCAL arrays (shell_center_mass,
 !     shell_mass), star%m/star%dm are not touched;
 !   - output goes to run_log_unit (the .short / CASE.log stream)
@@ -18,7 +18,7 @@
 ! read_starting_model, so the
 ! table describes the starting model of each run.
 !
-! Content: per-shell neutrino production from engeb (erg/g/s scaled to
+! Content: per-shell neutrino production from compute_zone_energy (erg/g/s scaled to
 ! erg/s by the shell mass), the totals for the ten flux slots (units
 ! of 1e10; slots 1-8 = pp, pep, hep, Be7, B8, N13, O15, F17), then the
 ! normalized production profiles in the Bahcall & Pinsonneault layout
@@ -41,9 +41,9 @@ subroutine neutrino_flux_table
            hydrogen_fraction, helium_fraction, he3_fraction, &
            c12_fraction, c13_fraction, n14_fraction, &
            o16_fraction, o18_fraction
-! burn: engeb's energy record; only the star% neutrino outputs of
-! engeb are used here, the record itself is discarded.
-      type(burn_result) :: burn
+! burn: compute_zone_energy's energy record; only the star% neutrino outputs of
+! compute_zone_energy are used here, the record itself is discarded.
+      type(zone_energy_result) :: burn
       double precision :: t6_million_k, log_electron_density, &
            zone_mass_fraction, zone_radius_fraction
       integer :: i, j
@@ -67,7 +67,7 @@ subroutine neutrino_flux_table
          shell_log_density = star%logRho(i)
          shell_log_temperature = star%logT(i)
 ! SKIP CALCULATIONS FOR LOW TEMPERATURES -- also at or below the
-! nuclear cutoff, where engeb returns early and would leave the previous
+! nuclear cutoff, where compute_zone_energy returns early and would leave the previous
 ! shell's fluxes in star%neutrino_flux (2026-10: only the literal 6.0
 ! stood here, so a cutoff above 6.0 added stale fluxes for the shells
 ! in between; the shipped decks use 5.5 and are unaffected)
@@ -81,7 +81,7 @@ subroutine neutrino_flux_table
          n14_fraction = star%xa(i_n14,i)
          o16_fraction = star%xa(i_o16,i)
          o18_fraction = star%xa(i_o18,i)
-         call engeb(burn,shell_log_density, &
+         call compute_zone_energy(burn,shell_log_density, &
               shell_log_temperature,hydrogen_fraction,helium_fraction, &
               he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
               o16_fraction,o18_fraction,star%xa(i_h2,i),i)

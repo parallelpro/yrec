@@ -9,7 +9,7 @@ via conftest.compare_output).
 Exercises remap's cross-section scales (Solar Fusion II over SFI
 references), the 13 reaction rates over a (logT, logRho) grid, the
 Itoh et al. (1996) neutrino losses, azbar, and deutrate -- the
-composition-in/rates-out core of the domain. engeb (the per-zone
+composition-in/rates-out core of the domain. compute_zone_energy (the per-zone
 energy-generation driver) is model-coupled and covered by Stage-0.
 """
 import os

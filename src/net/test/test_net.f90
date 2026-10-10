@@ -12,7 +12,7 @@
 !   * sneut (Itoh et al. 1996 neutrino losses),
 !   * azbar (abar/zbar bookkeeping),
 !   * deutrate (deuterium burning, results in star%light_burn).
-! engeb is deliberately NOT exercised: it is the per-zone energy
+! compute_zone_energy is deliberately NOT exercised: it is the per-zone energy
 ! generation driver coupled to the full model state (star%prev, flux
 ! diagnostics, timestep) -- a full-model concern covered by Stage-0.
 ! Results print for byte-comparison against expected_test_net.out.

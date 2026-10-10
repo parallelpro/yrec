@@ -13,7 +13,7 @@
 ! lir and ratext (below, at the end of this module) were moved in
 ! (2026) from net_lib.f90, where they'd originally been filed
 ! (along with the rest of nuclear/) purely because net_lib.f90's
-! own liburn is one of their callers -- both are generic numerics with no
+! own burn_li_be is one of their callers -- both are generic numerics with no
 ! nuclear-physics content, and this module's own bsstep/intpt already
 ! called them via an errant `use net_lib` (ratext is in fact the
 ! textbook Numerical-Recipes companion to bsstep/mmid above). See
@@ -1739,7 +1739,7 @@ end subroutine intpt
 ! Moved here (2026) from net_lib.f90: a generic table-lookup
 ! interpolation/extrapolation routine with no nuclear-physics content
 ! -- called by this module's own intpt above, and by eos/mhd/mhdpx1.f90;
-! it was mis-homed in net_lib purely because its own liburn
+! it was mis-homed in net_lib purely because its own burn_li_be
 ! also happens to use it (see ratext below, which shares that
 ! history). Naming/module placement follows GUIDELINES.md's rule that
 ! folder/module placement should track function, not caller.
@@ -1926,7 +1926,7 @@ end subroutine lir_impl
 ! mmid Bulirsch-Stoer stepper above (same algorithm as subroutine
 ! RZEXTR in Numerical Recipes, p.566) -- bsstep already called it via
 ! an errant `use net_lib`. Also called directly by
-! net_lib.f90's own liburn to extrapolate a sequence of sub-stepped
+! net_lib.f90's own burn_li_be to extrapolate a sequence of sub-stepped
 ! lithium/beryllium burning-rate estimates (indexed by decreasing step
 ! size) to the zero-step-size limit as the sub-stepping is refined.
 subroutine ratext(est_index, x_est, y_est, y_extrap, y_err, num_vars, &

@@ -267,7 +267,7 @@ end subroutine advance_composition_and_age
 ! Rezone the new model (hpoint), or -- during He-flash timestep
 ! cutting -- snapshot the previous structure instead; store the
 ! rotational KE distribution and the light-element burning
-! start-of-step state (lirate88). Sets ierr on failure.
+! start-of-step state (store_li_be_rates). Sets ierr on failure.
 subroutine rezone_or_snapshot
       use math_lib
 ! rezone new model, except rezoning not performed for He flash calculations
@@ -304,7 +304,7 @@ subroutine rezone_or_snapshot
                envelope_cz_zone_prev = star%envelope_cz_bottom_index
                star%pressure_scale_height_start = envelope_overshoot_depth()
 ! find burning rates at the beginning of the time step, from the
-! start-of-step model (2026-10: the flag-driven lirate88 calls had
+! start-of-step model (2026-10: the flag-driven store_li_be_rates calls had
 ! start and end swapped, inherited from F77).
                call store_start_li_be_rates()
             endif
@@ -487,7 +487,7 @@ end subroutine converge_with_rotation
 ! ---------------------------------------------------------------
 ! Li/Be/H2 burning over the step for non-rotating (or non-mixing)
 ! models: end-of-step convection-zone depth (convec), end-of-step
-! rates (lirate88), then the burn (liburn).
+! rates (store_li_be_rates), then the burn (burn_li_be).
 subroutine burn_light_elements
       use math_lib
 ! PERFORM LIGHT ELEMENT BURNING
@@ -503,7 +503,7 @@ subroutine burn_light_elements
                star%pressure_scale_height_end = envelope_overshoot_depth()
 ! FIND BURNING RATES AT THE END OF THE TIME STEP, from the converged model.
                call store_end_li_be_rates(star%xa,star%logRho,star%logT,star%nz)
-               call liburn(star%dt,star%xa,star%logR,star%m,star%dm,star%logT,envelope_cz_zone_end,envelope_cz_zone_prev,star%nz)
+               call burn_li_be(star%dt,star%xa,star%logR,star%m,star%dm,star%logT,envelope_cz_zone_end,envelope_cz_zone_prev,star%nz)
             endif
          endif
 end subroutine burn_light_elements
