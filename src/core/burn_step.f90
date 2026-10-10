@@ -14,7 +14,7 @@
 module burn_step
       use net_lib
       implicit none
-      private :: locate_cz_base, average_cz_abundances
+      private :: locate_cz_base, average_cz_abundances, lirate88
 
 ! burn_result (2026 W3): the per-zone energy-generation record filled
 ! by engeb -- formerly its first eight positional dummies. The
@@ -1173,6 +1173,28 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
       end do
       return
 end subroutine lirate88
+
+!----------------------------------------------------------------------
+! store_start_li_be_rates / store_end_li_be_rates
+!----------------------------------------------------------------------
+! The two uses of lirate88, named (2026-10: callers passed its 1/2 flag
+! directly, and had them swapped). Start of step: the rates of the
+! saved start-of-step model (star%logRho_start, logT_start, xa_start)
+! into star%rate_*_start. End of step: the rates of the model passed in
+! (the converged model, or a rotation sub-step's midpoint model) into
+! star%rate_*.
+subroutine store_start_li_be_rates()
+      use star_info_lib, only: star
+      call lirate88(star%xa, star%logRho, star%logT, star%nz, 2)
+end subroutine store_start_li_be_rates
+
+subroutine store_end_li_be_rates(composition, log_density, log_temperature, num_zones)
+      use star_info_lib, only: json
+      double precision, intent(in) :: composition(15,json), log_density(json), &
+           log_temperature(json)
+      integer, intent(in) :: num_zones
+      call lirate88(composition, log_density, log_temperature, num_zones, 1)
+end subroutine store_end_li_be_rates
 
 
 !----------------------------------------------------------------------
