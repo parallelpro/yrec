@@ -402,7 +402,9 @@ module star_info_lib
 ! index used by the deuterium-burning routines.
             double precision :: deuterium_burning_rate(json), &
                  deuterium_burning_rate_start(json)
-            double precision :: accreted_mass_fraction
+! accreted_mass: the mass accreted during the step, g (wind/mdot;
+! named accreted_mass_fraction until 2026-10 despite being a mass)
+            double precision :: accreted_mass
             integer :: jcz
 ! -- former engeb_diagnostics_state (engeb) --
 ! former common/neweps/

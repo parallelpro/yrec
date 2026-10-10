@@ -182,7 +182,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
                     star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
                     rot_scr%deuterium_rate_mid_start,step_fraction_ratio, &
-                    star%xa_start,star%accreted_mass_fraction)
+                    star%xa_start,star%accreted_mass)
             end do
          end do
 !
@@ -195,7 +195,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
             call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
                  star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
                  rot_scr%deuterium_rate_mid_start,step_fraction_ratio, &
-                 star%xa_start,star%accreted_mass_fraction)
+                 star%xa_start,star%accreted_mass)
          end do
       endif
 !  DETERMINE EXTENT OF CENTRAL CONVECTION ZONE.

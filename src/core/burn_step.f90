@@ -770,14 +770,14 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 ! NOT STRICTLY TRUE, BUT NOT A BAD APPROXIMATION EITHER.
          if(accretion_active)then
             write(*,913)li6_cz_start,li6_cz_end,li6_accreted,li7_cz_start, &
-                 li7_cz_end,li7_accreted,star%accreted_mass_fraction
+                 li7_cz_end,li7_accreted,star%accreted_mass
  913        format(1p7e12.3)
-            li6_cz_end = (li6_cz_end*cz_mass_end+li6_accreted*star%accreted_mass_fraction)/ &
-                 (cz_mass_end+star%accreted_mass_fraction)
-            li7_cz_end = (li7_cz_end*cz_mass_end+li7_accreted*star%accreted_mass_fraction)/ &
-                 (cz_mass_end+star%accreted_mass_fraction)
-            be9_cz_end = (be9_cz_end*cz_mass_end+be9_accreted*star%accreted_mass_fraction)/ &
-                 (cz_mass_end+star%accreted_mass_fraction)
+            li6_cz_end = (li6_cz_end*cz_mass_end+li6_accreted*star%accreted_mass)/ &
+                 (cz_mass_end+star%accreted_mass)
+            li7_cz_end = (li7_cz_end*cz_mass_end+li7_accreted*star%accreted_mass)/ &
+                 (cz_mass_end+star%accreted_mass)
+            be9_cz_end = (be9_cz_end*cz_mass_end+be9_accreted*star%accreted_mass)/ &
+                 (cz_mass_end+star%accreted_mass)
          endif
 ! STORE THE ABUNDANCE AS A FUNCTION OF THE TIME STEP.
 ! STORE ABUNDANCES AS A FUNCTION OF TIMESTEP IN VECTOR YEST.
@@ -1509,7 +1509,7 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
                zone_end = inner_zone_idx
                call dburn(zone_begin, zone_end, star%nz, star%dm, &
                     star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
-                    star%deuterium_burning_rate, star%accreted_mass_fraction)
+                    star%deuterium_burning_rate, star%accreted_mass)
             end do
          end do
 !
@@ -1521,7 +1521,7 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
             call dburn(zone_begin, zone_end, star%nz, star%dm, &
                  star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
-                 star%deuterium_burning_rate, star%accreted_mass_fraction)
+                 star%deuterium_burning_rate, star%accreted_mass)
          end do
 end subroutine burn_deuterium
 

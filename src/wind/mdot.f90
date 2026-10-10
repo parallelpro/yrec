@@ -269,7 +269,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
                composition(species_idx,zone_idx) = mixed_abundance
             end do
          end do
-         star%accreted_mass_fraction = delta_mass_cgs
+         star%accreted_mass = delta_mass_cgs
       endif
       return
 end subroutine mdot

@@ -342,7 +342,7 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
       integer :: num_substeps
       double precision :: accreted_deuterium_fraction, &
            accreted_deuterium_burned, newly_accreted_deuterium
-      double precision :: accreted_mass_fraction_substep
+      double precision :: accreted_mass_substep
       double precision :: deuterium_change_original, &
            deuterium_change_accreted, deuterium_fraction_new, &
            hydrogen_fraction_new, helium3_fraction_new, deuterium_change
@@ -439,22 +439,22 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
 ! HERE IS ONLY A PORTION OF THE TOTAL MODEL DT.
 ! DO ONLY THE SMALLER TIMESTEP PORTION OF THE
 ! TOTAL MASS ACCRETION.
-         accreted_mass_fraction_substep = step_fraction*accreted_mass
+         accreted_mass_substep = step_fraction*accreted_mass
          deuterium_change_original = deuterium_fraction_burned - &
               deuterium_fraction
          deuterium_change_accreted = accreted_deuterium_burned - &
               star%ctrl%accreted_composition(i_h2)
          deuterium_fraction_new = (deuterium_fraction_burned+ &
-              accreted_deuterium_burned*accreted_mass_fraction_substep)/ &
-              (1.0d0+accreted_mass_fraction_substep)
+              accreted_deuterium_burned*accreted_mass_substep)/ &
+              (1.0d0+accreted_mass_substep)
          hydrogen_fraction_new = hydrogen_fraction + 0.5d0* &
               (deuterium_change_original+ &
-              deuterium_change_accreted*accreted_mass_fraction_substep)/ &
-              (1.0d0+accreted_mass_fraction_substep)
+              deuterium_change_accreted*accreted_mass_substep)/ &
+              (1.0d0+accreted_mass_substep)
          helium3_fraction_new = helium3_fraction - 1.5d0* &
               (deuterium_change_original+ &
-              deuterium_change_accreted*accreted_mass_fraction_substep)/ &
-              (1.0d0+accreted_mass_fraction_substep)
+              deuterium_change_accreted*accreted_mass_substep)/ &
+              (1.0d0+accreted_mass_substep)
       else
 ! INCREMENT H,D,HE3 WITHOUT MASS ACCRETION
          deuterium_change = deuterium_fraction_burned - deuterium_fraction
