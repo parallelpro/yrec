@@ -157,6 +157,14 @@ For each file:
 
 ## Naming
 
+**Units (2026-10, docs/TARGET_ARCHITECTURE.md section 4.7): CGS unless
+the name says otherwise.** A non-CGS variable carries its unit as a
+suffix (`_msun`, `_rsun`, `_lsun`, `_gyr`, `_yr`, `_uhz`, `_per_gyr`);
+`log_x` is log10 of x in the unit its name implies. New code follows
+this; renames of older names happen as code is touched (byte-identical
+commits). Output columns keep their MESA names.
+
+
 - `_lib` is reserved for exactly one module per domain: the small,
   public, callable-from-anywhere surface for that domain (`numerics_lib`,
   `const_lib`, `luout_lib`, and later `eos_lib`, `kap_lib`, etc.) --

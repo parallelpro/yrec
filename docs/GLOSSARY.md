@@ -114,6 +114,18 @@ The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`
 
 ---
 
+
+### Units rule (2026-10)
+
+Internal variables are CGS unless their name carries a unit suffix:
+`mass` g, `mass_msun` M☉; `radius` cm, `radius_rsun` R☉; `luminosity`
+erg/s, `luminosity_lsun` L☉; `age` s, `age_gyr` Gyr; `rate` per s,
+`rate_per_gyr` per Gyr. `log_x` is log₁₀ of x in the unit its name
+implies. Output columns keep their MESA names. Many current names
+predate the rule (the solar-unit masses and luminosity channels, `dage`,
+the per-Gyr rate arrays, `accreted_mass_fraction` in g); the tables
+below record their real units, and renames follow as code is touched.
+
 ## 2. Quantities by domain
 
 ### 2.1 Grid and structure (per zone unless noted)

@@ -355,6 +355,7 @@ end interface
   - `_start` means start of step.
   - Derivatives are named `d<f>_dln<x>` and state whether they are absolute or logarithmic.
   - No name is reused for a different quantity.
+- **Units: CGS unless the name says otherwise** (adopted 2026-10). Every internal variable is in CGS by default: a mass in g, a radius in cm, a luminosity in erg/s, a time in s, a rate per s. A variable in any other unit carries the unit as a suffix: `mass_msun`, `radius_rsun`, `luminosity_lsun`, `age_gyr`, `dt_yr`, `nu_max_uhz`, `rate_per_gyr`. A `log` prefix means log₁₀ of the quantity in the unit its name implies (`log_mass` is log₁₀ of grams; `log_l_lsun` is log₁₀ L/L☉). Dimensionless quantities need no suffix. When restructuring code that works in another unit system (the network's per-Gyr-per-amu rates, the solver's L☉ terms), prefer converting to CGS; otherwise rename with the suffix. The history and profile output columns keep their MESA names (`star_mass` in M☉, `log_L` in L☉); the output layer maps internal names to them.
 - **Legacy names** stay in comments at each declaration (as the code does now). Appendix A gives the routine-level map.
 
 ### 4.8 What a newcomer task looks like afterwards
