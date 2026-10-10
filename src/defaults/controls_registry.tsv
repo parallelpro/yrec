@@ -240,7 +240,7 @@ physics	tmolmax	real	0.0*	molecular_opacity_logt_max	canonical
 physics	lmonte	logical	.false.*	monte_carlo_active	canonical		Monte-Carlo multi-realization mode
 physics	imbeg	integer	0*	mc_run_start	canonical		First Monte-Carlo realization index
 physics	imend	integer	0*	mc_run_end	canonical		Last Monte-Carlo realization index
-physics	sstandard	real(17)	0.9828,1.0485,0.9815,0.9241,1.3818,1.0542,1.0, &	mc_standard_seed	unused		DEAD: referenced nowhere (functional-ref scan incl. parmin internals and echoes); legacy path only
+physics	sstandard	real(17)	0.9828,1.0485,0.9815,0.9241,1.3818,1.0542,1.0, &	mc_standard_seed	unused		legacy path only: the cross-section ratios used when lnewnuc = .false. (read_controls copies them into cross_section_scale, 2026-10); not settable from &controls inlists
 physics	lscv	logical	.false.	use_scv_eos	canonical		
 physics	ldisk	logical	.false.*	disk_locking_active	canonical		
 physics	tdisk	real	0.0*	disk_locking_age_gyr	canonical		Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr).

@@ -868,4 +868,6 @@
 
 ! Unused legacy controls (accepted by the legacy reader only,
 ! referenced nowhere in the code; dropped from the new format):
-!   hpttol, ies, imu, sstandard
+!   hpttol, ies, imu
+! Legacy-reader only, dropped from the new format: sstandard, the
+! cross-section ratios used when use_new_nuclear_rates = .false.

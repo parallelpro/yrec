@@ -640,12 +640,11 @@ subroutine read_input(ierr)
 
 ! sstandard/lnewnuc: NAMELIST /physics/ members (must keep this exact
 ! spelling, see this file's naming note at the top). Former common
-! /cross/; only these two are actually read anywhere (sstandard's
-! namelist value is never referenced outside its own declaration --
-! setup/map_user_inputs.f90 fully recomputes star%cross_section_scale
-! from other inputs regardless -- so it's dropped here rather than
-! copied). lnewnuc is copied into const_lib's use_new_nuclear_rates
-! right after the namelist read below, since map_user_inputs.f90 needs it.
+! /cross/. With lnewnuc = .false. sstandard becomes
+! star%cross_section_scale (adopt_canonical_names, before
+! map_user_inputs); with .true. map_user_inputs recomputes the scales
+! from the s0_* inputs. lnewnuc is copied into use_new_nuclear_rates
+! right after the namelist read below, since map_user_inputs needs it.
       double precision :: sstandard(17)
       logical :: lnewnuc
 
@@ -1744,6 +1743,15 @@ subroutine adopt_canonical_names
       s0p_be7_p = s0p_1_be7p
       s0pp_be7_p = s0pp_1_be7p
       use_scv_eos = lscv
+! LNEWNUC = .false.: the cross sections are the SSTANDARD ratios (to
+! Bahcall & Ulrich 1988), as in the F77 code's COMMON /CROSS/;
+! map_user_inputs replaces them from the s0_* inputs when LNEWNUC is
+! set. (2026-10: the 2026 rename campaign dropped this copy as "never
+! referenced", which left every pp/CNO rate zero -- and the Be7
+! branching 0/0 -- whenever LNEWNUC was .false.; every shipped deck
+! sets it .true., so no pin saw it. SSTANDARD is settable from the
+! legacy namelist; &controls inlists get the default ratios.)
+      if (.not. lnewnuc) star%cross_section_scale = sstandard
 ! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
 ! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
 ! (2026 phase C: remap is read-path like this routine -- it reads
