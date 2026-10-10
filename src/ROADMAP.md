@@ -972,12 +972,13 @@ side-effect-free net routine nuclear_energy with engeb as its adapter
 deuterium_rate, dburn, dburnm) into net/light_elements.f90 with the
 model state as arguments. All byte-identical. Bugs seen on the way,
 left for a decision (physics changes):
-- **dburnm adds grams to a dimensionless 1.** star%accreted_mass_fraction
+- **dburnm adds grams to a dimensionless 1 -- FIXED (mass-weighted).** star%accreted_mass_fraction
   is the mass accreted this step in g (wind/mdot.f90); dburn mixes it
   mass-weighted (X*M + X_acc*M_acc)/(M + M_acc), dburnm as
   (X + X_acc*f*M_acc)/(1 + f*M_acc). Active only in rotating runs with
   mass accretion.
-- **dburn's single-shell accretion branch uses total_shell_mass unset**
+- **dburn's single-shell accretion branch uses total_shell_mass unset
+  -- FIXED (both integrators set it from the shell's mass).**
   (zero only through -finit-local-zero), so a lone radiative surface
   shell under accretion takes the accreted deuterium and ignores its
   own.
