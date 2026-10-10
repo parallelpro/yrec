@@ -872,6 +872,15 @@ subroutine liburn(timestep, composition, radius, mass_coordinate, &
 end subroutine liburn
 
 
+! ---------------------------------------------------------------
+! Compiled out (2026-10): the Bulirsch-Stoer mixing-plus-burning path
+! (burn_settle_mix -> burn_mix_extrapolated, liburn2) is switched off
+! by a hard-coded burs_extrapolation_active = .false. in
+! evolve_angular_momentum, with no control to enable it, so it never
+! ran. Kept, not deleted: build with -DYREC_BULIRSCH_STOER_BURN to
+! compile it again (and set burs_extrapolation_active).
+! ---------------------------------------------------------------
+#ifdef YREC_BULIRSCH_STOER_BURN
 !----------------------------------------------------------------------
 ! liburn2
 !----------------------------------------------------------------------
@@ -1093,6 +1102,7 @@ subroutine liburn2(timestep, composition, radius, mass_coordinate, &
       end do
       return
 end subroutine liburn2
+#endif
 
 
 !----------------------------------------------------------------------

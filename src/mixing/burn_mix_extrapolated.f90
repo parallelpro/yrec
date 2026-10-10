@@ -13,6 +13,15 @@
 ! extrapolation in step size, using Neville's algorithm), given the
 ! composition (composition) computed with extrapolation_order
 ! (originally IEST) substeps out of the sequence substep_counts.
+! ---------------------------------------------------------------
+! Compiled out (2026-10): the Bulirsch-Stoer mixing-plus-burning path
+! (burn_settle_mix -> burn_mix_extrapolated, liburn2) is switched off
+! by a hard-coded burs_extrapolation_active = .false. in
+! evolve_angular_momentum, with no control to enable it, so it never
+! ran. Kept, not deleted: build with -DYREC_BULIRSCH_STOER_BURN to
+! compile it again (and set burs_extrapolation_active).
+! ---------------------------------------------------------------
+#ifdef YREC_BULIRSCH_STOER_BURN
 subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num_zones, &
      species_begin, species_end, substep_counts, converged, ierr)
       use rotation_scratch_lib
@@ -328,3 +337,4 @@ subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num
       end if
       return
 end subroutine burn_mix_extrapolated
+#endif

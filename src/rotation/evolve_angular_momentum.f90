@@ -93,6 +93,9 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 
       ierr = 0
 
+! .false. always: the Bulirsch-Stoer mixing-plus-burning path it would
+! select is compiled out unless YREC_BULIRSCH_STOER_BURN is defined
+! (see mixing/burn_settle_mix.f90)
       burs_extrapolation_active = .false.
 ! DETERMINE THE NUMBER OF DIFFERENT ELEMENTS AND ISOTOPES BEING TRACKED
 ! BY THE CODE (NSPEC).
@@ -367,11 +370,14 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
                star%rate_li7_start(zone_index) = star%rate_li7(zone_index)
                star%rate_be9_start(zone_index) = star%rate_be9(zone_index)
             end do
+#ifdef YREC_BULIRSCH_STOER_BURN
          else
-! COMPUTE BURNING.
+! COMPUTE BURNING (Bulirsch-Stoer path, compiled out by default; see
+! mixing/burn_settle_mix.f90).
             call liburn2(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
                  star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)
+#endif
          endif
 !  ENSURE THAT CONVECTIVE REGIONS ARE FULLY MIXED.
          call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
@@ -401,6 +407,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! MHP 6/00 NOW ADDED THE OPTION OF PERFORMING A BUR-ST EXTRAPOLATION
 ! TO ZERO TIMESTEP FOR THE COMBINATION OF MIXING AND NUCLEAR BURNING.
       if(star%job%instability_transport_active .and. .not.fully_convective_flag)then
+#ifdef YREC_BULIRSCH_STOER_BURN
          if(burs_extrapolation_active)then
         call burn_settle_mix(cod2,sub_timestep,star%xa,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
              rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm,star%log_total_mass, &
@@ -410,6 +417,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
              convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
         if (ierr /= 0) return
          endif
+#endif
       endif
       exit retry
       end do retry
