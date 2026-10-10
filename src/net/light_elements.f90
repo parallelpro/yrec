@@ -1,18 +1,20 @@
 !----------------------------------------------------------------------
 ! light_element_lib
 !----------------------------------------------------------------------
-! Deuterium burning, operator-split from the implicit network
+! The light elements, operator-split from the implicit network
 ! (2026-10: moved here from core/burn_lib with the model state as
-! arguments): deuterium_rate, the per-shell rate with the
+! arguments). Deuterium: deuterium_rate, the per-shell rate with the
 ! convective-overturn cap; dburn, the exponential sub-stepped burn over
 ! a step in Gyr (mix); dburnm, the same over a rotation sub-step in
-! seconds (mid_timestep_model). They read configuration (accretion
-! settings) from star%job/star%ctrl and nothing else from star.
+! seconds (mid_timestep_model). Li6/Li7/Be9: li_be_rates, the
+! proton-capture rates (the star-layer lirate88/liburn store and
+! integrate them). They read configuration from star%job/star%ctrl and
+! nothing else from star.
 module light_element_lib
       use net_lib, only: dpg_rate, avogadro_dpg, deuteron_mass_amu
       implicit none
       private
-      public :: deuterium_rate, dburn, dburnm
+      public :: deuterium_rate, dburn, dburnm, li_be_rates
 
 ! dburn/dburnm interface constants (2026 W3). The two deuterium
 ! drivers are deliberately kept as separate bodies (see the dburn
@@ -467,5 +469,81 @@ subroutine dburnm(zone_begin, zone_end, num_zones, shell_mass, &
       end do
       return
 end subroutine dburnm
+
+!----------------------------------------------------------------------
+! li_be_rates
+!----------------------------------------------------------------------
+! The Li6, Li7 and Be9 proton-capture rates at T9, per unit rho*X
+! (Caughlan & Fowler 1988; no screening, no energy release), scaled by
+! the deck's ctrl%li6/li7/be9_*_rate_scale: Li6(p,He3)He4, Li7(p,a)He4,
+! and the sum of Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. Moved from
+! burn_lib's lirate88 (2026-10), formulas unchanged.
+subroutine li_be_rates(t9, fli6, fli7, fsbe9)
+      use star_info_lib, only: star
+      use phys_const_lib
+      use math_lib
+      double precision, intent(in) :: t9
+      double precision, intent(out) :: fli6, fli7, fsbe9
+      double precision :: t913, t923, t943, t953, t932, t934
+      double precision :: fbe91, fbe92, fbe93, fx, ex, t9a, c56
+
+         t913=pow(t9, cc13)
+         t923=t913*t913
+         t943=t923*t923
+! MHP 10/91 ADDED DEFINITION
+         t953 = t943*t913
+         t932=pow(t9, 1.5d0)
+         t934=pow(t9, 7.5d-1)
+!
+! LI6(P,HE3)ALPHA
+!
+!           FLI6=3.73D10/T923*EXP(-8.413/T913-(T9/5.50)**2)*
+!    1      (1.+%TYPO%0.50*T913-0.061*T923-0.021*T9+0.006*T943+0.006*T953)
+!    2      +1.33D10/T932*EXP(-17.763/T9)+1.29D9/T9*EXP(-21.820/T9)
+! ***TYPO IN OLD RATE***
+         fli6=3.73d10/t923*exp(-8.413d0/t913-(t9/5.50d0)**2)* &
+         (1.d0+0.050d0*t913-0.061d0*t923-0.021d0*t9+0.006d0*t943 &
+          +0.005d0*t953)+1.33d10/t932*exp(-17.763d0/t9) &
+          +1.29d9/t9*exp(-21.820d0/t9)
+!
+! LI7(P,ALFA)HE4
+!
+!           FLI7=8.04D08/T923*EXP(-8.471/T913-(T9/30.068)**2)*
+!    1      (1.+0.049*T913+0.230*T923+0.079*T9-0.027*T943-0.023*T953)
+!    2      +1.54D06/T932*EXP(-4.479/T9)+1.07D10/T932*EXP(-30.443/T9)
+         t9a = t9/(1.0d0+0.759d0*t9)
+         c56 = 1.25d0*cc23
+         fli7=1.096d9/t923*exp(-8.472d0/t913)-4.830d8*pow(t9a, c56)/ &
+         t932*exp(-8.472d0/pow(t9a, cc13))+1.06d10/t932*exp(-30.442d0/t9)
+!
+! BE9(P,GAMMA)B10
+!
+         fbe91=1.33d+07/t923*exp(-10.359d0/t913-(t9/0.846d0)**2) &
+         *(1.0d0+4.0d-2*t913+1.52d0*t923+4.28d-1*t9+2.15d0*t943+ &
+         1.54d0*t953) + 9.64d+4/t932*exp(-3.445d0/t9) + &
+         2.72d+6/t932*exp(-10.62d0/t9)
+!    3      2.76D+6/T932*EXP(-10.62D0/T9) %OLD LAST LINE%
+!
+! BE9(P,D)2HE4 - UNCHANGED.
+!
+         fx=2.11d+11/t923*exp(-10.359d0/t913-(t9/5.2d-1)**2) &
+         *(1.0d0+4.0d-2*t913+1.09d0*t923+3.07d-1*t9+3.21d0*t943 &
+         +2.3d0*t953)
+         ex = exp(-3.046d0/t9)/t9
+         fbe92=fx+5.79d+8*ex+8.5d+8/t934*exp(-5.8d0/t9)
+!
+! BE9(P,ALPHA)LI6
+!
+         fbe93=fx+4.51d+8*ex+6.7d+8/t934*exp(-5.16d0/t9)
+! G Somers 6/14, SCALE BY THE NEW CROSS SECTIONS
+         fli6=star%ctrl%li6_rate_scale*fli6
+         fli7=star%ctrl%li7_rate_scale*fli7
+         fbe91=star%ctrl%be9_pg_rate_scale*fbe91
+         fbe92=star%ctrl%be9_pd_rate_scale*fbe92
+         fbe93=star%ctrl%be9_palpha_rate_scale*fbe93
+! G Somers END
+! SUM RATES
+         fsbe9 = fbe91 + fbe92 + fbe93
+end subroutine li_be_rates
 
 end module light_element_lib

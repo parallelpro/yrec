@@ -984,3 +984,10 @@ left for a decision (physics changes):
 - dburn and dburnm are otherwise one algorithm (units, rate source and
   the 1e-11 / 1e-14 thresholds differ): merge once the two points above
   are settled.
+- **Li/Be burning never sees the end-of-step model.** lirate88 is
+  called with flag 1 at the start of the step (current model = the
+  start-of-step model, stored in star%rate_*) and flag 2 at the end
+  (recomputed from star%*_start into star%rate_*_start), so liburn's
+  start/end rate interpolation uses start-of-step rates throughout.
+  Inherited from F77 (the flags look swapped). The rate formulas are
+  net's li_be_rates now (2026-10); the wiring is unchanged.

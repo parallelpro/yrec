@@ -85,7 +85,7 @@ PUBLIC = {
     # burn_lib's engeb adapter; dpg_rate the shared d(p,g) rate (2026-10).
     "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
                 "implicit_burn_step", "nuclear_reaction_rates",
-                "nuclear_energy", "dpg_rate", "deuterium_rate",
+                "nuclear_energy", "dpg_rate", "deuterium_rate", "li_be_rates",
                 "eqburn", "dburn", "dburnm", "deutrate", "engeb",
                 "liburn", "liburn2", "lirate88", "safedivexp",
                 "ifermi12", "zfermim12"},
