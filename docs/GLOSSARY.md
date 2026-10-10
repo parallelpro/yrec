@@ -215,7 +215,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
-| X_i | mass fraction | `star%xa(i,k)` | `HCOMP` → `composition` | mixing/mix.f90, rotation/*, core/burn_step.f90 | Abundance of species slot *i* (section 1.5) in zone *k*. |
+| X_i | mass fraction | `star%xa(i,k)` | `HCOMP` → `composition` | core/composition_step.f90, rotation/*, core/burn_step.f90 | Abundance of species slot *i* (section 1.5) in zone *k*. |
 | — | — | `n_species_basic` (11), `n_species_extended` (15) | `NSPEC` (local) | state/star_info_lib.f90:54-55 | Species counts of the two layouts. |
 | X_i at step start | mass fraction | `star%xa_start` | `HCOMPP` (`/OLDMOD/`) | core/evolve_step.f90:245 | Start-of-step composition. Burning and mixing start from it, and Newton levels > 2 reset `xa` to it (`henyey_iterate.f90:136`). Also a rotation sub-step checkpoint (trap 9). |
 | X_i at step start (kept) | mass fraction | `star%orig_composition` | `HCOMPP0` (`/ORIGSTART/`) | core/evolve_step.f90:420 | Restores `xa_start` on structure⇄rotation passes after the first. |
@@ -330,11 +330,11 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
 | α_MLT | — | `star%mixing_length_alpha` | `CMIXL` (`/CONST3/`) | core/run_yrec.f90:270, core/check_solar_calibration.f90 | Working mixing length in pressure scale heights, copied from `job%mixing_length_array(nk)` each kind card. |
-| — | zone index | `star%mixed_zone_bounds(12,2)` | `MXZONE` | mixing/find_convection_zones.f90 (called from mixing/mix.f90, core/evolve_step.f90:496) | First and last zone of each mixed (convective plus overshoot) region. |
-| — | zone index | `star%mixed_zone_bounds_no_overshoot(12,2)` | `MXZON0` | mixing/mix.f90 | Same without overshoot. |
+| — | zone index | `star%mixed_zone_bounds(12,2)` | `MXZONE` | mixing/find_convection_zones.f90 (called from core/composition_step.f90, core/evolve_step.f90) | First and last zone of each mixed (convective plus overshoot) region. |
+| — | zone index | `star%mixed_zone_bounds_no_overshoot(12,2)` | `MXZON0` | core/composition_step.f90 | Same without overshoot. |
 | — | zone index | `star%radiative_zone_bounds(13,2)` | `MRZONE` | mixing/find_convection_zones.f90 (called from core/evolve_step.f90:496) | First and last zone of each radiative region. |
-| — | zone index | `star%core_cz_top_index` | `JCORE` | setup/rezone.f90:558, mixing/mix.f90 | Top zone of the convective core (1 if none). |
-| — | zone index | `star%envelope_cz_bottom_index` | `JENV` | setup/rezone.f90:567, mixing/mix.f90 | Bottom zone of the surface convection zone (`nz` if none). |
+| — | zone index | `star%core_cz_top_index` | `JCORE` | setup/rezone.f90:558, core/composition_step.f90 | Top zone of the convective core (1 if none). |
+| — | zone index | `star%envelope_cz_bottom_index` | `JENV` | setup/rezone.f90:567, core/composition_step.f90 | Bottom zone of the surface convection zone (`nz` if none). |
 | — | zone index | `star%iov1`, `star%iov2`, `star%iovim` | `IOV1`, `IOV2`, `IOVIM` (`/DPMIX/`) | mixing/overshoot_boundaries.f90 | Overshoot zone range, and the zone index passed to `temperature_gradients` for the adiabatic-overshoot test. |
 | α_ov H_P | cm | `star%pressure_scale_height_start`, `pressure_scale_height_end` | `PSCAL0`, `PSCAL1` (`/LIOV/`) | core/evolve_step.f90:537-545, rotation/evolve_angular_momentum.f90:343-348 | Envelope **overshoot distance** below the CZ base, not H_P itself (trap 13). |
 | r_CZ,prev | cm | `star%cz_base_radius_prev` | `RBASE0` (`/PREVCZ/`) | core/burn_step.f90:318, 336 | CZ-base radius at the end of the previous step, for light-element burning. |

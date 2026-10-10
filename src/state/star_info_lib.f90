@@ -214,8 +214,8 @@ module star_info_lib
 ! per-call-site audit the star_info header called for -- every
 ! converted routine receives exactly main's storage for these at every
 ! call site. NOT absorbed, still arguments, because call sites pass
-! separate storage: mix's core_cz_edge/envelope_cz_edge (crrect passes
-! its own locals; mix writes them) and its
+! separate storage: composition_step's core_cz_edge/envelope_cz_edge
+! (its re-runs at levels >= 3 pass their own locals) and its
 ! mixed_zone_bounds_no_overshoot (same reason, see step 3).
             integer :: nz, model_number
 ! Newton iterations the last converged model took (set by

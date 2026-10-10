@@ -89,13 +89,14 @@ PUBLIC = {
                 "nuclear_energy", "deuterium_proton_capture_rate", "deuterium_rate", "li_be_rates",
                 "equilibrium_burn_rates", "burn_deuterium_region",
                 "ifermi12", "zfermim12"},
-    # mixing has no facade module (phase-two finding: mix.f90 is
-    # already the orchestrator); these are its de-facto public surface.
+    # mixing has no facade module; these are its de-facto public
+    # surface. (Its orchestrator, mix, moved to core as
+    # composition_step in 2026-10: it drives burning as well as mixing.)
     # tpgrad joined when phase four's step 1 moved it here from misc/
     # (it is MLT convection physics): it is legitimately called from
     # core (physic/coefft/starin) and atm (qenv) pending the
     # star-layer consolidation.
-    "mixing": {"mix", "homogenize_convection_zones", "find_convection_zones",
+    "mixing": {"homogenize_convection_zones", "find_convection_zones",
                "burn_settle_mix", "rotmix", "compute_scale_height",
                "overshoot_boundaries", "semiconvection",
                "temperature_gradients"},

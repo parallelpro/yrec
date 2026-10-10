@@ -1113,8 +1113,8 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
 end subroutine burn_network_region
 
 ! =================================================================
-! The burning steps of mix (2026-10: moved here from mixing/mix.f90,
-! which calls them in its original order; bodies unchanged).
+! The burning steps of the composition step (core/composition_step.f90,
+! formerly mix; moved here 2026-10 with bodies unchanged).
 ! =================================================================
 
 !----------------------------------------------------------------------

@@ -13,7 +13,7 @@
 ! helium (Bahcall & Loeb method), and finally renormalizes the
 ! composition to guard against small negative/overflowing abundances.
 ! The reaction rates are taken from rot_scr%reaction_rate_by_zone, filled
-! by mix.f90 earlier in the timestep (columns 1..num_zones) and passed
+! by composition_step earlier in the timestep (columns 1..num_zones) and passed
 ! to burn_network_region as is (2026 W3 -- it used to be unpacked into
 ! twelve per-row local arrays first).
 subroutine rotmix(timestep, composition, shell_mass, log_temperature, &

@@ -624,7 +624,7 @@ subroutine interpolate_onto_new_grid
          call regrid_in_place(star%xa_start(i,:))
       end do
 !  reaction_rate_by_zone (originally HCOMPM) HOLDS THE PER-ZONE REACTION
-!  RATES FROM mix.f90; rotmix.f90 READS THEM BACK IN ROTATING MODELS.
+!  RATES FROM composition_step; rotmix.f90 READS THEM BACK IN ROTATING MODELS.
 !  ONLY THE ROWS LISTED IN reaction_rate_species_index ARE REGRIDDED.
       do i = 1,size(reaction_rate_species_index)
          call regrid_in_place(rot_scr%reaction_rate_by_zone(reaction_rate_species_index(i),:))

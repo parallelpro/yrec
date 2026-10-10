@@ -27,6 +27,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use luout_lib
       use phys_const_lib
       use burn_step
+      use composition_step_lib, only: composition_step
       use yrec_output, only: output_write_model
       use observables_lib, only: compute_observables
       use stitched_model_lib, only: build_stitched_model
@@ -218,8 +219,8 @@ end subroutine reload_model_if_diverged
 
 ! ---------------------------------------------------------------
 ! The composition half of the step, when the model is to be aged:
-! wind mass loss, store the start-of-step composition, burn + mix
-! (mix pipeline), and advance the age. Sets ierr on failure.
+! wind mass loss, store the start-of-step composition, the composition
+! step (burn + mix, composition_step), and advance the age. Sets ierr on failure.
 subroutine advance_composition_and_age
 ! skip this section if model not to be aged
 ! MHP 7/98
@@ -246,11 +247,12 @@ subroutine advance_composition_and_age
                   end do
                end do
                iteration_level=1
-! mixed_zone_bounds_no_overshoot stays an ARGUMENT of mix (not read as
-! star% inside it) because henyey_iterate passes its own local array
-! there -- storage deliberately separate from this one. The star copy
-! is passed explicitly here.
-               call mix(star%dt, iteration_level, star%timestep_yr, &
+               star%timestep_yr = star%dt/seconds_per_year
+! the composition step on the start-of-step structure. Its zone outputs
+! are arguments (not star% inside it) because the later re-runs at
+! levels >= 3 pass their own local storage, deliberately separate
+! from these star copies.
+               call composition_step(star%dt, iteration_level, &
                     star%core_cz_top_index, star%envelope_cz_bottom_index, &
                     star%mixed_zone_bounds_no_overshoot, jerr)
                if (jerr /= 0) then
@@ -258,7 +260,6 @@ subroutine advance_composition_and_age
                   ierr = jerr
                   return
                end if
-             star%timestep_yr = star%dt/seconds_per_year
              star%dage = star%dage + 1.0D-9*star%timestep_yr
             endif
 end subroutine advance_composition_and_age

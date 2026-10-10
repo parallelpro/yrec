@@ -33,6 +33,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use yale_eos_lib
+      use composition_step_lib, only: composition_step
 
       use math_lib
       implicit none
@@ -63,7 +64,6 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
 ! star%job%fcorr (started at |fcorr0| - fcorri by evolve_step) is
 ! ramped up by fcorri each iteration; <= 0 holds it fixed
       logical :: underrelax_ramp_active
-      double precision :: timestep_years
       double precision :: temp, test, total_luminosity_terms, &
            luminosity_correction_max, correction_factor
       double precision :: hydrogen_burn_luminosity, helium_burn_luminosity
@@ -136,7 +136,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
                star%xa(j,i) = star%xa_start(j,i)
             end do
          end do
-         call mix(delta_time, iteration_level, timestep_years, &
+         call composition_step(delta_time, iteration_level, &
               core_cz_edge, envelope_zone_index, &
               mixed_zone_bounds_no_overshoot, jerr)
          if (jerr /= 0) then

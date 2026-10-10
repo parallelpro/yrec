@@ -18,7 +18,7 @@ module light_element_lib
            min_deuterium_step, min_deuterium_substep
 
 ! burn_deuterium_region's thresholds as its two callers have always used
-! them: mix's step (min_deuterium_step) and the rotation sub-steps
+! them: the composition step (min_deuterium_step) and the rotation sub-steps
 ! (min_deuterium_substep), deuterium mass fraction.
       double precision, parameter :: min_deuterium_step = 1.0d-11
       double precision, parameter :: min_deuterium_substep = 1.0d-14
@@ -104,7 +104,7 @@ end function deuterium_rate
 ! ctrl%accreted_composition, mass-weighted. Below min_deuterium (after
 ! that blend) the region's deuterium is set to zero.
 !
-! 2026-10: one routine for the main step (mix's burn_deuterium, dt in
+! 2026-10: one routine for the main step (burn_deuterium, dt in
 ! Gyr, min_deuterium = 1e-11) and the rotation sub-steps
 ! (mid_timestep_model, dt converted from s, the sub-step's share of the
 ! accreted mass, min_deuterium = 1e-14) -- formerly dburn and dburnm,

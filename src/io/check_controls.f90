@@ -56,7 +56,7 @@ subroutine warn_inconsistent_controls
            //'overshoot_beta_core = 0 -- core overshoot is capped to zero')
 
 ! light-element settling lives only in the microdiff pipeline
-! (rotation/microdiff/; mixing/mix.f90 dispatches there only when
+! (rotation/microdiff/; core/composition_step.f90 dispatches there only when
 ! use_new_diffusion_routines is set)
       if (star%ctrl%diffuse_lithium .and. &
            .not. star%ctrl%use_new_diffusion_routines) &
