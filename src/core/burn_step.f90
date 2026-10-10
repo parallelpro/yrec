@@ -1482,12 +1482,12 @@ end subroutine burn_equilibrium
 !----------------------------------------------------------------------
 ! burn_deuterium
 !----------------------------------------------------------------------
-! Deuterium over the step (light_element_lib's dburn), shell by shell in
+! Deuterium over the step (light_element_lib's burn_deuterium_region), shell by shell in
 ! radiative regions above the nuclear cutoff and per mixed region.
 subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, timestep_years)
       use star_info_lib, only: star, max_radiative_zones
-      use light_element_lib, only: dburn
+      use light_element_lib, only: burn_deuterium_region, min_deuterium_step
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
       double precision, intent(in) :: timestep_years
@@ -1507,9 +1507,9 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
                if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
-               call dburn(zone_begin, zone_end, star%nz, star%dm, &
+               call burn_deuterium_region(zone_begin, zone_end, star%nz, star%dm, &
                     star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
-                    star%deuterium_burning_rate, star%accreted_mass)
+                    star%deuterium_burning_rate, star%accreted_mass, min_deuterium_step)
             end do
          end do
 !
@@ -1519,9 +1519,9 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
          do mixed_zone_idx = 1, num_mixed_zones
             zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            call dburn(zone_begin, zone_end, star%nz, star%dm, &
+            call burn_deuterium_region(zone_begin, zone_end, star%nz, star%dm, &
                  star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
-                 star%deuterium_burning_rate, star%accreted_mass)
+                 star%deuterium_burning_rate, star%accreted_mass, min_deuterium_step)
          end do
 end subroutine burn_deuterium
 

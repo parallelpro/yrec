@@ -86,8 +86,8 @@ PUBLIC = {
     "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
                 "implicit_burn_step", "nuclear_reaction_rates",
                 "nuclear_energy", "dpg_rate", "deuterium_rate", "li_be_rates",
-                "eqburn", "dburn", "dburnm", "deutrate", "engeb",
-                "liburn", "liburn2", "lirate88", "safedivexp",
+                "eqburn", "burn_deuterium_region",
+                "safedivexp",
                 "ifermi12", "zfermim12"},
     # mixing has no facade module (phase-two finding: mix.f90 is
     # already the orchestrator); these are its de-facto public surface.

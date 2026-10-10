@@ -37,7 +37,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       use net_lib
       use phys_const_lib
       use burn_step
-      use light_element_lib, only: dburnm
+      use light_element_lib, only: burn_deuterium_region, min_deuterium_substep
       use math_lib
       implicit none
 
@@ -179,10 +179,10 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                if (rot_scr%log_temperature_mid(j).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                burn_zone_begin = j
                burn_zone_end = j
-               call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
-                    star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
-                    rot_scr%deuterium_rate_mid_start,step_fraction_ratio, &
-                    star%xa_start,star%accreted_mass)
+               call burn_deuterium_region(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
+                    star%xa,sub_timestep*1.0d-9/seconds_per_year,star%xa_start, &
+                    rot_scr%deuterium_rate_mid_start,rot_scr%deuterium_rate_mid, &
+                    step_fraction_ratio*star%accreted_mass,min_deuterium_substep)
             end do
          end do
 !
@@ -192,10 +192,10 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          do k = 1,num_convective_zones
             burn_zone_begin = convective_zone_bounds(k,1)
             burn_zone_end = convective_zone_bounds(k,2)
-            call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
-                 star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
-                 rot_scr%deuterium_rate_mid_start,step_fraction_ratio, &
-                 star%xa_start,star%accreted_mass)
+            call burn_deuterium_region(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
+                 star%xa,sub_timestep*1.0d-9/seconds_per_year,star%xa_start, &
+                 rot_scr%deuterium_rate_mid_start,rot_scr%deuterium_rate_mid, &
+                 step_fraction_ratio*star%accreted_mass,min_deuterium_substep)
          end do
       endif
 !  DETERMINE EXTENT OF CENTRAL CONVECTION ZONE.
