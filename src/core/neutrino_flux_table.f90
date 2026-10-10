@@ -66,8 +66,13 @@ subroutine neutrino_flux_table
       do i = 1,star%nz
          shell_log_density = star%logRho(i)
          shell_log_temperature = star%logT(i)
-! SKIP CALCULATIONS FOR LOW TEMPERATURES.
-         if (shell_log_temperature.lt.6.0d0) exit
+! SKIP CALCULATIONS FOR LOW TEMPERATURES -- also at or below the
+! nuclear cutoff, where engeb returns early and would leave the previous
+! shell's fluxes in star%neutrino_flux (2026-10: only the literal 6.0
+! stood here, so a cutoff above 6.0 added stale fluxes for the shells
+! in between; the shipped decks use 5.5 and are unaffected)
+         if (shell_log_temperature.lt.6.0d0 .or. &
+              shell_log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) exit
          hydrogen_fraction = star%xa(i_h1,i)
          helium_fraction = star%xa(i_he4,i)
          he3_fraction = star%xa(i_he3,i)
