@@ -7,7 +7,7 @@ Two layers are involved:
 - **`net/` is the physics.** Routines here compute rates, energies and abundance changes from the values they are given. They never write the stellar model; they read only configuration from `star` (`star%ctrl`, `star%job`, the cross-section scales).
 - **`core/burn_step.f90` is the star-layer driver.** It loops over the model's shells and regions, reads `star`, calls `net/`, and stores the results back in `star`.
 
-Callers elsewhere in the code (`mixing/mix.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments.
+Callers elsewhere in the code (the composition step `core/composition_step.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments.
 
 ---
 
@@ -73,11 +73,11 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 
 | Routine | Called from | What it does |
 |---|---|---|
-| `compute_burn_rates` | `mix` | Each shell's rate vector (`network_rate_vector`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate(_start)` and `rot_scr%reaction_rate_by_zone`. |
-| `burn_network` | `mix` | `burn_network_region` per radiative shell and per mixed region. |
+| `compute_burn_rates` | `composition_step` | Each shell's rate vector (`network_rate_vector`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass) and `rot_scr%reaction_rate_by_zone`. |
+| `burn_network` | `composition_step` | `burn_network_region` per radiative shell and per mixed region. |
 | `burn_network_region` | `burn_network`, `mixing/rotmix` | Model bookkeeping around `implicit_burn_step`: convection-zone averaging, the temperature cutoff, the first guess, the metallicity rule, writing `star%xa` back. |
-| `burn_equilibrium` | `mix`, at level 1 | `equilibrium_burn_rates` per shell or region, overwriting X (and Z, C12, O16 under helium burning). |
-| `burn_deuterium` | `mix` | `burn_deuterium_region` per shell or region. |
+| `burn_equilibrium` | `composition_step`, predictor pass | `equilibrium_burn_rates` per shell or region, overwriting X (and Z, C12, O16 under helium burning). |
+| `burn_deuterium` | `composition_step` | `burn_deuterium_region` per shell or region. |
 | `compute_zone_energy` | `henyey_coefficients`, `neutrino_flux_table`, `timestep_limit_heburn` | `nuclear_energy` with the two inputs that depend on the shell's place in the model filled in (inside the surface convection zone? its turnover time). Returns the `nuclear_energy_result`; stores nothing. |
 | `store_start_li_be_rates` | `evolve_step` | Li/Be rates of the start-of-step model → `star%rate_*_start`. |
 | `store_end_li_be_rates` | `evolve_step`, `evolve_angular_momentum` | Li/Be rates of the model passed in (converged, or a rotation sub-step's midpoint) → `star%rate_*`. |
@@ -94,23 +94,25 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 evolve_step
  advance_composition_and_age
    star%xa_start := star%xa                      start-of-step composition
-   mix (mixing/mix.f90), iteration level 1
+   composition_step(predictor_pass)              core/composition_step.f90
      find_convection_zones                       radiative shells and mixed regions
      compute_burn_rates      [burn_step]         per shell: network_rate_vector, deuterium_rate
      burn_network            [burn_step]         per region: burn_network_region -> implicit_burn_step
-     burn_equilibrium        [burn_step]         level 1 only: equilibrium_burn_rates
-     semiconvection (levels > 1), homogenize convection zones, settling, renormalize
+     burn_equilibrium        [burn_step]         predictor pass only: equilibrium_burn_rates
+     (semiconvection), homogenize mixed regions, settling, renormalize
      burn_deuterium          [burn_step]         per region: burn_deuterium_region
  rezone_or_snapshot
    store_start_li_be_rates   [burn_step]         if extended composition
- solve_structure, levels 1-3: henyey_iterate
-   (levels >= 3) star%xa := star%xa_start, then mix again with the newer
-                 structure (once per level, before the Newton loop)
-   henyey_coefficients, every shell, every Newton iteration:
-     compute_zone_energy     [burn_step]         -> nuclear_energy -> nuclear_reaction_rates
+ solve_structure, levels 1-3: solve_level, each level
+   refresh_surface_bc                            surface boundary condition
+   (levels >= 3) star%xa := star%xa_start; composition_step(corrector_pass)
+                                                 re-burn with the updated structure
+   henyey_iterate, the Newton loop
+     henyey_coefficients, every shell, every Newton iteration:
+       compute_zone_energy   [burn_step]         -> nuclear_energy -> nuclear_reaction_rates
                                                  eps and d eps/dln rho, d eps/dln T enter the luminosity equation
  converge_with_rotation
-   level 4 (henyey_iterate again)
+   level 4 (solve_level again)
    evolve_angular_momentum (rotating runs), per sub-step:
      mid_timestep_model -> rotmix -> burn_network_region; burn_deuterium_region (dt in Gyr, sub-step's accreted mass)
      store_end_li_be_rates (midpoint model), burn_li_be
@@ -124,7 +126,7 @@ evolve_step
 ```
 
 Two things often surprise newcomers:
-- **Composition and structure are operator-split.** Burning runs at fixed structure in `mix`, then the structure is solved with the new composition. At iteration levels ≥ 3, `mix` runs again inside the Newton driver to re-burn with the updated structure.
+- **Composition and structure are operator-split.** Burning runs at fixed structure in `composition_step`, then the structure is solved with the new composition. At iteration levels ≥ 3, `solve_level` runs the composition step again (the corrector pass) to re-burn with the updated structure, between the surface boundary condition and the Newton loop.
 - **There are two rate paths from one evaluation.** The composition path uses `network_rate_vector`: per Gyr per amu, no derivatives, rates at or below 10⁻⁵ dropped. The energy path uses `nuclear_energy`: erg/g/s with derivatives, and only reactions 1–7 below 10⁻³⁰ dropped before ε is summed. Both call `nuclear_reaction_rates`, so a rate is defined in exactly one place.
 
 ---

@@ -27,7 +27,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use luout_lib
       use phys_const_lib
       use burn_step
-      use composition_step_lib, only: composition_step
+      use composition_step_lib, only: composition_step, predictor_pass, corrector_pass
       use henyey_iterate_lib, only: refresh_surface_bc, henyey_iterate
       use yrec_output, only: output_write_model
       use observables_lib, only: compute_observables
@@ -247,13 +247,12 @@ subroutine advance_composition_and_age
                      star%xa_start(j,i) = star%xa(j,i)
                   end do
                end do
-               iteration_level=1
                star%timestep_yr = star%dt/seconds_per_year
 ! the composition step on the start-of-step structure. Its zone outputs
 ! are arguments (not star% inside it) because the later re-runs at
 ! levels >= 3 pass their own local storage, deliberately separate
 ! from these star copies.
-               call composition_step(star%dt, iteration_level, &
+               call composition_step(star%dt, predictor_pass, &
                     star%core_cz_top_index, star%envelope_cz_bottom_index, &
                     star%mixed_zone_bounds_no_overshoot, jerr)
                if (jerr /= 0) then
@@ -562,7 +561,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
                star%xa(j,i) = star%xa_start(j,i)
             end do
          end do
-         call composition_step(star%dt, iteration_level, &
+         call composition_step(star%dt, corrector_pass, &
               core_cz_edge_rerun, envelope_zone_index, &
               mixed_zone_bounds_rerun, ierr)
          if (ierr /= 0) return

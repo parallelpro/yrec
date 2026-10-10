@@ -1121,16 +1121,19 @@ end subroutine burn_network_region
 ! compute_burn_rates
 !----------------------------------------------------------------------
 ! The composition rate vector of every shell above the nuclear cutoff
-! (net_lib's network_rate_vector; zero above it) and its deuterium burning rate
-! (light_element_lib's deuterium_rate, stored in
-! star%deuterium_burning_rate and, at iteration level 1, _start). The
+! (net_lib's network_rate_vector; zero in the cooler shells) and its
+! deuterium burning rate (light_element_lib's deuterium_rate, stored in
+! star%deuterium_burning_rate and, with store_start_rates, _start). The
 ! rates are also kept in rot_scr%reaction_rate_by_zone for rotmix and
 ! rezone.
-subroutine compute_burn_rates(iteration_level, rate_by_zone)
+subroutine compute_burn_rates(store_start_rates, rate_by_zone)
       use star_info_lib, only: star, json, i_h1, i_h2
       use rotation_scratch_lib
       use light_element_lib, only: deuterium_rate
-      integer, intent(in) :: iteration_level
+! store_start_rates: also keep the deuterium rates as the start-of-step
+! rates (star%deuterium_burning_rate_start; the composition step's
+! predictor pass)
+      logical, intent(in) :: store_start_rates
       double precision, intent(out) :: rate_by_zone(num_rate_rows, json)
       double precision :: deuterium_test
       integer :: zone_idx, clear_idx
@@ -1153,7 +1156,7 @@ subroutine compute_burn_rates(iteration_level, rate_by_zone)
             star%deuterium_burning_rate(zone_idx) = deuterium_rate( &
                  star%logRho(zone_idx), star%logT(zone_idx), star%xa(i_h1,zone_idx), &
                  zone_idx.ge.star%jcz, star%convective_turnover_timescale)
-            if (iteration_level.eq.1) star%deuterium_burning_rate_start(zone_idx) = &
+            if (store_start_rates) star%deuterium_burning_rate_start(zone_idx) = &
                  star%deuterium_burning_rate(zone_idx)
          else
             star%deuterium_burning_rate(zone_idx) = 0.0d0

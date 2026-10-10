@@ -85,8 +85,8 @@ Composition evolves by:
   (`burn_deuterium_region`, `net/light_elements.f90`). `src/net/README.md`
   walks through these routines and their call order;
 - **instantaneous convective mixing** — convective zones (plus overshoot
-  extensions) are homogenized every step (inside `mix`,
-  `mixing/mix.f90`, and again after the structure converges by
+  extensions) are homogenized every step (inside `composition_step`,
+  `core/composition_step.f90`, and again after the structure converges by
   `homogenize_convection_zones` (`mixcz`));
 - **light elements** (Li6, Li7, Be9, H2) — burned with sub-stepped
   Bulirsch–Stoer-extrapolated updates that account for the time-dependent
@@ -195,8 +195,8 @@ most once per call, before the Newton loop:
 2. **Level 2** — BC recomputation forced on: the triangle is re-checked
    (and walked) at the level-1 solution before iterating,
 3. **Level 3** — BC frozen; the composition is re-mixed from the
-   start-of-step abundances at the current structure (`mix`, called from
-   `henyey_iterate`), then the interior is converged at fixed envelope,
+   start-of-step abundances at the current structure (`composition_step`,
+   the corrector pass, called from `solve_level`), then the interior is converged at fixed envelope,
 4. **Level 4** — the high-precision pass inside the structure⇄rotation
    loop, also re-mixing first, repeating after composition/rotation
    updates (used for solar calibration; harmful where semiconvection
@@ -281,7 +281,7 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
  1. advance_composition_and_age (model being aged):
       mass loss / accretion (flags step 7)           massloss -> mdot (wind/)
       save start-of-step composition -> star%xa_start
-      COMPOSITION HALF-STEP                          mix
+      COMPOSITION HALF-STEP (predictor pass)         composition_step (mix)
         locate CZs (Schwarzschild), overshoot        find_convection_zones (convec)
                                                        -> overshoot_boundaries (oversh)
         rates of every shell                         compute_burn_rates
@@ -296,14 +296,18 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
       advance the age
  2. rezone_or_snapshot: REZONING [not in He flash]   rezone (hpoint)
       start-of-step Li/Be rates                      store_start_li_be_rates (lirate88)
- 3. solve_structure: STRUCTURE SOLVE, levels 1-3     henyey_iterate (crrect) ->
+ 3. solve_structure: STRUCTURE SOLVE, levels 1-3     solve_level, per level:
+      surface boundary condition                     refresh_surface_bc -> surfbc
+      levels >= 3: composition step again from
+        star%xa_start (corrector pass)               composition_step
+      Newton loop                                    henyey_iterate (crrect) ->
                                                        henyey_coefficients (coefft),
                                                        henyey_eliminate (reduce),
-                                                       henyey_solve (hsolve), surfbc
+                                                       henyey_solve (hsolve)
       store new entropy terms (rates) after level 2
       divergence at any level -> cycle retry_step (stage 0)
  4. converge_with_rotation (itrot = 1..num_rotation_structure_iters; 1 if no rotation)
-      level-4 structure pass                         henyey_iterate
+      level-4 structure pass                         solve_level (as in 3)
       re-homogenize convection zones                 homogenize_convection_zones (mixcz)
       AM evolution over sub-steps (rotation on)      evolve_angular_momentum (getw)
         wind torque (Kawaler/PMM; disk locking)      matt_wind, wind_spindown_matt
@@ -332,7 +336,7 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
 
 Convergence-of-splitting: because composition moved before structure,
 levels 3 and 4 re-do the mixing from the start-of-step composition at the
-current structure before iterating (`mix` inside `henyey_iterate`), and the
+current structure before iterating (`composition_step`, the corrector pass, run by `solve_level` between the surface boundary condition and `henyey_iterate`), and the
 level-4 loop runs `num_rotation_structure_iters` (`itdif1`) passes — the
 recommended configuration for solar models.
 
@@ -433,9 +437,9 @@ The routines, their call order and how to extend them are described in
 - one rate evaluation, `nuclear_reaction_rates`, feeds both consumers:
   `nuclear_energy` (`net/nuclear_energy.f90`) assembles ε per shell and
   its T, ρ derivatives for the Henyey Jacobian, and `compute_zone_energy`
-  stores per-reaction rate arrays (`star%reaction_rate`) as diagnostics;
-  the composition solve takes the same rates repacked per Gyr per amu by
-  `network_rate_vector` (called from `compute_burn_rates` in `mix`).
+  returns everything it computes in its result record; the composition
+  solve takes the same rates repacked per Gyr per amu by
+  `network_rate_vector` (called from `compute_burn_rates` in `composition_step`).
 
 ### 4.5 Atmospheres (`atm/`)
 
@@ -535,7 +539,7 @@ main (CLI, ~10 lines)                     pyyrec (ctypes) ── libyrec
      star layer (owns type(star_info) star): read_starting_model (starin),
        henyey_iterate (crrect), henyey_coefficients (coefft),
        henyey_eliminate (reduce), henyey_solve (hsolve), envint_lib,
-       surfbc, burn_step, mix, rezone (hpoint), evolve_angular_momentum
+       surfbc, burn_step, composition_step, rezone (hpoint), evolve_angular_momentum
        (getw), wind
                                                     │
      physics services: eos_get, kap_get, net_lib kernels, atm tables,

@@ -5,25 +5,30 @@
 ! structure. It changes star%xa (and the mixed-region bounds); the
 ! structure is solved afterwards with the new composition.
 !
-! evolve_step calls it twice per timestep:
-!   - iteration_level 1, from advance_composition_and_age: on the
-!     start-of-step structure, before the structure solve;
-!   - iteration levels >= 3, from henyey_iterate: star%xa is reset to
-!     star%xa_start and the step is redone with the updated structure.
+! evolve_step runs it in two kinds of pass (the two named options
+! below):
+!   - predictor_pass, once per timestep from advance_composition_and_age:
+!     on the start-of-step structure, before the structure solve (the
+!     composition that iteration levels 1-2 solve with);
+!   - corrector_pass, at iteration levels >= 3 from solve_level: star%xa
+!     is reset to star%xa_start and the step is redone with the
+!     updated structure.
 !
-! The order of operations:
+! The order of operations (the options that switch each one):
 !   1. mixed regions: convection zones with overshoot (find_convection_zones),
-!      with the dpenv deep-mixing option at levels > 1
-!   2. the burning rates of every shell (compute_burn_rates)
+!      with the dpenv deep-mixing option (deep_mixing)
+!   2. the burning rates of every shell (compute_burn_rates; with
+!      store_start_rates, the deuterium rates are also kept as the
+!      start-of-step rates)
 !   3. the implicit network burn (burn_network)
-!   4. level 1 only: the explicit burn with equilibrium He3 and CN
-!      (burn_equilibrium), which overwrites X (and Z, C12, O16 in
-!      helium burning)
-!   5. semiconvection (levels > 1, when enabled)
-!   6. homogenize the mixed regions (level 1, or with semiconvection)
+!   4. the explicit burn with equilibrium He3 and CN (equilibrium_burn;
+!      burn_equilibrium), which overwrites X (and Z, C12, O16 in helium
+!      burning) after the network
+!   5. semiconvection (semiconvection, and the control)
+!   6. homogenize the mixed regions (homogenize, or with semiconvection on)
 !   7. gravitational settling (when enabled), sub-stepped
 !   8. clip abundances to [0, 1] and close the mass fractions
-!   9. dpenv: recompute the zone bounds with the ordinary flags
+!   9. dpenv: recompute the zone bounds with the ordinary flags (deep_mixing)
 !  10. deuterium burning (extended composition)
 ! Li/Be are burned later, after the structure converges (burn_li_be).
 module composition_step_lib
@@ -31,9 +36,32 @@ module composition_step_lib
       private
       public :: composition_step
 
+! What a pass does beyond the operations every pass runs.
+      type, public :: composition_step_options
+! keep this pass's deuterium burning rates as the start-of-step rates
+         logical :: store_start_rates = .false.
+! after the implicit network, the explicit burn with He3 and the CN
+! cycle in equilibrium (a robust first estimate on the old structure)
+         logical :: equilibrium_burn = .false.
+! homogenize the mixed regions (always done when semiconvection is on)
+         logical :: homogenize = .false.
+! run semiconvection, when use_semiconvection is set
+         logical :: semiconvection = .false.
+! apply the dpenv deep-mixing option, when dpenv < 1
+         logical :: deep_mixing = .false.
+      end type composition_step_options
+
+      type(composition_step_options), parameter, public :: &
+           predictor_pass = composition_step_options(store_start_rates=.true., &
+                equilibrium_burn=.true., homogenize=.true., &
+                semiconvection=.false., deep_mixing=.false.), &
+           corrector_pass = composition_step_options(store_start_rates=.false., &
+                equilibrium_burn=.false., homogenize=.false., &
+                semiconvection=.true., deep_mixing=.true.)
+
 contains
 
-subroutine composition_step(timestep, iteration_level, core_cz_edge, &
+subroutine composition_step(timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star, i_h1, i_he3, i_he4, i_metals, json, &
@@ -48,7 +76,7 @@ subroutine composition_step(timestep, iteration_level, core_cz_edge, &
 
 ! timestep: s
       double precision, intent(in) :: timestep
-      integer, intent(in) :: iteration_level
+      type(composition_step_options), intent(in) :: opts
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
       integer, intent(inout) :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
       integer, intent(out) :: ierr
@@ -83,18 +111,17 @@ subroutine composition_step(timestep, iteration_level, core_cz_edge, &
            num_mixed_zones_no_overshoot, ierr)
       if (ierr /= 0) return
 
-! 2-4. BURNING: RATES, THE IMPLICIT NETWORK, AND AT LEVEL 1 THE
-! EQUILIBRIUM BURN
-      call compute_burn_rates(iteration_level, rate_by_zone)
+! 2-4. BURNING: RATES, THE IMPLICIT NETWORK, THE EQUILIBRIUM BURN
+      call compute_burn_rates(opts%store_start_rates, rate_by_zone)
       call burn_network(radiative_zone_bounds, num_radiative_zones, &
            num_mixed_zones, rate_by_zone, timestep_years, ierr)
       if (ierr /= 0) return
-      if (iteration_level.eq.1) call burn_equilibrium(radiative_zone_bounds, &
+      if (opts%equilibrium_burn) call burn_equilibrium(radiative_zone_bounds, &
            num_radiative_zones, num_mixed_zones, rate_by_zone, timestep_years)
 
 ! 5. SEMICONVECTION
       if (star%job%use_semiconvection) then
-         if (iteration_level.gt.1) &
+         if (opts%semiconvection) &
               call semiconvection(timestep, star%xa, star%logRho, &
               star%luminosity_lsun, star%logP, star%logR, star%log_mass, &
               star%logT, star%nz, star%mixed_zone_bounds, &
@@ -105,7 +132,7 @@ subroutine composition_step(timestep, iteration_level, core_cz_edge, &
 ! 6. HOMOGENIZE THE MIXED REGIONS. THIS NEEDS TO BE DONE IF
 ! SEMI-CONVECTION IS BEING CHECKED, OR IF EXPLICIT H AND HE BURNING IS
 ! BEING DONE.
-      if (star%job%use_semiconvection .or. (iteration_level .eq. 1)) &
+      if (star%job%use_semiconvection .or. opts%homogenize) &
            call homogenize_mixed_regions
       if (num_mixed_zones.ge.1 .and. solver_diagnostics()) then
          write(run_log_unit,110) ((star%mixed_zone_bounds(zone_idx,inner_zone_idx), &
@@ -123,7 +150,7 @@ subroutine composition_step(timestep, iteration_level, core_cz_edge, &
       call clip_and_renormalize
 
 ! 9. MHP 1/95: RESET JENV, JCORE FOR DEEP MIXING
-      if (star%ctrl%dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
+      if (star%ctrl%dpenv.lt.1.0d0 .and. opts%deep_mixing) then
          call find_convection_zones(star%xa, star%logRho, star%logP, star%logR, &
               star%log_mass, star%logT, star%convective_flag, star%nz, &
               radiative_zone_bounds, star%mixed_zone_bounds, &
@@ -140,13 +167,13 @@ subroutine composition_step(timestep, iteration_level, core_cz_edge, &
 
 contains
 
-! deep_mix_flag: the mixing flag per shell. DPENV < 1 (at levels > 1)
+! deep_mix_flag: the mixing flag per shell. DPENV < 1 (with deep_mixing)
 ! forces mixing from the centre out to mass fraction DPENV; outside
 ! that, and otherwise, the ordinary convective flag.
 subroutine set_deep_mix_flags
       double precision :: max_mixed_mass
       integer :: k, j
-      if (star%ctrl%dpenv.lt.1.0d0 .and. iteration_level.gt.1) then
+      if (star%ctrl%dpenv.lt.1.0d0 .and. opts%deep_mixing) then
          max_mixed_mass = star%ctrl%dpenv*exp(ln10*star%log_total_mass)
          do k = 1, star%nz
             if (star%m(k).gt.max_mixed_mass) then

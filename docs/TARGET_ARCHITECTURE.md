@@ -121,7 +121,7 @@ evolve_step
 The order is fine. The problems lie in how these stages communicate:
 
 - **Through the global object.** The stages exchange data through roughly 265 fields of `star`, plus the scratch modules `rot_scr`, `mix_scr` and `pt_scr`. No stage states its inputs or outputs.
-- **Stages nest inside one another.** Mixing, envelope integration and rotation shape updates run inside the Newton driver. The splitting iteration between composition and structure exists, but only as "`mix` is called again when `iteration_level > 2`" inside `henyey_iterate`.
+- **Stages nest inside one another.** Mixing, envelope integration and rotation shape updates run inside the Newton driver. The splitting iteration between composition and structure exists, but only as "`mix` is called again when `iteration_level > 2`" inside `henyey_iterate`. (Fixed for the composition step on `yrec-next`, 2026-10: `solve_level` in `evolve_step` now runs the surface boundary condition, the composition step and the Newton loop as three calls.)
 - **Flags are encoded in data.** "Do not age this model" is a negative `star%dt`, and four routines read its sign.
 - **Snapshots are scattered.** There are three separate snapshot families in `star`: `*_start` (start of step), `orig_*` (for the structure⇄rotation iteration) and `old_*` (rotation). A fourth, `rot_scr%old_*`, holds the rezone snapshot. Each is copied with hand-written loops.
 
@@ -212,7 +212,7 @@ Each stage is a procedure whose arguments are the parts of the state it may touc
 
 Coupling iterations are written in the step driver. Two cases need care to keep today's numerics exactly:
 
-- **The splitting iteration at levels ≥ 3.** The structure solver accepts an optional `before_iteration` procedure argument. The step driver passes the composition step there, so the order of operations is unchanged and is now visible in `evolve_step`.
+- **The splitting iteration at levels ≥ 3.** The structure solver is split at the point where it used to call the composition step: `refresh_surface_bc` (which reads the surface composition, so it must come first), then the composition step, then `henyey_iterate`. The step driver makes the three calls, so the order of operations is unchanged and is visible in `evolve_step`. (Done on `yrec-next`; a plain split reads more easily than the `before_iteration` procedure argument first proposed here.)
 - **The Ω(j) inversion during Newton iterations.** It is passed in the same way, as an `after_correction` procedure argument.
 
 ### 4.4 Structure: separating physics from the Henyey numerics
@@ -484,7 +484,7 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | Legacy | Current file |
 |---|---|
 | `starin` | `core/read_starting_model.f90` |
-| `crrect` | `core/henyey_iterate.f90` |
+| `crrect` | `core/henyey_iterate.f90` (`refresh_surface_bc`, `henyey_iterate`) |
 | `coefft` | `core/henyey_coefficients.f90` |
 | `reduce` | `core/henyey_eliminate.f90` |
 | `hsolve` | `core/henyey_solve.f90` |
@@ -495,9 +495,11 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `gettau` | `core/turnover_timescale.f90` |
 | `chkcal`, `setcal` | `core/check_solar_calibration.f90`, `setup/setup_solar_calibration.f90` |
 | `chkscal`, `setscal` | `core/check_star_calibration.f90`, `setup/setup_star_calibration.f90` |
-| `engeb`, `deutrate`, `liburn`, `lirate88` | `core/burn_lib.f90` |
-| `nrate` (rates) | `net/net_lib.f90` |
-| `mix` | `mixing/mix.f90` |
+| `engeb` | `net/nuclear_energy.f90` (`nuclear_energy`), adapter `compute_zone_energy` in `core/burn_step.f90` |
+| `deutrate`, `dburn`, `dburnm` | `net/light_elements.f90` (`deuterium_rate`, `burn_deuterium_region`) |
+| `liburn`, `lirate88` | `core/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`) |
+| `nrate` (rates) | `net/net_lib.f90` (`network_rate_vector`, `nuclear_reaction_rates`) |
+| `mix` | `core/composition_step.f90` (`composition_step`) |
 | `convec` | `mixing/find_convection_zones.f90` |
 | `oversh` | `mixing/overshoot_boundaries.f90` |
 | `sconvec` | `mixing/semiconvection.f90` |
